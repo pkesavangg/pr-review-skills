@@ -44,6 +44,7 @@ final class MockEntryStoreEntryService: EntryServiceProtocol {
     func clearLastSyncTimestamp() async throws {}
     func saveNewEntries(_ entries: [Entry]) async throws {}
     func deleteEntry(_ entry: Entry) async throws {}
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {}
     func getAllEntries() async throws -> [Entry] { [] }
     func getAllEntriesAsDTO() async throws -> [BathScaleOperationDTO] { [] }
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool { false }

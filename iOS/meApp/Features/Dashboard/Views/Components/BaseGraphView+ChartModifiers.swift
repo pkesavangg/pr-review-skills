@@ -37,14 +37,7 @@ extension BaseGraphView {
         .chartXAxis {
             let gridTicks = viewModel.gridTicks
             let adjustedLabelTicks = viewModel.adjustedLabelTicks
-            let renderedGridTicks: [Date] = {
-                if dashboardStore.selectedBabyProfile != nil && viewModel.hasXAxis {
-                    return Array(gridTicks.dropLast())
-                }
-                return gridTicks
-            }()
-
-            AxisMarks(values: renderedGridTicks) { value in
+            AxisMarks(values: gridTicks) { value in
                 if let date = value.as(Date.self), viewModel.shouldShowSolidLine(for: date) {
                     AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: []))
                         .foregroundStyle(theme.statusIconSecondaryDisabled)

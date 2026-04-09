@@ -709,6 +709,18 @@ struct BaseSectionViewModelTests {
         // No crash means the method works correctly
     }
 
+    @Test("configure caches whether the chart has data")
+    func configureCachesChartPresence() {
+        let summaries = DashboardTestFixtures.makeSortedDailySummaries()
+        let (sut, _, _) = makeConfiguredSUT(summaries: summaries)
+
+        #expect(sut.hasChartOperations == true)
+
+        sut.tearDown()
+
+        #expect(sut.hasChartOperations == false)
+    }
+
     @Test("refreshData maintains selection if still valid")
     func refreshDataMaintainsSelection() {
         let (sut, _, _) = makeConfiguredSUT()

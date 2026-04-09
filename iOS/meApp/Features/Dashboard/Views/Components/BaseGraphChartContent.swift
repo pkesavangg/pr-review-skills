@@ -19,11 +19,12 @@ import SwiftUI
 struct ChartSeriesContent: ChartContent {
 
     // MARK: - Inputs
+    let orderedSeriesNames: [String]
     let cachedPlottedPoints: [String: [PlottedGraphSeries]]
     let yAxisDomain: ClosedRange<Double>
     let scrollPosition: Date
     let visibleDomainLength: TimeInterval
-    let selectedPoint: BathScaleWeightSummary?
+    let selectedPlottedDate: Date?
     let showCrosshair: Bool
     let isScrolling: Bool
     let lineWidth: CGFloat
@@ -34,9 +35,6 @@ struct ChartSeriesContent: ChartContent {
     let theme: AppColors.Palette
     let babyProfile: BabyProfile?
 
-    // Closures are referenced only during body evaluation, not for equality.
-    // Body is re-evaluated when any `let` input above changes.
-    let plotXDate: (Date) -> Date
     let pointArea: (_ isSelected: Bool) -> CGFloat
 
     // MARK: - Body
@@ -51,18 +49,6 @@ struct ChartSeriesContent: ChartContent {
     }
 
     // MARK: - Private Helpers
-
-    private var orderedSeriesNames: [String] {
-        cachedPlottedPoints.keys.sorted { lhs, rhs in
-            renderPriority(lhs) < renderPriority(rhs)
-        }
-    }
-
-    private func renderPriority(_ name: String) -> Int {
-        if BabyDashboardChartSupport.isPercentileSeries(name) { return 0 }
-        if name == DashboardStrings.weight || BabyDashboardChartSupport.isHeightSeries(name) { return 1 }
-        return 2
-    }
 
     private func visiblePoints(from points: [PlottedGraphSeries]) -> [PlottedGraphSeries] {
         let visibleEnd = scrollPosition.addingTimeInterval(visibleDomainLength)
@@ -80,19 +66,22 @@ struct ChartSeriesContent: ChartContent {
 
     @ChartContentBuilder
     private func chartContentForSeries(seriesName: String, seriesPoints: [PlottedGraphSeries]) -> some ChartContent {
+        let percentileLine = BabyDashboardChartSupport.percentileLine(for: seriesName)
+        let isBabyPercentileSeries = percentileLine != nil
+        let resolvedLineWidth = isBabyPercentileSeries
+            ? BabyDashboardChartStyle.percentileLineWidth(for: percentileLine)
+            : lineWidth
+        let plottedSelectedDate = showCrosshair ? selectedPlottedDate : nil
+
         ForEach(seriesPoints) { plottedPoint in
             let point = plottedPoint.original
             let xDate = plottedPoint.xDate
-            let percentileLine = BabyDashboardChartSupport.percentileLine(for: point.series)
-            let isBabyPercentileSeries = percentileLine != nil
 
             let domainLower = yAxisDomain.lowerBound
             let domainUpper = yAxisDomain.upperBound
             let clampedValue = min(max(point.value, domainLower), domainUpper)
             let isWithinDomain = point.value >= domainLower && point.value <= domainUpper
 
-            let nearestSelectedDate = selectedPoint?.date
-            let plottedSelectedDate = nearestSelectedDate.map { plotXDate($0) }
             let isThisPointSelected = showCrosshair && (plottedSelectedDate.map { xDate == $0 } ?? false)
 
             let isOutsideMonth = isOutsideActiveMonth(date: point.date)
@@ -105,11 +94,7 @@ struct ChartSeriesContent: ChartContent {
             )
             .foregroundStyle(colors.line)
             .interpolationMethod(.monotone)
-            .lineStyle(StrokeStyle(
-                lineWidth: isBabyPercentileSeries
-                    ? BabyDashboardChartStyle.percentileLineWidth(for: percentileLine)
-                    : lineWidth
-            ))
+            .lineStyle(StrokeStyle(lineWidth: resolvedLineWidth))
 
             PointMark(
                 x: .value("Date", xDate),

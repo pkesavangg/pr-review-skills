@@ -136,7 +136,11 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     }
     
     // MARK: - Common Computed Properties
-    
+
+    /// Cached flag for whether the current chart has data.
+    /// Updated on data/configuration changes so SwiftUI body checks stay cheap.
+    private(set) var hasChartOperations: Bool = false
+
     /// All operations for the view
     var chartOperations: [BathScaleWeightSummary] {
         return dashboardStore?.continuousOperations ?? []
@@ -318,7 +322,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         self.dashboardStore = store
         self.chartManager = store.chartManager
         self.displayManager = store.displayManager
-        
+
         // For scrollable periods, sync with the store's current scroll position
         // The scroll position should already be set by updateSelectedPeriod (with anchor if applicable)
         // We should NOT recalculate here as it would overwrite anchor-based positioning
@@ -329,11 +333,12 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             // Non-scrollable periods (Total) don't need scroll positioning
             self.scrollPosition = store.state.graph.xScrollPosition
         }
-        
+
         self.isScrolling = store.state.graph.isScrolling
         updateYAxisConfiguration()
         // Sync with any existing cached Y-axis values from the store
         syncYAxisFromStore()
+        refreshChartOperationState()
         // Initialize cache with current data (safe during configuration)
         updateCachedSeriesData()
     }
@@ -463,6 +468,12 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             try? await Task.sleep(nanoseconds: 200_000_000)
             self.syncYAxisFromStore()
         }
+    }
+
+    /// Refreshes the cached empty/non-empty flag without forcing repeated store scans
+    /// from the SwiftUI body.
+    func refreshChartOperationState() {
+        hasChartOperations = !chartOperations.isEmpty
     }
     
     // MARK: - Selection Management
@@ -644,6 +655,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     /// Called when data changes to update chart state
     func refreshData() {
         // Invalidate cache since underlying data changed
+        refreshChartOperationState()
         invalidateCache()
         updateYAxisConfiguration()
         // Maintain selection if still valid
@@ -656,7 +668,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     func handleSettingsChange() {
         // Update store's Y-axis cache FIRST before invalidating local cache
         chartManager?.updateYAxisCache(force: true)
-        
+
+        refreshChartOperationState()
         invalidateCache()
         updateYAxisConfiguration()
         syncYAxisFromStore()
@@ -820,6 +833,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     /// Releases all cached data for this view model.
     /// Call on inactive view models when the selected period changes to reclaim memory.
     func tearDown() {
+        hasChartOperations = false
         cachedSeriesData = []
         cachedGroupedSeries = [:]
         lastCacheUpdateHash = 0

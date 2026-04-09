@@ -91,7 +91,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         updateMetrics: @escaping () -> Void
     ) {
         state.scrollEndTimer?.invalidate()
-        state.scrollEndTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
+        state.scrollEndTimer = Timer.scheduledTimer(withTimeInterval: DashboardConstants.UIConstants.scrollEndDebounceDelay, repeats: false) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.state.isScrolling = false
@@ -165,7 +165,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         interaction.invalidateVisibleOpsCache()
         interaction.invalidateXAxisCache()
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 500_000_000)
+            try? await Task.sleep(nanoseconds: 50_000_000)
             self.isChangingPeriod = false
         }
     }

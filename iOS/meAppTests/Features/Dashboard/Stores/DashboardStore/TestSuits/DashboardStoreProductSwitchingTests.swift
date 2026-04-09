@@ -240,14 +240,32 @@ extension DashboardStoreTests {
             #expect(store.graphManager.state.cachedYAxisTicks == nil)
         }
 
-        @Test("switchProductType sets product context on cache manager")
-        func switchProductTypeSetsProductContext() {
-            let (store, mockCache, _) = DashboardStoreTestSupport.makeSUT()
+        @Test("switchProductType clears scroll and processing state")
+        func switchProductTypeClearsScrollState() {
+            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            store.state.graph.isScrolling = true
+            store.state.graph.hasDetectedScrollInCurrentGesture = true
+            store.graphManager.state.isScrolling = true
+            store.graphManager.state.hasDetectedScrollInCurrentGesture = true
+            store.chartManager.isProcessingScrollEnd = true
 
             store.switchProductType(to: .bpm)
 
-            #expect(mockCache.setProductContextCalls >= 1)
-            #expect(mockCache.lastProductContext?.productType == .bpm)
+            #expect(store.state.graph.isScrolling == false)
+            #expect(store.state.graph.hasDetectedScrollInCurrentGesture == false)
+            #expect(store.graphManager.state.isScrolling == false)
+            #expect(store.graphManager.state.hasDetectedScrollInCurrentGesture == false)
+            #expect(store.chartManager.isProcessingScrollEnd == false)
+        }
+
+        @Test("switchProductType sets product context on cache manager")
+        func switchProductTypeSetsProductContext() {
+            let (store, _, cacheManager) = DashboardStoreTestSupport.makeSUT()
+
+            store.switchProductType(to: .bpm)
+
+            #expect(cacheManager.setProductContextCalls >= 1)
+            #expect(cacheManager.lastProductContext?.productType == .bpm)
         }
 
         @Test("switchProductType resets hasInitializedChart and isGraphReady")
@@ -264,14 +282,14 @@ extension DashboardStoreTests {
 
         @Test("refreshSelectedProductContext clears caches when switching baby profiles")
         func refreshSelectedProductContextClearsCaches() {
-            let (store, mockCache, _) = DashboardStoreTestSupport.makeSUT()
+            let (store, _, cacheManager) = DashboardStoreTestSupport.makeSUT()
             store.productType = .wg
             store.state.ui.hasInitializedChart = true
 
             let baby1 = makeBaby(id: "b1")
             store.selectProductItem(.baby(profile: baby1))
 
-            #expect(mockCache.clearAllCachesCalls >= 1)
+            #expect(cacheManager.clearAllCachesCalls >= 1)
             #expect(store.state.ui.hasInitializedChart == false || store.state.ui.hasInitializedChart == true)
         }
     }

@@ -188,6 +188,24 @@ struct BabyDashboardChartSupportTests {
         #expect(result.allSatisfy { BabyDashboardChartSupport.isPercentileSeries($0.series) })
     }
 
+    @Test("percentileSeries spans the visible operation range when provided")
+    func percentileSeriesUsesVisibleOperationRange() {
+        let baby = makeBabyProfile()
+        let operations = makeDailySummaries(count: 3, from: cal.date(byAdding: .day, value: -12, to: Date())!)
+        let visibleOperations = makeDailySummaries(count: 8, from: cal.date(byAdding: .day, value: -20, to: Date())!)
+
+        let result = BabyDashboardChartSupport.percentileSeries(
+            for: baby,
+            operations: operations,
+            visibleOperations: visibleOperations,
+            convertDecigramsToDisplay: { Double($0) / 10000.0 }
+        )
+
+        let dates = result.map(\.date)
+        #expect(dates.min() == visibleOperations.first?.date)
+        #expect(dates.max() == visibleOperations.last?.date)
+    }
+
     // MARK: - dummyHeightSeries
 
     @Test("dummyHeightSeries returns same count as operations")
@@ -230,6 +248,23 @@ struct BabyDashboardChartSupportTests {
         let ops = makeDailySummaries(count: 3, from: cal.date(byAdding: .day, value: -3, to: Date())!)
         let result = BabyDashboardChartSupport.heightPercentileSeries(for: baby, operations: ops)
         #expect(result.allSatisfy { $0.value > 0 })
+    }
+
+    @Test("heightPercentileSeries spans the visible operation range when provided")
+    func heightPercentileSeriesUsesVisibleOperationRange() {
+        let baby = makeBabyProfile()
+        let operations = makeDailySummaries(count: 3, from: cal.date(byAdding: .day, value: -12, to: Date())!)
+        let visibleOperations = makeDailySummaries(count: 8, from: cal.date(byAdding: .day, value: -20, to: Date())!)
+
+        let result = BabyDashboardChartSupport.heightPercentileSeries(
+            for: baby,
+            operations: operations,
+            visibleOperations: visibleOperations
+        )
+
+        let dates = result.map(\.date)
+        #expect(dates.min() == visibleOperations.first?.date)
+        #expect(dates.max() == visibleOperations.last?.date)
     }
 
     // MARK: - yAxisScale

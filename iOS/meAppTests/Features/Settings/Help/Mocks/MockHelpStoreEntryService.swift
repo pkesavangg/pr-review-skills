@@ -22,6 +22,7 @@ final class MockHelpStoreEntryService: EntryServiceProtocol {
         clearLastSyncTimestampCalls += 1
         if let error = clearLastSyncTimestampError { throw error }
     }
+    func removeAccountFromDevice(accountId: String) async throws {}
     func syncAllEntriesWithRemote() async { syncAllEntriesWithRemoteCalls += 1 }
     func migrateFromSQLiteIfNeeded() async {}
     func loadDashboardData(entryType: EntryType) async {}
@@ -60,6 +61,7 @@ final class MockHelpStoreEntryService: EntryServiceProtocol {
     func getStreak(entryType: EntryType) async throws -> Streak { Streak(current: 0, max: 0) }
     func exportCSV() async throws {}
     func createBpmEntry(_ dto: BpmOperationDTO) async throws {}
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {}
     func fetchBpmEntries() async throws -> [BpmOperationDTO] { [] }
     func deleteBpmEntry(entryTimestamp: String) async throws {}
     func exportBpmCSV() async throws {}
