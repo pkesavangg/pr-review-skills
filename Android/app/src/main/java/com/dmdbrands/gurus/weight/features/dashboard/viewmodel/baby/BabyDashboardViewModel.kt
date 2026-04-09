@@ -1,31 +1,29 @@
 package com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby
 
-import android.content.Context
-import android.icu.util.Calendar
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IHistoryService
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.SeriesData
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardViewModel
-import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import android.content.Context
 
 @HiltViewModel(assistedFactory = BabyDashboardViewModel.Factory::class)
 class BabyDashboardViewModel @AssistedInject constructor(
@@ -80,137 +78,82 @@ class BabyDashboardViewModel @AssistedInject constructor(
 
     // Weight daily
     viewModelScope.launch {
-      dailyFlow.collect { entries ->
-        updateMetricSegments(BabyMetric.WEIGHT, entries, dailySegments)
-        pushToMetricProducer(BabyMetric.WEIGHT, entries, daily = true)
-      }
+      dailyFlow.map { toWeightSeries(it) }
+        .distinctUntilChanged()
+        .collect { series -> updateAndPush(BabyMetric.WEIGHT, series, dailySegments, daily = true) }
     }
 
     // Weight monthly
     viewModelScope.launch {
-      monthlyFlow.collect { entries ->
-        updateMetricSegments(BabyMetric.WEIGHT, entries, monthlySegments)
-        pushToMetricProducer(BabyMetric.WEIGHT, entries, daily = false)
-      }
+      monthlyFlow.map { toWeightSeries(it) }
+        .distinctUntilChanged()
+        .collect { series -> updateAndPush(BabyMetric.WEIGHT, series, monthlySegments, daily = false) }
     }
 
     // Height daily
     viewModelScope.launch {
-      dailyFlow.collect { entries ->
-        updateMetricSegments(BabyMetric.HEIGHT, entries, dailySegments)
-        pushToMetricProducer(BabyMetric.HEIGHT, entries, daily = true)
-      }
+      dailyFlow.map { toHeightSeries(it) }
+        .distinctUntilChanged()
+        .collect { series -> updateAndPush(BabyMetric.HEIGHT, series, dailySegments, daily = true) }
     }
 
     // Height monthly
     viewModelScope.launch {
-      monthlyFlow.collect { entries ->
-        updateMetricSegments(BabyMetric.HEIGHT, entries, monthlySegments)
-        pushToMetricProducer(BabyMetric.HEIGHT, entries, daily = false)
-      }
+      monthlyFlow.map { toHeightSeries(it) }
+        .distinctUntilChanged()
+        .collect { series -> updateAndPush(BabyMetric.HEIGHT, series, monthlySegments, daily = false) }
     }
   }
 
-  // ── Push to a specific metric's producer ──
+  // ── Update segment state + push to producer ──
 
-  private fun pushToMetricProducer(
+  private fun updateAndPush(
     metric: BabyMetric,
-    entries: List<PeriodBabySummary>,
+    series: List<SeriesData>,
+    segments: List<GraphSegment>,
     daily: Boolean,
   ) {
     val metricState = _state.value.metricState(metric)
     val producer = if (daily) metricState.dailyProducer else metricState.monthlyProducer
-    val series = when (metric) {
-      BabyMetric.WEIGHT -> toWeightSeries(entries)
-      BabyMetric.HEIGHT -> toHeightSeries(entries)
-    }
 
-    if (series.isEmpty()) {
+    if (series.isEmpty() || series.all { it.xValues.isEmpty() }) {
+      segments.forEach { seg ->
+        handleIntent(BabyDashboardIntent.UpdateMetricSegment(metric, seg) { it.copy(isEmptyGraph = true) })
+      }
       viewModelScope.launch { pushEmptyProducer(producer) }
       return
     }
 
-    val percentile = metricState.percentileSeries
+    // Baby range: birthDate → end of data
+    val birthDate = babyProduct.profile.birthDate ?: series.first().xValues.min()
+    val endTs = series.first().xValues.max()
+
+    for (segment in segments) {
+      val startX = birthDate
+      val endX = GraphUtil.getEndRange(segment, endTs) ?: endTs
+      val chartMinX = birthDate.toDouble()
+      val chartMaxX = endX.toDouble()
+
+      handleIntent(
+        BabyDashboardIntent.UpdateMetricSegment(metric, segment) {
+          it.copy(
+            chartMinX = chartMinX,
+            chartMaxX = chartMaxX,
+            isEmptyGraph = false,
+            startTimestamp = birthDate,
+            endTimestamp = endTs,
+          )
+        },
+      )
+    }
+
+    // Push to producer
     viewModelScope.launch(Dispatchers.Main) {
       producer.runTransaction(animate = false) {
-        if (percentile != null) {
-          lineSeries {
-            percentile.allBands().forEach { band ->
-              series(x = percentile.xTimestamps, y = band)
-            }
-          }
-        }
         lineSeries {
           series.forEach { s -> series(x = s.xValues, y = s.yValues) }
         }
       }
-    }
-  }
-
-  // ── Segment state update ──
-
-  private fun updateMetricSegments(
-    metric: BabyMetric,
-    entries: List<PeriodBabySummary>,
-    segments: List<GraphSegment>,
-  ) {
-    if (entries.isEmpty()) {
-      segments.forEach { seg ->
-        handleIntent(BabyDashboardIntent.UpdateMetricSegment(metric, seg) { it.copy(isEmptyGraph = true) })
-      }
-      return
-    }
-    val timestamps = entries.map { it.getTimeStamp() }.sorted()
-    val initialTs = timestamps.minOrNull()
-    val endTs = timestamps.maxOrNull()
-    val calendar = Calendar.getInstance()
-
-    for (segment in segments) {
-      val isSingleWindow = GraphUtil.isSingleWindow(segment, initialTs, endTs)
-
-      val (startX, endX) = if (segment == GraphSegment.TOTAL) {
-        val s = (initialTs ?: calendar.timeInMillis).let {
-          Calendar.getInstance().apply { timeInMillis = it; add(Calendar.MONTH, -6) }.timeInMillis
-        }
-        val e = (endTs ?: calendar.timeInMillis).let {
-          Calendar.getInstance().apply { timeInMillis = it; add(Calendar.MONTH, +6) }.timeInMillis
-        }
-        s to e
-      } else {
-        val s = GraphUtil.getRollingWindowStart(segment, endTs)
-          ?: GraphUtil.getStartRange(segment, endTs)
-          ?: calendar.timeInMillis
-        s to (endTs ?: calendar.timeInMillis)
-      }
-
-      val chartMinX = if (segment == GraphSegment.TOTAL) startX.toDouble()
-      else GraphUtil.getStartRange(segment, initialTs)?.toDouble() ?: startX.toDouble()
-
-      val chartMaxX = if (segment == GraphSegment.TOTAL) {
-        endX.toDouble()
-      } else if (segment == GraphSegment.MONTH) {
-        val ps = GraphUtil.getStartRange(segment, calendar.timeInMillis) ?: calendar.timeInMillis
-        Calendar.getInstance().apply { timeInMillis = ps; add(Calendar.DAY_OF_YEAR, 30) }.timeInMillis.toDouble()
-      } else {
-        GraphUtil.getEndRange(segment, calendar.timeInMillis)?.toDouble() ?: endX.toDouble()
-      }
-
-      val filteredTarget = entries.filter { it.getTimeStamp() in startX..endX }
-
-      handleIntent(BabyDashboardIntent.UpdateMetricSegment(metric, segment) {
-        it.copy(
-          data = entries.toImmutableList<PeriodSummary>(),
-          target = filteredTarget.toImmutableList<PeriodSummary>(),
-          minTarget = startX,
-          maxTarget = endX,
-          chartMinX = chartMinX,
-          chartMaxX = chartMaxX,
-          isSingleWindow = isSingleWindow,
-          isEmptyGraph = false,
-          startTimestamp = initialTs,
-          endTimestamp = endTs,
-        )
-      })
     }
   }
 

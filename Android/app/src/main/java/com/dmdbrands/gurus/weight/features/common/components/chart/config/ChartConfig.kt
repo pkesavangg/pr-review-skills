@@ -46,6 +46,7 @@ fun rememberChartConfig(
         useAllSeriesForYRange = false,
         secondaryLineColor = secondaryColor,
       )
+
       is ProductSelection.BloodPressure -> ChartConfig(
         lines = listOf(
           LineSpec(color = avgSystolic?.let { SnapshotColors.systolicColor(it) } ?: SnapshotColors.BloodPressure),
@@ -54,11 +55,11 @@ fun rememberChartConfig(
         ),
         useAllSeriesForYRange = true,
       )
+
       is ProductSelection.Baby -> ChartConfig(
         lines = listOf(LineSpec(color = SnapshotColors.Baby)),
-        hasPercentileLayer = hasPercentile,
-        percentileBandColor = SnapshotColors.PercentileBand,
-      )
+
+        )
     }
   }
 }

@@ -105,8 +105,6 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
         it.copy(
           data = entries.toImmutableList(),
           target = filteredTarget.toImmutableList(),
-          minTarget = startX,
-          maxTarget = endX,
           chartMinX = chartMinX,
           chartMaxX = chartMaxX,
           isSingleWindow = isSingleWindow,
