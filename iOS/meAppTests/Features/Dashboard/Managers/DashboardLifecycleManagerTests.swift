@@ -10,6 +10,7 @@ struct DashboardLifecycleManagerTests {
 
     // MARK: - SUT Factory
 
+    // swiftlint:disable:next large_tuple
     private typealias SUTBundle = (
         store: DashboardStore,
         accountService: AccountService,

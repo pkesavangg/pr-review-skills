@@ -168,7 +168,7 @@ struct WeightSnapshotCardViewModelTests {
         let expected = ConversionTools.convertStoredToLbs(Int(storedGoal))
 
         #expect(result != nil)
-        #expect(abs(result! - expected) < 0.001)
+        #expect(abs((result ?? 0) - expected) < 0.001)
     }
 
     @Test("goalWeightForDisplay converts goal weight to kg")
@@ -181,6 +181,6 @@ struct WeightSnapshotCardViewModelTests {
         let expected = ConversionTools.convertStoredToKg(Int(storedGoal))
 
         #expect(result != nil)
-        #expect(abs(result! - expected) < 0.001)
+        #expect(abs((result ?? 0) - expected) < 0.001)
     }
 }
