@@ -1,19 +1,19 @@
 package com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby
 
-import android.content.Context
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IHistoryService
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.SeriesData
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardViewModel
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
 import dagger.assisted.Assisted
@@ -21,10 +21,10 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import android.content.Context
 
 @HiltViewModel(assistedFactory = BabyDashboardViewModel.Factory::class)
 class BabyDashboardViewModel @AssistedInject constructor(
@@ -45,11 +45,9 @@ class BabyDashboardViewModel @AssistedInject constructor(
     private const val TAG = "BabyDashboardVM"
   }
 
-  // Cached series for rebuild on metric switch
-  private var weightDailySeries: List<SeriesData> = emptyList()
-  private var weightMonthlySeries: List<SeriesData> = emptyList()
-  private var heightDailySeries: List<SeriesData> = emptyList()
-  private var heightMonthlySeries: List<SeriesData> = emptyList()
+  // Cached raw entries
+  private var latestDailyEntries: List<PeriodBabySummary> = emptyList()
+  private var latestMonthlyEntries: List<PeriodBabySummary> = emptyList()
 
   override fun provideInitialState(): BabyDashboardState = BabyDashboardState()
 
@@ -68,14 +66,14 @@ class BabyDashboardViewModel @AssistedInject constructor(
         is BabyDashboardIntent.Refresh -> refresh()
         is BabyDashboardIntent.SetSelectedMetric -> {
           super.handleIntent(intent)
-          rebuildProducers()
+          rebuildAllProducers()
           return
         }
 
-        is BabyDashboardIntent.SetPercentile -> {
+        is BabyDashboardIntent.SetWeightPercentile,
+        is BabyDashboardIntent.SetHeightPercentile -> {
           super.handleIntent(intent)
-          // Percentiles loaded async — re-push so producer includes bands
-          if (intent.metric == _state.value.selectedMetric) rebuildProducers()
+          rebuildAllProducers()
           return
         }
 
@@ -85,98 +83,86 @@ class BabyDashboardViewModel @AssistedInject constructor(
     super.handleIntent(intent)
   }
 
-  // ── 4 subscriptions — update segment states + cache series ──
+  // ── 2 subscriptions: collect → cache → update ranges → rebuild producer ──
 
   private fun startGraphSubscriptions() {
     val profileId = babyProduct.profile.id
-    val dailyFlow = historyService.getBabyDailyGraphData(profileId)
-    val monthlyFlow = historyService.getBabyMonthlyGraphData(profileId)
-    val dailySegments = listOf(GraphSegment.WEEK, GraphSegment.MONTH)
-    val monthlySegments = listOf(GraphSegment.YEAR, GraphSegment.TOTAL)
 
-    // Weight daily
     viewModelScope.launch {
-      dailyFlow.map { toWeightSeries(it) }
-        .distinctUntilChanged()
-        .collect { series ->
-          weightDailySeries = series
-          updateMetricSegments(BabyMetric.WEIGHT, series, dailySegments)
-          if (_state.value.selectedMetric == BabyMetric.WEIGHT) {
-            pushActiveToProducer(_state.value.dailyProducer, daily = true)
-          }
-        }
+      historyService.getBabyDailyGraphData(profileId).collect { entries ->
+        latestDailyEntries = entries
+        updateBabySegmentRanges(entries, listOf(GraphSegment.WEEK, GraphSegment.MONTH))
+        rebuildProducer(_state.value.dailyProducer, entries)
+      }
     }
 
-    // Weight monthly
     viewModelScope.launch {
-      monthlyFlow.map { toWeightSeries(it) }
-        .distinctUntilChanged()
-        .collect { series ->
-          weightMonthlySeries = series
-          updateMetricSegments(BabyMetric.WEIGHT, series, monthlySegments)
-          if (_state.value.selectedMetric == BabyMetric.WEIGHT) {
-            pushActiveToProducer(_state.value.monthlyProducer, daily = false)
-          }
-        }
-    }
-
-    // Height daily
-    viewModelScope.launch {
-      dailyFlow.map { toHeightSeries(it) }
-        .distinctUntilChanged()
-        .collect { series ->
-          heightDailySeries = series
-          updateMetricSegments(BabyMetric.HEIGHT, series, dailySegments)
-          if (_state.value.selectedMetric == BabyMetric.HEIGHT) {
-            pushActiveToProducer(_state.value.dailyProducer, daily = true)
-          }
-        }
-    }
-
-    // Height monthly
-    viewModelScope.launch {
-      monthlyFlow.map { toHeightSeries(it) }
-        .distinctUntilChanged()
-        .collect { series ->
-          heightMonthlySeries = series
-          updateMetricSegments(BabyMetric.HEIGHT, series, monthlySegments)
-          if (_state.value.selectedMetric == BabyMetric.HEIGHT) {
-            pushActiveToProducer(_state.value.monthlyProducer, daily = false)
-          }
-        }
+      historyService.getBabyMonthlyGraphData(profileId).collect { entries ->
+        latestMonthlyEntries = entries
+        updateBabySegmentRanges(entries, listOf(GraphSegment.YEAR, GraphSegment.TOTAL))
+        rebuildProducer(_state.value.monthlyProducer, entries)
+      }
     }
   }
 
-  private fun rebuildProducers() {
-    pushActiveToProducer(_state.value.dailyProducer, daily = true)
-    pushActiveToProducer(_state.value.monthlyProducer, daily = false)
+  /** Baby-specific: chartMinX = birthDate, chartMaxX = end of data. */
+  private fun updateBabySegmentRanges(entries: List<PeriodBabySummary>, segments: List<GraphSegment>) {
+    if (entries.isEmpty()) {
+      segments.forEach { seg -> updateSegmentState(seg) { it.copy(isEmptyGraph = true) } }
+      return
+    }
+    val birthDate = babyProduct.profile.birthDate ?: entries.first().getTimeStamp()
+    val endTs = entries.maxOf { it.getTimeStamp() }
+    val targetData = entries.toImmutableList<PeriodSummary>()
+
+    for (segment in segments) {
+      val endX = GraphUtil.getEndRange(segment, endTs) ?: endTs
+      val filteredTarget = entries.filter { it.getTimeStamp() in birthDate..endX }
+
+      updateSegmentState(segment) {
+        it.copy(
+          data = targetData,
+          target = filteredTarget.toImmutableList<PeriodSummary>(),
+          chartMinX = birthDate.toDouble(),
+          chartMaxX = endX.toDouble(),
+          isEmptyGraph = false,
+          startTimestamp = birthDate,
+          endTimestamp = endTs,
+        )
+      }
+    }
   }
 
-  // ── Push active metric's series + percentile to a shared producer ──
+  // ── Producer rebuild ──
 
-  private fun pushActiveToProducer(producer: CartesianChartModelProducer, daily: Boolean) {
-    val metric = _state.value.selectedMetric
-    val series = when {
-      metric == BabyMetric.WEIGHT && daily -> weightDailySeries
-      metric == BabyMetric.WEIGHT && !daily -> weightMonthlySeries
-      metric == BabyMetric.HEIGHT && daily -> heightDailySeries
-      else -> heightMonthlySeries
-    }
+  private fun rebuildAllProducers() {
+    rebuildProducer(_state.value.dailyProducer, latestDailyEntries)
+    rebuildProducer(_state.value.monthlyProducer, latestMonthlyEntries)
+  }
 
+  private fun rebuildProducer(producer: CartesianChartModelProducer, entries: List<PeriodBabySummary>) {
+    val series = activeSeriesFor(entries)
     if (series.isEmpty()) {
       viewModelScope.launch { pushEmptyProducer(producer) }
       return
     }
 
-    val percentile = _state.value.metricState(metric).percentileSeries
+    val percentile = _state.value.activePercentile
     viewModelScope.launch(Dispatchers.Main) {
       producer.runTransaction(animate = false) {
+        // Always push percentile layer first (even empty placeholder)
+        // so Vico layer order matches chart config (percentile=layer0, data=layer1)
         if (percentile != null) {
           lineSeries {
             percentile.allBands().forEach { band ->
               series(x = percentile.xTimestamps, y = band)
             }
           }
+        } else {
+          // Placeholder: single series matching data X range so layer exists
+          val xValues = series.firstOrNull()?.xValues ?: listOf(0L)
+          val yValues = xValues.map { 0.0 }
+          lineSeries { series(x = xValues, y = yValues) }
         }
         lineSeries {
           series.forEach { s -> series(x = s.xValues, y = s.yValues) }
@@ -185,41 +171,13 @@ class BabyDashboardViewModel @AssistedInject constructor(
     }
   }
 
-  // ── Segment state update ──
-
-  private fun updateMetricSegments(
-    metric: BabyMetric,
-    series: List<SeriesData>,
-    segments: List<GraphSegment>,
-  ) {
-    if (series.isEmpty() || series.all { it.xValues.isEmpty() }) {
-      segments.forEach { seg ->
-        handleIntent(BabyDashboardIntent.UpdateMetricSegment(metric, seg) { it.copy(isEmptyGraph = true) })
-      }
-      return
-    }
-
-    val birthDate = babyProduct.profile.birthDate ?: series.first().xValues.min()
-    val endTs = series.first().xValues.max()
-
-    for (segment in segments) {
-      val endX = GraphUtil.getEndRange(segment, endTs) ?: endTs
-
-      handleIntent(
-        BabyDashboardIntent.UpdateMetricSegment(metric, segment) {
-          it.copy(
-            chartMinX = birthDate.toDouble(),
-            chartMaxX = endX.toDouble(),
-            isEmptyGraph = false,
-            startTimestamp = birthDate,
-            endTimestamp = endTs,
-          )
-        },
-      )
-    }
-  }
-
   // ── Series conversion ──
+
+  private fun activeSeriesFor(entries: List<PeriodBabySummary>): List<SeriesData> =
+    when (_state.value.selectedMetric) {
+      BabyMetric.WEIGHT -> toWeightSeries(entries)
+      BabyMetric.HEIGHT -> toHeightSeries(entries)
+    }
 
   private fun toWeightSeries(entries: List<PeriodBabySummary>): List<SeriesData> {
     val sorted = entries.sortedBy { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }
@@ -254,8 +212,8 @@ class BabyDashboardViewModel @AssistedInject constructor(
       BabyPercentileHelper.loadIfNeeded(context)
       val weightSeries = BabyPercentileHelper.getWeightPercentileSeries(profile.sex, birthDateMillis)
       val heightSeries = BabyPercentileHelper.getLengthPercentileSeries(profile.sex, birthDateMillis)
-      handleIntent(BabyDashboardIntent.SetPercentile(BabyMetric.WEIGHT, weightSeries))
-      handleIntent(BabyDashboardIntent.SetPercentile(BabyMetric.HEIGHT, heightSeries))
+      handleIntent(BabyDashboardIntent.SetWeightPercentile(weightSeries))
+      handleIntent(BabyDashboardIntent.SetHeightPercentile(heightSeries))
     }
   }
 

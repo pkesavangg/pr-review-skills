@@ -163,6 +163,7 @@ fun rememberProductChart(
       verticalAxisPosition = Axis.Position.Vertical.End,
       rangeProvider = percentileRangeProvider,
       markerTargetsEnabled = false,
+      alwaysUseLiveRange = true,
     )
   } else null
 
