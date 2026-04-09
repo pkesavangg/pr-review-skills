@@ -18,6 +18,7 @@ enum BpmSetupStep: Int, CaseIterable {
 
     // Phase 3 – Pre-pairing instructions
     case selectUser
+    case powerSwitch   // 0636 only: set the power switch to ON
     case setUser
     case confirmUser
     case prePairing
@@ -44,7 +45,9 @@ enum BpmSetupStep: Int, CaseIterable {
 
     /// Default steps used when no SKU is pre-selected (model selection flow).
     static var defaultSteps: [BpmSetupStep] {
-        allCases.filter { $0 != .intro }
+        [.selectModel, .btPermission, .selectUser, .setUser,
+         .confirmUser, .prePairing, .scanning, .nickname,
+         .paired, .measureSetup, .measureStart, .complete]
     }
 
     /// Steps used when a SKU is pre-selected (intro flow, same as scale setup).
@@ -52,5 +55,31 @@ enum BpmSetupStep: Int, CaseIterable {
         [.intro, .btPermission, .selectUser, .setUser,
          .confirmUser, .prePairing, .scanning, .nickname,
          .paired, .measureSetup, .measureStart, .complete]
+    }
+
+    /// Returns the setup step flow for the given SKU.
+    /// Different monitors have different step sequences matching the Ionic app.
+    static func steps(for sku: String, preSelected: Bool) -> [BpmSetupStep] {
+        let first: BpmSetupStep = preSelected ? .intro : .selectModel
+
+        switch sku {
+        case "0604", "0661":
+            // Toggle-switch monitors skip the confirmUser (MONITOR_OFF) step
+            return [first, .btPermission, .selectUser, .setUser,
+                    .prePairing, .scanning, .nickname, .paired,
+                    .measureSetup, .measureStart, .complete]
+
+        case "0636":
+            // Has powerSwitch step; keeps confirmUser
+            return [first, .btPermission, .selectUser, .powerSwitch, .setUser,
+                    .confirmUser, .prePairing, .scanning, .nickname, .paired,
+                    .measureSetup, .measureStart, .complete]
+
+        default:
+            // Default flow (0603, 0634, 0663): includes confirmUser
+            return [first, .btPermission, .selectUser, .setUser,
+                    .confirmUser, .prePairing, .scanning, .nickname,
+                    .paired, .measureSetup, .measureStart, .complete]
+        }
     }
 }

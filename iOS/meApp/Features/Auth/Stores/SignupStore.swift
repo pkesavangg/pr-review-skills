@@ -43,6 +43,7 @@ final class SignupStore: ObservableObject {
     @Published var isEditingBabyIndex: Int?
     @Published var showBabySexPicker = false
     @Published var showBabyDatePicker = false
+    @Published var babyProfileForm = BabyProfileSetupForm()
 
     // Height-related published properties
     @Published var selectedHeightInches: [String] = ["5", "10"]  // Default 5'10"
@@ -164,7 +165,7 @@ final class SignupStore: ObservableObject {
             moveToNextStep()
         case .addBaby:
             // Skip baby flow entirely — jump to email step
-            signupForm.resetBaby()
+            babyProfileForm.reset()
             objectWillChange.send()
             if let emailIndex = steps.firstIndex(of: .email) {
                 currentStepIndex = emailIndex
@@ -208,11 +209,12 @@ final class SignupStore: ObservableObject {
     /// Saves the current baby form fields as a new baby (or updates an existing one).
     func saveBabyFromForm() {
         let baby = SignupBaby(
-            name: signupForm.babyName.value,
-            birthday: signupForm.babyBirthday.value,
-            sex: Sex(rawValue: signupForm.babySex.value),
-            birthLength: signupForm.babyBirthLength.value,
-            birthWeight: signupForm.babyBirthWeight.value
+            name: babyProfileForm.name.value,
+            birthday: babyProfileForm.birthday.value,
+            sex: Sex(rawInput: babyProfileForm.biologicalSex.value),
+            birthLengthInches: babyProfileForm.birthLengthInches.value,
+            birthWeightLbs: babyProfileForm.birthWeightLbs.value,
+            birthWeightOz: babyProfileForm.birthWeightOz.value
         )
         if let editIndex = isEditingBabyIndex {
             babies[editIndex] = baby
@@ -220,12 +222,12 @@ final class SignupStore: ObservableObject {
         } else {
             babies.append(baby)
         }
-        signupForm.resetBaby()
+        babyProfileForm.reset()
     }
 
     /// Navigates to the addBaby step to add another baby from the baby list.
     func addAnotherBaby() {
-        signupForm.resetBaby()
+        babyProfileForm.reset()
         isEditingBabyIndex = nil
         guard let addBabyIndex = steps.firstIndex(of: .addBaby) else { return }
         currentStepIndex = addBabyIndex
@@ -235,11 +237,13 @@ final class SignupStore: ObservableObject {
     func editBaby(at index: Int) {
         guard index < babies.count else { return }
         let baby = babies[index]
-        signupForm.babyName.value = baby.name
-        signupForm.babyBirthday.value = baby.birthday
-        signupForm.babySex.value = baby.sex?.rawValue ?? ""
-        signupForm.babyBirthLength.value = baby.birthLength
-        signupForm.babyBirthWeight.value = baby.birthWeight
+        babyProfileForm.reset()
+        babyProfileForm.name.value = baby.name
+        babyProfileForm.birthday.value = baby.birthday
+        babyProfileForm.biologicalSex.value = baby.sex?.rawValue ?? ""
+        babyProfileForm.birthLengthInches.value = baby.birthLengthInches
+        babyProfileForm.birthWeightLbs.value = baby.birthWeightLbs
+        babyProfileForm.birthWeightOz.value = baby.birthWeightOz
         isEditingBabyIndex = index
         guard let addBabyIndex = steps.firstIndex(of: .addBaby) else { return }
         currentStepIndex = addBabyIndex
@@ -268,9 +272,7 @@ final class SignupStore: ObservableObject {
         case .pickDevice:
             isNextEnabled = selectedDeviceType != nil
         case .addBaby:
-            isNextEnabled = signupForm.babyName.isValid
-                && signupForm.babyBirthLength.isValid
-                && signupForm.babyBirthWeight.isValid
+            isNextEnabled = babyProfileForm.isProfileValid
         case .babyList:
             isNextEnabled = !babies.isEmpty
         case .sex:
@@ -346,15 +348,6 @@ final class SignupStore: ObservableObject {
             signupForm.goalWeight.markAsTouched()
             signupForm.goalWeight.validate()
             signupForm.validate()
-        case .babyName:
-            signupForm.babyName.markAsTouched()
-            signupForm.babyName.validate()
-        case .babyBirthLength:
-            signupForm.babyBirthLength.markAsTouched()
-            signupForm.babyBirthLength.validate()
-        case .babyBirthWeight:
-            signupForm.babyBirthWeight.markAsTouched()
-            signupForm.babyBirthWeight.validate()
         default:
             didUpdate = false
         }
@@ -558,6 +551,13 @@ final class SignupStore: ObservableObject {
 
     private func setupFormObservers() { // swiftlint:disable:this function_body_length
         signupForm.formDidChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                self?.updateNextButtonState()
+            }
+            .store(in: &cancellables)
+
+        babyProfileForm.formDidChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
                 self?.updateNextButtonState()

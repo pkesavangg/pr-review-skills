@@ -29,24 +29,6 @@ extension BpmSetupStoreTests {
             #expect(store.isNextEnabled == true)
         }
 
-        @Test("btPermission step disables next when A3 location permissions are missing")
-        func btPermissionDisablesNextWhenA3LocationMissing() {
-            let permissions = MockPermissionsService()
-            permissions.setPermissions([
-                .BLUETOOTH: .ENABLED,
-                .BLUETOOTH_SWITCH: .ENABLED,
-                .LOCATION: .DISABLED,
-                .LOCATION_SWITCH: .DISABLED
-            ])
-            let harness = BpmSetupStoreTestFixtures.makeSUT(permissions: permissions)
-            let store = harness.store
-            BpmSetupStoreTestFixtures.configureA3Bpm(store)
-
-            store.currentStepIndex = BpmSetupStep.btPermission.index
-
-            #expect(store.isNextEnabled == false)
-        }
-
         @Test("selectModel step disables next when no SKU is selected")
         func selectModelDisablesNextWhenNoSku() {
             let harness = BpmSetupStoreTestFixtures.makeSUT()

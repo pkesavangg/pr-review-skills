@@ -172,7 +172,7 @@ final class Device {
             password: dto.password.map { Int64($0) },
             isSoftDeleted: dto.isDeleted,
             deviceName: dto.name,
-            deviceType: "scale",
+            deviceType: DeviceType.fromSku(dto.sku).rawValue,
             broadcastId: dto.broadcastId.map { Int64($0) },
             broadcastIdString: dto.broadcastIdString,
             userNumber: dto.userNumber.map { String($0) },

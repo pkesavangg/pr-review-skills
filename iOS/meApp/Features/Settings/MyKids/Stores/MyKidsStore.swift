@@ -15,6 +15,8 @@ final class MyKidsStore: ObservableObject {
     @Published var babies: [Baby] = []
     @Published var editingBaby: Baby?
     @Published var isShowingAddBaby = false
+    @Published var showBabyDatePicker = false
+    @Published var showBabySexPicker = false
 
     /// Form used by the add/edit baby sheet.
     @Published var babyProfileForm = BabyProfileSetupForm()

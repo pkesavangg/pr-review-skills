@@ -1009,10 +1009,15 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     /// Checks if an Entry matches the given entryType.
     /// Entries without an entryType (legacy data) default to `.wg`.
+    /// Note: Baby scale entries use entryType "wg" but are excluded from adult weight queries.
+    /// Baby entries are served through the dedicated baby entry CRUD path (createBabyEntry/getBabyEntries).
     private func matchesEntryType(_ entry: Entry, entryType: EntryType) -> Bool {
         let type = entry.entryType
         if type.isEmpty { return entryType == .wg }
-        return type == entryType.rawValue
+        guard type == entryType.rawValue else { return false }
+        // Baby scale entries have entryType "wg" but belong in baby history, not weight history.
+        if entryType == .wg && entry.deviceType == DeviceType.babyScale.rawValue { return false }
+        return true
     }
 
     /// DTO-level entry type matching for background-thread aggregation.
@@ -1677,7 +1682,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     // MARK: - Baby Entry CRUD
 
-    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String? = nil) async throws {
         let accountId = try getAccountId()
 
         let entry = Entry(
@@ -1689,7 +1694,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             babyId: babyId
         )
         entry.attempts = 0
-        entry.babyEntry = BabyEntry(babyId: babyId, length: length, weight: weight, note: note)
+        entry.babyEntry = BabyEntry(babyId: babyId, length: length, weight: weight, note: note, source: source)
 
         do {
             try await localRepo.saveEntry(entry)

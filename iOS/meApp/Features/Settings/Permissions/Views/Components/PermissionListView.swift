@@ -56,7 +56,7 @@ struct PermissionListView: View {
             config = ([.location], PermissionsStrings.locationPermissionDescription, nil)
         case .bpm:
             config = (
-                [.bluetooth, .location],
+                [.bluetooth],
                 BpmSetupStrings.A3Permissions.description,
                 BpmSetupStrings.A3Permissions.title
             )
@@ -139,25 +139,7 @@ struct PermissionListView: View {
     private var locationSection: some View {
         // Base rows for location services
 // swiftlint:disable:next large_tuple
-        var rows: [(String, Bool, PermissionType)] =
-            setupType == .bpm
-            ? [
-                (
-                    viewModel.locationAuthorized
-                        ? PermissionsStrings.locationAccessAuthorized
-                        : BpmSetupStrings.A3Permissions.authorizeLocationAccess,
-                    viewModel.locationAuthorized,
-                    .location
-                ),
-                (
-                    viewModel.locationServicesEnabled
-                        ? PermissionsStrings.locationAccessEnabled
-                        : BpmSetupStrings.A3Permissions.locationTurnedOff,
-                    viewModel.locationServicesEnabled,
-                    .locationSwitch
-                )
-            ]
-            : [
+        var rows: [(String, Bool, PermissionType)] = [
                 (
                     viewModel.locationServicesEnabled
                         ? PermissionsStrings.locationAccessEnabled

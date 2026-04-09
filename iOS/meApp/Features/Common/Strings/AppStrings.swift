@@ -71,7 +71,8 @@ struct EntryStrings {
 
 /// Constants for scale discovered sheet strings used in the app
 struct ScaleDiscoveredSheetStrings {
-    static let title = "New Scale Discovered"
+    static let scaleTitle = "New Scale Discovered"
+    static let bpmTitle = "New Device Discovered"
 }
 
 struct WeightOnlyModeAlertStrings {
