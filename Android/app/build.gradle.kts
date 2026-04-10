@@ -21,6 +21,12 @@ ksp {
   arg("room.schemaLocation", "$projectDir/schemas")
 }
 
+kotlin {
+  compilerOptions {
+    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+  }
+}
+
 android {
   namespace = "com.dmdbrands.gurus.weight"
   compileSdk = 36
@@ -56,7 +62,7 @@ android {
       buildConfigField(
         "String",
         "BASE_URL",
-        "\"https://api.weightgurus.com/v3/\"",
+        "\"http://ec2-54-161-28-150.compute-1.amazonaws.com:3005/\"",
       )
       buildConfigField("Boolean", "ENABLE_ANALYTICS", "false")
     }
@@ -91,9 +97,6 @@ release {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
   }
-  kotlinOptions {
-    jvmTarget = "11"
-  }
   buildFeatures {
     compose = true
     buildConfig = true
@@ -109,6 +112,13 @@ release {
       outputImpl.outputFileName =
         "$appName-$variantName-v$versionName($versionCode)-$timestamp.apk"
     }
+  }
+}
+
+configurations.configureEach {
+  resolutionStrategy {
+    force(libs.androidx.junit.get().toString())
+    force(libs.androidx.espresso.core.get().toString())
   }
 }
 
@@ -132,7 +142,6 @@ dependencies {
   implementation(libs.androidx.ui.tooling.preview)
   implementation(libs.androidx.material.icons.extended)
   implementation(libs.androidx.material3)
-  implementation(libs.androidx.ui.test.junit4.android)
   implementation(libs.androidx.foundation.layout)
   implementation(libs.androidx.runtime.saveable)
   implementation(libs.androidx.appcompat)
@@ -144,6 +153,7 @@ dependencies {
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
   testImplementation(libs.mockk)
   testImplementation(libs.kotlinx.coroutines.test)
+  testImplementation(kotlin("test"))
   testImplementation(libs.turbine)
   testImplementation(libs.truth)
   testImplementation(libs.mockwebserver)
@@ -156,7 +166,7 @@ dependencies {
   androidTestImplementation(libs.truth)
   debugImplementation(libs.androidx.ui.tooling)
   debugImplementation(libs.androidx.ui.test.manifest)
-  debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
+  debugImplementation(libs.leakcanary.android)
   implementation(libs.hilt.navigation.compose)
 
   // browser
@@ -236,7 +246,7 @@ dependencies {
 
 protobuf {
   protoc {
-    artifact = "com.google.protobuf:protoc:3.25.3"
+    artifact = "com.google.protobuf:protoc:${libs.versions.protoc.get()}"
   }
   generateProtoTasks {
     all().forEach {
@@ -262,6 +272,45 @@ tasks.withType<Test> {
 }
 
 // ---------------------------------------------------------------------------
+// JaCoCo — shared configuration
+// ---------------------------------------------------------------------------
+
+// Patterns that match generated / framework code — excluded from coverage
+val jacocoExcludes = listOf(
+  // Android build-generated
+  "**/R.class",
+  "**/R$*.class",
+  "**/BuildConfig.*",
+  "**/Manifest*.*",
+  // Hilt-generated
+  "**/hilt_aggregated_deps/**",
+  "**/*_HiltComponents*",
+  "**/*_HiltModules*",
+  "**/Hilt_*",
+  "**/*_MembersInjector*",
+  "**/*_Factory*",
+  // Room-generated (DAO implementations, DB impl)
+  "**/*_Impl*",
+  // Compose compiler–generated
+  "**/*ComposableSingletons*",
+  // Protobuf-generated
+  "**/*OuterClass*",
+)
+
+val kotlinClassDir = layout.buildDirectory.dir("tmp/kotlin-classes/debug").get().asFile
+
+val jacocoClassDirectories = fileTree(kotlinClassDir) { exclude(jacocoExcludes) }
+
+val jacocoExecutionData = fileTree(layout.buildDirectory.get().asFile) {
+  include(
+    // AGP 8.x location when enableUnitTestCoverage = true
+    "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
+    // Fallback for older AGP / legacy jacoco plugin
+    "jacoco/testDebugUnitTest.exec",
+  )
+}
+
+// ---------------------------------------------------------------------------
 // JaCoCo coverage report: ./gradlew :app:jacocoTestReport
 // ---------------------------------------------------------------------------
 tasks.register<JacocoReport>("jacocoTestReport") {
@@ -272,43 +321,28 @@ tasks.register<JacocoReport>("jacocoTestReport") {
     xml.required.set(true)
   }
 
-  // Patterns that match generated / framework code — excluded from coverage
-  val jacocoExcludes = listOf(
-    // Android build-generated
-    "**/R.class",
-    "**/R$*.class",
-    "**/BuildConfig.*",
-    "**/Manifest*.*",
-    // Hilt-generated
-    "**/hilt_aggregated_deps/**",
-    "**/*_HiltComponents*",
-    "**/*_HiltModules*",
-    "**/Hilt_*",
-    "**/*_MembersInjector*",
-    "**/*_Factory*",
-    // Room-generated (DAO implementations, DB impl)
-    "**/*_Impl*",
-    // Compose compiler–generated
-    "**/*ComposableSingletons*",
-    // Protobuf-generated
-    "**/*OuterClass*",
-  )
-
-  val kotlinClassDir = layout.buildDirectory.dir("tmp/kotlin-classes/debug").get().asFile
-  classDirectories.setFrom(
-    fileTree(kotlinClassDir) { exclude(jacocoExcludes) },
-  )
-
+  classDirectories.setFrom(jacocoClassDirectories)
   sourceDirectories.setFrom(files("src/main/java", "src/main/kotlin"))
+  executionData.setFrom(jacocoExecutionData)
+}
 
-  executionData.setFrom(
-    fileTree(layout.buildDirectory.get().asFile) {
-      include(
-        // AGP 8.x location when enableUnitTestCoverage = true
-        "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
-        // Fallback for older AGP / legacy jacoco plugin
-        "jacoco/testDebugUnitTest.exec",
-      )
-    },
-  )
+// ---------------------------------------------------------------------------
+// JaCoCo coverage verification: ./gradlew :app:jacocoTestCoverageVerification
+// Enforces minimum 80 % line coverage — build fails if threshold is not met.
+// ---------------------------------------------------------------------------
+tasks.register<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
+  dependsOn("testDebugUnitTest")
+
+  classDirectories.setFrom(jacocoClassDirectories)
+  executionData.setFrom(jacocoExecutionData)
+
+  violationRules {
+    rule {
+      limit {
+        counter = "LINE"
+        value = "COVEREDRATIO"
+        minimum = "0.80".toBigDecimal()
+      }
+    }
+  }
 }

@@ -38,16 +38,17 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.Test
 import retrofit2.Response
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DeviceInfoServiceTest {
 
-  @get:Rule
+  @JvmField
+  @RegisterExtension
   val mainDispatcherRule = MainDispatcherRule()
 
   // --- Mocks ---
@@ -77,7 +78,7 @@ class DeviceInfoServiceTest {
   /** Standard wait for IO collector to start after service construction. */
   private val collectorStartDelayMs = 100L
 
-  @Before
+  @BeforeEach
   fun setUp() {
     mockkObject(DeviceInfoUtil)
     mockkObject(FcmTokenUtil)
@@ -122,7 +123,7 @@ class DeviceInfoServiceTest {
     appScope = TestScope(mainDispatcherRule.dispatcher),
   )
 
-  @After
+  @AfterEach
   fun tearDown() {
     unmockkAll()
   }
@@ -412,7 +413,9 @@ class DeviceInfoServiceTest {
     every { connectivityObserver.getCurrentNetworkState() } returns offlineState
     networkFlow.emit(offlineState)
 
-    Thread.sleep(2500)
+    // Advance virtual time past the NETWORK_UNAVAILABLE_DEBOUNCE_MS (2000ms)
+    mainDispatcherRule.dispatcher.scheduler.advanceTimeBy(2500)
+    Thread.sleep(200) // Allow coroutine to complete after virtual time advancement
 
     verify(atLeast = 1) { dialogQueueService.showToast(any<Toast>()) }
   }

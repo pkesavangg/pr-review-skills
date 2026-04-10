@@ -211,6 +211,12 @@ class BottomTabBarViewModel: ObservableObject {
         }
     }
 
+    /// Clears goal-alert callbacks on BottomTabBarView disappearance to prevent stale closures from showing alerts during loading.
+    func clearGoalAlertCallbacks() {
+        goalAlertService.isOnDashboardTab = nil
+        goalAlertService.onNavigateToGoalSetting = nil
+    }
+
     @MainActor
     private func warmInjectedDependencies() {
         let injectedDependencies = (

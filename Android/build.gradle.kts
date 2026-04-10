@@ -12,13 +12,14 @@ plugins {
     alias(libs.plugins.ktlint) apply false
     alias(libs.plugins.android.test) apply false
     alias(libs.plugins.baselineprofile) apply false
+    alias(libs.plugins.owasp.dependency.check)
 }
 
 subprojects {
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
 
     configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
-        ignoreFailures.set(true)
+        ignoreFailures.set(false)
         outputToConsole.set(true)
         baseline.set(file("ktlint-baseline.xml"))
 
@@ -46,5 +47,18 @@ subprojects {
     tasks.withType<io.gitlab.arturbosch.detekt.DetektCreateBaselineTask>().configureEach {
         jvmTarget = "11"
         exclude("**/build/**", "**/vico/**", "**/bleWrapper/**")
+    }
+}
+
+dependencyCheck {
+    failBuildOnCVSS = 7.0f
+    suppressionFile = "$projectDir/config/owasp-suppressions.xml"
+    formats = listOf("HTML", "JSON")
+    outputDirectory.set(layout.buildDirectory.dir("reports/dependency-check"))
+    analyzers {
+        assemblyEnabled = false
+    }
+    nvd {
+        apiKey = System.getenv("NVD_API_KEY") ?: ""
     }
 }

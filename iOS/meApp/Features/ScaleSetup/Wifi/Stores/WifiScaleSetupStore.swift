@@ -424,9 +424,11 @@ final class WifiScaleSetupStore: ObservableObject {
             //   • If required permissions are now granted we can return to the intro.
             //   • Otherwise we must guide the user back to the permissions screen.
             if isForGetMac {
-                // Ternary chooses the appropriate destination based on current permission state.
-// swiftlint:disable:next void_function_in_ternary
-                arePermissionsEnabled() ? navigateToStep(.intro) : navigateToStep(.permissions)
+                if arePermissionsEnabled() {
+                    navigateToStep(.intro)
+                } else {
+                    navigateToStep(.permissions)
+                }
             } else {
                 moveToPreviousStep()
             }

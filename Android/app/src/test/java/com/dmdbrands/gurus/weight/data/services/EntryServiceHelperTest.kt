@@ -14,9 +14,9 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -25,7 +25,7 @@ class EntryServiceHelperTest {
 
     private val entryRepository: IEntryRepository = mockk()
 
-    @Before
+    @BeforeEach
     fun setUp() {
         mockkObject(AppLog)
         every { AppLog.d(any(), any()) } returns Unit
@@ -34,7 +34,7 @@ class EntryServiceHelperTest {
         every { AppLog.e(any<String>(), any<String>(), any<String>()) } returns Unit
     }
 
-    @After
+    @AfterEach
     fun tearDown() {
         unmockkAll()
     }
