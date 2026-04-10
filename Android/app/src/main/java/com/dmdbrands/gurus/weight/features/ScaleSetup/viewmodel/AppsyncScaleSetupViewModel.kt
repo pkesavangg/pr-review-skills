@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
+import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
 import com.dmdbrands.gurus.weight.features.ScaleSetup.ScaleSetupConstants
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.AppsyncScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.AppsyncScaleSetupIntent
@@ -44,6 +45,7 @@ constructor(
   private val permissionService: GGPermissionService,
   private val dialogUtility: IDialogUtility,
   private val deviceService: IDeviceService,
+  private val appSyncService: IAppSyncService,
   @Assisted private val sku: String,
 ) : BaseIntentViewModel<AppsyncScaleSetupState, AppsyncScaleSetupIntent>(
   reducer = AppsyncScaleSetupReducer(),
@@ -93,6 +95,7 @@ constructor(
     loadScaleInfo()
     observePermissions()
     observeSetup()
+    observeAppSyncZoomLevel()
   }
 
   /**
@@ -168,11 +171,22 @@ constructor(
 
   private fun handleAppSyncResult(result: AppSyncResult) {
     AppLog.d(TAG, "Handling AppSync result - canceled: ${result.canceled}, manual: ${result.manual}")
+    viewModelScope.launch {
+      appSyncService.saveLastZoomLevel(result.zoom)
+    }
     if (result.canceled || !result.manual) {
       AppLog.d(TAG, "AppSync result indicates proceeding to next step")
       handleIntent(AppsyncScaleSetupIntent.Next)
     } else {
       AppLog.d(TAG, "AppSync result indicates manual mode, not proceeding")
+    }
+  }
+
+  private fun observeAppSyncZoomLevel() {
+    viewModelScope.launch {
+      appSyncService.lastZoomLevel.collect { zoom ->
+        handleIntent(AppsyncScaleSetupIntent.SetAppSyncZoomLevel(zoom))
+      }
     }
   }
 

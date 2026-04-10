@@ -15,7 +15,8 @@ data class HomeState(
   val isWeightOnlyModeDismissed: Boolean = false,
   val isBodyMetricsEnabled: Boolean = false,
   val showUnreadFeedIndicator: Boolean = false,
-  val shouldAskForReview: Boolean = false
+  val shouldAskForReview: Boolean = false,
+  val appSyncZoomLevel: Int = 1,
 ) : IReducer.State
 
 /**
@@ -63,6 +64,8 @@ sealed interface HomeIntent : IReducer.Intent {
   ): HomeIntent
 
   data class LaunchAppReview(val activity: Activity) : HomeIntent
+
+  data class SetAppSyncZoomLevel(val zoom: Int) : HomeIntent
 }
 
 /**
@@ -89,6 +92,7 @@ class HomeReducer : IReducer<HomeState, HomeIntent> {
       is HomeIntent.SetShowUnreadFeedIndicator ->
         state.copy(showUnreadFeedIndicator = intent.show)
       is HomeIntent.SetShouldAskForReview -> state.copy(shouldAskForReview = intent.shouldAsk)
+      is HomeIntent.SetAppSyncZoomLevel -> state.copy(appSyncZoomLevel = intent.zoom)
 
       else -> state.copy()
     }

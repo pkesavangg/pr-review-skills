@@ -21,6 +21,7 @@ message UserAccount {
     string expires_at = 5;
     ThemeMode theme_mode = 6;
     bool notification_alert_shown = 7;
+    int32 last_appsync_zoom_level = 8;
 }
 
 // User preferences message
