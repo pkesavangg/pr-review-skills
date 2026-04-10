@@ -21,6 +21,8 @@ class EditProfileForm: ObservableForm {
     }()
     var email     = FormControl("", validators: [.required, .email, .maxLength(100)])
     var zipcode   = FormControl("", validators: [.required, .noWhiteSpace, .maxLength(20)])
+    var gender    = FormControl(Sex.male, validators: [])
+    var height    = FormControl("", validators: [])
 
     // MARK: - Change publisher
     /// Emits whenever any of the underlying controls changes – convenient for wiring to Combine in `SettingsStore`.
@@ -30,7 +32,9 @@ class EditProfileForm: ObservableForm {
             lastName.$value.map { _ in () }.eraseToAnyPublisher(),
             birthday.$value.map { _ in () }.eraseToAnyPublisher(),
             email.$value.map { _ in () }.eraseToAnyPublisher(),
-            zipcode.$value.map { _ in () }.eraseToAnyPublisher()
+            zipcode.$value.map { _ in () }.eraseToAnyPublisher(),
+            gender.$value.map { _ in () }.eraseToAnyPublisher(),
+            height.$value.map { _ in () }.eraseToAnyPublisher()
         ])
         .eraseToAnyPublisher()
     }
