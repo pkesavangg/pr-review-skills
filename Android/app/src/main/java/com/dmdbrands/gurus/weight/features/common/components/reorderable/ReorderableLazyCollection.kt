@@ -68,6 +68,7 @@ import sh.calvin.reorderable.draggable
 import sh.calvin.reorderable.fromAxis
 import sh.calvin.reorderable.getAxis
 import sh.calvin.reorderable.minus
+import sh.calvin.reorderable.onlyAxis
 import sh.calvin.reorderable.opposite
 import sh.calvin.reorderable.plus
 import sh.calvin.reorderable.reverseAxis
@@ -423,7 +424,7 @@ open class ReorderableLazyCollectionState<out T> internal constructor(
   }
 
   internal fun onDrag(offset: Offset) {
-    draggingItemDraggedDelta += offset
+    draggingItemDraggedDelta += offset.onlyAxis(orientation)
 
     val draggingItem = draggingItemLayoutInfo ?: return
     // how far the dragging item is from the original position

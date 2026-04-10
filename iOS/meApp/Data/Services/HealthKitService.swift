@@ -91,8 +91,13 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
 
     /// Returns the set of device type raw values for paired devices on the active account.
     private func getPairedDeviceTypes() async -> Set<String> {
-        guard let devices = try? await deviceService.getDevices() else { return [] }
-        return Set(devices.compactMap { $0.deviceType })
+        do {
+            let devices = try await deviceService.getDevices()
+            return Set(devices.compactMap { $0.deviceType })
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to fetch paired device types: \(error)")
+            return []
+        }
     }
 
     private func getSignupSelectedDeviceType(for accountId: String) -> SignupDeviceType? {

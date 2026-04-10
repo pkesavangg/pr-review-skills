@@ -170,7 +170,7 @@ Display the file path to the user once written.
 
 ---
 
-## STEP 7 — Post PR Comments
+## STEP 7 — Post PR Comments (Inline + Summary)
 
 Ask the user:
 
@@ -183,10 +183,78 @@ Wait for the user's response, then act:
 
 **If `yes` or specific PR numbers:**
 
-For each selected PR, extract its self-contained review block from the report file and post it:
+For each selected PR, post comments in two phases — **both phases always run**:
+
+### Phase A — Full consolidated review block
+
+Post the entire self-contained PR review block (from `## PR #{number}` through `---` in the report file) as a general PR comment:
+
 ```bash
-gh pr review {PR_NUMBER} --comment --body "{that PR's review block}"
+gh pr review {PR_NUMBER} --comment --body "{that PR's full review block}"
 ```
+
+This gives reviewers the complete summary table, all 6 skill verdicts, and the overall verdict in one place.
+
+### Phase B — Inline line comments
+
+Collect every specific finding from the 6 skill outputs that references a **file and line number** (pattern: `[file:line]` or `[High/Medium/Low] ... at {file}:{line}`). Post these as inline comments pinned to the exact diff lines.
+
+**Step B1 — Get the head commit SHA:**
+```bash
+gh pr view {PR_NUMBER} --json headRefOid --jq '.headRefOid'
+```
+
+**Step B2 — Determine reachable diff lines:**
+
+Get the diff hunk headers to know which line ranges are in the diff:
+```bash
+gh pr diff {PR_NUMBER} | grep "^@@"
+```
+
+Parse each `@@ -old_start,old_count +new_start,new_count @@` header. A line number N in the new file is **reachable** if `new_start <= N <= new_start + new_count - 1` for any hunk.
+
+**Step B3 — Build inline comment payload:**
+
+For each finding with a reachable line number, add it to the `comments` array. Collect findings whose lines are NOT in the diff for the fallback in Phase C.
+
+```json
+{
+  "commit_id": "{HEAD_SHA}",
+  "event": "COMMENT",
+  "body": "Inline findings — see line comments below.",
+  "comments": [
+    {
+      "path": "{file path as shown in gh pr diff, e.g. iOS/meApp/Features/Settings/Stores/SettingsStore.swift}",
+      "line": {N},
+      "side": "RIGHT",
+      "body": "**[Severity] Short title**\n\n{finding detail and recommended fix}"
+    }
+  ]
+}
+```
+
+Post via:
+```bash
+gh api repos/dmdbrands/meApp/pulls/{PR_NUMBER}/reviews \
+  --method POST \
+  --input /tmp/review-payload-{PR_NUMBER}.json
+```
+
+**Important constraints:**
+- `event` must be `"COMMENT"` (never `"REQUEST_CHANGES"` — GitHub blocks that on self-owned PRs)
+- Only use `line` values that fall within a diff hunk range (computed in Step B2)
+- `path` must match the file path exactly as shown in `gh pr diff` output (includes `iOS/` prefix)
+- Clean up: `rm -f /tmp/review-payload-{PR_NUMBER}.json`
+- Skip Phase B entirely if there are no line-specific findings
+
+### Phase C — Fallback for out-of-diff findings
+
+If any findings could NOT be posted inline (lines outside all diff hunks), post them as one follow-up general comment mentioning the exact file:line references:
+```bash
+gh pr review {PR_NUMBER} --comment --body "{out-of-diff findings with file:line references}"
+```
+
+Skip Phase C if all findings were posted inline.
 
 Confirm to the user which PRs received comments and include their URLs.
 

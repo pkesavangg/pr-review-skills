@@ -48,7 +48,7 @@ struct BabyDashboardChartSupportTests {
 
     @Test("resolvedBirthday returns babyProfile.birthday when set and not in the future")
     func resolvedBirthdayUsesProfileBirthday() {
-        let pastDate = cal.date(byAdding: .day, value: -30, to: Date())!
+        let pastDate = cal.date(byAdding: .day, value: -30, to: Date()) ?? Date()
         let baby = makeBabyProfile(birthday: pastDate)
         let resolved = BabyDashboardChartSupport.resolvedBirthday(for: baby)
         #expect(cal.isDate(resolved, inSameDayAs: pastDate))
@@ -60,12 +60,12 @@ struct BabyDashboardChartSupportTests {
         let resolved = BabyDashboardChartSupport.resolvedBirthday(for: baby)
         let today = cal.startOfDay(for: Date())
         #expect(resolved <= today)
-        #expect(resolved > cal.date(byAdding: .day, value: -365, to: today)!)
+        #expect(resolved > cal.date(byAdding: .day, value: -365, to: today) ?? today)
     }
 
     @Test("resolvedBirthday clamps future birthday to today")
     func resolvedBirthdayClampsFutureDateToToday() {
-        let futureBirthday = cal.date(byAdding: .day, value: 30, to: Date())!
+        let futureBirthday = cal.date(byAdding: .day, value: 30, to: Date()) ?? Date()
         let baby = makeBabyProfile(birthday: futureBirthday)
         let resolved = BabyDashboardChartSupport.resolvedBirthday(for: baby)
         let today = cal.startOfDay(for: Date())
@@ -124,7 +124,7 @@ struct BabyDashboardChartSupportTests {
 
     @Test("dummySummaries for year returns monthly aggregated data")
     func dummySummariesYearReturnsMonthlyData() {
-        let birthday = cal.date(byAdding: .day, value: -200, to: Date())!
+        let birthday = cal.date(byAdding: .day, value: -200, to: Date()) ?? Date()
         let baby = makeBabyProfile(birthday: birthday)
         let year = BabyDashboardChartSupport.dummySummaries(for: baby, period: .year)
         let daily = BabyDashboardChartSupport.dummyDailySummaries(for: baby)
@@ -135,7 +135,7 @@ struct BabyDashboardChartSupportTests {
 
     @Test("dummySummaries for total returns monthly aggregated data")
     func dummySummariesTotalReturnsMonthlyData() {
-        let birthday = cal.date(byAdding: .day, value: -200, to: Date())!
+        let birthday = cal.date(byAdding: .day, value: -200, to: Date()) ?? Date()
         let baby = makeBabyProfile(birthday: birthday)
         let total = BabyDashboardChartSupport.dummySummaries(for: baby, period: .total)
         let year = BabyDashboardChartSupport.dummySummaries(for: baby, period: .year)
@@ -158,7 +158,7 @@ struct BabyDashboardChartSupportTests {
     @Test("percentileSeries returns multiple series names for all percentile lines")
     func percentileSeriesHasAllPercentileLines() {
         let baby = makeBabyProfile()
-        let startDate = cal.date(byAdding: .day, value: -30, to: Date())!
+        let startDate = cal.date(byAdding: .day, value: -30, to: Date()) ?? Date()
         let operations = makeDailySummaries(count: 10, from: startDate)
 
         let result = BabyDashboardChartSupport.percentileSeries(
@@ -176,7 +176,7 @@ struct BabyDashboardChartSupportTests {
     @Test("percentileSeries all have baby_percentile_ prefix")
     func percentileSeriesHaveCorrectPrefix() {
         let baby = makeBabyProfile()
-        let startDate = cal.date(byAdding: .day, value: -14, to: Date())!
+        let startDate = cal.date(byAdding: .day, value: -14, to: Date()) ?? Date()
         let operations = makeDailySummaries(count: 7, from: startDate)
 
         let result = BabyDashboardChartSupport.percentileSeries(
@@ -188,12 +188,30 @@ struct BabyDashboardChartSupportTests {
         #expect(result.allSatisfy { BabyDashboardChartSupport.isPercentileSeries($0.series) })
     }
 
+    @Test("percentileSeries spans the visible operation range when provided")
+    func percentileSeriesUsesVisibleOperationRange() {
+        let baby = makeBabyProfile()
+        let operations = makeDailySummaries(count: 3, from: cal.date(byAdding: .day, value: -12, to: Date())!)
+        let visibleOperations = makeDailySummaries(count: 8, from: cal.date(byAdding: .day, value: -20, to: Date())!)
+
+        let result = BabyDashboardChartSupport.percentileSeries(
+            for: baby,
+            operations: operations,
+            visibleOperations: visibleOperations,
+            convertDecigramsToDisplay: { Double($0) / 10000.0 }
+        )
+
+        let dates = result.map(\.date)
+        #expect(dates.min() == visibleOperations.first?.date)
+        #expect(dates.max() == visibleOperations.last?.date)
+    }
+
     // MARK: - dummyHeightSeries
 
     @Test("dummyHeightSeries returns same count as operations")
     func dummyHeightSeriesMatchesOperationCount() {
         let baby = makeBabyProfile()
-        let ops = makeDailySummaries(count: 7, from: cal.date(byAdding: .day, value: -7, to: Date())!)
+        let ops = makeDailySummaries(count: 7, from: cal.date(byAdding: .day, value: -7, to: Date()) ?? Date())
         let result = BabyDashboardChartSupport.dummyHeightSeries(for: baby, operations: ops)
         #expect(result.count == 7)
     }
@@ -201,7 +219,7 @@ struct BabyDashboardChartSupportTests {
     @Test("dummyHeightSeries uses baby_height series name")
     func dummyHeightSeriesHasCorrectSeriesName() {
         let baby = makeBabyProfile()
-        let ops = makeDailySummaries(count: 3, from: cal.date(byAdding: .day, value: -3, to: Date())!)
+        let ops = makeDailySummaries(count: 3, from: cal.date(byAdding: .day, value: -3, to: Date()) ?? Date())
         let result = BabyDashboardChartSupport.dummyHeightSeries(for: baby, operations: ops)
         #expect(result.allSatisfy { BabyDashboardChartSupport.isHeightSeries($0.series) })
     }
@@ -209,7 +227,7 @@ struct BabyDashboardChartSupportTests {
     @Test("dummyHeightSeries values are positive")
     func dummyHeightSeriesPositiveValues() {
         let baby = makeBabyProfile()
-        let ops = makeDailySummaries(count: 5, from: cal.date(byAdding: .day, value: -5, to: Date())!)
+        let ops = makeDailySummaries(count: 5, from: cal.date(byAdding: .day, value: -5, to: Date()) ?? Date())
         let result = BabyDashboardChartSupport.dummyHeightSeries(for: baby, operations: ops)
         #expect(result.allSatisfy { $0.value > 0 })
     }
@@ -219,7 +237,7 @@ struct BabyDashboardChartSupportTests {
     @Test("heightPercentileSeries returns count = operations * allCases")
     func heightPercentileSeriesCountMatchesOperationsTimesLines() {
         let baby = makeBabyProfile()
-        let ops = makeDailySummaries(count: 4, from: cal.date(byAdding: .day, value: -4, to: Date())!)
+        let ops = makeDailySummaries(count: 4, from: cal.date(byAdding: .day, value: -4, to: Date()) ?? Date())
         let result = BabyDashboardChartSupport.heightPercentileSeries(for: baby, operations: ops)
         #expect(result.count == ops.count * BabyPercentileLine.allCases.count)
     }
@@ -227,9 +245,26 @@ struct BabyDashboardChartSupportTests {
     @Test("heightPercentileSeries values are positive")
     func heightPercentileSeriesPositiveValues() {
         let baby = makeBabyProfile()
-        let ops = makeDailySummaries(count: 3, from: cal.date(byAdding: .day, value: -3, to: Date())!)
+        let ops = makeDailySummaries(count: 3, from: cal.date(byAdding: .day, value: -3, to: Date()) ?? Date())
         let result = BabyDashboardChartSupport.heightPercentileSeries(for: baby, operations: ops)
         #expect(result.allSatisfy { $0.value > 0 })
+    }
+
+    @Test("heightPercentileSeries spans the visible operation range when provided")
+    func heightPercentileSeriesUsesVisibleOperationRange() {
+        let baby = makeBabyProfile()
+        let operations = makeDailySummaries(count: 3, from: cal.date(byAdding: .day, value: -12, to: Date())!)
+        let visibleOperations = makeDailySummaries(count: 8, from: cal.date(byAdding: .day, value: -20, to: Date())!)
+
+        let result = BabyDashboardChartSupport.heightPercentileSeries(
+            for: baby,
+            operations: operations,
+            visibleOperations: visibleOperations
+        )
+
+        let dates = result.map(\.date)
+        #expect(dates.min() == visibleOperations.first?.date)
+        #expect(dates.max() == visibleOperations.last?.date)
     }
 
     // MARK: - yAxisScale
@@ -237,7 +272,7 @@ struct BabyDashboardChartSupportTests {
     @Test("yAxisScale returns valid domain for non-empty operations")
     func yAxisScaleValidDomain() {
         let baby = makeBabyProfile()
-        let ops = makeDailySummaries(count: 10, from: cal.date(byAdding: .day, value: -10, to: Date())!)
+        let ops = makeDailySummaries(count: 10, from: cal.date(byAdding: .day, value: -10, to: Date()) ?? Date())
         let scale = BabyDashboardChartSupport.yAxisScale(
             for: ops,
             babyProfile: baby,
@@ -250,7 +285,7 @@ struct BabyDashboardChartSupportTests {
     @Test("yAxisScale domain includes percentile range")
     func yAxisScaleDomainEncompassesPercentiles() {
         let baby = makeBabyProfile()
-        let ops = makeDailySummaries(count: 10, from: cal.date(byAdding: .day, value: -10, to: Date())!)
+        let ops = makeDailySummaries(count: 10, from: cal.date(byAdding: .day, value: -10, to: Date()) ?? Date())
         let scale = BabyDashboardChartSupport.yAxisScale(
             for: ops,
             babyProfile: baby,
@@ -279,7 +314,7 @@ struct BabyDashboardChartSupportTests {
     @Test("heightYAxisScale returns valid domain for non-empty operations")
     func heightYAxisScaleValidDomain() {
         let baby = makeBabyProfile()
-        let ops = makeDailySummaries(count: 7, from: cal.date(byAdding: .day, value: -7, to: Date())!)
+        let ops = makeDailySummaries(count: 7, from: cal.date(byAdding: .day, value: -7, to: Date()) ?? Date())
         let scale = BabyDashboardChartSupport.heightYAxisScale(for: ops, babyProfile: baby)
         #expect(scale.domain.lowerBound < scale.domain.upperBound)
         #expect(scale.min >= 0)
@@ -297,7 +332,7 @@ struct BabyDashboardChartSupportTests {
     @Test("heightYAxisScale minimum max is 25 inches")
     func heightYAxisScaleMinimumMaxIs25() {
         let baby = makeBabyProfile()
-        let ops = makeDailySummaries(count: 2, from: cal.date(byAdding: .day, value: -2, to: Date())!)
+        let ops = makeDailySummaries(count: 2, from: cal.date(byAdding: .day, value: -2, to: Date()) ?? Date())
         let scale = BabyDashboardChartSupport.heightYAxisScale(for: ops, babyProfile: baby)
         #expect(scale.max >= 25)
     }
@@ -338,8 +373,8 @@ struct BabyDashboardChartSupportTests {
     func dummyHeightValueIncreasesOverTime() {
         let baby = makeBabyProfile()
         let birthday = BabyDashboardChartSupport.resolvedBirthday(for: baby)
-        let day30 = cal.date(byAdding: .day, value: 30, to: birthday)!
-        let day90 = cal.date(byAdding: .day, value: 90, to: birthday)!
+        let day30 = cal.date(byAdding: .day, value: 30, to: birthday) ?? birthday
+        let day90 = cal.date(byAdding: .day, value: 90, to: birthday) ?? birthday
 
         let h30 = BabyDashboardChartSupport.dummyHeightValue(for: baby, on: day30)
         let h90 = BabyDashboardChartSupport.dummyHeightValue(for: baby, on: day90)
@@ -360,8 +395,8 @@ struct BabyDashboardChartSupportTests {
     func averageDummyHeightAveragesMultipleDates() {
         let baby = makeBabyProfile()
         let birthday = BabyDashboardChartSupport.resolvedBirthday(for: baby)
-        let d1 = cal.date(byAdding: .day, value: 10, to: birthday)!
-        let d2 = cal.date(byAdding: .day, value: 20, to: birthday)!
+        let d1 = cal.date(byAdding: .day, value: 10, to: birthday) ?? birthday
+        let d2 = cal.date(byAdding: .day, value: 20, to: birthday) ?? birthday
         let avg = BabyDashboardChartSupport.averageDummyHeight(for: baby, dates: [d1, d2])
         let h1 = BabyDashboardChartSupport.dummyHeightValue(for: baby, on: d1)
         let h2 = BabyDashboardChartSupport.dummyHeightValue(for: baby, on: d2)
@@ -375,7 +410,7 @@ struct BabyDashboardChartSupportTests {
     func heightPercentileInValidRange() {
         let baby = makeBabyProfile()
         let birthday = BabyDashboardChartSupport.resolvedBirthday(for: baby)
-        let date = cal.date(byAdding: .day, value: 60, to: birthday)!
+        let date = cal.date(byAdding: .day, value: 60, to: birthday) ?? birthday
         let heightInches = BabyDashboardChartSupport.dummyHeightValue(for: baby, on: date)
 
         let result = BabyDashboardChartSupport.heightPercentile(for: baby, heightInches: heightInches, on: date)
@@ -399,5 +434,59 @@ struct BabyDashboardChartSupportTests {
     func percentileLineNilForWeight() {
         #expect(BabyDashboardChartSupport.percentileLine(for: "weight") == nil)
         #expect(BabyDashboardChartSupport.percentileLine(for: "baby_height") == nil)
+    }
+
+    // MARK: - Dummy Summaries Cache
+
+    @Test("dummySummaries returns cached result on repeated calls for same profile and period")
+    func dummySummariesCacheHit() {
+        BabyDashboardChartSupport.clearDummySummariesCache()
+        let profile = makeBabyProfile(id: "cache-test-1")
+
+        let first = BabyDashboardChartSupport.dummySummaries(for: profile, period: .week)
+        let second = BabyDashboardChartSupport.dummySummaries(for: profile, period: .week)
+
+        #expect(!first.isEmpty)
+        #expect(first.count == second.count)
+        #expect(first.first?.period == second.first?.period)
+    }
+
+    @Test("dummySummaries invalidates cache for different baby profile")
+    func dummySummariesDifferentProfileRecalculates() {
+        BabyDashboardChartSupport.clearDummySummariesCache()
+        let profile1 = makeBabyProfile(id: "cache-p1")
+        let profile2 = makeBabyProfile(id: "cache-p2")
+
+        let first = BabyDashboardChartSupport.dummySummaries(for: profile1, period: .week)
+        let second = BabyDashboardChartSupport.dummySummaries(for: profile2, period: .week)
+
+        // Both should return data but from separate cache entries
+        #expect(!first.isEmpty)
+        #expect(!second.isEmpty)
+        #expect(first.first?.accountId != second.first?.accountId)
+    }
+
+    @Test("dummySummaries returns different data for different periods")
+    func dummySummariesDifferentPeriodsReturnDifferentData() {
+        BabyDashboardChartSupport.clearDummySummariesCache()
+        let profile = makeBabyProfile(id: "cache-period-test")
+
+        let weekly = BabyDashboardChartSupport.dummySummaries(for: profile, period: .week)
+        let yearly = BabyDashboardChartSupport.dummySummaries(for: profile, period: .year)
+
+        // Year/total uses monthly aggregation so should have fewer entries
+        #expect(weekly.count >= yearly.count)
+    }
+
+    @Test("clearDummySummariesCache forces recomputation")
+    func clearDummySummariesCacheInvalidates() {
+        let profile = makeBabyProfile(id: "cache-clear-test")
+        _ = BabyDashboardChartSupport.dummySummaries(for: profile, period: .week)
+
+        BabyDashboardChartSupport.clearDummySummariesCache()
+
+        // After clearing, next call should produce fresh (but equivalent) data
+        let fresh = BabyDashboardChartSupport.dummySummaries(for: profile, period: .week)
+        #expect(!fresh.isEmpty)
     }
 }

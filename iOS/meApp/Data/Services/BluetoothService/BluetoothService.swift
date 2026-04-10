@@ -36,6 +36,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     static let shared = BluetoothService(accountService: AccountService.shared,
                                          scaleService: ScaleService.shared,
                                          entryService: EntryService.shared,
+                                         babyService: BabyService.shared,
                                          logger: LoggerService.shared)
 
     // MARK: - Published State
@@ -135,6 +136,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     let accountService: AccountServiceProtocol
     let scaleService: ScaleServiceProtocol
     let entryService: EntryServiceProtocol
+    let babyService: BabyServiceProtocol
     let logger: LoggerServiceProtocol
     let ggBleSDK: BluetoothSDKClient
     let timeoutConstants = AppConstants.TimeoutsAndRetention.self
@@ -171,6 +173,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         accountService: AccountServiceProtocol,
         scaleService: ScaleServiceProtocol,
         entryService: EntryServiceProtocol,
+        babyService: BabyServiceProtocol,
         logger: LoggerServiceProtocol,
         discoveryManager: BLEDiscoveryManaging? = nil,
         ggBleSDK: BluetoothSDKClient? = nil,
@@ -179,6 +182,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         self.accountService = accountService
         self.scaleService = scaleService
         self.entryService = entryService
+        self.babyService = babyService
         self.logger = logger
         self.discoveryManager = discoveryManager ?? BLEDiscoveryManager()
         self.ggBleSDK = ggBleSDK ?? GGBluetoothSDKClient()

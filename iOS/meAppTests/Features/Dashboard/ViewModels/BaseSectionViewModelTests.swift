@@ -148,6 +148,16 @@ struct BaseSectionViewModelTests {
         #expect(vm.timePeriod == period)
     }
 
+    @Test("adjustedLabelTicks excludes trailing phantom tick for week")
+    func adjustedLabelTicksDropsTrailingWeekTick() {
+        let (sut, _) = makeConfiguredSUT(period: .week)
+        sut.scrollPosition = makeDate(year: 2026, month: 3, day: 1)
+
+        let ticks = sut.xAxisValues
+        #expect(ticks.count > 1)
+        #expect(sut.adjustedLabelTicks == Array(ticks.dropLast()))
+    }
+
     // MARK: - hasXAxis
 
     @Test("hasXAxis is true for week/month/year", arguments: [TimePeriod.week, .month, .year])
@@ -707,6 +717,18 @@ struct BaseSectionViewModelTests {
         sut.refreshData()
         // Cache should have been invalidated (empty hash)
         // No crash means the method works correctly
+    }
+
+    @Test("configure caches whether the chart has data")
+    func configureCachesChartPresence() {
+        let summaries = DashboardTestFixtures.makeSortedDailySummaries()
+        let (sut, _, _) = makeConfiguredSUT(summaries: summaries)
+
+        #expect(sut.hasChartOperations == true)
+
+        sut.tearDown()
+
+        #expect(sut.hasChartOperations == false)
     }
 
     @Test("refreshData maintains selection if still valid")

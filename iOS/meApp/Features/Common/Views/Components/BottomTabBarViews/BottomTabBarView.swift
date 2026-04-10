@@ -165,6 +165,11 @@ struct BottomTabBarView: View {
                                      discoveredScale: payload.scale,
                                      discoveryEvent: payload.event)
                 .interactiveDismissDisabled(true)
+            case .bpm:
+                BpmSetupScreen(sku: payload.sku,
+                               discoveredScale: payload.scale,
+                               discoveryEvent: payload.event)
+                .interactiveDismissDisabled(true)
             default:
                 // Fallback to A6 setup for other types
                 A6ScaleSetupScreen(sku: payload.sku,

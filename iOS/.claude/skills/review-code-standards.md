@@ -123,6 +123,38 @@ Scan new `+` lines for:
 
 ---
 
+### 9 — Production Dummy / Fallback Data
+
+Scan new `+` lines in **non-test** files for hardcoded fallback or dummy data patterns:
+
+- Function names matching `generateDummy*`, `makeFake*`, `mockData*`, `createFallback*`, `defaultFake*`
+- Hardcoded string literals that look like placeholder names or fake entries (e.g. `"Liam"`, `"Other Baby"`, `"dummy"`, `"fake"`, `"test user"`, `"test entry"`) — case-insensitive
+- JSON/array literals with clearly fabricated data (e.g. static arrays of fake measurements)
+
+For each occurrence, check if it is wrapped in a `#if DEBUG` guard. If not:
+
+Flag as `[High] Dummy/fallback data in production path at {file}:{line} — must be behind #if DEBUG or removed before release. Production builds must never generate or display fabricated data`.
+
+Exception: Intentional default values (e.g. `defaultWeight = 0.0`, `placeholderText = "Enter name"`) are acceptable — only flag data that would be **presented to users as real entries**.
+
+---
+
+### 10 — User-Visible Error Feedback
+
+For each new or modified `catch` block in `Service`, `Store`, or `API` files:
+
+Check if the catch block:
+1. Logs the error via `logger.log(level: .error, ...)` ✅
+2. Also surfaces the failure to the user via `notificationService.showToast(...)`, `notificationService.showAlert(...)`, or `notificationService.showError(...)` ✅
+
+If a catch block logs the error but **does not** call `notificationService` for a user-facing operation (delete, update, sync, save):
+
+Flag as `[Medium] Error logged but not shown to user in {function} at {file}:{line} — user performs an action and gets no feedback if it fails. Use NotificationHelperService to surface the failure via toast or alert`.
+
+Exception: Background operations (scheduled sync, silent prefetch) do not need user alerts on every failure.
+
+---
+
 ## Output
 
 ```
@@ -138,6 +170,8 @@ Scan new `+` lines for:
 | API Repository Pattern | PASS / WARNING / FAIL / N/A | … |
 | Protocol Naming | PASS / WARNING / FAIL | … |
 | Concurrency | PASS / WARNING / FAIL | … |
+| Production Dummy Data | PASS / WARNING / FAIL | … |
+| User-Visible Error Feedback | PASS / WARNING / FAIL | … |
 
 **Code standards verdict:** PASS / WARNING / FAIL
 

@@ -43,6 +43,7 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
     private let tag = "ProductTypeStore"
 
     private static func fallbackBabyProfiles(calendar: Calendar = .current) -> [BabyProfile] {
+        #if DEBUG
         let today = calendar.startOfDay(for: Date())
         let liamBirthday = calendar.date(byAdding: .day, value: -112, to: today)
         let stacyBirthday = calendar.date(byAdding: .day, value: -84, to: today)
@@ -67,6 +68,9 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
                 birthWeightOz: 8
             )
         ]
+        #else
+        return []
+        #endif
     }
 
     // MARK: - Singleton

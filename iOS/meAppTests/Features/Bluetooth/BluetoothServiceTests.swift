@@ -294,6 +294,7 @@ struct BluetoothServiceTests {
             accountService: account ?? MockAccountService(),
             scaleService: scale ?? MockScaleService(),
             entryService: entry ?? MockEntryService(),
+            babyService: MockBabyService(),
             logger: logger ?? MockLoggerService(),
             discoveryManager: discovery ?? MockBLEDiscoveryManager(),
             notificationService: notification ?? MockNotificationHelperService()

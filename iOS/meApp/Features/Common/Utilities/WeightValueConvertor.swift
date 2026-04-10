@@ -28,13 +28,11 @@ struct WeightValueConvertor {
     ///   - weightless: Optional weightless settings to apply
     ///   - isMetric: Whether to use metric units (from AppStatus)
     /// - Returns: Formatted weight string with optional + symbol
-    static func formatWeight(_ value: Double,
-// swiftlint:disable:next vertical_parameter_alignment
-                           showSymbol: Bool = false,
-// swiftlint:disable:next vertical_parameter_alignment
-                           weightUnit: WeightUnit = .kg,
-// swiftlint:disable:next vertical_parameter_alignment
-                           weightless: WeightlessSettings? = nil
+    static func formatWeight(
+        _ value: Double,
+        showSymbol: Bool = false,
+        weightUnit: WeightUnit = .kg,
+        weightless: WeightlessSettings? = nil
     ) -> String {
 
         var weight: Double

@@ -12,6 +12,8 @@ struct BPHistoryEntryItem: View {
     let entry: BPHistoryEntry
     let isExpanded: Bool
     let onTap: () -> Void
+    let onDelete: () -> Void
+    var openItemID: Binding<UUID?>?
 
     private var pressureText: String {
         "\(entry.systolic)/\(entry.diastolic)"
@@ -73,6 +75,24 @@ struct BPHistoryEntryItem: View {
             .padding(.horizontal, .spacingSM)
             .contentShape(Rectangle())
             .background(isExpanded ? theme.actionSecondary : Color.clear)
+            .swipeableActions(
+                buttons: [
+                    SwipeButton(
+                        tint: theme.textError,
+                        action: { onDelete() },
+                        label: {
+                            AnyView(
+                                Text(CommonStrings.delete.uppercased())
+                                    .fontOpenSans(.button1)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(theme.textInverse)
+                            )
+                        }
+                    )
+                ],
+                itemID: entry.id,
+                openItemID: openItemID
+            )
 
             Divider()
                 .foregroundColor(theme.actionPrimary)

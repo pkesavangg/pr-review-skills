@@ -35,6 +35,7 @@ struct BpmDomainModelTests {
 
     @Test("AHA display strings expose the expected labels and ranges")
     func ahaDisplayStrings() {
+        // swiftlint:disable:next large_tuple
         let cases: [(value: AhaPressureClass, label: String, systolic: String, diastolic: String)] = [
             (.normal, BpmDashboardStrings.ahaNormal, BpmDashboardStrings.systolicNormal, BpmDashboardStrings.diastolicNormal),
             (.elevated, BpmDashboardStrings.ahaElevated, BpmDashboardStrings.systolicElevated, BpmDashboardStrings.diastolicElevated),
@@ -129,6 +130,7 @@ private func assertColor(
 }
 
 @MainActor
+// swiftlint:disable:next large_tuple
 private func rgbaComponents(for color: UIColor) -> (red: CGFloat, green: CGFloat, blue: CGFloat, alpha: CGFloat) {
     let resolved = color.resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))
     var red: CGFloat = 0

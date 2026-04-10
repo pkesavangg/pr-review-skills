@@ -40,6 +40,7 @@ struct A3BpmPairedView: View {
                     .padding(.vertical, .spacingXL)
             }
             .padding(.top, .spacingLG)
+            .padding(.horizontal, .spacingSM)
         }
     }
 }

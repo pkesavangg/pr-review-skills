@@ -46,4 +46,7 @@ enum FocusField: Hashable {
     case babyBirthLength
     case babyBirthWeight
     case babyBirthWeightOz
+    case babyKg
+    case babyLb
+    case babyCm
 }

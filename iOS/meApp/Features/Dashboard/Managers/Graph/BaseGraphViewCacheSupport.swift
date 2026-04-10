@@ -6,6 +6,8 @@ struct BaseGraphViewCacheUpdate {
     let chartPoints: [GraphSeries]
     let groupedPoints: [String: [GraphSeries]]
     let plottedPoints: [String: [PlottedGraphSeries]]
+    let orderedSeriesNames: [String]
+    let allPlottedPoints: [PlottedGraphSeries]
 }
 
 struct BaseGraphViewCacheSnapshot {
@@ -28,22 +30,40 @@ enum BaseGraphViewCacheSupport {
 
         guard newHash != previousHash || isCacheEmpty else { return nil }
 
-        let groupedPoints = Dictionary(grouping: newData, by: \.series)
-            .mapValues { seriesPoints in
-                seriesPoints.sorted { $0.date < $1.date }
-            }
+        var groupedPoints: [String: [GraphSeries]] = [:]
+        groupedPoints.reserveCapacity(newData.count)
+        for point in newData {
+            groupedPoints[point.series, default: []].append(point)
+        }
+        for key in groupedPoints.keys {
+            groupedPoints[key]?.sort { $0.date < $1.date }
+        }
 
-        let plottedPoints = groupedPoints.mapValues { points in
-            points.map { point in
+        let orderedSeriesNames = groupedPoints.keys.sorted { lhs, rhs in
+            seriesRenderPriority(lhs) < seriesRenderPriority(rhs)
+        }
+
+        var plottedPoints: [String: [PlottedGraphSeries]] = [:]
+        plottedPoints.reserveCapacity(groupedPoints.count)
+        var allPlottedPoints: [PlottedGraphSeries] = []
+        allPlottedPoints.reserveCapacity(newData.count)
+
+        for seriesName in orderedSeriesNames {
+            guard let points = groupedPoints[seriesName] else { continue }
+            let plottedSeries = points.map { point in
                 PlottedGraphSeries(original: point, xDate: plotXDate(point.date))
             }
+            plottedPoints[seriesName] = plottedSeries
+            allPlottedPoints.append(contentsOf: plottedSeries)
         }
 
         return BaseGraphViewCacheUpdate(
             dataHash: newHash,
             chartPoints: newData,
             groupedPoints: groupedPoints,
-            plottedPoints: plottedPoints
+            plottedPoints: plottedPoints,
+            orderedSeriesNames: orderedSeriesNames,
+            allPlottedPoints: allPlottedPoints
         )
     }
 
@@ -57,9 +77,12 @@ enum BaseGraphViewCacheSupport {
         var visible: [PlottedGraphSeries] = []
         var leftBuffer: [PlottedGraphSeries] = []
         var rightBuffer: [PlottedGraphSeries] = []
+        visible.reserveCapacity(points.count)
+        leftBuffer.reserveCapacity(points.count / 2)
+        rightBuffer.reserveCapacity(points.count / 2)
 
         for point in points {
-            let date = point.original.date
+            let date = point.xDate
             if date >= visibleStart && date <= visibleEnd {
                 visible.append(point)
             } else if date < visibleStart {
@@ -69,11 +92,15 @@ enum BaseGraphViewCacheSupport {
             }
         }
 
-        var result = visible
-        result.append(contentsOf: sampledBufferPoints(from: leftBuffer, keepFirstVisibleNeighbor: false))
-        result.append(contentsOf: sampledBufferPoints(from: rightBuffer, keepFirstVisibleNeighbor: true))
+        let sampledLeft = sampledBufferPoints(from: leftBuffer, keepFirstVisibleNeighbor: false)
+        let sampledRight = sampledBufferPoints(from: rightBuffer, keepFirstVisibleNeighbor: true)
 
-        return result.sorted { $0.original.date < $1.original.date }
+        var result: [PlottedGraphSeries] = []
+        result.reserveCapacity(sampledLeft.count + visible.count + sampledRight.count)
+        result.append(contentsOf: sampledLeft)
+        result.append(contentsOf: visible)
+        result.append(contentsOf: sampledRight)
+        return result
     }
 
     static func precomputedYAxisLabels(
@@ -204,6 +231,7 @@ enum BaseGraphViewCacheSupport {
 
         let step = buffer.count / maxBufferPoints
         var sampled: [PlottedGraphSeries] = []
+        sampled.reserveCapacity(maxBufferPoints + 1)
 
         if keepFirstVisibleNeighbor, let first = buffer.first {
             sampled.append(first)
@@ -221,5 +249,11 @@ enum BaseGraphViewCacheSupport {
         }
 
         return sampled
+    }
+
+    private static func seriesRenderPriority(_ name: String) -> Int {
+        if BabyDashboardChartSupport.isPercentileSeries(name) { return 0 }
+        if name == DashboardStrings.weight || BabyDashboardChartSupport.isHeightSeries(name) { return 1 }
+        return 2
     }
 }
