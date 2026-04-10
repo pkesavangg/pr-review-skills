@@ -54,17 +54,24 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
 
         let babyProfiles = availableItems.compactMap { item -> BabyProfile? in
             guard case .baby(let profile) = item else { return nil }
+            guard !profile.isPendingSelection else { return nil }
             return profile
         }
+        let shouldLoadWeight = availableItems.contains(.myWeight)
+        let shouldLoadBpm = availableItems.contains(.myBloodPressure)
 
         await withTaskGroup(of: String?.self) { group in
-            group.addTask { [entryService] in
-                await entryService.loadDashboardData(entryType: .wg)
-                return "weight"
+            if shouldLoadWeight {
+                group.addTask { [entryService] in
+                    await entryService.loadDashboardData(entryType: .wg)
+                    return "weight"
+                }
             }
-            group.addTask { [entryService] in
-                await entryService.loadDashboardData(entryType: .bpm)
-                return "bpm"
+            if shouldLoadBpm {
+                group.addTask { [entryService] in
+                    await entryService.loadDashboardData(entryType: .bpm)
+                    return "bpm"
+                }
             }
 
             for profile in babyProfiles {
@@ -90,6 +97,10 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
             case .myBloodPressure:
                 hasher.combine("bpm")
             case .baby(let profile):
+                if profile.isPendingSelection {
+                    hasher.combine("baby-pending")
+                    break
+                }
                 hasher.combine("baby")
                 hasher.combine(profile.id)
             }
@@ -101,21 +112,14 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
     func snapshotItems(from availableItems: [ProductSelection]) -> [ProductSelection] {
         var items: [ProductSelection] = []
         var latestBaby: ProductSelection?
-        var hasBpmSnapshot = false
 
         for item in availableItems {
-            if case .baby = item {
+            if case .baby(let profile) = item {
+                guard !profile.isPendingSelection else { continue }
                 latestBaby = item
             } else {
                 items.append(item)
-                if case .myBloodPressure = item {
-                    hasBpmSnapshot = true
-                }
             }
-        }
-
-        if !hasBpmSnapshot && shouldShowBpmSnapshot {
-            items.append(.myBloodPressure)
         }
 
         if let baby = latestBaby {
@@ -125,12 +129,24 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
     }
 
     func babySummaries(for babyProfile: BabyProfile) -> [BathScaleWeightSummary] {
+        if babyProfile.isPendingSelection {
+            return []
+        }
         // Use real baby data from EntryService if available, otherwise fall back to dummy data
         let real = entryService.babyDailySummariesByProfile[babyProfile.id]
             ?? babyDailySummaries[babyProfile.id]
             ?? []
         return real.isEmpty
-            ? BabyDashboardChartSupport.dummyDailySummaries(for: babyProfile)
+            ? BabyDashboardChartSupport.dummyDailySummaries(
+                for: babyProfile,
+                endDate: {
+                    let calendar = Calendar.current
+                    let today = calendar.startOfDay(for: Date())
+                    let weekday = calendar.component(.weekday, from: today)
+                    let daysUntilSunday = (8 - weekday) % 7
+                    return calendar.date(byAdding: .day, value: daysUntilSunday, to: today) ?? today
+                }()
+            )
             : real
     }
 
@@ -143,10 +159,6 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
 
     func isSnapshotReady(_ item: ProductSelection) -> Bool {
         readySnapshotIDs.contains(snapshotID(for: item))
-    }
-
-    private var shouldShowBpmSnapshot: Bool {
-        !bpmDailySummaries.isEmpty
     }
 
     private func snapshotID(for item: ProductSelection) -> String {

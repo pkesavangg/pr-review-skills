@@ -93,6 +93,10 @@ final class UITestAccountService: AccountServiceProtocol {
         throw UITestAccountServiceError.unsupported("updateBodyComp")
     }
 
+    func updateProductTypes(_ productTypes: [String]) async throws -> Account {
+        throw UITestAccountServiceError.unsupported("updateProductTypes")
+    }
+
     func updateTokens(_ tokens: Tokens, _ accountId: String?) async throws {
         throw UITestAccountServiceError.unsupported("updateTokens")
     }

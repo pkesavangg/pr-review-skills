@@ -170,11 +170,10 @@ final class LoginStore: ObservableObject {
                 password: loginForm.password.value
             )
             logger.log(level: .success, tag: logTag, message: "Login flow succeeded. accountSwitching=\(isFromAccountSwitching)")
-            // If the login is from account switching, dismiss the login screen
-            if isFromAccountSwitching {
+            if let onLoginSuccess {
+                onLoginSuccess()
+            } else if isFromAccountSwitching {
                 dismissAction?()
-            } else {
-                onLoginSuccess?()
             }
         } catch {
             logger.log(
