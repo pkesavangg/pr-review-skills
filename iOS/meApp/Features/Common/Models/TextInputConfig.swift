@@ -33,4 +33,6 @@ struct TextInputConfig {
     /// Number of digits to place after the decimal point in decimal mode.
     /// Defaults to `1`. Set to `3` for baby kg/lb fields to match Baby App formatting.
     var decimalPlaces: Int = 1
+    /// Optional trailing label displayed after the input text (e.g. "(cm)", "(kg)").
+    var trailingLabel: String?
 }

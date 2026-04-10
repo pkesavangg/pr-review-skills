@@ -13,12 +13,15 @@ import SwiftData
 final class BabyService: ObservableObject, BabyServiceProtocol {
     static let shared = BabyService()
 
+    @Injector private var accountService: AccountServiceProtocol
+
     @Published var babies: [Baby] = []
 
     var babiesPublisher: Published<[Baby]>.Publisher { $babies }
     var currentBabies: [Baby] { babies }
 
     private let context = PersistenceController.shared.context
+    private let tag = "BabyService"
 
     private init() {}
 
@@ -46,6 +49,7 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
         context.insert(baby)
         try context.save()
         try await loadBabies(for: accountId)
+        appendBabyProductTypeIfNeeded()
         return baby
     }
 
@@ -80,6 +84,7 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
         context.delete(baby)
         try context.save()
         try await loadBabies(for: accountId)
+        removeBabyProductTypeIfLastDeleted()
     }
 
     func loadBabies(for accountId: String) async throws {
@@ -91,5 +96,32 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
             sortBy: [SortDescriptor(\.name)]
         )
         babies = try context.fetch(descriptor)
+    }
+
+    // MARK: - ProductTypes Sync
+
+    /// Appends "baby" to the active account's productTypes if not already present.
+    private func appendBabyProductTypeIfNeeded() {
+        guard let account = accountService.activeAccount,
+              !account.productTypes.contains("baby") else { return }
+        account.productTypes.append("baby")
+        LoggerService.shared.log(
+            level: .info,
+            tag: tag,
+            message: "Appended baby to productTypes for accountId=\(account.accountId)"
+        )
+    }
+
+    /// Removes "baby" from the active account's productTypes when no babies remain.
+    private func removeBabyProductTypeIfLastDeleted() {
+        guard let account = accountService.activeAccount,
+              babies.isEmpty,
+              account.productTypes.contains("baby") else { return }
+        account.productTypes.removeAll { $0 == "baby" }
+        LoggerService.shared.log(
+            level: .info,
+            tag: tag,
+            message: "Removed baby from productTypes for accountId=\(account.accountId)"
+        )
     }
 }

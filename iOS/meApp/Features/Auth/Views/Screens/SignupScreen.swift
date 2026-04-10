@@ -14,6 +14,7 @@ struct SignupScreen: View {
     @EnvironmentObject var router: Router<AuthRoute>
     var commonLang = CommonStrings.self
     var isFromAccountSwitching: Bool = false
+    var onAccountSwitchingSignupSuccess: (() -> Void)?
     private var stepViews: [AnyView] {
         signupStore.steps.map { step in
             switch step {
@@ -100,8 +101,13 @@ struct SignupScreen: View {
             signupStore.isFromAccountSwitching = isFromAccountSwitching
             if isFromAccountSwitching {
                 signupStore.dismissAction = dismiss
+                signupStore.onSignupSuccess = onAccountSwitchingSignupSuccess ?? {
+                    dismiss()
+                }
             } else {
-                signupStore.onSignupSuccess = { router.navigateBack() }
+                // Successful auth promotes the root ContentView from landing to dashboard.
+                // Avoid relying on auth-stack pops so all signup success paths land on dashboard.
+                signupStore.onSignupSuccess = {}
             }
         }
         .navigationBarBackButtonHidden(true)

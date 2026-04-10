@@ -85,6 +85,10 @@ protocol AccountServiceProtocol {
     /// - Returns: The updated Account object.
     func updateBodyComp(_ bodyComp: BodyComp) async throws -> Account
 
+    /// Updates the locally persisted productTypes for the active account.
+    /// Used when signup or device/baby flows establish the authoritative product list.
+    func updateProductTypes(_ productTypes: [String]) async throws -> Account
+
     /// Updates the user's authentication tokens.
     /// - Parameter tokens: The updated Tokens object.
     /// - Parameter accountId: The ID of the account to update. If nil, updates the currently active account.

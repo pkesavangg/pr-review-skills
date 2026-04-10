@@ -506,6 +506,24 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         }
     }
 
+    @discardableResult
+    func updateProductTypes(_ productTypes: [String]) async throws -> Account {
+        guard let accountId = activeAccount?.accountId,
+              let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
+            throw AccountError.noActiveAccount
+        }
+
+        localAccount.productTypes = productTypes
+        try await updateAccountClearingTokens(localAccount)
+        try await updatePublishedState(forceRefresh: true)
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Updated productTypes=\(productTypes) for accountId=\(accountId)"
+        )
+        return localAccount
+    }
+
     /// Updates the tokens for the active account or a specific account by ID.
     func updateTokens(_ tokens: Tokens, _ accountId: String? = nil) async throws {
         // Update tokens for the active account if accountId is nil
