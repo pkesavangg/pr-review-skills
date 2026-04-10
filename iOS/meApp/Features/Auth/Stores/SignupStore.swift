@@ -423,6 +423,7 @@ final class SignupStore: ObservableObject {
                 profile: profile
             )
             persistSelectedSignupDeviceType(for: account.accountId)
+            setInitialProductTypes(on: account)
             // Create the goal if it's not skipped
             if let goal = goal {
                 logger.log(
@@ -509,6 +510,23 @@ final class SignupStore: ObservableObject {
                 goalType: derivedType
             )
         }
+    }
+
+    private func setInitialProductTypes(on account: Account) {
+        guard let selectedDeviceType else { return }
+        switch selectedDeviceType {
+        case .weightScale:
+            account.productTypes = ["myWeight"]
+        case .bpm:
+            account.productTypes = ["myBloodPressure"]
+        case .babyScale:
+            account.productTypes = ["baby"]
+        }
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Set initial productTypes=\(account.productTypes) for accountId=\(account.accountId)"
+        )
     }
 
     private func persistSelectedSignupDeviceType(for accountId: String) {

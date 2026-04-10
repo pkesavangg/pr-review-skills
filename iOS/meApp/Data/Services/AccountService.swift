@@ -48,10 +48,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         
         $activeAccount
             .dropFirst()
-            .sink { data in
+            .sink { [weak self] data in
                 if data == nil {
                     ServiceRegistry.shared.deregisterSessionServices()
                 } else {
+                    if let data { self?.migrationService.migrateProductTypesIfNeeded(for: data) }
                     ServiceRegistry.shared.registerSessionServices()
                     Theme.shared.setActiveAccount(data?.accountId)
                 }
