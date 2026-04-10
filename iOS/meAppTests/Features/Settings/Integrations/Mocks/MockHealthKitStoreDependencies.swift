@@ -131,6 +131,7 @@ final class MockHealthKitStoreEntryService: EntryServiceProtocol {
     func loadBabyDashboardData(babyId: String) async {}
     func clearAllData() async {}
     func clearLastSyncTimestamp() async throws {}
+    func removeAccountFromDevice(accountId: String) async throws {}
     func saveNewEntry(_ entry: Entry) async throws {}
     func saveNewEntries(_ entries: [Entry]) async throws {}
     func deleteEntry(_ entry: Entry) async throws {}
@@ -177,6 +178,7 @@ final class MockHealthKitStoreEntryService: EntryServiceProtocol {
     func getStreak(entryType: EntryType) async throws -> Streak { Streak(current: 0, max: 0) }
     func exportCSV() async throws {}
     func createBpmEntry(_ dto: BpmOperationDTO) async throws {}
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {}
     func fetchBpmEntries() async throws -> [BpmOperationDTO] { [] }
     func deleteBpmEntry(entryTimestamp: String) async throws {}
     func exportBpmCSV() async throws {}

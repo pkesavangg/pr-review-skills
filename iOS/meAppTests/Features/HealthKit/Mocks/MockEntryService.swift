@@ -11,6 +11,7 @@ final class MockEntryService: EntryServiceProtocol {
     private(set) var deletedEntries: [Entry] = []
     var getMonthsAllResult: Result<[HistoryMonth], Error> = .success([])
     var getMonthDetailResult: Result<[Entry], Error> = .success([])
+    var getAllEntriesResult: Result<[Entry], Error> = .success([])
     var exportCSVResult: Result<Void, Error> = .success(())
     var getLatestEntryResult: Result<Entry?, Error> = .success(nil)
     var getEntryCountResult: Result<Int, Error> = .success(0)
@@ -19,6 +20,8 @@ final class MockEntryService: EntryServiceProtocol {
     private(set) var getMonthDetailCalls = 0
     private(set) var getMonthDetailLastMonth: String?
     private(set) var syncAllEntriesWithRemoteCalls = 0
+    private(set) var loadDashboardDataCalls = 0
+    private(set) var getAllEntriesCalls = 0
     private(set) var exportCSVCalls = 0
     private(set) var getLatestEntryCalls = 0
     private(set) var clearAllDataCalls = 0
@@ -31,7 +34,9 @@ final class MockEntryService: EntryServiceProtocol {
 
     func syncAllEntriesWithRemote() async { syncAllEntriesWithRemoteCalls += 1 }
     func migrateFromSQLiteIfNeeded() async {}
-    func loadDashboardData(entryType: EntryType) async {}
+    func loadDashboardData(entryType: EntryType) async {
+        loadDashboardDataCalls += 1
+    }
     func loadBabyDashboardData(babyId: String) async {
         loadBabyDashboardDataCalls += 1
         lastLoadedBabyDashboardId = babyId
@@ -55,7 +60,10 @@ final class MockEntryService: EntryServiceProtocol {
         deletedEntries.append(entry)
         entryDeleted.send(EntryNotification(from: entry))
     }
-    func getAllEntries() async throws -> [Entry] { [] }
+    func getAllEntries() async throws -> [Entry] {
+        getAllEntriesCalls += 1
+        return try getAllEntriesResult.get()
+    }
     func getAllEntriesAsDTO() async throws -> [BathScaleOperationDTO] { [] }
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool { false }
     func getEntryCount() async throws -> Int {
@@ -102,6 +110,7 @@ final class MockEntryService: EntryServiceProtocol {
         _ = try exportCSVResult.get()
     }
 
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {}
     private(set) var createBpmEntryCalls = 0
     private(set) var fetchBpmEntriesCalls = 0
     private(set) var deleteBpmEntryCalls = 0

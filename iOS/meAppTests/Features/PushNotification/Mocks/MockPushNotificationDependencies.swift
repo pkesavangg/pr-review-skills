@@ -112,6 +112,7 @@ final class MockPushEntryService: EntryServiceProtocol {
     func getStreak(entryType: EntryType) async throws -> Streak { Streak(current: 0, max: 0) }
     func exportCSV() async throws {}
     func createBpmEntry(_ dto: BpmOperationDTO) async throws {}
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {}
     func fetchBpmEntries() async throws -> [BpmOperationDTO] { [] }
     func deleteBpmEntry(entryTimestamp: String) async throws {}
     func exportBpmCSV() async throws {}
@@ -222,10 +223,6 @@ final class MockPushScaleService: ScaleServiceProtocol {
         skipDuplicateCheck: Bool
     ) async throws -> Device {
         throw UnexpectedCallError.methodCalled("createA6Scale")
-    }
-
-    func createScaleInLocal(_ device: Device) async throws -> Device {
-        device
     }
 
     func updateAllScalesStatus(_ scales: [Device]?) async throws {}
