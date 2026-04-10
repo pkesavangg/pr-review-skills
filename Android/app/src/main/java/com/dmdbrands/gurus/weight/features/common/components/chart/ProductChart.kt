@@ -92,10 +92,6 @@ fun rememberProductChart(
       return@rememberScrollAwareRangeProvider (0.0..1.0) to emptyList()
     }
 
-    val relativeMin = GraphUtil.getRelativeStart(segment, visibleXRange.start.toLong())
-    val relativeMax = GraphUtil.getRelativeEnd(segment, visibleXRange.endInclusive.toLong())
-    GraphUtil.clipRangeForGraph(segment, relativeMin, relativeMax)
-
     val axisMeta = generateNiceScale(
       minValue = yValues.min(),
       maxValue = yValues.max(),
