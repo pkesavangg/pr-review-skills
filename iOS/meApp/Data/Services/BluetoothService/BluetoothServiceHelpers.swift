@@ -133,6 +133,7 @@ extension BluetoothService {
             deviceName: deviceDetails.deviceName,
             broadcastId: isA3Device ? Int64(deviceDetails.broadcastId ?? "0") : broadcastId,
             broadcastIdString: deviceDetails.broadcastIdString,
+            userNumber: deviceDetails.userNumber.map { String($0) },
             isConnected: false
         )
     }

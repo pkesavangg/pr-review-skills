@@ -176,9 +176,10 @@ final class BpmDeviceSettingsStore: ObservableObject {
                 deletionTask.cancel()
                 _ = await bluetoothService.disconnectDevice(broadcastId: broadcastId)
             }
-            try await scaleService.deleteDevice(deviceId, showToast: true)
+            // Use deleteSingleDeviceEntry to remove only THIS specific user's entry,
+            // preserving other users' entries on the same physical BPM monitor.
+            try await scaleService.deleteSingleDeviceEntry(deviceId)
             bluetoothService.isSetupInProgress = false
-            await scaleService.pushLocalChangesToServer()
             await scaleService.syncAllScalesWithRemote()
             notificationService.showToast(ToastModel(title: ToastStrings.deleted, message: ToastStrings.scaleDeleted))
             isSuccess = true

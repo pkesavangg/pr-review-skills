@@ -302,6 +302,7 @@ When the user describes a task in natural language, match it to the appropriate 
 | "code standards review", "check conventions", "architecture review" | `.claude/skills/review-code-standards.md` |
 | "UI review", "check theme usage", "design standards review" | `.claude/skills/review-ui-standards.md` |
 | "raise a PR", "open a PR" | `.claude/skills/raise-pr.md` |
+| "fix PR comments", "address review feedback", "apply reviewer suggestions", "resolve PR comments", "act on code review" | `.claude/skills/fix-pr-comments.md` |
 | "write a PR description", "draft a PR description", "describe this PR", "what should I put in the PR description" | `.claude/skills/pr-description.md` |
 | "log time", "log work" | `.claude/skills/log-work.md` |
 | "create a branch", "start working on MA-XXXX" | `.claude/skills/create-branch.md` |

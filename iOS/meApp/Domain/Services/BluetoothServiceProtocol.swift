@@ -67,9 +67,11 @@ protocol BluetoothServiceProtocol {
     func scanForBpm()
 
     /// Connects to a BPM device by its broadcast ID.
-    /// - Parameter broadcastId: The broadcast ID of the BPM device to connect.
-    /// - Returns: Result<Void, BluetoothServiceError>
-    func connectBpm(broadcastId: String) async -> Result<Void, BluetoothServiceError>
+    /// - Parameters:
+    ///   - broadcastId: The broadcast ID of the BPM device to connect.
+    ///   - userNumber: The user slot selected in the app (1 or 2). Used by the SDK to detect user mismatch.
+    /// - Returns: Result<UserCreationResponse, BluetoothServiceError>
+    func connectBpm(broadcastId: String, userNumber: Int) async -> Result<UserCreationResponse, BluetoothServiceError>
 
     /// Requests the latest BPM reading from the connected device.
     /// The reading is delivered via `newBpmReadingReceivedPublisher`.

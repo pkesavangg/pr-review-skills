@@ -930,13 +930,11 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
     // --- Error state setters ---
 
     private fun setGatheringNetworkFailed() {
-        if (isScaleConnected) {
-            handleIntent(
-                BtWifiScaleSetupIntent.SetStepConnectionState(
-                    BtWifiSetupStep.GATHERING_NETWORK, ConnectionState.Failed.Error,
-                ),
-            )
-        }
+        handleIntent(
+            BtWifiScaleSetupIntent.SetStepConnectionState(
+                BtWifiSetupStep.GATHERING_NETWORK, ConnectionState.Failed.Error,
+            ),
+        )
     }
 
     private fun setMeasurementFailed() {

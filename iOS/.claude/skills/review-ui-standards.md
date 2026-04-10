@@ -18,6 +18,8 @@ From CHANGED_FILES, filter to SwiftUI view files:
 
 Skip services, repositories, stores (unless they contain UI color definitions), tests, and pure data models.
 
+**Additionally, always scan the full CHANGED_FILES list** for any file (regardless of folder) that contains `Color(red:`, `Color(hue:`, `Color(white:`, `UIColor(red:`, or `.init(red:green:blue:` in the diff `+` lines. These hardcoded color constructors must be flagged even in utility files, helpers, or domain models outside `Views/`.
+
 ---
 
 ### 1 — Read Theme Tokens

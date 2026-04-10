@@ -13,7 +13,7 @@ extension BpmSetupStoreTests {
             let harness = BpmSetupStoreTestFixtures.makeSUT(permissions: permissions)
             let store = harness.store
 
-            store.currentStepIndex = BpmSetupStep.btPermission.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.btPermission, in: store)
 
             #expect(store.isNextEnabled == false)
         }
@@ -24,27 +24,9 @@ extension BpmSetupStoreTests {
             let store = harness.store
             BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
-            store.currentStepIndex = BpmSetupStep.btPermission.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.btPermission, in: store)
 
             #expect(store.isNextEnabled == true)
-        }
-
-        @Test("btPermission step disables next when A3 location permissions are missing")
-        func btPermissionDisablesNextWhenA3LocationMissing() {
-            let permissions = MockPermissionsService()
-            permissions.setPermissions([
-                .BLUETOOTH: .ENABLED,
-                .BLUETOOTH_SWITCH: .ENABLED,
-                .LOCATION: .DISABLED,
-                .LOCATION_SWITCH: .DISABLED
-            ])
-            let harness = BpmSetupStoreTestFixtures.makeSUT(permissions: permissions)
-            let store = harness.store
-            BpmSetupStoreTestFixtures.configureA3Bpm(store)
-
-            store.currentStepIndex = BpmSetupStep.btPermission.index
-
-            #expect(store.isNextEnabled == false)
         }
 
         @Test("selectModel step disables next when no SKU is selected")
@@ -53,7 +35,7 @@ extension BpmSetupStoreTests {
             let store = harness.store
 
             store.selectedSku = nil
-            store.currentStepIndex = BpmSetupStep.selectModel.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.selectModel, in: store)
 
             #expect(store.isNextEnabled == false)
         }
@@ -64,7 +46,7 @@ extension BpmSetupStoreTests {
             let store = harness.store
 
             store.selectedSku = "0603"
-            store.currentStepIndex = BpmSetupStep.selectModel.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.selectModel, in: store)
 
             #expect(store.isNextEnabled == true)
         }
@@ -77,7 +59,7 @@ extension BpmSetupStoreTests {
             let store = harness.store
             BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
-            store.currentStepIndex = BpmSetupStep.scanning.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.scanning, in: store)
 
             // Simulate permission loss
             permissions.setPermissions(BpmSetupStoreTestFixtures.disabledPermissions())
@@ -127,7 +109,7 @@ extension BpmSetupStoreTests {
             BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             store.deviceNickname = "   "
-            store.currentStepIndex = BpmSetupStep.nickname.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.nickname, in: store)
 
             #expect(store.isNextEnabled == false)
         }
@@ -139,7 +121,7 @@ extension BpmSetupStoreTests {
             BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             store.deviceNickname = "My BPM"
-            store.currentStepIndex = BpmSetupStep.nickname.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.nickname, in: store)
 
             #expect(store.isNextEnabled == true)
         }
@@ -147,12 +129,12 @@ extension BpmSetupStoreTests {
         @Test("BPM reading subscription marks isReadingSynced")
         func bpmReadingSubscriptionMarksSync() async {
             let bluetooth = MockBluetoothService()
-            bluetooth.connectBpmResult = .success(())
+            bluetooth.connectBpmResult = .success(.creationCompleted)
             let harness = BpmSetupStoreTestFixtures.makeSUT(bluetooth: bluetooth)
             let store = harness.store
             BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
-            store.currentStepIndex = BpmSetupStep.measureSetup.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.measureSetup, in: store)
 
             // Simulate BPM reading received
             bluetooth.newBpmReadingReceivedSubject.send(

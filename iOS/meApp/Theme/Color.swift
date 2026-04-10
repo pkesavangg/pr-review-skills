@@ -60,6 +60,7 @@ enum AppColors {
         // Brand colors
         let brandMeAppPrimary: Color
         let brandWgPrimary: Color
+        let babyPrimary: Color
         
         // Icon colors
         let statusSuccess: Color

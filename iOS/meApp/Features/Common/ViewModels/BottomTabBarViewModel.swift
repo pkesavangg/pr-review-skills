@@ -56,7 +56,7 @@ class BottomTabBarViewModel: ObservableObject {
     @Injector private var permissionsService: PermissionsServiceProtocol
     @Injector private var pushNotificationService: PushNotificationServiceProtocol
     @Injector private var integrationService: IntegrationServiceProtocol
-    
+
     // MARK: - Permission Disabled Alert Tracking
 
     /// Indicates whether the *Permission Disabled* alert has already been shown in the current app session.
@@ -107,9 +107,11 @@ class BottomTabBarViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Subscribe to new entry events (uses EntryNotification for safe cross-actor data passing)
+        // Subscribe to new entry events (uses EntryNotification for safe cross-actor data passing).
+        // Debounce to coalesce rapid emissions (e.g. multiple buffered entries syncing after
+        // Bluetooth reconnect) into a single toast instead of one per entry.
         bluetoothService.newEntryReceivedPublisher
-            .receive(on: DispatchQueue.main)
+            .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in
                 guard let self else { return }
                 if !self.bluetoothService.isSetupInProgress {
@@ -197,12 +199,12 @@ class BottomTabBarViewModel: ObservableObject {
         goalAlertService.isOnDashboardTab = { [weak self] in
             return self?.selectedTab == .dash
         }
-        
+
         // Check for pending goal alerts when entering bottom tab bar context
         Task { [weak self] in
             await self?.goalAlertService.checkPendingGoalAlerts()
         }
-        
+
         // Connect BluetoothService scale setup navigation callback
         bluetoothService.onOpenScaleSetup = { [weak self] scale, event, isReconnect, isDuplicated in
             self?.openScaleSetup(scale: scale, event: event, isReconnect: isReconnect, isDuplicated: isDuplicated)
@@ -429,7 +431,7 @@ class BottomTabBarViewModel: ObservableObject {
         bluetoothService.isSetupInProgress = true
 
         switch setupType {
-        case .lcbt, .btWifiR4:
+        case .lcbt, .btWifiR4, .babyScale, .bpm:
             setupPayload = ScaleDiscoverSheetInfo(sku: sku, scale: scale, event: event, isReconnect: isReconnect, isDuplicated: isDuplicated)
         default:
             // Handle other setup types if needed
@@ -636,7 +638,7 @@ class BottomTabBarViewModel: ObservableObject {
 
     // MARK: - Scale Discovery Handling
 
-    private func shouldShowDiscoveredScale(for event: DeviceDiscoveryEvent) -> Bool {
+    func shouldShowDiscoveredScale(for event: DeviceDiscoveryEvent) -> Bool {
         /// Checks if the scale discovery event should trigger the "Scale Discovered" sheet.
         /// Prevents showing scale discovery when Apple Health integration sheet is already presented
         /// to avoid dismissing the Apple Health sheet unexpectedly.
@@ -648,7 +650,9 @@ class BottomTabBarViewModel: ObservableObject {
               discoveredScale == nil,
               !isAppleHealthSheetPresented, // Prevent scale discovery when Apple Health sheet is shown
               selectedTab != .appsync, // Prevent scale discovery when AppSync camera is active
-              event.deviceInfo.setupType == .lcbt || event.deviceInfo.setupType == .btWifiR4,
+              event.deviceInfo.setupType == .lcbt || event.deviceInfo.setupType == .btWifiR4
+              || (event.deviceInfo.setupType == .bpm && event.protocolType != .A3)
+              || event.deviceInfo.setupType == .babyScale,
               !event.deviceInfo.sku.isEmpty
         else {
             return false

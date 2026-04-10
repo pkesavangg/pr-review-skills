@@ -11,6 +11,15 @@ struct YAxisScale {
     let average: Double
 }
 
+// MARK: - NiceTicksResult
+
+/// Result structure for niceTicks to avoid large tuples
+struct NiceTicksResult {
+    let ticks: [Double]
+    let step: Double
+    let domain: ClosedRange<Double>
+}
+
 // MARK: - NiceScaleResult
 
 /// Result structure for nice scale calculations to avoid large tuples
@@ -143,17 +152,16 @@ struct YAxisCalculator {
 
     /// Compute evenly spaced, human-friendly ticks using classic 1–2–5 × 10^n steps.
     /// Returns ticks, step, and the snapped domain [niceMin, niceMax].
-    internal static func niceTicks(
+    internal static func niceTicks( // Method cannot be declared internal because its result uses a private type
         min: Double,
         max: Double,
         desiredTickCount: Int
-// swiftlint:disable:next large_tuple
-    ) -> (ticks: [Double], step: Double, domain: ClosedRange<Double>) {
+    ) -> NiceTicksResult {
         let range = max - min
         guard range.isFinite, range > 0, desiredTickCount > 1 else {
             let lo = Swift.min(min, max)
             let hi = Swift.max(min, max)
-            return (ticks: [lo, hi], step: Swift.max(hi - lo, 1.0), domain: lo...hi)
+            return NiceTicksResult(ticks: [lo, hi], step: Swift.max(hi - lo, 1.0), domain: lo...hi)
         }
 
         let rawInterval = range / Double(desiredTickCount - 1)
@@ -194,7 +202,7 @@ struct YAxisCalculator {
         let deduped = Array(Set(ticks)).sorted()
         let domain = (deduped.first ?? niceMin)...(deduped.last ?? niceMax)
         let actualStep = deduped.count > 1 ? (deduped[1] - deduped[0]) : step
-        return (ticks: deduped, step: actualStep, domain: domain)
+        return NiceTicksResult(ticks: deduped, step: actualStep, domain: domain)
     }
 
     /// Calculate average weight from operations
@@ -401,8 +409,7 @@ struct YAxisCalculator {
     static func buildGoalCentricFallback(goalWeight: Double) -> YAxisScale {
         // Pick a nice step based on goal magnitude (prefer 5 for lbs, 2 for tight ranges)
         let stepCandidates: [Double] = [2, 5, 10]
-// swiftlint:disable:next trailing_closure
-        let step = stepCandidates.first(where: { goalWeight / $0 > 20 }) ?? 5
+        let step = stepCandidates.first { goalWeight / $0 > 20 } ?? 5
 
         // Center around nearest multiple of step
         let nearest = round(goalWeight / step) * step
@@ -432,7 +439,9 @@ struct YAxisCalculator {
         let upperBoundCandidate = max(scale.max, scale.domain.upperBound, scale.ticks.last ?? 0)
         let upper = max(0, upperBoundCandidate)
 
-        let (ticks, step, _) = niceTicks(min: 0, max: upper, desiredTickCount: count)
+        let tickResult = niceTicks(min: 0, max: upper, desiredTickCount: count)
+        let ticks = tickResult.ticks
+        let step = tickResult.step
 
         let minVal: Double = 0
         let maxVal: Double = ticks.last ?? step
@@ -452,8 +461,7 @@ struct YAxisCalculator {
         let magnitude = pow(10.0, floor(log10(max(threshold, AppConstants.Precision.doubleEqualityEpsilon))))
         let normalized = threshold / magnitude
         // Use expanded nice numbers
-// swiftlint:disable:next trailing_closure
-        let nice = niceNumbers.first(where: { $0 >= normalized }) ?? niceNumbers.last ?? 1.0
+        let nice = niceNumbers.first { $0 >= normalized } ?? niceNumbers.last ?? 1.0
         // Ensure minimum step of 1.0 to avoid decimal ticks
         return Swift.max(nice * magnitude, 1.0)
     }

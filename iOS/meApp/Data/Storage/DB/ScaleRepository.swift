@@ -245,9 +245,20 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         }
         logger.log(level: .debug, tag: "ScaleRepository", message: "Captured connection status for \(connectionStatusMap.count) devices")
         
+        // Flush any pending inserts/updates so the context is stable before deleting.
+        // Without this, SwiftData can crash with "This store went missing?" when a
+        // recently-inserted BathScale is still tracked with a temporary identifier
+        // while cascade-deleted devices are saved in the same pass.
+        context.processPendingChanges()
+
         logger.log(level: .debug, tag: "ScaleRepository", message: "Deleting \(syncedDevices.count) synced devices for account \(accountId)")
         for device in syncedDevices {
             logger.log(level: .debug, tag: "ScaleRepository", message: "Deleting synced device: \(device.id), sku: \(device.sku ?? "nil")")
+            // Explicitly delete child relationships before the parent to prevent
+            // SwiftData cascade issues with stale persistent identifiers.
+            if let bathScale = device.bathScale { context.delete(bathScale) }
+            if let r4Pref = device.r4ScalePreference { context.delete(r4Pref) }
+            if let metaData = device.metaData { context.delete(metaData) }
             context.delete(device)
         }
         try context.save()

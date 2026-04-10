@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.data.storage.db.dao
 
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dmdbrands.gurus.weight.data.storage.db.dao.DaoTestFixtures.account
 import com.dmdbrands.gurus.weight.data.storage.db.dao.DaoTestFixtures.bodyScaleEntry
 import com.dmdbrands.gurus.weight.data.storage.db.dao.DaoTestFixtures.bodyScaleMetric
@@ -14,7 +15,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import org.junit.runner.RunWith
-import androidx.test.ext.junit.runners.AndroidJUnit4
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(AndroidJUnit4::class)
@@ -141,7 +141,7 @@ class EntryDaoTest : BaseDaoTest() {
 
         val updated = entry.copy(
             entry = entry.entry.copy(id = entryId),
-            bpmEntry = entry.bpmEntry.copy(id = entryId, systolic = 140, diastolic = 90),
+            bpmEntry = entry.bpmEntry.copy( systolic = 140, diastolic = 90),
         )
         entryDao.update(updated)
 

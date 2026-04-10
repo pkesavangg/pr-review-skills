@@ -140,8 +140,7 @@ struct MyScalesScreen: View {
                             errorMessage: scaleStore.addScaleForm.getError(for: .modelNumber),
                             focusField: .modelNumber,
                             customIcon: AppAssets.helpCircle,
-// swiftlint:disable:next vertical_parameter_alignment_on_call
-                                onCustomIconTap: {
+                            onCustomIconTap: {
                                     focusedField = nil
                                     hideKeyboard()
                                     scaleStore.openHelp()
@@ -230,6 +229,7 @@ struct MyScalesScreen: View {
                                 .interactiveDismissDisabled(true)
                         case .babyScale:
                             BabyScaleSetupScreen(sku: scale.sku)
+                                .interactiveDismissDisabled(true)
                         case .bpm:
                             BpmSetupScreen(sku: scale.sku)
                                 .interactiveDismissDisabled(true)

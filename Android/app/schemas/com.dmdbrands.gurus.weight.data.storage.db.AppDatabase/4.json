@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 4,
-    "identityHash": "bdac60676d7ad6ef4cb316d31c2a8d47",
+    "identityHash": "2fefe4ee5c8d41c68eb65f99619a1bae",
     "entities": [
       {
         "tableName": "account",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `firstName` TEXT NOT NULL, `lastName` TEXT NOT NULL, `dob` TEXT NOT NULL, `email` TEXT NOT NULL, `expiresAt` TEXT, `fcmToken` TEXT, `gender` TEXT NOT NULL, `isActiveAccount` INTEGER NOT NULL, `isLoggedIn` INTEGER NOT NULL, `isExpired` INTEGER NOT NULL, `isSynced` INTEGER NOT NULL, `lastActiveTime` TEXT, `zipcode` TEXT NOT NULL, PRIMARY KEY(`accountId`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `firstName` TEXT NOT NULL, `lastName` TEXT NOT NULL, `dob` TEXT NOT NULL, `email` TEXT NOT NULL, `expiresAt` TEXT, `fcmToken` TEXT, `gender` TEXT NOT NULL, `isActiveAccount` INTEGER NOT NULL, `isLoggedIn` INTEGER NOT NULL, `isExpired` INTEGER NOT NULL, `isSynced` INTEGER NOT NULL, `lastActiveTime` TEXT, `zipcode` TEXT NOT NULL, `activeBabyId` TEXT, PRIMARY KEY(`accountId`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -88,6 +88,11 @@
             "columnName": "zipcode",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "activeBabyId",
+            "columnName": "activeBabyId",
+            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
@@ -1533,7 +1538,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'bdac60676d7ad6ef4cb316d31c2a8d47')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2fefe4ee5c8d41c68eb65f99619a1bae')"
     ]
   }
 }

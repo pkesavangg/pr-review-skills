@@ -12,7 +12,7 @@ data class BabyEntry(
     val babyEntry: BabyEntryEntity,
 ) : Entry() {
 
-    val babyProfileId: String get() = babyEntry.babyProfileId
+    val babyId: String get() = babyEntry.babyId
     val babyWeightDecigrams: Int? get() = babyEntry.babyWeightDecigrams
     val babyLengthMillimeters: Int? get() = babyEntry.babyLengthMillimeters
     val entryNote: String? get() = babyEntry.entryNote

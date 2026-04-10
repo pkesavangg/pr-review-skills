@@ -11,7 +11,6 @@ val babyScaleInitialSteps: ImmutableList<BabyScaleSetupStep> = persistentListOf(
   BabyScaleSetupStep.SCALE_INFO,
   BabyScaleSetupStep.PERMISSIONS,
   BabyScaleSetupStep.WAKEUP,
-  BabyScaleSetupStep.CONNECTING_BLUETOOTH,
   BabyScaleSetupStep.SCALE_NAME,
   BabyScaleSetupStep.PAIRED_SUCCESS,
   BabyScaleSetupStep.BABY_PROFILE_FORM,
@@ -87,6 +86,7 @@ class BabyScaleSetupReducer : ScaleSetupReducer<BabyScaleSetupStep, BabyScaleSet
 
       is BabyScaleSetupIntent.DeleteBabyProfile -> {
         val profiles = state.babyProfiles.toMutableList()
+        if (intent.index !in profiles.indices) return state
         profiles.removeAt(intent.index)
         state.copy(babyProfiles = profiles.toImmutableList())
       }

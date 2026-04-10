@@ -121,7 +121,17 @@ final class BabyScaleSetupStore: ObservableObject {
             case .paired:
                 return AnyView(BabyPairedSuccessView())
             case .babyProfile:
-                return AnyView(BabyProfileFormView())
+                return AnyView(BabyProfileFormView(
+                    form: babyProfileForm,
+                    showDatePicker: Binding(
+                        get: { [weak self] in self?.showBabyDatePicker ?? false },
+                        set: { [weak self] in self?.showBabyDatePicker = $0 }
+                    ),
+                    showSexPicker: Binding(
+                        get: { [weak self] in self?.showBabySexPicker ?? false },
+                        set: { [weak self] in self?.showBabySexPicker = $0 }
+                    )
+                ))
             case .babyAdded:
                 return AnyView(BabyAddedListView())
             }
