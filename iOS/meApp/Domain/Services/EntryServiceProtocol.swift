@@ -123,6 +123,9 @@ protocol EntryServiceProtocol {
 
     /// Creates a new baby entry, persists it locally.
     func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws
+
+    /// Loads baby dashboard data (daily/monthly summaries) for a specific baby profile.
+    func loadBabyDashboardData(babyId: String) async
 }
 
 // MARK: - Default Parameter Values

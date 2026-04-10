@@ -47,33 +47,42 @@ struct BpmMetricsSection: View {
         return nil
     }
 
+    private var isGraphReady: Bool {
+        store.state.graph.isGraphReady
+    }
+
     var body: some View {
         VStack(spacing: .spacingSM) {
-            if let average = threeReadingAverage {
-                ThreeReadingAverageCard(average: average, recentReadings: displayReadings)
-            }
+            if isGraphReady {
+                if let average = threeReadingAverage {
+                    ThreeReadingAverageCard(average: average, recentReadings: displayReadings)
+                }
 
-            if !streakCards.isEmpty {
-                LazyVGrid(columns: streakColumns, spacing: DashboardConstants.UIConstants.gridSpacing) {
-                    ForEach(streakCards) { streak in
-                        StreakCardView(
-                            value: streak.value,
-                            label: streak.label,
-                            icon: streak.icon,
-                            isEditMode: false,
-                            isRemoved: false,
-                            isDropTarget: false,
-                            onToggleRemoval: {},
-                            onDrop: { _, _ in false },
-                            onDropTargetChanged: { _ in },
-                            parentView: .dashboard
-                        )
+                if !streakCards.isEmpty {
+                    LazyVGrid(columns: streakColumns, spacing: DashboardConstants.UIConstants.gridSpacing) {
+                        ForEach(streakCards) { streak in
+                            StreakCardView(
+                                value: streak.value,
+                                label: streak.label,
+                                icon: streak.icon,
+                                isEditMode: false,
+                                isRemoved: false,
+                                isDropTarget: false,
+                                onToggleRemoval: {},
+                                onDrop: { _, _ in false },
+                                onDropTargetChanged: { _ in },
+                                parentView: .dashboard
+                            )
+                        }
                     }
                 }
+            } else {
+                SkeletonBpmMetricsSection()
             }
         }
         .padding(.horizontal, .spacingSM)
         .padding(.vertical, .spacingSM)
+        .animation(.easeInOut(duration: 0.3), value: isGraphReady)
         .task {
             await loadRecentReadings()
             await loadBpmStreaks()

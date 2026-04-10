@@ -28,13 +28,28 @@ struct WeightSnapshotCard: View {
     @State private var cachedChartSummaries: [BathScaleWeightSummary] = []
     @State private var cachedRecentWeekSummaries: [BathScaleWeightSummary] = []
     @State private var cachedWeekAverage: String = "--"
+    @State private var cachedWeightUnit: WeightUnit = .lb
+    @State private var cachedGoalWeightDisplay: Double?
+    @State private var hasCacheLoaded = false
 
     private var unitText: String {
-        viewModel.unitText
+        cachedWeightUnit.rawValue
     }
 
     var body: some View {
         Button(action: onTap) {
+            content
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+        .task(id: summariesTaskID) {
+            await recomputeCache()
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if hasCacheLoaded {
             VStack(alignment: .leading, spacing: .zero) {
                 headlineSection
                     .padding(.horizontal, .spacingSM)
@@ -52,11 +67,8 @@ struct WeightSnapshotCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(theme.backgroundPrimary)
             .cornerRadius(.radiusSM)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(accessibilityLabel)
-        .task(id: summariesTaskID) {
-            await recomputeCache()
+        } else {
+            SnapshotSkeletonCardView(style: .weight)
         }
     }
 
@@ -72,24 +84,36 @@ struct WeightSnapshotCard: View {
 
     @MainActor
     private func recomputeCache() async {
-        let window = DashboardSnapshotChartWindow.make(summaries: summaries) { $0.weight > 0 }
-        let chart = window?.chartSummaries ?? []
-        let recent = window?.visibleSummaries ?? []
+        // Capture inputs on the main actor, then compute off-thread.
+        let inputSummaries = summaries
+        let weightUnit = viewModel.activeAccount?.weightSettings?.weightUnit ?? .lb
+        let goalWeightStored = viewModel.activeAccount?.goalSettings?.goalWeight
 
-        let weights = recent.map(\.weight).filter { $0 > 0 }
-        let avg: String
-        if weights.isEmpty {
-            avg = "--"
-        } else {
-            let avgStored = Int((weights.reduce(0, +) / Double(weights.count)).rounded())
-            let avgDisplay = viewModel.convertStoredWeightToDisplay(avgStored)
-            avg = String(format: "%.1f", avgDisplay)
-        }
+        let result = await Task.detached(priority: .utility) {
+            let window = DashboardSnapshotChartWindow.make(summaries: inputSummaries) { $0.weight > 0 }
+            let chart = window?.chartSummaries ?? []
+            let recent = window?.visibleSummaries ?? []
 
-        cachedSnapshotWindow = window
-        cachedChartSummaries = chart
-        cachedRecentWeekSummaries = recent
-        cachedWeekAverage = avg
+            let weights = recent.map(\.weight).filter { $0 > 0 }
+            let avg: String
+            if weights.isEmpty {
+                avg = "--"
+            } else {
+                let avgStored = Int((weights.reduce(0, +) / Double(weights.count)).rounded())
+                let avgDisplay = Self.convertStoredWeightToDisplay(avgStored, unit: weightUnit)
+                avg = String(format: "%.1f", avgDisplay)
+            }
+            let goalWeightDisplay = goalWeightStored.map { Self.convertStoredWeightToDisplay(Int($0), unit: weightUnit) }
+            return (window, chart, recent, avg, weightUnit, goalWeightDisplay)
+        }.value
+
+        cachedSnapshotWindow = result.0
+        cachedChartSummaries = result.1
+        cachedRecentWeekSummaries = result.2
+        cachedWeekAverage = result.3
+        cachedWeightUnit = result.4
+        cachedGoalWeightDisplay = result.5
+        hasCacheLoaded = true
     }
 
     // MARK: - Headline
@@ -116,7 +140,7 @@ struct WeightSnapshotCard: View {
     // MARK: - Chart
 
     private var snapshotChart: some View {
-        let displayWeights = cachedChartSummaries.map { ($0.date, viewModel.convertStoredWeightToDisplay(Int($0.weight))) }
+        let displayWeights = cachedChartSummaries.map { ($0.date, convertStoredWeightToDisplay(Int($0.weight))) }
         let yScale = calculateYAxisScale()
         let xDomain = weekXDomain()
         let yRange = yScale.domain
@@ -201,8 +225,8 @@ struct WeightSnapshotCard: View {
     private func calculateYAxisScale() -> YAxisScale {
         DashboardChartScaleProvider.weightScale(
             operations: cachedChartSummaries,
-            goalWeight: viewModel.goalWeightForDisplay(),
-            convertStoredWeightToDisplay: viewModel.convertStoredWeightToDisplay
+            goalWeight: cachedGoalWeightDisplay,
+            convertStoredWeightToDisplay: convertStoredWeightToDisplay
         )
     }
 
@@ -211,5 +235,15 @@ struct WeightSnapshotCard: View {
             return "Weight snapshot, week average \(cachedWeekAverage) \(unitText)"
         }
         return "Weight snapshot, no readings yet"
+    }
+
+    private func convertStoredWeightToDisplay(_ storedWeight: Int) -> Double {
+        Self.convertStoredWeightToDisplay(storedWeight, unit: cachedWeightUnit)
+    }
+
+    private static func convertStoredWeightToDisplay(_ storedWeight: Int, unit: WeightUnit) -> Double {
+        unit == .kg
+            ? ConversionTools.convertStoredToKg(storedWeight)
+            : ConversionTools.convertStoredToLbs(storedWeight)
     }
 }

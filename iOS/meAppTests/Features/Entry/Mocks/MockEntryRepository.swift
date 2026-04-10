@@ -10,6 +10,8 @@ final class MockEntryRepository: EntryRepositoryProtocol {
     var deleteEntryError: Error?
     var deleteAllEntriesError: Error?
     var fetchEntriesAsDTOError: Error?
+    var fetchEntriesAsDTOResults: [Result<[BathScaleOperationDTO], Error>] = []
+    var fetchEntriesAsDTODelayNanoseconds: UInt64 = 0
     var fetchUnsyncedEntriesError: Error?
     var fetchLatestEntryError: Error?
 
@@ -17,6 +19,7 @@ final class MockEntryRepository: EntryRepositoryProtocol {
     private(set) var updateEntryCalls = 0
     private(set) var deleteEntryCalls = 0
     private(set) var updateEntrySyncStatusCalls = 0
+    private(set) var fetchEntriesAsDTOCalls = 0
 
     private(set) var lastSavedEntry: Entry?
     private(set) var lastUpdatedEntry: Entry?
@@ -127,6 +130,19 @@ final class MockEntryRepository: EntryRepositoryProtocol {
     }
 
     func fetchEntriesAsDTO(forUserId userId: String, operationType: String?) async throws -> [BathScaleOperationDTO] {
+        fetchEntriesAsDTOCalls += 1
+        if fetchEntriesAsDTODelayNanoseconds > 0 {
+            try? await Task.sleep(nanoseconds: fetchEntriesAsDTODelayNanoseconds)
+        }
+        if !fetchEntriesAsDTOResults.isEmpty {
+            let nextResult = fetchEntriesAsDTOResults.removeFirst()
+            switch nextResult {
+            case .success(let dtos):
+                return dtos
+            case .failure(let error):
+                throw error
+            }
+        }
         if let fetchEntriesAsDTOError { throw fetchEntriesAsDTOError }
         return filteredEntries(userId: userId, operationType: operationType).map { $0.toOperationDTO() }
     }
