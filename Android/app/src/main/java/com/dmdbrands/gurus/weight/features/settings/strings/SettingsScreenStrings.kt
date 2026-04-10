@@ -5,13 +5,12 @@ object SettingsScreenStrings {
 
     // Account Settings
     const val Account = "Account"
-  const val MyKids = "My Kids"
-  const val MyDevices = "My Devices"
+    const val MyKids = "My Kids"
+    const val MyDevices = "My Devices"
     const val Integrations = "Integrations"
     const val ExportData = "Export Data"
     const val ChangePassword = "Change Password"
     const val UserProfile = "User Profile"
-    const val MyKids = "My Kids"
     const val NotSet = "Not Set"
 
     // Weight Scale Settings
@@ -27,12 +26,12 @@ object SettingsScreenStrings {
     const val WeightScale = "Weight Scale"
     fun MessagesWithCount(count: Int) = "Messages ($count new)"
     const val Streaks = "Streaks"
-  const val Permissions = "Permissions"
+    const val Permissions = "Permissions"
     const val Appearance = "Appearance"
 
     // Support
     const val Support = "Support"
-  const val Help = "Help"
+    const val Help = "Help"
     const val PrivacyPolicy = "Privacy Policy"
     const val TermsOfService = "Terms of Service"
     const val GreaterGoodsDotCom = "GreaterGoods.com"

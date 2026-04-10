@@ -159,7 +159,10 @@ class ProfileViewModel @Inject constructor(
 
     val formControls = state.value.form.controls
     viewModelScope.launch {
-      val currentAccount = accountService.getCurrentAccount() ?: return@launch
+      val currentAccount = accountService.getCurrentAccount() ?: run {
+        dialogQueueService.dismissLoader()
+        return@launch
+      }
 
       val newGender = formControls.gender.value.ifEmpty { null }
       val newHeight = formControls.height.value.takeIf { it > 0 }
