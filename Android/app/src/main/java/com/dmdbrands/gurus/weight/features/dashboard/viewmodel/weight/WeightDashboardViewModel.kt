@@ -15,6 +15,9 @@ import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
+import com.dmdbrands.gurus.weight.domain.services.IHistoryService
+import com.dmdbrands.gurus.weight.domain.model.common.GraphData
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.SeriesData
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toGraphPoints
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
@@ -42,6 +45,7 @@ class WeightDashboardViewModel @Inject constructor(
   private val dashboardService: IDashboardService,
   private val goalService: IGoalService,
   private val healthConnectService: IHealthConnectService,
+  private val historyService: IHistoryService,
 ) : BaseDashboardViewModel<WeightDashboardState, BaseGraphIntent>(
   reducer = WeightDashboardReducer(),
 ), DefaultLifecycleObserver {
@@ -75,6 +79,7 @@ class WeightDashboardViewModel @Inject constructor(
   init {
     initLoadData()
     subscribeWeightUnit()
+    subscribeWeightless()
     subscribeGoal()
   }
 
@@ -100,20 +105,24 @@ class WeightDashboardViewModel @Inject constructor(
 
   private fun startGraphSubscriptions() {
     viewModelScope.launch {
-      entryService.daywiseBodyScaleAverages.collect { entries ->
-        latestDailyData = entries
-        val series = toWeightSeries(entries)
-        updateSegmentRanges(entries, listOf(GraphSegment.WEEK, GraphSegment.MONTH))
-        pushWeightProducer(_state.value.dailyProducer, series)
-      }
+      historyService.getDailyGraphData(ProductSelection.MyWeight)
+        .map { (it as? GraphData.Weight)?.data ?: emptyList() }
+        .collect { entries ->
+          latestDailyData = entries
+          val series = toWeightSeries(entries)
+          updateSegmentRanges(entries, listOf(GraphSegment.WEEK, GraphSegment.MONTH))
+          pushWeightProducer(_state.value.dailyProducer, series)
+        }
     }
     viewModelScope.launch {
-      entryService.monthlyBodyScaleAverages.collect { entries ->
-        latestMonthlyData = entries
-        val series = toWeightSeries(entries)
-        updateSegmentRanges(entries, listOf(GraphSegment.YEAR, GraphSegment.TOTAL))
-        pushWeightProducer(_state.value.monthlyProducer, series)
-      }
+      historyService.getMonthlyGraphData(ProductSelection.MyWeight)
+        .map { (it as? GraphData.Weight)?.data ?: emptyList() }
+        .collect { entries ->
+          latestMonthlyData = entries
+          val series = toWeightSeries(entries)
+          updateSegmentRanges(entries, listOf(GraphSegment.YEAR, GraphSegment.TOTAL))
+          pushWeightProducer(_state.value.monthlyProducer, series)
+        }
     }
   }
 
@@ -202,16 +211,28 @@ class WeightDashboardViewModel @Inject constructor(
     }
   }
 
+  private fun subscribeWeightless() {
+    viewModelScope.launch {
+      accountService.activeAccountFlow
+        .map { it?.toWeightless() }
+        .distinctUntilChanged()
+        .collect { weightless ->
+          handleIntent(WeightDashboardIntent.SetWeightless(weightless))
+        }
+    }
+  }
+
   private fun subscribeGoal() {
     viewModelScope.launch {
       goalService.getCurrentGoal().collect { goal ->
         val currentAccount = accountService.activeAccount.value
-        val processedGoal = currentAccount?.toGoal()?.let { g ->
-          val weightUnit = currentAccount.weightUnit
-          val weightless = currentAccount.toWeightless()
-          g.process(weightUnit, weightless)
-        }
-        handleIntent(WeightDashboardIntent.SetGoal(processedGoal))
+        val rawGoal = currentAccount?.toGoal()
+        // Store as display lb (÷10) — unit + weightless applied at display time
+        val displayGoal = rawGoal?.copy(
+          goalWeight = rawGoal.goalWeight / 10.0,
+          initialWeight = rawGoal.initialWeight / 10.0,
+        )
+        handleIntent(WeightDashboardIntent.SetGoal(displayGoal))
       }
     }
   }

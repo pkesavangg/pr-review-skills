@@ -37,6 +37,7 @@ import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyMetric
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardState
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertWeight
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
@@ -111,10 +112,13 @@ fun DashboardChartHeader(
         is ProductSelection.MyWeight -> {
           val weightState = state as? WeightDashboardState
           val target = segmentState.target.filterIsInstance<PeriodBodyScaleSummary>()
-          val avg = if (target.isEmpty()) 0.0 else target.map { it.weight }.average()
-          val label = if (target.isEmpty()) "000.0" else formatWeightValue(avg)
+          val avgLb = if (target.isEmpty()) 0.0 else target.map { it.weight }.average()
           val weightUnit = weightState?.weightUnit ?: WeightUnit.KG
-          val displayUnit = remember(weightUnit, avg) { getDisplayUnit(weightUnit, avg) }
+          val weightless = weightState?.weightless
+          val weightlessOffset = if (weightless?.isWeightlessOn == true) weightless.weightlessWeight.toDouble() else 0.0
+          val displayValue = convertWeight(avgLb - weightlessOffset, WeightUnit.LB, weightUnit)
+          val label = if (target.isEmpty()) "000.0" else formatWeightValue(displayValue)
+          val displayUnit = remember(weightUnit, displayValue) { getDisplayUnit(weightUnit, displayValue) }
 
           Row(verticalAlignment = Alignment.Bottom) {
             Text(text = label, style = MeTheme.typography.heading2, color = MeTheme.colorScheme.textBody)

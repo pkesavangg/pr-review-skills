@@ -4,10 +4,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.bottomAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.endAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.startAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.topAxis
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardState
 import com.dmdbrands.gurus.weight.features.common.components.chart.config.ChartConfig
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
@@ -185,9 +187,19 @@ fun rememberProductChart(
     arrayOf(primaryLayer)
   }
 
+  // ── Unit + weightless for display-time conversion ──
+  val weightUnit = (graphState as? WeightDashboardState)?.weightUnit
+  val weightless = (graphState as? WeightDashboardState)?.weightless
+  val weightlessOffset = if (weightless?.isWeightlessOn == true) weightless.weightlessWeight.toDouble() else 0.0
+
   // ── Goal marker (config-driven) ──
   val goalMarker = if (config.goalWeight != null) {
-    rememberGoalMarker(goal = config.goal, isWeightlessOn = config.isWeightlessMode)
+    rememberGoalMarker(
+      goal = config.goal,
+      isWeightlessOn = config.isWeightlessMode,
+      weightUnit = weightUnit ?: WeightUnit.LB,
+      weightlessOffset = weightlessOffset,
+    )
   } else null
 
   // ── Build chart ──
@@ -199,6 +211,8 @@ fun rememberProductChart(
       isEmptyGraph = segmentState.isEmptyGraph,
       markerDecoration = goalMarker,
       ticksProvider = { scrollAwareRange.currentTicks },
+      weightUnit = weightUnit,
+      weightlessOffset = weightlessOffset,
     ),
     bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer),
     marker = defaultMarker,

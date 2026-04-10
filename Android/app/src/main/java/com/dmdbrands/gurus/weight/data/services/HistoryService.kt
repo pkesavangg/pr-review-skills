@@ -8,6 +8,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertToDisplay
 import com.dmdbrands.gurus.weight.domain.repository.IHistoryRepository
 import com.dmdbrands.gurus.weight.domain.services.IHistoryService
 import kotlinx.coroutines.flow.Flow
@@ -71,7 +72,7 @@ class HistoryService @Inject constructor(
         AppLog.d(TAG, "getMonthlyGraphData: ${product.productType}")
         return when (product) {
             is ProductSelection.MyWeight -> historyRepository.getWeightMonthlyGraphData(acctId)
-                .map { GraphData.Weight(it) }
+                .map { list -> GraphData.Weight(list.map { it.convertToDisplay() }) }
 
             is ProductSelection.BloodPressure -> historyRepository.getBpmMonthlyGraphData(acctId)
                 .map { GraphData.BloodPressure(it) }
@@ -86,7 +87,7 @@ class HistoryService @Inject constructor(
         AppLog.d(TAG, "getDailyGraphData: ${product.productType}")
         return when (product) {
             is ProductSelection.MyWeight -> historyRepository.getWeightDailyGraphData(acctId)
-                .map { GraphData.Weight(it) }
+                .map { list -> GraphData.Weight(list.map { it.convertToDisplay() }) }
 
             is ProductSelection.BloodPressure -> historyRepository.getBpmDailyGraphData(acctId)
                 .map { GraphData.BloodPressure(it) }
