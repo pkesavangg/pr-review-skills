@@ -34,6 +34,9 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     // MARK: - Centralized State
 
     @Published var state = DashboardState()
+    private(set) var dataChangeRevision: Int = 0
+    @Published private(set) var hasBabySnapshotItem: Bool = false
+    @Published private(set) var canShowSnapshotOverview: Bool = false
 
     /// The active product type for the dashboard (weight or BPM).
     @Published var productType: EntryType = .wg
@@ -44,6 +47,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     private var cancellables = Set<AnyCancellable>()
     private var lastAccountSettingsSnapshot: AccountSettingsSnapshot?
+    private var lastDataContentSignature = DataContentSignature(daily: [], monthly: [])
     /// Guards against the Combine subscriber double-firing when `selectProductItem` updates state directly.
     private var isSelectingDirectly = false
 
@@ -315,6 +319,11 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         dataManager.$state
             .sink { [weak self] dataState in
                 guard let self, self.state.data != dataState else { return }
+                let nextSignature = Self.makeDataContentSignature(from: dataState)
+                if self.lastDataContentSignature != nextSignature {
+                    self.dataChangeRevision &+= 1
+                    self.lastDataContentSignature = nextSignature
+                }
                 self.state.data = dataState
             }
             .store(in: &cancellables)
@@ -405,7 +414,13 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         productTypeStore.availableItemsPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] items in
-                self?.availableProductItems = items
+                guard let self else { return }
+                self.availableProductItems = items
+                self.hasBabySnapshotItem = items.contains {
+                    if case .baby = $0 { return true }
+                    return false
+                }
+                self.canShowSnapshotOverview = items.count > 1 || self.hasBabySnapshotItem
             }
             .store(in: &cancellables)
 
@@ -432,35 +447,42 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         guard productType != newType else { return }
         productType = newType
         dataManager.switchDataSource(to: newType)
+        resetGraphStateForProductSwitch(productType: newType)
         state.ui.selectedMetricLabel = nil
         chartManager?.clearSelection()
         chartManager?.clearAllCaches()
+        cacheManager.setProductContext(productType: newType, babyProfileId: selectedBabyProfile?.id)
         cacheManager.clearAllCaches()
         state.ui.hasInitializedChart = false
         graphManager.state.isGraphReady = false
         Task { [weak self] in
             guard let self else { return }
-            await self.entryService.loadDashboardData(entryType: newType)
             await self.lifecycleManager.initializeDashboard()
         }
     }
 
     private func refreshSelectedProductContext() {
+        resetGraphStateForProductSwitch(productType: productType)
         state.ui.selectedMetricLabel = nil
         chartManager?.clearSelection()
         chartManager?.clearAllCaches()
+        cacheManager.setProductContext(productType: productType, babyProfileId: selectedBabyProfile?.id)
         cacheManager.clearAllCaches()
         invalidateContinuousOperationsCache()
         state.ui.hasInitializedChart = false
         graphManager.state.isGraphReady = false
 
-        if isBabySelection {
-            // Baby charts use locally-computed data (BabyDashboardChartSupport),
-            // so skip the full initializeDashboard() pipeline with its network
-            // calls and just reinitialize the chart directly.
-            chartManager?.initializeChart()
-            displayManager.updateMetricsForCurrentView()
-            scheduleUIUpdate()
+        if isBabySelection, let babyProfile = selectedBabyProfile {
+            // Load real baby entries, then initialize the chart.
+            // Falls back to dummy data if no real entries exist (handled in continuousOperations).
+            Task { [weak self] in
+                guard let self else { return }
+                await self.entryService.loadBabyDashboardData(babyId: babyProfile.id)
+                self.invalidateContinuousOperationsCache()
+                self.chartManager?.initializeChart()
+                self.displayManager.updateMetricsForCurrentView()
+                self.scheduleUIUpdate()
+            }
         } else {
             Task { [weak self] in
                 guard let self else { return }
@@ -485,6 +507,39 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         } else {
             refreshSelectedProductContext()
         }
+    }
+
+    // MARK: - Baby Data Access
+
+    /// Returns real baby summaries from EntryService for the given profile and period.
+    /// Uses daily summaries for week/month and monthly summaries for year/total.
+    private func babySummaries(for babyProfile: BabyProfile, period: TimePeriod) -> [BathScaleWeightSummary] {
+        switch period {
+        case .week, .month:
+            return entryService.babyDailySummariesByProfile[babyProfile.id] ?? []
+        case .year, .total:
+            return entryService.babyMonthlySummariesByProfile[babyProfile.id] ?? []
+        }
+    }
+
+    /// Clears leftover Y-axis domain, ticks, selection, and scroll state from the
+    /// previous product type so the new chart starts fresh without visual glitches.
+    private func resetGraphStateForProductSwitch(productType _: EntryType) {
+        graphManager.endScrollingImmediately()
+        graphManager.state.updateScrollState(isScrolling: false)
+        graphManager.state.cachedYAxisDomain = nil
+        graphManager.state.cachedYAxisTicks = nil
+        graphManager.state.selectedXValue = nil
+        graphManager.state.selectedPoint = nil
+        graphManager.state.showCrosshair = false
+        state.graph.cachedYAxisDomain = nil
+        state.graph.cachedYAxisTicks = nil
+        state.graph.selectedXValue = nil
+        state.graph.selectedPoint = nil
+        state.graph.showCrosshair = false
+        state.graph.isScrolling = false
+        state.graph.hasDetectedScrollInCurrentGesture = false
+        BabyDashboardChartSupport.clearDummySummariesCache()
     }
 
     var productTypeSelectorStore: ProductTypeStore {
@@ -607,7 +662,12 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     var continuousOperations: [BathScaleWeightSummary] {
         if let babyProfile = selectedBabyProfile {
             return cacheManager.getContinuousOperations(for: state.graph.selectedPeriod) {
-                BabyDashboardChartSupport.dummySummaries(
+                let realSummaries = self.babySummaries(for: babyProfile, period: state.graph.selectedPeriod)
+                if !realSummaries.isEmpty {
+                    return realSummaries
+                }
+                // Fallback to dummy data when no real baby entries exist
+                return BabyDashboardChartSupport.dummySummaries(
                     for: babyProfile,
                     period: state.graph.selectedPeriod
                 )
@@ -633,36 +693,53 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     }
 
     var visibleOperations: [BathScaleWeightSummary] {
+        let operations = continuousOperations
         return cacheManager.getVisibleOperations(isScrolling: state.graph.isScrolling) {
-            graphManager.getVisibleOperations(from: continuousOperations)
+            graphManager.getVisibleOperations(from: operations)
         }
     }
 
     var chartSeriesData: [GraphSeries] {
+        let operations = continuousOperations
+        let period = state.graph.selectedPeriod
+
+        // For non-total periods, window operations to a buffer around the visible
+        // range so we avoid iterating all 10k+ entries during series building.
+        let windowedOps: [BathScaleWeightSummary]
+        if period == .total {
+            windowedOps = operations
+        } else {
+            windowedOps = graphManager.getChartOperationsWithBuffer(
+                from: operations,
+                scrollPosition: state.graph.xScrollPosition,
+                period: period
+            )
+        }
+
         // BPM uses its own 3-series builder; weight uses the existing pipeline
         if productType == .bpm {
             return cacheManager.getChartSeriesData(
                 isScrolling: state.graph.isScrolling,
                 isProcessingScrollEnd: chartManager.isProcessingScrollEnd,
-                period: state.graph.selectedPeriod,
+                period: period,
                 selectedMetric: nil,
-                operationsCount: continuousOperations.count,
+                operationsCount: operations.count,
                 yAxisDomain: chartManager.yAxisDomain
             ) {
-                graphManager.generateBpmChartData(from: continuousOperations)
+                graphManager.generateBpmChartData(from: windowedOps)
             }
         }
         if let babyProfile = selectedBabyProfile {
             return cacheManager.getChartSeriesData(
                 isScrolling: state.graph.isScrolling,
                 isProcessingScrollEnd: chartManager.isProcessingScrollEnd,
-                period: state.graph.selectedPeriod,
+                period: period,
                 selectedMetric: selectedBabyMetric == .height ? BabyMetric.height.rawValue : nil,
-                operationsCount: continuousOperations.count,
+                operationsCount: operations.count,
                 yAxisDomain: chartManager.yAxisDomain
             ) {
                 graphManager.generateBabyChartData(
-                    from: continuousOperations,
+                    from: windowedOps,
                     visibleOperations: visibleOperations,
                     babyProfile: babyProfile,
                     metric: selectedBabyMetric,
@@ -675,13 +752,13 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         return cacheManager.getChartSeriesData(
             isScrolling: state.graph.isScrolling,
             isProcessingScrollEnd: chartManager.isProcessingScrollEnd,
-            period: state.graph.selectedPeriod,
+            period: period,
             selectedMetric: state.ui.selectedMetricLabel,
-            operationsCount: continuousOperations.count,
+            operationsCount: operations.count,
             yAxisDomain: chartManager.yAxisDomain
         ) {
             graphManager.generateChartDataWithYAxisDomain(
-                from: continuousOperations,
+                from: windowedOps,
                 visibleOperations: visibleOperations,
                 selectedMetric: state.ui.selectedMetricLabel,
                 isWeightlessMode: isWeightlessModeEnabled,
@@ -774,7 +851,12 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     var unitText: String { goalManager.getUnitText() }
 
     var hasEntriesButNoneInCurrentPeriod: Bool {
-        return goalManager.hasEntriesButNoneInCurrentPeriod(continuousOperations: continuousOperations, visibleOperations: visibleOperations)
+        let operations = continuousOperations
+        let visible = visibleOperations
+        return goalManager.hasEntriesButNoneInCurrentPeriod(
+            continuousOperations: operations,
+            visibleOperations: visible
+        )
     }
 
     func visibleDomainLength(for period: TimePeriod) -> TimeInterval {

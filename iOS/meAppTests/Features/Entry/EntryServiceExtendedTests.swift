@@ -551,6 +551,33 @@ struct EntryServiceExtendedTests {
         #expect(logger.messages.contains { $0.contains("loadDashboardData failed") })
     }
 
+    @Test("loadDashboardData concurrent retry: piggybacked caller retries after failed load")
+    func loadDashboardDataConcurrentRetryAfterFailure() async {
+        let repo = MockEntryRepository()
+        let entry = EntryTestFixtures.makeEntry(timestamp: "2026-03-01T08:00:00Z", weight: 1800)
+        repo.entries = [entry]
+        repo.fetchEntriesAsDTODelayNanoseconds = 50_000_000
+        repo.fetchEntriesAsDTOResults = [
+            .failure(EntryTestError.localFailure),
+            .success([entry.toOperationDTO()])
+        ]
+        let sut = makeSUT(repo: repo)
+
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask {
+                await sut.loadDashboardData()
+            }
+            group.addTask {
+                await Task.yield()
+                await sut.loadDashboardData()
+            }
+        }
+
+        #expect(repo.fetchEntriesAsDTOCalls == 2)
+        #expect(sut.dailySummaries.count == 1)
+        #expect(sut.dailySummaries.first?.period == "2026-03-01")
+    }
+
     // MARK: - sync push failure marks entry as failed after retries
 
     @Test("sync push remote failure: increments attempts on entry")

@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct GraphSkeletonView: View {
+    var height: CGFloat = 265
+
     @Environment(\.appTheme) private var theme
     @State private var isAnimating = false
 
@@ -87,8 +89,8 @@ struct GraphSkeletonView: View {
             .padding(.trailing, 38) // Account for Y-axis width
             .padding(.top, 8)
         }
-        .frame(height: 265)
-        .frame(maxWidth: .infinity, minHeight: 240)
+        .frame(height: height)
+        .frame(maxWidth: .infinity, minHeight: height)
         .onAppear {
             withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
                 isAnimating = true
