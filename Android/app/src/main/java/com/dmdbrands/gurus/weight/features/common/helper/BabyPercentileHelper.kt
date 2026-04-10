@@ -8,7 +8,7 @@ import android.content.Context
 /**
  * WHO weight-for-age and length-for-age percentile lookup from CSV data.
  * CSV format: Day,5th,10th,25th,50th,75th,90th,95th.
- * Weight values in decigrams, length values in mm (tenths of mm).
+ * Weight values in decigrams, length values in mm.
  * Rows are every 7 days from birth to ~18 years.
  */
 object BabyPercentileHelper {
