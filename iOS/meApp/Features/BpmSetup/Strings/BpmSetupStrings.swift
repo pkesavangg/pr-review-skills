@@ -6,6 +6,8 @@
 import Foundation
 
 struct BpmSetupStrings {
+    static let troubleSettingUp = "If you have any trouble setting up your monitor, you can connect with our team via the help button in the top right."
+
     static let setupHeader: (String) -> String = { sku in
         let displaySku = DeviceHelper.mapSkuForDisplay(sku)
         return "Device Setup - \(displaySku)"

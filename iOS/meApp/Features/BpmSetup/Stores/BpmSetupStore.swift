@@ -30,6 +30,7 @@ final class BpmSetupStore: ObservableObject {
     private var discoveredDevice: Device?
     private var discoveryEvent: DeviceDiscoveryEvent?
     private var isDeviceSaved: Bool = false
+    private var isSaving: Bool = false
     private var deviceToDelete: Device?
     private var lastRetrievedDeviceInfo: DeviceInfo?
 
@@ -114,7 +115,7 @@ final class BpmSetupStore: ObservableObject {
                 )
 
             case .intro:
-                return AnyView(ScaleSetupIntroView(scale: bpmItem))
+                return AnyView(ScaleSetupIntroView(scale: bpmItem, troubleText: BpmSetupStrings.troubleSettingUp))
 
             case .btPermission:
                 return AnyView(PermissionListView(setupType: .bpm))
@@ -139,6 +140,8 @@ final class BpmSetupStore: ObservableObject {
                         title: BpmSetupStrings.PowerSwitch.title,
                         description: BpmSetupStrings.PowerSwitch.description,
                         imagePath: bpmItem.imgPath,
+                        resourceImageName: BpmA3MonitorSetupAssets.perSkuResourceName(sku: bpmItem.sku, BpmA3MonitorSetupAssets.ImageFile.powerSwitch),
+                        resourceImageSubdirectory: BpmA3MonitorSetupAssets.userGifBundleSubdirectory(for: bpmItem.sku),
                         mediaLayout: .top,
                         mediaHorizontalPadding: 0
                     )
@@ -307,18 +310,34 @@ final class BpmSetupStore: ObservableObject {
     }
 
     // MARK: - Public Configuration
-    func configure(with sku: String) {
+    func configure(with sku: String,
+                   discoveredScale: Device? = nil,
+                   discoveryEvent: DeviceDiscoveryEvent? = nil) {
         let primarySku = primaryBpmSetupSku(for: sku)
         let resolved = BPMS.first { $0.sku == primarySku } ?? BPMS.first
         self.bpmItem = resolved
         self.selectedSku = primarySku
-        self.deviceNickname = BpmSetupStrings.Nickname.defaultName
+        self.deviceNickname = resolved?.productName ?? BpmSetupStrings.Nickname.defaultName
         resetDiscoveryState()
         bluetoothService.isSetupInProgress = true
 
+        // Inject pre-discovered device context (from discovery toast → Connect).
+        if let scale = discoveredScale, let event = discoveryEvent {
+            self.discoveredDevice = scale
+            self.discoveryEvent = event
+            scale.protocolType = event.protocolType.rawValue
+        }
+
         let preSelected = bpmSkus.contains(sku)
         self.steps = BpmSetupStep.steps(for: primarySku, preSelected: preSelected)
-        self.currentStepIndex = 0
+
+        // If a device was already discovered, skip directly to user selection.
+        if discoveredScale != nil, discoveryEvent != nil,
+           let userIndex = steps.firstIndex(of: .selectUser) {
+            self.currentStepIndex = userIndex
+        } else {
+            self.currentStepIndex = 0
+        }
     }
 
     /// Re-builds the step array when the user picks a different model from the grid.
@@ -327,6 +346,7 @@ final class BpmSetupStore: ObservableObject {
         let primarySku = primaryBpmSetupSku(for: sku)
         let resolved = BPMS.first { $0.sku == primarySku } ?? BPMS.first
         self.bpmItem = resolved
+        self.deviceNickname = resolved?.productName ?? BpmSetupStrings.Nickname.defaultName
 
         let isPreSelected = steps.first == .intro
         let newSteps = BpmSetupStep.steps(for: primarySku, preSelected: isPreSelected)
@@ -434,6 +454,7 @@ final class BpmSetupStore: ObservableObject {
 
         self.discoveredDevice = event.device
         self.discoveryEvent = event
+        event.device.protocolType = event.protocolType.rawValue
 
         LoggerService.shared.log(level: .info, tag: tag, message: "BPM device discovered, checking for existing pairing")
 
@@ -740,6 +761,12 @@ final class BpmSetupStore: ObservableObject {
         }
         deviceToSave.nickname = deviceNickname.isEmpty ? nil : deviceNickname
 
+        // Ensure protocolType is set (defensive fallback from discovery event)
+        if deviceToSave.protocolType == nil || deviceToSave.protocolType?.isEmpty == true,
+           let eventProtocol = discoveryEvent?.protocolType {
+            deviceToSave.protocolType = eventProtocol.rawValue
+        }
+
         do {
             _ = try await scaleService.createBluetoothScale(
                 device: deviceToSave,
@@ -768,7 +795,13 @@ final class BpmSetupStore: ObservableObject {
     }
 
     private func saveAndAdvanceFromNickname() async {
-        guard currentStep == .nickname else { return }
+        guard currentStep == .nickname, !isSaving else { return }
+        isSaving = true
+        updateNextEnabled()
+        defer {
+            isSaving = false
+            updateNextEnabled()
+        }
         let saved = await saveDevice()
         guard saved else {
             LoggerService.shared.log(level: .error, tag: tag, message: "BPM device save failed, cannot advance from nickname")
@@ -821,13 +854,56 @@ final class BpmSetupStore: ObservableObject {
 
         case .failure(let error):
             // For A3 BPMs, getDeviceInfo fails because the SDK can't find the device
-            // by its CoreBluetooth UUID. Fall back to the DEVICE_CONNECTED event details.
-            // The DEVICE_CONNECTED event fires during confirmPair and has the real broadcastId.
-            // Allow a brief window for the async event to arrive.
-            // var connectedInfo = bluetoothService.lastConnectedDeviceInfo
-            let message = "No post-connection device info available after getDeviceInfo failed: "
-                + "\(error.localizedDescription)"
-            LoggerService.shared.log(level: .error, tag: tag, message: message)
+            // by its CoreBluetooth UUID. Fall back to deviceInfoUpdatedPublisher which
+            // fires on DEVICE_INFO_UPDATE scan events with real device info post-connection.
+            LoggerService.shared.log(
+                level: .info, tag: tag,
+                message: "getDeviceInfo failed for \(protocolType) BPM (\(error.localizedDescription)), waiting for deviceInfoUpdatedPublisher…"
+            )
+            do {
+                let deviceInfo = try await awaitDeviceInfoUpdate(timeoutSeconds: 5)
+                lastRetrievedDeviceInfo = deviceInfo
+                applyDeviceInfo(deviceInfo, to: device, protocolType: protocolType)
+                LoggerService.shared.log(
+                    level: .info, tag: tag,
+                    message: "Applied device info from publisher for \(protocolType) BPM"
+                )
+            } catch {
+                LoggerService.shared.log(
+                    level: .error, tag: tag,
+                    message: "No device info received from publisher within timeout: \(error.localizedDescription)"
+                )
+            }
+        }
+    }
+
+    /// Waits for the next `deviceInfoUpdatedPublisher` emission, with a timeout.
+    private func awaitDeviceInfoUpdate(timeoutSeconds: Int) async throws -> DeviceInfo {
+        try await withCheckedThrowingContinuation { continuation in
+            var resumed = false
+            var cancellable: AnyCancellable?
+            cancellable = bluetoothService.deviceInfoUpdatedPublisher
+                .timeout(.seconds(timeoutSeconds), scheduler: DispatchQueue.main)
+                .first()
+                .sink(
+                    receiveCompletion: { completion in
+                        guard !resumed else { return }
+                        resumed = true
+                        cancellable?.cancel()
+                        if case .failure = completion {
+                            continuation.resume(throwing: BluetoothServiceError.timeout)
+                        } else {
+                            // .finished without a value means timeout elapsed
+                            continuation.resume(throwing: BluetoothServiceError.timeout)
+                        }
+                    },
+                    receiveValue: { info in
+                        guard !resumed else { return }
+                        resumed = true
+                        cancellable?.cancel()
+                        continuation.resume(returning: info)
+                    }
+                )
         }
     }
 
@@ -905,7 +981,9 @@ final class BpmSetupStore: ObservableObject {
     private func confirmUserGifSubdirectory(for sku: String) -> String? {
         if a3BpmSkus.contains(sku) {
             // SKUs with their own Pulse GIF use the per-SKU folder.
-            if sku == "0634" { return BpmA3MonitorSetupAssets.userGifBundleSubdirectory(for: sku) }
+            if sku == "0634" || sku == "0636" {
+                return BpmA3MonitorSetupAssets.userGifBundleSubdirectory(for: sku)
+            }
             return BpmA3MonitorSetupAssets.gifBundleSubdirectory(for: sku)
         }
         if a6BpmSkus.contains(sku) {
@@ -936,16 +1014,29 @@ final class BpmSetupStore: ObservableObject {
 
     private func gifName(for step: BpmSetupStep, sku: String) -> String? {
         if a3BpmSkus.contains(sku) {
+            let resolvedSku = BpmA3MonitorSetupAssets.resolvedAssetSku(sku)
+            let usePerSku = resolvedSku == sku // true for 0634, 0636
+
             switch step {
             case .prePairing:
-                if sku == "0634" { return "A3_0634_Pulse" }
+                if usePerSku {
+                    return BpmA3MonitorSetupAssets.perSkuResourceName(sku: sku, BpmA3MonitorSetupAssets.ImageFile.pulse)
+                }
                 return BpmA3MonitorSetupAssets.resourceName(BpmA3MonitorSetupAssets.ImageFile.memButton)
             case .confirmUser:
-                if sku == "0634" { return "A3_0634_Pulse" }
+                if sku == "0636" {
+                    return BpmA3MonitorSetupAssets.perSkuResourceName(sku: sku, BpmA3MonitorSetupAssets.ImageFile.pulse)
+                }
                 return nil
             case .measureSetup:
+                if usePerSku {
+                    return BpmA3MonitorSetupAssets.perSkuResourceName(sku: sku, BpmA3MonitorSetupAssets.ImageFile.cuff)
+                }
                 return BpmA3MonitorSetupAssets.resourceName(BpmA3MonitorSetupAssets.ImageFile.cuff)
             case .measureStart:
+                if usePerSku {
+                    return BpmA3MonitorSetupAssets.perSkuResourceName(sku: sku, BpmA3MonitorSetupAssets.ImageFile.start)
+                }
                 return BpmA3MonitorSetupAssets.resourceName(BpmA3MonitorSetupAssets.ImageFile.start)
             default:
                 return nil
@@ -955,11 +1046,11 @@ final class BpmSetupStore: ObservableObject {
         if a6BpmSkus.contains(sku) {
             switch step {
             case .prePairing:
-                return BpmA6MonitorSetupAssets.resourceName(BpmA6MonitorSetupAssets.ImageFile.pulse)
+                return BpmA6MonitorSetupAssets.resolvedResourceName(sku: sku, BpmA6MonitorSetupAssets.ImageFile.pulse)
             case .measureSetup:
-                return BpmA6MonitorSetupAssets.resourceName(BpmA6MonitorSetupAssets.ImageFile.cuff)
+                return BpmA6MonitorSetupAssets.resolvedResourceName(sku: sku, BpmA6MonitorSetupAssets.ImageFile.cuff)
             case .measureStart:
-                return BpmA6MonitorSetupAssets.resourceName(BpmA6MonitorSetupAssets.ImageFile.start)
+                return BpmA6MonitorSetupAssets.resolvedResourceName(sku: sku, BpmA6MonitorSetupAssets.ImageFile.start)
             default:
                 return nil
             }
@@ -974,6 +1065,9 @@ final class BpmSetupStore: ObservableObject {
             case .setUser:
                 return BpmA3MonitorSetupAssets.resourceName(BpmA3MonitorSetupAssets.ImageFile.setUser)
             case .confirmUser:
+                if sku == "0634" {
+                    return BpmA3MonitorSetupAssets.perSkuResourceName(sku: sku, BpmA3MonitorSetupAssets.ImageFile.monitorOff)
+                }
                 return BpmA3MonitorSetupAssets.resourceName(BpmA3MonitorSetupAssets.ImageFile.monitorStartStop)
             default:
                 return nil
@@ -1027,7 +1121,7 @@ final class BpmSetupStore: ObservableObject {
         case .scanning:
             isNextEnabled = connectionState == .success
         case .nickname:
-            isNextEnabled = !deviceNickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            isNextEnabled = !deviceNickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSaving
         default:
             isNextEnabled = true
         }

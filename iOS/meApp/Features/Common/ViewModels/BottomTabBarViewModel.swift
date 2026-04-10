@@ -107,9 +107,11 @@ class BottomTabBarViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Subscribe to new entry events (uses EntryNotification for safe cross-actor data passing)
+        // Subscribe to new entry events (uses EntryNotification for safe cross-actor data passing).
+        // Debounce to coalesce rapid emissions (e.g. multiple buffered entries syncing after
+        // Bluetooth reconnect) into a single toast instead of one per entry.
         bluetoothService.newEntryReceivedPublisher
-            .receive(on: DispatchQueue.main)
+            .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in
                 guard let self else { return }
                 if !self.bluetoothService.isSetupInProgress {

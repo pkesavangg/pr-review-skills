@@ -81,7 +81,7 @@ extension BluetoothService {
     }
 
     /// Converts a BpmMeasurement into an Entry and saves it.
-    func saveBpmEntry(_ measurement: BpmMeasurement) async {
+    func saveBpmEntry(_ measurement: BpmMeasurement, suppressNotification: Bool = false) async {
         guard let activeAccount = activeAccount else {
             logger.log(level: .error, tag: tag, message: BluetoothServiceError.noActiveAccount.localizedDescription)
             return
@@ -114,8 +114,10 @@ extension BluetoothService {
 
         do {
             try await entryService.saveNewEntry(entry)
-            let notification = EntryNotification(from: entry)
-            newEntryReceivedSubject.send(notification)
+            if !suppressNotification {
+                let notification = EntryNotification(from: entry)
+                newEntryReceivedSubject.send(notification)
+            }
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to save BPM entry: \(error.localizedDescription)")
         }

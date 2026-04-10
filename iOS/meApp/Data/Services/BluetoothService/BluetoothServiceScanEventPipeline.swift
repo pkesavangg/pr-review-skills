@@ -216,7 +216,19 @@ extension BluetoothService {
                 pulse: bpmData.pulse ?? 0,
                 timestamp: timestamp,
                 broadcastId: bpmData.broadcastId
-            ))
+            ), suppressNotification: true)
+        }
+        // Send a single notification after all entries are saved (matching weight entry pattern)
+        if let firstData = bpmEntryList.list.first {
+            let timestamp = firstData.date.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) } ?? Date()
+            let entry = Entry(
+                entryTimestamp: ISO8601DateFormatter().string(from: timestamp),
+                accountId: activeAccount?.accountId ?? "",
+                operationType: OperationType.create.rawValue,
+                deviceType: DeviceType.bpm.rawValue,
+                isSynced: false
+            )
+            newEntryReceivedSubject.send(EntryNotification(from: entry))
         }
     }
 

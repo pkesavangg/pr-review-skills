@@ -1202,16 +1202,25 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         device.metaData = deviceMetadata
         // Note: password is already set on the device from the pairing process
 
+        // Determine the correct scale source type based on protocol
+        let scaleType: String
+        switch device.protocolType {
+        case "A3": scaleType = ScaleSourceType.bluetooth.rawValue
+        case "A6": scaleType = ScaleSourceType.lcbt.rawValue
+        case "R4": scaleType = ScaleSourceType.btWifiR4.rawValue
+        default:   scaleType = ScaleSourceType.bluetooth.rawValue
+        }
+
         // Create bath scale relationship if it doesn't exist
         if device.bathScale == nil {
             let bathScale = BathScale(
-                scaleType: ScaleSourceType.bluetooth.rawValue,
+                scaleType: scaleType,
                 bodyComp: false
             )
             device.bathScale = bathScale
         } else {
             // Update scale type if bath scale exists
-            device.bathScale?.scaleType = ScaleSourceType.bluetooth.rawValue
+            device.bathScale?.scaleType = scaleType
         }
 
         // Use the repository to create the scale with proper relationship handling

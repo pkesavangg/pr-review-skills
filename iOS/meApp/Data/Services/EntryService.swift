@@ -1028,6 +1028,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         guard type == entryType.rawValue else { return false }
         // Baby scale entries have entryType "wg" but belong in baby history, not weight history.
         if entryType == .wg && entry.deviceType == DeviceType.babyScale.rawValue { return false }
+        // BPM entries should never appear in weight history, even if entryType was incorrectly set to "wg".
+        if entryType == .wg && entry.deviceType == DeviceType.bpm.rawValue { return false }
+        if entryType == .wg && entry.bpmEntry != nil { return false }
         return true
     }
 
