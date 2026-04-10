@@ -55,13 +55,10 @@ class BabyDashboardViewModel @AssistedInject constructor(
 
   override fun provideInitialState(): BabyDashboardState = BabyDashboardState()
 
-  init {
-    loadPercentiles()
-  }
-
   override fun onDependenciesReady() {
     handleIntent(BabyDashboardIntent.SetBabyProfile(babyProduct.profile))
     startGraphSubscriptions()
+    loadPercentiles()
   }
 
   override fun handleIntent(intent: BaseGraphIntent) {
@@ -115,7 +112,9 @@ class BabyDashboardViewModel @AssistedInject constructor(
       segments.forEach { seg -> updateSegmentState(seg) { it.copy(isEmptyGraph = true) } }
       return
     }
-    val birthDate = babyProduct.profile.birthDate ?: entries.first().getTimeStamp()
+    val birthDate = babyProduct.profile.birthdate?.let {
+      DateTimeConverter.isoToTimestamp(it)
+    } ?: entries.first().getTimeStamp()
     val firstDataTs = entries.minOf { it.getTimeStamp() }
     val endTs = entries.maxOf { it.getTimeStamp() }
     val targetData = entries.toImmutableList<PeriodSummary>()
@@ -215,7 +214,7 @@ class BabyDashboardViewModel @AssistedInject constructor(
   private fun loadPercentiles() {
     val profile = babyProduct.profile
     val birthDateMillis = profile.birthdate?.let {
-      com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.isoToTimestamp(it)
+      DateTimeConverter.isoToTimestamp(it)
     } ?: return
     viewModelScope.launch(Dispatchers.IO) {
       BabyPercentileHelper.loadIfNeeded(context)
