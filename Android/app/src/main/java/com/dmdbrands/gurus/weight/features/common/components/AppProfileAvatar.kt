@@ -127,7 +127,7 @@ fun AppProfileAvatar(
               modifier = Modifier
                 .padding(start = 2.dp)
                 .align(Alignment.Center)
-                .size(24.dp),
+                .size(size * 0.44f),
             )
           }
 
