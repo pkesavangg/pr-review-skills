@@ -27,6 +27,10 @@ enum BabyDashboardChartSupport {
         .ninetyFifth: 1.3
     ]
 
+    static func clearDummySummariesCache() {
+        // Compatibility hook kept for callers that still reset baby chart state.
+    }
+
     static func resolvedBirthday(
         for babyProfile: BabyProfile,
         calendar: Calendar = .current,
@@ -407,6 +411,122 @@ enum BabyDashboardChartSupport {
         let spreadMultiplier = 1.0 + (min(Double(day), 365) / 365.0) * 0.2
         let offset = (heightPercentileOffsets[line] ?? 0) * spreadMultiplier
         return dummyHeightInches(forDayOfLife: day, birthLengthInches: birthLengthInches) + offset
+    }
+
+    // MARK: - Weight Conversion Helpers
+
+    static func convertStoredWeightToDisplay(_ storedWeight: Int, unit: WeightUnit) -> Double {
+        unit == .kg
+            ? ConversionTools.convertStoredToKg(storedWeight)
+            : ConversionTools.convertStoredToLbs(storedWeight)
+    }
+
+    static func convertDecigramsToDisplay(_ decigrams: Int, unit: WeightUnit) -> Double {
+        let kg = Double(decigrams) / BabyPercentileGrowthReference.decigramsToKgFactor
+        let stored = ConversionTools.convertKgToStored(kg)
+        return unit == .kg
+            ? ConversionTools.convertStoredToKg(stored)
+            : ConversionTools.convertStoredToLbs(stored)
+    }
+
+    static func formatBabyWeight(_ storedWeight: Int, unit: WeightUnit) -> (lbs: String, oz: String) {
+        let displayWeight = convertStoredWeightToDisplay(storedWeight, unit: unit)
+        let wholeLbs = Int(displayWeight)
+        let remainingOz = (displayWeight - Double(wholeLbs)) * 16.0
+        return (lbs: "\(wholeLbs)", oz: String(format: "%.1f", remainingOz))
+    }
+
+    static func weekAverageLbsOz(
+        from summaries: [BathScaleWeightSummary],
+        unit: WeightUnit
+    ) -> (lbs: String, oz: String)? {
+        let weights = summaries.map(\.weight).filter { $0 > 0 }
+        guard !weights.isEmpty else { return nil }
+        let avgStored = Int((weights.reduce(0, +) / Double(weights.count)).rounded())
+        return formatBabyWeight(avgStored, unit: unit)
+    }
+
+    // MARK: - Snapshot Card Helpers
+
+    /// Returns every `stride`-th point, always including the first and last point
+    /// to preserve line continuity at the edges.
+    static func thinnedPercentilePoints(
+        _ points: [BabyPercentileChartPoint],
+        stride strideN: Int
+    ) -> [BabyPercentileChartPoint] {
+        guard points.count > strideN * 2, strideN > 1 else { return points }
+        var result: [BabyPercentileChartPoint] = []
+        result.reserveCapacity(points.count / strideN + 2)
+        for (index, point) in points.enumerated() {
+            if index == 0 || index == points.count - 1 || index % strideN == 0 {
+                result.append(point)
+            }
+        }
+        return result
+    }
+
+    /// Clips a sorted array of date/value points at `endDate`, inserting an
+    /// interpolated boundary point when the last visible point falls before the clip edge.
+    static func rightClippedPoints(
+        _ points: [(date: Date, value: Double)],
+        endDate: Date
+    ) -> [(date: Date, value: Double)] {
+        let sortedPoints = points.sorted { $0.date < $1.date }
+        let visiblePoints = sortedPoints.filter { $0.date <= endDate }
+
+        guard let lastVisiblePoint = visiblePoints.last else { return [] }
+        guard lastVisiblePoint.date < endDate else { return visiblePoints }
+        guard let nextPoint = sortedPoints.first(where: { $0.date > endDate }) else { return visiblePoints }
+
+        let boundaryValue = interpolatedValue(
+            at: endDate,
+            from: lastVisiblePoint.date,
+            startValue: lastVisiblePoint.value,
+            to: nextPoint.date,
+            endValue: nextPoint.value
+        )
+
+        return visiblePoints + [(date: endDate, value: boundaryValue)]
+    }
+
+    /// Clips percentile chart points at `endDate` with interpolation.
+    static func rightClippedPercentilePoints(
+        _ points: [BabyPercentileChartPoint],
+        endDate: Date
+    ) -> [BabyPercentileChartPoint] {
+        let clipped = rightClippedPoints(
+            points.map { (date: $0.date, value: $0.value) },
+            endDate: endDate
+        )
+
+        guard let line = points.first?.line else { return [] }
+        return clipped.map { BabyPercentileChartPoint(date: $0.date, value: $0.value, line: line) }
+    }
+
+    /// Linearly interpolates a value at `targetDate` between two known points.
+    static func interpolatedValue(
+        at targetDate: Date,
+        from startDate: Date,
+        startValue: Double,
+        to endDate: Date,
+        endValue: Double
+    ) -> Double {
+        let totalInterval = endDate.timeIntervalSince(startDate)
+        guard totalInterval > 0 else { return startValue }
+
+        let elapsedInterval = targetDate.timeIntervalSince(startDate)
+        let progress = elapsedInterval / totalInterval
+        return startValue + ((endValue - startValue) * progress)
+    }
+
+    /// Returns only the first and last Y-axis tick values for boundary grid lines.
+    static func boundaryYTicks(from ticks: [Double]) -> [Double] {
+        guard let first = ticks.first else { return [] }
+        guard let last = ticks.last,
+              abs(last - first) > AppConstants.Precision.doubleEqualityEpsilon else {
+            return [first]
+        }
+        return [first, last]
     }
 
     private static func aggregateMonthly(
