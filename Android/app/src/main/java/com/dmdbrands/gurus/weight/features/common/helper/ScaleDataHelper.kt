@@ -56,7 +56,22 @@ object ScaleDataHelper {
       isWifiConfigured = this.device?.isWifiConfigured == true,
       createdAt = this.createdAt,
       scaleId = this.id,
+      hasNumericUsers = scaleInfoFromScales?.hasNumericUsers ?: true,
+      userNumber = this.userNumber,
     )
+  }
+
+  /**
+   * Formats the user display string for a BPM device.
+   * hasNumericUsers=true shows "1"/"2", otherwise "A"/"B".
+   * Stored value is always an Int (1 or 2).
+   */
+  private const val USER_A = "A"
+  private const val USER_B = "B"
+
+  fun formatUserDisplay(hasNumericUsers: Boolean, userNumber: Int?): String {
+    val num = userNumber ?: return ""
+    return if (hasNumericUsers) num.toString() else if (num == 1) USER_A else USER_B
   }
 
   /**

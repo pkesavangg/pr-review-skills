@@ -46,6 +46,7 @@ fun AppScaleCard(
 ) {
   val cardSpacing = if (isSavedScale) spacing.md else spacing.sm
   val connectionIcon = ScaleDataHelper.scaleTypeIcon(scale.setupType)
+  val isBpm = ScaleDataHelper.isBpmDevice(scale.sku)
   val isWifiSetup =
     scale.setupType == ScaleSetupType.Wifi ||
       scale.setupType == ScaleSetupType.EspTouchWifi ||
@@ -55,7 +56,7 @@ fun AppScaleCard(
       scale.setupType == ScaleSetupType.Lcbt ||
       scale.setupType == ScaleSetupType.BtWifiR4
   val showConnectionStatus =
-    isSavedScale && isBluetoothSetup
+    isSavedScale && isBluetoothSetup && !isBpm
 
   Surface(
     modifier =
@@ -91,14 +92,17 @@ fun AppScaleCard(
           textOverflow = TextOverflow.Ellipsis,
           softWrap = false,
         )
+        if (isBpm && isSavedScale && scale.userNumber != null) {
+          Spacer(modifier = Modifier.height(spacing.x3s))
+          val displayUser = ScaleDataHelper.formatUserDisplay(scale.hasNumericUsers, scale.userNumber)
+          AppText(
+            text = "${AppListStrings.User} $displayUser",
+            textType = TextType.Body,
+          )
+        }
         if (showConnectionStatus) {
           Spacer(modifier = Modifier.height(spacing.x3s))
           Row(verticalAlignment = Alignment.CenterVertically) {
-            // Show exclamation only when we're certain WiFi setup is incomplete
-            // For BtWifiR4 scales, show exclamation if:
-            // 1. Scale is connected (so we can check WiFi status)
-            // 2. WiFi is explicitly not configured (isWifiConfigured == false)
-            // 3. Scale type is BtWifiR4 (which requires WiFi setup)
             val showExclamation =
               scale.isWifiConfigured != true &&
               scale.isConnected == true &&
