@@ -283,6 +283,30 @@ enum BabyDashboardChartSupport {
         return values.reduce(0, +) / Double(values.count)
     }
 
+    static func heightPercentile(
+        for babyProfile: BabyProfile,
+        heightInches: Double,
+        on date: Date,
+        calendar: Calendar = .current
+    ) -> Int {
+        let birthday = resolvedBirthday(for: babyProfile, calendar: calendar, today: date)
+        let dayOfLife = max(0, calendar.dateComponents([.day], from: birthday, to: date).day ?? 0)
+        let birthLengthInches = resolvedBirthLengthInches(for: babyProfile)
+
+        let percentileHeights = BabyPercentileLine.allCases.map { line in
+            (
+                percentile: percentileValue(for: line),
+                value: percentileHeightInches(
+                    forDayOfLife: dayOfLife,
+                    birthLengthInches: birthLengthInches,
+                    line: line
+                )
+            )
+        }
+
+        return interpolatedPercentile(for: heightInches, percentileHeights: percentileHeights)
+    }
+
     static func percentileLine(for seriesName: String) -> BabyPercentileLine? {
         guard isPercentileSeries(seriesName) else { return nil }
         let rawValue = String(seriesName.dropFirst(percentileSeriesPrefix.count))
@@ -291,6 +315,50 @@ enum BabyDashboardChartSupport {
 
     private static func percentileSeriesName(for line: BabyPercentileLine) -> String {
         percentileSeriesPrefix + line.rawValue
+    }
+
+    private static func percentileValue(for line: BabyPercentileLine) -> Int {
+        switch line {
+        case .fifth: return 5
+        case .tenth: return 10
+        case .twentyFifth: return 25
+        case .fiftieth: return 50
+        case .seventyFifth: return 75
+        case .ninetieth: return 90
+        case .ninetyFifth: return 95
+        }
+    }
+
+    private static func interpolatedPercentile(
+        for measurement: Double,
+        percentileHeights: [(percentile: Int, value: Double)]
+    ) -> Int {
+        guard let first = percentileHeights.first else { return 0 }
+        guard let last = percentileHeights.last else { return 0 }
+
+        if measurement <= first.value {
+            return first.percentile
+        }
+
+        if measurement >= last.value {
+            return last.percentile
+        }
+
+        for index in 1..<percentileHeights.count {
+            let lower = percentileHeights[index - 1]
+            let upper = percentileHeights[index]
+            guard measurement <= upper.value else { continue }
+            let range = upper.value - lower.value
+            guard range > AppConstants.Precision.doubleEqualityEpsilon else {
+                return lower.percentile
+            }
+
+            let progress = (measurement - lower.value) / range
+            let percentile = Double(lower.percentile) + (Double(upper.percentile - lower.percentile) * progress)
+            return Int(percentile.rounded())
+        }
+
+        return last.percentile
     }
 
     private static func storedBirthWeight(for babyProfile: BabyProfile) -> Int {

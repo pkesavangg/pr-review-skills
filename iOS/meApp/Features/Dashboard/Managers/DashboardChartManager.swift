@@ -148,10 +148,11 @@ final class DashboardChartManager: DashboardChartManaging {
            let previousDomain = previousYAxisDomain,
            newYAxisDomain != previousDomain {
             cacheManager.invalidateChartSeriesCache()
-// swiftlint:disable:next multiline_arguments
-            logger.log(level: .debug, tag: "DashboardChartManager",
-// swiftlint:disable:next vertical_parameter_alignment_on_call
-                      message: "Y-axis domain changed from \(previousDomain) to \(newYAxisDomain), invalidating cached chart series")
+            logger.log(
+                level: .debug,
+                tag: "DashboardChartManager",
+                message: "Y-axis domain changed from \(previousDomain) to \(newYAxisDomain), invalidating cached chart series"
+            )
         }
 
         stateProvider.scheduleUIUpdate()

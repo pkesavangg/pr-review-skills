@@ -22,22 +22,19 @@ struct LandingScreen: View {
         CGFloat(min(itemHeight * landingStore.userItems.count, itemHeight * 5))
     }
 
-    // Check if there are any logged-in users
-    var hasLoggedInUsers: Bool {
-        !landingStore.accounts.isEmpty
+    // Show the multi-account layout whenever any saved account exists.
+    var hasAnyAccounts: Bool {
+        !landingStore.userItems.isEmpty
     }
 
     var body: some View {
         RoutingView(stack: $router.stack) {
             ZStack {
                 Group {
-                    // Show empty landing screen if no logged-in users exist
-                    // swiftlint:disable:next empty_count
-                    (hasLoggedInUsers && landingStore.userItems.count > 0) ? theme.backgroundSecondary : theme.actionPrimary
+                    hasAnyAccounts ? theme.backgroundSecondary : theme.actionPrimary
                 }
                 .ignoresSafeArea()
-                // Show empty landing screen if no logged-in users exist (even if there are logged-out accounts)
-                if !hasLoggedInUsers || landingStore.userItems.isEmpty {
+                if !hasAnyAccounts {
                     VStack(alignment: .center) {
                         Spacer()
                             .frame(minHeight: .spacing6XL)
@@ -98,16 +95,18 @@ struct LandingScreen: View {
                                                 VStack(spacing: 0) {
                                                     UserListItemView(
                                                         user: item,
-                                                        openItemID: $openItemID
-                                                    ) { id, needsLogin in
+                                                        openItemID: $openItemID,
+                                                        onTap: { id, needsLogin in
                                                             if needsLogin {
-                                                                // If the user is expired or logged out, allow login with the same email.
-                                                                // If the user modifies the email and the account limit has been reached, show the max accounts alert.
                                                                 router.navigate(to: .login(item.email))
                                                             } else {
                                                                 landingStore.switchAccount(to: id)
                                                             }
+                                                        },
+                                                        onDelete: { _ in
+                                                            landingStore.removeAccount(user: item)
                                                         }
+                                                    )
                                                     if index < landingStore.userItems.count - 1 {
                                                         Divider()
                                                             .frame(height: 0.5)

@@ -21,9 +21,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class EntrySyncServiceTest {
@@ -43,7 +43,7 @@ class EntrySyncServiceTest {
     private val fakeScaleEntry: ScaleEntry = mockk(relaxed = true)
     private val fakeScaleApiEntry: ScaleApiEntry = mockk(relaxed = true)
 
-    @Before
+    @BeforeEach
     fun setUp() {
         mockkObject(AppLog)
         every { AppLog.d(any(), any()) } returns Unit
@@ -73,7 +73,7 @@ class EntrySyncServiceTest {
         )
     }
 
-    @After
+    @AfterEach
     fun tearDown() {
         unmockkAll()
     }
@@ -124,6 +124,12 @@ class EntrySyncServiceTest {
 
     @Test
     fun `syncOperations updates lastUpdated timestamp`() = runTest {
+        val apiResponse = OperationsResponse(
+            operations = emptyList(),
+            timestamp = "2024-01-02T00:00:00Z",
+        )
+        coEvery { entryRepository.getOperationsFromAPI(any()) } returns apiResponse
+
         service.syncOperations(testAccountId)
 
         assertThat(service.lastUpdated.value).isNotNull()

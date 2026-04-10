@@ -250,6 +250,44 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         }
     }
 
+    /// Removes an account from this device without deleting it server-side.
+    /// If the account is still logged in, the API logout call is attempted first
+    /// (errors are ignored). Keychain tokens and the local SwiftData record are
+    /// always deleted so the account no longer appears in any account list.
+    func removeAccountFromDevice(accountId: String) async throws {
+        logger.log(level: .info, tag: tag, message: "Remove account from device requested for accountId=\(accountId)")
+        guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
+            logger.log(level: .error, tag: tag, message: "Account not found for removal: \(accountId)")
+            return
+        }
+
+        // Only attempt API logout if the account is currently logged in.
+        if localAccount.isLoggedIn == true {
+            let fcmToken = PushNotificationService.shared.getStoredFCMToken(for: accountId)
+            do {
+                try await apiRepo.logOut(fcmToken: fcmToken, accountId: accountId)
+            } catch {
+                // API errors during removal are non-fatal — we still clean up locally.
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "API logout during remove failed (ignored) for accountId=\(accountId): \(error.localizedDescription)"
+                )
+            }
+        }
+
+        // If this was the active account, clear the reference before deletion.
+        if activeAccount?.accountId == accountId {
+            activeAccount = nil
+        }
+
+        keychainService.deleteTokens(for: accountId)
+        keychainService.deleteFCMToken(for: accountId)
+        try await localRepo.deleteAccount(byId: accountId)
+        try await updatePublishedState()
+        logger.log(level: .info, tag: tag, message: "Account removed from device: \(accountId)")
+    }
+
     // MARK: - Account Switching
 
     /// Switches to a different account by setting it as the active account.
@@ -362,7 +400,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
                 try await updatePublishedState()
                 notifyActiveAccountChanged()
                 logger.log(
-                    level: .error, tag: tag, // swiftlint:disable:this multiline_arguments
+                    level: .error,
+                    tag: tag,
                     message: "Create goal saved offline for accountId=\(accountId), offline=true, reason=network_error, "
                         + "goalType=\(goal.goalType.rawValue), goalWeight=\(goal.goalWeight), initialWeight=\(goal.initialWeight)"
                 )
@@ -453,7 +492,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
                     NotificationCenter.default.post(name: .accountWeightUnitChanged, object: nil, userInfo: ["weightUnit": finalWeightUnit])
                 }
                 logger.log(
-                    level: .error, tag: tag, // swiftlint:disable:this multiline_arguments
+                    level: .error,
+                    tag: tag,
                     message: "Update bodyComp saved offline for accountId=\(accountId), offline=true, reason=network_error, "
                         + "weightUnit=\(bodyComp.weightUnit.rawValue), height=\(bodyComp.height), activityLevel=\(bodyComp.activityLevel.rawValue)"
                 )
@@ -1121,7 +1161,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
                 try await updatePublishedState()
                 notifyActiveAccountChanged()
                 logger.log(
-                    level: .error, tag: tag, // swiftlint:disable:this multiline_arguments
+                    level: .error,
+                    tag: tag,
                     message: "Update weightless saved offline for accountId=\(accountId), offline=true, reason=network_error, "
                         + "isWeightlessOn=\(isWeightlessOn), weightlessWeight=\(weightlessWeight)"
                 )
@@ -1137,9 +1178,12 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
 
     /// Refreshes the access token using the refresh token of the active account or a specific account by ID.
     func refreshTokens(accountId: String? = nil) async throws -> Tokens {
-        let account = accountId != nil ?
-            try await fetchAccount(byId: accountId!) : // swiftlint:disable:this force_unwrapping
-            activeAccount
+        let account: Account?
+        if let id = accountId {
+            account = try await fetchAccount(byId: id)
+        } else {
+            account = activeAccount
+        }
 
         guard let account = account else {
             throw AccountError.noActiveAccount

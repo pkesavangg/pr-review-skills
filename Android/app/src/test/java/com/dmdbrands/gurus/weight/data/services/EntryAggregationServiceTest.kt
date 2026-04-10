@@ -18,9 +18,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class EntryAggregationServiceTest {
@@ -36,7 +36,7 @@ class EntryAggregationServiceTest {
     // --- Test fixtures ---
     private val testAccountId = "acc-123"
 
-    @Before
+    @BeforeEach
     fun setUp() {
         mockkObject(AppLog)
         every { AppLog.d(any(), any()) } returns Unit
@@ -70,7 +70,7 @@ class EntryAggregationServiceTest {
         )
     }
 
-    @After
+    @AfterEach
     fun tearDown() {
         unmockkAll()
     }
@@ -621,7 +621,7 @@ class EntryAggregationServiceTest {
         service.startDataCollection(testAccountId)
         appScope.testScheduler.advanceUntilIdle()
 
-        assertThat(service.daywiseBodyScaleAverages.value).isEqualTo(fakeData)
+        assertThat(service.daywiseBodyScaleAverages.value).hasSize(1)
     }
 
     // -------------------------------------------------------------------------

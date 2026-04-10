@@ -21,6 +21,13 @@ object DeviceHelper {
   const val SKU_0661 = "0661"
   const val SKU_0634 = "0634"
   const val SKU_0344 = "0344"
+  const val SKU_0636 = "0636"
+
+  /** All known Baby Scale SKUs. */
+  val BABY_SCALE_SKUS: Set<String> = setOf(SKU_0220, SKU_0222)
+
+  /** Returns `true` when the given [sku] identifies a Baby Scale. */
+  fun isBabyScale(sku: String): Boolean = sku in BABY_SCALE_SKUS
 
   /** All known Blood Pressure Monitor SKUs. */
   val BPM_SKUS: Set<String> = setOf(SKU_0603, SKU_0661, SKU_0634, SKU_0663)
@@ -66,9 +73,11 @@ object DeviceHelper {
     "gG BS 0220" to SKU_0220,
     "BS1711-B" to SKU_0220,
     "Smart Blood Pressure Monitor" to SKU_0663,
+    "gG BPM 0663" to SKU_0663,
     "gG BPM 0667" to SKU_0661,
     "gG BPM 0634" to SKU_0634,
     "gG BS 0351" to DEFAULT_SKU,
     "gG BS 0344" to SKU_0344,
+    "gG BPM 0636" to SKU_0636,
   )
 }

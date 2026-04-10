@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 3,
-    "identityHash": "081b65c0bf5f0f77ee1d701588f4cd59",
+    "identityHash": "bdac60676d7ad6ef4cb316d31c2a8d47",
     "entities": [
       {
         "tableName": "account",
@@ -1318,6 +1318,211 @@
             ]
           }
         ]
+      },
+      {
+        "tableName": "baby_profiles",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `accountId` TEXT NOT NULL, `name` TEXT NOT NULL, `birthDate` INTEGER, `biologicalSex` TEXT, `birthWeightDecigrams` INTEGER, `birthLengthMillimeters` INTEGER, `isBorn` INTEGER, `isOwnedByAccount` INTEGER, `babyPermissions` INTEGER, `createdAt` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "birthDate",
+            "columnName": "birthDate",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "biologicalSex",
+            "columnName": "biologicalSex",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "birthWeightDecigrams",
+            "columnName": "birthWeightDecigrams",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "birthLengthMillimeters",
+            "columnName": "birthLengthMillimeters",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "isBorn",
+            "columnName": "isBorn",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "isOwnedByAccount",
+            "columnName": "isOwnedByAccount",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "babyPermissions",
+            "columnName": "babyPermissions",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_baby_profiles_accountId",
+            "unique": false,
+            "columnNames": [
+              "accountId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_baby_profiles_accountId` ON `${TABLE_NAME}` (`accountId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "baby_entry",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `babyProfileId` TEXT NOT NULL, `babyWeightDecigrams` INTEGER, `babyLengthMillimeters` INTEGER, `entryNote` TEXT, `entryType` TEXT, `feedingTimeLeft` INTEGER, `feedingTimeRight` INTEGER, `feedingMilliliters` INTEGER, `diaperType` TEXT, `sleepTime` INTEGER, `babyDisplayWeightDecigrams` INTEGER, `photo` TEXT, `isPlaceholder` INTEGER, `source` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `entry`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`babyProfileId`) REFERENCES `baby_profiles`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "babyProfileId",
+            "columnName": "babyProfileId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "babyWeightDecigrams",
+            "columnName": "babyWeightDecigrams",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "babyLengthMillimeters",
+            "columnName": "babyLengthMillimeters",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "entryNote",
+            "columnName": "entryNote",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "entryType",
+            "columnName": "entryType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "feedingTimeLeft",
+            "columnName": "feedingTimeLeft",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "feedingTimeRight",
+            "columnName": "feedingTimeRight",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "feedingMilliliters",
+            "columnName": "feedingMilliliters",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "diaperType",
+            "columnName": "diaperType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sleepTime",
+            "columnName": "sleepTime",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "babyDisplayWeightDecigrams",
+            "columnName": "babyDisplayWeightDecigrams",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "photo",
+            "columnName": "photo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isPlaceholder",
+            "columnName": "isPlaceholder",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_baby_entry_babyProfileId",
+            "unique": false,
+            "columnNames": [
+              "babyProfileId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_baby_entry_babyProfileId` ON `${TABLE_NAME}` (`babyProfileId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "entry",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "baby_profiles",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "babyProfileId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
       }
     ],
     "views": [
@@ -1328,7 +1533,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '081b65c0bf5f0f77ee1d701588f4cd59')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'bdac60676d7ad6ef4cb316d31c2a8d47')"
     ]
   }
 }

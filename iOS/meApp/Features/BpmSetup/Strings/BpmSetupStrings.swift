@@ -16,6 +16,8 @@ struct BpmSetupStrings {
         static let description = "Balance Health needs access to the following permissions to connect to your monitor."
         static let authorizeBluetoothAccess = "Authorize Bluetooth access"
         static let bluetoothTurnedOff = "Bluetooth is turned off"
+        static let authorizeLocationAccess = "Authorize Location access"
+        static let locationTurnedOff = "Location is turned off"
     }
 
     struct ModelSelection {
@@ -27,6 +29,7 @@ struct BpmSetupStrings {
         static let title = "Which user do you want to be?"
         static let description = "Make sure to pick a user no one else is using."
     }
+
 
     struct SetUser {
         static let title: (String) -> String = { userLabel in
