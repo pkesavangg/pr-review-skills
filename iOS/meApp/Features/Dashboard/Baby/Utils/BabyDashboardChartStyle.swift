@@ -9,7 +9,7 @@
 import SwiftUI
 
 enum BabyDashboardChartStyle {
-    static let weightColor = Color(red: 0x88 / 255.0, green: 0x41 / 255.0, blue: 0xA4 / 255.0)
+    static let weightColor = ColorTokens.babyPrimary
     static let percentileLineWidth: CGFloat = 1.0
 
     static func percentileLineColor(for line: BabyPercentileLine?, theme: AppColors.Palette) -> Color {

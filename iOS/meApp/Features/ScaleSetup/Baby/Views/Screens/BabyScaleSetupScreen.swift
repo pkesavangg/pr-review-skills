@@ -86,7 +86,11 @@ struct BabyScaleSetupScreen: View {
         }
         .navigationBarBackButtonHidden(true)
         .onDisappear {
-            guard !isBeingDismissed else { return }
+            guard !isBeingDismissed else {
+                registerDeactivation { true }
+                setupStore.cleanup()
+                return
+            }
             setupStore.cleanup()
         }
     }

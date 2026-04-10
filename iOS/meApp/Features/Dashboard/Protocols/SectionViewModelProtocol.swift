@@ -39,6 +39,7 @@ protocol SectionViewModelProtocol: ObservableObject {
     
     // MARK: - Common Computed Properties
     var chartOperations: [BathScaleWeightSummary] { get }
+    var hasChartOperations: Bool { get }
     var chartSeriesData: [GraphSeries] { get }
     /// Chart series points that fall within the currently visible X-domain
     var visibleChartSeriesData: [GraphSeries] { get }
@@ -46,6 +47,8 @@ protocol SectionViewModelProtocol: ObservableObject {
     var displayWeight: Double? { get }
     var weightLabel: String { get }
     var xAxisValues: [Date] { get }
+    var gridTicks: [Date] { get }
+    var adjustedLabelTicks: [Date] { get }
     var isAtLeftBoundary: Bool { get }
     
     // MARK: - Stroke & Point Sizing

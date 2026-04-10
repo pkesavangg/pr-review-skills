@@ -213,6 +213,16 @@ agent: coverage-gap-finder       → Identify uncovered methods and branches
 
 This command internally runs: security, lint, regression, issue-coverage, and accessibility reviews, then posts a consolidated comment.
 
+### 4.11 Fix PR Comments
+
+```
+/fix-pr-comments {url}           → Triage + auto-fix reviewer comments
+```
+
+Fetches all inline and general review comments, classifies each as Auto-fix / Needs discussion / Skip, applies safe concrete fixes, and reports a summary table. Does NOT commit. Run after `/review-pr` feedback lands.
+
+Trigger phrases: "fix PR comments", "address review feedback", "apply reviewer suggestions", "respond to PR feedback", "fix the review comments", "act on code review", "resolve PR comments".
+
 ### 4.11 Release Preparation
 
 ```
@@ -324,6 +334,7 @@ Before marking any task complete, confirm:
 | `/raise-pr` | Push and create PR |
 | `/log-work` | Log time on Jira |
 | `/review-pr` | Full PR review pipeline |
+| `/fix-pr-comments` | Triage and auto-fix reviewer comments on a PR |
 | `/release-cut` | Release notes generation |
 
 ### Documentation

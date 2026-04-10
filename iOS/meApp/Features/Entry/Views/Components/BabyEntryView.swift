@@ -18,35 +18,77 @@ struct BabyEntryView: View {
     var body: some View {
         VStack(spacing: .spacingLG) {
             VStack(alignment: .leading, spacing: .spacingXS) {
-                // Pounds & Ounces side by side with combined error
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: .spacingSM) {
-                        MetricInputField(
-                            config: TextInputConfig(
-                                label: babyLang.pounds,
-                                inputType: .metric,
-                                focusField: .pounds,
-                                maxLength: 3,
-                                allowWholeNumbers: true
-                            ),
-                            value: $entryStore.babyForm.pounds.value,
-                            focusedField: $focusedField
-                        ) {
-                            focusedField = .ounces
-                        }
+                // Weight unit toggle
+                SegmentedButtonView(
+                    segments: BabyWeightUnit.allCases,
+                    selectedSegment: Binding(
+                        get: { entryStore.babyWeightUnit },
+                        set: { entryStore.updateBabyWeightUnit($0) }
+                    )
+                )
 
+                // Weight input — switches based on selected unit
+                VStack(alignment: .leading, spacing: 0) {
+                    switch entryStore.babyWeightUnit {
+                    case .kg:
                         MetricInputField(
                             config: TextInputConfig(
-                                label: babyLang.ounces,
+                                label: babyLang.kg,
                                 inputType: .metric,
-                                focusField: .ounces,
-                                maxLength: 3,
-                                clearZeroValue: true
+                                focusField: .babyKg,
+                                maxLength: 6,
+                                clearZeroValue: true,
+                                decimalPlaces: 3
                             ),
-                            value: $entryStore.babyForm.ounces.value,
+                            value: $entryStore.babyForm.kg.value,
                             focusedField: $focusedField
                         ) {
                             focusedField = .inches
+                        }
+                    case .lb:
+                        MetricInputField(
+                            config: TextInputConfig(
+                                label: babyLang.lb,
+                                inputType: .metric,
+                                focusField: .babyLb,
+                                maxLength: 6,
+                                clearZeroValue: true,
+                                decimalPlaces: 3
+                            ),
+                            value: $entryStore.babyForm.lb.value,
+                            focusedField: $focusedField
+                        ) {
+                            focusedField = .inches
+                        }
+                    case .lbsOz:
+                        HStack(spacing: .spacingSM) {
+                            MetricInputField(
+                                config: TextInputConfig(
+                                    label: babyLang.pounds,
+                                    inputType: .metric,
+                                    focusField: .pounds,
+                                    maxLength: 3,
+                                    allowWholeNumbers: true
+                                ),
+                                value: $entryStore.babyForm.pounds.value,
+                                focusedField: $focusedField
+                            ) {
+                                focusedField = .ounces
+                            }
+
+                            MetricInputField(
+                                config: TextInputConfig(
+                                    label: babyLang.ounces,
+                                    inputType: .metric,
+                                    focusField: .ounces,
+                                    maxLength: 4,
+                                    clearZeroValue: true
+                                ),
+                                value: $entryStore.babyForm.ounces.value,
+                                focusedField: $focusedField
+                            ) {
+                                focusedField = .inches
+                            }
                         }
                     }
 
@@ -59,20 +101,47 @@ struct BabyEntryView: View {
                     }
                 }
 
-                // Inches full width
-                MetricInputField(
-                    config: TextInputConfig(
-                        label: babyLang.inches,
-                        inputType: .metric,
-                        errorMessage: entryStore.babyLengthError,
-                        focusField: .inches,
-                        maxLength: 3,
-                        clearZeroValue: true
-                    ),
-                    value: $entryStore.babyForm.inches.value,
-                    focusedField: $focusedField
-                ) {
-                    focusedField = .notes
+                // Length unit toggle
+                SegmentedButtonView(
+                    segments: BabyLengthUnit.allCases,
+                    selectedSegment: Binding(
+                        get: { entryStore.babyLengthUnit },
+                        set: { entryStore.updateBabyLengthUnit($0) }
+                    )
+                )
+
+                // Length input — switches based on selected unit
+                switch entryStore.babyLengthUnit {
+                case .inches:
+                    MetricInputField(
+                        config: TextInputConfig(
+                            label: babyLang.inches,
+                            inputType: .metric,
+                            errorMessage: entryStore.babyLengthError,
+                            focusField: .inches,
+                            maxLength: 3,
+                            clearZeroValue: true
+                        ),
+                        value: $entryStore.babyForm.inches.value,
+                        focusedField: $focusedField
+                    ) {
+                        focusedField = .notes
+                    }
+                case .cm:
+                    MetricInputField(
+                        config: TextInputConfig(
+                            label: babyLang.cm,
+                            inputType: .metric,
+                            errorMessage: entryStore.babyLengthError,
+                            focusField: .babyCm,
+                            maxLength: 5,
+                            clearZeroValue: true
+                        ),
+                        value: $entryStore.babyForm.cm.value,
+                        focusedField: $focusedField
+                    ) {
+                        focusedField = .notes
+                    }
                 }
 
                 // Notes

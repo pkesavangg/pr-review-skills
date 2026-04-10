@@ -555,6 +555,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
         }
         notificationService.dismissLoader()
+        bluetoothService.isSetupInProgress = false
         // Only dismiss the screen if we're exiting, not when saving immediately after pairing
         if isExiting {
             dismissAction?()

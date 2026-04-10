@@ -6,9 +6,11 @@
 import SwiftUI
 
 /// "Complete Baby Profile" — form for name, birthday, sex, birth length/weight.
-/// Uses the same UI components as the signup flow's AddBabyStepView.
+/// Decoupled from any specific store so it can be reused in Scale Setup, Signup, and My Kids.
 struct BabyProfileFormView: View {
-    @EnvironmentObject var store: BabyScaleSetupStore
+    @ObservedObject var form: BabyProfileSetupForm
+    @Binding var showDatePicker: Bool
+    @Binding var showSexPicker: Bool
     @Environment(\.appTheme) private var theme
     @FocusState private var focusedField: FocusField?
     private let lang = BabyScaleSetupStrings.BabyProfile.self
@@ -16,6 +18,10 @@ struct BabyProfileFormView: View {
 
     /// When `true`, the title and subtitle header is hidden (e.g. Settings -> Add Baby).
     var hideHeader: Bool = false
+    /// Custom title text. Defaults to scale setup strings if nil.
+    var headerTitle: String?
+    /// Custom subtitle text. Defaults to scale setup strings if nil.
+    var headerSubtitle: String?
 
     private var focusBinding: Binding<FocusField?> {
         Binding(
@@ -26,26 +32,26 @@ struct BabyProfileFormView: View {
 
     /// Display text for the biological sex picker.
     private var sexDisplayText: String {
-        let val = store.babyProfileForm.biologicalSex.value
+        let val = form.biologicalSex.value
         return val.isEmpty ? "" : val.capitalized
     }
 
     /// The currently selected `Sex` value derived from the form string, defaulting to `.male`.
     private var selectedSex: Sex {
-        Sex(rawInput: store.babyProfileForm.biologicalSex.value) ?? .male
+        Sex(rawInput: form.biologicalSex.value) ?? .male
     }
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
                 Spacer().frame(height: .spacingSM)
-                // Header (scale setup only)
+                // Header (scale setup / signup)
                 if !hideHeader {
                     VStack(alignment: .leading, spacing: .spacingXS) {
-                        Text(lang.title)
+                        Text(headerTitle ?? lang.title)
                             .fontOpenSans(.heading4)
                             .foregroundColor(theme.textHeading)
-                        Text(lang.subtitle)
+                        Text(headerSubtitle ?? lang.subtitle)
                             .fontOpenSans(.body2)
                             .foregroundColor(theme.textHeading)
                     }
@@ -58,20 +64,20 @@ struct BabyProfileFormView: View {
                         config: TextInputConfig(
                             label: labels.babyName,
                             inputType: .text,
-                            errorMessage: store.babyProfileForm.getNameError(),
+                            errorMessage: form.getNameError(),
                             focusField: .babyName
                         ),
-                        value: $store.babyProfileForm.name.value,
+                        value: $form.name.value,
                         focusedField: focusBinding,
                         onCommit: {
-                            store.babyProfileForm.name.markAsTouched()
-                            store.babyProfileForm.name.validate()
+                            form.name.markAsTouched()
+                            form.name.validate()
                             focusedField = nil
                         },
                         onEditingChanged: { isEditing in
                             if !isEditing {
-                                store.babyProfileForm.name.markAsTouched()
-                                store.babyProfileForm.name.validate()
+                                form.name.markAsTouched()
+                                form.name.validate()
                             }
                         }
                     )
@@ -83,15 +89,15 @@ struct BabyProfileFormView: View {
                             .foregroundColor(theme.textSubheading)
 
                         DateLabelView(
-                            date: store.babyProfileForm.birthday.value,
-                            isSelected: store.showBabyDatePicker
+                            date: form.birthday.value,
+                            isSelected: showDatePicker
                         ) {
-                            withAnimation { store.showBabyDatePicker.toggle() }
+                            withAnimation { showDatePicker.toggle() }
                         }
 
                         DatePickerView(
-                            isPresented: $store.showBabyDatePicker,
-                            date: $store.babyProfileForm.birthday.value,
+                            isPresented: $showDatePicker,
+                            date: $form.birthday.value,
                             endDate: Date()
                         )
                     }
@@ -100,7 +106,7 @@ struct BabyProfileFormView: View {
                     ActionListItemView(config: ActionListItemConfig(
                         title: labels.biologicalSex,
                         value: sexDisplayText,
-                        chevronType: .upDown) { store.showBabySexPicker = true })
+                        chevronType: .upDown) { showSexPicker = true })
                         .padding(.horizontal, .spacingSM)
                         .padding(.vertical, .spacingXS / 2)
                         .background(theme.backgroundPrimary)
@@ -111,27 +117,26 @@ struct BabyProfileFormView: View {
                         config: TextInputConfig(
                             label: labels.babyBirthLength,
                             inputType: .metric,
-                            errorMessage: store.babyProfileForm.getBirthLengthError(),
+                            errorMessage: form.getBirthLengthError(),
                             focusField: .babyBirthLength,
                             maxLength: 3,
                             clearZeroValue: true
                         ),
-                        value: $store.babyProfileForm.birthLengthInches.value,
+                        value: $form.birthLengthInches.value,
                         focusedField: focusBinding
                     ) {
-                        store.babyProfileForm.birthLengthInches.markAsTouched()
-                        store.babyProfileForm.birthLengthInches.validate()
+                        form.birthLengthInches.markAsTouched()
+                        form.birthLengthInches.validate()
                         focusedField = .babyBirthWeight
                     }
-                    .padding(.top, .spacingSM)
 
                     // Birth Weight (lb + oz) — single compound field
                     BirthWeightInputField(
-                        lbsValue: $store.babyProfileForm.birthWeightLbs.value,
-                        ozValue: $store.babyProfileForm.birthWeightOz.value,
+                        lbsValue: $form.birthWeightLbs.value,
+                        ozValue: $form.birthWeightOz.value,
                         focusedField: focusBinding,
                         label: lang.birthWeightLabel,
-                        errorMessage: store.babyProfileForm.getBirthWeightError()
+                        errorMessage: form.getBirthWeightError()
                     )
                 }
                 .padding(.top, .spacingLG)
@@ -145,16 +150,16 @@ struct BabyProfileFormView: View {
             hideKeyboard()
         }
         .pickerSheet(
-            isPresented: $store.showBabySexPicker,
+            isPresented: $showSexPicker,
             selectedValues: [selectedSex],
             options: [Sex.allCases],
             displayValue: { $0.rawValue.capitalized },
             title: labels.biologicalSex
         ) { vals in
             if let sex = vals.first {
-                store.babyProfileForm.biologicalSex.value = sex.rawValue.capitalized
-                store.babyProfileForm.biologicalSex.markAsTouched()
-                store.babyProfileForm.biologicalSex.validate()
+                form.biologicalSex.value = sex.rawValue.capitalized
+                form.biologicalSex.markAsTouched()
+                form.biologicalSex.validate()
             }
         }
     }

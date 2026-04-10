@@ -5,6 +5,12 @@ import Foundation
 @MainActor
 protocol DashboardCacheManagerProtocol {
     
+    // MARK: - Product Context
+
+    /// Updates the product context for cache validation. If the product type or baby profile
+    /// changes, all caches are automatically invalidated to prevent stale cross-product data.
+    func setProductContext(productType: EntryType, babyProfileId: String?)
+
     // MARK: - Continuous Operations Cache
     
     /// Gets cached continuous operations for a given period, or recalculates if cache is invalid.

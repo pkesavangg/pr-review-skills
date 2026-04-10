@@ -16,11 +16,15 @@ struct BpmSetupScreen: View {
 
     // MARK: - Input
     let sku: String
+    let discoveredScale: Device?
+    let discoveryEvent: DeviceDiscoveryEvent?
 
     private let commonLang = CommonStrings.self
 
-    init(sku: String) {
+    init(sku: String, discoveredScale: Device? = nil, discoveryEvent: DeviceDiscoveryEvent? = nil) {
         self.sku = sku
+        self.discoveredScale = discoveredScale
+        self.discoveryEvent = discoveryEvent
     }
 
     private var stepViews: [AnyView] { setupStore.stepViews }
@@ -67,7 +71,9 @@ struct BpmSetupScreen: View {
                 isBeingDismissed = true
                 dismiss()
             }
-            setupStore.configure(with: sku)
+            setupStore.configure(with: sku,
+                                 discoveredScale: discoveredScale,
+                                 discoveryEvent: discoveryEvent)
         }
         .onDisappear {
             if isBeingDismissed {
