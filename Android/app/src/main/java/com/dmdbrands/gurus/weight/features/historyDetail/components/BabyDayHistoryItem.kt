@@ -27,6 +27,7 @@ import com.dmdbrands.gurus.weight.features.history.strings.HistoryItemStrings
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.getTime
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import java.util.Locale
 
 /**
  * A single baby history detail entry row.
@@ -51,19 +52,20 @@ fun BabyDayHistoryItem(
     val unitStyle = SpanStyle(color = unitColor, fontWeight = FontWeight.Normal)
 
     // Build weight text: "8 lbs 14.9 oz" or "4.05 kg"
+    // Source-aware graduation is applied inside ConversionTools.
     val weightText = buildAnnotatedString {
         val dg = item.babyWeightDecigrams
+        val source = item.babyEntry.source
         if (dg != null) {
             if (isMetric) {
-                val kg = ConversionTools.convertDecigramsToKg(dg)
-                withStyle(boldStyle) { append(String.format("%.2f", kg)) }
+                val kg = ConversionTools.convertBabyWeightToKg(dg, source)
+                withStyle(boldStyle) { append(String.format(Locale.US, "%.2f", kg)) }
                 withStyle(unitStyle) { append(" kg") }
             } else {
-                val lbs = ConversionTools.convertDecigramsToLb(dg)
-                val oz = ConversionTools.convertDecigramsToOz(dg)
+                val (lbs, oz) = ConversionTools.convertBabyWeightToLbOz(dg, source)
                 withStyle(boldStyle) { append("$lbs ") }
                 withStyle(unitStyle) { append("lbs ") }
-                withStyle(boldStyle) { append(String.format("%.1f", oz)) }
+                withStyle(boldStyle) { append(String.format(Locale.US, "%.1f", oz)) }
                 withStyle(unitStyle) { append(" oz") }
             }
         } else {
@@ -76,10 +78,10 @@ fun BabyDayHistoryItem(
         val mm = item.babyLengthMillimeters
         if (mm != null) {
             if (isMetric) {
-                withStyle(boldStyle) { append(String.format("%.1f", ConversionTools.convertMmToCm(mm))) }
+                withStyle(boldStyle) { append(String.format(Locale.US, "%.1f", ConversionTools.convertMmToCm(mm))) }
                 withStyle(unitStyle) { append(" cm") }
             } else {
-                withStyle(boldStyle) { append(String.format("%.0f", ConversionTools.convertMmToInches(mm))) }
+                withStyle(boldStyle) { append(String.format(Locale.US, "%.0f", ConversionTools.convertMmToInches(mm))) }
                 withStyle(unitStyle) { append(" in") }
             }
         } else {

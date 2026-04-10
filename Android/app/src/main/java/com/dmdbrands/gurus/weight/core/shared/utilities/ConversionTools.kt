@@ -1,5 +1,10 @@
 package com.dmdbrands.gurus.weight.core.shared.utilities
 
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools.convertBabyWeightToKg
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools.convertBabyWeightToLbOz
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools.convertDecigramsToLbOz
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0220
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0222
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -126,23 +131,44 @@ object ConversionTools {
   private const val CALIBRATION_NUMERATOR_0222 = 369874.0
   private const val CALIBRATION_DENOMINATOR_0222 = 1048576.0
 
+  // 0220 scale's oz conversion factor (grams per oz).
+  // Intentionally less precise than DECIGRAMS_PER_OZ / 10 (28.3495) to match the
+  // babyApp reference implementation's 0220 scale rounding behavior.
+  private const val GRAMS_PER_OZ_0220 = 28.35
+
   // ---- Imperial display (existing) ----
 
   /**
    * Converts baby weight from decigrams to pounds (whole number).
+   * Uses [convertDecigramsToLbOz] internally to keep lbs and oz consistent
+   * when the rounded oz value carries over (e.g. 15.95 oz → 16.0 oz → +1 lb).
    * @param decigrams Weight in decigrams
    * @return Pounds component
    */
   fun convertDecigramsToLb(decigrams: Int): Int =
-      (decigrams / DECIGRAMS_PER_OZ / OZ_PER_LB).toInt()
+    convertDecigramsToLbOz(decigrams).first
 
   /**
    * Converts baby weight from decigrams to remaining ounces (1 decimal).
+   * Uses [convertDecigramsToLbOz] internally so carry-over is handled.
    * @param decigrams Weight in decigrams
-   * @return Ounces component rounded to 1 decimal place
+   * @return Ounces component rounded to 1 decimal place (always < 16.0)
    */
   fun convertDecigramsToOz(decigrams: Int): Double =
-      round((decigrams / DECIGRAMS_PER_OZ) % OZ_PER_LB * 10.0) / 10.0
+    convertDecigramsToLbOz(decigrams).second
+
+  /**
+   * Converts baby weight from decigrams to (lbs, oz) with carry-over handling.
+   * If the rounded oz reaches 16, it carries into lbs so output is always
+   * normalized (oz < 16.0).
+   * @return Pair(pounds, ounces)
+   */
+  fun convertDecigramsToLbOz(decigrams: Int): Pair<Int, Double> {
+    val totalOz = decigrams / DECIGRAMS_PER_OZ
+    val lbsRaw = (totalOz / OZ_PER_LB).toInt()
+    val ozRaw = round((totalOz % OZ_PER_LB) * 10.0) / 10.0
+    return if (ozRaw >= OZ_PER_LB) Pair(lbsRaw + 1, 0.0) else Pair(lbsRaw, ozRaw)
+  }
 
   /**
    * Converts baby length from millimeters to inches (1 decimal).
@@ -256,11 +282,11 @@ object ConversionTools {
     val grams = decigrams / DECIGRAMS_PER_GRAM
     val totalOz = when {
       grams >= GRADUATION_THRESHOLD_25_LB_GRAMS ->
-        round(grams / 2.0 / 28.35) * 2.0
+        round(grams / 2.0 / GRAMS_PER_OZ_0220) * 2.0
       grams >= GRADUATION_THRESHOLD_18_LB_GRAMS ->
-        round(grams * 5.0 / 28.35) / 5.0
+        round(grams * 5.0 / GRAMS_PER_OZ_0220) / 5.0
       else ->
-        round(grams / 28.35 * 10.0) / 10.0
+        round(grams / GRAMS_PER_OZ_0220 * 10.0) / 10.0
     }
     val lbs = (totalOz / OZ_PER_LB).toInt()
     val oz = if (lbs > 0) round((totalOz % OZ_PER_LB) * 10.0) / 10.0 else round(totalOz * 10.0) / 10.0
@@ -306,44 +332,54 @@ object ConversionTools {
     val adjustedOz = when (indexing) {
       50 -> round(rawOz / 20) * 20 / 10.0
       10 -> round(rawOz / 2) * 2 / 10.0
-      else -> round(rawOz * 10.0 / 10.0) / 10.0
+      else -> rawOz / 10.0
     }
-    return Pair(lbs, round(adjustedOz * 10.0) / 10.0)
+    // Carry-over guard: indexing=10/50 rounding can produce 16.0 at a pound boundary.
+    return if (adjustedOz >= OZ_PER_LB) Pair(lbs + 1, 0.0) else Pair(lbs, adjustedOz)
   }
 
-  // ========== Baby Source-Aware Router ==========
+  // ========== Baby Weight — SKU-aware conversions ==========
 
   /**
-   * Routes baby weight conversion based on scale source (SKU) and user unit preference.
-   * For scale entries (0220/0222), applies graduation rounding.
-   * For manual entries, uses simple conversion.
-   *
+   * Converts a baby weight in decigrams to (lbs, oz), applying SKU-specific
+   * graduation rounding for [SKU_0220] and [SKU_0222]
+   * scale entries. Falls back to the generic conversion for manual entries.
    * @param decigrams Raw weight in decigrams
-   * @param source Entry source (e.g., "0220", "0222", "manual")
-   * @param isMetric Whether user prefers metric units
-   * @return Pair(pounds, ounces) for imperial or Pair(kg-whole, kg-fraction) for metric
+   * @param source Entry source (a SKU string, "manual", or null)
    */
-  fun convertBabyWeightToDisplay(decigrams: Int, source: String?, isMetric: Boolean): String {
-    if (source != null && (source.contains("0220") || source.contains("0222"))) {
-      return if (isMetric) {
-        val kg = convert0220DecigramsToKg(decigrams)
-        formatKg(kg)
-      } else {
-        val (lbs, oz) = if (source.contains("0222")) {
-          convert0222DecigramsToLbOz(decigrams)
-        } else {
-          convert0220DecigramsToLbOz(decigrams)
-        }
-        formatLbOz(lbs, oz)
-      }
-    }
-    // Manual or unknown source — simple conversion
-    return if (isMetric) {
-      formatKg(convertDecigramsToKg(decigrams))
-    } else {
-      formatLbOz(convertDecigramsToLb(decigrams), convertDecigramsToOz(decigrams))
-    }
+  fun convertBabyWeightToLbOz(decigrams: Int, source: String?): Pair<Int, Double> = when {
+    source == null -> convertDecigramsToLbOz(decigrams)
+    source.contains(SKU_0222) -> convert0222DecigramsToLbOz(decigrams)
+    source.contains(SKU_0220) -> convert0220DecigramsToLbOz(decigrams)
+    else -> convertDecigramsToLbOz(decigrams)
   }
+
+  /**
+   * Converts a baby weight in decigrams to kilograms, applying SKU-specific
+   * graduation rounding for 0220 / 0222 scale entries.
+   * Note: 0222 shares 0220's metric graduation (matches babyApp reference).
+   * @param decigrams Raw weight in decigrams
+   * @param source Entry source (a SKU string, "manual", or null)
+   */
+  fun convertBabyWeightToKg(decigrams: Int, source: String?): Double {
+    val isBabyScale = source != null &&
+      (source.contains(SKU_0220) || source.contains(SKU_0222))
+    return if (isBabyScale) convert0220DecigramsToKg(decigrams) else convertDecigramsToKg(decigrams)
+  }
+
+  /**
+   * Formats a baby weight for display using the user's unit preference.
+   * Applies SKU-specific graduation via [convertBabyWeightToLbOz] /
+   * [convertBabyWeightToKg].
+   * @return e.g. "7 lbs 4.0 oz" or "3.29 kg"
+   */
+  fun convertBabyWeightToDisplay(decigrams: Int, source: String?, isMetric: Boolean): String =
+    if (isMetric) {
+      formatKg(convertBabyWeightToKg(decigrams, source))
+    } else {
+      val (lbs, oz) = convertBabyWeightToLbOz(decigrams, source)
+      formatLbOz(lbs, oz)
+    }
 
   /**
    * Routes baby length conversion based on user unit preference.

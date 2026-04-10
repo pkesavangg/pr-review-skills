@@ -85,6 +85,24 @@ class ConversionToolsBabyTest {
             assertThat(ConversionTools.convertDecigramsToLb(0)).isEqualTo(0)
             assertThat(ConversionTools.convertDecigramsToOz(0)).isEqualTo(0.0)
         }
+
+        @Test
+        fun `handles oz carry-over to lbs at boundary`() {
+            // 4522 decigrams ≈ 15.95 oz, which rounds to 16.0 oz — must carry to 1 lb 0.0 oz
+            val dg = 4522
+            assertThat(ConversionTools.convertDecigramsToLb(dg)).isEqualTo(1)
+            assertThat(ConversionTools.convertDecigramsToOz(dg)).isEqualTo(0.0)
+        }
+
+        @Test
+        fun `lbOz pair is always normalized with oz less than 16`() {
+            // Values at or near the 15.95 oz rounding boundary that would otherwise
+            // produce "0 lbs 16.0 oz" without the carry-over guard.
+            listOf(4522, 4525, 4530).forEach { dg ->
+                val (_, oz) = ConversionTools.convertDecigramsToLbOz(dg)
+                assertThat(oz).isLessThan(16.0)
+            }
+        }
     }
 
     @Nested
@@ -233,6 +251,17 @@ class ConversionToolsBabyTest {
             // With indexing 50, oz rounds to nearest 2.0
             assertThat(oz % 2).isWithin(0.1).of(0.0)
         }
+
+        @Test
+        fun `lbOz - oz is always less than 16 across full range (no carry bug)`() {
+            // Sweep the input range in 1g steps and verify invariant: oz < 16.0
+            var dg = 0
+            while (dg <= 200_000) {
+                val (_, oz) = ConversionTools.convert0222DecigramsToLbOz(dg)
+                assertThat(oz).isLessThan(16.0)
+                dg += 10
+            }
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -272,6 +301,14 @@ class ConversionToolsBabyTest {
         fun `0220 metric uses graduation kg`() {
             val result = ConversionTools.convertBabyWeightToDisplay(50_000, "0220", true)
             assertThat(result).contains("kg")
+        }
+
+        @Test
+        fun `0222 metric uses same graduation as 0220`() {
+            val result0220 = ConversionTools.convertBabyWeightToDisplay(50_000, "0220", true)
+            val result0222 = ConversionTools.convertBabyWeightToDisplay(50_000, "0222", true)
+            assertThat(result0222).contains("kg")
+            assertThat(result0222).isEqualTo(result0220)
         }
 
         @Test
