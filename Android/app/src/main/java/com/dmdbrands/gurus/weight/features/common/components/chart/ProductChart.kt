@@ -169,9 +169,15 @@ fun rememberProductChart(
   val layers = if (percentileLayer != null) {
     arrayOf(percentileLayer, primaryLayer)
   } else if (config.hasSecondaryLayer && config.secondaryLineColor != null) {
+    val secondaryRangeProvider = remember(segmentState.chartMinX, segmentState.chartMaxX) {
+      CartesianLayerRangeProvider.fixed(
+        minX = segmentState.chartMinX ?: Double.NaN,
+        maxX = segmentState.chartMaxX ?: Double.NaN,
+      )
+    }
     val secLayer = secondaryLayer(
       segment = segment,
-      rangeProvider = scrollAwareRange,
+      rangeProvider = secondaryRangeProvider,
       yTransform = { series, yRange, visibleXRange ->
         GraphUtil.normalizeYValues(
           series = series,
