@@ -228,7 +228,6 @@ fun GraphView(
     segment = segment,
     horizontalItemPlacer = horizontalItemPlacer,
     fadingEdges = fadingEdges,
-    handleIntent = { /* graph intents handled via viewModel methods */ },
     scrubController = scrubController,
   )
 

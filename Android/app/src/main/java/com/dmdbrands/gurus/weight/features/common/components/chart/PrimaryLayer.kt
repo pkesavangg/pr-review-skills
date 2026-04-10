@@ -27,7 +27,6 @@ internal fun rememberLineLayerWithConnection(
   lineColor: Color,
   verticalAxisPosition: Axis.Position.Vertical,
   rangeProvider: CartesianLayerRangeProvider = remember { CartesianLayerRangeProvider.auto() },
-  handleIntent: (Any) -> Unit,
   yTransform: ((
     series: List<com.patrykandpatrick.vico.compose.cartesian.data.LineCartesianLayerModel.Entry>,
     yRange: com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartRanges.YRange,
@@ -75,14 +74,12 @@ internal fun rememberLineLayerWithConnection(
 internal fun primaryLayer(
   segment: GraphSegment,
   rangeProvider: CartesianLayerRangeProvider = remember { CartesianLayerRangeProvider.auto() },
-  handleIntent: (Any) -> Unit
 ): LineCartesianLayer {
   return rememberLineLayerWithConnection(
     segment = segment,
     lineColor = MeTheme.colorScheme.primaryAction,
     verticalAxisPosition = Axis.Position.Vertical.End,
     rangeProvider = rangeProvider,
-    handleIntent = handleIntent,
   )
 }
 
@@ -94,7 +91,6 @@ internal fun primaryLayer(
 internal fun secondaryLayer(
   segment: GraphSegment,
   rangeProvider: CartesianLayerRangeProvider = remember { CartesianLayerRangeProvider.auto() },
-  handleIntent: (Any) -> Unit,
   yTransform: ((
     series: List<com.patrykandpatrick.vico.compose.cartesian.data.LineCartesianLayerModel.Entry>,
     yRange: com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartRanges.YRange,
@@ -106,7 +102,6 @@ internal fun secondaryLayer(
     lineColor = MeTheme.colorScheme.secondaryAction,
     verticalAxisPosition = Axis.Position.Vertical.End,
     rangeProvider = rangeProvider,
-    handleIntent = handleIntent,
     yTransform = yTransform,
   )
 }

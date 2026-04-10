@@ -26,6 +26,7 @@ object BabyPercentileHelper {
   private var boyData: List<PercentileRow>? = null
   private var girlData: List<PercentileRow>? = null
 
+  @Synchronized
   fun loadIfNeeded(context: Context) {
     if (boyData == null) boyData = parseCsv(context, R.raw.boy_weight_percentiles)
     if (girlData == null) girlData = parseCsv(context, R.raw.girl_weight_percentiles)

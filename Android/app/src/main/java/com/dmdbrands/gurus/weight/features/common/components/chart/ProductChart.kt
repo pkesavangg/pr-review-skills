@@ -47,11 +47,8 @@ fun rememberProductChart(
   segment: GraphSegment,
   horizontalItemPlacer: HorizontalAxis.ItemPlacer,
   fadingEdges: FadingEdges? = null,
-  handleIntent: (Any) -> Unit = {},
   scrubController: ScrubMarkerController? = null,
 ): CartesianChart {
-  graphState.markerIndex
-
   // ── Separators (shared) ──
   val separators = GraphUtil.periodStarts(
     segment = segment,
@@ -140,7 +137,6 @@ fun rememberProductChart(
     val secLayer = secondaryLayer(
       segment = segment,
       rangeProvider = scrollAwareRange,
-      handleIntent = handleIntent,
       yTransform = { series, yRange, visibleXRange ->
         GraphUtil.normalizeYValues(
           series = series,

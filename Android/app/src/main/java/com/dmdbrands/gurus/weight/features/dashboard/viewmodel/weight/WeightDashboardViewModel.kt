@@ -99,12 +99,12 @@ class WeightDashboardViewModel @Inject constructor(
 
   init {
     initLoadData()
-    startGraphSubscriptions()
     subscribeWeightUnit()
     subscribeGoal()
   }
 
   override fun onDependenciesReady() {
+    startGraphSubscriptions()
     subscribeMetrics()
     subscribeDashboardType()
     subscribeProgress()

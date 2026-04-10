@@ -4,10 +4,10 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 
 data class WeightSnapshotPoint(
-    val period: String,
-    val entryTimestamp: String,
+    override val period: String,
+    override val entryTimestamp: String,
     val weight: Double,
     val unit: WeightUnit,
-) {
-    fun getTimeStamp(): Long = DateTimeConverter.isoToTimestamp(entryTimestamp)
+) : PeriodSummary {
+    override fun getTimeStamp(): Long = DateTimeConverter.isoToTimestamp(entryTimestamp)
 }

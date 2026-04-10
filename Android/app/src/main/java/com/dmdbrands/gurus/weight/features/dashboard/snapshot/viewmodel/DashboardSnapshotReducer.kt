@@ -2,7 +2,6 @@ package com.dmdbrands.gurus.weight.features.dashboard.snapshot.viewmodel
 
 import androidx.compose.runtime.Stable
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
-import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 
 data class SnapshotChartData(
@@ -31,7 +30,6 @@ sealed interface DashboardSnapshotIntent : IReducer.Intent {
     data class SetWeightChart(val data: SnapshotChartData) : DashboardSnapshotIntent
     data class SetBpChart(val data: SnapshotChartData) : DashboardSnapshotIntent
     data class SetBabyChart(val profileId: String, val data: SnapshotChartData) : DashboardSnapshotIntent
-    data class OnCardTap(val product: ProductSelection) : DashboardSnapshotIntent
 }
 
 class DashboardSnapshotReducer : IReducer<DashboardSnapshotState, DashboardSnapshotIntent> {

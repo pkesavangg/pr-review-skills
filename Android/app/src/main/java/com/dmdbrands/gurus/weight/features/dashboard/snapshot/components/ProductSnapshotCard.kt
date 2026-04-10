@@ -282,6 +282,6 @@ fun BabySnapshotCard(
 @Composable
 private fun BpSnapshotCardPreview() {
     MeAppTheme {
-        BpSnapshotCard(viewModel = hiltViewModel(), onTap = {})
+        // Preview requires Hilt — use interactive preview or device preview
     }
 }

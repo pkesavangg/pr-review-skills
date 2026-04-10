@@ -250,10 +250,11 @@ class DashboardSnapshotViewModel @Inject constructor(
       val endTimestamp = GraphUtil.getRelativeEnd(segment = GraphSegment.WEEK, endX)
 
       // Percentile curves from birth to age+120 days (dense, own X timestamps)
-      val pSeries = if (profile.birthDate != null) {
+      val birthDateMillis = profile.birthdate?.let { DateTimeConverter.isoToTimestamp(it) }
+      val pSeries = if (birthDateMillis != null) {
         BabyPercentileHelper.getPercentileSeries(
-          sex = profile.biologicalSex,
-          birthDateMillis = profile.birthDate,
+          sex = profile.sex,
+          birthDateMillis = birthDateMillis,
         )
       } else null
 

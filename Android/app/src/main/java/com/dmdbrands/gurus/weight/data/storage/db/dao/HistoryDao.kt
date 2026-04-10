@@ -431,7 +431,7 @@ interface HistoryDao {
         CAST(AVG(bp.diastolic) AS INTEGER) AS avgDiastolic,
         CAST(AVG(bp.pulse) AS INTEGER) AS avgPulse
       FROM entry_view e
-      INNER JOIN bpm_entry bp ON e.id = bp.id
+      INNER JOIN bpm_entry bp ON e.id = bp.entryId
       WHERE e.accountId = :accountId
         AND (e.operationType IS NULL OR e.operationType != 'delete')
       GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
