@@ -26,7 +26,7 @@ struct BabyListStepView: View {
                 Text(title)
                     .fontOpenSans(.heading4)
                     .foregroundColor(theme.textHeading)
-                    .frame(maxWidth: .infinity, alignment: .center)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, .spacingLG)
 
                 // Baby list
@@ -66,8 +66,8 @@ struct BabyListStepView: View {
                 // Add a Baby button
                 ButtonView(
                     text: addButtonText,
-                    type: .filledPrimary,
-                    size: .small,
+                    type: .outlinedPrimary,
+                    size: .large,
                     isDisabled: false
                 ) {
                     onAddBaby()

@@ -1,10 +1,10 @@
-import Combine
 //
 //  HistoryStore.swift
 //  meApp
 //
 //  Created by Barath Chittibabu on 17/06/25.
 //
+import Combine
 import Foundation
 import SwiftUI
 
@@ -273,16 +273,16 @@ final class HistoryStore: ObservableObject {
                 guard let self else { return }
                 do {
                     let allEntries = try await self.entryService.getAllEntries()
-                    let babyId: String? = {
-                        if case .baby(let profile) = self.productTypeStore.selectedItem { return profile.id }
+                    let babyProfile: BabyProfile? = {
+                        if case .baby(let profile) = self.productTypeStore.selectedItem { return profile }
                         return nil
                     }()
                     let babyEntries = allEntries.filter {
                         $0.deviceType == DeviceType.babyScale.rawValue
                         && $0.operationType == OperationType.create.rawValue
-                        && $0.babyId == babyId
+                        && $0.babyId == babyProfile?.id
                     }
-                    let result = self.mapBabyEntriesToWeeks(babyEntries)
+                    let result = self.mapBabyEntriesToWeeks(babyEntries, profile: babyProfile)
                     self.babyWeeks = result
                     self.isEmptyState = result.isEmpty
                 } catch {
@@ -354,6 +354,70 @@ final class HistoryStore: ObservableObject {
         notificationService.dismissLoader()
     }
 
+    // MARK: - BP Delete
+
+    func showDeleteBPEntryAlert(entry: BPHistoryEntry) {
+        let alert = AlertModel(
+            title: AlertStrings.DeleteEntryAlert.title,
+            message: AlertStrings.DeleteEntryAlert.message,
+            buttons: [
+                AlertButtonModel(title: AlertStrings.DeleteEntryAlert.deleteButton, type: .danger) { _ in
+                    Task { await self.deleteBPEntryInternal(entry) }
+                },
+                AlertButtonModel(title: AlertStrings.DeleteEntryAlert.cancelButton, type: .secondary) { _ in
+                    self.notificationService.dismissAlert()
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+
+    private func deleteBPEntryInternal(_ entry: BPHistoryEntry) async {
+        do {
+            notificationService.showLoader(LoaderModel(text: loaderLang.deletingEntry))
+            try await entryService.deleteBpmEntry(entryTimestamp: entry.entryTimestamp)
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to delete BP entry: \(error.localizedDescription)")
+            notificationService.showToast(ToastModel(message: toastLang.errorDeletingEntry))
+        }
+        notificationService.dismissLoader()
+    }
+
+    // MARK: - Baby Delete
+
+    func showDeleteBabyEntryAlert(entry: BabyHistoryEntry) {
+        let alert = AlertModel(
+            title: AlertStrings.DeleteEntryAlert.title,
+            message: AlertStrings.DeleteEntryAlert.message,
+            buttons: [
+                AlertButtonModel(title: AlertStrings.DeleteEntryAlert.deleteButton, type: .danger) { _ in
+                    Task { await self.deleteBabyEntryInternal(entry) }
+                },
+                AlertButtonModel(title: AlertStrings.DeleteEntryAlert.cancelButton, type: .secondary) { _ in
+                    self.notificationService.dismissAlert()
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+
+    private func deleteBabyEntryInternal(_ babyEntry: BabyHistoryEntry) async {
+        do {
+            notificationService.showLoader(LoaderModel(text: loaderLang.deletingEntry))
+            guard let entry = try await entryService.getEntry(byId: babyEntry.id) else {
+                logger.log(level: .error, tag: tag, message: "Baby entry not found for deletion: id=\(babyEntry.id)")
+                notificationService.dismissLoader()
+                notificationService.showToast(ToastModel(message: toastLang.errorDeletingEntry))
+                return
+            }
+            try await entryService.deleteEntry(entry)
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to delete baby entry: \(error.localizedDescription)")
+            notificationService.showToast(ToastModel(message: toastLang.errorDeletingEntry))
+        }
+        notificationService.dismissLoader()
+    }
+
     // MARK: - Export Data
     private func exportData() {
         Task {
@@ -399,35 +463,62 @@ final class HistoryStore: ObservableObject {
 
     // MARK: - Baby API
 
+    /// Whether the active account uses metric (kg) for weight.
+    var isMetric: Bool {
+        accountService.activeAccount?.weightSettings?.weightUnit == .kg
+    }
+
     /// User tapped a baby day row.
     func selectBabyDay(_ day: BabyHistoryDay) {
         selectedBabyDay = day
         Task {
             do {
                 let allEntries = try await entryService.getAllEntries()
-                let babyId: String? = {
-                    if case .baby(let profile) = productTypeStore.selectedItem { return profile.id }
+                let babyProfile: BabyProfile? = {
+                    if case .baby(let profile) = productTypeStore.selectedItem { return profile }
                     return nil
                 }()
+                let babyId = babyProfile?.id
                 let dayEntries = allEntries.filter {
                     $0.deviceType == DeviceType.babyScale.rawValue
                     && $0.operationType == OperationType.create.rawValue
                     && $0.babyId == babyId
                     && self.localDayString(from: $0.entryTimestamp) == day.id
                 }
+                let metric = self.isMetric
                 babyEntries = dayEntries.compactMap { entry -> BabyHistoryEntry? in
                     guard let baby = entry.babyEntry else { return nil }
-                    let totalOz = baby.weight
-                    let lbs = totalOz / 16
-                    let oz = Double(totalOz % 16)
+                    let decigrams = baby.weight
+                    let source = baby.source
+                    let displayUnit: ConversionTools.BabyDisplayUnit = metric ? .kg : .lbOz
+                    let graduatedDecigrams = ConversionTools.convertToDisplayWeightBase(
+                        decigrams: decigrams, source: source, unit: displayUnit, isBabyScaleEntry: true
+                    )
+                    let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(graduatedDecigrams)
+                    let kg = ConversionTools.convertBabyDecigramsToKg(graduatedDecigrams)
+                    let lbDecimal = ConversionTools.convertBabyDecigramsToLb(graduatedDecigrams)
+                    let mm = baby.length
+                    let lengthInches = ConversionTools.convertBabyMmToInches(mm)
+                    let lengthCm = ConversionTools.convertBabyMmToCm(mm)
+                    let pct = BabyWeightPercentileCalculator.calculatePercentile(
+                        weightDecigrams: decigrams,
+                        biologicalSex: babyProfile?.biologicalSex,
+                        birthday: babyProfile?.birthday,
+                        entryDate: DateTimeTools.parse(entry.entryTimestamp) ?? Date()
+                    )
                     return BabyHistoryEntry(
                         id: entry.id,
                         entryTimestamp: entry.entryTimestamp,
-                        weightLbs: lbs,
-                        weightOz: oz,
-                        lengthInches: Double(baby.length),
-                        percentile: 0,
-                        notes: baby.note.isEmpty ? nil : baby.note
+                        weightLbs: lbsOz.lbs,
+                        weightOz: lbsOz.oz,
+                        weightKg: kg,
+                        weightLb: lbDecimal,
+                        lengthInches: lengthInches,
+                        lengthCm: lengthCm,
+                        percentile: pct,
+                        notes: baby.note.isEmpty ? nil : baby.note,
+                        weightDisplay: self.formatBabyWeightDisplay(decigrams: decigrams, source: source, isMetric: metric),
+                        lengthDisplay: self.formatBabyLengthDisplay(mm: mm, isMetric: metric)
                     )
                 }.sorted { $0.entryTimestamp > $1.entryTimestamp }
             } catch {
@@ -440,6 +531,37 @@ final class HistoryStore: ObservableObject {
     func resetSelectedBabyDay() {
         selectedBabyDay = nil
         babyEntries = []
+    }
+
+    // MARK: - Baby Display Formatting
+
+    /// Formats baby weight in decigrams as a display string based on unit preference.
+    /// When source is provided (e.g. "0220", "0222"), applies graduation rounding to match scale LCD.
+    private func formatBabyWeightDisplay(decigrams: Int, source: String? = nil, isMetric: Bool) -> String {
+        guard decigrams > 0 else { return "--" }
+        let displayUnit: ConversionTools.BabyDisplayUnit = isMetric ? .kg : .lbOz
+        let graduatedDecigrams = ConversionTools.convertToDisplayWeightBase(
+            decigrams: decigrams, source: source, unit: displayUnit, isBabyScaleEntry: true
+        )
+        if isMetric {
+            let kg = ConversionTools.convertBabyDecigramsToKg(graduatedDecigrams)
+            return "\(String(format: "%.3f", kg)) \(HistoryListStrings.kg)"
+        } else {
+            let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(graduatedDecigrams)
+            return "\(lbsOz.lbs) \(HistoryListStrings.lbs) \(String(format: "%.1f", lbsOz.oz)) \(HistoryListStrings.oz)"
+        }
+    }
+
+    /// Formats baby length in millimeters as a display string based on unit preference.
+    private func formatBabyLengthDisplay(mm: Int, isMetric: Bool) -> String {
+        guard mm > 0 else { return "--" }
+        if isMetric {
+            let cm = ConversionTools.convertBabyMmToCm(mm)
+            return "\(String(format: "%.1f", cm)) \(HistoryListStrings.cm)"
+        } else {
+            let inches = ConversionTools.convertBabyMmToInches(mm)
+            return "\(String(format: "%.1f", inches)) \(HistoryListStrings.inUnit)"
+        }
     }
 
     // MARK: - Date Helpers
@@ -497,35 +619,60 @@ final class HistoryStore: ObservableObject {
     }
 
     /// Groups baby entries by day, then by week, building weekly summaries.
-    private func mapBabyEntriesToWeeks(_ entries: [Entry]) -> [BabyHistoryWeek] {
+    private func mapBabyEntriesToWeeks(_ entries: [Entry], profile: BabyProfile? = nil) -> [BabyHistoryWeek] {
         // Group by local day
         let grouped = Dictionary(grouping: entries) { entry -> String in
             return self.localDayString(from: entry.entryTimestamp)
         }.filter { !$0.key.isEmpty }
 
         // Build days sorted newest first
+        let metric = self.isMetric
         let days: [BabyHistoryDay] = grouped.map { dayId, dayEntries in
             let count = dayEntries.count
             let weights = dayEntries.compactMap { $0.babyEntry?.weight }
             let avgWeight = weights.isEmpty ? 0 : weights.reduce(0, +) / weights.count
             let lengths = dayEntries.compactMap { $0.babyEntry?.length }
-            let avgLength = lengths.isEmpty ? 0.0 : Double(lengths.reduce(0, +)) / Double(lengths.count)
+            let avgMm = lengths.isEmpty ? 0 : lengths.reduce(0, +) / lengths.count
+            let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(avgWeight)
+            let kg = ConversionTools.convertBabyDecigramsToKg(avgWeight)
+            let lbDecimal = ConversionTools.convertBabyDecigramsToLb(avgWeight)
+            let lengthInches = ConversionTools.convertBabyMmToInches(avgMm)
+            let lengthCm = ConversionTools.convertBabyMmToCm(avgMm)
+            let pct: Int = {
+                let fmt = DateFormatter()
+                fmt.dateFormat = "yyyy-MM-dd"
+                let entryDate = fmt.date(from: dayId) ?? Date()
+                return BabyWeightPercentileCalculator.calculatePercentile(
+                    weightDecigrams: avgWeight,
+                    biologicalSex: profile?.biologicalSex,
+                    birthday: profile?.birthday,
+                    entryDate: entryDate
+                )
+            }()
             return BabyHistoryDay(
                 id: dayId,
                 entryCount: count,
-                weightLbs: avgWeight / 16,
-                weightOz: Double(avgWeight % 16),
-                lengthInches: avgLength,
-                percentile: 0
+                weightLbs: lbsOz.lbs,
+                weightOz: lbsOz.oz,
+                weightKg: kg,
+                weightLb: lbDecimal,
+                lengthInches: lengthInches,
+                lengthCm: lengthCm,
+                percentile: pct,
+                weightDisplay: self.formatBabyWeightDisplay(decigrams: avgWeight, isMetric: metric),
+                lengthDisplay: self.formatBabyLengthDisplay(mm: avgMm, isMetric: metric)
             )
         }.sorted { $0.id > $1.id }
 
         // Group days into weeks of 7
         var weeks: [BabyHistoryWeek] = []
-        for (index, chunk) in days.chunked(into: 7).enumerated() {
+        let chunks = days.chunked(into: 7)
+        let totalWeeks = chunks.count
+        for (index, chunk) in chunks.enumerated() {
+            let weekNumber = totalWeeks - index
             weeks.append(BabyHistoryWeek(
-                id: "week-\(index + 1)",
-                weekNumber: index + 1,
+                id: "week-\(weekNumber)",
+                weekNumber: weekNumber,
                 days: chunk
             ))
         }

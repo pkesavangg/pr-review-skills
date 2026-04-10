@@ -683,7 +683,7 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/dmdbrands/ggBluetoothNativeLibrary";
 			requirement = {
-				branch = dev;
+				branch = "dev";
 				kind = branch;
 			};
 		};

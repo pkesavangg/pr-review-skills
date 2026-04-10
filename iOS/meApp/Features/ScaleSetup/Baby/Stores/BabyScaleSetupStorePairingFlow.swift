@@ -31,6 +31,13 @@ extension BabyScaleSetupStore {
     // MARK: - Bluetooth Scanning
 
     func startBluetoothScan() {
+        // If a pre-discovered scale was injected via configure(), skip scanning
+        // and proceed directly to pairing.
+        if let event = discoveryEvent, discoveredScale != nil {
+            handleDeviceDiscovery(event)
+            return
+        }
+
         resetDiscoveryState()
         Task { bluetoothService.scanForPairing() }
 

@@ -21,8 +21,8 @@ struct BabyScaleSetupStrings {
     // MARK: - Intro
     struct Intro {
         static let smartBabyScale = "Smart Baby Scale"
-        // swiftlint:disable:next line_length
-        static let troubleSettingUp = "If you have any trouble setting up your monitor, you can connect with our team via the help button in the top right."
+        static let troubleSettingUp = "If you have any trouble setting up your monitor, "
+            + "you can connect with our team via the help button in the top right."
         static let cantFindModelNumber = "CAN'T FIND YOUR MODEL NUMBER?"
     }
 

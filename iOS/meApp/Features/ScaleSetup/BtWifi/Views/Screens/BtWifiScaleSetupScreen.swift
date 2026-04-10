@@ -94,6 +94,7 @@ struct BtWifiScaleSetupScreen: View {
                       .padding(.spacingSM)
             }
         }
+        .ignoresSafeArea(.keyboard)
         .environmentObject(setupStore)
         .onAppear {
             // Reset dismissal flag when view appears

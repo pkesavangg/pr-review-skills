@@ -538,6 +538,7 @@ struct BluetoothServiceEventAlertsTests {
             accountService: account ?? MockAccountService(),
             scaleService: scale ?? MockScaleService(),
             entryService: entry ?? MockEntryService(),
+            babyService: MockBabyService(),
             logger: logger ?? MockLoggerService(),
             discoveryManager: discovery ?? MockBLEDiscoveryManager(),
             ggBleSDK: sdk ?? MockBluetoothSDKClient(),

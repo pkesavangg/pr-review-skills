@@ -75,6 +75,7 @@ final class MockPushEntryService: EntryServiceProtocol {
 
     func migrateFromSQLiteIfNeeded() async {}
     func loadDashboardData(entryType: EntryType) async {}
+    func loadBabyDashboardData(babyId: String) async {}
     func clearAllData() async {}
     func clearLastSyncTimestamp() async throws {}
     func saveNewEntry(_ entry: Entry) async throws {}
@@ -111,9 +112,13 @@ final class MockPushEntryService: EntryServiceProtocol {
     func getStreak(entryType: EntryType) async throws -> Streak { Streak(current: 0, max: 0) }
     func exportCSV() async throws {}
     func createBpmEntry(_ dto: BpmOperationDTO) async throws {}
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {}
     func fetchBpmEntries() async throws -> [BpmOperationDTO] { [] }
     func deleteBpmEntry(entryTimestamp: String) async throws {}
     func exportBpmCSV() async throws {}
+    func migrateBabyEntriesToDecigrams() async {}
+    func getEntry(byId id: UUID) async throws -> Entry? { nil }
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws {}
 }
 
 @MainActor
@@ -223,10 +228,6 @@ final class MockPushScaleService: ScaleServiceProtocol {
         throw UnexpectedCallError.methodCalled("createA6Scale")
     }
 
-    func createScaleInLocal(_ device: Device) async throws -> Device {
-        device
-    }
-
     func updateAllScalesStatus(_ scales: [Device]?) async throws {}
     func createScaleInLocal(_ device: Device) async throws -> Device { device }
     func syncAllScalesWithRemote() async { syncAllScalesCalls += 1 }
@@ -234,4 +235,5 @@ final class MockPushScaleService: ScaleServiceProtocol {
     func getDevice(by deviceId: String) async throws -> Device? { nil }
     func fetchAttachedPreference(by id: String) async -> R4ScalePreference? { nil }
     func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? { nil }
+    func deleteSingleDeviceEntry(_ deviceId: String) async throws {}
 }

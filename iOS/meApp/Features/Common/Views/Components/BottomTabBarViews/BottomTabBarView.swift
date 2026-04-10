@@ -90,6 +90,10 @@ struct BottomTabBarView: View {
         .withWeightOnlyModeIndicator()
         .environmentObject(viewModel)
         .edgesIgnoringSafeArea(.bottom)
+        .onDisappear {
+            // Clears goal-alert callbacks to prevent stale alerts during account switching.
+            viewModel.clearGoalAlertCallbacks()
+        }
         // Show scale discovered sheet: modal on iPad < iOS18 and sheet otherwise
         .if(DeviceUtils.useModalPicker) { view in
             view
@@ -160,6 +164,11 @@ struct BottomTabBarView: View {
                 BabyScaleSetupScreen(sku: payload.sku,
                                      discoveredScale: payload.scale,
                                      discoveryEvent: payload.event)
+                .interactiveDismissDisabled(true)
+            case .bpm:
+                BpmSetupScreen(sku: payload.sku,
+                               discoveredScale: payload.scale,
+                               discoveryEvent: payload.event)
                 .interactiveDismissDisabled(true)
             default:
                 // Fallback to A6 setup for other types

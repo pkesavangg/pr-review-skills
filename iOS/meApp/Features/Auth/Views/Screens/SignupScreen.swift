@@ -24,7 +24,13 @@ struct SignupScreen: View {
             case .pickDevice:
                 AnyView(PickDeviceStepView(signupStore: signupStore))
             case .addBaby:
-                AnyView(AddBabyStepView(signupStore: signupStore))
+                AnyView(BabyProfileFormView(
+                    form: signupStore.babyProfileForm,
+                    showDatePicker: $signupStore.showBabyDatePicker,
+                    showSexPicker: $signupStore.showBabySexPicker,
+                    headerTitle: SignupStrings.AddBabyStep.title,
+                    headerSubtitle: SignupStrings.AddBabyStep.subtitle
+                ))
             case .babyList:
                 AnyView(BabyListStepView(
                     title: SignupStrings.BabyListStep.title,

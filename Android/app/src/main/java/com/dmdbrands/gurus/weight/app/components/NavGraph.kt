@@ -34,6 +34,8 @@ import com.dmdbrands.gurus.weight.features.landing.screen.MultiAccountLandingScr
 import com.dmdbrands.gurus.weight.features.login.screen.LoginScreen
 import com.dmdbrands.gurus.weight.features.manualEntry.EntryScreen
 import com.dmdbrands.gurus.weight.features.metricinfo.MetricInfoScreen
+import com.dmdbrands.gurus.weight.features.myKids.screens.AddBabyScreen
+import com.dmdbrands.gurus.weight.features.myKids.screens.MyKidsScreen
 import com.dmdbrands.gurus.weight.features.profile.screen.ProfileScreen
 import com.dmdbrands.gurus.weight.features.scaleDetails.screens.ScaleDetailsScreen
 import com.dmdbrands.gurus.weight.features.scaleDisplayMetrics.screens.ScaleDisplayMetricsScreen
@@ -78,6 +80,8 @@ fun EntryProviderScope<NavKey>.accountSettingsEntries() {
     ScaleDetailsScreen(scaleInfo.scaleId)
   }
   entry<AppRoute.AccountSettings.AppPermissions> { AppPermissionsScreen() }
+  entry<AppRoute.AccountSettings.MyKids> { MyKidsScreen() }
+  entry<AppRoute.AccountSettings.AddBaby> { AddBabyScreen() }
 }
 
 fun EntryProviderScope<NavKey>.scaleDetailEntries() {

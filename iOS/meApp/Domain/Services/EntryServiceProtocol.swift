@@ -10,6 +10,7 @@ protocol EntryServiceProtocol {
     /// Syncs all entries with the remote backend.
     func syncAllEntriesWithRemote() async
     func migrateFromSQLiteIfNeeded() async
+    func migrateBabyEntriesToDecigrams() async
     func loadDashboardData(entryType: EntryType) async
 
     /// Clears all entry-related data from the service (memory/cache/state).
@@ -33,6 +34,11 @@ protocol EntryServiceProtocol {
     func deleteEntry(_ entry: Entry) async throws
 
     // MARK: - Query
+
+    /// Retrieves a single entry by its UUID.
+    /// - Parameter id: The UUID of the entry.
+    /// - Returns: The entry if found, nil otherwise.
+    func getEntry(byId id: UUID) async throws -> Entry?
 
     /// Retrieves all entries for the current user.
     /// - Returns: An array of all entries.
@@ -122,7 +128,11 @@ protocol EntryServiceProtocol {
     // MARK: - Baby Entry CRUD
 
     /// Creates a new baby entry, persists it locally.
-    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws
+
+    /// Loads baby dashboard data (daily/monthly summaries) for a specific baby profile.
+    func loadBabyDashboardData(babyId: String) async
+    
 }
 
 // MARK: - Default Parameter Values
@@ -135,4 +145,7 @@ extension EntryServiceProtocol {
     func getMonthDetail(month: String) async throws -> [Entry] { try await getMonthDetail(month: month, entryType: .wg) }
     func getProgress() async throws -> Progress { try await getProgress(entryType: .wg) }
     func getStreak() async throws -> Streak { try await getStreak(entryType: .wg) }
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {
+        try await createBabyEntry(babyId: babyId, weight: weight, length: length, note: note, entryTimestamp: entryTimestamp, source: nil)
+    }
 }

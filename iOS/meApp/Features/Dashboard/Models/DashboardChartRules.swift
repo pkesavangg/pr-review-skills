@@ -143,6 +143,7 @@ struct SnapshotChartPlotBorderView: View {
     let yTicks: [Double]
     var showHorizontalGridLines: Bool = true
     var visibleHorizontalTicks: [Double]? = nil
+    var showTrailingBorder: Bool = true
     private let leftExtension: CGFloat = 16
 
     var body: some View {
@@ -165,11 +166,13 @@ struct SnapshotChartPlotBorderView: View {
                 .stroke(color, lineWidth: 0.5)
             }
 
-            Path { path in
-                path.move(to: CGPoint(x: width, y: 0))
-                path.addLine(to: CGPoint(x: width, y: height))
+            if showTrailingBorder {
+                Path { path in
+                    path.move(to: CGPoint(x: width, y: 0))
+                    path.addLine(to: CGPoint(x: width, y: height))
+                }
+                .stroke(color, lineWidth: 0.5)
             }
-            .stroke(color, lineWidth: 0.5)
         }
     }
 }

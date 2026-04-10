@@ -44,7 +44,7 @@ extension BpmSetupStoreTests {
             let store = harness.store
             BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
-            store.currentStepIndex = BpmSetupStep.btPermission.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.btPermission, in: store)
             store.moveToNextStep()
 
             #expect(store.currentStep == .selectUser)
@@ -56,7 +56,7 @@ extension BpmSetupStoreTests {
             let store = harness.store
             BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
-            store.currentStepIndex = BpmSetupStep.selectUser.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.selectUser, in: store)
             store.moveToPreviousStep()
 
             #expect(store.currentStep == .intro)
@@ -74,7 +74,7 @@ extension BpmSetupStoreTests {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
             BpmSetupStoreTestFixtures.configureA3Bpm(store)
-            store.currentStepIndex = BpmSetupStep.complete.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.complete, in: store)
             #expect(store.isBackDisabled == true)
         }
 
@@ -86,7 +86,7 @@ extension BpmSetupStoreTests {
 
             var dismissCalls = 0
             store.dismissAction = { dismissCalls += 1 }
-            store.currentStepIndex = BpmSetupStep.paired.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.paired, in: store)
 
             store.moveToNextStep()
 
@@ -99,7 +99,7 @@ extension BpmSetupStoreTests {
             let store = harness.store
             BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
-            store.currentStepIndex = BpmSetupStep.paired.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.paired, in: store)
             store.moveToMeasurementTutorial()
 
             #expect(store.currentStep == .measureSetup)
@@ -113,7 +113,7 @@ extension BpmSetupStoreTests {
 
             var dismissCalls = 0
             store.dismissAction = { dismissCalls += 1 }
-            store.currentStepIndex = BpmSetupStep.complete.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.complete, in: store)
 
             store.moveToNextStep()
 
@@ -127,7 +127,7 @@ extension BpmSetupStoreTests {
             BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             store.selectedUserNumber = nil
-            store.currentStepIndex = BpmSetupStep.selectUser.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.selectUser, in: store)
 
             #expect(store.isNextEnabled == false)
         }
@@ -139,7 +139,7 @@ extension BpmSetupStoreTests {
             BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             store.selectedUserNumber = 1
-            store.currentStepIndex = BpmSetupStep.selectUser.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.selectUser, in: store)
 
             #expect(store.isNextEnabled == true)
         }
@@ -152,7 +152,7 @@ extension BpmSetupStoreTests {
 
             let device = BpmSetupStoreTestFixtures.makeBpmDevice()
             store.deviceNickname = "Living Room BPM"
-            store.currentStepIndex = BpmSetupStep.nickname.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.nickname, in: store)
             store.testSetInternalState(
                 discoveredDevice: device,
                 discoveryEvent: BpmSetupStoreTestFixtures.makeBpmDiscoveryEvent(device: device)
@@ -199,7 +199,7 @@ extension BpmSetupStoreTests {
 
             var dismissCalls = 0
             store.dismissAction = { dismissCalls += 1 }
-            store.currentStepIndex = BpmSetupStep.paired.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.paired, in: store)
 
             store.moveToNextStep()
 
@@ -212,7 +212,7 @@ extension BpmSetupStoreTests {
             let store = harness.store
             BpmSetupStoreTestFixtures.configureA6Bpm(store)
 
-            store.currentStepIndex = BpmSetupStep.paired.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.paired, in: store)
             store.moveToMeasurementTutorial()
 
             #expect(store.currentStep == .measureSetup)
@@ -226,7 +226,7 @@ extension BpmSetupStoreTests {
 
             var dismissCalls = 0
             store.dismissAction = { dismissCalls += 1 }
-            store.currentStepIndex = BpmSetupStep.complete.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.complete, in: store)
 
             store.moveToNextStep()
 
