@@ -1640,6 +1640,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
             let notification = EntryNotification(from: entry)
             entrySaved.send(notification)
+            await syncUnsyncedBpmEntries()
         } catch {
             logger.log(
                 level: .error,

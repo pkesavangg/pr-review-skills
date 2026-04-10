@@ -187,6 +187,6 @@ enum BabyWeightPercentileCalculator {
             default: suffix = "th"
             }
         }
-        return "\(percentile)\(suffix)"
+        return "\(percentile) \(suffix)"
     }
 }

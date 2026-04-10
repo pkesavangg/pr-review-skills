@@ -1681,7 +1681,7 @@ class SettingsStore: ObservableObject {
                 showCancel: false
             ) { vals in
                 self.notificationService.dismissModal()
-                if let sex = vals.first { self.updateGender(sex) }
+                if let sex = vals.first { self.updateGenderInForm(sex) }
             }
             notificationService.showModal(ModalData(presentedView: AnyView(picker)))
         } else {

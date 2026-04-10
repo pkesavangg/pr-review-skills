@@ -179,6 +179,8 @@ final class MockScaleService: ScaleServiceProtocol {
         if let deleteDeviceError { throw deleteDeviceError }
     }
 
+    func deleteSingleDeviceEntry(_ deviceId: String) async throws {}
+
     func updateScaleMeta(_ deviceId: String, metaData: DeviceMetaData) async throws {}
     func updateScalePreference(_ deviceId: String, _ preference: R4ScalePreference) async throws {
         updateScalePreferenceCalls += 1

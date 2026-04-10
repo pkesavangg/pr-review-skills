@@ -79,6 +79,9 @@ final class MockContentViewModelEntryService: EntryServiceProtocol {
     func fetchBpmEntries() async throws -> [BpmOperationDTO] { [] }
     func deleteBpmEntry(entryTimestamp: String) async throws {}
     func exportBpmCSV() async throws {}
+    func migrateBabyEntriesToDecigrams() async {}
+    func getEntry(byId id: UUID) async throws -> Entry? { nil }
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws {}
 }
 
 @MainActor
@@ -186,6 +189,7 @@ final class MockContentViewModelScaleService: ScaleServiceProtocol {
     func updateConnectedDeviceWeightOnlyMode(broadcastId: String, isWeightOnlyModeEnabledByOthers: Bool) async {}
     func fetchAttachedPreference(by id: String) async -> R4ScalePreference? { nil }
     func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? { nil }
+    func deleteSingleDeviceEntry(_ deviceId: String) async throws {}
 }
 
 @MainActor
@@ -221,7 +225,7 @@ final class MockContentViewModelBluetoothService: BluetoothServiceProtocol {
     func resumeSmartScan(clearOnlyPairing: Bool) {}
     func scanForPairing() {}
     func scanForBpm() {}
-    func connectBpm(broadcastId: String) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
+    func connectBpm(broadcastId: String, userNumber: Int) async -> Result<UserCreationResponse, BluetoothServiceError> { .failure(.notImplemented) }
     func receiveBpmReading(broadcastId: String) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
 
     func resyncAndScan() async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
