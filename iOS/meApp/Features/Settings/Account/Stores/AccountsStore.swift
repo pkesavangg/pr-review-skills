@@ -71,47 +71,42 @@ class AccountsStore: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Watch allAccounts and update both `accounts` and `userItems`
+        // Watch allAccounts and update both `accounts` and `userItems`.
+        // Show every saved account — logged-in, expired, and manually logged-out.
+        // Accounts only disappear when explicitly removed from the device.
         accountService.allAccountsPublisher
             .sink { [weak self] allAccounts in
                 guard let self = self else { return }
 
-                // Show all accounts except truly expired ones (expired + logged out)
-                let accountsToShow = allAccounts.filter {
-                    $0.isLoggedIn == true
+                // Split by login state: fully logged-in vs anything that needs re-login
+                let loggedInAccounts = allAccounts.filter {
+                    $0.isLoggedIn == true && ($0.isExpired ?? false) == false
+                }
+                let loggedOutAccounts = allAccounts.filter {
+                    $0.isLoggedIn != true || ($0.isExpired ?? false) == true
                 }
 
-                // Split by login state
-                let loggedInAccounts = accountsToShow.filter { $0.isLoggedIn == true }
-                let loggedOutAccounts = accountsToShow.filter { $0.isLoggedIn != true }
-
-                // Sort logged-in accounts by last active time (most recent first)
-                let sortedLoggedInAccounts = loggedInAccounts.sorted {
+                // Sort each group by last active time (most recent first)
+                let sortByLastActive: (Account, Account) -> Bool = {
                     (DateTimeTools.parse($0.lastActiveTime ?? "") ?? .distantPast) >
                     (DateTimeTools.parse($1.lastActiveTime ?? "") ?? .distantPast)
                 }
-                // Sort logged-out accounts by last active time
-                let sortedLoggedOutAccounts = loggedOutAccounts.sorted {
-                    let lhs = DateTimeTools.parse($0.lastActiveTime ?? "") ?? .distantPast
-                    let rhs = DateTimeTools.parse($1.lastActiveTime ?? "") ?? .distantPast
-                    return lhs > rhs
-                }
+                let allSortedAccounts = loggedInAccounts.sorted(by: sortByLastActive)
+                    + loggedOutAccounts.sorted(by: sortByLastActive)
 
-                // Combine: logged-in first, then logged-out
-                let allSortedAccounts = sortedLoggedInAccounts + sortedLoggedOutAccounts
                 self.accounts = allSortedAccounts
 
                 self.userItems = allSortedAccounts.map {
                     let isLoggedIn = $0.isLoggedIn == true
                     let isExpired = $0.isExpired ?? false
-                    // Show "Log In" button for logged-out accounts or auto-logged-out accounts (expired but still marked as logged in)
-                    let needsLogin = !isLoggedIn || (isExpired && isLoggedIn)
+                    // Show "Log In" button for any account that isn't fully authenticated.
+                    let needsLogin = !isLoggedIn || isExpired
                     return UserItemInfo(
                         accountID: $0.accountId,
                         name: ($0.firstName?.isEmpty == false ? $0.firstName : nil) ?? $0.email,
                         email: $0.email,
                         isSelected: $0.isActiveAccount ?? false,
-                        isExpired: needsLogin, // Logged-out and auto-logged-out accounts show "Log In" button
+                        isExpired: needsLogin,
                         canShowSelection: true
                     )
                 }
@@ -215,17 +210,21 @@ class AccountsStore: ObservableObject {
             return
         }
 
-        guard networkMonitor.isConnected else {
+        // Only require connectivity when the account is still logged in (needs API logout).
+        // Already-logged-out accounts can be removed from the device without a network call.
+        let isLoggedIn = account.isLoggedIn == true && (account.isExpired ?? false) == false
+        if isLoggedIn && !networkMonitor.isConnected {
             notificationService.showToast(ToastModel(message: toastLang.unableToConnect))
-            logger.log(level: .error, tag: tag, message: "Cannot remove account while offline")
+            logger.log(level: .error, tag: tag, message: "Cannot remove logged-in account while offline")
             return
         }
 
+        let accountId = account.accountId
         Task {
             notificationService.showLoader(LoaderModel(text: "Removing user..."))
             do {
-                try await accountService.logOut(accountId: account.accountId)
-                logger.log(level: .info, tag: tag, message: "Removed user \(user.name) from account \(account.accountId)")
+                try await accountService.removeAccountFromDevice(accountId: accountId)
+                logger.log(level: .info, tag: tag, message: "Removed user \(user.name) from account \(accountId)")
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to remove user \(user.name)", data: error.localizedDescription)
                 switch error {

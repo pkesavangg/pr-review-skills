@@ -133,6 +133,8 @@ final class ContentViewModel: ObservableObject {
     private func runAppInitialization() async {
         // Clear any lingering loader state from previous session (e.g., if app was force-closed during account switch)
         notificationService.dismissLoader()
+        // Stops any ongoing Bluetooth scan to prevent scan events from triggering alerts during the loading screen.
+        bluetoothService.stopScan()
         
         logger.log(level: .info, tag: tag, message: "App initialization started")
         contentViewState = .initializing
@@ -204,8 +206,7 @@ final class ContentViewModel: ObservableObject {
     // MARK: - Data Loading (if logged in)
 
     private func loadData() async {
-        // swiftlint:disable:next unused_optional_binding
-        guard let _ = currentAccount else { return }
+        guard currentAccount != nil else { return }
         // Migration runs before sync so opStack entries are available for first sync.
         await entryService.migrateFromSQLiteIfNeeded()
         await entryService.migrateBabyEntriesToDecigrams()

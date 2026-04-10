@@ -73,6 +73,8 @@ fun MultiAccountLandingScreenContent(
                 painter = painterResource(id = AppIcons.Default.Banner),
                 contentDescription = null,
                 colorFilter = ColorFilter.tint(MeTheme.colorScheme.textBody),
+                modifier = Modifier.fillMaxWidth(),
+                alignment = Alignment.Center,
             )
             Spacer(Modifier.height(spacing.x3l))
             // Account list (max 5 in viewport, scrollable)

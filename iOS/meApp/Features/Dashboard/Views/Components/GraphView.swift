@@ -3,15 +3,6 @@
 //  meApp
 //
 //  Created by Lakshmi Priya on 10/06/25.
-//
-//  Y-Axis Tick Animation Fix:
-//  Uses selective animation strategy: animates chart data and domain changes
-//  while keeping ticks stable to prevent jump animations.
-//
-//  X-Axis Height Fix:
-//  Properly positions goal chip and chart elements accounting for X-axis height
-//  in week/month/year periods while maintaining correct positioning for total period.
-//
 
 import Charts
 import SwiftUI

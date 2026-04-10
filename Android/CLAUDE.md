@@ -10,9 +10,40 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./gradlew test                 # Run unit tests
 ./gradlew detekt               # Run static analysis (enforces null safety)
 ./gradlew clean assembleDebug  # Clean build
+
+# Coverage report + enforcement (80% line minimum)
+./gradlew :app:jacocoTestReport :app:jacocoTestCoverageVerification
 ```
 
 Always run `./gradlew assembleDebug` after making changes to verify the build succeeds before considering a task done.
+
+## Test Coverage Enforcement
+
+JaCoCo enforces a **minimum 80% line coverage** on the `:app` module. CI fails if coverage drops below this threshold.
+
+- **Report task**: `./gradlew :app:jacocoTestReport` — generates HTML + XML reports
+- **Verification task**: `./gradlew :app:jacocoTestCoverageVerification` — fails the build if line coverage < 80%
+- HTML report: `app/build/reports/jacoco/jacocoTestReport/html/index.html`
+- Generated code (Hilt, Room, Compose, Protobuf, R/BuildConfig) is excluded from coverage
+
+## Pre-commit Hooks (Lefthook)
+
+Pre-commit hooks enforce code quality before every commit. Setup:
+
+```bash
+# Install tools (macOS)
+brew install lefthook detekt
+
+# Activate hooks (run from repo root, one-time setup)
+cd /path/to/meApp && lefthook install
+```
+
+**What runs on commit:**
+- **Detekt CLI** — static analysis on staged `.kt` files (<10s)
+- **Gitleaks** — secrets detection on all staged files (warns if not installed)
+- **JIRA ticket** — validates commit message contains `MA-XXXX`
+
+To bypass in emergencies: `git commit --no-verify`
 
 ## Modules
 

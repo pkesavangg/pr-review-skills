@@ -58,6 +58,11 @@ constructor(
    */
   private class UpdateAccountException(message: String) : Exception(message)
 
+  /**
+   * Exception thrown when the scale is busy (user selection in progress) and cannot accept updates.
+   */
+  private class ScaleBusyException : Exception("Scale is busy: user selection in progress")
+
   override fun provideInitialState(): ScaleModeState = ScaleModeState()
 
   override fun handleIntent(intent: ScaleModeIntent) {
@@ -105,10 +110,10 @@ constructor(
 
   /**
    * Updates the scale account via BLE service and waits for completion.
-   * Throws UpdateAccountException if the update fails.
    *
    * @param updatedScale The updated scale device to send to the BLE service.
-   * @throws UpdateAccountException if the update fails.
+   * @throws ScaleBusyException if the scale is actively in a user selection session.
+   * @throws UpdateAccountException if the update fails for any other reason.
    */
   private suspend fun updateAccountAsync(updatedScale: GGBTDevice) {
     suspendCancellableCoroutine<Unit> { continuation ->
@@ -117,6 +122,9 @@ constructor(
           GGUserActionResponseType.CREATION_COMPLETED,
           GGUserActionResponseType.UPDATE_COMPLETED -> {
             continuation.resume(Unit)
+          }
+          GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
+            continuation.resumeWithException(ScaleBusyException())
           }
           else -> {
             continuation.resumeWithException(
@@ -142,6 +150,16 @@ constructor(
         cancelText = ScaleModeStrings.UpdateAccountFailedAlert.Cancel,
         onConfirm = onRetry,
         onCancel = null,
+      ),
+    )
+  }
+
+  private fun scaleBusyAlert() {
+    dialogQueueService.enqueue(
+      DialogModel.Alert(
+        title = ScaleModeStrings.ScaleBusyAlert.Title,
+        message = ScaleModeStrings.ScaleBusyAlert.Message,
+        onDismiss = { dialogQueueService.dismissCurrent() },
       ),
     )
   }
@@ -225,6 +243,11 @@ constructor(
           showToast(ScaleModeStrings.Toast.Error)
           dialogQueueService.dismissLoader()
         }
+      } catch (err: ScaleBusyException) {
+        AppLog.w(TAG, "Scale is busy (user selection in progress); cannot save mode settings now")
+        retryCount = 0
+        dialogQueueService.dismissLoader()
+        scaleBusyAlert()
       } catch (err: Exception) {
         AppLog.e(TAG, "Error saving mode settings", err)
         if (retryCount < MAX_RETRY_COUNT) {

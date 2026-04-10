@@ -82,10 +82,7 @@ final class A6ScaleSetupStore: ObservableObject {
                         state: connectionState,
                         setupType: .lcbt,
                         onTryAgain: { [weak self] in self?.retryPairing() },
-                        onSupport: {
-// swiftlint:disable:next closure_parameter_position
-                            [weak self] in self?.showHelpModal()
-                        }
+                        onSupport: { [weak self] in self?.showHelpModal() }
                     )
                 )
             case .setupFinished:

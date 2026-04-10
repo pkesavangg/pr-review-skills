@@ -32,8 +32,8 @@ let SCALES: [ScaleItemInfo] = [
     // WiFi series
     ScaleItemInfo(productName: "Wi-Fi Smart Scale", sku: "0384", imgPath: AppAssets.scale0384, setupType: .espTouchWifi, bodyComp: true),
     ScaleItemInfo(productName: "Wi-Fi Smart Scale", sku: "0385", imgPath: AppAssets.scale0385, setupType: .wifi, bodyComp: true),
-    ScaleItemInfo(productName: "Wi-Fi Smart Scale", sku: "0396", imgPath: AppAssets.scale0396_0397, setupType: .wifi, bodyComp: false),
-    ScaleItemInfo(productName: "Wi-Fi Smart Scale", sku: "0397", imgPath: AppAssets.scale0396_0397, setupType: .espTouchWifi, bodyComp: false),
+    ScaleItemInfo(productName: "Wi-Fi Smart Scale", sku: "0396", imgPath: AppAssets.scale0396And0397, setupType: .wifi, bodyComp: false),
+    ScaleItemInfo(productName: "Wi-Fi Smart Scale", sku: "0397", imgPath: AppAssets.scale0396And0397, setupType: .espTouchWifi, bodyComp: false),
 
     // BtWiFi series
     ScaleItemInfo(productName: "AccuCheck Verve Smart Scale", sku: "0412", imgPath: AppAssets.scale0412, setupType: .btWifiR4, bodyComp: true),
