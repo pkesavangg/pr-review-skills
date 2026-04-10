@@ -61,6 +61,8 @@ final class MockDashboardCacheManager: DashboardCacheManagerProtocol {
     private(set) var invalidateContinuousOpsCalls = 0
     private(set) var invalidateChartSeriesCalls = 0
     private(set) var clearAllCachesCalls = 0
+    private(set) var setProductContextCalls = 0
+    private(set) var lastProductContext: (productType: EntryType, babyProfileId: String?)?
     private(set) var getVisibleOperationsCalls = 0
     private(set) var getChartSeriesDataCalls = 0
     private(set) var getLabelDateRangeOperationsCalls = 0
@@ -79,6 +81,11 @@ final class MockDashboardCacheManager: DashboardCacheManagerProtocol {
     var visibleOperationsOverride: [BathScaleWeightSummary]?
     var chartSeriesOverride: [GraphSeries]?
     var labelDateRangeOverride: DateRangeOperationsResult?
+
+    func setProductContext(productType: EntryType, babyProfileId: String?) {
+        setProductContextCalls += 1
+        lastProductContext = (productType: productType, babyProfileId: babyProfileId)
+    }
 
     func getContinuousOperations(for period: TimePeriod, getOperations: () -> [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
         getOperations()

@@ -9,6 +9,51 @@
 import Charts
 import SwiftUI
 
+private actor BabySnapshotPercentileCache {
+    private static let maxEntries = 32
+
+    struct Key: Hashable {
+        let babyId: String
+        let biologicalSex: String?
+        let birthday: TimeInterval
+        let rangeStart: TimeInterval
+        let rangeEnd: TimeInterval
+        let weightUnit: WeightUnit
+    }
+
+    static let shared = BabySnapshotPercentileCache()
+
+    private var cache: [Key: [BabyPercentileLine: [BabyPercentileChartPoint]]] = [:]
+    private var accessOrder: [Key] = []
+
+    func groupedPoints(
+        for key: Key,
+        build: () -> [BabyPercentileLine: [BabyPercentileChartPoint]]
+    ) -> [BabyPercentileLine: [BabyPercentileChartPoint]] {
+        if let cached = cache[key] {
+            markAccess(for: key)
+            return cached
+        }
+        let groupedPoints = build()
+        cache[key] = groupedPoints
+        markAccess(for: key)
+        trimIfNeeded()
+        return groupedPoints
+    }
+
+    private func markAccess(for key: Key) {
+        accessOrder.removeAll { $0 == key }
+        accessOrder.append(key)
+    }
+
+    private func trimIfNeeded() {
+        while cache.count > Self.maxEntries, let oldestKey = accessOrder.first {
+            accessOrder.removeFirst()
+            cache.removeValue(forKey: oldestKey)
+        }
+    }
+}
+
 struct BabySnapshotCard: View {
     private enum Layout {
         static let headlineSpacing: CGFloat = 2
@@ -24,32 +69,38 @@ struct BabySnapshotCard: View {
     @Environment(\.appTheme) private var theme
     private let yAxisFormatter = DashboardFormatter()
 
+    // MARK: - Cached State (Performance Optimization)
+
+    @State private var cachedSnapshotWindow: DashboardSnapshotChartWindow?
+    @State private var cachedChartSummaries: [BathScaleWeightSummary] = []
+    @State private var cachedRecentWeekSummaries: [BathScaleWeightSummary] = []
+    @State private var cachedWeekAverageLbsOz: (lbs: String, oz: String)?
+    @State private var cachedWeightUnit: WeightUnit = .lb
+    @State private var cachedPercentilePointsByLine: [BabyPercentileLine: [BabyPercentileChartPoint]] = [:]
+    @State private var hasCacheLoaded = false
+
     private var babyName: String { babyProfile.name }
-
-    private var snapshotWindow: DashboardSnapshotChartWindow? {
-        DashboardSnapshotChartWindow.make(summaries: summaries) { $0.weight > 0 }
-    }
-
-    private var chartSummaries: [BathScaleWeightSummary] {
-        snapshotWindow?.chartSummaries ?? []
-    }
-
-    private var recentWeekSummaries: [BathScaleWeightSummary] {
-        snapshotWindow?.visibleSummaries ?? []
-    }
-
-    private var weekAverageLbsOz: (lbs: String, oz: String)? {
-        viewModel.weekAverageLbsOz(from: recentWeekSummaries)
-    }
 
     var body: some View {
         Button(action: onTap) {
+            content
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+        .task(id: summariesTaskID) {
+            await recomputeCache()
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if hasCacheLoaded {
             VStack(alignment: .leading, spacing: .zero) {
                 headlineSection
                     .padding(.horizontal, .spacingSM)
                     .padding(.top, .spacingSM)
 
-                if !recentWeekSummaries.isEmpty {
+                if !cachedRecentWeekSummaries.isEmpty {
                     snapshotChart
                         .frame(height: 240)
                         .padding(.top, .spacingXS)
@@ -61,9 +112,71 @@ struct BabySnapshotCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(theme.backgroundPrimary)
             .cornerRadius(.radiusSM)
+        } else {
+            SnapshotSkeletonCardView(style: .baby)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(accessibilityLabel)
+    }
+
+    // MARK: - Cache Computation
+
+    private var summariesTaskID: Int {
+        var hasher = Hasher()
+        hasher.combine(summaries.count)
+        hasher.combine(babyProfile.id)
+        if let first = summaries.first { hasher.combine(first.entryTimestamp) }
+        if let last = summaries.last { hasher.combine(last.entryTimestamp) }
+        return hasher.finalize()
+    }
+
+    @MainActor
+    private func recomputeCache() async {
+        let inputSummaries = summaries
+        let profile = babyProfile
+        let weightUnit = viewModel.activeAccount?.weightSettings?.weightUnit ?? .lb
+
+        let result = await Task.detached(priority: .utility) {
+            let window = DashboardSnapshotChartWindow.make(summaries: inputSummaries) { $0.weight > 0 }
+            let chart = window?.chartSummaries ?? []
+            let recent = window?.visibleSummaries ?? []
+            let avg = BabyDashboardChartSupport.weekAverageLbsOz(from: recent, unit: weightUnit)
+
+            var groupedPercentiles: [BabyPercentileLine: [BabyPercentileChartPoint]] = [:]
+            if let bounds = window?.bounds {
+                let birthday = BabyDashboardChartSupport.resolvedBirthday(for: profile)
+                let cacheKey = BabySnapshotPercentileCache.Key(
+                    babyId: profile.id,
+                    biologicalSex: profile.biologicalSex,
+                    birthday: birthday.timeIntervalSinceReferenceDate,
+                    rangeStart: bounds.start.timeIntervalSinceReferenceDate,
+                    rangeEnd: bounds.end.timeIntervalSinceReferenceDate,
+                    weightUnit: weightUnit
+                )
+
+                groupedPercentiles = await BabySnapshotPercentileCache.shared.groupedPoints(for: cacheKey) {
+                    let allPoints = BabyPercentileGrowthReference.percentileChartPoints(
+                        biologicalSex: profile.biologicalSex,
+                        birthday: birthday,
+                        dateRange: bounds.start...bounds.end,
+                        convertDecigramsToDisplay: { BabyDashboardChartSupport.convertDecigramsToDisplay($0, unit: weightUnit) }
+                    )
+                    let byLine = Dictionary(grouping: allPoints, by: \.line)
+                    var thinnedByLine: [BabyPercentileLine: [BabyPercentileChartPoint]] = [:]
+                    for (line, points) in byLine {
+                        thinnedByLine[line] = BabyDashboardChartSupport.thinnedPercentilePoints(points, stride: 3)
+                    }
+                    return thinnedByLine
+                }
+            }
+            return (window, chart, recent, avg, weightUnit, groupedPercentiles)
+        }.value
+
+        cachedSnapshotWindow = result.0
+        cachedChartSummaries = result.1
+        cachedRecentWeekSummaries = result.2
+        cachedWeekAverageLbsOz = result.3
+        cachedWeightUnit = result.4
+        cachedPercentilePointsByLine = result.5
+        hasCacheLoaded = true
     }
 
     // MARK: - Headline
@@ -74,7 +187,7 @@ struct BabySnapshotCard: View {
                 .fontOpenSans(.subHeading1)
                 .foregroundColor(theme.textSubheading)
 
-            if let avg = weekAverageLbsOz {
+            if let avg = cachedWeekAverageLbsOz {
                 HStack(alignment: .lastTextBaseline, spacing: .zero) {
                     Text(avg.lbs)
                         .fontOpenSans(.heading1)
@@ -106,23 +219,6 @@ struct BabySnapshotCard: View {
         }
     }
 
-    // MARK: - Percentile Data
-
-    private var percentilePoints: [BabyPercentileChartPoint] {
-        guard let bounds = snapshotWindow?.bounds else { return [] }
-        return BabyPercentileGrowthReference.percentileChartPoints(
-            biologicalSex: babyProfile.biologicalSex,
-            birthday: BabyDashboardChartSupport.resolvedBirthday(for: babyProfile),
-            dateRange: bounds.start...bounds.end,
-            convertDecigramsToDisplay: viewModel.convertDecigramsToDisplay
-        )
-    }
-
-    /// Percentile points grouped by line for efficient chart rendering.
-    private var percentilePointsByLine: [BabyPercentileLine: [BabyPercentileChartPoint]] {
-        Dictionary(grouping: percentilePoints, by: \.line)
-    }
-
     // MARK: - Chart
 
     private var snapshotChart: some View {
@@ -134,7 +230,6 @@ struct BabySnapshotCard: View {
         let groupedPercentiles = rightClippedPercentilePointsByLine
 
         return Chart {
-            // WHO percentile reference curves (rendered behind weight data)
             ForEach(BabyPercentileLine.allCases, id: \.rawValue) { line in
                 if let points = groupedPercentiles[line] {
                     ForEach(points) { point in
@@ -152,7 +247,6 @@ struct BabySnapshotCard: View {
                 }
             }
 
-            // Baby's actual weight measurements
             ForEach(Array(weightPoints.enumerated()), id: \.offset) { _, point in
                 LineMark(
                     x: .value("Date", point.date),
@@ -206,7 +300,7 @@ struct BabySnapshotCard: View {
                         yDomain: yRange,
                         yTicks: yTickValues,
                         showHorizontalGridLines: false,
-                        visibleHorizontalTicks: boundaryYTicks(from: yTickValues)
+                        visibleHorizontalTicks: BabyDashboardChartSupport.boundaryYTicks(from: yTickValues)
                     )
                 }
         }
@@ -227,10 +321,10 @@ struct BabySnapshotCard: View {
         .frame(maxWidth: .infinity)
     }
 
-    // MARK: - Helpers
+    // MARK: - Chart Data Helpers
 
     private func weekXDomain() -> ClosedRange<Date> {
-        guard let bounds = snapshotWindow?.bounds else { return Date()...Date() }
+        guard let bounds = cachedSnapshotWindow?.bounds else { return Date()...Date() }
         let edgePadding: TimeInterval = 30 * 60
         return bounds.start.addingTimeInterval(-edgePadding)...bounds.end.addingTimeInterval(edgePadding)
     }
@@ -239,100 +333,37 @@ struct BabySnapshotCard: View {
         BabyDashboardChartSupport.yAxisScale(
             for: rightClippedChartSummaries,
             babyProfile: babyProfile,
-            convertStoredWeightToDisplay: viewModel.convertStoredWeightToDisplay,
-            convertDecigramsToDisplay: viewModel.convertDecigramsToDisplay
+            convertStoredWeightToDisplay: { BabyDashboardChartSupport.convertStoredWeightToDisplay($0, unit: cachedWeightUnit) },
+            convertDecigramsToDisplay: { BabyDashboardChartSupport.convertDecigramsToDisplay($0, unit: cachedWeightUnit) }
         )
     }
 
     private var rightClippedChartSummaries: [BathScaleWeightSummary] {
-        guard let bounds = snapshotWindow?.bounds else { return chartSummaries }
-        return chartSummaries.filter { $0.date <= bounds.end }
+        guard let bounds = cachedSnapshotWindow?.bounds else { return cachedChartSummaries }
+        return cachedChartSummaries.filter { $0.date <= bounds.end }
     }
 
     private var rightClippedWeightPoints: [(date: Date, value: Double)] {
-        guard let bounds = snapshotWindow?.bounds else {
-            return chartSummaries.map {
-                (date: $0.date, value: viewModel.convertStoredWeightToDisplay(Int($0.weight)))
-            }
-        }
-
-        let points = chartSummaries
-            .map { (date: $0.date, value: viewModel.convertStoredWeightToDisplay(Int($0.weight))) }
+        let unit = cachedWeightUnit
+        let points = cachedChartSummaries
+            .map { (date: $0.date, value: BabyDashboardChartSupport.convertStoredWeightToDisplay(Int($0.weight), unit: unit)) }
             .sorted { $0.date < $1.date }
 
-        return rightClippedPoints(points, endDate: bounds.end)
+        guard let bounds = cachedSnapshotWindow?.bounds else { return points }
+        return BabyDashboardChartSupport.rightClippedPoints(points, endDate: bounds.end)
     }
 
     private var rightClippedPercentilePointsByLine: [BabyPercentileLine: [BabyPercentileChartPoint]] {
-        guard let bounds = snapshotWindow?.bounds else { return percentilePointsByLine }
+        guard let bounds = cachedSnapshotWindow?.bounds else { return cachedPercentilePointsByLine }
 
         return Dictionary(uniqueKeysWithValues: BabyPercentileLine.allCases.map { line in
-            let points = percentilePointsByLine[line] ?? []
-            return (line, rightClippedPercentilePoints(points, endDate: bounds.end))
+            let points = cachedPercentilePointsByLine[line] ?? []
+            return (line, BabyDashboardChartSupport.rightClippedPercentilePoints(points, endDate: bounds.end))
         })
     }
 
-    private func rightClippedPercentilePoints(
-        _ points: [BabyPercentileChartPoint],
-        endDate: Date
-    ) -> [BabyPercentileChartPoint] {
-        let clipped = rightClippedPoints(
-            points.map { (date: $0.date, value: $0.value) },
-            endDate: endDate
-        )
-
-        guard let line = points.first?.line else { return [] }
-        return clipped.map { BabyPercentileChartPoint(date: $0.date, value: $0.value, line: line) }
-    }
-
-    private func rightClippedPoints(
-        _ points: [(date: Date, value: Double)],
-        endDate: Date
-    ) -> [(date: Date, value: Double)] {
-        let sortedPoints = points.sorted { $0.date < $1.date }
-        let visiblePoints = sortedPoints.filter { $0.date <= endDate }
-
-        guard let lastVisiblePoint = visiblePoints.last else { return [] }
-        guard lastVisiblePoint.date < endDate else { return visiblePoints }
-        guard let nextPoint = sortedPoints.first(where: { $0.date > endDate }) else { return visiblePoints }
-
-        let boundaryValue = interpolatedValue(
-            at: endDate,
-            from: lastVisiblePoint.date,
-            startValue: lastVisiblePoint.value,
-            to: nextPoint.date,
-            endValue: nextPoint.value
-        )
-
-        return visiblePoints + [(date: endDate, value: boundaryValue)]
-    }
-
-    private func interpolatedValue(
-        at targetDate: Date,
-        from startDate: Date,
-        startValue: Double,
-        to endDate: Date,
-        endValue: Double
-    ) -> Double {
-        let totalInterval = endDate.timeIntervalSince(startDate)
-        guard totalInterval > 0 else { return startValue }
-
-        let elapsedInterval = targetDate.timeIntervalSince(startDate)
-        let progress = elapsedInterval / totalInterval
-        return startValue + ((endValue - startValue) * progress)
-    }
-
-    private func boundaryYTicks(from ticks: [Double]) -> [Double] {
-        guard let first = ticks.first else { return [] }
-        guard let last = ticks.last,
-              abs(last - first) > AppConstants.Precision.doubleEqualityEpsilon else {
-            return [first]
-        }
-        return [first, last]
-    }
-
     private var accessibilityLabel: String {
-        if let avg = weekAverageLbsOz {
+        if let avg = cachedWeekAverageLbsOz {
             return BabyDashboardStrings.babyWeightSnapshotAccessibility(
                 name: babyName,
                 lbs: avg.lbs,

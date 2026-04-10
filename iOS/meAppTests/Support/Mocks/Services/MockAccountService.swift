@@ -113,6 +113,10 @@ final class MockAccountService: AccountServiceProtocol {
         if let error = deleteAllAccountsError { throw error }
     }
 
+    func removeAccountFromDevice(accountId: String) async throws {
+        throw UnexpectedCallError.methodCalled("removeAccountFromDevice")
+    }
+
     func switchAccount(to account: Account) async throws {
         switchAccountCalls += 1
         lastSwitchedAccountId = account.accountId

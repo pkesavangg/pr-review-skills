@@ -5,11 +5,29 @@ import Foundation
 @MainActor
 final class DashboardCacheManager: DashboardCacheManagerProtocol {
     
+    // MARK: - Product Type Tracking
+
+    /// The product type that current caches belong to. When this changes,
+    /// all caches are invalid because the underlying data source has changed.
+    private var _cachedProductType: EntryType?
+    /// The baby profile ID for baby selections. Different baby profiles need separate caches.
+    private var _cachedBabyProfileId: String?
+
+    /// Updates the product context. Call before accessing caches after a product switch.
+    /// If the product context changed, all caches are automatically invalidated.
+    func setProductContext(productType: EntryType, babyProfileId: String? = nil) {
+        if _cachedProductType != productType || _cachedBabyProfileId != babyProfileId {
+            clearAllCaches()
+            _cachedProductType = productType
+            _cachedBabyProfileId = babyProfileId
+        }
+    }
+
     // MARK: - Continuous Operations Cache
-    
+
     private var _cachedContinuousOperations: [BathScaleWeightSummary] = []
     private var _cachedContinuousPeriod: TimePeriod?
-    
+
     func getContinuousOperations(
         for period: TimePeriod,
         getOperations: () -> [BathScaleWeightSummary]

@@ -13,6 +13,24 @@ final class DateTimeTools {
     static let invalidString: String = "---"
     static let invalidInt: Int? = nil
 
+    private static let parsedDateCache: NSCache<NSString, NSDate> = {
+        let cache = NSCache<NSString, NSDate>()
+        cache.countLimit = 20_000
+        return cache
+    }()
+
+    private static let localDateKeyCache: NSCache<NSString, NSString> = {
+        let cache = NSCache<NSString, NSString>()
+        cache.countLimit = 20_000
+        return cache
+    }()
+
+    private static let localMonthKeyCache: NSCache<NSString, NSString> = {
+        let cache = NSCache<NSString, NSString>()
+        cache.countLimit = 20_000
+        return cache
+    }()
+
     // MARK: - DateFormatter Cache (Thread-Local)
     /// Returns a thread-local cached DateFormatter configured with the given format and optional timezone.
     /// DateFormatter is not thread-safe, so we cache per-thread to avoid contention and repeated allocations.
@@ -139,16 +157,28 @@ final class DateTimeTools {
     /// - Parameter dateString: The UTC date string to format.
     /// - Returns: The formatted date string in local timezone.
     static func getLocalDateStringFromUTCDate(_ dateString: String) -> String {
+        let cacheKey = dateString as NSString
+        if let cached = localDateKeyCache.object(forKey: cacheKey) {
+            return cached as String
+        }
         guard let date = parse(dateString) else { return invalidString }
-        return ephemeralFormatter("yyyy-MM-dd", timeZone: TimeZone.current).string(from: date)
+        let localDate = ephemeralFormatter("yyyy-MM-dd", timeZone: TimeZone.current).string(from: date)
+        localDateKeyCache.setObject(localDate as NSString, forKey: cacheKey)
+        return localDate
     }
 
     /// Formats a UTC date string to 'yyyy-MM' in the local timezone.
     /// - Parameter dateString: The UTC date string to format.
     /// - Returns: The formatted month string in local timezone.
     static func getLocalMonthStringFromUTCDate(_ dateString: String) -> String {
+        let cacheKey = dateString as NSString
+        if let cached = localMonthKeyCache.object(forKey: cacheKey) {
+            return cached as String
+        }
         guard let date = parse(dateString) else { return invalidString }
-        return ephemeralFormatter("yyyy-MM", timeZone: TimeZone.current).string(from: date)
+        let localMonth = ephemeralFormatter("yyyy-MM", timeZone: TimeZone.current).string(from: date)
+        localMonthKeyCache.setObject(localMonth as NSString, forKey: cacheKey)
+        return localMonth
     }
 
     static func getDateFromDateString(_ dateString: String, format: String) -> Date {
@@ -250,8 +280,14 @@ final class DateTimeTools {
     /// Attempts to parse a date string using ISO8601 and several common formats.
     /// Returns a Date if successful, or nil if parsing fails.
     static func parse(_ dateString: String) -> Date? {
+        let cacheKey = dateString as NSString
+        if let cached = parsedDateCache.object(forKey: cacheKey) {
+            return cached as Date
+        }
+
         // Try ISO8601 first
         if let date = isoFormatter().date(from: dateString) {
+            parsedDateCache.setObject(date as NSDate, forKey: cacheKey)
             return date
         }
         // Try common formats
@@ -264,6 +300,7 @@ final class DateTimeTools {
         for format in formats {
             let df = formatter(format)
             if let date = df.date(from: dateString) {
+                parsedDateCache.setObject(date as NSDate, forKey: cacheKey)
                 return date
             }
         }
