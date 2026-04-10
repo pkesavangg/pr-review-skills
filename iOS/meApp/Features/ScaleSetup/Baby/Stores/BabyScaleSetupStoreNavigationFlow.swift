@@ -156,13 +156,9 @@ extension BabyScaleSetupStore {
             message: "Baby scale setup started for SKU: \(sku)"
         )
 
-        // If a discovered scale was passed in and permissions are granted, pair directly
+        // If a discovered scale was passed in and permissions are granted, go to wakeup step
         if discoveredScale != nil && discoveryEvent != nil && arePermissionsEnabled() {
-            navigateToStep(.connectingBluetooth)
-            connectionState = .loading
-            Task {
-                await confirmPair()
-            }
+            navigateToStep(.wakeup)
         } else if discoveredScale != nil && discoveryEvent != nil {
             navigateToStep(.permissions)
         }

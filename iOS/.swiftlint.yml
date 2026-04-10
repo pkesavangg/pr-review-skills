@@ -141,6 +141,10 @@ identifier_name:
     - API                        # Application Programming Interface
     - ok                         # Common boolean/status variable
     - no                         # Common boolean variable
+    - A3                         # Bluetooth protocol specification name
+    - A6                         # Bluetooth protocol specification name
+    - R4                         # Bluetooth protocol specification name
+    - R4ScaleSetup               # Enum case matching R4 scale protocol naming convention
 
 # ============================================
 # General Settings

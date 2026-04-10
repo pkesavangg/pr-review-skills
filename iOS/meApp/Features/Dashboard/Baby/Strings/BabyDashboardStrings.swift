@@ -9,12 +9,22 @@ enum BabyDashboardStrings {
     // MARK: - Units
     static let lbs = "lbs"
     static let oz = "oz"
+    static let kg = "kg"
     static let inches = "inches"
+    static let cm = "cm"
+    static let percentSymbol = "%"
 
     // MARK: - Labels
     static let weekAverage = "week average"
     static let weight = "Weight"
     static let height = "Height"
+    static let growthPercentilesTitle = "CDC Growth Percentiles"
+    static let growthPercentilesHeading = "Understanding Growth Percentiles"
+    static let growthPercentilesDescription =
+        """
+        CDC charts show how a child’s height and weight compare to others the same age. \
+        A percentile means what percentage of children measure below that number.
+        """
     static let noHeightData = "No height readings yet"
 
     static func babyWeightLabel(name: String) -> String {

@@ -63,7 +63,7 @@ fun ScaleDiscoveredModal(
         modifier = Modifier.padding(top = spacing.sm),
       )
       AppText(
-        text = AppPopupStrings.ScaleDiscoveredPopup.Title,
+        text = AppPopupStrings.ScaleDiscoveredPopup.Title(sku),
         textType = TextType.ListTitle2,
         textAlign = TextAlign.Center,
       )
@@ -73,7 +73,7 @@ fun ScaleDiscoveredModal(
         textAlign = TextAlign.Center,
       )
       AppButton(
-        label = "Connect",
+        label = AppPopupStrings.ScaleDiscoveredPopup.ConnectButton,
         type = ButtonType.PrimaryFilled,
         onClick = onConnect,
       )

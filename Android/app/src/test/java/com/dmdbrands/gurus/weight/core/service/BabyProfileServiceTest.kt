@@ -47,7 +47,7 @@ class BabyProfileServiceTest {
     @Test
     fun `observeAll returns profiles for active account`() = runTest {
         val profiles = listOf(
-            BabyProfile(id = PROFILE_ID, name = PROFILE_NAME, birthDate = null, accountId = ACCOUNT_ID),
+            BabyProfile(id = PROFILE_ID, name = PROFILE_NAME, birthdate = null, accountId = ACCOUNT_ID),
         )
         every { babyProfileRepository.observeAll(ACCOUNT_ID) } returns flowOf(profiles)
 
@@ -71,7 +71,7 @@ class BabyProfileServiceTest {
 
     @Test
     fun `save delegates to repository`() = runTest {
-        val profile = BabyProfile(id = PROFILE_ID, name = PROFILE_NAME, birthDate = null, accountId = ACCOUNT_ID)
+        val profile = BabyProfile(id = PROFILE_ID, name = PROFILE_NAME, birthdate = null, accountId = ACCOUNT_ID)
 
         service.save(profile)
 
@@ -82,7 +82,7 @@ class BabyProfileServiceTest {
 
     @Test
     fun `update delegates to repository`() = runTest {
-        val profile = BabyProfile(id = PROFILE_ID, name = "Updated", birthDate = null, accountId = ACCOUNT_ID)
+        val profile = BabyProfile(id = PROFILE_ID, name = "Updated", birthdate = null, accountId = ACCOUNT_ID)
 
         service.update(profile)
 

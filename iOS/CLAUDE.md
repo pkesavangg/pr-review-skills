@@ -271,6 +271,12 @@ For detailed test patterns, mock usage, and assertion examples → `meAppTests/d
 | Mock HTTP client | `meAppTests/Support/Mocks/Network/MockHTTPClient.swift` |
 | Unit test guide | `meAppTests/docs/UNIT_TESTING.md` |
 | Coverage guide | `docs/COVERAGE_REPORTING.md` |
+| Architecture overview | `architecture.md` |
+| Theme system guide | `.claude/skills/theme-guide.md` |
+| Notification layer guide | `.claude/skills/notification-guide.md` |
+| API call patterns | `.claude/skills/api-guide.md` |
+| Form validation guide | `.claude/skills/form-guide.md` |
+| Logging system guide | `.claude/skills/logging-guide.md` |
 | Workflow orchestration | `.claude/orchestra.md` |
 
 ---
@@ -296,6 +302,7 @@ When the user describes a task in natural language, match it to the appropriate 
 | "code standards review", "check conventions", "architecture review" | `.claude/skills/review-code-standards.md` |
 | "UI review", "check theme usage", "design standards review" | `.claude/skills/review-ui-standards.md` |
 | "raise a PR", "open a PR" | `.claude/skills/raise-pr.md` |
+| "fix PR comments", "address review feedback", "apply reviewer suggestions", "resolve PR comments", "act on code review" | `.claude/skills/fix-pr-comments.md` |
 | "write a PR description", "draft a PR description", "describe this PR", "what should I put in the PR description" | `.claude/skills/pr-description.md` |
 | "log time", "log work" | `.claude/skills/log-work.md` |
 | "create a branch", "start working on MA-XXXX" | `.claude/skills/create-branch.md` |
@@ -317,8 +324,14 @@ When the user describes a task in natural language, match it to the appropriate 
 | "SwiftData issue" | `.claude/skills/swiftdata.md` |
 | "config change", "environment change" | `.claude/skills/config-change.md` |
 | "fix lint", "run swiftlint", "lint fix", "swiftlint errors", "clean up lint" | `.claude/skills/swiftlint.md` |
+| "run the guard", "post-change check", "check my changes", "guard", "quality check", "fix and check", "mid-session review", "check before self-review", "fix and review" | `.claude/skills/post-change-guard.md` |
 | "add accessibility to X", "make this screen accessible", "VoiceOver support" | `.claude/skills/add-accessibility.md` |
 | "add preview for X", "scaffold preview", "create #Preview" | `.claude/skills/add-preview.md` |
+| "how does theming work", "apply a color", "use a font", "add spacing", "dark mode", "use theme token" | `.claude/skills/theme-guide.md` |
+| "show a toast", "show an alert", "show a loader", "show a modal", "in-app notification", "notification layer" | `.claude/skills/notification-guide.md` |
+| "how do API calls work", "what's the DTO pattern", "HTTP client usage", "how do I call the API" | `.claude/skills/api-guide.md` |
+| "how does form validation work", "add a form", "validate a field", "form error message" | `.claude/skills/form-guide.md` |
+| "instrument this code", "add logging", "log this", "how does logging work", "send logs to server" | `.claude/skills/logging-guide.md` |
 
 When a task spans multiple skills, chain them in the order defined by `.claude/orchestra.md` Section 4. After implementation tasks, always follow the verification checklist in Section 6.
 
@@ -332,3 +345,35 @@ The full orchestration guide at `.claude/orchestra.md` defines:
 - **Verification checklist** — pre-commit quality gates
 - **Parallelization opportunities** — which skills can run concurrently
 - **Error recovery** — what to do when builds fail, tests fail, or plans go sideways
+
+---
+
+## Post-Change Guard
+
+The `post-change-guard` is a mid-session quality fix-and-check pass. Run it after finishing a batch of implementation work and **before** running `/self-review`.
+
+**What it does (in parallel):**
+- Auto-fixes SwiftLint violations (lint + HIPAA compliance + force ops)
+- Auto-fixes accessibility issues (labels, identifiers, Dynamic Type)
+- Reports security findings — no auto-fix (requires human review)
+- Reports code standards deviations — no auto-fix (requires context)
+- Applies Swift concurrency pattern corrections (after parallel block)
+- Triggers full build check when vital infrastructure files are changed
+
+**When to run:**
+- After implementing a feature or fixing a bug — before `/self-review`
+- When the hook reminds you ("N Swift files edited this session")
+- Any time you want a fast mid-session quality pass
+
+**When NOT to use:**
+- Instead of `/self-review` — guard is "fix as you go"; self-review is the final commit gate
+- On a single file — the per-file SwiftLint hook already handles that
+- Before `/verify-tests` — tests are separate; the guard does not run tests
+
+**Workflow position:**
+```
+[Implementation complete] → /post-change-guard → /self-review → /commit
+```
+
+**Vital files that trigger build check:**
+`Core/DI/`, `Core/Services/ServiceRegistry.swift`, `Domain/Repositories/*Protocol.swift`, `Domain/Services/*Protocol.swift`, `Data/Services/`, `Data/API/`, `Core/Network/`, `Domain/Models/DB/`, `meApp.xcodeproj/`

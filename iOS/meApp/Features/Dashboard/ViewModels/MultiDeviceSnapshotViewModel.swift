@@ -35,13 +35,23 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
     func snapshotItems(from availableItems: [ProductSelection]) -> [ProductSelection] {
         var items: [ProductSelection] = []
         var latestBaby: ProductSelection?
+        var hasBpmSnapshot = false
+
         for item in availableItems {
             if case .baby = item {
                 latestBaby = item
             } else {
                 items.append(item)
+                if case .myBloodPressure = item {
+                    hasBpmSnapshot = true
+                }
             }
         }
+
+        if !hasBpmSnapshot && shouldShowBpmSnapshot {
+            items.append(.myBloodPressure)
+        }
+
         if let baby = latestBaby {
             items.append(baby)
         }
@@ -54,5 +64,9 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
         return real.isEmpty
             ? BabyDashboardChartSupport.dummyDailySummaries(for: babyProfile)
             : real
+    }
+
+    private var shouldShowBpmSnapshot: Bool {
+        !bpmDailySummaries.isEmpty
     }
 }

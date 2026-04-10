@@ -251,7 +251,9 @@ struct BabyScaleSetupStoreTests {
 
     @Test("saveBabyProfile creates baby and appends to savedBabies")
     func saveBabyProfile_createsAndAppends() async {
-        let (store, _, _, _, _, _, babyService) = makeSUT()
+        let sut = makeSUT()
+        let store = sut.store
+        let babyService = sut.babyService
         store.scaleItem = makeScaleItem()
         store.navigateToStep(.babyProfile)
         store.babyProfileForm.name.value = "Test Baby"
@@ -266,7 +268,9 @@ struct BabyScaleSetupStoreTests {
 
     @Test("saveBabyProfile with editingBaby calls updateBabyProfile")
     func saveBabyProfile_editing_callsUpdate() async {
-        let (store, _, _, _, _, _, babyService) = makeSUT()
+        let sut = makeSUT()
+        let store = sut.store
+        let babyService = sut.babyService
         store.scaleItem = makeScaleItem()
         let baby = Baby(accountId: "acct-1", name: "Old Name")
         store.savedBabies = [baby]
@@ -286,7 +290,8 @@ struct BabyScaleSetupStoreTests {
     func saveBabyProfile_failure_setsError() async {
         let babyService = MockBabyService()
         babyService.saveBabyError = BabyScaleSetupTestError.genericFailure
-        let (store, _, _, _, _, _, _) = makeSUT(babyService: babyService)
+        let sut = makeSUT(babyService: babyService)
+        let store = sut.store
         store.scaleItem = makeScaleItem()
         store.navigateToStep(.babyProfile)
         store.babyProfileForm.name.value = "Test Baby"
@@ -299,7 +304,9 @@ struct BabyScaleSetupStoreTests {
 
     @Test("saveBabyProfile does nothing when name is empty")
     func saveBabyProfile_emptyName_doesNothing() async {
-        let (store, _, _, _, _, _, babyService) = makeSUT()
+        let sut = makeSUT()
+        let store = sut.store
+        let babyService = sut.babyService
         store.scaleItem = makeScaleItem()
         store.navigateToStep(.babyProfile)
         store.babyProfileForm.name.value = ""
@@ -344,7 +351,9 @@ struct BabyScaleSetupStoreTests {
 
     @Test("deleteBabyFromList removes baby and calls service")
     func deleteBabyFromList_removesAndCallsService() async {
-        let (store, _, _, _, _, _, babyService) = makeSUT()
+        let sut = makeSUT()
+        let store = sut.store
+        let babyService = sut.babyService
         store.scaleItem = makeScaleItem()
         let baby = Baby(accountId: "acct-1", name: "Test Baby")
         store.savedBabies = [baby]
@@ -407,7 +416,9 @@ struct BabyScaleSetupStoreTests {
 
     @Test("handleNextButtonClick on babyProfile triggers saveBabyProfile")
     func handleNextButtonClick_babyProfile_triggersSave() async {
-        let (store, _, _, _, _, _, babyService) = makeSUT()
+        let sut = makeSUT()
+        let store = sut.store
+        let babyService = sut.babyService
         store.scaleItem = makeScaleItem()
         store.navigateToStep(.babyProfile)
         store.babyProfileForm.name.value = "Save Me"
@@ -433,7 +444,9 @@ struct BabyScaleSetupStoreTests {
 
     @Test("handleExit shows confirmation alert")
     func handleExit_showsAlert() {
-        let (store, notification, _, _, _, _, _) = makeSUT()
+        let sut = makeSUT()
+        let store = sut.store
+        let notification = sut.notification
         store.scaleItem = makeScaleItem()
         store.handleExit()
         #expect(notification.showAlertCalls == 1)
@@ -442,7 +455,9 @@ struct BabyScaleSetupStoreTests {
 
     @Test("handleExit does nothing when already exiting")
     func handleExit_alreadyExiting_doesNothing() {
-        let (store, notification, _, _, _, _, _) = makeSUT()
+        let sut = makeSUT()
+        let store = sut.store
+        let notification = sut.notification
         store.scaleItem = makeScaleItem()
         store.isExiting = true
         store.handleExit()
@@ -530,7 +545,9 @@ struct BabyScaleSetupStoreTests {
 
     @Test("configure sets bluetoothService.isSetupInProgress to true")
     func configure_setsSetupInProgress() {
-        let (store, _, _, bluetooth, _, _, _) = makeSUT()
+        let sut = makeSUT()
+        let store = sut.store
+        let bluetooth = sut.bluetooth
         store.configure(with: "0220")
         #expect(bluetooth.isSetupInProgress == true)
     }
@@ -539,7 +556,9 @@ struct BabyScaleSetupStoreTests {
 
     @Test("performExitCleanup sets isSetupInProgress to false")
     func performExitCleanup_setsSetupInProgressFalse() {
-        let (store, _, _, bluetooth, _, _, _) = makeSUT()
+        let sut = makeSUT()
+        let store = sut.store
+        let bluetooth = sut.bluetooth
         store.scaleItem = makeScaleItem()
         bluetooth.isSetupInProgress = true
 
@@ -608,7 +627,9 @@ struct BabyScaleSetupStoreTests {
 
     @Test("showHelpModal presents alert via notification service")
     func showHelpModal_presentsAlert() {
-        let (store, notification, _, _, _, _, _) = makeSUT()
+        let sut = makeSUT()
+        let store = sut.store
+        let notification = sut.notification
         store.scaleItem = makeScaleItem()
         store.showHelpModal()
         #expect(notification.showAlertCalls == 1)

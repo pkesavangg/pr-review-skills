@@ -25,19 +25,19 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.baby.BabyProfileEntity
         ),
         ForeignKey(
             entity = BabyProfileEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["babyProfileId"],
+            parentColumns = ["babyId"],
+            childColumns = ["babyId"],
             onDelete = ForeignKey.CASCADE,
         ),
     ],
     indices = [
-        Index(value = ["babyProfileId"]),
+        Index(value = ["babyId"]),
     ],
 )
 data class BabyEntryEntity(
     @PrimaryKey
     val id: Long,
-    val babyProfileId: String,
+    val babyId: String,
 
     // Weight & length (Phase 2 — active)
     val babyWeightDecigrams: Int? = null,
@@ -58,7 +58,7 @@ data class BabyEntryEntity(
 
     // Display / sync
     val babyDisplayWeightDecigrams: Int? = null,
-    val photo: String? = null,
+    val photoUri: String? = null,
     val isPlaceholder: Boolean? = null,
     val source: String? = null,
 )
