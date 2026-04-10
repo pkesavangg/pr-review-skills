@@ -106,9 +106,12 @@ struct WifiScaleSetupScreen: View {
         .overlay {
             HStack {
                 if setupStore.currentStep == .permissions && !setupStore.isForGetMac {
-// swiftlint:disable:next multiline_arguments
-                    ButtonView(text: commonLang.skip, type: .inlineTextTertiary, size: .
-                               large, isDisabled: false) {
+                    ButtonView(
+                        text: commonLang.skip,
+                        type: .inlineTextTertiary,
+                        size: .large,
+                        isDisabled: false
+                    ) {
                         withAnimation {
                             hideKeyboard()
                         }

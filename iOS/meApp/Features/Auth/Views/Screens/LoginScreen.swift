@@ -43,8 +43,7 @@ struct LoginScreen: View {
                 onLeadingTap: {
                     store.handleExit(router: isFromAccountSwitching ? nil : router)
                 },
-// swiftlint:disable:next closure_spacing
-                onTrailingTap: {  },
+                onTrailingTap: { },
                 canShowBorder: isFromAccountSwitching,
                 canShowPresentationIndicator: isFromAccountSwitching,
                 shouldShowBackground: false
