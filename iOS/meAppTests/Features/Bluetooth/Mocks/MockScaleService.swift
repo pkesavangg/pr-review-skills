@@ -170,8 +170,17 @@ final class MockScaleService: ScaleServiceProtocol {
         return device
     }
 
+    var editDeviceError: Error?
+    private(set) var editDeviceCalls = 0
+    private(set) var lastEditDeviceId: String?
+    private(set) var lastEditDeviceProperties: [String: Any]?
+
     func editDevice(_ deviceId: String, properties: [String: Any]) async throws -> Device {
-        throw UnexpectedCallError.methodCalled("editDevice")
+        editDeviceCalls += 1
+        lastEditDeviceId = deviceId
+        lastEditDeviceProperties = properties
+        if let editDeviceError { throw editDeviceError }
+        return Device(id: deviceId, accountId: "", deviceType: DeviceType.scale.rawValue, createdAt: "")
     }
 
     func deleteDevice(_ deviceId: String, showToast: Bool) async throws {
