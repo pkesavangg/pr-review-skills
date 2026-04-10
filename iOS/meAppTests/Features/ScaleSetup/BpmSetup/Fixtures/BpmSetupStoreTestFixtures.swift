@@ -82,18 +82,14 @@ enum BpmSetupStoreTestFixtures {
     static func enabledPermissions() -> [GGPermissionType: GGPermissionState] {
         [
             .BLUETOOTH: .ENABLED,
-            .BLUETOOTH_SWITCH: .ENABLED,
-            .LOCATION: .ENABLED,
-            .LOCATION_SWITCH: .ENABLED
+            .BLUETOOTH_SWITCH: .ENABLED
         ]
     }
 
     static func disabledPermissions() -> [GGPermissionType: GGPermissionState] {
         [
             .BLUETOOTH: .DISABLED,
-            .BLUETOOTH_SWITCH: .DISABLED,
-            .LOCATION: .DISABLED,
-            .LOCATION_SWITCH: .DISABLED
+            .BLUETOOTH_SWITCH: .DISABLED
         ]
     }
 

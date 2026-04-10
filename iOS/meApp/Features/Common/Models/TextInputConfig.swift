@@ -30,4 +30,7 @@ struct TextInputConfig {
     /// When `true` in decimal mode, typing only zeros clears the field instead of showing "0.0".
     /// Defaults to `false` to preserve standard decimal formatting behaviour.
     var clearZeroValue: Bool = false
+    /// Number of digits to place after the decimal point in decimal mode.
+    /// Defaults to `1`. Set to `3` for baby kg/lb fields to match Baby App formatting.
+    var decimalPlaces: Int = 1
 }

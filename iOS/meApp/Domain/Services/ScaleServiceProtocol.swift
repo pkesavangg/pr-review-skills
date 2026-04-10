@@ -73,6 +73,10 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
     ///   - scales: The scales to update.
     func updateAllScalesStatus(_ scales: [Device]?) async throws
     func createScaleInLocal(_ device: Device) async throws -> Device
+    /// Deletes a single device entry by its ID without removing other entries for the same
+    /// physical device (e.g. a different user slot on the same BPM monitor).
+    func deleteSingleDeviceEntry(_ deviceId: String) async throws
+
     func syncAllScalesWithRemote() async
     func pushLocalChangesToServer() async
     func getDevice(by deviceId: String) async throws -> Device?

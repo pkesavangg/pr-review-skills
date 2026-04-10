@@ -229,6 +229,7 @@ struct MyScalesScreen: View {
                                 .interactiveDismissDisabled(true)
                         case .babyScale:
                             BabyScaleSetupScreen(sku: scale.sku)
+                                .interactiveDismissDisabled(true)
                         case .bpm:
                             BpmSetupScreen(sku: scale.sku)
                                 .interactiveDismissDisabled(true)

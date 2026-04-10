@@ -29,10 +29,10 @@ enum BpmA6MonitorSetupAssets {
         "Gifs/BpmMonitors/A6/\(sku)"
     }
 
-    /// A6 monitors use `User_A` / `User_B` GIFs.
-    static func userGifName(slot: Int) -> String {
+    /// A6 monitors use `{deviceType}_{sku}_User_A` / `…_User_B` GIFs.
+    static func userGifName(sku: String, slot: Int) -> String {
         let letter = slot == 1 ? "A" : "B"
-        return "\(deviceType)_User_\(letter)"
+        return "\(deviceType)_\(sku)_User_\(letter)"
     }
 
     static func path(forResource name: String, extension ext: String, sku: String) -> String? {
