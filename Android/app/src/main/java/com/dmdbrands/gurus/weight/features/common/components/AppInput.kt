@@ -482,7 +482,7 @@ fun AppInputPreview() {
                 label = "Disabled Input",
                 type = AppInputType.TEXT,
                 enabled = false,
-                supportingText = "must not be left blank"
+                supportingText = "this field is required"
             )
             AppInput(
                 formControl = maxLength,

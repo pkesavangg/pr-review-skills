@@ -41,5 +41,10 @@ fun <T : BaseViewModel> T.initTestDependencies(
             set(this@initTestDependencies, mock)
         }
     }
+    // Trigger onDependenciesReady() — mirrors what injectBaseDependencies() does in production
+    baseClass.getDeclaredMethod("onDependenciesReady").apply {
+        isAccessible = true
+        invoke(this@initTestDependencies)
+    }
     return this
 }

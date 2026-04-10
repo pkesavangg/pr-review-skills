@@ -8,6 +8,7 @@ object BabySignupStrings {
 
     // BabyAddedStep strings
     const val babyAddedTitle = "Your baby has been added!"
+    const val EmptyDescription = "Add and manage baby profiles for use with the baby scale."
 
     // Field labels
     const val nameLabel = "name"

@@ -28,6 +28,14 @@ interface GGCacheDevice
  * Service for managing BLE device operations.
  * Uses a dynamic getter for ggBluetooth to ensure it always uses the latest instance
  * bound to the current Activity, preventing unregistered ActivityResultLauncher crashes.
+ *
+ * Device-type agnostic: All methods (pairDevice, subscribeToLiveData, getDeviceInfo,
+ * getUsers, disconnectDevice, etc.) work generically across device types including
+ * scales and BPM monitors. The GGBluetooth SDK routes internally based on device type
+ * via GGAppType resolution (CommonHelper.getAppType).
+ *
+ * For BPM: pass GGAppType.BALANCE_HEALTH to startScan(), then filter GGScanResponse by device type
+ * at the app layer. No new bleWrapper methods are needed.
  */
 class GGDeviceService @Inject constructor(
   private val ggBleService: GGBLEService
@@ -79,6 +87,8 @@ class GGDeviceService @Inject constructor(
    */
   fun pairDevice(
     device: GGBTDevice,
+    replaceUser: Boolean = false,
+    pairedSKUMonitors: MutableList<GGBTDevice> = mutableListOf(),
     callback: (GGUserActionResponseType) -> Unit
   ) {
     ggBluetooth.confirmPair(device) {

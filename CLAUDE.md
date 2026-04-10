@@ -27,6 +27,9 @@ cd Android && ./gradlew test --tests "com.dmdbrands.gurus.weight.ExampleTest"
 # Run instrumented tests
 cd Android && ./gradlew connectedAndroidTest
 
+# Run coverage report + verification (80% line coverage minimum)
+cd Android && ./gradlew :app:jacocoTestReport :app:jacocoTestCoverageVerification
+
 # Clean build
 cd Android && ./gradlew clean assembleDebug
 ```
@@ -173,9 +176,17 @@ Features/{Feature}/
 
 ## CI
 
-CircleCI builds the iOS project on macOS M1 with Xcode 16.0.0. Android CI is not configured in this repo.
+CircleCI builds the iOS project on macOS M1 with Xcode 16.0.0.
+
+Android CI runs on CircleCI with the following gates:
+- **Build**: `./gradlew assembleDebug`
+- **Lint**: `./gradlew lint`
+- **Unit tests + coverage**: `./gradlew test :app:jacocoTestReport :app:jacocoTestCoverageVerification`
+  - **Minimum coverage**: 80% line coverage (enforced by `jacocoTestCoverageVerification`)
+  - Coverage HTML report is stored as a CI artifact
 
 ## Documentation
 
+- [Architecture Overview](architecture.md)
 - [Database Schema](docs/database-schema.md)
 - [Account Switching Flow](docs/account-switching-flow.md)

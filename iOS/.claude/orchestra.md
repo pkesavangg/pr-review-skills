@@ -76,6 +76,8 @@ The `/work-ticket` command orchestrates the complete flow. When working a Jira t
   ↓
 [Implementation phase — use skills as needed per task type]
   ↓
+/post-change-guard     → Auto-fix lint/a11y/concurrency; report security & standards; build if vital files changed
+  ↓
 /verify-tests          → Build + run tests + coverage check
 /self-review           → Run all 5 specialist reviews
 /commit                → Stage and commit with Jira ID prefix
@@ -107,6 +109,8 @@ agent: api-change-planner        → Map affected layers and files
 /gen-mock-single or              → Generate required mocks
   agent: gen-mock-batch
   ↓
+/post-change-guard               → Auto-fix quality issues; build check if vital files touched
+  ↓
 /verify-tests                    → Build + test + coverage
 /self-review                     → Full review pipeline
 /commit → /raise-pr → /log-work
@@ -119,6 +123,8 @@ agent: api-change-planner        → Map affected layers and files
 /debug-issue                     → Investigate root cause systematically
   ↓
 /fix-bug                         → Fix with regression test
+  ↓
+/post-change-guard               → Auto-fix quality issues; build check if services/DI touched
   ↓
 /verify-tests                    → Confirm fix + no regressions
 /self-review                     → Full review pipeline
@@ -133,6 +139,8 @@ agent: di-impact-finder          → Assess DI impact (if touching services)
   ↓
 /refactor                        → Execute refactor without behavior changes
 /update-mock                     → Update any affected mocks
+  ↓
+/post-change-guard               → Build always triggered (refactors touch DI/services)
   ↓
 /verify-tests                    → All existing tests must still pass
 /self-review                     → Full review pipeline
@@ -149,6 +157,8 @@ agent: api-change-planner        → Plan layers to touch
   ↓
 /gen-test-file                   → Tests for new repository/service
 /gen-mock-single                 → Mock for new protocol
+  ↓
+/post-change-guard               → Build always triggered (touches Domain/Repositories, Data/API)
   ↓
 /verify-tests → /self-review → /commit
 ```
@@ -202,6 +212,16 @@ agent: coverage-gap-finder       → Identify uncovered methods and branches
 ```
 
 This command internally runs: security, lint, regression, issue-coverage, and accessibility reviews, then posts a consolidated comment.
+
+### 4.11 Fix PR Comments
+
+```
+/fix-pr-comments {url}           → Triage + auto-fix reviewer comments
+```
+
+Fetches all inline and general review comments, classifies each as Auto-fix / Needs discussion / Skip, applies safe concrete fixes, and reports a summary table. Does NOT commit. Run after `/review-pr` feedback lands.
+
+Trigger phrases: "fix PR comments", "address review feedback", "apply reviewer suggestions", "respond to PR feedback", "fix the review comments", "act on code review", "resolve PR comments".
 
 ### 4.11 Release Preparation
 
@@ -277,6 +297,11 @@ Before marking any task complete, confirm:
 | `/swift-concurrency` | Concurrency patterns |
 | `/swiftdata` | SwiftData rules and patterns |
 | `/analytics` | Structured logging + Crashlytics non-fatal for critical paths |
+| `/theme-guide` | Theme system — colors, typography, spacing, border radius |
+| `/api-guide` | API call patterns — HTTPClient, Endpoint, DTO, RepositoryAPI |
+| `/form-guide` | Form validation — ObservableForm, FormControl, validators |
+| `/logging-guide` | Logging system — LoggerService, persistence, retention, server submission |
+| `/notification-guide` | Notification layer — alerts, toasts, loaders, modals, two-window architecture |
 
 ### Testing & Mocks
 | Skill/Agent | Purpose |
@@ -292,6 +317,7 @@ Before marking any task complete, confirm:
 ### Review & Quality
 | Skill | Purpose |
 |-------|---------|
+| `/post-change-guard` | Mid-session fix + check (lint/a11y/concurrency auto-fix, security + standards report, build if vital files) |
 | `/self-review` | Run all 5 specialist reviews |
 | `/review-lint` | SwiftLint and style check |
 | `/swiftlint` | Run SwiftLint with auto-fix, then manually fix remaining violations |
@@ -308,6 +334,7 @@ Before marking any task complete, confirm:
 | `/raise-pr` | Push and create PR |
 | `/log-work` | Log time on Jira |
 | `/review-pr` | Full PR review pipeline |
+| `/fix-pr-comments` | Triage and auto-fix reviewer comments on a PR |
 | `/release-cut` | Release notes generation |
 
 ### Documentation
@@ -339,6 +366,7 @@ These skill groups can run concurrently when their inputs are independent:
 
 | Parallel Group | Skills |
 |----------------|--------|
+| post-change-guard internals | `/swiftlint` + `/review-accessibility --fix` + `/review-security` + `/review-code-standards` (Steps 3a–3d run concurrently) |
 | Mock generation | `gen-mock-batch` (handles multiple protocols in parallel) |
 | Review pipeline | `/review-lint` + `/review-security` + `/review-accessibility` (read-only checks) |
 | Research phase | `/fetch-ticket` + `/read-figma` + `/read-jira-images` |

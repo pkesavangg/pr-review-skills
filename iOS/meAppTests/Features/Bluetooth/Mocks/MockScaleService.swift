@@ -202,7 +202,9 @@ final class MockScaleService: ScaleServiceProtocol {
         if let updateAllScalesStatusError { throw updateAllScalesStatusError }
     }
 
-    func createScaleInLocal(_ device: Device) async throws -> Device { device }
+    func createScaleInLocal(_ device: Device) async throws -> Device {
+        device
+    }
     func syncAllScalesWithRemote() async { syncAllScalesWithRemoteCalls += 1 }
     func pushLocalChangesToServer() async { pushLocalChangesToServerCalls += 1 }
     func getDevice(by deviceId: String) async throws -> Device? { scales.first { $0.id == deviceId } }

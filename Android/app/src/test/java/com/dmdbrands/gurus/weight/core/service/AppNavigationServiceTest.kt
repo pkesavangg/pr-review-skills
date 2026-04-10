@@ -15,14 +15,15 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AppNavigationServiceTest {
 
-    @get:Rule
+    @JvmField
+    @RegisterExtension
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var service: AppNavigationService
@@ -41,7 +42,7 @@ class AppNavigationServiceTest {
         activityLevel = "moderate",
     )
 
-    @Before
+    @BeforeEach
     fun setUp() {
         service = AppNavigationService()
     }

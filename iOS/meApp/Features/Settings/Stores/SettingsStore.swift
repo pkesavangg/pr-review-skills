@@ -423,6 +423,24 @@ class SettingsStore: ObservableObject {
         }
     }
 
+    // Edit profile form specific display values
+    var editBiologicalSexText: String {
+        editProfileForm.gender.value.rawValue.capitalized
+    }
+
+    var editHeightText: String {
+        let heightStr = editProfileForm.height.value
+        guard !heightStr.isEmpty,
+              let storedDouble = Double(heightStr)
+        else {
+            return ""
+        }
+
+        let storedHeight = Int(round(storedDouble))
+        let isMetric = activeAccount?.weightSettings?.weightUnit == .kg
+        return ConversionTools.convertToFormattedHeight(storedHeight, isMetric: isMetric)
+    }
+
     var weightlessText: String {
         let isOn = activeAccount?.weightlessSettings?.isWeightlessOn ?? false
         let storedWeight = activeAccount?.weightlessSettings?.weightlessWeight
@@ -536,15 +554,25 @@ class SettingsStore: ObservableObject {
             editProfileForm.lastName.value = account.lastName ?? ""
             editProfileForm.email.value = account.email
             editProfileForm.zipcode.value = account.zipcode ?? ""
+            editProfileForm.gender.value = account.gender ?? .male
 
             if let dobString = account.dob, let dob = DateTimeTools.parse(dobString) {
                 editProfileForm.birthday.value = dob
             }
+
+            // Populate height from account (convert to displayed format)
+            if let heightStr = account.weightSettings?.height,
+               let heightDouble = Double(heightStr) {
+                editProfileForm.height.value = String(Int(heightDouble))
+            }
+
             editProfileForm.firstName.markAsPristine()
             editProfileForm.lastName.markAsPristine()
             editProfileForm.email.markAsPristine()
             editProfileForm.zipcode.markAsPristine()
             editProfileForm.birthday.markAsPristine()
+            editProfileForm.gender.markAsPristine()
+            editProfileForm.height.markAsPristine()
             editProfileForm.validate()
         }
     }
@@ -562,22 +590,32 @@ class SettingsStore: ObservableObject {
         let dobChanged = dobValue != (activeAccount?.dob ?? "")
         let shouldUpdateR4Profile = firstNameChanged || dobChanged
 
+        // Convert form height to Double for the profile
+        let formHeightDouble = Double(editProfileForm.height.value) ?? (activeAccount?.weightSettings.flatMap { Double($0.height ?? "0") } ?? 0.0)
+
         let profile = Profile(
             firstName: firstNameValue,
             lastName: removeWhiteSpace(editProfileForm.lastName.value),
             email: removeWhiteSpace(editProfileForm.email.value),
-            gender: activeAccount?.gender ?? .male,
+            gender: editProfileForm.gender.value,
             zipcode: removeWhiteSpace(editProfileForm.zipcode.value),
             dob: dobValue,
             weightUnit: activeAccount?.weightSettings?.weightUnit ?? .lb,
-            height: activeAccount?.weightSettings.flatMap { Double($0.height ?? "0") } ?? 0.0,
+            height: formHeightDouble,
             activityLevel: activeAccount?.weightSettings?.activityLevel ?? .normal
         )
         Task {
             notificationService.showLoader(LoaderModel(text: LoaderStrings.saving))
             do {
+                logger.log(level: .info, tag: tag, message: "SettingsStore: Saving profile weightUnit=\(profile.weightUnit) activityLevel=\(profile.activityLevel)")
                 _ = try await accountService.updateProfile(profile)
-
+                // Also update body composition (height, weightUnit, activityLevel)
+                let bodyComp = BodyComp(
+                    weightUnit: activeAccount?.weightSettings?.weightUnit ?? .lb,
+                    height: formHeightDouble,
+                    activityLevel: activeAccount?.weightSettings?.activityLevel ?? .normal
+                )
+                _ = try await accountService.updateBodyComp(bodyComp)
                 // Only update R4 scales profile if firstName or dob changed
                 if shouldUpdateR4Profile {
                     // Update R4 scales profile and check for USER_SELECTION_IN_PROGRESS status
@@ -983,55 +1021,45 @@ class SettingsStore: ObservableObject {
         }
     }
 
-    // MARK: - Gender Helpers
+    // MARK: - Form-Only Update Helpers (for Edit Profile)
 
-    func updateGender(_ sex: Sex) {
-        guard let account = activeAccount else { return }
-        guard account.gender != sex else { return }
+    /// Updates gender in the edit form only – does NOT make an API call.
+    /// The API call happens during saveProfile() when the user clicks the Save button.
+    func updateGenderInForm(_ sex: Sex) {
+        editProfileForm.gender.value = sex
+        editProfileForm.gender.markAsDirty()
+    }
 
-        Task {
-            httpClient.skipCheckNetwork = true
-            notificationService.showLoader(LoaderModel(text: loaderLang.loading))
-            do {
-                let profile = Profile(
-                    firstName: account.firstName ?? "",
-                    lastName: account.lastName ?? "",
-                    email: account.email,
-                    gender: sex,
-                    zipcode: account.zipcode ?? "",
-                    dob: account.dob ?? "",
-                    weightUnit: account.weightSettings?.weightUnit ?? .lb,
-                    height: account.weightSettings.flatMap { Double($0.height ?? "0") } ?? 0.0,
-                    activityLevel: account.weightSettings?.activityLevel ?? .normal
-                )
-                _ = try await accountService.updateProfile(profile, canSaveOffline: true)
-
-                // Update R4 scales profile and check for USER_SELECTION_IN_PROGRESS status
-                let profileUpdateResult = await bluetoothService.updateUserProfileForR4Scales()
-                logger.log(level: .info, tag: tag, message: "updateUserProfileForR4Scales result updateGender: \(profileUpdateResult)")
-                switch profileUpdateResult {
-                case let .success(statusArray):
-                    // Suppress success toast during user selection to prevent misleading feedback,
-                    // since the scale profile isn't updated at that time.
-                    if hasUserSelectionInProgress(statusArray: statusArray) {
-                        // Show updates pending alert instead
-                        showUpdatesPendingAlert()
-                    } else {
-                        notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.profileSaved))
-                    }
-                case .failure:
-                    // If update fails (e.g., already in progress from subscription),
-                    // still show success toast since profile was saved successfully
-                    notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.profileSaved))
-                }
-                logger.log(level: .info, tag: tag, message: "Gender updated to \(sex.rawValue)")
-            } catch {
-                notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.unableToUpdateAccountSettings))
-                logger.log(level: .error, tag: tag, message: "Gender update failed:", data: error.localizedDescription)
-            }
-            notificationService.dismissLoader()
-            httpClient.skipCheckNetwork = false
+    /// Updates height in the edit form only – does NOT make an API call.
+    /// The API call happens during saveProfile() when the user clicks the Save button.
+    func updateHeightInForm(fromMetric: Bool, values: [String]) {
+        // Validate height before updating
+        guard ConversionTools.isValidHeightPickerValues(fromMetric: fromMetric, values: values) else {
+            logger.log(level: .error, tag: tag, message: "Invalid height values rejected: \(values)")
+            return
         }
+
+        let storedHeight: Int
+        if fromMetric {
+            let cm = Int(values.joined()) ?? 178
+            guard ConversionTools.isValidHeightCm(cm) else {
+                logger.log(level: .error, tag: tag, message: "Invalid cm height rejected: \(cm)")
+                return
+            }
+            storedHeight = ConversionTools.convertCmToStoredHeight(cm)
+        } else {
+            let feet = Int(values[0]) ?? 5
+            let inches = Int(values[1]) ?? 10
+            guard ConversionTools.isValidHeightInches(feet: feet, inches: inches) else {
+                logger.log(level: .error, tag: tag, message: "Invalid feet/inches height rejected: \(feet)'\(inches)\"")
+                return
+            }
+            let totalInches = (feet * 12) + inches
+            storedHeight = ConversionTools.convertInchesToStoredHeight(totalInches)
+        }
+
+        editProfileForm.height.value = String(storedHeight)
+        editProfileForm.height.markAsDirty()
     }
 
     /// Checks if the status array contains USER_SELECTION_IN_PROGRESS
@@ -1256,89 +1284,6 @@ class SettingsStore: ObservableObject {
             showHeightCmPicker = true
         } else {
             showHeightInchesPicker = true
-        }
-    }
-
-    // Converts the chosen picker values to stored format and persists via `updateBodyComp`.
-    // - Parameters:
-    //   - fromMetric: `true` if the picker values are metric (cm), `false` for imperial.
-    //   - values: Picker column values chosen by the user.
-    // swiftlint:disable:next function_body_length
-    func updateHeight(fromMetric: Bool, values: [String]) {
-        // Validate height before updating
-        guard ConversionTools.isValidHeightPickerValues(fromMetric: fromMetric, values: values) else {
-            logger.log(level: .error, tag: tag, message: "Invalid height values rejected: \(values)")
-            notificationService.showToast(ToastModel(title: toastLang.errorUpdatingHeight, message: toastLang.pleaseTryAgain))
-            return
-        }
-
-        let storedHeight: Int
-        if fromMetric {
-            let cm = Int(values.joined()) ?? 178
-            // Double-check cm is valid
-            guard ConversionTools.isValidHeightCm(cm) else {
-                logger.log(level: .error, tag: tag, message: "Invalid cm height rejected: \(cm)")
-                notificationService.showToast(ToastModel(title: toastLang.errorUpdatingHeight, message: toastLang.pleaseTryAgain))
-                return
-            }
-            storedHeight = ConversionTools.convertCmToStoredHeight(cm)
-        } else {
-            let feet = Int(values[0]) ?? 5
-            let inches = Int(values[1]) ?? 10
-            // Double-check feet/inches is valid
-            guard ConversionTools.isValidHeightInches(feet: feet, inches: inches) else {
-                logger.log(level: .error, tag: tag, message: "Invalid feet/inches height rejected: \(feet)'\(inches)\"")
-                notificationService.showToast(ToastModel(title: toastLang.errorUpdatingHeight, message: toastLang.pleaseTryAgain))
-                return
-            }
-            let totalInches = (feet * 12) + inches
-            storedHeight = ConversionTools.convertInchesToStoredHeight(totalInches)
-        }
-
-        // Persist change only if it differs
-        guard let account = activeAccount,
-              let currentStoredStr = account.weightSettings?.height,
-              let currentStoredDouble = Double(currentStoredStr) else { return }
-
-        let currentStored = Int(round(currentStoredDouble))
-        guard currentStored != storedHeight else { return }
-
-        Task {
-            notificationService.showLoader(LoaderModel(text: loaderLang.loading))
-            let bodyComp = BodyComp(
-                weightUnit: account.weightSettings?.weightUnit ?? .lb,
-                height: Double(storedHeight),
-                activityLevel: account.weightSettings?.activityLevel ?? .normal
-            )
-            do {
-                _ = try await accountService.updateBodyComp(bodyComp)
-
-                // Update R4 scales profile and check for USER_SELECTION_IN_PROGRESS status
-                let profileUpdateResult = await bluetoothService.updateUserProfileForR4Scales()
-                logger.log(level: .info, tag: tag, message: "updateUserProfileForR4Scales result updateHeight: \(profileUpdateResult)")
-
-                switch profileUpdateResult {
-                case let .success(statusArray):
-                    // Suppress success toast during user selection to prevent misleading feedback,
-                    // since the scale profile isn't updated at that time.
-                    if hasUserSelectionInProgress(statusArray: statusArray) {
-                        // Show updates pending alert instead
-                        showUpdatesPendingAlert()
-                    } else {
-                        notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.heightUpdated))
-                    }
-                case .failure:
-                    // If update fails (e.g., already in progress from subscription),
-                    // still show success toast since setting was saved successfully
-                    notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.heightUpdated))
-                }
-
-                logger.log(level: .info, tag: tag, message: "Height updated to stored value: \(storedHeight)")
-            } catch {
-                notificationService.showToast(ToastModel(title: toastLang.errorUpdatingHeight, message: toastLang.pleaseTryAgain))
-                logger.log(level: .error, tag: tag, message: "Height update failed:", data: error.localizedDescription)
-            }
-            notificationService.dismissLoader()
         }
     }
 
@@ -1688,15 +1633,14 @@ class SettingsStore: ObservableObject {
                 options: [AppearanceMode.allCases],
                 displayValue: { $0.rawValue },
                 title: SettingsStrings.appearance,
-                showCancel: false,
-                updateValues: { vals in // swiftlint:disable:this trailing_closure
-                    self.notificationService.dismissModal()
-                    Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 500_000_000)
-                        if let mode = vals.first { Theme.shared.appearanceMode = mode }
-                    }
+                showCancel: false
+            ) { vals in
+                self.notificationService.dismissModal()
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    if let mode = vals.first { Theme.shared.appearanceMode = mode }
                 }
-            )
+            }
             notificationService.showModal(
                 ModalData(
                     presentedView: AnyView(picker)
@@ -1715,12 +1659,11 @@ class SettingsStore: ObservableObject {
                 options: [NotificationPreference.allCases],
                 displayValue: { $0.title },
                 title: SettingsStrings.notifications,
-                showCancel: false,
-                updateValues: { vals in // swiftlint:disable:this trailing_closure
-                    self.notificationService.dismissModal()
-                    if let pref = vals.first { self.updateNotificationPreference(pref) }
-                }
-            )
+                showCancel: false
+            ) { vals in
+                self.notificationService.dismissModal()
+                if let pref = vals.first { self.updateNotificationPreference(pref) }
+            }
             notificationService.showModal(ModalData(presentedView: AnyView(picker)))
         } else {
             showNotificationPicker = true
@@ -1735,12 +1678,11 @@ class SettingsStore: ObservableObject {
                 options: [Sex.allCases],
                 displayValue: { $0.rawValue.capitalized },
                 title: SettingsStrings.biologicalSex,
-                showCancel: false,
-                updateValues: { vals in // swiftlint:disable:this trailing_closure
-                    self.notificationService.dismissModal()
-                    if let sex = vals.first { self.updateGender(sex) }
-                }
-            )
+                showCancel: false
+            ) { vals in
+                self.notificationService.dismissModal()
+                if let sex = vals.first { self.updateGender(sex) }
+            }
             notificationService.showModal(ModalData(presentedView: AnyView(picker)))
         } else {
             showGenderPicker = true
@@ -1755,12 +1697,11 @@ class SettingsStore: ObservableObject {
                 options: [[WeightUnit.lb, WeightUnit.kg]],
                 displayValue: { unit in unit == .kg ? CommonStrings.unitKgCm : CommonStrings.pickerLbs },
                 title: SettingsStrings.unitType,
-                showCancel: false,
-                updateValues: { vals in // swiftlint:disable:this trailing_closure
-                    self.notificationService.dismissModal()
-                    if let unit = vals.first { self.updateWeightUnit(unit) }
-                }
-            )
+                showCancel: false
+            ) { vals in
+                self.notificationService.dismissModal()
+                if let unit = vals.first { self.updateWeightUnit(unit) }
+            }
             notificationService.showModal(ModalData(presentedView: AnyView(picker)))
         } else {
             showUnitPicker = true
@@ -1775,12 +1716,11 @@ class SettingsStore: ObservableObject {
                 options: [[ActivityLevel.normal, ActivityLevel.athlete]],
                 displayValue: { $0.rawValue.capitalized },
                 title: SettingsStrings.activityLevel,
-                showCancel: false,
-                updateValues: { vals in // swiftlint:disable:this trailing_closure
-                    self.notificationService.dismissModal()
-                    if let level = vals.first { self.updateActivityLevel(level) }
-                }
-            )
+                showCancel: false
+            ) { vals in
+                self.notificationService.dismissModal()
+                if let level = vals.first { self.updateActivityLevel(level) }
+            }
             notificationService.showModal(ModalData(presentedView: AnyView(picker)))
         } else {
             showActivityPicker = true
@@ -1797,12 +1737,11 @@ class SettingsStore: ObservableObject {
                     displayValue: { $0 },
                     pickerType: .heightCm,
                     title: SettingsStrings.height,
-                    showCancel: false,
-                    updateValues: { vals in // swiftlint:disable:this trailing_closure
+                    showCancel: false
+                )                    { vals in // swiftlint:disable:this trailing_closure
                         self.notificationService.dismissModal()
-                        self.updateHeight(fromMetric: true, values: vals)
+                        self.updateHeightInForm(fromMetric: true, values: vals)
                     }
-                )
                 notificationService.showModal(
                     ModalData(presentedView: AnyView(
                         picker
@@ -1815,12 +1754,11 @@ class SettingsStore: ObservableObject {
                     displayValue: { $0 },
                     pickerType: .heightInches,
                     title: SettingsStrings.height,
-                    showCancel: false,
-                    updateValues: { vals in // swiftlint:disable:this trailing_closure
+                    showCancel: false
+                )                    { vals in // swiftlint:disable:this trailing_closure
                         self.notificationService.dismissModal()
-                        self.updateHeight(fromMetric: false, values: vals)
+                        self.updateHeightInForm(fromMetric: false, values: vals)
                     }
-                )
                 notificationService.showModal(
                     ModalData(presentedView: AnyView(
                         picker

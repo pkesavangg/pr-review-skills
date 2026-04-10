@@ -25,8 +25,8 @@ class ProductSelectionManager @Inject constructor(
       _availableProducts.value = listOf(
         ProductSelection.MyWeight,
         ProductSelection.BloodPressure,
-        ProductSelection.Baby(BabyProfile(id = "sample-1", name = "Timmy", birthDate = null, accountId = accountId)),
-        ProductSelection.Baby(BabyProfile(id = "sample-2", name = "Lucy", birthDate = null, accountId = accountId)),
+        ProductSelection.Baby(BabyProfile(id = "sample-1", name = "Timmy", birthdate = null, accountId = accountId)),
+        ProductSelection.Baby(BabyProfile(id = "sample-2", name = "Lucy", birthdate = null, accountId = accountId)),
       )
       AppLog.d(TAG, "Available (sample): ${_availableProducts.value}")
       return

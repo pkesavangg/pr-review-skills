@@ -38,6 +38,26 @@ For each occurrence, note the file, line, and whether a safe alternative (`guard
 
 ---
 
+### 2b. Silent Error Swallowing (`try?`)
+
+Scan new `+` lines in `Service`, `Store`, `API`, and `Repository` files for `try?` usages where **all of the following are true**:
+
+1. The call is in a production service/store/API file (not a View, test, or pure UI helper)
+2. There is no `else { logger.log(level: .error, ...) }` or `else { LoggerService... }` branch following the `try?`
+3. The function's behavior visibly degrades when the call fails (e.g., returns an empty array, skips a permissions step, silently no-ops, fails to expand HealthKit authorization)
+
+**Safe `try?` patterns — do NOT flag:**
+- `try?` followed by explicit `else { logger.log(...) }` error handling
+- `try?` in View files or pure UI helpers where nil → empty state is intentional by design
+- `try?` on cleanup/delete operations where failure is non-critical (e.g. `try? modelContext.delete(item)`)
+
+For each flagged occurrence:
+- Report: `[High] Silent error swallow — try? at {file}:{line} suppresses {ServiceName} errors. If {service} throws ({error scenario}), {describe user-visible degradation}. Replace with do/catch + logger.log(level: .error, tag: tag, message: ...)`
+
+Flag as **WARNING** in non-critical paths, **FAIL** if the suppressed error affects auth, HealthKit permissions, device pairing, or data persistence.
+
+---
+
 ### 3. Sensitive Data in Keychain vs UserDefaults / SwiftData
 
 Sensitive data includes: auth tokens, refresh tokens, passwords, email addresses, weight/health metrics, and any user PII.
@@ -48,6 +68,13 @@ Check new `+` lines for:
 - Auth tokens or passwords being passed outside `KeychainService`
 
 Flag as **FAIL** if sensitive data bypasses `KeychainService`.
+
+**For comprehensive storage decision logic, classification of sensitive vs non-sensitive data, and implementation patterns, reference the `/keychain-pattern` skill.** It includes:
+- Storage decision tree (Keychain vs SwiftData vs KvStorage)
+- Tier 1-3 sensitive data classification
+- ✅ correct and ❌ wrong implementation patterns
+- Multi-account Keychain access patterns
+- Security checklist for code review
 
 ---
 
@@ -103,6 +130,7 @@ Report each category with its status and findings:
 |----------|--------|-------|
 | Hardcoded Secrets | PASS / WARNING / FAIL | … |
 | Force Unwrap/Try/Cast | PASS / WARNING / FAIL | … |
+| Silent Error Swallowing (try?) | PASS / WARNING / FAIL | … |
 | Keychain Usage | PASS / WARNING / FAIL | … |
 | Insecure HTTP | PASS / WARNING / FAIL | … |
 | Log Exposure | PASS / WARNING / FAIL | … |

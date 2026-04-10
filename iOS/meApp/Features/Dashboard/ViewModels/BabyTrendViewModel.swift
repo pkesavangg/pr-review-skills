@@ -15,6 +15,13 @@ struct BabyTrendDisplayState {
     let heightDisplayText: String
 }
 
+struct BabyGrowthPercentilesSheetState {
+    let weightDisplay: (lbs: String, oz: String)
+    let weightPercentileText: String
+    let heightDisplayText: String
+    let heightPercentileText: String
+}
+
 @MainActor
 final class BabyTrendViewModel {
     func displayState(
@@ -35,7 +42,7 @@ final class BabyTrendViewModel {
             selectedMetric: selectedMetric,
             headlineLabel: headlineLabel(in: dashboardStore),
             weightDisplay: weightLbsOz(for: displayWeight),
-            heightDisplayText: displayHeight > 0 ? String(format: "%.1f", displayHeight) : "--.-"
+            heightDisplayText: heightDisplayText(for: displayHeight)
         )
     }
 
@@ -157,11 +164,142 @@ final class BabyTrendViewModel {
         return BabyDashboardChartSupport.averageDummyHeight(for: babyProfile, dates: visibleDates)
     }
 
+    func growthPercentilesSheetState(
+        dashboardStore: DashboardStore,
+        babyProfile: BabyProfile
+    ) -> BabyGrowthPercentilesSheetState {
+        let displayWeight = currentDisplayWeight(
+            dashboardStore: dashboardStore,
+            babyProfile: babyProfile
+        )
+        let displayHeight = currentDisplayHeight(
+            dashboardStore: dashboardStore,
+            babyProfile: babyProfile
+        )
+
+        return BabyGrowthPercentilesSheetState(
+            weightDisplay: weightLbsOz(for: displayWeight),
+            weightPercentileText: percentileText(
+                weightPercentile(
+                    dashboardStore: dashboardStore,
+                    babyProfile: babyProfile,
+                    displayWeight: displayWeight
+                )
+            ),
+            heightDisplayText: heightDisplayText(for: displayHeight),
+            heightPercentileText: percentileText(
+                heightPercentile(
+                    dashboardStore: dashboardStore,
+                    babyProfile: babyProfile,
+                    displayHeight: displayHeight
+                )
+            )
+        )
+    }
+
     private func weightLbsOz(for weight: Double) -> (lbs: String, oz: String) {
         guard weight > 0 else { return (lbs: "--", oz: "--") }
         let wholeLbs = Int(weight)
         let remainingOz = (weight - Double(wholeLbs)) * 16.0
         return (lbs: "\(wholeLbs)", oz: String(format: "%.1f", remainingOz))
+    }
+
+    private func heightDisplayText(for height: Double) -> String {
+        height > 0 ? String(format: "%.1f", height) : "--.-"
+    }
+
+    private func percentileText(_ percentile: Int?) -> String {
+        guard let percentile else { return "--" }
+        return "\(percentile)"
+    }
+
+    private func selectedDate(in dashboardStore: DashboardStore) -> Date? {
+        dashboardStore.state.graph.selectedXValue ?? dashboardStore.state.graph.selectedPoint?.date
+    }
+
+    private func weightPercentile(
+        dashboardStore: DashboardStore,
+        babyProfile: BabyProfile,
+        displayWeight: Double
+    ) -> Int? {
+        if let selectedDate = selectedDate(in: dashboardStore) {
+            return weightPercentile(
+                for: displayWeight,
+                on: selectedDate,
+                dashboardStore: dashboardStore,
+                babyProfile: babyProfile
+            )
+        }
+
+        let operations = operationsForCurrentAverage(dashboardStore: dashboardStore, babyProfile: babyProfile)
+        let sourceOperations = operations.isEmpty
+            ? fallbackBabyOperations(dashboardStore: dashboardStore, babyProfile: babyProfile)
+            : operations
+
+        let percentiles = sourceOperations.compactMap { summary in
+            let weight = dashboardStore.goalManager.convertWeightToDisplay(Int(summary.weight.rounded()))
+            return weightPercentile(
+                for: weight,
+                on: summary.date,
+                dashboardStore: dashboardStore,
+                babyProfile: babyProfile
+            )
+        }
+
+        guard !percentiles.isEmpty else { return nil }
+        return Int((Double(percentiles.reduce(0, +)) / Double(percentiles.count)).rounded())
+    }
+
+    private func weightPercentile(
+        for displayWeight: Double,
+        on date: Date,
+        dashboardStore: DashboardStore,
+        babyProfile: BabyProfile
+    ) -> Int? {
+        guard displayWeight > 0 else { return nil }
+        let weightDecigrams = weightDecigrams(from: displayWeight, unit: dashboardStore.currentUnit)
+        return BabyPercentileGrowthReference.weightPercentile(
+            biologicalSex: babyProfile.biologicalSex,
+            birthday: BabyDashboardChartSupport.resolvedBirthday(for: babyProfile),
+            date: date,
+            weightDecigrams: weightDecigrams
+        )
+    }
+
+    private func heightPercentile(
+        dashboardStore: DashboardStore,
+        babyProfile: BabyProfile,
+        displayHeight: Double
+    ) -> Int? {
+        if let selectedDate = selectedDate(in: dashboardStore) {
+            guard displayHeight > 0 else { return nil }
+            return BabyDashboardChartSupport.heightPercentile(
+                for: babyProfile,
+                heightInches: displayHeight,
+                on: selectedDate
+            )
+        }
+
+        let operations = operationsForCurrentAverage(dashboardStore: dashboardStore, babyProfile: babyProfile)
+        let sourceDates = operations.isEmpty
+            ? fallbackBabyOperations(dashboardStore: dashboardStore, babyProfile: babyProfile).map(\.date)
+            : operations.map(\.date)
+
+        let percentiles = sourceDates.map { date in
+            BabyDashboardChartSupport.heightPercentile(
+                for: babyProfile,
+                heightInches: BabyDashboardChartSupport.dummyHeightValue(for: babyProfile, on: date),
+                on: date
+            )
+        }
+
+        guard !percentiles.isEmpty else { return nil }
+        return Int((Double(percentiles.reduce(0, +)) / Double(percentiles.count)).rounded())
+    }
+
+    private func weightDecigrams(from displayWeight: Double, unit: WeightUnit) -> Int {
+        let kilograms = unit == .kg ? displayWeight : (displayWeight / 2.20462)
+        return Int((kilograms * BabyPercentileGrowthReference.decigramsToKgFactor).rounded())
     }
 
     private func averageWeight(
