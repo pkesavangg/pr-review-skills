@@ -49,6 +49,13 @@ COMMON_SRC=(
   medianFilter.c
 )
 
+for src in "${COMMON_SRC[@]}"; do
+  if [[ ! -f "${src}" ]]; then
+    echo "Missing source file: ${SRC_DIR}/${src}" >&2
+    exit 1
+  fi
+done
+
 COMMON_FLAGS=(
   -fPIC
   -shared
@@ -57,6 +64,7 @@ COMMON_FLAGS=(
   -DANDROID
   -ffunction-sections
   -fdata-sections
+  -fstack-protector-strong
 )
 
 LINK_FLAGS=(
