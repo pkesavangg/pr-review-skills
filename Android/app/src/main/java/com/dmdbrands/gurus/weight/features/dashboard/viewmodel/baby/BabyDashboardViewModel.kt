@@ -248,11 +248,13 @@ class BabyDashboardViewModel @AssistedInject constructor(
 
   private fun loadPercentiles() {
     val profile = babyProduct.profile
-    val birthDate = profile.birthDate ?: return
+    val birthDateMillis = profile.birthdate?.let {
+      com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.isoToTimestamp(it)
+    } ?: return
     viewModelScope.launch(Dispatchers.IO) {
       BabyPercentileHelper.loadIfNeeded(context)
-      val weightSeries = BabyPercentileHelper.getWeightPercentileSeries(profile.biologicalSex, birthDate)
-      val heightSeries = BabyPercentileHelper.getLengthPercentileSeries(profile.biologicalSex, birthDate)
+      val weightSeries = BabyPercentileHelper.getWeightPercentileSeries(profile.sex, birthDateMillis)
+      val heightSeries = BabyPercentileHelper.getLengthPercentileSeries(profile.sex, birthDateMillis)
       handleIntent(BabyDashboardIntent.SetPercentile(BabyMetric.WEIGHT, weightSeries))
       handleIntent(BabyDashboardIntent.SetPercentile(BabyMetric.HEIGHT, heightSeries))
     }

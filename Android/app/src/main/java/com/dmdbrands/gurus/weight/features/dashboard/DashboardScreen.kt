@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyMetric
 import com.dmdbrands.gurus.weight.core.navigation.LocalDialogQueueService
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.core.navigation.LocalProductSelectionManager
@@ -167,7 +168,7 @@ fun DashboardScreen() {
         val vm: BabyDashboardViewModel = hiltViewModel(
           creationCallback = { factory: BabyDashboardViewModel.Factory -> factory.create(babyProduct) },
         )
-        val state by vm.state.collectAsState()
+        val state by vm.state.collectAsStateWithLifecycle()
         DashboardPage(
           vm = vm,
           product = product,
@@ -179,11 +180,12 @@ fun DashboardScreen() {
               if (seg == GraphSegment.WEEK || seg == GraphSegment.MONTH) dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
               else dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
             }
+            val selectedMetric = (state as? BabyDashboardState)?.selectedMetric
             PeriodBabySummary(
               period = period,
               entryTimestamp = DateTimeConverter.timestampToIso(ts),
-              avgWeightDecigrams = (y * 10.0).toInt(),
-              avgLengthMillimeters = yValues.getOrNull(1)?.let { (it * 25.4).toInt() },
+              avgWeightDecigrams = if (selectedMetric == BabyMetric.WEIGHT) (y * 16.0 * 283.495).toInt() else null,
+              avgLengthMillimeters = if (selectedMetric == BabyMetric.HEIGHT) (y * 25.4).toInt() else null,
             )
           },
         ) { s ->
