@@ -40,6 +40,11 @@ final class DashboardChartManager: DashboardChartManaging {
     var isProcessingScrollEnd = false
     var scrollEndTask: Task<Void, Never>?
 
+    /// Cancellable task for the delayed `isGraphReady = true` transition.
+    /// Cancelled on every new `initializeChart()` call so a stale task from a
+    /// previous product switch cannot briefly flash the old chart.
+    private var graphReadyTask: Task<Void, Never>?
+
     // MARK: - Initialization
 
     init(
@@ -193,8 +198,10 @@ final class DashboardChartManager: DashboardChartManaging {
 
         stateProvider.state.ui.hasInitializedChart = true
 
-        Task { @MainActor in
+        graphReadyTask?.cancel()
+        graphReadyTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
             graphManager.state.isGraphReady = true
         }
     }
@@ -253,6 +260,10 @@ final class DashboardChartManager: DashboardChartManaging {
     }
 
     func clearAllCaches() {
+        scrollEndTask?.cancel()
+        scrollEndTask = nil
+        graphReadyTask?.cancel()
+        graphReadyTask = nil
         cacheManager.clearAllCaches()
         isProcessingScrollEnd = false
     }
@@ -352,6 +363,19 @@ final class DashboardChartManager: DashboardChartManaging {
         forceCompleteRecalculationAfterScrollPosition()
 
         stateProvider.state.ui.hasInitializedChart = true
+
+        // Ensure the graph-ready flag is restored after the period switch.
+        // clearAllCaches() above cancels the in-flight graphReadyTask, so if
+        // the user switches period while the initial skeleton is still showing
+        // (isGraphReady == false), the flag would stay false forever.
+        if !graphManager.state.isGraphReady {
+            graphReadyTask?.cancel()
+            graphReadyTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                guard !Task.isCancelled else { return }
+                graphManager.state.isGraphReady = true
+            }
+        }
 
         if period == .total {
             displayManager?.updateMetricsForCurrentView()

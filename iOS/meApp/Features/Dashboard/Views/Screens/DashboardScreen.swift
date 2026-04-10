@@ -93,7 +93,6 @@ struct DashboardScreen: View {
             if let wrapper = openMetricInfoWithoutSelection {
                 metricInfoEntry = store.displayManager.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
             }
-            store.lifecycleManager.handleMetricInfoSheetDismiss(openMetricInfoWithoutSelection)
         }
         // Keep the metric info entry in sync with metric tile values while the sheet is open
         .task(id: store.state.metrics.metrics) {
@@ -106,12 +105,6 @@ struct DashboardScreen: View {
             if let wrapper = openMetricInfoWithoutSelection {
                 metricInfoEntry = store.displayManager.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
             }
-        }
-        .task(id: store.state.ui.selectedMetricLabel) {
-            store.lifecycleManager.handleSelectedMetricLabelChange(store.state.ui.selectedMetricLabel)
-        }
-        .task(id: selectedEntry) {
-            store.lifecycleManager.handleSelectedEntryChange(selectedEntry)
         }
         .task(id: store.currentUnit) {
             store.lifecycleManager.handleUnitChange()

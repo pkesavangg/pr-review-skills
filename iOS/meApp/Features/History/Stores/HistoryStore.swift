@@ -666,10 +666,13 @@ final class HistoryStore: ObservableObject {
 
         // Group days into weeks of 7
         var weeks: [BabyHistoryWeek] = []
-        for (index, chunk) in days.chunked(into: 7).enumerated() {
+        let chunks = days.chunked(into: 7)
+        let totalWeeks = chunks.count
+        for (index, chunk) in chunks.enumerated() {
+            let weekNumber = totalWeeks - index
             weeks.append(BabyHistoryWeek(
-                id: "week-\(index + 1)",
-                weekNumber: index + 1,
+                id: "week-\(weekNumber)",
+                weekNumber: weekNumber,
                 days: chunk
             ))
         }

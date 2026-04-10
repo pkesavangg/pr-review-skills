@@ -175,6 +175,10 @@ final class MockTokenManagerAccountService: AccountServiceProtocol {
         throw UnexpectedCallError.methodCalled("deleteHealthIntegration")
     }
 
+    func removeAccountFromDevice(accountId: String) async throws {
+        throw UnexpectedCallError.methodCalled("removeAccountFromDevice")
+    }
+
     func updatePublishedState(forceRefresh: Bool) async throws {
         throw UnexpectedCallError.methodCalled("updatePublishedState")
     }

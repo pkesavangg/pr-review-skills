@@ -245,6 +245,48 @@ struct HistoryStoreTests {
         #expect(store.entries[1].entryTimestamp == "2026-03-01T08:00:00Z")
     }
 
+    @Test("loadMonths sorts baby weeks newest first with highest week number at the top")
+    func loadMonthsSortsBabyWeeksNewestFirst() async {
+        let (store, entryService, _, _, _) = makeSUT()
+        let babyProfile = BabyProfile(
+            id: "baby-history-1",
+            name: "Mia",
+            birthday: Calendar.current.date(byAdding: .day, value: -21, to: Date()),
+            biologicalSex: "female",
+            birthLengthInches: 19.5,
+            birthWeightLbs: 7.5,
+            birthWeightOz: 3.0
+        )
+        let productTypeStore = MockProductTypeStore()
+        productTypeStore.selectedItem = .baby(profile: babyProfile)
+        store.productTypeStore = productTypeStore
+
+        let startDate = Calendar.current.date(byAdding: .day, value: -13, to: Date())!
+        let entries = (0..<14).compactMap { offset -> Entry? in
+            guard let date = Calendar.current.date(byAdding: .day, value: offset, to: startDate) else { return nil }
+            let timestamp = ISO8601DateFormatter().string(from: date)
+            let entry = Entry(
+                entryTimestamp: timestamp,
+                accountId: "acct-baby",
+                operationType: OperationType.create.rawValue,
+                deviceType: DeviceType.babyScale.rawValue,
+                entryType: EntryType.wg.rawValue,
+                babyId: babyProfile.id
+            )
+            entry.babyEntry = BabyEntry(babyId: babyProfile.id, length: 20, weight: 120, note: "")
+            return entry
+        }
+        entryService.getAllEntriesResult = .success(entries)
+
+        store.loadMonths()
+        let done = await waitUntil { !store.babyWeeks.isEmpty }
+
+        #expect(done == true)
+        #expect(store.babyWeeks.count >= 2)
+        #expect((store.babyWeeks.first?.weekNumber ?? 0) > (store.babyWeeks.last?.weekNumber ?? 0))
+        #expect(store.babyWeeks.first?.id == "week-\(store.babyWeeks.first?.weekNumber ?? 0)")
+    }
+
     // MARK: - setSelectedMonth / resetSelectedMonth
 
     @Test("setSelectedMonth sets selectedMonth and clears entries")

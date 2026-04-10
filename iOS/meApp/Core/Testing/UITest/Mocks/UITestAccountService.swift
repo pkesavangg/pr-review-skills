@@ -49,6 +49,10 @@ final class UITestAccountService: AccountServiceProtocol {
         allAccounts = []
     }
 
+    func removeAccountFromDevice(accountId: String) async throws {
+        throw UITestAccountServiceError.unsupported("removeAccountFromDevice")
+    }
+
     func switchAccount(to account: Account) async throws {
         throw UITestAccountServiceError.unsupported("switchAccount")
     }
