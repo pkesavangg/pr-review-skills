@@ -307,8 +307,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     /// Sets placeholder values for all body metrics except weight (used when no exact data point is selected on the chart)
     func setPlaceholdersForAllMetrics() {
         let placeholder = DashboardStrings.placeholder
-// swiftlint:disable:next unused_enumerated
-        state.metrics = state.metrics.enumerated().map { _, item in
+        state.metrics = state.metrics.map { item in
             // Only set placeholder for body metrics, not weight
             let bodyMetric = getBodyMetric(for: item.label)
             if bodyMetric == .weight {
@@ -790,10 +789,11 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         // activeMetrics contains only the metrics that are enabled/visible in the API
         state.activeMetricsCount = activeMetrics.count
         
-// swiftlint:disable:next multiline_arguments
-        logger.log(level: .debug, tag: "DashboardMetricsManager", 
-// swiftlint:disable:next vertical_parameter_alignment_on_call
-                  message: "Loaded metrics from API: \(activeMetrics.count) active, \(inactiveMetrics.count) inactive, total: \(state.metrics.count)")
+        logger.log(
+            level: .debug,
+            tag: "DashboardMetricsManager",
+            message: "Loaded metrics from API: \(activeMetrics.count) active, \(inactiveMetrics.count) inactive, total: \(state.metrics.count)"
+        )
         
     }
 
@@ -909,12 +909,18 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         } catch {
             logger.log(level: .error, tag: "DashboardMetricsManager", message: "Failed to get historical fallback values: \(error)")
             return FallbackValues(
-// swiftlint:disable:next multiline_arguments
-                bmi: nil, bodyFat: nil, muscleMass: nil, water: nil, pulse: nil,
-// swiftlint:disable:next multiline_arguments
-                boneMass: nil, visceralFat: nil, subFat: nil, protein: nil,
-// swiftlint:disable:next multiline_arguments
-                skelMuscle: nil, bmr: nil, metabolicAge: nil
+                bmi: nil,
+                bodyFat: nil,
+                muscleMass: nil,
+                water: nil,
+                pulse: nil,
+                boneMass: nil,
+                visceralFat: nil,
+                subFat: nil,
+                protein: nil,
+                skelMuscle: nil,
+                bmr: nil,
+                metabolicAge: nil
             )
         }
     }

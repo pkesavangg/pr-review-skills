@@ -206,8 +206,7 @@ final class ContentViewModel: ObservableObject {
     // MARK: - Data Loading (if logged in)
 
     private func loadData() async {
-        // swiftlint:disable:next unused_optional_binding
-        guard let _ = currentAccount else { return }
+        guard currentAccount != nil else { return }
         // Migration runs before sync so opStack entries are available for first sync.
         await entryService.migrateFromSQLiteIfNeeded()
         await entryService.migrateBabyEntriesToDecigrams()

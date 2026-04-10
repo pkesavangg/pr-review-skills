@@ -421,16 +421,22 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     // MARK: - Modular Year Delta Calculation
 
+    private struct YearDeltaResult {
+        let yearDelta: Int
+        let yearStartDTO: BathScaleOperationDTO?
+        let yearKey: String
+    }
+
     private func calculateYearDelta(
         latestWeight: Int, monthStartWeight: Int?, monthSeries: [HistoryMonth]
-    ) async throws -> (yearDelta: Int, yearStartDTO: BathScaleOperationDTO?, yearKey: String) { // swiftlint:disable:this large_tuple
+    ) async throws -> YearDeltaResult {
         guard let initYearMonth = monthSeries.last, let initYearWeight = initYearMonth.weight else {
-            return (0, nil, "")
+            return YearDeltaResult(yearDelta: 0, yearStartDTO: nil, yearKey: "")
         }
 
         guard let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) else {
             logger.log(level: .error, tag: tag, message: "Failed to calculate date 30 days ago for year delta calculation.")
-            return (0, nil, "")
+            return YearDeltaResult(yearDelta: 0, yearStartDTO: nil, yearKey: "")
         }
         let (initYearDate, yearKey) = parseYearKeyAndDate(from: initYearMonth.entryTimestamp, id: initYearMonth.id)
         let isWithin30Days = isoString(from: initYearDate) >= isoString(from: thirtyDaysAgo)
@@ -445,7 +451,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             key: yearKey, avgWeight: yearAvgWeight, accountId: try getAccountId()
         )
 
-        return (delta, yearStartDTO, yearKey)
+        return YearDeltaResult(yearDelta: delta, yearStartDTO: yearStartDTO, yearKey: yearKey)
     }
 
     private func parseYearKeyAndDate(from timestamp: String, id: String) -> (Date, String) {
@@ -524,7 +530,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let uniqueDaysAscending = uniqueDaysDescending.sorted()
 
         let todayStart = calendar.startOfDay(for: Date())
-        let yesterdayStart = calendar.date(byAdding: .day, value: -1, to: todayStart)! // swiftlint:disable:this force_unwrapping
+        guard let yesterdayStart = calendar.date(byAdding: .day, value: -1, to: todayStart) else {
+            return Streak(current: 0, max: 0)
+        }
 
         func isSameDay(_ firstDate: Date, _ secondDate: Date) -> Bool {
             calendar.isDate(firstDate, inSameDayAs: secondDate)
@@ -538,7 +546,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             dateToCheck = yesterdayStart
         } else if let first = uniqueDaysDescending.first, isSameDay(first, yesterdayStart) {
             currentStreak = 1
-            dateToCheck = calendar.date(byAdding: .day, value: -1, to: yesterdayStart)! // swiftlint:disable:this force_unwrapping
+            guard let twoDaysAgo = calendar.date(byAdding: .day, value: -1, to: yesterdayStart) else {
+                return Streak(current: 1, max: Self.computeLongestStreak(from: uniqueDaysAscending, calendar: calendar))
+            }
+            dateToCheck = twoDaysAgo
         } else {
             return Streak(current: 0, max: Self.computeLongestStreak(from: uniqueDaysAscending, calendar: calendar))
         }
