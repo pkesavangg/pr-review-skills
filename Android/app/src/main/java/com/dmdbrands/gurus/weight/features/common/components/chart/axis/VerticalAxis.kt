@@ -7,7 +7,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dmdbrands.gurus.weight.R
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertWeight
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.axis.Axis
 import com.patrykandpatrick.vico.compose.cartesian.axis.BaseAxis
@@ -40,13 +42,21 @@ fun endAxis(
   isEmptyGraph: Boolean,
   markerDecoration: VerticalAxis.MarkerDecoration? = null,
   ticksProvider: (() -> List<Double>)? = null,
+  weightUnit: WeightUnit? = null,
+  weightlessOffset: Double = 0.0,
 ): VerticalAxis<Axis.Position.Vertical.End> {
   val openSansFamily = FontFamily(Font(R.font.open_sans_semi_bold))
 
   return VerticalAxis.rememberEnd(
     valueFormatter = CartesianValueFormatter { _, value, _ ->
-      if (isEmptyGraph && markerDecoration == null) "–" else
-        value.roundToInt().toString()
+      if (isEmptyGraph && markerDecoration == null) "–"
+      else {
+        val adjusted = value - weightlessOffset
+        val display = if (weightUnit == WeightUnit.KG)
+          convertWeight(adjusted, WeightUnit.LB, WeightUnit.KG)
+        else adjusted
+        display.roundToInt().toString()
+      }
     },
     itemPlacer = if (ticksProvider != null) ListItemPlacer(ticksProvider) else VerticalAxis.ItemPlacer.step({ 1.0 }),
     size = BaseAxis.Size.Scroll(50.dp),
