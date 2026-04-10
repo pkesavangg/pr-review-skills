@@ -29,7 +29,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
-import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import javax.inject.Inject
 import kotlin.coroutines.resume
 
@@ -107,10 +106,11 @@ constructor(
       is ProductSelection.MyWeight -> {
         val hasAppSyncData = appSyncService.appSyncDataForEditing.first() != null
         if (!hasAppSyncData) {
+          val activeAccount = accountService.activeAccountFlow.first()
           val entryForm = EntryForm.create(
             includeR4ScaleMetrics = true,
-            weightUnit = accountService.activeAccountFlow.first()?.weightUnit,
-            height = accountService.activeAccountFlow.first()?.height,
+            weightUnit = activeAccount?.weightUnit,
+            height = activeAccount?.height,
             isValueChangeAllowed = { _, _ ->
               !_state.value.form.forms.generalMetrics.controls.bodyMassIndex.touched
             },

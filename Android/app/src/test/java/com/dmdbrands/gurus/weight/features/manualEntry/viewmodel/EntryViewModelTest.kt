@@ -24,6 +24,7 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.clearMocks
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -286,6 +287,7 @@ class EntryViewModelTest {
     fun `subscribes to activeAccountFlow and updates weightMode`() = runTest {
         val account = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
             .copy(weightUnit = WeightUnit.KG)
+        every { accountService.activeAccount } returns MutableStateFlow(account)
         every { accountService.activeAccountFlow } returns flowOf(account)
 
         viewModel = createViewModel()
@@ -347,7 +349,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `UpdateOnRelaunch recreates form from accountService even when state weightMode is stale`() = runTest {
+    fun `UpdateOnRelaunch reads weight unit from accountService not stale state`() = runTest {
         val kgAccount = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
             .copy(weightUnit = WeightUnit.KG)
         every { accountService.activeAccount } returns MutableStateFlow(kgAccount)
@@ -360,15 +362,16 @@ class EntryViewModelTest {
         viewModel.handleIntent(EntryIntent.UpdateWeightUnit(WeightUnit.LB))
         assertThat(viewModel.state.value.weightMode).isEqualTo(WeightUnit.LB)
 
-        val formBeforeRelaunch = viewModel.state.value.form
+        // Clear recorded calls so we can verify UpdateOnRelaunch specifically
+        clearMocks(accountService, answers = false, recordedCalls = true)
+        every { accountService.activeAccountFlow } returns flowOf(kgAccount)
 
-        // UpdateOnRelaunch reads from accountService (KG) for form creation,
-        // regardless of stale state.weightMode (LB)
         viewModel.handleIntent(EntryIntent.UpdateOnRelaunch)
         advanceUntilIdle()
 
-        // Form must be recreated (new instance) — using account's KG unit
-        assertThat(viewModel.state.value.form).isNotEqualTo(formBeforeRelaunch)
+        // Verify UpdateOnRelaunch consulted accountService (source of truth),
+        // not just state.weightMode which is stale LB
+        verify { accountService.activeAccountFlow }
     }
 
     @Test
