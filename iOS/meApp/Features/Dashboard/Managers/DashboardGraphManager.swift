@@ -165,7 +165,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         interaction.invalidateVisibleOpsCache()
         interaction.invalidateXAxisCache()
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 50_000_000)
+            try? await Task.sleep(nanoseconds: 500_000_000)
             self.isChangingPeriod = false
         }
     }

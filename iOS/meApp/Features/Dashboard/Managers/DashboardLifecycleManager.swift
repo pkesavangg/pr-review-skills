@@ -446,12 +446,17 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
     func handleActiveAccountChanged() {
         guard let stateProvider else { return }
 
+        deferredSyncTask?.cancel()
+        deferredSyncTask = nil
         chartManager.clearAllCaches()
         stateProvider.state.ui.hasInitializedChart = false
         graphManager.state.isGraphReady = false
         graphManager.state.clearSelection()
         stateProvider.state.graph.clearSelection()
 
+        Task { [weak self] in
+            await self?.syncEntries()
+        }
         loadLatestEntryData()
         loadGoalCardData()
 

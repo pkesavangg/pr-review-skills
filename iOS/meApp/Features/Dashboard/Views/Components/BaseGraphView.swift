@@ -17,30 +17,30 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
     @Environment(\.babyGrowthChartCalloutDateStyle) var babyGrowthChartCalloutDateStyle
 
     @State var localSelectedXValue: Date?
-    @State var enableYAxisAnimation = false
-    @State var lastCacheUpdateTime: Date = .distantPast
-    @State var cacheUpdateTask: Task<Void, Never>?
-    @State var isInScrollEndTransition = false
-    @State var chartRebuildToken = 0
-    @State var previousYAxisDomain: ClosedRange<Double>?
-    @State var previousDataHash: Int?
-    @State var isDomainChangeOnly = false
-    @State var cachedChartPoints: [GraphSeries] = []
-    @State var cachedGroupedPoints: [String: [GraphSeries]] = [:]
-    @State var lastDataHash = 0
-    @State var cachedPlottedPoints: [String: [PlottedGraphSeries]] = [:]
-    @State var cachedOrderedSeriesNames: [String] = []
-    @State var cachedAllPlottedPoints: [PlottedGraphSeries] = []
-    @State var cachedYAxisLabels: [Double: String] = [:]
-    @State var cachedXAxisLabels: [Date: String] = [:]
-    @State var lastDataChangeSignature = 0
-    @State var lastSettingsChangeSignature = 0
-    @State var lastChartFrame: CGRect = .zero
-    @State var lastChartHeight: CGFloat = .zero
+    @State private var enableYAxisAnimation = false
+    @State private var lastCacheUpdateTime: Date = .distantPast
+    @State private var cacheUpdateTask: Task<Void, Never>?
+    @State private var isInScrollEndTransition = false
+    @State private var chartRebuildToken = 0
+    @State private var previousYAxisDomain: ClosedRange<Double>?
+    @State private var previousDataHash: Int?
+    @State private var isDomainChangeOnly = false
+    @State private var cachedChartPoints: [GraphSeries] = []
+    @State private var cachedGroupedPoints: [String: [GraphSeries]] = [:]
+    @State private var lastDataHash = 0
+    @State private var cachedPlottedPoints: [String: [PlottedGraphSeries]] = [:]
+    @State private var cachedOrderedSeriesNames: [String] = []
+    @State private var cachedAllPlottedPoints: [PlottedGraphSeries] = []
+    @State private var cachedYAxisLabels: [Double: String] = [:]
+    @State private var cachedXAxisLabels: [Date: String] = [:]
+    @State private var lastDataChangeSignature = 0
+    @State private var lastSettingsChangeSignature = 0
+    @State private var lastChartFrame: CGRect = .zero
+    @State private var lastChartHeight: CGFloat = .zero
 
-    let cacheUpdateThrottle: TimeInterval = 0.05
-    let goalChipTrailingPadding: CGFloat = 20
-    let babyChartContainerHeight: CGFloat = 498
+    private let cacheUpdateThrottle: TimeInterval = 0.05
+    private let goalChipTrailingPadding: CGFloat = 20
+    private let babyChartContainerHeight: CGFloat = 498
 
     var body: some View {
         #if DEBUG
@@ -250,23 +250,23 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         cachedXAxisLabels.removeAll()
     }
 
-    var yAxisLabelWidth: CGFloat {
+    private var yAxisLabelWidth: CGFloat {
         if !viewModel.hasChartOperations && viewModel.timePeriod != .total {
             return 30
         }
         return 40
     }
 
-    var isScrollable: Bool { viewModel.hasXAxis }
-    var selectedBabyProfile: BabyProfile? { dashboardStore.selectedBabyProfile }
+    private var isScrollable: Bool { viewModel.hasXAxis }
+    private var selectedBabyProfile: BabyProfile? { dashboardStore.selectedBabyProfile }
 
-    var selectedBabyCrosshairDate: Date? {
+    private var selectedBabyCrosshairDate: Date? {
         viewModel.selectedPoint?.date
             ?? viewModel.selectedDate
             ?? viewModel.dashboardStore?.state.graph.selectedXValue
     }
 
-    var babySelectionPresentation: BabyGraphSelectionPresentation? {
+    private var babySelectionPresentation: BabyGraphSelectionPresentation? {
         guard let selectedBabyProfile,
               selectedBabyCrosshairDate != nil else {
             return nil
@@ -283,20 +283,20 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         )
     }
 
-    var selectedBabyPercentile: Int? {
+    private var selectedBabyPercentile: Int? {
         babySelectionPresentation?.percentile
     }
 
-    var chartContainerHeight: CGFloat {
+    private var chartContainerHeight: CGFloat {
         selectedBabyProfile != nil ? babyChartContainerHeight : 265
     }
 
-    var shouldShowYAxisLabels: Bool {
+    private var shouldShowYAxisLabels: Bool {
         if viewModel.hasChartOperations { return true }
         return viewModel.goalWeight != nil
     }
 
-    var coordinatedChartAnimation: Animation? {
+    private var coordinatedChartAnimation: Animation? {
         BaseGraphViewCacheManager.coordinatedChartAnimation(
             isScrolling: viewModel.isScrolling,
             isInScrollEndTransition: isInScrollEndTransition,
@@ -306,7 +306,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         )
     }
 
-    var seriesAnimationToken: Int {
+    private var seriesAnimationToken: Int {
         BaseGraphViewCacheManager.seriesAnimationToken(
             isScrolling: viewModel.isScrolling,
             lastDataHash: lastDataHash
@@ -317,7 +317,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         lhs.viewHash == rhs.viewHash
     }
 
-    var viewHash: Int {
+    private var viewHash: Int {
         BaseGraphViewCacheManager.viewHash(
             yAxisTicks: viewModel.yAxisTicks,
             yAxisDomain: viewModel.yAxisDomain,
@@ -329,7 +329,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         )
     }
 
-    var dataChangeSignature: Int {
+    private var dataChangeSignature: Int {
         BaseGraphViewCacheManager.dataChangeSignature(
             dataRevision: dashboardStore.dataChangeRevision,
             selectedMetricLabel: dashboardStore.state.ui.selectedMetricLabel,
@@ -338,7 +338,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         )
     }
 
-    var settingsChangeSignature: Int {
+    private var settingsChangeSignature: Int {
         BaseGraphViewCacheManager.settingsChangeSignature(
             currentUnitRawValue: dashboardStore.currentUnit.rawValue,
             isWeightlessModeEnabled: dashboardStore.isWeightlessModeEnabled
@@ -353,7 +353,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
     }
 
     @ChartContentBuilder
-    var yAxisGridLines: some ChartContent {
+    private var yAxisGridLines: some ChartContent {
         if dashboardStore.isBabySelection && viewModel.hasXAxis {
         } else {
             let ticksToRender = dashboardStore.isBabySelection ? boundaryYAxisTicks : viewModel.yAxisTicks
@@ -367,11 +367,11 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         }
     }
 
-    var boundaryYAxisTicks: [Double] {
+    private var boundaryYAxisTicks: [Double] {
         BaseGraphViewCacheSupport.boundaryYAxisTicks(from: viewModel.yAxisTicks)
     }
 
-    func adjustedTick(_ tick: Double) -> Double {
+    private func adjustedTick(_ tick: Double) -> Double {
         BaseGraphViewCacheSupport.adjustedBoundaryTick(
             tick,
             hasXAxis: viewModel.hasXAxis,
@@ -382,7 +382,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
     }
 
     @ChartContentBuilder
-    var xAxisGridLinesSolid: some ChartContent {
+    private var xAxisGridLinesSolid: some ChartContent {
         if !dashboardStore.isBabySelection {
             let referenceDate = viewModel.hasXAxis ? viewModel.xAxisValues.last : viewModel.xAxisValues.first
             if let referenceDate, viewModel.hasXAxis {
@@ -399,7 +399,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
     }
 
     @ChartContentBuilder
-    var yAxisBaseline: some ChartContent {
+    private var yAxisBaseline: some ChartContent {
         if !viewModel.hasXAxis {
             let domain = viewModel.dateRange
             let domainLength = domain.upperBound.timeIntervalSince(domain.lowerBound)
@@ -421,16 +421,16 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         }
     }
 
-    var horizontalBabyCrosshairYValue: Double? {
+    private var horizontalBabyCrosshairYValue: Double? {
         guard viewModel.showCrosshair else { return nil }
         return babySelectionPresentation?.crosshairValue
     }
 
-    var selectedCrosshairDate: Date? {
+    private var selectedCrosshairDate: Date? {
         viewModel.selectedDate ?? viewModel.dashboardStore?.state.graph.selectedXValue
     }
 
-    var chartCrosshairContent: CrosshairContent {
+    private var chartCrosshairContent: CrosshairContent {
         CrosshairContent(
             selectedDate: selectedCrosshairDate,
             showCrosshair: viewModel.showCrosshair,
@@ -443,7 +443,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         )
     }
 
-    var chartSeriesContent: ChartSeriesContent {
+    private var chartSeriesContent: ChartSeriesContent {
         let visiblePercentileRange: ClosedRange<Date>? = {
             let ticks: [Date]
             if viewModel.timePeriod == .week || viewModel.timePeriod == .year {
@@ -476,11 +476,11 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         )
     }
 
-    var chartBpmReferenceLines: BpmReferenceLines {
+    private var chartBpmReferenceLines: BpmReferenceLines {
         BpmReferenceLines(productType: dashboardStore.productType, theme: theme)
     }
 
-    var mainChartView: some View {
+    private var mainChartView: some View {
         let xAxisLabels = cachedXAxisLabels
         return conditionalTouchModifiers(
             conditionalPreferenceChange(
@@ -527,7 +527,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         )
     }
 
-    var yAxisMarks: some AxisContent {
+    private var yAxisMarks: some AxisContent {
         AxisMarks(values: viewModel.yAxisTicks) { value in
             if let doubleValue = value.as(Double.self) {
                 AxisValueLabel {
@@ -550,7 +550,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         }
     }
 
-    func selectionCalloutValue(for selectedDate: Date) -> Double? {
+    private func selectionCalloutValue(for selectedDate: Date) -> Double? {
         BaseGraphViewCalloutSupport.selectionValue(
             for: selectedDate,
             plottedPoints: cachedPlottedPoints,
@@ -561,7 +561,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
     }
 
     @ViewBuilder
-    func selectionCallout(for selectedDate: Date, weight: Double) -> some View {
+    private func selectionCallout(for selectedDate: Date, weight: Double) -> some View {
         if let chartPosition = viewModel.getChartPosition(for: selectedDate, value: weight) {
             GraphSelectionDateCalloutView(
                 label: BaseGraphViewCalloutSupport.selectionDateLabel(
@@ -580,7 +580,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
     }
 
     @ViewBuilder
-    func babyPercentileCallout(for selectedDate: Date, value: Double, percentile: Int) -> some View {
+    private func babyPercentileCallout(for selectedDate: Date, value: Double, percentile: Int) -> some View {
         if let chartPosition = viewModel.getChartPosition(for: selectedDate, value: value) {
             BabyPercentileCalloutView(
                 percentile: percentile,
@@ -591,7 +591,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
     }
 
     @ViewBuilder
-    func goalChipCallout() -> some View {
+    private func goalChipCallout() -> some View {
         if let goalWeight = viewModel.goalWeight, viewModel.chartFrame.height > 0 {
             let goalPosition = viewModel.getGoalChipPosition()
             let roundedGoalWeight = viewModel.dashboardStore?.displayManager.roundedGoalWeight(goalWeight)
@@ -623,7 +623,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         }
     }
 
-    func assignFrameIfChanged(_ newFrame: CGRect) {
+    private func assignFrameIfChanged(_ newFrame: CGRect) {
         let roundedFrame = BaseGraphViewCacheSupport.roundedFrame(newFrame)
         if roundedFrame != lastChartFrame {
             lastChartFrame = roundedFrame
@@ -631,7 +631,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         }
     }
 
-    func assignHeightIfChanged(_ newHeight: CGFloat) {
+    private func assignHeightIfChanged(_ newHeight: CGFloat) {
         let roundedHeight = BaseGraphViewCacheSupport.roundedHeight(newHeight)
         if roundedHeight != lastChartHeight {
             lastChartHeight = roundedHeight

@@ -10,6 +10,8 @@ import Charts
 import SwiftUI
 
 private actor BabySnapshotPercentileCache {
+    private static let maxEntries = 32
+
     struct Key: Hashable {
         let babyId: String
         let biologicalSex: String?
@@ -22,17 +24,33 @@ private actor BabySnapshotPercentileCache {
     static let shared = BabySnapshotPercentileCache()
 
     private var cache: [Key: [BabyPercentileLine: [BabyPercentileChartPoint]]] = [:]
+    private var accessOrder: [Key] = []
 
     func groupedPoints(
         for key: Key,
         build: () -> [BabyPercentileLine: [BabyPercentileChartPoint]]
     ) -> [BabyPercentileLine: [BabyPercentileChartPoint]] {
         if let cached = cache[key] {
+            markAccess(for: key)
             return cached
         }
         let groupedPoints = build()
         cache[key] = groupedPoints
+        markAccess(for: key)
+        trimIfNeeded()
         return groupedPoints
+    }
+
+    private func markAccess(for key: Key) {
+        accessOrder.removeAll { $0 == key }
+        accessOrder.append(key)
+    }
+
+    private func trimIfNeeded() {
+        while cache.count > Self.maxEntries, let oldestKey = accessOrder.first {
+            accessOrder.removeFirst()
+            cache.removeValue(forKey: oldestKey)
+        }
     }
 }
 

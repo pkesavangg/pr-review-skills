@@ -58,8 +58,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Tracks the active sync task so concurrent callers can await it instead of skipping.
     private var activeSyncTask: Task<Void, Never>?
     /// Tracks in-flight dashboard loads so repeated callers can piggyback on the same work.
-    private var activeDashboardLoadTasks: [EntryType: Task<Void, Never>] = [:]
-    private var activeBabyDashboardLoadTasks: [String: Task<Void, Never>] = [:]
+    /// The Bool result indicates whether the load succeeded; piggybacked callers retry on failure.
+    private var activeDashboardLoadTasks: [EntryType: Task<Bool, Never>] = [:]
+    private var activeBabyDashboardLoadTasks: [String: Task<Bool, Never>] = [:]
     private var summaryCacheByEntryType: [EntryType: EntrySummaryCacheEntry] = [:]
     private var babySummaryCacheByProfile: [String: EntryBabySummaryCacheEntry] = [:]
     private var streakCacheByEntryType: [EntryType: EntryStreakCacheEntry] = [:]
@@ -482,14 +483,19 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     private static let isoDayFormatter: DateFormatter = {
         let df = DateFormatter()
+        df.calendar = Calendar(identifier: .gregorian)
         df.dateFormat = "yyyy-MM-dd"
+        df.locale = Locale(identifier: "en_US_POSIX")
         df.timeZone = TimeZone(secondsFromGMT: 0)
         return df
     }()
 
     private static let monthSummaryDateFormatter: DateFormatter = {
         let df = DateFormatter()
+        df.calendar = Calendar(identifier: .gregorian)
         df.dateFormat = "yyyy-MM-dd"
+        df.locale = Locale(identifier: "en_US_POSIX")
+        df.timeZone = TimeZone(secondsFromGMT: 0)
         return df
     }()
 
@@ -610,18 +616,28 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
             let signature = Self.makeDTOSignature(filtered)
             if signature == cachedSignature {
-                return (signature, Streak(current: 0, max: 0), true)
+                return (signature, Optional<Streak>.none)
             }
             let streak = Self.computeStreak(from: filtered)
-            return (signature, streak, false)
+            return (signature, Optional(streak))
         }.value
 
-        if result.2, let cached = streakCacheByEntryType[entryType], cached.datasetSignature == result.0 {
+        if let streak = result.1 {
+            streakCacheByEntryType[entryType] = EntryStreakCacheEntry(datasetSignature: result.0, streak: streak)
+            return streak
+        }
+
+        if let cached = streakCacheByEntryType[entryType], cached.datasetSignature == result.0 {
             return cached.streak
         }
 
-        streakCacheByEntryType[entryType] = EntryStreakCacheEntry(datasetSignature: result.0, streak: result.1)
-        return result.1
+        let streak = Self.computeStreak(from: dtos.filter { dto in
+            let type = dto.entryType ?? ""
+            if type.isEmpty { return entryType == .wg }
+            return type == entryType.rawValue
+        })
+        streakCacheByEntryType[entryType] = EntryStreakCacheEntry(datasetSignature: result.0, streak: streak)
+        return streak
     }
 
     // PERFORMANCE: Overloads that accept pre-fetched EntryData to avoid redundant full-table fetches.
@@ -1604,23 +1620,24 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// and publishes to `babyDailySummariesByProfile` / `babyMonthlySummariesByProfile`.
     func loadBabyDashboardData(babyId: String) async {
         if let existingTask = activeBabyDashboardLoadTasks[babyId] {
-            await existingTask.value
-            return
+            let didSucceed = await existingTask.value
+            if didSucceed { return }
         }
 
-        let task = Task<Void, Never> { [weak self] in
-            await self?.performBabyDashboardDataLoad(babyId: babyId)
+        let task = Task<Bool, Never> { [weak self] in
+            guard let self else { return false }
+            return await self.performBabyDashboardDataLoad(babyId: babyId)
         }
         activeBabyDashboardLoadTasks[babyId] = task
 
-        await task.value
+        _ = await task.value
 
         if activeBabyDashboardLoadTasks[babyId] == task {
             activeBabyDashboardLoadTasks[babyId] = nil
         }
     }
 
-    private func performBabyDashboardDataLoad(babyId: String) async {
+    private func performBabyDashboardDataLoad(babyId: String) async -> Bool {
         do {
             let accountId = try getAccountId()
             let snapshots = try await fetchBabyEntrySnapshots(accountId: accountId, babyId: babyId)
@@ -1665,8 +1682,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 tag: tag,
                 message: "Baby dashboard data loaded: babyId=\(babyId), daily=\(babyDailySummariesByProfile[babyId]?.count ?? 0), monthly=\(babyMonthlySummariesByProfile[babyId]?.count ?? 0)"
             )
+            return true
         } catch {
             logger.log(level: .error, tag: tag, message: "loadBabyDashboardData failed (babyId=\(babyId)): \(error.localizedDescription)")
+            return false
         }
     }
 
@@ -1762,21 +1781,24 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Uses DTOs and background aggregation to avoid blocking main thread
     func loadDashboardData(entryType: EntryType = .wg) async {
         if let existingTask = activeDashboardLoadTasks[entryType] {
-            await existingTask.value
-            return
+            let didSucceed = await existingTask.value
+            if didSucceed { return }
         }
 
-        let task = Task<Void, Never> { [weak self] in
-            await self?.performDashboardDataLoad(entryType: entryType)
+        let task = Task<Bool, Never> { [weak self] in
+            guard let self else { return false }
+            return await self.performDashboardDataLoad(entryType: entryType)
         }
         activeDashboardLoadTasks[entryType] = task
 
-        await task.value
+        _ = await task.value
 
-        activeDashboardLoadTasks[entryType] = nil
+        if activeDashboardLoadTasks[entryType] == task {
+            activeDashboardLoadTasks[entryType] = nil
+        }
     }
 
-    private func performDashboardDataLoad(entryType: EntryType) async {
+    private func performDashboardDataLoad(entryType: EntryType) async -> Bool {
         do {
             let accountId = try getAccountId()
 
@@ -1825,8 +1847,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 )
                 applySummaryPayload(daily: dailyData, monthly: monthlyData, entryType: entryType, accountId: accountId)
             }
+            return true
         } catch {
             logger.log(level: .error, tag: tag, message: "loadDashboardData failed (\(entryType)): \(error.localizedDescription)")
+            return false
         }
     }
 
