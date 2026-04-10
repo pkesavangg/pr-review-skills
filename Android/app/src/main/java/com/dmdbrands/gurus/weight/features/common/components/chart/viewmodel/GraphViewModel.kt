@@ -456,9 +456,6 @@ class GraphViewModel @AssistedInject constructor(
     // Debounce heavy computations
     scrollDebounceJob = viewModelScope.launch(Dispatchers.IO) {
       try {
-        // Get weightless mode for Y-axis calculations
-        accountService.activeAccountFlow.first()?.isWeightlessOn == true
-
         val filteredData = currentState.data.filter {
           it.getTimeStamp() in min..max
         }

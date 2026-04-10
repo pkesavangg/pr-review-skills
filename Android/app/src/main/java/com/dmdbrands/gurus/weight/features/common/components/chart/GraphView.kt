@@ -35,7 +35,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import java.util.Calendar
-import android.util.Log
+import com.dmdbrands.gurus.weight.core.shared.utilities.AppLog
 
 private const val SCROLL_DELAY_AFTER_LAYOUT_MS = 50L
 
@@ -258,7 +258,7 @@ fun GraphView(
         val relativeMin = GraphUtil.getRelativeStart(segment, min)
         val relativeMax = GraphUtil.getRelativeEnd(segment, max)
         val clipRange = GraphUtil.clipRangeForGraph(segment, relativeMin, relativeMax)
-        Log.d(
+        AppLog.d(
           "GraphView",
           "start : " + DateTimeConverter.timestampToIso(min) + " end : " + DateTimeConverter.timestampToIso(
             max,

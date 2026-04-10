@@ -5,7 +5,6 @@ import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
-import com.dmdbrands.gurus.weight.features.common.components.chart.CartesianRangeValues
 
 /**
  * Intent for graph actions, defining all possible user interactions and state updates.
@@ -20,14 +19,9 @@ sealed interface GraphIntent : IReducer.Intent {
 
   data class UpdateGoal(val goal: Goal?) : GraphIntent
 
-  data class UpdatePrimaryYStep(val step: Double) : GraphIntent
-
   data class UpdateWeightUnit(val weightUnit: WeightUnit) : GraphIntent
 
   data class UpdateIsEmptyGraph(val isEmptyGraph: Boolean) : GraphIntent
-
-  /** Update primary Y-axis */
-  data class UpdatePrimaryYAxis(val yRangeValues: CartesianRangeValues, val yStep: Double?) : GraphIntent
 
   /** Update marker index */
   data class UpdateMarkerIndex(val markerIndex: Double?) : GraphIntent
@@ -45,9 +39,6 @@ sealed interface GraphIntent : IReducer.Intent {
   object ResetGraph : GraphIntent
 
   data class SetScrollRange(val min: Long, val max: Long, val onFallback: () -> Unit = {}) : GraphIntent
-
-  /** Update visible range from ScrollAwareRangeProvider (drives normalization) */
-  data class UpdateVisibleYRange(val minY: Double, val maxY: Double, val minX: Double, val maxX: Double) : GraphIntent
 
   /** Update chart X range (set by ViewModel, used by ScrollAwareRangeProvider) */
   data class UpdateChartXRange(val minX: Double, val maxX: Double) : GraphIntent

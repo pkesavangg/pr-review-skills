@@ -35,7 +35,6 @@ fun rememberGraphChart(
 ): CartesianChart {
   // Get weightless mode from goal's account if available
   val isWeightlessOn = state.goal?.account?.isWeightlessOn ?: false
-  state.markerIndex
   val separators = GraphUtil.periodStarts(
     segment = segment,
     startMillis = state.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted().firstOrNull(),
@@ -82,14 +81,6 @@ fun rememberGraphChart(
     val rangeMaxY = axisMeta.max
     val step = axisMeta.step
 
-    handleIntent(
-      GraphIntent.UpdateVisibleYRange(
-        rangeMinY,
-        rangeMaxY,
-        clipRange.startMillis.toDouble(),
-        clipRange.endMillis.toDouble(),
-      ),
-    )
     // Generate tick labels from min to max at step intervals
     val ticks = mutableListOf<Double>()
     var tick = rangeMinY

@@ -6,7 +6,6 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
-import com.dmdbrands.gurus.weight.features.common.components.chart.CartesianRangeValues
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toGraphPoints
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toWeightGraphPoints
@@ -57,9 +56,6 @@ data class GraphState(
   val data: ImmutableList<PeriodBodyScaleSummary> = persistentListOf(),
   val target: ImmutableList<PeriodBodyScaleSummary> = persistentListOf(),
   val secondaryKey: DashboardKey? = null,
-  val primaryYAxis: CartesianRangeValues? = null,
-  val secondaryYAxis: CartesianRangeValues? = null,
-  val primaryYStep: Double? = null,
   val goal: Goal? = null,
   val isEmptyGraph: Boolean = false,
   val modelProducer: CartesianChartModelProducer = CartesianChartModelProducer(),
