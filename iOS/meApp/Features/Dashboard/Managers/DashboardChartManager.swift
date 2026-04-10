@@ -363,6 +363,19 @@ final class DashboardChartManager: DashboardChartManaging {
 
         stateProvider.state.ui.hasInitializedChart = true
 
+        // Ensure the graph-ready flag is restored after the period switch.
+        // clearAllCaches() above cancels the in-flight graphReadyTask, so if
+        // the user switches period while the initial skeleton is still showing
+        // (isGraphReady == false), the flag would stay false forever.
+        if !graphManager.state.isGraphReady {
+            graphReadyTask?.cancel()
+            graphReadyTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                guard !Task.isCancelled else { return }
+                graphManager.state.isGraphReady = true
+            }
+        }
+
         if period == .total {
             displayManager?.updateMetricsForCurrentView()
         }

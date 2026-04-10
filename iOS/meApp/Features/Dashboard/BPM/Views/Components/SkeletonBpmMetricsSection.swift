@@ -21,7 +21,7 @@ struct SkeletonBpmMetricsSection: View {
     }
 
     var body: some View {
-        VStack(spacing: .spacingSM) {
+        VStack(spacing: .spacingMD) {
             threeReadingAverageSkeleton
             streakCardsSkeleton
         }

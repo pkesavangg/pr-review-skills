@@ -438,12 +438,24 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
     }
 
     var chartSeriesContent: ChartSeriesContent {
-        ChartSeriesContent(
+        let visiblePercentileRange: ClosedRange<Date>? = {
+            let ticks: [Date]
+            if viewModel.timePeriod == .week || viewModel.timePeriod == .year {
+                ticks = viewModel.xAxisValues.sorted()
+            } else {
+                ticks = viewModel.gridTicks.sorted()
+            }
+            return ticks.first.flatMap { first in
+                ticks.last.map { first...$0 }
+            }
+        }()
+        return ChartSeriesContent(
             orderedSeriesNames: cachedOrderedSeriesNames,
             cachedPlottedPoints: cachedPlottedPoints,
             yAxisDomain: viewModel.yAxisDomain,
             scrollPosition: viewModel.scrollPosition,
             visibleDomainLength: viewModel.visibleDomainLength,
+            visibleGridRange: visiblePercentileRange,
             selectedPlottedDate: viewModel.selectedPoint.map { viewModel.plotXDate(for: $0.date) },
             showCrosshair: viewModel.showCrosshair,
             isScrolling: viewModel.isScrolling,

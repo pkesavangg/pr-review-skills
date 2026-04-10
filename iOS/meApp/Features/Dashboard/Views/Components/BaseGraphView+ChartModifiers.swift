@@ -95,7 +95,8 @@ extension BaseGraphView {
                             yDomain: viewModel.yAxisDomain,
                             yTicks: viewModel.yAxisTicks,
                             showHorizontalGridLines: false,
-                            visibleHorizontalTicks: BaseGraphViewCacheSupport.boundaryYAxisTicks(from: viewModel.yAxisTicks)
+                            visibleHorizontalTicks: BaseGraphViewCacheSupport.boundaryYAxisTicks(from: viewModel.yAxisTicks),
+                            showTrailingBorder: viewModel.timePeriod != .month
                         )
                     }
                 }
@@ -241,27 +242,27 @@ extension BaseGraphView {
             let dates = operations.map(\.date)
             if let minDate = dates.min(), let maxDate = dates.max() {
                 let now = Date()
-                let buffer: TimeInterval = {
+                let cappedMax: Date = {
+                    let calendar = Calendar.current
                     switch viewModel.timePeriod {
                     case .week:
-                        let weekday = Calendar.current.component(.weekday, from: now)
+                        let weekday = calendar.component(.weekday, from: now)
                         let daysToSaturday = (7 - weekday + 7) % 7
-                        return TimeInterval(daysToSaturday + 1) * DashboardConstants.TimeInterval.day
+                        let buffer = TimeInterval(daysToSaturday + 1) * DashboardConstants.TimeInterval.day
+                        return now.addingTimeInterval(buffer)
                     case .month:
-                        return DashboardConstants.TimeInterval.calendarWeek
+                        if let interval = calendar.dateInterval(of: .month, for: now) {
+                            // Extend to noon on the 1st of the next month so the month-boundary
+                            // solid grid line (day == 1) is not clipped by the domain.
+                            return calendar.date(bySettingHour: 12, minute: 0, second: 0, of: interval.end) ?? interval.end
+                        }
+                        return now.addingTimeInterval(DashboardConstants.TimeInterval.calendarWeek)
                     case .year:
-                        return DashboardConstants.TimeInterval.month
-                    case .total:
-                        return 0
-                    }
-                }()
-                let cappedMax: Date = {
-                    if viewModel.timePeriod == .year {
-                        let calendar = Calendar.current
                         let yearEnd = calendar.dateInterval(of: .year, for: max(maxDate, now))?.end ?? now
-                        return max(yearEnd, now.addingTimeInterval(buffer))
+                        return max(yearEnd, now.addingTimeInterval(DashboardConstants.TimeInterval.month))
+                    case .total:
+                        return now
                     }
-                    return now.addingTimeInterval(buffer)
                 }()
                 let domainMin: Date = {
                     if viewModel.timePeriod == .year {

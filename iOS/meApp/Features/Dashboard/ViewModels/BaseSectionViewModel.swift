@@ -933,7 +933,10 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         }
         var monthStartTicks: [Date] = []
         var currentMonthStart = calendar.dateInterval(of: .month, for: firstTick)?.start ?? firstTick
-        while currentMonthStart <= lastTick {
+        // Use < next month start so we include the month-start tick one month after lastTick,
+        // ensuring the solid grid line at the trailing month boundary is rendered.
+        let upperBound = calendar.dateInterval(of: .month, for: lastTick)?.end ?? lastTick
+        while currentMonthStart <= upperBound {
             let monthStartNoon = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: currentMonthStart) ?? currentMonthStart
             monthStartTicks.append(monthStartNoon)
             guard let next = calendar.date(byAdding: .month, value: 1, to: currentMonthStart) else { break }
@@ -952,10 +955,11 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     }
 
     /// Label tick dates for the chart X-axis.
-    /// Year view uses non-last ticks; all other periods use the full tick set (including phantom).
+    /// Week/month/year views exclude the trailing phantom tick so labels stop at the
+    /// last real visible unit.
     var adjustedLabelTicks: [Date] {
         let allTicks = xAxisValues
-        if timePeriod == .year {
+        if timePeriod == .week || timePeriod == .month || timePeriod == .year {
             return Array(allTicks.dropLast())
         }
         return allTicks

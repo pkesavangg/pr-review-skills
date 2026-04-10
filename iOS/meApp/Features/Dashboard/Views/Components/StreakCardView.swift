@@ -106,9 +106,13 @@ struct StreakCardView: View {
                         .fontOpenSans(.heading4)
                         .fontWeight(.bold)
                         .foregroundColor(theme.textHeading)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.1)
                     Text(label)
                         .fontOpenSans(.subHeading2)
                         .foregroundColor(theme.textSubheading)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.1)
                 }
             }
         }

@@ -148,6 +148,16 @@ struct BaseSectionViewModelTests {
         #expect(vm.timePeriod == period)
     }
 
+    @Test("adjustedLabelTicks excludes trailing phantom tick for week")
+    func adjustedLabelTicksDropsTrailingWeekTick() {
+        let (sut, _) = makeConfiguredSUT(period: .week)
+        sut.scrollPosition = makeDate(year: 2026, month: 3, day: 1)
+
+        let ticks = sut.xAxisValues
+        #expect(ticks.count > 1)
+        #expect(sut.adjustedLabelTicks == Array(ticks.dropLast()))
+    }
+
     // MARK: - hasXAxis
 
     @Test("hasXAxis is true for week/month/year", arguments: [TimePeriod.week, .month, .year])
