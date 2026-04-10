@@ -22,9 +22,11 @@ if [[ -f "${LOCAL_PROPERTIES}" ]]; then
   LOCAL_SDK_DIR="$(sed -n 's/^sdk\.dir=//p' "${LOCAL_PROPERTIES}" | tail -n 1)"
 fi
 case "$(uname -s)" in
-  Linux*)  DEFAULT_SDK="${HOME}/Android/Sdk"; DEFAULT_HOST="linux-x86_64" ;;
+  Linux*)   DEFAULT_SDK="${HOME}/Android/Sdk"; DEFAULT_HOST="linux-x86_64" ;;
+  MINGW*|MSYS*|CYGWIN*)
+            DEFAULT_SDK="${LOCALAPPDATA}/Android/Sdk"; DEFAULT_HOST="windows-x86_64" ;;
   # NDK ships only darwin-x86_64 prebuilts; Apple Silicon runs them via Rosetta 2
-  *)       DEFAULT_SDK="${HOME}/Library/Android/sdk"; DEFAULT_HOST="darwin-x86_64" ;;
+  *)        DEFAULT_SDK="${HOME}/Library/Android/sdk"; DEFAULT_HOST="darwin-x86_64" ;;
 esac
 SDK_ROOT="${LOCAL_SDK_DIR:-${ANDROID_SDK_ROOT:-${ANDROID_HOME:-${DEFAULT_SDK}}}}"
 HOST_TAG="${HOST_TAG:-${DEFAULT_HOST}}"
