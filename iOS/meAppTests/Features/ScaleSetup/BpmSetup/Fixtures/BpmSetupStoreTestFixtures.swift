@@ -108,7 +108,8 @@ enum BpmSetupStoreTestFixtures {
 
     static func makeBpmDiscoveryEvent(
         device: Device? = nil,
-        setupType: ScaleSetupType = .bpm
+        setupType: ScaleSetupType = .bpm,
+        protocolType: ProtocolType = .A3
     ) -> DeviceDiscoveryEvent {
         let bpmDevice = device ?? makeBpmDevice()
         let info = ScaleItemInfo(
@@ -121,7 +122,7 @@ enum BpmSetupStoreTestFixtures {
         return DeviceDiscoveryEvent(
             device: bpmDevice,
             deviceInfo: info,
-            protocolType: .A6,
+            protocolType: protocolType,
             isNew: true
         )
     }

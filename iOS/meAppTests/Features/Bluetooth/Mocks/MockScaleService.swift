@@ -15,6 +15,7 @@ final class MockScaleService: ScaleServiceProtocol {
     var updateScalePreferenceError: Error?
     var updateScalePreferenceErrorsByCall: [Int: Error] = [:]
     var deleteDeviceError: Error?
+    var deleteSingleDeviceEntryError: Error?
     var createR4ScaleError: Error?
     var fetchAttachedPreferenceResult: R4ScalePreference?
 
@@ -27,6 +28,7 @@ final class MockScaleService: ScaleServiceProtocol {
     private(set) var createA6ScaleCalls = 0
     private(set) var createR4ScaleCalls = 0
     private(set) var deleteDeviceCalls = 0
+    private(set) var deleteSingleDeviceEntryCalls = 0
     private(set) var pushLocalChangesToServerCalls = 0
     private(set) var syncAllScalesWithRemoteCalls = 0
     private(set) var updateScalePreferenceCalls = 0
@@ -179,7 +181,10 @@ final class MockScaleService: ScaleServiceProtocol {
         if let deleteDeviceError { throw deleteDeviceError }
     }
 
-    func deleteSingleDeviceEntry(_ deviceId: String) async throws {}
+    func deleteSingleDeviceEntry(_ deviceId: String) async throws {
+        deleteSingleDeviceEntryCalls += 1
+        if let deleteSingleDeviceEntryError { throw deleteSingleDeviceEntryError }
+    }
 
     func updateScaleMeta(_ deviceId: String, metaData: DeviceMetaData) async throws {}
     func updateScalePreference(_ deviceId: String, _ preference: R4ScalePreference) async throws {
