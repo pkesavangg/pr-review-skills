@@ -71,6 +71,7 @@ object ScaleDataHelper {
 
   fun formatUserDisplay(hasNumericUsers: Boolean, userNumber: Int?): String {
     val num = userNumber ?: return ""
+    if (!hasNumericUsers && num !in 1..2) return ""
     return if (hasNumericUsers) num.toString() else if (num == 1) USER_A else USER_B
   }
 
