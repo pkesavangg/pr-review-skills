@@ -6,6 +6,7 @@ object SettingsScreenStrings {
     // Account Settings
     const val AccountSettings = "Account Settings"
     const val AddEditScales = "Add & Edit Scales"
+    const val AddEditDevices = "Add & Edit Devices"
     const val Integrations = "Integrations"
     const val ExportData = "Export Data"
     const val ChangePassword = "Change Password"

@@ -12,7 +12,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -27,7 +26,9 @@ import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.core.navigation.LocalProductType
 import com.dmdbrands.gurus.weight.features.addScale.reducer.AddScaleFormControls
 import com.dmdbrands.gurus.weight.features.addScale.reducer.AddScaleIntent
 import com.dmdbrands.gurus.weight.features.addScale.reducer.AddScaleState
@@ -76,8 +77,10 @@ fun AddScaleScreenContent(
     }
   }
 
+  val productType = LocalProductType.current
+
   AppScaffold(
-    title = AddScaleScreenStrings.Header,
+    title = AddScaleScreenStrings.header(productType),
     navigationIcon = {
       AppIconButton(AppIcons.Default.Close) {
         coroutineScope.launch {
@@ -103,12 +106,12 @@ fun AddScaleScreenContent(
             .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
       ) {
         AppText(
-          text = AddScaleScreenStrings.Title,
+          text = AddScaleScreenStrings.title(productType),
           textType = TextType.Title,
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
         AppText(
-          text = AddScaleScreenStrings.Subtitle,
+          text = AddScaleScreenStrings.subtitle(productType),
           textType = TextType.Body,
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
@@ -157,7 +160,7 @@ fun AddScaleScreenContent(
         Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
         if (state.savedScales.isNotEmpty()) {
           AppText(
-            text = AddScaleScreenStrings.MyScales,
+            text = AddScaleScreenStrings.myDevices(productType),
             textType = TextType.Title,
           )
         }

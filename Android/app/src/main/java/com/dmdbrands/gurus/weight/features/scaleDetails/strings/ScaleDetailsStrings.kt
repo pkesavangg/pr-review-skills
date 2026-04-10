@@ -1,7 +1,12 @@
 package com.dmdbrands.gurus.weight.features.scaleDetails.strings
 
+import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
+
 object ScaleDetailsStrings {
-  const val DeleteScaleConfirmation = "Are you sure you want to delete this scale?"
+  fun deleteConfirmation(sku: String?) = when {
+    ScaleDataHelper.isBpmDevice(sku) -> "Are you sure you want to delete this device?"
+    else -> "Are you sure you want to delete this scale?"
+  }
   const val Delete = "Delete"
   const val Cancel = "Cancel"
   const val DeleteSuccessMessage = "scale deleted successfully"

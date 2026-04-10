@@ -21,6 +21,11 @@ object ScaleDataHelper {
     return SCALES.find { it.sku == lookupSku }
   }
 
+  fun isBpmDevice(sku: String?): Boolean {
+    val mapped = sku?.let { DeviceHelper.mapSkuForDisplay(it) }
+    return mapped in DeviceHelper.BPM_SKUS
+  }
+
   /**
    * Converts a GGDevice to ScaleInfo for UI display.
    */

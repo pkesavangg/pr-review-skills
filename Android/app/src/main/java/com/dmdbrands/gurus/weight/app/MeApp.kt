@@ -25,6 +25,7 @@ import com.dmdbrands.gurus.weight.app.viewmodel.AppIntent
 import com.dmdbrands.gurus.weight.app.viewmodel.AppViewModel
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.core.navigation.LocalProductType
 import com.dmdbrands.gurus.weight.features.common.components.DialogHost
 import com.dmdbrands.gurus.weight.features.common.components.ProductSelectionBottomSheet
 import com.dmdbrands.gurus.weight.features.common.components.ScaleDiscoveredModal
@@ -53,6 +54,10 @@ fun MeApp() {
       Pair(AppRoute.Home, AppRoute.Main.Dashboard),
     )
 
+  val productManager = appViewModel.productSelectionManager
+  val selectedProduct by productManager.selectedProduct
+      .collectAsStateWithLifecycle()
+
   MeAppTheme(themeMode = uiState.themeMode) {
 
     Surface(
@@ -62,18 +67,18 @@ fun MeApp() {
           .imePadding(),
       color = colorScheme.primaryBackground,
     ) {
-      CompositionLocalProvider(LocalNavBackStack provides topLevelBackStack) {
+      CompositionLocalProvider(
+        LocalNavBackStack provides topLevelBackStack,
+        LocalProductType provides selectedProduct.productType,
+      ) {
         DialogHost()
         NavHost(topLevelBackStack, appViewModel)
       }
     }
     // Product Selection Bottom Sheet — controlled by ProductSelectionManager
-    val productManager = appViewModel.productSelectionManager
     val showProductSheet by productManager.showSheet.collectAsStateWithLifecycle()
     val productSheetTitle by productManager.sheetTitle.collectAsStateWithLifecycle()
     val availableProducts by productManager.availableProducts
-        .collectAsStateWithLifecycle()
-    val selectedProduct by productManager.selectedProduct
         .collectAsStateWithLifecycle()
 
     if (showProductSheet) {
