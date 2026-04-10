@@ -238,10 +238,8 @@ public enum UserCreationResponse: String, Sendable, Codable, Equatable, CaseIter
         case .USER_SELECTION_IN_PROGRESS: self = .userSelectionInProgress
         case .DIFFERENT_USER: self = .differentUser
         case .NOT_IN_PAIRING_MODE: self = .notInPairingMode
-        case .DEVICE_EXISTS_WITH_SAME_USER:
-            self = .deviceExistsWithSameUser
-        case .DEVICE_EXISTS_WITH_DIFFERENT_USER:
-            self = .deviceExistsWithDifferentUser
+        case .DEVICE_EXISTS_WITH_SAME_USER: self = .deviceExistsWithSameUser
+        case .DEVICE_EXISTS_WITH_DIFFERENT_USER: self = .deviceExistsWithDifferentUser
         }
     }
 

@@ -71,7 +71,7 @@ protocol BluetoothServiceProtocol {
     ///   - broadcastId: The broadcast ID of the BPM device to connect.
     ///   - userNumber: The user slot selected in the app (1 or 2). Used by the SDK to detect user mismatch.
     /// - Returns: Result<UserCreationResponse, BluetoothServiceError>
-    func connectBpm(broadcastId: String, userNumber: Int) async -> Result<UserCreationResponse, BluetoothServiceError>
+    func connectBpm(broadcastId: String, userNumber: Int, replaceUser: Bool, pairedSKUMonitors: [Device]) async -> Result<UserCreationResponse, BluetoothServiceError>
 
     /// Requests the latest BPM reading from the connected device.
     /// The reading is delivered via `newBpmReadingReceivedPublisher`.

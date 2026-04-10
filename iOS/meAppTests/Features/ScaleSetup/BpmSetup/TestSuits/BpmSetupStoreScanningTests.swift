@@ -144,5 +144,51 @@ extension BpmSetupStoreTests {
 
             #expect(store.connectionState == .failure)
         }
+
+        @Test("Already Paired alert shown only once when Continue leads to successful second pairing")
+        func sameUserConflictAlertShownOnlyOnce() async {
+            // SDK returns deviceExistsWithSameUser first, then creationCompleted on retry.
+            let bluetooth = MockBluetoothService()
+            bluetooth.connectBpmResults = [
+                .success(.deviceExistsWithSameUser),
+                .success(.creationCompleted)
+            ]
+            let harness = BpmSetupStoreTestFixtures.makeSUT(bluetooth: bluetooth)
+            let store = harness.store
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
+            store.selectedUserNumber = 1
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.scanning, in: store)
+
+            // Simulate a pre-pairing duplicate detected (same MAC, same user) —
+            // this is what sets deviceToDelete before the SDK call.
+            let existing = BpmSetupStoreTestFixtures.makeBpmDevice(id: "existing-bpm")
+            existing.mac = "AA:BB:CC"
+            existing.userNumber = "1"
+            let device = BpmSetupStoreTestFixtures.makeBpmDevice(id: "new-bpm")
+            device.mac = "AA:BB:CC"
+            device.broadcastIdString = "ABCD"
+            store.testSetInternalState(
+                discoveredDevice: device,
+                discoveryEvent: BpmSetupStoreTestFixtures.makeBpmDiscoveryEvent(device: device)
+            )
+            store.testSetDeviceToDelete(existing)
+
+            // First pairing call — SDK says deviceExistsWithSameUser → shows alert
+            await store.testStartPairing()
+
+            let firstAlertCount = harness.notification.showAlertCalls
+            #expect(firstAlertCount == 1)
+            #expect(harness.notification.alertData?.title == BpmSetupStrings.DeviceConflictAlert.SameUser.title)
+
+            // User taps Continue — second pairing attempt succeeds with creationCompleted
+            harness.notification.alertData?.buttons[1].action(nil)
+
+            // After Continue, the alert must NOT appear again
+            let advanced = await BpmSetupStoreTestFixtures.waitUntil {
+                store.currentStep != .scanning
+            }
+            #expect(advanced)
+            #expect(harness.notification.showAlertCalls == firstAlertCount)
+        }
     }
 }
