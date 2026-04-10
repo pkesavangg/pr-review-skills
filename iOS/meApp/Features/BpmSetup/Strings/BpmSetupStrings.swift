@@ -75,12 +75,6 @@ struct BpmSetupStrings {
         static let title = "Searching for monitor..."
     }
 
-    struct ConnectionErrorAlert {
-        static let title = "Unable to Connect"
-        static let message = "This may be caused by interference from another Bluetooth device. Try again or contact customer service."
-        static let tryAgainButton = "TRY AGAIN"
-    }
-
     struct Nickname {
         static let title = "What should this monitor be called?"
         static let placeholder = "nickname"
@@ -135,5 +129,12 @@ struct BpmSetupStrings {
         static let message = "The user settings chosen on the monitor and in the app do not match. Please review and try again."
         static let cancelSetupButton = "CANCEL SETUP"
         static let reviewButton = "REVIEW"
+    }
+
+    struct ConnectionErrorAlert {
+        static let title = "Unable to Connect"
+        static let message = "This may be caused by interference from another Bluetooth device. Try again or contact customer service."
+        static let dismissButton = "DISMISS"
+        static let tryAgainButton = "TRY AGAIN"
     }
 }

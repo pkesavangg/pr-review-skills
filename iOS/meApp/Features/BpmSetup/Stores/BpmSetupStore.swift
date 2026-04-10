@@ -100,160 +100,197 @@ final class BpmSetupStore: ObservableObject {
     private let stepTransitionDelayNs: UInt64
 
     // MARK: - Step Views
+
     var stepViews: [AnyView] {
         guard let bpmItem else { return [] }
+        return steps.map { buildStepView($0, bpmItem: bpmItem) }
+    }
 
-        return steps.map { step in
-            switch step {
-            case .selectModel:
-                return AnyView(
-                    A3BpmModelSelectionView(
-                        models: BPMS,
-                        selectedSku: selectedSku
-                    ) { [weak self] sku in
-                        self?.selectedSku = sku
-                    }
-                )
-
-            case .intro:
-                return AnyView(ScaleSetupIntroView(scale: bpmItem, troubleText: BpmSetupStrings.troubleSettingUp))
-
-            case .btPermission:
-                return AnyView(PermissionListView(setupType: .bpm))
-
-            case .selectUser:
-                return AnyView(
-                    A3BpmUserSelectionView(
-                        bpmItem: bpmItem,
-                        selectedUser: Binding(
-                            get: { [weak self] in self?.selectedUserNumber },
-                            set: { [weak self] in self?.selectedUserNumber = $0 }
-                        ),
-                        onSelect: { [weak self] user in
-                            self?.selectedUserNumber = user
-                        }
-                    )
-                )
-
-            case .powerSwitch:
-                return AnyView(
-                    A3BpmInstructionView(
-                        title: BpmSetupStrings.PowerSwitch.title,
-                        description: BpmSetupStrings.PowerSwitch.description,
-                        imagePath: bpmItem.imgPath,
-                        resourceImageName: BpmA3MonitorSetupAssets.perSkuResourceName(sku: bpmItem.sku, BpmA3MonitorSetupAssets.ImageFile.powerSwitch),
-                        resourceImageSubdirectory: BpmA3MonitorSetupAssets.userGifBundleSubdirectory(for: bpmItem.sku),
-                        mediaLayout: .top,
-                        mediaHorizontalPadding: 0
-                    )
-                )
-            case .setUser:
-                return AnyView(
-                    A3BpmInstructionView(
-                        title: BpmSetupStrings.SetUser.title(userLabel(for: selectedUserNumber ?? 1)),
-                        description: BpmSetupStrings.SetUser.description(for: bpmItem),
-                        imagePath: bpmItem.imgPath,
-                        gifName: userGifName(for: bpmItem.sku, selectedUserNumber: selectedUserNumber),
-                        gifSubdirectory: userGifSubdirectory(for: bpmItem.sku),
-                        resourceImageName: imageName(for: .setUser, sku: bpmItem.sku),
-                        resourceImageSubdirectory: gifSubdirectory(for: bpmItem.sku),
-                        mediaLayout: .bottom,
-                        mediaHorizontalPadding: 0
-                    )
-                )
-            case .confirmUser:
-                return AnyView(
-                    A3BpmInstructionView(
-                        title: BpmSetupStrings.ConfirmUser.title,
-                        description: BpmSetupStrings.ConfirmUser.description(for: bpmItem.sku),
-                        imagePath: bpmItem.imgPath,
-                        gifName: gifName(for: .confirmUser, sku: bpmItem.sku),
-                        gifSubdirectory: confirmUserGifSubdirectory(for: bpmItem.sku),
-                        resourceImageName: imageName(for: .confirmUser, sku: bpmItem.sku),
-                        resourceImageSubdirectory: gifSubdirectory(for: bpmItem.sku),
-                        mediaLayout: .top,
-                        mediaHorizontalPadding: 0
-                    )
-                )
-            case .prePairing:
-                return AnyView(
-                    A3BpmInstructionView(
-                        title: BpmSetupStrings.PrePairing.title,
-                        description: BpmSetupStrings.PrePairing.description,
-                        imagePath: bpmItem.imgPath,
-                        gifName: gifName(for: .prePairing, sku: bpmItem.sku),
-                        gifSubdirectory: confirmUserGifSubdirectory(for: bpmItem.sku),
-                        mediaLayout: .top,
-                        mediaHorizontalPadding: 0
-                    )
-                )
-            case .scanning:
-                return AnyView(
-                    A3BpmScanningView(
-                        connectionState: connectionState,
-                        bpmItem: bpmItem,
-                        onTryAgain: { [weak self] in self?.retryScanning() },
-                        onSupport: { [weak self] in self?.showHelpModal() }
-                    )
-                )
-
-            case .nickname:
-                return AnyView(
-                    A3BpmNicknameView(
-                        nickname: Binding(
-                            get: { [weak self] in self?.deviceNickname ?? "" },
-                            set: { [weak self] in self?.deviceNickname = $0 }
-                        ),
-                        focusedField: Binding(
-                            get: { [weak self] in self?.focusedField },
-                            set: { [weak self] in self?.focusedField = $0 }
-                        )
-                    )
-                )
-
-            case .paired:
-                return AnyView(
-                    A3BpmPairedView { [weak self] in
-                        self?.moveToMeasurementTutorial()
-                    }
-                )
-
-            case .measureSetup:
-                return AnyView(
-                    A3BpmInstructionView(
-                        title: BpmSetupStrings.MeasureSetup.title,
-                        description: BpmSetupStrings.MeasureSetup.description,
-                        imagePath: bpmItem.imgPath,
-                        gifName: gifName(for: .measureSetup, sku: bpmItem.sku),
-                        gifSubdirectory: gifSubdirectory(for: bpmItem.sku),
-                        contentHorizontalPadding: 0,
-                        mediaHorizontalPadding: 0,
-                        wrapsMediaInCard: false
-                    )
-                )
-            case .measureStart:
-                return AnyView(
-                    A3BpmInstructionView(
-                        title: BpmSetupStrings.MeasureStart.title,
-                        description: BpmSetupStrings.MeasureStart.description,
-                        imagePath: bpmItem.imgPath,
-                        gifName: gifName(for: .measureStart, sku: bpmItem.sku),
-                        gifSubdirectory: gifSubdirectory(for: bpmItem.sku),
-                        contentHorizontalPadding: 0,
-                        mediaHorizontalPadding: 0,
-                        wrapsMediaInCard: false
-                    )
-                )
-
-            case .complete:
-                return AnyView(
-                    ScaleSetupFinishView(
-                        title: BpmSetupStrings.Complete.title,
-                        description: BpmSetupStrings.Complete.description
-                    )
-                )
-            }
+    // swiftlint:disable:next cyclomatic_complexity
+    private func buildStepView(_ step: BpmSetupStep, bpmItem: ScaleItemInfo) -> AnyView {
+        switch step {
+        case .selectModel: return buildSelectModelView()
+        case .intro: return buildIntroView(bpmItem: bpmItem)
+        case .btPermission: return buildBtPermissionView()
+        case .selectUser: return buildSelectUserView(bpmItem: bpmItem)
+        case .powerSwitch: return buildPowerSwitchView(bpmItem: bpmItem)
+        case .setUser: return buildSetUserView(bpmItem: bpmItem)
+        case .confirmUser: return buildConfirmUserView(bpmItem: bpmItem)
+        case .prePairing: return buildPrePairingView(bpmItem: bpmItem)
+        case .scanning: return buildScanningView(bpmItem: bpmItem)
+        case .nickname: return buildNicknameView()
+        case .paired: return buildPairedView()
+        case .measureSetup: return buildMeasureSetupView(bpmItem: bpmItem)
+        case .measureStart: return buildMeasureStartView(bpmItem: bpmItem)
+        case .complete: return buildCompleteView()
         }
+    }
+
+    private func buildSelectModelView() -> AnyView {
+        AnyView(
+            A3BpmModelSelectionView(
+                models: BPMS,
+                selectedSku: selectedSku
+            ) { [weak self] sku in
+                self?.selectedSku = sku
+            }
+        )
+    }
+
+    private func buildIntroView(bpmItem: ScaleItemInfo) -> AnyView {
+        AnyView(ScaleSetupIntroView(scale: bpmItem, troubleText: BpmSetupStrings.troubleSettingUp))
+    }
+
+    private func buildBtPermissionView() -> AnyView {
+        AnyView(PermissionListView(setupType: .bpm))
+    }
+
+    private func buildSelectUserView(bpmItem: ScaleItemInfo) -> AnyView {
+        AnyView(
+            A3BpmUserSelectionView(
+                bpmItem: bpmItem,
+                selectedUser: Binding(
+                    get: { [weak self] in self?.selectedUserNumber },
+                    set: { [weak self] in self?.selectedUserNumber = $0 }
+                ),
+                onSelect: { [weak self] user in
+                    self?.selectedUserNumber = user
+                }
+            )
+        )
+    }
+
+    private func buildPowerSwitchView(bpmItem: ScaleItemInfo) -> AnyView {
+        AnyView(
+            A3BpmInstructionView(
+                title: BpmSetupStrings.PowerSwitch.title,
+                description: BpmSetupStrings.PowerSwitch.description,
+                imagePath: bpmItem.imgPath,
+                resourceImageName: BpmA3MonitorSetupAssets.perSkuResourceName(sku: bpmItem.sku, BpmA3MonitorSetupAssets.ImageFile.powerSwitch),
+                resourceImageSubdirectory: BpmA3MonitorSetupAssets.userGifBundleSubdirectory(for: bpmItem.sku),
+                mediaLayout: .top,
+                mediaHorizontalPadding: 0
+            )
+        )
+    }
+
+    private func buildSetUserView(bpmItem: ScaleItemInfo) -> AnyView {
+        AnyView(
+            A3BpmInstructionView(
+                title: BpmSetupStrings.SetUser.title(userLabel(for: selectedUserNumber ?? 1)),
+                description: BpmSetupStrings.SetUser.description(for: bpmItem),
+                imagePath: bpmItem.imgPath,
+                gifName: userGifName(for: bpmItem.sku, selectedUserNumber: selectedUserNumber),
+                gifSubdirectory: userGifSubdirectory(for: bpmItem.sku),
+                resourceImageName: imageName(for: .setUser, sku: bpmItem.sku),
+                resourceImageSubdirectory: gifSubdirectory(for: bpmItem.sku),
+                mediaLayout: .bottom,
+                mediaHorizontalPadding: 0
+            )
+        )
+    }
+
+    private func buildConfirmUserView(bpmItem: ScaleItemInfo) -> AnyView {
+        AnyView(
+            A3BpmInstructionView(
+                title: BpmSetupStrings.ConfirmUser.title,
+                description: BpmSetupStrings.ConfirmUser.description(for: bpmItem.sku),
+                imagePath: bpmItem.imgPath,
+                gifName: gifName(for: .confirmUser, sku: bpmItem.sku),
+                gifSubdirectory: confirmUserGifSubdirectory(for: bpmItem.sku),
+                resourceImageName: imageName(for: .confirmUser, sku: bpmItem.sku),
+                resourceImageSubdirectory: gifSubdirectory(for: bpmItem.sku),
+                mediaLayout: .top,
+                mediaHorizontalPadding: 0
+            )
+        )
+    }
+
+    private func buildPrePairingView(bpmItem: ScaleItemInfo) -> AnyView {
+        AnyView(
+            A3BpmInstructionView(
+                title: BpmSetupStrings.PrePairing.title,
+                description: BpmSetupStrings.PrePairing.description,
+                imagePath: bpmItem.imgPath,
+                gifName: gifName(for: .prePairing, sku: bpmItem.sku),
+                gifSubdirectory: confirmUserGifSubdirectory(for: bpmItem.sku),
+                mediaLayout: .top,
+                mediaHorizontalPadding: 0
+            )
+        )
+    }
+
+    private func buildScanningView(bpmItem: ScaleItemInfo) -> AnyView {
+        AnyView(
+            A3BpmScanningView(
+                connectionState: connectionState,
+                bpmItem: bpmItem,
+                onTryAgain: { [weak self] in self?.retryScanning() },
+                onSupport: { [weak self] in self?.showHelpModal() }
+            )
+        )
+    }
+
+    private func buildNicknameView() -> AnyView {
+        AnyView(
+            A3BpmNicknameView(
+                nickname: Binding(
+                    get: { [weak self] in self?.deviceNickname ?? "" },
+                    set: { [weak self] in self?.deviceNickname = $0 }
+                ),
+                focusedField: Binding(
+                    get: { [weak self] in self?.focusedField },
+                    set: { [weak self] in self?.focusedField = $0 }
+                )
+            )
+        )
+    }
+
+    private func buildPairedView() -> AnyView {
+        AnyView(
+            A3BpmPairedView { [weak self] in
+                self?.moveToMeasurementTutorial()
+            }
+        )
+    }
+
+    private func buildMeasureSetupView(bpmItem: ScaleItemInfo) -> AnyView {
+        AnyView(
+            A3BpmInstructionView(
+                title: BpmSetupStrings.MeasureSetup.title,
+                description: BpmSetupStrings.MeasureSetup.description,
+                imagePath: bpmItem.imgPath,
+                gifName: gifName(for: .measureSetup, sku: bpmItem.sku),
+                gifSubdirectory: gifSubdirectory(for: bpmItem.sku),
+                contentHorizontalPadding: 0,
+                mediaHorizontalPadding: 0,
+                wrapsMediaInCard: false
+            )
+        )
+    }
+
+    private func buildMeasureStartView(bpmItem: ScaleItemInfo) -> AnyView {
+        AnyView(
+            A3BpmInstructionView(
+                title: BpmSetupStrings.MeasureStart.title,
+                description: BpmSetupStrings.MeasureStart.description,
+                imagePath: bpmItem.imgPath,
+                gifName: gifName(for: .measureStart, sku: bpmItem.sku),
+                gifSubdirectory: gifSubdirectory(for: bpmItem.sku),
+                contentHorizontalPadding: 0,
+                mediaHorizontalPadding: 0,
+                wrapsMediaInCard: false
+            )
+        )
+    }
+
+    private func buildCompleteView() -> AnyView {
+        AnyView(
+            ScaleSetupFinishView(
+                title: BpmSetupStrings.Complete.title,
+                description: BpmSetupStrings.Complete.description
+            )
+        )
     }
 
     // MARK: - Init
@@ -486,11 +523,13 @@ final class BpmSetupStore: ObservableObject {
                 if isSameUser {
                     LoggerService.shared.log(
                         level: .info, tag: tag,
-                        message: "Pre-pairing check: same-user duplicate found (MAC: \(discoveredMac)). Skipping pairing."
+                        message: "Pre-pairing check: same-user duplicate found (MAC: \(discoveredMac)). Marking for deletion; continuing to pair."
                     )
+                    // Mark for deletion — checkForDuplicateAndAdvance will show the
+                    // "Already Paired" alert post-connection if pairing succeeds.
+                    // Do NOT return here: fall through to the user mismatch check and
+                    // startPairing() so a monitor with a different active user is caught.
                     deviceToDelete = existing
-                    confirmUserAndPair(isDifferentUser: false)
-                    return
                 } else {
                     LoggerService.shared.log(
                         level: .info, tag: tag,
@@ -521,7 +560,6 @@ final class BpmSetupStore: ObservableObject {
     private func startPairing() async {
         guard let device = discoveredDevice else {
             LoggerService.shared.log(level: .error, tag: tag, message: "startPairing - no discovered device")
-            connectionState = .failure
             showConnectionErrorAlert()
             return
         }
@@ -614,7 +652,6 @@ final class BpmSetupStore: ObservableObject {
                 tag: tag,
                 message: "BPM pairing failed: \(error.localizedDescription)"
             )
-            connectionState = .failure
             showConnectionErrorAlert()
         }
     }
@@ -673,7 +710,14 @@ final class BpmSetupStore: ObservableObject {
                         self?.dismissAction?()
                     },
                     AlertButtonModel(title: lang.continueButton, type: .primary) { [weak self] _ in
-                        self?.advanceFromScanning()
+                        guard let self else { return }
+                        Task { @MainActor in
+                            if let deviceInfo = self.lastRetrievedDeviceInfo,
+                               await self.checkForUserMismatch(deviceInfo) {
+                                return
+                            }
+                            self.advanceFromScanning()
+                        }
                     }
                 ]
             )
@@ -750,6 +794,9 @@ final class BpmSetupStore: ObservableObject {
                 AlertButtonModel(title: lang.continueButton, type: .primary) { [weak self] _ in
                     guard let self else { return }
                     self.canReplaceUser = true
+                    // Clear the pre-pairing duplicate marker so checkForDuplicateAndAdvance
+                    // doesn't re-show this same alert if the second pairing attempt succeeds.
+                    self.deviceToDelete = nil
                     Task { @MainActor in await self.startPairing() }
                 }
             ]
@@ -1030,6 +1077,12 @@ final class BpmSetupStore: ObservableObject {
             device.mac = deviceInfo.macAddress
         }
 
+        // Capture the monitor's active user slot so post-connection user-mismatch checks
+        // have a value to compare against (critical for A6 multi-user pairing).
+        if let userNum = deviceInfo.userNumber {
+            device.userNumber = "\(userNum)"
+        }
+
         if device.protocolType == nil || device.protocolType?.isEmpty == true {
             device.protocolType = protocolType
         }
@@ -1103,7 +1156,8 @@ final class BpmSetupStore: ObservableObject {
     private func gifName(for step: BpmSetupStep, sku: String) -> String? {
         if a3BpmSkus.contains(sku) {
             let resolvedSku = BpmA3MonitorSetupAssets.resolvedAssetSku(sku)
-            let usePerSku = resolvedSku == sku // true for 0634, 0636
+            // SKUs 0634 and 0636 have their own GIF sets; all others share the 0603 folder.
+            let usePerSku = resolvedSku != "0603"
 
             switch step {
             case .prePairing:
@@ -1252,7 +1306,6 @@ final class BpmSetupStore: ObservableObject {
     }
 
     private func setScanFailure() {
-        connectionState = .failure
         resetDiscoveryState()
         showConnectionErrorAlert()
     }
@@ -1263,7 +1316,7 @@ final class BpmSetupStore: ObservableObject {
             title: lang.title,
             message: lang.message,
             buttons: [
-                AlertButtonModel(title: CommonStrings.dismiss, type: .secondary) { [weak self] _ in
+                AlertButtonModel(title: lang.dismissButton, type: .secondary) { [weak self] _ in
                     self?.dismissAction?()
                 },
                 AlertButtonModel(title: lang.tryAgainButton, type: .primary) { [weak self] _ in
