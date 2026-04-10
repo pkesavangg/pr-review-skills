@@ -20,6 +20,9 @@ struct ManualEntryStrings {
     static let pounds = "pounds"
     static let ounces = "ounces"
     static let inches = "inches"
+    static let kg = "kg"
+    static let lb = "lb"
+    static let cm = "cm"
 
     // Baby validation error messages
     static let required = "Required."

@@ -302,6 +302,7 @@ final class AppSyncSetupStore: ObservableObject {
                 )
                 self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
             }
+            self.bluetoothService.isSetupInProgress = false
         }
     }
 

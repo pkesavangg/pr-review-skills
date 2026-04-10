@@ -31,7 +31,6 @@ struct LandingScreen: View {
         RoutingView(stack: $router.stack) {
             ZStack {
                 Group {
-                    // swiftlint:disable:next empty_count
                     hasAnyAccounts ? theme.backgroundSecondary : theme.actionPrimary
                 }
                 .ignoresSafeArea()

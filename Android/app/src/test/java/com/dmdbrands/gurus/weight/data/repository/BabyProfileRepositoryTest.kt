@@ -20,7 +20,7 @@ class BabyProfileRepositoryTest {
         private const val PROFILE_ID = "baby-1"
         private const val PROFILE_NAME = "Luna"
         private const val ACCOUNT_ID = "account-123"
-        private const val BIRTH_DATE = 1700000000L
+        private const val BIRTHDATE = "2023-01-15"
     }
 
     @MockK(relaxUnitFun = true)
@@ -39,7 +39,7 @@ class BabyProfileRepositoryTest {
     @Test
     fun `observeAll returns mapped domain models`() = runTest {
         val entities = listOf(
-            BabyProfileEntity(id = PROFILE_ID, name = PROFILE_NAME, birthDate = BIRTH_DATE, accountId = ACCOUNT_ID),
+            BabyProfileEntity(babyId = PROFILE_ID, name = PROFILE_NAME, birthdate = BIRTHDATE, accountId = ACCOUNT_ID),
         )
         coEvery { babyProfileDao.observeByAccountId(ACCOUNT_ID) } returns flowOf(entities)
 
@@ -48,7 +48,7 @@ class BabyProfileRepositoryTest {
         assertThat(result).hasSize(1)
         assertThat(result[0].id).isEqualTo(PROFILE_ID)
         assertThat(result[0].name).isEqualTo(PROFILE_NAME)
-        assertThat(result[0].birthDate).isEqualTo(BIRTH_DATE)
+        assertThat(result[0].birthdate).isEqualTo(BIRTHDATE)
         assertThat(result[0].accountId).isEqualTo(ACCOUNT_ID)
     }
 
@@ -65,13 +65,13 @@ class BabyProfileRepositoryTest {
 
     @Test
     fun `save delegates to dao insert`() = runTest {
-        val profile = BabyProfile(id = PROFILE_ID, name = PROFILE_NAME, birthDate = BIRTH_DATE, accountId = ACCOUNT_ID)
+        val profile = BabyProfile(id = PROFILE_ID, name = PROFILE_NAME, birthdate = BIRTHDATE, accountId = ACCOUNT_ID)
 
         repository.save(profile)
 
         coVerify {
             babyProfileDao.insert(
-                BabyProfileEntity(id = PROFILE_ID, name = PROFILE_NAME, birthDate = BIRTH_DATE, accountId = ACCOUNT_ID),
+                BabyProfileEntity(babyId = PROFILE_ID, name = PROFILE_NAME, birthdate = BIRTHDATE, accountId = ACCOUNT_ID),
             )
         }
     }
@@ -80,13 +80,13 @@ class BabyProfileRepositoryTest {
 
     @Test
     fun `update delegates to dao update`() = runTest {
-        val profile = BabyProfile(id = PROFILE_ID, name = "Updated", birthDate = BIRTH_DATE, accountId = ACCOUNT_ID)
+        val profile = BabyProfile(id = PROFILE_ID, name = "Updated", birthdate = BIRTHDATE, accountId = ACCOUNT_ID)
 
         repository.update(profile)
 
         coVerify {
             babyProfileDao.update(
-                BabyProfileEntity(id = PROFILE_ID, name = "Updated", birthDate = BIRTH_DATE, accountId = ACCOUNT_ID),
+                BabyProfileEntity(babyId = PROFILE_ID, name = "Updated", birthdate = BIRTHDATE, accountId = ACCOUNT_ID),
             )
         }
     }
@@ -104,7 +104,7 @@ class BabyProfileRepositoryTest {
 
     @Test
     fun `getById returns mapped profile when found`() = runTest {
-        val entity = BabyProfileEntity(id = PROFILE_ID, name = PROFILE_NAME, birthDate = BIRTH_DATE, accountId = ACCOUNT_ID)
+        val entity = BabyProfileEntity(babyId = PROFILE_ID, name = PROFILE_NAME, birthdate = BIRTHDATE, accountId = ACCOUNT_ID)
         coEvery { babyProfileDao.getById(PROFILE_ID) } returns entity
 
         val result = repository.getById(PROFILE_ID)

@@ -307,10 +307,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                         onTryAgain: { [weak self] in
                             self?.tryAgainButtonHandler(isFromBtConnection: true)
                         },
-                        onSupport: {
-// swiftlint:disable:next closure_parameter_position
-                            [weak self] in self?.showHelpModal()
-                        }
+                        onSupport: { [weak self] in self?.showHelpModal() }
                     )
                 )
             case .gatheringNetwork:
@@ -391,10 +388,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     return AnyView(WifiConnectionView(
                         state: scaleSetupError == .noNetworkFound ? .noNetworks : .failure,
                         onTryAgain: { [weak self] in self?.tryAgainButtonHandler() },
-                        onSupport: {
-// swiftlint:disable:next closure_parameter_position
-                            [weak self] in self?.showHelpModal()
-                        }
+                        onSupport: { [weak self] in self?.showHelpModal() }
                     ))
                 default:
                     return AnyView(
@@ -419,10 +413,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                         state: .noNetworks,
                         isFromSettingsFlow: isSettingsWifiSetup,
                         onTryAgain: { [weak self] in self?.tryAgainButtonHandler() },
-                        onSupport: {
-// swiftlint:disable:next closure_parameter_position
-                            [weak self] in self?.showHelpModal()
-                        }
+                        onSupport: { [weak self] in self?.showHelpModal() }
                     ))
                 }
             case .connectingWifi:

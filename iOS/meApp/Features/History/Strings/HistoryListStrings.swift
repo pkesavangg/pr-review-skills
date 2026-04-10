@@ -32,6 +32,9 @@ enum HistoryListStrings {
     static let week = "week"
     static let lbs = "lbs"
     static let oz = "oz"
+    static let kg = "kg"
+    static let lb = "lb"
+    static let cm = "cm"
     static let inUnit = "in"
     static let th = "th"
 }

@@ -12,7 +12,7 @@ extension BpmSetupStoreTests {
             let store = harness.store
             BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
-            store.currentStepIndex = BpmSetupStep.scanning.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.scanning, in: store)
 
             let scanned = await BpmSetupStoreTestFixtures.waitUntil {
                 harness.bluetooth.scanForBpmCalls > 0
@@ -26,7 +26,7 @@ extension BpmSetupStoreTests {
             let store = harness.store
             BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
-            store.currentStepIndex = BpmSetupStep.scanning.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.scanning, in: store)
 
             await BpmSetupStoreTestFixtures.waitUntil {
                 harness.bluetooth.scanForBpmCalls > 0
@@ -48,7 +48,7 @@ extension BpmSetupStoreTests {
             let store = harness.store
             BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
-            store.currentStepIndex = BpmSetupStep.scanning.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.scanning, in: store)
 
             let failed = await BpmSetupStoreTestFixtures.waitUntil {
                 store.connectionState == .failure
@@ -62,7 +62,7 @@ extension BpmSetupStoreTests {
             let store = harness.store
             BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
-            store.currentStepIndex = BpmSetupStep.scanning.index
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.scanning, in: store)
 
             await BpmSetupStoreTestFixtures.waitUntil {
                 harness.bluetooth.scanForBpmCalls > 0
@@ -95,7 +95,7 @@ extension BpmSetupStoreTests {
         @Test("pairing success does not save the device before nickname confirmation")
         func pairingSuccessDoesNotSaveTheDeviceBeforeNicknameConfirmation() async {
             let bluetooth = MockBluetoothService()
-            bluetooth.connectBpmResult = .success(())
+            bluetooth.connectBpmResult = .success(.creationCompleted)
             let harness = BpmSetupStoreTestFixtures.makeSUT(bluetooth: bluetooth)
             let store = harness.store
             BpmSetupStoreTestFixtures.configureA3Bpm(store)

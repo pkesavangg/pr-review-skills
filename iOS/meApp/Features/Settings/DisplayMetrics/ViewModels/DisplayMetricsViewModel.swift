@@ -176,13 +176,10 @@ final class DisplayMetricsViewModel: ObservableObject {
         }
         
         // Then, add disabled metrics in their original ScaleMetrics order
-        for metric in availableMetrics {
-// swiftlint:disable:next for_where
-            if !displayMetricsKeys.contains(metric.key) {
-                var disabledMetric = metric
-                disabledMetric.isEnabled = false
-                orderedMetrics.append(disabledMetric)
-            }
+        for metric in availableMetrics where !displayMetricsKeys.contains(metric.key) {
+            var disabledMetric = metric
+            disabledMetric.isEnabled = false
+            orderedMetrics.append(disabledMetric)
         }
         
         return orderedMetrics

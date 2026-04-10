@@ -6,14 +6,17 @@
 //
 
 struct HKIntegrationModalContent {
+    struct AttributedParts {
+        let prefix: String
+        let highlight: String
+        let suffix: String
+    }
+
     let imageName: String
     let title: String
     let message: String?
     var navigationPath: String?
     let primaryButtonTitle: String
     let secondaryButtonTitle: String? // Optional
-
-    // For structured rich text rendering
-// swiftlint:disable:next large_tuple
-    var attributedParts: (prefix: String, highlight: String, suffix: String)?
+    var attributedParts: AttributedParts?
 }

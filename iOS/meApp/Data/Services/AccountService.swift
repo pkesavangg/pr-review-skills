@@ -401,7 +401,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
                 try await updatePublishedState()
                 notifyActiveAccountChanged()
                 logger.log(
-                    level: .error, tag: tag, // swiftlint:disable:this multiline_arguments
+                    level: .error,
+                    tag: tag,
                     message: "Create goal saved offline for accountId=\(accountId), offline=true, reason=network_error, "
                         + "goalType=\(goal.goalType.rawValue), goalWeight=\(goal.goalWeight), initialWeight=\(goal.initialWeight)"
                 )
@@ -492,7 +493,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
                     NotificationCenter.default.post(name: .accountWeightUnitChanged, object: nil, userInfo: ["weightUnit": finalWeightUnit])
                 }
                 logger.log(
-                    level: .error, tag: tag, // swiftlint:disable:this multiline_arguments
+                    level: .error,
+                    tag: tag,
                     message: "Update bodyComp saved offline for accountId=\(accountId), offline=true, reason=network_error, "
                         + "weightUnit=\(bodyComp.weightUnit.rawValue), height=\(bodyComp.height), activityLevel=\(bodyComp.activityLevel.rawValue)"
                 )
@@ -1160,7 +1162,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
                 try await updatePublishedState()
                 notifyActiveAccountChanged()
                 logger.log(
-                    level: .error, tag: tag, // swiftlint:disable:this multiline_arguments
+                    level: .error,
+                    tag: tag,
                     message: "Update weightless saved offline for accountId=\(accountId), offline=true, reason=network_error, "
                         + "isWeightlessOn=\(isWeightlessOn), weightlessWeight=\(weightlessWeight)"
                 )
@@ -1176,9 +1179,12 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
 
     /// Refreshes the access token using the refresh token of the active account or a specific account by ID.
     func refreshTokens(accountId: String? = nil) async throws -> Tokens {
-        let account = accountId != nil ?
-            try await fetchAccount(byId: accountId!) : // swiftlint:disable:this force_unwrapping
-            activeAccount
+        let account: Account?
+        if let id = accountId {
+            account = try await fetchAccount(byId: id)
+        } else {
+            account = activeAccount
+        }
 
         guard let account = account else {
             throw AccountError.noActiveAccount

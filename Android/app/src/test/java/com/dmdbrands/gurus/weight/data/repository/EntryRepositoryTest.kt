@@ -635,6 +635,7 @@ class EntryRepositoryTest {
             bpmEntry = null,
             scaleEntry = BodyScaleEntryEntity(id = 1L, weight = 1650.0, bodyFat = null, muscleMass = null, water = null, bmi = null, source = "manual"),
             scaleEntryMetric = null,
+            babyEntry = null,
         )
     }
 
@@ -654,6 +655,7 @@ class EntryRepositoryTest {
             bpmEntry = null,
             scaleEntry = BodyScaleEntryEntity(id = 1L, weight = 1650.0, bodyFat = null, muscleMass = null, water = null, bmi = null, source = "manual"),
             scaleEntryMetric = null,
+            babyEntry = null,
         )
     }
 
@@ -688,7 +690,7 @@ class EntryRepositoryTest {
             deviceId = "device2",
         )
         val bpmEntryEntity = BpmEntryEntity(
-            id = 2L,
+            entryId = 2L,
             systolic = 120,
             diastolic = 80,
             pulse = 70,

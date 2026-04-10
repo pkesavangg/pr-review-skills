@@ -182,4 +182,7 @@ final class MockHealthKitStoreEntryService: EntryServiceProtocol {
     func fetchBpmEntries() async throws -> [BpmOperationDTO] { [] }
     func deleteBpmEntry(entryTimestamp: String) async throws {}
     func exportBpmCSV() async throws {}
+    func migrateBabyEntriesToDecigrams() async {}
+    func getEntry(byId id: UUID) async throws -> Entry? { nil }
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws {}
 }

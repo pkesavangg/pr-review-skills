@@ -83,7 +83,7 @@ struct BpmDeviceSettingsScreen: View {
                 ActionListItemView(
                     config: ActionListItemConfig(
                         title: lang.userNumber,
-                        value: lang.userNumberInfo(userNumber),
+                        value: lang.userNumberInfo(userNumber, device.sku),
                         chevronType: .none
                     )
                 )

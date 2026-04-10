@@ -12,6 +12,7 @@ struct BabyHistoryDayListScreen: View {
     @EnvironmentObject var router: Router<HistoryRoute>
 
     let day: BabyHistoryDay
+    @State private var openItemID: UUID?
 
     private var title: String {
         let formatter = DateFormatter()
@@ -41,6 +42,9 @@ struct BabyHistoryDayListScreen: View {
         .onAppear {
             historyStore.selectBabyDay(day)
         }
+        .onChange(of: historyStore.babyEntries) { _, entries in
+            if entries.isEmpty { router.navigateBack() }
+        }
         .onDisappear {
             historyStore.expandedBabyEntries.removeAll()
             historyStore.resetSelectedBabyDay()
@@ -57,12 +61,24 @@ struct BabyHistoryDayListScreen: View {
                         isExpanded: historyStore.expandedBabyEntries.contains(entry.id.uuidString),
                         onTap: {
                             toggleEntry(entry)
-                        }
+                        },
+                        onDelete: {
+                            historyStore.showDeleteBabyEntryAlert(entry: entry)
+                        },
+                        openItemID: $openItemID
                     )
                     .id(entry.id)
                 }
             }
         }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 10)
+                .onChanged { _ in
+                    if openItemID != nil {
+                        withAnimation { openItemID = nil }
+                    }
+                }
+        )
     }
 
     // MARK: - Private

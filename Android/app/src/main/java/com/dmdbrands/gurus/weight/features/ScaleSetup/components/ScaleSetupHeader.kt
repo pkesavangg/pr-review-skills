@@ -25,12 +25,13 @@ fun ScaleSetupHeader(
 ) {
   // Map SKU for display (e.g., 0022 -> 0383)
   val displaySku = DeviceHelper.mapSkuForDisplay(sku)
+  val isBabyScale = DeviceHelper.isBabyScale(sku)
   BackHandler {
     onBack()
   }
 
   AppScaffold(
-    title = ScaleSetupStrings.Header(displaySku),
+    title = if (isBabyScale) ScaleSetupStrings.BabyScaleHeader else ScaleSetupStrings.Header(displaySku),
     containerColor = colorScheme.secondaryBackground,
     navigationIcon = {
       AppIconButton(AppIcons.Default.Close) {

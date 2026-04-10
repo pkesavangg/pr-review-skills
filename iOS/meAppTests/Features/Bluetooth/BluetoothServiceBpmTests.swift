@@ -171,7 +171,7 @@ struct BluetoothServiceBpmTests {
     @Test("MockBluetoothService: connectBpm records broadcast ID")
     func mockConnectBpm() async {
         let mock = MockBluetoothService()
-        _ = await mock.connectBpm(broadcastId: "BPM001")
+        _ = await mock.connectBpm(broadcastId: "BPM001", userNumber: 1)
 
         #expect(mock.connectBpmCalls == 1)
         #expect(mock.lastConnectBpmBroadcastId == "BPM001")
@@ -202,7 +202,7 @@ struct BluetoothServiceBpmTests {
     func connectBpmEmptyBroadcastId() async {
         let sut = makeSUT()
 
-        let result = await sut.connectBpm(broadcastId: "")
+        let result = await sut.connectBpm(broadcastId: "", userNumber: 1)
 
         switch result {
         case .success:
@@ -275,6 +275,7 @@ struct BluetoothServiceBpmTests {
             accountService: account ?? MockAccountService(),
             scaleService: scale ?? MockScaleService(),
             entryService: entry ?? MockEntryService(),
+            babyService: MockBabyService(),
             logger: logger ?? MockLoggerService(),
             discoveryManager: discovery ?? MockBLEDiscoveryManager()
         )

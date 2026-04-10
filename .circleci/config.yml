@@ -10,7 +10,7 @@ jobs:
   gitleaks:
     macos:
       xcode: "16.2.0"
-    resource_class: macos.m4pro.medium
+    resource_class: macos.m2.medium.gen2
     steps:
       - checkout
       - run:
@@ -26,7 +26,7 @@ jobs:
   swiftlint:
     macos:
       xcode: "16.2.0"
-    resource_class: macos.m4pro.medium
+    resource_class: macos.m2.medium.gen2
     steps:
       - checkout
       - run:
@@ -51,7 +51,7 @@ jobs:
   build:
     macos:
       xcode: "16.2.0"
-    resource_class: macos.m4pro.medium
+    resource_class: macos.m2.medium.gen2
     steps:
       - checkout
       - run:
@@ -109,8 +109,8 @@ jobs:
   # ===========================================================
   # unit-tests:
   #   macos:
-  #     xcode: "16.0.0"
-  #   resource_class: macos.m1.medium.gen1
+  #     xcode: "16.2.0"
+  #   resource_class: macos.m2.medium.gen2
   #   steps:
   #     - checkout
   #     - run:
@@ -169,7 +169,7 @@ jobs:
   dependency-audit:
     macos:
       xcode: "16.2.0"
-    resource_class: macos.m4pro.medium
+    resource_class: macos.m2.medium.gen2
     steps:
       - checkout
       - run:
@@ -332,11 +332,14 @@ jobs:
             echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > Android/app/google-services.json
             echo "google-services.json restored."
       - run:
-          name: Run Android unit tests
+          name: Run Android unit tests with coverage verification
           working_directory: Android
-          command: ./gradlew test
+          command: ./gradlew test :app:jacocoTestReport :app:jacocoTestCoverageVerification
       - store_test_results:
           path: Android/app/build/test-results
+      - store_artifacts:
+          path: Android/app/build/reports/jacoco/jacocoTestReport/html
+          destination: coverage-report
 
   # ===========================================================
   # Job 9: OWASP Dependency Vulnerability Scan (Android)

@@ -10,6 +10,7 @@ struct DashboardLifecycleManagerTests {
 
     // MARK: - SUT Factory
 
+    // swiftlint:disable:next large_tuple
     private typealias SUTBundle = (
         store: DashboardStore,
         accountService: AccountService,
@@ -329,6 +330,42 @@ struct DashboardLifecycleManagerTests {
 
         // Removal state should be synced - no metrics removed by default
         #expect(store.state.ui.removedMetrics.isEmpty)
+    }
+
+    @Test("handleSettingsChange: invalidates chart series cache when streak refresh enabled")
+    func handleSettingsChangeInvalidatesChartSeriesCache() async {
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService; let cacheManager = sut.cacheManager
+        accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount()
+
+        let before = cacheManager.invalidateChartSeriesCalls
+
+        store.lifecycleManager.handleSettingsChange(shouldRefreshStreak: true)
+
+        let completed = await waitUntil(timeoutNanoseconds: 2_000_000_000) {
+            cacheManager.invalidateChartSeriesCalls > before
+        }
+
+        #expect(completed == true)
+        #expect(cacheManager.invalidateChartSeriesCalls > before)
+    }
+
+    @Test("handleSettingsChange: streak failure does not block goal loading or cache invalidation")
+    func handleSettingsChangeStreakFailureDoesNotBlockGoal() async {
+        let sut = makeSUT(); let store = sut.store; let cacheManager = sut.cacheManager
+        // No active account — streak refresh will fail (getProgress requires data),
+        // and goal loading will exit gracefully (no activeAccount guard).
+        // Key assertion: cache invalidation still runs after both independent error boundaries.
+
+        let before = cacheManager.invalidateChartSeriesCalls
+
+        store.lifecycleManager.handleSettingsChange(shouldRefreshStreak: true)
+
+        let completed = await waitUntil(timeoutNanoseconds: 2_000_000_000) {
+            cacheManager.invalidateChartSeriesCalls > before
+        }
+
+        #expect(completed == true)
+        #expect(cacheManager.invalidateChartSeriesCalls > before)
     }
 
     @Test("handleUnitChange: triggers streak refresh and UI update")

@@ -8,6 +8,7 @@ import com.dmdbrands.gurus.weight.data.api.IAuthAPI
 import com.dmdbrands.gurus.weight.data.api.IUserAPI
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.data.storage.db.dao.AccountDao
+import com.dmdbrands.gurus.weight.data.storage.db.dao.BabyProfileDao
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntityMapper
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.DashboardSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.GoalSettingsEntity
@@ -60,6 +61,7 @@ class AccountRepository
 @Inject
 constructor(
   private val accountDao: AccountDao,
+  private val babyProfileDao: BabyProfileDao,
   private val userDataStore: UserDataStore,
   private val tokenManager: ITokenManager,
   private val secureTokenStore: ISecureTokenStore,
@@ -912,5 +914,18 @@ constructor(
 
   override suspend fun setNotificationAlertShownForAccount(accountId: String, hasShown: Boolean) {
     userDataStore.setNotificationAlertShownForAccount(accountId, hasShown)
+  }
+
+  override suspend fun setActiveBabyId(accountId: String, babyId: String) {
+    babyProfileDao.setActiveBabyId(accountId, babyId)
+  }
+
+  override suspend fun getActiveBabyId(): String? {
+    val accountId = getActiveAccount().first()?.id ?: return null
+    return babyProfileDao.getActiveBabyId(accountId)
+  }
+
+  override suspend fun clearActiveBabyId(accountId: String) {
+    babyProfileDao.clearActiveBabyId(accountId)
   }
 }

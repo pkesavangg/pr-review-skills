@@ -19,6 +19,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     private let remoteRepo: EntryRepositoryAPIProtocol
     private let migrationService: SQLiteMigrationService
     private let swiftDataWorker: SwiftDataWorker
+    private let kvStorage: KvStorageServiceProtocol
     @MainActor static let shared = EntryService(accountService: AccountService.shared)
 
     // MARK: - Publishers ------------------------------------------------
@@ -72,7 +73,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         localRepo: EntryRepositoryProtocol? = nil,
         localKVRepo: EntrySyncStoreProtocol? = nil,
         remoteRepo: EntryRepositoryAPIProtocol? = nil,
-        migrationService: SQLiteMigrationService? = nil
+        migrationService: SQLiteMigrationService? = nil,
+        kvStorage: KvStorageServiceProtocol? = nil
     ) {
         self.accountService = accountService
         self.localRepo = localRepo ?? EntryRepository()
@@ -80,6 +82,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         self.remoteRepo = remoteRepo ?? EntryRepositoryAPI()
         self.migrationService = migrationService ?? SQLiteMigrationService()
         self.swiftDataWorker = SwiftDataWorker(modelContainer: PersistenceController.shared.container)
+        self.kvStorage = kvStorage ?? KvStorageService.shared
 
         Task { @MainActor in
             if let concreteAccountService = accountService as? AccountService {
@@ -236,6 +239,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     }
 
     // MARK: - Query
+
+    func getEntry(byId id: UUID) async throws -> Entry? {
+        return try await localRepo.fetchEntry(byId: id.uuidString)
+    }
 
     func getAllEntries() async throws -> [Entry] {
         let accountId = try getAccountId()
@@ -440,16 +447,22 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     // MARK: - Modular Year Delta Calculation
 
+    private struct YearDeltaResult {
+        let yearDelta: Int
+        let yearStartDTO: BathScaleOperationDTO?
+        let yearKey: String
+    }
+
     private func calculateYearDelta(
         latestWeight: Int, monthStartWeight: Int?, monthSeries: [HistoryMonth]
-    ) async throws -> (yearDelta: Int, yearStartDTO: BathScaleOperationDTO?, yearKey: String) { // swiftlint:disable:this large_tuple
+    ) async throws -> YearDeltaResult {
         guard let initYearMonth = monthSeries.last, let initYearWeight = initYearMonth.weight else {
-            return (0, nil, "")
+            return YearDeltaResult(yearDelta: 0, yearStartDTO: nil, yearKey: "")
         }
 
         guard let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) else {
             logger.log(level: .error, tag: tag, message: "Failed to calculate date 30 days ago for year delta calculation.")
-            return (0, nil, "")
+            return YearDeltaResult(yearDelta: 0, yearStartDTO: nil, yearKey: "")
         }
         let (initYearDate, yearKey) = parseYearKeyAndDate(from: initYearMonth.entryTimestamp, id: initYearMonth.id)
         let isWithin30Days = isoString(from: initYearDate) >= isoString(from: thirtyDaysAgo)
@@ -464,7 +477,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             key: yearKey, avgWeight: yearAvgWeight, accountId: try getAccountId()
         )
 
-        return (delta, yearStartDTO, yearKey)
+        return YearDeltaResult(yearDelta: delta, yearStartDTO: yearStartDTO, yearKey: yearKey)
     }
 
     private func parseYearKeyAndDate(from timestamp: String, id: String) -> (Date, String) {
@@ -726,7 +739,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let uniqueDaysAscending = uniqueDaysDescending.sorted()
 
         let todayStart = calendar.startOfDay(for: Date())
-        let yesterdayStart = calendar.date(byAdding: .day, value: -1, to: todayStart)! // swiftlint:disable:this force_unwrapping
+        guard let yesterdayStart = calendar.date(byAdding: .day, value: -1, to: todayStart) else {
+            return Streak(current: 0, max: 0)
+        }
 
         func isSameDay(_ firstDate: Date, _ secondDate: Date) -> Bool {
             calendar.isDate(firstDate, inSameDayAs: secondDate)
@@ -740,7 +755,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             dateToCheck = yesterdayStart
         } else if let first = uniqueDaysDescending.first, isSameDay(first, yesterdayStart) {
             currentStreak = 1
-            dateToCheck = calendar.date(byAdding: .day, value: -1, to: yesterdayStart)! // swiftlint:disable:this force_unwrapping
+            guard let twoDaysAgo = calendar.date(byAdding: .day, value: -1, to: yesterdayStart) else {
+                return Streak(current: 1, max: Self.computeLongestStreak(from: uniqueDaysAscending, calendar: calendar))
+            }
+            dateToCheck = twoDaysAgo
         } else {
             return Streak(current: 0, max: Self.computeLongestStreak(from: uniqueDaysAscending, calendar: calendar))
         }
@@ -865,6 +883,31 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
         } catch {
             logger.log(level: .error, tag: tag, message: "SQLite migration failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// Migrates existing baby entry weight from ounces to decigrams and length from inches to millimeters.
+    /// Runs once per account on app startup; skips if already completed for the active account.
+    func migrateBabyEntriesToDecigrams() async {
+        do {
+            let accountId = try getAccountId()
+            let key = KvStorageKeys.babyEntryDecigramsMigratedKey(for: accountId)
+            guard (kvStorage.getValue(forKey: key) as? Bool) != true else { return }
+
+            let allEntries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
+            let babyEntries = allEntries.filter { $0.deviceType == DeviceType.babyScale.rawValue && $0.babyEntry != nil }
+
+            // Idempotency: the heuristic (weight < 2835) skips already-converted entries,
+            // so a crash mid-loop is safely re-runnable on next launch.
+            for entry in babyEntries {
+                guard let baby = entry.babyEntry else { continue }
+                try await localRepo.updateEntry(entry)
+            }
+
+            logger.log(level: .info, tag: tag, message: "Baby entry decigram migration completed: \(babyEntries.count) entries")
+            kvStorage.setValue(true, forKey: key)
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Baby entry decigram migration failed: \(error.localizedDescription)")
         }
     }
 
@@ -1238,10 +1281,18 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     /// Checks if an Entry matches the given entryType.
     /// Entries without an entryType (legacy data) default to `.wg`.
+    /// Note: Baby scale entries use entryType "wg" but are excluded from adult weight queries.
+    /// Baby entries are served through the dedicated baby entry CRUD path (createBabyEntry/getBabyEntries).
     private func matchesEntryType(_ entry: Entry, entryType: EntryType) -> Bool {
         let type = entry.entryType
         if type.isEmpty { return entryType == .wg }
-        return type == entryType.rawValue
+        guard type == entryType.rawValue else { return false }
+        // Baby scale entries have entryType "wg" but belong in baby history, not weight history.
+        if entryType == .wg && entry.deviceType == DeviceType.babyScale.rawValue { return false }
+        // BPM entries should never appear in weight history, even if entryType was incorrectly set to "wg".
+        if entryType == .wg && entry.deviceType == DeviceType.bpm.rawValue { return false }
+        if entryType == .wg && entry.bpmEntry != nil { return false }
+        return true
     }
 
     /// DTO-level entry type matching for background-thread aggregation.
@@ -2110,6 +2161,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
             let notification = EntryNotification(from: entry)
             entrySaved.send(notification)
+            await syncUnsyncedBpmEntries()
         } catch {
             logger.log(
                 level: .error,
@@ -2163,7 +2215,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     // MARK: - Baby Entry CRUD
 
-    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String? = nil) async throws {
         let accountId = try getAccountId()
 
         let entry = Entry(
@@ -2175,7 +2227,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             babyId: babyId
         )
         entry.attempts = 0
-        entry.babyEntry = BabyEntry(babyId: babyId, length: length, weight: weight, note: note)
+        entry.babyEntry = BabyEntry(babyId: babyId, length: length, weight: weight, note: note, source: source)
 
         do {
             try await localRepo.saveEntry(entry)
