@@ -48,6 +48,26 @@ enum BaseGraphViewCacheManager {
         return hasher.finalize()
     }
 
+    static func yAxisCacheSignature(
+        cachedDomain: ClosedRange<Double>?,
+        cachedTicks: [Double]?
+    ) -> Int {
+        var hasher = Hasher()
+        hasher.combine(cachedDomain?.lowerBound.bitPattern ?? 0)
+        hasher.combine(cachedDomain?.upperBound.bitPattern ?? 0)
+
+        let ticks = cachedTicks ?? []
+        hasher.combine(ticks.count)
+        if let firstTick = ticks.first {
+            hasher.combine(firstTick.bitPattern)
+        }
+        if let lastTick = ticks.last {
+            hasher.combine(lastTick.bitPattern)
+        }
+
+        return hasher.finalize()
+    }
+
     static func viewHash(
         yAxisTicks: [Double],
         yAxisDomain: ClosedRange<Double>,

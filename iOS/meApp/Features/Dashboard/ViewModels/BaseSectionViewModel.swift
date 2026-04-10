@@ -701,15 +701,22 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     func syncYAxisFromStore() {
         guard let store = dashboardStore else { return }
 
+        let cachedDomain = store.state.graph.cachedYAxisDomain
+        let cachedTicks = store.state.graph.cachedYAxisTicks
+        let hasDomainChange = cachedDomain != nil && cachedDomain != yAxisDomain
+        let hasTickChange = cachedTicks != nil && cachedTicks != yAxisTicks
+
+        guard hasDomainChange || hasTickChange else { return }
+
         // Read cached values from dashboard store
-        if let cachedDomain = store.state.graph.cachedYAxisDomain {
+        if let cachedDomain, hasDomainChange {
             // Animate domain changes smoothly
             withAnimation(.easeInOut(duration: 0.15)) {
                 self.yAxisDomain = cachedDomain
             }
         }
 
-        if let cachedTicks = store.state.graph.cachedYAxisTicks {
+        if let cachedTicks, hasTickChange {
             // Suppress animation for tick changes
             withTransaction(Transaction(animation: nil)) {
                 self.yAxisTicks = cachedTicks

@@ -146,6 +146,14 @@ struct ChartSeriesContent: ChartContent {
             ? BabyDashboardChartStyle.percentileLineWidth(for: percentileLine)
             : lineWidth
         let plottedSelectedDate = showCrosshair ? selectedPlottedDate : nil
+        let regularColors = resolveColors(
+            forSeriesNamed: seriesName,
+            isOutsideMonthInterval: false
+        )
+        let outsideMonthColors = resolveColors(
+            forSeriesNamed: seriesName,
+            isOutsideMonthInterval: true
+        )
 
         ForEach(seriesPoints) { plottedPoint in
             let point = plottedPoint.original
@@ -159,7 +167,7 @@ struct ChartSeriesContent: ChartContent {
             let isThisPointSelected = showCrosshair && (plottedSelectedDate.map { xDate == $0 } ?? false)
 
             let isOutsideMonth = isOutsideActiveMonth(date: point.date)
-            let colors = resolveColors(for: point, isOutsideMonthInterval: isOutsideMonth)
+            let colors = isOutsideMonth ? outsideMonthColors : regularColors
 
             LineMark(
                 x: .value("Date", xDate),
@@ -184,19 +192,19 @@ struct ChartSeriesContent: ChartContent {
     }
 
     private func resolveColors(
-        for point: GraphSeries,
+        forSeriesNamed seriesName: String,
         isOutsideMonthInterval: Bool
     ) -> (line: Color, point: Color) {
-        if let percentileLine = BabyDashboardChartSupport.percentileLine(for: point.series) {
+        if let percentileLine = BabyDashboardChartSupport.percentileLine(for: seriesName) {
             let color = BabyDashboardChartStyle.percentileLineColor(for: percentileLine, theme: theme)
             return (color, color)
         }
         if babyProfile != nil,
-           point.series == DashboardStrings.weight || BabyDashboardChartSupport.isHeightSeries(point.series) {
+           seriesName == DashboardStrings.weight || BabyDashboardChartSupport.isHeightSeries(seriesName) {
             return (BabyDashboardChartStyle.weightColor, BabyDashboardChartStyle.weightColor)
         }
         return DashboardChartStyleProvider.seriesColors(
-            for: point.series,
+            for: seriesName,
             productType: productType,
             theme: theme,
             bpmClassification: bpmClassification,

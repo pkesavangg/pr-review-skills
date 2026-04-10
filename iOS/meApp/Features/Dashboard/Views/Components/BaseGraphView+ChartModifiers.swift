@@ -349,10 +349,7 @@ extension BaseGraphView {
                     localSelectedXValue = nil
                     viewModel.clearSelection()
                 }
-                .onChange(of: dashboardStore.state.graph.cachedYAxisDomain) { _, _ in
-                    viewModel.syncYAxisFromStore()
-                }
-                .onChange(of: dashboardStore.state.graph.cachedYAxisTicks) { _, _ in
+                .onChange(of: dashboardYAxisCacheSignature) { _, _ in
                     viewModel.syncYAxisFromStore()
                 }
         } else {

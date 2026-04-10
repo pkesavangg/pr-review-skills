@@ -149,6 +149,10 @@ actor SwiftDataWorker {
               let monthStartDate = calendar.date(byAdding: .day, value: -30, to: now) else {
             throw NSError(domain: "SwiftDataWorker", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to calculate date ranges"])
         }
+        let isoFormatter = DateTimeTools.isoFormatter(useUTC: true)
+        let nowString = isoFormatter.string(from: now)
+        let weekStartString = isoFormatter.string(from: weekStartDate)
+        let monthStartString = isoFormatter.string(from: monthStartDate)
         
         // Fetch once ordered DESC (newest first), then derive the week/month slices
         // in memory. This avoids repeating nearly identical SQLite work three times
@@ -162,14 +166,14 @@ actor SwiftDataWorker {
         let allEntries = try modelContext.fetch(allDescriptor)
         let allEntryData = allEntries.map { extractEntryData($0) }
 
+        // Entry timestamps are stored in ISO-8601 UTC format, so lexical comparison
+        // preserves ordering without reparsing every timestamp during streak refreshes.
         let weekEntryData = allEntryData.filter { entry in
-            guard let entryDate = DateTimeTools.parse(entry.entryTimestamp) else { return false }
-            return entryDate >= weekStartDate && entryDate <= now
+            entry.entryTimestamp >= weekStartString && entry.entryTimestamp <= nowString
         }
 
         let monthEntryData = allEntryData.filter { entry in
-            guard let entryDate = DateTimeTools.parse(entry.entryTimestamp) else { return false }
-            return entryDate >= monthStartDate && entryDate <= now
+            entry.entryTimestamp >= monthStartString && entry.entryTimestamp <= nowString
         }
 
         return ProgressFetchResult(

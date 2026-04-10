@@ -134,7 +134,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         lastDataChangeSignature = newSignature
 
         viewModel.refreshData()
-        viewModel.invalidateCache()
         viewModel.invalidateXAxisCache()
 
         Task { @MainActor in
@@ -343,6 +342,13 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         BaseGraphViewCacheManager.settingsChangeSignature(
             currentUnitRawValue: dashboardStore.currentUnit.rawValue,
             isWeightlessModeEnabled: dashboardStore.isWeightlessModeEnabled
+        )
+    }
+
+    var dashboardYAxisCacheSignature: Int {
+        BaseGraphViewCacheManager.yAxisCacheSignature(
+            cachedDomain: dashboardStore.state.graph.cachedYAxisDomain,
+            cachedTicks: dashboardStore.state.graph.cachedYAxisTicks
         )
     }
 

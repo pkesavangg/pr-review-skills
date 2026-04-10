@@ -1,68 +1,32 @@
-# Graph & Dashboard Performance Analysis
+# Graph Performance Analysis
 
-## Current Status
+## Current Graph Status
 
-Latest baseline: `Untitled2.trace`
+1. Graph-related severe hangs have reduced compared with the earlier profiling passes.
+2. The graph is noticeably better during normal updates, but there are still visible stalls during the later chart refresh and interaction windows.
+3. The graph is no longer failing mainly because of snapshot preprocessing. The remaining cost is centered on SwiftUI/Charts invalidation around `BaseGraphView`.
+4. The graph is still main-thread-sensitive, so any upstream dashboard refresh that dirties the graph subtree can turn into a visible stall.
 
-- Recorded on `2026-04-09` from `17:07:01 +05:30` to `17:09:34 +05:30`
-- Device: `iPhone 11`, iOS `18.7.3`
-- Duration: `152.71s`
-- Total hang time: `130.49s`
-- Hung share of session: `85.5%`
-- Total hang events: `76`
-- Microhangs: `21`
-- Hangs: `28`
-- Severe hangs (`> 2s`): `27`
-- Longest hang: `4.81s`
-- FPS samples: `151`
-- Zero-FPS samples: `128` (`84.8%`)
-- Average FPS: `3.57`
-- Average FPS when rendering: `23.43`
-- Max FPS: `47`
-- FPS samples `>= 55`: `0`
-- FPS samples `< 20`: `137`
-- Average GPU utilization: `0.19%`
-- Max GPU utilization: `13%`
+## Graph Root Cause
 
-Current conclusion:
+1. The main graph hot path is still `BaseGraphView.mainChartView` -> `scrollableChartModifiers` -> `ChartSeriesContent` -> `BaseGraphViewCacheSupport.pointsToRender`.
+2. SwiftUI invalidation work such as `AG::Graph`, `ViewGraph`, and `_UIHostingView` still shows up around the chart subtree, which means the graph is being rebuilt more broadly than it should be.
+3. The remaining graph stalls are often amplified by upstream dashboard progress and streak refreshes. Those refreshes dirty the dashboard first, and the graph then pays the redraw cost.
+4. Chart interaction can still add extra work on top of rebuilds, especially when selection and gesture plumbing overlap with the same invalidation window.
 
-1. The app is still primarily blocked by main-thread work, not GPU saturation.
-2. The worst user-visible problem is still loading-time and post-loading responsiveness, especially around the snapshot overview and the transition after all three snapshot cards appear.
-3. Scrolling is still below target because long blocked periods prevent frame production.
-4. The loading screen is better than before, but it is still not at an acceptable level for hang frequency or smoothness.
+## Graph Remediations Applied
 
-Most visible remaining loading issue:
+1. `BaseGraphView` now observes a single Y-axis cache signature instead of reacting separately to cached-domain and cached-tick updates.
+2. `BaseSectionViewModel.syncYAxisFromStore()` now exits early when the incoming cached Y-axis values already match local state.
+3. `BaseGraphView.handleDataSignatureChange(...)` no longer performs an extra local cache invalidation after `refreshData()` already invalidates the same caches.
+4. `ChartSeriesContent.chartContentForSeries(...)` now resolves colors once per series render pass instead of re-resolving them for every plotted point.
+5. `DashboardStreakManager.refreshStreakData()` now coalesces overlapping refreshes so repeated dashboard lifecycle callbacks do not keep re-triggering graph-invalidating progress work.
+6. `DateTimeTools` now caches parsed timestamps plus derived local day/month keys, which reduces repeated formatter work that was feeding back into graph refreshes.
+7. `SwiftDataWorker.fetchProgressData(accountId:)` now derives week and month slices from ISO-8601 string boundaries instead of reparsing every timestamp during each progress refresh.
 
-1. The snapshot overview still has a risk of hitching during the transition from skeleton cards to fully rendered cards.
-2. The baby snapshot remains the riskiest of the three cards because it also computes percentile-curve data after reveal.
+## What To Validate Next
 
-## Remediations
-
-Already applied:
-
-1. `EntryService.loadDashboardData(entryType:)` coalesces duplicate callers so concurrent dashboard refreshes share one in-flight load.
-2. Product switching no longer forces an immediate duplicate dashboard load before dashboard initialization.
-3. `EntryService.performSync()` skips dashboard recomputation when sync does not change dashboard data.
-4. `DashboardLifecycleManager.initializeDashboard()` defers sync so first render can settle before sync work starts competing with UI work.
-5. `DashboardLifecycleManager.onAppearActions()` no longer stacks another near-immediate sync on top of initialization.
-6. `DashboardDisplayManager.updateMetricsForCurrentView()` coalesces repeated metric refreshes and now skips metric recomputation while the graph is actively scrolling.
-7. `DashboardDisplayManager.getOperationsForLabelDateRange()` caches filtered label-range operations so repeated display and metric reads do not keep re-filtering the dashboard timeline on the main thread.
-8. `MultiDeviceSnapshotView` now reveals snapshot cards sequentially instead of mounting all three chart-heavy cards in the same frame after skeleton loading finishes.
-9. `WeightSnapshotCard`, `BpmSnapshotCard`, and `BabySnapshotCard` now run cache/chart preprocessing at `.utility` priority instead of `.userInitiated`.
-10. `BabySnapshotCard` now caches grouped percentile-curve points by baby, week window, and unit so repeated reveals do not regenerate WHO percentile data on the loading transition.
-11. `MultiDeviceSnapshotViewModel` now marks snapshot cards ready independently, so the overview no longer waits for every dataset to finish before showing the first finished card.
-12. `EntryService.loadBabyDashboardData(babyId:)` now coalesces overlapping loads for the same baby profile and runs aggregation work at `.utility` priority.
-
-Next remediations to focus on:
-
-1. Keep targeting the loading screen first, especially the hang after all three snapshots appear.
-2. Keep monitoring the baby snapshot specifically, but the next percentile-curve step is now to validate whether the new per-window cache materially reduces the post-reveal hang.
-3. Avoid any full dashboard reloads triggered from snapshot-loading or metric-update notifications when a local refresh is enough.
-4. Continue moving remaining `EntryService` DTO filtering, signature work, and summary reducers behind a dedicated background actor instead of a `@MainActor` service shell.
-5. Re-profile specifically around app launch, loading screen, snapshot reveal, and the first transition into dashboard content.
-
-Validation still required:
-
-1. Re-run Instruments after the latest snapshot-loading changes.
-2. Confirm whether hang frequency during loading and right after snapshot reveal drops materially.
-3. Confirm whether scrolling improves after the loading-screen bottleneck is reduced.
+1. Re-profile the late-session graph windows and confirm `BaseGraphView`, `ChartSeriesContent`, and `pointsToRender` appear less often in the top stacks.
+2. Confirm the graph no longer gets dirtied repeatedly by overlapping streak and progress refreshes.
+3. If interaction stalls remain, simplify the redundant gesture plumbing layered on top of `chartXSelection`.
+4. If the graph body is still rebuilding too broadly, move large chart render inputs behind a reference-backed render model so SwiftUI does less copying and diffing per invalidation.
