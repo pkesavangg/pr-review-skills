@@ -420,7 +420,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
                     if case .baby = $0 { return true }
                     return false
                 }
-                self.canShowSnapshotOverview = items.count > 1 || self.hasBabySnapshotItem
+                self.canShowSnapshotOverview = items.count > 1
             }
             .store(in: &cancellables)
 

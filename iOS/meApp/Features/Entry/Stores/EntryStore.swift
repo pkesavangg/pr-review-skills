@@ -470,7 +470,8 @@ final class EntryStore: ObservableObject {
 
         guard babyForm.isValid else { return }
 
-        guard case .baby(let profile) = productTypeStore.selectedItem else { return }
+        guard case .baby(let profile) = productTypeStore.selectedItem,
+              !profile.isPendingSelection else { return }
 
         let entryTimestamp = DateTimeTools.isoString(
             date: babyForm.date.value,

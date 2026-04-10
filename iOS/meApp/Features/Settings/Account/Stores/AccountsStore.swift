@@ -36,6 +36,8 @@ class AccountsStore: ObservableObject {
     @Published var emailForLogin: String?
     @Published var canShowAccountSignupScreen = false
 
+    var onAccountSwitchSuccess: (() -> Void)?
+
     private let tag = "AccountsStore"
     var cancellables: Set<AnyCancellable> = []
 
@@ -176,6 +178,7 @@ class AccountsStore: ObservableObject {
                 try await accountService.switchAccount(to: account)
                 logger.log(level: .info, tag: tag, message: "Switched active account to \(accountId)")
                 notificationService.showToast(ToastModel(message: toastLang.switchingAccount(userName)))
+                onAccountSwitchSuccess?()
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to switch active account", data: error.localizedDescription)
                 switch error {

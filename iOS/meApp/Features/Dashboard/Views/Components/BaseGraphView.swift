@@ -445,6 +445,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
 
     private var chartSeriesContent: ChartSeriesContent {
         let visiblePercentileRange: ClosedRange<Date>? = {
+            if selectedBabyProfile != nil, !viewModel.hasXAxis {
+                return viewModel.dateRange
+            }
+
             let ticks: [Date]
             if viewModel.timePeriod == .week || viewModel.timePeriod == .year {
                 ticks = viewModel.xAxisValues.sorted()

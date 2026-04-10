@@ -796,6 +796,21 @@ final class AccountMigrationService { // swiftlint:disable:this type_body_length
         logger.log(level: .info, tag: tag, message: "Cleaned up feed data for account: \(accountId)")
     }
 
+    // MARK: - Upgrade Migrations
+
+    /// Migrates existing pre-5.1.0 accounts that have no productTypes set.
+    /// Every pre-5.1.0 user was a weight scale user, so default to ["myWeight"].
+    /// Must run before `registerSessionServices()` so ProductTypeStore sees the correct value.
+    func migrateProductTypesIfNeeded(for account: Account) {
+        guard account.productTypes.isEmpty else { return }
+        account.productTypes = ["myWeight"]
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Migrated productTypes to [\"myWeight\"] for accountId=\(account.accountId)"
+        )
+    }
+
     // MARK: - Private Methods
 
     /// Finds all account IDs that have keys stored in UserDefaults

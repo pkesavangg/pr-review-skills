@@ -129,9 +129,17 @@ struct AppInputField: View {
     }
 
     private var inputContent: some View {
-        ZStack(alignment: .leading) {
-            floatingLabelView
-            baseInputView
+        HStack(spacing: 0) {
+            ZStack(alignment: .leading) {
+                floatingLabelView
+                baseInputView
+            }
+            if let trailingLabel = config.trailingLabel {
+                Text(trailingLabel)
+                    .fontOpenSans(.subHeading1)
+                    .foregroundColor(theme.textSubheading)
+                    .padding(.trailing, .spacingSM)
+            }
         }
     }
 

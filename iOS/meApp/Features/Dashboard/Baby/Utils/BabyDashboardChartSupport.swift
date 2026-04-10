@@ -47,20 +47,27 @@ enum BabyDashboardChartSupport {
         period: TimePeriod,
         calendar: Calendar = .current
     ) -> [BathScaleWeightSummary] {
-        let daily = dummyDailySummaries(for: babyProfile, calendar: calendar)
         switch period {
-        case .week, .month:
-            return daily
+        case .week:
+            return dummyDailySummaries(
+                for: babyProfile,
+                calendar: calendar,
+                endDate: upcomingSunday(from: Date(), calendar: calendar)
+            )
+        case .month:
+            return dummyDailySummaries(for: babyProfile, calendar: calendar)
         case .year, .total:
+            let daily = dummyDailySummaries(for: babyProfile, calendar: calendar)
             return aggregateMonthly(daily, calendar: calendar)
         }
     }
 
     static func dummyDailySummaries(
         for babyProfile: BabyProfile,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        endDate: Date? = nil
     ) -> [BathScaleWeightSummary] {
-        let today = calendar.startOfDay(for: Date())
+        let today = calendar.startOfDay(for: endDate ?? Date())
         let birthday = resolvedBirthday(for: babyProfile, calendar: calendar, today: today)
         let startDate = max(
             birthday,
@@ -85,6 +92,16 @@ enum BabyDashboardChartSupport {
                 weight: Double(dummyStoredWeight(forDayOfLife: dayOfLife, birthWeightStored: birthWeightStored))
             )
         }
+    }
+
+    private static func upcomingSunday(
+        from date: Date,
+        calendar: Calendar = .current
+    ) -> Date {
+        let normalizedDate = calendar.startOfDay(for: date)
+        let weekday = calendar.component(.weekday, from: normalizedDate)
+        let daysUntilSunday = (8 - weekday) % 7
+        return calendar.date(byAdding: .day, value: daysUntilSunday, to: normalizedDate) ?? normalizedDate
     }
 
     static func percentileSeries(

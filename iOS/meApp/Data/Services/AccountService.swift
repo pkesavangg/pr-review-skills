@@ -48,10 +48,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         
         $activeAccount
             .dropFirst()
-            .sink { data in
+            .sink { [weak self] data in
                 if data == nil {
                     ServiceRegistry.shared.deregisterSessionServices()
                 } else {
+                    if let data { self?.migrationService.migrateProductTypesIfNeeded(for: data) }
                     ServiceRegistry.shared.registerSessionServices()
                     Theme.shared.setActiveAccount(data?.accountId)
                 }
@@ -503,6 +504,24 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
                 throw error
             }
         }
+    }
+
+    @discardableResult
+    func updateProductTypes(_ productTypes: [String]) async throws -> Account {
+        guard let accountId = activeAccount?.accountId,
+              let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
+            throw AccountError.noActiveAccount
+        }
+
+        localAccount.productTypes = productTypes
+        try await updateAccountClearingTokens(localAccount)
+        try await updatePublishedState(forceRefresh: true)
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Updated productTypes=\(productTypes) for accountId=\(accountId)"
+        )
+        return localAccount
     }
 
     /// Updates the tokens for the active account or a specific account by ID.
