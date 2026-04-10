@@ -1,4 +1,4 @@
-package com.dmdbrands.gurus.weight.features.common.helper
+package com.dmdbrands.gurus.weight.features.common.helper.form
 
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
