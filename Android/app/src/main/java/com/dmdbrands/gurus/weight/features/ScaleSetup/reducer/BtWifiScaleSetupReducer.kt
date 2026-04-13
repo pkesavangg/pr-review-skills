@@ -148,6 +148,14 @@ sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
   ) : BtWifiScaleSetupIntent
 
   data class SetDashboardKeys(val dashboardKeys: List<DashboardKey>) : BtWifiScaleSetupIntent
+
+  /**
+   * Shows the "Saving..." loader, waits briefly to acknowledge the save, dismisses the loader,
+   * and then invokes [onComplete] so the UI can navigate back. Used by sub-pages of
+   * the Customize-Your-Settings flow (DASHBOARD_METRICS, SCALE_METRICS, SCALE_MODE, SCALE_USERNAME)
+   * to give visible feedback on SAVE before returning to the parent page (MA-2501).
+   */
+  data class ShowSavingLoader(val onComplete: () -> Unit) : BtWifiScaleSetupIntent
   data class SetGoalProgress(val progress: Progress) : BtWifiScaleSetupIntent
   data class SetWifiList(val wifiList: List<GGWifiInfo>) : BtWifiScaleSetupIntent
   data class SetScaleSku(

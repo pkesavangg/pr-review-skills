@@ -22,6 +22,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
+import com.dmdbrands.gurus.weight.features.ScaleSetup.ScaleSetupConstants
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.manager.BLEDiscoveryManager
 import com.dmdbrands.gurus.weight.features.ScaleSetup.manager.IBLEDiscoveryManager
@@ -196,6 +197,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
             BtWifiScaleSetupIntent.Skip -> onSkip()
             BtWifiScaleSetupIntent.TryAgain -> onTryAgain()
             is BtWifiScaleSetupIntent.UpdateSettings -> updateDevicePreferences(intent.dashboardKeys, intent.preferences)
+            is BtWifiScaleSetupIntent.ShowSavingLoader -> showSavingLoader(intent.onComplete)
             BtWifiScaleSetupIntent.RefreshNetworks -> onRefreshNetworks()
             BtWifiScaleSetupIntent.HandlePasswordNetworkStatus -> wifiManager.handlePasswordNetworkStatus()
             is BtWifiScaleSetupIntent.RequestPermission -> requestPermission(intent.permissionType)
@@ -955,6 +957,23 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
     }
 
     // --- UI helpers ---
+
+    /**
+     * Shows the "Saving..." loader on a Customize-Your-Settings sub-page SAVE, waits
+     * [ScaleSetupConstants.DELAY_AFTER_SAVE_MS] so the loader is perceivable, dismisses it,
+     * and invokes [onComplete] so the UI can navigate back. Fixes MA-2501.
+     */
+    private fun showSavingLoader(onComplete: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                dialogQueueService.showLoader(ScaleSetupStrings.SaveScaleLoader)
+                delay(ScaleSetupConstants.DELAY_AFTER_SAVE_MS)
+            } finally {
+                dialogQueueService.dismissLoader()
+            }
+            onComplete()
+        }
+    }
 
     private fun openHelpModal() {
         dialogQueueService.enqueue(
