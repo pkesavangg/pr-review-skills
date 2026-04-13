@@ -922,7 +922,7 @@ constructor(
             ),
           )
           if (!_state.value.hasScanStarted) {
-            ggPermissionService.startScan(GGAppType.WEIGHT_GURUS, updatedProfile)
+            ggPermissionService.startScan(GGAppType.ME_HEALTH, updatedProfile)
             handleIntent(AppIntent.SetScanStatus(true))
           }
           ggDeviceService.updateProfile(updatedProfile) {}
