@@ -46,17 +46,20 @@ class DeviceCatalogDataTest {
   }
 
   @Test
-  fun `no SKU overlap between SCALES and BABY_SCALES`() {
-    val scaleSkus = SCALES.map { it.sku }.toSet()
-    val babySkus = BABY_SCALES.map { it.sku }.toSet()
-    assertThat(scaleSkus.intersect(babySkus)).isEmpty()
+  fun `BABY_SCALES is a subset of SCALES`() {
+    assertThat(SCALES).containsAtLeastElementsIn(BABY_SCALES)
   }
 
   @Test
-  fun `no SKU overlap between SCALES and BPM_DEVICES`() {
-    val scaleSkus = SCALES.map { it.sku }.toSet()
+  fun `BPM_DEVICES is a subset of SCALES`() {
+    assertThat(SCALES).containsAtLeastElementsIn(BPM_DEVICES)
+  }
+
+  @Test
+  fun `no SKU overlap between BABY_SCALES and BPM_DEVICES`() {
+    val babySkus = BABY_SCALES.map { it.sku }.toSet()
     val bpmSkus = BPM_DEVICES.map { it.sku }.toSet()
-    assertThat(scaleSkus.intersect(bpmSkus)).isEmpty()
+    assertThat(babySkus.intersect(bpmSkus)).isEmpty()
   }
 
   @Test

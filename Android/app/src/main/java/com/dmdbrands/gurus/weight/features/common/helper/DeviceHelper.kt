@@ -30,7 +30,7 @@ object DeviceHelper {
   fun isBabyScale(sku: String): Boolean = sku in BABY_SCALE_SKUS
 
   /** All known Blood Pressure Monitor SKUs. */
-  val BPM_SKUS: Set<String> = setOf(SKU_0603, SKU_0661, SKU_0634, SKU_0663)
+  val BPM_SKUS: Set<String> = setOf(SKU_0603, SKU_0661, SKU_0634, SKU_0663, SKU_0604, SKU_0636)
 
   /** Returns `true` when the given [sku] identifies a Blood Pressure Monitor. */
   fun isBpmDevice(sku: String): Boolean = sku in BPM_SKUS

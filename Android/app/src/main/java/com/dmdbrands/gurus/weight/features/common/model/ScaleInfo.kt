@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.model
 
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import kotlinx.serialization.Serializable
 
 /**
@@ -51,22 +52,10 @@ val SCALES =
     ScaleInfo("Wi-Fi Smart Scale", "0396", ScaleSetupType.Wifi, false, createdAt = null),
     ScaleInfo("Wi-Fi Smart Scale", "0397", ScaleSetupType.EspTouchWifi, false, createdAt = null),
     ScaleInfo("AccuCheck Verve Smart Scale", "0412", ScaleSetupType.BtWifiR4, true, createdAt = null),
+    // Baby Scales
     ScaleInfo("Smart Baby Scale", "0220", ScaleSetupType.BabyScale, false, createdAt = null),
     ScaleInfo("Smart Baby Scale", "0222", ScaleSetupType.BabyScale, false, createdAt = null),
-    ScaleInfo("Smart Blood Pressure Monitor", "0603", ScaleSetupType.Bluetooth, false, createdAt = null),
-    ScaleInfo("Smart Blood Pressure Monitor", "0634", ScaleSetupType.Bluetooth, false, createdAt = null),
-    ScaleInfo("Smart Blood Pressure Monitor", "0661", ScaleSetupType.Bluetooth, false, createdAt = null),
-    ScaleInfo("Smart Blood Pressure Monitor", "0663", ScaleSetupType.Bluetooth, false, createdAt = null),
-  )
-
-val BABY_SCALES =
-  listOf(
-    ScaleInfo("Smart Baby Scale", "0220", ScaleSetupType.Bluetooth, false, createdAt = null),
-    ScaleInfo("Smart Baby Scale", "0222", ScaleSetupType.Bluetooth, false, createdAt = null),
-  )
-
-val BPM_DEVICES =
-  listOf(
+    // Blood Pressure Monitors
     ScaleInfo("Smart Wrist Blood Pressure Monitor", "0603", ScaleSetupType.Bluetooth, false, createdAt = null),
     ScaleInfo("Smart Blood Pressure Monitor", "0604", ScaleSetupType.Bluetooth, false, createdAt = null),
     ScaleInfo("Smart Pro-Series Blood Pressure Monitor", "0634", ScaleSetupType.Bluetooth, false, createdAt = null),
@@ -74,3 +63,9 @@ val BPM_DEVICES =
     ScaleInfo("Smart Blood Pressure Monitor", "0661", ScaleSetupType.Bluetooth, false, createdAt = null),
     ScaleInfo("Smart Blood Pressure Monitor", "0663", ScaleSetupType.Bluetooth, false, createdAt = null),
   )
+
+/** Baby scales — derived from [SCALES] via [DeviceHelper.BABY_SCALE_SKUS]. */
+val BABY_SCALES: List<ScaleInfo> = SCALES.filter { it.sku in DeviceHelper.BABY_SCALE_SKUS }
+
+/** Blood Pressure Monitors — derived from [SCALES] via [DeviceHelper.BPM_SKUS]. */
+val BPM_DEVICES: List<ScaleInfo> = SCALES.filter { it.sku in DeviceHelper.BPM_SKUS }
