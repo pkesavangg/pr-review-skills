@@ -57,7 +57,7 @@ struct YAxisCalculator {
         goalWeight: Double?,
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertStoredWeightToDisplay: (Int) -> Double,
+        convertStoredWeightToDisplay: (Double) -> Double,
         chartHeight: CGFloat = 265,
         lastScale: YAxisScale? = nil
     ) -> YAxisScale {
@@ -210,7 +210,7 @@ struct YAxisCalculator {
         operations: [BathScaleWeightSummary],
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertStoredWeightToDisplay: (Int) -> Double
+        convertStoredWeightToDisplay: (Double) -> Double
     ) -> Double {
         let weightValues = extractWeightValues(
             operations: operations,
@@ -227,15 +227,15 @@ struct YAxisCalculator {
         operations: [BathScaleWeightSummary],
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertStoredWeightToDisplay: (Int) -> Double
+        convertStoredWeightToDisplay: (Double) -> Double
     ) -> [Double] {
         return operations.map { summary in
             if isWeightlessMode {
                 guard let anchor = anchorWeight else { return 0 }
-                let converted = convertStoredWeightToDisplay(Int(summary.weight))
+                let converted = convertStoredWeightToDisplay(summary.weight)
                 return converted - anchor
             } else {
-                return convertStoredWeightToDisplay(Int(summary.weight))
+                return convertStoredWeightToDisplay(summary.weight)
             }
         }
     }
@@ -246,7 +246,7 @@ struct YAxisCalculator {
         goalWeight: Double,
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertStoredWeightToDisplay: (Int) -> Double,
+        convertStoredWeightToDisplay: (Double) -> Double,
         lastScale: YAxisScale? = nil
     ) -> YAxisScale {
         let weightValues = extractWeightValues(

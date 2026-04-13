@@ -260,10 +260,10 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
         let weightValues = opsToUse.map { summary -> Double in
             if getIsWeightlessModeEnabled() {
                 guard let anchorWeight = getWeightlessAnchorWeight() else { return 0 }
-                let currentWeight = goalManager.convertWeightToDisplay(Int(summary.weight))
+                let currentWeight = goalManager.convertWeightToDisplay(summary.weight)
                 return currentWeight - anchorWeight
             } else {
-                return goalManager.convertWeightToDisplay(Int(summary.weight))
+                return goalManager.convertWeightToDisplay(summary.weight)
             }
         }
         if let averageWeight = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count) {

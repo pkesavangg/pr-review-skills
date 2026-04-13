@@ -183,7 +183,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         selectedMetric: String?,
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: @escaping (Int) -> Double
+        convertWeight: @escaping (Double) -> Double
     ) -> [GraphSeries] {
         dataPreparer.buildChartSeries(
             from: operations,
@@ -207,7 +207,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         visibleOperations: [BathScaleWeightSummary],
         babyProfile: BabyProfile,
         metric: BabyMetric,
-        convertWeight: @escaping (Int) -> Double,
+        convertWeight: @escaping (Double) -> Double,
         convertDecigramsToDisplay: @escaping (Int) -> Double,
         yAxisDomain: ClosedRange<Double>
     ) -> [GraphSeries] {
@@ -250,7 +250,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         selectedMetric: String?,
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: @escaping (Int) -> Double,
+        convertWeight: @escaping (Double) -> Double,
         yAxisDomain: ClosedRange<Double>
     ) -> [GraphSeries] {
         guard !allOperations.isEmpty else { return [] }
@@ -300,7 +300,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         goalWeight: Double?,
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: @escaping (Int) -> Double,
+        convertWeight: @escaping (Double) -> Double,
         chartHeight: CGFloat
     ) -> YAxisScale {
         let scale = YAxisCalculator.calculateYAxis(
@@ -332,7 +332,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         goalWeight: Double?,
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: @escaping (Int) -> Double,
+        convertWeight: @escaping (Double) -> Double,
         chartHeight: CGFloat
     ) {
         let scale = getYAxisScale(
@@ -443,7 +443,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         from operations: [BathScaleWeightSummary],
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: @escaping (Int) -> Double
+        convertWeight: @escaping (Double) -> Double
     ) -> Double? {
         dataPreparer.interpolatedDisplayWeight(
             at: date,
@@ -460,7 +460,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         period: TimePeriod,
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: @escaping (Int) -> Double,
+        convertWeight: @escaping (Double) -> Double,
         labelRange: DateInterval? = nil
     ) -> Double? {
         dataPreparer.interpolatedAverageForVisibleRange(
@@ -478,7 +478,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         from operations: [BathScaleWeightSummary],
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: @escaping (Int) -> Double
+        convertWeight: @escaping (Double) -> Double
     ) -> Double {
         dataPreparer.averageWeight(
             for: operations,
@@ -492,7 +492,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         _ operations: [BathScaleWeightSummary],
         anchorWeight: Double?,
         period: TimePeriod,
-        convertWeight: @escaping (Int) -> Double
+        convertWeight: @escaping (Double) -> Double
     ) -> Double? {
         dataPreparer.weightlessDisplay(
             for: operations,

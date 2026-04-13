@@ -814,7 +814,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     }
 
     // MARK: - Entry Selection Methods
-    func selectEntry(_ entry: BathScaleWeightSummary?, convertWeight: @escaping (Int) -> Double, triggerUpdate: @escaping () -> Void) {
+    func selectEntry(_ entry: BathScaleWeightSummary?, convertWeight: @escaping (Double) -> Double, triggerUpdate: @escaping () -> Void) {
         triggerUpdate()
     }
 

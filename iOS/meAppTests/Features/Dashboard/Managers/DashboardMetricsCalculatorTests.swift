@@ -255,7 +255,8 @@ struct DashboardMetricsCalculatorTests {
         let sut = makeSUT()
         let point = DashboardTestFixtures.makeSummary(weight: 1800)
         let context = DashboardTestFixtures.makeDisplayWeightContext(
-            selectedPoint: point
+            selectedPoint: point,
+            operations: [point]
         )
 
         let result = sut.calculateDisplayWeight(context: context)
@@ -269,6 +270,7 @@ struct DashboardMetricsCalculatorTests {
         let point = DashboardTestFixtures.makeSummary(weight: 1850)
         let context = DashboardTestFixtures.makeDisplayWeightContext(
             selectedPoint: point,
+            operations: [point],
             isWeightlessMode: true,
             anchorWeight: 180.0
         )
@@ -285,6 +287,7 @@ struct DashboardMetricsCalculatorTests {
         let point = DashboardTestFixtures.makeSummary(weight: 1850)
         let context = DashboardTestFixtures.makeDisplayWeightContext(
             selectedPoint: point,
+            operations: [point],
             isWeightlessMode: true,
             anchorWeight: nil
         )
@@ -294,12 +297,15 @@ struct DashboardMetricsCalculatorTests {
         #expect(result == nil)
     }
 
-    @Test("calculateDisplayWeight: selected date uses interpolatedWeight callback")
+    @Test("calculateDisplayWeight: selected date with no same-day entries uses interpolatedWeight callback")
     func displayWeightSelectedDate() {
         let sut = makeSUT()
         let date = DateTimeTools.getDateFromDateString("2026-03-03", format: "yyyy-MM-dd")
+        // Operations on a different day so interpolation is used
+        let ops = [DashboardTestFixtures.makeSummary(period: "2026-03-01", weight: 1800)]
         let context = DashboardTestFixtures.makeDisplayWeightContext(
             selectedDate: date,
+            operations: ops,
             interpolatedWeight: { _, _, _, _, _ in 181.5 }
         )
 
@@ -312,6 +318,7 @@ struct DashboardMetricsCalculatorTests {
     func displayWeightSelectedDateNilInterpolation() {
         let sut = makeSUT()
         let date = DateTimeTools.getDateFromDateString("2026-03-03", format: "yyyy-MM-dd")
+        // No same-day entries, so falls through to interpolation
         let context = DashboardTestFixtures.makeDisplayWeightContext(
             selectedDate: date,
             interpolatedWeight: { _, _, _, _, _ in nil }
@@ -429,12 +436,13 @@ struct DashboardMetricsCalculatorTests {
         let context = DashboardTestFixtures.makeDisplayWeightContext(
             selectedPoint: point,
             selectedDate: date,
+            operations: [point],
             interpolatedWeight: { _, _, _, _, _ in 175.0 }
         )
 
         let result = sut.calculateDisplayWeight(context: context)
 
-        // Point should win: 1900 / 10 = 190.0
+        // Point's day average should win: 1900 / 10 = 190.0
         #expect(result == 190.0)
     }
 
@@ -444,6 +452,7 @@ struct DashboardMetricsCalculatorTests {
         let point = DashboardTestFixtures.makeSummary(weight: 1750)  // 175.0
         let context = DashboardTestFixtures.makeDisplayWeightContext(
             selectedPoint: point,
+            operations: [point],
             isWeightlessMode: true,
             anchorWeight: 180.0
         )
@@ -1039,7 +1048,8 @@ struct DashboardMetricsCalculatorTests {
         let sut = makeSUT()
         let point = DashboardTestFixtures.makeSummary(weight: 10)  // 1.0 lbs
         let context = DashboardTestFixtures.makeDisplayWeightContext(
-            selectedPoint: point
+            selectedPoint: point,
+            operations: [point]
         )
 
         let result = sut.calculateDisplayWeight(context: context)
@@ -1059,6 +1069,100 @@ struct DashboardMetricsCalculatorTests {
         let result = sut.calculateDisplayWeight(context: context)
 
         #expect(result == 182.3)
+    }
+
+    @Test("calculateDisplayWeight: week period with multiple same-day entries returns arithmetic average")
+    func displayWeightWeekDayAverage() {
+        let sut = makeSUT()
+        let dayDate = DateTimeTools.getDateFromDateString("2026-03-01", format: "yyyy-MM-dd")
+        let ops = [
+            DashboardTestFixtures.makeSummary(period: "2026-03-01",
+                date: dayDate.addingTimeInterval(3600), weight: 1800),      // 180.0
+            DashboardTestFixtures.makeSummary(period: "2026-03-01",
+                date: dayDate.addingTimeInterval(7200), weight: 1820),      // 182.0
+            DashboardTestFixtures.makeSummary(period: "2026-03-01",
+                date: dayDate.addingTimeInterval(10800), weight: 1810)      // 181.0
+        ]
+        let point = ops[0]
+        let context = DashboardTestFixtures.makeDisplayWeightContext(
+            selectedPoint: point,
+            operations: ops,
+            period: .week
+        )
+
+        let result = sut.calculateDisplayWeight(context: context)
+
+        // Day average: (180.0 + 182.0 + 181.0) / 3 = 181.0
+        #expect(result == 181.0)
+    }
+
+    @Test("calculateDisplayWeight: week period selected date averages all same-day entries")
+    func displayWeightWeekSelectedDateDayAverage() {
+        let sut = makeSUT()
+        let dayDate = DateTimeTools.getDateFromDateString("2026-03-01", format: "yyyy-MM-dd")
+        let ops = [
+            DashboardTestFixtures.makeSummary(period: "2026-03-01",
+                date: dayDate.addingTimeInterval(3600), weight: 1803),      // 180.3
+            DashboardTestFixtures.makeSummary(period: "2026-03-01",
+                date: dayDate.addingTimeInterval(7200), weight: 1807)       // 180.7
+        ]
+        let context = DashboardTestFixtures.makeDisplayWeightContext(
+            selectedDate: dayDate.addingTimeInterval(5400),
+            operations: ops,
+            period: .week
+        )
+
+        let result = sut.calculateDisplayWeight(context: context)
+
+        // Day average: (180.3 + 180.7) / 2 = 180.5
+        #expect(result == 180.5)
+    }
+
+    @Test("calculateDisplayWeight: week kg day average rounds after fractional stored average")
+    func displayWeightWeekKgDayAverageRoundsAfterFractionalStoredAverage() {
+        let sut = makeSUT()
+        let dayDate = DateTimeTools.getDateFromDateString("2026-02-17", format: "yyyy-MM-dd")
+        let summary = DashboardTestFixtures.makeSummary(
+            period: "2026-02-17",
+            date: dayDate,
+            weight: 2452.0 / 6.0
+        )
+        let convertToKg: (Double) -> Double = { stored in
+            ((stored / 22.0462) * 10).rounded(.toNearestOrAwayFromZero) / 10
+        }
+        let context = DashboardTestFixtures.makeDisplayWeightContext(
+            selectedPoint: summary,
+            operations: [summary],
+            period: .week,
+            convertWeight: convertToKg
+        )
+
+        let result = sut.calculateDisplayWeight(context: context)
+
+        #expect(result == 18.5)
+    }
+
+    @Test("calculateDisplayWeight: year period selected point returns exact weight, not day average")
+    func displayWeightYearSelectedPointExact() {
+        let sut = makeSUT()
+        let dayDate = DateTimeTools.getDateFromDateString("2026-03-01", format: "yyyy-MM-dd")
+        let point = DashboardTestFixtures.makeSummary(period: "2026-03-01",
+            date: dayDate.addingTimeInterval(3600), weight: 1800)
+        let ops = [
+            point,
+            DashboardTestFixtures.makeSummary(period: "2026-03-01",
+                date: dayDate.addingTimeInterval(7200), weight: 1820)
+        ]
+        let context = DashboardTestFixtures.makeDisplayWeightContext(
+            selectedPoint: point,
+            operations: ops,
+            period: .year
+        )
+
+        let result = sut.calculateDisplayWeight(context: context)
+
+        // Year period: exact point weight, not average
+        #expect(result == 180.0)
     }
 
     @Test("createEntryForMetricInfo: empty visible ops path with weightless mode")

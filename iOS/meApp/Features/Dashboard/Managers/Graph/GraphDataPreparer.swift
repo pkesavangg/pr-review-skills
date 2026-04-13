@@ -15,7 +15,7 @@ struct GraphDataPreparer {
         selectedMetric: String?,
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: @escaping (Int) -> Double,
+        convertWeight: @escaping (Double) -> Double,
         yAxisDomain: ClosedRange<Double>?,
         visibleOperations: [BathScaleWeightSummary] = [],
         operationsForYAxis: [BathScaleWeightSummary] = [],
@@ -62,15 +62,15 @@ struct GraphDataPreparer {
         from operations: [BathScaleWeightSummary],
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: (Int) -> Double
+        convertWeight: (Double) -> Double
     ) -> [GraphSeries] {
         operations.compactMap { summary in
             let displayWeight: Double
             if isWeightlessMode {
                 guard let anchor = anchorWeight else { return nil }
-                displayWeight = convertWeight(Int(summary.weight)) - anchor
+                displayWeight = convertWeight(summary.weight) - anchor
             } else {
-                displayWeight = convertWeight(Int(summary.weight))
+                displayWeight = convertWeight(summary.weight)
             }
             return GraphSeries(date: summary.date, value: displayWeight, series: DashboardStrings.weight)
         }
@@ -82,7 +82,7 @@ struct GraphDataPreparer {
     /// with weightless mode disabled (baby charts never use weightless anchoring).
     func buildBabyWeightSeries(
         from operations: [BathScaleWeightSummary],
-        convertWeight: (Int) -> Double
+        convertWeight: (Double) -> Double
     ) -> [GraphSeries] {
         buildWeightSeries(
             from: operations,
@@ -150,7 +150,7 @@ struct GraphDataPreparer {
         toWeightDomain domain: ClosedRange<Double>,
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: (Int) -> Double
+        convertWeight: (Double) -> Double
     ) -> [GraphSeries] {
         let allMetricValues = allOperations.compactMap { metricValue(for: metric, from: $0) }
         guard !allMetricValues.isEmpty else { return [] }
@@ -192,7 +192,7 @@ struct GraphDataPreparer {
         from operations: [BathScaleWeightSummary],
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: @escaping (Int) -> Double,
+        convertWeight: @escaping (Double) -> Double,
         period: TimePeriod
     ) -> Double? {
         guard !operations.isEmpty else { return nil }
@@ -200,7 +200,7 @@ struct GraphDataPreparer {
         let sorted = operations.sorted { $0.date < $1.date }
         let xs = sorted.map { normalizedPlotDate($0.date, for: period).timeIntervalSinceReferenceDate }
         let rawYs = sorted.map { op -> Double? in
-            let weight = convertWeight(Int(op.weight))
+            let weight = convertWeight(op.weight)
             if isWeightlessMode {
                 guard let anchor = anchorWeight else { return nil }
                 return weight - anchor
@@ -297,17 +297,17 @@ struct GraphDataPreparer {
         for operations: [BathScaleWeightSummary],
         anchorWeight: Double?,
         period: TimePeriod,
-        convertWeight: (Int) -> Double
+        convertWeight: (Double) -> Double
     ) -> Double? {
         guard let anchor = anchorWeight else { return nil }
         let raw: Double
         switch period {
         case .week, .month:
             guard let last = operations.last else { return nil }
-            let latest = convertWeight(Int(last.weight))
+            let latest = convertWeight(last.weight)
             raw = latest - anchor
         case .year, .total:
-            let weights = operations.map { convertWeight(Int($0.weight)) }
+            let weights = operations.map { convertWeight($0.weight) }
             guard !weights.isEmpty else { return nil }
             raw = weights.reduce(0, +) / Double(weights.count) - anchor
         }
@@ -318,11 +318,11 @@ struct GraphDataPreparer {
         for operations: [BathScaleWeightSummary],
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: (Int) -> Double
+        convertWeight: (Double) -> Double
     ) -> Double {
         guard !operations.isEmpty else { return 0 }
         let values = operations.map { op -> Double in
-            let weight = convertWeight(Int(op.weight))
+            let weight = convertWeight(op.weight)
             return isWeightlessMode ? weight - (anchorWeight ?? 0) : weight
         }
         let avg = values.reduce(0, +) / Double(values.count)
@@ -335,7 +335,7 @@ struct GraphDataPreparer {
         period: TimePeriod,
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: @escaping (Int) -> Double,
+        convertWeight: @escaping (Double) -> Double,
         labelRange: DateInterval?,
         sampleDates: [Date]
     ) -> Double? {

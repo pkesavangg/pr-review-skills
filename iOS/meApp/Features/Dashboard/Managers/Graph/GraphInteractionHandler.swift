@@ -139,10 +139,10 @@ final class GraphInteractionHandler {
         at selectedDate: Date,
         from operations: [BathScaleWeightSummary],
         dataPreparer: GraphDataPreparer,
-        convertWeight: (Int) -> Double
+        convertWeight: (Double) -> Double
     ) -> (summary: BathScaleWeightSummary, displayWeight: Double)? {
         guard let point = dataPreparer.findClosestPoint(to: selectedDate, in: operations) else { return nil }
-        let displayWeight = convertWeight(Int(point.weight))
+        let displayWeight = convertWeight(point.weight)
         return (summary: point, displayWeight: displayWeight)
     }
 
@@ -154,7 +154,7 @@ final class GraphInteractionHandler {
         period: TimePeriod,
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: @escaping (Int) -> Double
+        convertWeight: @escaping (Double) -> Double
     ) -> (summary: BathScaleWeightSummary, interpolatedWeight: Double?)? {
         guard let point = dataPreparer.findClosestPoint(to: selectedDate, in: operations) else { return nil }
         let interpolated = dataPreparer.interpolatedDisplayWeight(

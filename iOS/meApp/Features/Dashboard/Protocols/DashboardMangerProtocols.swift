@@ -39,12 +39,12 @@ protocol DashboardGraphManaging {
     func updateSelectedPoint(_ point: BathScaleWeightSummary)
     @available(iOS 18.0, *)
     func handleScrollPhaseChange(_ phase: ScrollPhase) async
-    func generateChartData(from operations: [BathScaleWeightSummary], selectedMetric: String?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double) -> [GraphSeries]
+    func generateChartData(from operations: [BathScaleWeightSummary], selectedMetric: String?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Double) -> Double) -> [GraphSeries]
     func updateSelectedPeriod(_ period: TimePeriod)
 // swiftlint:disable:next function_parameter_count
-    func getYAxisScale(from operations: [BathScaleWeightSummary], goalWeight: Double?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) -> YAxisScale
+    func getYAxisScale(from operations: [BathScaleWeightSummary], goalWeight: Double?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Double) -> Double, chartHeight: CGFloat) -> YAxisScale
 // swiftlint:disable:next function_parameter_count
-    func calculateAndCacheYAxisDomain(from operations: [BathScaleWeightSummary], goalWeight: Double?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat)
+    func calculateAndCacheYAxisDomain(from operations: [BathScaleWeightSummary], goalWeight: Double?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Double) -> Double, chartHeight: CGFloat)
     func getVisibleOperations(from operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary]
     func ensureLatestEntriesVisible(from operations: [BathScaleWeightSummary])
 
