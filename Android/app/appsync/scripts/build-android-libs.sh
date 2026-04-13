@@ -3,8 +3,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODULE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-# Default: assumes wgApp4 repo is checked out as a sibling of meApp
-#   i.e.  <workspace>/meApp/  and  <workspace>/wgApp4/
+# Path resolution (4 levels up from MODULE_DIR):
+#   MODULE_DIR = <workspace>/meApp/Android/app/appsync
+#   WORK_DIR   = <workspace>
+# Assumes wgApp4 repo is checked out as a sibling of meApp.
 WORK_DIR="$(cd "${MODULE_DIR}/../../../.." && pwd)"
 SRC_DIR="${APPSYNC_SRC_DIR:-${WORK_DIR}/wgApp4/appsync-plugin/src/ios/AppSync/C}"
 
@@ -50,7 +52,7 @@ COMMON_SRC=(
 )
 
 for src in "${COMMON_SRC[@]}"; do
-  if [[ ! -f "${src}" ]]; then
+  if [[ ! -f "${SRC_DIR}/${src}" ]]; then
     echo "Missing source file: ${SRC_DIR}/${src}" >&2
     exit 1
   fi
@@ -58,7 +60,6 @@ done
 
 COMMON_FLAGS=(
   -fPIC
-  -shared
   -std=c99
   -O2
   -DANDROID
@@ -68,6 +69,7 @@ COMMON_FLAGS=(
 )
 
 LINK_FLAGS=(
+  -shared
   -Wl,--gc-sections
   -Wl,-z,relro
   -Wl,-z,now
