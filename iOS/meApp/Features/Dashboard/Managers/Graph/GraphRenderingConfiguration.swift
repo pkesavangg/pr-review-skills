@@ -7,9 +7,11 @@ import Foundation
 struct GraphRenderingConfiguration {
 
     let calendar: Calendar
+    let now: () -> Date
 
-    init(calendar: Calendar = .current) {
+    init(calendar: Calendar = .current, now: @escaping () -> Date = Date.init) {
         self.calendar = calendar
+        self.now = now
     }
 
     // MARK: - Domain Length
@@ -302,7 +304,7 @@ struct GraphRenderingConfiguration {
     }
 
     func fallbackTimeLabel(for period: TimePeriod) -> String {
-        let now = Date()
+        let now = now()
         switch period {
         case .week:
             if let week = calendar.dateInterval(of: .weekOfYear, for: now) {
@@ -413,14 +415,14 @@ struct GraphRenderingConfiguration {
                 let monthStart = calendar.dateInterval(of: .month, for: minDate)?.start ?? adjMin
                 let monthEnd = calendar.dateInterval(of: .month, for: maxDate)?.end.addingTimeInterval(-1)
                     ?? currentPeriodEnd(for: period)
-                return (monthStart, monthEnd)
+                return (monthStart, max(monthEnd, currentPeriodEnd(for: period)))
             }
             return (adjMin, max(adjMax, currentPeriodEnd(for: period)))
         } else {
             let buffer = domainLength * 2.0
             let scrollEnd = scrollPosition.addingTimeInterval(domainLength / 2 + buffer)
             let visibleStart = max(adjMin, scrollPosition.addingTimeInterval(-domainLength / 2 - buffer))
-            let now = Date()
+            let now = now()
             let visibleEnd: Date
             if adjMax > now {
                 visibleEnd = min(adjMax, scrollEnd)
@@ -434,7 +436,7 @@ struct GraphRenderingConfiguration {
     }
 
     private func currentPeriodEnd(for period: TimePeriod) -> Date {
-        let now = Date()
+        let now = now()
         switch period {
         case .week:
             let weekday = calendar.component(.weekday, from: now)

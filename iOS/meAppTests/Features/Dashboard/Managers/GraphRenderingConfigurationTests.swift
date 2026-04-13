@@ -5,11 +5,12 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct GraphRenderingConfigurationTests {
-    private func makeSUT() -> GraphRenderingConfiguration {
+    private func makeSUT(now: Date? = nil) -> GraphRenderingConfiguration {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         calendar.locale = Locale(identifier: "en_US_POSIX")
-        return GraphRenderingConfiguration(calendar: calendar)
+        let resolvedNow = now ?? DateTimeTools.getDateFromDateString("2026-03-15", format: "yyyy-MM-dd")
+        return GraphRenderingConfiguration(calendar: calendar, now: { resolvedNow })
     }
 
     @Test("visible domain length and sample dates: match the selected period")
@@ -123,6 +124,21 @@ struct GraphRenderingConfigurationTests {
             isoDate("2026-03-29T12:00:00Z"),
             isoDate("2026-03-31T12:00:00Z")
         ])
+    }
+
+    @Test("xAxisValues: month view with older single entry extends through current month")
+    func monthXAxisValuesForOlderSingleEntryExtendThroughCurrentMonth() {
+        let sut = makeSUT(now: isoDate("2026-04-13T12:00:00Z"))
+        let ops = [
+            DashboardTestFixtures.makeSummary(date: isoDate("2026-01-07T00:00:00Z"))
+        ]
+
+        let ticks = sut.xAxisValues(for: .month, from: ops, scrollPosition: isoDate("2026-01-01T00:00:00Z"))
+
+        #expect(ticks.first == isoDate("2026-01-01T12:00:00Z"))
+        #expect(ticks.contains(isoDate("2026-04-01T12:00:00Z")))
+        #expect(ticks.last == isoDate("2026-04-30T12:00:00Z"))
+        #expect(!ticks.contains(isoDate("2026-05-01T12:00:00Z")))
     }
 
     @Test("optimal scroll position: total returns minimum and latest mode biases right edge")
