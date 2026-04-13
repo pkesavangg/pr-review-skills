@@ -90,7 +90,7 @@ final class MockBluetoothSDKClient: BluetoothSDKClient {
 
     func scanForPairing() {}
 
-    func confirmPair(_ device: GGBTDevice) async throws -> UserCreationResponseType {
+    func confirmPair(_ device: GGBTDevice, replaceUser: Bool, pairedSKUMonitors: [GGBTDevice]) async throws -> UserCreationResponseType {
         confirmedDevices.append(device)
         if let confirmPairError { throw confirmPairError }
         return confirmPairResult
@@ -240,6 +240,7 @@ private func decodeWifiSetupResponse(wifiState: String, errorCode: String?) -> G
     return decode(payload, as: GGWifiSetupResponse.self)
 }
 
+// swiftlint:disable:next function_parameter_count
 private func decodeDeviceDetails(
     deviceName: String,
     broadcastId: String,
@@ -287,6 +288,8 @@ private func decodeDeviceLogs(_ logs: [[String: Any]]) -> GGDeviceLogResponse<De
 }
 
 private func decode<T: Decodable>(_ object: [String: Any], as type: T.Type) -> T {
+    // swiftlint:disable:next force_try
     let data = try! JSONSerialization.data(withJSONObject: object)
+    // swiftlint:disable:next force_try
     return try! JSONDecoder().decode(type, from: data)
 }

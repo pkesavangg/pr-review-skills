@@ -155,7 +155,7 @@ data class EntryForm(
               "",
               listOf(
                 FormValidations.bodyCompValidator(
-                  AppValidatorConfig.VisceralAge.MIN, AppValidatorConfig.VisceralAge.MAX, false,
+                  AppValidatorConfig.VisceralFat.MIN, AppValidatorConfig.VisceralFat.MAX, false,
                 ),
               ),
             ),

@@ -11,7 +11,7 @@
       "Bash(git commit:*)",
       "mcp__atlassian__getJiraIssueRemoteIssueLinks",
       "mcp__atlassian__addCommentToJiraIssue",
-      "mcp__atlassian__addWorklogToJiraIssue"
+      "mcp__atlassian__addWorklogToJiraIssue",
       "mcp__claude_ai_Atlassian__getAccessibleAtlassianResources",
       "mcp__claude_ai_Atlassian__getJiraIssue",
       "Bash(find /Users/rengadevi/work/meApp/Android/app/src/test -name *Signup* -o -name *FormValidation*)",

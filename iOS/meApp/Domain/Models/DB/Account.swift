@@ -69,6 +69,8 @@ final class Account {
     var lastActiveTime: String?
     /// Whether account is updated and synced online
     var isSynced: Bool?
+    /// Product types the user has selected (e.g. "myWeight", "myBloodPressure", "baby")
+    var productTypes: [String] = []
     
     // Relationship to WeightCompSettings
     @Relationship(deleteRule: .cascade) var weightSettings: WeightCompSettings?
@@ -102,7 +104,8 @@ final class Account {
         self.refreshToken = nil
         self.expiresAt = nil
         self.isSynced = nil
-        
+        self.productTypes = []
+
         // Create associated WeightCompSettings
         let settings = WeightCompSettings(
             accountId: dto.id,

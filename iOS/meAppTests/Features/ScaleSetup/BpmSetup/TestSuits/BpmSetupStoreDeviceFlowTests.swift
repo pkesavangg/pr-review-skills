@@ -248,6 +248,97 @@ extension BpmSetupStoreTests {
             #expect(harness.notification.showAlertCalls == alertsBefore)
         }
 
+        // MARK: - A6 User Mismatch After "Already Paired" Continue
+
+        @Test("A6 confirmUserAndPair Continue shows User Mismatch alert when monitor is on different user")
+        func a6AlreadyPairedContinueShowsUserMismatchAlert() async {
+            let bluetooth = MockBluetoothService()
+            bluetooth.getDeviceInfoResult = .success(DeviceInfo(
+                deviceName: "BPM",
+                userNumber: 2  // monitor is set to User B
+            ))
+            let harness = BpmSetupStoreTestFixtures.makeSUT(bluetooth: bluetooth)
+            let store = harness.store
+            BpmSetupStoreTestFixtures.configureA6Bpm(store)
+            store.selectedUserNumber = 1  // app selected User A
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.scanning, in: store)
+
+            let device = BpmSetupStoreTestFixtures.makeBpmDevice()
+            store.testSetInternalState(
+                discoveredDevice: device,
+                discoveryEvent: BpmSetupStoreTestFixtures.makeBpmDiscoveryEvent(device: device, protocolType: .A6)
+            )
+
+            // Populate lastRetrievedDeviceInfo with userNumber: 2 (monitor set to User B)
+            await store.testUpdateDeviceFromPostConnectionInfo(device)
+
+            // Simulate the "Already Paired" alert appearing
+            store.testConfirmUserAndPair(isDifferentUser: false)
+            let alertsAfterFirstAlert = harness.notification.showAlertCalls
+            #expect(alertsAfterFirstAlert >= 1)
+
+            // User taps Continue on "Already Paired" alert (second button)
+            harness.notification.alertData?.buttons[1].action(nil)
+
+            // Wait for the async Task inside the Continue handler
+            let mismatchAlertShown = await BpmSetupStoreTestFixtures.waitUntil {
+                harness.notification.showAlertCalls > alertsAfterFirstAlert
+            }
+            #expect(mismatchAlertShown)
+            #expect(harness.notification.alertData?.title == BpmSetupStrings.UserMismatchAlert.title)
+            // Should NOT have advanced past scanning
+            #expect(store.currentStep == .scanning)
+        }
+
+        @Test("A6 confirmUserAndPair Continue advances when no user mismatch")
+        func a6AlreadyPairedContinueAdvancesWhenNoMismatch() async {
+            let bluetooth = MockBluetoothService()
+            bluetooth.getDeviceInfoResult = .success(DeviceInfo(
+                deviceName: "BPM",
+                userNumber: 1  // monitor matches selected user
+            ))
+            let harness = BpmSetupStoreTestFixtures.makeSUT(bluetooth: bluetooth)
+            let store = harness.store
+            BpmSetupStoreTestFixtures.configureA6Bpm(store)
+            store.selectedUserNumber = 1
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.scanning, in: store)
+
+            let device = BpmSetupStoreTestFixtures.makeBpmDevice()
+            store.testSetInternalState(
+                discoveredDevice: device,
+                discoveryEvent: BpmSetupStoreTestFixtures.makeBpmDiscoveryEvent(device: device, protocolType: .A6)
+            )
+
+            await store.testUpdateDeviceFromPostConnectionInfo(device)
+
+            store.testConfirmUserAndPair(isDifferentUser: false)
+            let alertsBefore = harness.notification.showAlertCalls
+
+            // Tap Continue — no mismatch, should advance
+            harness.notification.alertData?.buttons[1].action(nil)
+
+            let advanced = await BpmSetupStoreTestFixtures.waitUntil {
+                store.currentStep != .scanning
+            }
+            #expect(advanced)
+            // User Mismatch alert must NOT have appeared
+            #expect(harness.notification.showAlertCalls == alertsBefore)
+        }
+
+        @Test("applyDeviceInfo writes userNumber from DeviceInfo onto the device")
+        func applyDeviceInfoSetsUserNumber() async {
+            let harness = BpmSetupStoreTestFixtures.makeSUT()
+            let store = harness.store
+            BpmSetupStoreTestFixtures.configureA6Bpm(store)
+
+            let device = BpmSetupStoreTestFixtures.makeBpmDevice()
+            let deviceInfo = DeviceInfo(deviceName: "BPM", userNumber: 2)
+
+            store.testApplyDeviceInfo(deviceInfo, to: device, protocolType: "A6")
+
+            #expect(device.userNumber == "2")
+        }
+
         // MARK: - cleanUp
 
         @Test("cleanUp resets setup in progress and isDeviceSaved")

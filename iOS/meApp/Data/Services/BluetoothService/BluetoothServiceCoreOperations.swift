@@ -169,7 +169,7 @@ extension BluetoothService {
                 operationKey: "\(device.id):confirmPair"
             ) { @MainActor in
                 try await self.withTimeout(seconds: 10) {
-                    try await self.ggBleSDK.confirmPair(ggDevice)
+                    try await self.ggBleSDK.confirmPair(ggDevice, replaceUser: false, pairedSKUMonitors: [])
                 }
             }
 

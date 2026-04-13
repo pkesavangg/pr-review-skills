@@ -227,7 +227,7 @@ final class MockContentViewModelBluetoothService: BluetoothServiceProtocol {
     func resumeSmartScan(clearOnlyPairing: Bool) {}
     func scanForPairing() {}
     func scanForBpm() {}
-    func connectBpm(broadcastId: String, userNumber: Int) async -> Result<UserCreationResponse, BluetoothServiceError> { .failure(.notImplemented) }
+    func connectBpm(broadcastId: String, userNumber: Int, replaceUser: Bool, pairedSKUMonitors: [Device]) async -> Result<UserCreationResponse, BluetoothServiceError> { .failure(.notImplemented) }
     func receiveBpmReading(broadcastId: String) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
 
     func resyncAndScan() async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }

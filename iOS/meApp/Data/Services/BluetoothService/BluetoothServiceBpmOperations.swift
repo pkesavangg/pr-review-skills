@@ -22,7 +22,7 @@ extension BluetoothService {
 
     /// Connects to a BPM device by its broadcast ID and selected user number.
     /// Returns the SDK's user-creation response so the caller can detect user mismatch.
-    func connectBpm(broadcastId: String, userNumber: Int) async -> Result<UserCreationResponse, BluetoothServiceError> {
+    func connectBpm(broadcastId: String, userNumber: Int, replaceUser: Bool, pairedSKUMonitors: [Device]) async -> Result<UserCreationResponse, BluetoothServiceError> {
         guard !broadcastId.isEmpty else {
             return .failure(.invalidBroadcastId)
         }
@@ -30,8 +30,19 @@ extension BluetoothService {
         do {
             let ggDevice = mapToGGBTDevice(broadcastId)
             ggDevice.userNumber = userNumber
+            let ggPairedMonitors = pairedSKUMonitors.compactMap { mapToGGBTDevice($0) }
+            logger.log(level: .info, tag: tag, message: "Connecting BPM device: \(broadcastId), user: \(userNumber), replace: \(replaceUser)")
             let sdkResult = try await withTimeout(seconds: 10) {
-                try await self.ggBleSDK.confirmPair(ggDevice)
+                try await self.ggBleSDK.confirmPair(ggDevice, replaceUser: replaceUser, pairedSKUMonitors: ggPairedMonitors)
+            }
+            if let account = accountService.activeAccount,
+               !account.productTypes.contains("myBloodPressure") {
+                account.productTypes.append("myBloodPressure")
+                logger.log(
+                    level: .info,
+                    tag: tag,
+                    message: "Appended myBloodPressure to productTypes for accountId=\(account.accountId)"
+                )
             }
             logger.log(level: .info, tag: tag, message: "BPM device connected: \(broadcastId), result: \(sdkResult)")
             return .success(UserCreationResponse(sdkType: sdkResult))

@@ -113,12 +113,18 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     private(set) var lastConnectBpmBroadcastId: String?
     private(set) var lastReceiveBpmBroadcastId: String?
     var connectBpmResult: Result<UserCreationResponse, BluetoothServiceError> = .success(.creationCompleted)
+    /// When set, each call to connectBpm consumes the next result in the array.
+    /// Falls back to connectBpmResult once the array is exhausted.
+    var connectBpmResults: [Result<UserCreationResponse, BluetoothServiceError>] = []
     var receiveBpmReadingResult: Result<Void, BluetoothServiceError> = .success(())
 
     func scanForBpm() { scanForBpmCalls += 1 }
-    func connectBpm(broadcastId: String, userNumber: Int) async -> Result<UserCreationResponse, BluetoothServiceError> {
+    func connectBpm(broadcastId: String, userNumber: Int, replaceUser: Bool, pairedSKUMonitors: [Device]) async -> Result<UserCreationResponse, BluetoothServiceError> {
         connectBpmCalls += 1
         lastConnectBpmBroadcastId = broadcastId
+        if !connectBpmResults.isEmpty {
+            return connectBpmResults.removeFirst()
+        }
         return connectBpmResult
     }
     func receiveBpmReading(broadcastId: String) async -> Result<Void, BluetoothServiceError> {
