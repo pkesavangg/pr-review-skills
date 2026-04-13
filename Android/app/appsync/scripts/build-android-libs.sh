@@ -18,10 +18,13 @@ if [[ ! -d "${SRC_DIR}" ]]; then
 fi
 JNILIBS_DIR="${MODULE_DIR}/src/main/jniLibs"
 
+MIN_SDK="${MIN_SDK:-21}"
 NDK_VERSION="${NDK_VERSION:-28.2.13676358}"
 LOCAL_PROPERTIES="${MODULE_DIR}/../../local.properties"
 if [[ -f "${LOCAL_PROPERTIES}" ]]; then
-  LOCAL_SDK_DIR="$(sed -n 's/^sdk\.dir=//p' "${LOCAL_PROPERTIES}" | tail -n 1)"
+  # Skip comments, trim CR/whitespace; take last uncommented sdk.dir line.
+  LOCAL_SDK_DIR="$(sed -n 's/\r$//;/^[[:space:]]*#/d;s/^[[:space:]]*sdk\.dir[[:space:]]*=[[:space:]]*//p' \
+    "${LOCAL_PROPERTIES}" | tail -n 1)"
 fi
 case "$(uname -s)" in
   Linux*)   DEFAULT_SDK="${HOME}/Android/Sdk"; DEFAULT_HOST="linux-x86_64" ;;
@@ -34,13 +37,18 @@ SDK_ROOT="${LOCAL_SDK_DIR:-${ANDROID_SDK_ROOT:-${ANDROID_HOME:-${DEFAULT_SDK}}}}
 HOST_TAG="${HOST_TAG:-${DEFAULT_HOST}}"
 NDK_BIN="${SDK_ROOT}/ndk/${NDK_VERSION}/toolchains/llvm/prebuilt/${HOST_TAG}/bin"
 
-if [[ ! -x "${NDK_BIN}/aarch64-linux-android21-clang" ]]; then
-  echo "NDK toolchain not found at: ${NDK_BIN}" >&2
-  echo "Set ANDROID_SDK_ROOT/ANDROID_HOME, NDK_VERSION, or HOST_TAG and retry." >&2
-  exit 1
-fi
+# Parallel arrays (bash 3.2-compatible): ABI_ORDER[i] ↔ ABI_CC[i].
+# 64-bit first (need 16KB alignment), then 32-bit.
+ABI_ORDER=(arm64-v8a                                x86_64                                 armeabi-v7a                                     x86)
+ABI_CC=(   "aarch64-linux-android${MIN_SDK}-clang"  "x86_64-linux-android${MIN_SDK}-clang" "armv7a-linux-androideabi${MIN_SDK}-clang"      "i686-linux-android${MIN_SDK}-clang")
 
-mkdir -p "${JNILIBS_DIR}/arm64-v8a" "${JNILIBS_DIR}/armeabi-v7a" "${JNILIBS_DIR}/x86" "${JNILIBS_DIR}/x86_64"
+for i in "${!ABI_ORDER[@]}"; do
+  if [[ ! -x "${NDK_BIN}/${ABI_CC[$i]}" ]]; then
+    echo "NDK toolchain missing compiler for ${ABI_ORDER[$i]}: ${NDK_BIN}/${ABI_CC[$i]}" >&2
+    echo "Set ANDROID_SDK_ROOT/ANDROID_HOME, NDK_VERSION, MIN_SDK, or HOST_TAG and retry." >&2
+    exit 1
+  fi
+done
 
 COMMON_SRC=(
   jniBridge.c
@@ -56,6 +64,21 @@ for src in "${COMMON_SRC[@]}"; do
     echo "Missing source file: ${SRC_DIR}/${src}" >&2
     exit 1
   fi
+done
+
+# Absolute source paths — script is CWD-independent.
+ABS_SRC=()
+for src in "${COMMON_SRC[@]}"; do
+  ABS_SRC+=("${SRC_DIR}/${src}")
+done
+
+# Clean only the ABI dirs this script owns (plus legacy armeabi from old PRs).
+# Avoids clobbering unrelated files anyone else might drop into jniLibs/.
+for abi in "${ABI_ORDER[@]}" armeabi; do
+  rm -rf "${JNILIBS_DIR}/${abi}"
+done
+for abi in "${ABI_ORDER[@]}"; do
+  mkdir -p "${JNILIBS_DIR}/${abi}"
 done
 
 COMMON_FLAGS=(
@@ -81,27 +104,40 @@ LINK_FLAGS_16KB=(
   -Wl,-z,common-page-size=16384
 )
 
-build_one() {
-  local cc="$1"
-  local out_file="$2"
-  shift 2
-  "${cc}" "${COMMON_FLAGS[@]}" "${COMMON_SRC[@]}" -o "${out_file}" "${LINK_FLAGS[@]}" "$@"
+cc_for() {
+  local target="$1"
+  local i
+  for i in "${!ABI_ORDER[@]}"; do
+    if [[ "${ABI_ORDER[$i]}" == "${target}" ]]; then
+      echo "${NDK_BIN}/${ABI_CC[$i]}"
+      return
+    fi
+  done
+  echo "Unknown ABI: ${target}" >&2
+  exit 1
 }
 
-pushd "${SRC_DIR}" >/dev/null
+build_one() {
+  local abi="$1"
+  shift
+  local cc out_file
+  cc="$(cc_for "${abi}")"
+  out_file="${JNILIBS_DIR}/${abi}/libappsync.so"
+  "${cc}" "${COMMON_FLAGS[@]}" "${ABS_SRC[@]}" -o "${out_file}" "${LINK_FLAGS[@]}" "$@"
+}
+
 # 64-bit ABIs: 16KB page alignment required for Android 15+
-build_one "${NDK_BIN}/aarch64-linux-android21-clang" "${JNILIBS_DIR}/arm64-v8a/libappsync.so" "${LINK_FLAGS_16KB[@]}"
-build_one "${NDK_BIN}/x86_64-linux-android21-clang" "${JNILIBS_DIR}/x86_64/libappsync.so" "${LINK_FLAGS_16KB[@]}"
+build_one arm64-v8a "${LINK_FLAGS_16KB[@]}"
+build_one x86_64    "${LINK_FLAGS_16KB[@]}"
 # 32-bit ABIs: 4KB pages only, no 16KB alignment needed
-build_one "${NDK_BIN}/armv7a-linux-androideabi21-clang" "${JNILIBS_DIR}/armeabi-v7a/libappsync.so"
-build_one "${NDK_BIN}/i686-linux-android21-clang" "${JNILIBS_DIR}/x86/libappsync.so"
-popd >/dev/null
+build_one armeabi-v7a
+build_one x86
 
 READELF="${NDK_BIN}/llvm-readelf"
 
 echo ""
 echo "Built AppSync Android libraries (64-bit: 16KB alignment, 32-bit: 4KB alignment):"
-for abi in arm64-v8a armeabi-v7a x86 x86_64; do
+for abi in "${ABI_ORDER[@]}"; do
   echo "  ${JNILIBS_DIR}/${abi}/libappsync.so"
   if [[ -x "${READELF}" ]]; then
     "${READELF}" -l "${JNILIBS_DIR}/${abi}/libappsync.so" 2>/dev/null | grep "LOAD" || true
