@@ -1,4 +1,4 @@
-// swiftlint:disable type_body_length file_length
+// swiftlint:disable file_length
 // This repository intentionally aggregates all Entry CRUD operations to maintain
 // a single source of truth for data access patterns. Splitting would fragment
 // the SwiftData context management and reduce maintainability.
@@ -12,6 +12,7 @@ import SwiftData
 /// - Note: This repository uses background contexts for all operations to avoid blocking the main thread.
 ///   Methods that need MainActor access are explicitly marked.
 @MainActor
+// swiftlint:disable:next type_body_length
 final class EntryRepository: EntryRepositoryProtocol {
 
     // MARK: - Properties
@@ -665,7 +666,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     }
     
     /// Creates an Entry instance from EntrySyncData
-    private func createEntry(from data: EntrySyncData) -> Entry {
+    private func createEntry(from data: EntrySyncData) -> Entry { // swiftlint:disable:this function_body_length
         let newEntry = Entry(
             id: data.id,
             entryTimestamp: data.entryTimestamp,

@@ -128,8 +128,7 @@ protocol EntryServiceProtocol {
     // MARK: - Baby Entry CRUD
 
     /// Creates a new baby entry, persists it locally.
-    // swiftlint:disable:next function_parameter_count
-    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws // swiftlint:disable:this function_parameter_count
 }
 
 // MARK: - Default Parameter Values

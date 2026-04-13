@@ -18,7 +18,6 @@ protocol BabyServiceProtocol: AnyObject {
     var currentBabies: [Baby] { get }
 
     // swiftlint:disable:next function_parameter_count
-    /// Save a new baby with full profile fields (called at the end of baby scale setup flow).
     func saveBaby(
         name: String,
         accountId: String,
@@ -34,7 +33,6 @@ protocol BabyServiceProtocol: AnyObject {
     func updateBaby(_ baby: Baby, name: String) async throws
 
     // swiftlint:disable:next function_parameter_count
-    /// Update a baby's full profile.
     func updateBabyProfile(
         _ baby: Baby,
         name: String,

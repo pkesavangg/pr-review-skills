@@ -4,13 +4,14 @@
 //
 //  Created by Barath Chittibabu on 17/06/25.
 //
-// swiftlint:disable type_body_length file_length
+// swiftlint:disable file_length
 import Combine
 import Foundation
 import SwiftUI
 
 /// Store / ViewModel that powers the History feature (monthly summaries, month detail, entry detail, metric info).
 @MainActor
+// swiftlint:disable:next type_body_length
 final class HistoryStore: ObservableObject {
 
     // MARK: - Dependencies
@@ -472,8 +473,7 @@ final class HistoryStore: ObservableObject {
     }
 
     /// User tapped a baby day row.
-    // swiftlint:disable:next function_body_length
-    func selectBabyDay(_ day: BabyHistoryDay) {
+    func selectBabyDay(_ day: BabyHistoryDay) { // swiftlint:disable:this function_body_length
         selectedBabyDay = day
         Task {
             do {

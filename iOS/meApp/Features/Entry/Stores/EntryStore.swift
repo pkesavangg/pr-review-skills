@@ -1,9 +1,10 @@
-// swiftlint:disable type_body_length file_length
+// swiftlint:disable file_length
 import Combine
 import Foundation
 import SwiftUI
 
 @MainActor
+// swiftlint:disable:next type_body_length
 final class EntryStore: ObservableObject {
     // Dependencies
     @Injector var accountService: AccountServiceProtocol

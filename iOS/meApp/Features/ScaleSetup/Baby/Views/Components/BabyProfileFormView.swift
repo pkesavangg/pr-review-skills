@@ -155,7 +155,7 @@ struct BabyProfileFormView: View {
             options: [Sex.allCases],
             displayValue: { $0.rawValue.capitalized },
             title: labels.biologicalSex,
-            onUpdate: { vals in
+            onUpdate: { vals in // swiftlint:disable:this trailing_closure
                 if let sex = vals.first {
                     form.biologicalSex.value = sex.rawValue.capitalized
                     form.biologicalSex.markAsTouched()

@@ -49,8 +49,11 @@ struct BpmReadingCard: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(BpmDashboardStrings.bpReadingCardAccessibility(
-            systolic: systolic, diastolic: diastolic, pulse: pulse,
-            label: classification.label, date: date
+            systolic: systolic,
+            diastolic: diastolic,
+            pulse: pulse,
+            label: classification.label,
+            date: date
         ))
     }
 }

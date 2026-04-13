@@ -344,7 +344,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
 
     private func schedulePermissionExpansionRetry() {
         Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: permissionExpansionAlertRetryDelayNs)
+            try? await Task.sleep(nanoseconds: self?.permissionExpansionAlertRetryDelayNs ?? 500_000_000)
             await self?.processPendingPermissionExpansionIfNeeded()
         }
     }
@@ -560,7 +560,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
 
         // Use the configured permission scope so initial Balance Health integrations
         // do not silently expand into Weight Gurus until we explicitly re-request.
-        await updateAppTypeForConfiguredPermissionScope()
+        _ = await updateAppTypeForConfiguredPermissionScope()
 
         // Materialize simple export values off the main actor to avoid cross-context @Model access
         let (scaleExports, bpmExports): ([HealthKitExport], [HealthKitExportExtended]) = try await Task.detached(priority: .userInitiated) {
@@ -643,7 +643,8 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
     /// This method is safe to call from any actor as it uses extracted data.
     func syncNewData(notification: EntryNotification) async throws {
         logger.log(
-            level: .info, tag: tag,
+            level: .info,
+            tag: tag,
             message: "HealthKit sync new entry started. timestamp=\(notification.entryTimestamp), deviceType=\(notification.deviceType)"
         )
         let export = HealthKitExportExtended(
@@ -916,8 +917,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
     }
 
     /// Converts a single extended export into HealthKitData payloads.
-    // swiftlint:disable:next function_body_length
-    private func buildHealthKitData(from export: HealthKitExportExtended) -> [HealthKitData] {
+    private func buildHealthKitData(from export: HealthKitExportExtended) -> [HealthKitData] { // swiftlint:disable:this function_body_length
         var healthKitData: [HealthKitData] = []
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

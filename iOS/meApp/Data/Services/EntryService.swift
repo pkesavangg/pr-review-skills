@@ -642,7 +642,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             // Idempotency: the heuristic (weight < 2835) skips already-converted entries,
             // so a crash mid-loop is safely re-runnable on next launch.
             for entry in babyEntries {
-                guard let baby = entry.babyEntry else { continue }
+                guard entry.babyEntry != nil else { continue }
                 try await localRepo.updateEntry(entry)
             }
 

@@ -132,8 +132,10 @@ struct BpmDisplayView: View {
         .accessibilityLabel({
             guard let data = displayValues else { return BpmDashboardStrings.noBloodPressureData }
             return BpmDashboardStrings.bpReadingAccessibility(
-                systolic: data.systolic, diastolic: data.diastolic,
-                pulse: data.pulse, label: data.classification.label
+                systolic: data.systolic,
+                diastolic: data.diastolic,
+                pulse: data.pulse,
+                label: data.classification.label
             )
         }())
         .sheet(isPresented: $showAhaRatingSheet) {

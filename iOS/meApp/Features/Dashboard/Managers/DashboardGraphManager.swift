@@ -1,4 +1,4 @@
-// swiftlint:disable type_body_length file_length
+// swiftlint:disable file_length
 import Charts
 import Foundation
 import SwiftUI
@@ -7,6 +7,7 @@ import SwiftUI
 /// Routes work to `GraphDataPreparer`, `GraphRenderingConfiguration`,
 /// `GraphInteractionHandler`, and `GraphAnimationManager`.
 @MainActor
+// swiftlint:disable:next type_body_length
 class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     // MARK: - Dependencies

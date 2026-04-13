@@ -5,7 +5,7 @@
 //  Created by Kesavan Panchabakesan on 11/06/25.
 //
 
-// swiftlint:disable type_body_length file_length
+// swiftlint:disable file_length
 // This store intentionally aggregates all signup flow logic to maintain
 // a single source of truth for the multi-step signup process. Splitting would
 // fragment state management and reduce maintainability.
@@ -16,6 +16,7 @@ import SwiftUI
 // MARK: SignupStore
 /// This store is responsible for managing the signup process.
 @MainActor
+// swiftlint:disable:next type_body_length
 final class SignupStore: ObservableObject {
     @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var accountService: AccountServiceProtocol
