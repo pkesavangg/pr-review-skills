@@ -115,7 +115,10 @@ fun AppProfileAvatar(
                 .then(gestureModifier),
             contentAlignment = Alignment.Center,
         ) {
-            // Profile icon - overlapping on the right (rendered first, lower z-index)
+            // Profile icon - overlapping on the right (rendered first, lower z-index).
+            // Info icon variant is only used in AccountSwitchInfoModal where the avatar
+            // is always active/enabled, so isActive/enabled states are intentionally
+            // not reflected here.
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
@@ -130,6 +133,7 @@ fun AppProfileAvatar(
                     contentDescription = "Profile",
                     type = AppIconType.Primary,
                     modifier = Modifier
+                        // 2.dp nudge visually centers the icon inside the border circle per Figma
                         .padding(start = 2.dp)
                         .align(Alignment.Center)
                         .size(size * PROFILE_ICON_SIZE_RATIO),
@@ -177,15 +181,15 @@ fun AppProfileImagePreview() {
 @PreviewTheme
 @Composable
 fun AppProfileInfoIconPreview() {
-  MeAppTheme {
-    AppProfileAvatar(
-      text = "Kevin",
-      size = 100.dp,
-      isInfoIcon = true,
-      isActive = true,
-      enabled = true,
-    )
-  }
+    MeAppTheme {
+        AppProfileAvatar(
+            text = "Kevin",
+            size = 55.dp,
+            isInfoIcon = true,
+            isActive = true,
+            enabled = true,
+        )
+    }
 }
 
 private fun String.isEmoji(): Boolean {
