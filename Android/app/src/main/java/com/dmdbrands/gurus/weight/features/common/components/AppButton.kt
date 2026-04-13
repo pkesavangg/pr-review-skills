@@ -313,11 +313,12 @@ fun AppButton(
   val shape = RoundedCornerShape(50)
   val vPadding = 0.dp
   val maxLines = 1
+  val deviceType = getDeviceType()
+  val isPhoneLike = deviceType == DeviceType.Phone || deviceType == DeviceType.Fold
   val buttonModifier = modifier
     .then(
-      if (type != ButtonType.InlineTextPrimary || type != ButtonType.InlineTextSecondary) {
-        if (getDeviceType() != DeviceType.Phone) Modifier.heightIn(min = height)
-        else Modifier.height(height)
+      if (type != ButtonType.InlineTextPrimary && type != ButtonType.InlineTextSecondary) {
+        if (isPhoneLike) Modifier.height(height) else Modifier.heightIn(min = height)
       } else {
         Modifier
       },

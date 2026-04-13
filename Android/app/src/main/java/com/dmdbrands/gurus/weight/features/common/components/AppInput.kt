@@ -67,6 +67,8 @@ enum class AppInputType {
 }
 
 object AppInputDefaults {
+    val SingleLineHeight = 56.dp
+
     fun visualTransformation(type: AppInputType): VisualTransformation =
         when (type) {
             AppInputType.PASSWORD -> PasswordVisualTransformation()
@@ -261,6 +263,8 @@ fun <T> InputFieldBase(
     val isError = formControl?.error?.type != null && (formControl.dirty || formControl.touched)
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val deviceType = getDeviceType()
+    val isPhoneLike = deviceType == DeviceType.Phone || deviceType == DeviceType.Fold
     val isPassword = inputType == AppInputType.PASSWORD
     val showPasswordToggle = isPassword && showTrailingIcon
     val showTrailingButton = showTrailingIcon && !isPassword &&
@@ -349,8 +353,8 @@ fun <T> InputFieldBase(
                 .fillMaxWidth()
                 .then(
                     if (singleLine) {
-                        if (getDeviceType() != DeviceType.Phone) Modifier.heightIn(min = 56.dp)
-                        else Modifier.height(56.dp)
+                        if (isPhoneLike) Modifier.height(AppInputDefaults.SingleLineHeight)
+                        else Modifier.heightIn(min = AppInputDefaults.SingleLineHeight)
                     } else {
                         Modifier
                     },
