@@ -90,7 +90,7 @@ fun ScaleDetailsScreenContent(
   val scaleSetupType =
     device?.deviceType?.let { ScaleSetupType.fromString(it) } ?: ScaleSetupType.Bluetooth
   val isWifiSetup = scaleSetupType == ScaleSetupType.Wifi || scaleSetupType == ScaleSetupType.EspTouchWifi
-  val isBpm = ScaleDataHelper.isBpmDevice(device?.getSKU())
+  val isBpm = DeviceHelper.isBpmDevice(device?.getSKU())
   val scaleInfoForSku = ScaleDataHelper.findScaleInfoBySku(device?.getSKU() ?: "")
   val showUserNumber = (isWifiSetup || scaleSetupType == ScaleSetupType.Bluetooth) && state.scale?.userNumber != null
   val isConnected = device?.connectionStatus == BLEStatus.CONNECTED
@@ -203,7 +203,6 @@ fun ScaleDetailsScreenContent(
               ),
             )
             if (showUserNumber) {
-              val deviceSku = device.getSKU()
               val userLabel = if (isBpm) {
                 ScaleDataHelper.formatUserDisplay(
                   scaleInfoForSku?.hasNumericUsers ?: true,
@@ -214,7 +213,7 @@ fun ScaleDetailsScreenContent(
               }
               add(
                 SettingsItem(
-                  title = ScaleDetailsStrings.userNumberLabel(deviceSku),
+                  title = ScaleDetailsStrings.userNumberLabel(device.getSKU()),
                   type = SettingsItemType.TextOnly(userLabel),
                 ),
               )
@@ -310,7 +309,7 @@ fun ScaleDetailsScreenContent(
         items =
           listOf(
             SettingsItem(
-              title = ScaleDetailsStrings.DeleteScale,
+              title = ScaleDetailsStrings.deleteLabel(device?.getSKU()),
               type = SettingsItemType.None,
               color = SettingColorType.Danger,
               onClick = { handleIntent(ScaleDetailsIntent.DeleteScale) },

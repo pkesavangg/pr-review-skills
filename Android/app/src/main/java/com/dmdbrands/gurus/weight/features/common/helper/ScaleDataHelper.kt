@@ -21,11 +21,6 @@ object ScaleDataHelper {
     return SCALES.find { it.sku == lookupSku }
   }
 
-  fun isBpmDevice(sku: String?): Boolean {
-    val mapped = sku?.let { DeviceHelper.mapSkuForDisplay(it) }
-    return mapped in DeviceHelper.BPM_SKUS
-  }
-
   /**
    * Converts a GGDevice to ScaleInfo for UI display.
    */
@@ -71,7 +66,7 @@ object ScaleDataHelper {
 
   fun formatUserDisplay(hasNumericUsers: Boolean, userNumber: Int?): String {
     val num = userNumber ?: return ""
-    if (!hasNumericUsers && num !in 1..2) return ""
+    if (num !in 1..2) return ""
     return if (hasNumericUsers) num.toString() else if (num == 1) USER_A else USER_B
   }
 

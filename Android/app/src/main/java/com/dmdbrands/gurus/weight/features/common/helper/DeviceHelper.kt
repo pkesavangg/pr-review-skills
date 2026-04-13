@@ -33,7 +33,7 @@ object DeviceHelper {
   val BPM_SKUS: Set<String> = setOf(SKU_0603, SKU_0661, SKU_0634, SKU_0663)
 
   /** Returns `true` when the given [sku] identifies a Blood Pressure Monitor. */
-  fun isBpmDevice(sku: String): Boolean = sku in BPM_SKUS
+  fun isBpmDevice(sku: String?): Boolean = sku in BPM_SKUS
 
   fun GGDeviceDetail.getSKU() = SKU_MAP[deviceName] ?: DEFAULT_SKU
 

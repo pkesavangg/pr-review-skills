@@ -17,7 +17,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.core.navigation.LocalProductType
-import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.HeightInput
@@ -74,11 +73,7 @@ fun SettingsScreenContent(
         items =
           listOf(
             SettingsItem(
-              title = if (LocalProductType.current == ProductType.BLOOD_PRESSURE) {
-                SettingsScreenStrings.AddEditDevices
-              } else {
-                SettingsScreenStrings.AddEditScales
-              },
+              title = SettingsScreenStrings.addEditLabel(LocalProductType.current),
               onClick = {
                 handleIntent.invoke(SettingsIntent.OpenAddScales)
               },

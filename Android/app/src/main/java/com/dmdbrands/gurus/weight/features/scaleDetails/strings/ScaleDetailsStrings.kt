@@ -1,17 +1,30 @@
 package com.dmdbrands.gurus.weight.features.scaleDetails.strings
 
-import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 
 object ScaleDetailsStrings {
   fun deleteConfirmation(sku: String?) = when {
-    ScaleDataHelper.isBpmDevice(sku) -> "Are you sure you want to delete this device?"
+    DeviceHelper.isBpmDevice(sku) -> "Are you sure you want to delete this device?"
     else -> "Are you sure you want to delete this scale?"
   }
   const val Delete = "Delete"
   const val Cancel = "Cancel"
-  const val DeleteSuccessMessage = "scale deleted successfully"
-  const val DeleteErrorMessage = "Error deleting scale"
-  const val DeleteLoaderMessage = "Deleting scale..."
+  fun deleteSuccessMessage(sku: String?) = when {
+    DeviceHelper.isBpmDevice(sku) -> "device deleted successfully"
+    else -> "scale deleted successfully"
+  }
+  fun deleteErrorMessage(sku: String?) = when {
+    DeviceHelper.isBpmDevice(sku) -> "Error deleting device"
+    else -> "Error deleting scale"
+  }
+  fun deleteLoaderMessage(sku: String?) = when {
+    DeviceHelper.isBpmDevice(sku) -> "Deleting device..."
+    else -> "Deleting scale..."
+  }
+  fun deleteLabel(sku: String?) = when {
+    DeviceHelper.isBpmDevice(sku) -> "Delete Device"
+    else -> "Delete Scale"
+  }
   const val Header = "Scale Settings"
   const val Close = "Close"
   const val Mode = "Mode"
@@ -20,7 +33,7 @@ object ScaleDetailsStrings {
   const val DisplayMetrics = "Display Metrics"
   const val Users = "Users"
   fun userNumberLabel(sku: String?) = when {
-    ScaleDataHelper.isBpmDevice(sku) -> "User"
+    DeviceHelper.isBpmDevice(sku) -> "User"
     else -> "User Number"
   }
   const val ScaleName = "Scale Name"
@@ -35,7 +48,6 @@ object ScaleDetailsStrings {
   const val Sku = "SKU"
   const val DatePaired = "Date Paired"
   const val ProductGuide = "Product Guide"
-  const val DeleteScale = "Delete Scale"
   const val SetupIncomplete = "Setup Incomplete"
   const val SetupWifi = "Setup Wi-Fi"
 

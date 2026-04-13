@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.features.common.strings.AppListStrings
@@ -46,7 +47,7 @@ fun AppScaleCard(
 ) {
   val cardSpacing = if (isSavedScale) spacing.md else spacing.sm
   val connectionIcon = ScaleDataHelper.scaleTypeIcon(scale.setupType)
-  val isBpm = ScaleDataHelper.isBpmDevice(scale.sku)
+  val isBpm = DeviceHelper.isBpmDevice(scale.sku)
   val isWifiSetup =
     scale.setupType == ScaleSetupType.Wifi ||
       scale.setupType == ScaleSetupType.EspTouchWifi ||
