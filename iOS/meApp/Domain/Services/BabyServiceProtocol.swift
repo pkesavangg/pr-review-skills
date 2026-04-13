@@ -17,8 +17,8 @@ protocol BabyServiceProtocol: AnyObject {
     /// Synchronous last-known value (for ProductTypeStore.rebuild()).
     var currentBabies: [Baby] { get }
 
-    /// Save a new baby with full profile fields (called at the end of baby scale setup flow).
     // swiftlint:disable:next function_parameter_count
+    /// Save a new baby with full profile fields (called at the end of baby scale setup flow).
     func saveBaby(
         name: String,
         accountId: String,
@@ -33,8 +33,8 @@ protocol BabyServiceProtocol: AnyObject {
     /// Update a baby's name.
     func updateBaby(_ baby: Baby, name: String) async throws
 
-    /// Update a baby's full profile.
     // swiftlint:disable:next function_parameter_count
+    /// Update a baby's full profile.
     func updateBabyProfile(
         _ baby: Baby,
         name: String,

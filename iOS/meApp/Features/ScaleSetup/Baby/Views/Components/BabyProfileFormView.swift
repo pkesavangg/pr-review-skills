@@ -154,13 +154,14 @@ struct BabyProfileFormView: View {
             selectedValues: [selectedSex],
             options: [Sex.allCases],
             displayValue: { $0.rawValue.capitalized },
-            title: labels.biologicalSex
-        ) { vals in
-            if let sex = vals.first {
-                form.biologicalSex.value = sex.rawValue.capitalized
-                form.biologicalSex.markAsTouched()
-                form.biologicalSex.validate()
+            title: labels.biologicalSex,
+            onUpdate: { vals in
+                if let sex = vals.first {
+                    form.biologicalSex.value = sex.rawValue.capitalized
+                    form.biologicalSex.markAsTouched()
+                    form.biologicalSex.validate()
+                }
             }
-        }
+        )
     }
 }

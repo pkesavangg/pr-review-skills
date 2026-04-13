@@ -1,3 +1,4 @@
+// swiftlint:disable type_body_length file_length
 // This repository intentionally aggregates all Entry CRUD operations to maintain
 // a single source of truth for data access patterns. Splitting would fragment
 // the SwiftData context management and reduce maintainability.

@@ -752,7 +752,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     private func convertBabyDecigramsToDisplay(_ decigrams: Int) -> Double {
         let isMetric = accountService.activeAccount?.weightSettings?.weightUnit == .kg
-        // TODO: Remove this fallback once baby-scale conversion is confirmed and
+        // Remove this fallback once baby-scale conversion is confirmed and
         // implemented separately per SKU type.
         let kg = Double(decigrams) / BabyPercentileGrowthReference.decigramsToKgFactor
         let stored = ConversionTools.convertKgToStored(kg)

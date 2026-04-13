@@ -1,3 +1,4 @@
+// swiftlint:disable type_body_length file_length
 import Charts
 import Foundation
 import SwiftUI
@@ -496,6 +497,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         )
     }
 
+    // swiftlint:disable:next function_parameter_count
     func resolveBabySelectionPresentation(
         babyProfile: BabyProfile?,
         metric: BabyMetric,

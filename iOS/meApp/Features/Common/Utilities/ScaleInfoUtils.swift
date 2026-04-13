@@ -152,11 +152,11 @@ class ScaleInfoUtils {
         // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
         let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
         let allDevices = SCALES + BPMS
-        if let path = allDevices.first(where: { $0.sku == lookupSku })?.imgPath {
+        if let path = allDevices.first { $0.sku == lookupSku }?.imgPath {
             return path
         }
         let bpmPrimary = primaryBpmSetupSku(for: lookupSku)
-        return allDevices.first(where: { $0.sku == bpmPrimary })?.imgPath
+        return allDevices.first { $0.sku == bpmPrimary }?.imgPath
     }
 }
 

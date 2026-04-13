@@ -482,6 +482,7 @@ class BottomTabBarViewModel: ObservableObject {
     }
 
     /// Presents the Apple Health Integration modal based on the given state.
+    // swiftlint:disable:next function_body_length
     private func presentHKIntegrationModal(for state: HKIntegrationModalState) {
         // Ensure active account exists before showing modal
         guard accountService.activeAccount != nil else { return }

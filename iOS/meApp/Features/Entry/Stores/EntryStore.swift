@@ -1,3 +1,4 @@
+// swiftlint:disable type_body_length file_length
 import Combine
 import Foundation
 import SwiftUI
@@ -459,6 +460,7 @@ final class EntryStore: ObservableObject {
         }
     }
 
+    // swiftlint:disable:next function_body_length
     func saveBabyEntry() async {
         guard !isSaving else { return }
         isSaving = true

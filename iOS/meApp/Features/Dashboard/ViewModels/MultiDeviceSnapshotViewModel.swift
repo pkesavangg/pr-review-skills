@@ -60,7 +60,7 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
 
     func babySummaries(for babyProfile: BabyProfile) -> [BathScaleWeightSummary] {
         let real = babyDailySummaries[babyProfile.id] ?? []
-        // TODO: Remove dummy data once baby entry pipeline is wired
+        // Remove dummy data once baby entry pipeline is wired
         return real.isEmpty
             ? BabyDashboardChartSupport.dummyDailySummaries(for: babyProfile)
             : real

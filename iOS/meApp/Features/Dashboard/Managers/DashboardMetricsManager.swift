@@ -730,7 +730,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         }
     }
 
-// swiftlint:disable:next cyclomatic_complexity
+    // swiftlint:disable:next cyclomatic_complexity
     func updateMetricsOrder(from apiMetrics: [String]) {
 
         let displayMetrics = apiMetrics.compactMap { apiMetric -> String? in

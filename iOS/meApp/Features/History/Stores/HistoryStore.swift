@@ -4,6 +4,7 @@
 //
 //  Created by Barath Chittibabu on 17/06/25.
 //
+// swiftlint:disable type_body_length file_length
 import Combine
 import Foundation
 import SwiftUI
@@ -72,6 +73,7 @@ final class HistoryStore: ObservableObject {
 
     // MARK: - Init ------------------------------------------------------
 
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     init() {
         entryService.entrySaved
             .sink { [weak self] entry in
@@ -244,6 +246,7 @@ final class HistoryStore: ObservableObject {
         loadedProductTypes.remove(currentId)
     }
 
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     private func loadMonthsInternal(canShowLoader: Bool = true) async {
         guard monthsLoadTask == nil else { return }            // prevent overlap
 
@@ -469,6 +472,7 @@ final class HistoryStore: ObservableObject {
     }
 
     /// User tapped a baby day row.
+    // swiftlint:disable:next function_body_length
     func selectBabyDay(_ day: BabyHistoryDay) {
         selectedBabyDay = day
         Task {

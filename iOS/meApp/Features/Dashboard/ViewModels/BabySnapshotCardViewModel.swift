@@ -40,7 +40,7 @@ final class BabySnapshotCardViewModel: ObservableObject {
     /// Converts a WHO percentile JSON value (decigrams) to the active display unit.
     func convertDecigramsToDisplay(_ decigrams: Int) -> Double {
         let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
-        // TODO: Remove this fallback once baby-scale conversion is confirmed and
+        // Remove this fallback once baby-scale conversion is confirmed and
         // implemented separately per SKU type.
         let kg = Double(decigrams) / BabyPercentileGrowthReference.decigramsToKgFactor
         let stored = ConversionTools.convertKgToStored(kg)

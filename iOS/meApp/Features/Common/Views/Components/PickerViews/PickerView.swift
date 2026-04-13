@@ -252,15 +252,17 @@ struct PickerTestView: View {
             selectedValues: selectedHeightInches,
             options: heightInchesOptions,
             displayValue: { $0 },
-            pickerType: .heightInches
-        ) { selectedHeightInches = $0 }
+            pickerType: .heightInches,
+            onUpdate: { selectedHeightInches = $0 }
+        )
         .pickerSheet(
             isPresented: $showHeightCmPicker,
             selectedValues: selectedHeightCm,
             options: heightCmOptions,
             displayValue: { $0 },
-            pickerType: .heightCm
-        ) { selectedHeightCm = $0 }
+            pickerType: .heightCm,
+            onUpdate: { selectedHeightCm = $0 }
+        )
     }
 }
 

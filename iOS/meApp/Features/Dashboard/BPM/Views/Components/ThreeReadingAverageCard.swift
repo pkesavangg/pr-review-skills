@@ -28,6 +28,9 @@ struct ThreeReadingAverageCard: View {
         .sheet(isPresented: $showDetail) {
             ThreeReadingAverageSheet(average: average, readings: recentReadings)
         }
-        .accessibilityLabel(BpmDashboardStrings.bpAverageCardAccessibility(label: average.label, systolic: average.systolic, diastolic: average.diastolic, pulse: average.pulse))
+        .accessibilityLabel(BpmDashboardStrings.bpAverageCardAccessibility(
+            label: average.label, systolic: average.systolic,
+            diastolic: average.diastolic, pulse: average.pulse
+        ))
     }
 }

@@ -14,7 +14,6 @@
 /// | impedance                | int    | Bioelectrical impedance        |
 /// | unit                     | string | Unit of measurement            |
 
-
 import Foundation
 import SwiftData
 

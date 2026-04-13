@@ -7,8 +7,8 @@ import Combine
 import Foundation
 import ggHealthKitPackage
 import HealthKit
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 @MainActor
 final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:this type_body_length
@@ -642,7 +642,10 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
     /// Writes entry data into Apple Health using an EntryNotification.
     /// This method is safe to call from any actor as it uses extracted data.
     func syncNewData(notification: EntryNotification) async throws {
-        logger.log(level: .info, tag: tag, message: "HealthKit sync new entry started. timestamp=\(notification.entryTimestamp), deviceType=\(notification.deviceType)")
+        logger.log(
+            level: .info, tag: tag,
+            message: "HealthKit sync new entry started. timestamp=\(notification.entryTimestamp), deviceType=\(notification.deviceType)"
+        )
         let export = HealthKitExportExtended(
             timestamp: notification.entryTimestamp,
             weight: notification.weight,
@@ -913,6 +916,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
     }
 
     /// Converts a single extended export into HealthKitData payloads.
+    // swiftlint:disable:next function_body_length
     private func buildHealthKitData(from export: HealthKitExportExtended) -> [HealthKitData] {
         var healthKitData: [HealthKitData] = []
         let formatter = ISO8601DateFormatter()

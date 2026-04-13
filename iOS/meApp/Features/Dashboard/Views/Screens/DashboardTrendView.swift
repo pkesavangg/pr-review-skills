@@ -67,6 +67,6 @@ extension DashboardTrendView where ChartFooter == EmptyView {
         dashboardStore: DashboardStore,
         @ViewBuilder topContent: @escaping () -> TopContent
     ) {
-        self.init(dashboardStore: dashboardStore, topContent: topContent, chartFooter: { EmptyView() })
+        self.init(dashboardStore: dashboardStore, topContent: topContent) { EmptyView() }
     }
 }
