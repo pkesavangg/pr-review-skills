@@ -72,13 +72,11 @@ final class HTTPClient {
         
         // Only check token expiration if needed and not skipped
         if needsAuth && !skipTokenCheck {
-            let account = try await getAccount(accountId)
-            // Extract primitives from @Model before crossing async boundaries (R1)
-            let expiresAt = account.expiresAt
-            let acctId = account.accountId
-            if tokenManager.checkTokenExpiration(expiresAt: expiresAt)
-            {
-                let tokens = try await tokenManager.refreshToken(accountId: acctId)
+            // getAccountSnapshot is @MainActor — hops there, reads model primitives, returns
+            // a plain Sendable struct. No @Model object crosses the actor boundary.
+            let snapshot = try await getAccountSnapshot(accountId)
+            if tokenManager.checkTokenExpiration(expiresAt: snapshot.expiresAt) {
+                let tokens = try await tokenManager.refreshToken(accountId: snapshot.accountId)
                 var newRequest = request
                 newRequest.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
                 return try await performRequest(newRequest)
@@ -94,10 +92,8 @@ final class HTTPClient {
                     // Only retry with refreshed token if we haven't already retried
                     // This prevents infinite loops when 401 is legitimate (e.g., wrong password)
                     if needsAuth && !skipTokenCheck && !restartWithNewTokens {
-                        let account = try await getAccount(accountId)
-                        // Extract primitives from @Model before crossing async boundaries (R1)
-                        let acctId = account.accountId
-                        let tokens = try await tokenManager.refreshToken(accountId: acctId)
+                        let snapshot = try await getAccountSnapshot(accountId)
+                        let tokens = try await tokenManager.refreshToken(accountId: snapshot.accountId)
                         var newRequest = request
                         newRequest.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
                         return try await send(request: newRequest, needsAuth: needsAuth, accountId: accountId, restartWithNewTokens: true)
@@ -186,19 +182,40 @@ final class HTTPClient {
     }
     
     // MARK: - Account Handling
-    /// Retrieves the active account or a specific account by ID.
-    private func getAccount(_ accountId: String?) async throws -> Account {
+
+    /// Plain value type carrying the auth primitives needed by HTTPClient.
+    /// Returned instead of the raw @Model object so callers never touch a
+    /// SwiftData model outside its owning @MainActor ModelContext.
+    private struct AccountSnapshot {
+        let accountId: String
+        let accessToken: String?
+        let expiresAt: String?
+    }
+
+    /// Fetches account auth primitives on the main actor.
+    /// Marked @MainActor so that all @Model property reads happen on the
+    /// thread that owns PersistenceController.shared.context.
+    @MainActor
+    private func getAccountSnapshot(_ accountId: String?) async throws -> AccountSnapshot {
+        let account: Account
         if let accountId = accountId {
-            guard let account = try await accountService.fetchAccount(byId: accountId) else {
+            guard let acct = try await accountService.fetchAccount(byId: accountId) else {
                 throw AccountError.accountNotFound(id: accountId)
             }
-            return account
+            account = acct
         } else {
-            guard let account = await accountService.activeAccount else {
+            guard let acct = accountService.activeAccount else {
                 throw AccountError.noActiveAccount
             }
-            return account
+            account = acct
         }
+        // Extract primitives here while still on @MainActor — never let the
+        // @Model object escape to a background thread.
+        return AccountSnapshot(
+            accountId: account.accountId,
+            accessToken: account.accessToken,
+            expiresAt: account.expiresAt
+        )
     }
     
     // MARK: - Request Constructor
@@ -217,10 +234,8 @@ final class HTTPClient {
         
         var allHeaders = headers ?? [:]
         if needsAuth {
-            if let account = try? await getAccount(accountId) {
-                // Extract primitive from @Model before crossing async boundaries
-                let token = account.accessToken
-                if let token = token, !token.isEmpty {
+            if let snapshot = try? await getAccountSnapshot(accountId) {
+                if let token = snapshot.accessToken, !token.isEmpty {
                     allHeaders["Authorization"] = "Bearer \(token)"
                 }
             }

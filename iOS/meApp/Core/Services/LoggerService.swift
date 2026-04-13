@@ -14,7 +14,7 @@ final class LoggerService: LoggerServiceProtocol {
     
     @Injector var accountService: AccountService
     
-    private let loggerRepository: LoggerRepositoryProtocol = LoggerRepository()
+    private let loggerRepository: LoggerRepositoryProtocol = LoggerRepository.shared
     private let loggerApiRepository: LoggerApiRepositoryProtocol = LoggerApiRepository()
     private let sessionId: String = UUID().uuidString
     private let systemLogger: AppLogger = AppLogger(tag: "GGMeAppLogger")
@@ -61,10 +61,10 @@ final class LoggerService: LoggerServiceProtocol {
             let tagIdString = String(describing: function)
             let logType = level.toLogType
 
-            // Bounce to the main actor to create and save the SwiftData model
-            // without capturing main-actor properties from a @Sendable closure.
+            // Bounce to the main actor to create and save the SwiftData model.
+            // Use LoggerRepository.shared so all saves are serialised through one
+            // LoggerWriteActor — never creating competing background ModelContexts.
             Task { @MainActor in
-                let repo: LoggerRepositoryProtocol = LoggerRepository()
                 let entryToSave = LogEntry(
                     accountId: resolvedAccountId,
                     sessionId: currentSessionId,
@@ -74,7 +74,7 @@ final class LoggerService: LoggerServiceProtocol {
                     message: message,
                     data: stringifiedData
                 )
-                await repo.saveLogEntry(entryToSave)
+                await LoggerRepository.shared.saveLogEntry(entryToSave)
             }
         }
     }

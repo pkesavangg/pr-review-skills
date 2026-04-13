@@ -169,22 +169,27 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     }
     
     func deleteEntry(_ entry: Entry) async throws {
-        let deletedEntry = entry
-        deletedEntry.operationType = OperationType.delete.rawValue
-        deletedEntry.isSynced = false
-        
-        await logger.log(level: .info, tag: tag, message: "Entry delete requested: entryId=\(entry.id.uuidString), accountId=\(entry.accountId)")
+        // `entry` is a SwiftData @Model bound to the @MainActor ModelContext.
+        // Reading its properties from a non-isolated async function (which runs
+        // on the cooperative thread pool) is undefined behaviour and causes
+        // EXC_BAD_ACCESS.  Extract all needed primitives on MainActor first.
+        let (entryId, entryTimestamp, accountId) = await MainActor.run {
+            (entry.id, entry.entryTimestamp, entry.accountId)
+        }
+
+        await logger.log(level: .info, tag: tag,
+            message: "Entry delete requested: entryId=\(entryId.uuidString), accountId=\(accountId)")
         do {
-            try await localRepo.updateEntry(deletedEntry)
-            try await handleEntryDeleted(deletedEntry)
+            // Mark as deleted inside a background context by ID — avoids mutating
+            // the @Model object (entry.operationType / entry.isSynced) off-actor.
+            try await localRepo.markEntryAsDeleted(byId: entryId.uuidString)
+            try await handleEntryDeleted(entry, entryId: entryId, entryTimestamp: entryTimestamp)
             await syncUnsyncedEntries()
-            await logger.log(level: .info, tag: tag, message: "Entry delete queued for sync: entryId=\(entry.id.uuidString), accountId=\(entry.accountId)")
+            await logger.log(level: .info, tag: tag,
+                message: "Entry delete queued for sync: entryId=\(entryId.uuidString), accountId=\(accountId)")
         } catch {
-            await logger.log(
-                level: .error,
-                tag: tag,
-                message: "Entry delete failed: entryId=\(entry.id.uuidString), accountId=\(entry.accountId), error=\(error.localizedDescription)"
-            )
+            await logger.log(level: .error, tag: tag,
+                message: "Entry delete failed: entryId=\(entryId.uuidString), accountId=\(accountId), error=\(error.localizedDescription)")
             throw error
         }
     }
@@ -814,7 +819,13 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                         for entry in entriesToDelete {
                             try? await localRepo.deleteEntry(byId: entry.id.uuidString)
                         }
-                        try? await handleEntryDeleted(localEntry)
+                        // Use the primitive overload — localEntry is from a background
+                        // context so we avoid accessing its @Model properties after the
+                        // async boundary by passing values already in scope.
+                        try? await handleEntryDeleted(
+                            entryId: localEntry.id,
+                            entryTimestamp: localEntry.entryTimestamp
+                        )
                     } else {
                         await cleanupDuplicates(localEntries: localEntries, keepId: localEntry.id)
                         var updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
@@ -867,7 +878,13 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         for entry in allEntries where entry.id != keepId {
             do {
                 try await localRepo.deleteEntry(byId: entry.id.uuidString)
-                try await self.handleEntryDeleted(entry)
+                // Use the primitive overload — these are background-context models
+                // whose properties are read here on the same background thread, but
+                // the primitive overload avoids triggering SwiftData fault-loads.
+                try await self.handleEntryDeleted(
+                    entryId: entry.id,
+                    entryTimestamp: entry.entryTimestamp
+                )
             } catch {
                 await logger.log(
                     level: .error,
@@ -1236,8 +1253,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     
     /// Handles entry update by treating as delete + add
     func handleEntryUpdated(_ entry: Entry) async throws {
-        // For updates, we can treat as delete + add for simplicity
-        try await handleEntryDeleted(entry)
+        // Extract primitives on MainActor before the suspension point.
+        let (entryId, entryTimestamp) = await MainActor.run { (entry.id, entry.entryTimestamp) }
+        try await handleEntryDeleted(entry, entryId: entryId, entryTimestamp: entryTimestamp)
         try await handleEntryAdded(entry)
     }
     
@@ -1271,31 +1289,36 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         entryDeleted.send(EntryNotification(from: dto, id: entryId))
     }
 
-    /// Handles entry deletion by updating affected day and month summaries
-    func handleEntryDeleted(_ entry: Entry) async throws {
+    /// Handles entry deletion by updating affected day and month summaries.
+    /// - Parameters:
+    ///   - entry: The original @Model object — accessed only on MainActor via the
+    ///     `entryTimestamp` parameter to avoid off-actor reads.
+    ///   - entryId: Pre-extracted UUID, passed by `deleteEntry` from a MainActor.run block.
+    ///   - entryTimestamp: Pre-extracted timestamp string, safe to use off-actor.
+    func handleEntryDeleted(_ entry: Entry, entryId: UUID, entryTimestamp: String) async throws {
         let accountId = try await getAccountId()
-        
-        let dayKey = DateTimeTools.getLocalDateStringFromUTCDate(entry.entryTimestamp)
-        let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
-        
+
+        // entryTimestamp is a plain String already extracted on MainActor by the caller —
+        // safe to use here without another MainActor hop.
+        let dayKey = DateTimeTools.getLocalDateStringFromUTCDate(entryTimestamp)
+        let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entryTimestamp)
+
         // Fetch remaining entries for the affected day and month
         let dayEntries = try await getEntries(forDay: dayKey)
         let monthEntries = try await getEntries(forMonth: monthKey)
-        
+
         // Update summaries with aggregated data
         let dailySummary = aggregateByDay(entries: dayEntries, accountId: accountId).first
         let monthlySummary = aggregateByMonth(entries: monthEntries, accountId: accountId).first
-        
+
         if let dailySummary = dailySummary {
             updateDailySummary(dayKey: dayKey, summary: dailySummary)
         } else {
-            // If no entries left for the day, remove summary
             updateDailySummary(dayKey: dayKey, summary: nil)
         }
         if let monthlySummary = monthlySummary {
             updateMonthlySummary(monthKey: monthKey, summary: monthlySummary)
         } else {
-            // If no entries left for the month, remove summary
             updateMonthlySummary(monthKey: monthKey, summary: nil)
         }
 
@@ -1303,12 +1326,14 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let notification = await MainActor.run { EntryNotification(from: entry) }
         entryDeleted.send(notification)
 
-        // Trigger integration delete for the removed entry (e.g., HealthKit)
+        // Trigger integration delete for the removed entry (e.g., HealthKit).
+        // IntegrationsService is @MainActor so this call safely hops to main actor
+        // before accessing the @Model object again.
         do {
             try await integrationService.deleteEntry(entry)
         } catch {
-            // Log error but don't fail the entry deletion process
-            await logger.log(level: .error, tag: tag, message: "Failed to delete entry from integrations: \(error.localizedDescription)")
+            await logger.log(level: .error, tag: tag,
+                message: "Failed to delete entry from integrations: \(error.localizedDescription)")
         }
     }
     
