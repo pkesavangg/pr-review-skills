@@ -106,7 +106,7 @@ final class GraphInteractionHandler {
            let cached = lastXAxisScrollPosition,
            let cachedPeriod = lastXAxisPeriod,
            cachedPeriod == period {
-            let domainLength = renderConfig.visibleDomainLength(for: period)
+            let domainLength = renderConfig.visibleDomainLength(for: period, at: scrollPosition)
             let delta = abs(scrollPosition.timeIntervalSince(cached))
             let movedFar = delta > (domainLength / 6.0)
             let leftEdge = scrollPosition

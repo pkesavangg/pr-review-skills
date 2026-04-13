@@ -464,7 +464,11 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
         stateProvider.state.graph.clearSelection()
 
         Task { [weak self] in
-            await self?.syncEntries()
+            guard let self else { return }
+            await self.syncEntries()
+            await MainActor.run {
+                self.chartManager.initializeChart()
+            }
         }
         loadLatestEntryData()
         loadGoalCardData()

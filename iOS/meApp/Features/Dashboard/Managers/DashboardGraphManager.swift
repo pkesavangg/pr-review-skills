@@ -51,7 +51,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     func handleScrollPhaseChange(_ phase: ScrollPhase) async {
         switch phase {
         case .idle:
-            if let final = interaction.consumeBufferedScrollPosition() { state.xScrollPosition = final }
+            if let final = interaction.consumeBufferedScrollPosition() {
+                state.xScrollPosition = state.selectedPeriod == .month
+                    ? renderConfig.snapScrollPosition(final, for: .month)
+                    : final
+            }
             state.updateScrollState(isScrolling: false)
             state.hasDetectedScrollInCurrentGesture = false
             state.clearSelection()
@@ -78,7 +82,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 if let final = self.interaction.consumeBufferedScrollPosition() {
-                    self.state.xScrollPosition = final
+                    self.state.xScrollPosition = self.state.selectedPeriod == .month
+                        ? self.renderConfig.snapScrollPosition(final, for: .month)
+                        : final
                 }
                 self.state.updateScrollState(isScrolling: false)
             }
@@ -548,7 +554,13 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     // MARK: - Domain Length & Midpoints
 
-    func visibleDomainLength(for period: TimePeriod) -> TimeInterval { renderConfig.visibleDomainLength(for: period) }
+    func visibleDomainLength(for period: TimePeriod) -> TimeInterval {
+        visibleDomainLength(for: period, at: state.xScrollPosition)
+    }
+
+    func visibleDomainLength(for period: TimePeriod, at position: Date) -> TimeInterval {
+        renderConfig.visibleDomainLength(for: period, at: position)
+    }
 
     var currentVisibleMidpoint: Date {
         state.xScrollPosition.addingTimeInterval(visibleDomainLength(for: state.selectedPeriod) / 2)
@@ -573,7 +585,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             from: allOperations,
             scrollPosition: scrollPosition,
             period: period,
-            visibleDomainLength: visibleDomainLength(for: period)
+            visibleDomainLength: visibleDomainLength(for: period, at: scrollPosition)
         )
     }
 

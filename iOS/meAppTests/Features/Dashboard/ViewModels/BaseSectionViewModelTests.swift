@@ -158,6 +158,18 @@ struct BaseSectionViewModelTests {
         #expect(sut.adjustedLabelTicks == Array(ticks.dropLast()))
     }
 
+    @Test("gridTicks for month exclude next-month boundary tick")
+    func gridTicksForMonthExcludeNextMonthBoundary() {
+        let (sut, _) = makeConfiguredSUT(period: .month)
+        sut.scrollPosition = makeDate(year: 2026, month: 3, day: 1, hour: 0)
+
+        let calendar = Calendar.current
+        let tickComponents = sut.gridTicks.map { calendar.dateComponents([.month, .day], from: $0) }
+
+        #expect(tickComponents.map(\.day) == [1, 8, 15, 22, 29])
+        #expect(!tickComponents.contains { $0.month == 4 && $0.day == 1 })
+    }
+
     // MARK: - hasXAxis
 
     @Test("hasXAxis is true for week/month/year", arguments: [TimePeriod.week, .month, .year])

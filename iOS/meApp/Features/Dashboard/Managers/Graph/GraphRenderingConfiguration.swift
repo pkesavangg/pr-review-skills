@@ -14,8 +14,13 @@ struct GraphRenderingConfiguration {
 
     // MARK: - Domain Length
 
-    func visibleDomainLength(for period: TimePeriod) -> TimeInterval {
-        DateTimeTools.visibleDomainLength(for: period)
+    func visibleDomainLength(for period: TimePeriod, at position: Date? = nil) -> TimeInterval {
+        if period == .month,
+           let position,
+           let monthInterval = calendar.dateInterval(of: .month, for: position) {
+            return monthInterval.duration
+        }
+        return DateTimeTools.visibleDomainLength(for: period)
     }
 
     // MARK: - X-Axis Tick Generation
@@ -29,7 +34,7 @@ struct GraphRenderingConfiguration {
         guard let minDate = operations.first?.date,
               let maxDate = operations.last?.date else { return [] }
 
-        let domainLength = visibleDomainLength(for: period)
+        let domainLength = visibleDomainLength(for: period, at: scrollPosition)
         let dataSpan = maxDate.timeIntervalSince(minDate)
         let useFixedDomain = period == .year
             ? dataSpan <= 5 * DashboardConstants.TimeInterval.year
@@ -95,27 +100,32 @@ struct GraphRenderingConfiguration {
         let monthEnd = calendar.dateInterval(of: .month, for: endDate)?.end ?? endDate
         let totalMonths = max(1, Int(ceil(monthEnd.timeIntervalSince(monthStart) / DashboardConstants.TimeInterval.month)))
 
-        var sundayCal = Calendar(identifier: .gregorian)
-        sundayCal.timeZone = calendar.timeZone
-        sundayCal.locale = calendar.locale
-        sundayCal.firstWeekday = 1
-
         var dates: [Date] = []
         for offset in 0..<totalMonths {
-            guard let monthBegin = sundayCal.date(byAdding: .month, value: offset, to: monthStart),
-                  let monthInterval = sundayCal.dateInterval(of: .month, for: monthBegin) else { continue }
-            let ticks = DateTimeTools.sundayTicksForMonth(
-                in: monthInterval,
-                baseCalendar: calendar,
-                includeTrailingPhantom: false
-            )
-            dates.append(contentsOf: ticks.filter { $0 >= monthStart && $0 <= monthEnd })
+            guard let monthBegin = calendar.date(byAdding: .month, value: offset, to: monthStart),
+                  let monthInterval = calendar.dateInterval(of: .month, for: monthBegin) else { continue }
+
+            // Generate ticks every 7 days starting from the 1st: 1, 8, 15, 22, 29
+            let first = monthInterval.start
+            let monthEndDate = monthInterval.end
+            var day = first
+            while day < monthEndDate {
+                let noon = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: day) ?? day
+                if noon >= monthStart && noon <= monthEnd {
+                    dates.append(noon)
+                }
+                guard let next = calendar.date(byAdding: .day, value: 7, to: day) else { break }
+                day = next
+            }
         }
-        // Trailing phantom weekly tick for month-end selectable region
-        if let last = dates.max(),
-           let nextSunday = sundayCal.date(byAdding: .weekOfYear, value: 1, to: last),
-           let phantom = sundayCal.date(bySettingHour: 12, minute: 0, second: 0, of: nextSunday) {
-            dates.append(phantom)
+        // Trailing phantom tick at the last day of the last visible month
+        if let last = dates.max() {
+            let lastMonthEnd = calendar.dateInterval(of: .month, for: last)?.end ?? last
+            let lastDayOfMonth = lastMonthEnd.addingTimeInterval(-1)
+            let phantomNoon = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: lastDayOfMonth) ?? lastDayOfMonth
+            if phantomNoon > last {
+                dates.append(phantomNoon)
+            }
         }
         return dates
     }
@@ -190,7 +200,8 @@ struct GraphRenderingConfiguration {
             return yearlyCalendar.date(from: components) ?? bounds.min
         }
 
-        let domainLength = visibleDomainLength(for: period)
+        let domainReferenceDate = anchorDate ?? bounds.max
+        let domainLength = visibleDomainLength(for: period, at: domainReferenceDate)
 
         if let anchor = anchorDate {
             return anchoredScrollPosition(
@@ -215,11 +226,10 @@ struct GraphRenderingConfiguration {
             return calendar.date(from: components) ?? position
 
         case .month:
-            let weekday = calendar.component(.weekday, from: position)
-            let subtract = (weekday - calendar.firstWeekday + 7) % 7
-            guard let snapped = calendar.date(byAdding: .day, value: -subtract, to: position) else { return position }
-            var components = calendar.dateComponents([.year, .month, .day], from: snapped)
-            components.hour = 0; components.minute = 0; components.second = 0
+            // Snap to the 1st of the containing calendar month so the entire month is visible.
+            guard let monthInterval = calendar.dateInterval(of: .month, for: position) else { return position }
+            var components = calendar.dateComponents([.year, .month], from: monthInterval.start)
+            components.day = 1; components.hour = 0; components.minute = 0; components.second = 0
             return calendar.date(from: components) ?? position
 
         case .year:
@@ -312,7 +322,7 @@ struct GraphRenderingConfiguration {
 
     func sampleDates(for period: TimePeriod, scrollPosition: Date) -> [Date] {
         guard period != .total else { return [] }
-        let domainLength = visibleDomainLength(for: period)
+        let domainLength = visibleDomainLength(for: period, at: scrollPosition)
         let rightEdge = scrollPosition.addingTimeInterval(domainLength)
         let unit: Calendar.Component = period == .week ? .day : period == .month ? .weekOfYear : .month
 
@@ -403,7 +413,7 @@ struct GraphRenderingConfiguration {
                 let monthStart = calendar.dateInterval(of: .month, for: minDate)?.start ?? adjMin
                 let monthEnd = calendar.dateInterval(of: .month, for: maxDate)?.end.addingTimeInterval(-1)
                     ?? currentPeriodEnd(for: period)
-                return (monthStart, max(monthEnd, currentPeriodEnd(for: period)))
+                return (monthStart, monthEnd)
             }
             return (adjMin, max(adjMax, currentPeriodEnd(for: period)))
         } else {
@@ -477,8 +487,8 @@ struct GraphRenderingConfiguration {
             let rightEdgeWithBuffer = latestDate.addingTimeInterval(2 * DashboardConstants.TimeInterval.day)
             return rightEdgeWithBuffer.addingTimeInterval(-domainLength)
         case .month:
-            let rightEdgeWithBuffer = latestDate.addingTimeInterval(DashboardConstants.TimeInterval.week)
-            return rightEdgeWithBuffer.addingTimeInterval(-domainLength)
+            // Snap to the 1st of the month containing the latest entry
+            return calendar.dateInterval(of: .month, for: latestDate)?.start ?? latestDate
         case .year:
             let rightEdgeWithBuffer = latestDate.addingTimeInterval(DashboardConstants.TimeInterval.month)
             return rightEdgeWithBuffer.addingTimeInterval(-domainLength)
