@@ -12,6 +12,7 @@ import com.dmdbrands.gurus.weight.domain.services.IHistoryService
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.SeriesData
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
+import com.dmdbrands.gurus.weight.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
@@ -122,6 +123,26 @@ class BabyDashboardViewModel @AssistedInject constructor(
       val targetStartX = GraphUtil.getRollingWindowStart(segment, endTs) ?: firstDataTs
       val filteredTarget = entries.filter { it.getTimeStamp() in targetStartX..endX }
 
+      val yValues: List<Double> = when (_state.value.selectedMetric) {
+        BabyMetric.WEIGHT -> filteredTarget.mapNotNull { e ->
+          e.avgWeightDecigrams?.let { it / 283.495 / 16.0 }
+        }
+        BabyMetric.HEIGHT -> filteredTarget.mapNotNull { e ->
+          e.avgLengthMillimeters?.let { it / 25.4 }
+        }
+      }.filter { it.isFinite() && it > 0.0 }
+
+      val seed: Pair<Double, Double>? = if (yValues.isNotEmpty()) {
+        val scale = generateNiceScale(
+          minValue = yValues.min(),
+          maxValue = yValues.max(),
+          goalWeight = 0.0,
+          isWeightLessMode = false,
+          targetTickCount = 4,
+        )
+        scale.min to scale.max
+      } else null
+
       updateSegmentState(segment) {
         it.copy(
           data = targetData,
@@ -133,6 +154,8 @@ class BabyDashboardViewModel @AssistedInject constructor(
           endTimestamp = endTs,
           visibleMin = it.visibleMin ?: targetStartX,
           visibleMax = it.visibleMax ?: endX,
+          seedMinY = seed?.first ?: it.seedMinY,
+          seedMaxY = seed?.second ?: it.seedMaxY,
         )
       }
     }

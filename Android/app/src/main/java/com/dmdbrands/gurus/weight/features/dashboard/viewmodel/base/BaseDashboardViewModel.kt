@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.SeriesData
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import kotlinx.collections.immutable.toImmutableList
+import com.dmdbrands.gurus.weight.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
@@ -49,9 +50,16 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
    * Compute segment ranges (minTarget, maxTarget, chartMinX, chartMaxX, etc.)
    * from entries and update segment states. Same logic for all products.
    */
+  /**
+   * @param getYValuesForSeed Optional per-product Y extractor. When provided, computes
+   *   [SegmentState.seedMinY]/[SegmentState.seedMaxY] from the visible-window entries so
+   *   the chart has the correct Y range on frame-0 — eliminating the axis jump on segment
+   *   switch and first load. Pass null (default) to leave seed unchanged (e.g. Baby chart).
+   */
   protected fun updateSegmentRanges(
     entries: List<PeriodSummary>,
     segments: List<GraphSegment>,
+    getYValuesForSeed: ((List<PeriodSummary>) -> List<Double>)? = null,
   ) {
     if (entries.isEmpty()) {
       segments.forEach { segment ->
@@ -101,6 +109,20 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
 
       val filteredTarget = entries.filter { it.getTimeStamp() in startX..endX }
 
+      val seed = if (getYValuesForSeed != null) {
+        val yValues = getYValuesForSeed(filteredTarget).filter { it.isFinite() && it > 0.0 }
+        if (yValues.isNotEmpty()) {
+          val scale = generateNiceScale(
+            minValue = yValues.min(),
+            maxValue = yValues.max(),
+            goalWeight = 0.0,
+            isWeightLessMode = false,
+            targetTickCount = 4,
+          )
+          scale.min to scale.max
+        } else null
+      } else null
+
       updateSegmentState(segment) {
         it.copy(
           data = entries.toImmutableList(),
@@ -113,6 +135,8 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
           endTimestamp = endTimeStamp,
           visibleMin = it.visibleMin ?: startX,
           visibleMax = it.visibleMax ?: endX,
+          seedMinY = seed?.first ?: it.seedMinY,
+          seedMaxY = seed?.second ?: it.seedMaxY,
         )
       }
     }

@@ -110,7 +110,11 @@ class WeightDashboardViewModel @Inject constructor(
         .collect { entries ->
           latestDailyData = entries
           val series = toWeightSeries(entries)
-          updateSegmentRanges(entries, listOf(GraphSegment.WEEK, GraphSegment.MONTH))
+          updateSegmentRanges(entries, listOf(GraphSegment.WEEK, GraphSegment.MONTH)) { data ->
+            data.filterIsInstance<PeriodBodyScaleSummary>()
+              .map { it.weight }
+              .filter { it.isFinite() && it > 0.0 }
+          }
           pushWeightProducer(_state.value.dailyProducer, series)
         }
     }
@@ -120,7 +124,11 @@ class WeightDashboardViewModel @Inject constructor(
         .collect { entries ->
           latestMonthlyData = entries
           val series = toWeightSeries(entries)
-          updateSegmentRanges(entries, listOf(GraphSegment.YEAR, GraphSegment.TOTAL))
+          updateSegmentRanges(entries, listOf(GraphSegment.YEAR, GraphSegment.TOTAL)) { data ->
+            data.filterIsInstance<PeriodBodyScaleSummary>()
+              .map { it.weight }
+              .filter { it.isFinite() && it > 0.0 }
+          }
           pushWeightProducer(_state.value.monthlyProducer, series)
         }
     }

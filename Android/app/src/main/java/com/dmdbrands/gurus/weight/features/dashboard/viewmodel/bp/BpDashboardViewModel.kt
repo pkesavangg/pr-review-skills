@@ -54,7 +54,11 @@ class BpDashboardViewModel @Inject constructor(
         .map { (it as? GraphData.BloodPressure)?.data ?: emptyList() }
         .collect { entries ->
           val series = toBpSeries(entries)
-          updateSegmentRanges(entries, listOf(GraphSegment.WEEK, GraphSegment.MONTH))
+          updateSegmentRanges(entries, listOf(GraphSegment.WEEK, GraphSegment.MONTH)) { data ->
+            data.filterIsInstance<PeriodBpmSummary>()
+              .flatMap { listOf(it.avgSystolic.toDouble(), it.avgDiastolic.toDouble(), it.avgPulse.toDouble()) }
+              .filter { it > 0.0 }
+          }
           if (series.isNotEmpty()) {
             pushSeriesToProducer(_state.value.dailyProducer, series)
           } else {
@@ -67,7 +71,11 @@ class BpDashboardViewModel @Inject constructor(
         .map { (it as? GraphData.BloodPressure)?.data ?: emptyList() }
         .collect { entries ->
           val series = toBpSeries(entries)
-          updateSegmentRanges(entries, listOf(GraphSegment.YEAR, GraphSegment.TOTAL))
+          updateSegmentRanges(entries, listOf(GraphSegment.YEAR, GraphSegment.TOTAL)) { data ->
+            data.filterIsInstance<PeriodBpmSummary>()
+              .flatMap { listOf(it.avgSystolic.toDouble(), it.avgDiastolic.toDouble(), it.avgPulse.toDouble()) }
+              .filter { it > 0.0 }
+          }
           if (series.isNotEmpty()) {
             pushSeriesToProducer(_state.value.monthlyProducer, series)
           } else {

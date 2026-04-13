@@ -25,6 +25,9 @@ data class SegmentState(
   /** Current visible X range from scroll — updated on scroll stop. */
   val visibleMin: Long? = null,
   val visibleMax: Long? = null,
+  /** Last settled Y range from ScrollAwareRangeProvider — seeds frame-0 on segment switch. */
+  val seedMinY: Double? = null,
+  val seedMaxY: Double? = null,
 )
 
 /**

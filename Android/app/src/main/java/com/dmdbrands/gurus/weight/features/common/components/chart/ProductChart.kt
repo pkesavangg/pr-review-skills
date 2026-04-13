@@ -9,7 +9,6 @@ import com.dmdbrands.gurus.weight.features.common.components.chart.axis.bottomAx
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.endAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.startAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.topAxis
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardState
 import com.dmdbrands.gurus.weight.features.common.components.chart.config.ChartConfig
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
@@ -17,12 +16,14 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.visibleLabelsCount
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardState
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.FadingEdges
 import com.patrykandpatrick.vico.compose.cartesian.axis.Axis
 import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianLayerRangeProvider
 import com.patrykandpatrick.vico.compose.cartesian.data.rememberScrollAwareRangeProvider
+import com.patrykandpatrick.vico.compose.common.data.ExtraStore
 import com.patrykandpatrick.vico.compose.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
@@ -51,6 +52,7 @@ fun rememberProductChart(
   horizontalItemPlacer: HorizontalAxis.ItemPlacer,
   fadingEdges: FadingEdges? = null,
   scrubController: ScrubMarkerController? = null,
+  onYRangeSettled: (Double, Double) -> Unit = { _, _ -> },
 ): CartesianChart {
   // ── Separators (shared) ──
   val separators = GraphUtil.periodStarts(
@@ -80,9 +82,13 @@ fun rememberProductChart(
   }
 
   // ── Y-range provider (config-driven) ──
+  // seedMinY/seedMaxY are pre-computed in the respective ViewModel (updateSegmentRanges)
+  // so the correct range is available on frame-0 for both first load and segment switches.
   val scrollAwareRange = rememberScrollAwareRangeProvider(
     minX = segmentState.chartMinX ?: Double.NaN,
     maxX = segmentState.chartMaxX ?: Double.NaN,
+    seedMinY = segmentState.seedMinY ?: Double.NaN,
+    seedMaxY = segmentState.seedMaxY ?: Double.NaN,
   ) { visibleSeriesEntries, visibleXRange ->
     // Extract Y values: all series (BP), first series only (weight/baby)
     val yValues = if (config.useAllSeriesForYRange) {
@@ -105,7 +111,8 @@ fun rememberProductChart(
     val rangeMaxY = axisMeta.max
     val step = axisMeta.step
 
-    // Y range managed by ScrollAwareRangeProvider — no VM intent needed
+    onYRangeSettled(rangeMinY, rangeMaxY)
+
     val ticks = mutableListOf<Double>()
     var tick = rangeMinY
     while (tick <= rangeMaxY + step * 0.01) {
@@ -150,11 +157,17 @@ fun rememberProductChart(
         pointProvider = null,
       )
     }
-    val percentileRangeProvider = remember(segmentState.chartMinX, segmentState.chartMaxX) {
-      CartesianLayerRangeProvider.fixed(
-        minX = segmentState.chartMinX ?: Double.NaN,
-        maxX = segmentState.chartMaxX ?: Double.NaN,
-      )
+    val percentileRangeProvider = remember {
+      object : CartesianLayerRangeProvider {
+        override fun getMinX(minX: Double, maxX: Double, extraStore: ExtraStore) =
+          scrollAwareRange.xRangeMin.takeIf { !it.isNaN() } ?: minX
+        override fun getMaxX(minX: Double, maxX: Double, extraStore: ExtraStore) =
+          scrollAwareRange.xRangeMax.takeIf { !it.isNaN() } ?: maxX
+        override fun getMinY(minY: Double, maxY: Double, extraStore: ExtraStore) =
+          scrollAwareRange.getMinY(minY, maxY, extraStore)
+        override fun getMaxY(minY: Double, maxY: Double, extraStore: ExtraStore) =
+          scrollAwareRange.getMaxY(minY, maxY, extraStore)
+      }
     }
     rememberLineCartesianLayer(
       lineProvider = remember(bandLines) { LineCartesianLayer.LineProvider.series(bandLines) },
