@@ -24,6 +24,11 @@ import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
+// Width ratio for the combined letter + profile icon variant (Figma node 7453:121594)
+private const val INFO_ICON_WIDTH_RATIO = 1.7f
+// Profile icon is ~44% of the avatar size per Figma spec (24dp at size=55dp)
+private const val PROFILE_ICON_SIZE_RATIO = 0.44f
+
 /**
  * A circular profile avatar that displays the first letter of the provided text and supports active/inactive states.
  *
@@ -71,7 +76,7 @@ fun AppProfileAvatar(
         Modifier
     }
 
-  if (!isInfoIcon) {
+    if (!isInfoIcon) {
         val avatarText = text.trim().takeIf { it.isNotEmpty() }?.let { input ->
             var index = 0
             while (index < input.length) {
@@ -87,11 +92,11 @@ fun AppProfileAvatar(
         // Default single avatar
         Box(
             modifier = modifier
-              .size(size)
-              .then(borderModifier)
-              .then(gestureModifier)
-              .clip(CircleShape)
-              .background(backgroundColor),
+                .size(size)
+                .then(borderModifier)
+                .then(gestureModifier)
+                .clip(CircleShape)
+                .background(backgroundColor),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -101,52 +106,52 @@ fun AppProfileAvatar(
             )
         }
     } else {
-    // Combined name initial letter avatar + profile icon
+        // Combined name initial letter avatar + profile icon
         Box(
             modifier = modifier
-              .width(size * 1.7f)
-              .height(size)
-              .background(MeTheme.colorScheme.primaryBackground)
-              .then(gestureModifier),
+                .width(size * INFO_ICON_WIDTH_RATIO)
+                .height(size)
+                .background(MeTheme.colorScheme.primaryBackground)
+                .then(gestureModifier),
             contentAlignment = Alignment.Center,
         ) {
             // Profile icon - overlapping on the right (rendered first, lower z-index)
-          Box(
-            modifier = Modifier
-              .align(Alignment.CenterEnd)
-              .size(size)
-              .border(3.dp, MeTheme.colorScheme.iconPrimary, CircleShape)
-              .clip(CircleShape)
-              .background(Color.Transparent),
-            contentAlignment = Alignment.Center,
-          ) {
-            AppIcon(
-              id = AppIcons.Filled.Profile,
-              contentDescription = "Profile",
-              type = AppIconType.Primary,
-              modifier = Modifier
-                .padding(start = 2.dp)
-                .align(Alignment.Center)
-                .size(size * 0.44f),
-            )
-          }
-
-          // Letter box - positioned on the left (rendered second, higher z-index)
-          // Border extends outward in Figma (node 7453:121594), so size includes border
             Box(
                 modifier = Modifier
-                  .align(Alignment.CenterStart)
-                  .size(size)
-                  .clip(CircleShape)
-                  .background(backgroundColor)
-                  .padding(3.dp),
+                    .align(Alignment.CenterEnd)
+                    .size(size)
+                    .border(3.dp, MeTheme.colorScheme.iconPrimary, CircleShape)
+                    .clip(CircleShape)
+                    .background(Color.Transparent),
+                contentAlignment = Alignment.Center,
+            ) {
+                AppIcon(
+                    id = AppIcons.Filled.Profile,
+                    contentDescription = "Profile",
+                    type = AppIconType.Primary,
+                    modifier = Modifier
+                        .padding(start = 2.dp)
+                        .align(Alignment.Center)
+                        .size(size * PROFILE_ICON_SIZE_RATIO),
+                )
+            }
+
+            // Letter box - positioned on the left (rendered second, higher z-index)
+            // Using padding(3.dp) instead of border() to avoid the background bleeding
+            // past the circle edge and forming a ring-like outline. Size matches Figma.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .size(size)
+                    .clip(CircleShape)
+                    .background(backgroundColor)
+                    .padding(3.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                  text = text.firstOrNull()?.uppercase() ?: "",
-                  style = MeTheme.typography.heading4,
-                  color = textColor,
-                  modifier = Modifier.padding(0.dp),
+                    text = text.firstOrNull()?.uppercase() ?: "",
+                    style = MeTheme.typography.heading4,
+                    color = textColor,
                 )
             }
         }
