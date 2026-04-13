@@ -31,12 +31,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 private fun getDisplayUnit(weightUnit: WeightUnit, weight: Double): String {
   return when (weightUnit) {
     WeightUnit.KG -> "kg"
-    WeightUnit.LB -> when {
-      weight == 0.0 -> "lbs"
-      weight <= 1.0 -> "lb"
-      else -> "lbs"
-    }
-    WeightUnit.LB_OZ -> when {
+    WeightUnit.LB, WeightUnit.LB_OZ -> when {
       weight == 0.0 -> "lbs"
       weight <= 1.0 -> "lb"
       else -> "lbs"
