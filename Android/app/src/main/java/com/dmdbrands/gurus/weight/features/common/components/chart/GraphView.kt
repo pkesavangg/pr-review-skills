@@ -1,8 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -159,15 +157,15 @@ fun GraphView(
   LaunchedEffect(segment) {
     if (scrollTarget == null || !canScrollToAnchor || segmentState.isEmptyGraph) return@LaunchedEffect
     val updatedScrollTarget = GraphUtil.getRelativeStart(segment, scrollTarget.toLong())
-    val anchoredTarget = GraphUtil.getStartOnAnchored(segment, updatedScrollTarget)
-    delay(SCROLL_DELAY_AFTER_LAYOUT_MS)
-    scrollState.animateScroll(
-      Scroll.Absolute.xWithPadding(
-        anchoredTarget.toDouble(),
-        GraphSnapHelper.getVisiblePaddingXStepForSegment(segment).first,
-      ),
-      animationSpec = tween(durationMillis = 150, easing = LinearOutSlowInEasing),
-    )
+    GraphUtil.getStartOnAnchored(segment, updatedScrollTarget)
+    // delay(SCROLL_DELAY_AFTER_LAYOUT_MS)
+    // scrollState.animateScroll(
+    //   Scroll.Absolute.xWithPadding(
+    //     anchoredTarget.toDouble(),
+    //     GraphSnapHelper.getVisiblePaddingXStepForSegment(segment).first,
+    //   ),
+    //   animationSpec = tween(durationMillis = 150, easing = LinearOutSlowInEasing),
+    // )
     onScrollTargetConsumed(true)
   }
 
@@ -239,6 +237,9 @@ fun GraphView(
     horizontalItemPlacer = horizontalItemPlacer,
     fadingEdges = fadingEdges,
     scrubController = scrubController,
+    onYRangeSettled = { minY, maxY ->
+      handleGraphIntent(BaseGraphIntent.UpdateSeedYRange(segment, minY, maxY))
+    },
   )
 
   LaunchedEffect(scrollState) {
