@@ -98,7 +98,9 @@ class MainActivity : AppCompatActivity() {
 
   override fun onDestroy() {
     super.onDestroy()
-    customTabManager.unbind()
+    if (isFinishing) {
+      customTabManager.unbind()
+    }
   }
 
   /**

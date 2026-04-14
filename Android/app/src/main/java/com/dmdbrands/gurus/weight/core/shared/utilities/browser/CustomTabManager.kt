@@ -14,7 +14,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 
 sealed class ChromeTabState {
@@ -124,18 +123,7 @@ class CustomTabManager
             } catch (e: Exception) {
             }
 
-            // Fallback: try default browser before falling back to WebView
-            try {
-                val browserIntent = Intent(Intent.ACTION_VIEW, uri).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                if (context.packageManager.resolveActivity(browserIntent, 0) != null) {
-                    context.startActivity(browserIntent)
-                    return
-                }
-            } catch (e: Exception) {
-            }
-            // Last resort: no browser installed
+            // Fallback
             try {
                 WebViewLauncher.launch(context, url)
             } catch (e: Exception) {
