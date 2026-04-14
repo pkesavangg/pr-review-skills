@@ -15,6 +15,7 @@ import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.service.NotificationEventType
 import com.dmdbrands.gurus.weight.core.service.WifiScaleService
 import com.dmdbrands.gurus.weight.core.shared.utilities.IAppReviewManager
+import com.dmdbrands.gurus.weight.core.shared.utilities.browser.ICustomTabManager
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.repository.AppRepository
 import com.dmdbrands.gurus.weight.data.storage.datastore.FcmDataStore
@@ -60,6 +61,9 @@ class MainActivity : AppCompatActivity() {
   @Inject
   lateinit var appReviewManager: IAppReviewManager
 
+  @Inject
+  lateinit var customTabManager: ICustomTabManager
+
   /**
    * Called when the activity is starting. Sets up Compose content and handles navigation intents.
    * @param savedInstanceState The previously saved instance state, if any.
@@ -85,6 +89,16 @@ class MainActivity : AppCompatActivity() {
     observeThemeChanges()
     // Handle initial intent
     handleHealthConnectIntent(intent)
+
+    // Pre-warm Custom Tabs service so support links and OAuth open in browser without delay
+    lifecycleScope.launch {
+      customTabManager.bindService()
+    }
+  }
+
+  override fun onDestroy() {
+    super.onDestroy()
+    customTabManager.unbind()
   }
 
   /**
