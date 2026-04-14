@@ -452,7 +452,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
     private fun onExitSetup(isSetupFinished: Boolean) {
         deviceService.setSetupInProgress(false)
         if (isSetupFinished) {
-            onExit()
+            onExit(isSetupFinished = true)
         } else {
             dialogQueueService.enqueue(
                 DialogModel.Confirm(
@@ -460,20 +460,20 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
                     message = ScaleSetupStrings.ExitSetupAlert.Message(discoveredScale?.connectionStatus == BLEStatus.CONNECTED),
                     confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
                     cancelText = ScaleSetupStrings.ExitSetupAlert.GoBack,
-                    onConfirm = { onExit() },
+                    onConfirm = { onExit(isSetupFinished = false) },
                 ),
             )
         }
     }
 
-    private fun onExit() {
+    private fun onExit(isSetupFinished: Boolean) {
         clearAllTimeouts()
         viewModelScope.launch {
             try {
                 ggDeviceService.resumeScan(false)
                 discoveredScale?.let { scale ->
                     ggDeviceService.cancelWifi(scale.toGGBTDevice()) {}
-                    if (!isScaleConnected && initialStep != BtWifiSetupStep.GATHERING_NETWORK) {
+                    if (!isSetupFinished && initialStep != BtWifiSetupStep.GATHERING_NETWORK) {
                         ggDeviceService.deleteAccount(scale.toGGBTDevice(), true) {}
                         ggDeviceService.disconnectDevice(scale.toGGBTDevice())
                     }
