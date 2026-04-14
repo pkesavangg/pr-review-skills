@@ -26,7 +26,7 @@ class HelpStore: ObservableObject {
     var kvStorage = KvStorageService.shared
     var theme = Theme.shared
     
-    @Published var activeAccount: Account?
+    @Published var activeAccount: AccountSnapshot?
     
     // MARK: - Product Manual Browser State
     @Published var showProductBrowser: Bool = false

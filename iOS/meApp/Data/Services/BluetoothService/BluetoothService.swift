@@ -119,7 +119,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     // MARK: - Private Properties
 
     var cancellables = Set<AnyCancellable>()
-    var activeAccount: Account?
+    var activeAccount: AccountSnapshot?
     var isSmartScanStarted = false
     var bluetoothScales: [Device] = []
     var connectedGgDevices: [GGBTDevice] = []
@@ -280,7 +280,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
     }
 
-    private func handleAccountUpdate(_ account: Account?) {
+    private func handleAccountUpdate(_ account: AccountSnapshot?) {
         if let account = account {
             activeAccount = account
             logger.log(level: .info, tag: tag, message: "Bluetooth active account updated. accountId=\(account.accountId)")
@@ -292,7 +292,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
     }
 
-    private func scheduleProfileUpdateIfNeeded(for account: Account?) {
+    private func scheduleProfileUpdateIfNeeded(for account: AccountSnapshot?) {
         let currentAccountId = account?.accountId
         guard let accountId = currentAccountId else {
             profileUpdateTask?.cancel()

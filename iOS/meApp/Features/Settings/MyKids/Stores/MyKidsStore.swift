@@ -182,6 +182,6 @@ final class MyKidsStore: ObservableObject {
     }
 
     private var preferredWeightUnit: BabyWeightUnit {
-        accountService.activeAccount?.weightSettings?.weightUnit == .kg ? .kg : .lbsOz
+        accountService.activeAccount?.weightUnit == .kg ? .kg : .lbsOz
     }
 }

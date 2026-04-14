@@ -85,7 +85,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
     
     private func isHealthKitEnabledForActiveAccount() async -> Bool {
         await MainActor.run {
-            accountService.activeAccount?.integrationSettings?.isHealthKitOn ?? false
+            accountService.activeAccount?.isHealthKitOn ?? false
         }
     }
 

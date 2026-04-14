@@ -416,11 +416,14 @@ final class SignupStore: ObservableObject {
         let profile = generateProfile()
         let goal = generateGoalRequest()
         do {
-            let account = try await accountService.signUp(
+            try await accountService.signUp(
                 email: email,
                 password: password,
                 profile: profile
             )
+            guard let account = accountService.activeAccount else {
+                throw AccountError.noActiveAccount
+            }
             persistSelectedSignupDeviceType(for: account.accountId)
             try await setInitialProductTypes(on: account)
             try await persistSignupBabies(for: account)
@@ -512,7 +515,7 @@ final class SignupStore: ObservableObject {
         }
     }
 
-    private func setInitialProductTypes(on account: Account) async throws {
+    private func setInitialProductTypes(on account: AccountSnapshot) async throws {
         guard let selectedDeviceType else { return }
         let types: [String]
         switch selectedDeviceType {
@@ -523,16 +526,15 @@ final class SignupStore: ObservableObject {
         case .babyScale:
             types = ["baby"]
         }
-        account.productTypes = types
-        _ = try await accountService.updateProductTypes(types)
+        try await accountService.updateProductTypes(types)
         logger.log(
             level: .info,
             tag: tag,
-            message: "Set initial productTypes=\(account.productTypes) for accountId=\(account.accountId)"
+            message: "Set initial productTypes=\(types) for accountId=\(account.accountId)"
         )
     }
 
-    private func persistSignupBabies(for account: Account) async throws {
+    private func persistSignupBabies(for account: AccountSnapshot) async throws {
         guard !babies.isEmpty else { return }
 
         var firstSavedSelection: ProductSelection?

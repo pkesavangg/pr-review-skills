@@ -13,7 +13,7 @@ import Foundation
 final class BabySnapshotCardViewModel: ObservableObject {
     @Injector private var accountService: AccountServiceProtocol
 
-    @Published private(set) var activeAccount: Account?
+    @Published private(set) var activeAccount: AccountSnapshot?
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -27,11 +27,11 @@ final class BabySnapshotCardViewModel: ObservableObject {
     }
 
     var unitText: String {
-        activeAccount?.weightSettings?.weightUnit?.rawValue ?? "lbs"
+        activeAccount?.weightUnit.rawValue ?? "lbs"
     }
 
     private var weightUnit: WeightUnit {
-        activeAccount?.weightSettings?.weightUnit ?? .lb
+        activeAccount?.weightUnit ?? .lb
     }
 
     func convertStoredWeightToDisplay(_ storedWeight: Int) -> Double {

@@ -123,14 +123,14 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Reads goal initial weight on MainActor to avoid crossing SwiftData model objects between executors.
     private func getGoalInitialWeight() async -> Int? {
         await MainActor.run {
-            accountService.activeAccount?.goalSettings?.initialWeight.map(Int.init)
+            accountService.activeAccount?.initialWeight.map(Int.init)
         }
     }
 
     /// Reads dashboard type on MainActor to avoid crossing SwiftData model objects between executors.
     private func getDashboardType() async -> String? {
         await MainActor.run {
-            accountService.activeAccount?.dashboardSettings?.dashboardType
+            accountService.activeAccount?.dashboardType
         }
     }
 

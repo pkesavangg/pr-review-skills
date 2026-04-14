@@ -101,7 +101,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         if let concreteAccountService = accountService as? AccountService {
             concreteAccountService.$activeAccount
                 .receive(on: DispatchQueue.main)
-                .sink { [weak self] (newAccount: Account?) in
+                .sink { [weak self] (newAccount: AccountSnapshot?) in
                     guard let self else { return }
                     Task { @MainActor in
                         // Ignore account changes until initialization completes to avoid race condition

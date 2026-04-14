@@ -683,7 +683,7 @@ class BottomTabBarViewModel: ObservableObject {
         isCheckingSetGoalCard = true
         defer { isCheckingSetGoalCard = false }
 
-        if account.goalSettings?.goalType != nil { return }
+        if account.goalType != nil { return }
 
         let entryCount: Int
         do {
