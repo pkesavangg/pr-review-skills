@@ -32,7 +32,6 @@ import com.dmdbrands.gurus.weight.core.service.WifiScaleService
 import com.dmdbrands.gurus.weight.core.service.pushNotification.NotificationManager as GGNotificationManager
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
 import com.dmdbrands.gurus.weight.data.api.IExportAPI
-import com.dmdbrands.gurus.weight.data.services.EntryAggregationService
 import com.dmdbrands.gurus.weight.data.services.EntryCrudService
 import com.dmdbrands.gurus.weight.data.services.EntryService
 import com.dmdbrands.gurus.weight.data.services.EntrySyncService
@@ -70,7 +69,6 @@ import com.dmdbrands.gurus.weight.domain.services.IBodyCompositionService
 import com.dmdbrands.gurus.weight.domain.services.ICrashReportingService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
-import com.dmdbrands.gurus.weight.domain.services.IEntryAggregationService
 import com.dmdbrands.gurus.weight.domain.services.IEntryCrudService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IEntrySyncService
@@ -235,15 +233,6 @@ object ServiceModule {
 
   @Provides
   @Singleton
-  fun provideEntryAggregationService(
-    entryRepository: IEntryRepository,
-    accountRepository: IAccountRepository,
-    goalRepository: IGoalRepository,
-    @ApplicationScope appScope: CoroutineScope,
-  ): IEntryAggregationService = EntryAggregationService(entryRepository, accountRepository, goalRepository, appScope)
-
-  @Provides
-  @Singleton
   fun provideEntrySyncService(
     entryRepository: IEntryRepository,
     accountRepository: IAccountRepository,
@@ -265,12 +254,10 @@ object ServiceModule {
   fun provideEntryService(
     crudService: IEntryCrudService,
     syncService: IEntrySyncService,
-    aggregationService: IEntryAggregationService,
     entryRepository: IEntryRepository,
-    accountRepository: IAccountRepository,
     goalService: IGoalService,
     @ApplicationScope appScope: CoroutineScope,
-  ): IEntryService = EntryService(crudService, syncService, aggregationService, entryRepository, accountRepository, goalService, appScope)
+  ): IEntryService = EntryService(crudService, syncService, entryRepository, goalService, appScope)
 
   @Provides
   @Singleton
