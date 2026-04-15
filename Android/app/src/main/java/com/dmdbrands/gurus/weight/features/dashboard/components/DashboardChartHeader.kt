@@ -13,7 +13,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.SpanStyle
@@ -62,9 +65,18 @@ fun DashboardChartHeader(
   // Baby: wrap header + vertical toggle in a Row
   if (product is ProductSelection.Baby) {
     val babyState = state as? BabyDashboardState
+    var showCdcSheet by remember { mutableStateOf(false) }
+
     Row(verticalAlignment = Alignment.CenterVertically) {
-      // Left: header content (week average, value, date range)
-      Column(modifier = Modifier.weight(1f)) {
+      // Left: header content (week average, value, date range) — tap to open CDC sheet
+      Column(
+        modifier = Modifier
+          .weight(1f)
+          .clickable(
+            indication = null,
+            interactionSource = remember { MutableInteractionSource() },
+          ) { showCdcSheet = true },
+      ) {
         ChartHeader(
           segmentState = segmentState,
           segment = segment,
@@ -102,6 +114,25 @@ fun DashboardChartHeader(
         }
       }
     }
+
+    if (showCdcSheet) {
+      // Pull current baby weight + length averages from the active segment so the sheet
+      // reflects whatever window the chart is showing. Percentile values are left null for
+      // now — data-layer hook into BabyPercentileHelper is a follow-up.
+      val target = segmentState.target.filterIsInstance<PeriodBabySummary>()
+      val avgDecigrams = target.mapNotNull { it.avgWeightDecigrams }
+        .takeIf { it.isNotEmpty() }?.average()?.toInt()
+      val avgMm = target.mapNotNull { it.avgLengthMillimeters }
+        .takeIf { it.isNotEmpty() }?.average()?.toInt()
+      BabyCdcPercentilesBottomSheet(
+        heightInches = avgMm?.let { ConversionTools.convertMmToInches(it) },
+        heightPercentile = null,
+        weightLbs = avgDecigrams?.let { ConversionTools.convertDecigramsToLb(it) },
+        weightOz = avgDecigrams?.let { ConversionTools.convertDecigramsToOz(it) },
+        weightPercentile = null,
+        onDismiss = { showCdcSheet = false },
+      )
+    }
   } else {
     ChartHeader(
       segmentState = segmentState,
@@ -136,27 +167,40 @@ fun DashboardChartHeader(
           val avgDia = target.map { it.avgDiastolic }.takeIf { it.isNotEmpty() }?.average()?.toInt()
           val avgPulse = target.map { it.avgPulse }.takeIf { it.isNotEmpty() }?.average()?.toInt()
 
-          Row {
-            Text(text = DashboardSnapshotStrings.Mmhg, style = MeTheme.typography.subHeading1, color = MeTheme.colorScheme.textSubheading)
-            Spacer(modifier = Modifier.weight(1f))
-            Text(text = DashboardSnapshotStrings.Pulse, style = MeTheme.typography.subHeading1, color = MeTheme.colorScheme.textSubheading)
-          }
-          Row(verticalAlignment = Alignment.Bottom) {
-            if (avgSys != null && avgDia != null) {
-              BpSystolicDiastolic(
-                systolic = avgSys,
-                diastolic = avgDia,
-                style = MeTheme.typography.heading2,
-              )
-            } else {
-              Text(text = DashboardSnapshotStrings.PlaceholderDash, style = MeTheme.typography.heading2, color = SnapshotColors.BloodPressure)
+          var showAhaSheet by remember { mutableStateOf(false) }
+
+          Column(
+            modifier = Modifier.clickable(
+              indication = null,
+              interactionSource = remember { MutableInteractionSource() },
+            ) { showAhaSheet = true },
+          ) {
+            Row {
+              Text(text = DashboardSnapshotStrings.Mmhg, style = MeTheme.typography.subHeading1, color = MeTheme.colorScheme.textSubheading)
+              Spacer(modifier = Modifier.weight(1f))
+              Text(text = DashboardSnapshotStrings.Pulse, style = MeTheme.typography.subHeading1, color = MeTheme.colorScheme.textSubheading)
             }
-            Spacer(modifier = Modifier.weight(1f))
-            Text(
-              text = avgPulse?.toString() ?: DashboardSnapshotStrings.PlaceholderDash,
-              style = MeTheme.typography.heading2,
-              color = MeTheme.colorScheme.textSubheading,
-            )
+            Row(verticalAlignment = Alignment.Bottom) {
+              if (avgSys != null && avgDia != null) {
+                BpSystolicDiastolic(
+                  systolic = avgSys,
+                  diastolic = avgDia,
+                  style = MeTheme.typography.heading2,
+                )
+              } else {
+                Text(text = DashboardSnapshotStrings.PlaceholderDash, style = MeTheme.typography.heading2, color = SnapshotColors.BloodPressure)
+              }
+              Spacer(modifier = Modifier.weight(1f))
+              Text(
+                text = avgPulse?.toString() ?: DashboardSnapshotStrings.PlaceholderDash,
+                style = MeTheme.typography.heading2,
+                color = MeTheme.colorScheme.textSubheading,
+              )
+            }
+          }
+
+          if (showAhaSheet) {
+            BpAhaRatingsBottomSheet(onDismiss = { showAhaSheet = false })
           }
         }
 
