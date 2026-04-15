@@ -169,12 +169,14 @@ fun rememberProductChart(
           scrollAwareRange.getMaxY(minY, maxY, extraStore)
       }
     }
+    // Percentile bands share the primary Y range via percentileRangeProvider;
+    // alwaysUseLiveRange is intentionally omitted — setting it true would bypass
+    // the range provider and cause a frame-0 Y-axis flash on the baby chart.
     rememberLineCartesianLayer(
       lineProvider = remember(bandLines) { LineCartesianLayer.LineProvider.series(bandLines) },
       verticalAxisPosition = Axis.Position.Vertical.End,
       rangeProvider = percentileRangeProvider,
       markerTargetsEnabled = false,
-      alwaysUseLiveRange = true,
     )
   } else null
 

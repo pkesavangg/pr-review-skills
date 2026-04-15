@@ -242,7 +242,10 @@ class WeightDashboardViewModel @Inject constructor(
 
   private fun subscribeGoal() {
     viewModelScope.launch {
-      goalService.getCurrentGoal().collect { goal ->
+      // goalService flow is used as a change trigger only — the authoritative
+      // goal data lives on the active account (toGoal()). Emitted value is
+      // ignored by design.
+      goalService.getCurrentGoal().collect { _ ->
         val currentAccount = accountService.activeAccount.value
         val rawGoal = currentAccount?.toGoal()
         // Store as display lb (÷10) — unit + weightless applied at display time

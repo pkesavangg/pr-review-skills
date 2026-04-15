@@ -113,7 +113,9 @@ fun DashboardChartHeader(
           val weightState = state as? WeightDashboardState
           val target = segmentState.target.filterIsInstance<PeriodBodyScaleSummary>()
           val avgLb = if (target.isEmpty()) 0.0 else target.map { it.weight }.average()
-          val weightUnit = weightState?.weightUnit ?: WeightUnit.KG
+          // Default must match ProductChart.kt default (WeightUnit.LB) so header
+          // and axis labels stay consistent when weightState is null.
+          val weightUnit = weightState?.weightUnit ?: WeightUnit.LB
           val weightless = weightState?.weightless
           val weightlessOffset = if (weightless?.isWeightlessOn == true) weightless.weightlessWeight.toDouble() else 0.0
           val displayValue = convertWeight(avgLb - weightlessOffset, WeightUnit.LB, weightUnit)
