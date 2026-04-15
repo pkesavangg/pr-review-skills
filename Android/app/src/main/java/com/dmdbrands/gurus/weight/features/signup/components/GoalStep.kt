@@ -114,7 +114,7 @@ fun GoalStep(
           enabled = goalTypeControl.value != GoalType.MAINTAIN.value,
           maxLength = 4,
         )
-        Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+        Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
       }
     }
 
