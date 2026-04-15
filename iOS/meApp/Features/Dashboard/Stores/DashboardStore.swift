@@ -56,13 +56,13 @@ class DashboardStore: ObservableObject {
     private var syncDebounceTask: Task<Void, Never>?
     
     // MARK: - Initialization Tracking
-    /// Tracks whether dashboard initialization has completed to prevent race conditions
-    private var initializationTask: Task<Void, Never>?
+
+    var initializationTask: Task<Void, Never>?
     @Published private(set) var isInitialized: Bool = false
 
     /// Batches multiple state changes into a single UI update (~1 frame at 60fps)
     /// Use this for non-critical updates that can be coalesced
-    private func scheduleUIUpdate() {
+    func scheduleUIUpdate() {
         guard !pendingUIUpdate else { return }
         pendingUIUpdate = true
 
@@ -1218,13 +1218,15 @@ class DashboardStore: ObservableObject {
     }
 
     func loadProgressMetricsFromAccount() async {
+        let isDashboard4 = metricsManager.state.dashboardType == .dashboard4
+
         guard let account = accountService.activeAccount else {
-            await MainActor.run { setupDefaultProgressMetricsOrder() }
+            if isDashboard4 { await MainActor.run { setupDefaultProgressMetricsOrder() } }
             return
         }
 
         guard let progressMetricsString = account.dashboardSettings?.progressMetrics else {
-            await MainActor.run { setupDefaultProgressMetricsOrder() }
+            if isDashboard4 { await MainActor.run { setupDefaultProgressMetricsOrder() } }
             return
         }
 
@@ -1247,7 +1249,9 @@ class DashboardStore: ObservableObject {
             let isInitialLoad = state.ui.streakGridOrder.isEmpty && state.ui.removedStreaks.isEmpty
             
             if progressMetrics.isEmpty && isInitialLoad {
-                setupDefaultProgressMetricsOrder()
+                if isDashboard4 {
+                    setupDefaultProgressMetricsOrder()
+                }
                 return
             }
             
@@ -1270,7 +1274,7 @@ class DashboardStore: ObservableObject {
             }
 
             guard !allStreaks.isEmpty else {
-                setupDefaultProgressMetricsOrder()
+                if isDashboard4 { setupDefaultProgressMetricsOrder() }
                 return
             }
 
