@@ -45,7 +45,12 @@ class ProfileViewModel @Inject constructor(
 ) : BaseIntentViewModel<ProfileState, ProfileIntent>(
   reducer = ProfileReducer(),
 ) {
-  private val TAG = "ProfileViewModel"
+  companion object {
+    private const val TAG = "ProfileViewModel"
+
+    /** Fallback stored-height used when the account has no saved height. Matches legacy default. */
+    private const val DEFAULT_HEIGHT = 1700
+  }
 
   init {
     handleIntent(ProfileIntent.LoadProfile)
@@ -125,7 +130,7 @@ class ProfileViewModel @Inject constructor(
     val isMetric = state.value.weightUnit == WeightUnit.KG
 
     val currentHeightInput = HeightInput.fromStoredHeight(
-      storedHeight = if (currentHeight > 0) currentHeight else 1700,
+      storedHeight = if (currentHeight > 0) currentHeight else DEFAULT_HEIGHT,
       isMetric = isMetric,
     )
 
@@ -184,7 +189,7 @@ class ProfileViewModel @Inject constructor(
         val heightChanged = newHeight != null && newHeight != currentAccount.height
         if (heightChanged) {
           val bodyComposition = BodyCompUpdateRequest(
-            height = newHeight ?: currentAccount.height ?: 1700,
+            height = newHeight ?: currentAccount.height ?: DEFAULT_HEIGHT,
             activityLevel = currentAccount.activityLevel ?: "normal",
             weightUnit = currentAccount.weightUnit.value,
           )
@@ -201,7 +206,7 @@ class ProfileViewModel @Inject constructor(
             var updated = profile
             if (genderChanged) updated = updated.copy(sex = newGender)
             if (heightChanged) updated = updated.copy(
-              height = ConversionTools.convertStoredHeightToCm(newHeight ?: 1700).toDouble(),
+              height = ConversionTools.convertStoredHeightToCm(newHeight ?: DEFAULT_HEIGHT).toDouble(),
             )
             updated
           }

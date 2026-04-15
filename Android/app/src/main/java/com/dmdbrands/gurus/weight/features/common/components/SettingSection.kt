@@ -78,10 +78,9 @@ fun SettingsSection(
             }
         }
 
-        Spacer(  modifier = Modifier.then(
-          if (hasBottomSpace) Modifier.height(MeTheme.spacing.lg)
-          else Modifier
-        ))
+        if (hasBottomSpace) {
+            Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
+        }
     }
 }
 

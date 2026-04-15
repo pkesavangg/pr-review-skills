@@ -69,3 +69,8 @@ val BABY_SCALES: List<ScaleInfo> = SCALES.filter { it.sku in DeviceHelper.BABY_S
 
 /** Blood Pressure Monitors — derived from [SCALES] via [DeviceHelper.BPM_SKUS]. */
 val BPM_DEVICES: List<ScaleInfo> = SCALES.filter { it.sku in DeviceHelper.BPM_SKUS }
+
+/** Weight scales only — [SCALES] excluding baby scales and BPM devices. */
+val WEIGHT_SCALES: List<ScaleInfo> = SCALES.filterNot {
+  it.sku in DeviceHelper.BABY_SCALE_SKUS || it.sku in DeviceHelper.BPM_SKUS
+}

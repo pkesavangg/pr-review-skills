@@ -32,7 +32,7 @@ import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonType
 import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSegmentType
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.gurus.weight.features.common.model.WEIGHT_SCALES
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.features.help.strings.HelpScreenStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
@@ -50,14 +50,14 @@ fun WeightScaleCatalogSection(
 
   val filteredScales = remember(selectedType) {
     when (selectedType) {
-      ScaleSegmentType.All -> SCALES
-      ScaleSegmentType.AppSync -> SCALES.filter { it.setupType == ScaleSetupType.AppSync }
-      ScaleSegmentType.Bluetooth -> SCALES.filter {
+      ScaleSegmentType.All -> WEIGHT_SCALES
+      ScaleSegmentType.AppSync -> WEIGHT_SCALES.filter { it.setupType == ScaleSetupType.AppSync }
+      ScaleSegmentType.Bluetooth -> WEIGHT_SCALES.filter {
         it.setupType == ScaleSetupType.Bluetooth ||
           it.setupType == ScaleSetupType.Lcbt ||
           it.setupType == ScaleSetupType.BtWifiR4
       }
-      ScaleSegmentType.Wifi -> SCALES.filter {
+      ScaleSegmentType.Wifi -> WEIGHT_SCALES.filter {
         it.setupType == ScaleSetupType.Wifi ||
           it.setupType == ScaleSetupType.EspTouchWifi ||
           it.setupType == ScaleSetupType.BtWifiR4
