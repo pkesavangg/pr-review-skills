@@ -7,6 +7,8 @@ import com.dmdbrands.gurus.weight.domain.model.common.GroupedHistory
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryDetail
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.model.common.BpProgress
+import com.dmdbrands.gurus.weight.domain.model.common.Streak
 import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
@@ -107,6 +109,28 @@ class HistoryService @Inject constructor(
         val acctId = _accountId ?: return flowOf(false)
         return entryRepository.getEntriesByOperationType(acctId, OPERATION_CREATE)
             .map { it.isEmpty() }
+            .distinctUntilChanged()
+    }
+
+    /**
+     * BP progress = streak + day-count derived from a single DAO flow.
+     *
+     * Current and longest streak are computed in Kotlin from the days list via
+     * [EntryServiceHelper] rather than in SQL — the list is small (≤ days-with-BP)
+     * and keeps the DAO surface to one query.
+     */
+    override fun bpProgress(): Flow<BpProgress> {
+        val acctId = _accountId ?: return flowOf(BpProgress())
+        return entryRepository.getBpmStreakDays(acctId)
+            .map { days ->
+                BpProgress(
+                    streak = Streak(
+                        current = EntryServiceHelper.computeCurrentStreakFromDates(days),
+                        longest = EntryServiceHelper.computeLongestStreakFromDates(days),
+                    ),
+                    count = days.size,
+                )
+            }
             .distinctUntilChanged()
     }
 

@@ -4,6 +4,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.GraphData
 import com.dmdbrands.gurus.weight.domain.model.common.GroupedHistory
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryDetail
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.model.common.BpProgress
 import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
@@ -42,6 +43,18 @@ interface IHistoryService {
 
     /** True when the active account has no create-type scale entries. */
     fun isWeightEmpty(): Flow<Boolean>
+
+    /**
+     * BP-dashboard progress snapshot for the active account.
+     *
+     * Today this carries streak (current / longest) and a day-count of BP
+     * readings. Re-emits automatically when BP entries are added or deleted,
+     * driven by a Flow-returning DAO query over the `bpm_entry` table.
+     *
+     * Cold Flow; emits a single empty [BpProgress] and completes when no
+     * account is set.
+     */
+    fun bpProgress(): Flow<BpProgress>
 
     fun getGroupedHistory(product: ProductSelection): Flow<GroupedHistory>
 

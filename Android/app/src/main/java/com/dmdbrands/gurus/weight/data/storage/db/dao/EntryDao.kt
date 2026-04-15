@@ -837,6 +837,30 @@ ORDER BY d.day DESC
   suspend fun getLongestStreakCount(accountId: String): Int
 
   /**
+   * Days (newest first) on which the account has at least one BP reading.
+   *
+   * Mirrors [getStreakData] but narrowed to BP entries via an inner join against
+   * `bpm_entry`. Current and longest BP streak are computed in Kotlin from this
+   * list via [EntryServiceHelper.computeCurrentStreakFromDates] /
+   * [EntryServiceHelper.computeLongestStreakFromDates].
+   *
+   * Returns a [Flow] so the BP progress flow on HistoryService re-emits
+   * automatically when BP entries are inserted, updated, or deleted.
+   */
+  @Query(
+    """
+        SELECT strftime('%Y-%m-%d', datetime(e.entryTimestamp,${UTC},${LOCAL_TIME}))
+        FROM entry_view AS e
+        INNER JOIN bpm_entry AS b ON b.entryId = e.id
+        WHERE e.accountId = :accountId
+          AND (e.operationType IS NULL OR e.operationType != 'delete')
+        GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp,${UTC},${LOCAL_TIME}))
+        ORDER BY datetime(e.entryTimestamp,${UTC},${LOCAL_TIME}) DESC
+        """,
+  )
+  fun getBpmStreakDays(accountId: String): Flow<List<String>>
+
+  /**
    * Get entries for an account in a specific date range (inclusive).
    * @param accountId The account ID
    * @param startDate The start date (ISO 8601 string)

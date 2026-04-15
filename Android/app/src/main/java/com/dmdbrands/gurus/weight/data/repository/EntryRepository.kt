@@ -285,6 +285,9 @@ class EntryRepository @Inject constructor(
   override suspend fun getLongestStreakCount(accountId: String): Int =
     entryDao.getLongestStreakCount(accountId)
 
+  override fun getBpmStreakDays(accountId: String): Flow<List<String>> =
+    entryDao.getBpmStreakDays(accountId)
+
   /**
    * Get entries for an account in a specific date range (inclusive).
    * @param accountId The account ID

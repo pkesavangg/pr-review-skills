@@ -240,6 +240,13 @@ interface IEntryRepository {
   suspend fun getLongestStreakCount(accountId: String): Int
 
   /**
+   * Flow of days (newest first) on which the account has at least one BP reading.
+   * Used by [com.dmdbrands.gurus.weight.domain.services.IHistoryService.bpProgress]
+   * to compute current + longest BP streak in Kotlin. Re-emits when BP entries change.
+   */
+  fun getBpmStreakDays(accountId: String): Flow<List<String>>
+
+  /**
    * Get entries for an account in a specific date range (inclusive).
    * @param accountId The account ID
    * @param startDate The start date (ISO 8601 string)
