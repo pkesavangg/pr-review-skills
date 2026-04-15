@@ -34,10 +34,10 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 @Composable
 fun BabyCdcPercentilesBottomSheet(
   heightInches: Double?,
-  heightPercentile: Int?,
+  heightPercentile: String?,
   weightLbs: Int?,
   weightOz: Double?,
-  weightPercentile: Int?,
+  weightPercentile: String?,
   onDismiss: () -> Unit,
 ) {
   AppBottomSheet(
@@ -81,7 +81,7 @@ fun BabyCdcPercentilesBottomSheet(
             ?: DashboardString.Baby.CdcPercentiles.Placeholder,
           unit = DashboardString.Baby.CdcPercentiles.Inches,
         )
-        BabyPercentileValue(percentile = heightPercentile)
+        BabyPercentileValue(label = heightPercentile)
       }
 
       Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
@@ -104,7 +104,7 @@ fun BabyCdcPercentilesBottomSheet(
             unit = DashboardString.Baby.CdcPercentiles.Oz,
           )
         }
-        BabyPercentileValue(percentile = weightPercentile)
+        BabyPercentileValue(label = weightPercentile)
       }
     }
   }
@@ -148,20 +148,16 @@ private fun BabyValueWithUnit(value: String, unit: String) {
   }
 }
 
-/** Big grey percentile value + small "%" trailing it at the baseline. */
+/**
+ * Pre-formatted ordinal percentile label (e.g. "50th", "< 1st", "> 99th") rendered as
+ * a single big grey value. iOS shows the same string in `getPercentileSuffix` form;
+ * the suffix replaces the `%` trailing-unit so we don't repeat the unit visually.
+ */
 @Composable
-private fun BabyPercentileValue(percentile: Int?) {
-  Row(verticalAlignment = Alignment.Bottom) {
-    Text(
-      text = percentile?.toString() ?: DashboardString.Baby.CdcPercentiles.Placeholder,
-      style = MeTheme.typography.heading2,
-      color = MeTheme.colorScheme.textSubheading,
-    )
-    Text(
-      text = DashboardString.Baby.CdcPercentiles.Percent,
-      style = MeTheme.typography.subHeading1,
-      color = MeTheme.colorScheme.textSubheading,
-      modifier = Modifier.padding(bottom = MeTheme.spacing.xs),
-    )
-  }
+private fun BabyPercentileValue(label: String?) {
+  Text(
+    text = label ?: DashboardString.Baby.CdcPercentiles.Placeholder,
+    style = MeTheme.typography.heading2,
+    color = MeTheme.colorScheme.textSubheading,
+  )
 }

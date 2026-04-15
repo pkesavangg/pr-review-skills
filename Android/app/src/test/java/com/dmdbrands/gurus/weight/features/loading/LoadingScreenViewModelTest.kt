@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.loading
 
+import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.asFlow
 import androidx.work.WorkInfo
@@ -15,6 +16,7 @@ import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IHistoryService
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
+import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
 import com.google.common.truth.Truth.assertThat
 import io.mockk.MockKAnnotations
@@ -22,8 +24,12 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.mockkObject
 import io.mockk.mockkStatic
+import io.mockk.Runs
+import io.mockk.unmockkObject
 import io.mockk.unmockkStatic
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
@@ -72,16 +78,24 @@ class LoadingScreenViewModelTest {
     @MockK(relaxed = true)
     lateinit var historyService: IHistoryService
 
+    @MockK(relaxed = true)
+    lateinit var applicationContext: Context
+
     @BeforeEach
     fun setUp() {
         MockKAnnotations.init(this)
         mockkStatic("androidx.lifecycle.FlowLiveDataConversions")
+        // BabyPercentileHelper.loadIfNeeded reads CSVs from res/raw — stub it so unit
+        // tests don't need the Android resources subsystem.
+        mockkObject(BabyPercentileHelper)
+        every { BabyPercentileHelper.loadIfNeeded(any()) } just Runs
         setupMigrationComplete()
     }
 
     @AfterEach
     fun tearDown() {
         unmockkStatic("androidx.lifecycle.FlowLiveDataConversions")
+        unmockkObject(BabyPercentileHelper)
     }
 
     // -------------------------------------------------------------------------
@@ -123,6 +137,7 @@ class LoadingScreenViewModelTest {
             deviceInfoService = deviceInfoService,
             productSelectionManager = productSelectionManager,
             historyService = historyService,
+            applicationContext = applicationContext,
         )
     }
 
