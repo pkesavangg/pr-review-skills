@@ -35,7 +35,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import java.util.Calendar
-import com.dmdbrands.gurus.weight.core.shared.utilities.AppLog
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 
 private const val SCROLL_DELAY_AFTER_LAYOUT_MS = 50L
 
