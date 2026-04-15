@@ -284,26 +284,22 @@ object BabyPercentileHelper {
    * up by their negative mirror and flipped with `1 − Φ(-z)`.
    */
   /**
-   * Formats a percentile (0–100) as an ordinal label — `"50th"`, `"21st"`, `"32nd"`,
-   * `"43rd"`, `"< 1st"`, `"> 99th"`. Returns null for null/negative input or unknown
-   * sex (matches iOS `PercentileService.getPercentileSuffix`). Sex is only checked
-   * for callers that pass it through; null sex skips the formatting altogether so
-   * the UI can fall back to a placeholder dash.
+   * Formats a percentile (0–100) as a display number — `"10"` for normal values,
+   * `"< 1"` for sub-1st-percentile, `"> 99"` for above-99th. Returns null for null
+   * or negative input, and for the special `"private"` sex value (matches iOS
+   * `PercentileService.getPercentileSuffix` semantics).
+   *
+   * The `%` (or any other unit) is left to the renderer — this returns the number
+   * portion only, so the UI can style the unit separately (heading2 + subHeading1).
    */
-  fun formatPercentileOrdinal(percentile: Int?, sex: String? = null): String? {
+  fun formatPercentileNumber(percentile: Int?, sex: String? = null): String? {
     if (percentile == null || percentile < 0) return null
     if (sex?.lowercase(Locale.ROOT) == "private") return null
-    if (percentile < 1) return "< 1st"
-    if (percentile > 99) return "> 99th"
-    val mod10 = percentile % 10
-    val mod100 = percentile % 100
-    val suffix = when {
-      mod10 == 1 && mod100 != 11 -> "st"
-      mod10 == 2 && mod100 != 12 -> "nd"
-      mod10 == 3 && mod100 != 13 -> "rd"
-      else -> "th"
+    return when {
+      percentile < 1 -> "< 1"
+      percentile > 99 -> "> 99"
+      else -> percentile.toString()
     }
-    return "$percentile$suffix"
   }
 
   private fun percentileFromZScore(z: Double): Int {

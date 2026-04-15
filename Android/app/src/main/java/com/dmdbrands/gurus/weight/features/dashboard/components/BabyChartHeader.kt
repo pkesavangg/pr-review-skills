@@ -187,33 +187,27 @@ private fun BabyCdcSheetLauncher(
   val birthDateMillis = profile?.birthdate?.let { DateTimeConverter.isoToTimestamp(it) }
   val now = remember { System.currentTimeMillis() }
 
-  val weightOrdinal = remember(avgDecigrams, birthDateMillis, sex, now) {
+  val weightPct = remember(avgDecigrams, birthDateMillis, sex, now) {
     if (avgDecigrams != null && birthDateMillis != null) {
-      BabyPercentileHelper.formatPercentileOrdinal(
-        BabyPercentileHelper.calcPercentile(
-          sex = sex,
-          birthDateMillis = birthDateMillis,
-          value = avgDecigrams.toDouble(),
-          type = BabyPercentileHelper.MeasurementType.WEIGHT,
-          entryTimestampMillis = now,
-        ),
-        sex,
+      BabyPercentileHelper.calcPercentile(
+        sex = sex,
+        birthDateMillis = birthDateMillis,
+        value = avgDecigrams.toDouble(),
+        type = BabyPercentileHelper.MeasurementType.WEIGHT,
+        entryTimestampMillis = now,
       )
     } else {
       null
     }
   }
-  val lengthOrdinal = remember(avgMm, birthDateMillis, sex, now) {
+  val lengthPct = remember(avgMm, birthDateMillis, sex, now) {
     if (avgMm != null && birthDateMillis != null) {
-      BabyPercentileHelper.formatPercentileOrdinal(
-        BabyPercentileHelper.calcPercentile(
-          sex = sex,
-          birthDateMillis = birthDateMillis,
-          value = avgMm.toDouble(),
-          type = BabyPercentileHelper.MeasurementType.LENGTH,
-          entryTimestampMillis = now,
-        ),
-        sex,
+      BabyPercentileHelper.calcPercentile(
+        sex = sex,
+        birthDateMillis = birthDateMillis,
+        value = avgMm.toDouble(),
+        type = BabyPercentileHelper.MeasurementType.LENGTH,
+        entryTimestampMillis = now,
       )
     } else {
       null
@@ -222,10 +216,10 @@ private fun BabyCdcSheetLauncher(
 
   BabyCdcPercentilesBottomSheet(
     heightInches = avgMm?.let { ConversionTools.convertMmToInches(it) },
-    heightPercentile = lengthOrdinal,
+    heightPercentile = lengthPct,
     weightLbs = avgDecigrams?.let { ConversionTools.convertDecigramsToLb(it) },
     weightOz = avgDecigrams?.let { ConversionTools.convertDecigramsToOz(it) },
-    weightPercentile = weightOrdinal,
+    weightPercentile = weightPct,
     onDismiss = onDismiss,
   )
 }

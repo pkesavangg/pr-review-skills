@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppBottomSheet
+import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.SnapshotColors
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -34,10 +35,10 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 @Composable
 fun BabyCdcPercentilesBottomSheet(
   heightInches: Double?,
-  heightPercentile: String?,
+  heightPercentile: Int?,
   weightLbs: Int?,
   weightOz: Double?,
-  weightPercentile: String?,
+  weightPercentile: Int?,
   onDismiss: () -> Unit,
 ) {
   AppBottomSheet(
@@ -81,7 +82,7 @@ fun BabyCdcPercentilesBottomSheet(
             ?: DashboardString.Baby.CdcPercentiles.Placeholder,
           unit = DashboardString.Baby.CdcPercentiles.Inches,
         )
-        BabyPercentileValue(label = heightPercentile)
+        BabyPercentileValue(percentile = heightPercentile)
       }
 
       Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
@@ -104,7 +105,7 @@ fun BabyCdcPercentilesBottomSheet(
             unit = DashboardString.Baby.CdcPercentiles.Oz,
           )
         }
-        BabyPercentileValue(label = weightPercentile)
+        BabyPercentileValue(percentile = weightPercentile)
       }
     }
   }
@@ -149,15 +150,34 @@ private fun BabyValueWithUnit(value: String, unit: String) {
 }
 
 /**
- * Pre-formatted ordinal percentile label (e.g. "50th", "< 1st", "> 99th") rendered as
- * a single big grey value. iOS shows the same string in `getPercentileSuffix` form;
- * the suffix replaces the `%` trailing-unit so we don't repeat the unit visually.
+ * Big grey percentile number + small bottom-aligned `%` — matches Figma's
+ * "21.7 inches" / "6 %" pattern (heading2 value + subHeading1 unit). The number
+ * formatting (including `< 1` / `> 99` edge cases) lives in
+ * [BabyPercentileHelper.formatPercentileNumber]; null renders the placeholder
+ * dash alone (no `%`).
  */
 @Composable
-private fun BabyPercentileValue(label: String?) {
-  Text(
-    text = label ?: DashboardString.Baby.CdcPercentiles.Placeholder,
-    style = MeTheme.typography.heading2,
-    color = MeTheme.colorScheme.textSubheading,
-  )
+private fun BabyPercentileValue(percentile: Int?) {
+  val numberLabel = BabyPercentileHelper.formatPercentileNumber(percentile)
+  if (numberLabel == null) {
+    Text(
+      text = DashboardString.Baby.CdcPercentiles.Placeholder,
+      style = MeTheme.typography.heading2,
+      color = MeTheme.colorScheme.textSubheading,
+    )
+    return
+  }
+  Row(verticalAlignment = Alignment.Bottom) {
+    Text(
+      text = numberLabel,
+      style = MeTheme.typography.heading2,
+      color = MeTheme.colorScheme.textSubheading,
+    )
+    Text(
+      text = DashboardString.Baby.CdcPercentiles.Percent,
+      style = MeTheme.typography.subHeading1,
+      color = MeTheme.colorScheme.textSubheading,
+      modifier = Modifier.padding(bottom = MeTheme.spacing.xs),
+    )
+  }
 }
