@@ -123,6 +123,7 @@ class ScalePairingManager(
                                 } catch (e: Exception) {
                                     AppLog.e(TAG, "Error in background operations (user list fetch or dashboard update)", e)
                                 }
+                                delay(500)
                                 onNext()
                             }
                         }

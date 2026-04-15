@@ -1,5 +1,9 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -64,29 +68,38 @@ fun SetupLoader(
     verticalArrangement = Arrangement.spacedBy(spacing.sm),
   ) {
     repeat(5) { index ->
-      if ((connectionState == ConnectionState.Success || connectionState is ConnectionState.Failed) && index == 2) {
-        // Show icon for middle dot on success/error
-        AppIcon(
-          id = if (connectionState == ConnectionState.Success) {
-            AppIcons.Selection.CircleSelected
-          } else {
-            AppIcons.Selection.CircleClosed
-          },
-          contentDescription = if (connectionState == ConnectionState.Success) {
-            SetupLoaderStrings.SuccessIconDescription
-          } else {
-            SetupLoaderStrings.ErrorIconDescription
-          },
-          tintColor = dotColor,
-        )
-      } else {
-        // Show animated dot with custom uniform timing
-        AnimatedDot(
-          color = dotColor,
-          shouldAnimate = connectionState == ConnectionState.Loading,
-          dotIndex = index,
-          animationProgress = animationProgress,
-        )
+      AnimatedContent(
+        targetState = connectionState,
+        transitionSpec = {
+          fadeIn(animationSpec = androidx.compose.animation.core.tween(400)) togetherWith
+            fadeOut(animationSpec = androidx.compose.animation.core.tween(400))
+        },
+        label = "DotTransition$index",
+      ) { state ->
+        if ((state == ConnectionState.Success || state is ConnectionState.Failed) && index == 2) {
+          // Show icon for middle dot on success/error
+          AppIcon(
+            id = if (state == ConnectionState.Success) {
+              AppIcons.Selection.CircleSelected
+            } else {
+              AppIcons.Selection.CircleClosed
+            },
+            contentDescription = if (state == ConnectionState.Success) {
+              SetupLoaderStrings.SuccessIconDescription
+            } else {
+              SetupLoaderStrings.ErrorIconDescription
+            },
+            tintColor = dotColor,
+          )
+        } else {
+          // Show animated dot with custom uniform timing
+          AnimatedDot(
+            color = dotColor,
+            shouldAnimate = state == ConnectionState.Loading,
+            dotIndex = index,
+            animationProgress = animationProgress,
+          )
+        }
       }
     }
   }

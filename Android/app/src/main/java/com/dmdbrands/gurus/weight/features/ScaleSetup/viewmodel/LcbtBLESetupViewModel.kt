@@ -250,8 +250,8 @@ constructor(
         AppLog.d(TAG, "Waiting 3 seconds after connection")
         saveScale()
         handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
-        delay(1000)
-        AppLog.d(TAG, "Waiting 2 seconds before proceeding")
+        delay(500)
+        AppLog.d(TAG, "Proceeding after success animation")
         onNext()
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during bluetooth connection", e)
