@@ -4,6 +4,8 @@ import com.dmdbrands.gurus.weight.domain.model.common.GraphData
 import com.dmdbrands.gurus.weight.domain.model.common.GroupedHistory
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryDetail
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
@@ -22,6 +24,24 @@ interface IHistoryService {
 
     /** Called from LoadingScreenViewModel.loadData() — same pattern as other services. */
     fun setAccountId(accountId: String)
+
+    /**
+     * Weight-dashboard "how am I tracking" snapshot for the active account.
+     *
+     * Emits on any relevant change — latest entry, last-7/last-30 window, monthly
+     * history, weight unit, weightless toggle, goal, or active account. Streak,
+     * total count, and oldest-weight side queries are re-fetched on each emit.
+     *
+     * Cold Flow: consumers collect in their own coroutine scope. If no account is
+     * set yet the flow emits a single empty [WeightProgress] and completes.
+     */
+    fun weightProgress(): Flow<WeightProgress>
+
+    /** Latest scale entry for the active account, or null when the account has none. */
+    fun latestEntry(): Flow<Entry?>
+
+    /** True when the active account has no create-type scale entries. */
+    fun isWeightEmpty(): Flow<Boolean>
 
     fun getGroupedHistory(product: ProductSelection): Flow<GroupedHistory>
 

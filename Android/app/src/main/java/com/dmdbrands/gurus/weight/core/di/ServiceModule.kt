@@ -591,5 +591,13 @@ object ServiceModule {
   @Singleton
   fun provideHistoryService(
     historyRepository: IHistoryRepository,
-  ): IHistoryService = HistoryService(historyRepository)
+    entryRepository: IEntryRepository,
+    accountRepository: IAccountRepository,
+    goalRepository: IGoalRepository,
+  ): IHistoryService = HistoryService(
+    historyRepository = historyRepository,
+    entryRepository = entryRepository,
+    accountRepository = accountRepository,
+    goalRepository = goalRepository,
+  )
 }
