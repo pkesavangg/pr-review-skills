@@ -7,11 +7,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -25,6 +26,12 @@ import com.dmdbrands.gurus.weight.features.dashboard.snapshot.viewmodel.Dashboar
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.viewmodel.SnapshotChartData
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
+
+/** Shared big-value text style for snapshot cards (Figma-specified 48sp ExtraBold). */
+private val SnapshotValueStyle = TextStyle(fontSize = 48.sp, fontWeight = FontWeight.ExtraBold)
+
+/** Label font size for units/axis text inside snapshot cards (Figma). */
+private val SnapshotLabelFontSize = 14.sp
 
 object SnapshotColors {
     val Weight = Color(0xFF1565C0)
@@ -70,7 +77,7 @@ fun WeightSnapshotCard(
     modifier: Modifier = Modifier,
 ) {
     val viewModel = hiltViewModel<DashboardSnapshotViewModel>()
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     SnapshotCardContainer(modifier = modifier, onTap = onTap) {
         val chart = state.weight
@@ -88,8 +95,7 @@ fun WeightSnapshotCard(
             Text(
                 text = chart.label.ifEmpty { DashboardSnapshotStrings.PlaceholderDash },
                 color = SnapshotColors.Weight,
-                fontSize = 48.sp,
-                fontWeight = FontWeight.ExtraBold,
+                style = SnapshotValueStyle,
             )
             Text(
                 text = " ${state.weightUnit.label}",
@@ -122,7 +128,7 @@ fun BpSnapshotCard(
     onTap: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val chart = state.bp
 
     SnapshotCardContainer(modifier = modifier, onTap = onTap) {
@@ -165,23 +171,20 @@ fun BpSnapshotCard(
                             append("$diastolic")
                         }
                     },
-                    fontSize = 48.sp,
-                    fontWeight = FontWeight.ExtraBold,
+                    style = SnapshotValueStyle,
                 )
             } else {
                 Text(
                     text = DashboardSnapshotStrings.PlaceholderDash,
                     color = SnapshotColors.BloodPressure,
-                    fontSize = 48.sp,
-                    fontWeight = FontWeight.ExtraBold,
+                    style = SnapshotValueStyle,
                 )
             }
             Spacer(modifier = Modifier.weight(1f))
             Text(
                 text = chart.secondaryLabel.ifEmpty { DashboardSnapshotStrings.PlaceholderDash },
                 color = if (pulse != null) SnapshotColors.pulseColor(pulse) else MeTheme.colorScheme.textSubheading,
-                fontSize = 48.sp,
-                fontWeight = FontWeight.ExtraBold,
+                style = SnapshotValueStyle,
             )
         }
 
@@ -216,7 +219,7 @@ fun BabySnapshotCard(
     onTap: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val chart = state.baby[product.profile.id] ?: SnapshotChartData()
 
     SnapshotCardContainer(modifier = modifier, onTap = onTap) {
@@ -229,7 +232,7 @@ fun BabySnapshotCard(
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.x3s))
 
-        if (chart.label.isNotEmpty() && chart.label != "—") {
+        if (chart.label.isNotEmpty() && chart.label != DashboardSnapshotStrings.PlaceholderDash) {
             // Parse "8 lbs 14.4 oz" → numbers large, units small inline
             Text(
                 text = buildAnnotatedString {
@@ -237,11 +240,11 @@ fun BabySnapshotCard(
                     parts.forEachIndexed { i, part ->
                         if (i > 0) append(" ")
                         if (part.toDoubleOrNull() != null || part.toIntOrNull() != null) {
-                            withStyle(SpanStyle(fontSize = 48.sp, fontWeight = FontWeight.ExtraBold)) {
+                            withStyle(SpanStyle(fontSize = SnapshotValueStyle.fontSize, fontWeight = SnapshotValueStyle.fontWeight)) {
                                 append(part)
                             }
                         } else {
-                            withStyle(SpanStyle(fontSize = 14.sp, fontWeight = FontWeight.Normal, color = MeTheme.colorScheme.textSubheading)) {
+                            withStyle(SpanStyle(fontSize = SnapshotLabelFontSize, fontWeight = FontWeight.Normal, color = MeTheme.colorScheme.textSubheading)) {
                                 append(part)
                             }
                         }
@@ -254,8 +257,7 @@ fun BabySnapshotCard(
             Text(
                 text = DashboardSnapshotStrings.PlaceholderDash,
                 color = SnapshotColors.Baby,
-                fontSize = 48.sp,
-                fontWeight = FontWeight.ExtraBold,
+                style = SnapshotValueStyle,
                 modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
             )
         }

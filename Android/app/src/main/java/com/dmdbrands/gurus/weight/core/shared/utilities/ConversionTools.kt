@@ -136,6 +136,21 @@ object ConversionTools {
   fun convertMmToInches(millimeters: Int): Double =
       round(millimeters / MM_PER_INCH * 10.0) / 10.0
 
+  /**
+   * Converts baby weight from decigrams to pounds as a continuous Double
+   * (no rounding or truncation). Used for chart Y-values where the fractional
+   * part matters.
+   */
+  fun convertDecigramsToLbExact(decigrams: Int): Double =
+      decigrams / DECIGRAMS_PER_OZ / OZ_PER_LB
+
+  /**
+   * Converts baby length from millimeters to inches as a continuous Double
+   * (no rounding). Used for chart Y-values where the fractional part matters.
+   */
+  fun convertMmToInchesExact(millimeters: Int): Double =
+      millimeters / MM_PER_INCH
+
   // ========== BMI Calculations ==========
 
   /**

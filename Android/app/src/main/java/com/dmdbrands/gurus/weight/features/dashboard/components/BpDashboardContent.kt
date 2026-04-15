@@ -15,12 +15,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.SnapshotColors
+import com.dmdbrands.gurus.weight.features.dashboard.snapshot.strings.DashboardSnapshotStrings
+import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -72,27 +72,24 @@ fun BpDashboardContent(
                 append("$avgDia")
               }
             },
-            fontSize = 50.sp,
-            fontWeight = FontWeight.ExtraBold,
+            style = MeTheme.typography.heading2,
           )
         } else {
           Text(
-            text = "—",
-            fontSize = 50.sp,
-            fontWeight = FontWeight.ExtraBold,
+            text = DashboardSnapshotStrings.PlaceholderDash,
+            style = MeTheme.typography.heading2,
             color = SnapshotColors.BloodPressure,
           )
         }
         Text(
-          text = avgPulse?.toString() ?: "—",
-          fontSize = 50.sp,
-          fontWeight = FontWeight.ExtraBold,
-          color = if (avgPulse != null) MeTheme.colorScheme.textSubheading else MeTheme.colorScheme.textSubheading,
+          text = avgPulse?.toString() ?: DashboardSnapshotStrings.PlaceholderDash,
+          style = MeTheme.typography.heading2,
+          color = MeTheme.colorScheme.textSubheading,
         )
       }
       Spacer(modifier = Modifier.height(MeTheme.spacing.x3s))
       Text(
-        text = if (entryCount > 0) "$entryCount entry average" else "no entries",
+        text = if (entryCount > 0) "$entryCount ${DashboardString.Bp.EntryAverageSuffix}" else DashboardString.Bp.NoEntries,
         style = MeTheme.typography.subHeading1,
         color = MeTheme.colorScheme.textSubheading,
       )

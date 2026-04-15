@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.common.strings.ChartHeaderStrings
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
@@ -24,8 +25,8 @@ fun ChartHeader(
 ) {
   val headerText = if (markerIndex != null) {
     when (segment) {
-      GraphSegment.WEEK, GraphSegment.MONTH -> "day"
-      else -> "month"
+      GraphSegment.WEEK, GraphSegment.MONTH -> ChartHeaderStrings.Day
+      else -> ChartHeaderStrings.Month
     }
   } else segment.name.lowercase()
 
@@ -37,7 +38,7 @@ fun ChartHeader(
   ) {
     // Row 1: shared — "week average" / "day average" / "no entries"
     Text(
-      text = if (segmentState.isEmptyGraph) "no entries" else "$headerText average",
+      text = if (segmentState.isEmptyGraph) ChartHeaderStrings.NoEntries else "$headerText ${ChartHeaderStrings.AverageSuffix}",
       style = MeTheme.typography.subHeading1,
       color = MeTheme.colorScheme.textSubheading,
     )

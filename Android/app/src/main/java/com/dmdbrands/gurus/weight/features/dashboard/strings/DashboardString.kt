@@ -2,10 +2,22 @@ package com.dmdbrands.gurus.weight.features.dashboard.strings
 
 object DashboardString {
   const val Title = "Dashboard Metrics"
+  const val DashboardSource = "Dashboard"
+  const val BackContentDescription = "Back"
   const val SaveSuccessMessage = "Dashboard metrics saved successfully"
   const val SaveErrorMessage = "Failed to save dashboard metrics"
   const val RemoveMetricDescription = "Remove metric"
   const val AddMetricDescription = "Add metric"
+
+  object ExitDialog {
+    const val Title = "Exit Dashboard"
+    const val Message = "Are you sure you want to exit the dashboard?"
+  }
+
+  object Bp {
+    const val EntryAverageSuffix = "entry average"
+    const val NoEntries = "no entries"
+  }
 
   object ResetDialog {
     const val Title = "Are you sure?"

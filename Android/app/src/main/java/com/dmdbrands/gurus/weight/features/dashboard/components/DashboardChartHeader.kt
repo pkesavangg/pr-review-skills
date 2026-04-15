@@ -19,6 +19,7 @@ import com.dmdbrands.gurus.weight.features.common.components.chart.ChartHeader
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.SnapshotColors
+import com.dmdbrands.gurus.weight.features.dashboard.snapshot.strings.DashboardSnapshotStrings
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
@@ -28,8 +29,8 @@ import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.format
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
 private fun getDisplayUnit(weightUnit: WeightUnit, weight: Double): String = when (weightUnit) {
-  WeightUnit.KG -> "kg"
-  WeightUnit.LB -> if (weight <= 1.0 && weight != 0.0) "lb" else "lbs"
+  WeightUnit.KG -> DashboardSnapshotStrings.Kg
+  WeightUnit.LB -> if (weight <= 1.0 && weight != 0.0) DashboardSnapshotStrings.Lb else DashboardSnapshotStrings.Lbs
 }
 
 /**
@@ -86,9 +87,9 @@ fun DashboardChartHeader(
         val avgPulse = target.map { it.avgPulse }.takeIf { it.isNotEmpty() }?.average()?.toInt()
 
         Row {
-          Text(text = "mmhg", style = MeTheme.typography.subHeading1, color = MeTheme.colorScheme.textSubheading)
+          Text(text = DashboardSnapshotStrings.Mmhg, style = MeTheme.typography.subHeading1, color = MeTheme.colorScheme.textSubheading)
           Spacer(modifier = Modifier.weight(1f))
-          Text(text = "pulse", style = MeTheme.typography.subHeading1, color = MeTheme.colorScheme.textSubheading)
+          Text(text = DashboardSnapshotStrings.Pulse, style = MeTheme.typography.subHeading1, color = MeTheme.colorScheme.textSubheading)
         }
         Row(verticalAlignment = Alignment.Bottom) {
           if (avgSys != null && avgDia != null) {
@@ -101,11 +102,11 @@ fun DashboardChartHeader(
               style = MeTheme.typography.heading2,
             )
           } else {
-            Text(text = "—", style = MeTheme.typography.heading2, color = SnapshotColors.BloodPressure)
+            Text(text = DashboardSnapshotStrings.PlaceholderDash, style = MeTheme.typography.heading2, color = SnapshotColors.BloodPressure)
           }
           Spacer(modifier = Modifier.weight(1f))
           Text(
-            text = avgPulse?.toString() ?: "—",
+            text = avgPulse?.toString() ?: DashboardSnapshotStrings.PlaceholderDash,
             style = MeTheme.typography.heading2,
             color = if (avgPulse != null) SnapshotColors.pulseColor(avgPulse) else MeTheme.colorScheme.textSubheading,
           )
@@ -121,7 +122,7 @@ fun DashboardChartHeader(
           Text(text = label, style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
           Spacer(modifier = Modifier.width(4.dp))
           Text(
-            text = "lbs",
+            text = DashboardSnapshotStrings.Lbs,
             style = MeTheme.typography.subHeading2,
             color = MeTheme.colorScheme.textSubheading,
             modifier = Modifier.offset(y = (-10).dp),

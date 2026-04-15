@@ -18,7 +18,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -39,6 +38,7 @@ import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.dashboard.components.BpDashboardContent
 import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardChartHeader
 import com.dmdbrands.gurus.weight.features.dashboard.components.WeightDashboardContent
+import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
@@ -70,8 +70,8 @@ fun DashboardScreen() {
     if (activity != null) {
       dialogService.showDialog(
         DialogModel.Confirm(
-          title = "Exit Dashboard",
-          message = "Are you sure you want to exit the dashboard?",
+          title = DashboardString.ExitDialog.Title,
+          message = DashboardString.ExitDialog.Message,
           onConfirm = { scope.launch { activity.finishAffinity() } },
         ),
       )
@@ -90,21 +90,21 @@ fun DashboardScreen() {
             }
           },
         ) {
-          Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", Modifier.size(24.dp), MeTheme.colorScheme.textHeading)
+          Icon(Icons.AutoMirrored.Filled.ArrowBack, DashboardString.BackContentDescription, Modifier.size(24.dp), MeTheme.colorScheme.textHeading)
         }
       }
     } else null,
     topBarContent = {
       ProductTypeHeader(
         selectedProduct = product,
-        onClick = { psm.showProductSheet("Dashboard") },
+        onClick = { psm.showProductSheet(DashboardString.DashboardSource) },
       )
     },
   ) {
     when (product) {
       is ProductSelection.MyWeight -> {
         val vm: WeightDashboardViewModel = hiltViewModel()
-        val state by vm.state.collectAsState()
+        val state by vm.state.collectAsStateWithLifecycle()
         DashboardPage(
           vm = vm,
           product = product,
@@ -176,7 +176,7 @@ private fun <S : BaseDashboardState> DashboardPage(
   createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   belowChart: @Composable (S) -> Unit,
 ) {
-  val state by vm.state.collectAsState()
+  val state by vm.state.collectAsStateWithLifecycle()
 
   val pagerState = rememberPagerState(
     initialPage = GraphSegment.entries.indexOf(state.selectedSegment).takeIf { it >= 0 } ?: 0,

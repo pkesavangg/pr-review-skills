@@ -240,8 +240,8 @@ class DashboardSnapshotViewModel @Inject constructor(
     val oz = ConversionTools.convertDecigramsToOz(latestWeight)
     val label = "$lbs lbs ${String.format("%.1f", oz)} oz"
 
-    // Convert decigrams to lbs for chart display (decigrams / 283.495 / 16)
-    val yValues = sorted.map { (it.avgWeightDecigrams ?: 0) / 283.495 / 16.0 }
+    // Convert decigrams to lbs for chart display
+    val yValues = sorted.map { ConversionTools.convertDecigramsToLbExact(it.avgWeightDecigrams ?: 0) }
 
     if (xValues.isNotEmpty()) {
       val endX = xValues.max().toLong()
