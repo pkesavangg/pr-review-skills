@@ -50,7 +50,7 @@ class ScalePairingManager(
     private val onIntent: (BtWifiScaleSetupIntent) -> Unit,
     private val getDiscoveredScale: () -> Device?,
     private val setDiscoveredScale: (Device?) -> Unit,
-    private val setIsScaleConnected: (Boolean) -> Unit,
+    private val setIsScaleSaved: (Boolean) -> Unit,
     private val getAccountId: () -> String?,
     private val onNext: () -> Unit,
     private val enqueueDialog: (DialogModel) -> Unit,
@@ -108,7 +108,7 @@ class ScalePairingManager(
                                 )
                                 setDiscoveredScale(updatedScale)
                                 setDiscoveredScale(deviceService.saveScale(requireNotNull(getDiscoveredScale()) { "discoveredScale unexpectedly null after copy" }))
-                                setIsScaleConnected(true)
+                                setIsScaleSaved(true)
                                 try {
                                     fetchUserList()
                                     val activeAccount = accountService.activeAccountFlow.first()

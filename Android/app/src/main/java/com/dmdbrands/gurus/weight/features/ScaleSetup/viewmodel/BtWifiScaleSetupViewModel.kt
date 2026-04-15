@@ -67,6 +67,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Instant
 import java.util.TimeZone
+import android.util.Log
 
 /**
  * Coordinator ViewModel for the BtWifiScaleSetupScreen.
@@ -110,6 +111,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
     private val connectionDelay: Long = 2000L
 
     private var isScaleConnected: Boolean = discoveredScale?.connectionStatus == BLEStatus.CONNECTED
+    private var isScaleSaved: Boolean = false
     private var accountId: String? = null
     private var updateSettingsTimeoutJob: kotlinx.coroutines.Job? = null
     private var measurementTimeoutJob: kotlinx.coroutines.Job? = null
@@ -164,7 +166,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
         onIntent = ::handleIntent,
         getDiscoveredScale = { discoveredScale },
         setDiscoveredScale = { discoveredScale = it },
-        setIsScaleConnected = { isScaleConnected = it },
+        setIsScaleSaved = { isScaleSaved = it },
         getAccountId = { accountId },
         onNext = ::onNext,
         enqueueDialog = { dialogQueueService.enqueue(it) },
@@ -452,7 +454,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
     private fun onExitSetup(isSetupFinished: Boolean) {
         deviceService.setSetupInProgress(false)
         if (isSetupFinished) {
-            onExit(isSetupFinished = true)
+            onExit()
         } else {
             dialogQueueService.enqueue(
                 DialogModel.Confirm(
@@ -460,22 +462,23 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
                     message = ScaleSetupStrings.ExitSetupAlert.Message(discoveredScale?.connectionStatus == BLEStatus.CONNECTED),
                     confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
                     cancelText = ScaleSetupStrings.ExitSetupAlert.GoBack,
-                    onConfirm = { onExit(isSetupFinished = false) },
+                    onConfirm = { onExit() },
                 ),
             )
         }
     }
 
-    private fun onExit(isSetupFinished: Boolean) {
+    private fun onExit() {
         clearAllTimeouts()
         viewModelScope.launch {
             try {
                 ggDeviceService.resumeScan(false)
                 discoveredScale?.let { scale ->
                     ggDeviceService.cancelWifi(scale.toGGBTDevice()) {}
-                    if (!isSetupFinished && initialStep != BtWifiSetupStep.GATHERING_NETWORK) {
-                        ggDeviceService.deleteAccount(scale.toGGBTDevice(), true) {}
-                        ggDeviceService.disconnectDevice(scale.toGGBTDevice())
+                    if (!isScaleSaved && !isScaleConnected && initialStep != BtWifiSetupStep.GATHERING_NETWORK) {
+                      Log.d("isuserdeleted", "${scale.toGGBTDevice()}")
+                            ggDeviceService.deleteAccount(scale.toGGBTDevice(), true) {}
+                            ggDeviceService.disconnectDevice(scale.toGGBTDevice())
                     }
                 }
                 loadPluginData()
