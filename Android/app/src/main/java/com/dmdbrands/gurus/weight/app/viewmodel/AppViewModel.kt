@@ -30,6 +30,7 @@ import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
+import com.dmdbrands.gurus.weight.domain.services.IHistoryService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BabyScaleSetupStep
@@ -82,6 +83,7 @@ class AppViewModel
 constructor(
   private val appRepository: IAppRepository,
   private val entryService: IEntryService,
+  private val historyService: IHistoryService,
   private val logManager: LogManager,
   private val appNavigationService: IAppNavigationService,
   private val tokenManager: ITokenManager,
@@ -911,7 +913,7 @@ constructor(
         it?.toGGBTUserProfile()
       }.distinctUntilChanged().collect { ggBTUserProfile ->
         if (ggBTUserProfile != null) {
-          val currentWeight = when (val latestWeightEntry = entryService.latestEntry.value) {
+          val currentWeight = when (val latestWeightEntry = historyService.latestEntry().first()) {
             is ScaleEntry -> latestWeightEntry.scale.scaleEntry.weight
             else -> ggBTUserProfile.weight // Fallback to initial weight
           }

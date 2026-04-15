@@ -109,7 +109,7 @@ class BpDashboardViewModel @Inject constructor(
 
   private fun subscribeProgress() {
     viewModelScope.launch {
-      entryService.progress.collect { handleIntent(BpDashboardIntent.SetProgress(it)) }
+      historyService.weightProgress().collect { handleIntent(BpDashboardIntent.SetProgress(it)) }
     }
   }
 

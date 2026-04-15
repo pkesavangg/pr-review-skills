@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
+import com.dmdbrands.gurus.weight.domain.services.IHistoryService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.features.common.ScaleProfileConstants
 import com.dmdbrands.gurus.weight.features.common.helper.AccountHelper.isMetricUnit
@@ -48,6 +49,7 @@ constructor(
   private val accountService: IAccountService,
   private val goalService: IGoalService,
   private val entryService: IEntryService,
+  private val historyService: IHistoryService,
   private val ggDeviceService: GGDeviceService
 ) : BaseIntentViewModel<GoalState, GoalIntent>(
   reducer = GoalReducer(),
@@ -77,7 +79,7 @@ constructor(
 
     // Load latest weight data for milestone display
     viewModelScope.launch {
-      entryService.latestEntry.collect { latestEntry ->
+      historyService.latestEntry().collect { latestEntry ->
         val latestWeight =
           when (latestEntry) {
             is ScaleEntry -> latestEntry.scale.scaleEntry.weight

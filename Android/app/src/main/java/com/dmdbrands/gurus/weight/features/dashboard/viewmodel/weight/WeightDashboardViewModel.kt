@@ -280,7 +280,7 @@ class WeightDashboardViewModel @Inject constructor(
 
   private fun subscribeProgress() {
     viewModelScope.launch {
-      entryService.progress.collect { handleIntent(WeightDashboardIntent.SetProgress(it)) }
+      historyService.weightProgress().collect { handleIntent(WeightDashboardIntent.SetProgress(it)) }
     }
   }
 
@@ -292,7 +292,7 @@ class WeightDashboardViewModel @Inject constructor(
 
   private fun subscribeLatestWeight() {
     viewModelScope.launch {
-      entryService.latestEntry.collect { latestEntry ->
+      historyService.latestEntry().collect { latestEntry ->
         val latestWeight = when (latestEntry) {
           is ScaleEntry -> latestEntry.scale.scaleEntry.weight
           else -> null
@@ -304,7 +304,7 @@ class WeightDashboardViewModel @Inject constructor(
 
   private fun subscribeIsEmpty() {
     viewModelScope.launch {
-      entryService.isEmpty.collect { handleIntent(WeightDashboardIntent.SetIsEmpty(it)) }
+      historyService.isWeightEmpty().collect { handleIntent(WeightDashboardIntent.SetIsEmpty(it)) }
     }
   }
 
