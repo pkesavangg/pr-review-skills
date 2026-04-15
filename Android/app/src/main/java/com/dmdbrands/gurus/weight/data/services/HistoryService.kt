@@ -6,9 +6,9 @@ import com.dmdbrands.gurus.weight.domain.model.common.GroupedHistory
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryDetail
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
-import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertToDisplay
 import com.dmdbrands.gurus.weight.domain.repository.IHistoryRepository
 import com.dmdbrands.gurus.weight.domain.services.IHistoryService
 import kotlinx.coroutines.flow.Flow
@@ -24,10 +24,6 @@ import javax.inject.Inject
 class HistoryService @Inject constructor(
     private val historyRepository: IHistoryRepository,
 ) : IHistoryService {
-
-    companion object {
-        private const val TAG = "HistoryService"
-    }
 
     private var _accountId: String? = null
     override val accountId: String? get() = _accountId
@@ -72,7 +68,7 @@ class HistoryService @Inject constructor(
         AppLog.d(TAG, "getMonthlyGraphData: ${product.productType}")
         return when (product) {
             is ProductSelection.MyWeight -> historyRepository.getWeightMonthlyGraphData(acctId)
-                .map { list -> GraphData.Weight(list.map { it.convertToDisplay() }) }
+                .map { list -> GraphData.Weight(list.map { it.scaleWeightToDisplay() }) }
 
             is ProductSelection.BloodPressure -> historyRepository.getBpmMonthlyGraphData(acctId)
                 .map { GraphData.BloodPressure(it) }
@@ -87,7 +83,7 @@ class HistoryService @Inject constructor(
         AppLog.d(TAG, "getDailyGraphData: ${product.productType}")
         return when (product) {
             is ProductSelection.MyWeight -> historyRepository.getWeightDailyGraphData(acctId)
-                .map { list -> GraphData.Weight(list.map { it.convertToDisplay() }) }
+                .map { list -> GraphData.Weight(list.map { it.scaleWeightToDisplay() }) }
 
             is ProductSelection.BloodPressure -> historyRepository.getBpmDailyGraphData(acctId)
                 .map { GraphData.BloodPressure(it) }
@@ -120,5 +116,18 @@ class HistoryService @Inject constructor(
     override fun getBabyMonthlyGraphData(babyProfileId: String): Flow<List<PeriodBabySummary>> {
         val acctId = requireNotNull(_accountId) { "accountId not set" }
         return historyRepository.getBabyMonthlyGraphData(acctId, babyProfileId)
+    }
+
+    /**
+     * Scales stored weight fields (×10 stored) to display lbs (÷10).
+     * Chart-facing conversion only; kept local to the data layer to avoid
+     * depending on feature-layer helpers.
+     */
+    private fun PeriodBodyScaleSummary.scaleWeightToDisplay(): PeriodBodyScaleSummary =
+        copy(weight = weight / DISPLAY_SCALE)
+
+    companion object {
+        private const val TAG = "HistoryService"
+        private const val DISPLAY_SCALE = 10.0
     }
 }

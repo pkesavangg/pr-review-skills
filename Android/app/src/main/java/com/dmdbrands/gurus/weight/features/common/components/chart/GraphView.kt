@@ -36,8 +36,6 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 
-private const val SCROLL_DELAY_AFTER_LAYOUT_MS = 50L
-
 /**
  * Composable for displaying a chart with interactive scroll/snap/marker features.
  * Product-agnostic: driven by [ChartConfig] and [SegmentState].
@@ -154,18 +152,10 @@ fun GraphView(
     }
   }
 
+  // Scroll-to-anchor is now handled by Vico's initialScroll + scrollState key = segment.
+  // We only need to acknowledge the consumed target so the caller doesn't re-dispatch it.
   LaunchedEffect(segment) {
     if (scrollTarget == null || !canScrollToAnchor || segmentState.isEmptyGraph) return@LaunchedEffect
-    val updatedScrollTarget = GraphUtil.getRelativeStart(segment, scrollTarget.toLong())
-    GraphUtil.getStartOnAnchored(segment, updatedScrollTarget)
-    // delay(SCROLL_DELAY_AFTER_LAYOUT_MS)
-    // scrollState.animateScroll(
-    //   Scroll.Absolute.xWithPadding(
-    //     anchoredTarget.toDouble(),
-    //     GraphSnapHelper.getVisiblePaddingXStepForSegment(segment).first,
-    //   ),
-    //   animationSpec = tween(durationMillis = 150, easing = LinearOutSlowInEasing),
-    // )
     onScrollTargetConsumed(true)
   }
 
