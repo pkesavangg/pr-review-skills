@@ -12,6 +12,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.LCBTScaleSetupStat
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.LcbtScaleSetupReducer
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.ScaleSetupIntent
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
+import com.dmdbrands.gurus.weight.features.common.components.SetupLoaderTimings
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
@@ -244,14 +245,15 @@ constructor(
     }
     viewModelScope.launch {
       try {
-        AppLog.d(TAG, "Updating device connection status")
-        delay(3000)
+        AppLog.d(TAG, "Waiting ${CONNECTION_SETUP_DELAY_MS}ms for bluetooth connection to settle")
+        delay(CONNECTION_SETUP_DELAY_MS)
         clearBluetoothTimeout() // Cancel timeout on success
-        AppLog.d(TAG, "Waiting 3 seconds after connection")
+        AppLog.d(TAG, "Bluetooth setup delay elapsed without timeout, saving scale")
         saveScale()
         handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
-        delay(500)
-        AppLog.d(TAG, "Proceeding after success animation")
+        AppLog.d(TAG, "Holding success state for ${SetupLoaderTimings.SUCCESS_DISPLAY_MS}ms to let loader animation complete")
+        delay(SetupLoaderTimings.SUCCESS_DISPLAY_MS)
+        AppLog.d(TAG, "Success state displayed, advancing to next step")
         onNext()
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during bluetooth connection", e)
@@ -290,5 +292,12 @@ constructor(
 
   companion object {
     private const val TAG = "LcbtBLESetupViewModel"
+
+    /**
+     * Delay between starting the BLE connection flow and marking it successful.
+     * Gives the underlying stack time to settle before we save the scale and
+     * transition the UI to Success.
+     */
+    private const val CONNECTION_SETUP_DELAY_MS = 3000L
   }
 }

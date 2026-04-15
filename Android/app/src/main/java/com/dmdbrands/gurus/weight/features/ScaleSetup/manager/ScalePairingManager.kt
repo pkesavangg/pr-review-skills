@@ -18,6 +18,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BtWifiScaleSetupSt
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleUsers.strings.ScaleUsersStrings
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
+import com.dmdbrands.gurus.weight.features.common.components.SetupLoaderTimings
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.StatHelper
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -123,7 +124,8 @@ class ScalePairingManager(
                                 } catch (e: Exception) {
                                     AppLog.e(TAG, "Error in background operations (user list fetch or dashboard update)", e)
                                 }
-                                delay(500)
+                                AppLog.d(TAG, "BT pairing complete, holding success state for ${SetupLoaderTimings.SUCCESS_DISPLAY_MS}ms before advancing")
+                                delay(SetupLoaderTimings.SUCCESS_DISPLAY_MS)
                                 onNext()
                             }
                         }
