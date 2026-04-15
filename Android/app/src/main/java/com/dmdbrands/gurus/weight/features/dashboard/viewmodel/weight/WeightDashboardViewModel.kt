@@ -110,7 +110,12 @@ class WeightDashboardViewModel @Inject constructor(
         .collect { entries ->
           latestDailyData = entries
           val series = toWeightSeries(entries)
-          updateSegmentRanges(entries, listOf(GraphSegment.WEEK, GraphSegment.MONTH)) { data ->
+          updateSegmentRanges(
+            entries = entries,
+            segments = listOf(GraphSegment.WEEK, GraphSegment.MONTH),
+            goalWeight = _state.value.goal?.goalWeight ?: 0.0,
+            isWeightlessMode = _state.value.weightless?.isWeightlessOn == true,
+          ) { data ->
             data.filterIsInstance<PeriodBodyScaleSummary>()
               .map { it.weight }
               .filter { it.isFinite() && it > 0.0 }
@@ -124,7 +129,12 @@ class WeightDashboardViewModel @Inject constructor(
         .collect { entries ->
           latestMonthlyData = entries
           val series = toWeightSeries(entries)
-          updateSegmentRanges(entries, listOf(GraphSegment.YEAR, GraphSegment.TOTAL)) { data ->
+          updateSegmentRanges(
+            entries = entries,
+            segments = listOf(GraphSegment.YEAR, GraphSegment.TOTAL),
+            goalWeight = _state.value.goal?.goalWeight ?: 0.0,
+            isWeightlessMode = _state.value.weightless?.isWeightlessOn == true,
+          ) { data ->
             data.filterIsInstance<PeriodBodyScaleSummary>()
               .map { it.weight }
               .filter { it.isFinite() && it > 0.0 }

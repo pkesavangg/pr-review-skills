@@ -123,11 +123,28 @@ class BabyDashboardViewModel @AssistedInject constructor(
       val targetStartX = GraphUtil.getRollingWindowStart(segment, endTs) ?: firstDataTs
       val filteredTarget = entries.filter { it.getTimeStamp() in targetStartX..endX }
 
+      // Match ScrollAwareRangeProvider padding (paddingEntries=1): include 1 entry just
+      // before and 1 entry just after the rolling window so seed Y range matches the
+      // runtime Y range exactly. Without this, an entry just outside the window would
+      // expand the runtime range and cause a frame-1 → frame-2 slide on initial load.
+      val seedSource = run {
+        val sorted = entries.sortedBy { it.getTimeStamp() }
+        val firstIdx = sorted.indexOfFirst { it.getTimeStamp() >= targetStartX }
+        val lastIdx = sorted.indexOfLast { it.getTimeStamp() <= endX }
+        if (firstIdx < 0 || lastIdx < 0 || firstIdx > lastIdx) {
+          filteredTarget
+        } else {
+          val from = (firstIdx - 1).coerceAtLeast(0)
+          val to = (lastIdx + 1).coerceAtMost(sorted.lastIndex)
+          sorted.subList(from, to + 1)
+        }
+      }
+
       val yValues: List<Double> = when (_state.value.selectedMetric) {
-        BabyMetric.WEIGHT -> filteredTarget.mapNotNull { e ->
+        BabyMetric.WEIGHT -> seedSource.mapNotNull { e ->
           e.avgWeightDecigrams?.let { it / 283.495 / 16.0 }
         }
-        BabyMetric.HEIGHT -> filteredTarget.mapNotNull { e ->
+        BabyMetric.HEIGHT -> seedSource.mapNotNull { e ->
           e.avgLengthMillimeters?.let { it / 25.4 }
         }
       }.filter { it.isFinite() && it > 0.0 }

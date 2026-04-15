@@ -59,6 +59,8 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
   protected fun updateSegmentRanges(
     entries: List<PeriodSummary>,
     segments: List<GraphSegment>,
+    goalWeight: Double = 0.0,
+    isWeightlessMode: Boolean = false,
     getYValuesForSeed: ((List<PeriodSummary>) -> List<Double>)? = null,
   ) {
     if (entries.isEmpty()) {
@@ -109,14 +111,32 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
 
       val filteredTarget = entries.filter { it.getTimeStamp() in startX..endX }
 
+      // Match ScrollAwareRangeProvider.computeVisibleEntries padding (paddingEntries=1):
+      // include 1 entry just before and 1 entry just after the visible window so the
+      // seed Y range matches the runtime Y range exactly. Without this, an entry just
+      // outside the window with a different weight would expand the runtime range and
+      // cause a frame-1 → frame-2 slide on initial load.
+      val seedSource = if (getYValuesForSeed != null) {
+        val sorted = entries.sortedBy { it.getTimeStamp() }
+        val firstIdx = sorted.indexOfFirst { it.getTimeStamp() >= startX }
+        val lastIdx = sorted.indexOfLast { it.getTimeStamp() <= endX }
+        if (firstIdx < 0 || lastIdx < 0 || firstIdx > lastIdx) {
+          filteredTarget
+        } else {
+          val from = (firstIdx - 1).coerceAtLeast(0)
+          val to = (lastIdx + 1).coerceAtMost(sorted.lastIndex)
+          sorted.subList(from, to + 1)
+        }
+      } else filteredTarget
+
       val seed = if (getYValuesForSeed != null) {
-        val yValues = getYValuesForSeed(filteredTarget).filter { it.isFinite() && it > 0.0 }
+        val yValues = getYValuesForSeed(seedSource).filter { it.isFinite() && it > 0.0 }
         if (yValues.isNotEmpty()) {
           val scale = generateNiceScale(
             minValue = yValues.min(),
             maxValue = yValues.max(),
-            goalWeight = 0.0,
-            isWeightLessMode = false,
+            goalWeight = goalWeight,
+            isWeightLessMode = isWeightlessMode,
             targetTickCount = 4,
           )
           scale.min to scale.max
