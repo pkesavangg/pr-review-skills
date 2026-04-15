@@ -25,6 +25,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.chart.ChartHeader
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
+import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.BpSystolicDiastolic
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.SnapshotColors
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.strings.DashboardSnapshotStrings
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
@@ -142,12 +143,9 @@ fun DashboardChartHeader(
           }
           Row(verticalAlignment = Alignment.Bottom) {
             if (avgSys != null && avgDia != null) {
-              Text(
-                text = buildAnnotatedString {
-                  withStyle(SpanStyle(color = SnapshotColors.systolicColor(avgSys))) { append("$avgSys") }
-                  withStyle(SpanStyle(color = MeTheme.colorScheme.textSubheading)) { append("/") }
-                  withStyle(SpanStyle(color = SnapshotColors.diastolicColor(avgDia))) { append("$avgDia") }
-                },
+              BpSystolicDiastolic(
+                systolic = avgSys,
+                diastolic = avgDia,
                 style = MeTheme.typography.heading2,
               )
             } else {
@@ -157,7 +155,7 @@ fun DashboardChartHeader(
             Text(
               text = avgPulse?.toString() ?: DashboardSnapshotStrings.PlaceholderDash,
               style = MeTheme.typography.heading2,
-              color = if (avgPulse != null) SnapshotColors.pulseColor(avgPulse) else MeTheme.colorScheme.textSubheading,
+              color = MeTheme.colorScheme.textSubheading,
             )
           }
         }

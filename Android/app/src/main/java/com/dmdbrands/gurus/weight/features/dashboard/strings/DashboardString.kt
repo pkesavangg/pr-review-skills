@@ -17,6 +17,16 @@ object DashboardString {
   object Bp {
     const val EntryAverageSuffix = "entry average"
     const val NoEntries = "no entries"
+
+    object ThreeReadingAverage {
+      const val Title = "Three Reading Average"
+      const val WhyTitle = "Why We Take an Average"
+      const val WhyBody = "Blood pressure changes throughout the day. Averaging three readings gives a more accurate result."
+      const val LastReadingsTitle = "Last 3 readings"
+      const val Mmhg = "mmhg"
+      const val Pulse = "pulse"
+      const val CloseContentDescription = "Close"
+    }
   }
 
   object ResetDialog {

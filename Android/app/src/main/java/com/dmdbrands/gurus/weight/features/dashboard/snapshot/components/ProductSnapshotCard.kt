@@ -159,18 +159,9 @@ fun BpSnapshotCard(
             modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
         ) {
             if (systolic != null && diastolic != null) {
-                Text(
-                    text = buildAnnotatedString {
-                        withStyle(SpanStyle(color = SnapshotColors.systolicColor(systolic))) {
-                            append("$systolic")
-                        }
-                        withStyle(SpanStyle(color = MeTheme.colorScheme.textSubheading)) {
-                            append("/")
-                        }
-                        withStyle(SpanStyle(color = SnapshotColors.diastolicColor(diastolic))) {
-                            append("$diastolic")
-                        }
-                    },
+                BpSystolicDiastolic(
+                    systolic = systolic,
+                    diastolic = diastolic,
                     style = SnapshotValueStyle,
                 )
             } else {
