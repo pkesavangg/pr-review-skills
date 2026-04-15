@@ -20,13 +20,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.BpSystolicDiastolic
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.SnapshotColors
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.strings.DashboardSnapshotStrings
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp.BpDashboardState
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -38,14 +36,15 @@ import com.dmdbrands.gurus.weight.features.dashboard.string.DashboardString as M
  */
 @Composable
 fun BpDashboardContent(
-  segmentState: SegmentState,
   state: BpDashboardState,
 ) {
-  val target = segmentState.target.filterIsInstance<PeriodBpmSummary>()
-  val avgSys = target.map { it.avgSystolic }.takeIf { it.isNotEmpty() }?.average()?.toInt()
-  val avgDia = target.map { it.avgDiastolic }.takeIf { it.isNotEmpty() }?.average()?.toInt()
-  val avgPulse = target.map { it.avgPulse }.takeIf { it.isNotEmpty() }?.average()?.toInt()
-  val entryCount = target.size
+  // "Three entry average" is account-scoped, derived from the last N per-day BP averages
+  // in state — independent of the chart's selected window.
+  val lastReadings = state.lastReadings
+  val avgSys = lastReadings.averageSystolic
+  val avgDia = lastReadings.averageDiastolic
+  val avgPulse = lastReadings.averagePulse
+  val entryCount = lastReadings.entries.size
 
   var showThreeReadingSheet by remember { mutableStateOf(false) }
 
@@ -121,9 +120,7 @@ fun BpDashboardContent(
   }
 
   if (showThreeReadingSheet) {
-    // TODO: Replace with real "last 3 entries" once data layer is wired.
-    // For now, show the latest 3 period summaries as stand-in rows.
-    val readings = target.sortedByDescending { it.entryTimestamp }.take(3).map {
+    val readings = lastReadings.entries.map {
       BpReadingRow(systolic = it.avgSystolic, diastolic = it.avgDiastolic, pulse = it.avgPulse)
     }
     BpThreeReadingAverageBottomSheet(

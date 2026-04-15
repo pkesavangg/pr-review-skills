@@ -27,6 +27,7 @@ class BpDashboardViewModel @Inject constructor(
 
   companion object {
     private const val TAG = "BpDashboardVM"
+    private const val LAST_READINGS_COUNT = 3
   }
 
   override fun provideInitialState(): BpDashboardState = BpDashboardState()
@@ -34,6 +35,7 @@ class BpDashboardViewModel @Inject constructor(
   override fun onDependenciesReady() {
     startGraphSubscriptions()
     subscribeProgress()
+    subscribeLastReadings()
   }
 
   override fun handleIntent(intent: BaseGraphIntent) {
@@ -108,6 +110,29 @@ class BpDashboardViewModel @Inject constructor(
   private fun subscribeProgress() {
     viewModelScope.launch {
       entryService.progress.collect { handleIntent(BpDashboardIntent.SetProgress(it)) }
+    }
+  }
+
+  /**
+   * Last N per-day BP averages for the three-reading-average card and sheet.
+   * Account-scoped (not window-scoped) — computes the sys/dia/pulse mean across the
+   * returned rows and pushes both rows + averages into state for the UI to consume.
+   */
+  private fun subscribeLastReadings() {
+    viewModelScope.launch {
+      historyService.getBpmLastNDayEntries(LAST_READINGS_COUNT).collect { rows ->
+        val readings = if (rows.isEmpty()) {
+          BpLastReadings()
+        } else {
+          BpLastReadings(
+            entries = rows,
+            averageSystolic = rows.map { it.avgSystolic }.average().toInt(),
+            averageDiastolic = rows.map { it.avgDiastolic }.average().toInt(),
+            averagePulse = rows.map { it.avgPulse }.average().toInt(),
+          )
+        }
+        handleIntent(BpDashboardIntent.SetLastReadings(readings))
+      }
     }
   }
 }

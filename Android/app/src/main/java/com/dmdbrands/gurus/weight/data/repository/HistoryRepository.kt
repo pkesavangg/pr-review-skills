@@ -127,6 +127,11 @@ class HistoryRepository @Inject constructor(
         return historyDao.getBpmSnapshotGraphData(accountId)
     }
 
+    override fun getBpmLastNDayEntries(accountId: String, n: Int): Flow<List<PeriodBpmSummary>> {
+        if (USE_SAMPLE_DATA) return flowOf(sampleBpmSnapshotData().takeLast(n).reversed())
+        return historyDao.getBpmLastNDayEntries(accountId, n)
+    }
+
     private fun sampleBpmSnapshotData(): List<PeriodBpmSummary> = listOf(
             PeriodBpmSummary("2026-03-30", "2026-03-30 00:00:00", avgSystolic = 118, avgDiastolic = 76, avgPulse = 68),
             PeriodBpmSummary("2026-03-31", "2026-03-31 00:00:00", avgSystolic = 115, avgDiastolic = 74, avgPulse = 65),

@@ -35,6 +35,13 @@ interface IHistoryService {
 
     fun getBpmSnapshotGraphData(): Flow<List<PeriodBpmSummary>>
 
+    /**
+     * Last [n] per-day BP averages for the current account (most recent day first).
+     * Scoped to the account — NOT to any selected chart window. Fewer than [n] rows
+     * are returned when the account has BP entries on < [n] days.
+     */
+    fun getBpmLastNDayEntries(n: Int): Flow<List<PeriodBpmSummary>>
+
     fun getBabySnapshotGraphData(babyProfileId: String): Flow<List<PeriodBabySummary>>
 
     fun getBabyDailyGraphData(babyProfileId: String): Flow<List<PeriodBabySummary>>

@@ -443,6 +443,34 @@ interface HistoryDao {
   )
   fun getBpmSnapshotGraphData(accountId: String): Flow<List<PeriodBpmSummary>>
 
+  /**
+   * Last N per-day BP averages for the account (most recent day first).
+   *
+   * Each row is a day of BP data averaged into a single [PeriodBpmSummary]. Scoped
+   * to the account — NOT to any selected chart window — used by the dashboard
+   * three-reading-average card and sheet.
+   *
+   * If the account has BP entries on < n days, fewer than n rows are returned.
+   */
+  @Query(
+    """
+    SELECT
+        strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
+        datetime(MIN(e.entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of day') AS entryTimestamp,
+        CAST(AVG(bp.systolic) AS INTEGER) AS avgSystolic,
+        CAST(AVG(bp.diastolic) AS INTEGER) AS avgDiastolic,
+        CAST(AVG(bp.pulse) AS INTEGER) AS avgPulse
+    FROM entry_view e
+    INNER JOIN bpm_entry bp ON e.id = bp.entryId
+    WHERE e.accountId = :accountId
+      AND (e.operationType IS NULL OR e.operationType != 'delete')
+    GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
+    ORDER BY period DESC
+    LIMIT :n
+    """,
+  )
+  fun getBpmLastNDayEntries(accountId: String, n: Int): Flow<List<PeriodBpmSummary>>
+
   // ---------------------------------------------------------------------------
   // Baby Graph Queries
   // ---------------------------------------------------------------------------

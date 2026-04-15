@@ -103,6 +103,11 @@ class HistoryService @Inject constructor(
         return historyRepository.getBpmSnapshotGraphData(acctId)
     }
 
+    override fun getBpmLastNDayEntries(n: Int): Flow<List<PeriodBpmSummary>> {
+        val acctId = requireNotNull(_accountId) { "accountId not set" }
+        return historyRepository.getBpmLastNDayEntries(acctId, n)
+    }
+
     override fun getBabySnapshotGraphData(babyProfileId: String): Flow<List<PeriodBabySummary>> {
         val acctId = requireNotNull(_accountId) { "accountId not set" }
         return historyRepository.getBabySnapshotGraphData(acctId, babyProfileId)

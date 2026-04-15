@@ -159,7 +159,7 @@ fun DashboardScreen() {
             )
           },
         ) { s ->
-          BpDashboardContent(segmentState = s.forSegment(s.selectedSegment), state = s)
+          BpDashboardContent(state = s)
         }
       }
 

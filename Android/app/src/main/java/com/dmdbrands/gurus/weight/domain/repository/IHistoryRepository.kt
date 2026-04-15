@@ -44,6 +44,10 @@ interface IHistoryRepository {
     // BPM Snapshot (Dashboard mini-chart)
     fun getBpmSnapshotGraphData(accountId: String): Flow<List<PeriodBpmSummary>>
 
+    // BPM Last-N-days (one per-day avg per row, most recent first) — per-account,
+    // not scoped to any chart window. Used by the three-reading-average card/sheet.
+    fun getBpmLastNDayEntries(accountId: String, n: Int): Flow<List<PeriodBpmSummary>>
+
     // Baby Graph
     fun getBabyMonthlyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>
     fun getBabyDailyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>
