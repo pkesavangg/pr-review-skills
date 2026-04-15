@@ -34,7 +34,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import java.util.Calendar
-import android.util.Log
 
 /**
  * Composable for displaying a chart with interactive scroll/snap/marker features.
@@ -175,7 +174,6 @@ fun GraphView(
   val scrubController = rememberScrubMarkerController(
     scrollState = scrollState,
     onMarkerIndexChanged = { clickX, targets ->
-      Log.d("CHECKING", clickX.toString())
       if (clickX == null || segmentState.isEmptyGraph) {
         handleGraphIntent(BaseGraphIntent.UpdateMarkerIndex(null))
         return@rememberScrubMarkerController null
@@ -188,8 +186,8 @@ fun GraphView(
       val startTs = segmentState.startTimestamp
       val endTs = segmentState.endTimestamp
       if (startTs != null && endTs != null) {
-        val paddedMinCondition = startTs - GraphUtil.calculateXStep(segment = segment)
-        val paddedMaxCondition = endTs + GraphUtil.calculateXStep(segment = segment)
+        val paddedMinCondition = startTs - GraphUtil.calculateXStep(segment = segment).div(2)
+        val paddedMaxCondition = endTs + GraphUtil.calculateXStep(segment = segment).div(2)
         val outOfBoundaryCondition = clickX !in paddedMinCondition..paddedMaxCondition
         if (!outOfBoundaryCondition) {
           val targetMarkerIndex = getTargetPoints(
@@ -216,7 +214,8 @@ fun GraphView(
     val vMax = segmentState.visibleMax
     if (state.markerIndex == null && vMin != null && vMax != null) {
       delay(50)
-      if (!scrollState.isScrolling) onScrollUpdate(vMin, vMax)
+
+      if (!scrollState.isUserScrolling) onScrollUpdate(vMin, vMax)
     }
   }
 
