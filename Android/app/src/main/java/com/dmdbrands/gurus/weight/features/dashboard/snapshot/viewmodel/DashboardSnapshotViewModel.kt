@@ -16,6 +16,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
 import com.dmdbrands.gurus.weight.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
+import com.dmdbrands.gurus.weight.features.dashboard.snapshot.strings.DashboardSnapshotStrings
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
@@ -238,7 +239,7 @@ class DashboardSnapshotViewModel @Inject constructor(
     val latestWeight = sorted.last().avgWeightDecigrams ?: 0
     val lbs = ConversionTools.convertDecigramsToLb(latestWeight)
     val oz = ConversionTools.convertDecigramsToOz(latestWeight)
-    val label = "$lbs lbs ${String.format("%.1f", oz)} oz"
+    val label = "$lbs ${DashboardSnapshotStrings.Lbs} ${String.format("%.1f", oz)} ${DashboardSnapshotStrings.Oz}"
 
     // Convert decigrams to lbs for chart display
     val yValues = sorted.map { ConversionTools.convertDecigramsToLbExact(it.avgWeightDecigrams ?: 0) }
