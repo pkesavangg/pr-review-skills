@@ -34,7 +34,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import java.util.Calendar
-import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import android.util.Log
 
 /**
  * Composable for displaying a chart with interactive scroll/snap/marker features.
@@ -160,6 +160,7 @@ fun GraphView(
   }
 
   val defaultMarker = rememberDefaultMarker(
+    state = state,
     segmentState = segmentState,
     segment = segment,
     markerIndex = state.markerIndex,
@@ -174,6 +175,7 @@ fun GraphView(
   val scrubController = rememberScrubMarkerController(
     scrollState = scrollState,
     onMarkerIndexChanged = { clickX, targets ->
+      Log.d("CHECKING", clickX.toString())
       if (clickX == null || segmentState.isEmptyGraph) {
         handleGraphIntent(BaseGraphIntent.UpdateMarkerIndex(null))
         return@rememberScrubMarkerController null
