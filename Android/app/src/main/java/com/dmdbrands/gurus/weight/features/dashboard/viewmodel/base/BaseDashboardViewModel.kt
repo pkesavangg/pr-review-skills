@@ -49,8 +49,7 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
   /**
    * Compute segment ranges (minTarget, maxTarget, chartMinX, chartMaxX, etc.)
    * from entries and update segment states. Same logic for all products.
-   */
-  /**
+   *
    * @param getYValuesForSeed Optional per-product Y extractor. When provided, computes
    *   [SegmentState.seedMinY]/[SegmentState.seedMaxY] from the visible-window entries so
    *   the chart has the correct Y range on frame-0 — eliminating the axis jump on segment
