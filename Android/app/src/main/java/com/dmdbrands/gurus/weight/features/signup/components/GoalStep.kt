@@ -1,8 +1,6 @@
 package com.dmdbrands.gurus.weight.features.signup.components
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -103,11 +101,7 @@ fun GoalStep(
         true // Always show for lose/gain
       }
 
-    AnimatedVisibility(
-      visible = shouldShowCurrentWeight,
-      enter = fadeIn(),
-      exit = fadeOut(),
-    ) {
+    AnimatedVisibility(visible = shouldShowCurrentWeight) {
       Column {
         AppInput(
           formControl = currentWeightControl,
