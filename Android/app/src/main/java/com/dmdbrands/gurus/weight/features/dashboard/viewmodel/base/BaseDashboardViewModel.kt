@@ -19,7 +19,7 @@ import android.icu.util.Calendar
  * - Shared producer transaction helper
  * - ScrollRange intent handling
  *
- * Producers live in the state (set via [initProducers]).
+ * Producers are stable defaults inside the product [BaseDashboardState].
  * Each product VM subscribes to its own typed data flow, converts entries
  * to series inline, then calls [updateSegmentRanges] + [pushSeriesToProducer].
  */

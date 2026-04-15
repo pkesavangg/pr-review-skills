@@ -130,9 +130,9 @@ fun DashboardChartHeader(
           val avgPulse = target.map { it.avgPulse }.takeIf { it.isNotEmpty() }?.average()?.toInt()
 
           Row {
-            Text(text = "mmhg", style = MeTheme.typography.subHeading1, color = MeTheme.colorScheme.textSubheading)
+            Text(text = DashboardSnapshotStrings.Mmhg, style = MeTheme.typography.subHeading1, color = MeTheme.colorScheme.textSubheading)
             Spacer(modifier = Modifier.weight(1f))
-            Text(text = "pulse", style = MeTheme.typography.subHeading1, color = MeTheme.colorScheme.textSubheading)
+            Text(text = DashboardSnapshotStrings.Pulse, style = MeTheme.typography.subHeading1, color = MeTheme.colorScheme.textSubheading)
           }
           Row(verticalAlignment = Alignment.Bottom) {
             if (avgSys != null && avgDia != null) {
@@ -145,11 +145,11 @@ fun DashboardChartHeader(
                 style = MeTheme.typography.heading2,
               )
             } else {
-              Text(text = "—", style = MeTheme.typography.heading2, color = SnapshotColors.BloodPressure)
+              Text(text = DashboardSnapshotStrings.PlaceholderDash, style = MeTheme.typography.heading2, color = SnapshotColors.BloodPressure)
             }
             Spacer(modifier = Modifier.weight(1f))
             Text(
-              text = avgPulse?.toString() ?: "—",
+              text = avgPulse?.toString() ?: DashboardSnapshotStrings.PlaceholderDash,
               style = MeTheme.typography.heading2,
               color = if (avgPulse != null) SnapshotColors.pulseColor(avgPulse) else MeTheme.colorScheme.textSubheading,
             )
@@ -180,14 +180,14 @@ private fun BabyValueDisplay(
         Row(verticalAlignment = Alignment.Bottom) {
           Text(text = "$lbs", style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
           Spacer(modifier = Modifier.width(4.dp))
-          Text(text = "lbs", style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
+          Text(text = DashboardSnapshotStrings.Lbs, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
           Spacer(modifier = Modifier.width(8.dp))
           Text(text = String.format("%.1f", oz), style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
           Spacer(modifier = Modifier.width(4.dp))
-          Text(text = "oz", style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
+          Text(text = DashboardSnapshotStrings.Oz, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
         }
       } else {
-        Text(text = "—", style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
+        Text(text = DashboardSnapshotStrings.PlaceholderDash, style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
       }
     }
     BabyMetric.HEIGHT -> {
@@ -198,10 +198,10 @@ private fun BabyValueDisplay(
         Row(verticalAlignment = Alignment.Bottom) {
           Text(text = String.format("%.1f", inches), style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
           Spacer(modifier = Modifier.width(4.dp))
-          Text(text = "in", style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
+          Text(text = DashboardSnapshotStrings.Inches, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
         }
       } else {
-        Text(text = "—", style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
+        Text(text = DashboardSnapshotStrings.PlaceholderDash, style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
       }
     }
   }

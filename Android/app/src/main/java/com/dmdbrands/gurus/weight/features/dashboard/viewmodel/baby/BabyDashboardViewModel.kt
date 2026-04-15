@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
@@ -191,7 +192,7 @@ class BabyDashboardViewModel @AssistedInject constructor(
     val sorted = entries.sortedBy { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }
     val pairs = sorted.mapNotNull { e ->
       val ts = DateTimeConverter.isoToTimestamp(e.entryTimestamp)
-      val w = e.avgWeightDecigrams?.let { it / 283.495 / 16.0 }
+      val w = e.avgWeightDecigrams?.let { ConversionTools.convertDecigramsToLbExact(it) }
       if (w != null) ts to w else null
     }
     if (pairs.isEmpty()) return emptyList()
@@ -202,7 +203,7 @@ class BabyDashboardViewModel @AssistedInject constructor(
     val sorted = entries.sortedBy { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }
     val pairs = sorted.mapNotNull { e ->
       val ts = DateTimeConverter.isoToTimestamp(e.entryTimestamp)
-      val h = e.avgLengthMillimeters?.let { it / 25.4 }
+      val h = e.avgLengthMillimeters?.let { ConversionTools.convertMmToInchesExact(it) }
       if (h != null) ts to h else null
     }
     if (pairs.isEmpty()) return emptyList()
