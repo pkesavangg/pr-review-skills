@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -75,12 +76,13 @@ fun BabyCdcPercentilesBottomSheet(
 
       // Height card — "21.7 inches" + "6 %"
       BabyPercentileCard(
-        modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
+        modifier = Modifier.padding(horizontal = MeTheme.spacing.xs),
       ) {
         BabyValueWithUnit(
           value = heightInches?.let { String.format("%.1f", it) }
             ?: DashboardString.Baby.CdcPercentiles.Placeholder,
           unit = DashboardString.Baby.CdcPercentiles.Inches,
+          modifier = Modifier.weight(1f),
         )
         BabyPercentileValue(percentile = heightPercentile)
       }
@@ -89,10 +91,10 @@ fun BabyCdcPercentilesBottomSheet(
 
       // Weight card — "14 lbs  4.4 oz" + "8 %"
       BabyPercentileCard(
-        modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
+        modifier = Modifier.padding(horizontal = MeTheme.spacing.xs),
       ) {
         Row(
-          horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.md),
+          modifier = Modifier.weight(1f),
           verticalAlignment = Alignment.Bottom,
         ) {
           BabyValueWithUnit(
@@ -111,11 +113,16 @@ fun BabyCdcPercentilesBottomSheet(
   }
 }
 
-/** White rounded card, 119dp tall, that lays out its children in a Row with space-between. */
+/**
+ * White rounded 97dp card. The content lambda runs in [RowScope] so callers can
+ * apply `Modifier.weight(1f)` to the left content — that lets the right-hand
+ * percentile column always take its full natural width and never wrap, while the
+ * left side absorbs whatever is left.
+ */
 @Composable
 private fun BabyPercentileCard(
   modifier: Modifier = Modifier,
-  content: @Composable () -> Unit,
+  content: @Composable RowScope.() -> Unit,
 ) {
   Row(
     modifier = modifier
@@ -124,16 +131,19 @@ private fun BabyPercentileCard(
       .background(MeTheme.colorScheme.primaryBackground, RoundedCornerShape(9.dp))
       .padding(horizontal = MeTheme.spacing.lg),
     verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.SpaceBetween,
-  ) {
-    content()
-  }
+    horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.md),
+    content = content,
+  )
 }
 
 /** Big purple value (heading2, ExtraBold) + small lowercase unit text trailing it at the baseline. */
 @Composable
-private fun BabyValueWithUnit(value: String, unit: String) {
-  Row(verticalAlignment = Alignment.Bottom) {
+private fun BabyValueWithUnit(
+  value: String,
+  unit: String,
+  modifier: Modifier = Modifier,
+) {
+  Row(modifier = modifier, verticalAlignment = Alignment.Bottom) {
     Text(
       text = value,
       style = MeTheme.typography.heading2,
