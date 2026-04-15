@@ -23,6 +23,7 @@ import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
+import com.dmdbrands.library.ggbluetooth.enums.GGAppType
 import com.google.common.truth.Truth.assertThat
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
@@ -459,6 +460,17 @@ class AppViewModelTest {
         advanceUntilIdle()
 
         coVerify { dashboardService.setSelectedKey(null) }
+    }
+
+    @Test
+    fun `startScan uses GGAppType ME_HEALTH namespace`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        authEventFlow.emit(AuthState.LoggedInFromLoading(account = TestFixtures.activeAccount))
+        advanceUntilIdle()
+
+        verify { ggPermissionService.startScan(eq(GGAppType.ME_HEALTH), any()) }
     }
 
     // -------------------------------------------------------------------------
