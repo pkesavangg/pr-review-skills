@@ -87,7 +87,7 @@ fun DashboardChartHeader(
                   if (isSelected) Modifier.background(SnapshotColors.Baby, RoundedCornerShape(8.dp))
                   else Modifier
                 )
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.xs),
               contentAlignment = Alignment.Center,
             ) {
               Text(
