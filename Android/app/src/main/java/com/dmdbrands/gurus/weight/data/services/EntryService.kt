@@ -3,7 +3,7 @@ package com.dmdbrands.gurus.weight.data.services
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
-import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
@@ -50,7 +50,7 @@ class EntryService(
     override val daywiseBodyScaleAverages: StateFlow<List<PeriodBodyScaleSummary>> get() = aggregationService.daywiseBodyScaleAverages
     override val daywiseBodyScaleLatest: StateFlow<List<PeriodBodyScaleSummary>> get() = aggregationService.daywiseBodyScaleLatest
     override val monthlyAverage: StateFlow<List<HistoryMonth>> get() = aggregationService.monthlyAverage
-    override val progress: Flow<Progress> get() = aggregationService.progress
+    override val progress: Flow<WeightProgress> get() = aggregationService.progress
 
     override suspend fun updateAllData(accountId: String?) {
         if (accountId == null) return

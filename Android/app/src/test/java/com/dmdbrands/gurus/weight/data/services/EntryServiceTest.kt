@@ -2,7 +2,7 @@ package com.dmdbrands.gurus.weight.data.services
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
-import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
@@ -127,7 +127,7 @@ class EntryServiceTest {
 
     @Test
     fun `progress delegates to aggregationService`() {
-        val flow = flowOf(mockk<Progress>())
+        val flow = flowOf(mockk<WeightProgress>())
         every { aggregationService.progress } returns flow
         assertThat(service.progress).isSameInstanceAs(flow)
     }

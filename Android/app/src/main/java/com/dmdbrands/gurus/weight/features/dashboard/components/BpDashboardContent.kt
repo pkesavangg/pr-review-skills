@@ -104,13 +104,13 @@ fun BpDashboardContent(
     ) {
       BpStreakCard(
         icon = AppIcons.Milestone.Bolt,
-        value = state.progress.currentStreak,
+        value = state.progress.streak.current,
         label = MilestoneStrings.MileStone.CurrentStreak,
         modifier = Modifier.weight(1f),
       )
       BpStreakCard(
         icon = AppIcons.Milestone.Streak,
-        value = state.progress.longestStreak,
+        value = state.progress.streak.longest,
         label = MilestoneStrings.MileStone.LongestStreak,
         modifier = Modifier.weight(1f),
       )

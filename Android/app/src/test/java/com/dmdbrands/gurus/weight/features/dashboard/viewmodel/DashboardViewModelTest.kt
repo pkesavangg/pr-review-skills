@@ -6,7 +6,7 @@ import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
-import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
@@ -107,7 +107,7 @@ class DashboardViewModelTest {
         every { accountService.activeAccountFlow } returns flowOf(TestFixtures.activeAccount)
         every { dashboardService.visibleKeys } returns MutableStateFlow(emptyList())
         every { entryService.isEmpty } returns MutableStateFlow(false)
-        every { entryService.progress } returns flowOf(Progress())
+        every { entryService.progress } returns flowOf(WeightProgress())
         every { entryService.isUpdating } returns MutableStateFlow(false)
         every { entryService.latestEntry } returns MutableStateFlow(null)
         every { healthConnectService.outOfSyncState } returns flowOf(false)
@@ -224,7 +224,7 @@ class DashboardViewModelTest {
 
     @Test
     fun `SetProgress updates progress`() {
-        val progress = Progress(count = PROGRESS_COUNT, initWt = PROGRESS_INIT_WEIGHT)
+        val progress = WeightProgress(count = PROGRESS_COUNT, initWt = PROGRESS_INIT_WEIGHT)
         viewModel.handleIntent(DashboardIntent.SetProgress(progress))
         assertThat(viewModel.state.value.progress).isEqualTo(progress)
     }
@@ -719,7 +719,7 @@ class DashboardViewModelTest {
 
     @Test
     fun `subscribeProgress updates progress from entryService flow`() = runTest {
-        val progress = Progress(count = PROGRESS_COUNT, initWt = PROGRESS_INIT_WEIGHT)
+        val progress = WeightProgress(count = PROGRESS_COUNT, initWt = PROGRESS_INIT_WEIGHT)
         every { entryService.progress } returns flowOf(progress)
 
         viewModel = DashboardViewModel(

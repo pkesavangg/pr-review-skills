@@ -1,7 +1,7 @@
 package com.dmdbrands.gurus.weight.domain.services
 
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
-import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import kotlinx.coroutines.flow.Flow
@@ -16,7 +16,7 @@ interface IEntryAggregationService {
     val daywiseBodyScaleAverages: StateFlow<List<PeriodBodyScaleSummary>>
     val daywiseBodyScaleLatest: StateFlow<List<PeriodBodyScaleSummary>>
     val monthlyAverage: StateFlow<List<HistoryMonth>>
-    val progress: Flow<Progress>
+    val progress: Flow<WeightProgress>
 
     fun setAccountId(accountId: String?, initialWeight: Double?)
     fun startDataCollection(accountId: String)

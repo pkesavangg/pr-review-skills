@@ -2,7 +2,7 @@ package com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp
 
 import androidx.compose.runtime.Stable
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
-import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
@@ -37,7 +37,7 @@ data class BpDashboardState(
   override val isRefreshing: Boolean = false,
   override val markerIndex: Double? = null,
   // BP-specific
-  val progress: Progress = Progress(),
+  val progress: WeightProgress = WeightProgress(),
   val isEmpty: Boolean = false,
   val lastReadings: BpLastReadings = BpLastReadings(),
 ) : BaseDashboardState
@@ -46,7 +46,7 @@ data class BpDashboardState(
 
 sealed interface BpDashboardIntent : BaseGraphIntent {
   // BP-only
-  data class SetProgress(val progress: Progress) : BpDashboardIntent
+  data class SetProgress(val progress: WeightProgress) : BpDashboardIntent
   data class SetIsEmpty(val isEmpty: Boolean) : BpDashboardIntent
   data class SetLastReadings(val value: BpLastReadings) : BpDashboardIntent
   data object Refresh : BpDashboardIntent

@@ -2,7 +2,7 @@
 package com.dmdbrands.gurus.weight.domain.services
 
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
-import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import kotlinx.coroutines.flow.Flow
@@ -14,7 +14,7 @@ interface IEntryService {
   val latestEntry: StateFlow<Entry?>
   val last7Days: StateFlow<List<Entry>>
   val last30Days: StateFlow<List<Entry>>
-  val progress: Flow<Progress>
+  val progress: Flow<WeightProgress>
   val lastUpdated: StateFlow<Long?>
   val monthlyBodyScaleAverages: StateFlow<List<PeriodBodyScaleSummary>>
   val monthlyBodyScaleLatest: StateFlow<List<PeriodBodyScaleSummary>>

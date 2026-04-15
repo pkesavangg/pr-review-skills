@@ -3,7 +3,7 @@ package com.dmdbrands.gurus.weight.data.services
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.services.EntryServiceHelper.processWeight
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
-import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
@@ -89,7 +89,7 @@ class EntryAggregationService(
     /** Bumped when progress cache is updated so progress Flow re-emits without adding more flows to combine. */
     private val _progressCacheVersion = MutableStateFlow(0)
 
-    override val progress: Flow<Progress> =
+    override val progress: Flow<WeightProgress> =
         combine(
             combine(
                 _latestEntry,
@@ -105,7 +105,7 @@ class EntryAggregationService(
             accountRepository.getActiveAccount(),
         ) { inputs, _, initialWeight, account ->
             if (accountId == null) {
-                Progress()
+                WeightProgress()
             } else {
                 val startMs = System.currentTimeMillis()
                 val weightSettings = inputs.weightSettings

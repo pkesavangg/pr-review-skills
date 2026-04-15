@@ -3,7 +3,7 @@ package com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight
 import androidx.compose.runtime.Stable
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
-import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
@@ -42,7 +42,7 @@ data class WeightDashboardState(
   val visibleKeys: ImmutableList<DashboardKey> = persistentListOf(),
   val selectedStat: Stat? = null,
   val latestWeight: Double? = null,
-  val progress: Progress = Progress(),
+  val progress: WeightProgress = WeightProgress(),
   val isProgressUpdating: Boolean = false,
   val isEmpty: Boolean = false,
   val dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS,
@@ -57,7 +57,7 @@ sealed interface WeightDashboardIntent : BaseGraphIntent {
   data class SetVisibleKeys(val keys: List<DashboardKey>) : WeightDashboardIntent
   data class SetSelectedStat(val stat: Stat?) : WeightDashboardIntent
   data class SetLatestWeight(val latestWeight: Double?) : WeightDashboardIntent
-  data class SetProgress(val progress: Progress) : WeightDashboardIntent
+  data class SetProgress(val progress: WeightProgress) : WeightDashboardIntent
   data class SetProgressUpdating(val isUpdating: Boolean) : WeightDashboardIntent
   data class SetIsEmpty(val isEmpty: Boolean) : WeightDashboardIntent
   data class SetDashboardType(val dashboardType: DashboardType) : WeightDashboardIntent

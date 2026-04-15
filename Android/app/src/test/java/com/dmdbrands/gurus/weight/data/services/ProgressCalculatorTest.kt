@@ -455,8 +455,8 @@ class ProgressCalculatorTest {
         )
 
         assertThat(result.latest).isEqualTo(latest)
-        assertThat(result.currentStreak).isEqualTo(CURRENT_STREAK)
-        assertThat(result.longestStreak).isEqualTo(LONGEST_STREAK)
+        assertThat(result.streak.current).isEqualTo(CURRENT_STREAK)
+        assertThat(result.streak.longest).isEqualTo(LONGEST_STREAK)
         assertThat(result.count).isEqualTo(TOTAL_COUNT)
         assertThat(result.unit).isEqualTo(WeightUnit.KG)
         assertThat(result.goal).isEqualTo(fakeGoal)
