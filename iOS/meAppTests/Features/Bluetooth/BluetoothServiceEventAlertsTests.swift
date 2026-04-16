@@ -437,7 +437,7 @@ struct BluetoothServiceEventAlertsTests {
         let sdk = MockBluetoothSDKClient()
         sdk.deleteUserResult = .SUCCESS
         let sut = makeSUT(sdk: sdk)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "a@b.com", isLoggedIn: true, isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "a@b.com", isLoggedIn: true, isActiveAccount: true)
 
         let result = await sut.deleteUserByToken(broadcastId: "DEL-BID", token: "tok-1", disconnect: false)
 
@@ -454,7 +454,7 @@ struct BluetoothServiceEventAlertsTests {
         let sdk = MockBluetoothSDKClient()
         sdk.deleteUserResult = .SUCCESS
         let sut = makeSUT(sdk: sdk)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-2", email: "b@c.com", isLoggedIn: true, isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-2", email: "b@c.com", isLoggedIn: true, isActiveAccount: true)
 
         let result = await sut.deleteScaleByBroadcastId(broadcastId: "MY-SCALE", token: "my-token", disconnect: true)
 
@@ -472,7 +472,7 @@ struct BluetoothServiceEventAlertsTests {
         let sdk = MockBluetoothSDKClient()
         sdk.deleteUserError = EventAlertTestError.sdkFailure
         let sut = makeSUT(sdk: sdk)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-3", email: "c@d.com", isLoggedIn: true, isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-3", email: "c@d.com", isLoggedIn: true, isActiveAccount: true)
 
         let result = await sut.deleteScaleByBroadcastId(broadcastId: "FAIL-SCALE", token: "tok", disconnect: false)
 
@@ -602,8 +602,8 @@ private func makeDeviceDetails(
 }
 
 private func decodeJSON<T: Decodable>(_ object: [String: Any], as type: T.Type) -> T {
-    let data = try! JSONSerialization.data(withJSONObject: object)
-    return try! JSONDecoder().decode(type, from: data)
+    let data = try! JSONSerialization.data(withJSONObject: object) // swiftlint:disable:this force_try
+    return try! JSONDecoder().decode(type, from: data) // swiftlint:disable:this force_try
 }
 
 private func decodeScaleUsers(_ users: [[String: Any]]) -> GGScaleUserResponse {

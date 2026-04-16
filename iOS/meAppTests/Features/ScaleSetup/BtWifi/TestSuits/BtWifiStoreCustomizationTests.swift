@@ -799,7 +799,12 @@ extension BtWifiStoreTests {
             await store.upgradeDashboardTypeFrom4To12WithDefaults()
             #expect(store.dashboardStore.metricsManager.state.dashboardType == .dashboard12)
 
-            store.accountService.activeAccount?.dashboardSettings?.dashboardType = "dashboard4"
+            harness.account.activeAccount = AccountTestFixtures.makeAccountSnapshot(
+                id: harness.account.activeAccount?.accountId ?? "acct-1",
+                email: "btwifi@example.com",
+                isActiveAccount: true,
+                dashboardType: "dashboard4"
+            )
             store.dashboardStore.metricsManager.updateDashboardType(.dashboard4)
             #expect(store.isDashboardTypeFour == true)
         }
@@ -904,7 +909,12 @@ extension BtWifiStoreTests {
 
             _ = TestDependencyContainer.registerDashboardConcreteDependencies()
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
-            harness.account.activeAccount?.dashboardSettings?.dashboardType = "dashboard4"
+            harness.account.activeAccount = AccountTestFixtures.makeAccountSnapshot(
+                id: harness.account.activeAccount?.accountId ?? "acct-1",
+                email: "btwifi@example.com",
+                isActiveAccount: true,
+                dashboardType: "dashboard4"
+            )
             _ = store.dashboardStore
             store.dashboardStore.metricsManager.updateDashboardType(.dashboard4)
             store.navigateToStep(.viewSettings)

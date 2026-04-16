@@ -837,7 +837,7 @@ struct BabyScaleSetupStoreTests {
         let bluetooth = MockBluetoothService()
         bluetooth.confirmSmartPairResult = .success(.creationCompleted)
         let account = MockAccountService()
-        account.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "test@test.com", firstName: "Tester")
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "test@test.com", firstName: "Tester", isActiveAccount: true)
         let (store, _, _, _, _, scale, _) = makeSUT(bluetoothService: bluetooth, accountService: account)
         store.scaleItem = makeScaleItem()
         let device = ScaleTestFixtures.makeDevice(id: "baby-scale-1")

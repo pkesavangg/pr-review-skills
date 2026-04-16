@@ -34,44 +34,29 @@ enum DashboardStoreTestSupport {
         id: String = "acct-1",
         dashboardMetrics: String? = nil,
         dashboardType: String? = "dashboard12",
+        progressMetrics: String? = nil,
         weightUnit: WeightUnit = .lb,
+        goalType: GoalType? = .gain,
         goalWeight: Double? = nil,
+        initialWeight: Double? = 1800,
         weightlessOn: Bool = false,
         weightlessWeight: Double? = nil
-    ) -> Account {
-        let account = AccountTestFixtures.makeAccountModel(
+    ) -> AccountSnapshot {
+        AccountTestFixtures.makeAccountSnapshot(
             id: id,
             email: "dashboard@example.com",
-            isActive: true
-        )
-        account.dashboardSettings = DashboardSettings(
-            accountId: id,
-            dashboardMetrics: dashboardMetrics,
-            progressMetrics: nil,
-            dashboardType: dashboardType,
-            isSynced: false
-        )
-        account.weightSettings = WeightCompSettings(
-            accountId: id,
-            height: "70",
+            isActiveAccount: true,
+            weightUnit: weightUnit,
+            weightHeight: "70",
             activityLevel: .normal,
-            weightUnit: weightUnit
-        )
-        account.goalSettings = GoalSettings(
-            accountId: id,
-            goalType: .gain,
-            initialWeight: 1800,
+            goalType: goalType,
             goalWeight: goalWeight,
-            goalPercent: nil,
-            isSynced: false
-        )
-        account.weightlessSettings = WeightlessSettings(
-            accountId: id,
+            initialWeight: initialWeight,
             isWeightlessOn: weightlessOn,
-            weightlessTimestamp: nil,
             weightlessWeight: weightlessWeight,
-            isSynced: false
+            dashboardType: dashboardType,
+            dashboardMetrics: dashboardMetrics,
+            progressMetrics: progressMetrics
         )
-        return account
     }
 }
