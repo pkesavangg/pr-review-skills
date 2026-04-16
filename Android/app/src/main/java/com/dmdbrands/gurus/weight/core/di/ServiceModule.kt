@@ -8,9 +8,9 @@ import com.dmdbrands.gurus.weight.core.service.ProductSelectionManager
 import com.dmdbrands.gurus.weight.domain.services.IBabyProfileService
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.core.service.AnalyticsService
-import com.dmdbrands.gurus.weight.data.services.HistoryService
-import com.dmdbrands.gurus.weight.domain.repository.IHistoryRepository
-import com.dmdbrands.gurus.weight.domain.services.IHistoryService
+import com.dmdbrands.gurus.weight.data.services.EntryReadService
+import com.dmdbrands.gurus.weight.domain.repository.IEntryReadRepository
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.core.service.AppNavigationService
 import com.dmdbrands.gurus.weight.core.service.AppStatusService
 import com.dmdbrands.gurus.weight.core.service.AppSyncService
@@ -564,14 +564,12 @@ object ServiceModule {
 
   @Provides
   @Singleton
-  fun provideHistoryService(
-    historyRepository: IHistoryRepository,
-    entryRepository: IEntryRepository,
+  fun provideEntryReadService(
+    entryReadRepository: IEntryReadRepository,
     accountRepository: IAccountRepository,
     goalRepository: IGoalRepository,
-  ): IHistoryService = HistoryService(
-    historyRepository = historyRepository,
-    entryRepository = entryRepository,
+  ): IEntryReadService = EntryReadService(
+    entryReadRepository = entryReadRepository,
     accountRepository = accountRepository,
     goalRepository = goalRepository,
   )

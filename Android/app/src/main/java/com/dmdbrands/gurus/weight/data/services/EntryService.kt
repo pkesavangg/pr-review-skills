@@ -34,7 +34,7 @@ import java.time.format.DateTimeFormatter
  * EntryService / EntryCrudService / EntrySyncService trio — the two helpers
  * had zero external consumers, so they are now private methods on this class.
  *
- * Read flows (progress, latestEntry, isEmpty) live on IHistoryService.
+ * Read flows (progress, latestEntry, isEmpty) live on IEntryReadService.
  */
 class EntryService(
     private val entryRepository: IEntryRepository,

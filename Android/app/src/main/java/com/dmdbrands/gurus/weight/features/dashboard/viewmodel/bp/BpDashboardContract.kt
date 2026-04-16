@@ -15,7 +15,7 @@ import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProdu
 
 /**
  * Up to N most-recent per-day BP averages plus the sys/dia/pulse mean across those rows.
- * Populated by [BpDashboardViewModel] from `IHistoryService.getBpmLastNDayEntries`.
+ * Populated by [BpDashboardViewModel] from `IEntryReadService.getBpmLastNDayEntries`.
  * Drives both the dashboard summary card ("three entry average") and the Three Reading
  * Average bottom sheet — independent of the chart's selected window.
  */

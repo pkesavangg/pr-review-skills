@@ -22,7 +22,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
-import com.dmdbrands.gurus.weight.domain.services.IHistoryService
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.manager.BLEDiscoveryManager
 import com.dmdbrands.gurus.weight.features.ScaleSetup.manager.IBLEDiscoveryManager
@@ -81,7 +81,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
     override val ggDeviceService: GGDeviceService,
     private val deviceService: IDeviceService,
     private val entryService: IEntryService,
-    private val historyService: IHistoryService,
+    private val entryReadService: IEntryReadService,
     private val deviceRepository: IDeviceRepository,
     private val dashboardService: IDashboardService,
     override val permissionService: GGPermissionService,
@@ -903,7 +903,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
 
     private fun subscribeLatestWeight() {
         viewModelScope.launch {
-            historyService.latestEntry().collect { latestEntry ->
+            entryReadService.latestEntry().collect { latestEntry ->
                 val latestWeight = when (latestEntry) {
                     is ScaleEntry -> latestEntry.scale.scaleEntry.weight
                     else -> null
@@ -923,7 +923,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
 
     private fun loadGoalProgress() {
         viewModelScope.launch {
-            historyService.weightProgress().collect {
+            entryReadService.weightProgress().collect {
                 handleIntent(BtWifiScaleSetupIntent.SetGoalProgress(it))
             }
         }

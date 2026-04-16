@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Write + sync surface for entries. Read flows (progress, latestEntry, isEmpty)
- * live on [IHistoryService] — this interface is deliberately narrow.
+ * live on [IEntryReadService] — this interface is deliberately narrow.
  */
 interface IEntryService {
   /** Mirrors [IEntrySyncService.isUpdating]; exposed here for VMs that already inject EntryService. */

@@ -5,7 +5,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.services.AuthState
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
-import com.dmdbrands.gurus.weight.domain.services.IHistoryService
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
@@ -59,7 +59,7 @@ interface IDataSettingsManager {
 class DataSettingsManager
 @Inject
 constructor(
-  private val historyService: IHistoryService,
+  private val entryReadService: IEntryReadService,
   private val accountService: IAccountService,
   private val exportService: IExportService,
   private val healthConnectService: IHealthConnectService,
@@ -77,7 +77,7 @@ constructor(
   ) {
     scope.launch {
       try {
-        historyService.latestEntry().collect { latestEntry ->
+        entryReadService.latestEntry().collect { latestEntry ->
           val isEnabled = latestEntry != null
           dispatch(SettingsIntent.SetExportEnabled(isEnabled))
           AppLog.d(TAG, "Export enabled: $isEnabled (latestEntry: ${latestEntry != null})")

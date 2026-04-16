@@ -15,7 +15,7 @@ import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
-import com.dmdbrands.gurus.weight.domain.services.IHistoryService
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.domain.model.common.GraphData
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.SeriesData
@@ -45,7 +45,7 @@ class WeightDashboardViewModel @Inject constructor(
   private val dashboardService: IDashboardService,
   private val goalService: IGoalService,
   private val healthConnectService: IHealthConnectService,
-  private val historyService: IHistoryService,
+  private val entryReadService: IEntryReadService,
 ) : BaseDashboardViewModel<WeightDashboardState, BaseGraphIntent>(
   reducer = WeightDashboardReducer(),
 ), DefaultLifecycleObserver {
@@ -105,7 +105,7 @@ class WeightDashboardViewModel @Inject constructor(
 
   private fun startGraphSubscriptions() {
     viewModelScope.launch {
-      historyService.getDailyGraphData(ProductSelection.MyWeight)
+      entryReadService.getDailyGraphData(ProductSelection.MyWeight)
         .map { (it as? GraphData.Weight)?.data ?: emptyList() }
         .collect { entries ->
           latestDailyData = entries
@@ -124,7 +124,7 @@ class WeightDashboardViewModel @Inject constructor(
         }
     }
     viewModelScope.launch {
-      historyService.getMonthlyGraphData(ProductSelection.MyWeight)
+      entryReadService.getMonthlyGraphData(ProductSelection.MyWeight)
         .map { (it as? GraphData.Weight)?.data ?: emptyList() }
         .collect { entries ->
           latestMonthlyData = entries
@@ -280,7 +280,7 @@ class WeightDashboardViewModel @Inject constructor(
 
   private fun subscribeProgress() {
     viewModelScope.launch {
-      historyService.weightProgress().collect { handleIntent(WeightDashboardIntent.SetProgress(it)) }
+      entryReadService.weightProgress().collect { handleIntent(WeightDashboardIntent.SetProgress(it)) }
     }
   }
 
@@ -292,7 +292,7 @@ class WeightDashboardViewModel @Inject constructor(
 
   private fun subscribeLatestWeight() {
     viewModelScope.launch {
-      historyService.latestEntry().collect { latestEntry ->
+      entryReadService.latestEntry().collect { latestEntry ->
         val latestWeight = when (latestEntry) {
           is ScaleEntry -> latestEntry.scale.scaleEntry.weight
           else -> null
@@ -304,7 +304,7 @@ class WeightDashboardViewModel @Inject constructor(
 
   private fun subscribeIsEmpty() {
     viewModelScope.launch {
-      historyService.isWeightEmpty().collect { handleIntent(WeightDashboardIntent.SetIsEmpty(it)) }
+      entryReadService.isWeightEmpty().collect { handleIntent(WeightDashboardIntent.SetIsEmpty(it)) }
     }
   }
 

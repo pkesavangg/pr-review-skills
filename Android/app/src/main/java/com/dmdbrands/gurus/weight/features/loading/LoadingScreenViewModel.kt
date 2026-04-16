@@ -15,7 +15,7 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
-import com.dmdbrands.gurus.weight.domain.services.IHistoryService
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -46,7 +46,7 @@ constructor(
   private val deviceService: IDeviceService,
   private val deviceInfoService: IDeviceInfoService,
   private val productSelectionManager: IProductSelectionManager,
-  private val historyService: IHistoryService,
+  private val entryReadService: IEntryReadService,
   @ApplicationContext private val applicationContext: Context,
 ) : ViewModel() {
   private val TAG = "Loadingscreenviewmodel"
@@ -142,7 +142,7 @@ constructor(
         async { productSelectionManager.loadAvailableProducts(account.id) },
         async(Dispatchers.IO) { BabyPercentileHelper.loadIfNeeded(applicationContext) },
       )
-      historyService.setAccountId(account.id)
+      entryReadService.setAccountId(account.id)
     }
   }
 

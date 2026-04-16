@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.Flow
  * which repository function runs internally.
  * accountId is set via [setAccountId] from LoadingScreenViewModel.
  */
-interface IHistoryService {
+interface IEntryReadService {
 
     /** Current account ID, set from LoadingScreenViewModel during startup. */
     val accountId: String?

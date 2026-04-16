@@ -10,7 +10,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
-import com.dmdbrands.gurus.weight.domain.services.IHistoryService
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
 import com.dmdbrands.gurus.weight.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
@@ -32,7 +32,7 @@ import android.content.Context
 @HiltViewModel
 class DashboardSnapshotViewModel @Inject constructor(
   @dagger.hilt.android.qualifiers.ApplicationContext private val context: Context,
-  private val historyService: IHistoryService,
+  private val entryReadService: IEntryReadService,
   private val accountService: IAccountService,
 ) : BaseIntentViewModel<DashboardSnapshotState, DashboardSnapshotIntent>(
   DashboardSnapshotReducer(),
@@ -69,7 +69,7 @@ class DashboardSnapshotViewModel @Inject constructor(
   private fun loadWeightGraph() {
     weightGraphJob?.cancel()
     weightGraphJob = viewModelScope.launch {
-      historyService.getWeightSnapshotGraphData()
+      entryReadService.getWeightSnapshotGraphData()
         .catch { e ->
           AppLog.e(TAG, "Failed to load weight graph data", e)
           handleIntent(DashboardSnapshotIntent.SetLoading(false))
@@ -135,7 +135,7 @@ class DashboardSnapshotViewModel @Inject constructor(
   private fun loadBpGraph() {
     bpGraphJob?.cancel()
     bpGraphJob = viewModelScope.launch {
-      historyService.getBpmSnapshotGraphData()
+      entryReadService.getBpmSnapshotGraphData()
         .catch { e ->
           AppLog.e(TAG, "Failed to load BP graph data", e)
         }
@@ -216,7 +216,7 @@ class DashboardSnapshotViewModel @Inject constructor(
 
   private fun loadBabyGraph(profile: BabyProfile) {
     viewModelScope.launch {
-      historyService.getBabySnapshotGraphData(profile.id)
+      entryReadService.getBabySnapshotGraphData(profile.id)
         .catch { e ->
           AppLog.e(TAG, "Failed to load baby graph data for ${profile.id}", e)
         }

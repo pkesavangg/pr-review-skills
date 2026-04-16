@@ -16,7 +16,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.dao.BabyEntryDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.BabyProfileDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.DeviceDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryDao
-import com.dmdbrands.gurus.weight.data.storage.db.dao.HistoryDao
+import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryReadDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.LogDao
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.DashboardSettingsEntity
@@ -86,7 +86,7 @@ abstract class AppDatabase : RoomDatabase() {
 
   abstract fun babyEntryDao(): BabyEntryDao
 
-  abstract fun historyDao(): HistoryDao
+  abstract fun entryReadDao(): EntryReadDao
 
   companion object {
     private val MIGRATION_1_2 = object : Migration(1, 2) {

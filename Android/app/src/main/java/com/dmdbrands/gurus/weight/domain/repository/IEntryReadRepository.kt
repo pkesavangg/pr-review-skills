@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.BpHistoryMonth
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
@@ -14,9 +15,9 @@ import kotlinx.coroutines.flow.Flow
 
 /**
  * Repository for history read queries across all product types.
- * Single interface, single implementation — delegates to [HistoryDao].
+ * Single interface, single implementation — delegates to [EntryReadDao].
  */
-interface IHistoryRepository {
+interface IEntryReadRepository {
 
     // Weight
     fun getWeightMonthlyHistory(accountId: String): Flow<List<HistoryMonth>>
@@ -54,4 +55,35 @@ interface IHistoryRepository {
 
     // Baby Snapshot (Dashboard mini-chart)
     fun getBabySnapshotGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>
+
+    // ---------------------------------------------------------------------------
+    // Cross-product read queries (moved from IEntryRepository)
+    // ---------------------------------------------------------------------------
+
+    /** Latest entry for an account (all product types). */
+    suspend fun getLatestEntry(accountId: String): Flow<Entry?>
+
+    /** Entries for the last N days for an account. */
+    suspend fun getLastNDaysEntries(accountId: String, days: Int): Flow<List<Entry>>
+
+    /** Entries by operation type for an account. */
+    fun getEntriesByOperationType(accountId: String, operationType: String): Flow<List<Entry>>
+
+    /** Monthly history for the last 365 days. */
+    fun getMonthlyHistoryLastYear(accountId: String): Flow<List<HistoryMonth>>
+
+    /** Oldest entry for an account. */
+    suspend fun getOldestEntry(accountId: String): Entry?
+
+    /** Entry timestamps for streak calculation (one per day, newest first). */
+    suspend fun getStreakData(accountId: String): List<String>
+
+    /** Longest consecutive-day streak count. */
+    suspend fun getLongestStreakCount(accountId: String): Int
+
+    /** Total entry count for an account. */
+    suspend fun getTotalCount(accountId: String): Int
+
+    /** Days with at least one BP reading (newest first). */
+    fun getBpmStreakDays(accountId: String): Flow<List<String>>
 }

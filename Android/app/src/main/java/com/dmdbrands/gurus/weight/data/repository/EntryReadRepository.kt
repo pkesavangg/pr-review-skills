@@ -1,7 +1,7 @@
 package com.dmdbrands.gurus.weight.data.repository
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
-import com.dmdbrands.gurus.weight.data.storage.db.dao.HistoryDao
+import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryReadDao
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
@@ -11,25 +11,27 @@ import com.dmdbrands.gurus.weight.domain.model.common.BabyWeekHistory
 import com.dmdbrands.gurus.weight.domain.model.common.BpHistoryMonth
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
-import com.dmdbrands.gurus.weight.domain.repository.IHistoryRepository
+import com.dmdbrands.gurus.weight.domain.repository.IEntryReadRepository
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertToDisplay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 /**
- * Single implementation of [IHistoryRepository].
- * Delegates all queries to [HistoryDao] and converts Room types to domain types.
+ * Single implementation of [IEntryReadRepository].
+ * Delegates all queries to [EntryReadDao] and converts Room types to domain types.
  */
-class HistoryRepository @Inject constructor(
-    private val historyDao: HistoryDao,
-) : IHistoryRepository {
+class EntryReadRepository @Inject constructor(
+    private val entryReadDao: EntryReadDao,
+) : IEntryReadRepository {
 
     companion object {
         /** Flip to true to return sample data instead of querying the database. */
@@ -41,10 +43,10 @@ class HistoryRepository @Inject constructor(
     // ---------------------------------------------------------------------------
 
     override fun getWeightMonthlyHistory(accountId: String): Flow<List<HistoryMonth>> =
-        historyDao.getWeightMonthlyHistory(accountId)
+        entryReadDao.getWeightMonthlyHistory(accountId)
 
     override fun getWeightMonthDetail(accountId: String, month: String): Flow<List<ScaleEntry>> =
-        historyDao.getWeightMonthDetail(accountId, month).map { entries ->
+        entryReadDao.getWeightMonthDetail(accountId, month).map { entries ->
             entries.mapNotNull { it.toEntry() }.filterIsInstance<ScaleEntry>()
         }
 
@@ -54,12 +56,12 @@ class HistoryRepository @Inject constructor(
 
     override fun getBpmMonthlyHistory(accountId: String): Flow<List<BpHistoryMonth>> {
         if (USE_SAMPLE_DATA) return flowOf(sampleBpMonthlyHistory())
-        return historyDao.getBpmMonthlyHistory(accountId)
+        return entryReadDao.getBpmMonthlyHistory(accountId)
     }
 
     override fun getBpmMonthDetail(accountId: String, month: String): Flow<List<BpmEntry>> {
         if (USE_SAMPLE_DATA) return flowOf(sampleBpmEntries())
-        return historyDao.getBpmMonthDetail(accountId, month).map { entries ->
+        return entryReadDao.getBpmMonthDetail(accountId, month).map { entries ->
             entries.mapNotNull { it.toEntry() }.filterIsInstance<BpmEntry>()
         }
     }
@@ -73,7 +75,7 @@ class HistoryRepository @Inject constructor(
         babyId: String,
     ): Flow<List<BabyWeekGroup>> {
         if (USE_SAMPLE_DATA) return flowOf(groupByWeek(sampleBabyDailySummaries()))
-        return historyDao.getBabyWeeklyHistory(accountId, babyId).map { groupByWeek(it) }
+        return entryReadDao.getBabyWeeklyHistory(accountId, babyId).map { groupByWeek(it) }
     }
 
     override fun getBabyDayDetail(
@@ -82,7 +84,7 @@ class HistoryRepository @Inject constructor(
         date: String,
     ): Flow<List<BabyEntry>> {
         if (USE_SAMPLE_DATA) return flowOf(sampleBabyEntries())
-        return historyDao.getBabyDayDetail(accountId, babyId, date).map { entries ->
+        return entryReadDao.getBabyDayDetail(accountId, babyId, date).map { entries ->
             entries.mapNotNull { it.toEntry() }.filterIsInstance<BabyEntry>()
         }
     }
@@ -92,17 +94,17 @@ class HistoryRepository @Inject constructor(
     // ---------------------------------------------------------------------------
 
     override fun getWeightMonthlyGraphData(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
-        historyDao.getWeightMonthlyGraphData(accountId)
+        entryReadDao.getWeightMonthlyGraphData(accountId)
 
     override fun getWeightDailyGraphData(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
-        historyDao.getWeightDailyGraphData(accountId)
+        entryReadDao.getWeightDailyGraphData(accountId)
 
     // ---------------------------------------------------------------------------
     // Weight Snapshot (Dashboard mini-chart)
     // ---------------------------------------------------------------------------
 
     override fun getWeightSnapshotGraphData(accountId: String): Flow<List<WeightSnapshotPoint>> =
-        historyDao.getWeightSnapshotGraphData(accountId)
+        entryReadDao.getWeightSnapshotGraphData(accountId)
 
     // ---------------------------------------------------------------------------
     // BPM Graph
@@ -110,12 +112,12 @@ class HistoryRepository @Inject constructor(
 
     override fun getBpmMonthlyGraphData(accountId: String): Flow<List<PeriodBpmSummary>> {
         if (USE_SAMPLE_DATA) return flowOf(sampleBpmMonthlyGraphData())
-        return historyDao.getBpmMonthlyGraphData(accountId)
+        return entryReadDao.getBpmMonthlyGraphData(accountId)
     }
 
     override fun getBpmDailyGraphData(accountId: String): Flow<List<PeriodBpmSummary>> {
         if (USE_SAMPLE_DATA) return flowOf(sampleBpmDailyGraphData())
-        return historyDao.getBpmDailyGraphData(accountId)
+        return entryReadDao.getBpmDailyGraphData(accountId)
     }
 
     // ---------------------------------------------------------------------------
@@ -124,12 +126,12 @@ class HistoryRepository @Inject constructor(
 
     override fun getBpmSnapshotGraphData(accountId: String): Flow<List<PeriodBpmSummary>> {
         if (USE_SAMPLE_DATA) return flowOf(sampleBpmSnapshotData())
-        return historyDao.getBpmSnapshotGraphData(accountId)
+        return entryReadDao.getBpmSnapshotGraphData(accountId)
     }
 
     override fun getBpmLastNDayEntries(accountId: String, n: Int): Flow<List<PeriodBpmSummary>> {
         if (USE_SAMPLE_DATA) return flowOf(sampleBpmSnapshotData().takeLast(n).reversed())
-        return historyDao.getBpmLastNDayEntries(accountId, n)
+        return entryReadDao.getBpmLastNDayEntries(accountId, n)
     }
 
     private fun sampleBpmSnapshotData(): List<PeriodBpmSummary> = listOf(
@@ -219,12 +221,12 @@ class HistoryRepository @Inject constructor(
 
     override fun getBabyMonthlyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>> {
         if (USE_SAMPLE_DATA) return flowOf(sampleBabyMonthlyGraphData())
-        return historyDao.getBabyMonthlyGraphData(accountId, babyId)
+        return entryReadDao.getBabyMonthlyGraphData(accountId, babyId)
     }
 
     override fun getBabyDailyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>> {
         if (USE_SAMPLE_DATA) return flowOf(sampleBabyDailyGraphData())
-        return historyDao.getBabyDailyGraphData(accountId, babyId)
+        return entryReadDao.getBabyDailyGraphData(accountId, babyId)
     }
 
     // ---------------------------------------------------------------------------
@@ -233,8 +235,47 @@ class HistoryRepository @Inject constructor(
 
     override fun getBabySnapshotGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>> {
         if (USE_SAMPLE_DATA) return flowOf(sampleBabySnapshotData())
-        return historyDao.getBabySnapshotGraphData(accountId, babyId)
+        return entryReadDao.getBabySnapshotGraphData(accountId, babyId)
     }
+
+    // ---------------------------------------------------------------------------
+    // Cross-product read queries (moved from EntryRepository)
+    // ---------------------------------------------------------------------------
+
+    override suspend fun getLatestEntry(accountId: String): Flow<Entry?> =
+        entryReadDao.getLatestEntry(accountId).map { it?.toEntry() }
+
+    override suspend fun getLastNDaysEntries(accountId: String, days: Int): Flow<List<Entry>> {
+        val startInstant = java.time.Instant.now().minus(java.time.Duration.ofDays(days.toLong()))
+        val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+        val startDate = java.time.ZonedDateTime.ofInstant(startInstant, java.time.ZoneOffset.UTC).format(formatter)
+        return entryReadDao.getEntriesSince(accountId, startDate).map { list ->
+            list.mapNotNull { it.toEntry() }
+        }
+    }
+
+    override fun getEntriesByOperationType(accountId: String, operationType: String): Flow<List<Entry>> =
+        entryReadDao.getEntriesByOperationType(accountId, operationType).map { flow ->
+            flow.mapNotNull { it.toEntry() }
+        }
+
+    override fun getMonthlyHistoryLastYear(accountId: String): Flow<List<HistoryMonth>> =
+        entryReadDao.getMonthlyHistoryLastYear(accountId).map { list -> list.map { it.convertToDisplay() } }
+
+    override suspend fun getOldestEntry(accountId: String): Entry? =
+        entryReadDao.getOldestEntry(accountId)?.toEntry()
+
+    override suspend fun getStreakData(accountId: String): List<String> =
+        entryReadDao.getStreakData(accountId)
+
+    override suspend fun getLongestStreakCount(accountId: String): Int =
+        entryReadDao.getLongestStreakCount(accountId)
+
+    override suspend fun getTotalCount(accountId: String): Int =
+        entryReadDao.getTotalCount(accountId)
+
+    override fun getBpmStreakDays(accountId: String): Flow<List<String>> =
+        entryReadDao.getBpmStreakDays(accountId)
 
     /**
      * Sample Baby daily data — born Jan 1 2026, starts day 10.

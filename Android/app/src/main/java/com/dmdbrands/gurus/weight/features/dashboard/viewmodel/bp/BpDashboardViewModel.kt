@@ -7,7 +7,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.GraphData
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
-import com.dmdbrands.gurus.weight.domain.services.IHistoryService
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.SeriesData
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
@@ -19,7 +19,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class BpDashboardViewModel @Inject constructor(
-  private val historyService: IHistoryService,
+  private val entryReadService: IEntryReadService,
   private val entryService: IEntryService,
 ) : BaseDashboardViewModel<BpDashboardState, BaseGraphIntent>(
   reducer = BpDashboardReducer(),
@@ -52,7 +52,7 @@ class BpDashboardViewModel @Inject constructor(
 
   private fun startGraphSubscriptions() {
     viewModelScope.launch {
-      historyService.getDailyGraphData(ProductSelection.BloodPressure)
+      entryReadService.getDailyGraphData(ProductSelection.BloodPressure)
         .map { (it as? GraphData.BloodPressure)?.data ?: emptyList() }
         .collect { entries ->
           val series = toBpSeries(entries)
@@ -69,7 +69,7 @@ class BpDashboardViewModel @Inject constructor(
         }
     }
     viewModelScope.launch {
-      historyService.getMonthlyGraphData(ProductSelection.BloodPressure)
+      entryReadService.getMonthlyGraphData(ProductSelection.BloodPressure)
         .map { (it as? GraphData.BloodPressure)?.data ?: emptyList() }
         .collect { entries ->
           val series = toBpSeries(entries)
@@ -109,7 +109,7 @@ class BpDashboardViewModel @Inject constructor(
 
   private fun subscribeProgress() {
     viewModelScope.launch {
-      historyService.bpProgress().collect { handleIntent(BpDashboardIntent.SetProgress(it)) }
+      entryReadService.bpProgress().collect { handleIntent(BpDashboardIntent.SetProgress(it)) }
     }
   }
 
@@ -120,7 +120,7 @@ class BpDashboardViewModel @Inject constructor(
    */
   private fun subscribeLastReadings() {
     viewModelScope.launch {
-      historyService.getBpmLastNDayEntries(LAST_READINGS_COUNT).collect { rows ->
+      entryReadService.getBpmLastNDayEntries(LAST_READINGS_COUNT).collect { rows ->
         val readings = if (rows.isEmpty()) {
           BpLastReadings()
         } else {
