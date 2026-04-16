@@ -440,7 +440,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         do {
             if let device = try localRepository.context.fetch(descriptor).first {
                 device.isWeighOnlyModeEnabledByOthers = isWeightOnlyModeEnabledByOthers
-                device.isSynced = false
                 try localRepository.context.save()
                 logger.log(
                     level: .debug,
@@ -828,7 +827,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                     deletedCount += 1
                 } catch {
                     // Treat "Not found" as success; otherwise, log error and keep for retry
-                    if error.localizedDescription.contains("Not found") {
+                    if (error as? HTTPError) == .notFound {
                         try await localRepository.permanentlyRemoveDevice(device.id)
                         deletedCount += 1
                     } else {
@@ -868,8 +867,16 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                         try await localRepository.updateDevice(device)
                         updatedCount += 1
                     } catch {
-                        failedCount += 1
-                        logger.log(level: .error, tag: tag, message: "Failed to update device \(device.id) on server: \(error.localizedDescription)")
+                        if (error as? HTTPError) == .notFound {
+                            // Scale was deleted from the server (e.g. by another device while this device was offline).
+                            // Remove it locally so it no longer appears as a ghost scale.
+                            try? await localRepository.permanentlyRemoveDevice(device.id)
+                            deletedCount += 1
+                            logger.log(level: .info, tag: tag, message: "Device \(device.id) not found on server during edit — removed locally")
+                        } else {
+                            failedCount += 1
+                            logger.log(level: .error, tag: tag, message: "Failed to update device \(device.id) on server: \(error.localizedDescription)")
+                        }
                     }
                 } else {
                     // Create new device on server
