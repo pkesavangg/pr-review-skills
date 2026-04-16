@@ -1636,15 +1636,14 @@ class SettingsStore: ObservableObject {
                 options: [AppearanceMode.allCases],
                 displayValue: { $0.rawValue },
                 title: SettingsStrings.appearance,
-                showCancel: false,
-                updateValues: { vals in // swiftlint:disable:this trailing_closure
-                    self.notificationService.dismissModal()
-                    Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 500_000_000)
-                        if let mode = vals.first { Theme.shared.appearanceMode = mode }
-                    }
+                showCancel: false
+            ) { vals in
+                self.notificationService.dismissModal()
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    if let mode = vals.first { Theme.shared.appearanceMode = mode }
                 }
-            )
+            }
             notificationService.showModal(
                 ModalData(
                     presentedView: AnyView(picker)
@@ -1663,12 +1662,11 @@ class SettingsStore: ObservableObject {
                 options: [NotificationPreference.allCases],
                 displayValue: { $0.title },
                 title: SettingsStrings.notifications,
-                showCancel: false,
-                updateValues: { vals in // swiftlint:disable:this trailing_closure
-                    self.notificationService.dismissModal()
-                    if let pref = vals.first { self.updateNotificationPreference(pref) }
-                }
-            )
+                showCancel: false
+            ) { vals in
+                self.notificationService.dismissModal()
+                if let pref = vals.first { self.updateNotificationPreference(pref) }
+            }
             notificationService.showModal(ModalData(presentedView: AnyView(picker)))
         } else {
             showNotificationPicker = true
@@ -1683,12 +1681,11 @@ class SettingsStore: ObservableObject {
                 options: [Sex.allCases],
                 displayValue: { $0.rawValue.capitalized },
                 title: SettingsStrings.biologicalSex,
-                showCancel: false,
-                updateValues: { vals in // swiftlint:disable:this trailing_closure
-                    self.notificationService.dismissModal()
-                    if let sex = vals.first { self.updateGenderInForm(sex) }
-                }
-            )
+                showCancel: false
+            ) { vals in
+                self.notificationService.dismissModal()
+                if let sex = vals.first { self.updateGenderInForm(sex) }
+            }
             notificationService.showModal(ModalData(presentedView: AnyView(picker)))
         } else {
             showGenderPicker = true
@@ -1703,12 +1700,11 @@ class SettingsStore: ObservableObject {
                 options: [[WeightUnit.lb, WeightUnit.kg]],
                 displayValue: { unit in unit == .kg ? CommonStrings.unitKgCm : CommonStrings.pickerLbs },
                 title: SettingsStrings.unitType,
-                showCancel: false,
-                updateValues: { vals in // swiftlint:disable:this trailing_closure
-                    self.notificationService.dismissModal()
-                    if let unit = vals.first { self.updateWeightUnit(unit) }
-                }
-            )
+                showCancel: false
+            ) { vals in
+                self.notificationService.dismissModal()
+                if let unit = vals.first { self.updateWeightUnit(unit) }
+            }
             notificationService.showModal(ModalData(presentedView: AnyView(picker)))
         } else {
             showUnitPicker = true
@@ -1723,12 +1719,11 @@ class SettingsStore: ObservableObject {
                 options: [[ActivityLevel.normal, ActivityLevel.athlete]],
                 displayValue: { $0.rawValue.capitalized },
                 title: SettingsStrings.activityLevel,
-                showCancel: false,
-                updateValues: { vals in // swiftlint:disable:this trailing_closure
-                    self.notificationService.dismissModal()
-                    if let level = vals.first { self.updateActivityLevel(level) }
-                }
-            )
+                showCancel: false
+            ) { vals in
+                self.notificationService.dismissModal()
+                if let level = vals.first { self.updateActivityLevel(level) }
+            }
             notificationService.showModal(ModalData(presentedView: AnyView(picker)))
         } else {
             showActivityPicker = true
@@ -1745,12 +1740,11 @@ class SettingsStore: ObservableObject {
                     displayValue: { $0 },
                     pickerType: .heightCm,
                     title: SettingsStrings.height,
-                    showCancel: false,
-                    updateValues: { vals in // swiftlint:disable:this trailing_closure
-                        self.notificationService.dismissModal()
-                        self.updateHeightInForm(fromMetric: true, values: vals)
-                    }
-                )
+                    showCancel: false
+                ) { vals in
+                    self.notificationService.dismissModal()
+                    self.updateHeightInForm(fromMetric: true, values: vals)
+                }
                 notificationService.showModal(
                     ModalData(presentedView: AnyView(
                         picker
@@ -1763,12 +1757,11 @@ class SettingsStore: ObservableObject {
                     displayValue: { $0 },
                     pickerType: .heightInches,
                     title: SettingsStrings.height,
-                    showCancel: false,
-                    updateValues: { vals in // swiftlint:disable:this trailing_closure
-                        self.notificationService.dismissModal()
-                        self.updateHeightInForm(fromMetric: false, values: vals)
-                    }
-                )
+                    showCancel: false
+                ) { vals in
+                    self.notificationService.dismissModal()
+                    self.updateHeightInForm(fromMetric: false, values: vals)
+                }
                 notificationService.showModal(
                     ModalData(presentedView: AnyView(
                         picker

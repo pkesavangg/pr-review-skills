@@ -87,26 +87,24 @@ struct SettingsScreen: View {
             selectedValues: [Theme.shared.appearanceMode],
             options: [AppearanceMode.allCases],
             displayValue: { $0.rawValue },
-            title: settingsLang.appearance,
-            onUpdate: { vals in // swiftlint:disable:this trailing_closure
-                if let mode = vals.first {
-                    Theme.shared.appearanceMode = mode
-                }
+            title: settingsLang.appearance
+        ) { vals in
+            if let mode = vals.first {
+                Theme.shared.appearanceMode = mode
             }
-        )
+        }
         // Notifications picker
         .pickerSheet(
             isPresented: $settingsStore.showNotificationPicker,
             selectedValues: [settingsStore.notificationPreference],
             options: [NotificationPreference.allCases],
             displayValue: { $0.title },
-            title: settingsLang.notifications,
-            onUpdate: { vals in // swiftlint:disable:this trailing_closure
-                if let pref = vals.first {
-                    settingsStore.updateNotificationPreference(pref)
-                }
+            title: settingsLang.notifications
+        ) { vals in
+            if let pref = vals.first {
+                settingsStore.updateNotificationPreference(pref)
             }
-        )
+        }
 
         // Unit picker
         .pickerSheet(
@@ -116,26 +114,24 @@ struct SettingsScreen: View {
             displayValue: { unit in
                 unit == .kg ? CommonStrings.unitKgCm : CommonStrings.pickerLbs
             },
-            title: settingsLang.unitType,
-            onUpdate: { vals in // swiftlint:disable:this trailing_closure
-                if let unit = vals.first {
-                    settingsStore.updateWeightUnit(unit)
-                }
+            title: settingsLang.unitType
+        ) { vals in
+            if let unit = vals.first {
+                settingsStore.updateWeightUnit(unit)
             }
-        )
+        }
         // Activity level picker
         .pickerSheet(
             isPresented: $settingsStore.showActivityPicker,
             selectedValues: [settingsStore.activeAccount?.activityLevel ?? .normal],
             options: [[ActivityLevel.normal, ActivityLevel.athlete]],
             displayValue: { $0.rawValue.capitalized },
-            title: settingsLang.activityLevel,
-            onUpdate: { vals in // swiftlint:disable:this trailing_closure
-                if let level = vals.first {
-                    settingsStore.updateActivityLevel(level)
-                }
+            title: settingsLang.activityLevel
+        ) { vals in
+            if let level = vals.first {
+                settingsStore.updateActivityLevel(level)
             }
-        )
+        }
     }
     
     private func profileHeader() -> some View {
