@@ -214,7 +214,7 @@ struct BluetoothServiceCoreOperationsTests {
     func addNewDeviceWithProvidedMetadataPersistsAndSyncs() async {
         let scale = MockScaleService()
         let sut = makeSUT(scale: scale)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "u@example.com", isLoggedIn: true, isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "u@example.com", isLoggedIn: true, isActiveAccount: true)
 
         let metadata = DeviceMetaData(modelNumber: "Model-1", serialNumber: "Serial-1")
         let device = makeDevice(
@@ -264,7 +264,7 @@ struct BluetoothServiceCoreOperationsTests {
         let scale = MockScaleService()
         scale.createDeviceError = CoreOpsTestError.unexpected
         let sut = makeSUT(scale: scale)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-2", email: "u2@example.com", isLoggedIn: true, isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-2", email: "u2@example.com", isLoggedIn: true, isActiveAccount: true)
 
         let result = await sut.addNewDevice(makeDevice(id: "new-device-2"), metaData: DeviceMetaData(modelNumber: "Model-2"))
 
@@ -286,7 +286,7 @@ struct BluetoothServiceCoreOperationsTests {
         let scale = MockScaleService()
         scale.createDeviceError = BluetoothServiceError.invalidDeviceState
         let sut = makeSUT(scale: scale)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-3", email: "u3@example.com", isLoggedIn: true, isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-3", email: "u3@example.com", isLoggedIn: true, isActiveAccount: true)
 
         let result = await sut.addNewDevice(makeDevice(id: "new-device-3"), metaData: DeviceMetaData(modelNumber: "Model-3"))
 
@@ -305,7 +305,7 @@ struct BluetoothServiceCoreOperationsTests {
     func addNewDeviceSkipsExtraLookupForNonBluetoothTypes() async {
         let scale = MockScaleService()
         let sut = makeSUT(scale: scale)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-4", email: "u4@example.com", isLoggedIn: true, isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-4", email: "u4@example.com", isLoggedIn: true, isActiveAccount: true)
 
         let device = makeDevice(
             id: "new-device-4",
@@ -329,7 +329,7 @@ struct BluetoothServiceCoreOperationsTests {
     func scanWithActiveAccountStartsSmartScan() async {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-scan", email: "scan@example.com", isLoggedIn: true, isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-scan", email: "scan@example.com", isLoggedIn: true, isActiveAccount: true)
 
         await sut.scan()
 
@@ -343,7 +343,7 @@ struct BluetoothServiceCoreOperationsTests {
         let scale = MockScaleService()
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(scale: scale, sdk: sdk)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-r4", email: "r4@example.com", isLoggedIn: true, isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-r4", email: "r4@example.com", isLoggedIn: true, isActiveAccount: true)
 
         let device = makeDevice(
             id: "r4-device",
@@ -583,7 +583,7 @@ struct BluetoothServiceCoreOperationsTests {
         latestEntry.scaleEntry = BathScaleEntry(weight: 730)
         entry.latestEntry = latestEntry
         let sut = makeSUT(entry: entry, sdk: sdk)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-profile", email: "profile@example.com", isLoggedIn: true, isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-profile", email: "profile@example.com", isLoggedIn: true, isActiveAccount: true)
 
         let result = await sut.updateUserProfileForR4Scales()
 

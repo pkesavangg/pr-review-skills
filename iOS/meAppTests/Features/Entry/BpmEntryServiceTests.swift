@@ -231,7 +231,7 @@ struct BpmEntryServiceTests {
         integration: MockIntegrationService? = nil,
         goalAlert: MockGoalAlertService? = nil,
         logger: MockLoggerService? = nil,
-        activeAccount: Account? = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "bpm@example.com", isActive: true)
+        activeAccount: AccountSnapshot? = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "bpm@example.com", isActiveAccount: true)
     ) -> EntryService {
         let account = MockAccountService()
         account.activeAccount = activeAccount

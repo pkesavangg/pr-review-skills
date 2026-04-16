@@ -386,7 +386,7 @@ struct BluetoothServiceDeviceInfoTests {
         let scale = MockScaleService()
         let logger = MockLoggerService()
         let sut = makeSUT(scale: scale, logger: logger, sdk: sdk)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", isActiveAccount: true)
 
         let r4Device = makeDevice(
             id: "r4-1",
@@ -474,7 +474,7 @@ struct BluetoothServiceDeviceInfoTests {
         sdk.deleteUserError = DeviceInfoTestError.sdkFailure
         let logger = MockLoggerService()
         let sut = makeSUT(logger: logger, sdk: sdk)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", isActiveAccount: true)
 
         let device = makeDevice(
             id: "r4-fail",
@@ -499,7 +499,7 @@ struct BluetoothServiceDeviceInfoTests {
         let scale = MockScaleService()
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(scale: scale, sdk: sdk)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", isActiveAccount: true)
 
         let device = makeDevice(
             id: "r4-wo",
@@ -535,7 +535,7 @@ struct BluetoothServiceDeviceInfoTests {
     func deleteR4ScalesMultiple() async {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", isActiveAccount: true)
 
         let r4a = makeDevice(
             id: "r4-a",

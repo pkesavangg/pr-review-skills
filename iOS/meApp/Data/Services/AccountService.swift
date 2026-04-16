@@ -23,8 +23,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
     /// Migration service for Ionic app data
     private let migrationService: AccountMigrationService
     @Published private(set) var isIonicMigrationInProgress: Bool = false
-    @Published private(set) var activeAccount: AccountSnapshot?
-    @Published private(set) var allAccounts: [AccountSnapshot] = []
+    @Published var activeAccount: AccountSnapshot?
+    @Published var allAccounts: [AccountSnapshot] = []
     var activeAccountPublisher: Published<AccountSnapshot?>.Publisher { $activeAccount }
     var allAccountsPublisher: Published<[AccountSnapshot]>.Publisher { $allAccounts }
 

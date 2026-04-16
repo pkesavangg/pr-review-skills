@@ -265,8 +265,8 @@ enum DashboardTestFixtures {
 
         let mockAccount = MockAccountService()
         if hasActiveAccount {
-            mockAccount.activeAccount = AccountTestFixtures.makeAccountModel(
-                id: "acct-1", email: "test@example.com", isActive: true
+            mockAccount.activeAccount = AccountTestFixtures.makeAccountSnapshot(
+                id: "acct-1", email: "test@example.com", isActiveAccount: true
             )
         }
 

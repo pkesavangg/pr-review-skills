@@ -47,7 +47,7 @@ struct BluetoothServiceTests {
     func startBluetoothOperationsAlreadyStarted() async {
         let discovery = MockBLEDiscoveryManager()
         let account = MockAccountService()
-        account.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
         let sut = makeSUT(account: account, discovery: discovery)
         sut.isSmartScanStarted = true
 
@@ -61,7 +61,7 @@ struct BluetoothServiceTests {
     func initializeAccountSubscriptionUpdatesActiveAccount() async {
         let account = MockAccountService()
         let sut = makeSUT(account: account)
-        let expectedAccount = AccountTestFixtures.makeAccountModel(id: "222", email: "user2@example.com", isLoggedIn: true, isActive: true)
+        let expectedAccount = AccountTestFixtures.makeAccountSnapshot(id: "222", email: "user2@example.com", isLoggedIn: true, isActiveAccount: true)
 
         account.activeAccount = expectedAccount
         let updated = await waitUntil { sut.activeAccount?.accountId == "222" }

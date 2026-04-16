@@ -9,7 +9,7 @@ struct WeightSnapshotCardViewModelTests {
 
     // MARK: - Helpers
 
-    private func makeSUT(account: Account? = nil) -> (sut: WeightSnapshotCardViewModel, mockAccount: MockAccountService) {
+    private func makeSUT(account: AccountSnapshot? = nil) -> (sut: WeightSnapshotCardViewModel, mockAccount: MockAccountService) {
         TestDependencyContainer.reset()
         let mockAccount = MockAccountService()
         mockAccount.activeAccount = account
@@ -18,25 +18,17 @@ struct WeightSnapshotCardViewModelTests {
         return (sut, mockAccount)
     }
 
-    private func makeAccount(weightUnit: WeightUnit, goalWeight: Double? = nil) -> Account {
-        let account = AccountTestFixtures.makeAccountModel(id: "acct-snap", isActive: true)
-        account.weightSettings = WeightCompSettings(
-            accountId: "acct-snap",
-            height: "70",
+    private func makeAccount(weightUnit: WeightUnit, goalWeight: Double? = nil) -> AccountSnapshot {
+        AccountTestFixtures.makeAccountSnapshot(
+            id: "acct-snap",
+            isActiveAccount: true,
+            weightUnit: weightUnit,
+            weightHeight: "70",
             activityLevel: .normal,
-            weightUnit: weightUnit
+            goalType: goalWeight != nil ? .lose : .maintain,
+            goalWeight: goalWeight,
+            initialWeight: goalWeight != nil ? 2000 : nil
         )
-        if let goalWeight {
-            account.goalSettings = GoalSettings(
-                accountId: "acct-snap",
-                goalType: .lose,
-                initialWeight: 2000,
-                goalWeight: goalWeight,
-                goalPercent: nil,
-                isSynced: false
-            )
-        }
-        return account
     }
 
     // MARK: - Initial State
@@ -46,7 +38,7 @@ struct WeightSnapshotCardViewModelTests {
         let account = makeAccount(weightUnit: .lb)
         let (sut, _) = makeSUT(account: account)
         #expect(sut.activeAccount != nil)
-        #expect(sut.activeAccount?.weightSettings?.weightUnit == .lb)
+        #expect(sut.activeAccount?.weightUnit == .lb)
     }
 
     @Test("activeAccount is nil when no active account is set")

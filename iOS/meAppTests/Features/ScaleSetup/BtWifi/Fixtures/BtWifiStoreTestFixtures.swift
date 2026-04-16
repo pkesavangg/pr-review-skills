@@ -134,11 +134,14 @@ enum BtWifiStoreTestFixtures {
         id: String = "acct-1",
         email: String = "btwifi@example.com",
         firstName: String = "Lakshmi"
-    ) -> Account {
-        let account = AccountTestFixtures.makeAccountModel(id: id, email: email, firstName: firstName, isActive: true)
-        // Keep BtWifi unit tests isolated from DashboardStore initialization path.
-        account.dashboardSettings?.dashboardType = DashboardType.dashboard12.rawValue
-        return account
+    ) -> AccountSnapshot {
+        AccountTestFixtures.makeAccountSnapshot(
+            id: id,
+            email: email,
+            firstName: firstName,
+            isActiveAccount: true,
+            dashboardType: DashboardType.dashboard12.rawValue
+        )
     }
 
     static func makeScale(

@@ -70,8 +70,8 @@ enum A6ScaleSetupStoreTestFixtures {
         id: String = "acct-1",
         email: String = "a6-setup@example.com",
         firstName: String = "Lakshmi"
-    ) -> Account {
-        AccountTestFixtures.makeAccountModel(id: id, email: email, firstName: firstName, isActive: true)
+    ) -> AccountSnapshot {
+        AccountTestFixtures.makeAccountSnapshot(id: id, email: email, firstName: firstName, isActiveAccount: true)
     }
 
     static func enabledPermissions() -> [GGPermissionType: GGPermissionState] {

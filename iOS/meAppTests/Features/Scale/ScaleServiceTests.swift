@@ -1,9 +1,11 @@
+// swiftlint:disable file_length
 import Foundation
 import Testing
 @testable import meApp
 
 @Suite(.serialized)
 @MainActor
+// swiftlint:disable:next type_body_length
 struct ScaleServiceTests {
     @Test("clearAllData clears local scale storage")
     func clearAllDataSuccess() async {
@@ -1036,10 +1038,19 @@ struct ScaleServiceTests {
     func syncAllScalesWithRemoteReconcilesByMac() async {
         let repo = MockScaleRepository()
         let remote = MockScaleRepositoryAPI()
-        let local = ScaleTestFixtures.makeDevice(id: "local-scale", accountId: "acct-1", mac: "11:22:33:44:55:66", broadcastIdString: "AAAAAA", broadcastId: 111111, isSynced: false, hasServerID: false)
+        let local = ScaleTestFixtures.makeDevice(
+            id: "local-scale", accountId: "acct-1", mac: "11:22:33:44:55:66",
+            broadcastIdString: "AAAAAA", broadcastId: 111111, isSynced: false, hasServerID: false
+        )
         repo.devices = [local]
-        remote.createScaleResult = ScaleTestFixtures.makeScaleDTO(id: "server-created", accountId: "acct-1", mac: "11:22:33:44:55:66", broadcastIdString: "AAAAAA", broadcastId: 111111)
-        remote.listScalesResult = [ScaleTestFixtures.makeScaleDTO(id: "server-created", accountId: "acct-1", mac: "11:22:33:44:55:66", broadcastIdString: "ZZZZZZ", broadcastId: 222222)]
+        remote.createScaleResult = ScaleTestFixtures.makeScaleDTO(
+            id: "server-created", accountId: "acct-1", mac: "11:22:33:44:55:66",
+            broadcastIdString: "AAAAAA", broadcastId: 111111
+        )
+        remote.listScalesResult = [ScaleTestFixtures.makeScaleDTO(
+            id: "server-created", accountId: "acct-1", mac: "11:22:33:44:55:66",
+            broadcastIdString: "ZZZZZZ", broadcastId: 222222
+        )]
         let sut = makeSUT(repo: repo, remote: remote)
 
         await sut.syncAllScalesWithRemote()
@@ -1052,11 +1063,20 @@ struct ScaleServiceTests {
     func syncAllScalesWithRemoteReconcilesByBroadcastId() async {
         let repo = MockScaleRepository()
         let remote = MockScaleRepositoryAPI()
-        let local = ScaleTestFixtures.makeDevice(id: "local-scale", accountId: "acct-1", mac: "11:22:33:44:55:66", broadcastIdString: "AAAAAA", broadcastId: 111111, isSynced: false, hasServerID: false)
+        let local = ScaleTestFixtures.makeDevice(
+            id: "local-scale", accountId: "acct-1", mac: "11:22:33:44:55:66",
+            broadcastIdString: "AAAAAA", broadcastId: 111111, isSynced: false, hasServerID: false
+        )
         local.mac = nil
         repo.devices = [local]
-        remote.createScaleResult = ScaleTestFixtures.makeScaleDTO(id: "server-created", accountId: "acct-1", mac: "", broadcastIdString: "AAAAAA", broadcastId: 111111)
-        remote.listScalesResult = [ScaleTestFixtures.makeScaleDTO(id: "server-created", accountId: "acct-1", mac: "", broadcastIdString: "AAAAAA", broadcastId: 111111)]
+        remote.createScaleResult = ScaleTestFixtures.makeScaleDTO(
+            id: "server-created", accountId: "acct-1", mac: "",
+            broadcastIdString: "AAAAAA", broadcastId: 111111
+        )
+        remote.listScalesResult = [ScaleTestFixtures.makeScaleDTO(
+            id: "server-created", accountId: "acct-1", mac: "",
+            broadcastIdString: "AAAAAA", broadcastId: 111111
+        )]
         let sut = makeSUT(repo: repo, remote: remote)
 
         await sut.syncAllScalesWithRemote()
@@ -1411,7 +1431,7 @@ struct ScaleServiceTests {
     ) -> ScaleService {
         let account = account ?? MockAccountService()
         if account.activeAccount == nil {
-            account.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "scale@example.com", isActive: true)
+            account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "scale@example.com", isActiveAccount: true)
         }
 
         return ScaleService(

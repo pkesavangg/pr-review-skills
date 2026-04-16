@@ -12,7 +12,7 @@ struct BluetoothServiceScanEventPipelineTests {
     func startSmartScanPublishesDiscoveryEventForNewDevice() async throws {
         let sdk = MockBluetoothSDKClient()
         let account = MockAccountService()
-        account.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-scan-1", email: "scan1@example.com", isLoggedIn: true, isActive: true)
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-scan-1", email: "scan1@example.com", isLoggedIn: true, isActiveAccount: true)
         let sut = makeSUT(account: account, sdk: sdk)
         _ = await waitUntil { sut.activeAccount?.accountId == "acct-scan-1" }
         let deviceDetails = makeDeviceDetails(broadcastId: "AA11", protocolType: "A6")
@@ -37,7 +37,7 @@ struct BluetoothServiceScanEventPipelineTests {
         let sdk = MockBluetoothSDKClient()
         let logger = MockLoggerService()
         let account = MockAccountService()
-        account.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-scan-3", email: "scan3@example.com", isLoggedIn: true, isActive: true)
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-scan-3", email: "scan3@example.com", isLoggedIn: true, isActiveAccount: true)
         let sut = makeSUT(account: account, logger: logger, sdk: sdk)
         _ = await waitUntil { sut.activeAccount?.accountId == "acct-scan-3" }
         sut.blockedBroadcastIds.insert("BLOCKED-1")
@@ -69,7 +69,7 @@ struct BluetoothServiceScanEventPipelineTests {
         let account = MockAccountService()
         let entry = MockEntryService()
         let logger = MockLoggerService()
-        account.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-entry", email: "entry@example.com", isLoggedIn: true, isActive: true)
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-entry", email: "entry@example.com", isLoggedIn: true, isActiveAccount: true)
         let sut = makeSUT(account: account, entry: entry, logger: logger, sdk: sdk)
         _ = await waitUntil { sut.activeAccount?.accountId == "acct-entry" }
 
@@ -95,7 +95,7 @@ struct BluetoothServiceScanEventPipelineTests {
 //        sdk.getDeviceInfoResult = makeDeviceDetails(broadcastId: rawBroadcastId, protocolType: "R4", impedanceSwitchState: false)
 //        let account = MockAccountService()
 //        let scale = MockScaleService()
-//        account.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-r4", email: "r4@example.com", isLoggedIn: true, isActive: true)
+//        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-r4", email: "r4@example.com", isLoggedIn: true, isActiveAccount: true)
 //        let sut = makeSUT(account: account, scale: scale, sdk: sdk)
 //        _ = await waitUntil { sut.activeAccount?.accountId == "acct-r4" }
 //        let device = makeDevice(
@@ -127,7 +127,7 @@ struct BluetoothServiceScanEventPipelineTests {
 //        let sdk = MockBluetoothSDKClient()
 //        let account = MockAccountService()
 //        let scale = MockScaleService()
-//        account.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-r4-disconnect", email: "r4d@example.com", isLoggedIn: true, isActive: true)
+//        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-r4-disconnect", email: "r4d@example.com", isLoggedIn: true, isActiveAccount: true)
 //        let sut = makeSUT(account: account, scale: scale, sdk: sdk)
 //        _ = await waitUntil { sut.activeAccount?.accountId == "acct-r4-disconnect" }
 //        let device = makeDevice(id: "r4-scale-2", broadcastIdString: "R4-2", isConnected: true, bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true))
@@ -151,7 +151,7 @@ struct BluetoothServiceScanEventPipelineTests {
         sdk.getDeviceInfoResult = makeDeviceDetails(broadcastId: "INFO-1", protocolType: "R4", impedanceSwitchState: true)
         let account = MockAccountService()
         let scale = MockScaleService()
-        account.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-info", email: "info@example.com", isLoggedIn: true, isActive: true)
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-info", email: "info@example.com", isLoggedIn: true, isActiveAccount: true)
         let sut = makeSUT(account: account, scale: scale, sdk: sdk)
         _ = await waitUntil { sut.activeAccount?.accountId == "acct-info" }
         let device = makeDevice(id: "info-scale-1", broadcastIdString: "INFO-1", isConnected: true, bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true))
@@ -178,7 +178,7 @@ struct BluetoothServiceScanEventPipelineTests {
         let account = MockAccountService()
         let logger = MockLoggerService()
         let scale = MockScaleService()
-        account.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-malformed", email: "bad@example.com", isLoggedIn: true, isActive: true)
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-malformed", email: "bad@example.com", isLoggedIn: true, isActiveAccount: true)
         let sut = makeSUT(account: account, scale: scale, logger: logger, sdk: sdk)
         _ = await waitUntil { sut.activeAccount?.accountId == "acct-malformed" }
 
@@ -381,13 +381,13 @@ private func makeEntry(protocolType: String, timestamp: Int, weightInKg: Float) 
 }
 
 private func encodeJSONObject<T: Encodable>(_ value: T) -> Any {
-    let data = try! JSONEncoder().encode(value)
-    return try! JSONSerialization.jsonObject(with: data)
+    let data = try! JSONEncoder().encode(value) // swiftlint:disable:this force_try
+    return try! JSONSerialization.jsonObject(with: data) // swiftlint:disable:this force_try
 }
 
 private func decodeJSON<T: Decodable>(_ object: [String: Any], as type: T.Type) -> T {
-    let data = try! JSONSerialization.data(withJSONObject: object)
-    return try! JSONDecoder().decode(type, from: data)
+    let data = try! JSONSerialization.data(withJSONObject: object) // swiftlint:disable:this force_try
+    return try! JSONDecoder().decode(type, from: data) // swiftlint:disable:this force_try
 }
 
 private struct MalformedScanData: GGScanResponseData {}
