@@ -247,33 +247,21 @@ class DashboardMetricsCalculator: DashboardMetricsCalculatorProtocol {
     }
 
     private func roundedToDisplayedWeight(_ value: Double) -> Double {
-        (value * 10).rounded(.toNearestOrAwayFromZero) / 10
-    }
-
-    private func displayedAverageWeight(_ weights: [Double]) -> Double {
-        guard !weights.isEmpty else { return 0 }
-        let displayedTenths = weights.map { Int(($0 * 10).rounded(.toNearestOrAwayFromZero)) }
-        let averageTenths = Double(displayedTenths.reduce(0, +)) / Double(displayedTenths.count)
-        return averageTenths.rounded(.toNearestOrAwayFromZero) / 10
+        WeightlessDisplayRounding.roundedToDisplayedWeight(value)
     }
 
     private func displayedWeightlessDifference(
         currentWeight: Double,
         anchorWeight: Double
     ) -> Double {
-        let displayedCurrent = roundedToDisplayedWeight(currentWeight)
-        let displayedAnchor = roundedToDisplayedWeight(anchorWeight)
-        return roundedToDisplayedWeight(displayedCurrent - displayedAnchor)
+        WeightlessDisplayRounding.displayedWeightlessDifference(currentWeight: currentWeight, anchorWeight: anchorWeight)
     }
 
     private func displayedWeightlessAverageDifference(
         currentWeights: [Double],
         anchorWeight: Double
     ) -> Double {
-        guard !currentWeights.isEmpty else { return 0 }
-        let displayedCurrentAverage = displayedAverageWeight(currentWeights)
-        let displayedAnchor = roundedToDisplayedWeight(anchorWeight)
-        return roundedToDisplayedWeight(displayedCurrentAverage - displayedAnchor)
+        WeightlessDisplayRounding.displayedWeightlessAverageDifference(currentWeights: currentWeights, anchorWeight: anchorWeight)
     }
 
     /// Creates entry from an interpolated date selection

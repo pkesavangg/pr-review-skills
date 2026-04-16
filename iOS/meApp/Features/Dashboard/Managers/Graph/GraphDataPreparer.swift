@@ -340,10 +340,12 @@ struct GraphDataPreparer {
             return (avg * 100).rounded(.toNearestOrAwayFromZero) / 100
         }
         guard let anchorWeight else { return 0 }
-        return displayedWeightlessAverageDifference(
+        let diff = displayedWeightlessAverageDifference(
             currentWeights: weights,
             anchorWeight: anchorWeight
         )
+        // Match the non-weightless path's 2-decimal-place precision
+        return (diff * 100).rounded(.toNearestOrAwayFromZero) / 100
     }
 
     // swiftlint:disable:next function_parameter_count
@@ -497,33 +499,21 @@ struct GraphDataPreparer {
     }
 
     private func roundedToDisplayedWeight(_ value: Double) -> Double {
-        (value * 10).rounded(.toNearestOrAwayFromZero) / 10
-    }
-
-    private func displayedAverageWeight(_ weights: [Double]) -> Double {
-        guard !weights.isEmpty else { return 0 }
-        let displayedTenths = weights.map { Int(($0 * 10).rounded(.toNearestOrAwayFromZero)) }
-        let averageTenths = Double(displayedTenths.reduce(0, +)) / Double(displayedTenths.count)
-        return averageTenths.rounded(.toNearestOrAwayFromZero) / 10
+        WeightlessDisplayRounding.roundedToDisplayedWeight(value)
     }
 
     private func displayedWeightlessDifference(
         currentWeight: Double,
         anchorWeight: Double
     ) -> Double {
-        let displayedCurrent = roundedToDisplayedWeight(currentWeight)
-        let displayedAnchor = roundedToDisplayedWeight(anchorWeight)
-        return roundedToDisplayedWeight(displayedCurrent - displayedAnchor)
+        WeightlessDisplayRounding.displayedWeightlessDifference(currentWeight: currentWeight, anchorWeight: anchorWeight)
     }
 
     private func displayedWeightlessAverageDifference(
         currentWeights: [Double],
         anchorWeight: Double
     ) -> Double {
-        guard !currentWeights.isEmpty else { return 0 }
-        let displayedCurrentAverage = displayedAverageWeight(currentWeights)
-        let displayedAnchor = roundedToDisplayedWeight(anchorWeight)
-        return roundedToDisplayedWeight(displayedCurrentAverage - displayedAnchor)
+        WeightlessDisplayRounding.displayedWeightlessAverageDifference(currentWeights: currentWeights, anchorWeight: anchorWeight)
     }
 
     private func effectiveMetricRange(min: Double, max: Double, metric: String) -> (Double, Double) {

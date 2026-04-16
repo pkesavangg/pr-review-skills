@@ -122,13 +122,15 @@ final class MonthSectionViewModel: BaseSectionViewModel {
                 return firstDistance < secondDistance
             })
 
-            // Also find nearest grid tick to the tap
+            // Also find nearest grid tick within the current section
             let realTicks: [Date] = allTicks.count > 1 ? Array(allTicks.dropLast()) : allTicks
-            let nearestTick = realTicks.min(by: {
+            let sectionTicks = realTicks.filter { $0 >= startTick && $0 < sectionEnd }
+            let nearestTick = sectionTicks.min(by: {
                 abs($0.timeIntervalSince(clampedDate)) < abs($1.timeIntervalSince(clampedDate))
             })
 
-            // Select whichever is closer: the grid tick or the data point
+            // Select whichever is closer: the grid tick or the data point.
+            // On ties, prefer the tick so grid lines are always selectable.
             if let candidate = nearestCandidate, let tick = nearestTick {
                 let distToCandidate = abs(candidate.timeIntervalSince(clampedDate))
                 let distToTick = abs(tick.timeIntervalSince(clampedDate))
