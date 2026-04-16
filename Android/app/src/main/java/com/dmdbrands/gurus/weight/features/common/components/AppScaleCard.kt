@@ -94,12 +94,14 @@ fun AppScaleCard(
           softWrap = false,
         )
         if (isBpm && isSavedScale && scale.userNumber != null) {
-          Spacer(modifier = Modifier.height(spacing.x3s))
           val displayUser = ScaleDataHelper.formatUserDisplay(scale.hasNumericUsers, scale.userNumber)
-          AppText(
-            text = "${AppListStrings.User} $displayUser",
-            textType = TextType.Body,
-          )
+          if (displayUser.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(spacing.x3s))
+            AppText(
+              text = "${AppListStrings.User} $displayUser",
+              textType = TextType.Body,
+            )
+          }
         }
         if (showConnectionStatus) {
           Spacer(modifier = Modifier.height(spacing.x3s))
