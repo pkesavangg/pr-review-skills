@@ -317,7 +317,7 @@ fun AppButton(
   val isPhoneLike = deviceType == DeviceType.Phone || deviceType == DeviceType.Fold
   val buttonModifier = modifier
     .then(
-      if (type != ButtonType.InlineTextPrimary && type != ButtonType.InlineTextSecondary) {
+      if (type != ButtonType.InlineTextPrimary && type != ButtonType.InlineTextSecondary && type != ButtonType.InlineTextTertiary) {
         if (isPhoneLike) Modifier.height(height) else Modifier.heightIn(min = height)
       } else {
         Modifier
