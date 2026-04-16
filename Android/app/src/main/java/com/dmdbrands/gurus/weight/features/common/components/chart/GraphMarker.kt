@@ -32,17 +32,18 @@ internal fun rememberDefaultMarker(
   segmentState: SegmentState,
   segment: GraphSegment,
   markerIndex: Double? = null,
-  createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
+  createFallbackEntry: (timestamp: Long, layerValues: List<List<Double>>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   onTargetsUpdate: (List<PeriodSummary>) -> Unit = {},
 ): CartesianMarker {
   // Product-specific crosshair decoration lives here so callers don't need to know
   // which charts support a horizontal label. Currently only Baby uses it — to show
   // the CDC percentile of whatever point the user is hovering on.
   val babyState = state as? BabyDashboardState
-  val horizontalLabelPosition: Position.Horizontal? = if (babyState != null) Position.Horizontal.End else null
+  val horizontalLabelPosition: Position.Horizontal? = if (babyState != null) Position.Horizontal.Start else null
   val horizontalLabelFormatter: ((List<List<Double>>, Double) -> CharSequence?)? = babyState?.let {
     rememberBabyPercentileLabel(profile = it.babyProfile, metric = it.selectedMetric)
   }
+
   fun yLabelCallback(): (List<List<Double>>) -> Unit = { fallbackValues ->
     if (markerIndex == null || fallbackValues.isEmpty()) {
       onTargetsUpdate(emptyList())
@@ -54,10 +55,9 @@ internal fun rememberDefaultMarker(
       if (realData.isNotEmpty()) {
         onTargetsUpdate(realData)
       } else {
-        // Fallback: marker is between data points — create an interpolated entry
-        // with only the primary Y values (other metrics will be null).
-        val yValues = fallbackValues.flatMap { layerPoints -> layerPoints.map { it.toDouble() } }
-        onTargetsUpdate(listOfNotNull(createFallbackEntry(ts, yValues, segment)))
+        // Fallback: marker is between data points — pass per-layer Y values
+        // to the product-specific factory so each chart picks its own data layer.
+        onTargetsUpdate(listOfNotNull(createFallbackEntry(ts, fallbackValues, segment)))
       }
     }
   }

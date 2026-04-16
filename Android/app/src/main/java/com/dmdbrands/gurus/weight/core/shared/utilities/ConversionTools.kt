@@ -151,6 +151,14 @@ object ConversionTools {
   fun convertMmToInchesExact(millimeters: Int): Double =
       millimeters / MM_PER_INCH
 
+  /** Reverse of [convertDecigramsToLbExact] — lbs back to decigrams. */
+  fun convertLbToDecigrams(lbs: Double): Int =
+      (lbs * OZ_PER_LB * DECIGRAMS_PER_OZ).toInt()
+
+  /** Reverse of [convertMmToInchesExact] — inches back to millimeters. */
+  fun convertInchesToMm(inches: Double): Int =
+      (inches * MM_PER_INCH).toInt()
+
   // ========== BMI Calculations ==========
 
   /**
