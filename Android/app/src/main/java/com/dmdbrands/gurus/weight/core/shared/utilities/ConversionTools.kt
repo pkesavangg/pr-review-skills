@@ -1,8 +1,5 @@
 package com.dmdbrands.gurus.weight.core.shared.utilities
 
-import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools.convertBabyWeightToKg
-import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools.convertBabyWeightToLbOz
-import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools.convertDecigramsToLbOz
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0220
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0222
 import java.time.OffsetDateTime
@@ -130,6 +127,8 @@ object ConversionTools {
   private const val GRAMS_TO_LBS_FACTOR_0222 = 2.204623
   private const val CALIBRATION_NUMERATOR_0222 = 369874.0
   private const val CALIBRATION_DENOMINATOR_0222 = 1048576.0
+  // 0222 calibration works in tenths-of-oz; 16 oz/lb × 10 = 160 tenth-oz/lb.
+  private const val TENTH_OZ_PER_LB = 160
 
   // 0220 scale's oz conversion factor (grams per oz).
   // Intentionally less precise than DECIGRAMS_PER_OZ / 10 (28.3495) to match the
@@ -251,6 +250,7 @@ object ConversionTools {
     val grams = decigrams / DECIGRAMS_PER_GRAM
     return when {
       grams >= GRADUATION_THRESHOLD_25_LB_GRAMS -> (round(grams / 50) * 50) / 1000.0
+      // Equivalent to (round(grams/10)*10)/1000 — kept as babyApp writes it (round/100)
       grams >= GRADUATION_THRESHOLD_18_LB_GRAMS -> round(grams / 10) / 100.0
       else -> (round(grams / 5) * 5) / 1000.0
     }
@@ -290,7 +290,8 @@ object ConversionTools {
     }
     val lbs = (totalOz / OZ_PER_LB).toInt()
     val oz = if (lbs > 0) round((totalOz % OZ_PER_LB) * 10.0) / 10.0 else round(totalOz * 10.0) / 10.0
-    return Pair(lbs, oz)
+    // Defensive carry guard (not in babyApp; 0220 graduation currently never triggers this).
+    return if (oz >= OZ_PER_LB) Pair(lbs + 1, 0.0) else Pair(lbs, oz)
   }
 
   // ========== Baby Scale SKU 0222 Graduation ==========
@@ -320,8 +321,8 @@ object ConversionTools {
   fun convert0222DecigramsToLbOz(decigrams: Int): Pair<Int, Double> {
     val transmissionWeight = decigrams / DECIGRAMS_PER_GRAM
     val converted = round(transmissionWeight * CALIBRATION_NUMERATOR_0222 / CALIBRATION_DENOMINATOR_0222)
-    val lbs = (converted / 160).toInt()
-    val rawOz = converted - (lbs * 160)
+    val lbs = (converted / TENTH_OZ_PER_LB).toInt()
+    val rawOz = converted - (lbs * TENTH_OZ_PER_LB)
 
     val indexing = when {
       transmissionWeight >= GRADUATION_THRESHOLD_25_LB_GRAMS -> 50

@@ -18,6 +18,8 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 @HiltViewModel(
@@ -41,7 +43,12 @@ class HistoryDetailViewModel @AssistedInject constructor(
 
     override fun onDependenciesReady() {
         AppLog.d(TAG, "HistoryDetailViewModel ready for month: $month")
-        handleIntent(HistoryDetailIntent.SetMetric(accountService.activeAccount.value?.isMetricUnit() ?: false))
+        viewModelScope.launch {
+            accountService.activeAccount
+                .map { it?.isMetricUnit() ?: false }
+                .distinctUntilChanged()
+                .collect { handleIntent(HistoryDetailIntent.SetMetric(it)) }
+        }
         loadDetail()
     }
 

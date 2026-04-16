@@ -49,6 +49,23 @@ class ConversionToolsBabyTest {
             // 55 decigrams = 5.5 grams
             assertThat(ConversionTools.convertDecigramsToGrams(55)).isEqualTo(5.5)
         }
+
+        @Test
+        fun `converts single decigram`() {
+            // 1 decigram = 0.1 grams
+            assertThat(ConversionTools.convertDecigramsToGrams(1)).isEqualTo(0.1)
+        }
+
+        @Test
+        fun `converts value with exact tenths`() {
+            // 123 decigrams = 12.3 grams (Int input always divides cleanly by 10)
+            assertThat(ConversionTools.convertDecigramsToGrams(123)).isEqualTo(12.3)
+        }
+
+        @Test
+        fun `converts zero`() {
+            assertThat(ConversionTools.convertDecigramsToGrams(0)).isEqualTo(0.0)
+        }
     }
 
     @Nested
@@ -77,7 +94,7 @@ class ConversionToolsBabyTest {
             // 7 lbs 4 oz = 7.25 lbs = 3289 grams = 32,890 decigrams
             val dg = 32_890
             assertThat(ConversionTools.convertDecigramsToLb(dg)).isEqualTo(7)
-            assertThat(ConversionTools.convertDecigramsToOz(dg)).isWithin(0.2).of(4.0)
+            assertThat(ConversionTools.convertDecigramsToOz(dg)).isWithin(0.05).of(4.0)
         }
 
         @Test
@@ -128,7 +145,7 @@ class ConversionToolsBabyTest {
         fun `lbOz to decigrams round-trips`() {
             val dg = ConversionTools.convertLbOzToDecigrams(7, 4.0)
             assertThat(ConversionTools.convertDecigramsToLb(dg)).isEqualTo(7)
-            assertThat(ConversionTools.convertDecigramsToOz(dg)).isWithin(0.2).of(4.0)
+            assertThat(ConversionTools.convertDecigramsToOz(dg)).isWithin(0.05).of(4.0)
         }
 
         @Test
@@ -201,7 +218,7 @@ class ConversionToolsBabyTest {
             // ~7.25 lbs baby = ~3289g = 32,890 decigrams
             val (lbs, oz) = ConversionTools.convert0220DecigramsToLbOz(32_890)
             assertThat(lbs).isEqualTo(7)
-            assertThat(oz).isWithin(0.5).of(4.0)
+            assertThat(oz).isWithin(0.05).of(4.0)
         }
 
         @Test
@@ -211,6 +228,16 @@ class ConversionToolsBabyTest {
             assertThat(lbs).isAtLeast(26)
             // oz should be rounded to nearest 2
             assertThat(oz % 2).isWithin(0.1).of(0.0)
+        }
+
+        @Test
+        fun `lbOz - oz is always less than 16 across full range`() {
+            var dg = 0
+            while (dg <= 200_000) {
+                val (_, oz) = ConversionTools.convert0220DecigramsToLbOz(dg)
+                assertThat(oz).isLessThan(16.0)
+                dg += 10
+            }
         }
     }
 
@@ -240,7 +267,7 @@ class ConversionToolsBabyTest {
             // 3289g = 32,890 decigrams (~7 lb 4 oz)
             val (lbs, oz) = ConversionTools.convert0222DecigramsToLbOz(32_890)
             assertThat(lbs).isEqualTo(7)
-            assertThat(oz).isWithin(0.5).of(4.0)
+            assertThat(oz).isWithin(0.05).of(4.0)
         }
 
         @Test
@@ -284,17 +311,22 @@ class ConversionToolsBabyTest {
         }
 
         @Test
-        fun `0220 source uses graduation logic`() {
-            val result = ConversionTools.convertBabyWeightToDisplay(32_890, "0220", false)
-            assertThat(result).contains("lbs")
-            assertThat(result).contains("oz")
+        fun `0220 source applies graduation (differs from generic)`() {
+            // At 1460 dg, generic produces "5.2 oz" but 0220 graduation gives "5.1 oz"
+            // due to different conversion constants (283.495 vs 28.35*10).
+            val graduated = ConversionTools.convertBabyWeightToDisplay(1_460, "0220", false)
+            val generic = ConversionTools.convertBabyWeightToDisplay(1_460, "manual", false)
+            assertThat(graduated).isNotEqualTo(generic)
+            assertThat(graduated).contains("5.1 oz")
         }
 
         @Test
-        fun `0222 source uses calibration formula`() {
-            val result = ConversionTools.convertBabyWeightToDisplay(32_890, "0222", false)
-            assertThat(result).contains("lbs")
-            assertThat(result).contains("oz")
+        fun `0222 source applies calibration (differs from generic)`() {
+            // 0222 uses Transtek calibration formula; at 1460 dg the result should
+            // differ from the generic path.
+            val calibrated = ConversionTools.convertBabyWeightToDisplay(1_460, "0222", false)
+            val generic = ConversionTools.convertBabyWeightToDisplay(1_460, "manual", false)
+            assertThat(calibrated).isNotEqualTo(generic)
         }
 
         @Test
@@ -327,6 +359,23 @@ class ConversionToolsBabyTest {
         fun `length metric formats as cm`() {
             val result = ConversionTools.convertBabyLengthToDisplay(500, true)
             assertThat(result).contains("cm")
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Negative / invalid input
+    // -------------------------------------------------------------------------
+
+    @Nested
+    inner class NegativeInput {
+        @Test
+        fun `negative decigrams produces non-positive kg`() {
+            assertThat(ConversionTools.convertDecigramsToKg(-100)).isAtMost(0.0)
+        }
+
+        @Test
+        fun `negative millimeters produces non-positive cm`() {
+            assertThat(ConversionTools.convertMmToCm(-50)).isAtMost(0.0)
         }
     }
 }

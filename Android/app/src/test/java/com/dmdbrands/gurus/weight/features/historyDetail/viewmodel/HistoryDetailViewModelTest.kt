@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryDetail
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
@@ -597,5 +598,39 @@ class HistoryDetailViewModelTest {
         verify { dialogQueueService.showDialog(capture(dialogSlot)) }
         val dialog = dialogSlot.captured as DialogModel.Confirm
         assertThat(dialog.onDismiss).isNotNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // isMetric state
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `isMetric is true when account uses KG`() = runTest {
+        activeAccountFlow.value = TestFixtures.anAccount(weightUnit = WeightUnit.KG)
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.isMetric).isTrue()
+    }
+
+    @Test
+    fun `isMetric is false when account uses LB`() = runTest {
+        activeAccountFlow.value = TestFixtures.anAccount(weightUnit = WeightUnit.LB)
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.isMetric).isFalse()
+    }
+
+    @Test
+    fun `isMetric updates reactively when account changes`() = runTest {
+        activeAccountFlow.value = TestFixtures.anAccount(weightUnit = WeightUnit.LB)
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        assertThat(viewModel.state.value.isMetric).isFalse()
+
+        activeAccountFlow.value = TestFixtures.anAccount(weightUnit = WeightUnit.KG)
+        advanceUntilIdle()
+        assertThat(viewModel.state.value.isMetric).isTrue()
     }
 }
