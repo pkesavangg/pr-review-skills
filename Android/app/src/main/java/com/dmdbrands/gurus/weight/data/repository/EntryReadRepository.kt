@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.BabyWeekGroup
 import com.dmdbrands.gurus.weight.domain.model.common.BabyWeekHistory
 import com.dmdbrands.gurus.weight.domain.model.common.BpHistoryMonth
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertToDisplay
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
@@ -44,6 +45,7 @@ class EntryReadRepository @Inject constructor(
 
     override fun getWeightMonthlyHistory(accountId: String): Flow<List<HistoryMonth>> =
         entryReadDao.getWeightMonthlyHistory(accountId)
+            .map { months -> months.map { it.convertToDisplay() } }
 
     override fun getWeightMonthDetail(accountId: String, month: String): Flow<List<ScaleEntry>> =
         entryReadDao.getWeightMonthDetail(accountId, month).map { entries ->
