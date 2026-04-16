@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -44,16 +45,21 @@ internal fun rememberDefaultMarker(
     rememberBabyPercentileLabel(profile = it.babyProfile, metric = it.selectedMetric)
   }
 
+  // O(1) timestamp→data lookup — replaces O(n) linear scan that ran every scrub frame.
+  // Rebuilt only when segment data changes, not per-frame.
+  val dataIndex: Map<Long, PeriodSummary> = remember(segmentState.data) {
+    segmentState.data.associateBy { it.getTimeStamp() }
+  }
+
   fun yLabelCallback(): (List<List<Double>>) -> Unit = { fallbackValues ->
     if (markerIndex == null || fallbackValues.isEmpty()) {
       onTargetsUpdate(emptyList())
     } else {
       val ts = markerIndex.toLong()
-      // First: try to find the REAL data point at this timestamp — it has all metrics
-      // (bodyFat, muscleMass, bmi, etc.), not just the primary Y value.
-      val realData = segmentState.data.filter { it.getTimeStamp() == ts }
-      if (realData.isNotEmpty()) {
-        onTargetsUpdate(realData)
+      // O(1) lookup for the REAL data point — has all metrics (bodyFat, bmi, etc.)
+      val realEntry = dataIndex[ts]
+      if (realEntry != null) {
+        onTargetsUpdate(listOf(realEntry))
       } else {
         // Fallback: marker is between data points. Vico's per-layer targets
         // already exclude layers with markerTargetsEnabled=false, so flatten is safe.

@@ -165,7 +165,10 @@ fun GraphView(
     markerIndex = state.markerIndex,
     createFallbackEntry = createFallbackEntry,
     onTargetsUpdate = { entries ->
-      if (entries.isNotEmpty()) {
+      // Skip dispatch if target hasn't changed — prevents redundant recomposition
+      // when marker stays on the same data point across frames during slow scrub.
+      val changed = entries.firstOrNull()?.getTimeStamp() != segmentState.target.firstOrNull()?.getTimeStamp()
+      if (entries.isNotEmpty() && changed) {
         handleGraphIntent(BaseGraphIntent.UpdateSegmentTarget(segment, entries))
       }
     },
@@ -263,43 +266,63 @@ fun GraphView(
   )
 }
 
-// ── getTargetPoints (unchanged) ──
+// ── getTargetPoints (optimised — single-pass nearest lookup) ──
 
 fun getTargetPoints(
   fullList: List<Double>, points: List<Double>, input: Double, segment: GraphSegment,
   minWindow: Double? = null, maxWindow: Double? = null,
 ): List<Double> {
+  if (points.isEmpty()) return emptyList()
+
+  // TOTAL: simple nearest-point (single O(n) pass — list is typically small)
   if (segment == GraphSegment.TOTAL) {
     return listOfNotNull(points.minByOrNull { kotlin.math.abs(it - input) })
   }
-  if (fullList.isEmpty()) return emptyList()
-  val lower = fullList.filter { it <= input }.maxOrNull()
-  val upper = fullList.filter { it >= input }.minOrNull()
-  if (lower == null) {
-    val pointsInRange =
-      if (minWindow != null && upper != null) points.filter { it in minWindow..upper } else points.filter { it <= input }
-    return listOfNotNull(pointsInRange.minByOrNull { kotlin.math.abs(it - input) })
-  }
-  if (upper == null) {
-    val pointsInRange =
-      if (maxWindow != null) points.filter { it in lower..maxWindow } else points.filter { it >= input }
-    return listOfNotNull(pointsInRange.minByOrNull { kotlin.math.abs(it - input) })
-  }
-  val searchRange = if (minWindow != null && maxWindow != null) kotlin.math.max(minWindow, lower)..kotlin.math.min(
-    maxWindow,
-    upper,
-  ) else lower..upper
-  val filteredTargets = points.filter { it in searchRange }
-  return when {
-    filteredTargets.isEmpty() -> if (input < (lower + upper) / 2.0) listOf(lower) else listOf(upper)
-    filteredTargets.size == 1 -> {
-      val target = filteredTargets.first()
-      val halfway = (upper - lower) / 2.0
-      if (kotlin.math.abs(target - input) < halfway) listOf(target) else if (target > input) listOf(lower) else listOf(
-        upper,
-      )
-    }
 
-    else -> listOfNotNull(filteredTargets.minByOrNull { kotlin.math.abs(it - input) })
+  if (fullList.isEmpty()) return emptyList()
+
+  // Find lower/upper bounds in fullList using binary search on sorted labels.
+  // fullList = visible axis labels, always sorted ascending.
+  val insertionIdx = fullList.binarySearch { it.compareTo(input) }.let { if (it < 0) -(it + 1) else it }
+  val lower = if (insertionIdx > 0) fullList[insertionIdx - 1] else null
+  val upper = if (insertionIdx < fullList.size) fullList[insertionIdx] else null
+
+  // Determine search range
+  val rangeMin = lower ?: minWindow ?: (upper ?: return emptyList())
+  val rangeMax = upper ?: maxWindow ?: (lower ?: return emptyList())
+  val effectiveMin = if (minWindow != null) kotlin.math.max(minWindow, rangeMin) else rangeMin
+  val effectiveMax = if (maxWindow != null) kotlin.math.min(maxWindow, rangeMax) else rangeMax
+
+  // Single pass: find nearest point within range
+  var nearest: Double? = null
+  var nearestDist = Double.MAX_VALUE
+  for (p in points) {
+    if (p < effectiveMin || p > effectiveMax) continue
+    val dist = kotlin.math.abs(p - input)
+    if (dist < nearestDist) {
+      nearestDist = dist
+      nearest = p
+    }
+  }
+
+  return if (nearest != null) {
+    // Snap to lower/upper if nearest is further than halfway between them
+    if (lower != null && upper != null) {
+      val halfway = (upper - lower) / 2.0
+      if (nearestDist > halfway) {
+        listOf(if (input < (lower + upper) / 2.0) lower else upper)
+      } else {
+        listOf(nearest)
+      }
+    } else {
+      listOf(nearest)
+    }
+  } else {
+    // No point in range — snap to nearest bound
+    if (lower != null && upper != null) {
+      listOf(if (input < (lower + upper) / 2.0) lower else upper)
+    } else {
+      listOfNotNull(lower ?: upper)
+    }
   }
 }
