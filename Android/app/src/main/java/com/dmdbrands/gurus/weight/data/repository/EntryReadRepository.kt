@@ -278,8 +278,22 @@ class EntryReadRepository @Inject constructor(
     override suspend fun getTotalCount(accountId: String): Int =
         entryReadDao.getTotalCount(accountId)
 
-    override fun getBpmStreakDays(accountId: String): Flow<List<String>> =
-        entryReadDao.getBpmStreakDays(accountId)
+    override fun getBpmStreakDays(accountId: String): Flow<List<String>> {
+        if (USE_SAMPLE_DATA) return flowOf(sampleBpmStreakDays())
+        return entryReadDao.getBpmStreakDays(accountId)
+    }
+
+    /** Sample BP streak days (newest first) — matches sampleBpmDailyGraphData dates.
+     *  Clusters with gaps produce: current streak = 5 (Apr 1–8), longest streak = 5. */
+    private fun sampleBpmStreakDays(): List<String> = listOf(
+        "2026-04-08", "2026-04-06", "2026-04-05", "2026-04-04", "2026-04-03",
+        "2026-04-02", "2026-04-01", "2026-03-30", "2026-03-27", "2026-03-24",
+        "2026-03-22", "2026-03-20", "2026-02-14", "2026-02-10", "2026-02-07",
+        "2026-02-04", "2026-02-01", "2025-12-05", "2025-12-02", "2025-11-30",
+        "2025-11-27", "2025-11-25", "2025-10-22", "2025-10-20", "2025-10-17",
+        "2025-10-15", "2025-08-10", "2025-08-08", "2025-08-05", "2025-08-03",
+        "2025-08-01",
+    )
 
     /**
      * Sample Baby daily data — born Jan 1 2026, starts day 10.
