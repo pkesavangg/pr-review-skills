@@ -117,9 +117,8 @@ fun DashboardScreen() {
           product = product,
           goal = state.goal,
           onRefresh = { vm.handleIntent(WeightDashboardIntent.Refresh) },
-          createFallbackEntry = { ts, layerValues, seg ->
-            // Layer 0 = primary weight, Layer 1 = optional secondary metric
-            val y = layerValues.firstOrNull()?.firstOrNull() ?: return@DashboardPage null
+          createFallbackEntry = { ts, yValues, seg ->
+            val y = yValues.firstOrNull() ?: return@DashboardPage null
             val period = java.time.Instant.ofEpochMilli(ts).atZone(java.time.ZoneId.systemDefault()).let { dt ->
               if (seg == GraphSegment.WEEK || seg == GraphSegment.MONTH) dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
               else dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
@@ -146,10 +145,8 @@ fun DashboardScreen() {
           vm = vm,
           product = product,
           onRefresh = { vm.handleIntent(BpDashboardIntent.Refresh) },
-          createFallbackEntry = { ts, layerValues, seg ->
-            // Layer 0 = single layer with 3 series: systolic, diastolic, pulse
-            val bpValues = layerValues.firstOrNull() ?: return@DashboardPage null
-            if (bpValues.size < 3) return@DashboardPage null
+          createFallbackEntry = { ts, yValues, seg ->
+            if (yValues.size < 3) return@DashboardPage null
             val period = java.time.Instant.ofEpochMilli(ts).atZone(java.time.ZoneId.systemDefault()).let { dt ->
               if (seg == GraphSegment.WEEK || seg == GraphSegment.MONTH) dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
               else dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
@@ -157,9 +154,9 @@ fun DashboardScreen() {
             PeriodBpmSummary(
               period = period,
               entryTimestamp = DateTimeConverter.timestampToIso(ts),
-              avgSystolic = bpValues[0].toInt(),
-              avgDiastolic = bpValues[1].toInt(),
-              avgPulse = bpValues[2].toInt(),
+              avgSystolic = yValues[0].toInt(),
+              avgDiastolic = yValues[1].toInt(),
+              avgPulse = yValues[2].toInt(),
             )
           },
         ) { s ->
@@ -179,9 +176,8 @@ fun DashboardScreen() {
           hasPercentile = true,
           chartFillsHeight = true,
           onRefresh = { vm.handleIntent(BabyDashboardIntent.Refresh) },
-          createFallbackEntry = { ts, layerValues, seg ->
-            // Layer 0 = CDC percentile bands (skip), Layer 1 = actual baby data
-            val y = layerValues.lastOrNull()?.firstOrNull() ?: return@DashboardPage null
+          createFallbackEntry = { ts, yValues, seg ->
+            val y = yValues.firstOrNull() ?: return@DashboardPage null
             val period = java.time.Instant.ofEpochMilli(ts).atZone(java.time.ZoneId.systemDefault()).let { dt ->
               if (seg == GraphSegment.WEEK || seg == GraphSegment.MONTH) dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
               else dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
@@ -215,7 +211,7 @@ private fun <S : BaseDashboardState> DashboardPage(
   hasPercentile: Boolean = false,
   chartFillsHeight: Boolean = false,
   onRefresh: () -> Unit,
-  createFallbackEntry: (timestamp: Long, layerValues: List<List<Double>>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
+  createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   belowChart: @Composable (S) -> Unit,
 ) {
   val state by vm.state.collectAsStateWithLifecycle()

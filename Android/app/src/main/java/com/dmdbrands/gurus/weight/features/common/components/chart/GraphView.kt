@@ -51,7 +51,7 @@ fun GraphView(
   scrollTarget: Double? = null,
   canScrollToAnchor: Boolean = false,
   handleGraphIntent: (BaseGraphIntent) -> Unit,
-  createFallbackEntry: (timestamp: Long, layerValues: List<List<Double>>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
+  createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   onScrollTargetConsumed: (Boolean) -> Unit = {},
   chartFillsHeight: Boolean = false,
 ) {
@@ -142,7 +142,7 @@ fun GraphView(
               val ts = x.toLong()
               val yValues = fallbackValues.mapNotNull { series -> series.getOrNull(index)?.toDouble() }
               if (yValues.isEmpty()) return@mapIndexedNotNull null
-              createFallbackEntry(ts, listOf(yValues), segment)
+              createFallbackEntry(ts, yValues, segment)
             }
             handleGraphIntent(BaseGraphIntent.UpdateSegmentTarget(segment, fallbackData))
           }

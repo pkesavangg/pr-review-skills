@@ -34,7 +34,7 @@ fun GraphPagerView(
   hasPercentile: Boolean = false,
   chartFillsHeight: Boolean = false,
   handleGraphIntent: (BaseGraphIntent) -> Unit,
-  createFallbackEntry: (timestamp: Long, layerValues: List<List<Double>>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
+  createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   header: @Composable (GraphSegment) -> Unit,
   onSegmentChange: (GraphSegment) -> Unit = {},
   onScrollTargetConsumed: (Boolean) -> Unit = {},

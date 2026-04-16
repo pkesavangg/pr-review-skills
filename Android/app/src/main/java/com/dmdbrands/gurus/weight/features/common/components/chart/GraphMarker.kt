@@ -32,7 +32,7 @@ internal fun rememberDefaultMarker(
   segmentState: SegmentState,
   segment: GraphSegment,
   markerIndex: Double? = null,
-  createFallbackEntry: (timestamp: Long, layerValues: List<List<Double>>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
+  createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   onTargetsUpdate: (List<PeriodSummary>) -> Unit = {},
 ): CartesianMarker {
   // Product-specific crosshair decoration lives here so callers don't need to know
@@ -55,9 +55,10 @@ internal fun rememberDefaultMarker(
       if (realData.isNotEmpty()) {
         onTargetsUpdate(realData)
       } else {
-        // Fallback: marker is between data points — pass per-layer Y values
-        // to the product-specific factory so each chart picks its own data layer.
-        onTargetsUpdate(listOfNotNull(createFallbackEntry(ts, fallbackValues, segment)))
+        // Fallback: marker is between data points. Vico's per-layer targets
+        // already exclude layers with markerTargetsEnabled=false, so flatten is safe.
+        val yValues = fallbackValues.flatMap { it }
+        onTargetsUpdate(listOfNotNull(createFallbackEntry(ts, yValues, segment)))
       }
     }
   }
