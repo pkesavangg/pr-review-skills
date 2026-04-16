@@ -13,6 +13,8 @@ import kotlinx.serialization.Serializable
  * @property isWifiConfigured Whether the scale is WiFi configured.
  * @property scaleId The unique identifier of the scale.
  * @property createdAt The timestamp when the scale was created.
+ * @property hasNumericUsers Whether the device uses numeric user labels (1/2) or alphabetic (A/B). Only relevant for BPM devices.
+ * @property userNumber The user slot on the physical device (1 or 2). Stored as Int internally.
  */
 @Serializable
 data class ScaleInfo(

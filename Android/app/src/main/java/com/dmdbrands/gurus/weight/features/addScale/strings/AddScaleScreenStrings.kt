@@ -33,7 +33,10 @@ object AddScaleScreenStrings {
 }
 
 object ChooseScaleStrings {
-  const val Header = "Choose your scale"
+  fun header(productType: ProductType) = when (productType) {
+    ProductType.BLOOD_PRESSURE -> "Choose your device"
+    else -> "Choose your scale"
+  }
 }
 
 object PairedScaleExistsAlert {

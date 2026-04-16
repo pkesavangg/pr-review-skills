@@ -192,7 +192,7 @@ fun ScaleDetailsScreenContent(
             }
             add(
               SettingsItem(
-                title = ScaleDetailsStrings.ScaleName,
+                title = ScaleDetailsStrings.scaleName(device?.getSKU()),
                 type =
                   SettingsItemType.TextOnly(
                     scaleName ?: "", // Display truncated name to match SDK limit

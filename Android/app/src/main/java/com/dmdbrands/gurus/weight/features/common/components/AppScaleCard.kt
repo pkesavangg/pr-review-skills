@@ -219,6 +219,23 @@ fun PreviewAppScaleCard() {
         isSavedScale = false,
         onClick = {},
       )
+
+      // BPM saved device example (User A)
+      AppScaleCard(
+        scale =
+          ScaleInfo(
+            productName = "Smart Blood Pressure Monitor",
+            sku = "0634",
+            setupType = ScaleSetupType.Bluetooth,
+            bodyComp = false,
+            isConnected = true,
+            scaleId = "scaleId3",
+            hasNumericUsers = false,
+            userNumber = 1,
+          ),
+        isSavedScale = true,
+        onClick = {},
+      )
     }
   }
 }

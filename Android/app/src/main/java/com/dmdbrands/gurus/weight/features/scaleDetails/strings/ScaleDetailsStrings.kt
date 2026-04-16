@@ -25,7 +25,6 @@ object ScaleDetailsStrings {
     DeviceHelper.isBpmDevice(sku) -> "Delete Device"
     else -> "Delete Scale"
   }
-  const val Header = "Scale Settings"
   const val Close = "Close"
   const val Mode = "Mode"
   const val AllBodyMetrics = "All Body Metrics"
@@ -36,7 +35,10 @@ object ScaleDetailsStrings {
     DeviceHelper.isBpmDevice(sku) -> "User"
     else -> "User Number"
   }
-  const val ScaleName = "Scale Name"
+  fun scaleName(sku: String?) = when {
+    DeviceHelper.isBpmDevice(sku) -> "Device Name"
+    else -> "Scale Name"
+  }
   const val Connection = "Connection"
   const val Bluetooth = "Bluetooth"
   const val Connected = "Connected"
