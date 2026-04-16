@@ -576,10 +576,10 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
 
             var scaleItems: [HealthKitExport] = []
             var bpmItems: [HealthKitExportExtended] = []
-            let bpmType = DeviceType.bpm.rawValue
+            let bpmType = EntryType.bpm.rawValue
 
             for entry in entries {
-                if entry.deviceType == bpmType, let bpmEntry = entry.bpmEntry {
+                if entry.entryType == bpmType, let bpmEntry = entry.bpmEntry {
                     // BPM entries → systolic, diastolic, pulse
                     bpmItems.append(HealthKitExportExtended(
                         timestamp: entry.entryTimestamp,
@@ -642,7 +642,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
     /// Writes entry data into Apple Health using an EntryNotification.
     /// This method is safe to call from any actor as it uses extracted data.
     func syncNewData(notification: EntryNotification) async throws {
-        logger.log(level: .info, tag: tag, message: "HealthKit sync new entry started. timestamp=\(notification.entryTimestamp), deviceType=\(notification.deviceType)")
+        logger.log(level: .info, tag: tag, message: "HealthKit sync new entry started. timestamp=\(notification.entryTimestamp), entryType=\(notification.entryType)")
         let export = HealthKitExportExtended(
             timestamp: notification.entryTimestamp,
             weight: notification.weight,

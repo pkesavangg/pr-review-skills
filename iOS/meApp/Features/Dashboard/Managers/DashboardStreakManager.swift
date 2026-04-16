@@ -57,7 +57,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     // MARK: - Streak Data Management
     func refreshStreakData() async throws {
         try await performCoalescedRefresh {
-            try await self.entryService.getProgress(entryType: .wg)
+            try await self.entryService.getProgress(entryType: .scale)
         }
     }
 

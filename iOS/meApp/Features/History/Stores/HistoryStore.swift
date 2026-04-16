@@ -278,9 +278,9 @@ final class HistoryStore: ObservableObject {
                         return nil
                     }()
                     let babyEntries = allEntries.filter {
-                        $0.deviceType == DeviceType.babyScale.rawValue
+                        $0.entryType == EntryType.baby.rawValue
                         && $0.operationType == OperationType.create.rawValue
-                        && $0.babyId == babyProfile?.id
+                        && $0.babyEntry?.babyId == babyProfile?.id
                     }
                     let result = self.mapBabyEntriesToWeeks(babyEntries, profile: babyProfile)
                     self.babyWeeks = result
@@ -480,9 +480,9 @@ final class HistoryStore: ObservableObject {
                 }()
                 let babyId = babyProfile?.id
                 let dayEntries = allEntries.filter {
-                    $0.deviceType == DeviceType.babyScale.rawValue
+                    $0.entryType == EntryType.baby.rawValue
                     && $0.operationType == OperationType.create.rawValue
-                    && $0.babyId == babyId
+                    && $0.babyEntry?.babyId == babyId
                     && self.localDayString(from: $0.entryTimestamp) == day.id
                 }
                 let metric = self.isMetric
@@ -516,7 +516,7 @@ final class HistoryStore: ObservableObject {
                         lengthInches: lengthInches,
                         lengthCm: lengthCm,
                         percentile: pct,
-                        notes: baby.note.isEmpty ? nil : baby.note,
+                        notes: entry.note?.isEmpty == false ? entry.note : nil,
                         weightDisplay: self.formatBabyWeightDisplay(decigrams: decigrams, source: source, isMetric: metric),
                         lengthDisplay: self.formatBabyLengthDisplay(mm: mm, isMetric: metric)
                     )

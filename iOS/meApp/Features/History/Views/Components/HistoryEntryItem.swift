@@ -134,10 +134,10 @@ struct HistoryEntryItem_Previews: PreviewProvider {
             entryTimestamp: "2025-12-16T14:10:00Z",
             accountId: "123",
             operationType: OperationType.create.rawValue,
-            deviceType: "scale",
+            entryType: EntryType.scale.rawValue,
             isSynced: true
         )
-        
+
         entry.scaleEntry = BathScaleEntry(
             weight: 1492,
             bodyFat: 50,
