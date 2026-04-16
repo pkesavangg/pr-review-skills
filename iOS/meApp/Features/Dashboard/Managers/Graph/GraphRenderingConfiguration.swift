@@ -399,6 +399,12 @@ struct GraphRenderingConfiguration {
                 let end = cal.dateInterval(of: .year, for: maxDate)?.end.addingTimeInterval(-1) ?? adjMax
                 return (start, end)
             }
+            if period == .month {
+                let monthStart = calendar.dateInterval(of: .month, for: minDate)?.start ?? adjMin
+                let monthEnd = calendar.dateInterval(of: .month, for: maxDate)?.end.addingTimeInterval(-1)
+                    ?? currentPeriodEnd(for: period)
+                return (monthStart, max(monthEnd, currentPeriodEnd(for: period)))
+            }
             return (adjMin, max(adjMax, currentPeriodEnd(for: period)))
         } else {
             let buffer = domainLength * 2.0

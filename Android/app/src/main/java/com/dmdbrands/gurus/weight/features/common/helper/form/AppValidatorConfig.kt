@@ -37,11 +37,6 @@ class AppValidatorConfig {
         const val MAX_LENGTH = 10
     }
 
-    object VisceralAge {
-        const val MIN = 1
-        const val MAX = 60
-    }
-
     object BMR {
         const val MIN = 0
         const val MAX = 10000

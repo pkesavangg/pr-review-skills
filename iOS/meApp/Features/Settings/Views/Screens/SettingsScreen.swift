@@ -111,7 +111,7 @@ struct SettingsScreen: View {
         // Unit picker
         .pickerSheet(
             isPresented: $settingsStore.showUnitPicker,
-            selectedValues: [settingsStore.activeAccount?.weightSettings?.weightUnit ?? .lb],
+            selectedValues: [settingsStore.activeAccount?.weightUnit ?? .lb],
             options: [[WeightUnit.lb, .kg]],
             displayValue: { unit in
                 unit == .kg ? CommonStrings.unitKgCm : CommonStrings.pickerLbs
@@ -126,7 +126,7 @@ struct SettingsScreen: View {
         // Activity level picker
         .pickerSheet(
             isPresented: $settingsStore.showActivityPicker,
-            selectedValues: [settingsStore.activeAccount?.weightSettings?.activityLevel ?? .normal],
+            selectedValues: [settingsStore.activeAccount?.activityLevel ?? .normal],
             options: [[ActivityLevel.normal, ActivityLevel.athlete]],
             displayValue: { $0.rawValue.capitalized },
             title: settingsLang.activityLevel,

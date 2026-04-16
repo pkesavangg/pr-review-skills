@@ -132,11 +132,23 @@ enum BabyPercentileGrowthReference {
         // Include one boundary entry outside each edge for smooth line continuity.
         let filtered = entries.filter { $0.day >= startDay - 8 && $0.day <= endDay + 8 }
 
+        // Downsample: keep ~150 points per percentile line max.
+        // For short ranges (< 150 days) keep every point; for longer ranges stride.
+        let stride = max(1, filtered.count / 150)
+        var downsampled: [BabyPercentileLineEntry] = []
+        downsampled.reserveCapacity(min(filtered.count, 152))
+        for (index, entry) in filtered.enumerated() {
+            // Always keep first, last, and every Nth entry
+            if index == 0 || index == filtered.count - 1 || index % stride == 0 {
+                downsampled.append(entry)
+            }
+        }
+
         let lines = BabyPercentileLine.allCases
         var points: [BabyPercentileChartPoint] = []
-        points.reserveCapacity(filtered.count * lines.count)
+        points.reserveCapacity(downsampled.count * lines.count)
 
-        for entry in filtered {
+        for entry in downsampled {
             guard let date = calendar.date(byAdding: .day, value: entry.day, to: birthday) else { continue }
             for line in lines {
                 points.append(BabyPercentileChartPoint(

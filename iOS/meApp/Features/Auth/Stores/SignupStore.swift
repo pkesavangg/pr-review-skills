@@ -20,6 +20,7 @@ import SwiftUI
 final class SignupStore: ObservableObject {
     @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var accountService: AccountServiceProtocol
+    @Injector var babyService: BabyServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     @Injector var kvStorage: KvStorageServiceProtocol
     var alertLang = AlertStrings.self
@@ -72,6 +73,7 @@ final class SignupStore: ObservableObject {
         // async step actions execute after other suites reset the container.
         _ = notificationService
         _ = accountService
+        _ = babyService
         _ = logger
         _ = kvStorage
 
@@ -167,7 +169,7 @@ final class SignupStore: ObservableObject {
             moveToNextStep()
         case .addBaby:
             // Skip baby flow entirely — jump to email step
-            babyProfileForm.reset()
+            resetBabyProfileForm()
             objectWillChange.send()
             if let emailIndex = steps.firstIndex(of: .email) {
                 currentStepIndex = emailIndex
@@ -214,9 +216,10 @@ final class SignupStore: ObservableObject {
             name: babyProfileForm.name.value,
             birthday: babyProfileForm.birthday.value,
             sex: Sex(rawInput: babyProfileForm.biologicalSex.value),
-            birthLengthInches: babyProfileForm.birthLengthInches.value,
-            birthWeightLbs: babyProfileForm.birthWeightLbs.value,
-            birthWeightOz: babyProfileForm.birthWeightOz.value
+            selectedWeightUnit: babyProfileForm.selectedWeightUnit,
+            birthLengthInches: babyProfileForm.parsedBirthLengthInches,
+            birthWeightLbs: babyProfileForm.parsedBirthWeightLbs,
+            birthWeightOz: babyProfileForm.parsedBirthWeightOz
         )
         if let editIndex = isEditingBabyIndex {
             babies[editIndex] = baby
@@ -224,12 +227,12 @@ final class SignupStore: ObservableObject {
         } else {
             babies.append(baby)
         }
-        babyProfileForm.reset()
+        resetBabyProfileForm()
     }
 
     /// Navigates to the addBaby step to add another baby from the baby list.
     func addAnotherBaby() {
-        babyProfileForm.reset()
+        resetBabyProfileForm()
         isEditingBabyIndex = nil
         guard let addBabyIndex = steps.firstIndex(of: .addBaby) else { return }
         currentStepIndex = addBabyIndex
@@ -239,13 +242,16 @@ final class SignupStore: ObservableObject {
     func editBaby(at index: Int) {
         guard index < babies.count else { return }
         let baby = babies[index]
-        babyProfileForm.reset()
+        resetBabyProfileForm()
         babyProfileForm.name.value = baby.name
         babyProfileForm.birthday.value = baby.birthday
         babyProfileForm.biologicalSex.value = baby.sex?.rawValue ?? ""
-        babyProfileForm.birthLengthInches.value = baby.birthLengthInches
-        babyProfileForm.birthWeightLbs.value = baby.birthWeightLbs
-        babyProfileForm.birthWeightOz.value = baby.birthWeightOz
+        babyProfileForm.populateStoredMeasurements(
+            birthLengthInches: baby.birthLengthInches,
+            birthWeightLbs: baby.birthWeightLbs,
+            birthWeightOz: baby.birthWeightOz,
+            preferredWeightUnit: baby.selectedWeightUnit
+        )
         isEditingBabyIndex = index
         guard let addBabyIndex = steps.firstIndex(of: .addBaby) else { return }
         currentStepIndex = addBabyIndex
@@ -412,12 +418,17 @@ final class SignupStore: ObservableObject {
         let profile = generateProfile()
         let goal = generateGoalRequest()
         do {
-            let account = try await accountService.signUp(
+            try await accountService.signUp(
                 email: email,
                 password: password,
                 profile: profile
             )
+            guard let account = accountService.activeAccount else {
+                throw AccountError.noActiveAccount
+            }
             persistSelectedSignupDeviceType(for: account.accountId)
+            try await setInitialProductTypes(on: account)
+            try await persistSignupBabies(for: account)
             // Create the goal if it's not skipped
             if let goal = goal {
                 logger.log(
@@ -433,10 +444,10 @@ final class SignupStore: ObservableObject {
                 tag: tag,
                 message: "Signup flow succeeded. goalSkipped=\(goal == nil), accountSwitching=\(isFromAccountSwitching)"
             )
-            if isFromAccountSwitching {
+            if let onSignupSuccess {
+                onSignupSuccess()
+            } else if isFromAccountSwitching {
                 dismissAction?()
-            } else {
-                onSignupSuccess?()
             }
             resetForm()
         } catch {
@@ -504,6 +515,71 @@ final class SignupStore: ObservableObject {
                 goalType: derivedType
             )
         }
+    }
+
+    private func setInitialProductTypes(on account: AccountSnapshot) async throws {
+        guard let selectedDeviceType else { return }
+        let types: [String]
+        switch selectedDeviceType {
+        case .weightScale:
+            types = ["myWeight"]
+        case .bpm:
+            types = ["myBloodPressure"]
+        case .babyScale:
+            types = ["baby"]
+        }
+        try await accountService.updateProductTypes(types)
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Set initial productTypes=\(types) for accountId=\(account.accountId)"
+        )
+    }
+
+    private func persistSignupBabies(for account: AccountSnapshot) async throws {
+        guard !babies.isEmpty else { return }
+
+        var firstSavedSelection: ProductSelection?
+
+        for signupBaby in babies {
+            let savedBaby = try await babyService.saveBaby(
+                name: signupBaby.name,
+                accountId: account.accountId,
+                deviceId: nil,
+                birthday: signupBaby.birthday,
+                biologicalSex: signupBaby.sex?.rawValue,
+                birthLengthInches: signupBaby.birthLengthInches,
+                birthWeightLbs: signupBaby.birthWeightLbs,
+                birthWeightOz: signupBaby.birthWeightOz
+            )
+
+            if firstSavedSelection == nil {
+                let profile = BabyProfile(
+                    id: savedBaby.id,
+                    name: savedBaby.name,
+                    deviceId: savedBaby.deviceId,
+                    birthday: savedBaby.birthday,
+                    biologicalSex: savedBaby.biologicalSex,
+                    birthLengthInches: savedBaby.birthLengthInches,
+                    birthWeightLbs: savedBaby.birthWeightLbs,
+                    birthWeightOz: savedBaby.birthWeightOz
+                )
+                firstSavedSelection = .baby(profile: profile)
+            }
+        }
+
+        if let firstSavedSelection {
+            ProductTypeStore.shared.selectLastAdded(firstSavedSelection)
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Persisted \(babies.count) signup babies and selected \(firstSavedSelection.displayName)"
+            )
+        }
+    }
+
+    private func resetBabyProfileForm() {
+        babyProfileForm.reset()
     }
 
     private func persistSelectedSignupDeviceType(for accountId: String) {

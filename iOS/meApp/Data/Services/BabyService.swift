@@ -13,12 +13,15 @@ import SwiftData
 final class BabyService: ObservableObject, BabyServiceProtocol {
     static let shared = BabyService()
 
+    @Injector private var accountService: AccountServiceProtocol
+
     @Published var babies: [Baby] = []
 
     var babiesPublisher: Published<[Baby]>.Publisher { $babies }
     var currentBabies: [Baby] { babies }
 
     private let context = PersistenceController.shared.context
+    private let tag = "BabyService"
 
     private init() {}
 
@@ -46,6 +49,7 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
         context.insert(baby)
         try context.save()
         try await loadBabies(for: accountId)
+        try await appendBabyProductTypeIfNeeded()
         return baby
     }
 
@@ -80,6 +84,7 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
         context.delete(baby)
         try context.save()
         try await loadBabies(for: accountId)
+        try await removeBabyProductTypeIfLastDeleted()
     }
 
     func loadBabies(for accountId: String) async throws {
@@ -91,5 +96,32 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
             sortBy: [SortDescriptor(\.name)]
         )
         babies = try context.fetch(descriptor)
+    }
+
+    // MARK: - ProductTypes Sync
+
+    /// Appends "baby" to the active account's productTypes if not already present.
+    private func appendBabyProductTypeIfNeeded() async throws {
+        guard let snapshot = accountService.activeAccount,
+              !snapshot.productTypes.contains("baby") else { return }
+        try await accountService.updateProductTypes(snapshot.productTypes + ["baby"])
+        LoggerService.shared.log(
+            level: .info,
+            tag: tag,
+            message: "Appended baby to productTypes for accountId=\(snapshot.accountId)"
+        )
+    }
+
+    /// Removes "baby" from the active account's productTypes when no babies remain.
+    private func removeBabyProductTypeIfLastDeleted() async throws {
+        guard let snapshot = accountService.activeAccount,
+              babies.isEmpty,
+              snapshot.productTypes.contains("baby") else { return }
+        try await accountService.updateProductTypes(snapshot.productTypes.filter { $0 != "baby" })
+        LoggerService.shared.log(
+            level: .info,
+            tag: tag,
+            message: "Removed baby from productTypes for accountId=\(snapshot.accountId)"
+        )
     }
 }

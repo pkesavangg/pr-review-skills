@@ -57,7 +57,11 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
             } else {
                 anchorDate = dashboardStore.graphManager.visibleMidpoint(for: oldValue)
             }
-            dashboardStore.chartManager.updateSelectedPeriod(newValue, anchorDate: anchorDate)
+            // Dispatch outside the current animation transaction so the segment
+            // button highlight animates without being blocked by chart recalculation.
+            Task { @MainActor in
+                dashboardStore.chartManager.updateSelectedPeriod(newValue, anchorDate: anchorDate)
+            }
         }
     }
 }

@@ -36,6 +36,8 @@ final class MyKidsStore: ObservableObject {
             || babyProfileForm.birthLengthInches.isDirty
             || babyProfileForm.birthWeightLbs.isDirty
             || babyProfileForm.birthWeightOz.isDirty
+            || babyProfileForm.birthLengthCm.isDirty
+            || babyProfileForm.birthWeightKg.isDirty
     }
 
     private var cancellables = Set<AnyCancellable>()
@@ -159,15 +161,12 @@ final class MyKidsStore: ObservableObject {
             babyProfileForm.birthday.value = birthday
         }
         babyProfileForm.biologicalSex.value = baby.biologicalSex ?? ""
-        if let length = baby.birthLengthInches {
-            babyProfileForm.birthLengthInches.value = String(length)
-        }
-        if let lbs = baby.birthWeightLbs {
-            babyProfileForm.birthWeightLbs.value = String(Int(lbs))
-        }
-        if let oz = baby.birthWeightOz {
-            babyProfileForm.birthWeightOz.value = String(oz)
-        }
+        babyProfileForm.populateStoredMeasurements(
+            birthLengthInches: baby.birthLengthInches,
+            birthWeightLbs: baby.birthWeightLbs,
+            birthWeightOz: baby.birthWeightOz,
+            preferredWeightUnit: preferredWeightUnit
+        )
         markFormAsPristine()
     }
 
@@ -178,5 +177,11 @@ final class MyKidsStore: ObservableObject {
         babyProfileForm.birthLengthInches.markAsPristine()
         babyProfileForm.birthWeightLbs.markAsPristine()
         babyProfileForm.birthWeightOz.markAsPristine()
+        babyProfileForm.birthLengthCm.markAsPristine()
+        babyProfileForm.birthWeightKg.markAsPristine()
+    }
+
+    private var preferredWeightUnit: BabyWeightUnit {
+        accountService.activeAccount?.weightUnit == .kg ? .kg : .lbsOz
     }
 }

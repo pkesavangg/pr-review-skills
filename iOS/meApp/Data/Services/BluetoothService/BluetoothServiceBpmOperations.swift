@@ -35,6 +35,15 @@ extension BluetoothService {
             let sdkResult = try await withTimeout(seconds: 10) {
                 try await self.ggBleSDK.confirmPair(ggDevice, replaceUser: replaceUser, pairedSKUMonitors: ggPairedMonitors)
             }
+            if let snapshot = accountService.activeAccount,
+               !snapshot.productTypes.contains("myBloodPressure") {
+                try await accountService.updateProductTypes(snapshot.productTypes + ["myBloodPressure"])
+                logger.log(
+                    level: .info,
+                    tag: tag,
+                    message: "Appended myBloodPressure to productTypes for accountId=\(snapshot.accountId)"
+                )
+            }
             logger.log(level: .info, tag: tag, message: "BPM device connected: \(broadcastId), result: \(sdkResult)")
             return .success(UserCreationResponse(sdkType: sdkResult))
         } catch let error as BluetoothServiceError {

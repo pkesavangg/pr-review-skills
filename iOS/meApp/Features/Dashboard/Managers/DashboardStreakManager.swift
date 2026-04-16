@@ -15,6 +15,8 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     
     // MARK: - Private Properties
     private var hasUpdatedWithRealData: Bool = false
+    private var activeRefreshTask: Task<Void, Error>?
+    private var activeRefreshToken: UUID?
     private var originalStreakItems: [MetricItem] {
         let streakLabels = getStreakLabels()
         return [
@@ -54,12 +56,8 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
 
     // MARK: - Streak Data Management
     func refreshStreakData() async throws {
-        do {
-            let progress = try await entryService.getProgress(entryType: .wg)
-            try await updateStreakItems(with: progress)
-        } catch {
-            logger.log(level: .error, tag: "DashboardStreakManager", message: "Failed to refresh streak data: \(error)")
-            throw DashboardError.dataLoadingFailed(error)
+        try await performCoalescedRefresh {
+            try await self.entryService.getProgress(entryType: .wg)
         }
     }
 
@@ -86,7 +84,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         ))
 
         // Resolve unit once
-        let weightUnit: WeightUnit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
+        let weightUnit: WeightUnit = accountService.activeAccount?.weightUnit ?? .lb
 
         // Weekly change
         let weeklyValue = Double(progress.week)
@@ -174,9 +172,43 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     
     /// Refreshes streak data when unit changes
     func refreshStreakDataForUnitChange() async throws {
-        // Re-fetch progress data and update with new unit
-        let progress = try await entryService.getProgress()
-        try await updateStreakItems(with: progress)
+        try await performCoalescedRefresh {
+            try await self.entryService.getProgress()
+        }
+    }
+
+    private func performCoalescedRefresh(
+        progressProvider: @escaping @MainActor () async throws -> Progress
+    ) async throws {
+        if let activeRefreshTask {
+            try await activeRefreshTask.value
+            return
+        }
+
+        let refreshToken = UUID()
+        activeRefreshToken = refreshToken
+
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let progress = try await progressProvider()
+            try await self.updateStreakItems(with: progress)
+        }
+        activeRefreshTask = task
+
+        do {
+            try await task.value
+            if activeRefreshToken == refreshToken {
+                activeRefreshTask = nil
+                activeRefreshToken = nil
+            }
+        } catch {
+            if activeRefreshToken == refreshToken {
+                activeRefreshTask = nil
+                activeRefreshToken = nil
+            }
+            logger.log(level: .error, tag: "DashboardStreakManager", message: "Failed to refresh streak data: \(error)")
+            throw DashboardError.dataLoadingFailed(error)
+        }
     }
 
     // MARK: - Streak Item Management
@@ -246,7 +278,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     
     /// Returns the current weight unit as a string (e.g., "lbs" or "kg")
     private func getUnitText() -> String {
-        return accountService.activeAccount?.weightSettings?.weightUnit?.rawValue ?? "lbs"
+        return accountService.activeAccount?.weightUnit.rawValue ?? "lbs"
     }
     
     /// Returns dynamic streak labels based on current unit

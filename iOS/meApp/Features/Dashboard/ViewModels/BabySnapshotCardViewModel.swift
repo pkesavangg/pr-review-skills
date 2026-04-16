@@ -13,7 +13,7 @@ import Foundation
 final class BabySnapshotCardViewModel: ObservableObject {
     @Injector private var accountService: AccountServiceProtocol
 
-    @Published private(set) var activeAccount: Account?
+    @Published private(set) var activeAccount: AccountSnapshot?
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -27,39 +27,26 @@ final class BabySnapshotCardViewModel: ObservableObject {
     }
 
     var unitText: String {
-        activeAccount?.weightSettings?.weightUnit?.rawValue ?? "lbs"
+        activeAccount?.weightUnit.rawValue ?? "lbs"
+    }
+
+    private var weightUnit: WeightUnit {
+        activeAccount?.weightUnit ?? .lb
     }
 
     func convertStoredWeightToDisplay(_ storedWeight: Int) -> Double {
-        let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
-        return unit == .kg
-            ? ConversionTools.convertStoredToKg(storedWeight)
-            : ConversionTools.convertStoredToLbs(storedWeight)
+        BabyDashboardChartSupport.convertStoredWeightToDisplay(storedWeight, unit: weightUnit)
     }
 
-    /// Converts a WHO percentile JSON value (decigrams) to the active display unit.
     func convertDecigramsToDisplay(_ decigrams: Int) -> Double {
-        let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
-        // Remove this fallback once baby-scale conversion is confirmed and
-        // implemented separately per SKU type.
-        let kg = Double(decigrams) / BabyPercentileGrowthReference.decigramsToKgFactor
-        let stored = ConversionTools.convertKgToStored(kg)
-        return unit == .kg
-            ? ConversionTools.convertStoredToKg(stored)
-            : ConversionTools.convertStoredToLbs(stored)
+        BabyDashboardChartSupport.convertDecigramsToDisplay(decigrams, unit: weightUnit)
     }
 
     func formatBabyWeight(_ storedWeight: Int) -> (lbs: String, oz: String) {
-        let displayWeight = convertStoredWeightToDisplay(storedWeight)
-        let wholeLbs = Int(displayWeight)
-        let remainingOz = (displayWeight - Double(wholeLbs)) * 16.0
-        return (lbs: "\(wholeLbs)", oz: String(format: "%.1f", remainingOz))
+        BabyDashboardChartSupport.formatBabyWeight(storedWeight, unit: weightUnit)
     }
 
     func weekAverageLbsOz(from summaries: [BathScaleWeightSummary]) -> (lbs: String, oz: String)? {
-        let weights = summaries.map(\.weight).filter { $0 > 0 }
-        guard !weights.isEmpty else { return nil }
-        let avgStored = Int((weights.reduce(0, +) / Double(weights.count)).rounded())
-        return formatBabyWeight(avgStored)
+        BabyDashboardChartSupport.weekAverageLbsOz(from: summaries, unit: weightUnit)
     }
 }

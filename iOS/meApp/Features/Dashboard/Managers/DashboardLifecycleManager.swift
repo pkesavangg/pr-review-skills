@@ -35,6 +35,13 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
     private let editSessionManager: DashboardEditSessionManaging
     private let cacheManager: DashboardCacheManagerProtocol
 
+    // PERFORMANCE: Debounce entry lifecycle changes to coalesce rapid-fire saves/deletes
+    private var entryLifecycleDebounceTask: Task<Void, Never>?
+    private var deferredSyncTask: Task<Void, Never>?
+    private var settingsRefreshTask: Task<Void, Never>?
+    private var onAppearRefreshTask: Task<Void, Never>?
+    private var initializationRefreshTask: Task<Void, Never>?
+
     let lang = LoaderStrings.self
 
     // MARK: - Initialization
@@ -95,31 +102,7 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
 
         await loadMetricsFromLocalAccount()
         await initializeDataManager()
-        await syncEntries()
-
-        do {
-            _ = try? await accountService.refreshAccount()
-            try await streakManager.refreshStreakData()
-            await gridEditingManager.loadProgressMetricsFromAccount()
-            // Goals are only relevant for the personal weight dashboard.
-            if stateProvider.productType != .bpm && !stateProvider.isBabySelection {
-                try? await goalManager.loadGoalData()
-            }
-
-            await MainActor.run {
-                stateProvider.state.ui.hasLoadedProgressMetrics = true
-            }
-        } catch {
-            await MainActor.run {
-                stateProvider.state.ui.hasLoadedProgressMetrics = true
-            }
-        }
-
-        await loadDashboardConfigurationFromAPI()
-
-        gridEditingManager.syncRemovalStateFromMetricsManager()
-
-        loadLatestEntryData()
+        await entryService.loadDashboardData(entryType: stateProvider.productType)
 
         await MainActor.run {
             chartManager.initializeChart()
@@ -127,10 +110,52 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
 
         await MainActor.run {
             stateProvider.state.ui.isResettingDashboard = false
-            if stateProvider.state.ui.hasInitializedChart {
-                displayManager.updateMetricsForCurrentView()
-            }
             stateProvider.scheduleUIUpdate()
+        }
+
+        loadLatestEntryData()
+
+        initializationRefreshTask?.cancel()
+        initializationRefreshTask = Task { [weak self] in
+            guard let self else { return }
+
+            do {
+                _ = try? await self.accountService.refreshAccount()
+                try await self.streakManager.refreshStreakData()
+                await self.gridEditingManager.loadProgressMetricsFromAccount()
+                if stateProvider.productType != .bpm && !stateProvider.isBabySelection {
+                    try? await self.goalManager.loadGoalData()
+                }
+            } catch {
+                self.logger.log(
+                    level: .error,
+                    tag: "DashboardLifecycleManager",
+                    message: "Failed staged progress metric refresh during dashboard init: \(error)"
+                )
+            }
+
+            await MainActor.run {
+                stateProvider.state.ui.hasLoadedProgressMetrics = true
+            }
+
+            await self.loadDashboardConfigurationFromAPI()
+
+            await MainActor.run {
+                self.gridEditingManager.syncRemovalStateFromMetricsManager()
+                if stateProvider.state.ui.hasInitializedChart {
+                    self.displayManager.updateMetricsForCurrentView()
+                }
+                stateProvider.scheduleUIUpdate()
+            }
+        }
+
+        deferredSyncTask?.cancel()
+        deferredSyncTask = Task { [weak self] in
+            guard let self else { return }
+            // Let the first dashboard render settle before sync competes for the same data path.
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            guard !Task.isCancelled else { return }
+            await self.syncEntries()
         }
     }
 
@@ -138,7 +163,7 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
 
     private func determineDashboardTypeFromAccount() -> DashboardType {
         guard let account = accountService.activeAccount,
-              let dashboardTypeString = account.dashboardSettings?.dashboardType
+              let dashboardTypeString = account.dashboardType
         else {
             return .dashboard12
         }
@@ -215,7 +240,6 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
         guard let stateProvider else { return }
         do {
             _ = try? await accountService.refreshAccount()
-            await syncEntries()
             try await metricsManager.loadMetricsFromAPI()
 
             await MainActor.run {
@@ -286,6 +310,18 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
     }
 
     private func handleEntryLifecycleChange() {
+        // PERFORMANCE: Debounce — cancel any pending call and coalesce within 250ms.
+        // Batch syncs can fire dozens of saves in quick succession; without debouncing
+        // each save triggers a full streak fetch + SwiftData queries on the main thread.
+        entryLifecycleDebounceTask?.cancel()
+        entryLifecycleDebounceTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 250_000_000) // 250ms
+            guard !Task.isCancelled else { return }
+            performEntryLifecycleChange()
+        }
+    }
+
+    private func performEntryLifecycleChange() {
         guard let stateProvider else { return }
 
         loadLatestEntryData()
@@ -352,7 +388,12 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
 
     func handleSettingsChange(shouldRefreshStreak: Bool = true) {
         guard let stateProvider else { return }
-        Task {
+        settingsRefreshTask?.cancel()
+        settingsRefreshTask = Task { [weak self] in
+            guard let self else { return }
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            guard !Task.isCancelled else { return }
+
             if shouldRefreshStreak {
                 do {
                     try await self.streakManager.refreshStreakData()
@@ -383,7 +424,7 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
                 stateProvider.forceImmediateUIUpdate()
             }
 
-            await gridEditingManager.loadProgressMetricsFromAccount()
+            await self.gridEditingManager.loadProgressMetricsFromAccount()
         }
     }
 
@@ -414,12 +455,17 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
     func handleActiveAccountChanged() {
         guard let stateProvider else { return }
 
+        deferredSyncTask?.cancel()
+        deferredSyncTask = nil
         chartManager.clearAllCaches()
         stateProvider.state.ui.hasInitializedChart = false
         graphManager.state.isGraphReady = false
         graphManager.state.clearSelection()
         stateProvider.state.graph.clearSelection()
 
+        Task { [weak self] in
+            await self?.syncEntries()
+        }
         loadLatestEntryData()
         loadGoalCardData()
 
@@ -662,9 +708,13 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
 
         loadLatestEntryData()
         loadGoalCardData()
-        Task {
-            await syncEntries()
-            await loadDashboardConfigurationFromAPI()
+        onAppearRefreshTask?.cancel()
+        onAppearRefreshTask = Task { [weak self] in
+            guard let self else { return }
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            guard !Task.isCancelled else { return }
+
+            await self.loadDashboardConfigurationFromAPI()
             await MainActor.run {
                 self.gridEditingManager.syncRemovalStateFromMetricsManager()
                 stateProvider.scheduleUIUpdate()
@@ -674,7 +724,6 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
                     self.displayManager.updateMetricsForCurrentView()
                 }
             }
-            self.handleSettingsChange()
         }
 
         Task { @MainActor in

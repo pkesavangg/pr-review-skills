@@ -22,10 +22,7 @@ final class MonthSectionViewModel: BaseSectionViewModel {
     /// Align plotted daily points to local noon so they overlap month X-axis Sunday ticks,
     /// which are generated at local noon.
     override func plotXDate(for original: Date) -> Date {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = Calendar.current.timeZone
-        cal.locale = Calendar.current.locale
-
+        let cal = localCalendar
         let dayStart = cal.startOfDay(for: original)
         guard let noon = cal.date(byAdding: .hour, value: 12, to: dayStart) else {
             return super.plotXDate(for: original)

@@ -33,7 +33,7 @@ class SettingsStore: ObservableObject {
     let kvStore = KvStorageService.shared
     var useModalPicker = DeviceUtils.useModalPicker
 
-    @Published var activeAccount: Account?
+    @Published var activeAccount: AccountSnapshot?
 
     // Edit-Profile flow
     @Published var editProfileForm = EditProfileForm()
@@ -193,7 +193,7 @@ class SettingsStore: ObservableObject {
 
         accountService.allAccountsPublisher
             .sink { [weak self] allAccounts in
-                self?.canShowLogOutAllItems = allAccounts.filter { $0.isLoggedIn == true }.count > 1
+                self?.canShowLogOutAllItems = allAccounts.filter { $0.isLoggedIn }.count > 1
             }
             .store(in: &cancellables)
 
@@ -400,12 +400,12 @@ class SettingsStore: ObservableObject {
     }
 
     var activityLevelText: String {
-        activeAccount?.weightSettings?.activityLevel?.rawValue.capitalized ?? ""
+        activeAccount?.activityLevel?.rawValue.capitalized ?? ""
     }
 
     var heightText: String {
         // Height is stored as tenths-of-inches (e.g. "681" == 5′8″ / 173 cm)
-        guard let heightStr = activeAccount?.weightSettings?.height,
+        guard let heightStr = activeAccount?.weightHeight,
               let storedHeightDouble = Double(heightStr)
         else {
             return ""
@@ -413,12 +413,12 @@ class SettingsStore: ObservableObject {
 
         let storedHeight = Int(round(storedHeightDouble))
 
-        let isMetric = activeAccount?.weightSettings?.weightUnit == .kg
+        let isMetric = activeAccount?.weightUnit == .kg
         return ConversionTools.convertToFormattedHeight(storedHeight, isMetric: isMetric)
     }
 
     var unitTypeText: String {
-        switch activeAccount?.weightSettings?.weightUnit {
+        switch activeAccount?.weightUnit {
         case .kg: return commonLang.unitKgCm
         case .lb: return commonLang.unitLbsFeet
         case .none: return ""
@@ -439,13 +439,13 @@ class SettingsStore: ObservableObject {
         }
 
         let storedHeight = Int(round(storedDouble))
-        let isMetric = activeAccount?.weightSettings?.weightUnit == .kg
+        let isMetric = activeAccount?.weightUnit == .kg
         return ConversionTools.convertToFormattedHeight(storedHeight, isMetric: isMetric)
     }
 
     var weightlessText: String {
-        let isOn = activeAccount?.weightlessSettings?.isWeightlessOn ?? false
-        let storedWeight = activeAccount?.weightlessSettings?.weightlessWeight
+        let isOn = activeAccount?.isWeightlessOn ?? false
+        let storedWeight = activeAccount?.weightlessWeight
 
         guard isOn else {
             return commonLang.off
@@ -455,7 +455,7 @@ class SettingsStore: ObservableObject {
             return "\(commonLang.on) - Not Set"
         }
 
-        let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
+        let unit = activeAccount?.weightUnit ?? .lb
         let display: Double = unit == .kg
             ? ConversionTools.convertStoredToKg(Int(storedWeight))
             : ConversionTools.convertStoredToLbs(Int(storedWeight))
@@ -467,17 +467,17 @@ class SettingsStore: ObservableObject {
     }
 
     var notificationsOnText: String {
-        guard let settings = activeAccount?.notificationSettings else {
+        guard let account = activeAccount else {
             return commonLang.off
         }
-        if settings.shouldSendEntryNotifications {
-            return settings.shouldSendWeightInEntryNotifications ? "\(commonLang.on) w/ Weight" : "\(commonLang.on) w/o Weight"
+        if account.shouldSendEntryNotifications {
+            return account.shouldSendWeightInEntryNotifications ? "\(commonLang.on) w/ Weight" : "\(commonLang.on) w/o Weight"
         } else {
             return commonLang.off
         }
     }
 
-    var streaksOnText: String { (activeAccount?.streaksSettings?.isStreakOn ?? false) ? commonLang.on : commonLang.off }
+    var streaksOnText: String { (activeAccount?.isStreakOn ?? false) ? commonLang.on : commonLang.off }
 
     /// Dynamic title for the Messages row. When the feed badge is visible, append unread count.
     var messagesTitleText: String {
@@ -563,8 +563,7 @@ class SettingsStore: ObservableObject {
             }
 
             // Populate height from account (convert to displayed format)
-            if let heightStr = account.weightSettings?.height,
-               let heightDouble = Double(heightStr) {
+            if let heightDouble = Double(account.weightHeight) {
                 editProfileForm.height.value = String(Int(heightDouble))
             }
 
@@ -593,7 +592,7 @@ class SettingsStore: ObservableObject {
         let shouldUpdateR4Profile = firstNameChanged || dobChanged
 
         // Convert form height to Double for the profile
-        let formHeightDouble = Double(editProfileForm.height.value) ?? (activeAccount?.weightSettings.flatMap { Double($0.height ?? "0") } ?? 0.0)
+        let formHeightDouble = Double(editProfileForm.height.value) ?? (Double(activeAccount?.weightHeight ?? "0") ?? 0.0)
 
         let profile = Profile(
             firstName: firstNameValue,
@@ -602,9 +601,9 @@ class SettingsStore: ObservableObject {
             gender: editProfileForm.gender.value,
             zipcode: removeWhiteSpace(editProfileForm.zipcode.value),
             dob: dobValue,
-            weightUnit: activeAccount?.weightSettings?.weightUnit ?? .lb,
+            weightUnit: activeAccount?.weightUnit ?? .lb,
             height: formHeightDouble,
-            activityLevel: activeAccount?.weightSettings?.activityLevel ?? .normal
+            activityLevel: activeAccount?.activityLevel ?? .normal
         )
         Task {
             notificationService.showLoader(LoaderModel(text: LoaderStrings.saving))
@@ -617,9 +616,9 @@ class SettingsStore: ObservableObject {
                 _ = try await accountService.updateProfile(profile)
                 // Also update body composition (height, weightUnit, activityLevel)
                 let bodyComp = BodyComp(
-                    weightUnit: activeAccount?.weightSettings?.weightUnit ?? .lb,
+                    weightUnit: activeAccount?.weightUnit ?? .lb,
                     height: formHeightDouble,
-                    activityLevel: activeAccount?.weightSettings?.activityLevel ?? .normal
+                    activityLevel: activeAccount?.activityLevel ?? .normal
                 )
                 _ = try await accountService.updateBodyComp(bodyComp)
                 // Only update R4 scales profile if firstName or dob changed
@@ -903,7 +902,7 @@ class SettingsStore: ObservableObject {
     func updateWeightUnit(_ unit: WeightUnit) {
         guard let account = activeAccount else { return }
         // Skip if no change
-        guard account.weightSettings?.weightUnit != unit else { return }
+        guard account.weightUnit != unit else { return }
 
         Task {
             httpClient.skipCheckNetwork = true
@@ -911,8 +910,8 @@ class SettingsStore: ObservableObject {
             do {
                 let bodyComp = BodyComp(
                     weightUnit: unit,
-                    height: account.weightSettings.flatMap { Double($0.height ?? "0") } ?? 0.0,
-                    activityLevel: account.weightSettings?.activityLevel ?? .normal
+                    height: Double(account.weightHeight) ?? 0.0,
+                    activityLevel: account.activityLevel ?? .normal
                 )
                 _ = try await accountService.updateBodyComp(bodyComp)
 
@@ -950,15 +949,15 @@ class SettingsStore: ObservableObject {
 
     func updateActivityLevel(_ level: ActivityLevel) {
         guard let account = activeAccount else { return }
-        guard account.weightSettings?.activityLevel != level else { return }
+        guard account.activityLevel != level else { return }
 
         Task {
             httpClient.skipCheckNetwork = true
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
             do {
                 let bodyComp = BodyComp(
-                    weightUnit: account.weightSettings?.weightUnit ?? .lb,
-                    height: account.weightSettings.flatMap { Double($0.height ?? "0") } ?? 0.0,
+                    weightUnit: account.weightUnit,
+                    height: Double(account.weightHeight) ?? 0.0,
                     activityLevel: level
                 )
                 _ = try await accountService.updateBodyComp(bodyComp)
@@ -997,9 +996,8 @@ class SettingsStore: ObservableObject {
     func updateNotificationPreference(_ preference: NotificationPreference) {
         guard let account = activeAccount else { return }
         let currentPref: NotificationPreference = {
-            let settings = account.notificationSettings
-            if settings?.shouldSendEntryNotifications == true {
-                return settings?.shouldSendWeightInEntryNotifications == true ? .enableWithWeight : .enable
+            if account.shouldSendEntryNotifications {
+                return account.shouldSendWeightInEntryNotifications ? .enableWithWeight : .enable
             } else {
                 return .disable
             }
@@ -1149,7 +1147,7 @@ class SettingsStore: ObservableObject {
         guard hasWeightlessChanges, isWeightLessFormValid else { return }
         if weightlessForm.isOn.value && weightlessForm.weight.isInvalid { return }
 
-        let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
+        let unit = activeAccount?.weightUnit ?? .lb
         let storedWeight: Int = {
             if let val = Double(weightlessForm.weight.value) {
                 return ConversionTools.convertDisplayToStored(val, isMetric: unit == .kg)
@@ -1166,8 +1164,8 @@ class SettingsStore: ObservableObject {
     private func updateWeightlessMode(isOn: Bool, storedWeight: Int, onSuccess: @escaping () -> Void) {
         guard let account = activeAccount else { return }
 
-        let currentOn = account.weightlessSettings?.isWeightlessOn ?? false
-        let currentWeightStored = Int(account.weightlessSettings?.weightlessWeight ?? 0)
+        let currentOn = account.isWeightlessOn
+        let currentWeightStored = Int(account.weightlessWeight ?? 0)
         if currentOn == isOn, currentWeightStored == storedWeight {
             onSuccess()
             return
@@ -1227,8 +1225,8 @@ class SettingsStore: ObservableObject {
 
         // If weightlessWeight is null, toggle should be OFF regardless of isWeightlessOn
         // This handles cases where API returns inconsistent data
-        let hasWeight = account.weightlessSettings?.weightlessWeight != nil
-        let isWeightlessOn = account.weightlessSettings?.isWeightlessOn ?? false
+        let hasWeight = account.weightlessWeight != nil
+        let isWeightlessOn = account.isWeightlessOn
 
         // Toggle should be ON only if both isWeightlessOn is true AND weightlessWeight exists
         let shouldBeOn = isWeightlessOn && hasWeight
@@ -1239,9 +1237,9 @@ class SettingsStore: ObservableObject {
         initialWeightlessToggleState = shouldBeOn
 
         // Set weight field value
-        if let storedWeight = account.weightlessSettings?.weightlessWeight, shouldBeOn {
+        if let storedWeight = account.weightlessWeight, shouldBeOn {
             // Convert stored tenths-of-lbs value to display unit.
-            let unit = account.weightSettings?.weightUnit ?? .lb
+            let unit = account.weightUnit
             let display: Double = unit == .kg
                 ? ConversionTools.convertStoredToKg(Int(storedWeight))
                 : ConversionTools.convertStoredToLbs(Int(storedWeight))
@@ -1254,7 +1252,7 @@ class SettingsStore: ObservableObject {
             weightlessForm.weight.value = ""
             weightlessForm.weight.markAsPristine()
         }
-        let maxWeight = account.weightSettings?.weightUnit ?? .lb == .kg ? 450.0 : 999.0
+        let maxWeight = account.weightUnit == .kg ? 450.0 : 999.0
 
         // Remove old validator
         weightlessForm.weight.removeValidator(ofType: .maxValue)
@@ -1276,8 +1274,7 @@ class SettingsStore: ObservableObject {
 
     /// Syncs the picker selections with the currently stored height.
     private func syncHeightPickers() {
-        guard let storedString = activeAccount?.weightSettings?.height,
-              let storedDouble = Double(storedString) else { return }
+        guard let storedDouble = Double(activeAccount?.weightHeight ?? "") else { return }
         let stored = Int(round(storedDouble))
         let selections = ConversionTools.pickerSelections(from: stored)
         selectedHeightInches = selections.inches
@@ -1286,7 +1283,7 @@ class SettingsStore: ObservableObject {
 
     /// Presents the correct picker sheet based on the user's current unit preference.
     func showHeightPicker() {
-        if activeAccount?.weightSettings?.weightUnit == .kg {
+        if activeAccount?.weightUnit == .kg {
             showHeightCmPicker = true
         } else {
             showHeightInchesPicker = true
@@ -1303,19 +1300,19 @@ class SettingsStore: ObservableObject {
         guard !goalForm.isDirty else { return }
 
         // Goal type
-        if let gType = account.goalSettings?.goalType {
+        if let gType = account.goalType {
             goalForm.goalType.value = gType == .maintain ? GoalType.maintain.rawValue : GoalTypeSegment.losegainValue
             goalForm.goalType.markAsPristine()
         }
-        if let goalW = account.goalSettings?.initialWeight {
-            let unit = account.weightSettings?.weightUnit ?? .lb
+        if let goalW = account.initialWeight {
+            let unit = account.weightUnit
             let display = unit == .kg ? ConversionTools.convertStoredToKg(Int(goalW)) : ConversionTools.convertStoredToLbs(Int(goalW))
             goalForm.currentWeight.value = String(format: "%.1f", display)
             goalForm.currentWeight.markAsPristine()
         }
 
-        if let goalW = account.goalSettings?.goalWeight {
-            let unit = account.weightSettings?.weightUnit ?? .lb
+        if let goalW = account.goalWeight {
+            let unit = account.weightUnit
             let display = unit == .kg ? ConversionTools.convertStoredToKg(Int(goalW)) : ConversionTools.convertStoredToLbs(Int(goalW))
             goalForm.goalWeight.value = String(format: "%.1f", display)
             goalForm.goalWeight.markAsPristine()
@@ -1328,7 +1325,7 @@ class SettingsStore: ObservableObject {
 
     /// Updates the max-weight validator whenever the preferred unit changes.
     private func updateGoalWeightValidators() {
-        let isMetric = (activeAccount?.weightSettings?.weightUnit ?? .lb) == .kg
+        let isMetric = (activeAccount?.weightUnit ?? .lb) == .kg
         let maxWeight = isMetric ? 450.0 : 999.0
 
         for ctrl in [goalForm.currentWeight, goalForm.goalWeight] {
@@ -1395,7 +1392,7 @@ class SettingsStore: ObservableObject {
         goalForm.validate()
         guard goalForm.isDirty, isGoalFormValid else { return }
 
-        let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
+        let unit = activeAccount?.weightUnit ?? .lb
         let isMetric = unit == .kg
         let convert = { (valString: String) -> Int in
             let val = Double(valString) ?? 0.0
@@ -1501,9 +1498,9 @@ class SettingsStore: ObservableObject {
 
     /// Current notification preference derived from account settings.
     var notificationPreference: NotificationPreference {
-        let settings = activeAccount?.notificationSettings
-        if settings?.shouldSendEntryNotifications == true {
-            return settings?.shouldSendWeightInEntryNotifications == true ? .enableWithWeight : .enable
+        guard let account = activeAccount else { return .disable }
+        if account.shouldSendEntryNotifications {
+            return account.shouldSendWeightInEntryNotifications ? .enableWithWeight : .enable
         }
         return .disable
     }
@@ -1702,7 +1699,7 @@ class SettingsStore: ObservableObject {
     func presentUnitPicker() {
         if useModalPicker {
             let picker = PickerView(
-                selectedValues: [activeAccount?.weightSettings?.weightUnit ?? .lb],
+                selectedValues: [activeAccount?.weightUnit ?? .lb],
                 options: [[WeightUnit.lb, WeightUnit.kg]],
                 displayValue: { unit in unit == .kg ? CommonStrings.unitKgCm : CommonStrings.pickerLbs },
                 title: SettingsStrings.unitType,
@@ -1722,7 +1719,7 @@ class SettingsStore: ObservableObject {
     func presentActivityPicker() {
         if useModalPicker {
             let picker = PickerView(
-                selectedValues: [activeAccount?.weightSettings?.activityLevel ?? .normal],
+                selectedValues: [activeAccount?.activityLevel ?? .normal],
                 options: [[ActivityLevel.normal, ActivityLevel.athlete]],
                 displayValue: { $0.rawValue.capitalized },
                 title: SettingsStrings.activityLevel,
@@ -1741,7 +1738,7 @@ class SettingsStore: ObservableObject {
     /// Presents the height picker (modal on iPad < iOS18, sheet otherwise).
     func presentHeightPicker() {
         if useModalPicker {
-            if activeAccount?.weightSettings?.weightUnit == .kg {
+            if activeAccount?.weightUnit == .kg {
                 let picker = PickerView(
                     selectedValues: selectedHeightCm,
                     options: heightCmOptions,

@@ -18,6 +18,10 @@ import Foundation
 /// Access via: @Injector var productTypeStore: ProductTypeStoreProtocol
 @MainActor
 final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
+    private struct AccountSelectionSnapshot: Equatable {
+        let accountId: String?
+        let productTypes: [String]
+    }
 
     @Injector private var scaleService: ScaleServiceProtocol
     @Injector private var babyService: BabyServiceProtocol
@@ -28,7 +32,7 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
     // MARK: - Public State
 
     /// Ordered list of items for the dropdown, rebuilt whenever devices or baby profiles change.
-    @Published private(set) var availableItems: [ProductSelection] = [.myWeight, .myBloodPressure]
+    @Published private(set) var availableItems: [ProductSelection] = [.myWeight]
 
     /// The item currently selected in the header dropdown.
     /// Initialized to `.myWeight` as a placeholder; immediately corrected in `init()`
@@ -42,36 +46,10 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
     private var restoredForAccountId: String?
     private let tag = "ProductTypeStore"
 
-    private static func fallbackBabyProfiles(calendar: Calendar = .current) -> [BabyProfile] {
-        #if DEBUG
-        let today = calendar.startOfDay(for: Date())
-        let liamBirthday = calendar.date(byAdding: .day, value: -112, to: today)
-        let stacyBirthday = calendar.date(byAdding: .day, value: -84, to: today)
-
-        return [
-            BabyProfile(
-                id: "fallback-stacy",
-                name: "Stacy",
-                birthday: stacyBirthday,
-                biologicalSex: "female",
-                birthLengthInches: 19.0,
-                birthWeightLbs: 6,
-                birthWeightOz: 14
-            ),
-            BabyProfile(
-                id: "fallback-liam",
-                name: "Liam",
-                birthday: liamBirthday,
-                biologicalSex: "male",
-                birthLengthInches: 20.0,
-                birthWeightLbs: 7,
-                birthWeightOz: 8
-            )
-        ]
-        #else
-        return []
-        #endif
-    }
+    private static let placeholderBabyProfile = BabyProfile(
+        id: BabyProfile.pendingSelectionId,
+        name: ProductTypeStrings.babyScale
+    )
 
     // MARK: - Singleton
 
@@ -107,6 +85,20 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
                 Task { @MainActor in
                     await self.handleAccountChange(accountId)
                 }
+            }
+            .store(in: &cancellables)
+
+        accountService.activeAccountPublisher
+            .map {
+                AccountSelectionSnapshot(
+                    accountId: $0?.accountId,
+                    productTypes: $0?.productTypes ?? []
+                )
+            }
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.rebuild()
             }
             .store(in: &cancellables)
     }
@@ -159,13 +151,75 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
     private func subscribeToChanges() {
         scaleService.scalesPublisher
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.rebuild() }
+            .sink { [weak self] devices in
+                self?.syncProductTypesFromDevices(devices)
+                self?.rebuild()
+            }
             .store(in: &cancellables)
 
         babyService.babiesPublisher
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.rebuild() }
+            .sink { [weak self] babies in
+                self?.syncProductTypesFromBabies(babies)
+                self?.rebuild()
+            }
             .store(in: &cancellables)
+    }
+
+    /// Ensures account.productTypes stays in sync when devices are added.
+    private func syncProductTypesFromDevices(_ devices: [Device]) {
+        guard let account = accountService.activeAccount,
+              !account.productTypes.isEmpty else { return }
+
+        var types = account.productTypes
+        var changed = false
+
+        let hasWeightScale = devices.contains { $0.deviceType == DeviceType.scale.rawValue }
+        let hasBpm = devices.contains { $0.deviceType == DeviceType.bpm.rawValue }
+        let hasBabyScale = devices.contains { $0.deviceType == DeviceType.babyScale.rawValue }
+
+        if hasWeightScale && !types.contains("myWeight") {
+            types.append("myWeight")
+            changed = true
+        }
+
+        if hasBpm && !types.contains("myBloodPressure") {
+            types.append("myBloodPressure")
+            changed = true
+        }
+
+        if hasBabyScale && !types.contains("baby") {
+            types.append("baby")
+            changed = true
+        }
+
+        if changed {
+            Task {
+                try? await accountService.updateProductTypes(types)
+            }
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Synced productTypes=\(types) for accountId=\(account.accountId)"
+            )
+        }
+    }
+
+    private func syncProductTypesFromBabies(_ babies: [Baby]) {
+        guard let account = accountService.activeAccount,
+              !babies.isEmpty,
+              !account.productTypes.contains("baby") else { return }
+
+        var types = account.productTypes
+        types.append("baby")
+        Task {
+            try? await accountService.updateProductTypes(types)
+        }
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Synced baby productType for accountId=\(account.accountId)"
+        )
     }
 
     private func handleAccountChange(_ accountId: String?) async {
@@ -184,45 +238,81 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         restorePersistedSelection(for: accountId)
     }
 
-    private func rebuild() {
+    /// Returns the authoritative product types for the current account.
+    ///
+    /// Primary path: when `account.productTypes` is non-empty, use it directly.
+    /// Reconstruction path: when `productTypes` is empty (reinstall/new device),
+    /// derive from server-synced devices, save back to the account, then return.
+    private func resolveProductTypes() -> [String] {
+        guard let account = accountService.activeAccount else { return ["myWeight"] }
+
+        if !account.productTypes.isEmpty {
+            return account.productTypes
+        }
+
+        // Reconstruction: derive from server-synced devices.
         let devices = scaleService.scales
+        var reconstructed: [String] = []
+
+        if devices.contains(where: { $0.deviceType == DeviceType.scale.rawValue }) {
+            reconstructed.append("myWeight")
+        }
+        if devices.contains(where: { $0.deviceType == DeviceType.bpm.rawValue }) {
+            reconstructed.append("myBloodPressure")
+        }
+        if devices.contains(where: { $0.deviceType == DeviceType.babyScale.rawValue }) || !babyService.currentBabies.isEmpty {
+            reconstructed.append("baby")
+        }
+        if reconstructed.isEmpty {
+            reconstructed = ["myWeight"]
+        }
+
+        Task {
+            try? await accountService.updateProductTypes(reconstructed)
+        }
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Reconstructed productTypes=\(reconstructed) for accountId=\(account.accountId)"
+        )
+
+        return reconstructed
+    }
+
+    private func rebuild() {
         let babies = babyService.currentBabies
 
         var items: [ProductSelection] = []
-        let hasNoLoadedDevices = devices.isEmpty
-        let hasWeightDashboard = hasNoLoadedDevices || devices.contains {
-            $0.deviceType == DeviceType.scale.rawValue || $0.deviceType == DeviceType.babyScale.rawValue
-        }
-        let hasBpmDashboard = hasNoLoadedDevices || devices.contains {
-            $0.deviceType == DeviceType.bpm.rawValue
-        }
+        let productTypes = resolveProductTypes()
 
-        // 1. My Weight — present if any scale-type device is registered
-        if hasWeightDashboard {
+        // 1. My Weight — present if productTypes contains "myWeight"
+        if productTypes.contains("myWeight") {
             items.append(.myWeight)
         }
 
-        // 2. My Blood Pressure — present if any BPM device is registered
-        if hasBpmDashboard {
+        // 2. My Blood Pressure — present if productTypes contains "myBloodPressure"
+        if productTypes.contains("myBloodPressure") {
             items.append(.myBloodPressure)
         }
 
-        // 3. Individual babies — listed whenever baby profiles exist.
-        if babies.isEmpty {
-            Self.fallbackBabyProfiles().forEach { items.append(.baby(profile: $0)) }
-        } else {
-            for baby in babies {
-                let profile = BabyProfile(
-                    id: baby.id,
-                    name: baby.name,
-                    deviceId: baby.deviceId,
-                    birthday: baby.birthday,
-                    biologicalSex: baby.biologicalSex,
-                    birthLengthInches: baby.birthLengthInches,
-                    birthWeightLbs: baby.birthWeightLbs,
-                    birthWeightOz: baby.birthWeightOz
-                )
-                items.append(.baby(profile: profile))
+        // 3. Individual babies — listed when productTypes contains "baby"
+        if productTypes.contains("baby") {
+            if babies.isEmpty {
+                items.append(.baby(profile: Self.placeholderBabyProfile))
+            } else {
+                for baby in babies {
+                    let profile = BabyProfile(
+                        id: baby.id,
+                        name: baby.name,
+                        deviceId: baby.deviceId,
+                        birthday: baby.birthday,
+                        biologicalSex: baby.biologicalSex,
+                        birthLengthInches: baby.birthLengthInches,
+                        birthWeightLbs: baby.birthWeightLbs,
+                        birthWeightOz: baby.birthWeightOz
+                    )
+                    items.append(.baby(profile: profile))
+                }
             }
         }
 

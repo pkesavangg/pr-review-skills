@@ -11,6 +11,24 @@ import SwiftUI
 
 @MainActor
 final class DashboardDisplayManager: DashboardDisplayManaging {
+    private struct MetricsUpdateSignature: Equatable {
+        enum Mode: Equatable {
+            case selectedPoint(String)
+            case selectedDate(Date)
+            case visibleAverage([String])
+            case placeholders(String)
+        }
+
+        let mode: Mode
+    }
+
+    private struct LabelRangeOperationsCacheKey: Equatable {
+        let period: TimePeriod
+        let scrollPosition: TimeInterval
+        let operationCount: Int
+        let firstTimestamp: String?
+        let lastTimestamp: String?
+    }
 
     // MARK: - Dependencies
 
@@ -31,6 +49,11 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
 
     /// The current AHA classification, driven by point selection or last entry. Defaults to `.normal`.
     var currentBpmClassification: AhaPressureClass = .normal
+    private var metricsUpdateTask: Task<Void, Never>?
+    private var lastMetricsUpdateSignature: MetricsUpdateSignature?
+    private var resetMetricsTask: Task<Void, Never>?
+    private var cachedLabelRangeOperationsKey: LabelRangeOperationsCacheKey?
+    private var cachedLabelRangeOperations: [BathScaleWeightSummary] = []
 
     /// Updates the AHA classification based on a selected/tapped data point.
     func handleBpmPointSelection(_ point: BathScaleWeightSummary) {
@@ -224,7 +247,7 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
     }
 
     var displayUnitText: String {
-        let unit: WeightUnit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
+        let unit: WeightUnit = accountService.activeAccount?.weightUnit ?? .lb
         let displayValue = displayWeight ?? getCurrentAverageWeight()
         return WeightValueConvertor.unitForDisplay(value: displayValue, unit: unit)
     }
@@ -350,6 +373,18 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
     func getOperationsForLabelDateRange() -> [BathScaleWeightSummary] {
         guard let stateProvider else { return [] }
         let continuousOps = getContinuousOperations()
+        let cacheKey = LabelRangeOperationsCacheKey(
+            period: stateProvider.state.graph.selectedPeriod,
+            scrollPosition: graphManager.state.xScrollPosition.timeIntervalSinceReferenceDate,
+            operationCount: continuousOps.count,
+            firstTimestamp: continuousOps.first?.entryTimestamp,
+            lastTimestamp: continuousOps.last?.entryTimestamp
+        )
+
+        if cachedLabelRangeOperationsKey == cacheKey {
+            return cachedLabelRangeOperations
+        }
+
         let result = cacheManager.getLabelDateRangeOperations(
             period: stateProvider.state.graph.selectedPeriod,
             scrollPosition: graphManager.state.xScrollPosition
@@ -367,6 +402,8 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
                 cachedOps: []
             )
         }
+        cachedLabelRangeOperationsKey = cacheKey
+        cachedLabelRangeOperations = result.operations
         return result.operations
     }
 
@@ -474,7 +511,7 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
             isWeightlessMode: getIsWeightlessModeEnabled(),
             anchorWeight: getWeightlessAnchorWeight(),
             period: stateProvider.state.graph.selectedPeriod,
-            weightUnit: accountService.activeAccount?.weightSettings?.weightUnit ?? .lb,
+            weightUnit: accountService.activeAccount?.weightUnit ?? .lb,
             latestWeightStored: dataManager.state.latestWeightStored,
             convertWeight: goalManager.convertWeightToDisplay,
             interpolatedWeight: { date, ops, isWeightless, anchor, convert in
@@ -518,16 +555,28 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
             return
         }
 
+        guard !stateProvider.state.graph.isScrolling else {
+            return
+        }
+
         if let selectedPoint = stateProvider.state.graph.selectedPoint {
-            Task {
+            let signature = MetricsUpdateSignature(mode: .selectedPoint(selectedPoint.entryTimestamp))
+            guard shouldRunMetricsUpdate(for: signature) else { return }
+
+            metricsUpdateTask = Task { [weak self, weak stateProvider] in
+                guard let self else { return }
                 try? await self.metricsManager.updateMetrics(with: selectedPoint)
                 await MainActor.run {
-                    stateProvider.state.ui.hasLoadedMetricValues = true
+                    stateProvider?.state.ui.hasLoadedMetricValues = true
                 }
             }
             return
         }
         if stateProvider.state.graph.selectedXValue != nil {
+            let signature = MetricsUpdateSignature(
+                mode: .selectedDate(stateProvider.state.graph.selectedXValue ?? .distantPast)
+            )
+            guard shouldRunMetricsUpdate(for: signature) else { return }
             metricsManager.setPlaceholdersForAllMetrics()
             stateProvider.state.ui.hasLoadedMetricValues = true
             return
@@ -535,15 +584,21 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
         let ops = self.getOperationsForLabelDateRange()
 
         if ops.isEmpty {
+            let signature = MetricsUpdateSignature(mode: .placeholders("empty"))
+            guard shouldRunMetricsUpdate(for: signature) else { return }
             metricsManager.setPlaceholdersForAllMetrics()
             stateProvider.state.ui.hasLoadedMetricValues = true
             return
         }
 
-        Task {
+        let signature = MetricsUpdateSignature(mode: .visibleAverage(metricsSignatureComponents(for: ops)))
+        guard shouldRunMetricsUpdate(for: signature) else { return }
+
+        metricsUpdateTask = Task { [weak self, weak stateProvider] in
+            guard let self else { return }
             await self.metricsManager.updateMetricsForVisibleAverage(visibleOperations: ops)
             await MainActor.run {
-                stateProvider.state.ui.hasLoadedMetricValues = true
+                stateProvider?.state.ui.hasLoadedMetricValues = true
             }
         }
     }
@@ -559,10 +614,33 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
     }
 
     func resetMetricsToLatestEntry() {
-        Task {
+        resetMetricsTask?.cancel()
+        resetMetricsTask = Task { [weak self] in
+            guard let self else { return }
             await metricsManager.resetMetricsToLatestEntry {
                 try await self.dataManager.getLatestEntry()
             }
         }
+    }
+
+    private func shouldRunMetricsUpdate(for signature: MetricsUpdateSignature) -> Bool {
+        guard lastMetricsUpdateSignature != signature else { return false }
+        lastMetricsUpdateSignature = signature
+        metricsUpdateTask?.cancel()
+        metricsUpdateTask = nil
+        return true
+    }
+
+    private func metricsSignatureComponents(for operations: [BathScaleWeightSummary]) -> [String] {
+        guard let first = operations.first, let last = operations.last else { return ["empty"] }
+        return [
+            "\(operations.count)",
+            first.period,
+            first.entryTimestamp,
+            "\(first.weight)",
+            last.period,
+            last.entryTimestamp,
+            "\(last.weight)"
+        ]
     }
 }

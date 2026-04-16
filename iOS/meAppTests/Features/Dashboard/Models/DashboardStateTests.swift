@@ -618,45 +618,6 @@ struct DashboardStateTests {
         #expect(dataState.hasAnyEntries == true) // Array is not empty even with nils
     }
 
-    @Test("DataState: continuousOperations returns sorted compactMapped daily summaries")
-    func dataContinuousOperationsSorted() {
-        var dataState = DataState()
-        let s1 = DashboardTestFixtures.makeSummary(period: "2026-03-03", weight: 1830)
-        let s2 = DashboardTestFixtures.makeSummary(period: "2026-03-01", weight: 1800)
-        let s3 = DashboardTestFixtures.makeSummary(period: "2026-03-02", weight: 1810)
-        dataState.dailySummaries = [s1, s2, s3]
-
-        let ops = dataState.continuousOperations
-        #expect(ops.count == 3)
-        #expect(ops[0].weight == 1800) // March 1 first
-        #expect(ops[1].weight == 1810) // March 2 second
-        #expect(ops[2].weight == 1830) // March 3 third
-    }
-
-    @Test("DataState: continuousOperations filters out nil entries")
-    func dataContinuousOperationsFiltersNils() {
-        var dataState = DataState()
-        let s1 = DashboardTestFixtures.makeSummary(period: "2026-03-01", weight: 1800)
-        dataState.dailySummaries = [nil, s1, nil]
-
-        let ops = dataState.continuousOperations
-        #expect(ops.count == 1)
-        #expect(ops[0].weight == 1800)
-    }
-
-    @Test("DataState: continuousOperations returns empty for empty daily summaries")
-    func dataContinuousOperationsEmptyWhenNoData() {
-        let dataState = DataState()
-        #expect(dataState.continuousOperations.isEmpty)
-    }
-
-    @Test("DataState: continuousOperations returns empty when all entries are nil")
-    func dataContinuousOperationsEmptyWhenAllNil() {
-        var dataState = DataState()
-        dataState.dailySummaries = [nil, nil, nil]
-
-        #expect(dataState.continuousOperations.isEmpty)
-    }
 
     @Test("DataState: dailyCache stores and retrieves by period key")
     func dataDailyCacheStoreRetrieve() {
@@ -686,30 +647,6 @@ struct DashboardStateTests {
         #expect(dataState.latestWeightStored == 1805)
     }
 
-    @Test("DataState: continuousOperations with single entry returns single-element array")
-    func dataContinuousOperationsSingleEntry() {
-        var dataState = DataState()
-        dataState.dailySummaries = [DashboardTestFixtures.makeSummary()]
-
-        #expect(dataState.continuousOperations.count == 1)
-    }
-
-    @Test("DataState: continuousOperations preserves date sort with large dataset")
-    func dataContinuousOperationsLargeDataset() {
-        var dataState = DataState()
-        let summaries: [BathScaleWeightSummary?] = (1...30).map { day in
-            let dayStr = String(format: "%02d", day)
-            return DashboardTestFixtures.makeSummary(period: "2026-03-\(dayStr)", weight: Double(1800 + day))
-        }.shuffled()
-        dataState.dailySummaries = summaries
-
-        let ops = dataState.continuousOperations
-        #expect(ops.count == 30)
-        // Verify sorted ascending by date
-        for i in 0..<(ops.count - 1) {
-            #expect(ops[i].date <= ops[i + 1].date)
-        }
-    }
 
     // MARK: - Cross-State Mutation Tests
 

@@ -35,6 +35,8 @@ final class MockContentViewModelEntryService: EntryServiceProtocol {
         loadDashboardDataCalls += 1
     }
 
+    func loadBabyDashboardData(babyId: String) async {}
+
     func getAllEntries() async throws -> [Entry] {
         getAllEntriesCalls += 1
         return try allEntriesResult.get()
@@ -45,6 +47,7 @@ final class MockContentViewModelEntryService: EntryServiceProtocol {
     func saveNewEntry(_ entry: Entry) async throws {}
     func saveNewEntries(_ entries: [Entry]) async throws {}
     func deleteEntry(_ entry: Entry) async throws {}
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {}
     func getAllEntriesAsDTO() async throws -> [BathScaleOperationDTO] { [] }
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool { false }
     func getEntryCount() async throws -> Int { 0 }
@@ -183,7 +186,6 @@ final class MockContentViewModelScaleService: ScaleServiceProtocol {
         syncAllScalesWithRemoteCalls += 1
     }
 
-    func createScaleInLocal(_ device: Device) async throws -> Device { device }
     func pushLocalChangesToServer() async {}
     func getDevice(by deviceId: String) async throws -> Device? { nil }
     func updateConnectedDeviceWeightOnlyMode(broadcastId: String, isWeightOnlyModeEnabledByOthers: Bool) async {}

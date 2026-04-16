@@ -18,6 +18,7 @@ struct LoginScreen: View {
     /// Optional e-mail address passed from previous screen to pre-populate the form
     var prefilledEmail: String?
     var isFromAccountSwitching: Bool = false
+    var onAccountSwitchingLoginSuccess: (() -> Void)?
     
     let labels = InputFieldLabels.self
     let commonLang = CommonStrings.self
@@ -200,12 +201,17 @@ struct LoginScreen: View {
             store.isFromAccountSwitching = isFromAccountSwitching
             if isFromAccountSwitching {
                 store.dismissAction = dismiss
+                store.onLoginSuccess = onAccountSwitchingLoginSuccess ?? {
+                    dismiss()
+                }
                 // Set up exit handler to dismiss the sheet
                 store.onAccountSwitchingExit = {
                     dismiss()
                 }
             } else {
-                store.onLoginSuccess = { router.navigateBack() }
+                // Successful auth promotes the root ContentView from landing to dashboard.
+                // Avoid relying on auth-stack pops so all login success paths land on dashboard.
+                store.onLoginSuccess = {}
             }
             
             // Set up callback to clear focus when password reset alert is dismissed

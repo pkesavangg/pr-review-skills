@@ -97,15 +97,15 @@ extension BluetoothService {
         return ConversionTools.convertStoredHeightToCm(storedHeight)
     }
 
-    func createScanData(from account: Account?) -> ScanData? {
+    func createScanData(from account: AccountSnapshot?) -> ScanData? {
         guard let account = account else { return nil }
-        let heightCm = calculateHeightCm(height: account.weightSettings?.height)
+        let heightCm = calculateHeightCm(height: account.weightHeight)
         let age = calculateAge(from: account.dob) ?? 30
-        let isAthlete = account.weightSettings?.activityLevel?.rawValue == "athlete"
-        let unit = account.weightSettings?.weightUnit?.rawValue ?? "kg"
+        let isAthlete = account.activityLevel?.rawValue == "athlete"
+        let unit = account.weightUnit.rawValue
         let sex = account.gender?.rawValue ?? "male"
         let goalWeight: Double? = {
-            if let goalWeight = account.goalSettings?.goalWeight {
+            if let goalWeight = account.goalWeight {
                 return ConversionTools.convertStoredToDisplay(Int(goalWeight), isMetric: true)
             }
             return nil
@@ -121,7 +121,7 @@ extension BluetoothService {
         )
     }
 
-    func getProfileInfo(from account: Account) async -> GGBTUserProfile? {
+    func getProfileInfo(from account: AccountSnapshot) async -> GGBTUserProfile? {
         guard let scanData = createScanData(from: account) else {
             return nil
         }
@@ -130,7 +130,7 @@ extension BluetoothService {
             currentWeight = ConversionTools.convertStoredToDisplay(weight, isMetric: true)
         }
         let name = account.firstName ?? "User"
-        let goalType = account.goalSettings?.goalType?.rawValue
+        let goalType = account.goalType?.rawValue
         return GGBTUserProfile(
             name: name,
             age: scanData.age,

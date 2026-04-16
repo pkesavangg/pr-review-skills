@@ -294,7 +294,7 @@ extension BluetoothService {
         }
     }
 
-    private func createBathScaleEntry(ggEntry: GGEntry, protocolType: ProtocolType, activeAccount: Account) -> BathScaleEntry {
+    private func createBathScaleEntry(ggEntry: GGEntry, protocolType: ProtocolType, activeAccount: AccountSnapshot) -> BathScaleEntry {
         var sourceType = ScaleSourceType.bluetoothScale
         if protocolType == .R4 {
             sourceType = .btWifiR4
@@ -308,7 +308,7 @@ extension BluetoothService {
             ? roundMetric(ggEntry.bmi)
             : ConversionTools.calculateBMI(
                 weight: Double(ggEntry.weightInKg),
-                height: calculateHeightCm(height: activeAccount.weightSettings?.height)
+                height: calculateHeightCm(height: activeAccount.weightHeight)
             ),
             source: sourceType.rawValue
         )
@@ -363,7 +363,7 @@ extension BluetoothService {
     }
 
     /// Converts a BLE baby scale measurement into a baby Entry with a BabyEntry relationship.
-    private func convertBabyScaleEntry(ggEntry: GGEntry, activeAccount: Account, timestamp: String) -> Entry? {
+    private func convertBabyScaleEntry(ggEntry: GGEntry, activeAccount: AccountSnapshot, timestamp: String) -> Entry? {
         guard let baby = resolveBaby(forBroadcastId: ggEntry.broadcastIdString) else {
             logger.log(
                 level: .error,

@@ -176,7 +176,7 @@ final class HistoryStore: ObservableObject {
     func refreshAllEntries() async {
         invalidateCacheForCurrentType()
         // Refresh account data to ensure we have latest unit settings
-        _ = try? await accountService.refreshAccount()
+        try? await accountService.refreshAccount()
         await entryService.syncAllEntriesWithRemote()
         await loadMonthsInternal(canShowLoader: false)
         if let selectedMonth {
@@ -469,7 +469,7 @@ final class HistoryStore: ObservableObject {
 
     /// Whether the active account uses metric (kg) for weight.
     var isMetric: Bool {
-        accountService.activeAccount?.weightSettings?.weightUnit == .kg
+        accountService.activeAccount?.weightUnit == .kg
     }
 
     /// User tapped a baby day row.
@@ -670,10 +670,13 @@ final class HistoryStore: ObservableObject {
 
         // Group days into weeks of 7
         var weeks: [BabyHistoryWeek] = []
-        for (index, chunk) in days.chunked(into: 7).enumerated() {
+        let chunks = days.chunked(into: 7)
+        let totalWeeks = chunks.count
+        for (index, chunk) in chunks.enumerated() {
+            let weekNumber = totalWeeks - index
             weeks.append(BabyHistoryWeek(
-                id: "week-\(index + 1)",
-                weekNumber: index + 1,
+                id: "week-\(weekNumber)",
+                weekNumber: weekNumber,
                 days: chunk
             ))
         }

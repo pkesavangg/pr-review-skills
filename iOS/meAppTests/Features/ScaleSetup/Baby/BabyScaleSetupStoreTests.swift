@@ -1011,13 +1011,13 @@ private func makeSUT(
     scaleService: MockScaleService? = nil,
     babyService: MockBabyService? = nil
 ) -> (
-    BabyScaleSetupStore,
-    MockNotificationHelperService,
-    MockPermissionsService,
-    MockBluetoothService,
-    MockAccountService,
-    MockScaleService,
-    MockBabyService
+    store: BabyScaleSetupStore,
+    notification: MockNotificationHelperService,
+    permissions: MockPermissionsService,
+    bluetooth: MockBluetoothService,
+    account: MockAccountService,
+    scale: MockScaleService,
+    babyService: MockBabyService
 ) {
     // swiftlint:enable large_tuple
     let notification = notificationService ?? MockNotificationHelperService()
@@ -1043,7 +1043,7 @@ private func makeSUT(
     store.scaleService = scale
     store.babyService = baby
 
-    return (store, notification, permissions, bluetooth, account, scale, baby)
+    return (store: store, notification: notification, permissions: permissions, bluetooth: bluetooth, account: account, scale: scale, babyService: baby)
 }
 
 // MARK: - Helpers
