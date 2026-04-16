@@ -192,8 +192,12 @@ class EntryReadService @Inject constructor(
         val acctId = requireNotNull(_accountId) { "accountId not set" }
         AppLog.d(TAG, "getGroupedHistory: ${product.productType}")
         return when (product) {
-            is ProductSelection.MyWeight -> entryReadRepository.getWeightMonthlyHistory(acctId)
-                .map { GroupedHistory.Weight(it) }
+            is ProductSelection.MyWeight -> combine(
+                entryReadRepository.getWeightMonthlyHistory(acctId),
+                weightUnitFlow(),
+            ) { months, (unit, weightless) ->
+                GroupedHistory.Weight(months.map { it.process(unit, weightless) })
+            }
 
             is ProductSelection.BloodPressure -> entryReadRepository.getBpmMonthlyHistory(acctId)
                 .map { GroupedHistory.BloodPressure(it) }
@@ -207,8 +211,12 @@ class EntryReadService @Inject constructor(
         val acctId = requireNotNull(_accountId) { "accountId not set" }
         AppLog.d(TAG, "getDetail: ${product.productType}, key=$key")
         return when (product) {
-            is ProductSelection.MyWeight -> entryReadRepository.getWeightMonthDetail(acctId, key)
-                .map { HistoryDetail.Weight(it) }
+            is ProductSelection.MyWeight -> combine(
+                entryReadRepository.getWeightMonthDetail(acctId, key),
+                weightUnitFlow(),
+            ) { entries, (unit, weightless) ->
+                HistoryDetail.Weight(entries.map { it.process(unit, weightless) }.filterIsInstance<ScaleEntry>())
+            }
 
             is ProductSelection.BloodPressure -> entryReadRepository.getBpmMonthDetail(acctId, key)
                 .map { HistoryDetail.BloodPressure(it) }
@@ -283,6 +291,17 @@ class EntryReadService @Inject constructor(
      * Chart-facing conversion only; kept local to the data layer to avoid
      * depending on feature-layer helpers.
      */
+    /**
+     * Unit + weightless settings for processing history display data.
+     * Lighter than the full [ProgressSettings] — no goal or account needed.
+     */
+    private fun weightUnitFlow(): Flow<Pair<WeightUnit?, Weightless?>> =
+        combine(
+            accountRepository.getActiveAccountWeightUnitFlow(),
+            accountRepository.getActiveAccountWeightlessFlow(),
+        ) { unit, weightless -> Pair(unit, weightless) }
+            .distinctUntilChanged()
+
     private fun PeriodBodyScaleSummary.scaleWeightToDisplay(): PeriodBodyScaleSummary =
         copy(weight = weight / DISPLAY_SCALE)
 
