@@ -33,7 +33,7 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
     let entryTimestamp: String
     let serverTimestamp: String?
     let operationType: String
-    let deviceType: String
+    let entryType: String
     let isSynced: Bool
     let isFailedToSync: Bool
     let attempts: Int
@@ -74,7 +74,7 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
         self.entryTimestamp = entry.entryTimestamp
         self.serverTimestamp = entry.serverTimestamp
         self.operationType = entry.operationType
-        self.deviceType = entry.deviceType
+        self.entryType = entry.entryType
         self.isSynced = entry.isSynced
         self.isFailedToSync = entry.isFailedToSync
         self.attempts = entry.attempts
@@ -113,7 +113,7 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
         self.entryTimestamp = dto.entryTimestamp ?? ""
         self.serverTimestamp = dto.serverTimestamp
         self.operationType = dto.operationType ?? ""
-        self.deviceType = "scale"
+        self.entryType = dto.entryType ?? EntryType.scale.rawValue
         self.isSynced = true
         self.isFailedToSync = false
         self.attempts = 0

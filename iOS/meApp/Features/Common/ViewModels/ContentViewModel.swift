@@ -218,7 +218,7 @@ final class ContentViewModel: ObservableObject {
         await entryService.migrateFromSQLiteIfNeeded()
         await entryService.migrateBabyEntriesToDecigrams()
         await entryService.syncAllEntriesWithRemote()
-        await entryService.loadDashboardData(entryType: .wg)
+        await entryService.loadDashboardData(entryType: .scale)
         bluetoothService.initialize()
 
         do {

@@ -5,7 +5,6 @@
 /// | babyId      | string  | FK to Baby.id                            |
 /// | length      | int     | Baby length in millimeters                |
 /// | weight      | int     | Baby weight in decigrams                  |
-/// | note        | string  | User note for the entry                  |
 /// | source      | string? | Scale SKU (e.g. "0220", "0222") or nil for manual |
 
 import Foundation
@@ -19,8 +18,6 @@ final class BabyEntry {
     var length: Int
     /// Baby weight in decigrams (e.g. 545660 = 54.566 kg)
     var weight: Int
-    /// User note for the entry
-    var note: String
     /// Scale SKU that produced the measurement (e.g. "0220", "0222"), nil for manual entries
     var source: String?
 
@@ -28,13 +25,11 @@ final class BabyEntry {
         babyId: String,
         length: Int,
         weight: Int,
-        note: String,
         source: String? = nil
     ) {
         self.babyId = babyId
         self.length = length
         self.weight = weight
-        self.note = note
         self.source = source
     }
 }

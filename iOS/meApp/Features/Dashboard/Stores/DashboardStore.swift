@@ -38,7 +38,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     @Published private(set) var canShowSnapshotOverview: Bool = false
 
     /// The active product type for the dashboard (weight or BPM).
-    @Published var productType: EntryType = .wg
+    @Published var productType: EntryType = .scale
     @Published private(set) var availableProductItems: [ProductSelection] = []
     @Published private(set) var selectedProductItem: ProductSelection = .myWeight
 

@@ -225,7 +225,7 @@ extension BluetoothService {
                 entryTimestamp: ISO8601DateFormatter().string(from: timestamp),
                 accountId: activeAccount?.accountId ?? "",
                 operationType: OperationType.create.rawValue,
-                deviceType: DeviceType.bpm.rawValue,
+                entryType: EntryType.bpm.rawValue,
                 isSynced: false
             )
             newEntryReceivedSubject.send(EntryNotification(from: entry))
@@ -269,11 +269,12 @@ extension BluetoothService {
             return convertBabyScaleEntry(ggEntry: ggEntry, activeAccount: activeAccount, timestamp: timestamp)
         }
 
+        let resolvedEntryType: EntryType = deviceType == .bpm ? .bpm : .scale
         let entry = Entry(
             entryTimestamp: timestamp,
             accountId: activeAccount.accountId,
             operationType: OperationType.create.rawValue,
-            deviceType: deviceType.rawValue,
+            entryType: resolvedEntryType.rawValue,
             isSynced: false
         )
         let protocolType = ProtocolType(rawValue: ggEntry.protocolType ?? "") ?? .A6
@@ -379,11 +380,10 @@ extension BluetoothService {
             entryTimestamp: timestamp,
             accountId: activeAccount.accountId,
             operationType: OperationType.create.rawValue,
-            deviceType: DeviceType.babyScale.rawValue,
-            isSynced: false,
-            babyId: baby.id
+            entryType: EntryType.baby.rawValue,
+            isSynced: false
         )
-        entry.babyEntry = BabyEntry(babyId: baby.id, length: 0, weight: weightDecigrams, note: "", source: scaleSku)
+        entry.babyEntry = BabyEntry(babyId: baby.id, length: 0, weight: weightDecigrams, source: scaleSku)
         return entry
     }
 

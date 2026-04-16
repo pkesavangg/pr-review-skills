@@ -2,7 +2,6 @@
 ///
 /// | Column Name    | Type   | Description                              |
 /// |----------------|--------|------------------------------------------|
-/// | id             | int    | FK to entry.id (Primary Key)             |
 /// | weight         | int    | Weight recorded in the entry             |
 /// | bodyFat        | int    | Body fat percentage recorded             |
 /// | muscleMass     | int    | Muscle mass recorded                     |
@@ -12,7 +11,6 @@
 /// | systolic       | int    | Systolic blood pressure reading          |
 /// | diastolic      | int    | Diastolic blood pressure reading         |
 /// | meanArterial   | string | Mean arterial pressure                   |
-/// | note           | string | User note for the entry                  |
 
 import Foundation
 import SwiftData
@@ -29,7 +27,6 @@ final class BathScaleEntry {
     var systolic: Int?
     var diastolic: Int?
     var meanArterial: String?
-    var note: String?
 
     init(weight: Int? = nil,
          bodyFat: Int? = nil,
@@ -39,8 +36,7 @@ final class BathScaleEntry {
          source: String? = nil,
          systolic: Int? = nil,
          diastolic: Int? = nil,
-         meanArterial: String? = nil,
-         note: String? = nil) {
+         meanArterial: String? = nil) {
         self.weight = weight
         self.bodyFat = bodyFat
         self.muscleMass = muscleMass
@@ -50,7 +46,6 @@ final class BathScaleEntry {
         self.systolic = systolic
         self.diastolic = diastolic
         self.meanArterial = meanArterial
-        self.note = note
     }
 
     convenience init(from dto: BathScaleOperationDTO) {
@@ -72,8 +67,7 @@ final class BathScaleEntry {
             source: dto.source,
             systolic: dto.systolic.map { Int($0) },
             diastolic: dto.diastolic.map { Int($0) },
-            meanArterial: dto.meanArterial,
-            note: dto.note
+            meanArterial: dto.meanArterial
         )
     }
 }

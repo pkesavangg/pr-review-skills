@@ -103,7 +103,7 @@ extension BluetoothService {
             entryTimestamp: timestamp,
             accountId: activeAccount.accountId,
             operationType: OperationType.create.rawValue,
-            deviceType: DeviceType.bpm.rawValue,
+            entryType: EntryType.bpm.rawValue,
             isSynced: false
         )
         entry.scaleEntry = BathScaleEntry(
@@ -119,8 +119,7 @@ extension BluetoothService {
             systolic: measurement.systolic,
             diastolic: measurement.diastolic,
             meanArterial: measurement.meanArterial ?? "",
-            pulse: measurement.pulse,
-            note: ""
+            pulse: measurement.pulse
         )
 
         do {
