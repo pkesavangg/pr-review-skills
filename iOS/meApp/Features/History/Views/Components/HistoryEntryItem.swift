@@ -61,11 +61,15 @@ struct HistoryEntryItem: View {
                         .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
                 
-                // Expansion chevron (only if metrics exist)
+                // Expansion chevron (only if metrics exist); placeholder preserves alignment otherwise
                 if !entry.metricItems.isEmpty {
                     AppIconView(icon: AppAssets.chevronDown)
                         .foregroundColor(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                        .padding(.leading, .spacingSM)
+                } else {
+                    Color.clear
+                        .frame(width: 24, height: 24)
                         .padding(.leading, .spacingSM)
                 }
             }
