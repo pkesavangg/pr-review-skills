@@ -111,7 +111,6 @@ fun AppProfileAvatar(
             modifier = modifier
                 .width(size * INFO_ICON_WIDTH_RATIO)
                 .height(size)
-                .background(MeTheme.colorScheme.primaryBackground)
                 .then(gestureModifier),
             contentAlignment = Alignment.Center,
         ) {
