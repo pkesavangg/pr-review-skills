@@ -86,8 +86,8 @@ struct WeightSnapshotCard: View {
     private func recomputeCache() async {
         // Capture inputs on the main actor, then compute off-thread.
         let inputSummaries = summaries
-        let weightUnit = viewModel.activeAccount?.weightSettings?.weightUnit ?? .lb
-        let goalWeightStored = viewModel.activeAccount?.goalSettings?.goalWeight
+        let weightUnit = viewModel.activeAccount?.weightUnit ?? .lb
+        let goalWeightStored = viewModel.activeAccount?.goalWeight
 
         let result = await Task.detached(priority: .utility) {
             let window = DashboardSnapshotChartWindow.make(summaries: inputSummaries) { $0.weight > 0 }

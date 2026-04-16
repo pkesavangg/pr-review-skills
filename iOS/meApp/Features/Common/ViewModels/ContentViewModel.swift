@@ -15,7 +15,7 @@ final class ContentViewModel: ObservableObject {
     }
 
     @Published var isLoggedIn: Bool = false
-    @Published var currentAccount: Account?
+    @Published var currentAccount: AccountSnapshot?
     /// Represents the current screen that should be visible in `ContentView`.
     @Published var contentViewState: ContentViewState = .initializing
     @Published var entries: [Entry] = []
@@ -154,7 +154,7 @@ final class ContentViewModel: ObservableObject {
         if loggedIn {
             // Refresh account data to sync weightless settings and other account data
             do {
-                _ = try await accountService.refreshAccount()
+                try await accountService.refreshAccount()
                 logger.log(level: .info, tag: tag, message: "Account data refreshed successfully during initialization")
             } catch {
                 logger.log(

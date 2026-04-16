@@ -523,7 +523,7 @@ extension BtWifiScaleSetupStore {
         do {
             let apiRepo = AccountRepositoryAPI()
             _ = try await apiRepo.patchDashboardType(.dashboard12)
-            _ = try await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
+            try await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
         } catch {
             LoggerService.shared.log(
                 level: .error,
@@ -548,12 +548,12 @@ extension BtWifiScaleSetupStore {
             LoggerService.shared.log(level: .error, tag: tag, message: "R4 setup: Failed to save metrics to API: \(error.localizedDescription)")
         }
 
-        _ = try? await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
+        try? await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
     }
 
     /// Checks if the current dashboard type is dashboard4
     var isDashboardTypeFour: Bool {
-        let currentDashboardType = accountService.activeAccount?.dashboardSettings?.dashboardType
+        let currentDashboardType = accountService.activeAccount?.dashboardType
         return (currentDashboardType == "dashboard_4_metrics" || currentDashboardType == "dashboard4") &&
             dashboardStore.effectiveDashboardType == .dashboard4
     }
@@ -653,7 +653,7 @@ extension BtWifiScaleSetupStore {
             dashboardStore.gridEditingManager.syncRemovalStateFromStreakManager()
             try await dashboardStore.metricsManager.saveMetricsToAPI()
             try await dashboardStore.lifecycleManager.saveProgressMetricsToAPI()
-            _ = try? await accountService.refreshAccount(
+            try? await accountService.refreshAccount(
                 accountId: accountService.activeAccount?.accountId
             )
             dashboardStore.updateSnapshot()

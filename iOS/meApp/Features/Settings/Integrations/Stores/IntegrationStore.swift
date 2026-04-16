@@ -77,27 +77,27 @@ class IntegrationStore: ObservableObject {
                 self.applyAccountState(account)
                 /// Check for invalid integrations only once per screen lifecycle.
                 if !self.hasCheckedInvalidIntegrations, !self.skipInvalidIntegrationsCheck {
-                    self.handleInvalidIntegrations(settings: account?.integrationSettings)
+                    self.handleInvalidIntegrations(account: account)
                     self.hasCheckedInvalidIntegrations = true
                 }
             }
             .store(in: &cancellables)
     }
 
-    /// Applies the `Account` state to local observable properties that drive the UI.
+    /// Applies the `AccountSnapshot` state to local observable properties that drive the UI.
     /// Updates the following observable properties:
     ///   - `accountID`: Set to `account.accountId` if `account` is not nil, otherwise set to an empty string.
     ///   - `integrations`: Set to reflect the integration settings in `account` if present; if `account` is nil, both integrations are set to
     /// `isSelected: false`.
     /// - Parameter account: The latest account value (optional when stream emits nil).
-    private func applyAccountState(_ account: Account?) {
+    private func applyAccountState(_ account: AccountSnapshot?) {
         accountID = account?.accountId ?? ""
 
         // Fitbit and MyFitnessPal are only relevant for weight scale users
         var items: [IntegrationItem] = []
         if productTypeStore.availableItems.contains(.myWeight) {
-            let fitbitOn = account?.integrationSettings?.isFitbitOn ?? false
-            let mfpOn = account?.integrationSettings?.isMfpOn ?? false
+            let fitbitOn = account?.isFitbitOn ?? false
+            let mfpOn = account?.isMfpOn ?? false
             items.append(.init(type: .fitbit, isSelected: fitbitOn))
             items.append(.init(type: .myFitnessPal, isSelected: mfpOn))
         }
@@ -151,7 +151,8 @@ class IntegrationStore: ObservableObject {
         logger.log(level: .info, tag: tag, message: "Refreshing account after integration browser flow")
         Task {
             do {
-                let account = try await accountService.refreshAccount()
+                try await accountService.refreshAccount()
+                let account = accountService.activeAccount
                 self.applyAccountState(account)
                 handlePostIntegrationResult(using: account)
                 logger.log(level: .success, tag: tag, message: "Integration post-browser account refresh succeeded")
@@ -191,7 +192,8 @@ class IntegrationStore: ObservableObject {
         do {
             guard let provider = mapToIntegrationType(item.type) else { return }
             try await integrationsService.removeIntegration(provider)
-            let account = try await accountService.refreshAccount()
+            try await accountService.refreshAccount()
+            let account = accountService.activeAccount
             applyAccountState(account)
             handlePostIntegrationResult(using: account)
             logger.log(level: .success, tag: tag, message: "Remove integration succeeded. provider=\(integrationProviderKey(item.type))")
@@ -219,7 +221,7 @@ class IntegrationStore: ObservableObject {
     // MARK: - Result Handling
 
     /// Verifies the result of the pending integration action and displays appropriate alerts.
-    private func handlePostIntegrationResult(using account: Account?) {
+    private func handlePostIntegrationResult(using account: AccountSnapshot?) {
         guard let account, let action = pendingAction else { return }
 
         switch action {
@@ -262,14 +264,14 @@ class IntegrationStore: ObservableObject {
     }
 
     /// Returns the enabled flag for the given integration based on the provided account.
-    private func isIntegrationEnabled(_ type: IntegrationItemType, in account: Account) -> Bool {
+    private func isIntegrationEnabled(_ type: IntegrationItemType, in account: AccountSnapshot) -> Bool {
         switch type {
         case .fitbit:
-            return account.integrationSettings?.isFitbitOn ?? false
+            return account.isFitbitOn
         case .myFitnessPal:
-            return account.integrationSettings?.isMfpOn ?? false
+            return account.isMfpOn
         case .appleHealth:
-            return account.integrationSettings?.isHealthKitOn ?? false
+            return account.isHealthKitOn
         }
     }
 
@@ -331,15 +333,15 @@ class IntegrationStore: ObservableObject {
     // MARK: - Invalid Integration Check
 
     /// Checks for enabled but invalid integrations and shows a prompt to disable them.
-    private func handleInvalidIntegrations(settings: IntegrationSettings?) {
-        guard let settings else { return }
+    private func handleInvalidIntegrations(account: AccountSnapshot?) {
+        guard let account else { return }
 
         // Skip if network offline – user can't fix anyway.
         guard networkMonitor.isConnected else { return }
 
         var invalid: [IntegrationItemType] = []
-        if settings.isFitbitOn, !settings.isFitbitValid { invalid.append(.fitbit) }
-        if settings.isMfpOn, !settings.isMfpValid { invalid.append(.myFitnessPal) }
+        if account.isFitbitOn, !account.isFitbitValid { invalid.append(.fitbit) }
+        if account.isMfpOn, !account.isMfpValid { invalid.append(.myFitnessPal) }
         // Add other providers when supported.
 
         guard !invalid.isEmpty else { return }
@@ -385,7 +387,7 @@ class IntegrationStore: ObservableObject {
         logger.log(level: .info, tag: tag, message: "Silent remove integration started. provider=\(integrationProviderKey(type))")
         do {
             try await integrationsService.removeIntegration(provider)
-            _ = try await accountService.refreshAccount()
+            try await accountService.refreshAccount()
             logger.log(level: .success, tag: tag, message: "Silent remove integration succeeded. provider=\(integrationProviderKey(type))")
             return true
         } catch {

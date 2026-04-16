@@ -321,8 +321,8 @@ final class EntryStore: ObservableObject {
             .store(in: &cancellables)
     }
 
-    @MainActor private func updateWeightUnitFromAccount(_ account: Account?) {
-        let unit = account?.weightSettings?.weightUnit ?? .lb
+    @MainActor private func updateWeightUnitFromAccount(_ account: AccountSnapshot?) {
+        let unit = account?.weightUnit ?? .lb
 
         if self.weightUnit != unit {
             self.weightUnit = unit
@@ -355,7 +355,7 @@ final class EntryStore: ObservableObject {
             return
         }
 
-        let heightString = accountService.activeAccount?.weightSettings?.height ?? "0"
+        let heightString = accountService.activeAccount?.weightHeight ?? "0"
         let storedHeight = ConversionTools.convertStoredHeightToCm(Int(round(Double(heightString) ?? 0)))
 
         let storedWeight: Double = {

@@ -171,32 +171,36 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         guard let account = accountService.activeAccount,
               !account.productTypes.isEmpty else { return }
 
+        var types = account.productTypes
         var changed = false
 
         let hasWeightScale = devices.contains { $0.deviceType == DeviceType.scale.rawValue }
         let hasBpm = devices.contains { $0.deviceType == DeviceType.bpm.rawValue }
         let hasBabyScale = devices.contains { $0.deviceType == DeviceType.babyScale.rawValue }
 
-        if hasWeightScale && !account.productTypes.contains("myWeight") {
-            account.productTypes.append("myWeight")
+        if hasWeightScale && !types.contains("myWeight") {
+            types.append("myWeight")
             changed = true
         }
 
-        if hasBpm && !account.productTypes.contains("myBloodPressure") {
-            account.productTypes.append("myBloodPressure")
+        if hasBpm && !types.contains("myBloodPressure") {
+            types.append("myBloodPressure")
             changed = true
         }
 
-        if hasBabyScale && !account.productTypes.contains("baby") {
-            account.productTypes.append("baby")
+        if hasBabyScale && !types.contains("baby") {
+            types.append("baby")
             changed = true
         }
 
         if changed {
+            Task {
+                try? await accountService.updateProductTypes(types)
+            }
             logger.log(
                 level: .info,
                 tag: tag,
-                message: "Synced productTypes=\(account.productTypes) for accountId=\(account.accountId)"
+                message: "Synced productTypes=\(types) for accountId=\(account.accountId)"
             )
         }
     }
@@ -206,7 +210,11 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
               !babies.isEmpty,
               !account.productTypes.contains("baby") else { return }
 
-        account.productTypes.append("baby")
+        var types = account.productTypes
+        types.append("baby")
+        Task {
+            try? await accountService.updateProductTypes(types)
+        }
         logger.log(
             level: .info,
             tag: tag,
@@ -259,7 +267,9 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
             reconstructed = ["myWeight"]
         }
 
-        account.productTypes = reconstructed
+        Task {
+            try? await accountService.updateProductTypes(reconstructed)
+        }
         logger.log(
             level: .info,
             tag: tag,
