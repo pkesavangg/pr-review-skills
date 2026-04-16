@@ -362,18 +362,17 @@ public enum DeviceCategory: String, Sendable, Equatable {
 ///     }
 ///     .store(in: &cancellables)
 /// ```
-/// NOTE: `@unchecked Sendable` because `Device` is `@Model` (not thread-safe).
-/// This is safe only because all creation (BluetoothService) and consumption
-/// (stores/ViewModels) happen on `@MainActor`. Do not send across actor boundaries.
-public struct DeviceDiscoveryEvent: @unchecked Sendable, Equatable {
-    let device: Device
+/// Unified device discovery event. All fields are `Sendable`, so this struct is properly
+/// `Sendable` — no `@unchecked` marker needed.
+public struct DeviceDiscoveryEvent: Sendable, Equatable {
+    let device: DeviceSnapshot
     let deviceInfo: ScaleItemInfo
     let protocolType: ProtocolType
     let isNew: Bool
     let deviceCategory: DeviceCategory
 
     init(
-        device: Device,
+        device: DeviceSnapshot,
         deviceInfo: ScaleItemInfo,
         protocolType: ProtocolType,
         isNew: Bool,

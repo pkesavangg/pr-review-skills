@@ -258,7 +258,7 @@ struct ScaleSettingsStoreTests {
         )
         let scaleService = MockScaleService()
         let (store, _, _, _, _) = makeSUT(scale: makeR4Scale(), scaleService: scaleService, bluetooth: bluetooth)
-        scaleService.scales = [makeR4Scale()]
+        scaleService.scales = [makeR4Scale().toSnapshot()]
 
         await waitUntil(timeoutNanoseconds: 500_000_000) {
             bluetooth.getDeviceInfoCalls > 0

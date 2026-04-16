@@ -120,7 +120,7 @@ enum BpmSetupStoreTestFixtures {
             bodyComp: false
         )
         return DeviceDiscoveryEvent(
-            device: bpmDevice,
+            device: bpmDevice.toSnapshot(),
             deviceInfo: info,
             protocolType: protocolType,
             isNew: true

@@ -15,8 +15,8 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
     /// edited, or deleted.
     ///
     /// The subject is updated on the main thread.
-    var scalesPublisher: AnyPublisher<[Device], Never> { get }
-    var scales: [Device] { get }
+    var scalesPublisher: AnyPublisher<[DeviceSnapshot], Never> { get }
+    var scales: [DeviceSnapshot] { get }
 
     /// Updates scale meta data.
     /// - Parameters:
@@ -79,7 +79,7 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
 
     func syncAllScalesWithRemote() async
     func pushLocalChangesToServer() async
-    func getDevice(by deviceId: String) async throws -> Device?
+    func getDevice(by deviceId: String) async throws -> DeviceSnapshot?
 
     /// Updates connected device information including connection status and WiFi configuration.
     /// - Parameters:

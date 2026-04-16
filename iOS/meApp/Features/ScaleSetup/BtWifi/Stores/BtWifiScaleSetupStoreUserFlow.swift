@@ -15,7 +15,7 @@ extension BtWifiScaleSetupStore {
 
     /// Finds a matching user on the scale by comparing account name (handles name truncation)
     func findMatchingUserOnScale(scale: Device, accountName: String) async -> DeviceUser? {
-        let userListResult = await bluetoothService.getScaleUserList(for: scale, skipConnectionCheck: true)
+        let userListResult = await bluetoothService.getScaleUserList(broadcastId: scale.broadcastIdString ?? "", skipConnectionCheck: true)
         guard case .success(let allUsers) = userListResult else {
             return nil
         }
@@ -166,7 +166,7 @@ extension BtWifiScaleSetupStore {
             return
         }
 
-        let result = await bluetoothService.getScaleUserList(for: scale, skipConnectionCheck: true)
+        let result = await bluetoothService.getScaleUserList(broadcastId: scale.broadcastIdString ?? "", skipConnectionCheck: true)
         switch result {
         case .success(let users):
             self.userList = users.filter { user in

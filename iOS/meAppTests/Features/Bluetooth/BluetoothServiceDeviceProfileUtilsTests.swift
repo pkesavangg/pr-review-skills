@@ -420,7 +420,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk)
         sut.skipDevices = ["PAIRED-1", "KEEP-1", "KEEP-2"]
-        sut.bluetoothScales = [makeDevice(id: "d1", broadcastIdString: "PAIRED-1")]
+        sut.bluetoothScales = [makeDevice(id: "d1", broadcastIdString: "PAIRED-1").toSnapshot()]
 
         sut.reapplySkipDevicesExcludingPaired()
 
@@ -432,7 +432,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
     func reapplySkipDevicesCaseInsensitive() {
         let sut = makeSUT()
         sut.skipDevices = ["paired-1", "keep-1"]
-        sut.bluetoothScales = [makeDevice(id: "d1", broadcastIdString: "PAIRED-1")]
+        sut.bluetoothScales = [makeDevice(id: "d1", broadcastIdString: "PAIRED-1").toSnapshot()]
 
         sut.reapplySkipDevicesExcludingPaired()
 

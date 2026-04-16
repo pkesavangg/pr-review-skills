@@ -139,7 +139,7 @@ extension A6ScaleSetupStoreTests {
                 scaleId: device.id
             )
             pref.isSynced = true
-            scaleService.scales = [device]
+            scaleService.scales = [device.toSnapshot()]
             scaleService.fetchAttachedPreferenceResult = pref
 
             let harness = A6ScaleSetupStoreTestFixtures.makeSUT(scaleService: scaleService)
@@ -170,7 +170,7 @@ extension A6ScaleSetupStoreTests {
                 from: ScaleTestFixtures.makePreferenceDTO(scaleId: device.id),
                 scaleId: device.id
             )
-            scaleService.scales = [device]
+            scaleService.scales = [device.toSnapshot()]
             scaleService.fetchAttachedPreferenceResult = pref
             scaleService.updateScalePreferenceError = NSError(domain: "test", code: 1)
 

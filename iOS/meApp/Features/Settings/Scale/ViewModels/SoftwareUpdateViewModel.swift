@@ -86,7 +86,7 @@ final class SoftwareUpdateViewModel: ObservableObject {
         }()
         notificationService.showToast(ToastModel(title: "Updating", message: FirmwareUpdateStrings.updatingFirmware))
         refreshScale() // R11: refresh before passing @Model to async bluetooth call
-        let res = await bluetoothService.updateFirmware(on: scale, timestamp: ts)
+        let res = await bluetoothService.updateFirmware(broadcastId: scale.broadcastIdString ?? "", timestamp: ts)
         switch res {
         case .success:
             notificationService.showToast(ToastModel(title: ToastStrings.success, message: FirmwareUpdateStrings.updateTriggered))

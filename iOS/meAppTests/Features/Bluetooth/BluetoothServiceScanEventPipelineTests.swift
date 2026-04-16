@@ -156,7 +156,7 @@ struct BluetoothServiceScanEventPipelineTests {
         _ = await waitUntil { sut.activeAccount?.accountId == "acct-info" }
         let device = makeDevice(id: "info-scale-1", broadcastIdString: "INFO-1", isConnected: true, bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true))
         device.r4ScalePreference = makePreference(id: "info-scale-1", shouldMeasureImpedance: true)
-        sut.bluetoothScales = [device]
+        sut.bluetoothScales = [device.toSnapshot()]
 
         try await sut.startSmartScan()
         let infos = await collectValues(count: 1, from: sut.deviceInfoUpdatedPublisher, timeoutNanoseconds: 3_000_000_000) {
@@ -202,17 +202,20 @@ struct BluetoothServiceScanEventPipelineTests {
     @Test("weight-only alert debounce emits only the final stable state")
     func weightOnlyAlertDebounceEmitsFinalStateOnly() async {
         let sut = makeSUT()
-        let device = makeDevice(id: "alert-scale-1", broadcastIdString: "ALERT-1", isConnected: true, bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true))
-        sut.bluetoothScales = [device]
+        let deviceBase = makeDevice(id: "alert-scale-1", broadcastIdString: "ALERT-1", isConnected: true, bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true))
+        deviceBase.isWeighOnlyModeEnabledByOthers = true
+        let snapshotOn = deviceBase.toSnapshot()
+        deviceBase.isWeighOnlyModeEnabledByOthers = false
+        let snapshotOff = deviceBase.toSnapshot()
 
         let alerts = await collectValues(count: 1, from: sut.showWeightOnlyModeAlertPublisher, timeoutNanoseconds: 3_000_000_000) {
-            device.isWeighOnlyModeEnabledByOthers = true
+            sut.bluetoothScales = [snapshotOn]
             let first = Task { @MainActor in
                 await sut.checkCanShowWeightOnlyModeAlert()
             }
 
             try? await Task.sleep(nanoseconds: 100_000_000)
-            device.isWeighOnlyModeEnabledByOthers = false
+            sut.bluetoothScales = [snapshotOff]
             let second = Task { @MainActor in
                 await sut.checkCanShowWeightOnlyModeAlert()
             }

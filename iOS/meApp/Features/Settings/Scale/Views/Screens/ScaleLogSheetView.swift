@@ -5,7 +5,7 @@ struct ScaleLogSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var helpStore: HelpStore
     
-    let scales: [Device]
+    let scales: [DeviceSnapshot]
     private let lang = HelpScreenStrings.self
     
     var body: some View {
@@ -26,12 +26,12 @@ struct ScaleLogSheetView: View {
                                 scaleIcon: scaleIcon(for: scale.sku),
                                 modelNumber: DeviceHelper.mapSkuForDisplay(scale.sku ?? ""),
                                 scaleName: scale.nickname ?? scale.deviceName ?? "Unknown Scale",
-                                status: scale.isConnected ?? false ? .connected : .notConnected,
+                                status: scale.isConnected ? .connected : .notConnected,
                                 onTap: {
                                     helpStore.sendScaleLogHandler(device: scale)
                                 },
-                                isDisabled: !(scale.isConnected ?? false),
-                                scaleType: ScaleTypeHelper.determineScaleType(for: scale)
+                                isDisabled: !scale.isConnected,
+                                scaleType: ScaleTypeHelper.determineScaleType(sku: scale.sku, scaleType: scale.bathScale?.scaleType, deviceType: scale.deviceType)
                             )
                             Divider()
                                 .frame(height: 0.5)

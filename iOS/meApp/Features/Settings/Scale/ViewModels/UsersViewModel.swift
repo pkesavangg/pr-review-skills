@@ -162,8 +162,8 @@ final class UsersViewModel: ObservableObject {
             isLoadingUsers = true
         }
         
-        let result = await bluetoothService.getScaleUserList(for: scale)
-        
+        let result = await bluetoothService.getScaleUserList(broadcastId: scale.broadcastIdString ?? "")
+
         await MainActor.run {
             // Refresh scale before accessing relationships in findCurrentUser
             self.refreshScale()
@@ -205,7 +205,7 @@ final class UsersViewModel: ObservableObject {
                 // Refresh scale before Bluetooth call to ensure fresh @Model data
                 refreshScale()
                 guard let freshPreference = scale.r4ScalePreference else { return }
-                let result = await bluetoothService.updateAccount(on: scale, preference: freshPreference)
+                let result = await bluetoothService.updateAccount(broadcastId: scale.broadcastIdString ?? "")
                 switch result {
                 case .success:
                     currentDeviceUser?.name = newName
@@ -258,7 +258,7 @@ final class UsersViewModel: ObservableObject {
     }
 
     private func reloadUsersAfterDeletion(using device: Device) async {
-        let result = await bluetoothService.getScaleUserList(for: device)
+        let result = await bluetoothService.getScaleUserList(broadcastId: device.broadcastIdString ?? "")
 
         await MainActor.run {
             switch result {

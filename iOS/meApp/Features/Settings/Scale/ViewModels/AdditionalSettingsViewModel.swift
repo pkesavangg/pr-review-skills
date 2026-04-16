@@ -86,7 +86,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
     func getDeviceInfo() async {
         guard isDeviceConnected else { return }
         refreshScale()
-        let result = await bluetoothService.getDeviceInfo(for: scale)
+        let result = await bluetoothService.getDeviceInfo(broadcastId: scale.broadcastIdString ?? "")
         switch result {
         case .success(let info):
             deviceInfo = info
@@ -103,7 +103,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
         guard isDeviceConnected else { return }
         refreshScale()
         let setting = DeviceSetting(key: "INITIAL_LOGO_ANIM", value: .bool(enabled))
-        let res = await bluetoothService.updateSetting(on: scale, settings: [setting])
+        let res = await bluetoothService.updateSetting(broadcastId: scale.broadcastIdString ?? "", settings: [setting])
         if case .success = res { startAnimationEnabled = enabled } else {
             if case .failure(let err) = res { logger.log(level: .error, tag: tag, message: "Start anim failed: \(err.localizedDescription)") }
         }
@@ -113,7 +113,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
         guard isDeviceConnected else { return }
         refreshScale()
         let setting = DeviceSetting(key: "FINAL_LOGO_ANIM", value: .bool(enabled))
-        let res = await bluetoothService.updateSetting(on: scale, settings: [setting])
+        let res = await bluetoothService.updateSetting(broadcastId: scale.broadcastIdString ?? "", settings: [setting])
         if case .success = res { endAnimationEnabled = enabled } else {
             if case .failure(let err) = res { logger.log(level: .error, tag: tag, message: "End anim failed: \(err.localizedDescription)") }
         }
@@ -123,7 +123,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
         guard isDeviceConnected else { return }
         refreshScale()
         let deviceId = scaleIdString
-        let res = await bluetoothService.updateSetting(on: scale, settings: [DeviceSetting(key: "TIME_FORMAT", value: .string(format))])
+        let res = await bluetoothService.updateSetting(broadcastId: scale.broadcastIdString ?? "", settings: [DeviceSetting(key: "TIME_FORMAT", value: .string(format))])
         switch res {
         case .success:
             refreshScale()
@@ -144,7 +144,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
         guard isDeviceConnected else { return }
         refreshScale()
         notificationService.showLoader(LoaderModel(text: LoaderStrings.pleaseWait))
-        let res = await bluetoothService.clearData(on: scale, dataType: type)
+        let res = await bluetoothService.clearData(broadcastId: scale.broadcastIdString ?? "", dataType: type)
         switch res {
         case .success:
             notificationService.showToast(ToastModel(title: ToastStrings.deleted, message: "Data cleared"))
@@ -158,7 +158,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
     func resetFirmware() async {
         guard isDeviceConnected else { return }
         refreshScale()
-        let res = await bluetoothService.updateSetting(on: scale, settings: [DeviceSetting(key: "RESET_FIRMWARE", value: .bool(true))])
+        let res = await bluetoothService.updateSetting(broadcastId: scale.broadcastIdString ?? "", settings: [DeviceSetting(key: "RESET_FIRMWARE", value: .bool(true))])
         switch res {
         case .success:
             notificationService.showToast(ToastModel(title: ToastStrings.success, message: "Firmware reset requested"))
@@ -171,7 +171,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
     func restoreFactorySettings() async {
         guard isDeviceConnected else { return }
         refreshScale()
-        let res = await bluetoothService.updateSetting(on: scale, settings: [DeviceSetting(key: "RESTORE_FACTORY", value: .bool(true))])
+        let res = await bluetoothService.updateSetting(broadcastId: scale.broadcastIdString ?? "", settings: [DeviceSetting(key: "RESTORE_FACTORY", value: .bool(true))])
         switch res {
         case .success:
             notificationService.showToast(ToastModel(title: ToastStrings.success, message: "Factory reset requested"))

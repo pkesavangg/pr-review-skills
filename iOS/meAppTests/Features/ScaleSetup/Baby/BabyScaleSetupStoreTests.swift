@@ -781,7 +781,7 @@ struct BabyScaleSetupStoreTests {
 
         let device = ScaleTestFixtures.makeDevice(id: "non-baby-1")
         let scaleInfo = ScaleItemInfo(productName: "Regular Scale", sku: "0100", imgPath: "scale0100", setupType: .bluetooth, bodyComp: false)
-        let event = DeviceDiscoveryEvent(device: device, deviceInfo: scaleInfo, protocolType: .R4, isNew: true)
+        let event = DeviceDiscoveryEvent(device: device.toSnapshot(), deviceInfo: scaleInfo, protocolType: .R4, isNew: true)
 
         store.handleDeviceDiscovery(event)
 
@@ -1060,7 +1060,7 @@ private func makeScaleItem() -> ScaleItemInfo {
 private func makeDiscoveryEvent(device: Device? = nil, isNew: Bool = true) -> DeviceDiscoveryEvent {
     let dev = device ?? ScaleTestFixtures.makeDevice(id: "baby-scale-1")
     let scaleInfo = ScaleItemInfo(productName: "Smart Baby Scale", sku: "0220", imgPath: "scale0220", setupType: .babyScale, bodyComp: false)
-    return DeviceDiscoveryEvent(device: dev, deviceInfo: scaleInfo, protocolType: .R4, isNew: isNew)
+    return DeviceDiscoveryEvent(device: dev.toSnapshot(), deviceInfo: scaleInfo, protocolType: .R4, isNew: isNew)
 }
 
 @MainActor

@@ -402,7 +402,7 @@ final class DisplayMetricsViewModel: ObservableObject {
                 // Refresh scale to ensure DB has our changes before bluetooth reads them
                 refreshScale()
                 guard let freshPreference = scale.r4ScalePreference else { return }
-                let result = await bluetoothService.updateAccount(on: scale, preference: freshPreference)
+                let result = await bluetoothService.updateAccount(broadcastId: scale.broadcastIdString ?? "")
                 switch result {
                 case .success:
                     logger.log(level: .info, tag: tag, message: "Scale metrics updated successfully via Bluetooth")

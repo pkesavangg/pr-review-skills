@@ -314,7 +314,7 @@ final class ScaleSettingsStore: ObservableObject {
         let broadcastId = scale.broadcastIdString ?? "unknown"
         let deviceId = scale.id
         var dto = preference.toDTO()
-        switch await bluetoothService.updateAccount(on: scale, preference: preference) {
+        switch await bluetoothService.updateAccount(broadcastId: broadcastId) {
         case .success:
             logger.log(level: .info, tag: tag, message: "Synced preference settings to scale \(broadcastId)")
             // Mark preference as synced via DTO to avoid @Model mutation after await (R9)
@@ -351,7 +351,7 @@ final class ScaleSettingsStore: ObservableObject {
         guard getScaleType() == .btWifiR4,
               isDeviceConnected == true else { return }
         
-        let result = await bluetoothService.getDeviceInfo(for: scale)
+        let result = await bluetoothService.getDeviceInfo(broadcastId: scale.broadcastIdString ?? "")
         switch result {
         case .success(let deviceInfo):
             self.getConnectedWifiSSID()
@@ -390,7 +390,7 @@ final class ScaleSettingsStore: ObservableObject {
             if let scaleType = getScaleType(), disconnectableScaleTypes.contains(scaleType), let broadcastId = scale.broadcastIdString {
                 // Ensure the user slot on the scale is deleted as well (aligns with Android behavior)
                 let deletionTask = Task { @MainActor in
-                    _ = await bluetoothService.deleteCurrentUserFromScaleIfPossible(scale, disconnect: false)
+                    _ = await bluetoothService.deleteCurrentUserFromScaleIfPossible(broadcastId: scale.broadcastIdString ?? "", disconnect: false)
                 }
                 // Give BLE a brief moment to process deletion; if it hangs, cancel and proceed
                 // Note: Canceling the deletion task does not forcibly stop the underlying async operation.
@@ -431,7 +431,7 @@ final class ScaleSettingsStore: ObservableObject {
     }
     
     private func fetchWifiMacAddress() async {
-        let res = await bluetoothService.getWifiMacAddress(for: scale)
+        let res = await bluetoothService.getWifiMacAddress(broadcastId: scale.broadcastIdString ?? "")
         switch res {
         case .success(let mac):
             wifiMacAddress = mac
@@ -450,7 +450,7 @@ final class ScaleSettingsStore: ObservableObject {
             return []
         }
         
-        let result = await bluetoothService.getScaleUserList(for: scale)
+        let result = await bluetoothService.getScaleUserList(broadcastId: scale.broadcastIdString ?? "")
         switch result {
         case .success(let users):
             usersList = users
@@ -475,7 +475,7 @@ final class ScaleSettingsStore: ObservableObject {
             return
         }
         
-        let result = await bluetoothService.updateWeightOnlyMode(on: scale)
+        let result = await bluetoothService.updateWeightOnlyMode(broadcastId: scale.broadcastIdString)
         switch result {
         case .success:
             logger.log(level: .info, tag: tag, message: "Successfully enabled body metrics for session")
@@ -493,7 +493,7 @@ final class ScaleSettingsStore: ObservableObject {
 
     func setSessionImpedance(_ enabled: Bool) async {
         guard isDeviceConnected else { return }
-        let res = await bluetoothService.updateSetting(on: scale, settings: [DeviceSetting(key: "SESSION_IMPEDANCE", value: .bool(enabled))])
+        let res = await bluetoothService.updateSetting(broadcastId: scale.broadcastIdString ?? "", settings: [DeviceSetting(key: "SESSION_IMPEDANCE", value: .bool(enabled))])
         switch res {
         case .success:
             isImpedanceSwitchedOnForSession = enabled

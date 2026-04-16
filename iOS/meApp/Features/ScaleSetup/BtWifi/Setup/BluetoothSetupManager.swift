@@ -7,7 +7,7 @@ protocol BluetoothSetupManaging {
         considerForSession: Bool
     ) async
 
-    func cancelWifi(on scale: Device, bluetoothService: BluetoothServiceProtocol) async
+    func cancelWifi(broadcastId: String, bluetoothService: BluetoothServiceProtocol) async
 }
 
 struct BluetoothSetupManager: BluetoothSetupManaging {
@@ -22,7 +22,7 @@ struct BluetoothSetupManager: BluetoothSetupManaging {
         )
     }
 
-    func cancelWifi(on scale: Device, bluetoothService: BluetoothServiceProtocol) async {
-        _ = await bluetoothService.cancelWifi(on: scale)
+    func cancelWifi(broadcastId: String, bluetoothService: BluetoothServiceProtocol) async {
+        _ = await bluetoothService.cancelWifi(broadcastId: broadcastId)
     }
 }

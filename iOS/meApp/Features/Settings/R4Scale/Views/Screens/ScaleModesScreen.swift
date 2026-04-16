@@ -273,7 +273,7 @@ final class ScaleModesViewModel: ObservableObject {
         // The scale computed property will automatically fetch fresh data
         if let refreshedScale = try? await scaleService.getDevice(by: scaleIdString) {
             await MainActor.run {
-                self.cachedScale = refreshedScale
+                self.cachedScale = refreshedScale.toDevice()
                 self.setupInitialValues()
             }
         } else {
@@ -332,7 +332,7 @@ final class ScaleModesViewModel: ObservableObject {
                 // so we refresh scale to ensure DB has our latest DTO values.
                 refreshScale()
                 guard let freshPreference = scale.r4ScalePreference else { return }
-                let result = await bluetoothService.updateAccount(on: scale, preference: freshPreference)
+                let result = await bluetoothService.updateAccount(broadcastId: scale.broadcastIdString ?? "")
                 switch result {
                 case .success(let response):
                     switch response {

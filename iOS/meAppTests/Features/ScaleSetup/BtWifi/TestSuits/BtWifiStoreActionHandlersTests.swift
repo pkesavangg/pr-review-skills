@@ -111,13 +111,13 @@ extension BtWifiStoreTests {
                 store.currentStep == .customizeSettings && harness.bluetoothSetupManager.cancelWifiCalls == 1
             }
 
-            #expect(harness.bluetoothSetupManager.lastCancelledScale?.id == savedScale.id)
+            #expect(harness.bluetoothSetupManager.lastCancelledBroadcastId == savedScale.broadcastIdString)
         }
 
         @Test("view settings action dispatches repeated scale metric saves without duplicating selection state")
         func viewSettingsActionRepeatedSaveRemainsStable() async {
             let scaleService = MockScaleService()
-            let scale = BtWifiStoreTestFixtures.makeScale()
+            let scale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             scaleService.fetchAttachedPreferenceResult = R4ScalePreference(
                 from: ScaleTestFixtures.makePreferenceDTO(scaleId: scale.id, displayName: "Saved"),
                 scaleId: scale.id
@@ -189,7 +189,7 @@ extension BtWifiStoreTests {
                     store.connectionState == .success
             }
 
-            #expect(harness.bluetoothSetupManager.lastCancelledScale?.id == savedScale.id)
+            #expect(harness.bluetoothSetupManager.lastCancelledBroadcastId == savedScale.broadcastIdString)
         }
 
         @Test("exit alert message changes for wifi-only, post-connection, and pre-connection contexts")
@@ -198,13 +198,13 @@ extension BtWifiStoreTests {
             let store = harness.store
 
             store.isWifiSetupOnly = true
-            store.savedScale = BtWifiStoreTestFixtures.makeScale(id: "wifi-only")
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot(id: "wifi-only")
             store.presentExitAlert(onConfirm: {})
             let wifiOnlyAlert = try #require(harness.notification.alertData)
             #expect(wifiOnlyAlert.message == AlertStrings.ExitBtWifiSetupAlert.wifiExitMessage)
 
             store.isWifiSetupOnly = false
-            store.savedScale = BtWifiStoreTestFixtures.makeScale(id: "saved")
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot(id: "saved")
             store.presentExitAlert(onConfirm: {})
             let postConnectionAlert = try #require(harness.notification.alertData)
             #expect(postConnectionAlert.message == AlertStrings.ExitBtWifiSetupAlert.postConnectionExitMessage)
@@ -248,7 +248,7 @@ extension BtWifiStoreTests {
             var dismissCalls = 0
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
-            store.savedScale = BtWifiStoreTestFixtures.makeScale()
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             store.navigateToStep(.stepOn)
             store.liveMeasurementSubscription = PassthroughSubject<Int, Never>().sink { _ in }
             store.measurementTimeoutTask = Task { try? await Task.sleep(nanoseconds: 5_000_000_000) }
@@ -274,7 +274,7 @@ extension BtWifiStoreTests {
         func nextButtonGuardsInvalidDuplicateSaveAndHandlesConnectedNetworkShortcut() async {
             let harness = BtWifiStoreTestFixtures.makeSUT()
             let store = harness.store
-            let savedScale = BtWifiStoreTestFixtures.makeScale()
+            let savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot()
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
             store.navigateToStep(.gatheringNetwork)
@@ -298,7 +298,7 @@ extension BtWifiStoreTests {
             }
 
             #expect(store.scaleSetupError == .none)
-            #expect(harness.bluetoothSetupManager.lastCancelledScale?.id == savedScale.id)
+            #expect(harness.bluetoothSetupManager.lastCancelledBroadcastId == savedScale.broadcastIdString)
         }
 
         @Test("next button routes customization to update or step-on and finishing clears setup state")

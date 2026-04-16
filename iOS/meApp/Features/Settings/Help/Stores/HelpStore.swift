@@ -36,8 +36,8 @@ class HelpStore: ObservableObject {
     
     // MARK: - Scale Log State
     @Published var showScaleLogSheet = false
-    @Published var scales: [Device] = []
-    
+    @Published var scales: [DeviceSnapshot] = []
+
     var isSendScaleLogEnabled: Bool {
         if scales.count > 1 {
             return true
@@ -214,8 +214,8 @@ class HelpStore: ObservableObject {
     }
     
     /// Sends scale-specific logs.
-    func sendScaleLogHandler(device: Device? = nil) {
-        let resolvedDevice: Device? = {
+    func sendScaleLogHandler(device: DeviceSnapshot? = nil) {
+        let resolvedDevice: DeviceSnapshot? = {
             if let id = device {
                 return id
             } else if scales.count == 1 {
@@ -232,12 +232,12 @@ class HelpStore: ObservableObject {
         }
     }
 
-    private func sendScaleLogsToServer(device: Device) {
+    private func sendScaleLogsToServer(device: DeviceSnapshot) {
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.sendingLogs))
             
             do {
-                let result = await bluetoothService.getDeviceLogs(for: device)
+                let result = await bluetoothService.getDeviceLogs(broadcastId: device.broadcastIdString ?? "")
                 switch result {
                 case .success(let logs):
                     try await logger.sendScaleLogsToServer(deviceLogs: logs.logs)
