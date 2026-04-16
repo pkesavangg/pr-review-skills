@@ -68,7 +68,11 @@ struct GraphDataPreparer {
             let displayWeight: Double
             if isWeightlessMode {
                 guard let anchor = anchorWeight else { return nil }
-                displayWeight = convertWeight(summary.weight) - anchor
+                let convertedWeight = convertWeight(summary.weight)
+                displayWeight = displayedWeightlessDifference(
+                    currentWeight: convertedWeight,
+                    anchorWeight: anchor
+                )
             } else {
                 displayWeight = convertWeight(summary.weight)
             }
@@ -203,7 +207,10 @@ struct GraphDataPreparer {
             let weight = convertWeight(op.weight)
             if isWeightlessMode {
                 guard let anchor = anchorWeight else { return nil }
-                return weight - anchor
+                return displayedWeightlessDifference(
+                    currentWeight: weight,
+                    anchorWeight: anchor
+                )
             }
             return weight
         }
@@ -305,11 +312,17 @@ struct GraphDataPreparer {
         case .week, .month:
             guard let last = operations.last else { return nil }
             let latest = convertWeight(last.weight)
-            raw = latest - anchor
+            raw = displayedWeightlessDifference(
+                currentWeight: latest,
+                anchorWeight: anchor
+            )
         case .year, .total:
             let weights = operations.map { convertWeight($0.weight) }
             guard !weights.isEmpty else { return nil }
-            raw = weights.reduce(0, +) / Double(weights.count) - anchor
+            raw = displayedWeightlessAverageDifference(
+                currentWeights: weights,
+                anchorWeight: anchor
+            )
         }
         return (raw * 100).rounded(.toNearestOrAwayFromZero) / 100
     }
@@ -321,12 +334,16 @@ struct GraphDataPreparer {
         convertWeight: (Double) -> Double
     ) -> Double {
         guard !operations.isEmpty else { return 0 }
-        let values = operations.map { op -> Double in
-            let weight = convertWeight(op.weight)
-            return isWeightlessMode ? weight - (anchorWeight ?? 0) : weight
+        let weights = operations.map { convertWeight($0.weight) }
+        let avg = weights.reduce(0, +) / Double(weights.count)
+        guard isWeightlessMode else {
+            return (avg * 100).rounded(.toNearestOrAwayFromZero) / 100
         }
-        let avg = values.reduce(0, +) / Double(values.count)
-        return (avg * 100).rounded(.toNearestOrAwayFromZero) / 100
+        guard let anchorWeight else { return 0 }
+        return displayedWeightlessAverageDifference(
+            currentWeights: weights,
+            anchorWeight: anchorWeight
+        )
     }
 
     // swiftlint:disable:next function_parameter_count
@@ -477,6 +494,36 @@ struct GraphDataPreparer {
         let values = series.filter { $0.series == DashboardStrings.weight }.map(\.value)
         guard let min = values.min(), let max = values.max(), max > min else { return nil }
         return min...max
+    }
+
+    private func roundedToDisplayedWeight(_ value: Double) -> Double {
+        (value * 10).rounded(.toNearestOrAwayFromZero) / 10
+    }
+
+    private func displayedAverageWeight(_ weights: [Double]) -> Double {
+        guard !weights.isEmpty else { return 0 }
+        let displayedTenths = weights.map { Int(($0 * 10).rounded(.toNearestOrAwayFromZero)) }
+        let averageTenths = Double(displayedTenths.reduce(0, +)) / Double(displayedTenths.count)
+        return averageTenths.rounded(.toNearestOrAwayFromZero) / 10
+    }
+
+    private func displayedWeightlessDifference(
+        currentWeight: Double,
+        anchorWeight: Double
+    ) -> Double {
+        let displayedCurrent = roundedToDisplayedWeight(currentWeight)
+        let displayedAnchor = roundedToDisplayedWeight(anchorWeight)
+        return roundedToDisplayedWeight(displayedCurrent - displayedAnchor)
+    }
+
+    private func displayedWeightlessAverageDifference(
+        currentWeights: [Double],
+        anchorWeight: Double
+    ) -> Double {
+        guard !currentWeights.isEmpty else { return 0 }
+        let displayedCurrentAverage = displayedAverageWeight(currentWeights)
+        let displayedAnchor = roundedToDisplayedWeight(anchorWeight)
+        return roundedToDisplayedWeight(displayedCurrentAverage - displayedAnchor)
     }
 
     private func effectiveMetricRange(min: Double, max: Double, metric: String) -> (Double, Double) {

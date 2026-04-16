@@ -21,31 +21,18 @@ class DashboardMetricsCalculator: DashboardMetricsCalculatorProtocol {
             return 0
         }
 
-        // Calculate weight values with proper error handling
-        let weightValues = operations.compactMap { summary -> Double? in
-            if isWeightlessMode {
-                guard let anchorWeight = anchorWeight else {
-                    return nil
-                }
-                let currentWeight = convertWeight(summary.weight)
-                return currentWeight - anchorWeight
-            } else {
-                return convertWeight(summary.weight)
-            }
-        }
-
-        // Return 0 if no valid weight values were calculated
-        guard !weightValues.isEmpty else {
+        if isWeightlessMode, anchorWeight == nil {
             return 0
         }
 
-        // Calculate average with proper rounding to 1 decimal place
-        let sum = weightValues.reduce(0, +)
-        let average = sum / Double(weightValues.count)
+        let weightValues = operations.map { convertWeight($0.weight) }
+        let average = weightValues.reduce(0, +) / Double(weightValues.count)
 
-        // Round to 1 decimal place using a more robust approach to handle floating-point precision
-        let roundedAverage = (average * 10).rounded(.toNearestOrAwayFromZero) / 10
-        return roundedAverage
+        if isWeightlessMode, let anchorWeight {
+            return displayedWeightlessAverageDifference(currentWeights: weightValues, anchorWeight: anchorWeight)
+        }
+
+        return roundedToDisplayedWeight(average)
     }
 
     // MARK: - Display Weight Calculation
@@ -60,15 +47,16 @@ class DashboardMetricsCalculator: DashboardMetricsCalculatorProtocol {
                 let cal = Calendar.current
                 let sameDayOps = context.operations.filter { cal.isDate($0.date, inSameDayAs: refDate) }
                 if !sameDayOps.isEmpty {
-                    let weights: [Double]
+                    let weights = sameDayOps.map { context.convertWeight($0.weight) }
+                    let avg = weights.reduce(0, +) / Double(weights.count)
                     if context.isWeightlessMode {
                         guard let anchor = context.anchorWeight else { return nil }
-                        weights = sameDayOps.map { context.convertWeight($0.weight) - anchor }
-                    } else {
-                        weights = sameDayOps.map { context.convertWeight($0.weight) }
+                        return displayedWeightlessAverageDifference(
+                            currentWeights: weights,
+                            anchorWeight: anchor
+                        )
                     }
-                    let avg = weights.reduce(0, +) / Double(weights.count)
-                    return (avg * 10).rounded(.toNearestOrAwayFromZero) / 10
+                    return roundedToDisplayedWeight(avg)
                 }
                 // No entries on this day — use interpolation for crosshair on empty day
                 return context.interpolatedWeight(
@@ -86,7 +74,7 @@ class DashboardMetricsCalculator: DashboardMetricsCalculatorProtocol {
             if context.isWeightlessMode {
                 guard let anchorWeight = context.anchorWeight else { return nil }
                 let currentWeight = context.convertWeight(selectedPoint.weight)
-                return currentWeight - anchorWeight
+                return displayedWeightlessDifference(currentWeight: currentWeight, anchorWeight: anchorWeight)
             } else {
                 return context.convertWeight(selectedPoint.weight)
             }
@@ -122,24 +110,20 @@ class DashboardMetricsCalculator: DashboardMetricsCalculatorProtocol {
             return interpolatedAverage
         }
 
-        // Check if weightless mode is enabled
-        if context.isWeightlessMode {
-            return context.weightlessDisplay(
-                opsToUse,
-                context.anchorWeight,
-                context.period,
-                context.convertWeight
-            )
-        }
-
         // Calculate average of operations in visible region (or all if no visible region)
         let weights = opsToUse.map { context.convertWeight($0.weight) }
         guard !weights.isEmpty else { return nil }
         let averageWeight = weights.reduce(0, +) / Double(weights.count)
 
-        // Round to 1 decimal place using a more robust approach to handle floating-point precision
-        let roundedAverage = (averageWeight * 10).rounded(.toNearestOrAwayFromZero) / 10
-        return roundedAverage
+        if context.isWeightlessMode {
+            guard let anchor = context.anchorWeight else { return nil }
+            return displayedWeightlessAverageDifference(
+                currentWeights: weights,
+                anchorWeight: anchor
+            )
+        }
+
+        return roundedToDisplayedWeight(averageWeight)
     }
 
     // MARK: - Entry Creation
@@ -260,6 +244,36 @@ class DashboardMetricsCalculator: DashboardMetricsCalculatorProtocol {
             unit: nil
         )
         return entry
+    }
+
+    private func roundedToDisplayedWeight(_ value: Double) -> Double {
+        (value * 10).rounded(.toNearestOrAwayFromZero) / 10
+    }
+
+    private func displayedAverageWeight(_ weights: [Double]) -> Double {
+        guard !weights.isEmpty else { return 0 }
+        let displayedTenths = weights.map { Int(($0 * 10).rounded(.toNearestOrAwayFromZero)) }
+        let averageTenths = Double(displayedTenths.reduce(0, +)) / Double(displayedTenths.count)
+        return averageTenths.rounded(.toNearestOrAwayFromZero) / 10
+    }
+
+    private func displayedWeightlessDifference(
+        currentWeight: Double,
+        anchorWeight: Double
+    ) -> Double {
+        let displayedCurrent = roundedToDisplayedWeight(currentWeight)
+        let displayedAnchor = roundedToDisplayedWeight(anchorWeight)
+        return roundedToDisplayedWeight(displayedCurrent - displayedAnchor)
+    }
+
+    private func displayedWeightlessAverageDifference(
+        currentWeights: [Double],
+        anchorWeight: Double
+    ) -> Double {
+        guard !currentWeights.isEmpty else { return 0 }
+        let displayedCurrentAverage = displayedAverageWeight(currentWeights)
+        let displayedAnchor = roundedToDisplayedWeight(anchorWeight)
+        return roundedToDisplayedWeight(displayedCurrentAverage - displayedAnchor)
     }
 
     /// Creates entry from an interpolated date selection

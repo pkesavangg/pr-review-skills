@@ -169,7 +169,7 @@ struct DashboardDateRangeManagerTests {
         let today = date("2026-03-10")
 
         #expect(sut.emptyStatePeriodLabel(for: .week, today: today) == "Mar 8 - Mar 14, 2026")
-        #expect(sut.emptyStatePeriodLabel(for: .month, today: today) == "Mar, 2026")
+        #expect(sut.emptyStatePeriodLabel(for: .month, today: today) == "Mar 2026")
         #expect(sut.emptyStatePeriodLabel(for: .year, today: today) == "2026")
         #expect(sut.emptyStatePeriodLabel(for: .total, today: today) == "2026")
     }

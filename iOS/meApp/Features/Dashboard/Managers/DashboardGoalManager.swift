@@ -337,7 +337,7 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
     func convertStoredWeightToDisplay(_ storedWeight: Double) -> Double {
         let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
         if unit == .kg {
-            return ConversionTools.convertStoredToKg(storedWeight)
+            return ConversionTools.convertStoredToKgRaw(storedWeight)
         } else {
             return ConversionTools.convertStoredToLbs(storedWeight)
         }

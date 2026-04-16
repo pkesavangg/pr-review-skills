@@ -167,6 +167,9 @@ enum DashboardTestFixtures {
     /// Simple stored-to-display conversion: stored weight is in tenths of pounds
     static let convertToLbs: (Double) -> Double = { $0 / 10.0 }
 
+    /// Raw stored-to-kg conversion without intermediate rounding (matches production)
+    static let convertToKgRaw: (Double) -> Double = { $0 / 22.0462 }
+
     /// Identity conversion for testing (no conversion applied)
     static let identityConvert: (Double) -> Double = { $0 }
 

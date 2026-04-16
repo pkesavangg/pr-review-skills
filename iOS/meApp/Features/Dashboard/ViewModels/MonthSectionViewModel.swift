@@ -114,16 +114,29 @@ final class MonthSectionViewModel: BaseSectionViewModel {
             selectedDate = startTick
             showCrosshair = true
         } else {
-            // Pick the nearest candidate inside the section with deterministic tie-break (earlier first)
-            if let chosen = candidates.min(by: { first, second in
+            // Find nearest data point in the section
+            let nearestCandidate = candidates.min(by: { first, second in
                 let firstDistance = abs(first.timeIntervalSince(clampedDate))
                 let secondDistance = abs(second.timeIntervalSince(clampedDate))
                 if firstDistance == secondDistance { return first < second }
                 return firstDistance < secondDistance
-            }) {
-                selectedDate = chosen
-                showCrosshair = true
+            })
+
+            // Also find nearest grid tick to the tap
+            let realTicks: [Date] = allTicks.count > 1 ? Array(allTicks.dropLast()) : allTicks
+            let nearestTick = realTicks.min(by: {
+                abs($0.timeIntervalSince(clampedDate)) < abs($1.timeIntervalSince(clampedDate))
+            })
+
+            // Select whichever is closer: the grid tick or the data point
+            if let candidate = nearestCandidate, let tick = nearestTick {
+                let distToCandidate = abs(candidate.timeIntervalSince(clampedDate))
+                let distToTick = abs(tick.timeIntervalSince(clampedDate))
+                selectedDate = distToTick <= distToCandidate ? tick : candidate
+            } else {
+                selectedDate = nearestCandidate ?? startTick
             }
+            showCrosshair = true
         }
     }
     
