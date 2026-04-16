@@ -97,9 +97,11 @@ class EntryReadRepository @Inject constructor(
 
     override fun getWeightMonthlyGraphData(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
         entryReadDao.getWeightMonthlyGraphData(accountId)
+            .map { list -> list.map { it.convertToDisplay() } }
 
     override fun getWeightDailyGraphData(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
         entryReadDao.getWeightDailyGraphData(accountId)
+            .map { list -> list.map { it.convertToDisplay() } }
 
     // ---------------------------------------------------------------------------
     // Weight Snapshot (Dashboard mini-chart)

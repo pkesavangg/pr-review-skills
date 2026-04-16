@@ -231,7 +231,7 @@ class EntryReadService @Inject constructor(
         AppLog.d(TAG, "getMonthlyGraphData: ${product.productType}")
         return when (product) {
             is ProductSelection.MyWeight -> entryReadRepository.getWeightMonthlyGraphData(acctId)
-                .map { list -> GraphData.Weight(list.map { it.scaleWeightToDisplay() }) }
+                .map { GraphData.Weight(it) }
 
             is ProductSelection.BloodPressure -> entryReadRepository.getBpmMonthlyGraphData(acctId)
                 .map { GraphData.BloodPressure(it) }
@@ -246,7 +246,7 @@ class EntryReadService @Inject constructor(
         AppLog.d(TAG, "getDailyGraphData: ${product.productType}")
         return when (product) {
             is ProductSelection.MyWeight -> entryReadRepository.getWeightDailyGraphData(acctId)
-                .map { list -> GraphData.Weight(list.map { it.scaleWeightToDisplay() }) }
+                .map { GraphData.Weight(it) }
 
             is ProductSelection.BloodPressure -> entryReadRepository.getBpmDailyGraphData(acctId)
                 .map { GraphData.BloodPressure(it) }
@@ -287,11 +287,6 @@ class EntryReadService @Inject constructor(
     }
 
     /**
-     * Scales stored weight fields (×10 stored) to display lbs (÷10).
-     * Chart-facing conversion only; kept local to the data layer to avoid
-     * depending on feature-layer helpers.
-     */
-    /**
      * Unit + weightless settings for processing history display data.
      * Lighter than the full [ProgressSettings] — no goal or account needed.
      */
@@ -302,12 +297,8 @@ class EntryReadService @Inject constructor(
         ) { unit, weightless -> Pair(unit, weightless) }
             .distinctUntilChanged()
 
-    private fun PeriodBodyScaleSummary.scaleWeightToDisplay(): PeriodBodyScaleSummary =
-        copy(weight = weight / DISPLAY_SCALE)
-
     companion object {
         private const val TAG = "EntryReadService"
-        private const val DISPLAY_SCALE = 10.0
         private const val LAST_7_DAYS = 7
         private const val LAST_30_DAYS = 30
         private const val OPERATION_CREATE = "create"

@@ -248,7 +248,6 @@ class WeightDashboardViewModel @Inject constructor(
       goalService.getCurrentGoal().collect { _ ->
         val currentAccount = accountService.activeAccount.value
         val rawGoal = currentAccount?.toGoal()
-        // Store as display lb (÷10) — unit + weightless applied at display time
         val displayGoal = rawGoal?.copy(
           goalWeight = rawGoal.goalWeight / 10.0,
           initialWeight = rawGoal.initialWeight / 10.0,

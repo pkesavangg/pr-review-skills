@@ -48,10 +48,17 @@ internal fun rememberDefaultMarker(
       onTargetsUpdate(emptyList())
     } else {
       val ts = markerIndex.toLong()
-      // fallbackValues = per-layer targets, each containing Y values for points in that layer
-      // e.g. Weight: [[weight]], BP: [[systolic, diastolic, pulse]]
-      val yValues = fallbackValues.flatMap { layerPoints -> layerPoints.map { it.toDouble() } }
-      onTargetsUpdate(listOfNotNull(createFallbackEntry(ts, yValues, segment)))
+      // First: try to find the REAL data point at this timestamp — it has all metrics
+      // (bodyFat, muscleMass, bmi, etc.), not just the primary Y value.
+      val realData = segmentState.data.filter { it.getTimeStamp() == ts }
+      if (realData.isNotEmpty()) {
+        onTargetsUpdate(realData)
+      } else {
+        // Fallback: marker is between data points — create an interpolated entry
+        // with only the primary Y values (other metrics will be null).
+        val yValues = fallbackValues.flatMap { layerPoints -> layerPoints.map { it.toDouble() } }
+        onTargetsUpdate(listOfNotNull(createFallbackEntry(ts, yValues, segment)))
+      }
     }
   }
 
