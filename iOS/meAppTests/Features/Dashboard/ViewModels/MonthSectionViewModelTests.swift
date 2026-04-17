@@ -430,4 +430,87 @@ struct MonthSectionViewModelTests {
         // Should show crosshair if within right slack
         #expect(sut.showCrosshair == true)
     }
+
+    // MARK: - Grid Tick vs Data Point Selection (MA-2816)
+
+    @Test("Equidistant touch between tick and data point prefers the grid tick")
+    func selectionTieBreakPrefersTick() {
+        // Mar 1 (Sun) is a grid tick; data on Mar 3.
+        // Touch at Mar 2 noon is equidistant → should prefer the tick (Mar 1).
+        let summaries = [
+            DashboardTestFixtures.makeSummary(
+                period: "2026-03-03",
+                entryTimestamp: "2026-03-03T08:00:00Z",
+                date: makeDate(year: 2026, month: 3, day: 3, hour: 8),
+                weight: 1800
+            ),
+            DashboardTestFixtures.makeSummary(
+                period: "2026-03-05",
+                entryTimestamp: "2026-03-05T08:00:00Z",
+                date: makeDate(year: 2026, month: 3, day: 5, hour: 8),
+                weight: 1810
+            )
+        ]
+        let (sut, _, _) = makeSUT(summaries: summaries)
+
+        // Equidistant between tick Mar 1 noon and data Mar 3 noon
+        sut.handleChartSelection(at: localNoon(day: 2))
+
+        #expect(sut.showCrosshair == true)
+        #expect(sut.selectedDate == localNoon(day: 1))
+    }
+
+    @Test("Touch closer to data point selects data point over grid tick")
+    func selectionCloserToDataPointSelectsDataPoint() {
+        // Mar 1 (Sun) is a grid tick; data on Mar 3.
+        // Touch at Mar 3 06:00 is much closer to data Mar 3 noon than tick Mar 1 noon.
+        let summaries = [
+            DashboardTestFixtures.makeSummary(
+                period: "2026-03-03",
+                entryTimestamp: "2026-03-03T08:00:00Z",
+                date: makeDate(year: 2026, month: 3, day: 3, hour: 8),
+                weight: 1800
+            ),
+            DashboardTestFixtures.makeSummary(
+                period: "2026-03-06",
+                entryTimestamp: "2026-03-06T08:00:00Z",
+                date: makeDate(year: 2026, month: 3, day: 6, hour: 8),
+                weight: 1810
+            )
+        ]
+        let (sut, _, _) = makeSUT(summaries: summaries)
+
+        // Touch very close to Mar 3 data point
+        sut.handleChartSelection(at: makeDate(year: 2026, month: 3, day: 3, hour: 6))
+
+        #expect(sut.showCrosshair == true)
+        #expect(sut.selectedDate == localNoon(day: 3))
+    }
+
+    @Test("Touch closer to grid tick selects tick over data point")
+    func selectionCloserToTickSelectsTick() {
+        // Mar 1 (Sun) is a grid tick; data on Mar 5.
+        // Touch at Mar 1 18:00 is much closer to tick Mar 1 noon than data Mar 5 noon.
+        let summaries = [
+            DashboardTestFixtures.makeSummary(
+                period: "2026-03-05",
+                entryTimestamp: "2026-03-05T08:00:00Z",
+                date: makeDate(year: 2026, month: 3, day: 5, hour: 8),
+                weight: 1800
+            ),
+            DashboardTestFixtures.makeSummary(
+                period: "2026-03-06",
+                entryTimestamp: "2026-03-06T08:00:00Z",
+                date: makeDate(year: 2026, month: 3, day: 6, hour: 8),
+                weight: 1810
+            )
+        ]
+        let (sut, _, _) = makeSUT(summaries: summaries)
+
+        // Touch very close to the Mar 1 grid tick
+        sut.handleChartSelection(at: makeDate(year: 2026, month: 3, day: 1, hour: 18))
+
+        #expect(sut.showCrosshair == true)
+        #expect(sut.selectedDate == localNoon(day: 1))
+    }
 }
