@@ -33,6 +33,12 @@ protocol EntryRepositoryProtocol {
     /// - Parameter id: The ID of the entry to delete.
     func deleteEntry(byId id: String) async throws
 
+    /// Marks an entry as deleted (operationType = "delete", isSynced = false) by ID
+    /// using a background ModelContext.  Use this instead of mutating a @Model object
+    /// off-actor before calling updateEntry.
+    /// - Parameter id: The UUID string of the entry to mark as deleted.
+    func markEntryAsDeleted(byId id: String) async throws
+
     /// Deletes all entries from the local data store.
     func deleteAllEntries() async throws
 
