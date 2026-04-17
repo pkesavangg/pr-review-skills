@@ -12,14 +12,11 @@ import SwiftData
 extension BluetoothService {
     // MARK: - Scale & Profile Helpers
 
-    func getSafeScaleType(for device: Device) -> String? {
-        guard let bathScale = device.bathScale else {
-            return nil
-        }
-        return bathScale.scaleType
+    func getSafeScaleType(for device: DeviceSnapshot) -> String? {
+        device.bathScale?.scaleType
     }
 
-    func disconnectDeletedScales(currentScales: [Device], newScales: [Device]) async {
+    func disconnectDeletedScales(currentScales: [DeviceSnapshot], newScales: [DeviceSnapshot]) async {
         let accountId = activeAccount?.accountId ?? "unknown"
 
         let currentScalesForAccount = currentScales.filter { $0.accountId == accountId }
@@ -37,23 +34,22 @@ extension BluetoothService {
                 continue
             }
 
-            if scale.isConnected ?? false {
-                if let broadcastId = scale.broadcastIdString {
-                    scale.isWeighOnlyModeEnabledByOthers = false
-                    await scaleService.updateConnectedDeviceWeightOnlyMode(
-                        broadcastId: broadcastId,
-                        isWeightOnlyModeEnabledByOthers: false
-                    )
-                }
-                let deleteResult = await deleteDevice(scale, disconnect: false)
+            if scale.isConnected {
+                let broadcastId = scale.broadcastIdString ?? ""
+                await scaleService.updateConnectedDeviceWeightOnlyMode(
+                    broadcastId: broadcastId,
+                    isWeightOnlyModeEnabledByOthers: false
+                )
+                let deleteResult = await deleteDevice(broadcastId: broadcastId, disconnect: false)
                 if case .failure(let error) = deleteResult {
                     logger.log(level: .error, tag: tag, message: "Failed to delete device: \(error.localizedDescription)")
                 }
 
-                guard let broadcastId = scale.broadcastIdString else { continue }
-                let disconnectResult = await disconnectDevice(broadcastId: broadcastId)
-                if case .failure(let error) = disconnectResult {
-                    logger.log(level: .error, tag: tag, message: "Failed to disconnect device: \(error.localizedDescription)")
+                if !broadcastId.isEmpty {
+                    let disconnectResult = await disconnectDevice(broadcastId: broadcastId)
+                    if case .failure(let error) = disconnectResult {
+                        logger.log(level: .error, tag: tag, message: "Failed to disconnect device: \(error.localizedDescription)")
+                    }
                 }
             }
         }

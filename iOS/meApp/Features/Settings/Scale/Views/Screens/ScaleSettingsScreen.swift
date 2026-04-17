@@ -19,7 +19,7 @@ struct ScaleSettingsScreen: View {
     private static let titleTruncationLength = 25
     private var fallbackProductURL: URL { AppConstants.LegalURLs.greaterGoodsWebsite }
     private var truncatedTitle: String {
-        let title = scale.nickname ?? scale.deviceName ?? ""
+        let title = scaleSettingsStore.nickname ?? scale.nickname ?? scale.deviceName ?? ""
         return title.count > Self.titleTruncationLength ? "\(title.prefix(Self.titleTruncationLength))…" : title
     }
     
@@ -180,7 +180,7 @@ struct ScaleSettingsScreen: View {
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.scaleName,
-                    value: scale.nickname ?? scale.deviceName
+                    value: scaleSettingsStore.nickname
                 ) { router.navigate(to: .scaleNameScreen(scale: scale)) }
             )
             
@@ -308,7 +308,7 @@ struct ScaleSettingsScreen: View {
                     }),
                     isDisabled: !scaleSettingsStore.isDeviceConnected ||
                         scaleSettingsStore.isScaleImpedanceSwitchedOn == true ||
-                        (scaleSettingsStore.scale.r4ScalePreference?.shouldMeasureImpedance == false)
+                        !scaleSettingsStore.isBodyMetrics
                 ) {
                         Task { await scaleSettingsStore.setSessionImpedance(scaleSettingsStore.isImpedanceSwitchedOnForSession) }
                     }

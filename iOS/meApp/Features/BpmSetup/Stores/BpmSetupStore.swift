@@ -31,7 +31,7 @@ final class BpmSetupStore: ObservableObject {
     private var discoveryEvent: DeviceDiscoveryEvent?
     private var isDeviceSaved: Bool = false
     private var isSaving: Bool = false
-    private var deviceToDelete: Device?
+    private var deviceToDelete: DeviceSnapshot?
     private var lastRetrievedDeviceInfo: DeviceInfo?
     private var canReplaceUser: Bool = false
 
@@ -490,9 +490,10 @@ final class BpmSetupStore: ObservableObject {
         deviceDiscoveryCancellable?.cancel()
         scanTimerTask?.cancel()
 
-        self.discoveredDevice = event.device
+        let device = event.device.toDevice()
+        device.protocolType = event.protocolType.rawValue
+        self.discoveredDevice = device
         self.discoveryEvent = event
-        event.device.protocolType = event.protocolType.rawValue
 
         LoggerService.shared.log(level: .info, tag: tag, message: "BPM device discovered, checking for existing pairing")
 
@@ -998,7 +999,7 @@ final class BpmSetupStore: ObservableObject {
         let protocolType = device.protocolType ?? "A3"
 
         // Try getDeviceInfo first (works for A6/R4 where broadcastId is valid)
-        let deviceInfoResult = await bluetoothService.getDeviceInfo(for: device, skipConnectionCheck: true)
+        let deviceInfoResult = await bluetoothService.getDeviceInfo(broadcastId: device.broadcastIdString ?? "", skipConnectionCheck: true)
 
         switch deviceInfoResult {
         case .success(let deviceInfo):

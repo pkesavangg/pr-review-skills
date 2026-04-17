@@ -203,7 +203,7 @@ extension BpmSetupStoreTests {
             let existing = BpmSetupStoreTestFixtures.makeBpmDevice(id: "existing-bpm")
             existing.mac = "AA:BB:CC"
             existing.userNumber = "1"
-            harness.scaleService.scales = [existing]
+            harness.scaleService.scales = [existing.toSnapshot()]
 
             let discovered = BpmSetupStoreTestFixtures.makeBpmDevice(id: "discovered")
             discovered.mac = "AA:BB:CC"
@@ -231,7 +231,7 @@ extension BpmSetupStoreTests {
             let existing = BpmSetupStoreTestFixtures.makeBpmDevice(id: "existing-bpm")
             existing.mac = "AA:BB:CC"
             existing.userNumber = "2"
-            harness.scaleService.scales = [existing]
+            harness.scaleService.scales = [existing.toSnapshot()]
 
             let discovered = BpmSetupStoreTestFixtures.makeBpmDevice()
             discovered.mac = "AA:BB:CC"

@@ -156,7 +156,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     // MARK: - Required Permission Helpers
 
     /// Updates `requiredCategories` based on the provided devices.
-    private func updateRequiredCategories(with devices: [Device]) {
+    private func updateRequiredCategories(with devices: [DeviceSnapshot]) {
         var newRequired: Set<PermissionCategory> = []
 
         guard !devices.isEmpty else {

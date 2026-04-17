@@ -96,7 +96,7 @@ private func makeSUT(
     apiRepo: MockLoggerApiRepo? = nil,
     accountOverride: MockAccountService? = nil,
     sessionId: String = "test-session"
-) -> (LoggerService, MockLoggerRepo, MockLoggerApiRepo, MockAccountService) {
+) -> (LoggerService, MockLoggerRepo, MockLoggerApiRepo, MockAccountService) { // swiftlint:disable:this large_tuple
     TestDependencyContainer.reset()
 
     let repo = repo ?? MockLoggerRepo()
@@ -106,7 +106,7 @@ private func makeSUT(
         account = override
     } else {
         let defaultAccount = MockAccountService()
-        defaultAccount.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "test@e.com", isActive: true)
+        defaultAccount.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "test@e.com", isActiveAccount: true)
         account = defaultAccount
     }
 
@@ -173,7 +173,7 @@ struct LoggerServiceTests {
     @Test("log info level: resolves account ID from active account")
     func logInfoResolvesAccountId() async {
         let (sut, _, _, account) = makeSUT()
-        account.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-7", email: "x@e.com", isActive: true)
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-7", email: "x@e.com", isActiveAccount: true)
 
         sut.log(level: .info, tag: "Tag", message: "info msg")
         try? await Task.sleep(nanoseconds: 200_000_000)
@@ -479,7 +479,7 @@ struct LoggerServiceTests {
         repo.logs = [makeLogEntry(accountId: "acct-1")]
         let apiRepo = MockLoggerApiRepo()
         let account = MockAccountService()
-        account.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "a@b.com", isActive: true)
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "a@b.com", isActiveAccount: true)
         let (sut, _, _, _) = makeSUT(repo: repo, apiRepo: apiRepo, accountOverride: account)
 
         try await sut.sendLogsToServer(accountId: nil, version: "1.0")

@@ -15,11 +15,11 @@ struct HistoryEntryItem: View {
     @Environment(\.weightlessSettings) private var weightlessSettings
     @Environment(\.weightUnit) private var weightUnit
     
-    let entry: Entry
+    let entry: EntrySnapshot
     let isExpanded: Bool
     let onTap: () -> Void
     let onDelete: () -> Void
-    let onMetricTap: (Entry, BodyMetric) -> Void
+    let onMetricTap: (EntrySnapshot, BodyMetric) -> Void
     var openItemID: Binding<UUID?>? // Optional binding for swipeable open tracking
     
     // MARK: - Computed Properties
@@ -129,34 +129,45 @@ struct HistoryEntryItem: View {
 #if DEBUG
 struct HistoryEntryItem_Previews: PreviewProvider {
     static var previews: some View {
-        let entry = Entry(
+        let entry = EntrySnapshot(
             id: UUID(),
-            entryTimestamp: "2025-12-16T14:10:00Z",
             accountId: "123",
+            entryTimestamp: "2025-12-16T14:10:00Z",
+            serverTimestamp: nil,
+            opTimestamp: nil,
             operationType: OperationType.create.rawValue,
-            deviceType: "scale",
-            isSynced: true
+            entryType: EntryType.scale.rawValue,
+            isSynced: true,
+            note: nil,
+            attempts: 0,
+            isFailedToSync: false,
+            scaleEntry: BathScaleEntrySnapshot(
+                weight: 1492,
+                bodyFat: 50,
+                muscleMass: 569,
+                water: 53,
+                bmi: nil,
+                source: nil,
+                systolic: nil,
+                diastolic: nil,
+                meanArterial: nil
+            ),
+            scaleEntryMetric: BathScaleMetricSnapshot(
+                bmr: 1862,
+                metabolicAge: 28,
+                proteinPercent: nil,
+                pulse: 80,
+                skeletalMusclePercent: 527,
+                subcutaneousFatPercent: 103,
+                visceralFatLevel: 8,
+                boneMass: 44,
+                impedance: 100,
+                unit: "kg"
+            ),
+            bpmEntry: nil,
+            babyEntry: nil
         )
-        
-        entry.scaleEntry = BathScaleEntry(
-            weight: 1492,
-            bodyFat: 50,
-            muscleMass: 569,
-            water: 53
-        )
-        
-        entry.scaleEntryMetric = BathScaleMetric(
-            bmr: 1862,
-            metabolicAge: 28,
-            pulse: 80,
-            skeletalMusclePercent: 527,
-            subcutaneousFatPercent: 103,
-            visceralFatLevel: 8,
-            boneMass: 44,
-            impedance: 100,
-            unit: "kg"
-        )
-        
+
         @State var openItemID: UUID?
         return VStack(spacing: .spacingMD) {
             HistoryEntryItem(
@@ -167,7 +178,7 @@ struct HistoryEntryItem_Previews: PreviewProvider {
                 onMetricTap: { _, _ in },
                 openItemID: .constant(nil)
             )
-            
+
             HistoryEntryItem(
                 entry: entry,
                 isExpanded: true,

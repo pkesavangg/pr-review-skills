@@ -41,7 +41,7 @@ private func makeHistoryMonth(id: String = "2026-03", weight: Double = 150, coun
 }
 
 @MainActor
-private func makeSUT() -> (
+private func makeSUT() -> ( // swiftlint:disable:this large_tuple
     HistoryStore,
     MockEntryService,
     TestNotificationHelperService,
@@ -261,7 +261,7 @@ struct HistoryStoreTests {
         productTypeStore.selectedItem = .baby(profile: babyProfile)
         store.productTypeStore = productTypeStore
 
-        let startDate = Calendar.current.date(byAdding: .day, value: -13, to: Date())!
+        let startDate = Calendar.current.date(byAdding: .day, value: -13, to: Date())! // swiftlint:disable:this force_unwrapping
         let entries = (0..<14).compactMap { offset -> Entry? in
             guard let date = Calendar.current.date(byAdding: .day, value: offset, to: startDate) else { return nil }
             let timestamp = ISO8601DateFormatter().string(from: date)
@@ -329,9 +329,9 @@ struct HistoryStoreTests {
     @Test("refreshAllEntries calls refreshAccount sync and reloads months and entries")
     func refreshAllEntriesCallsDependencies() async {
         let (store, entryService, _, accountService, _) = makeSUT()
-        let account = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "a@b.com", isActive: true)
+        let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "a@b.com", isActiveAccount: true)
         accountService.seedAccounts([account], active: account)
-        accountService.refreshAccountResult = .success(account)
+        accountService.refreshAccountResult = .success(())
         entryService.getMonthsAllResult = .success([makeHistoryMonth()])
         entryService.getMonthDetailResult = .success([])
         store.setSelectedMonth(selectedMonth: makeHistoryMonth())

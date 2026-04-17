@@ -62,9 +62,15 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     private var lastAccountId: String?
     private var isInitialized = false
 
+    // MARK: - Ephemeral Connection State (never persisted to SwiftData)
+
+    /// In-memory connection state keyed by broadcastIdString (or device id as fallback).
+    /// Updated by BLE events only. Merged into DeviceSnapshot during refreshScalesFromLocal().
+    private var ephemeralState: [String: DeviceEphemeralState] = [:]
+
     // MARK: - Published State
 
-    @Published private(set) var scales: [Device] = []
+    @Published private(set) var scales: [DeviceSnapshot] = []
 
     /// Clears all scale data from local storage.
     func clearAllData() async {
@@ -84,9 +90,8 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         localKVRepo = ScaleRepositoryLocal()
         Task {
             await refreshScalesFromLocal()
-            // Reset all connection statuses to false on app launch
-            // Only Bluetooth events (DEVICE_CONNECTED) should set them to true
-            await resetAllConnectionStatusOnLaunch()
+            // ephemeralState starts empty — connection status defaults to false.
+            // Only Bluetooth DEVICE_CONNECTED events set isConnected = true.
 
             // Trigger sync on app launch to fetch scales from server
             if let accountId = await MainActor.run(body: { accountService.activeAccount?.accountId }) {
@@ -112,18 +117,16 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
 
                         // Clear current list to avoid showing stale devices while switching
                         self.scales = []
+                        // Clear ephemeral state on every account change — connections are per-account
+                        self.ephemeralState = [:]
                         // Refresh from local storage scoped to the new active account
                         await self.refreshScalesFromLocal()
                         // Trigger sync to fetch scales from server for the new account
                         await self.syncAllScalesWithRemote()
 
-                        // Only reset connection statuses when switching to a different, non-nil account (not on logout)
                         if accountIdChanged, let currentAccountId = newAccount?.accountId {
-                            await self.resetAllConnectionStatusOnLaunch()
-                            // Update lastAccountId when resetting
                             self.lastAccountId = currentAccountId
                         } else {
-                            // Update lastAccountId even if we don't reset
                             self.lastAccountId = newAccount?.accountId
                         }
                     }
@@ -143,7 +146,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         self.localKVRepo = localKVRepo
     }
 
-    var scalesPublisher: AnyPublisher<[Device], Never> {
+    var scalesPublisher: AnyPublisher<[DeviceSnapshot], Never> {
         $scales.eraseToAnyPublisher()
     }
 
@@ -191,17 +194,8 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         // Step 2: Fetch fresh server state and replace local storage
         await pullServerStateAndReplace(accountId: accountId)
 
-        // Step 3: Refresh published scales
+        // Step 3: Refresh published snapshots (ephemeral state is merged in refreshScalesFromLocal)
         await refreshScalesFromLocal()
-
-        // Step 4: Update connection status from connected devices map
-        // This ensures connection status is accurate after sync, especially for newly saved scales
-        // where connection status might have been lost during server sync
-        do {
-            try await updateAllScalesStatus()
-        } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to update scales status after sync: \(error.localizedDescription)")
-        }
 
         isSyncing = false
 
@@ -259,200 +253,85 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
 
     // MARK: - DeviceServiceProtocol Implementation
 
-    func getDevices() async throws -> [Device] {
-        let accountId = try await getAccountId()
-
-        // Get devices for the current account
-        let localDevices = try await localRepository.listScales(forAccountId: accountId)
-        return activeScales(from: localDevices)
+    func getDevices() async throws -> [DeviceSnapshot] {
+        return scales.filter { $0.isSoftDeleted != true }
     }
 
-    func getDevice(by deviceId: String) async throws -> Device? {
-        return try await localRepository.getDevice(deviceId)
+    func getDevice(by deviceId: String) async throws -> DeviceSnapshot? {
+        return scales.first { $0.id == deviceId }
     }
 
-    /// Returns a dictionary of connected devices keyed by broadcastId.
-    /// - Note: Removed `nonisolated` - class is already @MainActor, no need for extra isolation.
-    /// Only returns connected devices for the current active account to prevent
-    /// cross-account connection status contamination when switching accounts.
+    /// Returns connected devices keyed by broadcastId.
+    /// Connection state is now tracked in ephemeralState (in-memory).
+    /// This method is retained for protocol conformance; callers should read DeviceSnapshot.isConnected instead.
     func getConnectedDevices() async -> [String: Any] {
-        do {
-            let accountId = try await getAccountId()
-            let devices = try await localRepository.listScales(forAccountId: accountId)
-            return makeConnectedDevicesMap(from: devices)
-        } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to fetch connected devices: \(error.localizedDescription)")
-            return [:]
+        var result: [String: Any] = [:]
+        for snapshot in scales where snapshot.isConnected {
+            guard let broadcastId = snapshot.broadcastIdString else { continue }
+            result[broadcastId] = [
+                "id": snapshot.id,
+                "name": snapshot.deviceName ?? "",
+                "nickname": snapshot.nickname ?? "",
+                "type": snapshot.deviceType ?? "",
+                "isWifiConfigured": snapshot.isWifiConfigured,
+                "wifiMac": snapshot.wifiMac ?? ""
+            ]
         }
+        return result
     }
 
-    /// Updates connection status for devices matching the given device info.
-    /// - Note: Removed `nonisolated` - class is already @MainActor, no need for extra isolation.
-    func updateConnectedDevices( // swiftlint:disable:this cyclomatic_complexity function_body_length
-        device: Any,
-        isConnected: Bool
-    ) async {
-        // Get current active accountId - CRITICAL: Only update devices for current account
-        // Multiple accounts can have devices with same MAC/BroadcastID
+    /// Updates connection status for a device via in-memory ephemeral state.
+    /// No SwiftData write — connection status is ephemeral and reset on every launch.
+    func updateConnectedDevices(device: Any, isConnected: Bool) async {
         let currentAccountId: String?
-        do {
-            currentAccountId = try await getAccountId()
-        } catch {
-            currentAccountId = nil
-        }
+        do { currentAccountId = try await getAccountId() } catch { currentAccountId = nil }
+        guard currentAccountId != nil else { return }
 
-        guard let accountId = currentAccountId else {
-            return
-        }
-
-        // Try to extract device ID from different possible data formats
-        var deviceId: String?
         var broadcastId: String?
         var isWifiConfigured = false
         if let deviceDict = device as? [String: Any] {
-            deviceId = deviceDict["id"] as? String
             broadcastId = deviceDict["broadcastId"] as? String
             isWifiConfigured = deviceDict["isWifiConfigured"] as? Bool ?? false
         } else if let deviceDetails = device as? GGDeviceDetails {
-            // GGDeviceDetails doesn't have an 'id' property, use broadcastId instead
             broadcastId = deviceDetails.broadcastId ?? deviceDetails.broadcastIdString
             isWifiConfigured = deviceDetails.isWifiConfigured ?? false
         }
 
-        var devicesUpdated = 0
-
-        // If we have a device ID, try to update by ID first (scoped to current account)
-        if let deviceId = deviceId {
-            let descriptor = FetchDescriptor<Device>(predicate: #Predicate {
-                $0.id == deviceId && $0.accountId == accountId
-            })
-            do {
-                let devices = try localRepository.context.fetch(descriptor)
-                for device in devices {
-                    device.isConnected = isConnected
-                    device.isWifiConfigured = isWifiConfigured
-                    devicesUpdated += 1
-                }
-                if devicesUpdated > 0 {
-                    try localRepository.context.save()
-                    logger.log(
-                        level: .info,
-                        tag: tag,
-                        message: "Updated \(devicesUpdated) device(s) connection status by ID: \(deviceId), connected: \(isConnected)"
-                    )
-                }
-            } catch {
-                logger.log(level: .error, tag: tag, message: "Failed to update device by ID: \(error.localizedDescription)")
-            }
+        guard let key = broadcastId, !key.isEmpty else {
+            logger.log(level: .error, tag: tag, message: "No broadcast ID for connection update")
+            return
         }
 
-        // Also try to update by broadcast ID (scoped to current account)
-        // CRITICAL: Only update devices for current account, not all accounts
-        if let broadcastId = broadcastId {
-            let descriptor = FetchDescriptor<Device>(predicate: #Predicate {
-                $0.broadcastIdString == broadcastId && $0.accountId == accountId
-            })
-            do {
-                let devices = try localRepository.context.fetch(descriptor)
-                for device in devices {
-                    device.isConnected = isConnected
-                    device.isWifiConfigured = isWifiConfigured
-                    devicesUpdated += 1
-                }
+        var state = ephemeralState[key] ?? DeviceEphemeralState()
+        state.isConnected = isConnected
+        state.isWifiConfigured = isWifiConfigured
+        ephemeralState[key] = state
 
-                if !devices.isEmpty {
-                    try localRepository.context.save()
-                    logger.log(
-                        level: .info,
-                        tag: tag,
-                        message: "Updated \(devices.count) device(s) connection status by broadcast ID: \(broadcastId), connected: \(isConnected)"
-                    )
-                }
-            } catch {
-                logger.log(level: .error, tag: tag, message: "Failed to update device by broadcast ID: \(error.localizedDescription)")
-            }
-        }
-
-        // Refresh scales to update UI if any devices were updated
-        if devicesUpdated > 0 {
-            Task {
-                await self.refreshScalesFromLocal()
-            }
-        } else {
-            // If we couldn't find any devices, log the error
-            logger.log(
-                level: .error,
-                tag: tag,
-                message: "Device not found for connection update. Device ID: \(deviceId ?? "nil"), " +
-                    "Broadcast ID: \(broadcastId ?? "nil"), AccountId: \(accountId)"
-            )
-        }
+        logger.log(
+            level: .info, tag: tag,
+            message: "Ephemeral state updated: broadcastId=\(key), connected=\(isConnected), wifiConfigured=\(isWifiConfigured)"
+        )
+        await refreshScalesFromLocal()
     }
 
-    /// Updates WiFi configuration status for a device by broadcast ID.
-    /// - Note: Removed `nonisolated` - class is already @MainActor, no need for extra isolation.
+    /// Updates WiFi configuration status via in-memory ephemeral state. No SwiftData write.
     func updateConnectedDeviceWifiStatus(broadcastId: String, isConfigured: Bool) async {
-        // Get current active accountId - CRITICAL: Only update devices for current account
-        let currentAccountId: String?
-        do {
-            currentAccountId = try await getAccountId()
-        } catch {
-            currentAccountId = nil
-        }
-
-        guard let accountId = currentAccountId else {
-            return
-        }
-
-        let descriptor = FetchDescriptor<Device>(predicate: #Predicate {
-            $0.broadcastIdString == broadcastId && $0.accountId == accountId
-        })
-        do {
-            if let device = try localRepository.context.fetch(descriptor).first {
-                device.isWifiConfigured = isConfigured
-                try localRepository.context.save()
-            } else {
-                logger.log(level: .error, tag: tag, message: "Device not found with broadcast ID: \(broadcastId), accountId: \(accountId)")
-            }
-        } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to update device WiFi configuration status: \(error.localizedDescription)")
-        }
+        var state = ephemeralState[broadcastId] ?? DeviceEphemeralState()
+        state.isWifiConfigured = isConfigured
+        ephemeralState[broadcastId] = state
+        await refreshScalesFromLocal()
     }
 
-    /// Updates weight-only mode status for a device by broadcast ID.
-    /// - Note: Removed `nonisolated` - class is already @MainActor, no need for extra isolation.
+    /// Updates weight-only mode status via in-memory ephemeral state. No SwiftData write.
     func updateConnectedDeviceWeightOnlyMode(broadcastId: String, isWeightOnlyModeEnabledByOthers: Bool) async {
-        // Get current active accountId - CRITICAL: Only update devices for current account
-        let currentAccountId: String?
-        do {
-            currentAccountId = try await getAccountId()
-        } catch {
-            currentAccountId = nil
-        }
-
-        guard let accountId = currentAccountId else {
-            return
-        }
-
-        let descriptor = FetchDescriptor<Device>(predicate: #Predicate {
-            $0.broadcastIdString == broadcastId && $0.accountId == accountId
-        })
-        do {
-            if let device = try localRepository.context.fetch(descriptor).first {
-                device.isWeighOnlyModeEnabledByOthers = isWeightOnlyModeEnabledByOthers
-                device.isSynced = false
-                try localRepository.context.save()
-                logger.log(
-                    level: .debug,
-                    tag: tag,
-                    message: "Updated weight-only mode status for device \(broadcastId): \(isWeightOnlyModeEnabledByOthers)"
-                )
-            } else {
-                logger.log(level: .error, tag: tag, message: "Device not found with broadcast ID: \(broadcastId), accountId: \(accountId)")
-            }
-        } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to update device weight-only mode status: \(error.localizedDescription)")
-        }
+        var state = ephemeralState[broadcastId] ?? DeviceEphemeralState()
+        state.isWeighOnlyModeEnabledByOthers = isWeightOnlyModeEnabledByOthers
+        ephemeralState[broadcastId] = state
+        logger.log(
+            level: .debug, tag: tag,
+            message: "Ephemeral weight-only mode updated: broadcastId=\(broadcastId), enabled=\(isWeightOnlyModeEnabledByOthers)"
+        )
+        await refreshScalesFromLocal()
     }
 
     // MARK: - Preference Fetching
@@ -704,68 +583,39 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         }
     }
 
+    /// Refreshes published snapshots with current ephemeral state.
+    /// Retained for protocol conformance; connection state is managed via ephemeralState.
     func updateAllScalesStatus(_ scales: [Device]? = nil) async throws {
-        let accountId = try await getAccountId()
-        let deviceList = try await resolveStatusDeviceList(scales, accountId: accountId)
-        let connectedDevices = await getConnectedDevices()
-
-        for device in deviceList {
-            guard device.accountId == accountId else {
-                continue
-            }
-            applyConnectionStatus(to: device, connectedDevices: connectedDevices)
-        }
-
-        do {
-            try localRepository.context.save()
-            await refreshScalesFromLocal()
-        } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to save updated device statuses: \(error.localizedDescription)")
-            throw error
-        }
-    }
-
-    // MARK: - Public Convenience
-
-    /// Refreshes all scales status (connection, Wi-Fi, etc.) for every stored device.
-    func updateScaleStatus() async {
-        try? await updateAllScalesStatus(nil)
+        await refreshScalesFromLocal()
     }
 
     // MARK: - Internal Helpers
 
-    /// Resets all scale connection statuses to false on app launch.
-    /// Connection status is ephemeral and should only be true when confirmed by Bluetooth events.
-    private func resetAllConnectionStatusOnLaunch() async {
-        do {
-            let accountId = try await getAccountId()
-            let allScales = try await localRepository.listScales(forAccountId: accountId)
-
-            for scale in allScales {
-                scale.isConnected = false
-                scale.isWifiConfigured = false
-            }
-            try localRepository.context.save()
-            logger.log(level: .info, tag: tag, message: "Reset connection status on launch: scalesCount=\(allScales.count)")
-        } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to reset connection statuses on launch: \(error.localizedDescription)")
-        }
-    }
-
+    /// Fetches all active devices from SwiftData, merges ephemeral connection state,
+    /// and publishes the resulting [DeviceSnapshot]. No SwiftData write.
     private func refreshScalesFromLocal() async {
         do {
             let accountId = try await getAccountId()
-            let previousSnapshot = scales.map { scaleLogDescriptor($0) }.sorted()
             let allScales = try await localRepository.listScales(forAccountId: accountId)
-            let activeScales = activeScales(from: allScales)
-            scales = activeScales
-            let currentSnapshot = activeScales.map { scaleLogDescriptor($0) }.sorted()
-            if previousSnapshot != currentSnapshot {
+            let active = activeScales(from: allScales)
+
+            let snapshots = active.map { device -> DeviceSnapshot in
+                let key = device.broadcastIdString ?? device.id
+                let ephemeral = ephemeralState[key] ?? DeviceEphemeralState()
+                return device.toSnapshot(
+                    isConnected: ephemeral.isConnected,
+                    isWifiConfigured: ephemeral.isWifiConfigured,
+                    isWeighOnlyModeEnabledByOthers: ephemeral.isWeighOnlyModeEnabledByOthers
+                )
+            }
+
+            let previousIds = scales.map(\.id).sorted()
+            let currentIds = snapshots.map(\.id).sorted()
+            scales = snapshots
+            if previousIds != currentIds {
                 logger.log(
-                    level: .info,
-                    tag: tag,
-                    message: "Paired scale list changed. accountId=\(accountId), count=\(activeScales.count)",
-                    data: currentSnapshot
+                    level: .info, tag: tag,
+                    message: "Paired scale list changed. accountId=\(accountId), count=\(snapshots.count)"
                 )
             }
         } catch {
@@ -990,62 +840,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             activeDevices.append(device)
         }
         return activeDevices
-    }
-
-    private func makeConnectedDevicesMap(from devices: [Device]) -> [String: Any] {
-        var connectedDevices: [String: Any] = [:]
-        for device in devices where device.isConnected == true {
-            guard let broadcastId = device.broadcastIdString else {
-                continue
-            }
-            connectedDevices[broadcastId] = [
-                "id": device.id,
-                "name": device.deviceName ?? "",
-                "nickname": device.nickname ?? "",
-                "type": device.deviceType ?? "",
-                "isWifiConfigured": device.isWifiConfigured ?? false,
-                "wifiMac": device.wifiMac ?? ""
-            ]
-        }
-        return connectedDevices
-    }
-
-    private func resolveStatusDeviceList(_ providedScales: [Device]?, accountId: String) async throws -> [Device] {
-        if let providedScales {
-            var filteredDevices: [Device] = []
-            for device in providedScales where device.accountId == accountId && device.isSoftDeleted != true {
-                filteredDevices.append(device)
-            }
-            return filteredDevices
-        }
-        return activeScales(from: try await localRepository.listScales(forAccountId: accountId))
-    }
-
-    private func applyConnectionStatus(to device: Device, connectedDevices: [String: Any]) {
-        device.isConnected = false
-        device.isWifiConfigured = false
-        ensureBroadcastIdString(for: device)
-
-        guard let bidString = device.broadcastIdString,
-              let connectedDetails = connectedDevices[bidString] as? [String: Any]
-        else {
-            return
-        }
-
-        device.isConnected = true
-        device.isWifiConfigured = (connectedDetails["isWifiConfigured"] as? Bool) ?? false
-    }
-
-    private func ensureBroadcastIdString(for device: Device) {
-        if device.broadcastIdString?.isEmpty == false {
-            return
-        }
-        guard let bidInt64 = device.broadcastId else {
-            return
-        }
-        let scaleSource = ScaleSourceType(rawValue: device.deviceType ?? "") ?? .bluetoothScale
-        let protocolType = ProtocolConversionTools.getProtocolTypeFromScaleType(scaleType: scaleSource)
-        device.broadcastIdString = ProtocolConversionTools.convertIntToHex(Int(bidInt64), protocolType: protocolType)
     }
 
     private func reconcileServerDevices(_ serverScales: [ScaleDTO], accountId: String) async throws -> Int {

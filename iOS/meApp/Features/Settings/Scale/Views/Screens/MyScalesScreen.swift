@@ -69,8 +69,8 @@ struct MyScalesScreen: View {
     }
 
     /// Determines the scale type based on the scale's SKU and other properties
-    private func determineScaleType(for scale: Device) -> ScaleType {
-        return ScaleTypeHelper.determineScaleType(for: scale)
+    private func determineScaleType(for scale: DeviceSnapshot) -> ScaleType {
+        return ScaleTypeHelper.determineScaleType(sku: scale.sku, scaleType: scale.bathScale?.scaleType, deviceType: scale.deviceType)
     }
 
     /// Centralised handler that encapsulates duplicate-check & navigation logic for a selected **scale**.
@@ -269,9 +269,9 @@ struct MyScalesScreen: View {
                                 status: scaleStore.determineConnectionStatus(for: scale),
                                 onTap: {
                                     if scaleType == .bpm {
-                                        router.navigate(to: .bpmDeviceSettings(device: scale))
+                                        router.navigate(to: .bpmDeviceSettings(device: scale.toDevice()))
                                     } else {
-                                        router.navigate(to: .scaleSettings(scale: scale, scaleType: scaleType))
+                                        router.navigate(to: .scaleSettings(scale: scale.toDevice(), scaleType: scaleType))
                                     }
                                 },
                                 scaleType: scaleType

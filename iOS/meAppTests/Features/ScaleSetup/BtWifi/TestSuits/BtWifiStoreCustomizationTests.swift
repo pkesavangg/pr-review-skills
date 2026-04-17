@@ -24,7 +24,7 @@ extension BtWifiStoreTests {
             let store = harness.store
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
-            store.savedScale = scale
+            store.savedScale = scale.toSnapshot()
             store.discoveredScale = scale
             store.navigateToStep(.customizeSettings)
 
@@ -46,7 +46,7 @@ extension BtWifiStoreTests {
         func setCustomizationPageScaleMetricsFallbackIsStableOnReentry() async {
             let harness = BtWifiStoreTestFixtures.makeSUT()
             let store = harness.store
-            let scale = BtWifiStoreTestFixtures.makeScale()
+            let scale = BtWifiStoreTestFixtures.makeScaleSnapshot()
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
             store.savedScale = scale
@@ -102,7 +102,7 @@ extension BtWifiStoreTests {
         @Test("invalid username save does not persist changes or mark customization as saved")
         func invalidUsernameSaveDoesNotPersist() async {
             let scaleService = MockScaleService()
-            let scale = BtWifiStoreTestFixtures.makeScale()
+            let scale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             let attached = R4ScalePreference(
                 from: ScaleTestFixtures.makePreferenceDTO(scaleId: scale.id, displayName: "Original"),
                 scaleId: scale.id
@@ -152,7 +152,7 @@ extension BtWifiStoreTests {
         @Test("repeated scale metrics saves preserve the latest snapshot without duplicating selection state")
         func repeatedScaleMetricsSavesRemainStable() async {
             let scaleService = MockScaleService()
-            let scale = BtWifiStoreTestFixtures.makeScale()
+            let scale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             scaleService.fetchAttachedPreferenceResult = R4ScalePreference(
                 from: ScaleTestFixtures.makePreferenceDTO(scaleId: scale.id, displayName: "Saved"),
                 scaleId: scale.id
@@ -227,7 +227,7 @@ extension BtWifiStoreTests {
             let scaleService = MockScaleService()
             let harness = BtWifiStoreTestFixtures.makeSUT(bluetooth: bluetooth, scaleService: scaleService)
             let store = harness.store
-            let scale = BtWifiStoreTestFixtures.makeScale()
+            let scale = BtWifiStoreTestFixtures.makeScaleSnapshot()
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
             store.savedScale = scale
@@ -254,10 +254,7 @@ extension BtWifiStoreTests {
             #expect(scaleService.updateScalePreferenceCalls == 2)
             #expect(scaleService.pushLocalChangesToServerCalls == 1)
             #expect(bluetooth.updateAccountCalls == 1)
-            #expect(bluetooth.lastUpdateAccountPreference?.displayName == "Lakshmi")
-            #expect(bluetooth.lastUpdateAccountPreference?.displayMetrics == ["weight", "heartRate"])
-            #expect(bluetooth.lastUpdateAccountPreference?.shouldMeasureImpedance == false)
-            #expect(bluetooth.lastUpdateAccountPreference?.shouldMeasurePulse == true)
+            #expect(bluetooth.lastUpdateAccountBroadcastId == scale.broadcastIdString)
             #expect(store.scaleSetupError == .none)
             #expect(store.hasCustomizeChanges == false)
             #expect(store.hasSavedSettings == false)
@@ -271,7 +268,7 @@ extension BtWifiStoreTests {
             let store = harness.store
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
-            store.savedScale = BtWifiStoreTestFixtures.makeScale()
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             store.selectedCustomizeItems = [CustomizeSettingsItem.scaleMetrics.rawValue]
             store.selectedScaleMetrics = ["weight"]
 
@@ -295,7 +292,7 @@ extension BtWifiStoreTests {
             let store = harness.store
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
-            store.savedScale = BtWifiStoreTestFixtures.makeScale()
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             store.selectedCustomizeItems = [
                 CustomizeSettingsItem.scaleModes.rawValue,
                 CustomizeSettingsItem.scaleMetrics.rawValue
@@ -325,7 +322,7 @@ extension BtWifiStoreTests {
         @Test("setCustomizationPage for scale mode preloads attached preference and navigates")
         func setCustomizationPageScaleModePreloadsAttachedPreference() async {
             let scaleService = MockScaleService()
-            let scale = BtWifiStoreTestFixtures.makeScale()
+            let scale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             let attached = R4ScalePreference(
                 from: ScaleTestFixtures.makePreferenceDTO(scaleId: scale.id, displayName: "Saved"),
                 scaleId: scale.id
@@ -354,7 +351,7 @@ extension BtWifiStoreTests {
         @Test("setCustomizationPage for scale metrics loads attached preference and records initial saved snapshot")
         func setCustomizationPageScaleMetricsLoadsAttachedPreference() async {
             let scaleService = MockScaleService()
-            let scale = BtWifiStoreTestFixtures.makeScale()
+            let scale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             let attached = R4ScalePreference(
                 from: ScaleTestFixtures.makePreferenceDTO(scaleId: scale.id, displayName: "Saved"),
                 scaleId: scale.id
@@ -381,7 +378,7 @@ extension BtWifiStoreTests {
         @Test("valid username save updates attached preference and returns to customize settings")
         func validUsernameSavePersistsAttachedPreference() async {
             let scaleService = MockScaleService()
-            let scale = BtWifiStoreTestFixtures.makeScale()
+            let scale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             let attached = R4ScalePreference(
                 from: ScaleTestFixtures.makePreferenceDTO(scaleId: scale.id, displayName: "Original"),
                 scaleId: scale.id
@@ -423,7 +420,7 @@ extension BtWifiStoreTests {
             harness.scaleService.fetchAttachedPreferenceResult = attached
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
-            store.savedScale = scale
+            store.savedScale = scale.toSnapshot()
             store.navigateToStep(.viewSettings)
             store.currentCustomizeSetting = .scaleMode
             store.selectedScaleMode = .allBodyMetrics
@@ -480,7 +477,7 @@ extension BtWifiStoreTests {
         @Test("setupScaleUsernameForm skips re-fetch when user list already exists and leaves matching display name stable")
         func setupScaleUsernameFormSkipsFetchWhenUserListAlreadyPresent() async {
             let scaleService = MockScaleService()
-            let scale = BtWifiStoreTestFixtures.makeScale()
+            let scale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             let attached = R4ScalePreference(
                 from: ScaleTestFixtures.makePreferenceDTO(scaleId: scale.id, displayName: "Lakshmi"),
                 scaleId: scale.id
@@ -509,7 +506,7 @@ extension BtWifiStoreTests {
             let bluetooth = MockBluetoothService()
             bluetooth.updateAccountResult = .success(.creationCompleted)
             let scaleService = MockScaleService()
-            let scale = BtWifiStoreTestFixtures.makeScale()
+            let scale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             let attached = R4ScalePreference(
                 from: ScaleTestFixtures.makePreferenceDTO(scaleId: scale.id, displayName: "Saved Name"),
                 scaleId: scale.id
@@ -535,10 +532,7 @@ extension BtWifiStoreTests {
                 store.currentStep == .stepOn && bluetooth.updateAccountCalls == 1
             }
 
-            #expect(bluetooth.lastUpdateAccountPreference?.displayName == "Saved Name")
-            #expect(bluetooth.lastUpdateAccountPreference?.displayMetrics == ["bodyFat", "water"])
-            #expect(bluetooth.lastUpdateAccountPreference?.shouldMeasureImpedance == false)
-            #expect(bluetooth.lastUpdateAccountPreference?.shouldMeasurePulse == true)
+            #expect(bluetooth.lastUpdateAccountBroadcastId == scale.broadcastIdString)
         }
 
         @Test("updateCustomizeSettings handles delayed local apply failure after bluetooth success")
@@ -551,7 +545,7 @@ extension BtWifiStoreTests {
             let store = harness.store
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
-            store.savedScale = BtWifiStoreTestFixtures.makeScale()
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             store.selectedCustomizeItems = [CustomizeSettingsItem.scaleMetrics.rawValue]
             store.selectedScaleMetrics = ["weight"]
 
@@ -620,7 +614,7 @@ extension BtWifiStoreTests {
             let discoveredScale = BtWifiStoreTestFixtures.makeScale(id: "temp-scale")
             discoveredScale.broadcastIdString = "broadcast-1"
             store.discoveredScale = discoveredScale
-            store.savedScale = savedScale
+            store.savedScale = savedScale.toSnapshot()
 
             store.disconnectDevice()
             #expect(harness.bluetoothSetupManager.disconnectIfNeededCalls == 0)
@@ -655,7 +649,7 @@ extension BtWifiStoreTests {
             store.cancellables = [PassthroughSubject<Int, Never>().sink { _ in }]
             store.discoveredScale = BtWifiStoreTestFixtures.makeScale(id: "discovered")
             store.discoveryEvent = BtWifiStoreTestFixtures.makeDiscoveryEvent()
-            store.savedScale = BtWifiStoreTestFixtures.makeScale(id: "saved")
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot(id: "saved")
             harness.bluetooth.isSetupInProgress = true
             store.isExiting = true
             store.isExitingFromStepOn = true
@@ -799,7 +793,12 @@ extension BtWifiStoreTests {
             await store.upgradeDashboardTypeFrom4To12WithDefaults()
             #expect(store.dashboardStore.metricsManager.state.dashboardType == .dashboard12)
 
-            store.accountService.activeAccount?.dashboardSettings?.dashboardType = "dashboard4"
+            harness.account.activeAccount = AccountTestFixtures.makeAccountSnapshot(
+                id: harness.account.activeAccount?.accountId ?? "acct-1",
+                email: "btwifi@example.com",
+                isActiveAccount: true,
+                dashboardType: "dashboard4"
+            )
             store.dashboardStore.metricsManager.updateDashboardType(.dashboard4)
             #expect(store.isDashboardTypeFour == true)
         }
@@ -871,7 +870,7 @@ extension BtWifiStoreTests {
             let store = harness.store
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
-            store.savedScale = BtWifiStoreTestFixtures.makeScale(id: "scale-default-pref")
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot(id: "scale-default-pref")
             store.selectedCustomizeItems = [
                 CustomizeSettingsItem.userName.rawValue,
                 CustomizeSettingsItem.scaleModes.rawValue,
@@ -904,7 +903,12 @@ extension BtWifiStoreTests {
 
             _ = TestDependencyContainer.registerDashboardConcreteDependencies()
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
-            harness.account.activeAccount?.dashboardSettings?.dashboardType = "dashboard4"
+            harness.account.activeAccount = AccountTestFixtures.makeAccountSnapshot(
+                id: harness.account.activeAccount?.accountId ?? "acct-1",
+                email: "btwifi@example.com",
+                isActiveAccount: true,
+                dashboardType: "dashboard4"
+            )
             _ = store.dashboardStore
             store.dashboardStore.metricsManager.updateDashboardType(.dashboard4)
             store.navigateToStep(.viewSettings)

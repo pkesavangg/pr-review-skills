@@ -15,8 +15,8 @@ struct AccountsStoreHarness {
 enum AccountsStoreTestFixtures {
     @MainActor
     static func makeSUT(
-        accounts: [Account] = [],
-        activeAccount: Account? = nil,
+        accounts: [AccountSnapshot] = [],
+        activeAccount: AccountSnapshot? = nil,
         networkConnected: Bool = true
     ) -> AccountsStoreHarness {
         let accountService = MockAccountService()
@@ -56,18 +56,16 @@ enum AccountsStoreTestFixtures {
         isActive: Bool = false,
         isExpired: Bool = false,
         lastActiveTime: String? = nil
-    ) -> Account {
-        let account = AccountTestFixtures.makeAccountModel(
+    ) -> AccountSnapshot {
+        AccountTestFixtures.makeAccountSnapshot(
             id: id,
             email: email,
-            firstName: firstName ?? "",
+            firstName: firstName,
             isLoggedIn: isLoggedIn,
-            isActive: isActive
+            isExpired: isExpired,
+            isActiveAccount: isActive,
+            lastActiveTime: lastActiveTime
         )
-        account.firstName = firstName
-        account.isExpired = isExpired
-        account.lastActiveTime = lastActiveTime
-        return account
     }
 
     @MainActor
@@ -89,7 +87,7 @@ enum AccountsStoreTestFixtures {
     }
 
     @MainActor
-    static func makeLoggedInAccounts(count: Int) -> [Account] {
+    static func makeLoggedInAccounts(count: Int) -> [AccountSnapshot] {
         (0..<count).map { index in
             makeAccount(
                 id: "acct-\(index)",

@@ -2,12 +2,12 @@ import Foundation
 @testable import meApp
 
 enum HealthKitStoreTestFixtures {
-    static func makeActiveAccount(id: String = "hk-account") -> Account {
-        AccountTestFixtures.makeAccountModel(
+    static func makeActiveAccount(id: String = "hk-account") -> AccountSnapshot {
+        AccountTestFixtures.makeAccountSnapshot(
             id: id,
             email: "hk@example.com",
             isLoggedIn: true,
-            isActive: true
+            isActiveAccount: true
         )
     }
 

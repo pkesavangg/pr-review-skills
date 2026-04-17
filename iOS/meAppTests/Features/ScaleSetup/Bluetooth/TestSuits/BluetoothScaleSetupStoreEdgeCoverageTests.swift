@@ -146,7 +146,7 @@ extension BluetoothScaleSetupStoreTests {
             let scaleService = MockScaleService()
             let existingScale = BluetoothScaleSetupStoreTestFixtures.makeBluetoothScale(id: "old-scale")
             existingScale.peripheralIdentifier = "dup-pair-button"
-            scaleService.scales = [existingScale]
+            scaleService.scales = [existingScale.toSnapshot()]
 
             let harness = BluetoothScaleSetupStoreTestFixtures.makeSUT(bluetooth: bluetooth, scaleService: scaleService)
             let store = harness.store
@@ -230,7 +230,7 @@ extension BluetoothScaleSetupStoreTests {
             let scaleService = MockScaleService()
             scaleService.deleteDeviceError = BluetoothScaleSetupStoreEdgeError.forced
             let old = BluetoothScaleSetupStoreTestFixtures.makeBluetoothScale(id: "old-dup")
-            scaleService.scales = [old]
+            scaleService.scales = [old.toSnapshot()]
             let harness = BluetoothScaleSetupStoreTestFixtures.makeSUT(bluetooth: bluetooth, scaleService: scaleService)
             let store = harness.store
 

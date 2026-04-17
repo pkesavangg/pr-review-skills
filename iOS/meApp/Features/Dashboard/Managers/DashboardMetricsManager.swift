@@ -640,7 +640,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             entryTimestamp: DateTimeTools.getCurrentDatetimeIsoString(),
             accountId: "dashboard",
             operationType: OperationType.create.rawValue,
-            deviceType: "scale",
+            entryType: EntryType.scale.rawValue,
             isSynced: true
         )
 

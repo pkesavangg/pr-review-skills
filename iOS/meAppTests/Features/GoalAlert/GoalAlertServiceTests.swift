@@ -87,7 +87,7 @@ struct GoalAlertServiceTests {
     @Test("showGoalMetMessage MAINTAIN action creates maintain goal, resets flag, and dismisses")
     func showGoalMetMessageMaintainActionCreatesGoalAndResetsFlag() async {
         let (sut, notification, accountService, _, kv, account) = makeSUT(goalType: .lose, goalWeight: 150)
-        accountService.createGoalResult = .success(account)
+        accountService.createGoalResult = .success(())
 
         let key = GoalAlertTestFixtures.goalMetFlagKey(accountId: account.accountId)
         kv.setValue(false, forKey: key)
@@ -178,13 +178,13 @@ private func makeSUT(
     goalType: GoalType? = GoalType.none,
     goalWeight: Double? = nil,
     setGoalModalDelay: TimeInterval = 0
-) -> (
+) -> ( // swiftlint:disable:this large_tuple
     GoalAlertService,
     MockNotificationHelperService,
     MockAccountService,
     MockBluetoothService,
     MockKvStorageService,
-    Account
+    AccountSnapshot
 ) {
     let notification = MockNotificationHelperService()
     let accountService = MockAccountService()

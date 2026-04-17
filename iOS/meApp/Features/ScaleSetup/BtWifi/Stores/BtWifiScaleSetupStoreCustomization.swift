@@ -248,7 +248,7 @@ extension BtWifiScaleSetupStore {
     }
 
     /// Applies the updated preference locally and navigates to stepOn on success.
-    private func applyUpdatedPreferenceLocallyAndNavigate(savedScale: Device, updatedPreference: R4ScalePreference) async {
+    private func applyUpdatedPreferenceLocallyAndNavigate(savedScale: DeviceSnapshot, updatedPreference: R4ScalePreference) async {
         do {
             try await scaleService.updateScalePreference(savedScale.id, updatedPreference)
             hasCustomizeChanges = false
@@ -284,7 +284,7 @@ extension BtWifiScaleSetupStore {
 
             try await scaleService.updateScalePreference(savedScale.id, updatedPreference)
             await scaleService.pushLocalChangesToServer()
-            let result = await bluetoothService.updateAccount(on: savedScale, preference: updatedPreference)
+            let result = await bluetoothService.updateAccount(broadcastId: savedScale.broadcastIdString ?? "")
 
             switch result {
             case .success:
@@ -312,7 +312,7 @@ extension BtWifiScaleSetupStore {
         }
     }
 
-    private func fetchOrCreateCurrentPreference(for savedScale: Device) async -> R4ScalePreference {
+    private func fetchOrCreateCurrentPreference(for savedScale: DeviceSnapshot) async -> R4ScalePreference {
         if let attached = await scaleService.fetchAttachedPreference(by: savedScale.id) {
             return attached
         }
@@ -332,7 +332,7 @@ extension BtWifiScaleSetupStore {
         return R4ScalePreference(from: defaultDTO, scaleId: savedScale.id)
     }
 
-    private func buildUpdatedPreference(savedScale: Device, currentPreference: R4ScalePreference) -> R4ScalePreference {
+    private func buildUpdatedPreference(savedScale: DeviceSnapshot, currentPreference: R4ScalePreference) -> R4ScalePreference {
         let saveScaleMetrics = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleMetrics.rawValue)
         let saveScaleMode = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleModes.rawValue)
         let saveScaleUsername = selectedCustomizeItems.contains(CustomizeSettingsItem.userName.rawValue)

@@ -181,7 +181,7 @@ final class EntryStore: ObservableObject {
             entryTimestamp: entryTimestamp,
             accountId: accountId,
             operationType: OperationType.create.rawValue,
-            deviceType: DeviceType.scale.rawValue,
+            entryType: EntryType.scale.rawValue,
             isSynced: false
         )
         entry.scaleEntry = scaleEntry

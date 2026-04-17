@@ -18,9 +18,9 @@ struct WeightOnlyModeAlertStoreTests {
     func loadWeightOnlyScalesFiltersEnabledByOthers() async {
         let scaleService = MockScaleService()
         scaleService.scales = [
-            makeScale(id: "enabled", isConnected: true, isWeightOnlyEnabledByOthers: true),
-            makeScale(id: "disabled", isConnected: true, isWeightOnlyEnabledByOthers: false),
-            makeScale(id: "unknown", isConnected: true, isWeightOnlyEnabledByOthers: nil)
+            makeScale(id: "enabled", isConnected: true, isWeightOnlyEnabledByOthers: true).toSnapshot(),
+            makeScale(id: "disabled", isConnected: true, isWeightOnlyEnabledByOthers: false).toSnapshot(),
+            makeScale(id: "unknown", isConnected: true, isWeightOnlyEnabledByOthers: nil).toSnapshot()
         ]
         let (store, _, _, _) = makeSUT(scaleService: scaleService)
 
@@ -36,10 +36,10 @@ struct WeightOnlyModeAlertStoreTests {
     @Test("loadWeightOnlyScales failure clears scales and stops loading")
     func loadWeightOnlyScalesFailureClearsState() async {
         let scaleService = MockScaleService()
-        scaleService.scales = [makeScale(id: "cached", isConnected: true, isWeightOnlyEnabledByOthers: true)]
+        scaleService.scales = [makeScale(id: "cached", isConnected: true, isWeightOnlyEnabledByOthers: true).toSnapshot()]
         scaleService.getDevicesError = WeightOnlyModeAlertStoreTestError.loadFailed
         let (store, _, _, _) = makeSUT(scaleService: scaleService)
-        store.weightOnlyScales = [makeScale(id: "stale", isConnected: true, isWeightOnlyEnabledByOthers: true)]
+        store.weightOnlyScales = [makeScale(id: "stale", isConnected: true, isWeightOnlyEnabledByOthers: true).toSnapshot()]
 
         store.loadWeightOnlyScales()
         let loaded = await waitUntil { store.isLoading == false }
@@ -57,13 +57,13 @@ struct WeightOnlyModeAlertStoreTests {
             scale: makeScale(id: "discovered", isConnected: true, isWeightOnlyEnabledByOthers: true)
         )
 
-        scaleService.scales = [makeScale(id: "first", isConnected: true, isWeightOnlyEnabledByOthers: true)]
+        scaleService.scales = [makeScale(id: "first", isConnected: true, isWeightOnlyEnabledByOthers: true).toSnapshot()]
         bluetooth.deviceDiscoveredSubject.send(event)
         let firstLoaded = await waitUntil { store.weightOnlyScales.map(\.id) == ["first"] && store.isLoading == false }
 
         scaleService.scales = [
-            makeScale(id: "second", isConnected: true, isWeightOnlyEnabledByOthers: true),
-            makeScale(id: "filtered-out", isConnected: true, isWeightOnlyEnabledByOthers: false)
+            makeScale(id: "second", isConnected: true, isWeightOnlyEnabledByOthers: true).toSnapshot(),
+            makeScale(id: "filtered-out", isConnected: true, isWeightOnlyEnabledByOthers: false).toSnapshot()
         ]
         bluetooth.deviceDiscoveredSubject.send(event)
         let secondLoaded = await waitUntil { store.weightOnlyScales.map(\.id) == ["second"] && store.isLoading == false }
@@ -109,7 +109,7 @@ struct WeightOnlyModeAlertStoreTests {
         let bluetooth = MockBluetoothService()
         bluetooth.updateWeightOnlyModeResult = .success(())
         let (store, _, _, notification) = makeSUT(bluetooth: bluetooth)
-        store.weightOnlyScales = [makeScale(id: "connected", isConnected: true, isWeightOnlyEnabledByOthers: true)]
+        store.weightOnlyScales = [makeScale(id: "connected", isConnected: true, isWeightOnlyEnabledByOthers: true).toSnapshot()]
 
         store.enableBodyMetricsForScale()
         notification.alertData?.buttons.first?.action(nil)
@@ -122,7 +122,7 @@ struct WeightOnlyModeAlertStoreTests {
         #expect(notification.showLoaderCalls == 1)
         #expect(notification.showToastCalls == 1)
         #expect(notification.toastData?.message == WeightOnlyModeStrings.temporaryOverride)
-        #expect(bluetooth.lastWeightOnlyModeDevice == nil)
+        #expect(bluetooth.lastWeightOnlyModeBroadcastId == nil)
     }
 
     @Test("enableBodyMetricsForScale can be shown repeatedly with consistent content")
@@ -144,7 +144,7 @@ struct WeightOnlyModeAlertStoreTests {
     func handleEnableBodyMetricsNoConnectedScalesDoesNothing() async {
         let (store, _, bluetooth, notification) = makeSUT()
         store.weightOnlyScales = [
-            makeScale(id: "disconnected", isConnected: false, isWeightOnlyEnabledByOthers: true)
+            makeScale(id: "disconnected", isConnected: false, isWeightOnlyEnabledByOthers: true).toSnapshot()
         ]
 
         store.handleEnableBodyMetrics()
@@ -162,7 +162,7 @@ struct WeightOnlyModeAlertStoreTests {
         let bluetooth = MockBluetoothService()
         bluetooth.updateWeightOnlyModeResult = .failure(.notImplemented)
         let (store, _, _, notification) = makeSUT(bluetooth: bluetooth)
-        store.weightOnlyScales = [makeScale(id: "connected", isConnected: true, isWeightOnlyEnabledByOthers: true)]
+        store.weightOnlyScales = [makeScale(id: "connected", isConnected: true, isWeightOnlyEnabledByOthers: true).toSnapshot()]
 
         store.handleEnableBodyMetrics()
         let completed = await waitUntil {
@@ -225,7 +225,7 @@ struct WeightOnlyModeAlertStoreTests {
         scaleService: MockScaleService? = nil,
         bluetooth: MockBluetoothService? = nil,
         notification: MockNotificationHelperService? = nil
-    ) -> (WeightOnlyModeAlertStore, MockScaleService, MockBluetoothService, MockNotificationHelperService) {
+    ) -> (WeightOnlyModeAlertStore, MockScaleService, MockBluetoothService, MockNotificationHelperService) { // swiftlint:disable:this large_tuple
         let scaleService = scaleService ?? MockScaleService()
         let bluetooth = bluetooth ?? MockBluetoothService()
         let notification = notification ?? MockNotificationHelperService()
