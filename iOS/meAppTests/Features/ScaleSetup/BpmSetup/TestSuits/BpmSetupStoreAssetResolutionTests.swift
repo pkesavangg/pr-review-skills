@@ -411,7 +411,7 @@ extension BpmSetupStoreTests {
 
             let existing = BpmSetupStoreTestFixtures.makeBpmDevice(id: "old")
             existing.userNumber = "2"
-            store.testSetDeviceToDelete(existing)
+            store.testSetDeviceToDelete(existing.toSnapshot())
 
             #expect(store.testUserLabelForConflict() == "2")
         }
@@ -424,7 +424,7 @@ extension BpmSetupStoreTests {
 
             let existing = BpmSetupStoreTestFixtures.makeBpmDevice(id: "old")
             existing.userNumber = "1"
-            store.testSetDeviceToDelete(existing)
+            store.testSetDeviceToDelete(existing.toSnapshot())
 
             #expect(store.testUserLabelForConflict() == "A")
         }

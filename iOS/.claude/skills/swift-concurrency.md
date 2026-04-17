@@ -38,8 +38,9 @@ Determine which category applies:
 
 Use the existing project patterns:
 - Keep stores and UI state mutations on `@MainActor`
+- **Cross actor boundaries with snapshots, not `@Model`.** `AccountSnapshot`, `DeviceSnapshot`, and `EntrySnapshot` are `Sendable` value types safe to capture in `Task`s, pass to actors, and assert on in tests. The SwiftData `@Model` is **not** `Sendable` and must stay inside its owning service.
 - Extract primitive/value data before crossing async or actor boundaries
-- Do not pass SwiftData `@Model` objects across executors when a DTO/value type is safer
+- Do not pass SwiftData `@Model` objects across executors — convert with `model.toSnapshot()` on the main actor first
 - Use `MainActor.run` only when a small read/write must happen back on the main actor
 - Use `Task.detached` sparingly and only when captured state is safe and deliberate
 - Preserve or add cancellation checks for long-running/background work
@@ -110,8 +111,9 @@ periodChangeTask = Task { @MainActor in
 Before finishing, explicitly check:
 - Is any non-Sendable or actor-bound state escaping its isolation?
 - Is any `@MainActor` type being mutated off-main?
+- Is any SwiftData `@Model` being captured by a `Task` or passed as a non-`Sendable` parameter? (Convert to snapshot.)
 - Is `Task.detached` capturing `self`, a model object, or mutable shared state unsafely?
-- Should the code pass a value type / notification wrapper / DTO instead of a live model?
+- Should the code pass a value type / notification wrapper / DTO / snapshot instead of a live model?
 - Should the task be cancellable or deduplicated?
 
 ### 5 — Testing And Follow-Up

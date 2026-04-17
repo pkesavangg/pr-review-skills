@@ -64,6 +64,9 @@ Apply the chosen pattern to the actual protocol methods. Key structure per patte
 - Import `Combine` only if the protocol uses `@Published` / `Publisher` properties
 - Use `private(set)` on all call tracking properties
 - Name the file `Mock<ProtocolNameWithoutSuffix>.swift` (e.g. `FooServiceProtocol` → `MockFooService.swift`)
+- **Snapshot vs `@Model` in published state:** If the protocol publishes domain state for feature consumers (e.g. `AccountServiceProtocol.activeAccount`, `ScaleServiceProtocol.scales`, `HistoryStore.entries`), the published type is a value-type **snapshot** — `AccountSnapshot?`, `[DeviceSnapshot]`, `[EntrySnapshot]` — not the SwiftData `@Model`. Mirror this exactly in the mock. For a *Repository* mock (which lives below the snapshot boundary), the backing collection stays `[Account]` / `[Device]` / `[Entry]`.
+- **Both `Entry`- and `EntrySnapshot`-returning methods may coexist on `EntryServiceProtocol`** (e.g. `getMonthDetail(_:)` returns `[Entry]` for internal use while `fetchEntrySnapshots(forMonth:)` returns `[EntrySnapshot]` for UI). Stub both, and add separate call counters (`getMonthDetailCalls`, `fetchEntrySnapshotsForMonthCalls`) so tests can assert on the right path.
+- **Identity-based delete overloads:** Mocks that conform to `EntryServiceProtocol` must stub both `deleteEntry(_ entry: Entry)` and `deleteEntry(entryId: UUID)` with separate call counters (`deleteEntryCalls`, `deleteEntryByIdCalls`) — feature stores use the id-based variant.
 
 ---
 

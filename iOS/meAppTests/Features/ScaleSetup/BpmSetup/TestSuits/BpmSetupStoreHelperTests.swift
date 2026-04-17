@@ -301,7 +301,7 @@ extension BpmSetupStoreTests {
 
             let existing = BpmSetupStoreTestFixtures.makeBpmDevice(id: "existing")
             existing.userNumber = "1"
-            store.testSetDeviceToDelete(existing)
+            store.testSetDeviceToDelete(existing.toSnapshot())
 
             let device = BpmSetupStoreTestFixtures.makeBpmDevice()
             await store.testCheckForDuplicateAndAdvance(device)

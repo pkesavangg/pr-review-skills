@@ -17,11 +17,13 @@ final class MockContentViewModelEntryService: EntryServiceProtocol {
     let entryDeleted = PassthroughSubject<EntryNotification, Never>()
 
     var allEntriesResult: Result<[Entry], Error> = .success([])
+    var allEntrySnapshotsResult: Result<[EntrySnapshot], Error> = .success([])
 
     private(set) var migrateFromSQLiteCalls = 0
     private(set) var syncAllEntriesCalls = 0
     private(set) var loadDashboardDataCalls = 0
     private(set) var getAllEntriesCalls = 0
+    private(set) var fetchAllEntrySnapshotsCalls = 0
 
     func syncAllEntriesWithRemote() async {
         syncAllEntriesCalls += 1
@@ -47,6 +49,13 @@ final class MockContentViewModelEntryService: EntryServiceProtocol {
     func saveNewEntry(_ entry: Entry) async throws {}
     func saveNewEntries(_ entries: [Entry]) async throws {}
     func deleteEntry(_ entry: Entry) async throws {}
+    func deleteEntry(entryId: UUID) async throws {}
+    func fetchEntrySnapshot(byId id: UUID) async throws -> EntrySnapshot? { nil }
+    func fetchAllEntrySnapshots() async throws -> [EntrySnapshot] {
+        fetchAllEntrySnapshotsCalls += 1
+        return try allEntrySnapshotsResult.get()
+    }
+    func fetchEntrySnapshots(forMonth month: String, entryType: EntryType) async throws -> [EntrySnapshot] { [] }
     func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {}
     func getAllEntriesAsDTO() async throws -> [BathScaleOperationDTO] { [] }
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool { false }

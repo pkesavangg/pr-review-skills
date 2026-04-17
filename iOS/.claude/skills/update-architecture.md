@@ -21,6 +21,7 @@ Categories:
 - New feature module added to `meApp/Features/`
 - New service (protocol + implementation + `ServiceRegistry` registration)
 - New SwiftData `@Model` in `Domain/Models/DB/`
+- New value-type snapshot (e.g. new `*Snapshot` struct in `Domain/Models/Domain/<Area>/`) — update §4.1a Value-type Snapshots table
 - New external SPM dependency
 - Renamed type, method, or file that affects architecture
 - New API endpoint category or integration
@@ -36,6 +37,7 @@ Read `architecture.md` in full. Identify which sections need updating based on t
 | New feature module | Section 3.2 Feature Modules table; Section 3 bottom tab nav if tab-visible |
 | New service | Section 3.3 Service Layer table |
 | New SwiftData model | Section 4.1 Key Models table |
+| New snapshot type | Section 4.1a Value-type Snapshots table |
 | New SPM dependency | Section 5 External Integrations table |
 | Renamed type | Any section referencing the old name |
 | Architecture pattern change | Section 3.1 and/or Section 2 diagrams |

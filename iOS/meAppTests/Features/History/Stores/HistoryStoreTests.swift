@@ -168,24 +168,24 @@ struct HistoryStoreTests {
     func selectMonthTriggersLoadEntries() async {
         let (store, entryService, _, _, _) = makeSUT()
         let month = makeHistoryMonth(id: "2026-03")
-        entryService.getMonthDetailResult = .success([EntryTestFixtures.makeEntry(timestamp: "2026-03-01T08:00:00Z")])
+        entryService.fetchEntrySnapshotsForMonthResult = .success([EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-01T08:00:00Z")])
 
         store.selectMonth(month)
-        let done = await waitUntil { store.selectedMonth?.id == "2026-03" && entryService.getMonthDetailCalls == 1 }
+        let done = await waitUntil { store.selectedMonth?.id == "2026-03" && entryService.fetchEntrySnapshotsForMonthCalls == 1 }
 
         #expect(done == true)
         #expect(store.selectedMonth?.id == "2026-03")
-        #expect(entryService.getMonthDetailLastMonth == "2026-03")
+        #expect(entryService.fetchEntrySnapshotsForMonthLast == "2026-03")
         #expect(store.entries.count == 1)
     }
 
     @Test("loadEntries with nil selectedMonth does nothing")
     func loadEntriesNoSelectedMonth() async {
         let (store, entryService, _, _, _) = makeSUT()
-        entryService.getMonthDetailResult = .success([])
+        entryService.fetchEntrySnapshotsForMonthResult = .success([])
 
         await store.loadEntries(for: nil)
-        #expect(entryService.getMonthDetailCalls == 0)
+        #expect(entryService.fetchEntrySnapshotsForMonthCalls == 0)
         #expect(store.entries.isEmpty)
     }
 
@@ -193,24 +193,24 @@ struct HistoryStoreTests {
     func loadEntriesSuccessEmpty() async {
         let (store, entryService, _, _, _) = makeSUT()
         let month = makeHistoryMonth()
-        entryService.getMonthDetailResult = .success([])
+        entryService.fetchEntrySnapshotsForMonthResult = .success([])
         store.setSelectedMonth(selectedMonth: month)
 
         await store.loadEntries(for: month)
         #expect(store.entries.isEmpty)
-        #expect(entryService.getMonthDetailCalls == 1)
+        #expect(entryService.fetchEntrySnapshotsForMonthCalls == 1)
     }
 
     @Test("loadEntries failure: entries cleared, error logged")
     func loadEntriesFailure() async {
         let (store, entryService, _, _, logger) = makeSUT()
         let month = makeHistoryMonth()
-        entryService.getMonthDetailResult = .failure(HistoryStoreTestError.loadMonthDetailFailed)
+        entryService.fetchEntrySnapshotsForMonthResult = .failure(HistoryStoreTestError.loadMonthDetailFailed)
         store.setSelectedMonth(selectedMonth: month)
 
         await store.loadEntries(for: month)
         #expect(store.entries.isEmpty)
-        #expect(entryService.getMonthDetailCalls == 1)
+        #expect(entryService.fetchEntrySnapshotsForMonthCalls == 1)
         #expect(logger.messages.contains { $0.contains("HistoryStore") })
     }
 
@@ -218,10 +218,10 @@ struct HistoryStoreTests {
     func loadEntriesDedupesAndFilters() async {
         let (store, entryService, _, _, _) = makeSUT()
         let month = makeHistoryMonth(id: "2026-03")
-        let e1 = EntryTestFixtures.makeEntry(timestamp: "2026-03-01T08:00:00Z", operationType: .create, serverTimestamp: "a")
-        let e2 = EntryTestFixtures.makeEntry(timestamp: "2026-03-01T08:00:00Z", operationType: .create, serverTimestamp: "b")
-        let e3 = EntryTestFixtures.makeEntry(timestamp: "2026-03-01T08:00:00Z", operationType: .delete, serverTimestamp: "b")
-        entryService.getMonthDetailResult = .success([e1, e2, e3])
+        let e1 = EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-01T08:00:00Z", serverTimestamp: "a", operationType: .create)
+        let e2 = EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-01T08:00:00Z", serverTimestamp: "b", operationType: .create)
+        let e3 = EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-01T08:00:00Z", serverTimestamp: "b", operationType: .delete)
+        entryService.fetchEntrySnapshotsForMonthResult = .success([e1, e2, e3])
         store.setSelectedMonth(selectedMonth: month)
 
         await store.loadEntries(for: month)
@@ -234,9 +234,9 @@ struct HistoryStoreTests {
     func loadEntriesSortsNewestFirst() async {
         let (store, entryService, _, _, _) = makeSUT()
         let month = makeHistoryMonth(id: "2026-03")
-        let older = EntryTestFixtures.makeEntry(timestamp: "2026-03-01T08:00:00Z")
-        let newer = EntryTestFixtures.makeEntry(timestamp: "2026-03-15T12:00:00Z")
-        entryService.getMonthDetailResult = .success([older, newer])
+        let older = EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-01T08:00:00Z")
+        let newer = EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-15T12:00:00Z")
+        entryService.fetchEntrySnapshotsForMonthResult = .success([older, newer])
         store.setSelectedMonth(selectedMonth: month)
 
         await store.loadEntries(for: month)
@@ -262,21 +262,18 @@ struct HistoryStoreTests {
         store.productTypeStore = productTypeStore
 
         let startDate = Calendar.current.date(byAdding: .day, value: -13, to: Date())! // swiftlint:disable:this force_unwrapping
-        let entries = (0..<14).compactMap { offset -> Entry? in
+        let entries = (0..<14).compactMap { offset -> EntrySnapshot? in
             guard let date = Calendar.current.date(byAdding: .day, value: offset, to: startDate) else { return nil }
             let timestamp = ISO8601DateFormatter().string(from: date)
-            let entry = Entry(
-                entryTimestamp: timestamp,
+            return EntryTestFixtures.makeBabyEntrySnapshot(
                 accountId: "acct-baby",
-                operationType: OperationType.create.rawValue,
-                deviceType: DeviceType.babyScale.rawValue,
-                entryType: EntryType.wg.rawValue,
-                babyId: babyProfile.id
+                entryTimestamp: timestamp,
+                babyId: babyProfile.id,
+                weight: 120,
+                length: 20
             )
-            entry.babyEntry = BabyEntry(babyId: babyProfile.id, length: 20, weight: 120, note: "")
-            return entry
         }
-        entryService.getAllEntriesResult = .success(entries)
+        entryService.fetchAllEntrySnapshotsResult = .success(entries)
 
         store.loadMonths()
         let done = await waitUntil { !store.babyWeeks.isEmpty }
@@ -292,7 +289,7 @@ struct HistoryStoreTests {
     @Test("setSelectedMonth sets selectedMonth and clears entries")
     func setSelectedMonthClearsEntries() {
         let (store, entryService, _, _, _) = makeSUT()
-        entryService.getMonthDetailResult = .success([EntryTestFixtures.makeEntry()])
+        entryService.fetchEntrySnapshotsForMonthResult = .success([EntryTestFixtures.makeEntrySnapshot()])
         let month = makeHistoryMonth()
         store.selectMonth(month)
         _ = Task { await store.loadEntries(for: month) }
@@ -333,14 +330,14 @@ struct HistoryStoreTests {
         accountService.seedAccounts([account], active: account)
         accountService.refreshAccountResult = .success(())
         entryService.getMonthsAllResult = .success([makeHistoryMonth()])
-        entryService.getMonthDetailResult = .success([])
+        entryService.fetchEntrySnapshotsForMonthResult = .success([])
         store.setSelectedMonth(selectedMonth: makeHistoryMonth())
 
         await store.refreshAllEntries()
         #expect(accountService.refreshAccountCalls == 1)
         #expect(entryService.syncAllEntriesWithRemoteCalls == 1)
         #expect(entryService.getMonthsAllCalls >= 1)
-        #expect(entryService.getMonthDetailCalls >= 1)
+        #expect(entryService.fetchEntrySnapshotsForMonthCalls >= 1)
     }
 
     // MARK: - showDeleteEntryAlert
@@ -348,7 +345,7 @@ struct HistoryStoreTests {
     @Test("showDeleteEntryAlert presents alert with correct strings")
     func showDeleteEntryAlertPresentsAlert() {
         let (store, _, notificationService, _, _) = makeSUT()
-        let entry = EntryTestFixtures.makeEntry()
+        let entry = EntryTestFixtures.makeEntrySnapshot()
         store.showDeleteEntryAlert(entry: entry)
         #expect(notificationService.showAlertCalls == 1)
         #expect(notificationService.alertData?.title == AlertStrings.DeleteEntryAlert.title)
@@ -359,14 +356,14 @@ struct HistoryStoreTests {
     @Test("showDeleteEntryAlert confirm invokes delete and shows loader")
     func showDeleteEntryAlertConfirmDeletes() async {
         let (store, entryService, notificationService, _, _) = makeSUT()
-        let entry = EntryTestFixtures.makeEntry()
+        let entry = EntryTestFixtures.makeEntrySnapshot()
         store.showDeleteEntryAlert(entry: entry, onCancel: nil)
         guard let alert = notificationService.alertData, let deleteButton = alert.buttons.first(where: { $0.type == .danger }) else {
             Issue.record("Expected delete alert button")
             return
         }
         deleteButton.action(nil)
-        let done = await waitUntil { entryService.deleteEntryCalls == 1 }
+        let done = await waitUntil { entryService.deleteEntryByIdCalls == 1 }
         #expect(done == true)
         #expect(notificationService.dismissLoaderCalls >= 1)
     }
@@ -374,7 +371,7 @@ struct HistoryStoreTests {
     @Test("showDeleteEntryAlert cancel dismisses and calls onCancel")
     func showDeleteEntryAlertCancelDismisses() {
         let (store, entryService, notificationService, _, _) = makeSUT()
-        let entry = EntryTestFixtures.makeEntry()
+        let entry = EntryTestFixtures.makeEntrySnapshot()
         var onCancelCalled = false
         store.showDeleteEntryAlert(entry: entry, onCancel: { onCancelCalled = true })
         guard let alert = notificationService.alertData, let cancelButton = alert.buttons.first(where: { $0.type == .secondary }) else {
@@ -448,20 +445,20 @@ struct HistoryStoreTests {
     func entrySavedRefreshesWhenViewingSameMonth() async {
         let (store, entryService, _, _, _) = makeSUT()
         entryService.getMonthsAllResult = .success([makeHistoryMonth(id: "2026-03")])
-        entryService.getMonthDetailResult = .success([EntryTestFixtures.makeEntry(timestamp: "2026-03-01T08:00:00Z")])
+        entryService.fetchEntrySnapshotsForMonthResult = .success([EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-01T08:00:00Z")])
         store.loadMonths()
         _ = await waitUntil { store.months.count == 1 }
         store.selectMonth(makeHistoryMonth(id: "2026-03"))
         _ = await waitUntil { store.entries.count == 1 }
-        let initialGetMonthDetailCalls = entryService.getMonthDetailCalls
+        let initialSnapshotCalls = entryService.fetchEntrySnapshotsForMonthCalls
         entryService.getMonthsAllResult = .success([makeHistoryMonth(id: "2026-03"), makeHistoryMonth(id: "2026-02")])
-        entryService.getMonthDetailResult = .success([
-            EntryTestFixtures.makeEntry(timestamp: "2026-03-01T08:00:00Z"),
-            EntryTestFixtures.makeEntry(timestamp: "2026-03-02T09:00:00Z")
+        entryService.fetchEntrySnapshotsForMonthResult = .success([
+            EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-01T08:00:00Z"),
+            EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-02T09:00:00Z")
         ])
         let entry = EntryTestFixtures.makeEntry(timestamp: "2026-03-02T09:00:00Z")
         entryService.entrySaved.send(EntryNotification(from: entry))
-        let done = await waitUntil { entryService.getMonthsAllCalls >= 2 && entryService.getMonthDetailCalls > initialGetMonthDetailCalls }
+        let done = await waitUntil { entryService.getMonthsAllCalls >= 2 && entryService.fetchEntrySnapshotsForMonthCalls > initialSnapshotCalls }
         #expect(done == true)
     }
 
@@ -469,13 +466,13 @@ struct HistoryStoreTests {
     func entryDeletedRefreshesWhenViewingSameMonth() async {
         let (store, entryService, _, _, _) = makeSUT()
         entryService.getMonthsAllResult = .success([makeHistoryMonth(id: "2026-03")])
-        entryService.getMonthDetailResult = .success([EntryTestFixtures.makeEntry(timestamp: "2026-03-01T08:00:00Z")])
+        entryService.fetchEntrySnapshotsForMonthResult = .success([EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-01T08:00:00Z")])
         store.loadMonths()
         _ = await waitUntil { store.months.count == 1 }
         store.selectMonth(makeHistoryMonth(id: "2026-03"))
         _ = await waitUntil { store.entries.count == 1 }
         entryService.getMonthsAllResult = .success([])
-        entryService.getMonthDetailResult = .success([])
+        entryService.fetchEntrySnapshotsForMonthResult = .success([])
         let entry = EntryTestFixtures.makeEntry(timestamp: "2026-03-01T08:00:00Z")
         entryService.entryDeleted.send(EntryNotification(from: entry))
         let done = await waitUntil { entryService.getMonthsAllCalls >= 2 }
