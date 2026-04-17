@@ -15,16 +15,13 @@ extension BabyScaleSetupStore {
         guard !isExiting else { return }
 
         switch currentStep {
-        case .intro, .permissions, .scaleName, .paired, .babyProfile, .babyAdded:
+        case .intro, .permissions, .scaleName, .paired, .babyProfile, .babyAdded, .connectionError:
             break
         case .wakeup:
             startBluetoothScan()
         case .connectingBluetooth:
-            // Only reached for error display (timeout or pairing failure).
-            // Pairing is triggered directly from device discovery.
-            if discoveredScale == nil || discoveryEvent == nil {
-                connectionState = .failure
-            }
+            // Loading state — pairing is triggered directly from device discovery.
+            break
         }
     }
 
@@ -56,11 +53,7 @@ extension BabyScaleSetupStore {
             await MainActor.run {
                 guard let self else { return }
                 if self.discoveredScale == nil && self.currentStep == .wakeup {
-                    self.navigateToStep(.connectingBluetooth)
-                    Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 250_000_000)
-                        self.connectionState = .failure
-                    }
+                    self.navigateToStep(.connectionError)
                 }
             }
         }
@@ -120,13 +113,13 @@ extension BabyScaleSetupStore {
                 LoggerService.shared.log(level: .error, tag: tag, message: "Baby scale pairing response: \(response)")
                 connectionState = .failure
                 scaleSetupError = .pairingFailed
-                navigateToStep(.connectingBluetooth)
+                navigateToStep(.connectionError)
             }
         case .failure(let error):
             LoggerService.shared.log(level: .error, tag: tag, message: "Baby scale pairing failed: \(error)")
             connectionState = .failure
             scaleSetupError = .connectionFailed
-            navigateToStep(.connectingBluetooth)
+            navigateToStep(.connectionError)
         }
     }
 
