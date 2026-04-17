@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.reducer
 
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.greatergoods.libs.appsync.model.AppSyncResult
+import com.dmdbrands.gurus.weight.core.config.AppSyncConfig
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.AppsyncScaleSetupStep
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
@@ -19,7 +20,7 @@ data class AppsyncScaleSetupState(
   val isSetupFinished: Boolean = false,
   val permissions: GGPermissionStatusMap = mutableMapOf(),
   val scanResult: AppSyncResult? = null,
-  val appSyncZoomLevel: Int = 4,
+  val appSyncZoomLevel: Int = AppSyncConfig.DEFAULT_ZOOM,
 ) : IReducer.State {
   val currentStepIndex: Int = steps.indexOf(currentStep)
   val isFirstStep: Boolean = currentStepIndex == 0

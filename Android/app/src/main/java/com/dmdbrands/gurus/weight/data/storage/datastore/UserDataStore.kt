@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.data.storage.datastore
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.Serializer
 import androidx.datastore.dataStore
+import com.dmdbrands.gurus.weight.core.config.AppSyncConfig
 import com.dmdbrands.gurus.weight.proto.ThemeMode
 import com.dmdbrands.gurus.weight.proto.UserAccount
 import com.dmdbrands.gurus.weight.proto.UserPreferences
@@ -30,11 +31,7 @@ class UserDataStore @Inject constructor(
 ) : BaseProtoDataStore<UserPreferences>(
   dataStore = context.userDataStore,
 ) {
-  companion object {
-    private const val DEFAULT_APPSYNC_ZOOM = 1
-    private const val MIN_APPSYNC_ZOOM = 1
-    private const val MAX_APPSYNC_ZOOM = 5
-  }
+
   /**
    * Emits a Flow of all user accounts, keyed by account ID.
    */
@@ -69,7 +66,7 @@ class UserDataStore @Inject constructor(
    */
   val lastAppSyncZoomLevelFlow: Flow<Int> = currentAccountFlow.map { account ->
     val stored = account?.lastAppsyncZoomLevel ?: 0
-    if (stored in MIN_APPSYNC_ZOOM..MAX_APPSYNC_ZOOM) stored else DEFAULT_APPSYNC_ZOOM
+    if (stored in AppSyncConfig.MIN_ZOOM..AppSyncConfig.MAX_ZOOM) stored else AppSyncConfig.DEFAULT_ZOOM
   }
 
   /**
@@ -83,7 +80,7 @@ class UserDataStore @Inject constructor(
       putAccounts(
         activeEntry.key,
         activeEntry.value.toBuilder()
-          .setLastAppsyncZoomLevel(zoom.coerceIn(MIN_APPSYNC_ZOOM, MAX_APPSYNC_ZOOM))
+          .setLastAppsyncZoomLevel(zoom.coerceIn(AppSyncConfig.MIN_ZOOM, AppSyncConfig.MAX_ZOOM))
           .build(),
       )
     }.build()

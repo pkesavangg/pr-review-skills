@@ -468,13 +468,11 @@ object ServiceModule {
     @Singleton
     fun provideAppSyncService(
       entryService: IEntryService,
-      accountService: IAccountService,
       navigationService: IAppNavigationService,
       dialogQueueService: IDialogQueueService,
       userDataStore: UserDataStore,
     ): IAppSyncService = AppSyncService(
       entryService = entryService,
-      accountService = accountService,
       appNavigationService = navigationService,
       dialogQueueService = dialogQueueService,
       userDataStore = userDataStore,

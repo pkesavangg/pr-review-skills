@@ -259,14 +259,16 @@ constructor(
   }
 
   private fun handleAppSyncResult(result: AppSyncResult) {
+    if (result.canceled) {
+      return
+    }
     viewModelScope.launch {
       appSyncService.saveLastZoomLevel(result.zoom)
     }
-    if (result.weight != null && !result.canceled) {
+    if (result.weight != null) {
       handleNewEntry(result)
     } else if (result.manual) {
       navigateToManualEntry()
-    } else {
     }
   }
 

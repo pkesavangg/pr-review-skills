@@ -171,10 +171,15 @@ constructor(
 
   private fun handleAppSyncResult(result: AppSyncResult) {
     AppLog.d(TAG, "Handling AppSync result - canceled: ${result.canceled}, manual: ${result.manual}")
+    if (result.canceled) {
+      AppLog.d(TAG, "AppSync result canceled, proceeding to next step without saving zoom")
+      handleIntent(AppsyncScaleSetupIntent.Next)
+      return
+    }
     viewModelScope.launch {
       appSyncService.saveLastZoomLevel(result.zoom)
     }
-    if (result.canceled || !result.manual) {
+    if (!result.manual) {
       AppLog.d(TAG, "AppSync result indicates proceeding to next step")
       handleIntent(AppsyncScaleSetupIntent.Next)
     } else {
