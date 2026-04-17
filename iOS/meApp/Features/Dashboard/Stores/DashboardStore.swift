@@ -817,7 +817,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         let storedWeight = Int(weightlessWeight)
         let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
         return unit == .kg
-            ? ConversionTools.convertStoredToKg(storedWeight)
+            ? ConversionTools.convertStoredToKgRaw(Double(storedWeight))
             : ConversionTools.convertStoredToLbs(storedWeight)
     }
 

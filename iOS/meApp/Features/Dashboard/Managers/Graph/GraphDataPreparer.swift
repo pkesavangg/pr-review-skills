@@ -68,7 +68,11 @@ struct GraphDataPreparer {
             let displayWeight: Double
             if isWeightlessMode {
                 guard let anchor = anchorWeight else { return nil }
-                displayWeight = convertWeight(summary.weight) - anchor
+                let convertedWeight = convertWeight(summary.weight)
+                displayWeight = displayedWeightlessDifference(
+                    currentWeight: convertedWeight,
+                    anchorWeight: anchor
+                )
             } else {
                 displayWeight = convertWeight(summary.weight)
             }
@@ -203,7 +207,10 @@ struct GraphDataPreparer {
             let weight = convertWeight(op.weight)
             if isWeightlessMode {
                 guard let anchor = anchorWeight else { return nil }
-                return weight - anchor
+                return displayedWeightlessDifference(
+                    currentWeight: weight,
+                    anchorWeight: anchor
+                )
             }
             return weight
         }
@@ -305,11 +312,17 @@ struct GraphDataPreparer {
         case .week, .month:
             guard let last = operations.last else { return nil }
             let latest = convertWeight(last.weight)
-            raw = latest - anchor
+            raw = displayedWeightlessDifference(
+                currentWeight: latest,
+                anchorWeight: anchor
+            )
         case .year, .total:
             let weights = operations.map { convertWeight($0.weight) }
             guard !weights.isEmpty else { return nil }
-            raw = weights.reduce(0, +) / Double(weights.count) - anchor
+            raw = displayedWeightlessAverageDifference(
+                currentWeights: weights,
+                anchorWeight: anchor
+            )
         }
         return (raw * 100).rounded(.toNearestOrAwayFromZero) / 100
     }
@@ -321,12 +334,18 @@ struct GraphDataPreparer {
         convertWeight: (Double) -> Double
     ) -> Double {
         guard !operations.isEmpty else { return 0 }
-        let values = operations.map { op -> Double in
-            let weight = convertWeight(op.weight)
-            return isWeightlessMode ? weight - (anchorWeight ?? 0) : weight
+        let weights = operations.map { convertWeight($0.weight) }
+        let avg = weights.reduce(0, +) / Double(weights.count)
+        guard isWeightlessMode else {
+            return (avg * 100).rounded(.toNearestOrAwayFromZero) / 100
         }
-        let avg = values.reduce(0, +) / Double(values.count)
-        return (avg * 100).rounded(.toNearestOrAwayFromZero) / 100
+        guard let anchorWeight else { return 0 }
+        let diff = displayedWeightlessAverageDifference(
+            currentWeights: weights,
+            anchorWeight: anchorWeight
+        )
+        // Match the non-weightless path's 2-decimal-place precision
+        return (diff * 100).rounded(.toNearestOrAwayFromZero) / 100
     }
 
     // swiftlint:disable:next function_parameter_count
@@ -477,6 +496,24 @@ struct GraphDataPreparer {
         let values = series.filter { $0.series == DashboardStrings.weight }.map(\.value)
         guard let min = values.min(), let max = values.max(), max > min else { return nil }
         return min...max
+    }
+
+    private func roundedToDisplayedWeight(_ value: Double) -> Double {
+        WeightlessDisplayRounding.roundedToDisplayedWeight(value)
+    }
+
+    private func displayedWeightlessDifference(
+        currentWeight: Double,
+        anchorWeight: Double
+    ) -> Double {
+        WeightlessDisplayRounding.displayedWeightlessDifference(currentWeight: currentWeight, anchorWeight: anchorWeight)
+    }
+
+    private func displayedWeightlessAverageDifference(
+        currentWeights: [Double],
+        anchorWeight: Double
+    ) -> Double {
+        WeightlessDisplayRounding.displayedWeightlessAverageDifference(currentWeights: currentWeights, anchorWeight: anchorWeight)
     }
 
     private func effectiveMetricRange(min: Double, max: Double, metric: String) -> (Double, Double) {

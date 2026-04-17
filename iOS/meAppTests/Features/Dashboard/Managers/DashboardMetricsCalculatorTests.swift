@@ -374,21 +374,22 @@ struct DashboardMetricsCalculatorTests {
         #expect(result == nil)
     }
 
-    @Test("calculateDisplayWeight: no selection, weightless mode uses weightlessDisplay callback")
-    func displayWeightWeightlessModeCallback() {
+    @Test("calculateDisplayWeight: no selection, weightless mode computes average minus anchor")
+    func displayWeightWeightlessModeAverage() {
         let sut = makeSUT()
         let ops = DashboardTestFixtures.makeSortedDailySummaries()
+        // Weights: 1800, 1810, 1820, 1830, 1840 → converted (÷10): 180, 181, 182, 183, 184
+        // Average = 182.0, anchor = 180.0, result = 2.0
         let context = DashboardTestFixtures.makeDisplayWeightContext(
             operations: ops,
             operationsForLabel: ops,
             isWeightlessMode: true,
-            anchorWeight: 180.0,
-            weightlessDisplay: { _, _, _, _ in -2.5 }
+            anchorWeight: 180.0
         )
 
         let result = sut.calculateDisplayWeight(context: context)
 
-        #expect(result == -2.5)
+        #expect(result == 2.0)
     }
 
     @Test("calculateDisplayWeight: no selection, normal mode with opsForLabel averages and rounds")
@@ -1224,6 +1225,72 @@ struct DashboardMetricsCalculatorTests {
         #expect(entry.scaleEntry?.bodyFat == 250)
         // water: only one non-nil value (550) → avg = 550 → Int = 550
         #expect(entry.scaleEntry?.water == 550)
+    }
+
+    @Test("getCurrentAverageWeight: kg weightless mode subtracts displayed average and baseline")
+    func averageWeightKgWeightlessUsesDisplayedOperands() {
+        let sut = makeSUT()
+        // This reproduces the visible discrepancy:
+        // current raw average = 660.6 / 22.0462 = 29.96..., displayed as 30.0 kg
+        // baseline entered as 100.0 kg is stored as 2205 tenths-lb = 100.01..., displayed as 100.0 kg
+        // Raw subtraction rounds to -70.1, but displayed arithmetic should be 30.0 - 100.0 = -70.0.
+        let ops = [DashboardTestFixtures.makeSummary(weight: 660.6)]
+        let anchorRaw = Double(ConversionTools.convertKgToStored(100.0)) / 22.0462
+
+        let result = sut.getCurrentAverageWeight(
+            from: ops,
+            isWeightlessMode: true,
+            anchorWeight: anchorRaw,
+            convertWeight: DashboardTestFixtures.convertToKgRaw
+        )
+
+        #expect(result == -70.0)
+    }
+
+    @Test("calculateDisplayWeight: kg weightless no-selection average subtracts displayed operands")
+    func displayWeightKgWeightlessUsesDisplayedOperands() {
+        let sut = makeSUT()
+        let ops = [DashboardTestFixtures.makeSummary(weight: 660.6)]
+        let anchorRaw = Double(ConversionTools.convertKgToStored(100.0)) / 22.0462
+
+        let context = DashboardTestFixtures.makeDisplayWeightContext(
+            operations: ops,
+            operationsForLabel: ops,
+            isWeightlessMode: true,
+            anchorWeight: anchorRaw,
+            convertWeight: DashboardTestFixtures.convertToKgRaw
+        )
+
+        let result = sut.calculateDisplayWeight(context: context)
+
+        #expect(result == -70.0)
+    }
+
+    @Test("calculateDisplayWeight: kg weightless month visible average averages displayed entries first")
+    func displayWeightKgWeightlessMonthAverageUsesDisplayedEntryValues() {
+        let sut = makeSUT()
+        // From the month graph debug trace:
+        // 265.7 stored -> 12.1 kg displayed, 1054.0 stored -> 47.8 kg displayed.
+        // Averaging raw kg first gives 29.9303 -> 29.9, which produces -70.1.
+        // Averaging displayed entries gives (12.1 + 47.8) / 2 = 29.95 -> 30.0, so 30.0 - 100.0 = -70.0.
+        let ops = [
+            DashboardTestFixtures.makeSummary(period: "2026-04-07", weight: 265.7),
+            DashboardTestFixtures.makeSummary(period: "2026-04-08", weight: 1054.0)
+        ]
+        let anchorRaw = Double(ConversionTools.convertKgToStored(100.0)) / 22.0462
+
+        let context = DashboardTestFixtures.makeDisplayWeightContext(
+            operations: ops,
+            operationsForLabel: ops,
+            period: .month,
+            isWeightlessMode: true,
+            anchorWeight: anchorRaw,
+            convertWeight: DashboardTestFixtures.convertToKgRaw
+        )
+
+        let result = sut.calculateDisplayWeight(context: context)
+
+        #expect(result == -70.0)
     }
 
     @Test("getCurrentAverageWeight: many operations stress test")

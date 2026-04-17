@@ -62,6 +62,13 @@ final class ConversionTools {
     static func convertStoredToKg(_ stored: Double) -> Double {
         return rounded(stored / 22.0462, toPlaces: 1)
     }
+
+    /// Converts stored weight (tenths of lbs) to kg without rounding.
+    /// Use for intermediate calculations (e.g. weightless anchor) where
+    /// premature rounding causes visible ±0.1 discrepancies after subtraction.
+    static func convertStoredToKgRaw(_ stored: Double) -> Double {
+        return stored / 22.0462
+    }
     
     /// Converts kg to stored weight (tenths of lbs)
     static func convertKgToStored(_ kgs: Double) -> Int {
