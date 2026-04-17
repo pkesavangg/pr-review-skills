@@ -43,8 +43,6 @@ fun BpChartHeader(
   var showAhaSheet by remember { mutableStateOf(false) }
 
   ChartHeader(
-    segmentState = segmentState,
-    segment = segment,
     rangeData = rangeText,
     markerIndex = state.markerIndex,
   ) {

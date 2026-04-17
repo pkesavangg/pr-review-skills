@@ -64,8 +64,6 @@ fun BabyChartHeader(
         ) { showCdcSheet = true },
     ) {
       ChartHeader(
-        segmentState = segmentState,
-        segment = segment,
         rangeData = rangeText,
         markerIndex = state.markerIndex,
       ) {
