@@ -11,15 +11,15 @@ import Foundation
 extension BathScaleEntry {
     func toSnapshot() -> BathScaleEntrySnapshot {
         BathScaleEntrySnapshot(
-            weight:        weight,
-            bodyFat:       bodyFat,
-            muscleMass:    muscleMass,
-            water:         water,
-            bmi:           bmi,
-            source:        source,
-            systolic:      systolic,
-            diastolic:     diastolic,
-            meanArterial:  meanArterial
+            weight: weight,
+            bodyFat: bodyFat,
+            muscleMass: muscleMass,
+            water: water,
+            bmi: bmi,
+            source: source,
+            systolic: systolic,
+            diastolic: diastolic,
+            meanArterial: meanArterial
         )
     }
 }
@@ -27,16 +27,16 @@ extension BathScaleEntry {
 extension BathScaleMetric {
     func toSnapshot() -> BathScaleMetricSnapshot {
         BathScaleMetricSnapshot(
-            bmr:                    bmr,
-            metabolicAge:           metabolicAge,
-            proteinPercent:         proteinPercent,
-            pulse:                  pulse,
-            skeletalMusclePercent:  skeletalMusclePercent,
+            bmr: bmr,
+            metabolicAge: metabolicAge,
+            proteinPercent: proteinPercent,
+            pulse: pulse,
+            skeletalMusclePercent: skeletalMusclePercent,
             subcutaneousFatPercent: subcutaneousFatPercent,
-            visceralFatLevel:       visceralFatLevel,
-            boneMass:               boneMass,
-            impedance:              impedance,
-            unit:                   unit
+            visceralFatLevel: visceralFatLevel,
+            boneMass: boneMass,
+            impedance: impedance,
+            unit: unit
         )
     }
 }
@@ -44,10 +44,10 @@ extension BathScaleMetric {
 extension BPMEntry {
     func toSnapshot() -> BPMEntrySnapshot {
         BPMEntrySnapshot(
-            systolic:     systolic,
-            diastolic:    diastolic,
+            systolic: systolic,
+            diastolic: diastolic,
             meanArterial: meanArterial,
-            pulse:        pulse
+            pulse: pulse
         )
     }
 }
@@ -69,21 +69,21 @@ extension Entry {
     /// model context is valid and before any await boundary.
     func toSnapshot() -> EntrySnapshot {
         EntrySnapshot(
-            id:                 id,
-            accountId:          accountId,
-            entryTimestamp:     entryTimestamp,
-            serverTimestamp:    serverTimestamp,
-            opTimestamp:        opTimestamp,
-            operationType:      operationType,
-            entryType:          entryType,
-            isSynced:           isSynced,
-            note:               note,
-            attempts:           attempts,
-            isFailedToSync:     isFailedToSync,
-            scaleEntry:         scaleEntry?.toSnapshot(),
-            scaleEntryMetric:   scaleEntryMetric?.toSnapshot(),
-            bpmEntry:           bpmEntry?.toSnapshot(),
-            babyEntry:          babyEntry?.toSnapshot()
+            id: id,
+            accountId: accountId,
+            entryTimestamp: entryTimestamp,
+            serverTimestamp: serverTimestamp,
+            opTimestamp: opTimestamp,
+            operationType: operationType,
+            entryType: entryType,
+            isSynced: isSynced,
+            note: note,
+            attempts: attempts,
+            isFailedToSync: isFailedToSync,
+            scaleEntry: scaleEntry?.toSnapshot(),
+            scaleEntryMetric: scaleEntryMetric?.toSnapshot(),
+            bpmEntry: bpmEntry?.toSnapshot(),
+            babyEntry: babyEntry?.toSnapshot()
         )
     }
 }
