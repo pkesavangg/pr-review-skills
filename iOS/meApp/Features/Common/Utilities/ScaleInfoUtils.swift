@@ -156,7 +156,7 @@ class ScaleInfoUtils {
             return path
         }
         let bpmPrimary = primaryBpmSetupSku(for: lookupSku)
-        return allDevices.first(where: { $0.sku == bpmPrimary })?.imgPath
+        return allDevices.first { $0.sku == bpmPrimary }?.imgPath
     }
 }
 

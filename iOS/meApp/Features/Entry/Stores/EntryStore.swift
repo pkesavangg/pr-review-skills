@@ -1,8 +1,10 @@
+// swiftlint:disable file_length
 import Combine
 import Foundation
 import SwiftUI
 
 @MainActor
+// swiftlint:disable:next type_body_length
 final class EntryStore: ObservableObject {
     // Dependencies
     @Injector var accountService: AccountServiceProtocol
@@ -459,6 +461,7 @@ final class EntryStore: ObservableObject {
         }
     }
 
+    // swiftlint:disable:next function_body_length
     func saveBabyEntry() async {
         guard !isSaving else { return }
         isSaving = true

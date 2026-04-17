@@ -49,28 +49,36 @@ struct PermissionListView: View {
     /// - Parameter setupType: The high-level scale setup variant.
     init(setupType: SetupType) {
         // Determine configuration based on setup type.
-        let config: (Set<PermissionCategory>, String, String?)
+        var resolvedCategories: Set<PermissionCategory>
+        var description: String
+        var title: String?
         self.setupType = setupType
         switch setupType {
         case .all:
-            config = (Set(PermissionCategory.allCases), "", nil) // no header; will be ignored via nil below
+            resolvedCategories = Set(PermissionCategory.allCases)
+            description = "" // no header; will be ignored via nil below
+            title = nil
         case .appSync:
-            config = ([.camera], PermissionsStrings.cameraPermissionDescription, nil)
+            resolvedCategories = [.camera]
+            description = PermissionsStrings.cameraPermissionDescription
+            title = nil
         case .btWifi:
-            config = ([.bluetooth, .internet], PermissionsStrings.locationPermissionDescription, nil)
+            resolvedCategories = [.bluetooth, .internet]
+            description = PermissionsStrings.locationPermissionDescription
+            title = nil
         case .bluetooth:
-            config = ([.bluetooth], PermissionsStrings.bluetoothPermissionDescription, nil)
+            resolvedCategories = [.bluetooth]
+            description = PermissionsStrings.bluetoothPermissionDescription
+            title = nil
         case .wifi:
-            config = ([.location], PermissionsStrings.locationPermissionDescription, nil)
+            resolvedCategories = [.location]
+            description = PermissionsStrings.locationPermissionDescription
+            title = nil
         case .bpm:
-            config = (
-                [.bluetooth],
-                BpmSetupStrings.A3Permissions.description,
-                BpmSetupStrings.A3Permissions.title
-            )
+            resolvedCategories = [.bluetooth]
+            description = BpmSetupStrings.A3Permissions.description
+            title = BpmSetupStrings.A3Permissions.title
         }
-
-        let (resolvedCategories, description, title) = config
 
         self.categories = resolvedCategories
         self.requiredCategories = [] // Initialize with no required categories to avoid showing red indicators when permissions are disabled

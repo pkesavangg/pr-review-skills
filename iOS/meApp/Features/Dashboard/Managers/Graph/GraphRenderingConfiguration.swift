@@ -353,7 +353,7 @@ struct GraphRenderingConfiguration {
         }
     }
 
-    // swiftlint:disable:next function_parameter_count cyclomatic_complexity
+    // swiftlint:disable:next function_parameter_count cyclomatic_complexity function_body_length
     private func axisRange(
         period: TimePeriod,
         minDate: Date,

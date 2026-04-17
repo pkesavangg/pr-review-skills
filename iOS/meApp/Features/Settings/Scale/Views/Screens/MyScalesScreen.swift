@@ -165,7 +165,7 @@ struct MyScalesScreen: View {
                             let lookupSku = DeviceHelper.mapSkuForDisplay(enteredValue)
 
                             // Find the scale or BPM matching the SKU.
-                            let scaleInfo = SCALES.first(where: { $0.sku == lookupSku })
+                            let scaleInfo = SCALES.first { $0.sku == lookupSku }
                                 ?? bpmCatalogItem(forEnteredCode: enteredValue)
                             guard let scaleInfo else { return }
 

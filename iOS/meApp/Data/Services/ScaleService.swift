@@ -520,6 +520,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         return updatedDevice
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     func deleteDevice(_ deviceId: String, showToast _: Bool) async throws {
         guard let target = try await localRepository.getDevice(deviceId) else {
             throw ScaleError.deviceNotFound(id: deviceId)

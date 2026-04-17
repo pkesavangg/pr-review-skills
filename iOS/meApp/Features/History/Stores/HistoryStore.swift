@@ -4,12 +4,14 @@
 //
 //  Created by Barath Chittibabu on 17/06/25.
 //
+// swiftlint:disable file_length
 import Combine
 import Foundation
 import SwiftUI
 
 /// Store / ViewModel that powers the History feature (monthly summaries, month detail, entry detail, metric info).
 @MainActor
+// swiftlint:disable:next type_body_length
 final class HistoryStore: ObservableObject {
 
     // MARK: - Dependencies
@@ -72,6 +74,7 @@ final class HistoryStore: ObservableObject {
 
     // MARK: - Init ------------------------------------------------------
 
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     init() {
         entryService.entrySaved
             .sink { [weak self] entry in
@@ -244,6 +247,7 @@ final class HistoryStore: ObservableObject {
         loadedProductTypes.remove(currentId)
     }
 
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     private func loadMonthsInternal(canShowLoader: Bool = true) async {
         guard monthsLoadTask == nil else { return }            // prevent overlap
 
@@ -463,7 +467,7 @@ final class HistoryStore: ObservableObject {
     }
 
     /// User tapped a baby day row.
-    func selectBabyDay(_ day: BabyHistoryDay) {
+    func selectBabyDay(_ day: BabyHistoryDay) { // swiftlint:disable:this function_body_length
         selectedBabyDay = day
         Task {
             do {

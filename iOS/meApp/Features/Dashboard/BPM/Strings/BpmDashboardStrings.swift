@@ -32,7 +32,8 @@ enum BpmDashboardStrings {
     // MARK: - AHA Rating Sheet
     static let ahaRatings = "AHA Ratings"
     static let bloodPressureLevelColors = "Blood Pressure Level Colors"
-    static let colorChartDescription = "Colors show where a reading falls — from Normal to Hypertensive Crisis — based on American Heart Association guidelines."
+    static let colorChartDescription =
+        "Colors show where a reading falls — from Normal to Hypertensive Crisis — based on American Heart Association guidelines."
 
     // MARK: - Accessibility
     static let openAhaRatings = "Open AHA ratings"

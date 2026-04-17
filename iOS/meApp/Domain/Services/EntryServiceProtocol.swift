@@ -15,7 +15,7 @@ protocol EntryServiceProtocol {
 
     /// Clears all entry-related data from the service (memory/cache/state).
     func clearAllData() async
-    
+
     /// Clears the last sync timestamp for the current user.
     func clearLastSyncTimestamp() async throws
 
@@ -127,7 +127,7 @@ protocol EntryServiceProtocol {
     /// - Parameter entryType: Filter by entry type. Defaults to `.scale`.
     /// - Returns: The current streak count.
     func getStreak(entryType: EntryType) async throws -> Streak
-        
+
     // MARK: - Export
     /// Exports all entries to a CSV file.
     func exportCSV() async throws
@@ -153,7 +153,7 @@ protocol EntryServiceProtocol {
 
     /// Loads baby dashboard data (daily/monthly summaries) for a specific baby profile.
     func loadBabyDashboardData(babyId: String) async
-    
+
 }
 
 // MARK: - Default Parameter Values

@@ -7,15 +7,17 @@
 
 import Combine
 
-// swiftlint:disable type_body_length file_length
+// swiftlint:disable file_length
 // This file intentionally aggregates all settings management logic.
-// Breaking it into smaller files would fragment related functionality and reduce maintainability.import Foundation
+// Breaking it into smaller files would fragment related functionality and reduce maintainability.
+import Foundation
 import SwiftUI
 
 // MARK: - Settings Store
 
 /// A store to manage user settings and account actions.
 @MainActor
+// swiftlint:disable:next type_body_length
 class SettingsStore: ObservableObject {
     @Injector var accountService: AccountServiceProtocol
     @Injector var notificationService: NotificationHelperServiceProtocol
@@ -606,7 +608,11 @@ class SettingsStore: ObservableObject {
         Task {
             notificationService.showLoader(LoaderModel(text: LoaderStrings.saving))
             do {
-                logger.log(level: .info, tag: tag, message: "SettingsStore: Saving profile weightUnit=\(profile.weightUnit) activityLevel=\(profile.activityLevel)")
+                logger.log(
+                    level: .info,
+                    tag: tag,
+                    message: "SettingsStore: Saving profile weightUnit=\(profile.weightUnit) activityLevel=\(profile.activityLevel)"
+                )
                 _ = try await accountService.updateProfile(profile)
                 // Also update body composition (height, weightUnit, activityLevel)
                 let bodyComp = BodyComp(
@@ -1735,10 +1741,10 @@ class SettingsStore: ObservableObject {
                     pickerType: .heightCm,
                     title: SettingsStrings.height,
                     showCancel: false
-                )                    { vals in // swiftlint:disable:this trailing_closure
-                        self.notificationService.dismissModal()
-                        self.updateHeightInForm(fromMetric: true, values: vals)
-                    }
+                ) { vals in
+                    self.notificationService.dismissModal()
+                    self.updateHeightInForm(fromMetric: true, values: vals)
+                }
                 notificationService.showModal(
                     ModalData(presentedView: AnyView(
                         picker
@@ -1752,10 +1758,10 @@ class SettingsStore: ObservableObject {
                     pickerType: .heightInches,
                     title: SettingsStrings.height,
                     showCancel: false
-                )                    { vals in // swiftlint:disable:this trailing_closure
-                        self.notificationService.dismissModal()
-                        self.updateHeightInForm(fromMetric: false, values: vals)
-                    }
+                ) { vals in
+                    self.notificationService.dismissModal()
+                    self.updateHeightInForm(fromMetric: false, values: vals)
+                }
                 notificationService.showModal(
                     ModalData(presentedView: AnyView(
                         picker
@@ -1768,4 +1774,4 @@ class SettingsStore: ObservableObject {
     }
 }
 
-// swiftlint:enable type_body_length file_length
+// swiftlint:enable file_length

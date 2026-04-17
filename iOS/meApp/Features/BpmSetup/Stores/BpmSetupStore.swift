@@ -152,11 +152,10 @@ final class BpmSetupStore: ObservableObject {
                 selectedUser: Binding(
                     get: { [weak self] in self?.selectedUserNumber },
                     set: { [weak self] in self?.selectedUserNumber = $0 }
-                ),
-                onSelect: { [weak self] user in
-                    self?.selectedUserNumber = user
-                }
-            )
+                )
+            ) { [weak self] user in
+                self?.selectedUserNumber = user
+            }
         )
     }
 
@@ -481,7 +480,8 @@ final class BpmSetupStore: ObservableObject {
         // Mismatched devices are silently ignored so scanning continues.
         guard event.protocolType == expectedProtocolType else {
             LoggerService.shared.log(
-                level: .info, tag: tag,
+                level: .info,
+                tag: tag,
                 message: "Ignoring BPM device — protocol \(event.protocolType) does not match expected \(String(describing: expectedProtocolType))"
             )
             return
@@ -523,7 +523,8 @@ final class BpmSetupStore: ObservableObject {
                 let isSameUser = existing.userNumber == "\(selectedUserNumber ?? 1)"
                 if isSameUser {
                     LoggerService.shared.log(
-                        level: .info, tag: tag,
+                        level: .info,
+                        tag: tag,
                         message: "Pre-pairing check: same-user duplicate found (MAC: \(discoveredMac)). Marking for deletion; continuing to pair."
                     )
                     // Mark for deletion — checkForDuplicateAndAdvance will show the
@@ -533,7 +534,8 @@ final class BpmSetupStore: ObservableObject {
                     deviceToDelete = existing
                 } else {
                     LoggerService.shared.log(
-                        level: .info, tag: tag,
+                        level: .info,
+                        tag: tag,
                         message: "Pre-pairing check: different-user on same device (MAC: \(discoveredMac)). Allowing multi-user pairing."
                     )
                     // Different user slot on same physical device — allowed. Fall through to pairing.
@@ -548,7 +550,11 @@ final class BpmSetupStore: ObservableObject {
         if let deviceUser = deviceUserNumber,
            let expected = selectedUserNumber,
            deviceUser != expected {
-            LoggerService.shared.log(level: .info, tag: tag, message: "User mismatch before pairing: app selected \(expected), device reports \(deviceUser)")
+            LoggerService.shared.log(
+                level: .info,
+                tag: tag,
+                message: "User mismatch before pairing: app selected \(expected), device reports \(deviceUser)"
+            )
             showUserMismatchAlert()
             return
         }
@@ -558,6 +564,7 @@ final class BpmSetupStore: ObservableObject {
     }
 
     // MARK: - Pairing Logic
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     private func startPairing() async {
         guard let device = discoveredDevice else {
             LoggerService.shared.log(level: .error, tag: tag, message: "startPairing - no discovered device")
@@ -568,7 +575,11 @@ final class BpmSetupStore: ObservableObject {
         let broadcastId = device.broadcastIdString ?? ""
         let pairedSKUMonitors = scaleService.scales.filter { $0.sku == selectedSku }
 
-        LoggerService.shared.log(level: .info, tag: tag, message: "Starting BPM pairing: \(broadcastId), user: \(String(describing: selectedUserNumber)), replaceUser: \(canReplaceUser)")
+        LoggerService.shared.log(
+            level: .info,
+            tag: tag,
+            message: "Starting BPM pairing: \(broadcastId), user: \(String(describing: selectedUserNumber)), replaceUser: \(canReplaceUser)"
+        )
 
         let result = await bluetoothService.connectBpm(
             broadcastId: broadcastId,
@@ -581,7 +592,8 @@ final class BpmSetupStore: ObservableObject {
             switch response {
             case .differentUser:
                 LoggerService.shared.log(
-                    level: .info, tag: tag,
+                    level: .info,
+                    tag: tag,
                     message: "SDK reports different user for BPM \(broadcastId)"
                 )
                 if !broadcastId.isEmpty {
@@ -610,9 +622,9 @@ final class BpmSetupStore: ObservableObject {
                 if deviceToDelete == nil {
                     let existingDevices = (try? await scaleService.getDevices()) ?? []
                     let selectedUser = "\(selectedUserNumber ?? 1)"
-                    deviceToDelete = existingDevices.first(where: { existing in
+                    deviceToDelete = existingDevices.first { existing in
                         existing.sku == selectedSku && existing.userNumber != selectedUser
-                    })
+                    }
                 }
                 showDifferentUserConflictAlert()
                 return
@@ -676,7 +688,12 @@ final class BpmSetupStore: ObservableObject {
         if !peripheralId.isEmpty,
            let existing = existingDevices.first(where: { $0.peripheralIdentifier == peripheralId }) {
             let isSameUser = existing.userNumber == "\(selectedUserNumber ?? 1)"
-            if isSameUser {
+            if isSameUser && canReplaceUser {
+                // User already confirmed the same-user conflict via showSameUserConflictAlert.
+                // Showing the alert again here would be a duplicate — just mark for deletion and advance.
+                deviceToDelete = existing
+                advanceFromScanning()
+            } else if isSameUser {
                 deviceToDelete = existing
                 confirmUserAndPair(isDifferentUser: false)
             } else if canReplaceUser {
@@ -746,7 +763,8 @@ final class BpmSetupStore: ObservableObject {
         }
 
         LoggerService.shared.log(
-            level: .info, tag: tag,
+            level: .info,
+            tag: tag,
             message: "Post-connection user mismatch: app selected \(expected), monitor reports \(actual)"
         )
 
@@ -837,6 +855,7 @@ final class BpmSetupStore: ObservableObject {
     }
 
     // MARK: - Device Persistence
+    // swiftlint:disable:next function_body_length
     private func saveDevice() async -> Bool {
         guard !isDeviceSaved else { return true }
         guard let bpmItem else {
@@ -867,11 +886,11 @@ final class BpmSetupStore: ObservableObject {
         let broadcastId = discoveredDevice?.broadcastIdString ?? ""
         let peripheralId = discoveredDevice?.peripheralIdentifier ?? ""
 
-        let duplicate = existingDevices.first(where: { existing in
+        let duplicate = existingDevices.first { existing in
             let matchesBroadcast = !broadcastId.isEmpty && existing.broadcastIdString == broadcastId
             let matchesPeripheral = !peripheralId.isEmpty && existing.peripheralIdentifier == peripheralId
             return (matchesBroadcast || matchesPeripheral) && existing.userNumber == selectedUser
-        })
+        }
 
         if let duplicate, !duplicate.id.isEmpty {
             LoggerService.shared.log(level: .info, tag: tag, message: "Removing duplicate BPM entry (id: \(duplicate.id)) before saving updated pairing")
@@ -992,7 +1011,8 @@ final class BpmSetupStore: ObservableObject {
             // by its CoreBluetooth UUID. Fall back to deviceInfoUpdatedPublisher which
             // fires on DEVICE_INFO_UPDATE scan events with real device info post-connection.
             LoggerService.shared.log(
-                level: .info, tag: tag,
+                level: .info,
+                tag: tag,
                 message: "getDeviceInfo failed for \(protocolType) BPM (\(error.localizedDescription)), waiting for deviceInfoUpdatedPublisher…"
             )
             do {
@@ -1000,12 +1020,14 @@ final class BpmSetupStore: ObservableObject {
                 lastRetrievedDeviceInfo = deviceInfo
                 applyDeviceInfo(deviceInfo, to: device, protocolType: protocolType)
                 LoggerService.shared.log(
-                    level: .info, tag: tag,
+                    level: .info,
+                    tag: tag,
                     message: "Applied device info from publisher for \(protocolType) BPM"
                 )
             } catch {
                 LoggerService.shared.log(
-                    level: .error, tag: tag,
+                    level: .error,
+                    tag: tag,
                     message: "No device info received from publisher within timeout: \(error.localizedDescription)"
                 )
             }
@@ -1154,6 +1176,7 @@ final class BpmSetupStore: ObservableObject {
         return nil
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     private func gifName(for step: BpmSetupStep, sku: String) -> String? {
         if a3BpmSkus.contains(sku) {
             let resolvedSku = BpmA3MonitorSetupAssets.resolvedAssetSku(sku)
