@@ -266,6 +266,10 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
         return convertStoredWeightToDisplay(storedWeight)
     }
 
+    func convertWeightToDisplay(_ storedWeight: Double) -> Double {
+        return convertStoredWeightToDisplay(storedWeight)
+    }
+
     func formatWeightForDisplay(_ weight: Double, isWeightlessMode: Bool) -> String {
         // Round to 1 decimal place using Decimal to avoid binary floating-point artifacts
         let decimal = Decimal(weight)
@@ -310,7 +314,12 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
     func updateGoalUnit(_ unit: WeightUnit) {
         state.goalUnit = unit
     }
+
     func convertStoredWeightToDisplay(_ storedWeight: Int) -> Double {
+        return convertStoredWeightToDisplay(Double(storedWeight))
+    }
+
+    func convertStoredWeightToDisplay(_ storedWeight: Double) -> Double {
         let unit = accountService.activeAccount?.weightUnit ?? .lb
         if unit == .kg {
             return ConversionTools.convertStoredToKg(storedWeight)
@@ -338,16 +347,16 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
 
     // Updates visible data after scroll ends (forces UI update and logs average weight)
     // swiftlint:disable:next function_parameter_count
-    func updateVisibleDataAfterScroll(visibleOperations: [BathScaleWeightSummary], isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, triggerUpdate: @escaping () -> Void, logAverage: @escaping (Double) -> Void) {
+    func updateVisibleDataAfterScroll(visibleOperations: [BathScaleWeightSummary], isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Double) -> Double, triggerUpdate: @escaping () -> Void, logAverage: @escaping (Double) -> Void) {
         triggerUpdate()
         let opsToUse = visibleOperations.isEmpty ? visibleOperations : visibleOperations
         let weightValues = opsToUse.map { summary -> Double in
             if isWeightlessMode {
                 guard let anchorWeight = anchorWeight else { return 0 }
-                let currentWeight = convertWeight(Int(summary.weight))
+                let currentWeight = convertWeight(summary.weight)
                 return currentWeight - anchorWeight
             } else {
-                return convertWeight(Int(summary.weight))
+                return convertWeight(summary.weight)
             }
         }
         if !weightValues.isEmpty {

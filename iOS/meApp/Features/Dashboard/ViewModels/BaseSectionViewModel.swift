@@ -69,7 +69,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     }
     
     var visibleDomainLength: TimeInterval {
-        return dashboardStore?.visibleDomainLength(for: timePeriod) ?? (7 * 24 * 60 * 60)
+        return dashboardStore?.graphManager.visibleDomainLength(for: timePeriod, at: scrollPosition)
+            ?? DateTimeTools.visibleDomainLength(for: timePeriod)
     }
     
     var pointSize: CGFloat {
@@ -620,9 +621,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
                 // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call
                 return DateTimeTools.formatter("EEE").string(from: date).lowercased()
             case .month:
-                // Show day-of-month only for Sunday ticks.
-                let weekday = calendar.component(.weekday, from: date)
-                guard weekday == 1 else { return nil }
+                // Show day-of-month for each weekly tick (1, 8, 15, 22, 29)
                 return String(calendar.component(.day, from: date))
             case .year:
                 // Single-letter month initials (j, f, m, a, m, j, j, a, s, o, n, d)
@@ -893,13 +892,21 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             }
             return ticks
         case .month:
-            // Sunday-only ticks within the current month.
+            // Weekly ticks within the current month, starting at the 1st: 1, 8, 15, 22, 29.
             guard let monthInterval = calendar.dateInterval(of: .month, for: position) else { return [] }
-            return DateTimeTools.sundayTicksForMonth(
-                in: monthInterval,
-                baseCalendar: calendar,
-                includeTrailingPhantom: true
-            ).map { midday($0) }
+            var ticks: [Date] = []
+            var current = monthInterval.start
+            while current < monthInterval.end {
+                ticks.append(midday(current))
+                guard let next = calendar.date(byAdding: .day, value: 7, to: current) else { break }
+                current = next
+            }
+            let lastDay = monthInterval.end.addingTimeInterval(-1)
+            let lastDayNoon = midday(lastDay)
+            if let last = ticks.last, lastDayNoon > last {
+                ticks.append(lastDayNoon)
+            }
+            return ticks
         case .year:
             // Start at Jan 1 of current year
             var comps = calendar.dateComponents([.year], from: position)
@@ -924,41 +931,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     // MARK: - Pre-computed X-Axis Grid Ticks
 
     /// Grid tick dates for the chart X-axis (excludes the phantom trailing tick).
-    /// For month view, also inserts month-start ticks so solid grid lines appear at month boundaries.
     /// The baby-profile drop-last adjustment is intentionally left to the view, as it depends on the store.
     var gridTicks: [Date] {
-        let allTicks = xAxisValues
-        let nonLastTicks = Array(allTicks.dropLast())
-        guard timePeriod == .month, !nonLastTicks.isEmpty else {
-            return nonLastTicks
-        }
-        let calendar = Calendar.current
-        let sortedTicks = nonLastTicks.sorted()
-        guard let firstTick = sortedTicks.first,
-              let lastTick = sortedTicks.last else {
-            return nonLastTicks
-        }
-        var monthStartTicks: [Date] = []
-        var currentMonthStart = calendar.dateInterval(of: .month, for: firstTick)?.start ?? firstTick
-        // Use < next month start so we include the month-start tick one month after lastTick,
-        // ensuring the solid grid line at the trailing month boundary is rendered.
-        let upperBound = calendar.dateInterval(of: .month, for: lastTick)?.end ?? lastTick
-        while currentMonthStart <= upperBound {
-            let monthStartNoon = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: currentMonthStart) ?? currentMonthStart
-            monthStartTicks.append(monthStartNoon)
-            guard let next = calendar.date(byAdding: .month, value: 1, to: currentMonthStart) else { break }
-            currentMonthStart = next
-        }
-        let combined = nonLastTicks + monthStartTicks
-        var uniqueByDay: [Date] = []
-        var seenDays: Set<Date> = []
-        for tick in combined.sorted() {
-            let day = calendar.startOfDay(for: tick)
-            if seenDays.insert(day).inserted {
-                uniqueByDay.append(tick)
-            }
-        }
-        return uniqueByDay
+        Array(xAxisValues.dropLast())
     }
 
     /// Label tick dates for the chart X-axis.

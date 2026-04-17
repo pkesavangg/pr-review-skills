@@ -717,7 +717,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let weightsConcat = weightPairs.joined(separator: ",")
 
         let weightValues = monthEntries.compactMap { $0.weight }.filter { $0 > 0 }.map(Double.init)
-        let avgWeight: Double? = weightValues.isEmpty ? nil : Double(Int(round(weightValues.reduce(0, +) / Double(weightValues.count))))
+        let avgWeight: Double? = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count)
         let minWeight = weightValues.min()
         let maxWeight = weightValues.max()
 
@@ -1331,14 +1331,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         return vals.isEmpty ? nil : vals.reduce(0, +) / Double(vals.count)
     }
 
-    /// Helper function for weight: average stored values (tenths of lbs) and round to whole tenths
-    /// This matches the logic in buildHistoryMonth to ensure consistent rounding
+    /// Helper function for weight: average stored values (tenths of lbs) without rounding early.
     private nonisolated func avgWeight(_ values: [Int]) -> Double {
         guard !values.isEmpty else { return 0 }
         let filtered = values.filter { $0 > 0 }
         guard !filtered.isEmpty else { return 0 }
-        // Round average to whole tenths of lbs, then convert to Double
-        return Double(Int(round(Double(filtered.reduce(0, +)) / Double(filtered.count))))
+        return Double(filtered.reduce(0, +)) / Double(filtered.count)
     }
 
     /// Aggregate entries by day, returning BathScaleWeightSummary for each day
@@ -1815,7 +1813,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
         // Numeric helpers - filter out zero values for average calculation
         let weightValues = monthEntries.compactMap { $0.scaleEntry?.weight }.filter { $0 > 0 }.map(Double.init)
-        let avgWeight: Double? = weightValues.isEmpty ? nil : Double(Int(round(weightValues.reduce(0, +) / Double(weightValues.count))))
+        let avgWeight: Double? = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count)
         let minWeight = weightValues.min()
         let maxWeight = weightValues.max()
 

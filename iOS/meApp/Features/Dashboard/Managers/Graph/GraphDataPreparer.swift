@@ -16,7 +16,7 @@ struct GraphDataPreparer { // swiftlint:disable:this type_body_length
         selectedMetric: String?,
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: @escaping (Int) -> Double,
+        convertWeight: @escaping (Double) -> Double,
         yAxisDomain: ClosedRange<Double>?,
         visibleOperations: [BathScaleWeightSummary] = [],
         operationsForYAxis: [BathScaleWeightSummary] = [],
@@ -63,15 +63,19 @@ struct GraphDataPreparer { // swiftlint:disable:this type_body_length
         from operations: [BathScaleWeightSummary],
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: (Int) -> Double
+        convertWeight: (Double) -> Double
     ) -> [GraphSeries] {
         operations.compactMap { summary in
             let displayWeight: Double
             if isWeightlessMode {
                 guard let anchor = anchorWeight else { return nil }
-                displayWeight = convertWeight(Int(summary.weight)) - anchor
+                let convertedWeight = convertWeight(summary.weight)
+                displayWeight = displayedWeightlessDifference(
+                    currentWeight: convertedWeight,
+                    anchorWeight: anchor
+                )
             } else {
-                displayWeight = convertWeight(Int(summary.weight))
+                displayWeight = convertWeight(summary.weight)
             }
             return GraphSeries(date: summary.date, value: displayWeight, series: DashboardStrings.weight)
         }
@@ -83,7 +87,7 @@ struct GraphDataPreparer { // swiftlint:disable:this type_body_length
     /// with weightless mode disabled (baby charts never use weightless anchoring).
     func buildBabyWeightSeries(
         from operations: [BathScaleWeightSummary],
-        convertWeight: (Int) -> Double
+        convertWeight: (Double) -> Double
     ) -> [GraphSeries] {
         buildWeightSeries(
             from: operations,
@@ -151,7 +155,7 @@ struct GraphDataPreparer { // swiftlint:disable:this type_body_length
         toWeightDomain domain: ClosedRange<Double>,
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: (Int) -> Double
+        convertWeight: (Double) -> Double
     ) -> [GraphSeries] {
         let allMetricValues = allOperations.compactMap { metricValue(for: metric, from: $0) }
         guard !allMetricValues.isEmpty else { return [] }
@@ -193,7 +197,7 @@ struct GraphDataPreparer { // swiftlint:disable:this type_body_length
         from operations: [BathScaleWeightSummary],
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: @escaping (Int) -> Double,
+        convertWeight: @escaping (Double) -> Double,
         period: TimePeriod
     ) -> Double? {
         guard !operations.isEmpty else { return nil }
@@ -201,10 +205,13 @@ struct GraphDataPreparer { // swiftlint:disable:this type_body_length
         let sorted = operations.sorted { $0.date < $1.date }
         let xs = sorted.map { normalizedPlotDate($0.date, for: period).timeIntervalSinceReferenceDate }
         let rawYs = sorted.map { op -> Double? in
-            let weight = convertWeight(Int(op.weight))
+            let weight = convertWeight(op.weight)
             if isWeightlessMode {
                 guard let anchor = anchorWeight else { return nil }
-                return weight - anchor
+                return displayedWeightlessDifference(
+                    currentWeight: weight,
+                    anchorWeight: anchor
+                )
             }
             return weight
         }
@@ -298,19 +305,25 @@ struct GraphDataPreparer { // swiftlint:disable:this type_body_length
         for operations: [BathScaleWeightSummary],
         anchorWeight: Double?,
         period: TimePeriod,
-        convertWeight: (Int) -> Double
+        convertWeight: (Double) -> Double
     ) -> Double? {
         guard let anchor = anchorWeight else { return nil }
         let raw: Double
         switch period {
         case .week, .month:
             guard let last = operations.last else { return nil }
-            let latest = convertWeight(Int(last.weight))
-            raw = latest - anchor
+            let latest = convertWeight(last.weight)
+            raw = displayedWeightlessDifference(
+                currentWeight: latest,
+                anchorWeight: anchor
+            )
         case .year, .total:
-            let weights = operations.map { convertWeight(Int($0.weight)) }
+            let weights = operations.map { convertWeight($0.weight) }
             guard !weights.isEmpty else { return nil }
-            raw = weights.reduce(0, +) / Double(weights.count) - anchor
+            raw = displayedWeightlessAverageDifference(
+                currentWeights: weights,
+                anchorWeight: anchor
+            )
         }
         return (raw * 100).rounded(.toNearestOrAwayFromZero) / 100
     }
@@ -319,15 +332,21 @@ struct GraphDataPreparer { // swiftlint:disable:this type_body_length
         for operations: [BathScaleWeightSummary],
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: (Int) -> Double
+        convertWeight: (Double) -> Double
     ) -> Double {
         guard !operations.isEmpty else { return 0 }
-        let values = operations.map { op -> Double in
-            let weight = convertWeight(Int(op.weight))
-            return isWeightlessMode ? weight - (anchorWeight ?? 0) : weight
+        let weights = operations.map { convertWeight($0.weight) }
+        let avg = weights.reduce(0, +) / Double(weights.count)
+        guard isWeightlessMode else {
+            return (avg * 100).rounded(.toNearestOrAwayFromZero) / 100
         }
-        let avg = values.reduce(0, +) / Double(values.count)
-        return (avg * 100).rounded(.toNearestOrAwayFromZero) / 100
+        guard let anchorWeight else { return 0 }
+        let diff = displayedWeightlessAverageDifference(
+            currentWeights: weights,
+            anchorWeight: anchorWeight
+        )
+        // Match the non-weightless path's 2-decimal-place precision
+        return (diff * 100).rounded(.toNearestOrAwayFromZero) / 100
     }
 
     // swiftlint:disable:next function_parameter_count
@@ -336,7 +355,7 @@ struct GraphDataPreparer { // swiftlint:disable:this type_body_length
         period: TimePeriod,
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: @escaping (Int) -> Double,
+        convertWeight: @escaping (Double) -> Double,
         labelRange: DateInterval?,
         sampleDates: [Date]
     ) -> Double? {
@@ -478,6 +497,24 @@ struct GraphDataPreparer { // swiftlint:disable:this type_body_length
         let values = series.filter { $0.series == DashboardStrings.weight }.map(\.value)
         guard let min = values.min(), let max = values.max(), max > min else { return nil }
         return min...max
+    }
+
+    private func roundedToDisplayedWeight(_ value: Double) -> Double {
+        WeightlessDisplayRounding.roundedToDisplayedWeight(value)
+    }
+
+    private func displayedWeightlessDifference(
+        currentWeight: Double,
+        anchorWeight: Double
+    ) -> Double {
+        WeightlessDisplayRounding.displayedWeightlessDifference(currentWeight: currentWeight, anchorWeight: anchorWeight)
+    }
+
+    private func displayedWeightlessAverageDifference(
+        currentWeights: [Double],
+        anchorWeight: Double
+    ) -> Double {
+        WeightlessDisplayRounding.displayedWeightlessAverageDifference(currentWeights: currentWeights, anchorWeight: anchorWeight)
     }
 
     private func effectiveMetricRange(min: Double, max: Double, metric: String) -> (Double, Double) {

@@ -14,7 +14,7 @@ protocol DashboardMetricsCalculatorProtocol {
         from operations: [BathScaleWeightSummary],
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: @escaping (Int) -> Double
+        convertWeight: @escaping (Double) -> Double
     ) -> Double
 
     /// Calculates the display weight based on selection and visible operations
@@ -40,10 +40,10 @@ struct DisplayWeightContext {
     let isWeightlessMode: Bool
     let anchorWeight: Double?
     let period: TimePeriod
-    let convertWeight: (Int) -> Double
-    let interpolatedWeight: (Date, [BathScaleWeightSummary], Bool, Double?, @escaping (Int) -> Double) -> Double?
-    let interpolatedAverage: ([BathScaleWeightSummary], TimePeriod, Bool, Double?, @escaping (Int) -> Double, DateInterval?) -> Double?
-    let weightlessDisplay: ([BathScaleWeightSummary], Double?, TimePeriod, @escaping (Int) -> Double) -> Double?
+    let convertWeight: (Double) -> Double
+    let interpolatedWeight: (Date, [BathScaleWeightSummary], Bool, Double?, @escaping (Double) -> Double) -> Double?
+    let interpolatedAverage: ([BathScaleWeightSummary], TimePeriod, Bool, Double?, @escaping (Double) -> Double, DateInterval?) -> Double?
+    let weightlessDisplay: ([BathScaleWeightSummary], Double?, TimePeriod, @escaping (Double) -> Double) -> Double?
     let labelRangeForPeriod: (TimePeriod) -> DateInterval?
 }
 
@@ -59,7 +59,7 @@ struct EntryCreationContext {
     let period: TimePeriod
     let weightUnit: WeightUnit
     let latestWeightStored: Int
-    let convertWeight: (Int) -> Double
-    let interpolatedWeight: (Date, [BathScaleWeightSummary], Bool, Double?, @escaping (Int) -> Double) -> Double?
-    let interpolatedAverage: ([BathScaleWeightSummary], TimePeriod, Bool, Double?, @escaping (Int) -> Double, DateInterval?) -> Double?
+    let convertWeight: (Double) -> Double
+    let interpolatedWeight: (Date, [BathScaleWeightSummary], Bool, Double?, @escaping (Double) -> Double) -> Double?
+    let interpolatedAverage: ([BathScaleWeightSummary], TimePeriod, Bool, Double?, @escaping (Double) -> Double, DateInterval?) -> Double?
 }

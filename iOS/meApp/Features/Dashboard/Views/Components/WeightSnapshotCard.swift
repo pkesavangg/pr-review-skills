@@ -241,7 +241,15 @@ struct WeightSnapshotCard: View {
         Self.convertStoredWeightToDisplay(storedWeight, unit: cachedWeightUnit)
     }
 
+    private func convertStoredWeightToDisplay(_ storedWeight: Double) -> Double {
+        Self.convertStoredWeightToDisplay(storedWeight, unit: cachedWeightUnit)
+    }
+
     private static func convertStoredWeightToDisplay(_ storedWeight: Int, unit: WeightUnit) -> Double {
+        Self.convertStoredWeightToDisplay(Double(storedWeight), unit: unit)
+    }
+
+    private static func convertStoredWeightToDisplay(_ storedWeight: Double, unit: WeightUnit) -> Double {
         unit == .kg
             ? ConversionTools.convertStoredToKg(storedWeight)
             : ConversionTools.convertStoredToLbs(storedWeight)

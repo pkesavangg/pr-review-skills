@@ -187,7 +187,7 @@ final class DashboardChartManager: DashboardChartManaging {
         )
 
         let period = stateProvider.state.graph.selectedPeriod
-        let shouldSnapProgrammaticPosition = period != .total && period != .month
+        let shouldSnapProgrammaticPosition = period != .total
         let alignedScrollPosition = shouldSnapProgrammaticPosition
             ? graphManager.snapScrollPosition(optimalScrollPosition, for: period)
             : optimalScrollPosition
@@ -351,8 +351,8 @@ final class DashboardChartManager: DashboardChartManaging {
             cachedBounds: dataManager.getDateBounds(for: period)
         )
 
-        let requiresSnapWithAnchor = (period == .week || period == .year)
-        let shouldSnapProgrammaticPosition = period != .total && period != .month && (anchorDate == nil || requiresSnapWithAnchor)
+        let requiresSnapWithAnchor = (period == .week || period == .month || period == .year)
+        let shouldSnapProgrammaticPosition = period != .total && (anchorDate == nil || requiresSnapWithAnchor)
         let alignedScrollPosition = shouldSnapProgrammaticPosition
             ? graphManager.snapScrollPosition(optimalScrollPosition, for: period)
             : optimalScrollPosition

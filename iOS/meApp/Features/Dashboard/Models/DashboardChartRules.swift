@@ -41,7 +41,7 @@ enum DashboardChartScaleProvider {
     static func weightScale(
         operations: [BathScaleWeightSummary],
         goalWeight: Double?,
-        convertStoredWeightToDisplay: (Int) -> Double
+        convertStoredWeightToDisplay: (Double) -> Double
     ) -> YAxisScale {
         YAxisCalculator.calculateYAxis(
             operations: operations,
