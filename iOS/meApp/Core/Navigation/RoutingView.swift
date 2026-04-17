@@ -13,11 +13,12 @@
 //
 
 import SwiftUI
+import UIKit
 
 public struct RoutingView<Root: View, Routes: Routable>: View {
     @Binding private var routes: [Routes]
     private let root: () -> Root
-    
+
     public init(
         stack: Binding<[Routes]>,
         @ViewBuilder root: @escaping () -> Root
@@ -31,6 +32,32 @@ public struct RoutingView<Root: View, Routes: Routable>: View {
                 .navigationDestination(for: Routes.self) { view in
                     view
                 }
+        }
+        .background(SwipeBackEnabler())
+    }
+}
+
+// MARK: - SwipeBackEnabler
+// Re-enables the interactive pop gesture on the underlying UINavigationController.
+// `.navigationBarHidden(true)` causes UIKit to disable `interactivePopGestureRecognizer`
+// because the gesture's default delegate gates it on the nav bar being visible.
+// Clearing the delegate (setting it to nil) removes that gate while keeping the gesture active.
+private struct SwipeBackEnabler: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> UIViewController {
+        UIViewController()
+    }
+
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
+        DispatchQueue.main.async {
+            var parent = uiViewController.parent
+            while let current = parent {
+                if let navController = current as? UINavigationController {
+                    navController.interactivePopGestureRecognizer?.isEnabled = true
+                    navController.interactivePopGestureRecognizer?.delegate = nil
+                    break
+                }
+                parent = current.parent
+            }
         }
     }
 }

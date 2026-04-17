@@ -195,15 +195,15 @@ protocol DashboardSyncCoordinatorProtocol {
     func loadDashboardConfigurationFromAPI(config: DashboardConfigurationLoadConfig) async
     
     func loadProgressMetricsFromAccount(
-        activeAccount: Account?,
+        activeAccount: AccountSnapshot?,
         allStreaks: [MetricItem],
         streakManagerActiveCount: inout Int,
         onProgressMetricsLoaded: (Int, Bool, [String], Set<String>) -> Void,
         setupDefaultOrder: () -> Void
     ) async
-    
+
     func loadMetricsFromLocalAccount(
-        activeAccount: Account?,
+        activeAccount: AccountSnapshot?,
         updateDashboardType: (DashboardType) -> Void,
         updateMetricsOrder: ([String]) -> Void,
         setupInitialMetrics: () -> Void,

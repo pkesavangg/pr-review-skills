@@ -278,8 +278,7 @@ struct EntryServiceTests {
     @Test("exportCSV: uses R4 endpoint for dashboard 12 accounts")
     func exportCSVUsesDashboardType() async throws {
         let remote = MockEntryRepositoryAPI()
-        let account = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "entry@example.com", isActive: true)
-        account.dashboardSettings?.dashboardType = DashboardType.dashboard12.rawValue
+        let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "entry@example.com", isActiveAccount: true, dashboardType: DashboardType.dashboard12.rawValue)
         let sut = makeSUT(remote: remote, activeAccount: account)
 
         try await sut.exportCSV()
@@ -311,7 +310,7 @@ struct EntryServiceTests {
             integration: MockIntegrationService? = nil,
             goalAlert: MockGoalAlertService? = nil,
             logger: MockLoggerService? = nil,
-            activeAccount: Account? = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "entry@example.com", isActive: true)
+            activeAccount: AccountSnapshot? = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "entry@example.com", isActiveAccount: true)
         ) -> EntryService {
             let account = MockAccountService()
             account.activeAccount = activeAccount

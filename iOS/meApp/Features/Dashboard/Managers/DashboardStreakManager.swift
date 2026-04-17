@@ -57,7 +57,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     // MARK: - Streak Data Management
     func refreshStreakData() async throws {
         try await performCoalescedRefresh {
-            try await self.entryService.getProgress(entryType: .wg)
+            try await self.entryService.getProgress(entryType: .scale)
         }
     }
 
@@ -84,7 +84,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         ))
 
         // Resolve unit once
-        let weightUnit: WeightUnit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
+        let weightUnit: WeightUnit = accountService.activeAccount?.weightUnit ?? .lb
 
         // Weekly change
         let weeklyValue = Double(progress.week)
@@ -278,7 +278,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     
     /// Returns the current weight unit as a string (e.g., "lbs" or "kg")
     private func getUnitText() -> String {
-        return accountService.activeAccount?.weightSettings?.weightUnit?.rawValue ?? "lbs"
+        return accountService.activeAccount?.weightUnit.rawValue ?? "lbs"
     }
     
     /// Returns dynamic streak labels based on current unit

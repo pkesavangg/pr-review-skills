@@ -69,9 +69,8 @@ final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
         guard !isShowingAlert else { return }
         guard !bluetoothService.isSetupInProgress else { return }
         guard let account = accountService.activeAccount,
-              let goalSettings = account.goalSettings,
-              let goalType = goalSettings.goalType,
-              let goalWeight = goalSettings.goalWeight else { return }
+              let goalType = account.goalType,
+              let goalWeight = account.goalWeight else { return }
 
         let storageKey = goalAlertStorageKey(for: account.accountId)
         guard let alertAlreadyShown = (kv.getValue(forKey: storageKey) as? Bool) else {
@@ -147,8 +146,7 @@ final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
         guard !bluetoothService.isSetupInProgress else { return }
         guard let account = accountService.activeAccount else { return }
 
-        if let goalSettings = account.goalSettings,
-           let goalType = goalSettings.goalType,
+        if let goalType = account.goalType,
            goalType != .none {
             return
         }
@@ -256,7 +254,7 @@ final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
         defer { isShowingAlert = false }
 
         guard let account = accountService.activeAccount,
-              let goalWeight = account.goalSettings?.goalWeight
+              let goalWeight = account.goalWeight
         else {
             logger.log(level: .error, tag: tag, message: "Maintain-goal action failed: missing active account or goal weight")
             notificationService.dismissAlert()

@@ -5,16 +5,18 @@
 //  Created by Kesavan Panchabakesan on 11/06/25.
 //
 
-import Combine
+// swiftlint:disable file_length
 // This store intentionally aggregates all signup flow logic to maintain
 // a single source of truth for the multi-step signup process. Splitting would
 // fragment state management and reduce maintainability.
+import Combine
 import Foundation
 import SwiftUI
 
 // MARK: SignupStore
 /// This store is responsible for managing the signup process.
 @MainActor
+// swiftlint:disable:next type_body_length
 final class SignupStore: ObservableObject {
     @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var accountService: AccountServiceProtocol
@@ -416,11 +418,14 @@ final class SignupStore: ObservableObject {
         let profile = generateProfile()
         let goal = generateGoalRequest()
         do {
-            let account = try await accountService.signUp(
+            try await accountService.signUp(
                 email: email,
                 password: password,
                 profile: profile
             )
+            guard let account = accountService.activeAccount else {
+                throw AccountError.noActiveAccount
+            }
             persistSelectedSignupDeviceType(for: account.accountId)
             try await setInitialProductTypes(on: account)
             try await persistSignupBabies(for: account)
@@ -512,7 +517,7 @@ final class SignupStore: ObservableObject {
         }
     }
 
-    private func setInitialProductTypes(on account: Account) async throws {
+    private func setInitialProductTypes(on account: AccountSnapshot) async throws {
         guard let selectedDeviceType else { return }
         let types: [String]
         switch selectedDeviceType {
@@ -523,16 +528,15 @@ final class SignupStore: ObservableObject {
         case .babyScale:
             types = ["baby"]
         }
-        account.productTypes = types
-        _ = try await accountService.updateProductTypes(types)
+        try await accountService.updateProductTypes(types)
         logger.log(
             level: .info,
             tag: tag,
-            message: "Set initial productTypes=\(account.productTypes) for accountId=\(account.accountId)"
+            message: "Set initial productTypes=\(types) for accountId=\(account.accountId)"
         )
     }
 
-    private func persistSignupBabies(for account: Account) async throws {
+    private func persistSignupBabies(for account: AccountSnapshot) async throws {
         guard !babies.isEmpty else { return }
 
         var firstSavedSelection: ProductSelection?

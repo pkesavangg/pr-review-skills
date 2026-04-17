@@ -100,7 +100,7 @@ extension BtWifiScaleSetupStore {
         
         // Determine if this is a standalone Wi-Fi setup flow (opened from Settings > Wi-Fi)
         if let savedScaleParam = saveScale {
-            self.savedScale = savedScaleParam
+            self.savedScale = savedScaleParam.toSnapshot()
             self.scaleToken = savedScaleParam.token
             self.isWifiSetupOnly = !isReconnect
         } else {

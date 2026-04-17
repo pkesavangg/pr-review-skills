@@ -19,7 +19,7 @@ final class LandingStore: ObservableObject {
     private let networkMonitor = NetworkMonitor.shared
     
     // MARK: Published State
-    @Published var accounts: [Account] = []
+    @Published var accounts: [AccountSnapshot] = []
     @Published var userItems: [UserItemInfo] = []
     
     let loadingLang = LoaderStrings.self
@@ -57,7 +57,7 @@ final class LandingStore: ObservableObject {
                     $0.isLoggedIn != true || ($0.isExpired ?? false) == true
                 }
 
-                let sortByLastActive: (Account, Account) -> Bool = { lhs, rhs in
+                let sortByLastActive: (AccountSnapshot, AccountSnapshot) -> Bool = { lhs, rhs in
                     let lhsDate = DateTimeTools.parse(lhs.lastActiveTime ?? "") ?? .distantPast
                     let rhsDate = DateTimeTools.parse(rhs.lastActiveTime ?? "") ?? .distantPast
                     return lhsDate > rhsDate
@@ -142,7 +142,7 @@ final class LandingStore: ObservableObject {
                 notificationService.dismissLoader()
             }
             do {
-                try await accountService.switchAccount(to: account)
+                try await accountService.switchAccount(to: account.accountId)
                 notificationService.showToast(ToastModel(message: toastLang.switchingAccount(userName)))
                 logger.log(level: .info, tag: tag, message: "Switched active account to \(accountID)")
             } catch {

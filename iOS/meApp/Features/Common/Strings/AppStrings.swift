@@ -94,7 +94,7 @@ struct ToastStrings {
     static let errorCreatingAccount = "Error creating account."
     static let invalidEmailTitle = "Invalid Email ID!"
     static let invalidEmailMessage = "Enter a valid email address."
-    static let invalidCredentials = "Your Email or password is incorrect. Please try again."
+    static let invalidCredentials = "Your email or password is incorrect. Please try again."
     static let passwordResetSuccessMessage = { (email: String) in
         "An email with a link to reset your password has been sent to \(email). The link will be valid for the next 30 minutes."
     }

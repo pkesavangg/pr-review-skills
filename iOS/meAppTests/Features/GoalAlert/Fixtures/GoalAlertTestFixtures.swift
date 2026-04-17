@@ -8,17 +8,16 @@ enum GoalAlertTestFixtures {
         goalType: GoalType? = GoalType.none,
         goalWeight: Double? = nil,
         initialWeight: Double? = nil
-    ) -> Account {
-        let account = AccountTestFixtures.makeAccountModel(
+    ) -> AccountSnapshot {
+        AccountTestFixtures.makeAccountSnapshot(
             id: id,
             email: email,
             isLoggedIn: true,
-            isActive: true
+            isActiveAccount: true,
+            goalType: goalType,
+            goalWeight: goalWeight,
+            initialWeight: initialWeight
         )
-        account.goalSettings?.goalType = goalType
-        account.goalSettings?.goalWeight = goalWeight
-        account.goalSettings?.initialWeight = initialWeight
-        return account
     }
 
     static func goalMetFlagKey(accountId: String) -> String {

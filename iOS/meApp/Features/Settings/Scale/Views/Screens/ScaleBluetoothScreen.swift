@@ -5,16 +5,44 @@
 //  Created by Lakshmi Priya on 26/06/25.
 //
 
+import Combine
 import GGBluetoothSwiftPackage
 import SwiftUI
+
+@MainActor
+final class ScaleBluetoothConnectionStore: ObservableObject {
+    @Injector private var scaleService: ScaleServiceProtocol
+    @Published private(set) var isDeviceConnected: Bool = false
+
+    private let scaleIdString: String
+    private var cancellables = Set<AnyCancellable>()
+
+    init(scale: Device) {
+        self.scaleIdString = scale.id
+        isDeviceConnected = scaleService.scales.first(where: { $0.id == scaleIdString })?.isConnected ?? false
+        scaleService.scalesPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] devices in
+                guard let self else { return }
+                self.isDeviceConnected = devices.first(where: { $0.id == self.scaleIdString })?.isConnected ?? false
+            }
+            .store(in: &cancellables)
+    }
+}
 
 struct ScaleBluetoothScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var themeManager: Theme
     @ObservedObject var permissionsStore = PermissionsStore()
+    @StateObject private var connectionStore: ScaleBluetoothConnectionStore
     let scale: Device
     let lang = ScaleBluetoothStrings.self
+
+    init(scale: Device) {
+        self.scale = scale
+        _connectionStore = StateObject(wrappedValue: ScaleBluetoothConnectionStore(scale: scale))
+    }
 
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
@@ -72,7 +100,7 @@ struct ScaleBluetoothScreen: View {
             scaleIcon: scaleIcon(for: scale.sku),
             modelNumber: DeviceHelper.mapSkuForDisplay(scale.sku ?? "----"),
             scaleName: getScaleDisplayName(),
-            status: (scale.isConnected ?? false) ? ScaleConnectionStatus.connected : ScaleConnectionStatus.notConnected,
+            status: connectionStore.isDeviceConnected ? ScaleConnectionStatus.connected : ScaleConnectionStatus.notConnected,
             onTap: {},
             hideChevron: true,
             scaleType: ScaleTypeHelper.determineScaleType(for: scale)

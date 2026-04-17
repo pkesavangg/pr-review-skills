@@ -247,7 +247,7 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
     }
 
     var displayUnitText: String {
-        let unit: WeightUnit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
+        let unit: WeightUnit = accountService.activeAccount?.weightUnit ?? .lb
         let displayValue = displayWeight ?? getCurrentAverageWeight()
         return WeightValueConvertor.unitForDisplay(value: displayValue, unit: unit)
     }
@@ -495,7 +495,7 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
                 entryTimestamp: DateTimeTools.getCurrentDatetimeIsoString(),
                 accountId: "dashboard",
                 operationType: OperationType.create.rawValue,
-                deviceType: "scale",
+                entryType: EntryType.scale.rawValue,
                 isSynced: true
             )
         }
@@ -511,7 +511,7 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
             isWeightlessMode: getIsWeightlessModeEnabled(),
             anchorWeight: getWeightlessAnchorWeight(),
             period: stateProvider.state.graph.selectedPeriod,
-            weightUnit: accountService.activeAccount?.weightSettings?.weightUnit ?? .lb,
+            weightUnit: accountService.activeAccount?.weightUnit ?? .lb,
             latestWeightStored: dataManager.state.latestWeightStored,
             convertWeight: goalManager.convertWeightToDisplay,
             interpolatedWeight: { date, ops, isWeightless, anchor, convert in

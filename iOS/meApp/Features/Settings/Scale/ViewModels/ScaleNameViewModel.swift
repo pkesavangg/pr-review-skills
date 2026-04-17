@@ -5,7 +5,6 @@
 //  Created by Lakshmi Priya on 14/10/25.
 //
 
-import SwiftData
 import SwiftUI
 
 @MainActor
@@ -14,41 +13,29 @@ final class ScaleNameViewModel: ObservableObject {
     @Injector var scaleService: ScaleServiceProtocol
     @Injector var logger: LoggerServiceProtocol
 
-    // R6: Store PersistentIdentifier instead of @Model directly
-    private let scaleId: PersistentIdentifier
     private let scaleIdString: String
-    private var cachedScale: Device?
+    private let initialNickname: String?
     private let tag = "ScaleNameViewModel"
 
-    var scale: Device {
-        cachedScale ?? Device(id: scaleIdString, accountId: "")
+    private var deviceSnapshot: DeviceSnapshot? {
+        scaleService.scales.first(where: { $0.id == scaleIdString })
+    }
+
+    private var currentNickname: String {
+        deviceSnapshot?.nickname ?? deviceSnapshot?.deviceName ?? initialNickname ?? ""
     }
 
     init(scale: Device) {
-        self.scaleId = scale.persistentModelID
         self.scaleIdString = scale.id
-        self.cachedScale = scale
+        self.initialNickname = scale.nickname ?? scale.deviceName
     }
 
-    func refreshScale() {
-        let context = PersistenceController.shared.context
-        if let fresh: Device = context.registeredModel(for: scaleId) {
-            cachedScale = fresh
-            return
-        }
-        let idString = scaleIdString
-        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == idString })
-        cachedScale = try? context.fetch(descriptor).first
-    }
-    
     func saveScaleName(_ newName: String, onSuccess: (() -> Void)? = nil) async {
-        refreshScale()
         let deviceId = scaleIdString
         notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
         do {
             _ = try await scaleService.editDevice(deviceId, properties: ["nickname": newName])
             await scaleService.pushLocalChangesToServer()
-            refreshScale()
             notificationService.showToast(ToastModel(title: ToastStrings.success, message: ToastStrings.scaleNameUpdated))
             logger.log(level: .info, tag: tag, message: "Scale name updated successfully", data: ["scaleId": deviceId, "newName": newName])
             onSuccess?()
@@ -81,7 +68,7 @@ final class ScaleNameViewModel: ObservableObject {
 
     /// Returns true when editedName differs from the scale's current nickname/deviceName.
     func isDirtyComparedToOriginal(editedName: String) -> Bool {
-        let original = (scale.nickname ?? scale.deviceName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let original = currentNickname.trimmingCharacters(in: .whitespacesAndNewlines)
         let current  = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
         return current != original
     }

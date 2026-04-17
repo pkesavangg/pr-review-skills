@@ -102,7 +102,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     // MARK: - Navigation Callback
 
     /// Callback to handle scale setup navigation. Set by the UI layer (e.g. BottomTabBarViewModel).
-    var onOpenScaleSetup: ((Device, DeviceDiscoveryEvent?, Bool, Bool) -> Void)?
+    var onOpenScaleSetup: ((DeviceSnapshot, DeviceDiscoveryEvent?, Bool, Bool) -> Void)?
 
     // MARK: - Subjects for Scale Discovery
 
@@ -119,9 +119,9 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     // MARK: - Private Properties
 
     var cancellables = Set<AnyCancellable>()
-    var activeAccount: Account?
+    var activeAccount: AccountSnapshot?
     var isSmartScanStarted = false
-    var bluetoothScales: [Device] = []
+    var bluetoothScales: [DeviceSnapshot] = []
     var connectedGgDevices: [GGBTDevice] = []
     var isWeightOnlyModeAlertDismissed = false
     var lastProfileUpdateAccountId: String?
@@ -238,14 +238,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
     }
 
-    private func handleScalesUpdate(_ scales: [Device]?) async {
-        guard let scales = scales, !scales.isEmpty else {
+    private func handleScalesUpdate(_ scales: [DeviceSnapshot]) async {
+        guard !scales.isEmpty else {
             bluetoothScales = []
             syncDevices([])
             logger.log(level: .info, tag: tag, message: "Bluetooth scales update received empty list; synced zero devices")
             return
         }
-        // Filter scales by allowed types only (common across all models)
         let allowedTypes: Set<ScaleSourceType> = Set([
             .bluetooth,
             .bluetoothScale,
@@ -260,7 +259,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             return allowedTypes.contains(type)
         }
         Task {
-            // Disconnect deleted scales in the background to avoid blocking the main thread
             await disconnectDeletedScales(currentScales: bluetoothScales, newScales: filteredScales)
         }
         bluetoothScales = filteredScales
@@ -270,7 +268,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             message: "Bluetooth scales updated. total=\(scales.count), filtered=\(filteredScales.count), setupInProgress=\(isSetupInProgress)"
         )
 
-        // Check if banner should be shown/hidden after scale updates
         if !isWeightOnlyModeAlertDismissed {
             await checkCanShowWeightOnlyModeAlert()
         }
@@ -280,7 +277,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
     }
 
-    private func handleAccountUpdate(_ account: Account?) {
+    private func handleAccountUpdate(_ account: AccountSnapshot?) {
         if let account = account {
             activeAccount = account
             logger.log(level: .info, tag: tag, message: "Bluetooth active account updated. accountId=\(account.accountId)")
@@ -292,7 +289,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
     }
 
-    private func scheduleProfileUpdateIfNeeded(for account: Account?) {
+    private func scheduleProfileUpdateIfNeeded(for account: AccountSnapshot?) {
         let currentAccountId = account?.accountId
         guard let accountId = currentAccountId else {
             profileUpdateTask?.cancel()

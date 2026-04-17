@@ -169,12 +169,12 @@ final class MockPushPermissionsService: PermissionsServiceProtocol {
 
 @MainActor
 final class MockPushScaleService: ScaleServiceProtocol {
-    @Published var scales: [Device] = []
-    var scalesPublisher: AnyPublisher<[Device], Never> { $scales.eraseToAnyPublisher() }
+    @Published var scales: [DeviceSnapshot] = []
+    var scalesPublisher: AnyPublisher<[DeviceSnapshot], Never> { $scales.eraseToAnyPublisher() }
     private(set) var syncAllScalesCalls = 0
 
     func clearAllData() async {}
-    func getDevices() async throws -> [Device] { [] }
+    func getDevices() async throws -> [DeviceSnapshot] { [] }
     func getConnectedDevices() async -> [String: Any] { [:] }
     func updateConnectedDevices(device: Any, isConnected: Bool) async {}
     func updateConnectedDeviceWifiStatus(broadcastId: String, isConfigured: Bool) async {}
@@ -232,7 +232,7 @@ final class MockPushScaleService: ScaleServiceProtocol {
     func createScaleInLocal(_ device: Device) async throws -> Device { device }
     func syncAllScalesWithRemote() async { syncAllScalesCalls += 1 }
     func pushLocalChangesToServer() async {}
-    func getDevice(by deviceId: String) async throws -> Device? { nil }
+    func getDevice(by deviceId: String) async throws -> DeviceSnapshot? { nil }
     func fetchAttachedPreference(by id: String) async -> R4ScalePreference? { nil }
     func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? { nil }
     func deleteSingleDeviceEntry(_ deviceId: String) async throws {}

@@ -2,11 +2,13 @@ import Foundation
 @testable import meApp
 
 enum AppSyncTabStoreTestFixtures {
-    static func makeActiveAccount(id: String = "appsync-account", unit: WeightUnit = .lb, height: String = "170") -> Account {
-        let account = AccountTestFixtures.makeAccountModel(id: id, isActive: true)
-        account.weightSettings?.weightUnit = unit
-        account.weightSettings?.height = height
-        return account
+    static func makeActiveAccount(id: String = "appsync-account", unit: WeightUnit = .lb, height: String = "170") -> AccountSnapshot {
+        AccountTestFixtures.makeAccountSnapshot(
+            id: id,
+            isActiveAccount: true,
+            weightUnit: unit,
+            weightHeight: height
+        )
     }
 
     static func makeMetrics(

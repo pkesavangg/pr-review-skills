@@ -76,7 +76,7 @@ final class AppSyncTabStore: ObservableObject {
     ) {
         logger.log(level: .info, tag: tag, message: "AppSync scan received")
         // Determine preferred unit (kg / lbs) based on active account.
-        let isMetric = accountService.activeAccount?.weightSettings?.weightUnit == .kg
+        let isMetric = accountService.activeAccount?.weightUnit == .kg
 
         if let reason = validateScan(weightKg: weightKg) {
             logger.log(
@@ -106,7 +106,7 @@ final class AppSyncTabStore: ObservableObject {
         let storedWaterWeight = toTenths(water)
 
         // BMI calculation needs user height (stored in *tenths-inches*).
-        let heightString = accountService.activeAccount?.weightSettings?.height ?? "0"
+        let heightString = accountService.activeAccount?.weightHeight ?? "0"
         let storedHeightCm = ConversionTools.convertStoredHeightToCm(Int(round(Double(heightString) ?? 0)))
         let storedBMI = ConversionTools.calculateBMI(weight: Double(weightKg), height: storedHeightCm)
 
@@ -208,7 +208,7 @@ final class AppSyncTabStore: ObservableObject {
             entryTimestamp: entryTimestamp,
             accountId: accountId,
             operationType: OperationType.create.rawValue,
-            deviceType: DeviceType.scale.rawValue,
+            entryType: EntryType.scale.rawValue,
             isSynced: false
         )
         entry.scaleEntry = scaleEntry

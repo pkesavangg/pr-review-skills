@@ -49,6 +49,28 @@ For persistence tests:
 - Build a per-test container.
 - Seed data only in Arrange phase.
 
+## AccountSnapshot Pattern
+Tests that need an active account should create `AccountSnapshot` (immutable value type), **not** the SwiftData `Account` `@Model`.
+
+**Factory:** `AccountTestFixtures.makeAccountSnapshot(...)` — all 67 properties have sensible defaults.
+
+**Seeding mocks:**
+```swift
+let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "test@example.com", isActiveAccount: true)
+accountService.activeAccount = account
+accountService.seedAccounts([account], active: account)
+```
+
+**Key differences from Account @Model:**
+- All `let` properties — set everything at construction, no post-creation mutation.
+- Flat structure — use `account.weightUnit` not `account.weightSettings?.weightUnit`.
+- Property mapping: `goalType`, `goalWeight`, `isWeightlessOn`, `dashboardType`, `isHealthKitOn`, etc. are top-level fields.
+- `Sendable` — safe to pass across actor boundaries.
+
+**When to use Account @Model:** Only in `AccountRepository` and `AccountMigration` tests that test SwiftData persistence directly. Use `AccountTestFixtures.makeAccountModel()` for those.
+
+**Result types:** Service methods (`logIn`, `signUp`, `createGoal`, `updateProfile`, etc.) return `Void`. Set `mockAccountService.logInResult = .success(())`, not `.success(someAccount)`.
+
 ## Async Rules
 - Use `@MainActor` for UI/store tests.
 - Use deterministic polling helpers (`waitUntil`) instead of arbitrary sleeps.

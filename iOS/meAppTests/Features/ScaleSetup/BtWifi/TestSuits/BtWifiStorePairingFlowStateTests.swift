@@ -15,7 +15,7 @@ extension BtWifiStoreTests {
             let store = harness.store
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
-            store.savedScale = BtWifiStoreTestFixtures.makeScale()
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             store.scaleSetupError = .noNetworkFound
             store.connectionState = .failure
 
@@ -157,7 +157,7 @@ extension BtWifiStoreTests {
             let savedScale = BtWifiStoreTestFixtures.makeScale()
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
-            store.savedScale = savedScale
+            store.savedScale = savedScale.toSnapshot()
             store.networkForm.setSSID("Home WiFi")
             store.networkForm.setPassword("secret")
 
@@ -200,7 +200,7 @@ extension BtWifiStoreTests {
             let scale = BtWifiStoreTestFixtures.makeScale()
             let nonBtWifiScaleInfo = try #require(SCALES.first { $0.setupType != .btWifiR4 })
             let nonBtWifiEvent = DeviceDiscoveryEvent(
-                device: scale,
+                device: scale.toSnapshot(),
                 deviceInfo: nonBtWifiScaleInfo,
                 protocolType: .R4,
                 isNew: true
@@ -231,7 +231,7 @@ extension BtWifiStoreTests {
             defer { HTTPClient.shared.skipCheckNetwork = false }
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
-            store.savedScale = savedScale
+            store.savedScale = savedScale.toSnapshot()
 
             store.navigateToStep(.stepOn)
 
@@ -242,7 +242,7 @@ extension BtWifiStoreTests {
             }
 
             #expect(HTTPClient.shared.skipCheckNetwork == true)
-            #expect(bluetooth.lastStartLiveMeasurementDevice?.id == savedScale.id)
+            #expect(bluetooth.lastStartLiveMeasurementBroadcastId == savedScale.broadcastIdString)
         }
 
         @Test("step on live measurement success stops measurement and advances")
@@ -255,7 +255,7 @@ extension BtWifiStoreTests {
             defer { HTTPClient.shared.skipCheckNetwork = false }
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
-            store.savedScale = savedScale
+            store.savedScale = savedScale.toSnapshot()
             store.navigateToStep(.stepOn)
 
             await BtWifiStoreTestFixtures.waitUntil {
@@ -314,7 +314,7 @@ extension BtWifiStoreTests {
             defer { HTTPClient.shared.skipCheckNetwork = false }
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
-            store.savedScale = BtWifiStoreTestFixtures.makeScale()
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             store.navigateToStep(.stepOn)
 
             await BtWifiStoreTestFixtures.waitUntil {
@@ -380,7 +380,7 @@ extension BtWifiStoreTests {
             let store = harness.store
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
-            store.savedScale = BtWifiStoreTestFixtures.makeScale()
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             store.navigateToStep(.wifiPassword)
             store.isExiting = true
 
@@ -434,7 +434,7 @@ extension BtWifiStoreTests {
             let store = harness.store
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
-            store.savedScale = BtWifiStoreTestFixtures.makeScale()
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             store.navigateToStep(.wifiPassword)
             networkMonitor.isConnected = false
 
@@ -451,7 +451,7 @@ extension BtWifiStoreTests {
             let store = harness.store
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
-            store.savedScale = BtWifiStoreTestFixtures.makeScale()
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             store.scaleSetupError = .wifiConnectionFailed
             store.navigateToStep(.connectingWifi)
             store.connectionState = .success
@@ -583,9 +583,9 @@ extension BtWifiStoreTests {
             let savedScale = BtWifiStoreTestFixtures.makeScale(id: "saved-scale")
             let refreshedScale = BtWifiStoreTestFixtures.makeScale(id: "saved-scale", displayName: "Refreshed")
 
-            scaleService.scales = [refreshedScale]
+            scaleService.scales = [refreshedScale.toSnapshot()]
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
-            store.savedScale = savedScale
+            store.savedScale = savedScale.toSnapshot()
             store.navigateToStep(BtWifiScaleSetupStep.updateSettings)
 
             store.handlePermissionChange()
@@ -611,7 +611,7 @@ extension BtWifiStoreTests {
             let store = harness.store
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
-            store.savedScale = BtWifiStoreTestFixtures.makeScale(id: "saved-scale")
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot(id: "saved-scale")
             store.navigateToStep(BtWifiScaleSetupStep.updateSettings)
 
             store.handlePermissionChange()
@@ -638,7 +638,7 @@ extension BtWifiStoreTests {
             let store = harness.store
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
-            store.savedScale = BtWifiStoreTestFixtures.makeScale(id: "saved-scale")
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot(id: "saved-scale")
             store.navigateToStep(.updateSettings)
 
             store.handlePermissionChange()
@@ -661,7 +661,7 @@ extension BtWifiStoreTests {
               "displayWeight": \(displayWeight),
               "unit": "kg"
             }
-            """.data(using: .utf8)!
+            """.data(using: .utf8)! // swiftlint:disable:this force_unwrapping
 
             return try JSONDecoder().decode(GGWeightEntry.self, from: payload)
         }
