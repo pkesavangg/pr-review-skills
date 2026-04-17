@@ -238,6 +238,37 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
     }
 
+    func deleteEntry(entryId: UUID) async throws {
+        guard let entry = try await localRepo.fetchEntry(byId: entryId.uuidString) else {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Entry delete failed — not found: entryId=\(entryId.uuidString)"
+            )
+            return
+        }
+        try await deleteEntry(entry)
+    }
+
+    // MARK: - Snapshot Queries
+
+    func fetchEntrySnapshot(byId id: UUID) async throws -> EntrySnapshot? {
+        guard let entry = try await localRepo.fetchEntry(byId: id.uuidString) else {
+            return nil
+        }
+        return entry.toSnapshot()
+    }
+
+    func fetchAllEntrySnapshots() async throws -> [EntrySnapshot] {
+        let entries = try await getAllEntries()
+        return entries.map { $0.toSnapshot() }
+    }
+
+    func fetchEntrySnapshots(forMonth month: String, entryType: EntryType = .scale) async throws -> [EntrySnapshot] {
+        let entries = try await getEntries(forMonth: month, entryType: entryType)
+        return entries.map { $0.toSnapshot() }
+    }
+
     // MARK: - Query
 
     func getEntry(byId id: UUID) async throws -> Entry? {

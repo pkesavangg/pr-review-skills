@@ -33,6 +33,30 @@ protocol EntryServiceProtocol {
     /// - Parameter entry: The entry to be deleted.
     func deleteEntry(_ entry: Entry) async throws
 
+    /// Deletes a specific entry by its UUID. Prefer this over `deleteEntry(_:)` from
+    /// feature code so the @Model never leaves the service boundary.
+    /// - Parameter entryId: The UUID of the entry to delete.
+    func deleteEntry(entryId: UUID) async throws
+
+    // MARK: - Snapshot Queries
+
+    /// Retrieves a single entry snapshot by its UUID.
+    /// Snapshots are `Sendable` value types — safe to hold across await boundaries.
+    /// - Parameter id: The UUID of the entry.
+    /// - Returns: The snapshot if found, nil otherwise.
+    func fetchEntrySnapshot(byId id: UUID) async throws -> EntrySnapshot?
+
+    /// Retrieves all entry snapshots for the current user.
+    /// - Returns: An array of all entry snapshots.
+    func fetchAllEntrySnapshots() async throws -> [EntrySnapshot]
+
+    /// Retrieves entry snapshots for a specific month.
+    /// - Parameters:
+    ///   - month: The month in 'YYYY-MM' format.
+    ///   - entryType: Filter by entry type. Defaults to `.scale`.
+    /// - Returns: An array of entry snapshots for the specified month.
+    func fetchEntrySnapshots(forMonth month: String, entryType: EntryType) async throws -> [EntrySnapshot]
+
     // MARK: - Query
 
     /// Retrieves a single entry by its UUID.
@@ -140,6 +164,9 @@ extension EntryServiceProtocol {
     func getEntries(forMonth month: String) async throws -> [Entry] { try await getEntries(forMonth: month, entryType: .scale) }
     func getMonthsAll() async throws -> [HistoryMonth] { try await getMonthsAll(entryType: .scale) }
     func getMonthDetail(month: String) async throws -> [Entry] { try await getMonthDetail(month: month, entryType: .scale) }
+    func fetchEntrySnapshots(forMonth month: String) async throws -> [EntrySnapshot] {
+        try await fetchEntrySnapshots(forMonth: month, entryType: .scale)
+    }
     func getProgress() async throws -> Progress { try await getProgress(entryType: .scale) }
     func getStreak() async throws -> Streak { try await getStreak(entryType: .scale) }
     func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {
