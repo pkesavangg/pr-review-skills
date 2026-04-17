@@ -34,9 +34,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.time.Instant
 import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
 class ScalePairingManager(
     private val ggDeviceService: GGDeviceService,
@@ -257,7 +257,7 @@ class ScalePairingManager(
     private suspend fun fetchUserList(duplicateUserName: String? = null, onSuccess: (() -> Unit)? = null) {
         try {
             val scale = getDiscoveredScale() ?: return
-            val userList = suspendCoroutine { continuation ->
+            val userList = suspendCancellableCoroutine { continuation ->
                 ggDeviceService.getUsers(scale.toGGBTDevice()) { response ->
                     if (duplicateUserName != null) {
                         val user = response.user.first { it.name == duplicateUserName }

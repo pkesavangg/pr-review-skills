@@ -67,7 +67,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Instant
 import java.util.TimeZone
-import android.util.Log
+import kotlin.coroutines.resume
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
  * Coordinator ViewModel for the BtWifiScaleSetupScreen.
@@ -109,9 +110,11 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
     private val operationTimeout: Long = 5 * 60 * 1000L
     private val permissionCheckTimeOut: Long = 5 * 1000
     private val connectionDelay: Long = 2000L
+    private val cleanupTimeoutMs: Long = 10_000L
 
     private var isScaleConnected: Boolean = discoveredScale?.connectionStatus == BLEStatus.CONNECTED
     private var isScaleSaved: Boolean = false
+    private var isExiting: Boolean = false
     private var accountId: String? = null
     private var updateSettingsTimeoutJob: kotlinx.coroutines.Job? = null
     private var measurementTimeoutJob: kotlinx.coroutines.Job? = null
@@ -310,6 +313,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
     }
 
     private fun onNext() {
+        if (isExiting) return
         val currentState = state.value
         if (currentState.isLastStep) handleIntent(BtWifiScaleSetupIntent.ExitSetup(true))
         when (currentState.currentStep) {
@@ -456,6 +460,8 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
         if (isSetupFinished) {
             onExit()
         } else {
+            isExiting = true
+            fetchUserListForExit()
             dialogQueueService.enqueue(
                 DialogModel.Confirm(
                     title = ScaleSetupStrings.ExitSetupAlert.Title,
@@ -463,27 +469,61 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
                     confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
                     cancelText = ScaleSetupStrings.ExitSetupAlert.GoBack,
                     onConfirm = { onExit() },
+                    onCancel = { isExiting = false },
+                    onDismiss = { isExiting = false },
                 ),
             )
         }
     }
 
+    private fun fetchUserListForExit() {
+        val scale = discoveredScale ?: return
+        viewModelScope.launch {
+            try {
+                ggDeviceService.getUsers(scale.toGGBTDevice()) { response ->
+                    handleIntent(BtWifiScaleSetupIntent.SetUserList(response.user))
+                }
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error fetching user list for exit", e)
+            }
+        }
+    }
+
     private fun onExit() {
+        isExiting = true
         clearAllTimeouts()
         viewModelScope.launch {
             try {
                 ggDeviceService.resumeScan(false)
                 discoveredScale?.let { scale ->
                     ggDeviceService.cancelWifi(scale.toGGBTDevice()) {}
-                    if (!isScaleSaved && !isScaleConnected && initialStep != BtWifiSetupStep.GATHERING_NETWORK) {
-                      Log.d("isuserdeleted", "${scale.toGGBTDevice()}")
-                            ggDeviceService.deleteAccount(scale.toGGBTDevice(), true) {}
+                    if (!isScaleSaved && initialStep != BtWifiSetupStep.GATHERING_NETWORK) {
+                        if (state.value.currentStep.ordinal >= BtWifiSetupStep.CONNECTING_BLUETOOTH.ordinal) {
+                            dialogQueueService.showLoader("Exiting..")
+                            val scaleToken = state.value.userList
+                                .find { user -> user.name == scale.preferences?.displayName }
+                                ?.token
+                                ?: scale.token
+                            val deleteResult = withTimeoutOrNull(cleanupTimeoutMs) {
+                                suspendCancellableCoroutine { continuation ->
+                                    ggDeviceService.deleteAccount(scale.toGGBTDevice().copy(token = scaleToken)) { result ->
+                                        AppLog.d(TAG, "deleteAccount completed with result: $result")
+                                        if (continuation.isActive) continuation.resume(result)
+                                    }
+                                }
+                            }
+                            if (deleteResult == null) {
+                                AppLog.w(TAG, "deleteAccount timed out")
+                            }
                             ggDeviceService.disconnectDevice(scale.toGGBTDevice())
+                        }
                     }
                 }
                 loadPluginData()
             } catch (e: Exception) {
                 AppLog.e(TAG, "Error during Bluetooth cleanup", e)
+            } finally {
+                dialogQueueService.dismissLoader()
             }
             try {
                 navigationService.navigateBack()
