@@ -2909,55 +2909,87 @@ final class BtWifiScaleSetupStore: ObservableObject {
         try? await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
     }
     
-    /// Checks if the current dashboard type is dashboard4
+    /// Checks if the current dashboard type is dashboard4 based on the account setting.
     private var isDashboardTypeFour: Bool {
         let currentDashboardType = accountService.activeAccount?.dashboardSettings?.dashboardType
-        let result = (currentDashboardType == "dashboard_4_metrics" || 
-                currentDashboardType == "dashboard4") &&
-                dashboardStore.effectiveDashboardType == .dashboard4
-        return result
+        return currentDashboardType == "dashboard_4_metrics" || currentDashboardType == "dashboard4"
     }
     
     /// Sets up dashboard metrics customization screen with proper state management
     // First pairing upgrades dashboard and sets default order; subsequent pairings preserve current order
     private func setupDashboardMetricsCustomization() async {
-        let isDashboardFour = isDashboardTypeFour
-        
-        if isDashboardFour {
-            await upgradeDashboardTypeFrom4To12WithDefaults()
-            // Ensure streak data is refreshed and progress metrics are loaded for dashboard 4 upgrade
-            try? await dashboardStore.streakManager.refreshStreakData()
+        let isFirstLoad = dashboardStore.metricsManager.state.metrics.isEmpty
+
+        if isFirstLoad {
+            // First visit: cancel store's own init, show skeletons, then load dashboard data from API.
+            dashboardStore.initializationTask?.cancel()
+            dashboardStore.initializationTask = nil
+
+            await MainActor.run {
+                dashboardStore.state.ui.hasLoadedDashboardConfig = false
+                dashboardStore.state.ui.hasLoadedProgressMetrics = false
+                dashboardStore.state.ui.hasLoadedMetricValues = false
+                dashboardStore.state.ui.streakGridOrder = []
+                dashboardStore.state.ui.removedMetrics = []
+                dashboardStore.state.ui.isEditMode = true
+            }
+            setupDashboardMetricsSubscriptions()
+
+            if isDashboardTypeFour {
+                await upgradeDashboardTypeFrom4To12WithDefaults()
+            }
+
+            _ = try? await accountService.refreshAccount(
+                accountId: accountService.activeAccount?.accountId
+            )
+
+            do {
+                try await dashboardStore.metricsManager.loadMetricsFromAPI()
+            } catch {
+                LoggerService.shared.log(
+                    level: .error,
+                    tag: tag,
+                    message: "R4 setup: Failed to load metrics from API: \(error.localizedDescription)"
+                )
+            }
+
+            await MainActor.run {
+                dashboardStore.syncRemovalStateFromMetricsManager()
+                dashboardStore.state.ui.hasLoadedDashboardConfig = true
+                dashboardStore.scheduleUIUpdate()
+            }
+
+            do {
+                try await dashboardStore.streakManager.refreshStreakData()
+            } catch {
+                LoggerService.shared.log(
+                    level: .error,
+                    tag: tag,
+                    message: "R4 setup: Failed to refresh streak data: \(error.localizedDescription)"
+                )
+            }
             await dashboardStore.loadProgressMetricsFromAccount()
+
+            await MainActor.run {
+                dashboardStore.state.ui.hasLoadedProgressMetrics = true
+                dashboardStore.scheduleUIUpdate()
+            }
         } else {
             await MainActor.run {
                 dashboardStore.syncRemovalStateFromMetricsManager()
-                
-                if dashboardStore.metricsManager.state.metrics.isEmpty {
-                    LoggerService.shared.log(level: .info, tag: tag, message: "Dashboard metrics empty, loading from API as fallback")
-                    Task {
-                        // Only load metrics from API, don't do full reload which might reset other state
-                        do {
-                            try await dashboardStore.metricsManager.loadMetricsFromAPI()
-                            await MainActor.run {
-                                dashboardStore.syncRemovalStateFromMetricsManager()
-                            }
-                        } catch {
-                            LoggerService.shared.log(level: .error, tag: tag, message: "Failed to load dashboard metrics from API: \(error.localizedDescription)")
-                        }
-                    }
-                } else {
-                    LoggerService.shared.log(level: .info, tag: tag, message: "Preserving existing dashboard metrics order and removal state (account-based, independent of scale)")
-                }
+                dashboardStore.state.ui.hasLoadedDashboardConfig = true
+                dashboardStore.state.ui.hasLoadedMetricValues = true
+                dashboardStore.state.ui.isEditMode = true
+                dashboardStore.scheduleUIUpdate()
             }
+            setupDashboardMetricsSubscriptions()
         }
         
+        // Snapshot after data is loaded so cancel/discard restores the loaded state, not an empty setup state.
         await MainActor.run {
             dashboardStore.beginEdit()
-            dashboardStore.state.ui.isEditMode = true
             snapshotDashboardState()
         }
-        
-        setupDashboardMetricsSubscriptions()
     }
     
     /// Sets up subscriptions for dashboard metrics customization screen

@@ -572,9 +572,11 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
                 // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call
                 return DateTimeTools.formatter("EEE").string(from: date).lowercased()
             case .month:
-                // Show day-of-month only for Sunday ticks.
-                let weekday = calendar.component(.weekday, from: date)
-                guard weekday == 1 else { return nil }
+                guard let monthInterval = calendar.dateInterval(of: .month, for: scrollPosition),
+                      date >= monthInterval.start,
+                      date < monthInterval.end else {
+                    return nil
+                }
                 return String(calendar.component(.day, from: date))
             case .year:
                 // Single-letter month initials (j, f, m, a, m, j, j, a, s, o, n, d)
@@ -798,13 +800,16 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             }
             return ticks
         case .month:
-            // Sunday-only ticks within the current month.
             guard let monthInterval = calendar.dateInterval(of: .month, for: position) else { return [] }
-            return DateTimeTools.sundayTicksForMonth(
-                in: monthInterval,
-                baseCalendar: calendar,
-                includeTrailingPhantom: true
-            ).map { midday($0) }
+            var ticks: [Date] = []
+            var current = monthInterval.start
+            while current < monthInterval.end {
+                ticks.append(midday(current))
+                guard let next = calendar.date(byAdding: .day, value: 7, to: current) else { break }
+                current = next
+            }
+            ticks.append(midday(monthInterval.end))
+            return ticks
         case .year:
             // Start at Jan 1 of current year
             var comps = calendar.dateComponents([.year], from: position)
