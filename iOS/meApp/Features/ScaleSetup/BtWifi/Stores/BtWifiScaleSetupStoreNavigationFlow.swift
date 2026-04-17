@@ -115,7 +115,10 @@ extension BtWifiScaleSetupStore {
         
         // Reset error state
         self.scaleSetupError = .none
-        
+
+        // Reset resume-after-permissions tracking
+        self.stepToResumeAfterPermissions = nil
+
         // Reset customize settings state
         self.hasCustomizeChanges = false
         self.hasSavedSettings = false

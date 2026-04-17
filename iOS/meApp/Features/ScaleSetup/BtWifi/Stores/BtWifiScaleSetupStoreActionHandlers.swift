@@ -259,7 +259,19 @@ extension BtWifiScaleSetupStore {
                 }
             }
         case .permissions:
-            moveToNextStep()
+            // Resume the step that sent us to permissions.
+            if let resumeStep = stepToResumeAfterPermissions {
+                stepToResumeAfterPermissions = nil
+                scaleSetupError = .none
+                connectionState = .loading
+                navigateToStep(resumeStep)
+            } else if savedScale != nil {
+                // Paired scales resume at network gathering.
+                isRefreshingWifiNetworks = true
+                navigateToStep(.gatheringNetwork)
+            } else {
+                moveToNextStep()
+            }
         case .wakeup:
             moveToNextStep()
         case .connectingBluetooth:
@@ -281,10 +293,41 @@ extension BtWifiScaleSetupStore {
                 targetStep = .wakeup
             }
         } else if scaleSetupError == .collectMeasurementFailed {
+            // If Bluetooth is off, go to permissions first, then resume at stepOn
+            let missingPermissions = !hasAllBtPermissions()
+            if missingPermissions {
+                stepToResumeAfterPermissions = .stepOn
+                scaleSetupError = .none
+                connectionState = .loading
+                navigateToStep(.permissions)
+                return
+            }
             targetStep = .stepOn
         } else if scaleSetupError == .updateSettingsFailed {
-            targetStep = .customizeSettings
+            // If Bluetooth is off, go to permissions first, then resume at updateSettings
+            let missingPermissions = !hasAllBtPermissions()
+            if missingPermissions {
+                stepToResumeAfterPermissions = .updateSettings
+                scaleSetupError = .none
+                connectionState = .loading
+                navigateToStep(.permissions)
+                return
+            }
+            // Bluetooth is on — retry update settings directly (scale is already paired)
+            targetStep = .updateSettings
         } else {
+            // If Bluetooth is off, redirect to permissions screen so the user can re-enable it.
+            // Once permissions are granted, the flow will automatically resume at gatheringNetwork.
+            let missingPermissions = !hasAllBtPermissions()
+            if missingPermissions {
+                fetchWifiNetworksTask?.cancel()
+                fetchWifiNetworksTask = nil
+                scaleSetupError = .none
+                connectionState = .loading
+                navigateToStep(.permissions)
+                return
+            }
+
             targetStep = .gatheringNetwork
 
             fetchWifiNetworksTask?.cancel()

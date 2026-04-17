@@ -69,6 +69,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
     var isDuplicated: Bool = false
     /// Public accessor for duplicate user mode
     var isDuplicatedMode: Bool { isDuplicated }
+
+    /// Step to resume after permissions recover.
+    var stepToResumeAfterPermissions: BtWifiScaleSetupStep?
     
     // MARK: - Private
     var cancellables = Set<AnyCancellable>()
