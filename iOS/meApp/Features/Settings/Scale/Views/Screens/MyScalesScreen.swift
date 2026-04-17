@@ -16,6 +16,7 @@ struct MyScalesScreen: View {
 
     @FocusState private var focusedField: FocusField?
     @State private var shouldMaintainKeyboardFocus = false
+    @State private var wasKeyboardVisible = false
 
     // Consolidated sheet presentation state
     private enum ActiveSheet: Identifiable, Equatable {
@@ -292,14 +293,25 @@ struct MyScalesScreen: View {
                 hideKeyboard()
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            if !shouldMaintainKeyboardFocus {
+                wasKeyboardVisible = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            if !shouldMaintainKeyboardFocus {
+                wasKeyboardVisible = false
+            }
+        }
         .onChange(of: scenePhase) { _, newPhase in
-            if focusedField == .modelNumber {
+            if wasKeyboardVisible {
                 if newPhase != .active {
                     shouldMaintainKeyboardFocus = true
                 } else if shouldMaintainKeyboardFocus {
                     Task { @MainActor in
                         try? await Task.sleep(nanoseconds: 100_000_000)
                         focusedField = .modelNumber
+                        try? await Task.sleep(nanoseconds: 500_000_000)
                         shouldMaintainKeyboardFocus = false
                     }
                 }
