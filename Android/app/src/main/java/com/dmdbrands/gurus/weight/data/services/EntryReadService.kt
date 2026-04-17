@@ -17,6 +17,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
@@ -25,10 +26,16 @@ import com.dmdbrands.gurus.weight.domain.repository.IEntryReadRepository
 import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertWeight
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
@@ -46,14 +53,51 @@ class EntryReadService @Inject constructor(
     private val entryReadRepository: IEntryReadRepository,
     private val accountRepository: IAccountRepository,
     private val goalRepository: IGoalRepository,
+    private val appScope: CoroutineScope,
 ) : IEntryReadService {
 
     private var _accountId: String? = null
     override val accountId: String? get() = _accountId
 
+    // ── Hot snapshot StateFlows (populated on setAccountId, instant for consumers) ──
+
+    private val _snapshots = mutableMapOf<String, MutableStateFlow<List<PeriodSummary>>>()
+    private var hotJobs = mutableListOf<Job>()
+
+    override fun snapshotFor(key: String): StateFlow<List<PeriodSummary>> =
+        _snapshots.getOrPut(key) { MutableStateFlow(emptyList()) }
+
     override fun setAccountId(accountId: String) {
         AppLog.d(TAG, "setAccountId: $accountId")
         _accountId = accountId
+
+        // Cancel previous subscriptions (account switch)
+        hotJobs.forEach { it.cancel() }
+        hotJobs.clear()
+        _snapshots.values.forEach { it.value = emptyList() }
+
+        // Start hot subscriptions — Room Flows auto-emit on DB changes
+        startSnapshot(SNAPSHOT_WEIGHT) {
+            entryReadRepository.getWeightSnapshotGraphData(accountId)
+        }
+        startSnapshot(SNAPSHOT_BP) {
+            entryReadRepository.getBpmSnapshotGraphData(accountId)
+        }
+    }
+
+    /** Start a baby snapshot subscription — called when baby products are known. */
+    fun startBabySnapshot(babyProfileId: String) {
+        val key = "$SNAPSHOT_BABY_PREFIX$babyProfileId"
+        startSnapshot(key) {
+            entryReadRepository.getBabySnapshotGraphData(_accountId ?: return@startSnapshot flowOf(emptyList()), babyProfileId)
+        }
+    }
+
+    private fun startSnapshot(key: String, flowProvider: () -> Flow<List<PeriodSummary>>) {
+        val stateFlow = _snapshots.getOrPut(key) { MutableStateFlow(emptyList()) }
+        hotJobs += appScope.launch {
+            flowProvider().collect { stateFlow.value = it }
+        }
     }
 
     /**
@@ -256,24 +300,9 @@ class EntryReadService @Inject constructor(
         }
     }
 
-    override fun getWeightSnapshotGraphData(): Flow<List<WeightSnapshotPoint>> {
-        val acctId = requireNotNull(_accountId) { "accountId not set" }
-        return entryReadRepository.getWeightSnapshotGraphData(acctId)
-    }
-
-    override fun getBpmSnapshotGraphData(): Flow<List<PeriodBpmSummary>> {
-        val acctId = requireNotNull(_accountId) { "accountId not set" }
-        return entryReadRepository.getBpmSnapshotGraphData(acctId)
-    }
-
     override fun getBpmLastNDayEntries(n: Int): Flow<List<PeriodBpmSummary>> {
         val acctId = requireNotNull(_accountId) { "accountId not set" }
         return entryReadRepository.getBpmLastNDayEntries(acctId, n)
-    }
-
-    override fun getBabySnapshotGraphData(babyProfileId: String): Flow<List<PeriodBabySummary>> {
-        val acctId = requireNotNull(_accountId) { "accountId not set" }
-        return entryReadRepository.getBabySnapshotGraphData(acctId, babyProfileId)
     }
 
     override fun getBabyDailyGraphData(babyProfileId: String): Flow<List<PeriodBabySummary>> {
@@ -302,6 +331,9 @@ class EntryReadService @Inject constructor(
         private const val LAST_7_DAYS = 7
         private const val LAST_30_DAYS = 30
         private const val OPERATION_CREATE = "create"
+        const val SNAPSHOT_WEIGHT = "weight"
+        const val SNAPSHOT_BP = "bp"
+        const val SNAPSHOT_BABY_PREFIX = "baby:"
     }
 }
 

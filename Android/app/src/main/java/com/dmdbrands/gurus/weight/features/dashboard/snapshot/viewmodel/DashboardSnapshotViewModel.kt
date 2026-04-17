@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
+import com.dmdbrands.gurus.weight.data.services.EntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
@@ -69,13 +70,9 @@ class DashboardSnapshotViewModel @Inject constructor(
   private fun loadWeightGraph() {
     weightGraphJob?.cancel()
     weightGraphJob = viewModelScope.launch {
-      entryReadService.getWeightSnapshotGraphData()
-        .catch { e ->
-          AppLog.e(TAG, "Failed to load weight graph data", e)
-          handleIntent(DashboardSnapshotIntent.SetLoading(false))
-        }
+      entryReadService.snapshotFor(EntryReadService.SNAPSHOT_WEIGHT)
         .collect { points ->
-          updateWeightChart(points)
+          updateWeightChart(points.filterIsInstance<WeightSnapshotPoint>())
           handleIntent(DashboardSnapshotIntent.SetLoading(false))
         }
     }
@@ -135,12 +132,9 @@ class DashboardSnapshotViewModel @Inject constructor(
   private fun loadBpGraph() {
     bpGraphJob?.cancel()
     bpGraphJob = viewModelScope.launch {
-      entryReadService.getBpmSnapshotGraphData()
-        .catch { e ->
-          AppLog.e(TAG, "Failed to load BP graph data", e)
-        }
+      entryReadService.snapshotFor(EntryReadService.SNAPSHOT_BP)
         .collect { points ->
-          updateBpChart(points)
+          updateBpChart(points.filterIsInstance<PeriodBpmSummary>())
         }
     }
   }
@@ -215,13 +209,12 @@ class DashboardSnapshotViewModel @Inject constructor(
   }
 
   private fun loadBabyGraph(profile: BabyProfile) {
+    // Trigger baby snapshot hot subscription
+    (entryReadService as? EntryReadService)?.startBabySnapshot(profile.id)
     viewModelScope.launch {
-      entryReadService.getBabySnapshotGraphData(profile.id)
-        .catch { e ->
-          AppLog.e(TAG, "Failed to load baby graph data for ${profile.id}", e)
-        }
+      entryReadService.snapshotFor("${EntryReadService.SNAPSHOT_BABY_PREFIX}${profile.id}")
         .collect { points ->
-          updateBabyChart(profile, points)
+          updateBabyChart(profile, points.filterIsInstance<PeriodBabySummary>())
         }
     }
   }

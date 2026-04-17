@@ -50,57 +50,58 @@ interface EntryReadDao {
    * @param accountId The account ID
    * @return Flow of monthly weight summaries ordered by most recent first
    */
+  /**
+   * Optimised: single GROUP BY computes avg, count, first/last in one pass.
+   * No correlated subqueries.
+   */
   @Query(
     """
-    WITH entries_with_period AS (
+    WITH period_stats AS (
         SELECT
-            e.entryTimestamp,
-            bse.weight,
-            strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period
+            strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
+            MIN(e.entryTimestamp) AS firstTimestamp,
+            MAX(e.entryTimestamp) AS lastTimestamp,
+            AVG(bse.weight) AS avgWeight,
+            COUNT(*) AS entryCount
         FROM entry_view e
-        LEFT JOIN body_scale_entry bse ON e.id = bse.id
-        WHERE e.accountId = :accountId AND bse.weight IS NOT NULL
+        INNER JOIN body_scale_entry bse ON e.id = bse.id
+        WHERE e.accountId = :accountId
           AND (e.operationType IS NULL OR e.operationType != 'delete')
-    ),
-    first_last AS (
-        SELECT
-            period,
-            MIN(entryTimestamp) AS firstTimestamp,
-            MAX(entryTimestamp) AS lastTimestamp
-        FROM entries_with_period
+          AND bse.weight IS NOT NULL
         GROUP BY period
-    ),
-    joined AS (
-        SELECT
-            fl.period,
-            fl.firstTimestamp,
-            fl.lastTimestamp,
-            first_entry.weight AS firstWeight,
-            last_entry.weight AS lastWeight,
-            (SELECT AVG(weight) FROM entries_with_period WHERE period = fl.period) AS avgWeight,
-            (SELECT COUNT(*) FROM entries_with_period WHERE period = fl.period) AS entryCount
-        FROM first_last fl
-        LEFT JOIN entries_with_period first_entry ON fl.firstTimestamp = first_entry.entryTimestamp
-        LEFT JOIN entries_with_period last_entry ON fl.lastTimestamp = last_entry.entryTimestamp
     )
     SELECT
-        CASE CAST(strftime('%m', datetime(firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS INTEGER)
+        CASE CAST(strftime('%m', datetime(ps.firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS INTEGER)
             WHEN 1 THEN $MONTH_JAN WHEN 2 THEN $MONTH_FEB
             WHEN 3 THEN $MONTH_MAR WHEN 4 THEN $MONTH_APR
             WHEN 5 THEN $MONTH_MAY WHEN 6 THEN $MONTH_JUN
             WHEN 7 THEN $MONTH_JUL WHEN 8 THEN $MONTH_AUG
             WHEN 9 THEN $MONTH_SEP WHEN 10 THEN $MONTH_OCT
             WHEN 11 THEN $MONTH_NOV WHEN 12 THEN $MONTH_DEC
-        END || ' ' || strftime('%Y', datetime(firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS entryTimestamp,
-        avgWeight,
-        entryCount,
+        END || ' ' || strftime('%Y', datetime(ps.firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS entryTimestamp,
+        ps.avgWeight,
+        ps.entryCount,
         CASE
-            WHEN firstWeight IS NOT NULL AND lastWeight IS NOT NULL
-            THEN lastWeight - firstWeight
+            WHEN first_e.weight IS NOT NULL AND last_e.weight IS NOT NULL
+            THEN last_e.weight - first_e.weight
             ELSE NULL
         END AS change
-    FROM joined
-    ORDER BY period DESC
+    FROM period_stats ps
+    LEFT JOIN body_scale_entry first_e
+        ON first_e.id = (
+            SELECT e2.id FROM entry_view e2
+            INNER JOIN body_scale_entry b2 ON e2.id = b2.id
+            WHERE e2.accountId = :accountId AND e2.entryTimestamp = ps.firstTimestamp
+            LIMIT 1
+        )
+    LEFT JOIN body_scale_entry last_e
+        ON last_e.id = (
+            SELECT e3.id FROM entry_view e3
+            INNER JOIN body_scale_entry b3 ON e3.id = b3.id
+            WHERE e3.accountId = :accountId AND e3.entryTimestamp = ps.lastTimestamp
+            LIMIT 1
+        )
+    ORDER BY ps.period DESC
     """,
   )
   fun getWeightMonthlyHistory(accountId: String): Flow<List<HistoryMonth>>
@@ -347,26 +348,34 @@ interface EntryReadDao {
 
   /**
    * Last 10 weight entries for dashboard snapshot mini-chart.
-   * Daily averages ordered by timestamp ascending.
+   * Two-step: find last 10 distinct days FIRST, then aggregate only those days.
    */
   @Query(
     """
-    SELECT * FROM (
-      SELECT
-        strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
-        datetime(MIN(e.entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of day') AS entryTimestamp,
-        AVG(bse.weight) AS weight,
-        MAX(e.unit) AS unit
+    WITH last_10_days AS (
+      SELECT DISTINCT strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS day
       FROM entry_view AS e
-      LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
+      INNER JOIN body_scale_entry AS bse ON e.id = bse.id
       WHERE e.accountId = :accountId
         AND (e.operationType IS NULL OR e.operationType != 'delete')
         AND bse.weight > 0
-      GROUP BY period
-      ORDER BY period DESC
+      ORDER BY day DESC
       LIMIT 10
     )
-    ORDER BY entryTimestamp ASC
+    SELECT
+      d.day AS period,
+      datetime(MIN(e.entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of day') AS entryTimestamp,
+      AVG(bse.weight) AS weight,
+      MAX(e.unit) AS unit
+    FROM last_10_days AS d
+    INNER JOIN entry_view AS e
+      ON strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) = d.day
+    INNER JOIN body_scale_entry AS bse ON e.id = bse.id
+    WHERE e.accountId = :accountId
+      AND (e.operationType IS NULL OR e.operationType != 'delete')
+      AND bse.weight > 0
+    GROUP BY d.day
+    ORDER BY d.day ASC
     """,
   )
   fun getWeightSnapshotGraphData(accountId: String): Flow<List<WeightSnapshotPoint>>

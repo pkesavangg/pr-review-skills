@@ -9,75 +9,54 @@ import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Service for history data across all product types.
- * Takes [ProductSelection] and returns sealed types — caller doesn't need to know
- * which repository function runs internally.
  * accountId is set via [setAccountId] from LoadingScreenViewModel.
+ *
+ * Hot StateFlows (populated on [setAccountId], instant for consumers):
+ * - [weightSnapshot], [bpmSnapshot] — dashboard mini-charts
+ * - [weightHistory] — history screen month list
+ *
+ * Cold Flows (query on collect, skeleton masks the delay):
+ * - [weightProgress], [bpProgress], [latestEntry], [isWeightEmpty]
+ * - [getDailyGraphData], [getMonthlyGraphData] — chart data
+ * - [getGroupedHistory], [getDetail] — on-demand
  */
 interface IEntryReadService {
 
-    /** Current account ID, set from LoadingScreenViewModel during startup. */
     val accountId: String?
 
-    /** Called from LoadingScreenViewModel.loadData() — same pattern as other services. */
     fun setAccountId(accountId: String)
 
+    // ── Hot StateFlows (instant for consumers) ──
+
     /**
-     * Weight-dashboard "how am I tracking" snapshot for the active account.
-     *
-     * Emits on any relevant change — latest entry, last-7/last-30 window, monthly
-     * history, weight unit, weightless toggle, goal, or active account. Streak,
-     * total count, and oldest-weight side queries are re-fetched on each emit.
-     *
-     * Cold Flow: consumers collect in their own coroutine scope. If no account is
-     * set yet the flow emits a single empty [WeightProgress] and completes.
+     * Hot snapshot data per product key — populated on [setAccountId].
+     * Keys: "weight", "bp", "baby:{profileId}".
+     * Consumers: `snapshotFor("weight").collect { ... }`.
      */
+    fun snapshotFor(key: String): StateFlow<List<PeriodSummary>>
+
+    // ── Cold Flows (skeleton masks delay) ──
+
     fun weightProgress(): Flow<WeightProgress>
-
-    /** Latest scale entry for the active account, or null when the account has none. */
     fun latestEntry(): Flow<Entry?>
-
-    /** True when the active account has no create-type scale entries. */
     fun isWeightEmpty(): Flow<Boolean>
-
-    /**
-     * BP-dashboard progress snapshot for the active account.
-     *
-     * Today this carries streak (current / longest) and a day-count of BP
-     * readings. Re-emits automatically when BP entries are added or deleted,
-     * driven by a Flow-returning DAO query over the `bpm_entry` table.
-     *
-     * Cold Flow; emits a single empty [BpProgress] and completes when no
-     * account is set.
-     */
     fun bpProgress(): Flow<BpProgress>
 
     fun getGroupedHistory(product: ProductSelection): Flow<GroupedHistory>
-
     fun getDetail(product: ProductSelection, key: String): Flow<HistoryDetail>
 
     fun getMonthlyGraphData(product: ProductSelection): Flow<GraphData>
-
     fun getDailyGraphData(product: ProductSelection): Flow<GraphData>
 
-    fun getWeightSnapshotGraphData(): Flow<List<WeightSnapshotPoint>>
-
-    fun getBpmSnapshotGraphData(): Flow<List<PeriodBpmSummary>>
-
-    /**
-     * Last [n] per-day BP averages for the current account (most recent day first).
-     * Scoped to the account — NOT to any selected chart window. Fewer than [n] rows
-     * are returned when the account has BP entries on < [n] days.
-     */
     fun getBpmLastNDayEntries(n: Int): Flow<List<PeriodBpmSummary>>
 
-    fun getBabySnapshotGraphData(babyProfileId: String): Flow<List<PeriodBabySummary>>
-
     fun getBabyDailyGraphData(babyProfileId: String): Flow<List<PeriodBabySummary>>
-
     fun getBabyMonthlyGraphData(babyProfileId: String): Flow<List<PeriodBabySummary>>
 }
