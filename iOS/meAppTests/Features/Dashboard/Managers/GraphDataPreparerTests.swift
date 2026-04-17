@@ -204,6 +204,23 @@ struct GraphDataPreparerTests {
         #expect(result.map(\.value) == [180.0, 181.5])
     }
 
+    @Test("buildWeightSeries: preserves fractional stored average for kg display")
+    func buildWeightSeriesPreservesFractionalStoredAverageForKgDisplay() {
+        let ops = [makeSummary(day: 17, weight: 2452.0 / 6.0)]
+        let convertToKg: (Double) -> Double = { stored in
+            ((stored / 22.0462) * 10).rounded(.toNearestOrAwayFromZero) / 10
+        }
+
+        let result = makeSUT().buildWeightSeries(
+            from: ops,
+            isWeightlessMode: false,
+            anchorWeight: nil,
+            convertWeight: convertToKg
+        )
+
+        #expect(result.map(\.value) == [18.5])
+    }
+
     @Test("buildWeightSeries: weightless mode subtracts anchor and drops points when anchor is missing")
     func buildWeightSeriesWeightlessBehavior() {
         let ops = [

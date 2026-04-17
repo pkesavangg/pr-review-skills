@@ -40,7 +40,12 @@ final class ConversionTools {
     // MARK: - Weight Conversion
     /// Converts stored weight (tenths of lbs) to lbs
     static func convertStoredToLbs(_ stored: Int) -> Double {
-        return Double(stored) / 10.0
+        return convertStoredToLbs(Double(stored))
+    }
+
+    /// Converts stored weight (tenths of lbs) to lbs
+    static func convertStoredToLbs(_ stored: Double) -> Double {
+        return stored / 10.0
     }
     
     /// Converts lbs to stored weight (tenths of lbs)
@@ -50,7 +55,19 @@ final class ConversionTools {
     
     /// Converts stored weight (tenths of lbs) to kg
     static func convertStoredToKg(_ stored: Int) -> Double {
-        return rounded(Double(stored) / 22.0462, toPlaces: 1)
+        return convertStoredToKg(Double(stored))
+    }
+
+    /// Converts stored weight (tenths of lbs) to kg
+    static func convertStoredToKg(_ stored: Double) -> Double {
+        return rounded(stored / 22.0462, toPlaces: 1)
+    }
+
+    /// Converts stored weight (tenths of lbs) to kg without rounding.
+    /// Use for intermediate calculations (e.g. weightless anchor) where
+    /// premature rounding causes visible ±0.1 discrepancies after subtraction.
+    static func convertStoredToKgRaw(_ stored: Double) -> Double {
+        return stored / 22.0462
     }
     
     /// Converts kg to stored weight (tenths of lbs)
@@ -69,6 +86,11 @@ final class ConversionTools {
     
     /// Converts stored value (tenths of lbs) to display value (kg or lbs)
     static func convertStoredToDisplay(_ stored: Int, isMetric: Bool = false) -> Double {
+        return convertStoredToDisplay(Double(stored), isMetric: isMetric)
+    }
+
+    /// Converts stored value (tenths of lbs) to display value (kg or lbs)
+    static func convertStoredToDisplay(_ stored: Double, isMetric: Bool = false) -> Double {
         if isMetric {
             return convertStoredToKg(stored)
         } else {
