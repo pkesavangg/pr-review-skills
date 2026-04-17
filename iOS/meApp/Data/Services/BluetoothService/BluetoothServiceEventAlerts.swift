@@ -6,7 +6,6 @@
 import Combine
 import Foundation
 import GGBluetoothSwiftPackage
-import SwiftData
 
 @MainActor
 extension BluetoothService {
@@ -28,7 +27,7 @@ extension BluetoothService {
             return
         }
 
-        let userListResult = await getScaleUserList(for: discoveredScale, skipConnectionCheck: true)
+        let userListResult = await getScaleUserList(broadcastId: discoveredScale.broadcastIdString ?? "", skipConnectionCheck: true)
         guard case .success(let userList) = userListResult else {
             logger.log(level: .error, tag: tag, message: "Failed to get scale user list for device event alert")
             return
@@ -121,12 +120,12 @@ extension BluetoothService {
         notificationService.showAlert(alert)
     }
 
-    func findUserToDelete(userList: [DeviceUser], discoveredScale: Device) -> DeviceUser? {
+    func findUserToDelete(userList: [DeviceUser], discoveredScale: DeviceSnapshot) -> DeviceUser? {
         return userList.first { user in
             bluetoothScales.contains { scale in
                 let isR4Scale: Bool = {
-                    if let raw = getSafeScaleType(for: scale) { return ScaleSourceType(rawValue: raw) == .btWifiR4 }
-                    return false
+                    guard let raw = scale.bathScale?.scaleType else { return false }
+                    return ScaleSourceType(rawValue: raw) == .btWifiR4
                 }()
                 let namesMatch: Bool = {
                     if let pref = scale.r4ScalePreference {
@@ -147,17 +146,21 @@ extension BluetoothService {
     }
 
     func deleteScaleByBroadcastId(broadcastId: String, token: String, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError> {
-        let tempDevice = Device(
-            id: UUID().uuidString,
-            accountId: activeAccount?.accountId ?? "",
-            mac: nil,
-            deviceName: nil,
-            broadcastId: nil,
-            broadcastIdString: broadcastId,
-            isConnected: false
-        )
-        tempDevice.token = token
-
-        return await deleteDevice(tempDevice, disconnect: disconnect)
+        let ggDevice = mapToGGBTDevice(broadcastId)
+        ggDevice.token = token
+        do {
+            let result = try await sdkOperationSerializer.execute(
+                operationKey: "\(broadcastId):deleteUser"
+            ) { @MainActor in
+                try await self.withTimeout(seconds: 10) {
+                    try await self.ggBleSDK.deleteUser(ggDevice, canDisconnect: disconnect)
+                }
+            }
+            return .success(UserDeletionResponse(sdkType: result))
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.updateProfileFailed(error))
+        }
     }
 }

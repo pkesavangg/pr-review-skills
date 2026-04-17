@@ -22,7 +22,7 @@ extension BluetoothService {
 
     /// Connects to a BPM device by its broadcast ID and selected user number.
     /// Returns the SDK's user-creation response so the caller can detect user mismatch.
-    func connectBpm(broadcastId: String, userNumber: Int, replaceUser: Bool, pairedSKUMonitors: [Device]) async -> Result<UserCreationResponse, BluetoothServiceError> {
+    func connectBpm(broadcastId: String, userNumber: Int, replaceUser: Bool, pairedSKUMonitors: [DeviceSnapshot]) async -> Result<UserCreationResponse, BluetoothServiceError> {
         guard !broadcastId.isEmpty else {
             return .failure(.invalidBroadcastId)
         }
@@ -103,7 +103,7 @@ extension BluetoothService {
             entryTimestamp: timestamp,
             accountId: activeAccount.accountId,
             operationType: OperationType.create.rawValue,
-            deviceType: DeviceType.bpm.rawValue,
+            entryType: EntryType.bpm.rawValue,
             isSynced: false
         )
         entry.scaleEntry = BathScaleEntry(
@@ -119,8 +119,7 @@ extension BluetoothService {
             systolic: measurement.systolic,
             diastolic: measurement.diastolic,
             meanArterial: measurement.meanArterial ?? "",
-            pulse: measurement.pulse,
-            note: ""
+            pulse: measurement.pulse
         )
 
         do {

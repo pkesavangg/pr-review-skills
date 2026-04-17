@@ -334,7 +334,7 @@ struct DashboardSyncCoordinatorTests {
     func saveProgressMetricsMarksAllRemoved() async throws {
         let (sut, accountService, _) = makeSUT()
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount()
-        UserDefaults.standard.removeObject(forKey: "dashboard.allProgressMetricsRemoved")
+        UserDefaults.standard.removeObject(forKey: "dashboard.allProgressMetricsRemoved") // swiftlint:disable:this no_direct_userdefaults
 
         let streaks = [
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.currentStreak)
@@ -352,7 +352,7 @@ struct DashboardSyncCoordinatorTests {
         }
 
         #expect(capturedMetrics.isEmpty)
-        #expect(UserDefaults.standard.bool(forKey: "dashboard.allProgressMetricsRemoved") == true)
+        #expect(UserDefaults.standard.bool(forKey: "dashboard.allProgressMetricsRemoved") == true) // swiftlint:disable:this no_direct_userdefaults
     }
 
     // MARK: - loadDashboardConfigurationFromAPI Tests
@@ -472,8 +472,7 @@ struct DashboardSyncCoordinatorTests {
     func loadProgressMetricsFromAccountMissingValueUsesDefaults() async {
         let (sut, _, _) = makeSUT()
         let streaks = makeDefaultStreaks()
-        let account = DashboardStoreTestSupport.makeActiveAccount()
-        account.dashboardSettings?.progressMetrics = nil
+        let account = DashboardStoreTestSupport.makeActiveAccount(progressMetrics: nil)
         var activeCount = streaks.count
         var defaultCalled = false
 
@@ -495,12 +494,13 @@ struct DashboardSyncCoordinatorTests {
     @Test("loadProgressMetricsFromAccount: all removed state returns removed goal and zero active count")
     func loadProgressMetricsFromAccountAllRemovedState() async {
         let (sut, _, _) = makeSUT()
-        UserDefaults.standard.set(true, forKey: "dashboard.allProgressMetricsRemoved")
+        UserDefaults.standard.set(true, forKey: "dashboard.allProgressMetricsRemoved") // swiftlint:disable:this no_direct_userdefaults
         let streaks = makeDefaultStreaks()
-        let account = DashboardStoreTestSupport.makeActiveAccount()
-        account.dashboardSettings?.progressMetrics = "goal,currentStreak,longestStreak,weeklyChange,monthlyChange,yearlyChange,totalChange"
+        let account = DashboardStoreTestSupport.makeActiveAccount(
+            progressMetrics: "goal,currentStreak,longestStreak,weeklyChange,monthlyChange,yearlyChange,totalChange"
+        )
         var activeCount = streaks.count
-        var captured: (Int, Bool, [String], Set<String>)?
+        var captured: (Int, Bool, [String], Set<String>)? // swiftlint:disable:this large_tuple
 
         await sut.loadProgressMetricsFromAccount(
             activeAccount: account,
@@ -522,12 +522,13 @@ struct DashboardSyncCoordinatorTests {
     @Test("loadProgressMetricsFromAccount: maps saved goal and streak ordering")
     func loadProgressMetricsFromAccountMapsSavedOrdering() async {
         let (sut, _, _) = makeSUT()
-        UserDefaults.standard.removeObject(forKey: "dashboard.allProgressMetricsRemoved")
+        UserDefaults.standard.removeObject(forKey: "dashboard.allProgressMetricsRemoved") // swiftlint:disable:this no_direct_userdefaults
         let streaks = makeDefaultStreaks()
-        let account = DashboardStoreTestSupport.makeActiveAccount()
-        account.dashboardSettings?.progressMetrics = "weeklyChange,goal,currentStreak"
+        let account = DashboardStoreTestSupport.makeActiveAccount(
+            progressMetrics: "weeklyChange,goal,currentStreak"
+        )
         var activeCount = streaks.count
-        var captured: (Int, Bool, [String], Set<String>)?
+        var captured: (Int, Bool, [String], Set<String>)? // swiftlint:disable:this large_tuple
 
         await sut.loadProgressMetricsFromAccount(
             activeAccount: account,
@@ -549,8 +550,9 @@ struct DashboardSyncCoordinatorTests {
     @Test("loadProgressMetricsFromAccount: empty streak collection falls back to default order")
     func loadProgressMetricsFromAccountWithNoStreaksUsesDefaults() async {
         let (sut, _, _) = makeSUT()
-        let account = DashboardStoreTestSupport.makeActiveAccount()
-        account.dashboardSettings?.progressMetrics = "goal,currentStreak"
+        let account = DashboardStoreTestSupport.makeActiveAccount(
+            progressMetrics: "goal,currentStreak"
+        )
         var activeCount = 0
         var defaultCalled = false
 

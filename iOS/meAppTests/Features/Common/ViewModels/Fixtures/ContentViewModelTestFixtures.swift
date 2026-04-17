@@ -2,15 +2,14 @@ import Foundation
 @testable import meApp
 
 enum ContentViewModelTestFixtures {
-    static func makeActiveAccount(id: String = "content-account", lastActiveTime: String? = nil) -> Account {
-        let account = AccountTestFixtures.makeAccountModel(
+    static func makeActiveAccount(id: String = "content-account", lastActiveTime: String? = nil) -> AccountSnapshot {
+        AccountTestFixtures.makeAccountSnapshot(
             id: id,
             email: "content@example.com",
             isLoggedIn: true,
-            isActive: true
+            isActiveAccount: true,
+            lastActiveTime: lastActiveTime
         )
-        account.lastActiveTime = lastActiveTime
-        return account
     }
 
     static func makeEntries(accountId: String = "content-account", count: Int = 2) -> [Entry] {

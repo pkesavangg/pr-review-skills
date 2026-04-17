@@ -8,6 +8,7 @@
 enum EntrySource: String, Codable, Equatable {
     case manual
     case bluetooth
+    case bluetoothMonitor = "bluetooth monitor"
     case lcbtScale = "lcbt scale"
     case wifiScale = "wifi scale"
     case appsyncScale = "appsync scale"

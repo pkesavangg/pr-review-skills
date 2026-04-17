@@ -293,7 +293,7 @@ struct SignupStoreTests {
     @Test("createUser success without goal")
     func createUserSuccessWithoutGoal() async {
         let (store, accountService, notificationService, _) = makeSUT()
-        accountService.signUpResult = .success(AuthTestFixtures.makeAccount(email: "signup@example.com"))
+        accountService.signUpResult = .success(())
 
         var successCalled = false
         store.onSignupSuccess = { successCalled = true }
@@ -315,7 +315,7 @@ struct SignupStoreTests {
     @Test("createUser trims email and profile fields before API call")
     func createUserTrimsValuesBeforeAPICall() async {
         let (store, accountService, _, _) = makeSUT()
-        accountService.signUpResult = .success(AuthTestFixtures.makeAccount(email: "signup@example.com"))
+        accountService.signUpResult = .success(())
         store.isGoalSkipped = true
 
         store.signupForm.firstName.value = "  John  "
@@ -337,8 +337,8 @@ struct SignupStoreTests {
     @Test("createUser success with goal creates derived goal")
     func createUserSuccessWithGoal() async {
         let (store, accountService, _, _) = makeSUT()
-        accountService.signUpResult = .success(AuthTestFixtures.makeAccount(email: "signup@example.com"))
-        accountService.createGoalResult = .success(AuthTestFixtures.makeAccount(email: "signup@example.com"))
+        accountService.signUpResult = .success(())
+        accountService.createGoalResult = .success(())
 
         fillRequiredSignupFields(store)
         store.signupForm.goalType.value = GoalTypeSegment.losegainValue
@@ -355,8 +355,8 @@ struct SignupStoreTests {
     @Test("createUser success with maintain goal")
     func createUserSuccessWithMaintainGoal() async {
         let (store, accountService, _, _) = makeSUT()
-        accountService.signUpResult = .success(AuthTestFixtures.makeAccount(email: "signup@example.com"))
-        accountService.createGoalResult = .success(AuthTestFixtures.makeAccount(email: "signup@example.com"))
+        accountService.signUpResult = .success(())
+        accountService.createGoalResult = .success(())
 
         fillRequiredSignupFields(store)
         store.signupForm.goalType.value = GoalType.maintain.rawValue
@@ -372,7 +372,7 @@ struct SignupStoreTests {
     @Test("createUser from account switching does not call signup success callback")
     func createUserAccountSwitchingSkipsSuccessCallback() async {
         let (store, accountService, _, _) = makeSUT()
-        accountService.signUpResult = .success(AuthTestFixtures.makeAccount(email: "signup@example.com"))
+        accountService.signUpResult = .success(())
         store.isGoalSkipped = true
         store.isFromAccountSwitching = true
         fillRequiredSignupFields(store)
@@ -471,7 +471,7 @@ struct SignupStoreTests {
     @Test("moveToNextStep on password triggers createUser")
     func moveToNextStepAtPasswordTriggersCreateUser() async {
         let (store, accountService, _, _) = makeSUT()
-        accountService.signUpResult = .success(AuthTestFixtures.makeAccount(email: "signup@example.com"))
+        accountService.signUpResult = .success(())
         fillRequiredSignupFields(store)
         store.isGoalSkipped = true
         store.currentStepIndex = stepIndex(.password, in: store)

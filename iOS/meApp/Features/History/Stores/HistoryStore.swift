@@ -24,7 +24,7 @@ final class HistoryStore: ObservableObject {
 
     // MARK: - Month Detail State
     @Published private(set) var selectedMonth: HistoryMonth?
-    @Published private(set) var entries: [Entry] = []
+    @Published private(set) var entries: [EntrySnapshot] = []
 
     /// Set of entry ids that are currently expanded in the Month Detail screen.
     @Published var expandedEntries: Set<String> = []
@@ -186,14 +186,14 @@ final class HistoryStore: ObservableObject {
     ///   - entry: The entry to be deleted.
     ///   - onConfirm: Executed when user confirms deletion.
     ///   - onCancel:  Executed when user cancels (optional).
-    func showDeleteEntryAlert(entry: Entry, onCancel: (() -> Void)? = nil) {
+    func showDeleteEntryAlert(entry: EntrySnapshot, onCancel: (() -> Void)? = nil) {
         let alert = AlertModel(
             title: AlertStrings.DeleteEntryAlert.title,
             message: AlertStrings.DeleteEntryAlert.message,
             buttons: [
                 AlertButtonModel(title: AlertStrings.DeleteEntryAlert.deleteButton, type: .danger) { _ in
                     Task {
-                        await self.deleteEntryInternal(entry)
+                        await self.deleteEntryInternal(entryId: entry.id)
                         onCancel?()
                     }
                 },
@@ -272,15 +272,15 @@ final class HistoryStore: ObservableObject {
             monthsLoadTask = Task { [weak self] in
                 guard let self else { return }
                 do {
-                    let allEntries = try await self.entryService.getAllEntries()
+                    let allEntries = try await self.entryService.fetchAllEntrySnapshots()
                     let babyProfile: BabyProfile? = {
                         if case .baby(let profile) = self.productTypeStore.selectedItem { return profile }
                         return nil
                     }()
                     let babyEntries = allEntries.filter {
-                        $0.deviceType == DeviceType.babyScale.rawValue
+                        $0.entryType == EntryType.baby.rawValue
                         && $0.operationType == OperationType.create.rawValue
-                        && $0.babyId == babyProfile?.id
+                        && $0.babyEntry?.babyId == babyProfile?.id
                     }
                     let result = self.mapBabyEntriesToWeeks(babyEntries, profile: babyProfile)
                     self.babyWeeks = result
@@ -322,18 +322,18 @@ final class HistoryStore: ObservableObject {
         guard let selectedMonth else { return }
 
         do {
-            let fetched = try await entryService.getMonthDetail(month: selectedMonth.id)
+            let fetched = try await entryService.fetchEntrySnapshots(forMonth: selectedMonth.id)
 
             // UI-level deduplication:
             // Group by entryTimestamp and keep the latest operation by serverTimestamp.
             let grouped = Dictionary(grouping: fetched) { $0.entryTimestamp }
-            let latestPerTimestamp: [Entry] = grouped.compactMap { _, values in
+            let latestPerTimestamp: [EntrySnapshot] = grouped.compactMap { _, values in
                 values.max { ($0.serverTimestamp ?? "") < ($1.serverTimestamp ?? "") }
             }
             // Show only final creates; hide deletes
             let visible = latestPerTimestamp.filter { $0.operationType == OperationType.create.rawValue }
             // Sort newest first by entryTimestamp
-            let pairs = visible.map { entry -> (Entry, Int64) in
+            let pairs = visible.map { entry -> (EntrySnapshot, Int64) in
                 (entry, DateTimeTools.getTimestamp(entry.entryTimestamp))
             }
             let sorted = pairs.sorted { $0.1 > $1.1 }.map { $0.0 }
@@ -344,10 +344,10 @@ final class HistoryStore: ObservableObject {
         }
     }
 
-    private func deleteEntryInternal(_ entry: Entry) async {
+    private func deleteEntryInternal(entryId: UUID) async {
         do {
             notificationService.showLoader(LoaderModel(text: loaderLang.deletingEntry))
-            try await entryService.deleteEntry(entry)
+            try await entryService.deleteEntry(entryId: entryId)
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to delete entry:", data: error.localizedDescription)
         }
@@ -404,13 +404,7 @@ final class HistoryStore: ObservableObject {
     private func deleteBabyEntryInternal(_ babyEntry: BabyHistoryEntry) async {
         do {
             notificationService.showLoader(LoaderModel(text: loaderLang.deletingEntry))
-            guard let entry = try await entryService.getEntry(byId: babyEntry.id) else {
-                logger.log(level: .error, tag: tag, message: "Baby entry not found for deletion: id=\(babyEntry.id)")
-                notificationService.dismissLoader()
-                notificationService.showToast(ToastModel(message: toastLang.errorDeletingEntry))
-                return
-            }
-            try await entryService.deleteEntry(entry)
+            try await entryService.deleteEntry(entryId: babyEntry.id)
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to delete baby entry: \(error.localizedDescription)")
             notificationService.showToast(ToastModel(message: toastLang.errorDeletingEntry))
@@ -473,16 +467,16 @@ final class HistoryStore: ObservableObject {
         selectedBabyDay = day
         Task {
             do {
-                let allEntries = try await entryService.getAllEntries()
+                let allEntries = try await entryService.fetchAllEntrySnapshots()
                 let babyProfile: BabyProfile? = {
                     if case .baby(let profile) = productTypeStore.selectedItem { return profile }
                     return nil
                 }()
                 let babyId = babyProfile?.id
                 let dayEntries = allEntries.filter {
-                    $0.deviceType == DeviceType.babyScale.rawValue
+                    $0.entryType == EntryType.baby.rawValue
                     && $0.operationType == OperationType.create.rawValue
-                    && $0.babyId == babyId
+                    && $0.babyEntry?.babyId == babyId
                     && self.localDayString(from: $0.entryTimestamp) == day.id
                 }
                 let metric = self.isMetric
@@ -516,7 +510,7 @@ final class HistoryStore: ObservableObject {
                         lengthInches: lengthInches,
                         lengthCm: lengthCm,
                         percentile: pct,
-                        notes: baby.note.isEmpty ? nil : baby.note,
+                        notes: entry.note?.isEmpty == false ? entry.note : nil,
                         weightDisplay: self.formatBabyWeightDisplay(decigrams: decigrams, source: source, isMetric: metric),
                         lengthDisplay: self.formatBabyLengthDisplay(mm: mm, isMetric: metric)
                     )
@@ -619,7 +613,7 @@ final class HistoryStore: ObservableObject {
     }
 
     /// Groups baby entries by day, then by week, building weekly summaries.
-    private func mapBabyEntriesToWeeks(_ entries: [Entry], profile: BabyProfile? = nil) -> [BabyHistoryWeek] {
+    private func mapBabyEntriesToWeeks(_ entries: [EntrySnapshot], profile: BabyProfile? = nil) -> [BabyHistoryWeek] {
         // Group by local day
         let grouped = Dictionary(grouping: entries) { entry -> String in
             return self.localDayString(from: entry.entryTimestamp)

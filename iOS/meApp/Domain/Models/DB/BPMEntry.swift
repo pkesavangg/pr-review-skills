@@ -6,7 +6,6 @@
 /// | diastolic      | int    | Diastolic blood pressure reading         |
 /// | meanArterial   | string | Mean arterial pressure                   |
 /// | pulse          | int    | Heart rate or pulse                      |
-/// | note           | string | User note for the entry                  |
 
 import Foundation
 import SwiftData
@@ -21,21 +20,17 @@ final class BPMEntry {
     var meanArterial: String
     /// Heart rate or pulse
     var pulse: Int
-    /// User note for the entry
-    var note: String
 
     init(
         systolic: Int,
         diastolic: Int,
         meanArterial: String,
-        pulse: Int,
-        note: String
+        pulse: Int
     ) {
         self.systolic = systolic
         self.diastolic = diastolic
         self.meanArterial = meanArterial
         self.pulse = pulse
-        self.note = note
     }
 
     convenience init(from dto: BpmOperationDTO) {
@@ -43,8 +38,7 @@ final class BPMEntry {
             systolic: dto.systolic.map { Int($0) } ?? 0,
             diastolic: dto.diastolic.map { Int($0) } ?? 0,
             meanArterial: dto.meanArterial ?? "",
-            pulse: dto.pulse.map { Int($0) } ?? 0,
-            note: dto.note ?? ""
+            pulse: dto.pulse.map { Int($0) } ?? 0
         )
     }
 }

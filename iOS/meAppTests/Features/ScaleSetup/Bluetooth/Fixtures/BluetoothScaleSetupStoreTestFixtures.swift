@@ -70,8 +70,8 @@ enum BluetoothScaleSetupStoreTestFixtures {
         id: String = "acct-1",
         email: String = "bluetooth-setup@example.com",
         firstName: String = "Lakshmi"
-    ) -> Account {
-        AccountTestFixtures.makeAccountModel(id: id, email: email, firstName: firstName, isActive: true)
+    ) -> AccountSnapshot {
+        AccountTestFixtures.makeAccountSnapshot(id: id, email: email, firstName: firstName, isActiveAccount: true)
     }
 
     static func enabledPermissions() -> [GGPermissionType: GGPermissionState] {
@@ -119,7 +119,7 @@ enum BluetoothScaleSetupStoreTestFixtures {
 
         let scaleInfo = SCALES.first { $0.setupType == setupType } ?? fallback
         return DeviceDiscoveryEvent(
-            device: scale,
+            device: scale.toSnapshot(),
             deviceInfo: scaleInfo,
             protocolType: .A6,
             isNew: true

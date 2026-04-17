@@ -74,9 +74,11 @@ struct DashboardGoalManagerTests {
     @Test("loadGoalData: missing goal settings returns without mutating goal state")
     func loadGoalDataWithoutGoalSettingsReturns() async throws {
         let (sut, accountService, _) = makeSUT(goalWeight: 2000)
-        let account = DashboardStoreTestSupport.makeActiveAccount(goalWeight: 2000)
-        account.goalSettings = nil
-        accountService.activeAccount = account
+        accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(
+            goalType: nil,
+            goalWeight: nil,
+            initialWeight: nil
+        )
 
         try await sut.loadGoalData()
 
@@ -129,9 +131,11 @@ struct DashboardGoalManagerTests {
     @Test("updateGoalProgress: missing goal settings returns without mutating state")
     func updateGoalProgressWithoutGoalSettingsReturns() async throws {
         let (sut, accountService, _) = makeSUT(goalWeight: 2000)
-        let account = DashboardStoreTestSupport.makeActiveAccount(goalWeight: 2000)
-        account.goalSettings = nil
-        accountService.activeAccount = account
+        accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(
+            goalType: nil,
+            goalWeight: nil,
+            initialWeight: nil
+        )
 
         try await sut.updateGoalProgress(currentWeight: 1950)
 
@@ -173,9 +177,11 @@ struct DashboardGoalManagerTests {
     @Test("calculateWeightlessGoal: missing goal settings returns without mutating state")
     func calculateWeightlessGoalWithoutGoalSettingsReturns() async throws {
         let (sut, accountService, _) = makeSUT(goalWeight: 2000)
-        let account = DashboardStoreTestSupport.makeActiveAccount(goalWeight: 2000)
-        account.goalSettings = nil
-        accountService.activeAccount = account
+        accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(
+            goalType: nil,
+            goalWeight: nil,
+            initialWeight: nil
+        )
 
         try await sut.calculateWeightlessGoal(anchorWeight: 175.0)
 
@@ -201,9 +207,11 @@ struct DashboardGoalManagerTests {
             Issue.record("Expected invalid gain goal to throw")
         } catch { }
 
-        let accountWithoutGoal = DashboardStoreTestSupport.makeActiveAccount(goalWeight: 2000)
-        accountWithoutGoal.goalSettings = nil
-        accountService.activeAccount = accountWithoutGoal
+        accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(
+            goalType: nil,
+            goalWeight: nil,
+            initialWeight: nil
+        )
 
         do {
             try sut.validateGoalSettings()

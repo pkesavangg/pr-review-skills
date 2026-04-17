@@ -18,7 +18,7 @@ final class WeightOnlyModeAlertStore: ObservableObject {
 
     // MARK: - Published Properties
     @Published var isLoading = false
-    @Published var weightOnlyScales: [Device] = []
+    @Published var weightOnlyScales: [DeviceSnapshot] = []
     @Published var showingScaleList = false
 
     // MARK: - Private Properties
@@ -97,7 +97,7 @@ final class WeightOnlyModeAlertStore: ObservableObject {
         Task { @MainActor [weak self] in
             guard let self else { return }
             // Use the same logic as ScaleSettingsStore - call updateWeightOnlyMode for connected scales.
-            let result = await self.bluetoothService.updateWeightOnlyMode(on: nil) // nil means all connected scales
+            let result = await self.bluetoothService.updateWeightOnlyMode(broadcastId: nil) // nil means all connected scales
             self.notificationService.dismissLoader()
             switch result {
             case .success:

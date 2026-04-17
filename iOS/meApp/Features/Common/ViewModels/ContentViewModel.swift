@@ -18,7 +18,7 @@ final class ContentViewModel: ObservableObject {
     @Published var currentAccount: AccountSnapshot?
     /// Represents the current screen that should be visible in `ContentView`.
     @Published var contentViewState: ContentViewState = .initializing
-    @Published var entries: [Entry] = []
+    @Published var entries: [EntrySnapshot] = []
 
     @Injector var accountService: AccountServiceProtocol
     @Injector var scaleService: ScaleServiceProtocol
@@ -218,11 +218,11 @@ final class ContentViewModel: ObservableObject {
         await entryService.migrateFromSQLiteIfNeeded()
         await entryService.migrateBabyEntriesToDecigrams()
         await entryService.syncAllEntriesWithRemote()
-        await entryService.loadDashboardData(entryType: .wg)
+        await entryService.loadDashboardData(entryType: .scale)
         bluetoothService.initialize()
 
         do {
-            entries = try await entryService.getAllEntries()
+            entries = try await entryService.fetchAllEntrySnapshots()
         } catch {
             entries = []
         }

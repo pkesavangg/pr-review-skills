@@ -39,9 +39,9 @@ extension BtWifiStoreTests {
             let store = harness.store
             let savedScale = BtWifiStoreTestFixtures.makeScale()
 
-            store.savedScale = savedScale
+            store.savedScale = savedScale.toSnapshot()
 
-            await store.fetchWifiNetworks(for: savedScale)
+            await store.fetchWifiNetworks(for: savedScale.broadcastIdString ?? "")
 
             #expect(store.currentStep == .availableWifiList)
             #expect(store.connectionState == .success)
@@ -58,9 +58,9 @@ extension BtWifiStoreTests {
             let store = harness.store
             let savedScale = BtWifiStoreTestFixtures.makeScale()
 
-            store.savedScale = savedScale
+            store.savedScale = savedScale.toSnapshot()
 
-            await store.fetchWifiNetworks(for: savedScale)
+            await store.fetchWifiNetworks(for: savedScale.broadcastIdString ?? "")
 
             #expect(store.connectionState == .failure)
             #expect(store.scaleSetupError == .noNetworkFound)
@@ -92,7 +92,7 @@ extension BtWifiStoreTests {
             let store = harness.store
             let savedScale = BtWifiStoreTestFixtures.makeScale()
 
-            store.savedScale = savedScale
+            store.savedScale = savedScale.toSnapshot()
             store.networkForm.setSSID("Home WiFi")
             store.networkForm.setPassword("secret")
 
@@ -112,7 +112,7 @@ extension BtWifiStoreTests {
             let store = harness.store
             let savedScale = BtWifiStoreTestFixtures.makeScale()
 
-            store.savedScale = savedScale
+            store.savedScale = savedScale.toSnapshot()
             store.networkForm.setSSID("Home WiFi")
             store.networkForm.setPassword("secret")
 
@@ -283,7 +283,7 @@ extension BtWifiStoreTests {
                 DeviceUser(name: "Old", token: "old", lastActive: 1, isBodyMetricsEnabled: false)
             ]
             store.currentUser = DeviceUser(name: "Lakshmi", token: "dup", lastActive: 2, isBodyMetricsEnabled: false)
-            store.duplicateList = [store.currentUser!]
+            store.duplicateList = [store.currentUser!] // swiftlint:disable:this force_unwrapping
             store.duplicateUserLastActiveAt = 2
             store.duplicateUserName = "Previous Retry"
             store.userNameForm.setDisplayName(" Latest Retry ")

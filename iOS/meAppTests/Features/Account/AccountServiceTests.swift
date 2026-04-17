@@ -1,8 +1,10 @@
+// swiftlint:disable file_length
 import Foundation
 import Testing
 @testable import meApp
 @Suite(.serialized)
 @MainActor
+// swiftlint:disable:next type_body_length
 struct AccountServiceTests {
     // MARK: - Already Covered + Auth
 
@@ -18,7 +20,7 @@ struct AccountServiceTests {
             AccountTestFixtures.makeAccountResponse(accountId: "202", email: "new@example.com", firstName: "New")
         )
 
-        let account = try await sut.signUp(
+        try await sut.signUp(
             email: "new@example.com",
             password: "secret",
             profile: AccountTestFixtures.makeProfile(email: "new@example.com", firstName: "New")
@@ -26,10 +28,10 @@ struct AccountServiceTests {
 
         #expect(api.createAccountCalls == 1)
         #expect(local.saveAccountCalls == 1)
-        #expect(account.accountId == "202")
-        #expect(account.firstName == "New")
-        #expect(account.isLoggedIn == true)
-        #expect(account.isActiveAccount == true)
+        #expect(sut.activeAccount?.accountId == "202")
+        #expect(sut.activeAccount?.firstName == "New")
+        #expect(sut.activeAccount?.isLoggedIn == true)
+        #expect(sut.activeAccount?.isActiveAccount == true)
     }
 
     @Test("signup API failure: throws and does not save")
@@ -41,7 +43,7 @@ struct AccountServiceTests {
         let sut = makeSUT(api: api, local: local)
 
         do {
-            _ = try await sut.signUp(
+            try await sut.signUp(
                 email: "new@example.com",
                 password: "secret",
                 profile: AccountTestFixtures.makeProfile(email: "new@example.com")
@@ -65,7 +67,7 @@ struct AccountServiceTests {
         let sut = makeSUT(api: api, local: local)
 
         do {
-            _ = try await sut.signUp(
+            try await sut.signUp(
                 email: "new@example.com",
                 password: "secret",
                 profile: AccountTestFixtures.makeProfile(email: "new@example.com")
@@ -88,12 +90,12 @@ struct AccountServiceTests {
         let local = MockAccountRepository()
         let sut = makeSUT(api: api, local: local)
 
-        let account = try await sut.logIn(email: "user@example.com", password: "secret")
+        try await sut.logIn(email: "user@example.com", password: "secret")
 
         #expect(api.logInCalls == 1)
         #expect(api.fetchAccountCalls == 1)
         #expect(local.saveAccountCalls == 1)
-        #expect(account.accountId == "101")
+        #expect(sut.activeAccount?.accountId == "101")
     }
 
     @Test("login API failure: throws and does not save")
@@ -105,7 +107,7 @@ struct AccountServiceTests {
         let sut = makeSUT(api: api, local: local)
 
         do {
-            _ = try await sut.logIn(email: "user@example.com", password: "secret")
+            try await sut.logIn(email: "user@example.com", password: "secret")
             Issue.record("Expected logIn to throw")
         } catch {
             #expect(error as? AccountTestError == .apiFailed)
@@ -125,7 +127,7 @@ struct AccountServiceTests {
         let sut = makeSUT(api: api, local: local)
 
         do {
-            _ = try await sut.logIn(email: "user@example.com", password: "secret")
+            try await sut.logIn(email: "user@example.com", password: "secret")
             Issue.record("Expected logIn to throw for save failure")
         } catch {
             #expect(error as? AccountTestError == .persistenceFailed)
@@ -145,7 +147,7 @@ struct AccountServiceTests {
         let sut = makeSUT(api: api, local: local)
 
         do {
-            _ = try await sut.logIn(email: "user@example.com", password: "secret")
+            try await sut.logIn(email: "user@example.com", password: "secret")
             Issue.record("Expected logIn to throw for refresh failure")
         } catch {
             #expect(error as? AccountTestError == .apiFailed)
@@ -167,7 +169,7 @@ struct AccountServiceTests {
         let sut = makeSUT(api: api, local: local)
 
         do {
-            _ = try await sut.signUp(email: "new-user@example.com", password: "secret", profile: AccountTestFixtures.makeProfile(email: "new-user@example.com"))
+            try await sut.signUp(email: "new-user@example.com", password: "secret", profile: AccountTestFixtures.makeProfile(email: "new-user@example.com"))
             Issue.record("Expected maxAccountsReached")
         } catch {
             assertMaxAccountsReached(error)
@@ -211,7 +213,7 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(api: api, local: local, keychain: keychain)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isLoggedIn: true, isActiveAccount: true)
 
         try await sut.logOut(accountId: "101")
 
@@ -246,7 +248,7 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(api: api, local: local, keychain: keychain)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isLoggedIn: true, isActiveAccount: true)
 
         try await sut.deleteAccount()
 
@@ -261,9 +263,9 @@ struct AccountServiceTests {
     func deleteAllAccountsSuccess() async throws {
         let local = MockAccountRepository()
         let keychain = MockKeychainService()
-        let a = AccountTestFixtures.makeAccountModel(id: "101", email: "a@example.com", isLoggedIn: true)
-        let b = AccountTestFixtures.makeAccountModel(id: "102", email: "b@example.com", isLoggedIn: true)
-        local.seed([a, b])
+        let acct1 = AccountTestFixtures.makeAccountModel(id: "101", email: "a@example.com", isLoggedIn: true)
+        let acct2 = AccountTestFixtures.makeAccountModel(id: "102", email: "b@example.com", isLoggedIn: true)
+        local.seed([acct1, acct2])
 
         let sut = makeSUT(local: local, keychain: keychain)
 
@@ -279,13 +281,13 @@ struct AccountServiceTests {
     func logOutAllAccountsSuccess() async throws {
         let api = MockAccountAPIRepository()
         let local = MockAccountRepository()
-        let a = AccountTestFixtures.makeAccountModel(id: "101", email: "a@example.com", isLoggedIn: true, isActive: false)
-        let b = AccountTestFixtures.makeAccountModel(id: "102", email: "b@example.com", isLoggedIn: true, isActive: true)
-        let c = AccountTestFixtures.makeAccountModel(id: "103", email: "c@example.com", isLoggedIn: true, isActive: false)
-        local.seed([a, b, c])
+        let acct1 = AccountTestFixtures.makeAccountModel(id: "101", email: "a@example.com", isLoggedIn: true, isActive: false)
+        let acct2 = AccountTestFixtures.makeAccountModel(id: "102", email: "b@example.com", isLoggedIn: true, isActive: true)
+        let acct3 = AccountTestFixtures.makeAccountModel(id: "103", email: "c@example.com", isLoggedIn: true, isActive: false)
+        local.seed([acct1, acct2, acct3])
 
         let sut = makeSUT(api: api, local: local)
-        sut.activeAccount = b
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "102", email: "b@example.com", isLoggedIn: true, isActiveAccount: true)
 
         try await sut.logOutAllAccounts()
 
@@ -299,12 +301,12 @@ struct AccountServiceTests {
         let api = MockAccountAPIRepository()
         api.logOutResult = .failure(AccountTestError.apiFailed)
         let local = MockAccountRepository()
-        let a = AccountTestFixtures.makeAccountModel(id: "101", email: "a@example.com", isLoggedIn: true, isActive: true)
-        let b = AccountTestFixtures.makeAccountModel(id: "102", email: "b@example.com", isLoggedIn: true, isActive: false)
-        local.seed([a, b])
+        let acct1 = AccountTestFixtures.makeAccountModel(id: "101", email: "a@example.com", isLoggedIn: true, isActive: true)
+        let acct2 = AccountTestFixtures.makeAccountModel(id: "102", email: "b@example.com", isLoggedIn: true, isActive: false)
+        local.seed([acct1, acct2])
 
         let sut = makeSUT(api: api, local: local)
-        sut.activeAccount = a
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "a@example.com", isLoggedIn: true, isActiveAccount: true)
 
         try await sut.logOutAllAccounts()
 
@@ -317,8 +319,7 @@ struct AccountServiceTests {
     @Test("getActiveAccount returns current active")
     func getActiveAccountReturnsCurrent() async throws {
         let sut = makeSUT()
-        let account = AccountTestFixtures.makeAccountModel(id: "101", email: "user@example.com", isLoggedIn: true, isActive: true)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isLoggedIn: true, isActiveAccount: true)
 
         let active = try await sut.getActiveAccount()
         #expect(active?.accountId == "101")
@@ -368,9 +369,9 @@ struct AccountServiceTests {
         let local = MockAccountRepository()
         let keychain = MockKeychainService()
 
-        let a = AccountTestFixtures.makeAccountModel(id: "101", email: "a@example.com")
-        let b = AccountTestFixtures.makeAccountModel(id: "102", email: "b@example.com")
-        local.seed([a, b])
+        let acct1 = AccountTestFixtures.makeAccountModel(id: "101", email: "a@example.com")
+        let acct2 = AccountTestFixtures.makeAccountModel(id: "102", email: "b@example.com")
+        local.seed([acct1, acct2])
 
         keychain.setTokens(AccountTestFixtures.makeTokens(access: "a101", refresh: "r101", expiresAt: "e101"), for: "101")
         keychain.setTokens(AccountTestFixtures.makeTokens(access: "a102", refresh: "r102", expiresAt: "e102"), for: "102")
@@ -398,9 +399,9 @@ struct AccountServiceTests {
         local.seed([active, target])
 
         let sut = makeSUT(api: api, local: local, bluetooth: bluetooth, networkMonitor: network)
-        sut.activeAccount = active
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "a@example.com", isLoggedIn: true, isActiveAccount: true)
 
-        try await sut.switchAccount(to: target)
+        try await sut.switchAccount(to: "102")
 
         #expect(api.fetchAccountCalls == 1)
         #expect(bluetooth.disconnectConnectedScalesCalls == 1)
@@ -416,10 +417,10 @@ struct AccountServiceTests {
         local.seed([active, target])
 
         let sut = makeSUT(local: local, networkMonitor: network)
-        sut.activeAccount = active
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "a@example.com", isLoggedIn: true, isActiveAccount: true)
 
         do {
-            try await sut.switchAccount(to: target)
+            try await sut.switchAccount(to: "102")
             Issue.record("Expected HTTPError.noInternet")
         } catch {
             guard case HTTPError.noInternet = error else {
@@ -432,13 +433,13 @@ struct AccountServiceTests {
     @Test("setActiveAccount success: makes others inactive")
     func setActiveAccountSuccess() async throws {
         let local = MockAccountRepository()
-        let a = AccountTestFixtures.makeAccountModel(id: "101", email: "a@example.com", isLoggedIn: true, isActive: true)
-        let b = AccountTestFixtures.makeAccountModel(id: "102", email: "b@example.com", isLoggedIn: true, isActive: false)
-        local.seed([a, b])
+        let acct1 = AccountTestFixtures.makeAccountModel(id: "101", email: "a@example.com", isLoggedIn: true, isActive: true)
+        let acct2 = AccountTestFixtures.makeAccountModel(id: "102", email: "b@example.com", isLoggedIn: true, isActive: false)
+        local.seed([acct1, acct2])
 
         let sut = makeSUT(local: local)
 
-        try await sut.setActiveAccount(b)
+        try await sut.setActiveAccount(accountId: "102")
 
         let all = local.all()
         let updatedA = try #require(all.first(where: { $0.accountId == "101" }))
@@ -454,7 +455,7 @@ struct AccountServiceTests {
     func createGoalNoActiveAccount() async {
         let sut = makeSUT()
         do {
-            _ = try await sut.createGoal(AccountTestFixtures.makeGoal())
+            try await sut.createGoal(AccountTestFixtures.makeGoal())
             Issue.record("Expected noActiveAccount")
         } catch {
             assertNoActiveAccount(error)
@@ -471,12 +472,12 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(api: api, local: local)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
-        let result = try await sut.createGoal(AccountTestFixtures.makeGoal(type: .lose, goalWeight: 145, initialWeight: 180))
+        try await sut.createGoal(AccountTestFixtures.makeGoal(type: .lose, goalWeight: 145, initialWeight: 180))
 
         #expect(api.createGoalCalls == 1)
-        #expect(result.goalSettings?.goalWeight == 145.0)
+        #expect(sut.activeAccount?.goalWeight == 145.0)
     }
 
     @Test("createGoal network error: saves offline")
@@ -489,13 +490,13 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(api: api, local: local)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
-        let result = try await sut.createGoal(AccountTestFixtures.makeGoal(type: .gain, goalWeight: 190, initialWeight: 180))
+        try await sut.createGoal(AccountTestFixtures.makeGoal(type: .gain, goalWeight: 190, initialWeight: 180))
 
-        #expect(result.goalSettings?.goalType == .gain)
-        #expect(result.goalSettings?.goalWeight == 190.0)
-        #expect(result.goalSettings?.isSynced == false)
+        #expect(sut.activeAccount?.goalType == .gain)
+        #expect(sut.activeAccount?.goalWeight == 190.0)
+        #expect(sut.activeAccount?.goalIsSynced == false)
     }
 
     @Test("updateProfile noActiveAccount: throws")
@@ -503,7 +504,7 @@ struct AccountServiceTests {
         let sut = makeSUT()
 
         do {
-            _ = try await sut.updateProfile(AccountTestFixtures.makeProfile())
+            try await sut.updateProfile(AccountTestFixtures.makeProfile())
             Issue.record("Expected noActiveAccount")
         } catch {
             assertNoActiveAccount(error)
@@ -520,13 +521,13 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(api: api, local: local)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "old@example.com", isActiveAccount: true)
 
-        let result = try await sut.updateProfile(AccountTestFixtures.makeProfile(email: "new@example.com", firstName: "ProfileNew"))
+        try await sut.updateProfile(AccountTestFixtures.makeProfile(email: "new@example.com", firstName: "ProfileNew"))
 
         #expect(api.patchProfileCalls == 1)
-        #expect(result.firstName == "ProfileNew")
-        #expect(result.isSynced == true)
+        #expect(sut.activeAccount?.firstName == "ProfileNew")
+        #expect(sut.activeAccount?.isSynced == true)
     }
 
     @Test("updateProfile network error + canSaveOffline: saves offline")
@@ -539,15 +540,15 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(api: api, local: local)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "old@example.com", firstName: "Old", isActiveAccount: true)
 
-        let result = try await sut.updateProfile(
+        try await sut.updateProfile(
             AccountTestFixtures.makeProfile(email: "new@example.com", firstName: "Offline"),
             canSaveOffline: true
         )
 
-        #expect(result.firstName == "Offline")
-        #expect(result.isSynced == false)
+        #expect(sut.activeAccount?.firstName == "Offline")
+        #expect(sut.activeAccount?.isSynced == false)
     }
 
     @Test("updateBodyComp API success: updates local")
@@ -560,12 +561,12 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(api: api, local: local)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
-        let result = try await sut.updateBodyComp(AccountTestFixtures.makeBodyComp(weightUnit: .lb, height: 180, activityLevel: .athlete))
+        try await sut.updateBodyComp(AccountTestFixtures.makeBodyComp(weightUnit: .lb, height: 180, activityLevel: .athlete))
 
         #expect(api.patchBodyCompCalls == 1)
-        #expect(result.isSynced == true)
+        #expect(sut.activeAccount?.isSynced == true)
     }
 
     @Test("updateBodyComp network error: saves offline")
@@ -578,12 +579,12 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(api: api, local: local)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
-        let result = try await sut.updateBodyComp(AccountTestFixtures.makeBodyComp(weightUnit: .lb, height: 181, activityLevel: .athlete))
+        try await sut.updateBodyComp(AccountTestFixtures.makeBodyComp(weightUnit: .lb, height: 181, activityLevel: .athlete))
 
-        #expect(result.weightSettings?.weightUnit == .lb)
-        #expect(result.isSynced == false)
+        #expect(sut.activeAccount?.weightUnit == .lb)
+        #expect(sut.activeAccount?.isSynced == false)
     }
 
     // MARK: - Tokens
@@ -596,7 +597,7 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(local: local, keychain: keychain)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
         try await sut.updateTokens(AccountTestFixtures.makeTokens(access: "newA", refresh: "newR", expiresAt: "newE"))
 
@@ -621,7 +622,7 @@ struct AccountServiceTests {
     @Test("updateTokens accountNotFound: throws")
     func updateTokensAccountNotFound() async {
         let sut = makeSUT()
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "missing", email: "x@example.com", isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "missing", email: "x@example.com", isActiveAccount: true)
 
         do {
             try await sut.updateTokens(AccountTestFixtures.makeTokens())
@@ -644,7 +645,7 @@ struct AccountServiceTests {
         keychain.setTokens(AccountTestFixtures.makeTokens(access: "oldA", refresh: "refresh-key", expiresAt: "oldE"), for: "101")
 
         let sut = makeSUT(api: api, local: local, keychain: keychain)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
         let tokens = try await sut.refreshTokens()
 
@@ -668,7 +669,7 @@ struct AccountServiceTests {
     @Test("refreshTokens missing refresh token: throws") 
     func refreshTokensMissingRefreshToken() async {
         let sut = makeSUT()
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "user@example.com", isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
         do {
             _ = try await sut.refreshTokens()
@@ -700,11 +701,10 @@ struct AccountServiceTests {
     @Test("getActiveTokens success from keychain")
     func getActiveTokensFromKeychain() async throws {
         let keychain = MockKeychainService()
-        let account = AccountTestFixtures.makeAccountModel(id: "101", email: "user@example.com", isActive: true)
         keychain.setTokens(AccountTestFixtures.makeTokens(access: "a", refresh: "r", expiresAt: "e"), for: "101")
 
         let sut = makeSUT(keychain: keychain)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
         let tokens = try await sut.getActiveTokens()
         #expect(tokens.accessToken == "a")
@@ -713,13 +713,15 @@ struct AccountServiceTests {
 
     @Test("getActiveTokens fallback from account when keychain empty")
     func getActiveTokensFallbackFromAccount() async throws {
-        let account = AccountTestFixtures.makeAccountModel(id: "101", email: "user@example.com", isActive: true)
-        account.accessToken = "fallbackA"
-        account.refreshToken = "fallbackR"
-        account.expiresAt = "fallbackE"
-
         let sut = makeSUT()
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(
+            id: "101",
+            email: "user@example.com",
+            isActiveAccount: true,
+            accessToken: "fallbackA", // swiftlint:disable:this no_hardcoded_credentials
+            refreshToken: "fallbackR",
+            expiresAt: "fallbackE"
+        )
 
         let tokens = try await sut.getActiveTokens()
         #expect(tokens.accessToken == "fallbackA")
@@ -745,7 +747,7 @@ struct AccountServiceTests {
         let sut = makeSUT()
 
         do {
-            _ = try await sut.refreshAccount()
+            try await sut.refreshAccount()
             Issue.record("Expected noActiveAccount")
         } catch {
             assertNoActiveAccount(error)
@@ -755,10 +757,10 @@ struct AccountServiceTests {
     @Test("refreshAccount accountNotFound: throws")
     func refreshAccountAccountNotFound() async {
         let sut = makeSUT()
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "missing", email: "x@example.com", isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "missing", email: "x@example.com", isActiveAccount: true)
 
         do {
-            _ = try await sut.refreshAccount()
+            try await sut.refreshAccount()
             Issue.record("Expected accountNotFound")
         } catch {
             assertAccountNotFound(error, id: "missing")
@@ -775,13 +777,13 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(api: api, local: local)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "old@example.com", isActiveAccount: true)
 
-        let refreshed = try await sut.refreshAccount()
+        try await sut.refreshAccount()
 
         #expect(api.fetchAccountCalls == 1)
-        #expect(refreshed.email == "fresh@example.com")
-        #expect(refreshed.isSynced == true)
+        #expect(sut.activeAccount?.email == "fresh@example.com")
+        #expect(sut.activeAccount?.isSynced == true)
     }
 
     @Test("refreshAccount network error: returns local without throw")
@@ -794,11 +796,11 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(api: api, local: local)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "local@example.com", isActiveAccount: true)
 
-        let refreshed = try await sut.refreshAccount()
+        try await sut.refreshAccount()
 
-        #expect(refreshed.email == "local@example.com")
+        #expect(sut.activeAccount?.email == "local@example.com")
         #expect(api.fetchAccountCalls == 1)
     }
 
@@ -979,7 +981,7 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(api: api, local: local, keychain: keychain)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
         try await sut.updatePassword(oldPassword: "old", newPassword: "new")
 
@@ -1009,7 +1011,7 @@ struct AccountServiceTests {
         let sut = makeSUT()
 
         do {
-            _ = try await sut.updateDashboardType(type: .dashboard12)
+            try await sut.updateDashboardType(type: .dashboard12)
             Issue.record("Expected noActiveAccount")
         } catch {
             assertNoActiveAccount(error)
@@ -1023,12 +1025,12 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(local: local)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
-        let result = try await sut.updateDashboardType(type: .dashboard12)
+        try await sut.updateDashboardType(type: .dashboard12)
 
-        #expect(result.dashboardSettings?.dashboardType == DashboardType.dashboard12.rawValue)
-        #expect(result.isSynced == true)
+        #expect(sut.activeAccount?.dashboardType == DashboardType.dashboard12.rawValue)
+        #expect(sut.activeAccount?.isSynced == true)
     }
 
     @Test("updateDashboardType local update failure: throws")
@@ -1039,10 +1041,10 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(local: local)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
         do {
-            _ = try await sut.updateDashboardType(type: .dashboard12)
+            try await sut.updateDashboardType(type: .dashboard12)
             Issue.record("Expected updateDashboardType to throw on local update failure")
         } catch {
             guard case HTTPError.noInternet = error else {
@@ -1057,7 +1059,7 @@ struct AccountServiceTests {
         let sut = makeSUT()
 
         do {
-            _ = try await sut.updateNotifications(notifications: AccountTestFixtures.makeNotifications())
+            try await sut.updateNotifications(notifications: AccountTestFixtures.makeNotifications())
             Issue.record("Expected noActiveAccount")
         } catch {
             assertNoActiveAccount(error)
@@ -1074,12 +1076,12 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(api: api, local: local)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
-        let result = try await sut.updateNotifications(notifications: AccountTestFixtures.makeNotifications(entry: false, weighIn: true))
+        try await sut.updateNotifications(notifications: AccountTestFixtures.makeNotifications(entry: false, weighIn: true))
 
         #expect(api.patchNotificationCalls == 1)
-        #expect(result.isSynced == true)
+        #expect(sut.activeAccount?.isSynced == true)
     }
 
     @Test("updateNotifications network error: saves offline")
@@ -1091,13 +1093,13 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(api: api, local: local)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
-        let result = try await sut.updateNotifications(notifications: AccountTestFixtures.makeNotifications(entry: false, weighIn: true))
+        try await sut.updateNotifications(notifications: AccountTestFixtures.makeNotifications(entry: false, weighIn: true))
 
-        #expect(result.notificationSettings?.shouldSendEntryNotifications == false)
-        #expect(result.notificationSettings?.shouldSendWeightInEntryNotifications == true)
-        #expect(result.isSynced == false)
+        #expect(sut.activeAccount?.shouldSendEntryNotifications == false)
+        #expect(sut.activeAccount?.shouldSendWeightInEntryNotifications == true)
+        #expect(sut.activeAccount?.isSynced == false)
     }
 
     @Test("updateIntegrations noActiveAccount: throws")
@@ -1105,7 +1107,7 @@ struct AccountServiceTests {
         let sut = makeSUT()
 
         do {
-            _ = try await sut.updateIntegrations(integrationType: .healthKit)
+            try await sut.updateIntegrations(integrationType: .healthKit)
             Issue.record("Expected noActiveAccount")
         } catch {
             assertNoActiveAccount(error)
@@ -1120,12 +1122,12 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(local: local, integration: integration)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
-        let result = try await sut.updateIntegrations(integrationType: .healthKit)
+        try await sut.updateIntegrations(integrationType: .healthKit)
 
         #expect(integration.createHealthIntegrationCalls == 1)
-        #expect(result.integrationSettings?.isHealthKitOn == true)
+        #expect(sut.activeAccount?.isHealthKitOn == true)
     }
 
     @Test("updateIntegrations network error: saves offline")
@@ -1137,12 +1139,12 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(local: local, integration: integration)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
-        let result = try await sut.updateIntegrations(integrationType: .healthKit)
+        try await sut.updateIntegrations(integrationType: .healthKit)
 
         #expect(integration.createHealthIntegrationCalls == 1)
-        #expect(result.integrationSettings?.isHealthKitOn == true)
+        #expect(sut.activeAccount?.isHealthKitOn == true)
     }
 
     @Test("deleteHealthIntegration noActiveAccount: throws")
@@ -1169,7 +1171,7 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(api: api, local: local, integration: integration)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true, isHealthKitOn: true)
 
         try await sut.deleteHealthIntegration(.healthKit)
 
@@ -1187,7 +1189,7 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(local: local, integration: integration)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true, isHealthKitOn: true)
 
         do {
             try await sut.deleteHealthIntegration(.healthKit)
@@ -1212,10 +1214,10 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(api: api, local: local)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
-        let result = try await sut.updateDashboardMetrics(metrics: ["bmi", "weight"])
-        #expect(result.dashboardSettings?.dashboardMetrics == "bmi,weight")
+        try await sut.updateDashboardMetrics(metrics: ["bmi", "weight"])
+        #expect(sut.activeAccount?.dashboardMetrics == "bmi,weight")
         #expect(api.patchDashboardMetricsCalls == 1)
     }
 
@@ -1228,10 +1230,10 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(api: api, local: local)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
         do {
-            _ = try await sut.updateDashboardMetrics(metrics: ["bmi", "weight"])
+            try await sut.updateDashboardMetrics(metrics: ["bmi", "weight"])
             Issue.record("Expected dashboard metrics update to throw")
         } catch {
             guard case HTTPError.noInternet = error else {
@@ -1252,10 +1254,10 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(api: api, local: local)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
-        let result = try await sut.updateProgressMetrics(metrics: ["goal", "monthlyChange"])
-        #expect(result.dashboardSettings?.progressMetrics == "goal,monthlyChange")
+        try await sut.updateProgressMetrics(metrics: ["goal", "monthlyChange"])
+        #expect(sut.activeAccount?.progressMetrics == "goal,monthlyChange")
         #expect(api.patchProgressMetricsCalls == 1)
     }
 
@@ -1268,10 +1270,10 @@ struct AccountServiceTests {
         local.seed([account])
 
         let sut = makeSUT(api: api, local: local)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
         do {
-            _ = try await sut.updateProgressMetrics(metrics: ["goal", "monthlyChange"])
+            try await sut.updateProgressMetrics(metrics: ["goal", "monthlyChange"])
             Issue.record("Expected progress metrics update to throw")
         } catch {
             guard case HTTPError.noInternet = error else {
@@ -1291,11 +1293,11 @@ struct AccountServiceTests {
         let account = AccountTestFixtures.makeAccountModel(id: "101", email: "user@example.com", isActive: true)
         local.seed([account])
         let sut = makeSUT(api: api, local: local)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
-        let result = try await sut.updateStreak(isStreakOn: true, streakTimestamp: "2026-01-01T00:00:00Z")
+        try await sut.updateStreak(isStreakOn: true, streakTimestamp: "2026-01-01T00:00:00Z")
         #expect(api.patchStreakCalls == 1)
-        #expect(result.accountId == "101")
+        #expect(sut.activeAccount?.accountId == "101")
     }
 
     @Test("updateStreak network error: saves offline")
@@ -1306,11 +1308,11 @@ struct AccountServiceTests {
         let account = AccountTestFixtures.makeAccountModel(id: "101", email: "user@example.com", isActive: true)
         local.seed([account])
         let sut = makeSUT(api: api, local: local)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
-        let result = try await sut.updateStreak(isStreakOn: true, streakTimestamp: "2026-01-01T00:00:00Z")
-        #expect(result.streaksSettings?.isStreakOn == true)
-        #expect(result.isSynced == false)
+        try await sut.updateStreak(isStreakOn: true, streakTimestamp: "2026-01-01T00:00:00Z")
+        #expect(sut.activeAccount?.isStreakOn == true)
+        #expect(sut.activeAccount?.isSynced == false)
     }
 
     @Test("updateWeightless success")
@@ -1321,11 +1323,11 @@ struct AccountServiceTests {
         let account = AccountTestFixtures.makeAccountModel(id: "101", email: "user@example.com", isActive: true)
         local.seed([account])
         let sut = makeSUT(api: api, local: local)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
-        let result = try await sut.updateWeightless(isWeightlessOn: true, weightlessTimestamp: "2026-01-01T00:00:00Z", weightlessWeight: 150)
+        try await sut.updateWeightless(isWeightlessOn: true, weightlessTimestamp: "2026-01-01T00:00:00Z", weightlessWeight: 150)
         #expect(api.patchWeightlessCalls == 1)
-        #expect(result.isSynced == true)
+        #expect(sut.activeAccount?.isSynced == true)
     }
 
     @Test("updateWeightless network error: saves offline")
@@ -1336,11 +1338,11 @@ struct AccountServiceTests {
         let account = AccountTestFixtures.makeAccountModel(id: "101", email: "user@example.com", isActive: true)
         local.seed([account])
         let sut = makeSUT(api: api, local: local)
-        sut.activeAccount = account
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
 
-        let result = try await sut.updateWeightless(isWeightlessOn: true, weightlessTimestamp: "2026-01-01T00:00:00Z", weightlessWeight: 150)
-        #expect(result.weightlessSettings?.isWeightlessOn == true)
-        #expect(result.isSynced == false)
+        try await sut.updateWeightless(isWeightlessOn: true, weightlessTimestamp: "2026-01-01T00:00:00Z", weightlessWeight: 150)
+        #expect(sut.activeAccount?.isWeightlessOn == true)
+        #expect(sut.activeAccount?.isSynced == false)
     }
 
     // MARK: - Remaining
