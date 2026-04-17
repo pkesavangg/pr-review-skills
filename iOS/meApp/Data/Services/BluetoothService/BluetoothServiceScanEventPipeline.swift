@@ -79,6 +79,7 @@ extension BluetoothService {
             if !isWeightOnlyModeAlertDismissed {
                 await checkCanShowWeightOnlyModeAlert()
             }
+            logger.log(level: .info, tag: tag, message: "DEVICE_DISCONNECTED called in handleSmartScaleData", data: scanData)
         case .DEVICE_MEMORY_FULL:
             await handleDeviceEventAlert(scanData, isDuplicateUserError: false)
         case .DEVICE_DUPLICATE_USER:

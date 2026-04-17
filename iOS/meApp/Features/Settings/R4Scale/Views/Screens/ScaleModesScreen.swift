@@ -5,7 +5,6 @@
 //  Created by Lakshmi Priya on 25/06/25.
 //
 
-import SwiftData
 import SwiftUI
 
 /// A screen that allows users to configure scale modes and settings.
@@ -181,52 +180,11 @@ final class ScaleModesViewModel: ObservableObject {
     @Injector var logger: LoggerServiceProtocol
     @Injector var accountService: AccountServiceProtocol
 
-    // Store the device ID for safe refetching from MainActor context
-    private let scaleId: PersistentIdentifier
     private let scaleIdString: String
 
-    // Cached scale for fallback when model not found in context
-    private var cachedScale: Device?
-
-    // Returns the cached scale - use refreshScale() to update from database
-    var scale: Device {
-        if let cached = cachedScale {
-            return cached
-        }
-        // This should never happen since we set cachedScale in init
-        logger.log(level: .error, tag: tag, message: "No cached scale available")
-        return Device(id: "", accountId: "", deviceName: "Error", deviceType: "")
-    }
-
-    /// Refreshes the scale from the database. Call this before operations that need fresh data.
-    private func refreshScale() {
-        // First try registeredModel for already-loaded models (fastest path)
-        if let freshScale: Device = PersistenceController.shared.context.registeredModel(for: scaleId) {
-            cachedScale = freshScale
-            return
-        }
-
-        // If not in identity map, fetch from persistent store using FetchDescriptor
-        let idToFind = scaleIdString
-        let descriptor = FetchDescriptor<Device>(
-            predicate: #Predicate<Device> { device in
-                device.id == idToFind
-            }
-        )
-        do {
-            let results = try PersistenceController.shared.context.fetch(descriptor)
-            if let freshScale = results.first {
-                cachedScale = freshScale
-                return
-            }
-        } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to fetch scale from store: \(error.localizedDescription)")
-        }
-
-        // Keep existing cached value if fetch failed
-        if cachedScale != nil {
-            logger.log(level: .debug, tag: tag, message: "Using existing cached scale after refresh failed")
-        }
+    /// Reads the current snapshot directly from the service — the single source of truth.
+    private var deviceSnapshot: DeviceSnapshot? {
+        scaleService.scales.first(where: { $0.id == scaleIdString })
     }
 
     @Published var modeValue: ScaleModes = .weightOnly
@@ -249,40 +207,24 @@ final class ScaleModesViewModel: ObservableObject {
     }
 
     init(scale: Device, isWeighOnlyModeEnabledByOthers: Bool = false) {
-        self.scaleId = scale.persistentModelID
         self.scaleIdString = scale.id
-        self.cachedScale = scale  // Cache the initial scale
         self.isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers
-        setupInitialValues()
+        setupFromSnapshot()
     }
 
-    private func setupInitialValues() {
-        // Initialize based on scale preferences - safe because scale fetches fresh from MainActor context
-        if let preference = scale.r4ScalePreference {
+    private func setupFromSnapshot() {
+        if let preference = deviceSnapshot?.r4ScalePreference {
             modeValue = preference.shouldMeasureImpedance ? .allBodyMetrics : .weightOnly
             isHeartRateEnabled = preference.shouldMeasurePulse
         }
-
-        // Store original values
         originalModeValue = modeValue
         originalIsHeartRateEnabled = isHeartRateEnabled
     }
 
     func loadScaleModeData() async {
-        // Refresh scale from database to get latest preference
-        // The scale computed property will automatically fetch fresh data
-        if let refreshedScale = try? await scaleService.getDevice(by: scaleIdString) {
-            await MainActor.run {
-                self.cachedScale = refreshedScale.toDevice()
-                self.setupInitialValues()
-            }
-        } else {
-            await MainActor.run {
-                self.setupInitialValues()
-            }
-        }
+        setupFromSnapshot()
     }
-    
+
     func updateModeValue(_ mode: ScaleModes) {
         modeValue = mode
         // If weight only mode is selected, disable heart rate
@@ -290,31 +232,28 @@ final class ScaleModesViewModel: ObservableObject {
             isHeartRateEnabled = false
         }
     }
-    
+
     func updateHeartRateEnabled(_ enabled: Bool) {
         isHeartRateEnabled = enabled
     }
-    
+
     func handleScaleModeSave(onSuccess: (() -> Void)? = nil) async {
         await performSaveOperation(onSuccess: onSuccess)
     }
-    
+
 // swiftlint:disable:next function_body_length
     private func performSaveOperation(onSuccess: (() -> Void)? = nil) async {
-        // Step 1: Read @Model synchronously on MainActor, extract to DTO
-        refreshScale()
-        guard let preference = scale.r4ScalePreference else {
+        guard let snapshot = deviceSnapshot, let preference = snapshot.r4ScalePreference else {
             logger.log(level: .error, tag: tag, message: "No R4 scale preference found for scale")
             notificationService.showToast(ToastModel(title: ToastStrings.error, message: "Unable to save scale mode settings"))
             return
         }
 
-        // Extract ALL data from @Model to DTO BEFORE any await
         var dto = preference.toDTO()
-        let deviceId = scale.id
-        let isConnected = scale.isConnected == true
+        let deviceId = scaleIdString
+        let isConnected = snapshot.isConnected
+        let broadcastId = snapshot.broadcastIdString ?? ""
 
-        // Step 2: Apply mutations to DTO (synchronous, no await)
         dto.shouldMeasureImpedance = (modeValue == .allBodyMetrics)
         dto.shouldMeasurePulse = isHeartRateEnabled && (modeValue == .allBodyMetrics)
         updateDisplayMetricsForHeartRate(dto: &dto)
@@ -322,17 +261,11 @@ final class ScaleModesViewModel: ObservableObject {
         notificationService.showLoader(LoaderModel(text: LoaderStrings.saving))
 
         do {
-            // Step 3: Save to local database using DTO-based method
             try await scaleService.updateScalePreference(deviceId, fromDTO: dto)
             await scaleService.pushLocalChangesToServer()
 
-            // Step 4: Bluetooth update if connected
             if isConnected {
-                // BluetoothService internally re-fetches the preference from DB via fetchAttachedPreference(by:),
-                // so we refresh scale to ensure DB has our latest DTO values.
-                refreshScale()
-                guard let freshPreference = scale.r4ScalePreference else { return }
-                let result = await bluetoothService.updateAccount(broadcastId: scale.broadcastIdString ?? "")
+                let result = await bluetoothService.updateAccount(broadcastId: broadcastId)
                 switch result {
                 case .success(let response):
                     switch response {
@@ -375,7 +308,6 @@ final class ScaleModesViewModel: ObservableObject {
             }
             await loadScaleModeData()
 
-            // Success - reset retry count and update state
             retryCount = 0
             originalModeValue = modeValue
             originalIsHeartRateEnabled = isHeartRateEnabled
@@ -388,16 +320,13 @@ final class ScaleModesViewModel: ObservableObject {
             logger.log(level: .error, tag: tag, message: "Failed to save scale mode: \(error.localizedDescription)", data: error)
             notificationService.dismissLoader()
 
-            // Handle retry logic
             if retryCount < maxRetries {
                 retryCount += 1
                 logger.log(level: .info, tag: tag, message: "Retrying save operation (attempt \(retryCount)/\(maxRetries))")
 
-                // Wait before retrying
                 try? await Task.sleep(nanoseconds: UInt64(retryDelay * 1_000_000_000))
                 await performSaveOperation(onSuccess: onSuccess)
             } else {
-                // Max retries reached - show alert
                 retryCount = 0
                 showUpdateAccountFailedAlert(onSuccess: onSuccess)
             }

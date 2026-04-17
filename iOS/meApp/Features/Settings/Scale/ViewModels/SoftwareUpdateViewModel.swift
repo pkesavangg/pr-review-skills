@@ -4,13 +4,13 @@
 //
 
 import Foundation
-import SwiftData
 import SwiftUI
 
 @MainActor
 final class SoftwareUpdateViewModel: ObservableObject {
     @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var notificationService: NotificationHelperServiceProtocol
+    @Injector var scaleService: ScaleServiceProtocol
     @Injector var logger: LoggerServiceProtocol
 
     @Published var selectedDate = Date()
@@ -18,36 +18,20 @@ final class SoftwareUpdateViewModel: ObservableObject {
     @Published var isUpdating: Bool = false
     @Published var updateScheduled: Bool = false
 
-    // R6: Store PersistentIdentifier instead of @Model directly
-    private let scaleId: PersistentIdentifier
     private let scaleIdString: String
-    private var cachedScale: Device?
     let currentFirmware: String?
     let latestVersion: String?
 
-    var scale: Device {
-        cachedScale ?? Device(id: scaleIdString, accountId: "")
+    private var deviceSnapshot: DeviceSnapshot? {
+        scaleService.scales.first(where: { $0.id == scaleIdString })
     }
 
     private let tag = "SoftwareUpdateViewModel"
 
     init(scale: Device, currentFirmware: String?, latestVersion: String?) {
-        self.scaleId = scale.persistentModelID
         self.scaleIdString = scale.id
-        self.cachedScale = scale
         self.currentFirmware = currentFirmware
         self.latestVersion = latestVersion
-    }
-
-    func refreshScale() {
-        let context = PersistenceController.shared.context
-        if let fresh: Device = context.registeredModel(for: scaleId) {
-            cachedScale = fresh
-            return
-        }
-        let idString = scaleIdString
-        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == idString })
-        cachedScale = try? context.fetch(descriptor).first
     }
 
     var hasUpdate: Bool {
@@ -57,8 +41,8 @@ final class SoftwareUpdateViewModel: ObservableObject {
     }
 
     func updateSoftware(isScheduled: Bool) async {
-        refreshScale()
-        guard scale.isConnected == true else { return }
+        guard let snapshot = deviceSnapshot, snapshot.isConnected else { return }
+        let broadcastId = snapshot.broadcastIdString ?? ""
         isUpdating = true
         let ts: UInt32 = {
             if isScheduled {
@@ -85,8 +69,7 @@ final class SoftwareUpdateViewModel: ObservableObject {
             }
         }()
         notificationService.showToast(ToastModel(title: "Updating", message: FirmwareUpdateStrings.updatingFirmware))
-        refreshScale() // R11: refresh before passing @Model to async bluetooth call
-        let res = await bluetoothService.updateFirmware(broadcastId: scale.broadcastIdString ?? "", timestamp: ts)
+        let res = await bluetoothService.updateFirmware(broadcastId: broadcastId, timestamp: ts)
         switch res {
         case .success:
             notificationService.showToast(ToastModel(title: ToastStrings.success, message: FirmwareUpdateStrings.updateTriggered))

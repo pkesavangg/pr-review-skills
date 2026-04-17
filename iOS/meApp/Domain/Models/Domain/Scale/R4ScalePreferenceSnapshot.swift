@@ -13,4 +13,20 @@ struct R4ScalePreferenceSnapshot: Equatable, Sendable {
     let wifiFotaScheduleTime: Int?
     let updatedAt: String?
     let isSynced: Bool
+
+    func toDTO() -> R4ScalePreferenceDTO {
+        R4ScalePreferenceDTO(
+            scaleId: id,
+            displayName: displayName,
+            displayMetrics: displayMetrics,
+            shouldFactoryReset: shouldFactoryReset,
+            shouldMeasureImpedance: shouldMeasureImpedance,
+            shouldMeasurePulse: shouldMeasurePulse,
+            timeFormat: timeFormat,
+            tzOffset: tzOffset,
+            wifiFotaScheduleTime: wifiFotaScheduleTime,
+            updatedAt: updatedAt,
+            isSynced: isSynced
+        )
+    }
 }
