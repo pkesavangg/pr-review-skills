@@ -63,7 +63,7 @@ extension BabyScaleSetupStore {
             let step = steps[idx]
             if step == .permissions && arePermissionsEnabled() {
                 idx += direction
-            } else if direction == -1 && (step == .wakeup || step == .connectingBluetooth) {
+            } else if direction == -1 && (step == .wakeup || step == .connectingBluetooth || step == .connectionError) {
                 idx += direction
             } else {
                 break
@@ -90,7 +90,7 @@ extension BabyScaleSetupStore {
 
     /// Steps where the footer buttons should be hidden.
     private var stepsToHideFooter: Set<BabyScaleSetupStep> {
-        [.wakeup, .connectingBluetooth]
+        [.wakeup, .connectingBluetooth, .connectionError]
     }
 
     func shouldShowFooter() -> Bool {

@@ -33,43 +33,49 @@ struct BabyScaleSetupScreen: View {
     private var stepViews: [AnyView] { setupStore.stepViews }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // MARK: - Header
-            NavbarHeaderView(
-                title: lang.setupHeader(sku),
-                leadingContent: {
-                    AppIconView(
-                        icon: AppAssets.xmarkSmall,
-                        size: IconSize(width: 24, height: 24)
-                    )
-                    .foregroundColor(theme.statusIconPrimary)
-                },
-                trailingContent: {
-                    Button {
-                        setupStore.showHelpModal()
-                    } label: {
-                        AppIconView(icon: AppAssets.helpCircle)
-                            .foregroundColor(theme.statusIconPrimary)
-                    }
-                },
-                onLeadingTap: { setupStore.handleExit() },
-                onTrailingTap: {},
-                canShowPresentationIndicator: true
-            )
+        ZStack {
+            VStack(spacing: 0) {
+                // MARK: - Header
+                NavbarHeaderView(
+                    title: lang.setupHeader(sku),
+                    leadingContent: {
+                        AppIconView(
+                            icon: AppAssets.xmarkSmall,
+                            size: IconSize(width: 24, height: 24)
+                        )
+                        .foregroundColor(theme.statusIconPrimary)
+                    },
+                    trailingContent: {
+                        Button {
+                            setupStore.showHelpModal()
+                        } label: {
+                            AppIconView(icon: AppAssets.helpCircle)
+                                .foregroundColor(theme.statusIconPrimary)
+                        }
+                    },
+                    onLeadingTap: { setupStore.handleExit() },
+                    onTrailingTap: {},
+                    canShowPresentationIndicator: true
+                )
 
-            // MARK: - Step Views
-            SwiperView(
-                selectedIndex: $setupStore.currentStepIndex,
-                views: stepViews
-            )
+                // MARK: - Step Views
+                SwiperView(
+                    selectedIndex: $setupStore.currentStepIndex,
+                    views: stepViews
+                )
 
-            // MARK: - Footer
-            if setupStore.shouldShowFooter() {
-                footerButtons
-                    .padding(.spacingSM)
+                // MARK: - Footer
+                if setupStore.shouldShowFooter() {
+                    footerButtons
+                        .padding(.spacingSM)
+                }
             }
+            .background(theme.backgroundSecondary)
+
+            // MARK: - Skip Dialog Overlay
+            skipDialogOverlay
         }
-        .background(theme.backgroundSecondary)
+        .animation(.easeInOut, value: setupStore.showSkipDialog)
         .environmentObject(setupStore)
         .onAppear {
             isBeingDismissed = false
@@ -119,6 +125,20 @@ struct BabyScaleSetupScreen: View {
 
             Spacer()
 
+            if setupStore.currentStep == .babyProfile {
+                ButtonView(
+                    text: commonLang.skip,
+                    type: .inlineTextTertiary,
+                    size: .small,
+                    isDisabled: false
+                ) {
+                    withAnimation { hideKeyboard() }
+                    setupStore.showSkipBabyProfileDialog()
+                }
+
+                Spacer()
+            }
+
             ButtonView(
                 text: nextButtonText,
                 type: .filledPrimary,
@@ -129,6 +149,54 @@ struct BabyScaleSetupScreen: View {
             ) {
                 withAnimation { hideKeyboard() }
                 setupStore.handleNextButtonClick()
+            }
+        }
+    }
+
+    // MARK: - Skip Dialog Overlay
+
+    @ViewBuilder
+    private var skipDialogOverlay: some View {
+        if setupStore.showSkipDialog {
+            ZStack {
+                theme.supportOverlay
+                    .ignoresSafeArea()
+
+                VStack(spacing: .spacingMD) {
+                    Text(lang.SkipDialog.title)
+                        .fontOpenSans(.heading4)
+                        .fontWeight(.bold)
+                        .foregroundColor(theme.textHeading)
+                        .multilineTextAlignment(.center)
+
+                    Text(lang.SkipDialog.message)
+                        .fontOpenSans(.body2)
+                        .foregroundColor(theme.textBody)
+                        .multilineTextAlignment(.center)
+
+                    ButtonView(
+                        text: lang.SkipDialog.finishSetup,
+                        type: .filledPrimary,
+                        size: .large,
+                        isDisabled: false
+                    ) {
+                        setupStore.handleSkipConfirmed()
+                    }
+
+                    ButtonView(
+                        text: lang.SkipDialog.cancel,
+                        type: .inlineTextPrimary,
+                        size: .large,
+                        isDisabled: false
+                    ) {
+                        setupStore.handleSkipCancelled()
+                    }
+                }
+                .padding(.spacingMD)
+                .background(theme.backgroundPrimary)
+                .cornerRadius(.radiusMD)
+                .padding(.horizontal, .spacingMD)
+                .transition(.scale.combined(with: .opacity))
             }
         }
     }
