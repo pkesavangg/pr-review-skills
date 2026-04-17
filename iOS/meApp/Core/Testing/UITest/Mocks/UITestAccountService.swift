@@ -4,11 +4,11 @@ import Foundation
 
 @MainActor
 final class UITestAccountService: AccountServiceProtocol {
-    @Published var activeAccount: Account?
-    @Published var allAccounts: [Account] = []
+    @Published var activeAccount: AccountSnapshot?
+    @Published var allAccounts: [AccountSnapshot] = []
 
-    var activeAccountPublisher: Published<Account?>.Publisher { $activeAccount }
-    var allAccountsPublisher: Published<[Account]>.Publisher { $allAccounts }
+    var activeAccountPublisher: Published<AccountSnapshot?>.Publisher { $activeAccount }
+    var allAccountsPublisher: Published<[AccountSnapshot]>.Publisher { $allAccounts }
 
     private let scenario: UITestLaunchOptions.Scenario
 
@@ -16,22 +16,20 @@ final class UITestAccountService: AccountServiceProtocol {
         self.scenario = scenario
     }
 
-    func signUp(email: String, password: String, profile: Profile) async throws -> Account {
+    func signUp(email: String, password: String, profile: Profile) async throws {
         throw UITestAccountServiceError.unsupported("signUp")
     }
 
-    func logIn(email: String, password: String) async throws -> Account {
+    func logIn(email: String, password: String) async throws {
         switch scenario {
         case .loginUnauthorized:
             throw HTTPError.unauthorized
         case .loginNetworkError:
             throw HTTPError.noInternet
         case .loggedOut, .loginSuccess:
-            let account = makeAccount(email: email)
-            allAccounts = [account]
-            // Keep active account nil in UI tests to avoid triggering full startup sync paths.
+            let snapshot = makeSnapshot(email: email)
+            allAccounts = [snapshot]
             activeAccount = nil
-            return account
         }
     }
 
@@ -53,47 +51,47 @@ final class UITestAccountService: AccountServiceProtocol {
         throw UITestAccountServiceError.unsupported("removeAccountFromDevice")
     }
 
-    func switchAccount(to account: Account) async throws {
+    func switchAccount(to accountId: String) async throws {
         throw UITestAccountServiceError.unsupported("switchAccount")
     }
 
-    func setActiveAccount(_ account: Account) async throws {
-        activeAccount = account
+    func setActiveAccount(accountId: String) async throws {
+        activeAccount = allAccounts.first { $0.accountId == accountId }
     }
 
     func shouldDeferUnauthenticatedLanding() -> Bool {
         false
     }
 
-    func getActiveAccount() async throws -> Account? {
+    func getActiveAccount() async throws -> AccountSnapshot? {
         activeAccount
     }
 
-    func getAllLoggedInAccounts() async throws -> [Account] {
-        allAccounts.filter { $0.isLoggedIn == true }
+    func getAllLoggedInAccounts() async throws -> [AccountSnapshot] {
+        allAccounts.filter { $0.isLoggedIn }
     }
 
-    func fetchAccount(byId id: String) async throws -> Account? {
+    func fetchAccount(byId id: String) async throws -> AccountSnapshot? {
         allAccounts.first { $0.accountId == id }
     }
 
-    func fetchAllAccounts() async throws -> [Account] {
+    func fetchAllAccounts() async throws -> [AccountSnapshot] {
         allAccounts
     }
 
-    func createGoal(_ goal: Goal) async throws -> Account {
+    func createGoal(_ goal: Goal) async throws {
         throw UITestAccountServiceError.unsupported("createGoal")
     }
 
-    func updateProfile(_ profile: Profile, canSaveOffline: Bool) async throws -> Account {
+    func updateProfile(_ profile: Profile, canSaveOffline: Bool) async throws {
         throw UITestAccountServiceError.unsupported("updateProfile")
     }
 
-    func updateBodyComp(_ bodyComp: BodyComp) async throws -> Account {
+    func updateBodyComp(_ bodyComp: BodyComp) async throws {
         throw UITestAccountServiceError.unsupported("updateBodyComp")
     }
 
-    func updateProductTypes(_ productTypes: [String]) async throws -> Account {
+    func updateProductTypes(_ productTypes: [String]) async throws {
         throw UITestAccountServiceError.unsupported("updateProductTypes")
     }
 
@@ -101,31 +99,31 @@ final class UITestAccountService: AccountServiceProtocol {
         throw UITestAccountServiceError.unsupported("updateTokens")
     }
 
-    func updateDashboardType(type: DashboardType) async throws -> Account {
+    func updateDashboardType(type: DashboardType) async throws {
         throw UITestAccountServiceError.unsupported("updateDashboardType")
     }
 
-    func updateIntegrations(integrationType: IntegrationType, preferences: [String: AnyCodable]) async throws -> Account {
+    func updateIntegrations(integrationType: IntegrationType, preferences: [String: AnyCodable]) async throws {
         throw UITestAccountServiceError.unsupported("updateIntegrations")
     }
 
-    func updateNotifications(notifications: Notifications) async throws -> Account {
+    func updateNotifications(notifications: Notifications) async throws {
         throw UITestAccountServiceError.unsupported("updateNotifications")
     }
 
-    func updateDashboardMetrics(metrics: [String]) async throws -> Account {
+    func updateDashboardMetrics(metrics: [String]) async throws {
         throw UITestAccountServiceError.unsupported("updateDashboardMetrics")
     }
 
-    func updateProgressMetrics(metrics: [String]) async throws -> Account {
+    func updateProgressMetrics(metrics: [String]) async throws {
         throw UITestAccountServiceError.unsupported("updateProgressMetrics")
     }
 
-    func updateStreak(isStreakOn: Bool, streakTimestamp: String) async throws -> Account {
+    func updateStreak(isStreakOn: Bool, streakTimestamp: String) async throws {
         throw UITestAccountServiceError.unsupported("updateStreak")
     }
 
-    func updateWeightless(isWeightlessOn: Bool, weightlessTimestamp: String, weightlessWeight: Double) async throws -> Account {
+    func updateWeightless(isWeightlessOn: Bool, weightlessTimestamp: String, weightlessWeight: Double) async throws {
         throw UITestAccountServiceError.unsupported("updateWeightless")
     }
 
@@ -141,7 +139,7 @@ final class UITestAccountService: AccountServiceProtocol {
         throw UITestAccountServiceError.unsupported("refreshAllAccounts")
     }
 
-    func refreshAccount(accountId: String?) async throws -> Account {
+    func refreshAccount(accountId: String?) async throws {
         throw UITestAccountServiceError.unsupported("refreshAccount")
     }
 
@@ -166,50 +164,57 @@ final class UITestAccountService: AccountServiceProtocol {
         throw UITestAccountServiceError.unsupported("deleteHealthIntegration")
     }
 
-    func updatePublishedState(forceRefresh: Bool) async throws {
+    func updatePublishedState() async throws {
         if scenario == .loggedOut || scenario == .loginUnauthorized || scenario == .loginNetworkError {
             activeAccount = nil
         }
     }
 
-    private func makeAccount(email: String) -> Account {
-        let dto = AccountDTO(
-            id: "ui-test-account",
+    private func makeSnapshot(email: String) -> AccountSnapshot {
+        AccountSnapshot(
+            accountId: "ui-test-account",
             email: email,
             firstName: "UI",
             lastName: "Tester",
             gender: .male,
-            zipcode: "00000",
-            weightUnit: .lb,
-            isWeightlessOn: false,
-            height: 70,
-            activityLevel: .normal,
+            height: "70",
             dob: "1990-01-01",
-            weightlessTimestamp: nil,
-            weightlessWeight: nil,
+            zipcode: "00000",
+            isLoggedIn: true,
+            isExpired: false,
+            isActiveAccount: false,
+            fcmToken: nil,
+            lastActiveTime: nil,
+            isSynced: true,
+            productTypes: [],
+            weightUnit: .lb,
+            weightHeight: "70",
+            activityLevel: .normal,
+            goalType: nil,
+            goalWeight: nil,
+            initialWeight: nil,
+            goalPercent: nil,
+            goalIsSynced: false,
             isStreakOn: false,
             streakTimestamp: nil,
+            isWeightlessOn: false,
+            weightlessWeight: nil,
+            weightlessTimestamp: nil,
+            shouldSendEntryNotifications: true,
+            shouldSendWeightInEntryNotifications: false,
             dashboardType: nil,
             dashboardMetrics: nil,
             progressMetrics: nil,
-            goalType: nil,
-            goalWeight: nil,
-            goalPercent: nil,
-            initialWeight: nil,
-            shouldSendEntryNotifications: true,
-            shouldSendWeightInEntryNotifications: false,
+            isHealthKitOn: false,
             isFitbitOn: false,
             isFitbitValid: false,
-            isMFPOn: false,
-            isMFPValid: false,
-            isHealthKitOn: false,
-            isHealthConnectOn: false
+            isHealthConnectOn: false,
+            isMfpOn: false,
+            isMfpValid: false,
+            accessToken: nil,
+            refreshToken: nil,
+            expiresAt: nil
         )
-        let account = Account(from: dto)
-        account.isLoggedIn = true
-        account.isExpired = false
-        account.isActiveAccount = false
-        return account
     }
 }
 

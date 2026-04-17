@@ -15,10 +15,10 @@ final class ContentViewModel: ObservableObject {
     }
 
     @Published var isLoggedIn: Bool = false
-    @Published var currentAccount: Account?
+    @Published var currentAccount: AccountSnapshot?
     /// Represents the current screen that should be visible in `ContentView`.
     @Published var contentViewState: ContentViewState = .initializing
-    @Published var entries: [Entry] = []
+    @Published var entries: [EntrySnapshot] = []
 
     @Injector var accountService: AccountServiceProtocol
     @Injector var scaleService: ScaleServiceProtocol
@@ -154,7 +154,7 @@ final class ContentViewModel: ObservableObject {
         if loggedIn {
             // Refresh account data to sync weightless settings and other account data
             do {
-                _ = try await accountService.refreshAccount()
+                try await accountService.refreshAccount()
                 logger.log(level: .info, tag: tag, message: "Account data refreshed successfully during initialization")
             } catch {
                 logger.log(
@@ -218,11 +218,11 @@ final class ContentViewModel: ObservableObject {
         await entryService.migrateFromSQLiteIfNeeded()
         await entryService.migrateBabyEntriesToDecigrams()
         await entryService.syncAllEntriesWithRemote()
-        await entryService.loadDashboardData(entryType: .wg)
+        await entryService.loadDashboardData(entryType: .scale)
         bluetoothService.initialize()
 
         do {
-            entries = try await entryService.getAllEntries()
+            entries = try await entryService.fetchAllEntrySnapshots()
         } catch {
             entries = []
         }

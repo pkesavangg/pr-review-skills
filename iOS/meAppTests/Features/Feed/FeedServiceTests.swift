@@ -20,7 +20,7 @@ struct FeedServiceTests {
         iam.unreadFeedCount = 1
         iam.feedSetting = GGFeedSetting(showPopupMessage: true, showNotificationBadge: true)
         
-        account.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "feed@example.com", isActive: true)
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "feed@example.com", isActiveAccount: true)
         
         let sut = makeSUT(repo: repo, iam: iam, account: account, logger: logger, notifications: notifications)
         var publishedFeeds: [[FeedItem]] = []
@@ -222,7 +222,7 @@ struct FeedServiceTests {
         iam.feedSetting = GGFeedSetting(showPopupMessage: true, showNotificationBadge: true)
         let sut = makeSUT(iam: iam)
         var observed: [[FeedItem]] = []
-        let c = sut.feedsChanged.sink { observed.append($0) }
+        let cancellable = sut.feedsChanged.sink { observed.append($0) }
         let eventFeed = try FeedTestFixtures.makeFeedItem(id: "changed-1")
 
         iam.feedsChanged.send([eventFeed])
@@ -233,7 +233,7 @@ struct FeedServiceTests {
 
         #expect(observed.last?.count == 1)
         #expect(sut.notificationBadgeUpdated.value == true)
-        c.cancel()
+        cancellable.cancel()
     }
 
     @Test("feedNotificationChanged publisher event: emits settings and refreshes badge")
@@ -243,7 +243,7 @@ struct FeedServiceTests {
         iam.feedSetting = GGFeedSetting(showPopupMessage: false, showNotificationBadge: false)
         let sut = makeSUT(iam: iam)
         var settingsEvents: [GGFeedSetting?] = []
-        let c = sut.feedSettingsChanged.sink { settingsEvents.append($0) }
+        let cancellable = sut.feedSettingsChanged.sink { settingsEvents.append($0) }
 
         iam.feedNotificationChanged.send(())
         for _ in 0..<20 where settingsEvents.isEmpty {
@@ -253,7 +253,7 @@ struct FeedServiceTests {
 
         #expect(settingsEvents.last??.showNotificationBadge == false)
         #expect(sut.notificationBadgeUpdated.value == false)
-        c.cancel()
+        cancellable.cancel()
     }
 
     @Test("checkAndTriggerFeedModal preload failure logs error and still shows modal")

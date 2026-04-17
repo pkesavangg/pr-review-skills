@@ -322,8 +322,7 @@ struct EntryServiceExtendedTests {
 
     @Test("exportCSV no dashboard type: throws AccountError.noActiveAccount")
     func exportCSVNoDashboardType() async {
-        let account = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "e@e.com", isActive: true)
-        account.dashboardSettings?.dashboardType = nil
+        let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "e@e.com", isActiveAccount: true, dashboardType: nil)
         let sut = makeSUT(activeAccount: account)
 
         do {
@@ -337,8 +336,7 @@ struct EntryServiceExtendedTests {
     @Test("exportCSV with dashboard4: uses non-R4 endpoint")
     func exportCSVDashboard4() async throws {
         let remote = MockEntryRepositoryAPI()
-        let account = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "e@e.com", isActive: true)
-        account.dashboardSettings?.dashboardType = DashboardType.dashboard4.rawValue
+        let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "e@e.com", isActiveAccount: true, dashboardType: DashboardType.dashboard4.rawValue)
         let sut = makeSUT(remote: remote, activeAccount: account)
 
         try await sut.exportCSV()
@@ -349,8 +347,7 @@ struct EntryServiceExtendedTests {
     func exportCSVRemoteFailure() async {
         let remote = MockEntryRepositoryAPI()
         remote.exportCsvError = EntryTestError.remoteFailure
-        let account = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "e@e.com", isActive: true)
-        account.dashboardSettings?.dashboardType = DashboardType.dashboard12.rawValue
+        let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "e@e.com", isActiveAccount: true, dashboardType: DashboardType.dashboard12.rawValue)
         let sut = makeSUT(remote: remote, activeAccount: account)
 
         do {
@@ -652,7 +649,7 @@ struct EntryServiceExtendedTests {
         integration: MockIntegrationService? = nil,
         goalAlert: MockGoalAlertService? = nil,
         logger: MockLoggerService? = nil,
-        activeAccount: Account? = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "entry@example.com", isActive: true)
+        activeAccount: AccountSnapshot? = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "entry@example.com", isActiveAccount: true)
     ) -> EntryService {
         let account = MockAccountService()
         account.activeAccount = activeAccount

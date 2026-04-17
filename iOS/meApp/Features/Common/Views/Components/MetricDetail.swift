@@ -122,20 +122,20 @@ struct MetricDetailView: View {
     }
 
     // MARK: - Scale Preference Helpers
-    private var allScales: [Device] { ScaleService.shared.scales }
-    private var heartRateDisabledScales: [Device] {
+    private var allScales: [DeviceSnapshot] { ScaleService.shared.scales }
+    private var heartRateDisabledScales: [DeviceSnapshot] {
         allScales.filter { device in
             guard let pref = device.r4ScalePreference else { return false }
             return pref.shouldMeasureImpedance && !pref.shouldMeasurePulse
         }
     }
-    private var activePreference: R4ScalePreference? { allScales.first?.r4ScalePreference }
-    private var selectedDisabledPreference: R4ScalePreference? { heartRateDisabledScales.first?.r4ScalePreference }
+    private var activePreference: R4ScalePreferenceSnapshot? { allScales.first?.r4ScalePreference }
+    private var selectedDisabledPreference: R4ScalePreferenceSnapshot? { heartRateDisabledScales.first?.r4ScalePreference }
     private var isHeartRateOnBannerState: Bool { heartRateDisabledScales.isEmpty }
     private var selectedModeFromPreference: ScaleModes { (activePreference?.shouldMeasureImpedance ?? true) ? .allBodyMetrics : .weightOnly }
     /// Preferred scale for presenting ScaleModes when exactly one scale needs update.
     private var selectedScale: Device? {
-        heartRateDisabledScales.first ?? ScaleService.shared.scales.first
+        (heartRateDisabledScales.first ?? ScaleService.shared.scales.first)?.toDevice()
     }
 
     var body: some View {

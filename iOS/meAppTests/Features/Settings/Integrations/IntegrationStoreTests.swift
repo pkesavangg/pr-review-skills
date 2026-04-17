@@ -113,7 +113,7 @@ struct IntegrationStoreTests {
     func disconnectConfirmationSuccess() async {
         let account = MockAccountService()
         account.activeAccount = IntegrationStoreTestFixtures.makeAccount(id: "acc-5", fitbitOn: true)
-        account.refreshAccountResult = .success(IntegrationStoreTestFixtures.makeAccount(id: "acc-5", fitbitOn: false))
+        account.refreshAccountResult = .success(())
         let integrationService = MockIntegrationStoreService()
         let notification = MockNotificationHelperService()
 
@@ -183,7 +183,7 @@ struct IntegrationStoreTests {
     func refreshAccountsPendingConnectSuccess() async {
         let account = MockAccountService()
         account.activeAccount = IntegrationStoreTestFixtures.makeAccount(id: "acc-8", fitbitOn: false)
-        account.refreshAccountResult = .success(IntegrationStoreTestFixtures.makeAccount(id: "acc-8", fitbitOn: true))
+        account.refreshAccountResult = .success(())
         let notification = MockNotificationHelperService()
         let (store, _, _, _, _) = makeSUT(accountService: account, notificationService: notification)
 
@@ -201,7 +201,7 @@ struct IntegrationStoreTests {
     func refreshAccountsPendingConnectFailure() async {
         let account = MockAccountService()
         account.activeAccount = IntegrationStoreTestFixtures.makeAccount(id: "acc-9", fitbitOn: false)
-        account.refreshAccountResult = .success(IntegrationStoreTestFixtures.makeAccount(id: "acc-9", fitbitOn: false))
+        account.refreshAccountResult = .success(())
         let notification = MockNotificationHelperService()
         let (store, _, _, _, _) = makeSUT(accountService: account, notificationService: notification)
 
@@ -218,7 +218,7 @@ struct IntegrationStoreTests {
     func refreshAccountsPendingDisconnectFailure() async {
         let account = MockAccountService()
         account.activeAccount = IntegrationStoreTestFixtures.makeAccount(id: "acc-9b", fitbitOn: true)
-        account.refreshAccountResult = .success(IntegrationStoreTestFixtures.makeAccount(id: "acc-9b", fitbitOn: true))
+        account.refreshAccountResult = .success(())
         let notification = MockNotificationHelperService()
         let (store, _, _, _, _) = makeSUT(accountService: account, notificationService: notification)
 
@@ -251,7 +251,7 @@ struct IntegrationStoreTests {
     func retryConnectFailureRetriggersSelectIntegration() async {
         let account = MockAccountService()
         account.activeAccount = IntegrationStoreTestFixtures.makeAccount(id: "acc-10b", fitbitOn: false)
-        account.refreshAccountResult = .success(IntegrationStoreTestFixtures.makeAccount(id: "acc-10b", fitbitOn: false))
+        account.refreshAccountResult = .success(())
         let notification = MockNotificationHelperService()
         let (store, _, _, _, _) = makeSUT(accountService: account, notificationService: notification)
 
@@ -303,7 +303,7 @@ struct IntegrationStoreTests {
             mfpOn: true,
             mfpValid: false
         )
-        account.refreshAccountResult = .success(account.activeAccount!)
+        account.refreshAccountResult = .success(())
         let integrationService = MockIntegrationStoreService()
         let notification = MockNotificationHelperService()
         let (_, _, _, _, _) = makeSUT(
@@ -442,7 +442,7 @@ private func makeSUT(
     notificationService: MockNotificationHelperService? = nil,
     loggerService: MockLoggerService? = nil,
     monitor: MockNetworkMonitor? = nil
-) -> (
+) -> ( // swiftlint:disable:this large_tuple
     store: IntegrationStore,
     accountService: MockAccountService,
     integrationService: MockIntegrationStoreService,

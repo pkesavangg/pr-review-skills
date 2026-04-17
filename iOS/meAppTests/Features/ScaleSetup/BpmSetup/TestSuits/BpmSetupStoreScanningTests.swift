@@ -190,5 +190,58 @@ extension BpmSetupStoreTests {
             #expect(advanced)
             #expect(harness.notification.showAlertCalls == firstAlertCount)
         }
+
+        @Test("Already Paired alert shown only once when peripheralId match found after successful second pairing")
+        func sameUserConflictAlertShownOnlyOnceViaPeripheralId() async {
+            // SDK returns deviceExistsWithSameUser first, then creationCompleted on retry.
+            // No MAC match pre-pairing — duplicate is detected post-connection via peripheralIdentifier.
+            let bluetooth = MockBluetoothService()
+            bluetooth.connectBpmResults = [
+                .success(.deviceExistsWithSameUser),
+                .success(.creationCompleted)
+            ]
+            // getDeviceInfo succeeds so peripheralIdentifier gets set on the device
+            bluetooth.getDeviceInfoResult = .success(DeviceInfo(
+                serialNumber: "SN-ABC",
+                deviceName: "BPM",
+                userNumber: 1
+            ))
+            let harness = BpmSetupStoreTestFixtures.makeSUT(bluetooth: bluetooth)
+            let store = harness.store
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
+            store.selectedUserNumber = 1
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.scanning, in: store)
+
+            // Existing DB entry shares the same peripheralIdentifier (serialNumber) and same user
+            let existing = BpmSetupStoreTestFixtures.makeBpmDevice(id: "existing-bpm")
+            existing.peripheralIdentifier = "SN-ABC"
+            existing.userNumber = "1"
+            harness.scaleService.scales = [existing]
+
+            let device = BpmSetupStoreTestFixtures.makeBpmDevice(id: "new-bpm")
+            device.broadcastIdString = "ABCD"
+            device.protocolType = "A3"
+            store.testSetInternalState(
+                discoveredDevice: device,
+                discoveryEvent: BpmSetupStoreTestFixtures.makeBpmDiscoveryEvent(device: device)
+            )
+
+            // First pairing call — SDK says deviceExistsWithSameUser → shows alert
+            await store.testStartPairing()
+
+            let firstAlertCount = harness.notification.showAlertCalls
+            #expect(firstAlertCount == 1)
+            #expect(harness.notification.alertData?.title == BpmSetupStrings.DeviceConflictAlert.SameUser.title)
+
+            // User taps Continue — second pairing succeeds, peripheralId match found in DB
+            harness.notification.alertData?.buttons[1].action(nil)
+
+            // Must advance without showing the alert a second time
+            let advanced = await BpmSetupStoreTestFixtures.waitUntil {
+                store.currentStep != .scanning
+            }
+            #expect(advanced)
+            #expect(harness.notification.showAlertCalls == firstAlertCount)
+        }
     }
 }

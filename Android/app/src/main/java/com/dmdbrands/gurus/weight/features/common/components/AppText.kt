@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -12,12 +11,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -154,33 +155,44 @@ fun AppText(
 ) {
   val appearance = TextTypeDefaults.appearance(textType, enabled)
 
-  val ANNOTATION_TAG = "ANNOTATED_CLICK"
-
-  val finalText = remember(text, annotatedText, spanStyle) {
+  val finalText = remember(text, annotatedText, spanStyle, onAnnotationClick) {
      if (annotatedText != null && spanStyle != null) {
       buildAnnotatedString {
+        val linkAnnotation = if (onAnnotationClick != null) {
+          LinkAnnotation.Clickable(tag = "ANNOTATED_CLICK") {
+            onAnnotationClick(annotatedText)
+          }
+        } else {
+          null
+        }
         when (annotationPosition) {
           AnnotationPosition.Start -> {
-            pushStringAnnotation(tag = ANNOTATION_TAG, annotation = annotatedText)
-            withStyle(spanStyle) { append(annotatedText) }
-            pop()
+            if (linkAnnotation != null) {
+              withLink(linkAnnotation) { withStyle(spanStyle) { append(annotatedText) } }
+            } else {
+              withStyle(spanStyle) { append(annotatedText) }
+            }
             append(text.removePrefix(annotatedText))
           }
 
           AnnotationPosition.End -> {
             append(text.removeSuffix(annotatedText))
-            pushStringAnnotation(tag = ANNOTATION_TAG, annotation = annotatedText)
-            withStyle(spanStyle) { append(annotatedText) }
-            pop()
+            if (linkAnnotation != null) {
+              withLink(linkAnnotation) { withStyle(spanStyle) { append(annotatedText) } }
+            } else {
+              withStyle(spanStyle) { append(annotatedText) }
+            }
           }
 
           AnnotationPosition.Middle -> {
             val startIndex = text.indexOf(annotatedText)
             if (startIndex != -1) {
               append(text.substring(0, startIndex))
-              pushStringAnnotation(tag = ANNOTATION_TAG, annotation = annotatedText)
-              withStyle(spanStyle) { append(annotatedText) }
-              pop()
+              if (linkAnnotation != null) {
+                withLink(linkAnnotation) { withStyle(spanStyle) { append(annotatedText) } }
+              } else {
+                withStyle(spanStyle) { append(annotatedText) }
+              }
               append(text.substring(startIndex + annotatedText.length))
             } else {
               append(text) // fallback
@@ -216,20 +228,12 @@ fun AppText(
     horizontalAlignment = Alignment.Start,
   ) {
     if (onAnnotationClick != null && annotatedText != null && spanStyle != null) {
-      ClickableText(
+      Text(
         text = finalText,
-        style = appearance.style.copy(color = color ?: appearance.color, textAlign = textAlign),
+        style = appearance.style,
+        color = color ?: appearance.color,
+        textAlign = textAlign,
         modifier = modifier,
-        onClick = { offset ->
-          finalText.getStringAnnotations(
-            tag = ANNOTATION_TAG,
-            start = offset,
-            end = offset + 1,
-          ).firstOrNull()
-            ?.let { annotation ->
-              onAnnotationClick(annotation.item)
-            }
-        },
         overflow = textOverflow,
         maxLines = maxLines,
       )

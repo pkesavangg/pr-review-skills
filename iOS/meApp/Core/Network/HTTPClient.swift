@@ -207,7 +207,7 @@ final class HTTPClient: HTTPClientProtocol {
     
     // MARK: - Account Handling
     /// Retrieves the active account or a specific account by ID.
-    private func getAccount(_ accountId: String?) async throws -> Account {
+    private func getAccount(_ accountId: String?) async throws -> AccountSnapshot {
         if let accountId = accountId {
             guard let account = try await accountService.fetchAccount(byId: accountId) else {
                 throw AccountError.accountNotFound(id: accountId)

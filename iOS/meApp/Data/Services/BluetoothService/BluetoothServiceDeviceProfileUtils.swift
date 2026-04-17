@@ -12,14 +12,11 @@ import SwiftData
 extension BluetoothService {
     // MARK: - Scale & Profile Helpers
 
-    func getSafeScaleType(for device: Device) -> String? {
-        guard let bathScale = device.bathScale else {
-            return nil
-        }
-        return bathScale.scaleType
+    func getSafeScaleType(for device: DeviceSnapshot) -> String? {
+        device.bathScale?.scaleType
     }
 
-    func disconnectDeletedScales(currentScales: [Device], newScales: [Device]) async {
+    func disconnectDeletedScales(currentScales: [DeviceSnapshot], newScales: [DeviceSnapshot]) async {
         let accountId = activeAccount?.accountId ?? "unknown"
 
         let currentScalesForAccount = currentScales.filter { $0.accountId == accountId }
@@ -37,23 +34,22 @@ extension BluetoothService {
                 continue
             }
 
-            if scale.isConnected ?? false {
-                if let broadcastId = scale.broadcastIdString {
-                    scale.isWeighOnlyModeEnabledByOthers = false
-                    await scaleService.updateConnectedDeviceWeightOnlyMode(
-                        broadcastId: broadcastId,
-                        isWeightOnlyModeEnabledByOthers: false
-                    )
-                }
-                let deleteResult = await deleteDevice(scale, disconnect: false)
+            if scale.isConnected {
+                let broadcastId = scale.broadcastIdString ?? ""
+                await scaleService.updateConnectedDeviceWeightOnlyMode(
+                    broadcastId: broadcastId,
+                    isWeightOnlyModeEnabledByOthers: false
+                )
+                let deleteResult = await deleteDevice(broadcastId: broadcastId, disconnect: false)
                 if case .failure(let error) = deleteResult {
                     logger.log(level: .error, tag: tag, message: "Failed to delete device: \(error.localizedDescription)")
                 }
 
-                guard let broadcastId = scale.broadcastIdString else { continue }
-                let disconnectResult = await disconnectDevice(broadcastId: broadcastId)
-                if case .failure(let error) = disconnectResult {
-                    logger.log(level: .error, tag: tag, message: "Failed to disconnect device: \(error.localizedDescription)")
+                if !broadcastId.isEmpty {
+                    let disconnectResult = await disconnectDevice(broadcastId: broadcastId)
+                    if case .failure(let error) = disconnectResult {
+                        logger.log(level: .error, tag: tag, message: "Failed to disconnect device: \(error.localizedDescription)")
+                    }
                 }
             }
         }
@@ -97,15 +93,15 @@ extension BluetoothService {
         return ConversionTools.convertStoredHeightToCm(storedHeight)
     }
 
-    func createScanData(from account: Account?) -> ScanData? {
+    func createScanData(from account: AccountSnapshot?) -> ScanData? {
         guard let account = account else { return nil }
-        let heightCm = calculateHeightCm(height: account.weightSettings?.height)
+        let heightCm = calculateHeightCm(height: account.weightHeight)
         let age = calculateAge(from: account.dob) ?? 30
-        let isAthlete = account.weightSettings?.activityLevel?.rawValue == "athlete"
-        let unit = account.weightSettings?.weightUnit?.rawValue ?? "kg"
+        let isAthlete = account.activityLevel?.rawValue == "athlete"
+        let unit = account.weightUnit.rawValue
         let sex = account.gender?.rawValue ?? "male"
         let goalWeight: Double? = {
-            if let goalWeight = account.goalSettings?.goalWeight {
+            if let goalWeight = account.goalWeight {
                 return ConversionTools.convertStoredToDisplay(Int(goalWeight), isMetric: true)
             }
             return nil
@@ -121,7 +117,7 @@ extension BluetoothService {
         )
     }
 
-    func getProfileInfo(from account: Account) async -> GGBTUserProfile? {
+    func getProfileInfo(from account: AccountSnapshot) async -> GGBTUserProfile? {
         guard let scanData = createScanData(from: account) else {
             return nil
         }
@@ -130,7 +126,7 @@ extension BluetoothService {
             currentWeight = ConversionTools.convertStoredToDisplay(weight, isMetric: true)
         }
         let name = account.firstName ?? "User"
-        let goalType = account.goalSettings?.goalType?.rawValue
+        let goalType = account.goalType?.rawValue
         return GGBTUserProfile(
             name: name,
             age: scanData.age,

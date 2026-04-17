@@ -97,8 +97,8 @@ enum WifiScaleSetupStoreTestFixtures {
         id: String = "acct-1",
         email: String = "wifi-setup@example.com",
         firstName: String = "Lakshmi"
-    ) -> Account {
-        AccountTestFixtures.makeAccountModel(id: id, email: email, firstName: firstName, isActive: true)
+    ) -> AccountSnapshot {
+        AccountTestFixtures.makeAccountSnapshot(id: id, email: email, firstName: firstName, isActiveAccount: true)
     }
 
     static func enabledPermissions() -> [GGPermissionType: GGPermissionState] {

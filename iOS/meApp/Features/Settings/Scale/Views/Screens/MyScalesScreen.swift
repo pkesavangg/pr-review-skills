@@ -16,6 +16,7 @@ struct MyScalesScreen: View {
 
     @FocusState private var focusedField: FocusField?
     @State private var shouldMaintainKeyboardFocus = false
+    @State private var wasKeyboardVisible = false
 
     // Consolidated sheet presentation state
     private enum ActiveSheet: Identifiable, Equatable {
@@ -69,8 +70,8 @@ struct MyScalesScreen: View {
     }
 
     /// Determines the scale type based on the scale's SKU and other properties
-    private func determineScaleType(for scale: Device) -> ScaleType {
-        return ScaleTypeHelper.determineScaleType(for: scale)
+    private func determineScaleType(for scale: DeviceSnapshot) -> ScaleType {
+        return ScaleTypeHelper.determineScaleType(sku: scale.sku, scaleType: scale.bathScale?.scaleType, deviceType: scale.deviceType)
     }
 
     /// Centralised handler that encapsulates duplicate-check & navigation logic for a selected **scale**.
@@ -164,7 +165,7 @@ struct MyScalesScreen: View {
                             let lookupSku = DeviceHelper.mapSkuForDisplay(enteredValue)
 
                             // Find the scale or BPM matching the SKU.
-                            let scaleInfo = SCALES.first(where: { $0.sku == lookupSku })
+                            let scaleInfo = SCALES.first { $0.sku == lookupSku }
                                 ?? bpmCatalogItem(forEnteredCode: enteredValue)
                             guard let scaleInfo else { return }
 
@@ -269,9 +270,9 @@ struct MyScalesScreen: View {
                                 status: scaleStore.determineConnectionStatus(for: scale),
                                 onTap: {
                                     if scaleType == .bpm {
-                                        router.navigate(to: .bpmDeviceSettings(device: scale))
+                                        router.navigate(to: .bpmDeviceSettings(device: scale.toDevice()))
                                     } else {
-                                        router.navigate(to: .scaleSettings(scale: scale, scaleType: scaleType))
+                                        router.navigate(to: .scaleSettings(scale: scale.toDevice(), scaleType: scaleType))
                                     }
                                 },
                                 scaleType: scaleType
@@ -292,14 +293,25 @@ struct MyScalesScreen: View {
                 hideKeyboard()
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            if !shouldMaintainKeyboardFocus {
+                wasKeyboardVisible = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            if !shouldMaintainKeyboardFocus {
+                wasKeyboardVisible = false
+            }
+        }
         .onChange(of: scenePhase) { _, newPhase in
-            if focusedField == .modelNumber {
+            if wasKeyboardVisible {
                 if newPhase != .active {
                     shouldMaintainKeyboardFocus = true
                 } else if shouldMaintainKeyboardFocus {
                     Task { @MainActor in
                         try? await Task.sleep(nanoseconds: 100_000_000)
                         focusedField = .modelNumber
+                        try? await Task.sleep(nanoseconds: 500_000_000)
                         shouldMaintainKeyboardFocus = false
                     }
                 }

@@ -95,7 +95,7 @@ struct LoginStoreTests {
     @Test("logIn success: calls account service and fires success callback")
     func logInSuccess() async {
         let (store, accountService, _, notificationService) = makeSUT()
-        accountService.logInResult = .success(AuthTestFixtures.makeAccount(email: "user@example.com"))
+        accountService.logInResult = .success(())
 
         var didSucceed = false
         store.onLoginSuccess = { didSucceed = true }
@@ -115,7 +115,7 @@ struct LoginStoreTests {
     @Test("logIn trims email before API call")
     func logInTrimsEmailBeforeAPICall() async {
         let (store, accountService, _, _) = makeSUT()
-        accountService.logInResult = .success(AuthTestFixtures.makeAccount(email: "user@example.com"))
+        accountService.logInResult = .success(())
 
         store.loginForm.email.value = "  user@example.com  "
         store.loginForm.password.value = "secret123"
@@ -129,7 +129,7 @@ struct LoginStoreTests {
     @Test("logIn account switching: does not fire onLoginSuccess")
     func logInAccountSwitchingSkipsSuccessCallback() async {
         let (store, accountService, _, _) = makeSUT()
-        accountService.logInResult = .success(AuthTestFixtures.makeAccount())
+        accountService.logInResult = .success(())
         store.isFromAccountSwitching = true
 
         var didSucceed = false
@@ -434,7 +434,7 @@ struct LoginStoreTests {
     @Test("logIn account switching with no callbacks does not trigger login success callback")
     func logInAccountSwitchingNoCallbacks() async {
         let (store, accountService, _, _) = makeSUT()
-        accountService.logInResult = .success(AuthTestFixtures.makeAccount(email: "user@example.com"))
+        accountService.logInResult = .success(())
         store.isFromAccountSwitching = true
         store.loginForm.email.value = "user@example.com"
         store.loginForm.password.value = "secret123"
@@ -474,7 +474,7 @@ struct LoginStoreTests {
 }
 
 @MainActor
-private func makeSUT() -> (LoginStore, MockAccountService, MockLoggerService, MockNotificationHelperService) {
+private func makeSUT() -> (LoginStore, MockAccountService, MockLoggerService, MockNotificationHelperService) { // swiftlint:disable:this large_tuple
     TestDependencyContainer.reset()
 
     let accountService = MockAccountService()

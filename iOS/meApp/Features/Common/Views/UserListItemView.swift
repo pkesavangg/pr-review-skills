@@ -97,8 +97,9 @@ struct UserListItemView: View {
             }
         }
         .padding(.spacingSM)
-        .background(theme.backgroundPrimary)
         .frame(height: 72)
+        .frame(maxWidth: .infinity)
+        .background(theme.backgroundPrimary)
     }
 }
 

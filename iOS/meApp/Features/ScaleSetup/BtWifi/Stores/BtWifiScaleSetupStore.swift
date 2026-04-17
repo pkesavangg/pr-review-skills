@@ -162,7 +162,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
     }
         
-    @Published var savedScale: Device?
+    @Published var savedScale: DeviceSnapshot?
     
     /// Current error state for the setup flow
     @Published var scaleSetupError: BtWifiScaleSetupError = .none

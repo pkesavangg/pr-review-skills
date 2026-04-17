@@ -16,7 +16,7 @@ struct BluetoothServiceDeviceInfoTests {
         let sut = makeSUT(logger: logger)
         let device = makeDevice(isConnected: false)
 
-        let result = await sut.getDeviceInfo(for: device)
+        let result = await sut.getDeviceInfo(broadcastId: device.broadcastIdString ?? "")
 
         guard case .failure(let error) = result else {
             Issue.record("Expected failure")
@@ -33,8 +33,9 @@ struct BluetoothServiceDeviceInfoTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(isConnected: true)
+        sut.bluetoothScales = [device.toSnapshot()]
 
-        let result = await sut.getDeviceInfo(for: device)
+        let result = await sut.getDeviceInfo(broadcastId: device.broadcastIdString ?? "")
 
         guard case .success(let info) = result else {
             Issue.record("Expected success, got \(result)")
@@ -50,27 +51,10 @@ struct BluetoothServiceDeviceInfoTests {
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(isConnected: false)
 
-        let result = await sut.getDeviceInfo(for: device, skipConnectionCheck: true)
+        let result = await sut.getDeviceInfo(broadcastId: device.broadcastIdString ?? "", skipConnectionCheck: true)
 
         guard case .success = result else {
             Issue.record("Expected success, got \(result)")
-            return
-        }
-    }
-
-    @Test("getDeviceInfo returns invalidBroadcastId when broadcastIdString is nil")
-    func getDeviceInfoNilBroadcastId() async {
-        let sut = makeSUT()
-        let device = makeDevice(broadcastIdString: nil, isConnected: true)
-
-        let result = await sut.getDeviceInfo(for: device, skipConnectionCheck: true)
-
-        guard case .failure(let error) = result else {
-            Issue.record("Expected failure")
-            return
-        }
-        guard case .invalidBroadcastId = error else {
-            Issue.record("Expected invalidBroadcastId, got \(error)")
             return
         }
     }
@@ -81,8 +65,9 @@ struct BluetoothServiceDeviceInfoTests {
         sdk.getDeviceInfoResult = nil
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(isConnected: true)
+        sut.bluetoothScales = [device.toSnapshot()]
 
-        let result = await sut.getDeviceInfo(for: device)
+        let result = await sut.getDeviceInfo(broadcastId: device.broadcastIdString ?? "")
 
         guard case .failure(let error) = result else {
             Issue.record("Expected failure")
@@ -101,8 +86,9 @@ struct BluetoothServiceDeviceInfoTests {
         let logger = MockLoggerService()
         let sut = makeSUT(logger: logger, sdk: sdk)
         let device = makeDevice(isConnected: true)
+        sut.bluetoothScales = [device.toSnapshot()]
 
-        let result = await sut.getDeviceInfo(for: device)
+        let result = await sut.getDeviceInfo(broadcastId: device.broadcastIdString ?? "")
 
         guard case .failure = result else {
             Issue.record("Expected failure")
@@ -116,8 +102,9 @@ struct BluetoothServiceDeviceInfoTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(isConnected: true)
+        sut.bluetoothScales = [device.toSnapshot()]
 
-        let result = await sut.getDeviceInfo(for: device)
+        let result = await sut.getDeviceInfo(broadcastId: device.broadcastIdString ?? "")
 
         guard case .success(let info) = result else {
             Issue.record("Expected success")
@@ -137,8 +124,9 @@ struct BluetoothServiceDeviceInfoTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(isConnected: true)
+        sut.bluetoothScales = [device.toSnapshot()]
 
-        _ = await sut.getDeviceInfo(for: device)
+        _ = await sut.getDeviceInfo(broadcastId: device.broadcastIdString ?? "")
 
         #expect(sdk.deviceInfoRequests.count == 1)
     }
@@ -151,7 +139,7 @@ struct BluetoothServiceDeviceInfoTests {
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(isConnected: true)
 
-        let result = await sut.getDeviceLogs(for: device)
+        let result = await sut.getDeviceLogs(broadcastId: device.broadcastIdString ?? "")
 
         guard case .success(let logs) = result else {
             Issue.record("Expected success")
@@ -162,23 +150,6 @@ struct BluetoothServiceDeviceInfoTests {
         #expect(logs.logs.first?.log == "entry")
     }
 
-    @Test("getDeviceLogs returns invalidBroadcastId when broadcastIdString is nil")
-    func getDeviceLogsNilBroadcastId() async {
-        let sut = makeSUT()
-        let device = makeDevice(broadcastIdString: nil)
-
-        let result = await sut.getDeviceLogs(for: device)
-
-        guard case .failure(let error) = result else {
-            Issue.record("Expected failure")
-            return
-        }
-        guard case .invalidBroadcastId = error else {
-            Issue.record("Expected invalidBroadcastId, got \(error)")
-            return
-        }
-    }
-
     @Test("getDeviceLogs returns failure when SDK throws")
     func getDeviceLogsSDKError() async {
         let sdk = MockBluetoothSDKClient()
@@ -186,7 +157,7 @@ struct BluetoothServiceDeviceInfoTests {
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(isConnected: true)
 
-        let result = await sut.getDeviceLogs(for: device)
+        let result = await sut.getDeviceLogs(broadcastId: device.broadcastIdString ?? "")
 
         guard case .failure(let error) = result else {
             Issue.record("Expected failure")
@@ -234,8 +205,9 @@ struct BluetoothServiceDeviceInfoTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(id: "wo-1", isConnected: true)
+        sut.bluetoothScales = [device.toSnapshot()]
 
-        let result = await sut.updateWeightOnlyMode(on: device)
+        let result = await sut.updateWeightOnlyMode(broadcastId: device.broadcastIdString)
 
         guard case .success = result else {
             Issue.record("Expected success")
@@ -249,12 +221,12 @@ struct BluetoothServiceDeviceInfoTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk)
         sut.bluetoothScales = [
-            makeDevice(id: "c1", broadcastIdString: "BID-C1", isConnected: true),
-            makeDevice(id: "c2", broadcastIdString: "BID-C2", isConnected: true),
-            makeDevice(id: "d1", broadcastIdString: "BID-D1", isConnected: false)
+            makeDevice(id: "c1", broadcastIdString: "BID-C1", isConnected: true).toSnapshot(),
+            makeDevice(id: "c2", broadcastIdString: "BID-C2", isConnected: true).toSnapshot(),
+            makeDevice(id: "d1", broadcastIdString: "BID-D1", isConnected: false).toSnapshot()
         ]
 
-        let result = await sut.updateWeightOnlyMode(on: nil)
+        let result = await sut.updateWeightOnlyMode(broadcastId: nil)
 
         guard case .success = result else {
             Issue.record("Expected success")
@@ -269,10 +241,10 @@ struct BluetoothServiceDeviceInfoTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk)
         sut.bluetoothScales = [
-            makeDevice(id: "d1", broadcastIdString: "BID-1", isConnected: false)
+            makeDevice(id: "d1", broadcastIdString: "BID-1", isConnected: false).toSnapshot()
         ]
 
-        let result = await sut.updateWeightOnlyMode(on: nil)
+        let result = await sut.updateWeightOnlyMode(broadcastId: nil)
 
         guard case .success = result else {
             Issue.record("Expected success")
@@ -287,8 +259,9 @@ struct BluetoothServiceDeviceInfoTests {
         sdk.updateSettingError = DeviceInfoTestError.sdkFailure
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(isConnected: true)
+        sut.bluetoothScales = [device.toSnapshot()]
 
-        let result = await sut.updateWeightOnlyMode(on: device)
+        let result = await sut.updateWeightOnlyMode(broadcastId: device.broadcastIdString)
 
         // updateWeightOnlyMode always returns .success
         guard case .success = result else {
@@ -329,9 +302,9 @@ struct BluetoothServiceDeviceInfoTests {
         let scale = MockScaleService()
         let sut = makeSUT(scale: scale, sdk: sdk)
         sut.bluetoothScales = [
-            makeDevice(id: "c1", broadcastIdString: "BID-C1", isConnected: true),
-            makeDevice(id: "c2", broadcastIdString: "BID-C2", isConnected: true),
-            makeDevice(id: "d1", broadcastIdString: "BID-D1", isConnected: false)
+            makeDevice(id: "c1", broadcastIdString: "BID-C1", isConnected: true).toSnapshot(),
+            makeDevice(id: "c2", broadcastIdString: "BID-C2", isConnected: true).toSnapshot(),
+            makeDevice(id: "d1", broadcastIdString: "BID-D1", isConnected: false).toSnapshot()
         ]
 
         await sut.disconnectConnectedScales()
@@ -352,25 +325,13 @@ struct BluetoothServiceDeviceInfoTests {
         #expect(sut.skipDevices.isEmpty)
     }
 
-    @Test("disconnectConnectedScales resets isWeighOnlyModeEnabledByOthers")
-    func disconnectConnectedScalesResetsWeightOnly() async {
-        let sut = makeSUT()
-        let device = makeDevice(id: "wo-1", broadcastIdString: "WO-BID", isConnected: true)
-        device.isWeighOnlyModeEnabledByOthers = true
-        sut.bluetoothScales = [device]
-
-        await sut.disconnectConnectedScales()
-
-        #expect(device.isWeighOnlyModeEnabledByOthers == false)
-    }
-
     @Test("disconnectConnectedScales skips devices without broadcastIdString")
     func disconnectConnectedScalesNilBroadcastId() async {
         let sdk = MockBluetoothSDKClient()
         let scale = MockScaleService()
         let sut = makeSUT(scale: scale, sdk: sdk)
         let device = makeDevice(id: "no-bid", broadcastIdString: nil, isConnected: true)
-        sut.bluetoothScales = [device]
+        sut.bluetoothScales = [device.toSnapshot()]
 
         await sut.disconnectConnectedScales()
 
@@ -386,7 +347,7 @@ struct BluetoothServiceDeviceInfoTests {
         let scale = MockScaleService()
         let logger = MockLoggerService()
         let sut = makeSUT(scale: scale, logger: logger, sdk: sdk)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", isActiveAccount: true)
 
         let r4Device = makeDevice(
             id: "r4-1",
@@ -394,7 +355,7 @@ struct BluetoothServiceDeviceInfoTests {
             isConnected: true,
             bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true)
         )
-        sut.bluetoothScales = [r4Device]
+        sut.bluetoothScales = [r4Device.toSnapshot()]
 
         let result = await sut.deleteR4Scales()
 
@@ -418,7 +379,7 @@ struct BluetoothServiceDeviceInfoTests {
             isConnected: true,
             bathScale: BathScale(scaleType: ScaleSourceType.wifi.rawValue, bodyComp: false)
         )
-        sut.bluetoothScales = [wifiDevice]
+        sut.bluetoothScales = [wifiDevice.toSnapshot()]
 
         let result = await sut.deleteR4Scales()
 
@@ -440,7 +401,7 @@ struct BluetoothServiceDeviceInfoTests {
             isConnected: false,
             bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true)
         )
-        sut.bluetoothScales = [device]
+        sut.bluetoothScales = [device.toSnapshot()]
 
         let result = await sut.deleteR4Scales()
 
@@ -457,7 +418,7 @@ struct BluetoothServiceDeviceInfoTests {
         let sut = makeSUT(sdk: sdk)
 
         let device = makeDevice(id: "no-bath", broadcastIdString: "NO-BATH", isConnected: true)
-        sut.bluetoothScales = [device]
+        sut.bluetoothScales = [device.toSnapshot()]
 
         let result = await sut.deleteR4Scales()
 
@@ -474,7 +435,7 @@ struct BluetoothServiceDeviceInfoTests {
         sdk.deleteUserError = DeviceInfoTestError.sdkFailure
         let logger = MockLoggerService()
         let sut = makeSUT(logger: logger, sdk: sdk)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", isActiveAccount: true)
 
         let device = makeDevice(
             id: "r4-fail",
@@ -482,7 +443,7 @@ struct BluetoothServiceDeviceInfoTests {
             isConnected: true,
             bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true)
         )
-        sut.bluetoothScales = [device]
+        sut.bluetoothScales = [device.toSnapshot()]
 
         let result = await sut.deleteR4Scales()
 
@@ -499,7 +460,7 @@ struct BluetoothServiceDeviceInfoTests {
         let scale = MockScaleService()
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(scale: scale, sdk: sdk)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", isActiveAccount: true)
 
         let device = makeDevice(
             id: "r4-wo",
@@ -508,11 +469,10 @@ struct BluetoothServiceDeviceInfoTests {
             bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true)
         )
         device.isWeighOnlyModeEnabledByOthers = true
-        sut.bluetoothScales = [device]
+        sut.bluetoothScales = [device.toSnapshot()]
 
         _ = await sut.deleteR4Scales()
 
-        #expect(device.isWeighOnlyModeEnabledByOthers == false)
         #expect(scale.updateConnectedDeviceWeightOnlyModeCalls == 1)
     }
 
@@ -535,7 +495,7 @@ struct BluetoothServiceDeviceInfoTests {
     func deleteR4ScalesMultiple() async {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", isActiveAccount: true)
 
         let r4a = makeDevice(
             id: "r4-a",
@@ -555,7 +515,7 @@ struct BluetoothServiceDeviceInfoTests {
             isConnected: true,
             bathScale: BathScale(scaleType: ScaleSourceType.wifi.rawValue, bodyComp: false)
         )
-        sut.bluetoothScales = [r4a, r4b, nonR4]
+        sut.bluetoothScales = [r4a.toSnapshot(), r4b.toSnapshot(), nonR4.toSnapshot()]
 
         let result = await sut.deleteR4Scales()
 

@@ -57,10 +57,10 @@ struct PermissionsServiceTests {
     func requiredCategoriesDerivedFromScaleTypes() {
         let scale = MockScaleService()
         scale.scales = [
-            PermissionsTestFixtures.makeDevice(id: "bt", scaleType: .bluetoothScale),
-            PermissionsTestFixtures.makeDevice(id: "wifi", scaleType: .wifi),
-            PermissionsTestFixtures.makeDevice(id: "appsync", scaleType: .appsync),
-            PermissionsTestFixtures.makeDevice(id: "r4", scaleType: .btWifiR4)
+            PermissionsTestFixtures.makeDevice(id: "bt", scaleType: .bluetoothScale).toSnapshot(),
+            PermissionsTestFixtures.makeDevice(id: "wifi", scaleType: .wifi).toSnapshot(),
+            PermissionsTestFixtures.makeDevice(id: "appsync", scaleType: .appsync).toSnapshot(),
+            PermissionsTestFixtures.makeDevice(id: "r4", scaleType: .btWifiR4).toSnapshot()
         ]
         let sut = makeSUT(scale: scale)
 
@@ -74,7 +74,7 @@ struct PermissionsServiceTests {
     @Test("required categories are cleared when scales become empty")
     func requiredCategoriesClearWhenNoScales() async {
         let scale = MockScaleService()
-        scale.scales = [PermissionsTestFixtures.makeDevice(id: "wifi", scaleType: .wifi)]
+        scale.scales = [PermissionsTestFixtures.makeDevice(id: "wifi", scaleType: .wifi).toSnapshot()]
         let sut = makeSUT(scale: scale)
         #expect(sut.getRequiredPermissionList().contains(.notifications))
 

@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import CoreGraphics
 import Foundation
 
@@ -5,7 +6,7 @@ import Foundation
 ///
 /// All functions are stateless — inputs in, results out.
 /// No `@MainActor`, no side effects, fully unit-testable.
-struct GraphDataPreparer {
+struct GraphDataPreparer { // swiftlint:disable:this type_body_length
 
     // MARK: - Chart Series Entry Point
 

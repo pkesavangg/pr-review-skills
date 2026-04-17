@@ -163,7 +163,7 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
 
     private func determineDashboardTypeFromAccount() -> DashboardType {
         guard let account = accountService.activeAccount,
-              let dashboardTypeString = account.dashboardSettings?.dashboardType
+              let dashboardTypeString = account.dashboardType
         else {
             return .dashboard12
         }

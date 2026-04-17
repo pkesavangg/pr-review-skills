@@ -115,19 +115,19 @@ final class MonthSectionViewModel: BaseSectionViewModel {
             showCrosshair = true
         } else {
             // Find nearest data point in the section
-            let nearestCandidate = candidates.min(by: { first, second in
+            let nearestCandidate = candidates.min { first, second in
                 let firstDistance = abs(first.timeIntervalSince(clampedDate))
                 let secondDistance = abs(second.timeIntervalSince(clampedDate))
                 if firstDistance == secondDistance { return first < second }
                 return firstDistance < secondDistance
-            })
+            }
 
             // Also find nearest grid tick within the current section
             let realTicks: [Date] = allTicks.count > 1 ? Array(allTicks.dropLast()) : allTicks
             let sectionTicks = realTicks.filter { $0 >= startTick && $0 < sectionEnd }
-            let nearestTick = sectionTicks.min(by: {
+            let nearestTick = sectionTicks.min {
                 abs($0.timeIntervalSince(clampedDate)) < abs($1.timeIntervalSince(clampedDate))
-            })
+            }
 
             // Select whichever is closer: the grid tick or the data point.
             // On ties, prefer the tick so grid lines are always selectable.

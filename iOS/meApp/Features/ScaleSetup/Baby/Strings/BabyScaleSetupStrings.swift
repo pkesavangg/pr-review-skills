@@ -84,6 +84,14 @@ struct BabyScaleSetupStrings {
         static let unitNoteText = "Note: The selected weight unit determines the length unit automatically."
     }
 
+    // MARK: - Skip Dialog
+    struct SkipDialog {
+        static let title = "Skip Baby Profile?"
+        static let message = "Setup is complete. You can add a baby profile later from Settings."
+        static let cancel = "CANCEL"
+        static let finishSetup = "FINISH SETUP"
+    }
+
     // MARK: - Baby Added
     struct BabyAdded {
         static let title = "Your Baby Has Been Added!"
