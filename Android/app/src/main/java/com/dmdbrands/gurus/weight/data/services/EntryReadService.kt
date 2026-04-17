@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 
 /**
@@ -59,17 +60,11 @@ class EntryReadService @Inject constructor(
     private var _accountId: String? = null
     override val accountId: String? get() = _accountId
 
-    // ── Hot snapshot StateFlows (populated on setAccountId, instant for consumers) ──
+    // ── Single hot snapshot map (populated on setAccountId, instant for consumers) ──
 
-    private val _snapshots = mutableMapOf<String, MutableStateFlow<List<PeriodSummary>>>()
-    private val _babySnapshots = MutableStateFlow<Map<String, List<PeriodBabySummary>>>(emptyMap())
+    private val _snapshots = MutableStateFlow<Map<String, List<PeriodSummary>>>(emptyMap())
+    override val snapshots: StateFlow<Map<String, List<PeriodSummary>>> = _snapshots.asStateFlow()
     private var hotJobs = mutableListOf<Job>()
-
-    override fun snapshotFor(key: String): StateFlow<List<PeriodSummary>> =
-        _snapshots.getOrPut(key) { MutableStateFlow(emptyList()) }
-
-    override fun babySnapshotsFlow(): StateFlow<Map<String, List<PeriodBabySummary>>> =
-        _babySnapshots.asStateFlow()
 
     override fun setAccountId(accountId: String) {
         AppLog.d(TAG, "setAccountId: $accountId")
@@ -78,29 +73,32 @@ class EntryReadService @Inject constructor(
         // Cancel previous subscriptions (account switch)
         hotJobs.forEach { it.cancel() }
         hotJobs.clear()
-        _snapshots.values.forEach { it.value = emptyList() }
-        _babySnapshots.value = emptyMap()
+        _snapshots.value = emptyMap()
 
-        // Start hot subscriptions — Room Flows auto-emit on DB changes
-        startSnapshot(IEntryReadService.SNAPSHOT_WEIGHT) {
-            entryReadRepository.getWeightSnapshotGraphData(accountId)
-        }
-        startSnapshot(IEntryReadService.SNAPSHOT_BP) {
-            entryReadRepository.getBpmSnapshotGraphData(accountId)
+        // Weight snapshot
+        hotJobs += appScope.launch {
+            entryReadRepository.getWeightSnapshotGraphData(accountId).collect { data ->
+                _snapshots.update { it + (IEntryReadService.KEY_WEIGHT to data) }
+            }
         }
 
-        // Baby snapshots — single query for all babies, grouped in-memory
+        // BP snapshot
+        hotJobs += appScope.launch {
+            entryReadRepository.getBpmSnapshotGraphData(accountId).collect { data ->
+                _snapshots.update { it + (IEntryReadService.KEY_BP to data) }
+            }
+        }
+
+        // Baby snapshots — single query, split by babyId into the same map
         hotJobs += appScope.launch {
             entryReadRepository.getAllBabySnapshotGraphData(accountId)
                 .map { list -> list.groupBy { it.babyId } }
-                .collect { _babySnapshots.value = it }
-        }
-    }
-
-    private fun startSnapshot(key: String, flowProvider: () -> Flow<List<PeriodSummary>>) {
-        val stateFlow = _snapshots.getOrPut(key) { MutableStateFlow(emptyList()) }
-        hotJobs += appScope.launch {
-            flowProvider().collect { stateFlow.value = it }
+                .collect { babyMap ->
+                    _snapshots.update { current ->
+                        val withoutBabies = current.filterKeys { !it.startsWith("baby:") }
+                        withoutBabies + babyMap.mapKeys { (babyId, _) -> IEntryReadService.keyBaby(babyId) }
+                    }
+                }
         }
     }
 

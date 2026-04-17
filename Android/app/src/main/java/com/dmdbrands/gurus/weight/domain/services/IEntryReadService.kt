@@ -33,21 +33,19 @@ interface IEntryReadService {
 
     fun setAccountId(accountId: String)
 
-    // ── Hot StateFlows (instant for consumers) ──
+    // ── Hot snapshot map (populated on setAccountId, instant for consumers) ──
 
     /**
-     * Hot snapshot data per product key — populated on [setAccountId].
-     * Keys: [SNAPSHOT_WEIGHT], [SNAPSHOT_BP].
-     * Consumers: `snapshotFor(SNAPSHOT_WEIGHT).collect { ... }`.
+     * All snapshot data in a single map — populated on [setAccountId].
+     * Keys: [KEY_WEIGHT], [KEY_BP], `"baby:{profileId}"`.
+     * Consumers collect this once and extract per-product data.
      */
-    fun snapshotFor(key: String): StateFlow<List<PeriodSummary>>
-
-    /** All baby snapshot data grouped by profileId. Populated on [setAccountId]. */
-    fun babySnapshotsFlow(): StateFlow<Map<String, List<PeriodBabySummary>>>
+    val snapshots: StateFlow<Map<String, List<PeriodSummary>>>
 
     companion object {
-        const val SNAPSHOT_WEIGHT = "weight"
-        const val SNAPSHOT_BP = "bp"
+        const val KEY_WEIGHT = "weight"
+        const val KEY_BP = "bp"
+        fun keyBaby(profileId: String) = "baby:$profileId"
     }
 
     // ── Cold Flows (skeleton masks delay) ──

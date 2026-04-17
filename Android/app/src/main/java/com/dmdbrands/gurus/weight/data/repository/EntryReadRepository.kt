@@ -37,7 +37,7 @@ class EntryReadRepository @Inject constructor(
     companion object {
         /** Flip to true to return sample data instead of querying the database. */
         var USE_SAMPLE_DATA = true
-        private const val SAMPLE_BABY_ID = "sample-baby-1"
+        private const val SAMPLE_BABY_ID = "sample-1"
     }
 
     // ---------------------------------------------------------------------------
