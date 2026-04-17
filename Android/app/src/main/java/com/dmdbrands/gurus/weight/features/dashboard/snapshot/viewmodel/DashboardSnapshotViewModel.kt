@@ -10,7 +10,6 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
-import com.dmdbrands.gurus.weight.data.services.EntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
@@ -24,6 +23,7 @@ import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -70,7 +70,7 @@ class DashboardSnapshotViewModel @Inject constructor(
   private fun loadWeightGraph() {
     weightGraphJob?.cancel()
     weightGraphJob = viewModelScope.launch {
-      entryReadService.snapshotFor(EntryReadService.SNAPSHOT_WEIGHT)
+      entryReadService.snapshotFor(IEntryReadService.SNAPSHOT_WEIGHT)
         .collect { points ->
           updateWeightChart(points.filterIsInstance<WeightSnapshotPoint>())
           handleIntent(DashboardSnapshotIntent.SetLoading(false))
@@ -132,7 +132,7 @@ class DashboardSnapshotViewModel @Inject constructor(
   private fun loadBpGraph() {
     bpGraphJob?.cancel()
     bpGraphJob = viewModelScope.launch {
-      entryReadService.snapshotFor(EntryReadService.SNAPSHOT_BP)
+      entryReadService.snapshotFor(IEntryReadService.SNAPSHOT_BP)
         .collect { points ->
           updateBpChart(points.filterIsInstance<PeriodBpmSummary>())
         }
@@ -200,22 +200,17 @@ class DashboardSnapshotViewModel @Inject constructor(
   private fun loadBabyGraphs() {
     BabyPercentileHelper.loadIfNeeded(context)
     viewModelScope.launch {
-      productSelectionManager.availableProducts.collect { products ->
-        products.filterIsInstance<ProductSelection.Baby>().forEach { baby ->
-          loadBabyGraph(baby.profile)
+      combine(
+        productSelectionManager.availableProducts,
+        entryReadService.babySnapshotsFlow(),
+      ) { products, babyMap ->
+        products.filterIsInstance<ProductSelection.Baby>() to babyMap
+      }.collect { (babyProducts, babyMap) ->
+        babyProducts.forEach { baby ->
+          val points = babyMap[baby.profile.id] ?: emptyList()
+          updateBabyChart(baby.profile, points)
         }
       }
-    }
-  }
-
-  private fun loadBabyGraph(profile: BabyProfile) {
-    // Trigger baby snapshot hot subscription
-    (entryReadService as? EntryReadService)?.startBabySnapshot(profile.id)
-    viewModelScope.launch {
-      entryReadService.snapshotFor("${EntryReadService.SNAPSHOT_BABY_PREFIX}${profile.id}")
-        .collect { points ->
-          updateBabyChart(profile, points.filterIsInstance<PeriodBabySummary>())
-        }
     }
   }
 

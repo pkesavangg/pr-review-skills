@@ -37,10 +37,18 @@ interface IEntryReadService {
 
     /**
      * Hot snapshot data per product key — populated on [setAccountId].
-     * Keys: "weight", "bp", "baby:{profileId}".
-     * Consumers: `snapshotFor("weight").collect { ... }`.
+     * Keys: [SNAPSHOT_WEIGHT], [SNAPSHOT_BP].
+     * Consumers: `snapshotFor(SNAPSHOT_WEIGHT).collect { ... }`.
      */
     fun snapshotFor(key: String): StateFlow<List<PeriodSummary>>
+
+    /** All baby snapshot data grouped by profileId. Populated on [setAccountId]. */
+    fun babySnapshotsFlow(): StateFlow<Map<String, List<PeriodBabySummary>>>
+
+    companion object {
+        const val SNAPSHOT_WEIGHT = "weight"
+        const val SNAPSHOT_BP = "bp"
+    }
 
     // ── Cold Flows (skeleton masks delay) ──
 

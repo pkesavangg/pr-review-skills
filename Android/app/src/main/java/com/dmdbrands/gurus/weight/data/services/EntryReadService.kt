@@ -62,10 +62,14 @@ class EntryReadService @Inject constructor(
     // ── Hot snapshot StateFlows (populated on setAccountId, instant for consumers) ──
 
     private val _snapshots = mutableMapOf<String, MutableStateFlow<List<PeriodSummary>>>()
+    private val _babySnapshots = MutableStateFlow<Map<String, List<PeriodBabySummary>>>(emptyMap())
     private var hotJobs = mutableListOf<Job>()
 
     override fun snapshotFor(key: String): StateFlow<List<PeriodSummary>> =
         _snapshots.getOrPut(key) { MutableStateFlow(emptyList()) }
+
+    override fun babySnapshotsFlow(): StateFlow<Map<String, List<PeriodBabySummary>>> =
+        _babySnapshots.asStateFlow()
 
     override fun setAccountId(accountId: String) {
         AppLog.d(TAG, "setAccountId: $accountId")
@@ -75,21 +79,21 @@ class EntryReadService @Inject constructor(
         hotJobs.forEach { it.cancel() }
         hotJobs.clear()
         _snapshots.values.forEach { it.value = emptyList() }
+        _babySnapshots.value = emptyMap()
 
         // Start hot subscriptions — Room Flows auto-emit on DB changes
-        startSnapshot(SNAPSHOT_WEIGHT) {
+        startSnapshot(IEntryReadService.SNAPSHOT_WEIGHT) {
             entryReadRepository.getWeightSnapshotGraphData(accountId)
         }
-        startSnapshot(SNAPSHOT_BP) {
+        startSnapshot(IEntryReadService.SNAPSHOT_BP) {
             entryReadRepository.getBpmSnapshotGraphData(accountId)
         }
-    }
 
-    /** Start a baby snapshot subscription — called when baby products are known. */
-    fun startBabySnapshot(babyProfileId: String) {
-        val key = "$SNAPSHOT_BABY_PREFIX$babyProfileId"
-        startSnapshot(key) {
-            entryReadRepository.getBabySnapshotGraphData(_accountId ?: return@startSnapshot flowOf(emptyList()), babyProfileId)
+        // Baby snapshots — single query for all babies, grouped in-memory
+        hotJobs += appScope.launch {
+            entryReadRepository.getAllBabySnapshotGraphData(accountId)
+                .map { list -> list.groupBy { it.babyId } }
+                .collect { _babySnapshots.value = it }
         }
     }
 
@@ -331,9 +335,6 @@ class EntryReadService @Inject constructor(
         private const val LAST_7_DAYS = 7
         private const val LAST_30_DAYS = 30
         private const val OPERATION_CREATE = "create"
-        const val SNAPSHOT_WEIGHT = "weight"
-        const val SNAPSHOT_BP = "bp"
-        const val SNAPSHOT_BABY_PREFIX = "baby:"
     }
 }
 

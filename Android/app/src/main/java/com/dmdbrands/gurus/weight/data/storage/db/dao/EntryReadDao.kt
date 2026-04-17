@@ -682,6 +682,7 @@ interface EntryReadDao {
   @Query(
     """
     SELECT
+        be.babyId AS babyId,
         strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
         MAX(e.entryTimestamp) AS entryTimestamp,
         CAST(AVG(be.babyWeightDecigrams) AS INTEGER) AS avgWeightDecigrams,
@@ -704,6 +705,7 @@ interface EntryReadDao {
   @Query(
     """
     SELECT
+        be.babyId AS babyId,
         strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
         MAX(e.entryTimestamp) AS entryTimestamp,
         CAST(AVG(be.babyWeightDecigrams) AS INTEGER) AS avgWeightDecigrams,
@@ -720,27 +722,31 @@ interface EntryReadDao {
   fun getBabyDailyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>
 
   /**
-   * Last 10 daily baby weight averages for dashboard snapshot mini-chart.
+   * Last 10 daily averages per baby for dashboard snapshot — all babies in one query.
+   * Uses ROW_NUMBER() OVER (PARTITION BY babyId) for per-baby LIMIT 10.
+   * Caller groups by [PeriodBabySummary.babyId] in-memory.
    */
   @Query(
     """
-    SELECT * FROM (
+    SELECT babyId, period, entryTimestamp, avgWeightDecigrams, avgLengthMillimeters FROM (
       SELECT
+        be.babyId AS babyId,
         strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
         datetime(MIN(e.entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of day') AS entryTimestamp,
         CAST(AVG(be.babyWeightDecigrams) AS INTEGER) AS avgWeightDecigrams,
-        CAST(AVG(be.babyLengthMillimeters) AS INTEGER) AS avgLengthMillimeters
+        CAST(AVG(be.babyLengthMillimeters) AS INTEGER) AS avgLengthMillimeters,
+        ROW_NUMBER() OVER (
+          PARTITION BY be.babyId
+          ORDER BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) DESC
+        ) AS rn
       FROM entry_view e
       INNER JOIN baby_entry be ON e.id = be.id
       WHERE e.accountId = :accountId
-        AND be.babyId = :babyId
         AND (e.operationType IS NULL OR e.operationType != 'delete')
-      GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
-      ORDER BY period DESC
-      LIMIT 10
-    )
-    ORDER BY entryTimestamp ASC
+      GROUP BY be.babyId, strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
+    ) WHERE rn <= 10
+    ORDER BY babyId, entryTimestamp ASC
     """,
   )
-  fun getBabySnapshotGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>
+  fun getAllBabySnapshotGraphData(accountId: String): Flow<List<PeriodBabySummary>>
 }
