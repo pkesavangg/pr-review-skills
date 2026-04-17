@@ -152,7 +152,8 @@ extension View {
         itemID: UUID,
         openItemID: Binding<UUID?>? = nil,
         openThresholdFraction: CGFloat = 0.5,
-        closeWithoutAnimationOnAction: Bool = false
+        closeWithoutAnimationOnAction: Bool = false,
+        trailingCornerRadius: CGFloat = 0
     ) -> some View {
         modifier(
             SwipeableModifier(
@@ -161,7 +162,8 @@ extension View {
                 itemID: itemID,
                 openItemID: openItemID,
                 openThresholdFraction: openThresholdFraction,
-                closeWithoutAnimationOnAction: closeWithoutAnimationOnAction
+                closeWithoutAnimationOnAction: closeWithoutAnimationOnAction,
+                trailingCornerRadius: trailingCornerRadius
             )
         )
     }
