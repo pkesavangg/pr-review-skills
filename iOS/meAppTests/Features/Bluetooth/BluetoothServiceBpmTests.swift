@@ -21,7 +21,7 @@ struct BluetoothServiceBpmTests {
         )
 
         let event = DeviceDiscoveryEvent(
-            device: device,
+            device: device.toSnapshot(),
             deviceInfo: bpmInfo,
             protocolType: .A6,
             isNew: true,
@@ -46,7 +46,7 @@ struct BluetoothServiceBpmTests {
         )
 
         let event = DeviceDiscoveryEvent(
-            device: device,
+            device: device.toSnapshot(),
             deviceInfo: scaleInfo,
             protocolType: .A6,
             isNew: true

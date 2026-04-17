@@ -9,12 +9,12 @@ import Foundation
 struct ScaleDiscoverSheetInfo: Identifiable {
     let id = UUID()
     let sku: String
-    let scale: Device
+    let scale: DeviceSnapshot
     let event: DeviceDiscoveryEvent?
     let isReconnect: Bool
     let isDuplicated: Bool
-    
-    init(sku: String, scale: Device, event: DeviceDiscoveryEvent?, isReconnect: Bool = false, isDuplicated: Bool = false) {
+
+    init(sku: String, scale: DeviceSnapshot, event: DeviceDiscoveryEvent?, isReconnect: Bool = false, isDuplicated: Bool = false) {
         self.sku = sku
         self.scale = scale
         self.event = event

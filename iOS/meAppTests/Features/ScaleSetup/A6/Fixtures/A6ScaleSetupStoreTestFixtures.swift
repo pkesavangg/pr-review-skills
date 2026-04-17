@@ -118,7 +118,7 @@ enum A6ScaleSetupStoreTestFixtures {
         )
         let scaleInfo = SCALES.first { $0.setupType == setupType } ?? fallback
         return DeviceDiscoveryEvent(
-            device: device,
+            device: device.toSnapshot(),
             deviceInfo: scaleInfo,
             protocolType: .A6,
             isNew: isNew

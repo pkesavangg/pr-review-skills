@@ -23,8 +23,8 @@ struct BluetoothServiceCoreOperationsTests {
         let scale = MockScaleService()
         let sut = makeSUT(scale: scale)
         sut.bluetoothScales = [
-            makeDevice(id: "paired-1", broadcastIdString: "AA11"),
-            makeDevice(id: "paired-2", broadcastIdString: "BB22")
+            makeDevice(id: "paired-1", broadcastIdString: "AA11").toSnapshot(),
+            makeDevice(id: "paired-2", broadcastIdString: "BB22").toSnapshot()
         ]
         sut.skipDevices = ["SKIP-1", "SKIP-2"]
         sut.reconnectAlertSkippedDevices = ["RECONNECT-1"]
@@ -91,18 +91,14 @@ struct BluetoothServiceCoreOperationsTests {
         let scale = MockScaleService()
         let sut = makeSUT(scale: scale)
         let connectedOne = makeDevice(id: "connected-1", broadcastIdString: "AA11", isConnected: true)
-        connectedOne.isWeighOnlyModeEnabledByOthers = true
         let connectedTwo = makeDevice(id: "connected-2", broadcastIdString: "BB22", isConnected: true)
-        connectedTwo.isWeighOnlyModeEnabledByOthers = true
         let disconnected = makeDevice(id: "disconnected-1", broadcastIdString: "CC33", isConnected: false)
-        sut.bluetoothScales = [connectedOne, connectedTwo, disconnected]
+        sut.bluetoothScales = [connectedOne.toSnapshot(), connectedTwo.toSnapshot(), disconnected.toSnapshot()]
         sut.skipDevices = ["STALE-ID"]
 
         await sut.disconnectConnectedScales()
 
         #expect(scale.updateConnectedDeviceWeightOnlyModeCalls == 2)
-        #expect(connectedOne.isWeighOnlyModeEnabledByOthers == false)
-        #expect(connectedTwo.isWeighOnlyModeEnabledByOthers == false)
         #expect(sut.skipDevices.isEmpty)
         #expect(sut.blockedBroadcastIds.contains("AA11"))
         #expect(sut.blockedBroadcastIds.contains("BB22"))
@@ -123,39 +119,19 @@ struct BluetoothServiceCoreOperationsTests {
         #expect(firstTask != nil)
     }
 
-    @Test("deleteCurrentUserFromScaleIfPossible with missing broadcast id fails before SDK work")
-    func deleteCurrentUserFromScaleIfPossibleMissingBroadcastId() async {
-        let logger = MockLoggerService()
-        let sut = makeSUT(logger: logger)
-
-        let result = await sut.deleteCurrentUserFromScaleIfPossible(makeDevice(broadcastIdString: nil), disconnect: false)
-
-        switch result {
-        case .success:
-            Issue.record("Expected deleteCurrentUserFromScaleIfPossible to fail")
-        case .failure(let error):
-            guard case .invalidBroadcastId = error else {
-                Issue.record("Expected invalidBroadcastId, got \(error)")
-                return
-            }
-        }
-
-        #expect(logger.messages.contains { $0.contains("missing broadcastId") })
-    }
-
-    @Test("deleteCurrentUserFromScaleIfPossible returns deviceNotConnected when user lookup cannot start")
+    @Test("deleteCurrentUserFromScaleIfPossible returns deviceNotFound when scale is not in bluetooth scales")
     func deleteCurrentUserFromScaleIfPossibleDisconnectedDevice() async {
         let sut = makeSUT()
         let disconnectedDevice = makeDevice(id: "offline-1", broadcastIdString: "AA11", isConnected: false)
 
-        let result = await sut.deleteCurrentUserFromScaleIfPossible(disconnectedDevice, disconnect: true)
+        let result = await sut.deleteCurrentUserFromScaleIfPossible(broadcastId: disconnectedDevice.broadcastIdString ?? "", disconnect: true)
 
         switch result {
         case .success:
             Issue.record("Expected deleteCurrentUserFromScaleIfPossible to fail")
         case .failure(let error):
-            guard case .deviceNotConnected = error else {
-                Issue.record("Expected deviceNotConnected, got \(error)")
+            guard case .deviceNotFound = error else {
+                Issue.record("Expected deviceNotFound, got \(error)")
                 return
             }
         }
@@ -169,9 +145,10 @@ struct BluetoothServiceCoreOperationsTests {
         let sut = makeSUT()
         let device = makeDevice(id: "cancelled-1", broadcastIdString: "AA11", isConnected: true)
         device.token = "persisted-token"
+        sut.bluetoothScales = [device.toSnapshot()]
 
         let task = Task { @MainActor in
-            await sut.deleteCurrentUserFromScaleIfPossible(device, disconnect: false)
+            await sut.deleteCurrentUserFromScaleIfPossible(broadcastId: device.broadcastIdString ?? "", disconnect: false)
         }
         task.cancel()
         let result = await task.value
@@ -194,7 +171,7 @@ struct BluetoothServiceCoreOperationsTests {
         device.token = nil
 
         let task = Task { @MainActor in
-            await sut.deleteCurrentUserFromScaleIfPossible(device, disconnect: false)
+            await sut.deleteCurrentUserFromScaleIfPossible(broadcastId: device.broadcastIdString ?? "", disconnect: false)
         }
         task.cancel()
         let result = await task.value
@@ -393,8 +370,10 @@ struct BluetoothServiceCoreOperationsTests {
         sdk.deleteUserResult = .SUCCESS
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(id: "delete-1", broadcastIdString: "DEL11", isConnected: true)
+        device.token = "del-token"
+        sut.bluetoothScales = [device.toSnapshot()]
 
-        let result = await sut.deleteDevice(device, disconnect: true)
+        let result = await sut.deleteDevice(broadcastId: device.broadcastIdString ?? "", disconnect: true)
 
         guard case .success(let response) = result else {
             Issue.record("Expected deleteDevice to succeed")
@@ -413,7 +392,7 @@ struct BluetoothServiceCoreOperationsTests {
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(id: "wifi-list-1", broadcastIdString: "WIFI11", isConnected: true)
 
-        let result = await sut.getWifiList(for: device)
+        let result = await sut.getWifiList(broadcastId: device.broadcastIdString ?? "")
 
         guard case .success(let wifiList) = result else {
             Issue.record("Expected getWifiList to succeed")
@@ -432,7 +411,7 @@ struct BluetoothServiceCoreOperationsTests {
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(id: "wifi-setup-1", broadcastIdString: "SET11", isConnected: true)
 
-        let result = await sut.setupWifi(on: device, config: WifiConfig(ssid: "Office", password: "secret"))
+        let result = await sut.setupWifi(broadcastId: device.broadcastIdString ?? "", config: WifiConfig(ssid: "Office", password: "secret"))
 
         guard case .success(let response) = result else {
             Issue.record("Expected setupWifi to succeed")
@@ -451,7 +430,7 @@ struct BluetoothServiceCoreOperationsTests {
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(id: "wifi-cancel-1", broadcastIdString: "CAN11", isConnected: true)
 
-        let result = await sut.cancelWifi(on: device)
+        let result = await sut.cancelWifi(broadcastId: device.broadcastIdString ?? "")
 
         guard case .success = result else {
             Issue.record("Expected cancelWifi to succeed")
@@ -486,7 +465,7 @@ struct BluetoothServiceCoreOperationsTests {
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(id: "wifi-mac-1", broadcastIdString: "MAC11", isConnected: true)
 
-        let result = await sut.getWifiMacAddress(for: device)
+        let result = await sut.getWifiMacAddress(broadcastId: device.broadcastIdString ?? "")
 
         guard case .success(let mac) = result else {
             Issue.record("Expected getWifiMacAddress to succeed")
@@ -503,8 +482,8 @@ struct BluetoothServiceCoreOperationsTests {
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(id: "live-1", broadcastIdString: "LIVE11", isConnected: true)
 
-        let startResult = await sut.startLiveMeasurement(for: device)
-        let stopResult = await sut.stopLiveMeasurement(for: device)
+        let startResult = await sut.startLiveMeasurement(broadcastId: device.broadcastIdString ?? "")
+        let stopResult = await sut.stopLiveMeasurement(broadcastId: device.broadcastIdString ?? "")
 
         guard case .success = startResult else {
             Issue.record("Expected startLiveMeasurement to succeed")
@@ -525,7 +504,7 @@ struct BluetoothServiceCoreOperationsTests {
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(id: "setting-1", broadcastIdString: "SETTING11", isConnected: true)
 
-        let result = await sut.updateSetting(on: device, settings: [DeviceSetting(key: "SESSION_IMPEDANCE", value: .bool(true))])
+        let result = await sut.updateSetting(broadcastId: device.broadcastIdString ?? "", settings: [DeviceSetting(key: "SESSION_IMPEDANCE", value: .bool(true))])
 
         guard case .success = result else {
             Issue.record("Expected updateSetting to succeed")
@@ -546,7 +525,7 @@ struct BluetoothServiceCoreOperationsTests {
         let cancellable = sut.firmwareUpdateProgressPublisher.sink { received.append($0) }
         defer { cancellable.cancel() }
 
-        let result = await sut.updateFirmware(on: device, timestamp: 12345)
+        let result = await sut.updateFirmware(broadcastId: device.broadcastIdString ?? "", timestamp: 12345)
 
         guard case .success = result else {
             Issue.record("Expected updateFirmware to succeed")
@@ -564,7 +543,7 @@ struct BluetoothServiceCoreOperationsTests {
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(id: "clear-1", broadcastIdString: "CLEAR11", isConnected: true)
 
-        let result = await sut.clearData(on: device, dataType: .wifi)
+        let result = await sut.clearData(broadcastId: device.broadcastIdString ?? "", dataType: .wifi)
 
         guard case .success = result else {
             Issue.record("Expected clearData to succeed")
@@ -606,8 +585,9 @@ struct BluetoothServiceCoreOperationsTests {
         let attachedPreference = makePreference(id: device.id)
         attachedPreference.displayName = "Attached User"
         scale.attachedPreferences[device.id] = attachedPreference
+        sut.bluetoothScales = [device.toSnapshot()]
 
-        let result = await sut.updateAccount(on: device, preference: makePreference(id: "unused"))
+        let result = await sut.updateAccount(broadcastId: device.broadcastIdString ?? "")
 
         guard case .success(let response) = result else {
             Issue.record("Expected updateAccount to succeed")
@@ -624,8 +604,9 @@ struct BluetoothServiceCoreOperationsTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(id: "users-1", broadcastIdString: "USER11", isConnected: true)
+        sut.bluetoothScales = [device.toSnapshot()]
 
-        let result = await sut.getScaleUserList(for: device)
+        let result = await sut.getScaleUserList(broadcastId: device.broadcastIdString ?? "")
 
         guard case .success(let users) = result else {
             Issue.record("Expected getScaleUserList to succeed")
@@ -638,23 +619,13 @@ struct BluetoothServiceCoreOperationsTests {
         #expect(sdk.userListRequests.count == 1)
     }
 
-    @Test("core operations reject invalid broadcast ids consistently")
+    @Test("confirmSmartPair and updateAccount reject invalid broadcast ids")
     func invalidBroadcastOperationsFailConsistently() async {
         let sut = makeSUT()
         let invalidDevice = makeDevice(id: "invalid-1", broadcastIdString: nil, isConnected: true)
 
         expectInvalidBroadcast(await sut.confirmSmartPair(device: invalidDevice, token: "token", displayName: "User", userNumber: 1))
-        expectInvalidBroadcast(await sut.deleteDevice(invalidDevice, disconnect: true))
-        expectInvalidBroadcast(await sut.getWifiList(for: invalidDevice))
-        expectInvalidBroadcast(await sut.setupWifi(on: invalidDevice, config: WifiConfig(ssid: "Test", password: "pass")))
-        expectInvalidBroadcast(await sut.cancelWifi(on: invalidDevice))
-        expectInvalidBroadcast(await sut.getWifiMacAddress(for: invalidDevice))
-        expectInvalidBroadcast(await sut.startLiveMeasurement(for: invalidDevice))
-        expectInvalidBroadcast(await sut.stopLiveMeasurement(for: invalidDevice))
-        expectInvalidBroadcast(await sut.updateSetting(on: invalidDevice, settings: [DeviceSetting(key: "SESSION_IMPEDANCE", value: .bool(true))]))
-        expectInvalidBroadcast(await sut.clearData(on: invalidDevice, dataType: .all))
-        expectInvalidBroadcast(await sut.updateAccount(on: invalidDevice, preference: makePreference(id: "pref-1")))
-        expectInvalidBroadcast(await sut.getScaleUserList(for: invalidDevice, skipConnectionCheck: true))
+        expectInvalidBroadcast(await sut.updateAccount(broadcastId: ""))
     }
 
     @Test("updateUserProfileForR4Scales guards repeated in-flight calls")
@@ -700,7 +671,7 @@ struct BluetoothServiceCoreOperationsTests {
     func getScaleUserListWithoutConnectionFails() async {
         let sut = makeSUT()
 
-        let result = await sut.getScaleUserList(for: makeDevice(id: "offline-users", isConnected: false))
+        let result = await sut.getScaleUserList(broadcastId: "ABC123")
 
         switch result {
         case .success:

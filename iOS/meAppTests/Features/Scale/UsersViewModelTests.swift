@@ -368,6 +368,7 @@ struct UsersViewModelTests {
         notification: MockNotificationHelperService? = nil,
         permissions: MockPermissionsService? = nil,
         logger: MockLoggerService? = nil
+    // swiftlint:disable:next large_tuple
     ) -> (UsersViewModel, MockBluetoothService, MockScaleService, MockNotificationHelperService, MockPermissionsService) {
         let bluetooth = bluetooth ?? MockBluetoothService()
         let scaleService = scaleService ?? MockScaleService()
@@ -385,6 +386,9 @@ struct UsersViewModelTests {
         DependencyContainer.shared.register(permissions as PermissionsServiceProtocol)
         DependencyContainer.shared.register(scaleService as ScaleServiceProtocol)
         DependencyContainer.shared.register(logger as LoggerServiceProtocol)
+
+        // Publish the scale as a DeviceSnapshot so the ViewModel can resolve it via ScaleService.
+        scaleService.scales = [scale.toSnapshot(isConnected: scale.isConnected ?? false)]
 
         let store = UsersViewModel(scale: scale, initialUsersList: initialUsersList, userDeletionDelayNanoseconds: 0)
         // Pin dependencies on the instance to avoid cross-suite DI races from global container mutation.

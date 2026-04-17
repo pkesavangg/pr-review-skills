@@ -167,7 +167,7 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
     }
 
     /// Ensures account.productTypes stays in sync when devices are added.
-    private func syncProductTypesFromDevices(_ devices: [Device]) {
+    private func syncProductTypesFromDevices(_ devices: [DeviceSnapshot]) {
         guard let account = accountService.activeAccount,
               !account.productTypes.isEmpty else { return }
 

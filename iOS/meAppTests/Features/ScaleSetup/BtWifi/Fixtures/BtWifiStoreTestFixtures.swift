@@ -24,7 +24,7 @@ final class MockBtWifiBluetoothSetupManager: BluetoothSetupManaging {
     private(set) var cancelWifiCalls = 0
     private(set) var lastDisconnectedBroadcastId: String?
     private(set) var lastDisconnectConsiderForSession: Bool?
-    private(set) var lastCancelledScale: Device?
+    private(set) var lastCancelledBroadcastId: String?
 
     func disconnectIfNeeded(
         broadcastId: String,
@@ -36,9 +36,9 @@ final class MockBtWifiBluetoothSetupManager: BluetoothSetupManaging {
         lastDisconnectConsiderForSession = considerForSession
     }
 
-    func cancelWifi(on scale: Device, bluetoothService: BluetoothServiceProtocol) async {
+    func cancelWifi(broadcastId: String, bluetoothService: BluetoothServiceProtocol) async {
         cancelWifiCalls += 1
-        lastCancelledScale = scale
+        lastCancelledBroadcastId = broadcastId
     }
 }
 
@@ -153,12 +153,21 @@ enum BtWifiStoreTestFixtures {
         ScaleTestFixtures.makeDevice(id: id, accountId: accountId, displayName: displayName, token: token)
     }
 
+    static func makeScaleSnapshot(
+        id: String = "scale-1",
+        accountId: String = "acct-1",
+        displayName: String = "Bathroom Scale",
+        token: String = "token-1"
+    ) -> DeviceSnapshot {
+        makeScale(id: id, accountId: accountId, displayName: displayName, token: token).toSnapshot()
+    }
+
     static func makeDiscoveryEvent(
         scale: Device = makeScale(),
         isNew: Bool = true
     ) -> DeviceDiscoveryEvent {
         DeviceDiscoveryEvent(
-            device: scale,
+            device: scale.toSnapshot(),
             deviceInfo: SCALES.first { $0.setupType == .btWifiR4 } ?? SCALES[0],
             protocolType: .R4,
             isNew: isNew

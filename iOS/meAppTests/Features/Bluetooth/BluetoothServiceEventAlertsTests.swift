@@ -82,7 +82,7 @@ struct BluetoothServiceEventAlertsTests {
         sdk.getUsersError = EventAlertTestError.sdkFailure
         let sut = makeSUT(logger: logger, sdk: sdk, notification: notification)
         let device = BluetoothTestFixtures.makeDevice(id: "dev-1", broadcastIdString: "FAIL-1")
-        sut.bluetoothScales = [device]
+        sut.bluetoothScales = [device.toSnapshot()]
 
         let deviceDetails = makeDeviceDetails(broadcastId: "FAIL-1")
         await sut.handleDeviceEventAlert(deviceDetails, isDuplicateUserError: false)
@@ -99,7 +99,7 @@ struct BluetoothServiceEventAlertsTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk, notification: notification)
         let device = BluetoothTestFixtures.makeDevice(id: "dev-r", broadcastIdString: "RECON-1")
-        sut.bluetoothScales = [device]
+        sut.bluetoothScales = [device.toSnapshot()]
 
         let deviceDetails = makeDeviceDetails(broadcastId: "RECON-1")
         await sut.handleDeviceEventAlert(deviceDetails, isDuplicateUserError: false)
@@ -115,7 +115,7 @@ struct BluetoothServiceEventAlertsTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk, notification: notification)
         let device = BluetoothTestFixtures.makeDevice(id: "dev-d", broadcastIdString: "DUP-1")
-        sut.bluetoothScales = [device]
+        sut.bluetoothScales = [device.toSnapshot()]
 
         let deviceDetails = makeDeviceDetails(broadcastId: "DUP-1")
         await sut.handleDeviceEventAlert(deviceDetails, isDuplicateUserError: true)
@@ -132,7 +132,7 @@ struct BluetoothServiceEventAlertsTests {
         let sut = makeSUT(sdk: sdk, notification: notification)
         sut.setCanShowScaleDiscoveredModal(true)
         let device = BluetoothTestFixtures.makeDevice(id: "dev-m", broadcastIdString: "MODAL-1")
-        sut.bluetoothScales = [device]
+        sut.bluetoothScales = [device.toSnapshot()]
 
         let deviceDetails = makeDeviceDetails(broadcastId: "MODAL-1")
         await sut.handleDeviceEventAlert(deviceDetails, isDuplicateUserError: false)
@@ -146,7 +146,7 @@ struct BluetoothServiceEventAlertsTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk, notification: notification)
         let device = BluetoothTestFixtures.makeDevice(id: "dev-cancel", broadcastIdString: "CANCEL-1")
-        sut.bluetoothScales = [device]
+        sut.bluetoothScales = [device.toSnapshot()]
 
         let deviceDetails = makeDeviceDetails(broadcastId: "CANCEL-1")
         await sut.handleDeviceEventAlert(deviceDetails, isDuplicateUserError: false)
@@ -167,7 +167,7 @@ struct BluetoothServiceEventAlertsTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk, notification: notification)
         let device = BluetoothTestFixtures.makeDevice(id: "dev-dup-cancel", broadcastIdString: "DUP-CANCEL-1")
-        sut.bluetoothScales = [device]
+        sut.bluetoothScales = [device.toSnapshot()]
 
         let deviceDetails = makeDeviceDetails(broadcastId: "DUP-CANCEL-1")
         await sut.handleDeviceEventAlert(deviceDetails, isDuplicateUserError: true)
@@ -186,7 +186,7 @@ struct BluetoothServiceEventAlertsTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk, notification: notification)
         let device = BluetoothTestFixtures.makeDevice(id: "dev-setup", broadcastIdString: "SETUP-1")
-        sut.bluetoothScales = [device]
+        sut.bluetoothScales = [device.toSnapshot()]
 
         var callbackInvoked = false
         var callbackIsDuplicate = false
@@ -213,7 +213,7 @@ struct BluetoothServiceEventAlertsTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk, notification: notification)
         let device = BluetoothTestFixtures.makeDevice(id: "dev-dup-setup", broadcastIdString: "DUP-SETUP-1")
-        sut.bluetoothScales = [device]
+        sut.bluetoothScales = [device.toSnapshot()]
 
         var callbackIsDuplicate = false
         var callbackInvoked = false
@@ -242,7 +242,7 @@ struct BluetoothServiceEventAlertsTests {
     func findUserToDeleteEmptyList() {
         let sut = makeSUT()
         let device = BluetoothTestFixtures.makeDevice(id: "dev-1", broadcastIdString: "ABC")
-        sut.bluetoothScales = [device]
+        sut.bluetoothScales = [device.toSnapshot()]
 
         let result = sut.findUserToDelete(userList: [], discoveredScale: device)
 
@@ -256,7 +256,7 @@ struct BluetoothServiceEventAlertsTests {
         let device = BluetoothTestFixtures.makeDevice(id: "dev-1", broadcastIdString: "ABC")
         let user = DeviceUser(name: "Test", token: "tok", lastActive: 1, isBodyMetricsEnabled: false)
 
-        let result = sut.findUserToDelete(userList: [user], discoveredScale: device)
+        let result = sut.findUserToDelete(userList: [user], discoveredScale: device.toSnapshot())
 
         #expect(result == nil)
     }
@@ -282,10 +282,10 @@ struct BluetoothServiceEventAlertsTests {
             wifiFotaScheduleTime: 0,
             updatedAt: nil
         )
-        sut.bluetoothScales = [device]
+        sut.bluetoothScales = [device.toSnapshot()]
         let user = DeviceUser(name: "Test", token: "tok", lastActive: 1, isBodyMetricsEnabled: false)
 
-        let result = sut.findUserToDelete(userList: [user], discoveredScale: device)
+        let result = sut.findUserToDelete(userList: [user], discoveredScale: device.toSnapshot())
 
         #expect(result == nil)
     }
@@ -312,13 +312,13 @@ struct BluetoothServiceEventAlertsTests {
             wifiFotaScheduleTime: 0,
             updatedAt: nil
         )
-        sut.bluetoothScales = [scaleDevice]
+        sut.bluetoothScales = [scaleDevice.toSnapshot()]
 
         let discoveredDevice = BluetoothTestFixtures.makeDevice(id: "dev-2", broadcastIdString: "ABC")
         discoveredDevice.broadcastId = 200
         let user = DeviceUser(name: "Test", token: "tok", lastActive: 1, isBodyMetricsEnabled: false)
 
-        let result = sut.findUserToDelete(userList: [user], discoveredScale: discoveredDevice)
+        let result = sut.findUserToDelete(userList: [user], discoveredScale: discoveredDevice.toSnapshot())
 
         #expect(result == nil)
     }
@@ -344,10 +344,10 @@ struct BluetoothServiceEventAlertsTests {
             wifiFotaScheduleTime: 0,
             updatedAt: nil
         )
-        sut.bluetoothScales = [device]
+        sut.bluetoothScales = [device.toSnapshot()]
         let user = DeviceUser(name: "Test", token: "tok", lastActive: 1, isBodyMetricsEnabled: false)
 
-        let result = sut.findUserToDelete(userList: [user], discoveredScale: device)
+        let result = sut.findUserToDelete(userList: [user], discoveredScale: device.toSnapshot())
 
         #expect(result == nil)
     }
@@ -375,10 +375,10 @@ struct BluetoothServiceEventAlertsTests {
         )
         device.r4ScalePreference = pref
         scale.attachedPreferences["dev-1"] = pref
-        sut.bluetoothScales = [device]
+        sut.bluetoothScales = [device.toSnapshot()]
         let user = DeviceUser(name: "test user", token: "tok-match", lastActive: 5, isBodyMetricsEnabled: true)
 
-        let result = sut.findUserToDelete(userList: [user], discoveredScale: device)
+        let result = sut.findUserToDelete(userList: [user], discoveredScale: device.toSnapshot())
 
         #expect(result != nil)
         #expect(result?.token == "tok-match")
@@ -421,10 +421,10 @@ struct BluetoothServiceEventAlertsTests {
             updatedAt: nil
         )
         scale.attachedPreferences[originalPref.id] = fetchedPref
-        sut.bluetoothScales = [device]
+        sut.bluetoothScales = [device.toSnapshot()]
         let user = DeviceUser(name: "fetched name", token: "tok-fetched", lastActive: 1, isBodyMetricsEnabled: false)
 
-        let result = sut.findUserToDelete(userList: [user], discoveredScale: device)
+        let result = sut.findUserToDelete(userList: [user], discoveredScale: device.toSnapshot())
 
         #expect(result != nil)
         #expect(result?.token == "tok-fetched")
@@ -504,7 +504,7 @@ struct BluetoothServiceEventAlertsTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk, notification: notification)
         let device = BluetoothTestFixtures.makeDevice(id: "dev-repeat", broadcastIdString: "RPT-1")
-        sut.bluetoothScales = [device]
+        sut.bluetoothScales = [device.toSnapshot()]
 
         let deviceDetails = makeDeviceDetails(broadcastId: "RPT-1")
 

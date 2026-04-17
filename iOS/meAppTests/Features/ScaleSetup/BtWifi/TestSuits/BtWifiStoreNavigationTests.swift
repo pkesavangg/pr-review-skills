@@ -332,7 +332,7 @@ extension BtWifiStoreTests {
             #expect(store.connectionState == .success)
             #expect(store.fetchWifiNetworksTask == nil)
             #expect(harness.bluetoothSetupManager.lastDisconnectConsiderForSession == true)
-            #expect(harness.bluetoothSetupManager.lastCancelledScale?.id == discoveredScale.id)
+            #expect(harness.bluetoothSetupManager.lastCancelledBroadcastId == discoveredScale.broadcastIdString)
             #expect(harness.bluetooth.lastResumeClearOnlyPairing == false)
         }
 

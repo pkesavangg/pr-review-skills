@@ -119,7 +119,7 @@ enum BluetoothScaleSetupStoreTestFixtures {
 
         let scaleInfo = SCALES.first { $0.setupType == setupType } ?? fallback
         return DeviceDiscoveryEvent(
-            device: scale,
+            device: scale.toSnapshot(),
             deviceInfo: scaleInfo,
             protocolType: .A6,
             isNew: true

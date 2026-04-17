@@ -74,6 +74,79 @@ struct ScaleTypeHelper {
         return .bluetoothA6 // Default fallback
     }
 
+    /// Determines the scale type from primitive values — used by DeviceSnapshot (no @Model access).
+    /// - Parameters:
+    ///   - sku: The device SKU.
+    ///   - scaleType: The raw scaleType string from BathScale / BathScaleSnapshot.
+    ///   - deviceType: The raw deviceType string from Device / DeviceSnapshot.
+    // swiftlint:disable:next cyclomatic_complexity
+    static func determineScaleType(sku: String?, scaleType: String?, deviceType: String?) -> ScaleType {
+        guard let sku else {
+            if let scaleType {
+                let sourceType = ScaleSourceType(rawValue: scaleType) ?? .bluetoothScale
+                switch sourceType {
+                case .bluetooth, .bluetoothScale, .lcbt, .lcbtScale:
+                    return .bluetoothA6
+                case .wifi, .espTouchWifi:
+                    return .wifi
+                case .appsync, .appsyncScale:
+                    return .appsync
+                case .btWifiR4:
+                    return .bluetoothR4
+                }
+            }
+            if deviceType?.lowercased() == DeviceType.bpm.rawValue { return .bpm }
+            return .bluetoothA6
+        }
+
+        let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
+        if let scaleInfo = SCALES.first(where: { $0.sku == lookupSku }) {
+            switch scaleInfo.setupType {
+            case .bluetooth, .lcbt:
+                return .bluetoothA6
+            case .wifi, .espTouchWifi:
+                return .wifi
+            case .appSync:
+                return .appsync
+            case .btWifiR4:
+                return .bluetoothR4
+            case .babyScale:
+                return .babyScale
+            case .bpm:
+                return .bpm
+            }
+        }
+
+        if let scaleType {
+            let sourceType = ScaleSourceType(rawValue: scaleType) ?? .bluetoothScale
+            switch sourceType {
+            case .bluetooth, .bluetoothScale, .lcbt, .lcbtScale:
+                return .bluetoothA6
+            case .wifi, .espTouchWifi:
+                return .wifi
+            case .appsync, .appsyncScale:
+                return .appsync
+            case .btWifiR4:
+                return .bluetoothR4
+            }
+        }
+
+        if deviceType?.lowercased() == DeviceType.bpm.rawValue { return .bpm }
+        if let deviceType {
+            switch deviceType.lowercased() {
+            case "bluetooth", "bluetoothscale":
+                return .bluetoothA6
+            case "wifi", "wifiscale":
+                return .wifi
+            case "appsync", "appsyncscale":
+                return .appsync
+            default:
+                return .bluetoothA6
+            }
+        }
+        return .bluetoothA6
+    }
+
     // Determines the scale type as a string based on the scale's SKU and other properties
     // - Parameter scale: The device to determine the scale type for
     // - Returns: The determined scale type as a string

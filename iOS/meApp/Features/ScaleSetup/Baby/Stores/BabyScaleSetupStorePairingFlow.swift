@@ -77,7 +77,7 @@ extension BabyScaleSetupStore {
         scanTimeoutTask?.cancel()
 
         self.discoveryEvent = event
-        self.discoveredScale = event.device
+        self.discoveredScale = event.device.toDevice()
 
         if event.isNew {
             Task {
@@ -142,7 +142,7 @@ extension BabyScaleSetupStore {
 
         do {
             var deviceMetadata: DeviceMetaData?
-            let deviceInfoResult = await bluetoothService.getDeviceInfo(for: scale, skipConnectionCheck: true)
+            let deviceInfoResult = await bluetoothService.getDeviceInfo(broadcastId: scale.broadcastIdString ?? "", skipConnectionCheck: true)
             if case .success(let deviceInfo) = deviceInfoResult {
                 let dto = ScaleMetaDataDTO(
                     firmwareRevision: deviceInfo.firmwareRevision?.replacingOccurrences(of: "\0", with: ""),

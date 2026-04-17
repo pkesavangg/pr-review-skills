@@ -72,7 +72,7 @@ extension BluetoothScaleSetupStoreTests {
             )
             existingScale.peripheralIdentifier = "dup-serial"
             existingScale.nickname = "Guest Bathroom"
-            scaleService.scales = [existingScale]
+            scaleService.scales = [existingScale.toSnapshot()]
 
             let harness = BluetoothScaleSetupStoreTestFixtures.makeSUT(
                 bluetooth: bluetooth,
@@ -113,7 +113,7 @@ extension BluetoothScaleSetupStoreTests {
                 userNumber: "4"
             )
             existingScale.peripheralIdentifier = "dup-other-serial"
-            scaleService.scales = [existingScale]
+            scaleService.scales = [existingScale.toSnapshot()]
 
             let harness = BluetoothScaleSetupStoreTestFixtures.makeSUT(
                 bluetooth: bluetooth,

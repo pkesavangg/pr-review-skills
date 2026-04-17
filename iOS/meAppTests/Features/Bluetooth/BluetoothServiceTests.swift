@@ -85,7 +85,7 @@ struct BluetoothServiceTests {
             bathScale: BathScale(scaleType: ScaleSourceType.wifi.rawValue, bodyComp: true)
         )
 
-        scale.scales = [bluetoothScale, wifiScale]
+        scale.scales = [bluetoothScale.toSnapshot(), wifiScale.toSnapshot()]
         let updated = await waitUntil { sut.bluetoothScales.count == 1 }
 
         #expect(updated == true)
@@ -97,7 +97,7 @@ struct BluetoothServiceTests {
         let scale = MockScaleService()
         let sut = makeSUT(scale: scale)
 
-        sut.bluetoothScales = [makeDevice(id: "existing-1", broadcastIdString: "C1")]
+        sut.bluetoothScales = [makeDevice(id: "existing-1", broadcastIdString: "C1").toSnapshot()]
         scale.scales = []
         let updated = await waitUntil { sut.bluetoothScales.isEmpty }
 
@@ -128,7 +128,7 @@ struct BluetoothServiceTests {
         var cancellables = Set<AnyCancellable>()
 
         let discoveryEvent = DeviceDiscoveryEvent(
-            device: makeDevice(id: "publisher-device-1", broadcastIdString: "P1"),
+            device: makeDevice(id: "publisher-device-1", broadcastIdString: "P1").toSnapshot(),
             deviceInfo: ScaleItemInfo(productName: "Test Scale", sku: "SKU-1", imgPath: "image", setupType: .bluetooth, bodyComp: true),
             protocolType: .A6,
             isNew: true
@@ -238,7 +238,7 @@ struct BluetoothServiceTests {
     func reapplySkipDevicesExcludingPaired() {
         let sut = makeSUT()
         sut.skipDevices = ["KEEP_ME", "PAIRED_1"]
-        sut.bluetoothScales = [makeDevice(id: "d1", broadcastIdString: "PAIRED_1")]
+        sut.bluetoothScales = [makeDevice(id: "d1", broadcastIdString: "PAIRED_1").toSnapshot()]
 
         sut.reapplySkipDevicesExcludingPaired()
 
@@ -250,7 +250,7 @@ struct BluetoothServiceTests {
         let sut = makeSUT()
         let device = makeDevice(isConnected: false)
 
-        let result = await sut.getDeviceInfo(for: device)
+        let result = await sut.getDeviceInfo(broadcastId: device.broadcastIdString ?? "")
 
         switch result {
         case .success:

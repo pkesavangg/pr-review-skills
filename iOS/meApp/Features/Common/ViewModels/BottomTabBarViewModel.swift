@@ -23,7 +23,7 @@ class BottomTabBarViewModel: ObservableObject {
     // Inject GoalAlertService to handle goal alert navigation
     @Injector var goalAlertService: GoalAlertServiceProtocol
     // Publisher-driven sheet presentation for newly discovered scales
-    @Published var discoveredScale: Device?
+    @Published var discoveredScale: DeviceSnapshot?
     /// Holds the most recent Bluetooth discovery event used by the *Scale Discovered* sheet.
     @Published var discoveryEvent: DeviceDiscoveryEvent?
     @Published var selectedTab: BottomTab = .dash
@@ -416,11 +416,11 @@ class BottomTabBarViewModel: ObservableObject {
 
     // MARK: - Connect Action from Scale Discovered Sheet
 
-    func openScaleSetup(scale: Device, event: DeviceDiscoveryEvent?) {
+    func openScaleSetup(scale: DeviceSnapshot, event: DeviceDiscoveryEvent?) {
         openScaleSetup(scale: scale, event: event, isReconnect: false, isDuplicated: false)
     }
 
-    func openScaleSetup(scale: Device, event: DeviceDiscoveryEvent?, isReconnect: Bool, isDuplicated: Bool) {
+    func openScaleSetup(scale: DeviceSnapshot, event: DeviceDiscoveryEvent?, isReconnect: Bool, isDuplicated: Bool) {
         let sku = scale.sku ?? event?.deviceInfo.sku ?? ""
         guard !sku.isEmpty, let setupType = event?.deviceInfo.setupType else { return }
         logger.log(
