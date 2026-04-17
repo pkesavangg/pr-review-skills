@@ -115,6 +115,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
     private var isScaleConnected: Boolean = discoveredScale?.connectionStatus == BLEStatus.CONNECTED
     private var isScaleSaved: Boolean = false
     private var isExiting: Boolean = false
+    private var fetchUserListJob: kotlinx.coroutines.Job? = null
     private var accountId: String? = null
     private var updateSettingsTimeoutJob: kotlinx.coroutines.Job? = null
     private var measurementTimeoutJob: kotlinx.coroutines.Job? = null
@@ -469,16 +470,22 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
                     confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
                     cancelText = ScaleSetupStrings.ExitSetupAlert.GoBack,
                     onConfirm = { onExit() },
-                    onCancel = { isExiting = false },
-                    onDismiss = { isExiting = false },
+                    onCancel = { cancelExitFetch() },
+                    onDismiss = { cancelExitFetch() },
                 ),
             )
         }
     }
 
+    private fun cancelExitFetch() {
+        fetchUserListJob?.cancel()
+        fetchUserListJob = null
+        isExiting = false
+    }
+
     private fun fetchUserListForExit() {
         val scale = discoveredScale ?: return
-        viewModelScope.launch {
+        fetchUserListJob = viewModelScope.launch {
             try {
                 ggDeviceService.getUsers(scale.toGGBTDevice()) { response ->
                     handleIntent(BtWifiScaleSetupIntent.SetUserList(response.user))
