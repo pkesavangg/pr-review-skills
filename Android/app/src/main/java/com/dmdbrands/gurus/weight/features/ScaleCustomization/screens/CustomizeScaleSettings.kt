@@ -153,6 +153,13 @@ fun CustomizeScaleSettings(
     }
   }
 
+  LaunchedEffect(state.scrollToRootPage) {
+    if (state.scrollToRootPage) {
+      pagerState.scrollToPage(0)
+      onIntent(BtWifiScaleSetupIntent.ClearScrollToRootPage)
+    }
+  }
+
   HorizontalPagerWithBottomNavigation(
     modifier = Modifier
       .fillMaxSize()
@@ -272,12 +279,7 @@ fun CustomizeScaleSettings(
 
                 else -> {}
               }
-              // Show "Saving..." loader; navigate back to the parent page once it dismisses (MA-2501).
-              onIntent(
-                BtWifiScaleSetupIntent.ShowSavingLoader(
-                  onComplete = { scope.launch { pagerState.scrollToPage(0) } },
-                ),
-              )
+              onIntent(BtWifiScaleSetupIntent.ShowSavingLoader)
             },
           )
         }

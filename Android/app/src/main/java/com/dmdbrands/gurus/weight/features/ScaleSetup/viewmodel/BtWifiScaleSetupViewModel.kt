@@ -197,7 +197,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
             BtWifiScaleSetupIntent.Skip -> onSkip()
             BtWifiScaleSetupIntent.TryAgain -> onTryAgain()
             is BtWifiScaleSetupIntent.UpdateSettings -> updateDevicePreferences(intent.dashboardKeys, intent.preferences)
-            is BtWifiScaleSetupIntent.ShowSavingLoader -> showSavingLoader(intent.onComplete)
+            BtWifiScaleSetupIntent.ShowSavingLoader -> showSavingLoader()
             BtWifiScaleSetupIntent.RefreshNetworks -> onRefreshNetworks()
             BtWifiScaleSetupIntent.HandlePasswordNetworkStatus -> wifiManager.handlePasswordNetworkStatus()
             is BtWifiScaleSetupIntent.RequestPermission -> requestPermission(intent.permissionType)
@@ -963,7 +963,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
      * [ScaleSetupConstants.DELAY_AFTER_SAVE_MS] so the loader is perceivable, dismisses it,
      * and invokes [onComplete] so the UI can navigate back. Fixes MA-2501.
      */
-    private fun showSavingLoader(onComplete: () -> Unit) {
+    private fun showSavingLoader() {
         viewModelScope.launch {
             try {
                 dialogQueueService.showLoader(ScaleSetupStrings.SaveScaleLoader)
@@ -971,7 +971,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
             } finally {
                 dialogQueueService.dismissLoader()
             }
-            onComplete()
+            handleIntent(BtWifiScaleSetupIntent.ScrollToRootPage)
         }
     }
 
