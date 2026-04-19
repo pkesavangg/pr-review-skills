@@ -245,18 +245,20 @@ data class SignupFormControls(
         }
       }
 
-      // Track original lbs values to prevent rounding errors on unit toggle round-trips.
-      // When user enters a value in lbs and toggles to kg, the original lbs value is saved.
-      // Toggling back restores the exact original instead of re-converting (which loses precision).
-      var originalCurrentWeightLbs = ""
-      var originalGoalWeightLbs = ""
+      // Track original entered weight values to prevent rounding loss on unit toggle round-trips.
+      // Each pair stores (rawValue, wasMetric): the user's typed value and the unit it was entered in.
+      // Toggling back to the original unit restores the exact input instead of re-converting.
+      // NOTE: These closure-local vars are invisible to MVI state — not observable, serializable,
+      // or restorable on process death. After a process kill, toggling units will re-convert with
+      // potential rounding loss. Acceptable for transient signup form state.
+      var originalCurrentWeight: Pair<String, Boolean>? = null
+      var originalGoalWeight: Pair<String, Boolean>? = null
       var isUnitToggleUpdate = false
 
       // When current weight changes, validate goal weight (for lose/gain goals)
       controls.currentWeight.onValueChangeListener { _, _ ->
-        // Clear original lbs value when user manually edits (not from unit toggle)
         if (!isUnitToggleUpdate) {
-          originalCurrentWeightLbs = ""
+          originalCurrentWeight = null
         }
         val goalType = controls.goalType.value
         if ((goalType == GoalType.LOSE.value || goalType == GoalType.GAIN.value || goalType == GoalType.LOSE_GAIN.value) &&
@@ -266,61 +268,57 @@ data class SignupFormControls(
         }
       }
 
-      // Clear original goal weight lbs when user manually edits
       controls.goalWeight.onValueChangeListener { _, _ ->
         if (!isUnitToggleUpdate) {
-          originalGoalWeightLbs = ""
+          originalGoalWeight = null
         }
       }
 
       // Set up metric toggle validation trigger
       controls.useMetric.onValueChangeListener { oldValue, newValue ->
-        val switchingToMetric = !oldValue && newValue
-        val switchingToImperial = oldValue && !newValue
-
         isUnitToggleUpdate = true
-
-        // Convert current weight when switching units
-        if (controls.currentWeight.value.isNotEmpty()) {
-          if (switchingToMetric) {
-            originalCurrentWeightLbs = controls.currentWeight.value
-            val convertedCurrentWeight =
-              convertWeightValue(controls.currentWeight.value, fromMetric = false, toMetric = true)
-            controls.currentWeight.onValueChange(convertedCurrentWeight)
-          } else if (switchingToImperial && originalCurrentWeightLbs.isNotEmpty()) {
-            controls.currentWeight.onValueChange(originalCurrentWeightLbs)
-            originalCurrentWeightLbs = ""
+        try {
+          // Convert current weight when switching units
+          if (controls.currentWeight.value.isNotEmpty()) {
+            val orig = originalCurrentWeight
+            if (orig != null && orig.second == newValue) {
+              // Toggling back to the unit the user originally typed — restore exact value
+              controls.currentWeight.onValueChange(orig.first)
+              originalCurrentWeight = null
+            } else {
+              if (orig == null) {
+                originalCurrentWeight = Pair(controls.currentWeight.value, oldValue)
+              }
+              val convertedCurrentWeight =
+                convertWeightValue(controls.currentWeight.value, fromMetric = oldValue, toMetric = newValue)
+              controls.currentWeight.onValueChange(convertedCurrentWeight)
+            }
+            controls.currentWeight.validate()
           } else {
-            val convertedCurrentWeight =
-              convertWeightValue(controls.currentWeight.value, oldValue, newValue)
-            controls.currentWeight.onValueChange(convertedCurrentWeight)
+            controls.currentWeight.validate()
           }
-          controls.currentWeight.validate()
-        } else {
-          controls.currentWeight.validate()
-        }
 
-        // Convert goal weight when switching units
-        if (controls.goalWeight.value.isNotEmpty()) {
-          if (switchingToMetric) {
-            originalGoalWeightLbs = controls.goalWeight.value
-            val convertedGoalWeight =
-              convertWeightValue(controls.goalWeight.value, fromMetric = false, toMetric = true)
-            controls.goalWeight.onValueChange(convertedGoalWeight)
-          } else if (switchingToImperial && originalGoalWeightLbs.isNotEmpty()) {
-            controls.goalWeight.onValueChange(originalGoalWeightLbs)
-            originalGoalWeightLbs = ""
+          // Convert goal weight when switching units
+          if (controls.goalWeight.value.isNotEmpty()) {
+            val orig = originalGoalWeight
+            if (orig != null && orig.second == newValue) {
+              controls.goalWeight.onValueChange(orig.first)
+              originalGoalWeight = null
+            } else {
+              if (orig == null) {
+                originalGoalWeight = Pair(controls.goalWeight.value, oldValue)
+              }
+              val convertedGoalWeight =
+                convertWeightValue(controls.goalWeight.value, fromMetric = oldValue, toMetric = newValue)
+              controls.goalWeight.onValueChange(convertedGoalWeight)
+            }
+            controls.goalWeight.validate()
           } else {
-            val convertedGoalWeight =
-              convertWeightValue(controls.goalWeight.value, oldValue, newValue)
-            controls.goalWeight.onValueChange(convertedGoalWeight)
+            controls.goalWeight.validate()
           }
-          controls.goalWeight.validate()
-        } else {
-          controls.goalWeight.validate()
+        } finally {
+          isUnitToggleUpdate = false
         }
-
-        isUnitToggleUpdate = false
 
         // Update height input based on metric setting
         // Use proper rounding to preserve precision and prevent accumulation errors
