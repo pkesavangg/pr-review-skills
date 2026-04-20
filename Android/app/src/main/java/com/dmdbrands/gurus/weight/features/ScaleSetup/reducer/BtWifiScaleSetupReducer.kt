@@ -21,6 +21,15 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 
 /**
+ * Stable composite key for a Wi-Fi network entry.
+ *
+ * SSID alone is not unique (same SSID can be broadcast on 2.4 GHz + 5 GHz or by
+ * multiple APs). MAC is the real identifier; SSID is appended so entries remain
+ * disambiguated if the SDK returns a blank MAC.
+ */
+internal fun GGWifiInfo.listKey(): String = "${macAddress.orEmpty()}|${ssid.orEmpty()}"
+
+/**
  * Controls for WiFi-Password form.
  */
 data class WifiPasswordFormControls(
@@ -252,7 +261,9 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
       is BtWifiScaleSetupIntent.SetDuplicateUserList -> state.copy(duplicateUserList = intent.duplicateUserList.toImmutableList())
       is BtWifiScaleSetupIntent.SetDashboardKeys -> state.copy(dashboardKeys = intent.dashboardKeys.toImmutableList())
       is BtWifiScaleSetupIntent.SetGoalProgress -> state.copy(goalProgress = intent.progress)
-      is BtWifiScaleSetupIntent.SetWifiList -> state.copy(wifiList = intent.wifiList.toImmutableList())
+      is BtWifiScaleSetupIntent.SetWifiList -> state.copy(
+        wifiList = intent.wifiList.distinctBy { it.listKey() }.toImmutableList(),
+      )
       is BtWifiScaleSetupIntent.SetScaleSku -> state.copy(sku = intent.sku)
       is BtWifiScaleSetupIntent.SetCurrentStep -> state.copy(
         currentStep = intent.step,
