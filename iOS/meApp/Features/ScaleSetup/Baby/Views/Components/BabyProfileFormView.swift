@@ -131,7 +131,6 @@ struct BabyProfileFormView: View {
                             endDate: Date()
                         )
                     }
-                    .padding(.top, -.spacingSM)
 
                     // Biological Sex
                     ActionListItemView(config: ActionListItemConfig(
