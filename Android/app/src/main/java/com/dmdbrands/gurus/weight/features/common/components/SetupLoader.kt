@@ -51,7 +51,7 @@ object SetupLoaderTimings {
    * navigating away. Covers [CROSSFADE_MS] plus [SUCCESS_BUFFER_MS] for slower
    * devices so the user reliably perceives the checkmark.
    */
-  const val SUCCESS_DISPLAY_MS: Long = CROSSFADE_MS + SUCCESS_BUFFER_MS
+  const val SUCCESS_DISPLAY_MS: Long = CROSSFADE_MS.toLong() + SUCCESS_BUFFER_MS
 }
 
 /** Number of dots rendered by [SetupLoader]. */
