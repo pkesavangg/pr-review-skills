@@ -27,7 +27,7 @@ final class BabyScaleSetupStore: ObservableObject {
     /// Callback used by the screen to dismiss itself.
     var dismissAction: (() -> Void)?
     /// Discovered scale information.
-    var discoveredScale: Device?
+    var discoveredScale: DeviceSnapshot?
     /// Discovery event from Bluetooth service.
     var discoveryEvent: DeviceDiscoveryEvent?
 
@@ -76,7 +76,7 @@ final class BabyScaleSetupStore: ObservableObject {
     var isRevertingStepIndex: Bool = false
 
     @Published var connectionState: ConnectionState = .loading
-    @Published var savedScale: Device?
+    @Published var savedScale: DeviceSnapshot?
     @Published var scaleSetupError: BabyScaleSetupError = .none
     @Published private(set) var steps: [BabyScaleSetupStep] = BabyScaleSetupStep.allCases
     @Published var isNextEnabled: Bool = true

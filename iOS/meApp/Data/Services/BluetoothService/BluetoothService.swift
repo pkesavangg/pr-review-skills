@@ -121,6 +121,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     var cancellables = Set<AnyCancellable>()
     var activeAccount: AccountSnapshot?
     var isSmartScanStarted = false
+    private var isInitialized = false
     var bluetoothScales: [DeviceSnapshot] = []
     var connectedGgDevices: [GGBTDevice] = []
     var isWeightOnlyModeAlertDismissed = false
@@ -205,8 +206,14 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
     /**
      Initializes the Bluetooth service and subscribes to account changes.
+     Idempotent: repeat calls are no-ops so we don't register duplicate account subscriptions.
      */
     func initialize() {
+        guard !isInitialized else {
+            logger.log(level: .debug, tag: tag, message: "Bluetooth service initialize called again; skipping (already initialized)")
+            return
+        }
+        isInitialized = true
         logger.log(level: .info, tag: tag, message: "Bluetooth service initialize called")
         accountService.activeAccountPublisher
             .receive(on: DispatchQueue.main)
