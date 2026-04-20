@@ -59,6 +59,11 @@ enum class ButtonType {
   SuccessFilled
 }
 
+val ButtonType.isInlineText: Boolean
+  get() = this == ButtonType.InlineTextPrimary ||
+    this == ButtonType.InlineTextSecondary ||
+    this == ButtonType.InlineTextTertiary
+
 // Color
 // Type - outline/filled/text
 // style - block/inline
@@ -211,7 +216,7 @@ object AppButtonDefaults {
     size: ButtonSize,
     type: ButtonType,
   ): Dp {
-    if (type == ButtonType.InlineTextPrimary || type == ButtonType.InlineTextSecondary) {
+    if (type.isInlineText) {
       return 0.dp
     }
     return when (size) {
@@ -317,7 +322,7 @@ fun AppButton(
   val isPhoneLike = deviceType == DeviceType.Phone || deviceType == DeviceType.Fold
   val buttonModifier = modifier
     .then(
-      if (type != ButtonType.InlineTextPrimary && type != ButtonType.InlineTextSecondary && type != ButtonType.InlineTextTertiary) {
+      if (!type.isInlineText) {
         if (isPhoneLike) Modifier.height(height) else Modifier.heightIn(min = height)
       } else {
         Modifier
