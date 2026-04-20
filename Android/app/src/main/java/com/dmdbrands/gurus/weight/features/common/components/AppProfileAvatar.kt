@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.absolutePadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -28,6 +29,8 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 private const val INFO_ICON_WIDTH_RATIO = 1.7f
 // Profile icon is ~44% of the avatar size per Figma spec (24dp at size=55dp)
 private const val PROFILE_ICON_SIZE_RATIO = 0.44f
+// Border / inset width used for the info icon variant circles (Figma spec)
+private val BORDER_WIDTH_DP = 3.dp
 
 /**
  * A circular profile avatar that displays the first letter of the provided text and supports active/inactive states.
@@ -122,7 +125,7 @@ fun AppProfileAvatar(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .size(size)
-                    .border(3.dp, MeTheme.colorScheme.iconPrimary, CircleShape)
+                    .border(BORDER_WIDTH_DP, MeTheme.colorScheme.iconPrimary, CircleShape)
                     .clip(CircleShape)
                     .background(Color.Transparent),
                 contentAlignment = Alignment.Center,
@@ -132,8 +135,9 @@ fun AppProfileAvatar(
                     contentDescription = "Profile",
                     type = AppIconType.Primary,
                     modifier = Modifier
-                        // 2.dp nudge visually centers the icon inside the border circle per Figma
-                        .padding(start = 2.dp)
+                        // 2.dp nudge visually centers the icon inside the border circle per Figma.
+                        // absolutePadding is used instead of start-padding to stay consistent under RTL.
+                        .absolutePadding(left = 2.dp)
                         .align(Alignment.Center)
                         .size(size * PROFILE_ICON_SIZE_RATIO),
                 )
@@ -148,7 +152,7 @@ fun AppProfileAvatar(
                     .size(size)
                     .clip(CircleShape)
                     .background(backgroundColor)
-                    .padding(3.dp),
+                    .padding(BORDER_WIDTH_DP),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
