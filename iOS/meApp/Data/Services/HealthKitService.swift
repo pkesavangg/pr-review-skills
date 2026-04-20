@@ -100,6 +100,12 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
         }
     }
 
+    /// Maps a raw DeviceType value to its HealthKit permission category.
+    /// babyScale has no distinct HealthKit data types from scale — both use Weight Gurus permissions.
+    private func healthKitPermissionCategory(for deviceType: String) -> String {
+        deviceType == DeviceType.babyScale.rawValue ? DeviceType.scale.rawValue : deviceType
+    }
+
     private func getSignupSelectedDeviceType(for accountId: String) -> SignupDeviceType? {
         let key = KvStorageKeys.selectedSignupDeviceTypeKey(for: accountId)
         guard let rawValue = kvStore.getValue(forKey: key) as? String else { return nil }
@@ -290,6 +296,12 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
         let currentPermissionScope = await getConfiguredHealthKitPermissionScopeDeviceTypes()
         let expandedDeviceTypes = currentPermissionScope.union(pairedDeviceTypes)
         guard expandedDeviceTypes != currentPermissionScope else { return nil }
+
+        // babyScale maps to the same HealthKit permissions as scale — adding a baby scale
+        // should not trigger a permission expansion modal.
+        let currentCategories = Set(currentPermissionScope.map { healthKitPermissionCategory(for: $0) })
+        let expandedCategories = Set(expandedDeviceTypes.map { healthKitPermissionCategory(for: $0) })
+        guard expandedCategories != currentCategories else { return nil }
 
         logger.log(
             level: .info,
