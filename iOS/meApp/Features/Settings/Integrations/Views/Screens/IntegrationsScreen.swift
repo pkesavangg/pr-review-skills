@@ -11,6 +11,7 @@ struct IntegrationsScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var router: Router<SettingsRoute>
     @StateObject private var store = IntegrationStore()
+    @StateObject private var oauthSession = OAuthWebSession()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -43,15 +44,14 @@ struct IntegrationsScreen: View {
             .background(theme.backgroundSecondary.ignoresSafeArea())
             .navigationBarHidden(true)
         }
-        // In-app browser for OAuth flows
-        .inAppBrowser(
-            url: store.presentingBrowserURL,
-            isPresented: Binding(
-                get: { store.showBrowser },
-                set: { store.showBrowser = $0 }
-            )
-        ) {
-            store.refreshAccounts()
+        // OAuth flow — use ephemeral ASWebAuthenticationSession so each reconnect
+        // starts with a clean cookie jar (fixes Fitbit/MFP auto-login on reconnect).
+        .onChange(of: store.showBrowser) { _, isShowing in
+            guard isShowing, let url = store.browserURL else { return }
+            store.showBrowser = false
+            oauthSession.start(url: url) {
+                store.refreshAccounts()
+            }
         }
     }
 }
