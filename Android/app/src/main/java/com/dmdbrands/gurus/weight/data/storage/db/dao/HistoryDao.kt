@@ -155,7 +155,7 @@ interface HistoryDao {
             bp.pulse,
             strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period
         FROM entry_view e
-        INNER JOIN bpm_entry bp ON e.id = bp.entryId
+        INNER JOIN bpm_entry bp ON e.id = bp.id
         WHERE e.accountId = :accountId
           AND (e.operationType IS NULL OR e.operationType != 'delete')
     )
@@ -356,7 +356,7 @@ interface HistoryDao {
         CAST(AVG(bp.diastolic) AS INTEGER) AS avgDiastolic,
         CAST(AVG(bp.pulse) AS INTEGER) AS avgPulse
     FROM entry_view e
-    INNER JOIN bpm_entry bp ON e.id = bp.entryId
+    INNER JOIN bpm_entry bp ON e.id = bp.id
     WHERE e.accountId = :accountId
       AND (e.operationType IS NULL OR e.operationType != 'delete')
     GROUP BY strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
@@ -378,7 +378,7 @@ interface HistoryDao {
         CAST(AVG(bp.diastolic) AS INTEGER) AS avgDiastolic,
         CAST(AVG(bp.pulse) AS INTEGER) AS avgPulse
     FROM entry_view e
-    INNER JOIN bpm_entry bp ON e.id = bp.entryId
+    INNER JOIN bpm_entry bp ON e.id = bp.id
     WHERE e.accountId = :accountId
       AND (e.operationType IS NULL OR e.operationType != 'delete')
     GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))

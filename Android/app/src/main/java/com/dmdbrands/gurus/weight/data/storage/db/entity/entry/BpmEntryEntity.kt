@@ -14,14 +14,14 @@ import androidx.room.PrimaryKey
         ForeignKey(
             entity = EntryEntity::class,
             parentColumns = ["id"],
-            childColumns = ["entryId"],
+            childColumns = ["id"],
             onDelete = ForeignKey.CASCADE,
         ),
     ],
 )
 data class BpmEntryEntity(
     @PrimaryKey
-    val entryId: Long,
+    val id: Long,
     val systolic: Int,
     val diastolic: Int,
     val pulse: Int,

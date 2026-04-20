@@ -156,19 +156,19 @@ class HistoryRepository @Inject constructor(
     private fun sampleBpmEntries() = listOf(
         BpmEntry(
             entry = EntryEntity(id = 1001, accountId = "sample", entryTimestamp = "2025-08-07T09:52:00.000Z", operationType = "create", deviceType = "bpm", deviceId = "bpm-1"),
-            bpmEntry = BpmEntryEntity(entryId = 1001, systolic = 115, diastolic = 75, pulse = 60, meanArterial = "88", note = "This is where a note would go."),
+            bpmEntry = BpmEntryEntity(id =1001, systolic = 115, diastolic = 75, pulse = 60, meanArterial = "88", note = "This is where a note would go."),
         ),
         BpmEntry(
             entry = EntryEntity(id = 1002, accountId = "sample", entryTimestamp = "2025-08-06T09:52:00.000Z", operationType = "create", deviceType = "bpm", deviceId = "bpm-1"),
-            bpmEntry = BpmEntryEntity(entryId = 1002, systolic = 115, diastolic = 75, pulse = 60, meanArterial = "88", note = "Another note here."),
+            bpmEntry = BpmEntryEntity(id =1002, systolic = 115, diastolic = 75, pulse = 60, meanArterial = "88", note = "Another note here."),
         ),
         BpmEntry(
             entry = EntryEntity(id = 1003, accountId = "sample", entryTimestamp = "2025-08-05T09:52:00.000Z", operationType = "create", deviceType = "bpm", deviceId = "bpm-1"),
-            bpmEntry = BpmEntryEntity(entryId = 1003, systolic = 118, diastolic = 76, pulse = 72, meanArterial = "90", note = null),
+            bpmEntry = BpmEntryEntity(id =1003, systolic = 118, diastolic = 76, pulse = 72, meanArterial = "90", note = null),
         ),
         BpmEntry(
             entry = EntryEntity(id = 1004, accountId = "sample", entryTimestamp = "2025-08-04T09:52:00.000Z", operationType = "create", deviceType = "bpm", deviceId = "bpm-1"),
-            bpmEntry = BpmEntryEntity(entryId = 1004, systolic = 120, diastolic = 78, pulse = 75, meanArterial = "92", note = null),
+            bpmEntry = BpmEntryEntity(id =1004, systolic = 120, diastolic = 78, pulse = 75, meanArterial = "92", note = null),
         ),
     )
 
