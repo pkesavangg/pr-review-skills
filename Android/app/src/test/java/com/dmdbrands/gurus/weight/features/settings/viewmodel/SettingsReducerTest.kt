@@ -225,6 +225,5 @@ class SettingsReducerTest {
         assertThat(reducer.reduce(state, SettingsIntent.OpenTermsOfService)).isNull()
         assertThat(reducer.reduce(state, SettingsIntent.OpenHelp)).isNull()
         assertThat(reducer.reduce(state, SettingsIntent.ShowNotificationsModal)).isNull()
-        assertThat(reducer.reduce(state, SettingsIntent.OpenMyKids)).isNull()
     }
 }

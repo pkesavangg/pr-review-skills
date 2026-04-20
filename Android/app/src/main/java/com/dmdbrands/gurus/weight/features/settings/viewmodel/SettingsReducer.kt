@@ -82,7 +82,6 @@ sealed interface SettingsIntent : IReducer.Intent {
   data class SetShowUnreadFeedIndication(val show: Boolean) : SettingsIntent
   data class SetExportEnabled(val enabled: Boolean) : SettingsIntent
   data class SetIsBabyProduct(val isBabyProduct: Boolean) : SettingsIntent
-  object OpenMyKids : SettingsIntent
   object DeleteAccount : SettingsIntent
   object ConfirmDeleteAccount : SettingsIntent
   object TriggerTestCrash : SettingsIntent

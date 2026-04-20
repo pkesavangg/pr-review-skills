@@ -185,7 +185,8 @@ class ProfileViewModel @Inject constructor(
         var scaleResult: GGUserActionResponseType? = null
         accountService.updateProfile(profileUpdateRequest, true, showToast = false)
 
-        // Update height via body composition if changed
+        // Update height via body composition if changed. Isolate failures so a body-comp
+        // error doesn't skip the downstream R4 scale profile update.
         val heightChanged = newHeight != null && newHeight != currentAccount.height
         if (heightChanged) {
           val bodyComposition = BodyCompUpdateRequest(
@@ -193,7 +194,11 @@ class ProfileViewModel @Inject constructor(
             activityLevel = currentAccount.activityLevel ?: "normal",
             weightUnit = currentAccount.weightUnit.value,
           )
-          bodyCompositionService.updateBodyComposition(BodyCompUpdateType.HEIGHT, bodyComposition)
+          try {
+            bodyCompositionService.updateBodyComposition(BodyCompUpdateType.HEIGHT, bodyComposition)
+          } catch (e: Exception) {
+            AppLog.e(TAG, "Body composition height update failed; continuing with scale update", e)
+          }
         }
 
         // Update scale profile if gender, dob, name, or height changed

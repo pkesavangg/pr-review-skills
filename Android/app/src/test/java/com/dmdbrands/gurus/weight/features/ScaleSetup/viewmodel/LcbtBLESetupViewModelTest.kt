@@ -311,7 +311,7 @@ class LcbtBLESetupViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Back from first step navigates to AddEditScales`() {
+    fun `Back from first step navigates to MyDevices`() {
         createViewModel()
         advanceScheduler()
         viewModel.handleIntent(ScaleSetupIntent.Back)

@@ -431,7 +431,7 @@ class DashboardViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnConnectScale navigates to AddEditScales`() = runTest {
+    fun `OnConnectScale navigates to MyDevices`() = runTest {
         viewModel.handleIntent(DashboardIntent.OnConnectScale)
         advanceUntilIdle()
       coVerify { navigationService.navigateTo(AppRoute.AccountSettings.MyDevices) }

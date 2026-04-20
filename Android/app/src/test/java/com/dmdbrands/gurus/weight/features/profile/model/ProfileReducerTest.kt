@@ -157,21 +157,21 @@ class ProfileReducerTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `ShowBiologicalSexModal returns same state`() {
+    fun `ShowBiologicalSexModal returns null — handled as side effect`() {
         val result = reducer.reduce(initialState, ProfileIntent.ShowBiologicalSexModal)
-        assertThat(result).isEqualTo(initialState)
+        assertThat(result).isNull()
     }
 
     @Test
-    fun `ShowHeightModal returns same state`() {
+    fun `ShowHeightModal returns null — handled as side effect`() {
         val result = reducer.reduce(initialState, ProfileIntent.ShowHeightModal)
-        assertThat(result).isEqualTo(initialState)
+        assertThat(result).isNull()
     }
 
     @Test
-    fun `OnRequestBack returns same state`() {
+    fun `OnRequestBack returns null — handled as side effect`() {
         val result = reducer.reduce(initialState, ProfileIntent.OnRequestBack)
-        assertThat(result).isEqualTo(initialState)
+        assertThat(result).isNull()
     }
 
     // -------------------------------------------------------------------------

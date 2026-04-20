@@ -159,11 +159,6 @@ constructor(
         }
       }
 
-      SettingsIntent.OpenMyKids -> {
-        // TODO: Navigate to My Kids screen when route is available
-        AppLog.d(TAG, "My Kids clicked")
-      }
-
       else -> {}
     }
   }

@@ -149,15 +149,11 @@ class ProfileReducer : IReducer<ProfileState, ProfileIntent> {
      * @param intent The intent/action to handle.
      * @return The new state after applying the intent.
      */
-    override fun reduce(state: ProfileState, intent: ProfileIntent): ProfileState =
+    override fun reduce(state: ProfileState, intent: ProfileIntent): ProfileState? =
         when (intent) {
-            is ProfileIntent.Submit -> {
-                state.copy(isLoading = true, error = null)
-            }
+            is ProfileIntent.Submit -> state.copy(isLoading = true, error = null)
 
-            is ProfileIntent.LoadProfile -> {
-                state.copy(isLoading = true, error = null)
-            }
+            is ProfileIntent.LoadProfile -> state.copy(isLoading = true, error = null)
 
             is ProfileIntent.ProfileLoaded -> {
                 val updatedForm = FormGroup(
@@ -180,23 +176,15 @@ class ProfileReducer : IReducer<ProfileState, ProfileIntent> {
                 )
             }
 
-            is ProfileIntent.Error -> {
-                state.copy(isLoading = false, error = intent.message)
-            }
+            is ProfileIntent.Error -> state.copy(isLoading = false, error = intent.message)
 
-            is ProfileIntent.UpdateForm -> {
-                state.copy(form = intent.form)
-            }
+            is ProfileIntent.UpdateForm -> state.copy(form = intent.form)
 
-            is ProfileIntent.Success -> {
-                state.copy(isLoading = false, error = null)
-            }
+            is ProfileIntent.Success -> state.copy(isLoading = false, error = null)
 
+            // Side-effect intents — ViewModel handles them, reducer emits no state change.
             is ProfileIntent.ShowBiologicalSexModal,
             is ProfileIntent.ShowHeightModal,
-            is ProfileIntent.OnRequestBack -> {
-                // No state change needed — handled as side effects in ViewModel
-                state
-            }
+            is ProfileIntent.OnRequestBack -> null
         }
 }

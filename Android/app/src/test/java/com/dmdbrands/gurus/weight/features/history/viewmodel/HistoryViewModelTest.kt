@@ -172,7 +172,7 @@ class HistoryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnConnectScale navigates to AddEditScales`() = runTest {
+    fun `OnConnectScale navigates to MyDevices`() = runTest {
         viewModel.handleIntent(HistoryIntent.OnConnectScale)
         advanceUntilIdle()
       coVerify { navigationService.navigateTo(AppRoute.AccountSettings.MyDevices) }

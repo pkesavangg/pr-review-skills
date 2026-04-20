@@ -502,6 +502,31 @@ class ProfileViewModelTest {
     }
 
     // -------------------------------------------------------------------------
+    // Submit — body-comp failure must not block R4 scale profile update
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Submit still updates R4 scale profile when body composition update throws`() = runTest {
+        advanceUntilIdle()
+
+        coEvery { accountService.updateProfile(any(), any(), showToast = any()) } returns Unit
+        coEvery {
+            bodyCompositionService.updateBodyComposition(any(), any())
+        } throws RuntimeException("body-comp API failure")
+
+        // Change the form's height so heightChanged is true and the body-comp branch is taken
+        val newHeight = (TestFixtures.activeAccount.height ?: 0) + 10
+        viewModel.state.value.form.controls.height.onValueChange(newHeight)
+
+        viewModel.handleIntent(ProfileIntent.Submit)
+        advanceUntilIdle()
+
+        // R4 scale profile update should still run despite body-comp throwing
+        verify { ggDeviceService.updateProfile(any(), any()) }
+        verify { dialogQueueService.dismissLoader() }
+    }
+
+    // -------------------------------------------------------------------------
     // Submit — navigateBack is called on success
     // -------------------------------------------------------------------------
 

@@ -262,7 +262,7 @@ class SettingsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OpenAddScales navigates to AddEditScales`() = runTest {
+    fun `OpenAddScales navigates to MyDevices`() = runTest {
       viewModel.handleIntent(SettingsIntent.OpenMyDevices)
         advanceUntilIdle()
       coVerify { navigationService.navigateTo(AppRoute.AccountSettings.MyDevices) }
