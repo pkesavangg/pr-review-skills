@@ -27,6 +27,11 @@ class DeviceHelperTest {
     }
 
     @Test
+    fun `isBpmDevice returns false for null SKU`() {
+        assertThat(DeviceHelper.isBpmDevice(null)).isFalse()
+    }
+
+    @Test
     fun `isBabyScale returns true for baby scale SKUs`() {
         assertThat(DeviceHelper.isBabyScale(SKU_0220)).isTrue()
         assertThat(DeviceHelper.isBabyScale(SKU_0222)).isTrue()
