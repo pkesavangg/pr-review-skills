@@ -91,7 +91,6 @@ fun ScaleDetailsScreenContent(
     device?.deviceType?.let { ScaleSetupType.fromString(it) } ?: ScaleSetupType.Bluetooth
   val isWifiSetup = scaleSetupType == ScaleSetupType.Wifi || scaleSetupType == ScaleSetupType.EspTouchWifi
   val isBpm = DeviceHelper.isBpmDevice(device?.getSKU())
-  val scaleInfoForSku = ScaleDataHelper.findScaleInfoBySku(device?.getSKU() ?: "")
   val showUserNumber = (isWifiSetup || scaleSetupType == ScaleSetupType.Bluetooth) && state.scale?.userNumber != null
   val isConnected = device?.connectionStatus == BLEStatus.CONNECTED
   val scaleMode =
@@ -204,8 +203,9 @@ fun ScaleDetailsScreenContent(
             )
             if (showUserNumber) {
               val userLabel = if (isBpm) {
+                val scaleInfo = ScaleDataHelper.findScaleInfoBySku(device.getSKU())
                 ScaleDataHelper.formatUserDisplay(
-                  scaleInfoForSku?.hasNumericUsers ?: true,
+                  scaleInfo?.hasNumericUsers ?: true,
                   device.userNumber,
                 )
               } else {

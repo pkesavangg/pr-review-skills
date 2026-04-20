@@ -16,8 +16,8 @@ object ScaleDataHelper {
    * @param sku The SKU to look up (can be original or variant SKU)
    * @return The ScaleInfo if found, null otherwise
    */
-  fun findScaleInfoBySku(sku: String): ScaleInfo? {
-    val lookupSku = DeviceHelper.mapSkuForDisplay(sku)
+  fun findScaleInfoBySku(sku: String?): ScaleInfo? {
+    val lookupSku = sku?.let { DeviceHelper.mapSkuForDisplay(it) } ?: return null
     return SCALES.find { it.sku == lookupSku }
   }
 
