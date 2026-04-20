@@ -48,7 +48,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.coroutines.yield
 
 @HiltViewModel(
   assistedFactory = WifiScaleSetupViewModel.Factory::class,
@@ -349,17 +348,12 @@ constructor(
         confirmText = ScaleSetupStrings.SkipWifiPermissions.Skip,
         cancelText = ScaleSetupStrings.SkipWifiPermissions.Goback,
         onConfirm = {
-          viewModelScope.launch {
-            // yield() lets the dialog dismiss animation complete before
-            // triggering the 4 state changes + pager scroll, preventing jank.
-            yield()
-            handleIntent(WifiScaleSetupIntent.SetPermissionsSkipped(true))
-            if (state.value.wifiPasswordForm.ssid.value.isEmpty()) {
-              clearWifiPasswordForm()
-            }
-            handleUserConfirmSelected(SetupPath.AP_MODE)
-            handleIntent(WifiScaleSetupIntent.Next)
+          handleIntent(WifiScaleSetupIntent.SetPermissionsSkipped(true))
+          if(state.value.wifiPasswordForm.ssid.value.isEmpty()){
+            clearWifiPasswordForm()
           }
+          handleUserConfirmSelected(SetupPath.AP_MODE)
+          handleIntent(WifiScaleSetupIntent.Next)
         },
       ),
     )

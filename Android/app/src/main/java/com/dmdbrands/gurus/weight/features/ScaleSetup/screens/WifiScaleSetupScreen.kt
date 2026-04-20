@@ -9,7 +9,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
@@ -50,7 +49,6 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.borderRadius
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
-import kotlinx.coroutines.delay
 
 @Composable
 fun WifiScaleSetupScreen(
@@ -89,21 +87,16 @@ fun WifiScaleSetupScreenContent(
   onIntent: (WifiScaleSetupIntent) -> Unit,
 ) {
   val pagerState = rememberPagerState { state.steps.size }
-  val isAnimating = remember { mutableStateOf(false) }
   val focusManager = LocalFocusManager.current
 
-  // Sync ViewModel state to Pager state
+  // Sync ViewModel state to Pager state. animateScrollToPage handles its own
+  // cancellation when LaunchedEffect restarts, so no manual isAnimating guard
+  // is needed — the previous guard could get stuck on `true` if the coroutine
+  // was cancelled mid-animation, swallowing the slide animation on rapid taps.
   LaunchedEffect(state.currentStep) {
-    if (!isAnimating.value && pagerState.currentPage != state.currentStepIndex) {
-      isAnimating.value = true
-      try {
-        pagerState.animateScrollToPage(state.currentStepIndex)
-      } finally {
-        delay(100)
-        isAnimating.value = false
-        // Clear navigation state after animation completes
-        onIntent(WifiScaleSetupIntent.ClearNavigationState)
-      }
+    if (pagerState.currentPage != state.currentStepIndex) {
+      pagerState.animateScrollToPage(state.currentStepIndex)
+      onIntent(WifiScaleSetupIntent.ClearNavigationState)
     }
   }
 
