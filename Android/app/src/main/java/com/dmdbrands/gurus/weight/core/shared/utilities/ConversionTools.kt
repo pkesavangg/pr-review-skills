@@ -289,7 +289,9 @@ object ConversionTools {
         round(grams / GRAMS_PER_OZ_0220 * 10.0) / 10.0
     }
     val lbs = (totalOz / OZ_PER_LB).toInt()
-    val oz = if (lbs > 0) round((totalOz % OZ_PER_LB) * 10.0) / 10.0 else round(totalOz * 10.0) / 10.0
+    // When lbs == 0, totalOz < 16 so totalOz % 16 == totalOz; single expression is equivalent
+    // to babyApp's `lbs > 0 ? totalOz%16 : totalOz` ternary but without the dead branch.
+    val oz = round((totalOz % OZ_PER_LB) * 10.0) / 10.0
     // Defensive carry guard (not in babyApp; 0220 graduation currently never triggers this).
     return if (oz >= OZ_PER_LB) Pair(lbs + 1, 0.0) else Pair(lbs, oz)
   }
@@ -365,6 +367,10 @@ object ConversionTools {
   fun convertBabyWeightToKg(decigrams: Int, source: String?): Double {
     val isBabyScale = source != null &&
       (source.contains(SKU_0220) || source.contains(SKU_0222))
+    // Both 0220 and 0222 route to convert0220DecigramsToKg because babyApp's
+    // convertToDisplayWeightBase (unit-conversion.service.ts line 136) uses the same
+    // function for both in the 'metric' case — 0222 shares 0220's 5/10/50g graduation.
+    // The LbOz path differs because 0222 has a distinct calibration formula there.
     return if (isBabyScale) convert0220DecigramsToKg(decigrams) else convertDecigramsToKg(decigrams)
   }
 
