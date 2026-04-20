@@ -116,10 +116,13 @@ Flag violations as **WARNING**.
 Scan new `+` lines for:
 
 - **SwiftData `@Model` classes marked as `Sendable`** or passed across actor boundaries → **FAIL**
+- **`@Published` declaring a SwiftData `@Model` type** (e.g. `@Published var activeAccount: Account?`, `@Published var scales: [Device]`, `@Published var entries: [Entry]`) outside of the owning service/repository → **FAIL** (must use `AccountSnapshot` / `DeviceSnapshot` / `EntrySnapshot`)
+- **`: Account?` / `: Device?` / `: Entry?` / `: [Account]` / `: [Device]` / `: [Entry]` in a feature store, viewmodel, or view signature** → **FAIL** (feature code reads snapshots; only `*Service`, `*Repository`, migration, and `SwiftDataWorker` touch the `@Model`)
 - **`DispatchQueue.main.async` mixed with `await`** in the same flow → **WARNING**
 - **`Task.detached` capturing `@MainActor` types strongly** (without `[weak self]`) → **WARNING**
 - **`nonisolated` on `@MainActor` type** that accesses mutable state → **FAIL** (pure functions are acceptable)
 - **Missing `@MainActor`** on SwiftData CRUD operations → **WARNING**
+- **`@unchecked Sendable` on a type that holds a SwiftData `@Model`** (historically `DeviceDiscoveryEvent`) → **FAIL** (convert the held value to a snapshot so the type becomes truly `Sendable`)
 
 ---
 

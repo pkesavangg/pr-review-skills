@@ -153,28 +153,32 @@ private enum TestError: Error, Equatable {
 - Order within each group: 1) success path 2) validation/guard failures 3) runtime/network/persistence failures
 - One `makeSUT()` per test suite; never create the SUT inline in individual tests
 - **For Stores with `@Injector`:** Call `TestDependencyContainer.reset()` first, then **double-register** each mock (concrete + protocol cast). This prevents `fatalError("Dependency not found")` at runtime.
-- **For protocols with `@Published` properties:** Mock setup requires `import Combine` and binding the publisher in the mock. E.g., `var accountPublisher: AnyPublisher<Account?, Never> { $account.eraseToAnyPublisher() }`
+- **For protocols with `@Published` properties:** Mock setup requires `import Combine` and binding the publisher in the mock. Note the published types are **value-type snapshots**, not SwiftData `@Model` objects. E.g., `var activeAccountPublisher: Published<AccountSnapshot?>.Publisher { $activeAccount }`
 - Place file at: `meAppTests/Features/<Feature>/<ClassName>Tests.swift`
 
 ### Fixtures & Test Data
 
-For realistic tests, use:
-1. **`.previewSample` extension method** — if the model has a preview extension in the feature's Views folder
+For realistic tests, use **snapshot factories** (preferred) over SwiftData `@Model` construction:
+
+1. **`AccountTestFixtures.makeAccountSnapshot(...)`** — flat `AccountSnapshot` with all 67 fields defaulted.
    ```swift
-   dep1.accountResult = .success(.previewSample)
+   accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(
+       id: "acct-1", isActiveAccount: true, weightUnit: .kg
+   )
    ```
-2. **`TestFixtures.swift`** — centralizes reusable test data across multiple test files
+2. **`EntryTestFixtures.makeEntrySnapshot(...)` / `makeBpmEntrySnapshot(...)` / `makeBabyEntrySnapshot(...)`** — `EntrySnapshot` with nested child snapshots pre-wired.
    ```swift
-   // In meAppTests/Support/TestFixtures.swift
-   enum TestFixtures {
-       static var sampleAccount: Account { ... }
-       static var sampleEntry: Entry { ... }
-   }
+   entryService.fetchEntrySnapshotsForMonthResult = .success([
+       EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-15T12:00:00Z", weight: 15000)
+   ])
    ```
-3. **Inline literals** — for simple types only
+3. **`ScaleTestFixtures.makeDevice(...).toSnapshot(isConnected:)`** — build a `Device`, convert to `DeviceSnapshot` before seeding `scaleService.scales`.
    ```swift
-   let entry = Entry(weight: 150.5, date: Date())
+   scaleService.scales = [ScaleTestFixtures.makeDevice(id: "s1").toSnapshot(isConnected: true)]
    ```
+4. **Only use `@Model` fixtures** (`makeAccountModel`, `makeDevice`, `makeEntry`) when testing `*Repository`, `*Migration`, or `EntryService` write-path logic that genuinely persists SwiftData.
+
+**Rule of thumb:** If the SUT consumes a publisher or a Service method that returns a snapshot, the fixture must be a snapshot. Mutating `@Model` fields after construction won't compile against snapshot-typed APIs (snapshots are immutable `let` fields).
 
 **Avoid placeholder values** — replace `<fixture>` placeholders with actual test data before running tests.
 

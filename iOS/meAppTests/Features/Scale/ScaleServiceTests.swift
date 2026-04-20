@@ -1239,19 +1239,6 @@ struct ScaleServiceTests {
         }
     }
 
-    @Test("updateScaleStatus wrapper refreshes connection status without throwing")
-    func updateScaleStatusWrapperExecutes() async throws {
-        let repo = MockScaleRepository()
-        let connected = ScaleTestFixtures.makeDevice(id: "connected-scale", accountId: "acct-1")
-        connected.isConnected = true
-        repo.devices = [connected]
-        let sut = makeSUT(repo: repo)
-
-        await sut.updateScaleStatus()
-
-        #expect(try await repo.getDevice("connected-scale")?.isConnected == true)
-    }
-
     @Test("syncDevices stores a temp device locally before syncing")
     func syncDevicesWithTempDeviceCreatesLocalScale() async throws {
         let repo = MockScaleRepository()

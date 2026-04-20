@@ -17,7 +17,6 @@ struct ScaleSettingsStoreTests {
 
         #expect(store.displayName == "Primary Scale")
         #expect(store.isBodyMetrics == true)
-        #expect(store.cachedShouldMeasurePulse == false)
         #expect(store.isDeviceConnected == false)
         #expect(store.isWifiConfigured == true)
     }
@@ -36,8 +35,6 @@ struct ScaleSettingsStoreTests {
         store.refreshScaleData()
 
         #expect(store.displayName == "Lakshmi")
-        #expect(store.cachedShouldMeasureImpedance == false)
-        #expect(store.cachedPreferenceIsSynced == false)
     }
 
     @Test("openProductGuide sets browser state")

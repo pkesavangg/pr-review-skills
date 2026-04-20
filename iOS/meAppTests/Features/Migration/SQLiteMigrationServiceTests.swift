@@ -177,7 +177,7 @@ struct SQLiteMigrationServiceTests {
         #expect(saved?.accountId == "user-A")
         #expect(saved?.entryTimestamp == "2026-03-01T08:00:00Z")
         #expect(saved?.operationType == "create")
-        #expect(saved?.deviceType == "scale")
+        #expect(saved?.entryType == "scale")
         #expect(saved?.isSynced == false)
         #expect(saved?.serverTimestamp == nil)
     }

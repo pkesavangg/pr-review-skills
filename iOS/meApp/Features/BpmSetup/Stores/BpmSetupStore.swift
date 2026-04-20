@@ -1415,7 +1415,7 @@ extension BpmSetupStore {
     }
 
     @MainActor
-    func testSetDeviceToDelete(_ device: Device) {
+    func testSetDeviceToDelete(_ device: DeviceSnapshot) {
         self.deviceToDelete = device
     }
 

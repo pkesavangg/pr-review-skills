@@ -65,7 +65,7 @@ struct EntryStoreTests {
         let expectedStoredWeight = ConversionTools.convertDisplayToStored(70.5, forceMetric: false, isMetric: true)
         #expect(saved.accountId == accountService.activeAccount?.accountId)
         #expect(saved.operationType == OperationType.create.rawValue)
-        #expect(saved.deviceType == DeviceType.scale.rawValue)
+        #expect(saved.entryType == EntryType.scale.rawValue)
         #expect(saved.isSynced == false)
         #expect(saved.scaleEntry?.weight == expectedStoredWeight)
         #expect(saved.scaleEntry?.source == EntrySource.manual.rawValue)

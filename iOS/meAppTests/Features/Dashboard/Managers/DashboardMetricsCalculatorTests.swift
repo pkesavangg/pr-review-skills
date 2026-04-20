@@ -475,7 +475,7 @@ struct DashboardMetricsCalculatorTests {
 
         #expect(entry.accountId == "dashboard")
         #expect(entry.operationType == OperationType.create.rawValue)
-        #expect(entry.deviceType == "scale")
+        #expect(entry.entryType == "scale")
         #expect(entry.isSynced == true)
     }
 

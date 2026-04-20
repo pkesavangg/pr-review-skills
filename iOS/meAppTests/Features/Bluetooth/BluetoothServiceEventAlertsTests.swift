@@ -244,7 +244,7 @@ struct BluetoothServiceEventAlertsTests {
         let device = BluetoothTestFixtures.makeDevice(id: "dev-1", broadcastIdString: "ABC")
         sut.bluetoothScales = [device.toSnapshot()]
 
-        let result = sut.findUserToDelete(userList: [], discoveredScale: device)
+        let result = sut.findUserToDelete(userList: [], discoveredScale: device.toSnapshot())
 
         #expect(result == nil)
     }

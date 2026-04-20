@@ -15,7 +15,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
         let sut = makeSUT()
         let device = makeDevice(bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true))
 
-        let result = sut.getSafeScaleType(for: device)
+        let result = sut.getSafeScaleType(for: device.toSnapshot())
 
         #expect(result == ScaleSourceType.btWifiR4.rawValue)
     }
@@ -25,7 +25,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
         let sut = makeSUT()
         let device = makeDevice()
 
-        let result = sut.getSafeScaleType(for: device)
+        let result = sut.getSafeScaleType(for: device.toSnapshot())
 
         #expect(result == nil)
     }
@@ -35,7 +35,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
         let sut = makeSUT()
         let device = makeDevice(bathScale: BathScale(scaleType: nil, bodyComp: nil))
 
-        let result = sut.getSafeScaleType(for: device)
+        let result = sut.getSafeScaleType(for: device.toSnapshot())
 
         #expect(result == nil)
     }
@@ -47,7 +47,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
 
         for variant in variants {
             let device = makeDevice(id: "dev-\(variant.rawValue)", bathScale: BathScale(scaleType: variant.rawValue, bodyComp: false))
-            let result = sut.getSafeScaleType(for: device)
+            let result = sut.getSafeScaleType(for: device.toSnapshot())
             #expect(result == variant.rawValue)
         }
     }
@@ -406,8 +406,8 @@ struct BluetoothServiceDeviceProfileUtilsTests {
         let sut = makeSUT(sdk: sdk)
         sut.skipDevices = ["PAIRED-1", "UNPAIRED-1", "PAIRED-2"]
         sut.bluetoothScales = [
-            makeDevice(id: "d1", broadcastIdString: "PAIRED-1"),
-            makeDevice(id: "d2", broadcastIdString: "PAIRED-2")
+            makeSnapshot(id: "d1", broadcastIdString: "PAIRED-1"),
+            makeSnapshot(id: "d2", broadcastIdString: "PAIRED-2")
         ]
 
         sut.reapplySkipDevicesExcludingPaired()
@@ -461,8 +461,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
         let sut = makeSUT(scale: scale, sdk: sdk)
         sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", isActiveAccount: true)
 
-        let currentDevice = makeDevice(id: "del-1", accountId: "acct-1", broadcastIdString: "DEL-BID")
-        currentDevice.isConnected = true
+        let currentDevice = makeSnapshot(id: "del-1", accountId: "acct-1", broadcastIdString: "DEL-BID", isConnected: true)
 
         await sut.disconnectDeletedScales(currentScales: [currentDevice], newScales: [])
 
@@ -478,8 +477,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
         let sut = makeSUT(scale: scale, sdk: sdk)
         sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", isActiveAccount: true)
 
-        let currentDevice = makeDevice(id: "del-2", accountId: "acct-1", broadcastIdString: "BID-2")
-        currentDevice.isConnected = false
+        let currentDevice = makeSnapshot(id: "del-2", accountId: "acct-1", broadcastIdString: "BID-2", isConnected: false)
 
         await sut.disconnectDeletedScales(currentScales: [currentDevice], newScales: [])
 
@@ -494,8 +492,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
         let sut = makeSUT(scale: scale, sdk: sdk)
         sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", isActiveAccount: true)
 
-        let otherAccountDevice = makeDevice(id: "other-1", accountId: "other-acct", broadcastIdString: "OTHER-BID")
-        otherAccountDevice.isConnected = true
+        let otherAccountDevice = makeSnapshot(id: "other-1", accountId: "other-acct", broadcastIdString: "OTHER-BID", isConnected: true)
 
         await sut.disconnectDeletedScales(currentScales: [otherAccountDevice], newScales: [])
 
@@ -511,8 +508,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
         let sut = makeSUT(scale: scale, sdk: sdk)
         sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", isActiveAccount: true)
 
-        let device = makeDevice(id: "keep-1", accountId: "acct-1", broadcastIdString: "KEEP-BID")
-        device.isConnected = true
+        let device = makeSnapshot(id: "keep-1", accountId: "acct-1", broadcastIdString: "KEEP-BID", isConnected: true)
 
         // Same device in both lists (broadcastId match — both nil Int64, so they match)
         await sut.disconnectDeletedScales(currentScales: [device], newScales: [device])
@@ -558,5 +554,21 @@ struct BluetoothServiceDeviceProfileUtilsTests {
             isConnected: isConnected,
             bathScale: bathScale
         )
+    }
+
+    private func makeSnapshot(
+        id: String = "device-1",
+        accountId: String = "101",
+        broadcastIdString: String? = "ABC123",
+        isConnected: Bool = true,
+        bathScale: BathScale? = nil
+    ) -> DeviceSnapshot {
+        makeDevice(
+            id: id,
+            accountId: accountId,
+            broadcastIdString: broadcastIdString,
+            isConnected: isConnected,
+            bathScale: bathScale
+        ).toSnapshot(isConnected: isConnected)
     }
 }

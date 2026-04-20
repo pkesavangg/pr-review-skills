@@ -102,7 +102,7 @@ extension BpmSetupStoreTests {
                 discoveredDevice: device,
                 discoveryEvent: BpmSetupStoreTestFixtures.makeBpmDiscoveryEvent(device: device)
             )
-            store.testSetDeviceToDelete(existing)
+            store.testSetDeviceToDelete(existing.toSnapshot())
 
             await store.testSaveAndAdvanceFromNickname()
 

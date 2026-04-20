@@ -129,7 +129,37 @@ extension <ModelName> {
 #endif
 ```
 
-For SwiftData `@Model` types, create a plain struct or use the model directly — do NOT create a `ModelContainer` in previews.
+For SwiftData `@Model` types, build the **value-type snapshot** directly in the preview — do NOT create a `ModelContainer` and do NOT hand an `@Model` to a view that accepts a snapshot:
+
+```swift
+#Preview {
+    HistoryEntryItem(
+        entry: EntrySnapshot(
+            id: UUID(),
+            accountId: "preview",
+            entryTimestamp: "2026-04-17T12:00:00Z",
+            serverTimestamp: nil,
+            opTimestamp: nil,
+            operationType: "create",
+            entryType: "scale",
+            isSynced: true,
+            note: nil,
+            attempts: 0,
+            isFailedToSync: false,
+            scaleEntry: BathScaleEntrySnapshot(
+                weight: 15000, bodyFat: 200, muscleMass: 4000, water: 500,
+                bmi: 220, source: "manual", systolic: nil, diastolic: nil, meanArterial: nil
+            ),
+            scaleEntryMetric: nil,
+            bpmEntry: nil,
+            babyEntry: nil
+        )
+    )
+    .appTheme()
+}
+```
+
+Same pattern applies to `AccountSnapshot` and `DeviceSnapshot`. Views taking `Device` for construction paths (e.g. `ScaleDiscoveredSheetView`) still use `Device`; everything else uses a snapshot.
 
 ---
 

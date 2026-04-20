@@ -582,7 +582,7 @@ struct DashboardCacheManagerTests {
 
         #expect(sut.getBool(forKey: key) == true)
 
-        UserDefaults.standard.removeObject(forKey: key)
+        UserDefaults.standard.removeObject(forKey: key) // swiftlint:disable:this no_direct_userdefaults
     }
 
     // MARK: - setProductContext Tests
@@ -592,7 +592,7 @@ struct DashboardCacheManagerTests {
         let sut = makeSUT()
         var callCount = 0
 
-        sut.setProductContext(productType: .wg, babyProfileId: nil)
+        sut.setProductContext(productType: .scale, babyProfileId: nil)
         _ = sut.getContinuousOperations(for: .week) {
             callCount += 1
             return [makeSummary(period: "2026-03-01")]
@@ -612,13 +612,13 @@ struct DashboardCacheManagerTests {
         let sut = makeSUT()
         var callCount = 0
 
-        sut.setProductContext(productType: .wg, babyProfileId: nil)
+        sut.setProductContext(productType: .scale, babyProfileId: nil)
         _ = sut.getContinuousOperations(for: .week) {
             callCount += 1
             return [makeSummary(period: "2026-03-01")]
         }
 
-        sut.setProductContext(productType: .wg, babyProfileId: nil)
+        sut.setProductContext(productType: .scale, babyProfileId: nil)
         _ = sut.getContinuousOperations(for: .week) {
             callCount += 1
             return [makeSummary(period: "2026-03-02")]
@@ -632,13 +632,13 @@ struct DashboardCacheManagerTests {
         let sut = makeSUT()
         var callCount = 0
 
-        sut.setProductContext(productType: .wg, babyProfileId: "baby1")
+        sut.setProductContext(productType: .scale, babyProfileId: "baby1")
         _ = sut.getContinuousOperations(for: .week) {
             callCount += 1
             return [makeSummary(period: "2026-03-01")]
         }
 
-        sut.setProductContext(productType: .wg, babyProfileId: "baby2")
+        sut.setProductContext(productType: .scale, babyProfileId: "baby2")
         _ = sut.getContinuousOperations(for: .week) {
             callCount += 1
             return [makeSummary(period: "2026-03-02")]

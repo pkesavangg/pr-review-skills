@@ -211,7 +211,7 @@ struct EntryServiceExtendedTests {
         repo.entries = [legacyWeightEntry, bpmEntry]
         let sut = makeSUT(repo: repo)
 
-        let weightEntries = try await sut.getMonthDetail(month: "2026-03", entryType: .wg)
+        let weightEntries = try await sut.getMonthDetail(month: "2026-03", entryType: .scale)
         let bpmEntries = try await sut.getMonthDetail(month: "2026-03", entryType: .bpm)
 
         #expect(weightEntries.count == 1)

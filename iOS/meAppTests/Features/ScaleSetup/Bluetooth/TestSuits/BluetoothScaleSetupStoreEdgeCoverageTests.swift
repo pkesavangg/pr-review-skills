@@ -240,7 +240,7 @@ extension BluetoothScaleSetupStoreTests {
                 discoveredScale: discovered,
                 discoveryEvent: event,
                 isScaleSaved: false,
-                scaleToDelete: old
+                scaleToDelete: old.toSnapshot()
             )
             store.selectedUserNumber = 1
 

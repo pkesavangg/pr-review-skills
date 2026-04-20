@@ -701,7 +701,7 @@ extension BluetoothScaleSetupStore {
         discoveredScale: Device? = nil,
         discoveryEvent: DeviceDiscoveryEvent? = nil,
         isScaleSaved: Bool? = nil,
-        scaleToDelete: Device? = nil
+        scaleToDelete: DeviceSnapshot? = nil
     ) {
         self.discoveredScale = discoveredScale
         self.discoveryEvent = discoveryEvent

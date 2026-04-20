@@ -171,7 +171,7 @@ extension BpmSetupStoreTests {
                 discoveredDevice: device,
                 discoveryEvent: BpmSetupStoreTestFixtures.makeBpmDiscoveryEvent(device: device)
             )
-            store.testSetDeviceToDelete(existing)
+            store.testSetDeviceToDelete(existing.toSnapshot())
 
             // First pairing call — SDK says deviceExistsWithSameUser → shows alert
             await store.testStartPairing()
