@@ -805,6 +805,17 @@ final class AccountMigrationService { // swiftlint:disable:this type_body_length
     func migrateProductTypesIfNeeded(for account: Account, devices: [Device]) {
         guard account.productTypes.isEmpty else { return }
 
+        // Skip when no devices are present locally — scale sync may not have run yet.
+        // The migration will retry on the next login once devices are populated.
+        guard !devices.isEmpty else {
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Skipping productTypes migration — no local devices yet for accountId=\(account.accountId)"
+            )
+            return
+        }
+
         var types: [String] = []
 
         if devices.contains(where: { $0.deviceType == DeviceType.scale.rawValue }) {
@@ -815,11 +826,6 @@ final class AccountMigrationService { // swiftlint:disable:this type_body_length
         }
         if devices.contains(where: { $0.deviceType == DeviceType.babyScale.rawValue }) {
             types.append("baby")
-        }
-
-        // Only fall back to ["myWeight"] if no devices exist (genuine new install)
-        if types.isEmpty {
-            types = ["myWeight"]
         }
 
         account.productTypes = types
