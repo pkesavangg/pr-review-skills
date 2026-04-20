@@ -247,37 +247,64 @@ extension BtWifiScaleSetupStore {
         }
 
         // Reconnect before retrying settings update.
-        if !missingPermissions && currentStep == .updateSettings && savedScale != nil {
+        if !missingPermissions && currentStep == .updateSettings, let scaleToRecover = savedScale {
+            guard updateSettingsRecoveryTask == nil else { return }
+
             scaleSetupError = .none
             connectionState = .loading
-            // Let the BLE SDK rediscover the scale.
+            // Re-populate the SDK's paired-device list immediately. A fast Bluetooth off/on
+            // can leave scanning resumed but no saved device synced back into the BLE layer.
+            bluetoothService.syncDevices([scaleToRecover])
             bluetoothService.resumeSmartScan(clearOnlyPairing: false)
 
-            Task { [weak self] in
-                guard let self = self, let savedScale = self.savedScale else { return }
+            updateSettingsRecoveryTask = Task { [weak self] in
+                guard let self = self else { return }
+                defer { self.updateSettingsRecoveryTask = nil }
+                guard self.currentStep == .updateSettings else { return }
 
-                // Wait up to 10 seconds for reconnect.
-                for _ in 1...10 {
-                    try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                var reconnected = false
+                // Wait up to reconnectAttemptCap seconds for reconnect.
+                for attempt in 1...self.reconnectAttemptCap {
+                    try? await Task.sleep(nanoseconds: self.reconnectPollInterval)
                     guard self.currentStep == .updateSettings else {
                         return
                     }
                     do {
-                        try await self.scaleService.updateAllScalesStatus(nil)
-                        if let refreshed = try await self.scaleService.getDevice(by: savedScale.id),
+                        try await self.scaleService.updateAllScalesStatus([scaleToRecover.toDevice()])
+                        if let refreshed = try await self.scaleService.getDevice(by: scaleToRecover.id),
                            refreshed.isConnected == true {
+                            LoggerService.shared.log(
+                                level: .info,
+                                tag: self.tag,
+                                message: "Reconnect observed isConnected==true after \(attempt) attempt(s)"
+                            )
                             await MainActor.run {
                                 self.savedScale = refreshed
                                 self.bluetoothService.syncDevices([refreshed])
                             }
+                            reconnected = true
                             break
                         }
                     } catch {
+                        LoggerService.shared.log(
+                            level: .info,
+                            tag: self.tag,
+                            message: "Reconnect attempt \(attempt) failed: \(error.localizedDescription)"
+                        )
                         continue
                     }
                 }
 
-                // Retry even if reconnect status is stale.
+                if !reconnected {
+                    LoggerService.shared.log(
+                        level: .error,
+                        tag: self.tag,
+                        message: "Reconnect timed out after \(self.reconnectAttemptCap) attempts — retrying settings with stale state"
+                    )
+                }
+
+                guard self.currentStep == .updateSettings else { return }
+                self.updateSettingsRecoveryTask = nil
                 await self.updateCustomizeSettings()
             }
             return
@@ -410,9 +437,10 @@ extension BtWifiScaleSetupStore {
             switch response {
             case .creationCompleted:
                 LoggerService.shared.log(level: .info, tag: tag, message: "Creation Completed \(response)")
-                await saveScale()
                 connectionState = .success
                 scaleSetupError = .none
+                await saveScale()
+                guard connectionState == .success else { return }
                 Task { @MainActor in
                     try? await Task.sleep(nanoseconds: 2_000_000_000)
                     self.navigateToStep(.gatheringNetwork)

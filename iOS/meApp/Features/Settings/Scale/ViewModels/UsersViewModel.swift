@@ -234,7 +234,11 @@ final class UsersViewModel: ObservableObject {
             return
         }
 
-        try? await scaleService.updateAllScalesStatus(nil)
+        do {
+            try await scaleService.updateAllScalesStatus(nil)
+        } catch {
+            logger.log(level: .error, tag: tag, message: "updateAllScalesStatus failed: \(error.localizedDescription)")
+        }
         guard deviceSnapshot?.isConnected == true else {
             logger.log(
                 level: .info,

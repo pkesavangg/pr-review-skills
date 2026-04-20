@@ -577,11 +577,14 @@ extension BtWifiStoreTests {
             let scaleService = MockScaleService()
             let harness = BtWifiStoreTestFixtures.makeSUT(
                 scaleService: scaleService,
-                networkMonitor: networkMonitor
+                networkMonitor: networkMonitor,
+                reconnectPollInterval: 10_000_000, // 10ms for fast test
+                reconnectAttemptCap: 10
             )
             let store = harness.store
             let savedScale = BtWifiStoreTestFixtures.makeScale(id: "saved-scale")
             let refreshedScale = BtWifiStoreTestFixtures.makeScale(id: "saved-scale", displayName: "Refreshed")
+            refreshedScale.isConnected = true
 
             scaleService.scales = [refreshedScale.toSnapshot()]
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
@@ -590,13 +593,35 @@ extension BtWifiStoreTests {
 
             store.handlePermissionChange()
 
-            await BtWifiStoreTestFixtures.waitUntil {
-                scaleService.updateAllScalesStatusCalls == 1 &&
-                    harness.bluetooth.syncDevicesCalls == 1 &&
-                    store.savedScale?.id == refreshedScale.id
+            await BtWifiStoreTestFixtures.waitUntil(timeoutNanoseconds: 3_000_000_000) {
+                scaleService.updateAllScalesStatusCalls >= 1 &&
+                    harness.bluetooth.syncDevicesCalls == 2 &&
+                    store.savedScale?.displayName == "Refreshed"
             }
 
             #expect(harness.bluetooth.lastSyncedDevices.map { $0.id } == ["saved-scale"])
+        }
+
+        @Test("permission recovery during update settings syncs saved scale immediately")
+        func permissionRecoveryOnUpdateSettingsSyncsSavedScaleImmediately() async {
+            let networkMonitor = MockNetworkMonitor(isConnected: false)
+            let scaleService = MockScaleService()
+            let harness = BtWifiStoreTestFixtures.makeSUT(
+                scaleService: scaleService,
+                networkMonitor: networkMonitor
+            )
+            let store = harness.store
+            let savedScale = BtWifiStoreTestFixtures.makeScale(id: "saved-scale")
+
+            store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
+            store.savedScale = savedScale
+            store.navigateToStep(BtWifiScaleSetupStep.updateSettings)
+
+            store.handlePermissionChange()
+
+            #expect(harness.bluetooth.syncDevicesCalls == 1)
+            #expect(harness.bluetooth.lastSyncedDevices.map { $0.id } == ["saved-scale"])
+            #expect(harness.bluetooth.resumeSmartScanCalls == 1)
         }
 
         @Test("permission change during update settings stops when status refresh fails")
@@ -606,7 +631,9 @@ extension BtWifiStoreTests {
             scaleService.updateAllScalesStatusError = ScaleTestError.localFailure
             let harness = BtWifiStoreTestFixtures.makeSUT(
                 scaleService: scaleService,
-                networkMonitor: networkMonitor
+                networkMonitor: networkMonitor,
+                reconnectPollInterval: 10_000_000, // 10ms for fast test
+                reconnectAttemptCap: 2
             )
             let store = harness.store
 
@@ -615,10 +642,13 @@ extension BtWifiStoreTests {
             store.navigateToStep(BtWifiScaleSetupStep.updateSettings)
 
             store.handlePermissionChange()
-            await Task.yield()
+            await BtWifiStoreTestFixtures.waitUntil(timeoutNanoseconds: 3_000_000_000) {
+                scaleService.updateAllScalesStatusCalls >= 1
+            }
 
-            #expect(scaleService.updateAllScalesStatusCalls == 1)
-            #expect(harness.bluetooth.syncDevicesCalls == 0)
+            #expect(scaleService.updateAllScalesStatusCalls >= 1)
+            #expect(harness.bluetooth.syncDevicesCalls == 1)
+            #expect(harness.bluetooth.lastSyncedDevices.map { $0.id } == ["saved-scale"])
         }
 
         @Test("permission change during update settings does nothing when bluetooth is switched off")
@@ -646,6 +676,138 @@ extension BtWifiStoreTests {
             #expect(scaleService.updateAllScalesStatusCalls == 0)
             #expect(harness.bluetooth.syncDevicesCalls == 0)
             #expect(store.savedScale?.id == "saved-scale")
+        }
+
+        // MARK: - New tests for MA-3047 review feedback
+
+        @Test("tryAgainButtonHandler with updateSettingsFailed and BT off redirects to permissions resuming at updateSettings")
+        func tryAgainWithUpdateSettingsFailedAndBtOffRedirectsToPermissions() {
+            let permissions = MockPermissionsService()
+            permissions.setPermissions([
+                .BLUETOOTH: .ENABLED,
+                .BLUETOOTH_SWITCH: .DISABLED
+            ])
+            let harness = BtWifiStoreTestFixtures.makeSUT(permissions: permissions)
+            let store = harness.store
+
+            store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot()
+            store.navigateToStep(.updateSettings)
+            store.scaleSetupError = .updateSettingsFailed
+
+            store.tryAgainButtonHandler()
+
+            #expect(store.currentStep == .permissions)
+            #expect(store.stepToResumeAfterPermissions == .updateSettings)
+            #expect(store.scaleSetupError == .none)
+            #expect(store.connectionState == .loading)
+        }
+
+        @Test("handleNextButtonClick on permissions honours stepToResumeAfterPermissions")
+        func nextButtonOnPermissionsResumesAtSavedStep() {
+            let harness = BtWifiStoreTestFixtures.makeSUT()
+            let store = harness.store
+
+            store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot()
+            store.navigateToStep(.permissions)
+            store.stepToResumeAfterPermissions = .updateSettings
+
+            store.handleNextButtonClick()
+
+            #expect(store.currentStep == .updateSettings)
+            #expect(store.stepToResumeAfterPermissions == nil)
+            #expect(store.scaleSetupError == .none)
+            #expect(store.connectionState == .loading)
+        }
+
+        @Test("reconnect loop success path updates savedScale and syncs devices")
+        func reconnectLoopSuccessPathUpdatesSavedScaleAndSyncs() async {
+            let networkMonitor = MockNetworkMonitor(isConnected: false)
+            let scaleService = MockScaleService()
+            let refreshedScale = BtWifiStoreTestFixtures.makeScale(id: "saved-scale", displayName: "Reconnected")
+            refreshedScale.isConnected = true
+            scaleService.scales = [refreshedScale.toSnapshot()]
+
+            let harness = BtWifiStoreTestFixtures.makeSUT(
+                scaleService: scaleService,
+                networkMonitor: networkMonitor,
+                reconnectPollInterval: 10_000_000, // 10ms
+                reconnectAttemptCap: 5
+            )
+            let store = harness.store
+
+            store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot(id: "saved-scale")
+            store.navigateToStep(.updateSettings)
+
+            store.handlePermissionChange()
+
+            await BtWifiStoreTestFixtures.waitUntil(timeoutNanoseconds: 3_000_000_000) {
+                store.savedScale?.displayName == "Reconnected" &&
+                    harness.bluetooth.syncDevicesCalls >= 2
+            }
+
+            #expect(store.savedScale?.displayName == "Reconnected")
+            #expect(harness.bluetooth.syncDevicesCalls >= 2)
+        }
+
+        @Test("permission recovery on permissions step resumes at stepToResumeAfterPermissions when set")
+        func permissionRecoveryOnPermissionsStepResumesAtSavedStep() {
+            let harness = BtWifiStoreTestFixtures.makeSUT()
+            let store = harness.store
+
+            store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot()
+            store.navigateToStep(.permissions)
+            store.stepToResumeAfterPermissions = .updateSettings
+
+            store.handlePermissionChange()
+
+            #expect(store.currentStep == .updateSettings)
+            #expect(store.stepToResumeAfterPermissions == nil)
+            #expect(store.scaleSetupError == .none)
+            #expect(store.connectionState == .loading)
+        }
+
+        @Test("permission recovery on permissions step without resume step navigates to gatheringNetwork")
+        func permissionRecoveryOnPermissionsStepNavigatesToGatheringNetwork() {
+            let harness = BtWifiStoreTestFixtures.makeSUT()
+            let store = harness.store
+
+            store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot()
+            store.navigateToStep(.permissions)
+
+            store.handlePermissionChange()
+
+            #expect(store.currentStep == .gatheringNetwork)
+            #expect(store.isRefreshingWifiNetworks == false)
+        }
+
+        @Test("stepOn restores live measurement subscription after Bluetooth returns")
+        func stepOnRestoresLiveMeasurementAfterBluetoothReturns() async {
+            let bluetooth = MockBluetoothService()
+            let harness = BtWifiStoreTestFixtures.makeSUT(bluetooth: bluetooth)
+            let store = harness.store
+
+            store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot()
+            store.navigateToStep(.stepOn)
+
+            // Simulate BT loss clearing subscription
+            store.liveMeasurementSubscription?.cancel()
+            store.liveMeasurementSubscription = nil
+
+            // Trigger permission recovery
+            store.handlePermissionChange()
+
+            await BtWifiStoreTestFixtures.waitUntil(timeoutNanoseconds: 3_000_000_000) {
+                store.liveMeasurementSubscription != nil
+            }
+
+            #expect(store.currentStep == .stepOn)
+            #expect(store.liveMeasurementSubscription != nil)
         }
 
         private func makeLiveMeasurementEntry(
