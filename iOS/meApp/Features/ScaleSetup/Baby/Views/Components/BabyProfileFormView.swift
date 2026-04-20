@@ -19,6 +19,8 @@ struct BabyProfileFormView: View {
 
     /// When `true`, the title and subtitle header is hidden (e.g. Settings -> Add Baby).
     var hideHeader: Bool = false
+    /// When `true`, the weight unit selector and note are hidden (e.g. Settings → Add Baby).
+    var hideUnitToggle: Bool = false
     /// Custom title text. Defaults to scale setup strings if nil.
     var headerTitle: String?
     /// Custom subtitle text. Defaults to scale setup strings if nil.
@@ -129,32 +131,33 @@ struct BabyProfileFormView: View {
                             endDate: Date()
                         )
                     }
+                    .padding(.top, -.spacingSM)
 
-                    // Biological Sex, Birth Length, Birth Weight
-                    VStack(alignment: .leading, spacing: .spacingSM) {
-                        // Biological Sex
-                        ActionListItemView(config: ActionListItemConfig(
-                            title: labels.biologicalSex,
-                            value: sexDisplayText,
-                            chevronType: .upDown) {
-                                dismissKeyboardAndUnfocus()
-                                if showDatePicker { showDatePicker = false }
-                                showSexPicker = true
-                            })
-                            .padding(.horizontal, .spacingSM)
-                            .padding(.vertical, .spacingXS / 2)
-                            .background(theme.backgroundPrimary)
-                            .cornerRadius(.spacingXS)
+                    // Biological Sex
+                    ActionListItemView(config: ActionListItemConfig(
+                        title: labels.biologicalSex,
+                        value: sexDisplayText,
+                        chevronType: .upDown) {
+                            dismissKeyboardAndUnfocus()
+                            if showDatePicker { showDatePicker = false }
+                            showSexPicker = true
+                        })
+                        .padding(.horizontal, .spacingSM)
+                        .padding(.vertical, .spacingXS / 2)
+                        .background(theme.backgroundPrimary)
+                        .cornerRadius(.spacingXS)
 
-                        // Birth Length — unit driven by weight selection
+                    // Birth Length + Birth Weight — tightly grouped (weight unit drives length unit)
+                    VStack(alignment: .leading, spacing: .spacingXS) {
                         birthLengthField
-
-                        // Birth Weight — switches based on selected unit
                         birthWeightField
                     }
+                    .padding(.top, .spacingXS)
 
                     // Unit selector + note
-                    unitSelectorSection
+                    if !hideUnitToggle {
+                        unitSelectorSection
+                    }
                 }
                 .padding(.top, .spacingLG)
 
