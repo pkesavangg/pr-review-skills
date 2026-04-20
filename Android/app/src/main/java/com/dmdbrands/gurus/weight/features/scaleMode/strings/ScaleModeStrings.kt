@@ -48,9 +48,8 @@ object ScaleModeStrings {
   }
 
   object ScaleBusyAlert {
-    const val Title = "Updates Pending..."
-    const val Message =
-      "Scale settings can't be updated at this time. Weight Gurus will save changes and update the scale next time it connects."
+    const val Title = "Update Can't Be Saved"
+    const val Message = "The scale is currently busy. Wait a few moments and try again."
     const val Dismiss = "Ok"
   }
 
