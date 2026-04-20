@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.withFrameNanos
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -68,14 +70,18 @@ fun BtWifiScaleSetupScreenContent(
 ) {
   val focusManager = LocalFocusManager.current
   val pagerState = rememberPagerState { state.steps.size }
+  val isAnimating = remember { mutableStateOf(false) }
 
-  // Sync ViewModel state to Pager state. scrollToPage handles its own
-  // cancellation when LaunchedEffect restarts — a manual isAnimating guard
-  // could get stuck on `true` if the coroutine was cancelled, leaving the
-  // pager out of sync with the state on rapid step changes.
+  // Sync ViewModel state to Pager state
   LaunchedEffect(state.currentStep) {
-    if (pagerState.currentPage != state.currentStepIndex) {
-      pagerState.scrollToPage(state.currentStepIndex)
+    if (!isAnimating.value && pagerState.currentPage != state.currentStepIndex) {
+      isAnimating.value = true
+      try {
+        pagerState.scrollToPage(state.currentStepIndex)
+      } finally {
+        withFrameNanos { }
+        isAnimating.value = false
+      }
     }
   }
 
