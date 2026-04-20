@@ -51,7 +51,7 @@ abstract class BaseGraphReducer<S : BaseDashboardState> {
     }
 
     is BaseGraphIntent.SetRefreshing -> copyBaseFields(state, isRefreshing = intent.isRefreshing)
-    is BaseGraphIntent.SetSelectedSegment -> copyBaseFields(state, selectedSegment = intent.segment, scrollTarget = intent.anchorTimestamp)
+    is BaseGraphIntent.SetSelectedSegment -> copyBaseFields(state, selectedSegment = intent.segment, scrollTarget = intent.anchorTimestamp, markerIndex = null)
     is BaseGraphIntent.UpdateMarkerIndex -> copyBaseFields(state, markerIndex = intent.markerIndex)
     is BaseGraphIntent.ScrollRange -> {
       val current = state.segmentStates[intent.segment] ?: SegmentState()
