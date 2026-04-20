@@ -59,7 +59,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
                         Task { @MainActor [weak self] in
                             guard let self,
                                   let account = try? await self.localRepo.fetchAccount(byId: accountId) else { return }
-                            self.migrationService.migrateProductTypesIfNeeded(for: account)
+                            let devices = (try? await ScaleRepository().listScales(forAccountId: accountId)) ?? []
+                            self.migrationService.migrateProductTypesIfNeeded(for: account, devices: devices)
                         }
                     }
                 }

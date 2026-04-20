@@ -799,15 +799,34 @@ final class AccountMigrationService { // swiftlint:disable:this type_body_length
     // MARK: - Upgrade Migrations
 
     /// Migrates existing pre-5.1.0 accounts that have no productTypes set.
-    /// Every pre-5.1.0 user was a weight scale user, so default to ["myWeight"].
+    /// Derives productTypes from actual paired devices instead of blindly defaulting to ["myWeight"],
+    /// which would incorrectly show the Weighing Scale section for BPM-only or baby-scale-only users.
     /// Must run before `registerSessionServices()` so ProductTypeStore sees the correct value.
-    func migrateProductTypesIfNeeded(for account: Account) {
+    func migrateProductTypesIfNeeded(for account: Account, devices: [Device]) {
         guard account.productTypes.isEmpty else { return }
-        account.productTypes = ["myWeight"]
+
+        var types: [String] = []
+
+        if devices.contains(where: { $0.deviceType == DeviceType.scale.rawValue }) {
+            types.append("myWeight")
+        }
+        if devices.contains(where: { $0.deviceType == DeviceType.bpm.rawValue }) {
+            types.append("myBloodPressure")
+        }
+        if devices.contains(where: { $0.deviceType == DeviceType.babyScale.rawValue }) {
+            types.append("baby")
+        }
+
+        // Only fall back to ["myWeight"] if no devices exist (genuine new install)
+        if types.isEmpty {
+            types = ["myWeight"]
+        }
+
+        account.productTypes = types
         logger.log(
             level: .info,
             tag: tag,
-            message: "Migrated productTypes to [\"myWeight\"] for accountId=\(account.accountId)"
+            message: "Migrated productTypes to \(types) for accountId=\(account.accountId)"
         )
     }
 
