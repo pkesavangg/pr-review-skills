@@ -306,9 +306,16 @@ final class ScaleSettingsStore: ObservableObject {
             self.deviceInfo = deviceInfo
             self.isImpedanceSwitchedOnForSession = deviceInfo.sessionImpedanceSwitchState ?? false
             self.isScaleImpedanceSwitchedOn = deviceInfo.impedanceSwitchState ?? false
-            // Update Wi-Fi configured flag if available
+            // Update Wi-Fi configured flag if available. Also push to shared ephemeral state
+            // so other surfaces (MyScalesScreen status badge) reflect the live value.
             if let wifiConfigured = deviceInfo.isWifiConfigured {
                 self.isWifiConfigured = wifiConfigured
+                if let broadcastId = deviceSnapshot?.broadcastIdString, !broadcastId.isEmpty {
+                    await scaleService.updateConnectedDeviceWifiStatus(
+                        broadcastId: broadcastId,
+                        isConfigured: wifiConfigured
+                    )
+                }
             }
             self.isWeighOnlyModeEnabledByOthers = !(deviceInfo.impedanceSwitchState ?? false) && isBodyMetrics
             logger.log(level: .info, tag: tag, message: "Device info retrieved – firmware: \(deviceInfo.firmwareRevision ?? "n/a")", data: deviceInfo)

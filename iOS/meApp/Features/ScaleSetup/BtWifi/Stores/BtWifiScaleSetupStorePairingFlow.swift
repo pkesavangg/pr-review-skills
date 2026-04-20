@@ -515,6 +515,14 @@ extension BtWifiScaleSetupStore {
             
             self.savedScale = savedScale.toSnapshot(isConnected: true, isWifiConfigured: isWifiConfigured)
             await self.scaleService.syncAllScalesWithRemote()
+
+            // Re-snapshot after remote sync: reconcileServerDevices may rewrite the local device.id
+            // to the server-assigned id, which would otherwise leave self.savedScale pointing at a
+            // stale id and break every downstream lookup (updateScalePreference, etc.).
+            if let broadcastId = savedScale.broadcastIdString,
+               let refreshed = self.scaleService.scales.first(where: { $0.broadcastIdString == broadcastId }) {
+                self.savedScale = refreshed
+            }
             
             // Ensure connection status is updated after sync completes
             // This prevents UI flicker when navigating back to MyScalesScreen
