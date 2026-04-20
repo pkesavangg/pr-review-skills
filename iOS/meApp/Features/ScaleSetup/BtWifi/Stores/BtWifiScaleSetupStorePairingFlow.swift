@@ -263,7 +263,7 @@ extension BtWifiScaleSetupStore {
                         return
                     }
                     do {
-                        try await self.scaleService.updateAllScalesStatus([savedScale])
+                        try await self.scaleService.updateAllScalesStatus(nil)
                         if let refreshed = try await self.scaleService.getDevice(by: savedScale.id),
                            refreshed.isConnected == true {
                             await MainActor.run {

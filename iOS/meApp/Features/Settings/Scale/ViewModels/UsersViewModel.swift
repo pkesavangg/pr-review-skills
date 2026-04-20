@@ -234,8 +234,8 @@ final class UsersViewModel: ObservableObject {
             return
         }
 
-        refreshScale()
-        guard scale.isConnected == true else {
+        try? await scaleService.updateAllScalesStatus(nil)
+        guard deviceSnapshot?.isConnected == true else {
             logger.log(
                 level: .info,
                 tag: tag,
