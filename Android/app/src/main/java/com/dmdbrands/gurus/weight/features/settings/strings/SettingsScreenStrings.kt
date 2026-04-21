@@ -47,6 +47,7 @@ object SettingsScreenStrings {
     const val LoggingOut = "Logging out..."
     const val LoggingOutAll = "Logging out all Accounts..."
     const val DeletingAccount = "Deleting Account..."
+    const val UpdatingUnitType = "Updating unit type..."
 
     object Error {
         const val Header = "Profile Update Error"

@@ -9,6 +9,7 @@ import com.dmdbrands.gurus.weight.domain.services.IBodyCompositionService
 import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
 import com.dmdbrands.gurus.weight.features.common.components.showRadioGroupModal
 import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrings
+import com.dmdbrands.gurus.weight.features.settings.strings.SettingsScreenStrings
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsState
 import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
 import kotlinx.coroutines.CoroutineScope
@@ -32,6 +33,10 @@ constructor(
   companion object {
     private const val TAG = "UnitSettingsManager"
     private val KNOWN_UNIT_VALUES = setOf(WeightUnit.KG.value, WeightUnit.LB.value, WeightUnit.LB_OZ.value)
+
+    /** Fallback stored-height used when the account has no saved height. Matches legacy default. */
+    private const val DEFAULT_HEIGHT = 1700
+    private const val DEFAULT_ACTIVITY_LEVEL = "normal"
   }
 
   override fun onUnitTypeClick(
@@ -92,14 +97,14 @@ constructor(
       return
     }
 
-    dialogQueueService.showLoader("Updating unit type...")
+    dialogQueueService.showLoader(SettingsScreenStrings.UpdatingUnitType)
 
     scope.launch {
       try {
         val bodyComposition =
           BodyCompUpdateRequest(
-            height = currentAccount.height ?: 1700,
-            activityLevel = currentAccount.activityLevel ?: "normal",
+            height = currentAccount.height ?: DEFAULT_HEIGHT,
+            activityLevel = currentAccount.activityLevel ?: DEFAULT_ACTIVITY_LEVEL,
             weightUnit = newWeightUnit.value,
           )
 
