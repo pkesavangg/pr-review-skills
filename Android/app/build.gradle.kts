@@ -1,4 +1,4 @@
-import com.android.build.gradle.internal.api.BaseVariantOutputImpl
+import com.android.build.api.variant.impl.VariantOutputImpl
 import java.text.SimpleDateFormat
 import java.util.Date
 
@@ -6,9 +6,9 @@ plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.google.service)
   alias(libs.plugins.firebase.crashlytics.plugin)
-  alias(libs.plugins.kotlin.android)
   alias(libs.plugins.kotlin.compose)
-  id("kotlin-parcelize")
+  // parcelize is bundled with AGP's built-in Kotlin (AGP 9+); do not pin its version.
+  id("org.jetbrains.kotlin.plugin.parcelize")
   alias(libs.plugins.hilt)
   alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.ksp)
@@ -97,16 +97,20 @@ release {
     compose = true
     buildConfig = true
   }
-  android.applicationVariants.all {
-    val variantName = this.name // get the variant name here
+}
 
-    outputs.all {
-      val outputImpl = this as BaseVariantOutputImpl
-      val appName = "Weight gurus"
-      val versionCode = this.versionCode
-      val timestamp = SimpleDateFormat("yyyyMMdd").format(Date())
-      outputImpl.outputFileName =
-        "$appName-$variantName-v$versionName($versionCode)-$timestamp.apk"
+// onVariants replaces applicationVariants under AGP 9 newDsl. The VariantOutputImpl
+// cast stays until outputFileName is promoted to the public VariantOutput interface.
+androidComponents {
+  val appName = "Weight gurus"
+  val buildDateStamp = SimpleDateFormat("yyyyMMdd").format(Date())
+  onVariants { variant ->
+    variant.outputs.forEach { output ->
+      val versionName = output.versionName.get()
+      val versionCode = output.versionCode.get()
+      (output as VariantOutputImpl).outputFileName.set(
+        "$appName-${variant.name}-v$versionName($versionCode)-$buildDateStamp.apk",
+      )
     }
   }
 }
