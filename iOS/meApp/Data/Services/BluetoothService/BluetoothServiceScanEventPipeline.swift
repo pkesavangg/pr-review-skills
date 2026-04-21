@@ -234,11 +234,20 @@ extension BluetoothService {
     }
 
     private func saveSingleWeightEntry(_ weightEntry: GGEntry) async {
-        let entry = convertGGEntry(weightEntry)
-        guard let entry = entry else { return }
-        try? await entryService.saveNewEntry(entry)
-        let notification = EntryNotification(from: entry)
-        newEntryReceivedSubject.send(notification)
+        guard let entry = convertGGEntry(weightEntry) else { return }
+
+        if entry.entryType == EntryType.baby.rawValue {
+            // Baby entries are saved immediately; the assign/discard toast is driven by newEntryReceivedSubject.
+            try? await entryService.saveNewEntry(entry)
+            newEntryReceivedSubject.send(EntryNotification(from: entry))
+            return
+        }
+
+        // Weight/BPM entries: hold pending user confirmation via the toast.
+        // BottomTabBarViewModel will call confirmPendingScaleEntry() on SAVE/timeout
+        // or discardPendingScaleEntry() on DISCARD — neither path saves here.
+        pendingScaleEntry = entry
+        pendingScaleEntrySubject.send(EntryNotification(from: entry))
     }
 
     private func saveWeightEntryList(_ entryList: GGEntryList) async {
@@ -247,12 +256,16 @@ extension BluetoothService {
             logger.log(level: .info, tag: tag, message: "No valid entries to save")
             return
         }
-        for entry in entries {
+        // For a batch, save all historical entries immediately — only the most recent
+        // (first in the list) is surfaced as a pending confirmation toast.
+        let historicalEntries = entries.dropFirst()
+        for entry in historicalEntries {
             try? await entryService.saveNewEntry(entry)
         }
-        if !entries.isEmpty {
-            let notification = EntryNotification(from: entries[0])
-            newEntryReceivedSubject.send(notification)
+        if let latestEntry = entries.first {
+            pendingScaleEntry = latestEntry
+            let notification = EntryNotification(from: latestEntry)
+            pendingScaleEntrySubject.send(notification)
         }
     }
 

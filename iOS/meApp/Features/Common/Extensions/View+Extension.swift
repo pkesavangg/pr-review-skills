@@ -5,6 +5,7 @@
 //  Created by Kesavan Panchabakesan on 04/06/25.
 //
 
+import Combine
 import SwiftUI
 
 extension View {
@@ -28,12 +29,23 @@ extension View {
             self
         }
     }
+
+    @ViewBuilder
+    func ifLet<T, Transform: View>(_ value: T?, transform: (Self, T) -> Transform) -> some View {
+        if let value {
+            transform(self, value)
+        } else {
+            self
+        }
+    }
     
     /// Presents a toast notification with the provided toast data.
-    /// - Parameter data: A binding to the `ToastModel?` that contains the toast configuration.
+    /// - Parameters:
+    ///   - data: A binding to the `ToastModel?` that contains the toast configuration.
+    ///   - dismissSignal: An optional publisher that triggers immediate toast removal.
     /// - Returns: A view that presents the toast when `data` is not nil.
-    func presentToast(data: Binding<ToastModel?>) -> some View {
-        self.modifier(ToastModifier(toastData: data))
+    func presentToast(data: Binding<ToastModel?>, dismissSignal: AnyPublisher<Void, Never>? = nil) -> some View {
+        self.modifier(ToastModifier(toastData: data, dismissSignal: dismissSignal))
     }
     
     /// Presents a loader with the provided loader data.

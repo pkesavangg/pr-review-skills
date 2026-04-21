@@ -86,6 +86,8 @@ class BottomTabBarViewModel: ObservableObject {
     private let toastLang = ToastStrings.self
     private let tag = "BottomTabBarViewModel"
     private var cancellables: Set<AnyCancellable> = []
+    /// Tracks the auto-save timeout task for the weight reading arrival toast.
+    private var weightReadingTimeoutTask: Task<Void, Never>?
     private let promptDelay = 3.0 // Delay before checking Apple Health integration status and set a goal prompt
     /// Retains the Combine subscription for app-active notifications specifically used
     /// when we need to re-check HealthKit permissions after the user is redirected to
@@ -107,23 +109,25 @@ class BottomTabBarViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Subscribe to new entry events (uses EntryNotification for safe cross-actor data passing).
-        // Debounce to coalesce rapid emissions (e.g. multiple buffered entries syncing after
-        // Bluetooth reconnect) into a single toast instead of one per entry.
+        // Baby scale entries arrive already saved — show the assign/discard card.
+        // Always surface baby readings even during setup (first reading from a newly paired
+        // scale arrives while isSetupInProgress is still true).
         bluetoothService.newEntryReceivedPublisher
             .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
+            .filter { $0.entryType == EntryType.baby.rawValue }
             .sink { [weak self] notification in
-                guard let self else { return }
-                let isBabyEntry = notification.entryType == EntryType.baby.rawValue
-                // Always surface baby readings — the first reading from a newly paired scale
-                // arrives while isSetupInProgress is still true, so we must not suppress it.
-                // Non-baby entries are still suppressed during setup to avoid bulk-sync noise.
-                if !isBabyEntry && self.bluetoothService.isSetupInProgress { return }
-                if isBabyEntry {
-                    self.showBabyReadingArrivalCard(notification: notification)
-                } else {
-                    self.showWeightScaleReadingArrivalCard(notification: notification)
-                }
+                self?.showBabyReadingArrivalCard(notification: notification)
+            }
+            .store(in: &cancellables)
+
+        // Weight scale entries are held in BluetoothService pending user confirmation.
+        // The entry is NOT yet saved when this fires. Suppress during setup to avoid
+        // bulk-sync noise from buffered entries reconnecting.
+        bluetoothService.pendingScaleEntryPublisher
+            .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
+            .sink { [weak self] notification in
+                guard let self, !self.bluetoothService.isSetupInProgress else { return }
+                self.showWeightScaleReadingArrivalCard(notification: notification)
             }
             .store(in: &cancellables)
 
@@ -708,7 +712,8 @@ class BottomTabBarViewModel: ObservableObject {
     }
 
     /// Shows a reading-arrival card when a weight scale entry arrives via Bluetooth.
-    /// The entry is already persisted at this point; tapping DISCARD deletes it.
+    /// The entry has NOT been saved yet. Tapping SAVE confirms it; tapping DISCARD drops it.
+    /// If the toast times out without user interaction the entry is saved automatically.
     private func showWeightScaleReadingArrivalCard(notification: EntryNotification) {
         let lang = DashboardStrings.self
         let isMetric = accountService.activeAccount?.weightUnit == .kg
@@ -725,7 +730,10 @@ class BottomTabBarViewModel: ObservableObject {
         }
 
         let message = "\(weightString) - \(lang.weightReadingArrivalJustNow)"
-        let entryId = notification.id
+        let toastDuration = 8.0
+
+        // Cancel any in-flight timeout task for a previous toast
+        weightReadingTimeoutTask?.cancel()
 
         let toast = ToastModel(
             title: lang.weightReadingArrivalTitle,
@@ -733,27 +741,42 @@ class BottomTabBarViewModel: ObservableObject {
             btnTextView: AnyView(
                 WeightScaleReadingArrivalCTAView(
                     onSave: { [weak self] in
-                        // Entry is already saved — nothing to do; card dismisses automatically
-                        self?.notificationService.dismissToast()
-                        self?.logger.log(level: .info, tag: self?.tag ?? "", message: "Weight reading saved. entryId=\(entryId)")
-                    },
-                    onDiscard: { [weak self] in
                         guard let self else { return }
+                        self.weightReadingTimeoutTask?.cancel()
                         self.notificationService.dismissToast()
                         Task { [weak self] in
                             guard let self else { return }
                             do {
-                                try await self.entryService.deleteEntry(entryId: entryId)
-                                self.logger.log(level: .info, tag: self.tag, message: "Weight reading discarded. entryId=\(entryId)")
+                                try await self.bluetoothService.confirmPendingScaleEntry()
                             } catch {
-                                self.logger.log(level: .error, tag: self.tag, message: "Failed to discard weight reading. entryId=\(entryId)", data: error.localizedDescription)
+                                self.logger.log(level: .error, tag: self.tag, message: "Failed to save weight reading.", data: error.localizedDescription)
                             }
                         }
+                    },
+                    onDiscard: { [weak self] in
+                        guard let self else { return }
+                        self.weightReadingTimeoutTask?.cancel()
+                        self.bluetoothService.discardPendingScaleEntry()
+                        self.notificationService.dismissToast()
+                        self.logger.log(level: .info, tag: self.tag, message: "Weight reading discarded.")
                     }
                 )
             ),
-            duration: 8.0
+            duration: toastDuration
         )
+
+        // Auto-save after the toast duration if the user didn't act.
+        // confirmPendingScaleEntry() is a no-op if pendingScaleEntry is already nil
+        // (meaning the user tapped SAVE or DISCARD before the timeout fired).
+        weightReadingTimeoutTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(toastDuration * 1_000_000_000))
+            guard !Task.isCancelled, let self else { return }
+            do {
+                try await self.bluetoothService.confirmPendingScaleEntry()
+            } catch {
+                self.logger.log(level: .error, tag: self.tag, message: "Failed to auto-save weight reading on timeout.", data: error.localizedDescription)
+            }
+        }
 
         logger.log(level: .info, tag: tag, message: "Showing weight reading arrival card. weight=\(weightString)")
         notificationService.showToast(toast)
