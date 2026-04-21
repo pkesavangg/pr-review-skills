@@ -6,8 +6,6 @@ import java.util.Date
 
 plugins {
   alias(libs.plugins.android.application)
-  alias(libs.plugins.google.service)
-  alias(libs.plugins.firebase.crashlytics.plugin)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.hilt)
   alias(libs.plugins.kotlin.serialization)
@@ -19,6 +17,13 @@ plugins {
   // kotlin-android transitively.
   id("org.jetbrains.kotlin.plugin.parcelize")
   id("jacoco")
+}
+
+// Apply Firebase plugins only when google-services.json is present (CI injects it via secret)
+val googleServicesFile = file("google-services.json")
+if (googleServicesFile.exists()) {
+  apply(plugin = libs.plugins.google.service.get().pluginId)
+  apply(plugin = libs.plugins.firebase.crashlytics.plugin.get().pluginId)
 }
 
 ksp {
@@ -62,15 +67,17 @@ android {
       buildConfigField(
         "String",
         "BASE_URL",
-        "\"https://api.weightgurus.com/v3/\"",
+        "\"http://ec2-13-217-141-203.compute-1.amazonaws.com:3005/v3/\"",
       )
       buildConfigField("Boolean", "ENABLE_ANALYTICS", "false")
     }
     release {
       isMinifyEnabled = true
       isShrinkResources = true
-      configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
-        mappingFileUploadEnabled = true
+      if (googleServicesFile.exists()) {
+        configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
+          mappingFileUploadEnabled = true
+        }
       }
       proguardFiles(
         getDefaultProguardFile("proguard-android-optimize.txt"),
