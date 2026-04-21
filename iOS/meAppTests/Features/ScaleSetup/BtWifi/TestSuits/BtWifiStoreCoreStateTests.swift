@@ -30,7 +30,7 @@ extension BtWifiStoreTests {
             #expect(store.isSettingsContext == false)
 
             store.isWifiSetupOnly = true
-            store.savedScale = BtWifiStoreTestFixtures.makeScale()
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             #expect(store.isSettingsWifiSetup == true)
             #expect(store.isSettingsContext == true)
 
@@ -66,7 +66,7 @@ extension BtWifiStoreTests {
             let store = harness.store
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
 
-            store.savedScale = BtWifiStoreTestFixtures.makeScale()
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot()
 
             store.scaleSetupError = .maxUserReached
             #expect(store.stepViews.count == store.steps.count)
@@ -91,7 +91,7 @@ extension BtWifiStoreTests {
             let store = harness.store
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
 
-            store.savedScale = BtWifiStoreTestFixtures.makeScale()
+            store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             store.isWifiSetupOnly = true
             #expect(store.stepViews.count == store.steps.count)
 
@@ -241,7 +241,7 @@ extension BtWifiStoreTests {
             #expect(viewSettingsIndex != nil)
 
             _ = store.dashboardStore
-            let view = store.stepViews[viewSettingsIndex!]
+            let view = store.stepViews[viewSettingsIndex!] // swiftlint:disable:this force_unwrapping
             let host = UIHostingController(rootView: view)
             _ = host.view
         }

@@ -5,7 +5,6 @@
 //  Created by CursorAI on 05/08/25.
 
 import Combine
-import SwiftData
 import SwiftUI
 
 @MainActor
@@ -18,57 +17,18 @@ final class ScaleSettingsStore: ObservableObject {
     @Injector var permissionsService: PermissionsServiceProtocol
     private var cancellables = Set<AnyCancellable>()
 
-    // Store the device ID for safe refetching from MainActor context
-    private let scaleId: PersistentIdentifier
     private let scaleIdString: String
+    private let initialNickname: String?
 
-    // Cached scale for fallback when model not found in context
-    private var cachedScale: Device?
-
-    // Returns the cached scale - use refreshScale() to update from database
-    var scale: Device {
-        if let cached = cachedScale {
-            return cached
-        }
-        // This should never happen since we set cachedScale in init
-        logger.log(level: .error, tag: tag, message: "No cached scale available")
-        return Device(id: "", accountId: "", deviceName: "Error", deviceType: "")
-    }
-
-    /// Refreshes the scale from the database. Call this before operations that need fresh data.
-    func refreshScale() {
-        // First try registeredModel for already-loaded models (fastest path)
-        if let freshScale: Device = PersistenceController.shared.context.registeredModel(for: scaleId) {
-            cachedScale = freshScale
-            return
-        }
-
-        // If not in identity map, fetch from persistent store using FetchDescriptor
-        let idToFind = scaleIdString
-        let descriptor = FetchDescriptor<Device>(
-            predicate: #Predicate<Device> { device in
-                device.id == idToFind
-            }
-        )
-        do {
-            let results = try PersistenceController.shared.context.fetch(descriptor)
-            if let freshScale = results.first {
-                cachedScale = freshScale
-                return
-            }
-        } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to fetch scale from store: \(error.localizedDescription)")
-        }
-
-        // Keep existing cached value if fetch failed
-        if cachedScale != nil {
-            logger.log(level: .debug, tag: tag, message: "Using existing cached scale after refresh failed")
-        }
+    // Reads the current snapshot directly from the service — the single source of truth.
+    private var deviceSnapshot: DeviceSnapshot? {
+        scaleService.scales.first(where: { $0.id == scaleIdString })
     }
 
     @Published var isDeviceConnected: Bool = false
     @Published var connectedWifiSSID: String?
     @Published var isWifiConfigured: Bool = false
+    @Published private(set) var nickname: String?
     @Published var wifiMacAddress: String?
     @Published var isFetchingWifiMacAddress: Bool = false
     // Users list
@@ -83,12 +43,6 @@ final class ScaleSettingsStore: ObservableObject {
     @Published var isScaleImpedanceSwitchedOn: Bool = false
     @Published var isWeighOnlyModeEnabledByOthers: Bool = false
     @Published var displayName = ""
-
-    // Cached preference values for safe access without relationship traversal
-    // These are refreshed whenever the scale data changes
-    @Published private(set) var cachedShouldMeasureImpedance: Bool = false
-    @Published private(set) var cachedShouldMeasurePulse: Bool = false
-    @Published private(set) var cachedPreferenceIsSynced: Bool = false
 
     // Prevent concurrent preference syncs and device info fetches
     private var isSyncingPreferences: Bool = false
@@ -130,10 +84,8 @@ final class ScaleSettingsStore: ObservableObject {
         accountService: AccountServiceProtocol?,
         permissionsService: PermissionsServiceProtocol?
     ) {
-        // Store both PersistentIdentifier and string ID for safe refetching
-        self.scaleId = scale.persistentModelID
         self.scaleIdString = scale.id
-        self.cachedScale = scale  // Cache the initial scale
+        self.initialNickname = scale.nickname ?? scale.deviceName
 
         if let notificationService { self.notificationService = notificationService }
         if let scaleService { self.scaleService = scaleService }
@@ -148,19 +100,17 @@ final class ScaleSettingsStore: ObservableObject {
         refreshCachedValues()
 
         // Keep the local state in-sync with updates coming from `ScaleService`.
+        // The snapshot arriving in the callback is already the authoritative, up-to-date
+        // source — read from it directly rather than doing an extra SwiftData round-trip.
         self.scaleService.scalesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] devices in
                 guard let self = self else { return }
-                // Check if our scale is in the updated list by ID
-                guard devices.contains(where: { $0.id == self.scale.id }) else { return }
+                guard let snapshot = devices.first(where: { $0.id == self.scaleIdString }) else { return }
+
                 let wasConnected = self.isDeviceConnected
+                self.applySnapshot(snapshot)
 
-                // Refresh all cached values from the fresh MainActor context model
-                self.refreshCachedValues()
-
-                Task { await self.getDeviceInfo() }
-                // Trigger any post-connection logic once the device connects.
                 if !wasConnected && self.isDeviceConnected {
                     self.logger.log(level: .debug, tag: self.tag, message: "Scale connected – fetch additional info if needed")
                     Task { await self.getDeviceInfo() }
@@ -169,37 +119,34 @@ final class ScaleSettingsStore: ObservableObject {
             .store(in: &cancellables)
     }
 
-    /// Refreshes all cached values from the current MainActor context model.
-    /// This ensures all relationship access happens with models from the correct context.
-    private func refreshCachedValues() {
-        // Refresh the scale from database first
-        refreshScale()
-        let device = scale
+    private func applySnapshot(_ snapshot: DeviceSnapshot) {
         let isBluetoothOn = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
-        isDeviceConnected = (device.isConnected ?? false) && isBluetoothOn
-        isWifiConfigured = device.isWifiConfigured ?? false
-
-        // Safely access relationship properties - we're guaranteed to be on MainActor
-        // with a model from the MainActor context
-        if let preference = device.r4ScalePreference {
-            displayName = preference.displayName
-            cachedShouldMeasureImpedance = preference.shouldMeasureImpedance
-            cachedShouldMeasurePulse = preference.shouldMeasurePulse
-            cachedPreferenceIsSynced = preference.isSynced
-        } else {
-            displayName = accountService.activeAccount?.firstName ?? "Unknown"
-            cachedShouldMeasureImpedance = false
-            cachedShouldMeasurePulse = false
-            cachedPreferenceIsSynced = false
-        }
+        isDeviceConnected = snapshot.isConnected && isBluetoothOn
+        isWifiConfigured = snapshot.isWifiConfigured
+        nickname = snapshot.nickname ?? snapshot.deviceName
+        displayName = snapshot.r4ScalePreference?.displayName
+            ?? accountService.activeAccount?.firstName
+            ?? "Unknown"
     }
-    
+
+    private func refreshCachedValues() {
+        if let snapshot = deviceSnapshot {
+            applySnapshot(snapshot)
+            return
+        }
+        // Snapshot not yet in ScaleService.scales (e.g. app just launched, sync not done).
+        isDeviceConnected = false
+        isWifiConfigured = false
+        nickname = initialNickname
+        displayName = accountService.activeAccount?.firstName ?? "Unknown"
+    }
+
     func refreshScaleData() {
         refreshCachedValues()
     }
 
     var isBodyMetrics: Bool {
-        return cachedShouldMeasureImpedance
+        deviceSnapshot?.r4ScalePreference?.shouldMeasureImpedance ?? false
     }
     
     /// Opens the product guide/manual for the given SKU inside the in-app browser.
@@ -289,7 +236,7 @@ final class ScaleSettingsStore: ObservableObject {
         defer { isSyncingPreferences = false }
 
         guard isDeviceConnected,
-              let preference = scale.r4ScalePreference
+              let preference = deviceSnapshot?.r4ScalePreference
         else {
             return
         }
@@ -310,11 +257,10 @@ final class ScaleSettingsStore: ObservableObject {
             return
         }
 
-        // Extract to DTO before async boundary (R9) — avoid mutating @Model after await
-        let broadcastId = scale.broadcastIdString ?? "unknown"
-        let deviceId = scale.id
+        let broadcastId = deviceSnapshot?.broadcastIdString ?? "unknown"
+        let deviceId = scaleIdString
         var dto = preference.toDTO()
-        switch await bluetoothService.updateAccount(on: scale, preference: preference) {
+        switch await bluetoothService.updateAccount(broadcastId: broadcastId) {
         case .success:
             logger.log(level: .info, tag: tag, message: "Synced preference settings to scale \(broadcastId)")
             // Mark preference as synced via DTO to avoid @Model mutation after await (R9)
@@ -351,7 +297,7 @@ final class ScaleSettingsStore: ObservableObject {
         guard getScaleType() == .btWifiR4,
               isDeviceConnected == true else { return }
         
-        let result = await bluetoothService.getDeviceInfo(for: scale)
+        let result = await bluetoothService.getDeviceInfo(broadcastId: deviceSnapshot?.broadcastIdString ?? "")
         switch result {
         case .success(let deviceInfo):
             self.getConnectedWifiSSID()
@@ -364,7 +310,7 @@ final class ScaleSettingsStore: ObservableObject {
             if let wifiConfigured = deviceInfo.isWifiConfigured {
                 self.isWifiConfigured = wifiConfigured
             }
-            self.isWeighOnlyModeEnabledByOthers = !(deviceInfo.impedanceSwitchState ?? false) && cachedShouldMeasureImpedance
+            self.isWeighOnlyModeEnabledByOthers = !(deviceInfo.impedanceSwitchState ?? false) && isBodyMetrics
             logger.log(level: .info, tag: tag, message: "Device info retrieved – firmware: \(deviceInfo.firmwareRevision ?? "n/a")", data: deviceInfo)
             
             // Sync preference settings to scale if needed (impedance mismatch or unsynced preferences)
@@ -387,10 +333,10 @@ final class ScaleSettingsStore: ObservableObject {
         do {
             // Pause scans and mark setup in progress to avoid race with ongoing reconnect/pairing
             bluetoothService.isSetupInProgress = true
-            if let scaleType = getScaleType(), disconnectableScaleTypes.contains(scaleType), let broadcastId = scale.broadcastIdString {
+            if let scaleType = getScaleType(), disconnectableScaleTypes.contains(scaleType), let broadcastId = deviceSnapshot?.broadcastIdString {
                 // Ensure the user slot on the scale is deleted as well (aligns with Android behavior)
                 let deletionTask = Task { @MainActor in
-                    _ = await bluetoothService.deleteCurrentUserFromScaleIfPossible(scale, disconnect: false)
+                    _ = await bluetoothService.deleteCurrentUserFromScaleIfPossible(broadcastId: broadcastId, disconnect: false)
                 }
                 // Give BLE a brief moment to process deletion; if it hangs, cancel and proceed
                 // Note: Canceling the deletion task does not forcibly stop the underlying async operation.
@@ -417,7 +363,7 @@ final class ScaleSettingsStore: ObservableObject {
     private func getConnectedWifiSSID() {
         Task {
             if getScaleType() == .btWifiR4 && isDeviceConnected == true && isWifiConfigured {
-                let res = await bluetoothService.getConnectedWifiSSID(broadcastId: scale.broadcastIdString ?? "")
+                let res = await bluetoothService.getConnectedWifiSSID(broadcastId: deviceSnapshot?.broadcastIdString ?? "")
                 switch res {
                 case .success(let ssid):
                     self.connectedWifiSSID = ssid
@@ -431,7 +377,7 @@ final class ScaleSettingsStore: ObservableObject {
     }
     
     private func fetchWifiMacAddress() async {
-        let res = await bluetoothService.getWifiMacAddress(for: scale)
+        let res = await bluetoothService.getWifiMacAddress(broadcastId: deviceSnapshot?.broadcastIdString ?? "")
         switch res {
         case .success(let mac):
             wifiMacAddress = mac
@@ -450,7 +396,7 @@ final class ScaleSettingsStore: ObservableObject {
             return []
         }
         
-        let result = await bluetoothService.getScaleUserList(for: scale)
+        let result = await bluetoothService.getScaleUserList(broadcastId: deviceSnapshot?.broadcastIdString ?? "")
         switch result {
         case .success(let users):
             usersList = users
@@ -464,7 +410,7 @@ final class ScaleSettingsStore: ObservableObject {
     }
     
     private func getScaleType() -> ScaleSourceType? {
-        guard let scaleType = scale.bathScale?.scaleType else { return nil }
+        guard let scaleType = deviceSnapshot?.bathScale?.scaleType else { return nil }
         return ScaleSourceType(rawValue: scaleType)
     }
     
@@ -475,7 +421,7 @@ final class ScaleSettingsStore: ObservableObject {
             return
         }
         
-        let result = await bluetoothService.updateWeightOnlyMode(on: scale)
+        let result = await bluetoothService.updateWeightOnlyMode(broadcastId: deviceSnapshot?.broadcastIdString ?? "")
         switch result {
         case .success:
             logger.log(level: .info, tag: tag, message: "Successfully enabled body metrics for session")
@@ -493,7 +439,7 @@ final class ScaleSettingsStore: ObservableObject {
 
     func setSessionImpedance(_ enabled: Bool) async {
         guard isDeviceConnected else { return }
-        let res = await bluetoothService.updateSetting(on: scale, settings: [DeviceSetting(key: "SESSION_IMPEDANCE", value: .bool(enabled))])
+        let res = await bluetoothService.updateSetting(broadcastId: deviceSnapshot?.broadcastIdString ?? "", settings: [DeviceSetting(key: "SESSION_IMPEDANCE", value: .bool(enabled))])
         switch res {
         case .success:
             isImpedanceSwitchedOnForSession = enabled

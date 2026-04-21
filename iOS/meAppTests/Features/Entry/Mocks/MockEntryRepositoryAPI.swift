@@ -36,34 +36,4 @@ final class MockEntryRepositoryAPI: EntryRepositoryAPIProtocol {
         return exportCsvResult
     }
 
-    // MARK: - BPM Operations
-
-    var syncBpmOperationError: Error?
-    var fetchBpmOperationsResult = BpmOperationListResponse(operations: [], timestamp: "2026-03-03T00:00:00Z")
-    var fetchBpmOperationsError: Error?
-    var exportBpmCsvResult = ExportResponse(sent: true)
-    var exportBpmCsvError: Error?
-
-    private(set) var syncBpmOperationCalls = 0
-    private(set) var fetchBpmOperationsCalls = 0
-    private(set) var exportBpmCsvCalls = 0
-    private(set) var lastSyncedBpmOperation: BpmOperationDTO?
-
-    func syncBpmOperation(operation: BpmOperationDTO) async throws {
-        syncBpmOperationCalls += 1
-        lastSyncedBpmOperation = operation
-        if let syncBpmOperationError { throw syncBpmOperationError }
-    }
-
-    func fetchBpmOperations(startTimestamp: String?) async throws -> BpmOperationListResponse {
-        fetchBpmOperationsCalls += 1
-        if let fetchBpmOperationsError { throw fetchBpmOperationsError }
-        return fetchBpmOperationsResult
-    }
-
-    func exportBpmCsv() async throws -> ExportResponse {
-        exportBpmCsvCalls += 1
-        if let exportBpmCsvError { throw exportBpmCsvError }
-        return exportBpmCsvResult
-    }
 }

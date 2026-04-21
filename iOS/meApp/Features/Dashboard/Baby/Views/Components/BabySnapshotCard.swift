@@ -132,7 +132,7 @@ struct BabySnapshotCard: View {
     private func recomputeCache() async {
         let inputSummaries = summaries
         let profile = babyProfile
-        let weightUnit = viewModel.activeAccount?.weightSettings?.weightUnit ?? .lb
+        let weightUnit = viewModel.activeAccount?.weightUnit ?? .lb
 
         let result = await Task.detached(priority: .utility) {
             let window = DashboardSnapshotChartWindow.make(summaries: inputSummaries) { $0.weight > 0 }

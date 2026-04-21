@@ -75,8 +75,8 @@ enum BpmSetupStoreTestFixtures {
         id: String = "acct-1",
         email: String = "bpm-setup@example.com",
         firstName: String = "Test"
-    ) -> Account {
-        AccountTestFixtures.makeAccountModel(id: id, email: email, firstName: firstName, isActive: true)
+    ) -> AccountSnapshot {
+        AccountTestFixtures.makeAccountSnapshot(id: id, email: email, firstName: firstName, isActiveAccount: true)
     }
 
     static func enabledPermissions() -> [GGPermissionType: GGPermissionState] {
@@ -120,7 +120,7 @@ enum BpmSetupStoreTestFixtures {
             bodyComp: false
         )
         return DeviceDiscoveryEvent(
-            device: bpmDevice,
+            device: bpmDevice.toSnapshot(),
             deviceInfo: info,
             protocolType: protocolType,
             isNew: true
@@ -143,7 +143,7 @@ enum BpmSetupStoreTestFixtures {
     /// Returns the actual array index of a step within the store's configured steps.
     @MainActor
     static func stepIndex(_ step: BpmSetupStep, in store: BpmSetupStore) -> Int {
-        store.steps.firstIndex(of: step)!
+        store.steps.firstIndex(of: step)! // swiftlint:disable:this force_unwrapping
     }
 
     @MainActor

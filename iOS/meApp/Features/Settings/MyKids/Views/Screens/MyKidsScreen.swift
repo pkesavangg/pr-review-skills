@@ -91,8 +91,9 @@ struct MyKidsScreen: View {
                 .foregroundColor(theme.textBody)
                 .textCase(nil)
                 .padding(.bottom, .spacingSM)
+                .padding(.leading, -16)
         }
-        .listRowBackground(theme.backgroundPrimary)
+        .listRowBackground(Color.clear)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
 
@@ -143,8 +144,9 @@ struct MyKidsScreen: View {
             }
         }
         .padding(.spacingSM)
-        .background(theme.backgroundPrimary)
         .frame(height: 72)
+        .frame(maxWidth: .infinity)
+        .background(theme.backgroundPrimary)
         .swipeableActions(
             buttonWidth: swipeButtonWidth,
             buttons: [
@@ -162,7 +164,8 @@ struct MyKidsScreen: View {
             itemID: UUID(uuidString: baby.id) ?? UUID(),
             openItemID: $openItemID,
             openThresholdFraction: 0.1,
-            closeWithoutAnimationOnAction: true
+            closeWithoutAnimationOnAction: true,
+            trailingCornerRadius: .radiusSM
         )
     }
 

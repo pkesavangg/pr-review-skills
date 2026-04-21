@@ -5,7 +5,6 @@
 import Charts
 import Combine
 import Foundation
-import SwiftData
 import SwiftUI
 
 /// Simplified DashboardStore focused on coordination between managers
@@ -39,7 +38,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     @Published private(set) var canShowSnapshotOverview: Bool = false
 
     /// The active product type for the dashboard (weight or BPM).
-    @Published var productType: EntryType = .wg
+    @Published var productType: EntryType = .scale
     @Published private(set) var availableProductItems: [ProductSelection] = []
     @Published private(set) var selectedProductItem: ProductSelection = .myWeight
 
@@ -402,7 +401,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             .store(in: &cancellables)
 
         accountService.$activeAccount
-            .compactMap { $0?.dashboardSettings?.dashboardType }
+            .compactMap { $0?.dashboardType }
             .removeDuplicates()
             .sink { [weak self] _ in
                 self?.lifecycleManager.handleDashboardTypeChange()
@@ -560,7 +559,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     var shouldShowBodyMetrics: Bool {
         if !state.ui.hasLoadedDashboardConfig {
-            guard let dashboardMetrics = accountService.activeAccount?.dashboardSettings?.dashboardMetrics,
+            guard let dashboardMetrics = accountService.activeAccount?.dashboardMetrics,
                   !dashboardMetrics.isEmpty
             else { return false }
             let metrics = dashboardMetrics.split(separator: ",").map(String.init)
@@ -806,18 +805,18 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     // MARK: - Account & Weight Properties
 
     var isWeightlessModeEnabled: Bool {
-        accountService.activeAccount?.weightlessSettings?.isWeightlessOn ?? false
+        accountService.activeAccount?.isWeightlessOn ?? false
     }
 
     var weightlessAnchorWeight: Double? {
-        guard let weightlessSettings = accountService.activeAccount?.weightlessSettings,
-              weightlessSettings.isWeightlessOn,
-              let weightlessWeight = weightlessSettings.weightlessWeight
+        guard let account = accountService.activeAccount,
+              account.isWeightlessOn,
+              let weightlessWeight = account.weightlessWeight
         else { return nil }
         let storedWeight = Int(weightlessWeight)
-        let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
+        let unit = account.weightUnit
         return unit == .kg
-            ? ConversionTools.convertStoredToKg(storedWeight)
+            ? ConversionTools.convertStoredToKgRaw(Double(storedWeight))
             : ConversionTools.convertStoredToLbs(storedWeight)
     }
 
@@ -829,7 +828,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     }
 
     private func convertBabyDecigramsToDisplay(_ decigrams: Int) -> Double {
-        let isMetric = accountService.activeAccount?.weightSettings?.weightUnit == .kg
+        let isMetric = accountService.activeAccount?.weightUnit == .kg
         // TODO: Remove this fallback once baby-scale conversion is confirmed and
         // implemented separately per SKU type.
         let kg = Double(decigrams) / BabyPercentileGrowthReference.decigramsToKgFactor
@@ -844,10 +843,10 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         return metricsManager.getBodyMetric(for: selectedLabel)
     }
 
-    var currentUnit: WeightUnit { accountService.activeAccount?.weightSettings?.weightUnit ?? .lb }
+    var currentUnit: WeightUnit { accountService.activeAccount?.weightUnit ?? .lb }
     var currentUnitString: String { currentUnit.rawValue }
-    var currentUnitText: String { accountService.activeAccount?.weightSettings?.weightUnit?.rawValue ?? "lbs" }
-    var currentWeightlessMode: Bool { accountService.activeAccount?.weightlessSettings?.isWeightlessOn ?? false }
+    var currentUnitText: String { accountService.activeAccount?.weightUnit.rawValue ?? "lbs" }
+    var currentWeightlessMode: Bool { accountService.activeAccount?.isWeightlessOn ?? false }
     var unitText: String { goalManager.getUnitText() }
 
     var hasEntriesButNoneInCurrentPeriod: Bool {

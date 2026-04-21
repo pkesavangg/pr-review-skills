@@ -53,6 +53,11 @@ constructor(
   override fun provideInitialState(): EntryState = EntryState()
 
   init {
+    // Set weight unit synchronously from current account to avoid flash of default LB
+    accountService.activeAccount.value?.weightUnit?.let {
+      handleIntent(EntryIntent.UpdateWeightUnit(it))
+    }
+
     // Set up continuous flows
     viewModelScope.launch {
       accountService.activeAccountFlow.map { it?.weightUnit }.distinctUntilChanged().collect {
@@ -101,10 +106,11 @@ constructor(
       is ProductSelection.MyWeight -> {
         val hasAppSyncData = appSyncService.appSyncDataForEditing.first() != null
         if (!hasAppSyncData) {
+          val activeAccount = accountService.activeAccountFlow.first()
           val entryForm = EntryForm.create(
             includeR4ScaleMetrics = true,
-            weightUnit = accountService.activeAccountFlow.first()?.weightUnit,
-            height = accountService.activeAccountFlow.first()?.height,
+            weightUnit = activeAccount?.weightUnit,
+            height = activeAccount?.height,
             isValueChangeAllowed = { _, _ ->
               !_state.value.form.forms.generalMetrics.controls.bodyMassIndex.touched
             },
@@ -153,10 +159,11 @@ constructor(
           val hasAppSyncData = appSyncService.appSyncDataForEditing.first() != null
 
           if (!hasAppSyncData) {
+            val activeAccount = accountService.activeAccountFlow.first()
             val entryForm = EntryForm.create(
               includeR4ScaleMetrics = true,
-              weightUnit = state.value.weightMode,
-              height = accountService.activeAccountFlow.first()?.height,
+              weightUnit = activeAccount?.weightUnit ?: state.value.weightMode,
+              height = activeAccount?.height,
               isValueChangeAllowed = { _, _ ->
                 !_state.value.form.forms.generalMetrics.controls.bodyMassIndex.touched
               },

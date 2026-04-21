@@ -77,7 +77,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         didSet { updateNextEnabled() }
     }
     @Published var bluetoothConnectionState: ConnectionState = .loading
-    @Published var scaleToDelete: Device?
+    var scaleToDelete: DeviceSnapshot?
     
     private let tag = "BluetoothScaleSetupStore"
     private let scaleSetupStrings = ScaleSetupStrings.self
@@ -294,7 +294,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         case .success(let response):
             switch response {
             case .creationCompleted:
-                let response = await self.bluetoothService.getDeviceInfo(for: scale, skipConnectionCheck: true)
+                let response = await self.bluetoothService.getDeviceInfo(broadcastId: scale.broadcastIdString ?? "", skipConnectionCheck: true)
                 switch response {
                 case .success(let deviceInfo):
                     discoveredScale?.broadcastId = bluetoothService.convertHexToInt(deviceInfo.broadcastId ?? "")
@@ -414,7 +414,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         }
         
         // Create array with the single scale to sync
-        let scalesToSync = [scale]
+        let scalesToSync = [scale.toSnapshot()]
         bluetoothService.syncDevices(scalesToSync)
     }
     
@@ -456,7 +456,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         deviceDiscoveryCancellable?.cancel()
         stepTimerTask?.cancel()
         
-        self.discoveredScale = event.device
+        self.discoveredScale = event.device.toDevice()
         self.discoveryEvent = event
         guard discoveredScale != nil && discoveryEvent != nil else {
             return
@@ -507,7 +507,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         
         // Get device metadata for Bluetooth scales (matching BluetoothService.addNewDevice logic)
         var deviceMetadata: DeviceMetaData?
-        let deviceInfoResult = await bluetoothService.getDeviceInfo(for: deviceToSave, skipConnectionCheck: true)
+        let deviceInfoResult = await bluetoothService.getDeviceInfo(broadcastId: deviceToSave.broadcastIdString ?? "", skipConnectionCheck: true)
         switch deviceInfoResult {
         case .success(let deviceInfo):
             let dto = ScaleMetaDataDTO(
@@ -701,7 +701,7 @@ extension BluetoothScaleSetupStore {
         discoveredScale: Device? = nil,
         discoveryEvent: DeviceDiscoveryEvent? = nil,
         isScaleSaved: Bool? = nil,
-        scaleToDelete: Device? = nil
+        scaleToDelete: DeviceSnapshot? = nil
     ) {
         self.discoveredScale = discoveredScale
         self.discoveryEvent = discoveryEvent

@@ -44,6 +44,10 @@ final class MockEntryStoreEntryService: EntryServiceProtocol {
     func clearLastSyncTimestamp() async throws {}
     func saveNewEntries(_ entries: [Entry]) async throws {}
     func deleteEntry(_ entry: Entry) async throws {}
+    func deleteEntry(entryId: UUID) async throws {}
+    func fetchEntrySnapshot(byId id: UUID) async throws -> EntrySnapshot? { nil }
+    func fetchAllEntrySnapshots() async throws -> [EntrySnapshot] { [] }
+    func fetchEntrySnapshots(forMonth month: String, entryType: EntryType) async throws -> [EntrySnapshot] { [] }
     func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {}
     func getAllEntries() async throws -> [Entry] { [] }
     func getAllEntriesAsDTO() async throws -> [BathScaleOperationDTO] { [] }

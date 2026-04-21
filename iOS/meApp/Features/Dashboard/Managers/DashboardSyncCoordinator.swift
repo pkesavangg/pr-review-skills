@@ -195,7 +195,7 @@ final class DashboardSyncCoordinator: DashboardSyncCoordinatorProtocol {
     }
     
     func loadProgressMetricsFromAccount( // swiftlint:disable:this function_body_length
-        activeAccount: Account?,
+        activeAccount: AccountSnapshot?,
         allStreaks: [MetricItem],
         streakManagerActiveCount: inout Int,
         onProgressMetricsLoaded: (Int, Bool, [String], Set<String>) -> Void,
@@ -205,8 +205,8 @@ final class DashboardSyncCoordinator: DashboardSyncCoordinatorProtocol {
             await MainActor.run { setupDefaultOrder() }
             return
         }
-        
-        guard let progressMetricsString = account.dashboardSettings?.progressMetrics else {
+
+        guard let progressMetricsString = account.progressMetrics else {
             await MainActor.run { setupDefaultOrder() }
             return
         }
@@ -274,7 +274,7 @@ final class DashboardSyncCoordinator: DashboardSyncCoordinatorProtocol {
     }
     
     func loadMetricsFromLocalAccount(
-        activeAccount: Account?,
+        activeAccount: AccountSnapshot?,
         updateDashboardType: (DashboardType) -> Void,
         updateMetricsOrder: ([String]) -> Void,
         setupInitialMetrics: () -> Void,
@@ -283,7 +283,7 @@ final class DashboardSyncCoordinator: DashboardSyncCoordinatorProtocol {
         await MainActor.run {
             // Try to load from local account if available
             if let account = activeAccount {
-                let dashboardTypeString = account.dashboardSettings?.dashboardType
+                let dashboardTypeString = account.dashboardType
                 let dashboardType: DashboardType
                 switch dashboardTypeString {
                 case "dashboard4":
@@ -296,7 +296,7 @@ final class DashboardSyncCoordinator: DashboardSyncCoordinatorProtocol {
                 updateDashboardType(dashboardType)
                 
                 // Load metrics order from local account if available
-                if let dashboardMetrics = account.dashboardSettings?.dashboardMetrics {
+                if let dashboardMetrics = account.dashboardMetrics {
                     let metricArray = dashboardMetrics.split(separator: ",").map(String.init)
                     updateMetricsOrder(metricArray)
                 } else {

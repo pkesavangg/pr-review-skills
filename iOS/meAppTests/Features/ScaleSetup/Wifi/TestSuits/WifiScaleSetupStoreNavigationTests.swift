@@ -74,6 +74,35 @@ extension WifiScaleSetupStoreTests {
             #expect(store.networkForm.ssid.value.isEmpty)
         }
 
+        @Test("skipping permissions again preserves manually entered network name")
+        func repeatedSkipPreservesManuallyEnteredNetworkName() async {
+            let permissions = MockPermissionsService()
+            permissions.setPermissions(WifiScaleSetupStoreTestFixtures.disabledPermissions())
+            let harness = WifiScaleSetupStoreTestFixtures.makeSUT(permissions: permissions)
+            let store = harness.store
+            WifiScaleSetupStoreTestFixtures.configureDefaultWifiScale(store)
+            store.currentStepIndex = WifiScaleSetupStep.permissions.index
+            await WifiScaleSetupStoreTestFixtures.waitUntil {
+                harness.wifiScaleService.getScaleTokenCalls > 0
+            }
+
+            store.handleSkipWifiStep()
+            harness.notification.alertData?.buttons.last?.action(nil)
+            store.networkForm.setSSID("Home WiFi")
+            store.networkForm.setPassword("secret123")
+
+            store.handleBackButtonClick()
+            #expect(store.currentStep == .permissions)
+
+            store.handleSkipWifiStep()
+            harness.notification.alertData?.buttons.last?.action(nil)
+
+            #expect(store.currentStep == .wifiPassword)
+            #expect(store.networkForm.ssid.value == "Home WiFi")
+            #expect(store.networkForm.password.value == "secret123")
+            #expect(store.networkForm.ssid.errors[.required] == false)
+        }
+
         @Test("back from activate pairing mode in get-mac flow goes to intro when permissions enabled")
         func backFromActivatePairingModeGetMacWithPermissionsEnabledGoesIntro() {
             let harness = WifiScaleSetupStoreTestFixtures.makeSUT()

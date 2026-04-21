@@ -149,7 +149,7 @@ final class MockEntryRepository: EntryRepositoryProtocol {
 
     func fetchEntriesAsBpmDTO(forUserId userId: String, operationType: String?) async throws -> [BpmOperationDTO] {
         filteredEntries(userId: userId, operationType: operationType)
-            .filter { $0.deviceType == DeviceType.bpm.rawValue }
+            .filter { $0.entryType == EntryType.bpm.rawValue }
             .map { $0.toBpmOperationDTO() }
     }
 

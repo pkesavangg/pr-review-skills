@@ -26,6 +26,22 @@ extension BluetoothService {
         )
     }
 
+    func mapToGGBTDevice(_ snapshot: DeviceSnapshot) -> GGBTDevice? {
+        guard let bid = snapshot.broadcastIdString else { return nil }
+        return GGBTDevice(
+            name: snapshot.deviceName ?? "",
+            broadcastId: bid,
+            password: convertIntToHex(snapshot.password ?? 0, protocolType: ProtocolType(rawValue: snapshot.protocolType ?? "") ?? .A6),
+            token: snapshot.token,
+            userNumber: Int(snapshot.userNumber ?? "0") ?? 0,
+            preference: mapToGGPreference(deviceId: snapshot.id, preference: nil),
+            syncAllData: nil,
+            batteryLevel: 0,
+            protocolType: snapshot.protocolType ?? "",
+            macAddress: snapshot.mac ?? ""
+        )
+    }
+
     func mapToGGBTDevice(_ broadcastId: String) -> GGBTDevice {
         GGBTDevice(
             name: "",

@@ -4,11 +4,11 @@ import Foundation
 
 @MainActor
 final class MockTokenManagerAccountService: AccountServiceProtocol {
-    @Published var activeAccount: Account?
-    @Published private(set) var allAccounts: [Account] = []
+    @Published var activeAccount: AccountSnapshot?
+    @Published private(set) var allAccounts: [AccountSnapshot] = []
 
-    var activeAccountPublisher: Published<Account?>.Publisher { $activeAccount }
-    var allAccountsPublisher: Published<[Account]>.Publisher { $allAccounts }
+    var activeAccountPublisher: Published<AccountSnapshot?>.Publisher { $activeAccount }
+    var allAccountsPublisher: Published<[AccountSnapshot]>.Publisher { $allAccounts }
 
     var refreshTokensResult: Result<Tokens, Error> = .failure(UnexpectedCallError.methodCalled("refreshTokens"))
     var refreshTokensResultsQueue: [Result<Tokens, Error>] = []
@@ -16,7 +16,7 @@ final class MockTokenManagerAccountService: AccountServiceProtocol {
     var updateTokensError: Error?
     var logOutError: Error?
     var refreshDelayNs: UInt64 = 0
-    var fetchAccountById: [String: Account] = [:]
+    var fetchAccountById: [String: AccountSnapshot] = [:]
 
     private(set) var refreshTokensCalls = 0
     private(set) var updateTokensCalls = 0
@@ -30,11 +30,11 @@ final class MockTokenManagerAccountService: AccountServiceProtocol {
     private(set) var fetchAccountCalls = 0
     private(set) var lastFetchAccountId: String?
 
-    func signUp(email: String, password: String, profile: Profile) async throws -> Account {
+    func signUp(email: String, password: String, profile: Profile) async throws {
         throw UnexpectedCallError.methodCalled("signUp")
     }
 
-    func logIn(email: String, password: String) async throws -> Account {
+    func logIn(email: String, password: String) async throws {
         throw UnexpectedCallError.methodCalled("logIn")
     }
 
@@ -53,11 +53,11 @@ final class MockTokenManagerAccountService: AccountServiceProtocol {
         throw UnexpectedCallError.methodCalled("deleteAllAccounts")
     }
 
-    func switchAccount(to account: Account) async throws {
+    func switchAccount(to accountId: String) async throws {
         throw UnexpectedCallError.methodCalled("switchAccount")
     }
 
-    func setActiveAccount(_ account: Account) async throws {
+    func setActiveAccount(accountId: String) async throws {
         throw UnexpectedCallError.methodCalled("setActiveAccount")
     }
 
@@ -65,33 +65,33 @@ final class MockTokenManagerAccountService: AccountServiceProtocol {
         false
     }
 
-    func getActiveAccount() async throws -> Account? {
+    func getActiveAccount() async throws -> AccountSnapshot? {
         throw UnexpectedCallError.methodCalled("getActiveAccount")
     }
 
-    func getAllLoggedInAccounts() async throws -> [Account] {
+    func getAllLoggedInAccounts() async throws -> [AccountSnapshot] {
         throw UnexpectedCallError.methodCalled("getAllLoggedInAccounts")
     }
 
-    func fetchAccount(byId id: String) async throws -> Account? {
+    func fetchAccount(byId id: String) async throws -> AccountSnapshot? {
         fetchAccountCalls += 1
         lastFetchAccountId = id
         return fetchAccountById[id]
     }
 
-    func fetchAllAccounts() async throws -> [Account] {
+    func fetchAllAccounts() async throws -> [AccountSnapshot] {
         throw UnexpectedCallError.methodCalled("fetchAllAccounts")
     }
 
-    func createGoal(_ goal: Goal) async throws -> Account {
+    func createGoal(_ goal: Goal) async throws {
         throw UnexpectedCallError.methodCalled("createGoal")
     }
 
-    func updateProfile(_ profile: Profile, canSaveOffline: Bool) async throws -> Account {
+    func updateProfile(_ profile: Profile, canSaveOffline: Bool) async throws {
         throw UnexpectedCallError.methodCalled("updateProfile")
     }
 
-    func updateBodyComp(_ bodyComp: BodyComp) async throws -> Account {
+    func updateBodyComp(_ bodyComp: BodyComp) async throws {
         throw UnexpectedCallError.methodCalled("updateBodyComp")
     }
 
@@ -102,31 +102,31 @@ final class MockTokenManagerAccountService: AccountServiceProtocol {
         if let updateTokensError { throw updateTokensError }
     }
 
-    func updateDashboardType(type: DashboardType) async throws -> Account {
+    func updateDashboardType(type: DashboardType) async throws {
         throw UnexpectedCallError.methodCalled("updateDashboardType")
     }
 
-    func updateIntegrations(integrationType: IntegrationType, preferences: [String: AnyCodable]) async throws -> Account {
+    func updateIntegrations(integrationType: IntegrationType, preferences: [String: AnyCodable]) async throws {
         throw UnexpectedCallError.methodCalled("updateIntegrations")
     }
 
-    func updateNotifications(notifications: Notifications) async throws -> Account {
+    func updateNotifications(notifications: Notifications) async throws {
         throw UnexpectedCallError.methodCalled("updateNotifications")
     }
 
-    func updateDashboardMetrics(metrics: [String]) async throws -> Account {
+    func updateDashboardMetrics(metrics: [String]) async throws {
         throw UnexpectedCallError.methodCalled("updateDashboardMetrics")
     }
 
-    func updateProgressMetrics(metrics: [String]) async throws -> Account {
+    func updateProgressMetrics(metrics: [String]) async throws {
         throw UnexpectedCallError.methodCalled("updateProgressMetrics")
     }
 
-    func updateStreak(isStreakOn: Bool, streakTimestamp: String) async throws -> Account {
+    func updateStreak(isStreakOn: Bool, streakTimestamp: String) async throws {
         throw UnexpectedCallError.methodCalled("updateStreak")
     }
 
-    func updateWeightless(isWeightlessOn: Bool, weightlessTimestamp: String, weightlessWeight: Double) async throws -> Account {
+    func updateWeightless(isWeightlessOn: Bool, weightlessTimestamp: String, weightlessWeight: Double) async throws {
         throw UnexpectedCallError.methodCalled("updateWeightless")
     }
 
@@ -142,7 +142,7 @@ final class MockTokenManagerAccountService: AccountServiceProtocol {
         throw UnexpectedCallError.methodCalled("refreshAllAccounts")
     }
 
-    func refreshAccount(accountId: String?) async throws -> Account {
+    func refreshAccount(accountId: String?) async throws {
         throw UnexpectedCallError.methodCalled("refreshAccount")
     }
 
@@ -179,7 +179,11 @@ final class MockTokenManagerAccountService: AccountServiceProtocol {
         throw UnexpectedCallError.methodCalled("removeAccountFromDevice")
     }
 
-    func updatePublishedState(forceRefresh: Bool) async throws {
+    func updatePublishedState() async throws {
         throw UnexpectedCallError.methodCalled("updatePublishedState")
+    }
+
+    func updateProductTypes(_ productTypes: [String]) async throws {
+        throw UnexpectedCallError.methodCalled("updateProductTypes")
     }
 }

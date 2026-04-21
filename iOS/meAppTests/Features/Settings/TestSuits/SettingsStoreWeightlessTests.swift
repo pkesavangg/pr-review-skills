@@ -22,9 +22,24 @@ extension SettingsStoreTests {
 
         @Test("populateWeightlessFormIfNeeded turns off toggle when weight is missing")
         func populateWeightlessFormTurnsOffWhenWeightMissing() {
-            let account = SettingsStoreTestFixtures.makeAccount()
-            account.weightlessSettings?.isWeightlessOn = true
-            account.weightlessSettings?.weightlessWeight = nil
+            let account = AccountTestFixtures.makeAccountSnapshot(
+                id: "acct-1",
+                email: "lakshmi@example.com",
+                firstName: "Lakshmi",
+                lastName: "Priya",
+                gender: .female,
+                dob: "1992-03-04",
+                zipcode: "560001",
+                isActiveAccount: true,
+                weightUnit: .kg,
+                weightHeight: "681",
+                activityLevel: .athlete,
+                isStreakOn: true,
+                isWeightlessOn: true,
+                weightlessWeight: nil,
+                shouldSendEntryNotifications: true,
+                shouldSendWeightInEntryNotifications: true
+            )
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService)
@@ -52,7 +67,6 @@ extension SettingsStoreTests {
         @Test("populateWeightlessFormIfNeeded formats imperial weight")
         func populateWeightlessFormFormatsImperialWeight() {
             let account = SettingsStoreTestFixtures.makeAccount(unit: .lb)
-            account.weightlessSettings?.weightlessWeight = 1550
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService)
@@ -121,7 +135,7 @@ extension SettingsStoreTests {
             let account = SettingsStoreTestFixtures.makeAccount()
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
-            accountService.updateWeightlessResult = .success(account)
+            accountService.updateWeightlessResult = .success(())
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService)
             let router = Router<SettingsRoute>()
             router.navigate(to: .weightless)
@@ -145,7 +159,7 @@ extension SettingsStoreTests {
             let account = SettingsStoreTestFixtures.makeAccount(unit: .kg)
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
-            accountService.updateWeightlessResult = .success(account)
+            accountService.updateWeightlessResult = .success(())
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService)
             let router = Router<SettingsRoute>()
             router.navigate(to: .weightless)

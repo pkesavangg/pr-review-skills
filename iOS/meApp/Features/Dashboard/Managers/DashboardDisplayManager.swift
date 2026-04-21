@@ -247,7 +247,7 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
     }
 
     var displayUnitText: String {
-        let unit: WeightUnit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
+        let unit: WeightUnit = accountService.activeAccount?.weightUnit ?? .lb
         let displayValue = displayWeight ?? getCurrentAverageWeight()
         return WeightValueConvertor.unitForDisplay(value: displayValue, unit: unit)
     }
@@ -260,10 +260,10 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
         let weightValues = opsToUse.map { summary -> Double in
             if getIsWeightlessModeEnabled() {
                 guard let anchorWeight = getWeightlessAnchorWeight() else { return 0 }
-                let currentWeight = goalManager.convertWeightToDisplay(Int(summary.weight))
+                let currentWeight = goalManager.convertWeightToDisplay(summary.weight)
                 return currentWeight - anchorWeight
             } else {
-                return goalManager.convertWeightToDisplay(Int(summary.weight))
+                return goalManager.convertWeightToDisplay(summary.weight)
             }
         }
         if let averageWeight = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count) {
@@ -495,7 +495,7 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
                 entryTimestamp: DateTimeTools.getCurrentDatetimeIsoString(),
                 accountId: "dashboard",
                 operationType: OperationType.create.rawValue,
-                deviceType: "scale",
+                entryType: EntryType.scale.rawValue,
                 isSynced: true
             )
         }
@@ -511,7 +511,7 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
             isWeightlessMode: getIsWeightlessModeEnabled(),
             anchorWeight: getWeightlessAnchorWeight(),
             period: stateProvider.state.graph.selectedPeriod,
-            weightUnit: accountService.activeAccount?.weightSettings?.weightUnit ?? .lb,
+            weightUnit: accountService.activeAccount?.weightUnit ?? .lb,
             latestWeightStored: dataManager.state.latestWeightStored,
             convertWeight: goalManager.convertWeightToDisplay,
             interpolatedWeight: { date, ops, isWeightless, anchor, convert in

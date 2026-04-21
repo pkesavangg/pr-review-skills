@@ -17,7 +17,6 @@ struct ScaleSettingsStoreTests {
 
         #expect(store.displayName == "Primary Scale")
         #expect(store.isBodyMetrics == true)
-        #expect(store.cachedShouldMeasurePulse == false)
         #expect(store.isDeviceConnected == false)
         #expect(store.isWifiConfigured == true)
     }
@@ -29,15 +28,13 @@ struct ScaleSettingsStoreTests {
         scale.r4ScalePreference = nil
 
         let account = MockAccountService()
-        account.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "user@example.com", firstName: "Lakshmi", isActive: true)
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "user@example.com", firstName: "Lakshmi", isActiveAccount: true)
 
         let (store, _, _, _, _) = makeSUT(scale: scale, account: account)
 
         store.refreshScaleData()
 
         #expect(store.displayName == "Lakshmi")
-        #expect(store.cachedShouldMeasureImpedance == false)
-        #expect(store.cachedPreferenceIsSynced == false)
     }
 
     @Test("openProductGuide sets browser state")
@@ -258,7 +255,7 @@ struct ScaleSettingsStoreTests {
         )
         let scaleService = MockScaleService()
         let (store, _, _, _, _) = makeSUT(scale: makeR4Scale(), scaleService: scaleService, bluetooth: bluetooth)
-        scaleService.scales = [makeR4Scale()]
+        scaleService.scales = [makeR4Scale().toSnapshot()]
 
         await waitUntil(timeoutNanoseconds: 500_000_000) {
             bluetooth.getDeviceInfoCalls > 0
@@ -423,7 +420,7 @@ struct ScaleSettingsStoreTests {
         logger: MockLoggerService? = nil,
         account: MockAccountService? = nil,
         permissions: MockPermissionsService? = nil
-    ) -> (ScaleSettingsStore, MockNotificationHelperService, MockScaleService, MockBluetoothService, MockPermissionsService) {
+    ) -> (ScaleSettingsStore, MockNotificationHelperService, MockScaleService, MockBluetoothService, MockPermissionsService) { // swiftlint:disable:this large_tuple
         let notification = notification ?? MockNotificationHelperService()
         let scaleService = scaleService ?? MockScaleService()
         let bluetooth = bluetooth ?? MockBluetoothService()
@@ -431,7 +428,7 @@ struct ScaleSettingsStoreTests {
         let account = account ?? MockAccountService()
         let permissions = permissions ?? MockPermissionsService()
         if account.activeAccount == nil {
-            account.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "scale@example.com", firstName: "Owner", isActive: true)
+            account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "scale@example.com", firstName: "Owner", isActiveAccount: true)
         }
         if permissions.permissions == nil {
             permissions.setPermissions([.BLUETOOTH_SWITCH: .ENABLED])
