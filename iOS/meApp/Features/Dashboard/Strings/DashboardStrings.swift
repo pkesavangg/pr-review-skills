@@ -80,4 +80,16 @@ struct DashboardStrings {
     static func noEntriesInPeriodMessage(_ timePeriod: String) -> String {
         return "You haven't added any entries this \(timePeriod)."
     }
+
+    // Baby reading arrival
+    static let babyReadingArrivalTitle = "New Baby Scale Reading Received"
+    static let babyReadingArrivalAssign = "ASSIGN"
+    static let babyReadingArrivalDontAssign = "DON'T ASSIGN"
+    static let babyReadingArrivalJustNow = "Just now"
+
+    // Weight scale reading arrival
+    static let weightReadingArrivalTitle = "New Weight Scale Reading Received"
+    static let weightReadingArrivalSave = "SAVE"
+    static let weightReadingArrivalDiscard = "DISCARD"
+    static let weightReadingArrivalJustNow = "Just now"
 }

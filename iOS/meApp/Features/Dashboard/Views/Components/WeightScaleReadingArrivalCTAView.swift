@@ -1,20 +1,20 @@
 //
-//  BabyReadingArrivalCTAView.swift
+//  WeightScaleReadingArrivalCTAView.swift
 //  meApp
 //
 
 import SwiftUI
 
-/// Two-button row rendered inside the baby scale reading arrival toast.
-/// Secondary CTA (DON'T ASSIGN) is on the left; primary CTA (ASSIGN) is on the right.
-struct BabyReadingArrivalCTAView: View {
-    let onAssign: () -> Void
+/// Two-button row rendered inside the weight scale reading arrival toast.
+/// Secondary CTA (DISCARD) is on the left; primary CTA (SAVE) is on the right.
+struct WeightScaleReadingArrivalCTAView: View {
+    let onSave: () -> Void
     let onDiscard: () -> Void
 
     var body: some View {
         HStack(spacing: .spacingSM) {
             ButtonView(
-                text: DashboardStrings.babyReadingArrivalDontAssign,
+                text: DashboardStrings.weightReadingArrivalDiscard,
                 type: .textPrimary,
                 size: .small,
                 isDisabled: false,
@@ -22,11 +22,11 @@ struct BabyReadingArrivalCTAView: View {
             )
             Spacer()
             ButtonView(
-                text: DashboardStrings.babyReadingArrivalAssign,
+                text: DashboardStrings.weightReadingArrivalSave,
                 type: .filledPrimary,
                 size: .small,
                 isDisabled: false,
-                action: onAssign
+                action: onSave
             )
         }
     }

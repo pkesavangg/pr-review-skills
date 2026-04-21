@@ -122,7 +122,7 @@ class BottomTabBarViewModel: ObservableObject {
                 if isBabyEntry {
                     self.showBabyReadingArrivalCard(notification: notification)
                 } else {
-                    notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
+                    self.showWeightScaleReadingArrivalCard(notification: notification)
                 }
             }
             .store(in: &cancellables)
@@ -648,7 +648,7 @@ class BottomTabBarViewModel: ObservableObject {
     /// Shows a reading-arrival card when a baby scale entry arrives via Bluetooth.
     /// The entry is already persisted at this point; tapping DON'T ASSIGN deletes it.
     private func showBabyReadingArrivalCard(notification: EntryNotification) {
-        let lang = BabyReadingArrivalStrings.self
+        let lang = DashboardStrings.self
         let isMetric = accountService.activeAccount?.weightUnit == .kg
         let decigrams = notification.babyWeight ?? 0
 
@@ -672,11 +672,11 @@ class BottomTabBarViewModel: ObservableObject {
             weightString = "--"
         }
 
-        let message = "\(weightString) · \(lang.justNow)"
+        let message = "\(weightString) · \(lang.babyReadingArrivalJustNow)"
         let entryId = notification.id
 
         let toast = ToastModel(
-            title: lang.title,
+            title: lang.babyReadingArrivalTitle,
             message: message,
             btnTextView: AnyView(
                 BabyReadingArrivalCTAView(
@@ -704,6 +704,58 @@ class BottomTabBarViewModel: ObservableObject {
         )
 
         logger.log(level: .info, tag: tag, message: "Showing baby reading arrival card. weight=\(weightString)")
+        notificationService.showToast(toast)
+    }
+
+    /// Shows a reading-arrival card when a weight scale entry arrives via Bluetooth.
+    /// The entry is already persisted at this point; tapping DISCARD deletes it.
+    private func showWeightScaleReadingArrivalCard(notification: EntryNotification) {
+        let lang = DashboardStrings.self
+        let isMetric = accountService.activeAccount?.weightUnit == .kg
+        let stored = notification.weight ?? 0
+
+        let weightString: String
+        if stored > 0 {
+            let display = ConversionTools.convertStoredToDisplay(Double(stored), isMetric: isMetric)
+            weightString = isMetric
+                ? String(format: "%.1f kg", display)
+                : String(format: "%.1f lbs", display)
+        } else {
+            weightString = "--"
+        }
+
+        let message = "\(weightString) - \(lang.weightReadingArrivalJustNow)"
+        let entryId = notification.id
+
+        let toast = ToastModel(
+            title: lang.weightReadingArrivalTitle,
+            message: message,
+            btnTextView: AnyView(
+                WeightScaleReadingArrivalCTAView(
+                    onSave: { [weak self] in
+                        // Entry is already saved — nothing to do; card dismisses automatically
+                        self?.notificationService.dismissToast()
+                        self?.logger.log(level: .info, tag: self?.tag ?? "", message: "Weight reading saved. entryId=\(entryId)")
+                    },
+                    onDiscard: { [weak self] in
+                        guard let self else { return }
+                        self.notificationService.dismissToast()
+                        Task { [weak self] in
+                            guard let self else { return }
+                            do {
+                                try await self.entryService.deleteEntry(entryId: entryId)
+                                self.logger.log(level: .info, tag: self.tag, message: "Weight reading discarded. entryId=\(entryId)")
+                            } catch {
+                                self.logger.log(level: .error, tag: self.tag, message: "Failed to discard weight reading. entryId=\(entryId)", data: error.localizedDescription)
+                            }
+                        }
+                    }
+                )
+            ),
+            duration: 8.0
+        )
+
+        logger.log(level: .info, tag: tag, message: "Showing weight reading arrival card. weight=\(weightString)")
         notificationService.showToast(toast)
     }
 
