@@ -185,6 +185,9 @@ class ProfileViewModel @Inject constructor(
         var scaleResult: GGUserActionResponseType? = null
         accountService.updateProfile(profileUpdateRequest, true, showToast = false)
 
+        // Server-first, scale-second: server is the source of truth and must persist the user's
+        // edit even if no scale is paired or reachable. Scale update failures are isolated below
+        // and surface their own UX rather than rolling back the server write.
         // Update height via body composition if changed. Isolate failures so a body-comp
         // error doesn't skip the downstream R4 scale profile update.
         val heightChanged = newHeight != null && newHeight != currentAccount.height

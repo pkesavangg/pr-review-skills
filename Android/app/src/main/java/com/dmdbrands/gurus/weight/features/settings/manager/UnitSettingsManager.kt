@@ -31,6 +31,7 @@ constructor(
 ) : IUnitSettingsManager {
   companion object {
     private const val TAG = "UnitSettingsManager"
+    private val KNOWN_UNIT_VALUES = setOf(WeightUnit.KG.value, WeightUnit.LB.value, WeightUnit.LB_OZ.value)
   }
 
   override fun onUnitTypeClick(
@@ -81,6 +82,11 @@ constructor(
       return
     }
 
+    val trimmed = unitTypeValue.lowercase().trim()
+    if (trimmed !in KNOWN_UNIT_VALUES) {
+      AppLog.w(TAG, "Unknown unit type value; ignoring: $unitTypeValue")
+      return
+    }
     val newWeightUnit = WeightUnit.from(unitTypeValue)
     if (newWeightUnit == currentAccount.weightUnit) {
       return

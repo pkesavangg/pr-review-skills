@@ -14,6 +14,8 @@ import com.dmdbrands.gurus.weight.features.settings.manager.IProfileSettingsMana
 import com.dmdbrands.gurus.weight.features.settings.manager.IScaleSettingsManager
 import com.dmdbrands.gurus.weight.features.settings.manager.IUnitSettingsManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -182,9 +184,10 @@ constructor(
 
   private fun observeProductSelection() {
     viewModelScope.launch {
-      productSelectionManager.selectedProduct.collect { selection ->
-        dispatchIntent(SettingsIntent.SetIsBabyProduct(selection.productType == ProductType.BABY))
-      }
+      productSelectionManager.selectedProduct
+        .map { it.productType == ProductType.BABY }
+        .distinctUntilChanged()
+        .collect { isBaby -> dispatchIntent(SettingsIntent.SetIsBabyProduct(isBaby)) }
     }
   }
 
