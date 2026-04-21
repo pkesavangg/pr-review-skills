@@ -112,9 +112,16 @@ class BottomTabBarViewModel: ObservableObject {
         // Bluetooth reconnect) into a single toast instead of one per entry.
         bluetoothService.newEntryReceivedPublisher
             .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
-            .sink { [weak self] _ in
+            .sink { [weak self] notification in
                 guard let self else { return }
-                if !self.bluetoothService.isSetupInProgress {
+                let isBabyEntry = notification.entryType == EntryType.baby.rawValue
+                // Always surface baby readings — the first reading from a newly paired scale
+                // arrives while isSetupInProgress is still true, so we must not suppress it.
+                // Non-baby entries are still suppressed during setup to avoid bulk-sync noise.
+                if !isBabyEntry && self.bluetoothService.isSetupInProgress { return }
+                if isBabyEntry {
+                    self.showBabyReadingArrivalCard(notification: notification)
+                } else {
                     notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
                 }
             }
@@ -634,6 +641,70 @@ class BottomTabBarViewModel: ObservableObject {
             )
             notificationService.showAlert(alert)
         }
+    }
+
+    // MARK: - Baby Reading Arrival Card
+
+    /// Shows a reading-arrival card when a baby scale entry arrives via Bluetooth.
+    /// The entry is already persisted at this point; tapping DON'T ASSIGN deletes it.
+    private func showBabyReadingArrivalCard(notification: EntryNotification) {
+        let lang = BabyReadingArrivalStrings.self
+        let isMetric = accountService.activeAccount?.weightUnit == .kg
+        let decigrams = notification.babyWeight ?? 0
+
+        let weightString: String
+        if decigrams > 0 {
+            let source = notification.babySource
+            if isMetric {
+                let graduatedDecigrams = ConversionTools.convertToDisplayWeightBase(
+                    decigrams: decigrams, source: source, unit: .kg, isBabyScaleEntry: true
+                )
+                let kg = ConversionTools.convertBabyDecigramsToKg(graduatedDecigrams)
+                weightString = String(format: "%.3f kg", kg)
+            } else {
+                let graduatedDecigrams = ConversionTools.convertToDisplayWeightBase(
+                    decigrams: decigrams, source: source, unit: .lbOz, isBabyScaleEntry: true
+                )
+                let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(graduatedDecigrams)
+                weightString = "\(lbsOz.lbs) lbs \(String(format: "%.1f", lbsOz.oz)) oz"
+            }
+        } else {
+            weightString = "--"
+        }
+
+        let message = "\(weightString) · \(lang.justNow)"
+        let entryId = notification.id
+
+        let toast = ToastModel(
+            title: lang.title,
+            message: message,
+            btnTextView: AnyView(
+                BabyReadingArrivalCTAView(
+                    onAssign: { [weak self] in
+                        // Entry is already saved — nothing to do; card dismisses automatically
+                        self?.notificationService.dismissToast()
+                        self?.logger.log(level: .info, tag: self?.tag ?? "", message: "Baby reading assigned. entryId=\(entryId)")
+                    },
+                    onDiscard: { [weak self] in
+                        guard let self else { return }
+                        self.notificationService.dismissToast()
+                        Task { [weak self] in
+                            guard let self else { return }
+                            do {
+                                try await self.entryService.deleteEntry(entryId: entryId)
+                                self.logger.log(level: .info, tag: self.tag, message: "Baby reading discarded. entryId=\(entryId)")
+                            } catch {
+                                self.logger.log(level: .error, tag: self.tag, message: "Failed to discard baby reading. entryId=\(entryId)", data: error.localizedDescription)
+                            }
+                        }
+                    }
+                )
+            ),
+            duration: 8.0
+        )
+
+        logger.log(level: .info, tag: tag, message: "Showing baby reading arrival card. weight=\(weightString)")
+        notificationService.showToast(toast)
     }
 
     // MARK: - Scale Discovery Handling

@@ -76,7 +76,7 @@ final class BabyScaleSetupStore: ObservableObject {
     var isRevertingStepIndex: Bool = false
 
     @Published var connectionState: ConnectionState = .loading
-    @Published var savedScale: Device?
+    @Published var savedScale: DeviceSnapshot?
     @Published var scaleSetupError: BabyScaleSetupError = .none
     @Published private(set) var steps: [BabyScaleSetupStep] = BabyScaleSetupStep.allCases
     @Published var isNextEnabled: Bool = true

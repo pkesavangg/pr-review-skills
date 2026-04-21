@@ -46,6 +46,10 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
     let bmi: Int?
     let source: String?
 
+    // MARK: - Baby Entry Data (from BabyEntry relationship)
+    let babyWeight: Int?    // decigrams
+    let babySource: String? // scale SKU (e.g. "0220")
+
     // MARK: - BPM Entry Data (from BPMEntry relationship)
     let systolic: Int?
     let diastolic: Int?
@@ -87,6 +91,10 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
         self.bmi = entry.scaleEntry?.bmi
         self.source = entry.scaleEntry?.source
 
+        // Extract baby entry data (relationship)
+        self.babyWeight = entry.babyEntry?.weight
+        self.babySource = entry.babyEntry?.source
+
         // Extract BPM entry data (relationship)
         self.systolic = entry.bpmEntry?.systolic
         self.diastolic = entry.bpmEntry?.diastolic
@@ -124,6 +132,10 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
         self.water = dto.water.map { Int($0) }
         self.bmi = dto.bmi.map { Int($0) }
         self.source = nil
+
+        // Baby data not available from BathScaleOperationDTO
+        self.babyWeight = nil
+        self.babySource = nil
 
         // BPM data not available from BathScaleOperationDTO
         self.systolic = nil

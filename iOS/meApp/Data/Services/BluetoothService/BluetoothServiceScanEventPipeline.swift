@@ -365,15 +365,16 @@ extension BluetoothService {
     }
 
     /// Converts a BLE baby scale measurement into a baby Entry with a BabyEntry relationship.
+    /// If no baby profile is linked to the scale the entry is still created with an empty babyId
+    /// so the reading-arrival toast can surface it — the user can then ASSIGN or DON'T ASSIGN.
     private func convertBabyScaleEntry(ggEntry: GGEntry, activeAccount: AccountSnapshot, timestamp: String) -> Entry? {
-        guard let baby = resolveBaby(forBroadcastId: ggEntry.broadcastIdString) else {
+        let baby = resolveBaby(forBroadcastId: ggEntry.broadcastIdString)
+        if baby == nil {
             logger.log(
-                level: .error,
+                level: .info,
                 tag: tag,
-                message: "Baby scale entry received but no baby linked for broadcastId: \(ggEntry.broadcastIdString ?? "nil")"
+                message: "Baby scale entry received but no baby linked for broadcastId: \(ggEntry.broadcastIdString ?? "nil") — creating unassigned entry"
             )
-            notificationService.showToast(ToastModel(message: "Baby scale measurement received but no baby is linked to this scale."))
-            return nil
         }
         let weightDecigrams = ConversionTools.convertBabyKgToDecigrams(Double(ggEntry.weightInKg))
         let scaleSku = resolveScaleSku(forBroadcastId: ggEntry.broadcastIdString)
@@ -384,7 +385,7 @@ extension BluetoothService {
             entryType: EntryType.baby.rawValue,
             isSynced: false
         )
-        entry.babyEntry = BabyEntry(babyId: baby.id, length: 0, weight: weightDecigrams, source: scaleSku)
+        entry.babyEntry = BabyEntry(babyId: baby?.id ?? "", length: 0, weight: weightDecigrams, source: scaleSku)
         return entry
     }
 
