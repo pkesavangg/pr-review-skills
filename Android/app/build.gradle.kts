@@ -97,6 +97,9 @@ android {
     compose = true
     buildConfig = true
   }
+  sourceSets {
+    getByName("androidTest").assets.srcDirs("$projectDir/schemas")
+  }
   android.applicationVariants.all {
     val variantName = this.name // get the variant name here
 

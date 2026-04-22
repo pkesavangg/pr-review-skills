@@ -90,14 +90,13 @@ abstract class AppDatabase : RoomDatabase() {
 
   companion object {
     // Production 5.0.0 ships DB version 1. This single migration brings it to version 2.
-    private val MIGRATION_1_2 = object : Migration(1, 2) {
+    internal val MIGRATION_1_2 = object : Migration(1, 2) {
       override fun migrate(db: SupportSQLiteDatabase) {
         // device — add 2 columns
         db.execSQL("ALTER TABLE device ADD COLUMN productType TEXT DEFAULT NULL")
         db.execSQL("ALTER TABLE device ADD COLUMN lastModified INTEGER DEFAULT NULL")
 
-        // account — add 4 columns
-        db.execSQL("ALTER TABLE account ADD COLUMN activeBabyId TEXT DEFAULT NULL")
+        // account — add 3 columns
         db.execSQL("ALTER TABLE account ADD COLUMN hasSeenAppReview INTEGER NOT NULL DEFAULT 0")
         db.execSQL("ALTER TABLE account ADD COLUMN hasSeenScaleReview INTEGER NOT NULL DEFAULT 0")
         db.execSQL("ALTER TABLE account ADD COLUMN accountSettings TEXT DEFAULT NULL")

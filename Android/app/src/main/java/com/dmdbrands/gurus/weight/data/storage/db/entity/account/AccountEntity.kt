@@ -34,8 +34,6 @@ data class AccountEntity(
     val isSynced: Boolean = false,
     val lastActiveTime: String? = null,
     val zipcode: String,
-    @ColumnInfo(defaultValue = "NULL")
-    val activeBabyId: String? = null,
     @ColumnInfo(defaultValue = "0")
     val hasSeenAppReview: Boolean = false,
     @ColumnInfo(defaultValue = "0")
