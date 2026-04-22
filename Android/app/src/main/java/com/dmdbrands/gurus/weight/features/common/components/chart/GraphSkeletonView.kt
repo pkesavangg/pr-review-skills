@@ -5,12 +5,11 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,7 +31,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 
 /**
  * Skeleton loader matching iOS GraphSkeletonView.swift exactly.
- * Grid lines use Compose views (not Canvas) to match iOS Rectangle() rendering.
+ * Grid lines drawn via a single Canvas (1 layout pass vs 13 Spacer+Box views).
  */
 @Composable
 fun GraphSkeletonView(
@@ -75,29 +74,19 @@ fun GraphSkeletonView(
           .fillMaxSize()
           .padding(end = 8.dp),
       ) {
-        // Horizontal grid lines — VStack(spacing: 0) with Spacer
-        Column(modifier = Modifier.fillMaxSize()) {
+        // Grid lines — single Canvas draws all horizontal + vertical lines
+        val gridColor = skeletonColor.copy(alpha = gridLineAlpha)
+        Canvas(modifier = Modifier.fillMaxSize()) {
+          val lineWidth = 1.dp.toPx()
+          // Horizontal grid lines (yAxisTickCount lines from top to bottom edge)
           for (i in 0 until yAxisTickCount) {
-            if (i > 0) Spacer(modifier = Modifier.weight(1f))
-            Box(
-              modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(skeletonColor.copy(alpha = gridLineAlpha)),
-            )
+            val y = size.height * i / (yAxisTickCount - 1).toFloat()
+            drawLine(gridColor, Offset(0f, y), Offset(size.width, y), lineWidth)
           }
-        }
-
-        // Vertical grid lines — HStack(spacing: 0) with Spacer
-        Row(modifier = Modifier.fillMaxSize()) {
+          // Vertical grid lines (xAxisTickCount lines from left to right edge)
           for (i in 0 until xAxisTickCount) {
-            if (i > 0) Spacer(modifier = Modifier.weight(1f))
-            Box(
-              modifier = Modifier
-                .fillMaxHeight()
-                .width(1.dp)
-                .background(skeletonColor.copy(alpha = gridLineAlpha)),
-            )
+            val x = size.width * i / (xAxisTickCount - 1).toFloat()
+            drawLine(gridColor, Offset(x, 0f), Offset(x, size.height), lineWidth)
           }
         }
 
