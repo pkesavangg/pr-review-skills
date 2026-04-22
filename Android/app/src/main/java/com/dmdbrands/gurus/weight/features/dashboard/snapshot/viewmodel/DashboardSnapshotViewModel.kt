@@ -40,7 +40,7 @@ class DashboardSnapshotViewModel @Inject constructor(
 
   val weightModelProducer = CartesianChartModelProducer()
   val bpModelProducer = CartesianChartModelProducer()
-  val babyModelProducers = mutableMapOf<String, CartesianChartModelProducer>()
+  val babyModelProducers = java.util.concurrent.ConcurrentHashMap<String, CartesianChartModelProducer>()
   private var weightGraphJob: Job? = null
   private var bpGraphJob: Job? = null
 
@@ -317,6 +317,7 @@ class DashboardSnapshotViewModel @Inject constructor(
     }
   }
 
+  /** Thread-safe: [babyModelProducers] is a ConcurrentHashMap, so getOrPut is atomic. */
   fun getBabyModelProducer(profileId: String): CartesianChartModelProducer =
     babyModelProducers.getOrPut(profileId) { CartesianChartModelProducer() }
 

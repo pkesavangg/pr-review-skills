@@ -33,6 +33,7 @@ private val SnapshotValueStyle = TextStyle(fontSize = 48.sp, fontWeight = FontWe
 /** Label font size for units/axis text inside snapshot cards (Figma). */
 private val SnapshotLabelFontSize = 14.sp
 
+// TODO(MA-XXXX): Migrate to MeAppTheme color tokens when design tokens are mapped
 object SnapshotColors {
     val Weight = Color(0xFF1565C0)
     val BloodPressure = Color(0xFF458239)
@@ -79,7 +80,7 @@ fun WeightSnapshotCard(
     val viewModel = hiltViewModel<DashboardSnapshotViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    SnapshotCardContainer(modifier = modifier, onTap = onTap) {
+    SnapshotCardContainer(modifier = modifier, onClickLabel = DashboardSnapshotStrings.OpenWeightDashboard, onTap = onTap) {
         val chart = state.weight
 
         Text(
@@ -131,7 +132,7 @@ fun BpSnapshotCard(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val chart = state.bp
 
-    SnapshotCardContainer(modifier = modifier, onTap = onTap) {
+    SnapshotCardContainer(modifier = modifier, onClickLabel = DashboardSnapshotStrings.OpenBpDashboard, onTap = onTap) {
         Row(modifier = Modifier.padding(horizontal = MeTheme.spacing.sm)) {
             Text(
                 text = DashboardSnapshotStrings.Mmhg,
@@ -222,7 +223,7 @@ fun BabySnapshotCard(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val chart = state.baby[product.profile.id] ?: SnapshotChartData()
 
-    SnapshotCardContainer(modifier = modifier, onTap = onTap) {
+    SnapshotCardContainer(modifier = modifier, onClickLabel = DashboardSnapshotStrings.OpenBabyDashboard, onTap = onTap) {
         Text(
             text = "${product.profile.name}'s ${DashboardSnapshotStrings.Weight}",
             style = MeTheme.typography.subHeading1,
