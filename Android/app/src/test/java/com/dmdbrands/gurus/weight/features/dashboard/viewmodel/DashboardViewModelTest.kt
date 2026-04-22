@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
@@ -48,6 +49,9 @@ class DashboardViewModelTest {
 
     @MockK(relaxUnitFun = true)
     lateinit var entryService: IEntryService
+
+    @MockK(relaxUnitFun = true)
+    lateinit var entryReadService: IEntryReadService
 
     @MockK(relaxUnitFun = true)
     lateinit var accountService: IAccountService
@@ -91,6 +95,7 @@ class DashboardViewModelTest {
         stubDefaultFlows()
         viewModel = DashboardViewModel(
             entryService = entryService,
+            entryReadService = entryReadService,
             accountService = accountService,
             appNavigationService = appNavigationService,
             dashboardService = dashboardService,
@@ -106,10 +111,10 @@ class DashboardViewModelTest {
         every { accountService.activeAccount } returns MutableStateFlow(TestFixtures.activeAccount)
         every { accountService.activeAccountFlow } returns flowOf(TestFixtures.activeAccount)
         every { dashboardService.visibleKeys } returns MutableStateFlow(emptyList())
-        every { entryService.isEmpty } returns MutableStateFlow(false)
-        every { entryService.progress } returns flowOf(WeightProgress())
+        every { entryReadService.isWeightEmpty() } returns flowOf(false)
+        every { entryReadService.weightProgress() } returns flowOf(WeightProgress())
         every { entryService.isUpdating } returns MutableStateFlow(false)
-        every { entryService.latestEntry } returns MutableStateFlow(null)
+        every { entryReadService.latestEntry() } returns flowOf(null)
         every { healthConnectService.outOfSyncState } returns flowOf(false)
     }
 
@@ -467,10 +472,11 @@ class DashboardViewModelTest {
     @Test
     fun `subscribeLatestWeight sets latestWeight from ScaleEntry`() = runTest {
         val entry = TestFixtures.weightEntry
-        every { entryService.latestEntry } returns MutableStateFlow(entry)
+        every { entryReadService.latestEntry() } returns flowOf(entry)
 
         viewModel = DashboardViewModel(
             entryService = entryService,
+            entryReadService = entryReadService,
             accountService = accountService,
             appNavigationService = appNavigationService,
             dashboardService = dashboardService,
@@ -484,10 +490,11 @@ class DashboardViewModelTest {
 
     @Test
     fun `subscribeLatestWeight sets null for non-ScaleEntry`() = runTest {
-        every { entryService.latestEntry } returns MutableStateFlow(TestFixtures.bpmEntry)
+        every { entryReadService.latestEntry() } returns flowOf(TestFixtures.bpmEntry)
 
         viewModel = DashboardViewModel(
             entryService = entryService,
+            entryReadService = entryReadService,
             accountService = accountService,
             appNavigationService = appNavigationService,
             dashboardService = dashboardService,
@@ -505,10 +512,11 @@ class DashboardViewModelTest {
 
     @Test
     fun `subscribeIsEmpty updates isEmpty from entryService flow`() = runTest {
-        every { entryService.isEmpty } returns MutableStateFlow(true)
+        every { entryReadService.isWeightEmpty() } returns flowOf(true)
 
         viewModel = DashboardViewModel(
             entryService = entryService,
+            entryReadService = entryReadService,
             accountService = accountService,
             appNavigationService = appNavigationService,
             dashboardService = dashboardService,
@@ -537,6 +545,7 @@ class DashboardViewModelTest {
 
         viewModel = DashboardViewModel(
             entryService = entryService,
+            entryReadService = entryReadService,
             accountService = accountService,
             appNavigationService = appNavigationService,
             dashboardService = dashboardService,
@@ -558,6 +567,7 @@ class DashboardViewModelTest {
 
         viewModel = DashboardViewModel(
             entryService = entryService,
+            entryReadService = entryReadService,
             accountService = accountService,
             appNavigationService = appNavigationService,
             dashboardService = dashboardService,
@@ -583,6 +593,7 @@ class DashboardViewModelTest {
 
         viewModel = DashboardViewModel(
             entryService = entryService,
+            entryReadService = entryReadService,
             accountService = accountService,
             appNavigationService = appNavigationService,
             dashboardService = dashboardService,
@@ -608,6 +619,7 @@ class DashboardViewModelTest {
 
         viewModel = DashboardViewModel(
             entryService = entryService,
+            entryReadService = entryReadService,
             accountService = accountService,
             appNavigationService = appNavigationService,
             dashboardService = dashboardService,
@@ -627,6 +639,7 @@ class DashboardViewModelTest {
 
         viewModel = DashboardViewModel(
             entryService = entryService,
+            entryReadService = entryReadService,
             accountService = accountService,
             appNavigationService = appNavigationService,
             dashboardService = dashboardService,
@@ -655,6 +668,7 @@ class DashboardViewModelTest {
 
         viewModel = DashboardViewModel(
             entryService = entryService,
+            entryReadService = entryReadService,
             accountService = accountService,
             appNavigationService = appNavigationService,
             dashboardService = dashboardService,
@@ -673,6 +687,7 @@ class DashboardViewModelTest {
 
         viewModel = DashboardViewModel(
             entryService = entryService,
+            entryReadService = entryReadService,
             accountService = accountService,
             appNavigationService = appNavigationService,
             dashboardService = dashboardService,
@@ -695,6 +710,7 @@ class DashboardViewModelTest {
 
         viewModel = DashboardViewModel(
             entryService = entryService,
+            entryReadService = entryReadService,
             accountService = accountService,
             appNavigationService = appNavigationService,
             dashboardService = dashboardService,
@@ -720,10 +736,11 @@ class DashboardViewModelTest {
     @Test
     fun `subscribeProgress updates progress from entryService flow`() = runTest {
         val progress = WeightProgress(count = PROGRESS_COUNT, initWt = PROGRESS_INIT_WEIGHT)
-        every { entryService.progress } returns flowOf(progress)
+        every { entryReadService.weightProgress() } returns flowOf(progress)
 
         viewModel = DashboardViewModel(
             entryService = entryService,
+            entryReadService = entryReadService,
             accountService = accountService,
             appNavigationService = appNavigationService,
             dashboardService = dashboardService,
@@ -745,6 +762,7 @@ class DashboardViewModelTest {
 
         viewModel = DashboardViewModel(
             entryService = entryService,
+            entryReadService = entryReadService,
             accountService = accountService,
             appNavigationService = appNavigationService,
             dashboardService = dashboardService,

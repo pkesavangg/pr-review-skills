@@ -913,6 +913,9 @@ constructor(
         it?.toGGBTUserProfile()
       }.distinctUntilChanged().collect { ggBTUserProfile ->
         if (ggBTUserProfile != null) {
+          // Cold Flow: creates a new Room observer each call. Acceptable here because
+          // .first() materialises a single value and disposes immediately; this path
+          // only runs when activeAccountFlow emits (account switch / login).
           val currentWeight = when (val latestWeightEntry = entryReadService.latestEntry().first()) {
             is ScaleEntry -> latestWeightEntry.scale.scaleEntry.weight
             else -> ggBTUserProfile.weight // Fallback to initial weight

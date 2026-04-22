@@ -20,7 +20,6 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
 import com.dmdbrands.gurus.weight.domain.repository.IEntryReadRepository
-import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertToDisplay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -247,10 +246,10 @@ class EntryReadRepository @Inject constructor(
     // Cross-product read queries (moved from EntryRepository)
     // ---------------------------------------------------------------------------
 
-    override suspend fun getLatestEntry(accountId: String): Flow<Entry?> =
+    override fun getLatestEntry(accountId: String): Flow<Entry?> =
         entryReadDao.getLatestEntry(accountId).map { it?.toEntry() }
 
-    override suspend fun getLastNDaysEntries(accountId: String, days: Int): Flow<List<Entry>> {
+    override fun getLastNDaysEntries(accountId: String, days: Int): Flow<List<Entry>> {
         val startInstant = java.time.Instant.now().minus(java.time.Duration.ofDays(days.toLong()))
         val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
         val startDate = java.time.ZonedDateTime.ofInstant(startInstant, java.time.ZoneOffset.UTC).format(formatter)
