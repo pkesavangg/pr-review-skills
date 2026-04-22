@@ -24,16 +24,6 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
       target = intent.target.toImmutableList(),
     )
 
-    is GraphIntent.UpdatePrimaryYStep -> state.copy(primaryYStep = intent.step)
-
-    is GraphIntent.UpdatePrimaryYAxis -> {
-      val yStep = intent.yStep ?: state.primaryYStep
-      state.copy(
-        primaryYAxis = intent.yRangeValues,
-        primaryYStep = yStep,
-      )
-    }
-
     is GraphIntent.UpdateMarkerIndex -> state.copy(markerIndex = intent.markerIndex)
 
     is GraphIntent.UpdateIsUpdating -> state.copy(isUpdating = intent.isUpdating)
@@ -60,5 +50,12 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
       minTarget = intent.min,
       maxTarget = intent.max,
     )
+
+    is GraphIntent.UpdateChartXRange -> state.copy(
+      chartMinX = intent.minX,
+      chartMaxX = intent.maxX,
+    )
+
+    else -> state
   }
 }

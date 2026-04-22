@@ -243,7 +243,7 @@ object ImprovedNiceScaleCalculator {
     dataMax: Double,
     step: Double,
     ticks: List<Double>,
-    thresholdRatio: Double = 0.35,
+    thresholdRatio: Double = 0.20,
     maxTicks: Int = 6,
     desiredTickCount: Int? = null
   ): Pair<Double, List<Double>> {
