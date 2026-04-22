@@ -735,6 +735,8 @@ interface EntryReadDao {
         datetime(MIN(e.entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of day') AS entryTimestamp,
         CAST(AVG(be.babyWeightDecigrams) AS INTEGER) AS avgWeightDecigrams,
         CAST(AVG(be.babyLengthMillimeters) AS INTEGER) AS avgLengthMillimeters,
+        -- Lexicographic ordering on 'YYYY-MM-DD' format is correct for date comparison.
+        -- Equivalent to ORDER BY entryTimestamp DESC but groups by local day.
         ROW_NUMBER() OVER (
           PARTITION BY be.babyId
           ORDER BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) DESC

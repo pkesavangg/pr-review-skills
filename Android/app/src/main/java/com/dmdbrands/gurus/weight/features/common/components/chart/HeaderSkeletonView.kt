@@ -32,8 +32,9 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 fun HeaderSkeletonView(
   modifier: Modifier = Modifier,
 ) {
-  val infiniteTransition = rememberInfiniteTransition()
+  val infiniteTransition = rememberInfiniteTransition(label = "headerSkeletonPulse")
   val animPhase by infiniteTransition.animateFloat(
+    label = "headerSkeletonAlpha",
     initialValue = 0f,
     targetValue = 1f,
     animationSpec = infiniteRepeatable(

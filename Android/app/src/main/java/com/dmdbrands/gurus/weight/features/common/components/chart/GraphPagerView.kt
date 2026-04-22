@@ -14,7 +14,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
@@ -74,7 +74,7 @@ fun GraphPagerView(
         hasPercentile = hasPercentile,
       )
       val producer = state.producerForSegment(currentSegment)
-      val isChartReady by producer.isReady.collectAsState()
+      val isChartReady by producer.isReady.collectAsStateWithLifecycle()
 
       Column(modifier = Modifier.padding(vertical = MeTheme.spacing.x3s)) {
         ChartHeaderLabel(

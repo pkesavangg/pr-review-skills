@@ -188,6 +188,7 @@ fun DashboardScreen() {
             PeriodBabySummary(
               period = period,
               entryTimestamp = DateTimeConverter.timestampToIso(ts),
+              babyId = babyProduct.profile.id,
               avgWeightDecigrams = if (isWeight) ConversionTools.convertLbToDecigrams(y) else null,
               avgLengthMillimeters = if (!isWeight) ConversionTools.convertInchesToMm(y) else null,
             )

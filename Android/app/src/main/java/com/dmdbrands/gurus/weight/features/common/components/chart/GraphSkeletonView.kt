@@ -38,8 +38,9 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 fun GraphSkeletonView(
   modifier: Modifier = Modifier,
 ) {
-  val infiniteTransition = rememberInfiniteTransition()
+  val infiniteTransition = rememberInfiniteTransition(label = "graphSkeletonPulse")
   val animPhase by infiniteTransition.animateFloat(
+    label = "graphSkeletonAlpha",
     initialValue = 0f,
     targetValue = 1f,
     animationSpec = infiniteRepeatable(

@@ -76,7 +76,9 @@ class DashboardSnapshotViewModel @Inject constructor(
         if (weightPoints != null) {
           updateWeightChart(weightPoints.filterIsInstance<WeightSnapshotPoint>())
         }
-        handleIntent(DashboardSnapshotIntent.SetLoading(false))
+        if (snapshotMap.isNotEmpty()) {
+          handleIntent(DashboardSnapshotIntent.SetLoading(false))
+        }
 
         // BP
         val bpPoints = snapshotMap[IEntryReadService.KEY_BP]
