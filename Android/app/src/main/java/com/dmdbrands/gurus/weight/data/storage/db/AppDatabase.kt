@@ -104,7 +104,7 @@ abstract class AppDatabase : RoomDatabase() {
         // notification_settings — add 1 column
         db.execSQL("ALTER TABLE notification_settings ADD COLUMN willReceiveEmails INTEGER NOT NULL DEFAULT 0")
 
-        // baby — new table
+        // baby — new table (FK to account.accountId)
         db.execSQL("""
           CREATE TABLE IF NOT EXISTS `baby` (
             `babyId` TEXT NOT NULL, `accountId` TEXT NOT NULL, `name` TEXT NOT NULL,
@@ -112,7 +112,8 @@ abstract class AppDatabase : RoomDatabase() {
             `birthLengthMillimeters` INTEGER, `isBorn` INTEGER, `isOwnedByAccount` INTEGER,
             `permissions` INTEGER, `createdAt` INTEGER, `dueDate` TEXT, `lastUpdated` TEXT,
             `isSynced` INTEGER NOT NULL DEFAULT 0, `isDeleted` INTEGER NOT NULL DEFAULT 0,
-            `activeBabyId` TEXT DEFAULT NULL, PRIMARY KEY(`babyId`))
+            `activeBabyId` TEXT DEFAULT NULL, PRIMARY KEY(`babyId`),
+            FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON DELETE CASCADE)
         """.trimIndent())
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_baby_accountId` ON `baby` (`accountId`)")
 
