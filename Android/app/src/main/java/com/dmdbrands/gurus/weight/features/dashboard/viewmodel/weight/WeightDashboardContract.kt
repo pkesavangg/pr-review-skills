@@ -33,9 +33,13 @@ data class WeightDashboardState(
   override val isRefreshing: Boolean = false,
   override val markerIndex: Double? = null,
   // Weight-specific. Default must match DashboardChartHeader + ProductChart
-  // fallback (WeightUnit.LB) so frame-0 labels don't flash in KG before
+  // fallback so frame-0 labels don't flash in KG before
   // subscribeWeightUnit() emits the real account unit.
-  val weightUnit: WeightUnit = WeightUnit.LB,
+  // Defaults to LB (canonical storage unit). The actual user preference is
+  // loaded reactively via subscribeWeightUnit() in the ViewModel. This default
+  // ensures frame-0 renders match the stored data format before the preference
+  // loads.
+  val weightUnit: WeightUnit = WeightUnit.DISPLAY_DEFAULT,
   val weightless: Weightless? = null,
   val goal: Goal? = null,
   val data: ImmutableList<PeriodBodyScaleSummary> = persistentListOf(),

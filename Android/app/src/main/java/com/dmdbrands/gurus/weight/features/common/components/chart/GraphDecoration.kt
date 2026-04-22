@@ -29,7 +29,7 @@ import kotlin.math.roundToInt
 fun rememberGoalMarker(
   goal: Goal? = null,
   isWeightlessOn: Boolean = false,
-  weightUnit: WeightUnit = WeightUnit.LB,
+  weightUnit: WeightUnit = WeightUnit.DISPLAY_DEFAULT,
   weightlessOffset: Double = 0.0,
 ): VerticalAxis.MarkerDecoration? {
   if (goal == null || goal.goalWeight == 0.0)  {

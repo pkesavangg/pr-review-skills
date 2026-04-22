@@ -218,7 +218,7 @@ fun rememberProductChart(
     rememberGoalMarker(
       goal = config.goal,
       isWeightlessOn = config.isWeightlessMode,
-      weightUnit = weightUnit ?: WeightUnit.LB,
+      weightUnit = weightUnit ?: WeightUnit.DISPLAY_DEFAULT,
       weightlessOffset = weightlessOffset,
     )
   } else null
