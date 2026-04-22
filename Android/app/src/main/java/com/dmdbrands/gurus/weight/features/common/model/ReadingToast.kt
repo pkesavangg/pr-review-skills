@@ -5,6 +5,10 @@ import com.dmdbrands.gurus.weight.features.common.strings.ReadingToastStrings
 
 data class ReadingToast(
     val value: String,
+    val unit: String,
+    val secondaryValue: String? = null,
+    val secondaryUnit: String? = null,
+    val pulse: Int? = null,
     val timestamp: String,
     val type: ProductType,
     val assignedTo: String? = null,
@@ -14,5 +18,5 @@ data class ReadingToast(
     val onReassign: () -> Unit = {},
 ) : ToastContent {
     override val message: String
-        get() = "${ReadingToastStrings.title(type)} · $value"
+        get() = "${ReadingToastStrings.title(type)} · $value $unit"
 }

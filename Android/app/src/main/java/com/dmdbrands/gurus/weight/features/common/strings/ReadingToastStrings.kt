@@ -21,6 +21,7 @@ object ReadingToastStrings {
 
     fun assignedTo(name: String): String = "Reading assigned to ${name.uppercase()}"
 
+    const val Pulse = "pulse"
     const val WrongBaby = "Have you assigned to Wrong baby?"
     const val Reassign = "Reassign"
 }
