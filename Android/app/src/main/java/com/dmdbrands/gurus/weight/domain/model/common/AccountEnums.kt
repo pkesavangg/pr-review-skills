@@ -19,6 +19,10 @@ enum class WeightUnit(
   ;
 
   companion object {
+    /** Canonical display default — LB is the storage unit, used as the frame-0
+     *  fallback before the user's preference loads reactively. */
+    val DISPLAY_DEFAULT = LB
+
     /**
      * Parses a string to a WeightUnit enum.
      * Accepts "kg", "lb", "lbs" (case-insensitive), defaults to LB.

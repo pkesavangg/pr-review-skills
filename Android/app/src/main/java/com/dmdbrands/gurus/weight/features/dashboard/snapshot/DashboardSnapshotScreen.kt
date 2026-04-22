@@ -24,6 +24,7 @@ import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.BabySnapshotCard
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.BpSnapshotCard
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.WeightSnapshotCard
+import com.dmdbrands.gurus.weight.features.dashboard.snapshot.strings.DashboardSnapshotStrings
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.viewmodel.DashboardSnapshotViewModel
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -43,11 +44,12 @@ fun DashboardSnapshotScreen(
       Image(
         painter = painterResource(AppIcons.Default.WgLogo),
         colorFilter = ColorFilter.tint(MeTheme.colorScheme.tertiaryAction),
-        contentDescription = "Me App",
+        contentDescription = DashboardSnapshotStrings.AppLogoDescription,
         modifier = Modifier.size(45.dp),
       )
     },
   ) {
+    // No pull-to-refresh needed — data updates reactively via Room DAO flows
     LazyColumn(
       modifier = Modifier
         .fillMaxSize()
@@ -61,7 +63,7 @@ fun DashboardSnapshotScreen(
           when (product) {
             is ProductSelection.MyWeight -> "weight"
             is ProductSelection.BloodPressure -> "bp"
-            is ProductSelection.Baby -> "baby-${product.profile.name}"
+            is ProductSelection.Baby -> "baby-${product.profile.id}"
           }
         },
       ) { product ->

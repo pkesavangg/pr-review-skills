@@ -40,7 +40,7 @@ class DashboardSnapshotViewModel @Inject constructor(
 
   val weightModelProducer = CartesianChartModelProducer()
   val bpModelProducer = CartesianChartModelProducer()
-  val babyModelProducers = mutableMapOf<String, CartesianChartModelProducer>()
+  val babyModelProducers = java.util.concurrent.ConcurrentHashMap<String, CartesianChartModelProducer>()
   private var weightGraphJob: Job? = null
   private var bpGraphJob: Job? = null
 
@@ -253,7 +253,7 @@ class DashboardSnapshotViewModel @Inject constructor(
       // Percentile curves from birth to age+120 days (dense, own X timestamps)
       val birthDateMillis = profile.birthdate?.let { DateTimeConverter.isoToTimestamp(it) }
       val pSeries = if (birthDateMillis != null) {
-        BabyPercentileHelper.getPercentileSeries(
+        BabyPercentileHelper.getWeightPercentileSeries(
           sex = profile.sex,
           birthDateMillis = birthDateMillis,
         )
@@ -317,6 +317,7 @@ class DashboardSnapshotViewModel @Inject constructor(
     }
   }
 
+  /** Thread-safe: [babyModelProducers] is a ConcurrentHashMap, so getOrPut is atomic. */
   fun getBabyModelProducer(profileId: String): CartesianChartModelProducer =
     babyModelProducers.getOrPut(profileId) { CartesianChartModelProducer() }
 
