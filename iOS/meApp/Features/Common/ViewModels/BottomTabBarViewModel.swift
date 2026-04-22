@@ -56,6 +56,7 @@ class BottomTabBarViewModel: ObservableObject {
     @Injector private var permissionsService: PermissionsServiceProtocol
     @Injector private var pushNotificationService: PushNotificationServiceProtocol
     @Injector private var integrationService: IntegrationServiceProtocol
+    @Injector private var babyService: BabyServiceProtocol
 
     // MARK: - Permission Disabled Alert Tracking
 
@@ -679,17 +680,43 @@ class BottomTabBarViewModel: ObservableObject {
         let message = "\(weightString) · \(lang.babyReadingArrivalJustNow)"
         let entryId = notification.id
 
+        var didUserAct = false
+
+        // Extract primitives before any Task boundary — Baby is non-Sendable.
+        let activeBabyId = babyService.currentBabies.first?.id
+        let babyItems: [AssignBabyModalView.BabyItem] = babyService.currentBabies.map {
+            AssignBabyModalView.BabyItem(id: $0.id, name: $0.name, birthday: $0.birthday)
+        }
+
+        let autoAssign: () -> Void = { [weak self] in
+            guard let self else { return }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                guard let activeBabyId else {
+                    self.logger.log(level: .info, tag: self.tag, message: "Baby reading auto-assign: no active baby found, entryId=\(entryId)")
+                    return
+                }
+                do {
+                    try await self.entryService.assignBabyEntry(entryId: entryId, babyId: activeBabyId)
+                    self.logger.log(level: .info, tag: self.tag, message: "Baby reading auto-assigned to babyId=\(activeBabyId), entryId=\(entryId)")
+                } catch {
+                    self.logger.log(level: .error, tag: self.tag, message: "Failed to auto-assign baby reading. entryId=\(entryId)", data: error.localizedDescription)
+                }
+            }
+        }
+
         let toast = ToastModel(
             title: lang.babyReadingArrivalTitle,
             message: message,
             btnTextView: AnyView(
                 BabyReadingArrivalCTAView(
                     onAssign: { [weak self] in
-                        // Entry is already saved — nothing to do; card dismisses automatically
+                        didUserAct = true
                         self?.notificationService.dismissToast()
-                        self?.logger.log(level: .info, tag: self?.tag ?? "", message: "Baby reading assigned. entryId=\(entryId)")
+                        self?.showAssignBabyModal(entryId: entryId, weightMessage: message, babyItems: babyItems)
                     },
                     onDiscard: { [weak self] in
+                        didUserAct = true
                         guard let self else { return }
                         self.notificationService.dismissToast()
                         Task { [weak self] in
@@ -704,10 +731,78 @@ class BottomTabBarViewModel: ObservableObject {
                     }
                 )
             ),
-            duration: 8.0
+            duration: 8.0,
+            onDismiss: {
+                guard !didUserAct else { return }
+                autoAssign()
+            }
         )
 
         logger.log(level: .info, tag: tag, message: "Showing baby reading arrival card. weight=\(weightString)")
+        notificationService.showToast(toast)
+    }
+
+    /// Presents the baby-selection modal so the user can choose which baby to assign the entry to.
+    private func showAssignBabyModal(entryId: UUID, weightMessage: String, babyItems: [AssignBabyModalView.BabyItem]) {
+        let modalView = AssignBabyModalView(
+            babies: babyItems,
+            weightMessage: weightMessage,
+            onAssign: { [weak self] selectedBabyId in
+                guard let self else { return }
+                self.notificationService.dismissModal()
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    do {
+                        try await self.entryService.assignBabyEntry(entryId: entryId, babyId: selectedBabyId)
+                        let babyName = babyItems.first(where: { $0.id == selectedBabyId })?.name ?? ""
+                        self.logger.log(level: .info, tag: self.tag, message: "Baby reading assigned to babyId=\(selectedBabyId), entryId=\(entryId)")
+                        self.showAssignedBabyToast(babyName: babyName, entryId: entryId, weightMessage: weightMessage, babyItems: babyItems)
+                    } catch {
+                        self.logger.log(level: .error, tag: self.tag, message: "Failed to assign baby reading. entryId=\(entryId)", data: error.localizedDescription)
+                    }
+                }
+            },
+            onDontAssign: { [weak self] in
+                guard let self else { return }
+                self.notificationService.dismissModal()
+                Task { [weak self] in
+                    guard let self else { return }
+                    do {
+                        try await self.entryService.deleteEntry(entryId: entryId)
+                        self.logger.log(level: .info, tag: self.tag, message: "Baby reading discarded from assign modal. entryId=\(entryId)")
+                    } catch {
+                        self.logger.log(level: .error, tag: self.tag, message: "Failed to discard baby reading from assign modal. entryId=\(entryId)", data: error.localizedDescription)
+                    }
+                }
+            },
+            onClose: { [weak self] in
+                self?.notificationService.dismissModal()
+            }
+        )
+        notificationService.showModal(ModalData(presentedView: AnyView(modalView)))
+    }
+
+    /// Shows a confirmation toast after a baby reading has been successfully assigned.
+    /// Includes a REASSIGN button to re-open the baby selection modal.
+    private func showAssignedBabyToast(babyName: String, entryId: UUID, weightMessage: String, babyItems: [AssignBabyModalView.BabyItem]) {
+        let toast = ToastModel(
+            title: nil,
+            message: "",
+            btnTextView: AnyView(
+                BabyReadingAssignedToastView(
+                    weightMessage: weightMessage,
+                    babyName: babyName,
+                    onReassign: { [weak self] in
+                        self?.notificationService.dismissToast()
+                        self?.showAssignBabyModal(entryId: entryId, weightMessage: weightMessage, babyItems: babyItems)
+                    }
+                )
+            ),
+            duration: 4.0,
+            onDismiss: nil
+        )
+
+        logger.log(level: .info, tag: tag, message: "Showing assigned baby toast. babyName=\(babyName)")
         notificationService.showToast(toast)
     }
 

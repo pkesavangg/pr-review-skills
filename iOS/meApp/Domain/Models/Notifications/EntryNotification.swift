@@ -49,6 +49,7 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
     // MARK: - Baby Entry Data (from BabyEntry relationship)
     let babyWeight: Int?    // decigrams
     let babySource: String? // scale SKU (e.g. "0220")
+    let babyId: String?     // BabyEntry.babyId at save time
 
     // MARK: - BPM Entry Data (from BPMEntry relationship)
     let systolic: Int?
@@ -94,6 +95,7 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
         // Extract baby entry data (relationship)
         self.babyWeight = entry.babyEntry?.weight
         self.babySource = entry.babyEntry?.source
+        self.babyId = entry.babyEntry?.babyId
 
         // Extract BPM entry data (relationship)
         self.systolic = entry.bpmEntry?.systolic
@@ -136,6 +138,7 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
         // Baby data not available from BathScaleOperationDTO
         self.babyWeight = nil
         self.babySource = nil
+        self.babyId = nil
 
         // BPM data not available from BathScaleOperationDTO
         self.systolic = nil

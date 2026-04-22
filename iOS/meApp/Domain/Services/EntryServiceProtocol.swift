@@ -38,6 +38,13 @@ protocol EntryServiceProtocol {
     /// - Parameter entryId: The UUID of the entry to delete.
     func deleteEntry(entryId: UUID) async throws
 
+    /// Assigns a saved baby entry to the given baby profile.
+    /// Updates the `babyId` on the existing entry and publishes `entrySaved` so history refreshes.
+    /// - Parameters:
+    ///   - entryId: The UUID of the baby entry to assign.
+    ///   - babyId: The baby profile ID to assign the entry to.
+    func assignBabyEntry(entryId: UUID, babyId: String) async throws
+
     // MARK: - Snapshot Queries
 
     /// Retrieves a single entry snapshot by its UUID.

@@ -87,6 +87,17 @@ struct DashboardStrings {
     static let babyReadingArrivalDontAssign = "DON'T ASSIGN"
     static let babyReadingArrivalJustNow = "Just now"
 
+    // Assign baby modal
+    static let assignMeasurementTitle = "Assign Measurement"
+    static let assignMeasurementSubtitle = "Which baby is this measurement for?"
+    static let assignMeasurementAssign = "ASSIGN"
+    static let assignMeasurementDontAssign = "DON'T ASSIGN"
+
+    // Assigned baby toast
+    static let babyReadingAssignedTo = "Reading assigned to"
+    static let babyReadingWrongBaby = "Have you assigned to Wrong baby?"
+    static let babyReadingReassign = "Reassign"
+
     // Weight scale reading arrival
     static let weightReadingArrivalTitle = "New Weight Scale Reading Received"
     static let weightReadingArrivalSave = "SAVE"

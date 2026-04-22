@@ -80,6 +80,9 @@ final class HistoryStore: ObservableObject {
             .sink { [weak self] entry in
                 guard let self = self else { return }
                 Task {
+                    // Cancel any in-flight month load so the new entry is always picked up
+                    self.monthsLoadTask?.cancel()
+                    self.monthsLoadTask = nil
                     self.invalidateCacheForCurrentType()
                     await self.loadMonthsInternal(canShowLoader: false)
                     // If we're viewing a month and the saved entry belongs to that month, refresh entries inline
@@ -104,6 +107,9 @@ final class HistoryStore: ObservableObject {
             .sink { [weak self] entry in
                 guard let self = self else { return }
                 Task {
+                    // Cancel any in-flight month load so the deleted entry is always reflected
+                    self.monthsLoadTask?.cancel()
+                    self.monthsLoadTask = nil
                     self.invalidateCacheForCurrentType()
                     await self.loadMonthsInternal(canShowLoader: false)
                     // If we're viewing a month and the deleted entry belongs to that month, refresh entries inline
