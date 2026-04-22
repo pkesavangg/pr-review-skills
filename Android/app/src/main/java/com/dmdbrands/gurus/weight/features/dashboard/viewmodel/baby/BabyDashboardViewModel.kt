@@ -145,6 +145,8 @@ class BabyDashboardViewModel @AssistedInject constructor(
   // ── Producer rebuild ──
 
   private fun rebuildAllProducers() {
+    // Guard: if data hasn't loaded yet, skip — subscriptions will trigger rebuild when data arrives
+    if (latestDailyEntries.isEmpty() && latestMonthlyEntries.isEmpty()) return
     rebuildProducer(_state.value.dailyProducer, latestDailyEntries)
     rebuildProducer(_state.value.monthlyProducer, latestMonthlyEntries)
   }

@@ -1,8 +1,6 @@
 package com.dmdbrands.gurus.weight.features.dashboard.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,12 +8,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
@@ -31,10 +32,8 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyDashboardIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyMetric
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardState
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
@@ -50,7 +49,7 @@ fun DashboardChartHeader(
   state: BaseDashboardState,
   segment: GraphSegment,
   product: ProductSelection,
-  handleIntent: ((BaseGraphIntent) -> Unit)? = null,
+  onMetricSelect: ((BabyMetric) -> Unit)? = null,
 ) {
   val segmentState = state.forSegment(segment)
   val rangeText = (segmentState.visibleMin ?: segmentState.chartMinX?.toLong())?.let { min ->
@@ -73,18 +72,21 @@ fun DashboardChartHeader(
         }
       }
       // Right: vertical Weight/Height toggle (Figma: column at header level)
-      if (babyState != null && handleIntent != null) {
+      if (babyState != null && onMetricSelect != null) {
+        // TODO: Replace with MeTheme.colorScheme.babyAccent when design tokens are mapped
+        val babyAccent = SnapshotColors.Baby
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
           BabyMetric.entries.forEach { metric ->
             val isSelected = babyState.selectedMetric == metric
             Box(
               modifier = Modifier
-                .clickable(
-                  indication = null,
-                  interactionSource = remember { MutableInteractionSource() },
-                ) { handleIntent(BabyDashboardIntent.SetSelectedMetric(metric)) }
+                .minimumInteractiveComponentSize()
+                .selectable(
+                  selected = isSelected,
+                  role = Role.RadioButton,
+                ) { onMetricSelect(metric) }
                 .then(
-                  if (isSelected) Modifier.background(SnapshotColors.Baby, RoundedCornerShape(8.dp))
+                  if (isSelected) Modifier.background(babyAccent, RoundedCornerShape(8.dp))
                   else Modifier
                 )
                 .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.xs),
@@ -93,7 +95,7 @@ fun DashboardChartHeader(
               Text(
                 text = metric.name.uppercase(),
                 style = MeTheme.typography.link1,
-                color = if (isSelected) MeTheme.colorScheme.inverseAction else SnapshotColors.Baby,
+                color = if (isSelected) MeTheme.colorScheme.inverseAction else babyAccent,
               )
             }
           }

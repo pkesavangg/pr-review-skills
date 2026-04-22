@@ -175,6 +175,7 @@ fun DashboardScreen() {
           hasPercentile = true,
           chartFillsHeight = true,
           onRefresh = { vm.handleIntent(BabyDashboardIntent.Refresh) },
+          onMetricSelect = { vm.handleIntent(BabyDashboardIntent.SetSelectedMetric(it)) },
           createFallbackEntry = { ts, yValues, seg ->
             val y = yValues.firstOrNull() ?: return@DashboardPage null
             val period = java.time.Instant.ofEpochMilli(ts).atZone(java.time.ZoneId.systemDefault()).let { dt ->
@@ -207,6 +208,7 @@ private fun <S : BaseDashboardState> DashboardPage(
   hasPercentile: Boolean = false,
   chartFillsHeight: Boolean = false,
   onRefresh: () -> Unit,
+  onMetricSelect: ((BabyMetric) -> Unit)? = null,
   createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   belowChart: @Composable (S) -> Unit,
 ) {
@@ -242,7 +244,7 @@ private fun <S : BaseDashboardState> DashboardPage(
         chartFillsHeight = chartFillsHeight,
         handleGraphIntent = vm::handleIntent,
         createFallbackEntry = createFallbackEntry,
-        header = { segment -> DashboardChartHeader(state = state, segment = segment, product = product, handleIntent = vm::handleIntent) },
+        header = { segment -> DashboardChartHeader(state = state, segment = segment, product = product, onMetricSelect = onMetricSelect) },
         onSegmentChange = {
           val currentSegmentState = state.forSegment(state.selectedSegment)
           val anchorTimeStamp = if (currentSegmentState.visibleMin != null && currentSegmentState.visibleMax != null) {
