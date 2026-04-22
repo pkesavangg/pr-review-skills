@@ -79,7 +79,7 @@ fun BabyCdcPercentilesBottomSheet(
         modifier = Modifier.padding(horizontal = MeTheme.spacing.xs),
       ) {
         BabyValueWithUnit(
-          value = heightInches?.let { String.format("%.1f", it) }
+          value = heightInches?.let { String.format(java.util.Locale.US, "%.1f", it) }
             ?: DashboardString.Baby.CdcPercentiles.Placeholder,
           unit = DashboardString.Baby.CdcPercentiles.Inches,
           modifier = Modifier.weight(1f),
@@ -102,7 +102,7 @@ fun BabyCdcPercentilesBottomSheet(
             unit = DashboardString.Baby.CdcPercentiles.Lbs,
           )
           BabyValueWithUnit(
-            value = weightOz?.let { String.format("%.1f", it) }
+            value = weightOz?.let { String.format(java.util.Locale.US, "%.1f", it) }
               ?: DashboardString.Baby.CdcPercentiles.Placeholder,
             unit = DashboardString.Baby.CdcPercentiles.Oz,
           )

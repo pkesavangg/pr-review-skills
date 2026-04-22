@@ -27,7 +27,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  * AHA (American Heart Association) blood-pressure rating reference sheet.
  * Opens when the user taps the BP chart header. Matches Figma node 26501:378159.
  *
- * Shows the five severity bands (Normal → Hypersensitive) with each band's color swatch
+ * Shows the five severity bands (Normal → Hypertensive Crisis) with each band's color swatch
  * and the systolic/diastolic thresholds that define it.
  */
 @Composable
@@ -126,9 +126,9 @@ private data class AhaRating(
 private val AhaRatings: List<AhaRating> = listOf(
   AhaRating(
     color = Color(0xFFA60900),
-    title = DashboardString.Bp.AhaRatings.HypersensitiveTitle,
-    systolic = DashboardString.Bp.AhaRatings.HypersensitiveSystolic,
-    diastolic = DashboardString.Bp.AhaRatings.HypersensitiveDiastolic,
+    title = DashboardString.Bp.AhaRatings.HypertensiveCrisisTitle,
+    systolic = DashboardString.Bp.AhaRatings.HypertensiveCrisisSystolic,
+    diastolic = DashboardString.Bp.AhaRatings.HypertensiveCrisisDiastolic,
   ),
   AhaRating(
     color = Color(0xFFC85000),
