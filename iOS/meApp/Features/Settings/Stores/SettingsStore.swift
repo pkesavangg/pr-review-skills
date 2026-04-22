@@ -467,7 +467,7 @@ class SettingsStore: ObservableObject {
             editProfileForm.email.value     = account.email
             editProfileForm.zipcode.value   = account.zipcode ?? ""
             
-            if let dobString = account.dob, let dob = DateTimeTools.parse(dobString) {
+            if let dobString = account.dob, let dob = DateTimeTools.parseCalendarDate(dobString) {
                 editProfileForm.birthday.value = dob
             }
             editProfileForm.firstName.markAsPristine()
