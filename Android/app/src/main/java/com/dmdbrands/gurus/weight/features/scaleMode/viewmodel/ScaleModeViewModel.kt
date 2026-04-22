@@ -333,7 +333,7 @@ constructor(
   private fun showToast(message: String) {
     AppLog.d(TAG, "Showing toast: $message")
     dialogQueueService.showToast(
-      Toast(
+      Toast.Simple(
         title = null,
         message = message,
         action = null,

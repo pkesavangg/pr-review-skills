@@ -247,7 +247,7 @@ constructor(
   private fun onSuccess() {
     viewModelScope.launch {
       dialogQueueService.showToast(
-        Toast(
+        Toast.Simple(
           title = GoalStrings.SuccessTitle,
           message = GoalStrings.SuccessMessage,
           action = null,

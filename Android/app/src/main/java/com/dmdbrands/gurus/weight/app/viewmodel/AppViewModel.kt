@@ -331,7 +331,7 @@ constructor(
             if (authState.showToast) {
               val accountName = authState.account.firstName
               dialogQueueService.showToast(
-                Toast(
+                Toast.Simple(
                   title = null,
                   message = ToastStrings.Success.AccountSwitchSuccess.Message(
                     accountName,
@@ -379,7 +379,7 @@ constructor(
 
           NotificationEventType.NOTIFICATION_RECEIVED -> {
             entryService.syncOperations()
-            dialogQueueService.showToast(Toast(message = "Success! Entry added"))
+            dialogQueueService.showToast(Toast.Simple(message = "Success! Entry added"))
           }
 
           else -> {}
@@ -842,7 +842,7 @@ constructor(
         entryService.addEntry(entry)
         if (!isSetupInProgress) {
           dialogQueueService.showToast(
-            Toast(
+            Toast.Simple(
               message = "entry saved successfully",
             ),
           )
@@ -1059,7 +1059,7 @@ constructor(
 
       is IAMDialogEvent.PromoCodeCopied -> {
         dialogQueueService.showToast(
-          Toast(
+          Toast.Simple(
             message = ToastStrings.Success.PromoCodeCopied.Message,
           ),
         )
