@@ -74,9 +74,15 @@ abstract class BaseGraphReducer<S : BaseDashboardState> {
 
     is BaseGraphIntent.UpdateSegmentTarget -> {
       val current = state.segmentStates[intent.segment] ?: SegmentState()
+      // Clear markerIndex if the saved position is outside the new target's data range
+      val clearMarker = state.markerIndex?.let { idx ->
+        val timestamps = intent.target.map { it.getTimeStamp() }
+        timestamps.isNotEmpty() && idx.toLong() !in timestamps.min()..timestamps.max()
+      } ?: false
       copyBaseFields(
         state,
         segmentStates = state.segmentStates + (intent.segment to current.copy(target = intent.target.toImmutableList())),
+        markerIndex = if (clearMarker) null else state.markerIndex,
       )
     }
 
