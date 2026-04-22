@@ -253,7 +253,7 @@ class DashboardSnapshotViewModel @Inject constructor(
       // Percentile curves from birth to age+120 days (dense, own X timestamps)
       val birthDateMillis = profile.birthdate?.let { DateTimeConverter.isoToTimestamp(it) }
       val pSeries = if (birthDateMillis != null) {
-        BabyPercentileHelper.getPercentileSeries(
+        BabyPercentileHelper.getWeightPercentileSeries(
           sex = profile.sex,
           birthDateMillis = birthDateMillis,
         )

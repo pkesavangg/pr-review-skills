@@ -85,12 +85,6 @@ object BabyPercentileHelper {
     return buildPercentileSeries(data, birthDateMillis) { it / 25.4 }
   }
 
-  @Deprecated("Use getWeightPercentileSeries instead", ReplaceWith("getWeightPercentileSeries(sex, birthDateMillis)"))
-  fun getPercentileSeries(
-    sex: String?,
-    birthDateMillis: Long,
-  ): PercentileSeries? = getWeightPercentileSeries(sex, birthDateMillis)
-
   private fun buildPercentileSeries(
     data: List<PercentileRow>,
     birthDateMillis: Long,

@@ -47,6 +47,10 @@ class BabyDashboardViewModel @AssistedInject constructor(
 
   companion object {
     private const val TAG = "BabyDashboardVM"
+    // Note: selectedMetric (WEIGHT vs HEIGHT toggle) is not persisted across process death.
+    // This VM uses @AssistedInject (no SavedStateHandle), and the project does not use
+    // SavedStateHandle anywhere. Since the default is WEIGHT, losing this preference on
+    // process death is acceptable — the user just taps the toggle again.
   }
 
   private val weightAdapter: GraphDataAdapter = BabyGraphDataAdapter()
