@@ -263,6 +263,7 @@ fun GraphView(
     animateIn = false,
     zoomState = rememberVicoZoomState(zoomEnabled = false),
     flingBehavior = flingBehavior,
+    initialMarkerX = state.markerIndex,
   )
 }
 
@@ -272,8 +273,6 @@ fun getTargetPoints(
   fullList: List<Double>, points: List<Double>, input: Double, segment: GraphSegment,
   minWindow: Double? = null, maxWindow: Double? = null,
 ): List<Double> {
-  if (points.isEmpty()) return emptyList()
-
   // TOTAL: simple nearest-point (single O(n) pass — list is typically small)
   if (segment == GraphSegment.TOTAL) {
     return listOfNotNull(points.minByOrNull { kotlin.math.abs(it - input) })

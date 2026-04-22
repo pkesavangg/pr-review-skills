@@ -42,21 +42,20 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
-import javax.inject.Inject
-
 /**
  * Implementation of [IEntryReadService].
  * Routes by [ProductSelection] to the correct [IEntryReadRepository] function
  * and wraps the result in sealed [GroupedHistory] / [HistoryDetail].
  * accountId is set via [setAccountId] from LoadingScreenViewModel.
  */
-class EntryReadService @Inject constructor(
+class EntryReadService(
     private val entryReadRepository: IEntryReadRepository,
     private val accountRepository: IAccountRepository,
     private val goalRepository: IGoalRepository,
     private val appScope: CoroutineScope,
 ) : IEntryReadService {
 
+    @Volatile
     private var _accountId: String? = null
     override val accountId: String? get() = _accountId
 

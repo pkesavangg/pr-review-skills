@@ -12,4 +12,8 @@ object DashboardSnapshotStrings {
     const val Pulse = "pulse"
     const val Weight = "weight"
     const val PlaceholderDash = "—"
+    const val OpenWeightDashboard = "Open weight dashboard"
+    const val OpenBpDashboard = "Open blood pressure dashboard"
+    const val OpenBabyDashboard = "Open baby dashboard"
+    const val AppLogoDescription = "Me App"
 }

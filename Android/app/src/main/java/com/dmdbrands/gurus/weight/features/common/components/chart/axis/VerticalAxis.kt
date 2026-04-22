@@ -48,6 +48,9 @@ fun endAxis(
   val openSansFamily = FontFamily(Font(R.font.open_sans_semi_bold))
 
   return VerticalAxis.rememberEnd(
+    // Note: convertWeight is cheap (single multiplication) and called per-frame
+    // by Vico during scroll/animation. The roundToInt() is intentional — axis
+    // labels display whole numbers only for readability.
     valueFormatter = CartesianValueFormatter { _, value, _ ->
       if (isEmptyGraph && markerDecoration == null) "–"
       else {
