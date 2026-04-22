@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import com.dmdbrands.gurus.weight.features.common.model.ReadingToast
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -123,7 +124,13 @@ fun ToastHandler(
                             toast = toast,
                             clearToast = dismiss,
                         )
-                        is Toast.Custom -> dismiss()
+                        is Toast.Custom -> when (toast.content) {
+                            is ReadingToast -> ReadingArrivalCard(
+                                modifier = cardModifier,
+                                readingToast = toast.content,
+                                clearToast = dismiss,
+                            )
+                        }
                     }
                 }
             }
