@@ -30,6 +30,7 @@ import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Locale
@@ -202,13 +203,27 @@ sealed class DateTimeValue() {
       }
 
     /**
-     * Converts an ISO 8601 date-time string to epoch milliseconds.
+     * Converts an ISO 8601 date-time string to epoch milliseconds at local midnight for the
+     * calendar date in the string.
+     *
+     * The server represents date-only fields (e.g. birthday) as UTC-midnight ISO instants such as
+     * "1971-01-13T00:00:00.000Z". Consumers of this value (chip formatter, Material3 DatePicker
+     * init) interpret millis in the device's local timezone — returning the raw UTC instant makes
+     * zones west of UTC render the previous day. Normalize to local midnight for the UTC calendar
+     * date so the round-trip with [getDateFormatFromMilliseconds] is stable across timezones.
+     *
      * @param isoString The date-time string in "YYYY-MM-DDTHH:mm:ss.SSSZ" format.
      * @return The epoch milliseconds, or current time if parsing fails.
      */
     fun getEpochMillisFromIsoString(isoString: String): Long =
       try {
-        Instant.parse(isoString).toEpochMilli()
+        Instant
+          .parse(isoString)
+          .atZone(ZoneOffset.UTC)
+          .toLocalDate()
+          .atStartOfDay(ZoneId.systemDefault())
+          .toInstant()
+          .toEpochMilli()
       } catch (e: Exception) {
         System.currentTimeMillis()
       }
