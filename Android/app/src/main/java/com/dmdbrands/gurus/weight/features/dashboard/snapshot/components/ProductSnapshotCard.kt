@@ -45,11 +45,11 @@ object SnapshotColors {
     val BpElevated = Color(0xFFFFDD00)
     val BpHyperTension1 = Color(0xFFEB9927)
     val BpHyperTension2 = Color(0xFFE26203)
-    val BpHyperSensitive = Color(0xFF84000A)
+    val BpHypertensiveCrisis = Color(0xFF84000A)
     val PulseNormal = Color(0xFF00B3E3)
 
     fun systolicColor(value: Int): Color = when {
-        value > 180 -> BpHyperSensitive
+        value > 180 -> BpHypertensiveCrisis
         value > 139 -> BpHyperTension2
         value > 129 -> BpHyperTension1
         value > 119 -> BpElevated
@@ -57,18 +57,18 @@ object SnapshotColors {
     }
 
     fun diastolicColor(value: Int): Color = when {
-        value > 120 -> BpHyperSensitive
+        value > 120 -> BpHypertensiveCrisis
         value > 89 -> BpHyperTension2
         value > 79 -> BpHyperTension1
         else -> BpNormal
     }
 
     fun pulseColor(value: Int): Color = when {
-        value < 50 -> BpHyperSensitive
+        value < 50 -> BpHypertensiveCrisis
         value < 60 -> BpElevated
         value <= 100 -> PulseNormal
         value <= 120 -> BpHyperTension1
-        else -> BpHyperSensitive
+        else -> BpHypertensiveCrisis
     }
 }
 

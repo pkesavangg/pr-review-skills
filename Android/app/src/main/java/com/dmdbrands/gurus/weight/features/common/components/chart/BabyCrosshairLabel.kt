@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
@@ -36,16 +37,16 @@ fun rememberBabyPercentileLabel(
       // data line last — match DefaultCartesianMarker's crosshair-Y pick by taking
       // the LAST series' value, not the first. Otherwise the percentile shown would
       // correspond to the 5th-percentile band curve, not the baby.
+      // Assumes real-data series is the LAST layer — see BabyDashboardViewModel.activeSeriesFor
       val rawValue = yValues.lastOrNull()?.lastOrNull()
       when {
         rawValue == null || birthDateMillis == null -> null
         else -> {
-          // yValues for Baby are already in the chart's display units (lbs for weight,
-          // inches for length — see BabyDashboardViewModel.activeSeriesFor). Convert
-          // back to the CDC helper's source units (decigrams / mm) before lookup.
+          // yValues are in chart display units (lbs / inches). Convert back to
+          // CDC source units (decigrams / mm) before percentile lookup.
           val cdcValue = when (measurementType) {
-            BabyPercentileHelper.MeasurementType.WEIGHT -> rawValue * 16.0 * 283.495
-            BabyPercentileHelper.MeasurementType.LENGTH -> rawValue * 25.4
+            BabyPercentileHelper.MeasurementType.WEIGHT -> ConversionTools.convertLbToDecigrams(rawValue).toDouble()
+            BabyPercentileHelper.MeasurementType.LENGTH -> ConversionTools.convertInchesToMm(rawValue).toDouble()
           }
           val percentile = BabyPercentileHelper.calcPercentile(
             sex = sex,

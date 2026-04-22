@@ -33,9 +33,9 @@ object DashboardString {
       const val SectionTitle = "Blood Pressure Level Colors"
       const val SectionBody = "Colors show where your reading falls—from Normal to Hypertensive—based on American Heart Association guidelines."
 
-      const val HypersensitiveTitle = "Hypersensitive"
-      const val HypersensitiveSystolic = "Systolic: Higher than 180"
-      const val HypersensitiveDiastolic = "Diastolic: Higher than 120"
+      const val HypertensiveCrisisTitle = "Hypertensive Crisis"
+      const val HypertensiveCrisisSystolic = "Systolic: Higher than 180"
+      const val HypertensiveCrisisDiastolic = "Diastolic: Higher than 120"
 
       const val HypertensionStage2Title = "Hypertension Stage 2"
       const val HypertensionStage2Systolic = "Systolic: 140 or higher"

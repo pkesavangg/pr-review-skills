@@ -57,7 +57,7 @@ fun BabyDayHistoryItem(
             val oz = totalOz % 16
             withStyle(boldStyle) { append("$lbs ") }
             withStyle(unitStyle) { append("lbs ") }
-            withStyle(boldStyle) { append(String.format("%.1f", oz)) }
+            withStyle(boldStyle) { append(String.format(java.util.Locale.US, "%.1f", oz)) }
             withStyle(unitStyle) { append(" oz") }
         } else {
             withStyle(boldStyle) { append("--") }

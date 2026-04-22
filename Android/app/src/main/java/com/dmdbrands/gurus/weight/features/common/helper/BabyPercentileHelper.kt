@@ -221,8 +221,10 @@ object BabyPercentileHelper {
    * @param entryTimestampMillis When the measurement was taken (determines the
    *   baby's age for the M/SD lookup). Use now if you just want "current".
    *
-   * Returns null if the data isn't loaded ([loadIfNeeded] must have completed),
-   * the baby's age is outside the CDC tables, or sex is unknown.
+   * Returns null gracefully if the data isn't loaded yet ([loadIfNeeded] hasn't
+   * completed), the baby's age is outside the CDC tables, or sex is unknown.
+   * Callers should pre-load via [loadIfNeeded] but can safely tolerate a null
+   * return when the race window hasn't closed yet.
    */
   fun calcPercentile(
     sex: String?,
@@ -264,7 +266,8 @@ object BabyPercentileHelper {
       matching.size >= 2 -> {
         val first = matching[0]
         val second = matching[1]
-        val weight = (daysSinceBirth - first.day).toDouble() / DATA_RESOLUTION_DAYS
+        val span = (second.day - first.day).coerceAtLeast(1)
+        val weight = ((daysSinceBirth - first.day).toDouble() / span).coerceIn(0.0, 1.0)
         MeasurementRow(
           day = daysSinceBirth,
           m = lerp(first.m, second.m, weight),

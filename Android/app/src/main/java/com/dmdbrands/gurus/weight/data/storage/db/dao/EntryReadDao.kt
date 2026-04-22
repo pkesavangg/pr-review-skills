@@ -51,57 +51,52 @@ interface EntryReadDao {
    * @return Flow of monthly weight summaries ordered by most recent first
    */
   /**
-   * Optimised: single GROUP BY computes avg, count, first/last in one pass.
-   * No correlated subqueries.
+   * Optimised: FIRST_VALUE/LAST_VALUE window functions compute first/last weight
+   * in the same scan as avg/count — no correlated subqueries (eliminates 2N point-lookups).
+   * Requires SQLite 3.25+ (Android API 30+ ships 3.32; Room bundles 3.39 for older devices).
    */
   @Query(
     """
-    WITH period_stats AS (
+    WITH entries_windowed AS (
         SELECT
             strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
-            MIN(e.entryTimestamp) AS firstTimestamp,
-            MAX(e.entryTimestamp) AS lastTimestamp,
-            AVG(bse.weight) AS avgWeight,
-            COUNT(*) AS entryCount
+            e.entryTimestamp,
+            bse.weight,
+            FIRST_VALUE(bse.weight) OVER (
+                PARTITION BY strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
+                ORDER BY e.entryTimestamp ASC
+                ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS firstWeight,
+            LAST_VALUE(bse.weight) OVER (
+                PARTITION BY strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
+                ORDER BY e.entryTimestamp ASC
+                ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS lastWeight
         FROM entry_view e
         INNER JOIN body_scale_entry bse ON e.id = bse.id
         WHERE e.accountId = :accountId
           AND (e.operationType IS NULL OR e.operationType != 'delete')
           AND bse.weight IS NOT NULL
-        GROUP BY period
     )
     SELECT
-        CASE CAST(strftime('%m', datetime(ps.firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS INTEGER)
+        CASE CAST(strftime('%m', datetime(MIN(entryTimestamp), ${UTC}, ${LOCAL_TIME})) AS INTEGER)
             WHEN 1 THEN $MONTH_JAN WHEN 2 THEN $MONTH_FEB
             WHEN 3 THEN $MONTH_MAR WHEN 4 THEN $MONTH_APR
             WHEN 5 THEN $MONTH_MAY WHEN 6 THEN $MONTH_JUN
             WHEN 7 THEN $MONTH_JUL WHEN 8 THEN $MONTH_AUG
             WHEN 9 THEN $MONTH_SEP WHEN 10 THEN $MONTH_OCT
             WHEN 11 THEN $MONTH_NOV WHEN 12 THEN $MONTH_DEC
-        END || ' ' || strftime('%Y', datetime(ps.firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS entryTimestamp,
-        ps.avgWeight,
-        ps.entryCount,
+        END || ' ' || strftime('%Y', datetime(MIN(entryTimestamp), ${UTC}, ${LOCAL_TIME})) AS entryTimestamp,
+        AVG(weight) AS avgWeight,
+        COUNT(*) AS entryCount,
         CASE
-            WHEN first_e.weight IS NOT NULL AND last_e.weight IS NOT NULL
-            THEN last_e.weight - first_e.weight
+            WHEN firstWeight IS NOT NULL AND lastWeight IS NOT NULL
+            THEN lastWeight - firstWeight
             ELSE NULL
         END AS change
-    FROM period_stats ps
-    LEFT JOIN body_scale_entry first_e
-        ON first_e.id = (
-            SELECT e2.id FROM entry_view e2
-            INNER JOIN body_scale_entry b2 ON e2.id = b2.id
-            WHERE e2.accountId = :accountId AND e2.entryTimestamp = ps.firstTimestamp
-            LIMIT 1
-        )
-    LEFT JOIN body_scale_entry last_e
-        ON last_e.id = (
-            SELECT e3.id FROM entry_view e3
-            INNER JOIN body_scale_entry b3 ON e3.id = b3.id
-            WHERE e3.accountId = :accountId AND e3.entryTimestamp = ps.lastTimestamp
-            LIMIT 1
-        )
-    ORDER BY ps.period DESC
+    FROM entries_windowed
+    GROUP BY period
+    ORDER BY period DESC
     """,
   )
   fun getWeightMonthlyHistory(accountId: String): Flow<List<HistoryMonth>>
@@ -597,11 +592,21 @@ interface EntryReadDao {
    */
   @Query(
     """
-    WITH entries_with_period AS (
+    WITH entries_windowed AS (
         SELECT
+            strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
             e.entryTimestamp,
             bse.weight,
-            strftime('%Y-%m', datetime(e.entryTimestamp,${UTC},${LOCAL_TIME})) AS period
+            FIRST_VALUE(bse.weight) OVER (
+                PARTITION BY strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
+                ORDER BY e.entryTimestamp ASC
+                ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS firstWeight,
+            LAST_VALUE(bse.weight) OVER (
+                PARTITION BY strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
+                ORDER BY e.entryTimestamp ASC
+                ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS lastWeight
         FROM entry_view e
         LEFT JOIN body_scale_entry bse ON e.id = bse.id
         WHERE e.accountId = :accountId
@@ -609,45 +614,25 @@ interface EntryReadDao {
           AND (e.operationType IS NULL OR e.operationType != 'delete')
           AND datetime(e.entryTimestamp) >= datetime('now', '-365 days')
           AND datetime(e.entryTimestamp) <= datetime('now')
-    ),
-    first_last AS (
-        SELECT
-            period,
-            MIN(entryTimestamp) AS firstTimestamp,
-            MAX(entryTimestamp) AS lastTimestamp
-        FROM entries_with_period
-        GROUP BY period
-    ),
-    joined AS (
-        SELECT
-            fl.period,
-            fl.firstTimestamp,
-            fl.lastTimestamp,
-            first_entry.weight AS firstWeight,
-            last_entry.weight AS lastWeight,
-            (SELECT AVG(weight) FROM entries_with_period WHERE period = fl.period) AS avgWeight,
-            (SELECT COUNT(*) FROM entries_with_period WHERE period = fl.period) AS entryCount
-        FROM first_last fl
-        LEFT JOIN entries_with_period first_entry ON fl.firstTimestamp = first_entry.entryTimestamp
-        LEFT JOIN entries_with_period last_entry ON fl.lastTimestamp = last_entry.entryTimestamp
     )
     SELECT
-        CASE CAST(strftime('%m', datetime(firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS INTEGER)
+        CASE CAST(strftime('%m', datetime(MIN(entryTimestamp), ${UTC}, ${LOCAL_TIME})) AS INTEGER)
             WHEN 1 THEN $MONTH_JAN WHEN 2 THEN $MONTH_FEB
             WHEN 3 THEN $MONTH_MAR WHEN 4 THEN $MONTH_APR
             WHEN 5 THEN $MONTH_MAY WHEN 6 THEN $MONTH_JUN
             WHEN 7 THEN $MONTH_JUL WHEN 8 THEN $MONTH_AUG
             WHEN 9 THEN $MONTH_SEP WHEN 10 THEN $MONTH_OCT
             WHEN 11 THEN $MONTH_NOV WHEN 12 THEN $MONTH_DEC
-        END || ' ' || strftime('%Y', datetime(firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS entryTimestamp,
-        avgWeight,
-        entryCount,
+        END || ' ' || strftime('%Y', datetime(MIN(entryTimestamp), ${UTC}, ${LOCAL_TIME})) AS entryTimestamp,
+        AVG(weight) AS avgWeight,
+        COUNT(*) AS entryCount,
         CASE
             WHEN firstWeight IS NOT NULL AND lastWeight IS NOT NULL
             THEN lastWeight - firstWeight
             ELSE NULL
         END AS change
-    FROM joined
+    FROM entries_windowed
+    GROUP BY period
     ORDER BY period DESC
     """,
   )
@@ -735,6 +720,8 @@ interface EntryReadDao {
         datetime(MIN(e.entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of day') AS entryTimestamp,
         CAST(AVG(be.babyWeightDecigrams) AS INTEGER) AS avgWeightDecigrams,
         CAST(AVG(be.babyLengthMillimeters) AS INTEGER) AS avgLengthMillimeters,
+        -- Lexicographic ordering on 'YYYY-MM-DD' format is correct for date comparison.
+        -- Equivalent to ORDER BY entryTimestamp DESC but groups by local day.
         ROW_NUMBER() OVER (
           PARTITION BY be.babyId
           ORDER BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) DESC

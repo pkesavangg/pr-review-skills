@@ -105,7 +105,7 @@ private fun BabyValueDisplay(
           Spacer(modifier = Modifier.width(4.dp))
           Text(text = DashboardSnapshotStrings.Lbs, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
           Spacer(modifier = Modifier.width(8.dp))
-          Text(text = String.format("%.1f", oz), style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
+          Text(text = String.format(java.util.Locale.US, "%.1f", oz), style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
           Spacer(modifier = Modifier.width(4.dp))
           Text(text = DashboardSnapshotStrings.Oz, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
         }
@@ -119,7 +119,7 @@ private fun BabyValueDisplay(
       if (avgMm != null) {
         val inches = ConversionTools.convertMmToInches(avgMm)
         Row(verticalAlignment = Alignment.Bottom) {
-          Text(text = String.format("%.1f", inches), style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
+          Text(text = String.format(java.util.Locale.US, "%.1f", inches), style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
           Spacer(modifier = Modifier.width(4.dp))
           Text(text = DashboardSnapshotStrings.Inches, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
         }

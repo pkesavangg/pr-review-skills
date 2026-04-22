@@ -61,10 +61,10 @@ interface IEntryReadRepository {
     // ---------------------------------------------------------------------------
 
     /** Latest entry for an account (all product types). */
-    suspend fun getLatestEntry(accountId: String): Flow<Entry?>
+    fun getLatestEntry(accountId: String): Flow<Entry?>
 
     /** Entries for the last N days for an account. */
-    suspend fun getLastNDaysEntries(accountId: String, days: Int): Flow<List<Entry>>
+    fun getLastNDaysEntries(accountId: String, days: Int): Flow<List<Entry>>
 
     /** Entries by operation type for an account. */
     fun getEntriesByOperationType(accountId: String, operationType: String): Flow<List<Entry>>

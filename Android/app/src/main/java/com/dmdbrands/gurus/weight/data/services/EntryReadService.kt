@@ -42,30 +42,33 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
-import javax.inject.Inject
-
+import kotlinx.collections.immutable.PersistentMap
+import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.collections.immutable.toPersistentMap
 /**
  * Implementation of [IEntryReadService].
  * Routes by [ProductSelection] to the correct [IEntryReadRepository] function
  * and wraps the result in sealed [GroupedHistory] / [HistoryDetail].
  * accountId is set via [setAccountId] from LoadingScreenViewModel.
  */
-class EntryReadService @Inject constructor(
+class EntryReadService(
     private val entryReadRepository: IEntryReadRepository,
     private val accountRepository: IAccountRepository,
     private val goalRepository: IGoalRepository,
     private val appScope: CoroutineScope,
 ) : IEntryReadService {
 
+    @Volatile
     private var _accountId: String? = null
     override val accountId: String? get() = _accountId
 
     // ── Single hot snapshot map (populated on setAccountId, instant for consumers) ──
 
-    private val _snapshots = MutableStateFlow<Map<String, List<PeriodSummary>>>(emptyMap())
+    private val _snapshots = MutableStateFlow<PersistentMap<String, List<PeriodSummary>>>(persistentMapOf())
     override val snapshots: StateFlow<Map<String, List<PeriodSummary>>> = _snapshots.asStateFlow()
     private var hotJobs = mutableListOf<Job>()
 
+    @Synchronized
     override fun setAccountId(accountId: String) {
         AppLog.d(TAG, "setAccountId: $accountId")
         _accountId = accountId
@@ -73,19 +76,19 @@ class EntryReadService @Inject constructor(
         // Cancel previous subscriptions (account switch)
         hotJobs.forEach { it.cancel() }
         hotJobs.clear()
-        _snapshots.value = emptyMap()
+        _snapshots.value = persistentMapOf()
 
         // Weight snapshot
         hotJobs += appScope.launch {
             entryReadRepository.getWeightSnapshotGraphData(accountId).collect { data ->
-                _snapshots.update { it + (IEntryReadService.KEY_WEIGHT to data) }
+                _snapshots.update { it.put(IEntryReadService.KEY_WEIGHT, data) }
             }
         }
 
         // BP snapshot
         hotJobs += appScope.launch {
             entryReadRepository.getBpmSnapshotGraphData(accountId).collect { data ->
-                _snapshots.update { it + (IEntryReadService.KEY_BP to data) }
+                _snapshots.update { it.put(IEntryReadService.KEY_BP, data) }
             }
         }
 
@@ -95,8 +98,13 @@ class EntryReadService @Inject constructor(
                 .map { list -> list.groupBy { it.babyId } }
                 .collect { babyMap ->
                     _snapshots.update { current ->
-                        val withoutBabies = current.filterKeys { !it.startsWith("baby:") }
-                        withoutBabies + babyMap.mapKeys { (babyId, _) -> IEntryReadService.keyBaby(babyId) }
+                        val withoutBabies = current.builder().apply {
+                            keys.filter { it.startsWith("baby:") }.forEach { remove(it) }
+                        }
+                        babyMap.forEach { (babyId, data) ->
+                            withoutBabies[IEntryReadService.keyBaby(babyId)] = data
+                        }
+                        withoutBabies.build()
                     }
                 }
         }

@@ -242,12 +242,20 @@ class WeightDashboardViewModel @Inject constructor(
 
   private fun subscribeGoal() {
     viewModelScope.launch {
-      // goalService flow is used as a change trigger only — the authoritative
-      // goal data lives on the active account (toGoal()). Emitted value is
-      // ignored by design.
+      // goalService flow is used only as a change signal — the emitted value
+      // is intentionally dropped. The authoritative goal data lives on the
+      // Account entity, so we rebuild it via activeAccount.toGoal() INSIDE the
+      // collect block. This ensures we read the latest account state after
+      // goalService emits (account may have been updated by the same write that
+      // triggered the goal flow).
       goalService.getCurrentGoal().collect { _ ->
         val currentAccount = accountService.activeAccount.value
         val rawGoal = currentAccount?.toGoal()
+        // goalWeight is stored in decigrams (Int). Dividing by 10.0 gives
+        // display-lb with 0.1 precision. This display-lb value is never written
+        // back to storage — it only flows to the chart/header for rendering.
+        // Goal edits go through GoalService which operates on the decigram form
+        // directly.
         val displayGoal = rawGoal?.copy(
           goalWeight = rawGoal.goalWeight / 10.0,
           initialWeight = rawGoal.initialWeight / 10.0,

@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import javax.inject.Inject
 import android.content.Context
 
@@ -75,7 +76,9 @@ class DashboardSnapshotViewModel @Inject constructor(
         if (weightPoints != null) {
           updateWeightChart(weightPoints.filterIsInstance<WeightSnapshotPoint>())
         }
-        handleIntent(DashboardSnapshotIntent.SetLoading(false))
+        if (snapshotMap.isNotEmpty()) {
+          handleIntent(DashboardSnapshotIntent.SetLoading(false))
+        }
 
         // BP
         val bpPoints = snapshotMap[IEntryReadService.KEY_BP]
@@ -151,9 +154,9 @@ class DashboardSnapshotViewModel @Inject constructor(
     }
 
     val sorted = points.sortedBy { it.entryTimestamp }
-    val avgSystolic = sorted.map { it.avgSystolic }.average().toInt()
-    val avgDiastolic = sorted.map { it.avgDiastolic }.average().toInt()
-    val avgPulse = sorted.map { it.avgPulse }.average().toInt()
+    val avgSystolic = sorted.map { it.avgSystolic }.average().roundToInt()
+    val avgDiastolic = sorted.map { it.avgDiastolic }.average().roundToInt()
+    val avgPulse = sorted.map { it.avgPulse }.average().roundToInt()
 
     val xValues = sorted.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp).toDouble() }
     val systolicValues = sorted.map { it.avgSystolic.toDouble() }
@@ -215,7 +218,7 @@ class DashboardSnapshotViewModel @Inject constructor(
     val latestWeight = sorted.last().avgWeightDecigrams ?: 0
     val lbs = ConversionTools.convertDecigramsToLb(latestWeight)
     val oz = ConversionTools.convertDecigramsToOz(latestWeight)
-    val label = "$lbs ${DashboardSnapshotStrings.Lbs} ${String.format("%.1f", oz)} ${DashboardSnapshotStrings.Oz}"
+    val label = "$lbs ${DashboardSnapshotStrings.Lbs} ${String.format(java.util.Locale.US, "%.1f", oz)} ${DashboardSnapshotStrings.Oz}"
 
     // Convert decigrams to lbs for chart display
     val yValues = sorted.map { ConversionTools.convertDecigramsToLbExact(it.avgWeightDecigrams ?: 0) }
@@ -229,7 +232,7 @@ class DashboardSnapshotViewModel @Inject constructor(
       // Percentile curves from birth to age+120 days (dense, own X timestamps)
       val birthDateMillis = profile.birthdate?.let { DateTimeConverter.isoToTimestamp(it) }
       val pSeries = if (birthDateMillis != null) {
-        BabyPercentileHelper.getPercentileSeries(
+        BabyPercentileHelper.getWeightPercentileSeries(
           sex = profile.sex,
           birthDateMillis = birthDateMillis,
         )
