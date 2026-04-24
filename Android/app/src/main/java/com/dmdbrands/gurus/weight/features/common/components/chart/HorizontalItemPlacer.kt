@@ -2,35 +2,62 @@ package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.patrykandpatrick.vico.core.cartesian.CartesianDrawingContext
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.temporal.TemporalAdjusters
 
+private const val TAG = "HorizontalItemPlacer"
+
+// Upper bound on ticks returned from a single call. Ticks are generated over the visible window
+// (typically <20), so this cap is a defensive safety net: even under unexpected upstream state
+// the placer cannot return a runaway list and trigger the OOM class fixed in MA-3841.
+private const val MAX_TICKS_PER_CALL = 64
+
 /**
- * Filters [values] to those inside [visibleXRange] with optional [paddingMillis] on each side.
- * If the result is empty, returns a single value at the visible start so the axis does not break.
+ * Builds x-axis label / grid-line positions for the scrollable segments (WEEK/MONTH/YEAR)
+ * bounded by the *visible* range. Ticks are generated directly inside
+ * `[visibleXRange ± padding]` clamped to `fullXRange`, so allocation scales with the viewport
+ * rather than the data domain (MA-3841).
+ *
+ * TOTAL is non-scrollable and is called only on layout / a handful of times per session, so it
+ * keeps Vico's default placer — its adaptive density produces nicer label spacing for the wide
+ * TOTAL view without the per-frame allocation pressure that makes the scrollable segments risky.
  */
-private fun filterToVisibleWithPadding(
-  values: List<Double>,
+private fun computeTicks(
+  segment: GraphSegment,
   visibleXRange: ClosedFloatingPointRange<Double>,
-  paddingMillis: Double,
+  fullXRange: ClosedFloatingPointRange<Double>,
 ): List<Double> {
-  val start = visibleXRange.start - paddingMillis
-  val end = visibleXRange.endInclusive + paddingMillis
-  val filtered = values.filter { it in start..end }
-  return if (filtered.isEmpty()) listOf(visibleXRange.start) else filtered
+  val padding = GraphUtil.calculateXStep(segment)
+  val rangeStart = maxOf(fullXRange.start, visibleXRange.start - padding)
+  val rangeEnd = minOf(fullXRange.endInclusive, visibleXRange.endInclusive + padding)
+  if (rangeEnd < rangeStart) return listOf(visibleXRange.start)
+
+  val ticks = when (segment) {
+    GraphSegment.WEEK -> dayStartsInRange(rangeStart.toLong(), rangeEnd.toLong())
+    GraphSegment.MONTH -> sundaysInRange(rangeStart.toLong(), rangeEnd.toLong())
+    GraphSegment.YEAR -> monthStartsInRange(rangeStart.toLong(), rangeEnd.toLong())
+    GraphSegment.TOTAL -> error("TOTAL is delegated to Vico's default placer")
+  }
+  if (ticks.isEmpty()) return listOf(visibleXRange.start)
+  if (ticks.size > MAX_TICKS_PER_CALL) {
+    AppLog.w(TAG, "tick cap hit: segment=$segment size=${ticks.size}, truncating to $MAX_TICKS_PER_CALL")
+    return ticks.take(MAX_TICKS_PER_CALL)
+  }
+  return ticks
 }
 
 /**
- * Internal helper to remember the horizontal item placer for the X axis.
- * The placer is memoized by [segment] so the same instance is reused until the segment changes,
- * avoiding unnecessary chart redraws on recomposition.
+ * Remembers a horizontal-axis item placer for [segment]. Memoised on [segment] so scrolling
+ * within one segment reuses the instance; switching segments rebuilds it.
  */
 @Composable
 internal fun rememberHorizontalAxisItemPlacer(
@@ -44,122 +71,94 @@ internal fun rememberHorizontalAxisItemPlacer(
         visibleXRange: ClosedFloatingPointRange<Double>,
         fullXRange: ClosedFloatingPointRange<Double>,
         maxLabelWidth: Float,
-      ): List<Double> {
-        return when (segment) {
-          GraphSegment.YEAR -> {
-            val all = fullXRange.monthStartTimestampsMillis()
-            val padding = GraphUtil.calculateXStep(segment)
-            filterToVisibleWithPadding(all, visibleXRange, padding)
-          }
-
-          GraphSegment.MONTH -> {
-            val all = sundaysBetween(
-              startMillis = fullXRange.start.toLong(),
-              endMillis = fullXRange.endInclusive.toLong(),
-            )
-            val padding = GraphUtil.calculateXStep(segment)
-            filterToVisibleWithPadding(all, visibleXRange, padding)
-          }
-
-          else -> defaultPlacer.getLabelValues(
-            context, visibleXRange, fullXRange, maxLabelWidth,
-          )
+      ): List<Double> =
+        if (segment == GraphSegment.TOTAL) {
+          defaultPlacer.getLabelValues(context, visibleXRange, fullXRange, maxLabelWidth)
+        } else {
+          computeTicks(segment, visibleXRange, fullXRange)
         }
-      }
 
       override fun getLineValues(
         context: CartesianDrawingContext,
         visibleXRange: ClosedFloatingPointRange<Double>,
         fullXRange: ClosedFloatingPointRange<Double>,
-        maxLabelWidth: Float
-      ): List<Double>? {
-        return when (segment) {
-          GraphSegment.YEAR -> {
-            val all = fullXRange.monthStartTimestampsMillis()
-            val padding = GraphUtil.calculateXStep(segment)
-            filterToVisibleWithPadding(all, visibleXRange, padding)
-          }
-
-          GraphSegment.MONTH -> {
-            val all = sundaysBetween(
-              startMillis = fullXRange.start.toLong(),
-              endMillis = fullXRange.endInclusive.toLong(),
-            )
-            val padding = GraphUtil.calculateXStep(segment)
-            filterToVisibleWithPadding(all, visibleXRange, padding)
-          }
-
-          else -> defaultPlacer.getLabelValues(
-            context, visibleXRange, fullXRange, maxLabelWidth,
-          )
+        maxLabelWidth: Float,
+      ): List<Double>? =
+        if (segment == GraphSegment.TOTAL) {
+          defaultPlacer.getLineValues(context, visibleXRange, fullXRange, maxLabelWidth)
+        } else {
+          computeTicks(segment, visibleXRange, fullXRange)
         }
-      }
     }
   }
-}
-
-fun ClosedFloatingPointRange<Double>.monthStartTimestampsMillis(): List<Double> {
-  // Convert timestamps (millis) to ZonedDateTime in local timezone
-  val localZone = ZoneId.systemDefault()
-  val startZdt = Instant.ofEpochMilli(start.toLong()).atZone(localZone)
-  val endZdt = Instant.ofEpochMilli(endInclusive.toLong()).atZone(localZone)
-
-  val startYear = startZdt.year
-  val endYear = endZdt.year
-
-  val timestamps = mutableListOf<Double>()
-
-  for (year in startYear..endYear) {
-    for (month in 1..12) {
-      val zdt = ZonedDateTime.of(year, month, 1, 0, 0, 0, 0, localZone)
-      val ts = zdt.toInstant().toEpochMilli().toDouble()
-
-      // include only months between actual start and end timestamps
-      if (ts in start..endInclusive) {
-        timestamps.add(ts)
-      }
-    }
-  }
-
-  return timestamps
 }
 
 /**
- * @param startMillis inclusive
- * @param endMillis   inclusive
- * @param zone        pick the user/device zone, or ZoneId.of("Asia/Kolkata")
+ * Month-start (day 1 at 00:00 local) timestamps inside `[startMillis, endMillis]`.
+ * Iterates month-by-month over the clamped range, not the full data domain.
  */
-fun sundaysBetween(
+internal fun monthStartsInRange(
   startMillis: Long,
   endMillis: Long,
-  zone: ZoneId = ZoneId.systemDefault()
+  zone: ZoneId = ZoneId.systemDefault(),
 ): List<Double> {
-  require(endMillis >= startMillis) { "endMillis must be >= startMillis" }
+  if (endMillis < startMillis) return emptyList()
+  val startZdt = Instant.ofEpochMilli(startMillis).atZone(zone)
+  val endZdt = Instant.ofEpochMilli(endMillis).atZone(zone)
 
-  val start = Instant.ofEpochMilli(startMillis).atZone(zone)
-  val end = Instant.ofEpochMilli(endMillis).atZone(zone)
+  var cursor = ZonedDateTime.of(startZdt.year, startZdt.monthValue, 1, 0, 0, 0, 0, zone)
+  val endExclusive = endZdt.plusNanos(1)
 
-  // first Sunday on/after start date
-  var cursorDate = start.toLocalDate()
-    .with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
-
-  val endDate = end.toLocalDate()
-
-  val result = ArrayList<Long>()
-  while (!cursorDate.isAfter(endDate)) {
-    // Choose a stable time-of-day for the timestamp (start-of-day in that zone)
-    val sundayMillis = cursorDate
-      .atStartOfDay(zone)
-      .toInstant()
-      .toEpochMilli()
-
-    // If you want strict timestamp-range filtering (not just date-range), keep this check:
-    if (sundayMillis in startMillis..endMillis) {
-      result.add(sundayMillis)
-    }
-
-    cursorDate = cursorDate.plusWeeks(1)
+  val result = ArrayList<Double>()
+  while (cursor.isBefore(endExclusive)) {
+    val ts = cursor.toInstant().toEpochMilli()
+    if (ts in startMillis..endMillis) result.add(ts.toDouble())
+    cursor = cursor.plusMonths(1)
   }
+  return result
+}
 
-  return result.map { it.toDouble() }
+/**
+ * Sunday start-of-day timestamps inside `[startMillis, endMillis]`.
+ * Walks one week at a time from the first Sunday on/after [startMillis].
+ */
+internal fun sundaysInRange(
+  startMillis: Long,
+  endMillis: Long,
+  zone: ZoneId = ZoneId.systemDefault(),
+): List<Double> {
+  if (endMillis < startMillis) return emptyList()
+  val startDate = Instant.ofEpochMilli(startMillis).atZone(zone).toLocalDate()
+  val endDate = Instant.ofEpochMilli(endMillis).atZone(zone).toLocalDate()
+
+  var cursor = startDate.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
+  val result = ArrayList<Double>()
+  while (!cursor.isAfter(endDate)) {
+    val ts = cursor.atStartOfDay(zone).toInstant().toEpochMilli()
+    if (ts in startMillis..endMillis) result.add(ts.toDouble())
+    cursor = cursor.plusWeeks(1)
+  }
+  return result
+}
+
+/**
+ * Day start-of-day timestamps inside `[startMillis, endMillis]`. Used by WEEK.
+ */
+internal fun dayStartsInRange(
+  startMillis: Long,
+  endMillis: Long,
+  zone: ZoneId = ZoneId.systemDefault(),
+): List<Double> {
+  if (endMillis < startMillis) return emptyList()
+  val startDate: LocalDate = Instant.ofEpochMilli(startMillis).atZone(zone).toLocalDate()
+  val endDate: LocalDate = Instant.ofEpochMilli(endMillis).atZone(zone).toLocalDate()
+
+  var cursor = startDate
+  val result = ArrayList<Double>()
+  while (!cursor.isAfter(endDate)) {
+    val ts = cursor.atStartOfDay(zone).toInstant().toEpochMilli()
+    if (ts in startMillis..endMillis) result.add(ts.toDouble())
+    cursor = cursor.plusDays(1)
+  }
+  return result
 }
