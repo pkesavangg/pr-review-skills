@@ -19,7 +19,8 @@ struct WeightTrendView: View {
                 GraphView(dashboardStore: dashboardStore)
                 SegmentedButtonView(
                     segments: TimePeriod.allCases,
-                    selectedSegment: $localSelectedPeriod
+                    selectedSegment: $localSelectedPeriod,
+                    useUniformFontScaling: true
                 )
                 .padding(.vertical, .spacingSM)
                 .padding(.horizontal, 15)
