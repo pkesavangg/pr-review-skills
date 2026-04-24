@@ -182,6 +182,15 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             target: context.coordinator,
             action: #selector(Coordinator.consumeTap)
         )
+
+        // Re-evaluate row spacing/insets when the user changes Dynamic Type at runtime
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.contentSizeCategoryDidChange),
+            name: UIContentSizeCategory.didChangeNotification,
+            object: nil
+        )
+        context.coordinator.observedCollectionView = collectionView
     }
     
     /// Builds the grid model using the saved order from DashboardStore UI state
@@ -388,6 +397,18 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         
         // MARK: - Gesture Recognizer
         var longPressGestureRecognizer: UILongPressGestureRecognizer?
+
+        // Held weakly so the Dynamic-Type notification handler can invalidate the layout
+        weak var observedCollectionView: UICollectionView?
+
+        deinit {
+            NotificationCenter.default.removeObserver(self)
+        }
+
+        @objc func contentSizeCategoryDidChange() {
+            guard let collectionView = observedCollectionView else { return }
+            collectionView.collectionViewLayout.invalidateLayout()
+        }
 
         // MARK: - Haptics (system-like: prepared + throttled)
         private let boundaryFeedback = UIImpactFeedbackGenerator(style: .light)
@@ -795,12 +816,17 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, insetForSectionAt section: Int) -> UIEdgeInsets {
             let topInset: CGFloat = store.state.ui.isGoalCardRemoved ? 32.0 : 16.0
-            return UIEdgeInsets(top: topInset, left: 16.0, bottom: 32.0, right: 16.0) // fine-tuned bottom inset for last row
+            return UIEdgeInsets(top: topInset, left: 16.0, bottom: 32.0, right: 16.0)
         }
-        
+
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumLineSpacingForSectionAt section: Int) -> CGFloat {
-            // Vertical gap between rows, including streak rows and goal card rows
+            // Constant row gap — preserves row separation under Dynamic Type.
             return 32
+        }
+
+        func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumInteritemSpacingForSectionAt section: Int) -> CGFloat {
+            // Constant column gap — preserves column separation under Dynamic Type.
+            return 16
         }
         
         // MARK: - Interactive Movement (Reordering)
