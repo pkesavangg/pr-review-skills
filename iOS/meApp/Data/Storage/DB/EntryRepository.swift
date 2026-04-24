@@ -192,6 +192,29 @@ final class EntryRepository: EntryRepositoryProtocol {
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == uuid })
             if let entry = try ctx.fetch(descriptor).first {
                 ctx.delete(entry)
+                do {
+                    try ctx.save()
+                } catch {
+                    ctx.rollback()
+                    throw error
+                }
+            }
+            return ()
+        }
+    }
+
+    /// Marks an entry as deleted in the background context without mutating the
+    /// @Model object on the main actor.  Use this instead of setting
+    /// `entry.operationType` and `entry.isSynced` directly when the call-site is
+    /// not on the @MainActor.
+    /// - Parameter id: The UUID string of the entry to mark as deleted.
+    func markEntryAsDeleted(byId id: String) async throws {
+        try await performBackgroundTask { ctx in
+            guard let uuid = UUID(uuidString: id) else { return () }
+            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == uuid })
+            if let existing = try ctx.fetch(descriptor).first {
+                existing.operationType = OperationType.delete.rawValue
+                existing.isSynced = false
                 try ctx.save()
             }
             return ()
