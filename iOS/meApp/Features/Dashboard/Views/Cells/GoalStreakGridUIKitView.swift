@@ -820,7 +820,8 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         }
 
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumLineSpacingForSectionAt section: Int) -> CGFloat {
-            // Constant row gap — preserves row separation under Dynamic Type.
+            // Wider row gap on iPhone XS / SE / mini to keep streak rows from feeling cramped.
+            if DevicePlatform.isSmallPhone || DevicePlatform.isMiniPhone { return 40 }
             return 32
         }
 
