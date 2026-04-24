@@ -707,13 +707,15 @@ class BottomTabBarViewModel: ObservableObject {
 
         let toast = ToastModel(
             title: lang.babyReadingArrivalTitle,
-            message: message,
+            message: "",
             btnTextView: AnyView(
                 BabyReadingArrivalCTAView(
+                    weightString: weightString,
+                    timestamp: lang.babyReadingArrivalJustNow,
                     onAssign: { [weak self] in
                         didUserAct = true
                         self?.notificationService.dismissToast()
-                        self?.showAssignBabyModal(entryId: entryId, weightMessage: message, babyItems: babyItems)
+                        self?.showAssignBabyModal(entryId: entryId, weightString: weightString, weightMessage: message, babyItems: babyItems)
                     },
                     onDiscard: { [weak self] in
                         didUserAct = true
@@ -743,7 +745,7 @@ class BottomTabBarViewModel: ObservableObject {
     }
 
     /// Presents the baby-selection modal so the user can choose which baby to assign the entry to.
-    private func showAssignBabyModal(entryId: UUID, weightMessage: String, babyItems: [AssignBabyModalView.BabyItem]) {
+    private func showAssignBabyModal(entryId: UUID, weightString: String, weightMessage: String, babyItems: [AssignBabyModalView.BabyItem]) {
         let modalView = AssignBabyModalView(
             babies: babyItems,
             weightMessage: weightMessage,
@@ -756,7 +758,7 @@ class BottomTabBarViewModel: ObservableObject {
                         try await self.entryService.assignBabyEntry(entryId: entryId, babyId: selectedBabyId)
                         let babyName = babyItems.first(where: { $0.id == selectedBabyId })?.name ?? ""
                         self.logger.log(level: .info, tag: self.tag, message: "Baby reading assigned to babyId=\(selectedBabyId), entryId=\(entryId)")
-                        self.showAssignedBabyToast(babyName: babyName, entryId: entryId, weightMessage: weightMessage, babyItems: babyItems)
+                        self.showAssignedBabyToast(babyName: babyName, entryId: entryId, weightString: weightString, weightMessage: weightMessage, babyItems: babyItems)
                     } catch {
                         self.logger.log(level: .error, tag: self.tag, message: "Failed to assign baby reading. entryId=\(entryId)", data: error.localizedDescription)
                     }
@@ -784,17 +786,17 @@ class BottomTabBarViewModel: ObservableObject {
 
     /// Shows a confirmation toast after a baby reading has been successfully assigned.
     /// Includes a REASSIGN button to re-open the baby selection modal.
-    private func showAssignedBabyToast(babyName: String, entryId: UUID, weightMessage: String, babyItems: [AssignBabyModalView.BabyItem]) {
+    private func showAssignedBabyToast(babyName: String, entryId: UUID, weightString: String, weightMessage: String, babyItems: [AssignBabyModalView.BabyItem]) {
         let toast = ToastModel(
             title: nil,
             message: "",
             btnTextView: AnyView(
                 BabyReadingAssignedToastView(
-                    weightMessage: weightMessage,
+                    weightString: weightString,
                     babyName: babyName,
                     onReassign: { [weak self] in
                         self?.notificationService.dismissToast()
-                        self?.showAssignBabyModal(entryId: entryId, weightMessage: weightMessage, babyItems: babyItems)
+                        self?.showAssignBabyModal(entryId: entryId, weightString: weightString, weightMessage: weightMessage, babyItems: babyItems)
                     }
                 )
             ),

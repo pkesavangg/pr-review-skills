@@ -31,16 +31,11 @@ struct AssignBabyModalView: View {
         let parts = weightMessage.components(separatedBy: " · ")
         let weight = parts.first ?? weightMessage
         let timestamp = parts.count > 1 ? " - \(parts[1])" : ""
-        return (
-            Text(weight)
-                .fontOpenSans(.body1)
-                .bold()
-                .foregroundColor(theme.babyPrimary)
+        return (styledBabyWeightText(weight, theme: theme)
             + Text(timestamp)
                 .fontOpenSans(.body2)
-                .foregroundColor(theme.textBody)
-        )
-        .multilineTextAlignment(.center)
+                .foregroundColor(theme.textBody))
+            .multilineTextAlignment(.center)
     }
 
     init(
@@ -73,11 +68,14 @@ struct AssignBabyModalView: View {
             // Header icon + title
             VStack(spacing: .spacingSM) {
                 Circle()
-                    .fill(theme.babyPrimary.opacity(0.15))
+                    .strokeBorder(theme.textBody.opacity(0.4), lineWidth: 1.5)
                     .frame(width: 56, height: 56)
                     .overlay(
-                        AppIconView(icon: AppAssets.babyAppIcon, size: IconSize(width: 32, height: 32))
-                            .foregroundColor(theme.babyPrimary)
+                        Image(systemName: "person.fill")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 24, height: 24)
+                            .foregroundColor(theme.textBody)
                     )
 
                 Text(lang.assignMeasurementTitle)
@@ -184,14 +182,7 @@ private struct BabySelectionRow: View {
             .padding(.spacingSM)
             .background(
                 RoundedRectangle(cornerRadius: .radiusMD)
-                    .fill(theme.backgroundPrimary)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: .radiusMD)
-                            .strokeBorder(
-                                isSelected ? theme.babyPrimary : Color.clear,
-                                lineWidth: 1.5
-                            )
-                    )
+                    .fill(isSelected ? theme.babyPrimary.opacity(0.1) : theme.backgroundPrimary)
             )
         }
         .buttonStyle(.plain)
