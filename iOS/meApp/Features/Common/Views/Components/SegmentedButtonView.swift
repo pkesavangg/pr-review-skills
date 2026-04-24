@@ -13,6 +13,11 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
     /// Stores the width of each segment (indexed by its position in the `segments` array).
     @State private var segmentWidths: [Int: CGFloat] = [:]
 
+    /// heading5 size — every label shares one font size decision.
+    private static var baseFontSize: CGFloat { 16 }
+    /// Horizontal padding (left + right) applied inside each segment button.
+    private static var buttonHorizontalPadding: CGFloat { 16 }
+
     var body: some View {
         HStack(spacing: 0) {
             ForEach(Array(segments.enumerated()), id: \.element) { index, segment in
@@ -22,13 +27,14 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
                     }
                 }) {
                     Text(segmentDisplayName(for: segment))
-                        .fontOpenSans(.heading5)
+                        .font(.custom("OpenSans-Regular", size: uniformFontSize))
+                        .fontWeight(.bold)
                         .foregroundColor(selectedSegment == segment ? theme.textInverse : theme.actionSecondary)
                         .frame(maxWidth: .infinity)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                        .allowsTightening(true)
                         .padding(.vertical, 8)
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, 8)
                         .background(
                             GeometryReader { geometry in
                                 Color.clear
@@ -59,9 +65,31 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
         if let bodyMetric = segment as? BodyMetric {
             return bodyMetric.displayName.uppercased()
         }
-        
+
         // Fallback for other types
         return segment.rawValue.uppercased()
+    }
+
+    /// Natural (unscaled) width of the widest label at the base font size.
+    private var widestLabelWidth: CGFloat {
+        let font = UIFont(name: "OpenSans-Bold", size: Self.baseFontSize)
+            ?? .systemFont(ofSize: Self.baseFontSize, weight: .bold)
+        return segments
+            .map { (segmentDisplayName(for: $0) as NSString).size(withAttributes: [.font: font]).width }
+            .max() ?? 0
+    }
+
+    /// Single font size applied to every segment so they scale together.
+    /// If the widest label exceeds available width, all four shrink proportionally (floor 0.7×).
+    private var uniformFontSize: CGFloat {
+        guard let minSegmentWidth = segmentWidths.values.min(),
+              minSegmentWidth > 0,
+              widestLabelWidth > 0 else { return Self.baseFontSize }
+        let contentWidth = minSegmentWidth - Self.buttonHorizontalPadding
+        guard contentWidth > 0 else { return Self.baseFontSize }
+        let ratio = contentWidth / widestLabelWidth
+        if ratio >= 1.0 { return Self.baseFontSize }
+        return max(Self.baseFontSize * 0.7, Self.baseFontSize * ratio)
     }
 
     /// Calculates the x-offset required to place the highlight behind the selected segment.
