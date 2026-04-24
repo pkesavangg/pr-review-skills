@@ -137,6 +137,27 @@ struct GraphView: View {
 
                 // Recalculate and cache Y-axis based on the new visible region
                 dashboardStore.updateYAxisCache()
+
+                // Auto-select the latest entry so the crosshair/callout appears
+                // on the active section chart after the tab switch. The store-level
+                // selection is driven by DashboardStore.updateSelectedPeriod; here
+                // we mirror it onto the active view model's crosshair state.
+                // Normalize via plotXDate first so section snap logic (e.g. week)
+                // lands exactly on the latest entry's day tick regardless of the
+                // original entry timestamp's time-of-day.
+                guard !Task.isCancelled else { return }
+                if let latestDate = dashboardStore.continuousOperations.max(by: { $0.date < $1.date })?.date {
+                    switch newValue {
+                    case .week:
+                        weekSectionViewModel.handleChartSelection(at: weekSectionViewModel.plotXDate(for: latestDate))
+                    case .month:
+                        monthSectionViewModel.handleChartSelection(at: monthSectionViewModel.plotXDate(for: latestDate))
+                    case .year:
+                        yearSectionViewModel.handleChartSelection(at: yearSectionViewModel.plotXDate(for: latestDate))
+                    case .total:
+                        totalSectionViewModel.handleChartSelection(at: totalSectionViewModel.plotXDate(for: latestDate))
+                    }
+                }
             }
         }
         // Immediately react to active account goal updates like GoalProgressView
