@@ -6,8 +6,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -35,21 +38,22 @@ import android.util.Log
 
 private const val SCROLL_DELAY_AFTER_LAYOUT_MS = 50L
 
+// Ignore window after a programmatic reset (tab switch) during which synthetic chart-click
+// events (e.g. from scroll-settle) must not clear the auto-selected marker. See MA-3842.
+private const val RESET_CLICK_IGNORE_WINDOW_MS = 400L
+
 /**
  * Composable for displaying a graph/chart with interactive features.
  * Uses GraphViewModel for state management following MVI pattern.
  *
  * @param modifier Modifier for styling.
- * @param graphLines List of GraphLine data to display.
- * @param secondaryGraphLines Optional secondary graph lines.
  * @param segment The segment of the graph (e.g., WEEK, MONTH).
+ * @param isCurrentPage True when this page is the one currently visible in the pager;
+ *   used to trigger a reset-to-latest (scroll to default range + auto-select latest entry) on every tab switch.
+ * @param state The current [GraphState] from the view model.
  * @param placeHolder Optional placeholder text if no data is present.
- * @param goal Optional goal for reference.
- * @param onTargetsUpdate Callback for metric updates, returns list of GraphPoint(s).
- * @param onScroll Callback for scroll events, returns formatted date range.
- * @param onLabelUpdate Callback for label updates, returns updated label string.
  * @param viewModel The GraphViewModel instance (injected via Hilt).
- * @param onScrollTargetConsumed Called once after scrolling to [scrollTarget] (so anchor is consumed and not re-applied).
+ * @param onChartConsuming Invoked while the chart is internally settling after a tab switch.
  */
 @OptIn(FlowPreview::class)
 @Composable
@@ -57,12 +61,10 @@ fun GraphView(
   modifier: Modifier = Modifier,
   state: GraphState,
   segment: GraphSegment = GraphSegment.WEEK,
-  scrollTarget: Double? = null,
-  canScrollToAnchor: Boolean = false,
+  isCurrentPage: Boolean = false,
   placeHolder: String? = null,
   viewModel: GraphViewModel = hiltViewModel(),
   onChartConsuming: (Boolean) -> Unit = {},
-  onScrollTargetConsumed: (Boolean) -> Unit = {},
 ) {
 
   val scope = rememberCoroutineScope()
@@ -145,22 +147,32 @@ fun GraphView(
       )
     }
   }
-  LaunchedEffect(segment) {
-    if (scrollTarget == null || !canScrollToAnchor || state.isEmptyGraph) return@LaunchedEffect
-    val updatedScrollTarget = GraphUtil.getRelativeStart(segment, scrollTarget.toLong())
-    val anchoredTarget = GraphUtil.getStartOnAnchored(segment, updatedScrollTarget)
+  // Sticky timestamp of the last programmatic reset; synthetic chart-click events fired in this
+  // window (e.g. from Vico's scroll-settle path) must not be allowed to clear the marker.
+  var lastResetAtMs by remember { mutableStateOf(0L) }
+
+  // On every tab switch (this page becoming current), reset to the default range containing the
+  // latest entry (right-most edge of the chart) and auto-select that entry so the header
+  // immediately reflects the most recent data point without the user having to tap. See MA-3842.
+  val shouldReset = isCurrentPage && !state.isEmptyGraph && state.data.isNotEmpty()
+  LaunchedEffect(shouldReset) {
+    if (!shouldReset) return@LaunchedEffect
+    val latestEntry = state.data.maxByOrNull { it.getTimeStamp() } ?: return@LaunchedEffect
     delay(SCROLL_DELAY_AFTER_LAYOUT_MS)
-    scrollState.animateScroll(
-      Scroll.Absolute.xWithPadding(
-        anchoredTarget.toDouble(),
-        GraphSnapHelper.getVisiblePaddingXStepForSegment(segment).first,
-      ),
-      animationSpec = tween(
-        durationMillis = 150,
-        easing = LinearOutSlowInEasing,
-      ),
-    )
-    onScrollTargetConsumed(true)
+    // TOTAL doesn't scroll, so skip the animation and just select the latest entry.
+    if (segment != GraphSegment.TOTAL) {
+      scrollState.animateScroll(
+        initialScroll,
+        animationSpec = tween(
+          durationMillis = 150,
+          easing = LinearOutSlowInEasing,
+        ),
+      )
+    }
+    viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(latestEntry.getTimeStamp().toDouble()))
+    viewModel.handleIntent(GraphIntent.UpdateTarget(listOf(latestEntry)))
+    lastResetAtMs = System.currentTimeMillis()
+    onChartConsuming(false)
   }
 
   LaunchedEffect(state.markerIndex == null) {
@@ -187,6 +199,11 @@ fun GraphView(
     handleIntent = viewModel::handleIntent,
     onChartClick = { targets, click ->
       if (click == null || state.isEmptyGraph) {
+        // Ignore synthetic "no-op" clicks that arrive right after a programmatic reset;
+        // otherwise the auto-selected latest-entry marker would be cleared immediately.
+        if (System.currentTimeMillis() - lastResetAtMs < RESET_CLICK_IGNORE_WINDOW_MS) {
+          return@rememberGraphChart
+        }
         viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
         return@rememberGraphChart
       }
@@ -221,8 +238,13 @@ fun GraphView(
           }
         }
       }
-      if (state.markerIndex != markerIndex)
-        viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
+      if (state.markerIndex != markerIndex) {
+        // Same reset-window guard: don't let a synthetic click clear the auto-selected marker.
+        val isInResetWindow = System.currentTimeMillis() - lastResetAtMs < RESET_CLICK_IGNORE_WINDOW_MS
+        if (markerIndex != null || !isInResetWindow) {
+          viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
+        }
+      }
     },
   )
   CartesianChartHost(
