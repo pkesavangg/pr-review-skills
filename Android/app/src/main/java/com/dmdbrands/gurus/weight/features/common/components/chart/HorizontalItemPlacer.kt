@@ -22,14 +22,25 @@ private const val TAG = "HorizontalItemPlacer"
 private const val MAX_TICKS_PER_CALL = 64
 
 /**
- * Builds x-axis label / grid-line positions for the scrollable segments (WEEK/MONTH/YEAR)
- * bounded by the *visible* range. Ticks are generated directly inside
- * `[visibleXRange ± padding]` clamped to `fullXRange`, so allocation scales with the viewport
- * rather than the data domain (MA-3841).
+ * Builds x-axis label / grid-line positions for the scrollable segments (WEEK/MONTH/YEAR).
  *
- * TOTAL is non-scrollable and is called only on layout / a handful of times per session, so it
- * keeps Vico's default placer — its adaptive density produces nicer label spacing for the wide
- * TOTAL view without the per-frame allocation pressure that makes the scrollable segments risky.
+ * Vico's `AlignedHorizontalAxisItemPlacer.getLabelValues` (see `HorizontalAxisItemPlacers.kt`
+ * in `com.patrykandpatrick.vico.core.cartesian.axis`) iterates the visible range stepping by
+ * `spacing * ranges.xStep`. That's normally fine, but iteration count is:
+ *
+ *     visibleSpan / (spacing * xStep)
+ *
+ * If `ranges.xStep` collapses (e.g. two near-identical timestamps make Vico compute xStep as
+ * tens of milliseconds), the iteration count blows up — millions of boxed `Double`s per call
+ * — and the chart OOMs during scroll. MA-3841 is a rare prod instance of this.
+ *
+ * Our generators below side-step the `xStep`-driven iteration entirely: we walk calendar
+ * units (day / Sunday / month-1) over `[visibleXRange ± padding]` clamped to `fullXRange`,
+ * which keeps the loop bound semantic and stable regardless of whatever `xStep` Vico settles
+ * on. [MAX_TICKS_PER_CALL] is the last-resort safety net.
+ *
+ * TOTAL is non-scrollable (called a handful of times per session, not at frame rate) so it
+ * keeps Vico's default placer for nicer adaptive density across the wide TOTAL view.
  */
 private fun computeTicks(
   segment: GraphSegment,
