@@ -146,12 +146,14 @@ fun AssignMeasurementDialog(
                     Spacer(modifier = Modifier.height(MeTheme.spacing.md))
 
                     // Baby list
-                    babies.forEach { baby ->
-                        BabyRadioRow(
-                            baby = baby,
-                            selected = selectedBabyId == baby.id,
-                            onClick = { selectedBabyId = baby.id },
-                        )
+                    Column(verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs)) {
+                        babies.forEach { baby ->
+                            BabyRadioRow(
+                                baby = baby,
+                                selected = selectedBabyId == baby.id,
+                                onClick = { selectedBabyId = baby.id },
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
@@ -205,8 +207,10 @@ private fun BabyRadioRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(MeTheme.borderRadius.md))
+            .background(colorScheme.secondaryBackground)
             .clickable { onClick() }
-            .padding(vertical = MeTheme.spacing.sm),
+            .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AppProfileAvatar(text = baby.name, size = 40.dp)
