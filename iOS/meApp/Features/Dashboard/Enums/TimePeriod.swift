@@ -16,6 +16,9 @@ enum TimePeriod: String, CaseIterable, Identifiable {
     var id: String { self.rawValue }
     var displayName: String { self.rawValue }
 
+    /// Capitalized title used in user-facing UI (e.g., the Settings picker).
+    var title: String { self.rawValue.capitalized }
+
     /// Returns the granularity level (lower = more detailed)
     /// week = 1, month = 2, year = 3, total = 4
     private var granularityLevel: Int {

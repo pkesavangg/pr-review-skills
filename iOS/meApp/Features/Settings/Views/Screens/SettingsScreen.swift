@@ -170,6 +170,19 @@ struct SettingsScreen: View {
                 }
             }
         )
+        // Default graph range picker
+        .pickerSheet(
+            isPresented: $settingsStore.showDefaultGraphPeriodPicker,
+            selectedValues: [settingsStore.defaultGraphPeriod],
+            options: [TimePeriod.allCases],
+            displayValue: { $0.title },
+            title: settingsLang.defaultGraphRange,
+            onUpdate: { vals in
+                if let period = vals.first {
+                    settingsStore.updateDefaultGraphPeriod(period)
+                }
+            }
+        )
     }
     
     private func profileHeader() -> some View {
@@ -301,11 +314,17 @@ struct SettingsScreen: View {
                 chevronType: .upDown,
                 onTap: { settingsStore.presentAppearancePicker() }))
             .listRowInsets()
+            ActionListItemView(config: ActionListItemConfig(
+                title: settingsLang.defaultGraphRange,
+                value: settingsStore.defaultGraphPeriodText,
+                chevronType: .upDown,
+                onTap: { settingsStore.presentDefaultGraphPeriodPicker() }))
+            .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
-    
+
     private func supportSection() -> some View {
         Section(header:
                     SectionHeader(title: settingsLang.supportSettings)

@@ -10,7 +10,7 @@ import SwiftUI
 struct WeightTrendView: View {
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
-    @State private var localSelectedPeriod: TimePeriod = .week
+    @State private var localSelectedPeriod: TimePeriod = DefaultGraphPeriodPreference.fallback
 
     var body: some View {
         ZStack {

@@ -11,6 +11,10 @@ public enum KvStorageKeys: String {
     // MARK: - Appearance/Theme Keys
     /// Global appearance mode key (when no account is active)
     case appearanceMode = "appearanceMode"
+
+    // MARK: - Dashboard Keys
+    /// User-selected default tab for the dashboard graph (week/month/year/total)
+    case defaultGraphPeriod = "defaultGraphPeriod"
     
     // MARK: - HealthKit Modal Keys
     /// Base key for "has seen add Apple Health integration modal" flag
@@ -56,6 +60,13 @@ public enum KvStorageKeys: String {
     /// - Returns: The full key for appearance mode storage
     public static func appearanceModeKey(for accountId: String) -> String {
         return "appearanceMode_\(accountId)"
+    }
+
+    /// Creates an account-scoped key for the default graph period preference
+    /// - Parameter accountId: The account identifier
+    /// - Returns: The full key for the per-account default graph period
+    public static func defaultGraphPeriodKey(for accountId: String) -> String {
+        return "\(Self.defaultGraphPeriod.rawValue)_\(accountId)"
     }
     
     /// Creates an account-scoped key for integration data

@@ -118,6 +118,10 @@ class SettingsStore: ObservableObject {
     @Published var showUnitPicker: Bool = false
     /// Controls the presentation of the activity level picker (sheet fallback or centered modal).
     @Published var showActivityPicker: Bool = false
+    /// Controls the presentation of the default graph range picker (sheet fallback or centered modal).
+    @Published var showDefaultGraphPeriodPicker: Bool = false
+    /// Currently selected default graph range for the active account (drives the Settings row trailing detail).
+    @Published var defaultGraphPeriod: TimePeriod = DefaultGraphPeriodPreference.fallback
     
     init() {
         accountService.$activeAccount
@@ -126,6 +130,7 @@ class SettingsStore: ObservableObject {
                 self?.populateEditFormIfNeeded()
                 self?.populateWeightlessFormIfNeeded()
                 self?.syncHeightPickers()
+                self?.loadDefaultGraphPeriod()
             }
             .store(in: &cancellables)
         
@@ -407,6 +412,9 @@ class SettingsStore: ObservableObject {
             return commonLang.system
         }
     }
+
+    /// Trailing detail text for the Default Graph Range row.
+    var defaultGraphPeriodText: String { defaultGraphPeriod.title }
     
     var isGoalFormValid: Bool {
         goalForm.isValidForSave()
@@ -1692,6 +1700,39 @@ class SettingsStore: ObservableObject {
         } else {
             showActivityPicker = true
         }
+    }
+
+    /// Presents the default graph range picker (modal on iPad < iOS18, sheet otherwise).
+    func presentDefaultGraphPeriodPicker() {
+        if DeviceUtils.useModalPicker {
+            let picker = PickerView(
+                selectedValues: [defaultGraphPeriod],
+                options: [TimePeriod.allCases],
+                displayValue: { $0.title },
+                title: SettingsStrings.defaultGraphRange,
+                showCancel: false,
+                updateValues: { vals in
+                    self.notificationService.dismissModal()
+                    if let period = vals.first { self.updateDefaultGraphPeriod(period) }
+                }
+            )
+            notificationService.showModal(ModalData(presentedView: AnyView(picker)))
+        } else {
+            showDefaultGraphPeriodPicker = true
+        }
+    }
+
+    /// Persists the new default graph range for the active account.
+    /// The change takes effect on the next app launch — the live dashboard tab is
+    /// intentionally not retargeted here.
+    func updateDefaultGraphPeriod(_ period: TimePeriod) {
+        defaultGraphPeriod = period
+        DefaultGraphPeriodPreference.set(period, for: activeAccount?.accountId)
+    }
+
+    /// Reloads the default graph range row to reflect the active account's stored value.
+    private func loadDefaultGraphPeriod() {
+        defaultGraphPeriod = DefaultGraphPeriodPreference.current(for: activeAccount?.accountId)
     }
     /// Presents the height picker (modal on iPad < iOS18, sheet otherwise).
     func presentHeightPicker() {
