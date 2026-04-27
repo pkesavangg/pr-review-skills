@@ -19,9 +19,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.features.common.components.AppStyledCard
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
@@ -33,6 +35,8 @@ import com.dmdbrands.gurus.weight.features.signup.strings.PickDeviceStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
+
+private const val DISABLED_CARD_ALPHA = 0.2f
 
 /**
  * Represents a selectable device option for the signup flow.
@@ -47,11 +51,16 @@ data class DeviceOption(
 /**
  * Step for selecting which device the user will use with meApp.
  * Shows Baby Scale, Blood Pressure Monitor, and Weight Scale options.
+ *
+ * Devices already registered in this signup session (passed via
+ * [registeredDevices]) are rendered disabled with an "already added"
+ * subtitle and a check indicator — see MA-3825.
  */
 @Composable
 fun PickDeviceStep(
     deviceControl: FormControl<String>,
     modifier: Modifier = Modifier,
+    registeredDevices: Set<ProductType> = emptySet(),
     onDeviceSelected: (String) -> Unit = {},
 ) {
     val devices = listOf(
@@ -85,10 +94,13 @@ fun PickDeviceStep(
             verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
         ) {
             devices.forEach { device ->
+                val isRegistered =
+                    ProductType.fromId(device.id)?.let { it in registeredDevices } == true
                 DeviceCard(
                     device = device,
                     isSelected = deviceControl.value == device.id,
-                    onClick = { onDeviceSelected(device.id) },
+                    isRegistered = isRegistered,
+                    onClick = { if (!isRegistered) onDeviceSelected(device.id) },
                 )
             }
         }
@@ -99,14 +111,16 @@ fun PickDeviceStep(
 private fun DeviceCard(
     device: DeviceOption,
     isSelected: Boolean,
+    isRegistered: Boolean,
     onClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .alpha(if (isRegistered) DISABLED_CARD_ALPHA else 1f)
             .clip(RoundedCornerShape(MeTheme.borderRadius.sm))
             .background(MeTheme.colorScheme.primaryBackground)
-            .clickable(onClick = onClick)
+            .clickable(enabled = !isRegistered, onClick = onClick)
             .padding(horizontal = MeTheme.spacing.md, vertical = MeTheme.spacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -128,7 +142,7 @@ private fun DeviceCard(
             )
             Spacer(modifier = Modifier.height(MeTheme.spacing.x3s))
             Text(
-                text = device.subtitle,
+                text = if (isRegistered) PickDeviceStrings.alreadyAdded else device.subtitle,
                 style = MeTheme.typography.body3,
                 color = MeTheme.colorScheme.textSubheading,
             )
@@ -137,9 +151,12 @@ private fun DeviceCard(
         RadioButton(
             selected = isSelected,
             onClick = onClick,
+            enabled = !isRegistered,
             colors = RadioButtonDefaults.colors(
                 selectedColor = MeTheme.colorScheme.primaryAction,
                 unselectedColor = MeTheme.colorScheme.utility,
+                disabledSelectedColor = MeTheme.colorScheme.utility,
+                disabledUnselectedColor = MeTheme.colorScheme.utility,
             ),
         )
     }
@@ -161,6 +178,17 @@ fun PickDeviceStepEmptyPreview() {
     MeAppTheme {
         PickDeviceStep(
             deviceControl = FormControl.create("", listOf(FormValidations.required())),
+        )
+    }
+}
+
+@PreviewTheme
+@Composable
+fun PickDeviceStepWithRegisteredPreview() {
+    MeAppTheme {
+        PickDeviceStep(
+            deviceControl = FormControl.create("", listOf(FormValidations.required())),
+            registeredDevices = setOf(ProductType.MY_WEIGHT, ProductType.BABY),
         )
     }
 }
