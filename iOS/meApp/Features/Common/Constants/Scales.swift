@@ -9,6 +9,7 @@
 /// Scales data for the scale list in the help screen
 let SCALES: [ScaleItemInfo] = [
     // AppSync series
+    ScaleItemInfo(productName: "AppSync Body Fat Scale", sku: "0340", imgPath: AppAssets.scale0340, setupType: .appSync, bodyComp: true),
     ScaleItemInfo(productName: "AppSync Body Fat Scale", sku: "0341", imgPath: AppAssets.scale0341, setupType: .appSync, bodyComp: true),
     ScaleItemInfo(productName: "AppSync Bathroom Scale", sku: "0342", imgPath: AppAssets.scale0342, setupType: .appSync, bodyComp: false),
     ScaleItemInfo(productName: "AppSync Body Fat Scale", sku: "0343", imgPath: AppAssets.scale0343, setupType: .appSync, bodyComp: true),

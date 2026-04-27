@@ -846,6 +846,7 @@ struct AppAssets {
 
     // MARK: - Scale images
     // MARK: - AppSync series
+    static let scale0340 = "0340"
     static let scale0341 = "0341"
     static let scale0342 = "0342"
     static let scale0343 = "0343"

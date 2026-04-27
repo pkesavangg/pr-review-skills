@@ -167,17 +167,14 @@ final class ScaleMigrationService {
         return device
     }
     
-    /// Determines body composition support based on scale type and SKU
+    /// Determines body composition support based on scale type and SKU.
+    /// Resolves against the canonical `SCALES` catalog so newly added SKUs migrate
+    /// correctly without having to update a hardcoded list here.
     private func determineBodyCompSupport(for ionicScale: IonicScaleData) -> Bool {
-        // R4 scales and certain SKUs support body composition
         if ionicScale.type == "btWifiR4" { return true }
-        
-        // Check for specific SKUs that support body composition
         if let sku = ionicScale.sku {
-            let bodyCompSKUs = ["0412", "0343", "0344"] // Add more as needed
-            return bodyCompSKUs.contains(sku)
+            return ScaleInfoUtils.shared.supportsBodyComposition(sku: sku)
         }
-        
         return false
     }
     
