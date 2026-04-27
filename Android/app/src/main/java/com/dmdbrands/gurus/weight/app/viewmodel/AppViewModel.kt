@@ -42,9 +42,12 @@ import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0412
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
 import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
+import com.dmdbrands.gurus.weight.features.common.model.ReadingToast
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
 import com.dmdbrands.library.ggbluetooth.enums.GGAppType
@@ -838,20 +841,75 @@ constructor(
         }
       }
 
-      try {
-        entryService.addEntry(entry)
-        if (!isSetupInProgress) {
-          dialogQueueService.showToast(
-            Toast.Simple(
-              message = "entry saved successfully",
-            ),
-          )
+      if (isSetupInProgress) {
+        // During setup, save immediately without toast
+        try {
+          entryService.addEntry(entry)
+          checkAccountFlags("entry")
+        } catch (e: Exception) {
+          AppLog.e(TAG, "Error during saving entry", e)
         }
-        // Check for account flags after entry is saved
-        checkAccountFlags("entry")
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error during saving entry", e)
+      } else {
+        // Show reading toast — user decides to save or discard
+        val readingType = device?.sku?.let { sku ->
+          when {
+            DeviceHelper.isBabyScale(sku) -> ProductType.BABY
+            DeviceHelper.isBpmDevice(sku) -> ProductType.BLOOD_PRESSURE
+            else -> ProductType.MY_WEIGHT
+          }
+        } ?: ProductType.MY_WEIGHT
+
+        val firstEntry = entry.firstOrNull() ?: return@launch
+        val reading = formatReadingForDisplay(firstEntry, readingType)
+
+        dialogQueueService.showToast(
+          Toast.Custom(
+            ReadingToast(
+              reading = reading,
+              type = readingType,
+              timestamp = "Just now",
+              primaryAction = {
+                if (readingType == ProductType.BABY) {
+                  // TODO: Open AssignMeasurementDialog with baby list
+                  // For now, needs BabyProfileService integration to get babies
+                  AppLog.i(TAG, "Baby assign tapped — modal to be wired")
+                } else {
+                  viewModelScope.launch {
+                    try {
+                      entryService.addEntry(entry)
+                      checkAccountFlags("entry")
+                      AppLog.i(TAG, "Entry saved via reading toast")
+                    } catch (e: Exception) {
+                      AppLog.e(TAG, "Error saving entry from toast", e)
+                    }
+                  }
+                }
+              },
+              secondaryAction = {
+                AppLog.i(TAG, "Entry discarded via reading toast")
+              },
+            ),
+          ),
+        )
       }
+    }
+  }
+
+  private fun formatReadingForDisplay(entry: ScaleEntry, type: ProductType): String {
+    val weight = entry.scale.scaleEntry.weight
+    val unit = entry.entry.unit
+    return when (type) {
+      ProductType.BABY -> {
+        val totalOz = weight / 10.0 * 0.035274 * 16 // decigrams → oz approximation
+        val lbs = (totalOz / 16).toInt()
+        val oz = totalOz % 16
+        "$lbs ${unit.label} ${formatWeightValue(oz)} oz"
+      }
+      ProductType.BLOOD_PRESSURE -> {
+        // Weight field stores systolic for BPM protocol entries
+        "${formatWeightValue(weight)} ${unit.label}"
+      }
+      ProductType.MY_WEIGHT -> "${formatWeightValue(weight)} ${unit.label}"
     }
   }
 
