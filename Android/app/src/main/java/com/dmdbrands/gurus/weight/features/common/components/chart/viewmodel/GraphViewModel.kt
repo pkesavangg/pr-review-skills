@@ -206,8 +206,7 @@ class GraphViewModel @AssistedInject constructor(
     handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = true))
     val startx = GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis)
     val endx = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)
-    val isSingleWindow = GraphUtil.isSingleWindow(segment, startx, endx)
-    super.handleIntent(GraphIntent.UpdateIsSingleWindow(isSingleWindow))
+    super.handleIntent(GraphIntent.UpdateIsSingleWindow(true))
     if (startx != null && endx != null) {
       super.handleIntent(GraphIntent.SetScrollRange(startx, endx))
     }
@@ -272,8 +271,7 @@ class GraphViewModel @AssistedInject constructor(
     val ySeries = graphLines.points.map { it.y }
     val initialTimeStamp = graphLines.points.minOfOrNull { it.x.value.toLong() }
     val endTimeStamp = graphLines.points.maxOfOrNull { it.x.value.toLong() }
-    val isSingleWindow = GraphUtil.isSingleWindow(segment, initialTimeStamp, endTimeStamp)
-    super.handleIntent(GraphIntent.UpdateIsSingleWindow(isSingleWindow))
+
     val calendar = Calendar.getInstance()
 
     val (startX, endX) = if (segment == GraphSegment.TOTAL) {
@@ -294,6 +292,9 @@ class GraphViewModel @AssistedInject constructor(
 
       start to end
     }
+
+    val isSingleWindow = GraphUtil.isSingleWindow(segment, startX, endX)
+    super.handleIntent(GraphIntent.UpdateIsSingleWindow(isSingleWindow))
 
 
     handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = false))
@@ -430,13 +431,21 @@ class GraphViewModel @AssistedInject constructor(
       goalWeight = goalWeight,
       isWeightLessMode = isWeightlessMode,
       targetTickCount = 4,
-    ) else generateNiceScale(
-      minValue = goalWeight.div(10) - 10,
-      maxValue = goalWeight.div(10) + 10,
-      goalWeight = goalWeight,
-      isWeightLessMode = isWeightlessMode,
-      targetTickCount = 3,
-    )
+    ) else {
+      // No data in visible range — use previous Y axis to avoid blank axis
+      // when scrolling beyond data (especially for accounts without a goal).
+      val prevYAxis = _state.value.primaryYAxis
+      if (prevYAxis?.minY != null && prevYAxis.maxY != null) {
+        return AxisMeta(axisRange = prevYAxis, axisStep = _state.value.primaryYStep)
+      }
+      generateNiceScale(
+        minValue = goalWeight.div(10) - 10,
+        maxValue = goalWeight.div(10) + 10,
+        goalWeight = goalWeight,
+        isWeightLessMode = isWeightlessMode,
+        targetTickCount = 3,
+      )
+    }
 
     // Validate graphMeta values are finite
     if (!graphMeta.min.isFinite() || !graphMeta.max.isFinite()) {
