@@ -10,6 +10,7 @@ import SwiftUI
 struct DisplayMetricsScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
+    @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
     @StateObject private var viewModel: DisplayMetricsViewModel
     let lang = ScaleModesStrings.self
     
@@ -41,7 +42,13 @@ struct DisplayMetricsScreen: View {
                         }
                     )
                 },
-                onLeadingTap: { router.navigateBack() },
+                onLeadingTap: {
+                    Task {
+                        if await viewModel.allowExit() {
+                            router.navigateBack()
+                        }
+                    }
+                },
                 onTrailingTap: {
                     // TODO: ADD Action
                 },
@@ -107,6 +114,14 @@ struct DisplayMetricsScreen: View {
         .navigationBarBackButtonHidden(true)
         .task {
             await viewModel.loadDisplayMetricsData()
+        }
+        .onAppear {
+            registerDeactivation {
+                await viewModel.allowExit()
+            }
+        }
+        .onDisappear {
+            registerDeactivation { true }
         }
     }
     
