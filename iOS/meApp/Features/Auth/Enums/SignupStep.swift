@@ -15,6 +15,7 @@ enum SignupStep: Int, CaseIterable {
     case password
     case addBaby
     case babyList
+        case profileReady
 }
 
 /// The device type the user selects during signup.
@@ -46,6 +47,14 @@ enum SignupDeviceType: String, CaseIterable, Identifiable {
         case .babyScale: return AppAssets.babyAppIcon
         case .bpm: return AppAssets.bpmIcon
         case .weightScale: return AppAssets.weightScaleIcon
+        }
+    }
+
+    var profileReadyTitle: String {
+        switch self {
+        case .babyScale: return SignupStrings.ProfileReadyStep.babyScaleTitle
+        case .bpm: return SignupStrings.ProfileReadyStep.bpmTitle
+        case .weightScale: return SignupStrings.ProfileReadyStep.weightScaleTitle
         }
     }
 

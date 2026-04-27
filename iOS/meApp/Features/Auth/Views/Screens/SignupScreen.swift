@@ -54,6 +54,8 @@ struct SignupScreen: View {
                 AnyView(EmailStepView(signupStore: signupStore))
             case .password:
                 AnyView(PasswordStepView(signupStore: signupStore))
+            case .profileReady:
+                AnyView(ProfileReadyStepView(title: signupStore.profileReadyTitle))
             }
         }
     }
@@ -93,8 +95,6 @@ struct SignupScreen: View {
             .padding(.top, .spacing2XL)
             // Footer Buttons
             footerButtons
-                .padding(.vertical, .spacingSM)
-                .padding(.trailing, .spacingSM)
             
         }
         .onAppear {
@@ -116,44 +116,74 @@ struct SignupScreen: View {
     }
     
     private var footerButtons: some View {
-        HStack {
-            ButtonView(text: commonLang.back,
-                       type: .textPrimary,
-                       size: .small,
-                       isDisabled: signupStore.currentStep == SignupStep.name,
-                       padding: true) {
-                withAnimation {
-                    hideKeyboard()
-                    signupStore.moveToPreviousStep()
-                }
-            }
-            
-            Spacer()
-            
-            ButtonView(text: signupStore.currentStep == SignupStep.password ? commonLang.complete : commonLang.next,
-                       type: .filledPrimary,
-                       size: .small,
-                       isDisabled: !signupStore.isNextEnabled,
-                       customHorizontalPadding: signupStore.currentStep == SignupStep.password ? .spacingXS : .spacingXS / 2,
-                       customVerticalPadding: .spacingXS / 4) {
-                withAnimation {
-                    hideKeyboard()
-                    signupStore.moveToNextStep()
-                }
-            }
-        }
-        .overlay {
-            HStack {
-                Spacer()
-                if signupStore.currentStep == .goal || signupStore.currentStep == .addBaby {
-                    ButtonView(text: commonLang.skip, type: .textTertiary, size: .small, isDisabled: false) {
+        Group {
+            if signupStore.currentStep == .profileReady {
+                VStack(spacing: .spacingXS) {
+                    ButtonView(
+                        text: SignupStrings.ProfileReadyStep.finishButton,
+                        type: .filledPrimary,
+                        size: .large,
+                        isDisabled: false
+                    ) {
+                        signupStore.finishSignup()
+                    }
+                    .padding(.horizontal, .spacingSM)
+
+                    ButtonView(
+                        text: SignupStrings.ProfileReadyStep.connectAnotherDevice,
+                        type: .textPrimary,
+                        size: .small,
+                        isDisabled: false
+                    ) {
                         withAnimation {
-                            hideKeyboard()
-                            signupStore.handleSkip()
+                            signupStore.connectAnotherDevice()
                         }
                     }
                 }
-                Spacer()
+                .padding(.vertical, .spacingSM)
+            } else {
+                HStack {
+                    ButtonView(text: commonLang.back,
+                               type: .textPrimary,
+                               size: .small,
+                               isDisabled: signupStore.currentStep == SignupStep.name,
+                               padding: true) {
+                        withAnimation {
+                            hideKeyboard()
+                            signupStore.moveToPreviousStep()
+                        }
+                    }
+
+                    Spacer()
+
+                    ButtonView(text: signupStore.currentStep == SignupStep.password ? commonLang.complete : commonLang.next,
+                               type: .filledPrimary,
+                               size: .small,
+                               isDisabled: !signupStore.isNextEnabled,
+                               customHorizontalPadding: signupStore.currentStep == SignupStep.password ? .spacingXS : .spacingXS / 2,
+                               customVerticalPadding: .spacingXS / 4) {
+                        withAnimation {
+                            hideKeyboard()
+                            signupStore.moveToNextStep()
+                        }
+                    }
+                }
+                .overlay {
+                    HStack {
+                        Spacer()
+                        if signupStore.currentStep == .goal || signupStore.currentStep == .addBaby {
+                            ButtonView(text: commonLang.skip, type: .textTertiary, size: .small, isDisabled: false) {
+                                withAnimation {
+                                    hideKeyboard()
+                                    signupStore.handleSkip()
+                                }
+                            }
+                        }
+                        Spacer()
+                    }
+                }
+                .padding(.vertical, .spacingSM)
+                .padding(.trailing, .spacingSM)
             }
         }
     }

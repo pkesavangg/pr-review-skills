@@ -40,6 +40,8 @@ final class SignupStore: ObservableObject {
 
     // Device type selection
     @Published var selectedDeviceType: SignupDeviceType?
+    // Devices already added during this signup session — shown as disabled on the pick screen
+    @Published var disabledDeviceTypes: Set<SignupDeviceType> = []
 
     // Baby management
     @Published var babies: [SignupBaby] = []
@@ -99,14 +101,18 @@ final class SignupStore: ObservableObject {
             // Weight scale (default): full flow
             result += [.sex, .height, .goal]
         }
-        result += [.email, .password]
+        result += [.email, .password, .profileReady]
         return result
     }
     
     var progressValue: Double {
         Double(currentStepIndex + 1) / Double(steps.count)
     }
-    
+
+    var profileReadyTitle: String {
+        selectedDeviceType?.profileReadyTitle ?? SignupStrings.ProfileReadyStep.weightScaleTitle
+    }
+
     // MARK: - Height Management
     
     func updateHeightPickerValues(from storedHeight: Int) {
@@ -181,17 +187,28 @@ final class SignupStore: ObservableObject {
     }
 
     func moveToNextStep() {
-        if currentStep == .password {
-            Task {
-                await createUser()
-            }
-        }
+        // createUser is deferred for all device types — called only when FINISH is tapped
         // When leaving addBaby, save the baby and move to babyList
         if currentStep == .addBaby {
             saveBabyFromForm()
         }
         guard currentStepIndex < steps.count - 1 else { return }
         currentStepIndex += 1
+    }
+
+    func finishSignup() {
+        Task {
+            await createUser()
+        }
+    }
+
+    func connectAnotherDevice() {
+        if let current = selectedDeviceType {
+            disabledDeviceTypes.insert(current)
+        }
+        selectedDeviceType = nil
+        guard let pickDeviceIndex = steps.firstIndex(of: .pickDevice) else { return }
+        currentStepIndex = pickDeviceIndex
     }
 
     func moveToPreviousStep() {
@@ -296,6 +313,8 @@ final class SignupStore: ObservableObject {
             let fieldsValid = signupForm.password.isValid && signupForm.confirmPassword.isValid && signupForm.zipcode.isValid
             let passwordsMatch = !signupForm.formErrors[.passwordMatch]
             isNextEnabled = fieldsValid && passwordsMatch
+        case .profileReady:
+            isNextEnabled = true
         }
     }
     
@@ -734,6 +753,7 @@ final class SignupStore: ObservableObject {
 
         // Reset navigation/UI state.
         selectedDeviceType = nil
+        disabledDeviceTypes = []
         babies.removeAll()
         isEditingBabyIndex = nil
         showBabySexPicker = false
