@@ -4,12 +4,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -17,21 +14,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
+import com.dmdbrands.gurus.weight.features.common.helper.MeasurementType
+import com.dmdbrands.gurus.weight.features.common.helper.rememberMeasurementText
 import com.dmdbrands.gurus.weight.features.common.model.ReadingToast
 import com.dmdbrands.gurus.weight.features.common.strings.ReadingToastStrings
-import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.SnapshotColors
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 
-private fun valueColor(type: ProductType): Color = when (type) {
-    ProductType.MY_WEIGHT -> SnapshotColors.Weight
-    ProductType.BLOOD_PRESSURE -> SnapshotColors.BloodPressure
-    ProductType.BABY -> SnapshotColors.Baby
+private fun ProductType.toMeasurementType(): MeasurementType = when (this) {
+    ProductType.MY_WEIGHT -> MeasurementType.WEIGHT
+    ProductType.BLOOD_PRESSURE -> MeasurementType.BLOOD_PRESSURE
+    ProductType.BABY -> MeasurementType.BABY
 }
 
 @Composable
@@ -70,83 +67,25 @@ fun ReadingArrivalCard(
     }
 }
 
-/** Renders value + unit pairs with accent color for values and muted color for units. */
-@Composable
-private fun ValueDisplay(readingToast: ReadingToast) {
-    val accent = valueColor(readingToast.type)
-    val unitOffset = Modifier.offset(y = (-4).dp)
-
-    Row(verticalAlignment = Alignment.Bottom) {
-        // Primary value + unit
-        Text(
-            text = readingToast.value,
-            style = MeTheme.typography.heading4,
-            color = accent,
-        )
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(
-            text = readingToast.unit,
-            style = MeTheme.typography.subHeading2,
-            color = colorScheme.textSubheading,
-            modifier = unitOffset,
-        )
-
-        // Secondary value + unit (baby: oz portion)
-        if (readingToast.secondaryValue != null) {
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = readingToast.secondaryValue,
-                style = MeTheme.typography.heading4,
-                color = accent,
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = readingToast.secondaryUnit ?: "",
-                style = MeTheme.typography.subHeading2,
-                color = colorScheme.textSubheading,
-                modifier = unitOffset,
-            )
-        }
-
-        // Pulse (BPM only)
-        if (readingToast.pulse != null) {
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = ReadingToastStrings.Pulse,
-                style = MeTheme.typography.subHeading2,
-                color = colorScheme.textSubheading,
-                modifier = unitOffset,
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = "${readingToast.pulse}",
-                style = MeTheme.typography.heading4,
-                color = accent,
-            )
-        }
-
-        // Timestamp
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = "· ${readingToast.timestamp}",
-            style = MeTheme.typography.body2,
-            color = colorScheme.textSubheading,
-            modifier = unitOffset,
-        )
-    }
-}
-
 @Composable
 private fun UnassignedContent(
     readingToast: ReadingToast,
     clearToast: () -> Unit,
 ) {
+    val measurementType = readingToast.type.toMeasurementType()
+
     Text(
         text = ReadingToastStrings.title(readingToast.type),
         style = MeTheme.typography.heading5,
         color = colorScheme.textBody,
     )
-    ValueDisplay(readingToast)
+    Text(
+        text = rememberMeasurementText(
+            text = "${readingToast.reading} · ${readingToast.timestamp}",
+            type = measurementType,
+            valueStyle = MeTheme.typography.heading4,
+        ),
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -161,7 +100,7 @@ private fun UnassignedContent(
             color = colorScheme.textSubheading,
             modifier = Modifier
                 .clickable {
-                    readingToast.onDismiss()
+                    readingToast.secondaryAction()
                     clearToast()
                 }
                 .padding(vertical = 6.dp),
@@ -172,7 +111,7 @@ private fun UnassignedContent(
                 containerColor = colorScheme.textBody,
             ),
             onClick = {
-                readingToast.onAssign()
+                readingToast.primaryAction()
                 clearToast()
             },
         ) {
@@ -192,9 +131,17 @@ private fun AssignedContent(
     readingToast: ReadingToast,
     clearToast: () -> Unit,
 ) {
-    ValueDisplay(readingToast)
+    val measurementType = readingToast.type.toMeasurementType()
+
     Text(
-        text = ReadingToastStrings.assignedTo(readingToast.assignedName ?: ""),
+        text = rememberMeasurementText(
+            text = readingToast.reading,
+            type = measurementType,
+            valueStyle = MeTheme.typography.heading4,
+        ),
+    )
+    Text(
+        text = ReadingToastStrings.assignedTo(readingToast.assignedTo ?: ""),
         style = MeTheme.typography.body2,
         color = colorScheme.textBody,
     )
@@ -214,7 +161,7 @@ private fun AssignedContent(
             fontWeight = FontWeight.Bold,
             color = colorScheme.textBody,
             modifier = Modifier.clickable {
-                readingToast.onReassign()
+                readingToast.primaryAction()
             },
         )
     }
@@ -226,10 +173,9 @@ private fun ReadingArrivalCardBabyPreview() {
     MeAppTheme {
         ReadingArrivalCard(
             readingToast = ReadingToast(
-                value = "14", unit = "lbs",
-                secondaryValue = "6", secondaryUnit = "oz",
-                timestamp = "Just now",
+                reading = "14 lbs 6 oz",
                 type = ProductType.BABY,
+                timestamp = "Just now",
             ),
         )
     }
@@ -241,12 +187,10 @@ private fun ReadingArrivalCardAssignedPreview() {
     MeAppTheme {
         ReadingArrivalCard(
             readingToast = ReadingToast(
-                value = "14", unit = "lbs",
-                secondaryValue = "6", secondaryUnit = "oz",
-                timestamp = "Just now",
+                reading = "14 lbs 6 oz",
                 type = ProductType.BABY,
-                assignedTo = "baby-123",
-                assignedName = "Emma",
+                timestamp = "Just now",
+                assignedTo = "Emma",
             ),
         )
     }
@@ -258,9 +202,9 @@ private fun ReadingArrivalCardWeightPreview() {
     MeAppTheme {
         ReadingArrivalCard(
             readingToast = ReadingToast(
-                value = "149.2", unit = "lbs",
-                timestamp = "Just now",
+                reading = "149.2 lbs",
                 type = ProductType.MY_WEIGHT,
+                timestamp = "Just now",
             ),
         )
     }
@@ -272,10 +216,9 @@ private fun ReadingArrivalCardBpmPreview() {
     MeAppTheme {
         ReadingArrivalCard(
             readingToast = ReadingToast(
-                value = "120/80", unit = "mmhg",
-                pulse = 65,
-                timestamp = "Just now",
+                reading = "120/80 mmhg pulse 65",
                 type = ProductType.BLOOD_PRESSURE,
+                timestamp = "Just now",
             ),
         )
     }
