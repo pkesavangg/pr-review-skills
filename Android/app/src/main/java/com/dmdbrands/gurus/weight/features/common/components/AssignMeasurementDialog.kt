@@ -1,5 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -27,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -44,16 +48,6 @@ import java.time.LocalDate
 import java.time.Period
 import java.time.format.DateTimeFormatter
 
-/**
- * Center dialog for assigning a baby scale reading to a baby profile.
- *
- * @param reading The formatted reading string, e.g. "14 lbs 6 oz".
- * @param timestamp The relative timestamp, e.g. "Just now".
- * @param babies List of baby profiles to choose from.
- * @param preSelectedBabyId Optional pre-selected baby ID (for reassign flow).
- * @param onAssign Called with the selected baby ID when ASSIGN is tapped.
- * @param onDismiss Called when the dialog is dismissed (X, DON'T ASSIGN, or outside tap).
- */
 @Composable
 fun AssignMeasurementDialog(
     reading: String,
@@ -71,8 +65,8 @@ fun AssignMeasurementDialog(
     ) {
         Card(
             modifier = Modifier
-                .width(316.dp)
-                .padding(horizontal = MeTheme.spacing.md),
+                .padding(horizontal = MeTheme.spacing.lg)
+                .fillMaxWidth(),
             shape = RoundedCornerShape(28.dp),
             colors = CardDefaults.cardColors(containerColor = colorScheme.primaryBackground),
         ) {
@@ -95,21 +89,34 @@ fun AssignMeasurementDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(MeTheme.spacing.md),
+                        .padding(horizontal = MeTheme.spacing.lg, vertical = MeTheme.spacing.md),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    // Baby avatar icon
-                    AppProfileAvatar(
-                        text = "",
-                        size = 56.dp,
-                    )
-
                     Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+
+                    // Person icon in circle (matching Figma)
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .border(2.dp, colorScheme.textSubheading, CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = colorScheme.textSubheading,
+                            modifier = Modifier.size(32.dp),
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(MeTheme.spacing.md))
 
                     // Title
                     Text(
                         text = ReadingToastStrings.AssignModal.Title,
                         style = MeTheme.typography.heading4,
+                        fontWeight = FontWeight.Bold,
                         color = colorScheme.textHeading,
                         textAlign = TextAlign.Center,
                     )
@@ -126,7 +133,7 @@ fun AssignMeasurementDialog(
 
                     Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
 
-                    // Reading value with measurement text styling
+                    // Reading value
                     Text(
                         text = rememberMeasurementText(
                             text = "$reading · $timestamp",
@@ -138,7 +145,7 @@ fun AssignMeasurementDialog(
 
                     Spacer(modifier = Modifier.height(MeTheme.spacing.md))
 
-                    // Baby list with radio selection
+                    // Baby list
                     babies.forEach { baby ->
                         BabyRadioRow(
                             baby = baby,
@@ -147,16 +154,14 @@ fun AssignMeasurementDialog(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(MeTheme.spacing.md))
+                    Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
 
-                    // Primary action — ASSIGN
+                    // ASSIGN button
                     Card(
                         shape = RoundedCornerShape(24.dp),
                         colors = CardDefaults.cardColors(containerColor = colorScheme.textBody),
-                        onClick = {
-                            selectedBabyId?.let { onAssign(it) }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { selectedBabyId?.let { onAssign(it) } },
+                        modifier = Modifier.fillMaxWidth(0.6f),
                     ) {
                         Text(
                             text = ReadingToastStrings.AssignModal.Assign,
@@ -172,7 +177,7 @@ fun AssignMeasurementDialog(
 
                     Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
 
-                    // Secondary action — DON'T ASSIGN
+                    // DON'T ASSIGN
                     Text(
                         text = ReadingToastStrings.AssignModal.DontAssign,
                         style = MeTheme.typography.button2,
@@ -183,6 +188,8 @@ fun AssignMeasurementDialog(
                             .clickable { onDismiss() }
                             .padding(vertical = 8.dp),
                     )
+
+                    Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
                 }
             }
         }
@@ -202,15 +209,13 @@ private fun BabyRadioRow(
             .padding(vertical = MeTheme.spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AppProfileAvatar(
-            text = baby.name,
-            size = 40.dp,
-        )
+        AppProfileAvatar(text = baby.name, size = 40.dp)
         Spacer(modifier = Modifier.width(MeTheme.spacing.sm))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = baby.name,
                 style = MeTheme.typography.body1,
+                fontWeight = FontWeight.SemiBold,
                 color = colorScheme.textBody,
             )
             val ageText = baby.birthdate?.let { calculateAge(it) }
@@ -225,6 +230,7 @@ private fun BabyRadioRow(
         AppRadioButton(
             selected = selected,
             onClick = onClick,
+            modifier = Modifier.width(48.dp),
         )
     }
 }
@@ -244,7 +250,7 @@ private fun calculateAge(birthdate: String): String? {
 private fun AssignMeasurementDialogPreview() {
     MeAppTheme {
         AssignMeasurementDialog(
-            reading = "14 lbs 6 oz",
+            reading = "179.2 lbs",
             timestamp = "Just now",
             babies = listOf(
                 BabyProfile(id = "1", accountId = "acc", name = "Emma", birthdate = "2026-01-15"),

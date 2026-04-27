@@ -58,17 +58,18 @@ fun ReadingArrivalCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            if (readingToast.assignedTo != null) {
-                AssignedContent(readingToast, clearToast)
+            if (readingToast.type == ProductType.BABY && readingToast.assignedTo != null) {
+                BabyAssignedContent(readingToast, clearToast)
             } else {
-                UnassignedContent(readingToast, clearToast)
+                ReadingContent(readingToast, clearToast)
             }
         }
     }
 }
 
+/** Main card content: title, reading value, primary/secondary action buttons. */
 @Composable
-private fun UnassignedContent(
+private fun ReadingContent(
     readingToast: ReadingToast,
     clearToast: () -> Unit,
 ) {
@@ -126,8 +127,9 @@ private fun UnassignedContent(
     }
 }
 
+/** Baby-only post-assignment state: value, "Reading assigned to X", Reassign link. */
 @Composable
-private fun AssignedContent(
+private fun BabyAssignedContent(
     readingToast: ReadingToast,
     clearToast: () -> Unit,
 ) {

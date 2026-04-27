@@ -42,11 +42,14 @@ import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0412
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
 import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
+import com.dmdbrands.gurus.weight.features.common.components.DialogType
+import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.ReadingToast
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
@@ -870,9 +873,7 @@ constructor(
               timestamp = "Just now",
               primaryAction = {
                 if (readingType == ProductType.BABY) {
-                  // TODO: Open AssignMeasurementDialog with baby list
-                  // For now, needs BabyProfileService integration to get babies
-                  AppLog.i(TAG, "Baby assign tapped — modal to be wired")
+                  showAssignMeasurementDialog(reading, entry)
                 } else {
                   viewModelScope.launch {
                     try {
@@ -893,6 +894,37 @@ constructor(
         )
       }
     }
+  }
+
+  private fun showAssignMeasurementDialog(reading: String, entry: List<ScaleEntry>) {
+    val babies = productSelectionManager.availableProducts.value
+      .filterIsInstance<ProductSelection.Baby>()
+      .map { it.profile }
+    dialogQueueService.showDialog(
+      DialogModel.Custom(
+        contentKey = DialogType.AssignMeasurement,
+        params = mapOf(
+          "babies" to babies,
+          "reading" to reading,
+          "timestamp" to "Just now",
+        ),
+        onConfirm = { result ->
+          val babyId = result as? String ?: return@Custom
+          viewModelScope.launch {
+            try {
+              // TODO: Create BabyEntry with babyId and save
+              entryService.addEntry(entry)
+              checkAccountFlags("entry")
+              AppLog.i(TAG, "Baby entry assigned to $babyId")
+            } catch (e: Exception) {
+              AppLog.e(TAG, "Error saving baby entry", e)
+            }
+          }
+        },
+        dismissOnBackPress = true,
+        dismissOnClickOutside = true,
+      ),
+    )
   }
 
   private fun formatReadingForDisplay(entry: ScaleEntry, type: ProductType): String {
