@@ -240,12 +240,6 @@ fun GraphView(
         val relativeMin = GraphUtil.getRelativeStart(segment, min)
         val relativeMax = GraphUtil.getRelativeEnd(segment, max)
         val clipRange = GraphUtil.clipRangeForGraph(segment, relativeMin, relativeMax)
-        Log.d(
-          "GraphView",
-          "start : " + DateTimeConverter.timestampToIso(min) + " end : " + DateTimeConverter.timestampToIso(
-            max,
-          ),
-        )
         onScrollUpdate(clipRange.startMillis, clipRange.endMillis)
         if (!state.isEmptyGraph)
           viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(relativeMin > state.getEndTimestamp()))
