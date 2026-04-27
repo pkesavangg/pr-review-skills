@@ -863,7 +863,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         // entries locally. Calling handleEntryAdded here would re-route the
         // overall latest entry through integrationService.syncNewEntry on every
         // sync — pushing previously-unsynced historical entries into Apple Health
-        // after operations like deletes (MA-3840 regression).
+        // after operations like deletes.
         if hadNewCreates {
             do {
                 if let entry = try await getLatestEntry() {
