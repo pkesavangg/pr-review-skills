@@ -56,6 +56,8 @@ enum BtWifiStoreTestFixtures {
         goalAlertService: MockGoalAlertService? = nil,
         networkMonitor: MockNetworkMonitor? = nil,
         bluetoothSetupManager: MockBtWifiBluetoothSetupManager? = nil,
+        reconnectPollInterval: UInt64 = 1_000_000_000,
+        reconnectAttemptCap: Int = 10,
         dashboardStoreFactory: (@MainActor () -> DashboardStore)? = nil
     ) -> BtWifiStoreTestHarness {
         TestDependencyContainer.reset()
@@ -98,6 +100,8 @@ enum BtWifiStoreTestFixtures {
         let store = BtWifiScaleSetupStore(
             bluetoothSetupManager: bluetoothSetupManager,
             networkMonitor: networkMonitor,
+            reconnectPollInterval: reconnectPollInterval,
+            reconnectAttemptCap: reconnectAttemptCap,
             dashboardStoreFactory: dashboardStoreFactory ?? { fatalError("Dashboard store should not be used in BtWifiScaleSetupStore unit tests") }
         )
 

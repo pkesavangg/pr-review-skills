@@ -12,6 +12,16 @@ struct DashboardMetricsSection: View {
     @ObservedObject var store: DashboardStore
     let parentView: DashboardMetricsParentView
     @Binding var openMetricInfoWithoutSelection: MetricInfoWrapper?
+
+    private var shouldShowProgressSkeleton: Bool {
+        store.shouldShowProgressMetricsSkeleton ||
+            (parentView == .R4ScaleSetup && store.shouldShowBodyMetricsSkeleton)
+    }
+
+    private var shouldShowSectionDivider: Bool {
+        store.shouldShowDivider ||
+            (parentView == .R4ScaleSetup && store.shouldShowBodyMetricsSkeleton)
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -38,12 +48,12 @@ struct DashboardMetricsSection: View {
             }
             
             // Show divider if both body metrics and progress metrics are present
-            if store.shouldShowDivider {
+            if shouldShowSectionDivider {
                 dividerSection()
             }
 
             // Show skeleton while loading progress metrics, otherwise show actual progress metrics
-            if store.shouldShowProgressMetricsSkeleton {
+            if shouldShowProgressSkeleton {
                 skeletonProgressMetrics(hasContentAbove: store.skeletonProgressMetricsHasContentAbove)
             } else if store.shouldShowGoalStreakSection {
                 goalStreakSection()
