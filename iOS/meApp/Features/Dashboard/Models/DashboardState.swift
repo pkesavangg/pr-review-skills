@@ -89,7 +89,7 @@ struct StreakState {
 // MARK: - Graph State
 struct GraphState {
     var selectedEntry: BathScaleOperationDTO? = nil
-    var selectedPeriod: TimePeriod = .week
+    var selectedPeriod: TimePeriod = DefaultGraphPeriodPreference.fallback
     var xScrollPosition: Date = Date()
     var selectedWeight: Double? = nil
     var selectedPoint: BathScaleWeightSummary? = nil

@@ -372,6 +372,23 @@ class DashboardStore: ObservableObject {
                 self?.handleDashboardTypeChange()
             }
             .store(in: &cancellables)
+
+        // Apply the per-account default graph range exactly once when the active
+        // account first becomes known. The selection is intentionally not retargeted
+        // for later changes from Settings — the new default takes effect on the
+        // next app launch, not while the graph is on screen.
+        accountService.$activeAccount
+            .compactMap { $0?.accountId }
+            .first()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] accountId in
+                guard let self else { return }
+                let stored = DefaultGraphPeriodPreference.current(for: accountId)
+                if self.state.graph.selectedPeriod != stored {
+                    self.updateSelectedPeriod(stored)
+                }
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Computed Properties
