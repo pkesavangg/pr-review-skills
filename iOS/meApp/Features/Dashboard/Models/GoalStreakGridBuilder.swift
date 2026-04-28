@@ -157,7 +157,7 @@ enum GoalStreakGridBuilder {
         } else {
             let streakCount = activeStreaks.count
             if streakCount == 0 {
-                if !isGoalCardRemoved { widgets.append(.goalCard) }
+                widgets.append(.goalCard)
             } else {
                 let columns = isTablet ? 4 : 2
                 let maxPosition = streakCount

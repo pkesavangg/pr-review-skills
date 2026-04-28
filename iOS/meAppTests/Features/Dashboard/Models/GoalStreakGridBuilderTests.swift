@@ -222,32 +222,36 @@ struct GoalStreakGridBuilderTests {
 
     @Test("removed streaks preserve the saved goal-card position (Android parity)")
     func removedStreaksPreserveSavedGoalCardPosition() {
-        let items = streaks(["a", "b", "c", "d"])
+        // 5 streaks with `e` removed → 4 active (full rows) forces `lastRowIncomplete=false`,
+        // so the only path that preserves goalCardPosition=3 is `hasRemovedStreaks`.
+        let items = streaks(["a", "b", "c", "d", "e"])
         let model = GoalStreakGridBuilder.build(inputs: makeInputs(
             isEditMode: true,
+            managerStreaks: items,
             streakItemsToShow: items,
             goalCardPosition: 3,
-            removedLabels: ["d"]
+            removedLabels: ["e"]
         ))
-        // Active: [a, b, c] (3 items); removed: [d]. With streaks removed, the builder preserves
-        // the user's goalCardPosition=3 instead of row-start-snapping. Goal card lands after the
-        // 3 active streaks, then removed [d] is appended in edit mode.
-        #expect(labels(for: model.mileStones) == ["a", "b", "c", "goal", "d"])
+        // Without the fix, edit-mode + full rows would even-snap position 3 down to 2 and
+        // render [a, b, goal, c, d, e] instead.
+        #expect(labels(for: model.mileStones) == ["a", "b", "c", "goal", "d", "e"])
     }
 
     @Test("re-adding a streak does not yank the goal card to a new row")
     func reAddingStreakKeepsGoalCardInPlace() {
-        let items = streaks(["a", "b"])
+        // 3 streaks with `c` removed → 2 active (full row) forces `lastRowIncomplete=false`,
+        // so only the `hasRemovedStreaks` branch can keep goalCardPosition=1.
+        let items = streaks(["a", "b", "c"])
         let model = GoalStreakGridBuilder.build(inputs: makeInputs(
             isEditMode: true,
+            managerStreaks: items,
             streakItemsToShow: items,
             goalCardPosition: 1,
-            removedLabels: ["b"]
+            removedLabels: ["c"]
         ))
-        // Active: [a]; removed: [b]. Goal card stays at saved position 1 (after `a`),
-        // and [b] is appended. Before the Android-parity fix, the goal card would have
-        // snapped to row-start 0 and jumped above `a`.
-        #expect(labels(for: model.mileStones) == ["a", "goal", "b"])
+        // Without the fix, edit-mode full-rows would snap odd position 1 down to 0 and
+        // jump the goal card above `a`, rendering [goal, a, b, c].
+        #expect(labels(for: model.mileStones) == ["a", "goal", "b", "c"])
     }
 
     @Test("post-save non-edit mode preserves the user's goal-card position when streaks are removed")
