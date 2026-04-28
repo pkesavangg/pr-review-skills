@@ -412,4 +412,30 @@ final class DisplayMetricsViewModel: ObservableObject {
             notificationService.showToast(ToastModel(title: ToastStrings.error, message: ToastStrings.errorSavingDisplayMetrics))
         }
     }
+
+    /// Presents a confirm-discard alert; returns true if the user confirms exit.
+    func confirmDiscardChanges() async -> Bool {
+        let alertLang = AlertStrings.EditProfileExitAlert.self
+        return await withCheckedContinuation { continuation in
+            let alert = AlertModel(
+                title: alertLang.title,
+                message: alertLang.message,
+                buttons: [
+                    AlertButtonModel(title: alertLang.exitButton, type: .primary) { _ in
+                        continuation.resume(returning: true)
+                    },
+                    AlertButtonModel(title: alertLang.returnButton, type: .secondary) { _ in
+                        continuation.resume(returning: false)
+                    }
+                ]
+            )
+            notificationService.showAlert(alert)
+        }
+    }
+
+    /// Allows exit when no changes are pending; otherwise prompts for confirmation.
+    func allowExit() async -> Bool {
+        if !hasChanges { return true }
+        return await confirmDiscardChanges()
+    }
 }
