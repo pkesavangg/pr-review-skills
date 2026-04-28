@@ -61,11 +61,12 @@ class UserDataStore @Inject constructor(
   }
 
   /**
-   * Emits a Flow of the default graph segment preference.
+   * Emits a Flow of the default graph segment for the currently active account.
    * UNSPECIFIED maps to MONTH (the desired default for fresh installs).
    */
   val defaultGraphSegmentFlow: Flow<DefaultGraphSegment> = dataFlow.map {
-    it.defaultGraphSegment
+    it.accountsMap.values.firstOrNull { account -> account.isActive }?.defaultGraphSegment
+      ?: DefaultGraphSegment.DEFAULT_GRAPH_SEGMENT_UNSPECIFIED
   }
   /**
    * Gets the theme mode for the currently active account, or SYSTEM if none is active.
@@ -408,14 +409,18 @@ class UserDataStore @Inject constructor(
   }
 
   /**
-   * Sets the default graph segment preference (device-level, not per-account).
+   * Sets the default graph segment for a specific account.
+   * @param accountId The account ID to update.
    * @param segment The DefaultGraphSegment to persist.
    */
-  suspend fun setDefaultGraphSegment(segment: DefaultGraphSegment) {
+  suspend fun setDefaultGraphSegment(accountId: String, segment: DefaultGraphSegment) {
     val current = getData()
-    val updated = current.toBuilder()
-      .setDefaultGraphSegment(segment)
-      .build()
+    val updated = current.toBuilder().apply {
+      val account = accountsMap[accountId]?.toBuilder()?.setDefaultGraphSegment(segment)
+      if (account != null) {
+        putAccounts(accountId, account.build())
+      }
+    }.build()
     updateData { updated }
   }
 

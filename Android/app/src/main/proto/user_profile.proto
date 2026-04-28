@@ -21,6 +21,7 @@ message UserAccount {
     string expires_at = 5;
     ThemeMode theme_mode = 6;
     bool notification_alert_shown = 7;
+    DefaultGraphSegment default_graph_segment = 8;
 }
 
 // Default graph range preference
@@ -37,5 +38,4 @@ message UserPreferences {
     string isActive = 1;
     map<string, UserAccount> accounts = 2;
     bool has_shown_account_switch_info_modal_for_device = 3;
-    DefaultGraphSegment default_graph_segment = 4;
 }

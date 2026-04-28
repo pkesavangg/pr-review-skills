@@ -12,6 +12,7 @@ object SettingsScreenStrings {
     const val ExportData = "Export Data"
     const val ChangePassword = "Change Password"
     const val UserProfile = "User Profile"
+    const val DefaultGraphRange = "Default Graph Range"
     const val NotSet = "Not Set"
 
     // Profile Settings
@@ -31,7 +32,6 @@ object SettingsScreenStrings {
     const val Streaks = "Streaks"
     const val AppPermissions = "App Permissions"
     const val Appearance = "Appearance"
-    const val DefaultGraphRange = "Default Graph Range"
 
     // Support
     const val Support = "Support"

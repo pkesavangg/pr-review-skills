@@ -114,6 +114,13 @@ fun SettingsScreenContent(
                 }
               },
             ),
+            SettingsItem(
+              title = SettingsScreenStrings.DefaultGraphRange,
+              type = SettingsItemType.Dropdown(state.currentDefaultGraphRange),
+              onClick = {
+                handleIntent.invoke(SettingsIntent.ShowDefaultGraphRangeModal)
+              },
+            ),
           ),
       )
       // Profile Settings Section
@@ -221,13 +228,6 @@ fun SettingsScreenContent(
               type = SettingsItemType.Dropdown(state.currentThemeMode),
               onClick = {
                 handleIntent.invoke(SettingsIntent.ShowAppearanceModal)
-              },
-            ),
-            SettingsItem(
-              title = SettingsScreenStrings.DefaultGraphRange,
-              type = SettingsItemType.Dropdown(state.currentDefaultGraphRange),
-              onClick = {
-                handleIntent.invoke(SettingsIntent.ShowDefaultGraphRangeModal)
               },
             ),
           ),

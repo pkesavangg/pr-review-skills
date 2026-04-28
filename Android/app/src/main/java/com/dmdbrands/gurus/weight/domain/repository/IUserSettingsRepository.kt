@@ -61,6 +61,6 @@ interface IUserSettingsRepository {
     /** Emits the stored default graph segment, mapped to [GraphSegment]. */
     val defaultGraphSegmentFlow: Flow<GraphSegment>
 
-    /** Persists the default graph segment to local DataStore. */
+    /** Persists the default graph segment for the active account. */
     suspend fun setDefaultGraphSegment(segment: GraphSegment)
 }

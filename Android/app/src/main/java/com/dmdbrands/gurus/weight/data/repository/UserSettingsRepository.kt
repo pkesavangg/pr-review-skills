@@ -208,6 +208,7 @@ class UserSettingsRepository
                 .distinctUntilChanged()
 
         override suspend fun setDefaultGraphSegment(segment: GraphSegment) {
-            userDataStore.setDefaultGraphSegment(segment.toDefaultGraphSegment())
+            val accountId = userDataStore.currentAccountIdFlow.first() ?: return
+            userDataStore.setDefaultGraphSegment(accountId, segment.toDefaultGraphSegment())
         }
     }
