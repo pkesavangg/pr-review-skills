@@ -599,6 +599,14 @@ class DashboardStore: ObservableObject {
     private var cachedVisibleOperations: [BathScaleWeightSummary] = []
     private var lastVisibleOperationsCacheTime: Date = Date.distantPast
 
+    // displayWeight memoization: this getter is read from `WeightTrendView.body`
+    // which invalidates per scroll tick. The underlying interpolation is ~27ms/call,
+    // so we cache the last value and (a) reuse it during active scroll and
+    // (b) reuse it on subsequent reads if the inputs that drive the result haven't
+    // changed. Refreshed on scroll-end and on any meaningful input change.
+    private var _cachedDisplayWeight: Double?
+    private var _cachedDisplayWeightSignature: Int = .min
+
     var hasAnyEntries: Bool {
         state.data.hasAnyEntries
     }
@@ -626,6 +634,49 @@ class DashboardStore: ObservableObject {
     }
 
     var displayWeight: Double? {
+        // During active scroll, the on-screen label does not need to update at sub-frame
+        // rates — the underlying `interpolatedDisplayWeight` / interpolated-average paths
+        // cost ~27ms each per Time Profiler. Reuse the last computed value; the scroll-end
+        // cache refresh will replay this getter and update the label.
+        if state.graph.isScrolling, let cached = _cachedDisplayWeight {
+            return cached
+        }
+
+        // Cheap memoization across repeated reads with the same inputs (e.g. multiple
+        // SwiftUI body recomputes within one render frame, or back-to-back property
+        // accesses). Skipped when scrolling (handled above).
+        let signature = currentDisplayWeightSignature
+        if signature == _cachedDisplayWeightSignature, let cached = _cachedDisplayWeight {
+            return cached
+        }
+
+        let value = computeDisplayWeight()
+        _cachedDisplayWeight = value
+        _cachedDisplayWeightSignature = signature
+        return value
+    }
+
+    /// Cheap hash of the inputs that drive `displayWeight`. Used to detect when the
+    /// memoized value is stale.
+    private var currentDisplayWeightSignature: Int {
+        var hasher = Hasher()
+        hasher.combine(state.graph.selectedPoint?.date.timeIntervalSince1970)
+        hasher.combine(state.graph.selectedPoint?.weight)
+        hasher.combine(state.graph.selectedXValue?.timeIntervalSince1970)
+        hasher.combine(state.graph.xScrollPosition.timeIntervalSince1970)
+        hasher.combine(state.graph.selectedPeriod.rawValue)
+        hasher.combine(isWeightlessModeEnabled)
+        hasher.combine(weightlessAnchorWeight)
+        hasher.combine(continuousOperations.count)
+        // Sample first/last to detect data mutation without scanning every entry.
+        hasher.combine(continuousOperations.first?.date.timeIntervalSince1970)
+        hasher.combine(continuousOperations.first?.weight)
+        hasher.combine(continuousOperations.last?.date.timeIntervalSince1970)
+        hasher.combine(continuousOperations.last?.weight)
+        return hasher.finalize()
+    }
+
+    private func computeDisplayWeight() -> Double? {
         // If a concrete point is selected, ALWAYS show its exact weight value
         if let selectedPoint = state.graph.selectedPoint {
             if isWeightlessModeEnabled {

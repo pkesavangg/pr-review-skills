@@ -17,7 +17,17 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     @Published var selectedPoint: BathScaleWeightSummary?
     @Published var selectedDate: Date?
     @Published var showCrosshair: Bool = false
-    @Published var scrollPosition: Date = Date()
+    /// Per-tick scroll position. **Intentionally not `@Published`** — Fix 1a in
+    /// `docs/tasks/ios-graph-hang-investigation.md`. The chart binding writes here
+    /// dozens of times per scroll gesture; publishing each write would invalidate
+    /// `BaseGraphView.body` per tick and cause SwiftUI/Charts to re-evaluate the
+    /// entire chart content tree per frame (the dominant cost in the hang traces).
+    /// The chart already updates its visual position internally via the manual
+    /// `Binding(get:, set:)` in `BaseGraphView`, so suppressing the publish here
+    /// does not make the chart visually stale during scroll. At scroll-end, the
+    /// (still-`@Published`) `isScrolling` fires false → body re-runs → reads the
+    /// latest `scrollPosition` and runs all post-scroll cleanup.
+    var scrollPosition: Date = Date()
     @Published var isScrolling: Bool = false
     
     /// Default implementation simply returns the current `selectedDate`.

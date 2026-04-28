@@ -144,6 +144,12 @@ Scroll sync:
 - For scrollable charts, the view listens to `dashboardStore.state.graph` changes and updates the VM’s `scrollPosition`, `isScrolling`, and Y-axis cache
 - On scroll start: clear selection immediately; on scroll end: the store recomputes visible operations and Y-axis, VM syncs from cache
 
+Equatable short-circuit:
+
+- `BaseGraphView` conforms to `Equatable` via `createViewModelHash()`, which combines `yAxisTicks`, `yAxisDomain`, `timePeriod`, `goalWeight`, `showCrosshair`, `selectedDate`, and `selectedMetricLabel`. Notably **excluded**: `scrollPosition`, `isScrolling`, `selectedPoint` — these are the per-tick or low-signal fields that should not drive a body recompute.
+- The `.equatable()` modifier is applied at all four period wrapper sites (`Week/Month/Year/TotalGraphView`) so SwiftUI uses `==` to skip recomputation when the hash is unchanged.
+- Note: `EquatableView` only short-circuits *parent-driven* re-renders. When `@ObservedObject` publishers fire, the view is invalidated regardless. The combination with the "scrollPosition not `@Published`" invariant above is what produces the smooth scroll behaviour — neither alone is sufficient.
+
 ---
 
 ## Section ViewModels
@@ -155,6 +161,8 @@ Shared responsibilities:
 - Keep `scrollPosition` and `isScrolling` in sync with the store
 - Maintain `yAxisDomain` and `yAxisTicks` and update them from `DashboardGraphManager`
 - Convert dates to plotting coordinates and compute overlay positions
+
+> ⚠️ **Per-tick scroll perf invariant:** `scrollPosition` is intentionally a plain `var`, **not `@Published`**. The chart's `chartScrollPosition(x:)` `Binding(get:, set:)` writes here dozens of times per scroll gesture; publishing each write would invalidate `BaseGraphView.body` per frame and cause SwiftUI/Charts to re-evaluate the entire chart content tree per tick (the dominant cost in the on-device hang traces — see Fix 1a in [`docs/tasks/ios-graph-hang-investigation.md`](../../../../docs/tasks/ios-graph-hang-investigation.md)). The chart updates its visual position internally via that manual binding, so suppressing the publish does not make it stale during scroll. `isScrolling` IS still `@Published` — when it flips false at scroll-end, body re-runs once, reads the latest `scrollPosition`, and runs all post-scroll cleanup. **Do not re-promote `scrollPosition` to `@Published`** without re-running the trace.
 
 Common APIs:
 
@@ -348,6 +356,28 @@ BaseGraphView(viewModel: WeekSectionViewModel(), dashboardStore: DashboardStore(
 
 ---
 
-Last updated: {{09-SEP-2025}}
+## Performance invariants
+
+The dashboard graph went through a perf investigation in April 2026 that diagnosed sub-second hangs on tab switch and scroll on iPhone 12 mini. The full investigation, traces, and methodology live in [`docs/tasks/ios-graph-hang-investigation.md`](../../../../docs/tasks/ios-graph-hang-investigation.md). Three load-bearing protections came out of it and **must not be regressed without re-running the trace protocol in §2.4 of that doc**:
+
+1. **`scrollPosition` is not `@Published` on `BaseSectionViewModel`** (Fix 1a). The chart binding writes here per scroll tick; publishing those writes invalidates `BaseGraphView.body` per frame. Promoting it back to `@Published` reintroduces the scroll-time hangs documented in §3.7 of the investigation. See the callout in *Section ViewModels* above.
+
+2. **`displayWeight` on `DashboardStore` is memoized two ways** (Fix 4):
+   - During active scroll (`state.graph.isScrolling == true`), the previous cached value is reused. `WeightTrendView.body` invalidates per scroll tick, and the underlying interpolation costs ~27 ms/call — caching kills ~800 ms of cumulative work per gesture.
+   - Outside scroll, a signature hash of the inputs (selection, scroll position, period, weightless mode, anchor weight, ops count + first/last sample) prevents recompute when nothing meaningful changed.
+   - The original computation lives in private `computeDisplayWeight()`. The public getter is the cache-aware entry point. **Don't bypass it** by inlining `computeDisplayWeight()` calls elsewhere.
+
+3. **`.equatable()` is applied at the four period wrapper views** (Fix 2). `BaseGraphView`'s `createViewModelHash()` excludes the per-tick fields (`scrollPosition`, `isScrolling`, `selectedPoint`) so SwiftUI can skip parent-driven recomputes when only those fields changed. Removing `.equatable()` from any of `WeekGraphView`/`MonthGraphView`/`YearGraphView`/`TotalGraphView` regresses tab-switch jitter.
+
+If you need to re-instrument for a future regression, recreate the signpost helper described in §2.1–§2.2 of the investigation doc and wrap the same call sites — the scaffolding was deliberately kept out of production code once the trace verified the fixes (`docs/tasks/trace_after_fix.trace`, 0 hangs reported).
+
+### Things deliberately deferred
+
+- **Fix 1b — narrow the `DashboardStore` observation surface.** Tab-switch hangs are no longer load-bearing per the verification trace. If a future change reintroduces ≥300 ms tab-switch hangs, see §5/Fix 1b for the plan.
+- **Fix 3 — `MetricCell` UIKit host gating.** Metric cards still observe the full store but their reconfigure cost is no longer in any hang's critical path.
+
+---
+
+Last updated: 2026-04-28
 
 
