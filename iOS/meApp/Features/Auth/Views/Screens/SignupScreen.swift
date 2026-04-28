@@ -56,28 +56,46 @@ struct SignupScreen: View {
                 AnyView(PasswordStepView(signupStore: signupStore))
             case .profileReady:
                 AnyView(ProfileReadyStepView(title: signupStore.profileReadyTitle))
+            case .allProfilesReady:
+                AnyView(SignupSuccessStepView(
+                    deviceTypes: signupStore.deviceStatuses.map(\.device)
+                ))
+            case .signupError:
+                AnyView(SignupErrorStepView(deviceStatuses: signupStore.deviceStatuses))
             }
         }
     }
     
+    @ViewBuilder
+    private func navbarLeadingContent() -> some View {
+        if signupStore.currentStep != .allProfilesReady {
+            AppIconView(icon: AppAssets.xmarkSmall, size: IconSize(width: 24, height: 24))
+                .foregroundColor(theme.statusIconPrimary)
+        }
+    }
+
+    @ViewBuilder
+    private func navbarTrailingContent() -> some View {
+        if signupStore.currentStep != .allProfilesReady && signupStore.currentStep != .signupError {
+            Button {
+                signupStore.showHelpModal()
+            } label: {
+                AppIconView(icon: AppAssets.helpCircle, size: IconSize(width: 24, height: 24))
+                    .foregroundColor(theme.statusIconPrimary)
+            }
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             NavbarHeaderView(
                 title: isFromAccountSwitching ? commonLang.signUp.capitalized : "",
-                leadingContent: {
-                    AppIconView(icon: AppAssets.xmarkSmall, size: IconSize(width: 24, height: 24))
-                        .foregroundColor(theme.statusIconPrimary)
-                },
-                trailingContent: {
-                    Button {
-                        signupStore.showHelpModal()
-                    } label: {
-                        AppIconView(icon: AppAssets.helpCircle, size: IconSize(width: 24, height: 24))
-                            .foregroundColor(theme.statusIconPrimary)
-                    }
-                },
+                leadingContent: navbarLeadingContent,
+                trailingContent: navbarTrailingContent,
                 onLeadingTap: {
-                    signupStore.handleExit(router: isFromAccountSwitching ? nil : router)
+                    if signupStore.currentStep != .allProfilesReady {
+                        signupStore.handleExit(router: isFromAccountSwitching ? nil : router)
+                    }
                 },
                 onTrailingTap: {},
                 canShowBorder: isFromAccountSwitching,
@@ -85,8 +103,10 @@ struct SignupScreen: View {
                 shouldShowBackground: false
             )
             
-            ProgressBarView(progress: signupStore.progressValue)
-                .padding([.horizontal, .top], .spacingSM)
+            if signupStore.currentStep != .allProfilesReady && signupStore.currentStep != .signupError {
+                ProgressBarView(progress: signupStore.progressValue)
+                    .padding([.horizontal, .top], .spacingSM)
+            }
             
             SwiperView(
                 selectedIndex: $signupStore.currentStepIndex,
@@ -129,18 +149,59 @@ struct SignupScreen: View {
                     }
                     .padding(.horizontal, .spacingSM)
 
-                    ButtonView(
-                        text: SignupStrings.ProfileReadyStep.connectAnotherDevice,
-                        type: .textPrimary,
-                        size: .small,
-                        isDisabled: false
-                    ) {
-                        withAnimation {
-                            signupStore.connectAnotherDevice()
+                    if signupStore.canConnectAnotherDevice {
+                        ButtonView(
+                            text: SignupStrings.ProfileReadyStep.connectAnotherDevice,
+                            type: .textPrimary,
+                            size: .small,
+                            isDisabled: false
+                        ) {
+                            withAnimation {
+                                signupStore.connectAnotherDevice()
+                            }
                         }
                     }
                 }
                 .padding(.vertical, .spacingSM)
+
+            } else if signupStore.currentStep == .allProfilesReady {
+                ButtonView(
+                    text: SignupStrings.AllProfilesReadyStep.doneButton,
+                    type: .filledPrimary,
+                    size: .large,
+                    isDisabled: false
+                ) {
+                    signupStore.completeSignup()
+                }
+                .padding(.horizontal, .spacingSM)
+                .padding(.vertical, .spacingSM)
+
+            } else if signupStore.currentStep == .signupError {
+                HStack {
+                    ButtonView(
+                        text: SignupStrings.SignupErrorStep.cancelButton,
+                        type: .textPrimary,
+                        size: .small,
+                        isDisabled: false,
+                        padding: true
+                    ) {
+                        signupStore.cancelSignup(router: isFromAccountSwitching ? nil : router)
+                    }
+                    Spacer()
+                    ButtonView(
+                        text: SignupStrings.SignupErrorStep.tryAgainButton,
+                        type: .filledPrimary,
+                        size: .small,
+                        isDisabled: false,
+                        customHorizontalPadding: .spacingXS / 2,
+                        customVerticalPadding: .spacingXS / 4
+                    ) {
+                        signupStore.retryFailedDevices()
+                    }
+                }
+                .padding(.vertical, .spacingSM)
+                .padding(.trailing, .spacingSM)
+
             } else {
                 HStack {
                     ButtonView(text: commonLang.back,
