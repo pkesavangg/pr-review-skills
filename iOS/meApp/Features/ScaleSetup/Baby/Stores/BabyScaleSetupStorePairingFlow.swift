@@ -167,7 +167,7 @@ extension BabyScaleSetupStore {
                 isConnected: true,
                 skipDuplicateCheck: false
             )
-            self.savedScale = device
+            self.savedScale = device.toSnapshot(isConnected: true)
             await scaleService.syncAllScalesWithRemote()
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
             LoggerService.shared.log(level: .info, tag: tag, message: "Baby scale saved: \(device.id)")
