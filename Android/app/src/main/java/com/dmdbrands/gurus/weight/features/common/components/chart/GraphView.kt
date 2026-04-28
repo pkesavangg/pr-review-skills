@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -24,6 +24,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphSnapHelper
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
+import com.patrykandpatrick.vico.compose.cartesian.ChartInteractionEvent
 import com.patrykandpatrick.vico.compose.cartesian.SnapBehaviorConfig
 import com.patrykandpatrick.vico.compose.cartesian.rememberFadingEdges
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
@@ -32,15 +33,12 @@ import com.patrykandpatrick.vico.core.cartesian.InterpolationType
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import android.util.Log
 
 private const val SCROLL_DELAY_AFTER_LAYOUT_MS = 50L
-
-// Ignore window after a programmatic reset (tab switch) during which synthetic chart-click
-// events (e.g. from scroll-settle) must not clear the auto-selected marker. See MA-3842.
-private const val RESET_CLICK_IGNORE_WINDOW_MS = 400L
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -107,6 +105,14 @@ fun GraphView(
     }
   }
 
+  // Bumped on every page activation so VicoScrollState is recreated fresh
+  // (initialScrollHandled = false), preventing rememberSaveable from restoring a stale
+  // scroll position when the user comes back to a previously-visited tab.
+  var resetEpoch by remember(segment) { mutableIntStateOf(0) }
+  LaunchedEffect(isCurrentPage, segment) {
+    if (isCurrentPage) resetEpoch++
+  }
+
   val scrollState = rememberVicoScrollState(
     scrollEnabled = segment != GraphSegment.TOTAL && !state.isSingleWindow,
     initialScroll = initialScroll,
@@ -147,19 +153,12 @@ fun GraphView(
       )
     }
   }
-  // Sticky timestamp of the last programmatic reset; synthetic chart-click events fired in this
-  // window (e.g. from Vico's scroll-settle path) must not be allowed to clear the marker.
-  var lastResetAtMs by remember { mutableStateOf(0L) }
-
-  // On every tab switch (this page becoming current), reset to the default range containing the
-  // latest entry (right-most edge of the chart) and auto-select that entry so the header
-  // immediately reflects the most recent data point without the user having to tap. See MA-3842.
-  val shouldReset = isCurrentPage && !state.isEmptyGraph && state.data.isNotEmpty()
-  LaunchedEffect(shouldReset) {
-    if (!shouldReset) return@LaunchedEffect
+  LaunchedEffect(resetEpoch) {
+    if (resetEpoch == 0 || !isCurrentPage || state.isEmptyGraph || state.data.isEmpty()) {
+      return@LaunchedEffect
+    }
     val latestEntry = state.data.maxByOrNull { it.getTimeStamp() } ?: return@LaunchedEffect
     delay(SCROLL_DELAY_AFTER_LAYOUT_MS)
-    // TOTAL doesn't scroll, so skip the animation and just select the latest entry.
     if (segment != GraphSegment.TOTAL) {
       scrollState.animateScroll(
         initialScroll,
@@ -171,7 +170,6 @@ fun GraphView(
     }
     viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(latestEntry.getTimeStamp().toDouble()))
     viewModel.handleIntent(GraphIntent.UpdateTarget(listOf(latestEntry)))
-    lastResetAtMs = System.currentTimeMillis()
     onChartConsuming(false)
   }
 
@@ -179,6 +177,14 @@ fun GraphView(
     if (state.markerIndex == null && state.minTarget != null && state.maxTarget != null) {
       onScrollUpdate(state.minTarget, state.maxTarget)
     }
+  }
+
+  LaunchedEffect(scrollState) {
+    scrollState.interactionEvents
+      .filter { it is ChartInteractionEvent.DragStarted }
+      .collect {
+        viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
+      }
   }
 
   val defaultMarker = rememberDefaultMarker(
@@ -199,49 +205,42 @@ fun GraphView(
     handleIntent = viewModel::handleIntent,
     onChartClick = { targets, click ->
       if (click == null || state.isEmptyGraph) {
-        // Ignore synthetic "no-op" clicks that arrive right after a programmatic reset;
-        // otherwise the auto-selected latest-entry marker would be cleared immediately.
-        if (System.currentTimeMillis() - lastResetAtMs < RESET_CLICK_IGNORE_WINDOW_MS) {
-          return@rememberGraphChart
-        }
-        viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
         return@rememberGraphChart
       }
-      val visibleLabels =
-        scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer).filter {
-          if (state.minTarget != null && state.maxTarget != null)
-            it.toLong() in state.minTarget..state.maxTarget
-          else
-            true
-        }
-      var markerIndex: Double? = null
-      val paddedMinCondition = state.getStartTimestamp() - GraphUtil.calculateXStep(segment = segment)
-      val paddedMaxCondition = state.getEndTimestamp() + GraphUtil.calculateXStep(segment = segment)
-      val outOfBoundaryCondition = click !in paddedMinCondition..paddedMaxCondition
-      if (!outOfBoundaryCondition) {
-        val targetMarkerIndex =
-          getTargetPoints(
-            visibleLabels,
-            targets,
-            click,
-            segment,
-            paddedMinCondition,
-            paddedMaxCondition,
-          )
-        if (targetMarkerIndex.isNotEmpty()) {
-          val targetIndex = targetMarkerIndex.first().toLong()
-          markerIndex = when {
-            targetIndex in state.getStartTimestamp()..state.getEndTimestamp() -> targetMarkerIndex.first()
-            targetIndex < state.getStartTimestamp() -> state.getStartTimestamp().toDouble()
-            targetIndex > state.getEndTimestamp() -> state.getEndTimestamp().toDouble()
-            else -> null
+      val currentInteractionEvent = scrollState.interactionEvents.value
+      if (currentInteractionEvent is ChartInteractionEvent.MarkerScrubbing || currentInteractionEvent is ChartInteractionEvent.MarkerSelectionStarted || currentInteractionEvent is ChartInteractionEvent.Stable) {
+        val visibleLabels =
+          scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer).filter {
+            if (state.minTarget != null && state.maxTarget != null)
+              it.toLong() in state.minTarget..state.maxTarget
+            else
+              true
+          }
+        var markerIndex: Double? = null
+        val paddedMinCondition = state.getStartTimestamp() - GraphUtil.calculateXStep(segment = segment)
+        val paddedMaxCondition = state.getEndTimestamp() + GraphUtil.calculateXStep(segment = segment)
+        val outOfBoundaryCondition = click !in paddedMinCondition..paddedMaxCondition
+        if (!outOfBoundaryCondition) {
+          val targetMarkerIndex =
+            getTargetPoints(
+              visibleLabels,
+              targets,
+              click,
+              segment,
+              paddedMinCondition,
+              paddedMaxCondition,
+            )
+          if (targetMarkerIndex.isNotEmpty()) {
+            val targetIndex = targetMarkerIndex.first().toLong()
+            markerIndex = when {
+              targetIndex in state.getStartTimestamp()..state.getEndTimestamp() -> targetMarkerIndex.first()
+              targetIndex < state.getStartTimestamp() -> state.getStartTimestamp().toDouble()
+              targetIndex > state.getEndTimestamp() -> state.getEndTimestamp().toDouble()
+              else -> null
+            }
           }
         }
-      }
-      if (state.markerIndex != markerIndex) {
-        // Same reset-window guard: don't let a synthetic click clear the auto-selected marker.
-        val isInResetWindow = System.currentTimeMillis() - lastResetAtMs < RESET_CLICK_IGNORE_WINDOW_MS
-        if (markerIndex != null || !isInResetWindow) {
+        if (state.markerIndex != markerIndex) {
           viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
         }
       }
