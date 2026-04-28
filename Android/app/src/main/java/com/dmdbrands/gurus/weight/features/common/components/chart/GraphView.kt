@@ -1,8 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -26,19 +25,17 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.ChartInteractionEvent
 import com.patrykandpatrick.vico.compose.cartesian.SnapBehaviorConfig
+import com.patrykandpatrick.vico.compose.cartesian.VicoScrollState
 import com.patrykandpatrick.vico.compose.cartesian.rememberFadingEdges
-import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
+import com.patrykandpatrick.vico.core.cartesian.AutoScrollCondition
 import com.patrykandpatrick.vico.core.cartesian.InterpolationType
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import android.util.Log
-
-private const val SCROLL_DELAY_AFTER_LAYOUT_MS = 50L
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -105,26 +102,30 @@ fun GraphView(
     }
   }
 
-  // Bumped on every page activation so VicoScrollState is recreated fresh
-  // (initialScrollHandled = false), preventing rememberSaveable from restoring a stale
-  // scroll position when the user comes back to a previously-visited tab.
+  // Bumped on every page activation so VicoScrollState is rebuilt fresh
+  // (initialScrollHandled = false). Plain `remember` (not rememberSaveable) avoids
+  // any saver restoring a stale scroll/initialScrollHandled across tab returns.
   var resetEpoch by remember(segment) { mutableIntStateOf(0) }
   LaunchedEffect(isCurrentPage, segment) {
     if (isCurrentPage) resetEpoch++
   }
 
-  val scrollState = rememberVicoScrollState(
-    scrollEnabled = segment != GraphSegment.TOTAL && !state.isSingleWindow,
-    initialScroll = initialScroll,
-    snapBehaviorConfig = SnapBehaviorConfig(
-      snapToLabelFunction = snapToLabelFunction,
-      animation = SnapBehaviorConfig.SnapAnimation(
-        snapDurationMillis = 500,
+  val scrollState = remember(segment, resetEpoch) {
+    VicoScrollState(
+      scrollEnabled = segment != GraphSegment.TOTAL && !state.isSingleWindow,
+      initialScroll = initialScroll,
+      autoScroll = initialScroll,
+      autoScrollCondition = AutoScrollCondition.Never,
+      autoScrollAnimationSpec = spring(),
+      snapBehaviorConfig = SnapBehaviorConfig(
+        snapToLabelFunction = snapToLabelFunction,
+        animation = SnapBehaviorConfig.SnapAnimation(
+          snapDurationMillis = 500,
+        ),
       ),
-    ),
-    scrollStartPaddingXStep = startPaddingXStep,
-    key = segment,
-  )
+      scrollStartPaddingXStep = startPaddingXStep,
+    )
+  }
   val horizontalItemPlacer =
     rememberHorizontalAxisItemPlacer(
       segment = segment,
@@ -153,22 +154,26 @@ fun GraphView(
       )
     }
   }
+  LaunchedEffect(isCurrentPage) {
+    if (!isCurrentPage) {
+      viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
+    }
+  }
+
   LaunchedEffect(resetEpoch) {
     if (resetEpoch == 0 || !isCurrentPage || state.isEmptyGraph || state.data.isEmpty()) {
       return@LaunchedEffect
     }
     val latestEntry = state.data.maxByOrNull { it.getTimeStamp() } ?: return@LaunchedEffect
-    delay(SCROLL_DELAY_AFTER_LAYOUT_MS)
+    val latestTimeStamp = latestEntry.getTimeStamp()
     if (segment != GraphSegment.TOTAL) {
-      scrollState.animateScroll(
-        initialScroll,
-        animationSpec = tween(
-          durationMillis = 150,
-          easing = LinearOutSlowInEasing,
-        ),
-      )
+      val windowStart = GraphUtil.getRollingWindowStart(segment, latestTimeStamp)
+        ?: GraphUtil.getStartRange(segment, latestTimeStamp)
+      if (windowStart != null) {
+        onScrollUpdate(windowStart, latestTimeStamp)
+      }
     }
-    viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(latestEntry.getTimeStamp().toDouble()))
+    viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(latestTimeStamp.toDouble()))
     viewModel.handleIntent(GraphIntent.UpdateTarget(listOf(latestEntry)))
     onChartConsuming(false)
   }
@@ -246,12 +251,12 @@ fun GraphView(
       }
     },
   )
+
   CartesianChartHost(
     chart = chart,
     modelProducer = state.modelProducer,
     modifier = modifier.height(chartHeight),
     scrollState = scrollState,
-    animateIn = true,
     consumeMoveEvents = true,
     zoomState = rememberVicoZoomState(zoomEnabled = false),
     onScrollStopped = { range ->
