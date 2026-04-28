@@ -77,11 +77,11 @@ constructor(
       DashboardType.DASHBOARD_12_METRICS else DashboardType.DASHBOARD_4_METRICS
     val weightLess = activeAccount.toWeightless()
     val metrics = dashboardService.visibleKeys.value
-    val defaultSegment = userSettingsService.defaultGraphSegment.value
     super.handleIntent(DashboardIntent.SetDashboardType(dashboardType))
     super.handleIntent(DashboardIntent.SetVisibleKeys(metrics))
     super.handleIntent(DashboardIntent.UpdateWeightLess(weightLess))
-    super.handleIntent(DashboardIntent.SetSelectedSegment(defaultSegment))
+    // selectedSegment is sourced solely from subscribeDefaultGraphSegment() to avoid
+    // reading the StateFlow before its upstream emits (race) and to avoid double-dispatch.
   }
 
   private fun subscribeWeightLess() {

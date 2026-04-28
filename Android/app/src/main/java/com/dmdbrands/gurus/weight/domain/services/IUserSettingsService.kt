@@ -29,8 +29,8 @@ interface IUserSettingsService {
 
     /**
      * Current default graph segment as a StateFlow.
-     * Use [StateFlow.value] for synchronous reads in init blocks.
-     * Collect as a Flow for reactive updates.
+     * Collect this flow for reactive updates; the first emission delivers the persisted value
+     * once the upstream DataStore read completes (or [GraphSegment.MONTH] for fresh installs).
      */
     val defaultGraphSegment: StateFlow<GraphSegment>
 

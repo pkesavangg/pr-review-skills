@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.data.repository
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.api.IUserSettingsAPI
+import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.data.storage.db.dao.AccountDao
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntityMapper
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.StreaksSettingsEntity
@@ -10,7 +11,6 @@ import com.dmdbrands.gurus.weight.domain.model.api.metrics.StreakRequest
 import com.dmdbrands.gurus.weight.domain.model.api.metrics.WeightlessRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountResponse
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
-import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.repository.IUserSettingsRepository
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.enums.toDefaultGraphSegment

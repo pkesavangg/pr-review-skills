@@ -12,9 +12,9 @@ import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -31,19 +31,16 @@ class UserSettingsService
     dialogQueueService: IDialogQueueService,
     appNavigationService: IAppNavigationService,
   ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IUserSettingsService {
-    private val TAG = "UserSettingsService"
+
+    companion object {
+      private const val TAG = "UserSettingsService"
+    }
+
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private val _defaultGraphSegment = MutableStateFlow(GraphSegment.MONTH)
-    override val defaultGraphSegment: StateFlow<GraphSegment> = _defaultGraphSegment
-
-    init {
-      serviceScope.launch {
-        userSettingsRepository.defaultGraphSegmentFlow.collect {
-          _defaultGraphSegment.value = it
-        }
-      }
-    }
+    override val defaultGraphSegment: StateFlow<GraphSegment> =
+      userSettingsRepository.defaultGraphSegmentFlow
+        .stateIn(serviceScope, SharingStarted.Eagerly, GraphSegment.MONTH)
 
 
 

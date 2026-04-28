@@ -61,8 +61,10 @@ class UserDataStore @Inject constructor(
   }
 
   /**
-   * Emits a Flow of the default graph segment for the currently active account.
-   * UNSPECIFIED maps to MONTH (the desired default for fresh installs).
+   * Emits a Flow of the raw [DefaultGraphSegment] proto enum for the currently active account.
+   * Returns [DefaultGraphSegment.DEFAULT_GRAPH_SEGMENT_UNSPECIFIED] when no account is active or
+   * the field has never been set. UNSPECIFIED → MONTH mapping is performed by
+   * [com.dmdbrands.gurus.weight.features.common.enums.toGraphSegment] in the repository layer.
    */
   val defaultGraphSegmentFlow: Flow<DefaultGraphSegment> = dataFlow.map {
     it.accountsMap.values.firstOrNull { account -> account.isActive }?.defaultGraphSegment

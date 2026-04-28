@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.settings.viewmodel
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 
 // TODO: MyAccountsReducer and related state/intent may be implemented for MyAccountsScreen if needed, following the same pattern.
 
@@ -22,7 +23,7 @@ data class SettingsState(
   val unreadFeedCount: Int = 0,
   val showUnreadFeedIndication: Boolean = false,
   val isExportEnabled: Boolean = false,
-  val currentDefaultGraphRange: String = "Month",
+  val currentDefaultGraphRange: GraphSegment = GraphSegment.MONTH,
 ) : IReducer.State {
 
   /**
@@ -77,7 +78,7 @@ sealed interface SettingsIntent : IReducer.Intent {
   object ShowAppearanceModal : SettingsIntent
   object ShowDefaultGraphRangeModal : SettingsIntent
   data class UpdateThemeMode(val themeMode: String) : SettingsIntent
-  data class UpdateDefaultGraphRange(val range: String) : SettingsIntent
+  data class UpdateDefaultGraphRange(val range: GraphSegment) : SettingsIntent
   // MAC Address Filter Intents (for 0412 scale testing)
   object ShowMacAddressFilterModal : SettingsIntent
   data class UpdateSelectedMacAddress(val macAddress: String) : SettingsIntent

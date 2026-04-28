@@ -39,6 +39,7 @@ import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
 import com.dmdbrands.gurus.weight.features.export.strings.ExportStrings
 import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrings
 import com.dmdbrands.gurus.weight.features.settings.strings.SettingsScreenStrings
+import com.dmdbrands.gurus.weight.features.settings.strings.toDisplayString
 import com.dmdbrands.gurus.weight.features.weightless.helper.WeightlessHelper
 import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
 import com.dmdbrands.library.ggbluetooth.model.GGBTUserProfile
@@ -978,7 +979,7 @@ constructor(
   private fun loadDefaultGraphRange() {
     viewModelScope.launch {
       userSettingsService.defaultGraphSegment.collect { segment ->
-        handleIntent(SettingsIntent.UpdateDefaultGraphRange(segment.toDisplayString()))
+        handleIntent(SettingsIntent.UpdateDefaultGraphRange(segment))
       }
     }
   }
@@ -987,13 +988,13 @@ constructor(
     showRadioGroupModal(
       dialogService = dialogQueueService,
       title = RadioGroupModalStrings.Titles.DefaultGraphRange,
-      options = GraphSegment.entries.map {
-        RadioButtonOption(it.name, it.toDisplayString())
+      options = GraphSegment.entries.map { segment ->
+        RadioButtonOption(segment, segment.toDisplayString())
       },
-      selectedItem = state.value.currentDefaultGraphRange.toGraphSegmentName(),
+      selectedItem = state.value.currentDefaultGraphRange,
       confirmText = RadioGroupModalStrings.Button.Save,
       onConfirm = { selected ->
-        selected?.let { onDefaultGraphRangeUpdate(it.toString()) }
+        selected?.let { onDefaultGraphRangeUpdate(it) }
       },
       onCancel = {
         AppLog.d(TAG, "Default graph range selection cancelled")
@@ -1001,8 +1002,7 @@ constructor(
     )
   }
 
-  private fun onDefaultGraphRangeUpdate(segmentName: String) {
-    val segment = GraphSegment.entries.firstOrNull { it.name == segmentName } ?: GraphSegment.MONTH
+  private fun onDefaultGraphRangeUpdate(segment: GraphSegment) {
     viewModelScope.launch {
       try {
         userSettingsService.setDefaultGraphSegment(segment)
@@ -1011,21 +1011,6 @@ constructor(
         AppLog.e(TAG, "Error updating default graph range", e)
       }
     }
-  }
-
-  private fun GraphSegment.toDisplayString(): String = when (this) {
-    GraphSegment.WEEK -> RadioGroupModalStrings.DefaultGraphRange.Week
-    GraphSegment.MONTH -> RadioGroupModalStrings.DefaultGraphRange.Month
-    GraphSegment.YEAR -> RadioGroupModalStrings.DefaultGraphRange.Year
-    GraphSegment.TOTAL -> RadioGroupModalStrings.DefaultGraphRange.Total
-  }
-
-  private fun String.toGraphSegmentName(): String = when (this) {
-    RadioGroupModalStrings.DefaultGraphRange.Week -> "WEEK"
-    RadioGroupModalStrings.DefaultGraphRange.Month -> "MONTH"
-    RadioGroupModalStrings.DefaultGraphRange.Year -> "YEAR"
-    RadioGroupModalStrings.DefaultGraphRange.Total -> "TOTAL"
-    else -> "MONTH"
   }
 
   /**
