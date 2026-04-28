@@ -6,10 +6,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.core.view.WindowCompat
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.proto.ThemeMode
@@ -36,6 +39,8 @@ val LocalAppTheme =
   staticCompositionLocalOf<ThemeMode> {
     ThemeMode.SYSTEM
   }
+
+private const val MAX_FONT_SCALE = 1.3f
 
 /**
  * Composable that automatically sets the status bar colors based on the current theme.
@@ -104,9 +109,20 @@ fun MeAppTheme(
   // Apply status bar theming
   StatusBarTheme(meAppColorScheme)
 
+  val systemDensity = LocalDensity.current
+  val cappedDensity =
+    remember(systemDensity) {
+      if (systemDensity.fontScale > MAX_FONT_SCALE) {
+        Density(density = systemDensity.density, fontScale = MAX_FONT_SCALE)
+      } else {
+        systemDensity
+      }
+    }
+
   CompositionLocalProvider(
     LocalAppTheme provides themeMode,
     LocalColorScheme provides meAppColorScheme,
+    LocalDensity provides cappedDensity,
     LocalTypography provides AppTypography,
     LocalSpacing provides SpacingToken,
     LocalAnimation provides AnimationToken,
