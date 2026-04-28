@@ -47,7 +47,6 @@ import android.icu.util.Calendar
 )
 class GraphViewModel @AssistedInject constructor(
   @Assisted val segment: GraphSegment,
-  @Assisted val anchoredScrollTarget: Double?,
   private val dashboardService: IDashboardService,
   private val goalService: IGoalService,
   private val entryService: IEntryService,
@@ -70,7 +69,7 @@ class GraphViewModel @AssistedInject constructor(
 
   @AssistedFactory
   interface Factory {
-    fun create(segment: GraphSegment, anchoredScrollTarget: Double?): GraphViewModel
+    fun create(segment: GraphSegment): GraphViewModel
   }
 
   private val dataFlow = if (segment == GraphSegment.WEEK || segment == GraphSegment.MONTH) {
@@ -82,7 +81,6 @@ class GraphViewModel @AssistedInject constructor(
   private var currentModelProducerJob: Job? = null
   private var scrollDebounceJob: Job? = null
   private var renormalizationJob: Job? = null
-  private var isInitialized: Boolean = false
 
   init {
     // Set loading state immediately to prevent blank screen
@@ -208,8 +206,7 @@ class GraphViewModel @AssistedInject constructor(
     handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = true))
     val startx = GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis)
     val endx = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)
-    val isSingleWindow = GraphUtil.isSingleWindow(segment, startx, endx)
-    super.handleIntent(GraphIntent.UpdateIsSingleWindow(isSingleWindow))
+    super.handleIntent(GraphIntent.UpdateIsSingleWindow(true))
     if (startx != null && endx != null) {
       super.handleIntent(GraphIntent.SetScrollRange(startx, endx))
     }
@@ -274,8 +271,7 @@ class GraphViewModel @AssistedInject constructor(
     val ySeries = graphLines.points.map { it.y }
     val initialTimeStamp = graphLines.points.minOfOrNull { it.x.value.toLong() }
     val endTimeStamp = graphLines.points.maxOfOrNull { it.x.value.toLong() }
-    val isSingleWindow = GraphUtil.isSingleWindow(segment, initialTimeStamp, endTimeStamp)
-    super.handleIntent(GraphIntent.UpdateIsSingleWindow(isSingleWindow))
+
     val calendar = Calendar.getInstance()
 
     val (startX, endX) = if (segment == GraphSegment.TOTAL) {
@@ -287,30 +283,31 @@ class GraphViewModel @AssistedInject constructor(
       }
       start to end
     } else {
-      val anchoredScrollTargetConsideration = anchoredScrollTarget != null && !isInitialized
-      val start: Long =
-        anchoredScrollTarget?.toLong()
-          ?.takeIf { anchoredScrollTargetConsideration }
-          ?: _state.value.minTarget ?: GraphUtil.getRollingWindowStart(segment, endTimeStamp)
-          ?: GraphUtil.getStartRange(segment, endTimeStamp)
-          ?: calendar.timeInMillis
+      val start: Long = _state.value.minTarget
+        ?: GraphUtil.getRollingWindowStart(segment, endTimeStamp)
+        ?: GraphUtil.getStartRange(segment, endTimeStamp)
+        ?: calendar.timeInMillis
 
-      val end =
-        GraphUtil.getRollingWindowEnd(segment, anchoredScrollTarget?.toLong())
-          ?.takeIf { anchoredScrollTargetConsideration }
-          ?: _state.value.maxTarget ?: endTimeStamp ?: calendar.timeInMillis
+      val end: Long = _state.value.maxTarget ?: endTimeStamp ?: calendar.timeInMillis
 
       start to end
     }
 
+    val isSingleWindow = GraphUtil.isSingleWindow(segment, startX, endX)
+    super.handleIntent(GraphIntent.UpdateIsSingleWindow(isSingleWindow))
+
 
     handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = false))
     super.handleIntent(GraphIntent.SetScrollRange(startX, endX))
-    val filteredData = data.filter {
-      it.getTimeStamp() in startX..endX
+    // Skip target updates when a marker is selected — the selected entry should stay reflected
+    // in the header even as data re-emits; otherwise the header flashes back to visible-range avg.
+    if (currentState.markerIndex == null) {
+      val filteredData = data.filter {
+        it.getTimeStamp() in startX..endX
+      }
+      if (filteredData.isNotEmpty())
+        super.handleIntent(GraphIntent.UpdateTarget(filteredData))
     }
-    if (filteredData.isNotEmpty())
-      super.handleIntent(GraphIntent.UpdateTarget(filteredData))
 
     currentModelProducerJob = viewModelScope.launch(Dispatchers.IO) {
       try {
@@ -397,7 +394,6 @@ class GraphViewModel @AssistedInject constructor(
         AppLog.e(TAG, "Error setting up chart model producer", e)
       }
     }
-    this.isInitialized = true
   }
 
   private fun calculateYAxisRange(
@@ -435,13 +431,21 @@ class GraphViewModel @AssistedInject constructor(
       goalWeight = goalWeight,
       isWeightLessMode = isWeightlessMode,
       targetTickCount = 4,
-    ) else generateNiceScale(
-      minValue = goalWeight.div(10) - 10,
-      maxValue = goalWeight.div(10) + 10,
-      goalWeight = goalWeight,
-      isWeightLessMode = isWeightlessMode,
-      targetTickCount = 3,
-    )
+    ) else {
+      // No data in visible range — use previous Y axis to avoid blank axis
+      // when scrolling beyond data (especially for accounts without a goal).
+      val prevYAxis = _state.value.primaryYAxis
+      if (prevYAxis?.minY != null && prevYAxis.maxY != null) {
+        return AxisMeta(axisRange = prevYAxis, axisStep = _state.value.primaryYStep)
+      }
+      generateNiceScale(
+        minValue = goalWeight.div(10) - 10,
+        maxValue = goalWeight.div(10) + 10,
+        goalWeight = goalWeight,
+        isWeightLessMode = isWeightlessMode,
+        targetTickCount = 3,
+      )
+    }
 
     // Validate graphMeta values are finite
     if (!graphMeta.min.isFinite() || !graphMeta.max.isFinite()) {
@@ -504,13 +508,17 @@ class GraphViewModel @AssistedInject constructor(
         // Get weightless mode for Y-axis calculations
         val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
 
-        val filteredData = currentState.data.filter {
-          it.getTimeStamp() in min..max
-        }
-        if (filteredData.isEmpty()) {
-          fallback()
-        } else {
-          super.handleIntent(GraphIntent.UpdateTarget(filteredData))
+        // Skip target updates when a marker is selected — the marker callback owns the target
+        // and overwriting it here causes the header to flash back to the visible average.
+        if (currentState.markerIndex == null) {
+          val filteredData = currentState.data.filter {
+            it.getTimeStamp() in min..max
+          }
+          if (filteredData.isEmpty()) {
+            fallback()
+          } else {
+            super.handleIntent(GraphIntent.UpdateTarget(filteredData))
+          }
         }
         if (isActive) {
           // Pre-calculate all data on background thread
