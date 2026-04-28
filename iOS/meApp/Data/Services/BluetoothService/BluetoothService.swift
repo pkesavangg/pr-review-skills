@@ -127,7 +127,9 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
     /// The most recently received weight scale entry that is awaiting user confirmation.
     /// Set by the scan pipeline before firing pendingScaleEntrySubject; cleared by confirm/discard.
-    var pendingScaleEntry: Entry?
+    /// Private: access is safe because BluetoothService is @MainActor; marking private
+    /// prevents off-actor mutation from other @MainActor conformers in the module.
+    private(set) var pendingScaleEntry: Entry?
 
     // MARK: - Private Properties
 

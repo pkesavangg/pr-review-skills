@@ -94,11 +94,18 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     let newBpmReadingReceivedSubject = PassthroughSubject<BpmMeasurement, Never>()
     var newBpmReadingReceivedPublisher: AnyPublisher<BpmMeasurement, Never> { newBpmReadingReceivedSubject.eraseToAnyPublisher() }
 
+    private(set) var confirmPendingScaleEntryCalls = 0
+    private(set) var discardPendingScaleEntryCalls = 0
+    var confirmPendingScaleEntryError: Error?
+
     func initialize() {}
     func stopScan() {}
     func startBluetoothOperations() async {}
-    func confirmPendingScaleEntry() async throws {}
-    func discardPendingScaleEntry() {}
+    func confirmPendingScaleEntry() async throws {
+        confirmPendingScaleEntryCalls += 1
+        if let error = confirmPendingScaleEntryError { throw error }
+    }
+    func discardPendingScaleEntry() { discardPendingScaleEntryCalls += 1 }
     func disconnectConnectedScales() async { disconnectConnectedScalesCalls += 1 }
     func reapplySkipDevicesExcludingPaired() { reapplySkipDevicesExcludingPairedCalls += 1 }
     func handleWeightOnlyModeAlertDismissed() { handleWeightOnlyModeAlertDismissedCalls += 1 }

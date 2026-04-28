@@ -92,4 +92,8 @@ struct DashboardStrings {
     static let weightReadingArrivalSave = "SAVE"
     static let weightReadingArrivalDiscard = "DISCARD"
     static let weightReadingArrivalJustNow = "Just now"
+
+    // BPM reading arrival
+    static let bpmReadingArrivalTitle = "New Blood Pressure Reading Received"
+    static let bpmReadingArrivalJustNow = "Just now"
 }
