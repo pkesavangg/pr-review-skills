@@ -3,6 +3,8 @@ package com.dmdbrands.gurus.weight.domain.repository
 import com.dmdbrands.gurus.weight.domain.model.api.metrics.StreakRequest
 import com.dmdbrands.gurus.weight.domain.model.api.metrics.WeightlessRequest
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Repository interface for user settings operations.
@@ -55,4 +57,10 @@ interface IUserSettingsRepository {
      * @return The active account with unsynced streak settings, or null if active account is synced
      */
     suspend fun getUnsyncedActiveStreakAccountFromDB(): Account?
+
+    /** Emits the stored default graph segment, mapped to [GraphSegment]. */
+    val defaultGraphSegmentFlow: Flow<GraphSegment>
+
+    /** Persists the default graph segment to local DataStore. */
+    suspend fun setDefaultGraphSegment(segment: GraphSegment)
 }

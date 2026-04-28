@@ -25,6 +25,7 @@ import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.domain.services.INotificationService
 import com.dmdbrands.gurus.weight.domain.services.IUserSettingsService
 import com.dmdbrands.gurus.weight.features.common.ScaleProfileConstants
+import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.components.HeightInput
@@ -83,6 +84,7 @@ constructor(
     getUserProfile()
     showAccountSwitchInfoModal()
     loadCurrentThemeMode()
+    loadDefaultGraphRange()
     loadMacAddressSettings()
     initFeedNotificationListener()
     checkExportEnabled()
@@ -235,6 +237,10 @@ constructor(
 
       is SettingsIntent.ShowAppearanceModal -> {
         onAppearanceClick()
+      }
+
+      is SettingsIntent.ShowDefaultGraphRangeModal -> {
+        onDefaultGraphRangeClick()
       }
 
       is SettingsIntent.ToggleStreak -> {
@@ -962,6 +968,64 @@ constructor(
         dialogQueueService.dismissLoader()
       }
     }
+  }
+
+  private fun onDefaultGraphRangeClick() {
+    AppLog.d(TAG, "Default Graph Range clicked")
+    showDefaultGraphRangeModal()
+  }
+
+  private fun loadDefaultGraphRange() {
+    viewModelScope.launch {
+      userSettingsService.defaultGraphSegment.collect { segment ->
+        handleIntent(SettingsIntent.UpdateDefaultGraphRange(segment.toDisplayString()))
+      }
+    }
+  }
+
+  private fun showDefaultGraphRangeModal() {
+    showRadioGroupModal(
+      dialogService = dialogQueueService,
+      title = RadioGroupModalStrings.Titles.DefaultGraphRange,
+      options = GraphSegment.entries.map {
+        RadioButtonOption(it.name, it.toDisplayString())
+      },
+      selectedItem = state.value.currentDefaultGraphRange.toGraphSegmentName(),
+      confirmText = RadioGroupModalStrings.Button.Save,
+      onConfirm = { selected ->
+        selected?.let { onDefaultGraphRangeUpdate(it.toString()) }
+      },
+      onCancel = {
+        AppLog.d(TAG, "Default graph range selection cancelled")
+      },
+    )
+  }
+
+  private fun onDefaultGraphRangeUpdate(segmentName: String) {
+    val segment = GraphSegment.entries.firstOrNull { it.name == segmentName } ?: GraphSegment.MONTH
+    viewModelScope.launch {
+      try {
+        userSettingsService.setDefaultGraphSegment(segment)
+        AppLog.i(TAG, "Successfully updated default graph range to ${segment.toDisplayString()}")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error updating default graph range", e)
+      }
+    }
+  }
+
+  private fun GraphSegment.toDisplayString(): String = when (this) {
+    GraphSegment.WEEK -> RadioGroupModalStrings.DefaultGraphRange.Week
+    GraphSegment.MONTH -> RadioGroupModalStrings.DefaultGraphRange.Month
+    GraphSegment.YEAR -> RadioGroupModalStrings.DefaultGraphRange.Year
+    GraphSegment.TOTAL -> RadioGroupModalStrings.DefaultGraphRange.Total
+  }
+
+  private fun String.toGraphSegmentName(): String = when (this) {
+    RadioGroupModalStrings.DefaultGraphRange.Week -> "WEEK"
+    RadioGroupModalStrings.DefaultGraphRange.Month -> "MONTH"
+    RadioGroupModalStrings.DefaultGraphRange.Year -> "YEAR"
+    RadioGroupModalStrings.DefaultGraphRange.Total -> "TOTAL"
+    else -> "MONTH"
   }
 
   /**

@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.data.storage.datastore
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.Serializer
 import androidx.datastore.dataStore
+import com.dmdbrands.gurus.weight.proto.DefaultGraphSegment
 import com.dmdbrands.gurus.weight.proto.ThemeMode
 import com.dmdbrands.gurus.weight.proto.UserAccount
 import com.dmdbrands.gurus.weight.proto.UserPreferences
@@ -57,6 +58,14 @@ class UserDataStore @Inject constructor(
    */
   val currentAccountFlow: Flow<UserAccount?> = dataFlow.map {
     it.accountsMap.values.firstOrNull { account -> account.isActive }
+  }
+
+  /**
+   * Emits a Flow of the default graph segment preference.
+   * UNSPECIFIED maps to MONTH (the desired default for fresh installs).
+   */
+  val defaultGraphSegmentFlow: Flow<DefaultGraphSegment> = dataFlow.map {
+    it.defaultGraphSegment
   }
   /**
    * Gets the theme mode for the currently active account, or SYSTEM if none is active.
@@ -394,6 +403,18 @@ class UserDataStore @Inject constructor(
     val current = getData()
     val updated = current.toBuilder()
       .setHasShownAccountSwitchInfoModalForDevice(hasShown)
+      .build()
+    updateData { updated }
+  }
+
+  /**
+   * Sets the default graph segment preference (device-level, not per-account).
+   * @param segment The DefaultGraphSegment to persist.
+   */
+  suspend fun setDefaultGraphSegment(segment: DefaultGraphSegment) {
+    val current = getData()
+    val updated = current.toBuilder()
+      .setDefaultGraphSegment(segment)
       .build()
     updateData { updated }
   }

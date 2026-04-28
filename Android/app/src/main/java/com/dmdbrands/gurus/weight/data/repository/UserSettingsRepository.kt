@@ -10,8 +10,15 @@ import com.dmdbrands.gurus.weight.domain.model.api.metrics.StreakRequest
 import com.dmdbrands.gurus.weight.domain.model.api.metrics.WeightlessRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountResponse
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.repository.IUserSettingsRepository
+import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.common.enums.toDefaultGraphSegment
+import com.dmdbrands.gurus.weight.features.common.enums.toGraphSegment
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,6 +32,7 @@ class UserSettingsRepository
     constructor(
         private val userSettingsAPI: IUserSettingsAPI,
         private val accountDao: AccountDao,
+        private val userDataStore: UserDataStore,
     ) : IUserSettingsRepository {
         private val TAG = "UserSettingsRepository"
 
@@ -192,5 +200,14 @@ class UserSettingsRepository
             return unsyncedActiveAccount?.let {
                 AccountEntityMapper.toDomainFromAccountWithRelations(it)
             }
+        }
+
+        override val defaultGraphSegmentFlow: Flow<GraphSegment> =
+            userDataStore.defaultGraphSegmentFlow
+                .map { it.toGraphSegment() }
+                .distinctUntilChanged()
+
+        override suspend fun setDefaultGraphSegment(segment: GraphSegment) {
+            userDataStore.setDefaultGraphSegment(segment.toDefaultGraphSegment())
         }
     }

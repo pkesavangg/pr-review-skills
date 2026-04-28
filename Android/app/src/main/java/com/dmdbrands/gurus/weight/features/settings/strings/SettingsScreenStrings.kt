@@ -31,6 +31,7 @@ object SettingsScreenStrings {
     const val Streaks = "Streaks"
     const val AppPermissions = "App Permissions"
     const val Appearance = "Appearance"
+    const val DefaultGraphRange = "Default Graph Range"
 
     // Support
     const val Support = "Support"

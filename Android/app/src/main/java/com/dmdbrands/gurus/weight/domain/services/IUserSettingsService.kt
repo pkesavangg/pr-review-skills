@@ -1,8 +1,11 @@
 package com.dmdbrands.gurus.weight.domain.services
 
+import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import kotlinx.coroutines.flow.StateFlow
+
 /**
  * Service interface for user settings operations.
- * Handles business logic for streak and weightless mode settings.
+ * Handles business logic for streak, weightless mode, and display preference settings.
  */
 interface IUserSettingsService {
 
@@ -23,4 +26,16 @@ interface IUserSettingsService {
         isWeightlessOn: Boolean,
         weightlessWeight: Double? = null
     )
+
+    /**
+     * Current default graph segment as a StateFlow.
+     * Use [StateFlow.value] for synchronous reads in init blocks.
+     * Collect as a Flow for reactive updates.
+     */
+    val defaultGraphSegment: StateFlow<GraphSegment>
+
+    /**
+     * Persists the user's preferred default graph segment (device-local, no backend sync).
+     */
+    suspend fun setDefaultGraphSegment(segment: GraphSegment)
 }

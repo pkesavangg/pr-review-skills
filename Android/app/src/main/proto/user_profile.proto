@@ -23,9 +23,19 @@ message UserAccount {
     bool notification_alert_shown = 7;
 }
 
+// Default graph range preference
+enum DefaultGraphSegment {
+    DEFAULT_GRAPH_SEGMENT_UNSPECIFIED = 0;
+    DEFAULT_GRAPH_SEGMENT_WEEK = 1;
+    DEFAULT_GRAPH_SEGMENT_MONTH = 2;
+    DEFAULT_GRAPH_SEGMENT_YEAR = 3;
+    DEFAULT_GRAPH_SEGMENT_TOTAL = 4;
+}
+
 // User preferences message
 message UserPreferences {
     string isActive = 1;
     map<string, UserAccount> accounts = 2;
     bool has_shown_account_switch_info_modal_for_device = 3;
+    DefaultGraphSegment default_graph_segment = 4;
 }

@@ -223,6 +223,13 @@ fun SettingsScreenContent(
                 handleIntent.invoke(SettingsIntent.ShowAppearanceModal)
               },
             ),
+            SettingsItem(
+              title = SettingsScreenStrings.DefaultGraphRange,
+              type = SettingsItemType.Dropdown(state.currentDefaultGraphRange),
+              onClick = {
+                handleIntent.invoke(SettingsIntent.ShowDefaultGraphRangeModal)
+              },
+            ),
           ),
       )
 
