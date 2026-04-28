@@ -88,8 +88,25 @@ fun GraphView(
     startPaddingXStep = startPaddingXStep.takeIf { it > 0.0 },
     visibilityEasing = LinearEasing,
   )
-  val initialScroll = remember(initialStartX, startPaddingXStep) {
-    Scroll.Absolute.xWithPadding(initialStartX, startPaddingXStep)
+  // Vico's xWithPadding lambda evaluates `target.coerceIn(ranges.minX, ranges.maxX)` during
+  // chart layout. When the data X-range is degenerate (single-window state, empty graph,
+  // or a transient segment-switch race where the model producer hasn't committed yet),
+  // `coerceIn` can throw IllegalArgumentException. Use Scroll.Absolute.Start (a no-op `0f`
+  // lambda) for those states, and clamp initialStartX into the committed [minTarget, maxTarget]
+  // for the active-scroll path so segment switches don't pass an out-of-range x. (MA-3853)
+  val isDegenerateXRange = state.isEmptyGraph || state.isSingleWindow
+  val safeInitialStartX = remember(initialStartX, state.minTarget, state.maxTarget) {
+    val min = state.minTarget?.toDouble()
+    val max = state.maxTarget?.toDouble()
+    if (min != null && max != null && min <= max) {
+      initialStartX.coerceIn(min, max)
+    } else {
+      initialStartX
+    }
+  }
+  val initialScroll = remember(isDegenerateXRange, safeInitialStartX, startPaddingXStep) {
+    if (isDegenerateXRange) Scroll.Absolute.Start
+    else Scroll.Absolute.xWithPadding(safeInitialStartX, startPaddingXStep)
   }
 
   val snapToLabelFunction: ((Double?, Boolean, Boolean) -> Double)? = remember {
