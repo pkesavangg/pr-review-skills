@@ -111,14 +111,17 @@ fun GraphView(
   // Cold-start trigger for the reset-to-latest effect. The ViewModel-scoped flag
   // (`viewModel.hasInitialResetFired`) survives rotation (so a returning page does NOT
   // re-fire and clobber the user's marker/scroll) but is fresh after process death (so a
-  // restored app correctly auto-selects the latest entry on first composition). Gating on
-  // `resetEpoch == 0` prevents this path and the segment-tap signal from both incrementing
-  // resetEpoch on the same first activation, which would dispatch a duplicate scroll+marker
-  // update.
+  // restored app correctly auto-selects the latest entry on first composition). The flag
+  // is the authoritative gate; we deliberately do NOT also gate on `resetEpoch`. If the
+  // segment-tap signal arrives while data is still empty, `LaunchedEffect(resetEpoch)`
+  // early-returns without flipping the flag — the cold-start path must remain eligible to
+  // fire when data eventually lands. Worst case is an idempotent double-dispatch on first
+  // activation when both signal and cold-start race; both writes target the same latest
+  // entry, so user-visible behavior is unchanged.
   var resetEpoch by remember(segment) { mutableIntStateOf(0) }
   LaunchedEffect(state.data.isNotEmpty(), state.isEmptyGraph, segment, isCurrentPage) {
     val hasData = state.data.isNotEmpty() && !state.isEmptyGraph
-    if (isCurrentPage && hasData && !viewModel.hasInitialResetFired && resetEpoch == 0) {
+    if (isCurrentPage && hasData && !viewModel.hasInitialResetFired) {
       resetEpoch++
     }
   }
