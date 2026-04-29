@@ -210,6 +210,7 @@ class GraphViewModel @AssistedInject constructor(
     if (startx != null && endx != null) {
       super.handleIntent(GraphIntent.SetScrollRange(startx, endx))
     }
+    super.handleIntent(GraphIntent.UpdateMarkerIndex(null))
     super.handleIntent(GraphIntent.UpdateTarget(emptyList()))
 
     // Set empty model producer asynchronously
