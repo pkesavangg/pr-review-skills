@@ -11,6 +11,12 @@ import kotlin.math.round
 /**
  * Utility object for handling various unit conversions including height, weight, BMI calculations,
  * and protocol-specific conversions. Equivalent to the TypeScript ConversionTools service.
+ *
+ * Input contract for the baby-scale conversion family ([convertDecigramsToKg],
+ * [convertBabyWeightToLbOz], etc.): callers must pass non-negative values. Negative
+ * inputs are not validated and will produce non-positive outputs that are not meaningful
+ * — the production data path (BLE, scale firmware, manual-entry validation) only ever
+ * produces non-negative readings.
  */
 object ConversionTools {
 
@@ -344,35 +350,47 @@ object ConversionTools {
   // ========== Baby Weight — SKU-aware conversions ==========
 
   /**
+   * Returns true if [source] identifies a baby scale entry (SKU 0220 or 0222).
+   * Mirrors babyApp's broad `source.includes('0220') || source.includes('0222')`
+   * check (unit-conversion.service.ts line 133).
+   */
+  private fun isBabyScaleSource(source: String?): Boolean =
+    source != null && (source.contains(SKU_0220) || source.contains(SKU_0222))
+
+  /**
    * Converts a baby weight in decigrams to (lbs, oz), applying SKU-specific
-   * graduation rounding for [SKU_0220] and [SKU_0222]
-   * scale entries. Falls back to the generic conversion for manual entries.
-   * @param decigrams Raw weight in decigrams
+   * graduation rounding for [SKU_0220] and [SKU_0222] scale entries. Falls
+   * back to the generic conversion for manual / non-baby-scale entries.
+   *
+   * SKU dispatch matches babyApp `convertToDisplayWeightBase`
+   * (unit-conversion.service.ts line 146): exact equality for 0222 (Transtek
+   * calibration), 0220 graduation otherwise for any baby-scale entry.
+   *
+   * @param decigrams Raw weight in decigrams (assumed non-negative; see file header)
    * @param source Entry source (a SKU string, "manual", or null)
    */
   fun convertBabyWeightToLbOz(decigrams: Int, source: String?): Pair<Int, Double> = when {
-    source == null -> convertDecigramsToLbOz(decigrams)
-    source.contains(SKU_0222) -> convert0222DecigramsToLbOz(decigrams)
-    source.contains(SKU_0220) -> convert0220DecigramsToLbOz(decigrams)
+    source == SKU_0222 -> convert0222DecigramsToLbOz(decigrams)
+    isBabyScaleSource(source) -> convert0220DecigramsToLbOz(decigrams)
     else -> convertDecigramsToLbOz(decigrams)
   }
 
   /**
    * Converts a baby weight in decigrams to kilograms, applying SKU-specific
    * graduation rounding for 0220 / 0222 scale entries.
-   * Note: 0222 shares 0220's metric graduation (matches babyApp reference).
-   * @param decigrams Raw weight in decigrams
+   *
+   * Both 0220 and 0222 route to [convert0220DecigramsToKg] because babyApp's
+   * `convertToDisplayWeightBase` (unit-conversion.service.ts line 136) uses
+   * the same function for both in the metric case — 0222 shares 0220's
+   * 5/10/50g graduation. The LbOz path differs because 0222 has a distinct
+   * calibration formula there.
+   *
+   * @param decigrams Raw weight in decigrams (assumed non-negative; see file header)
    * @param source Entry source (a SKU string, "manual", or null)
    */
-  fun convertBabyWeightToKg(decigrams: Int, source: String?): Double {
-    val isBabyScale = source != null &&
-      (source.contains(SKU_0220) || source.contains(SKU_0222))
-    // Both 0220 and 0222 route to convert0220DecigramsToKg because babyApp's
-    // convertToDisplayWeightBase (unit-conversion.service.ts line 136) uses the same
-    // function for both in the 'metric' case — 0222 shares 0220's 5/10/50g graduation.
-    // The LbOz path differs because 0222 has a distinct calibration formula there.
-    return if (isBabyScale) convert0220DecigramsToKg(decigrams) else convertDecigramsToKg(decigrams)
-  }
+  fun convertBabyWeightToKg(decigrams: Int, source: String?): Double =
+    if (isBabyScaleSource(source)) convert0220DecigramsToKg(decigrams)
+    else convertDecigramsToKg(decigrams)
 
   /**
    * Formats a baby weight for display using the user's unit preference.
@@ -394,19 +412,21 @@ object ConversionTools {
    * @param isMetric Whether user prefers metric units
    * @return Formatted length string
    */
-  fun convertBabyLengthToDisplay(millimeters: Int, isMetric: Boolean): String {
-    return if (isMetric) {
-      "${String.format(Locale.US, "%.1f", convertMmToCm(millimeters))} cm"
-    } else {
-      "${String.format(Locale.US, "%.0f", convertMmToInches(millimeters))} in"
-    }
-  }
+  fun convertBabyLengthToDisplay(millimeters: Int, isMetric: Boolean): String =
+    if (isMetric) formatCm(convertMmToCm(millimeters))
+    else formatInches(convertMmToInches(millimeters))
 
   private fun formatLbOz(lbs: Int, oz: Double): String =
       "$lbs lbs ${String.format(Locale.US, "%.1f", oz)} oz"
 
   private fun formatKg(kg: Double): String =
       "${String.format(Locale.US, "%.2f", kg)} kg"
+
+  private fun formatCm(cm: Double): String =
+      "${String.format(Locale.US, "%.1f", cm)} cm"
+
+  private fun formatInches(inches: Double): String =
+      "${String.format(Locale.US, "%.0f", inches)} in"
 
   // ========== BMI Calculations ==========
 

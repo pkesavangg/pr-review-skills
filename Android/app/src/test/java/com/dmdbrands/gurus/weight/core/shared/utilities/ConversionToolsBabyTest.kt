@@ -350,6 +350,18 @@ class ConversionToolsBabyTest {
         }
 
         @Test
+        fun `source containing 0222 substring but not exact routes to 0220 graduation (babyApp parity)`() {
+            // babyApp uses `source === '0222'` for the 0222 calibration branch and
+            // falls through to 0220 graduation for any other 0220/0222-substring match.
+            // See unit-conversion.service.ts line 146.
+            val substring0222 = ConversionTools.convertBabyWeightToDisplay(1_460, "BS 0222", false)
+            val exact0220 = ConversionTools.convertBabyWeightToDisplay(1_460, "0220", false)
+            val exact0222 = ConversionTools.convertBabyWeightToDisplay(1_460, "0222", false)
+            assertThat(substring0222).isEqualTo(exact0220)
+            assertThat(substring0222).isNotEqualTo(exact0222)
+        }
+
+        @Test
         fun `length imperial formats as inches`() {
             val result = ConversionTools.convertBabyLengthToDisplay(500, false)
             assertThat(result).contains("in")
@@ -359,6 +371,85 @@ class ConversionToolsBabyTest {
         fun `length metric formats as cm`() {
             val result = ConversionTools.convertBabyLengthToDisplay(500, true)
             assertThat(result).contains("cm")
+        }
+
+        @Test
+        fun `length imperial uses 0 decimal places`() {
+            // 500 mm = 19.685 in → rounded to "20 in"
+            assertThat(ConversionTools.convertBabyLengthToDisplay(500, false)).isEqualTo("20 in")
+        }
+
+        @Test
+        fun `length metric uses 1 decimal place`() {
+            // 500 mm = 50.0 cm
+            assertThat(ConversionTools.convertBabyLengthToDisplay(500, true)).isEqualTo("50.0 cm")
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Graduation threshold boundaries
+    // -------------------------------------------------------------------------
+
+    @Nested
+    inner class GraduationThresholds {
+        // 0220/0222 graduation thresholds in babyApp:
+        //   < 8165 g  → light branch  (5g for 0220, 0.1 oz indexing for 0222)
+        //   < 11340 g → medium branch (10g, 0.2 oz)
+        //   ≥ 11340 g → heavy branch  (50g, 2 oz)
+        // Boundary values in decigrams: 81_650 (18 lb) and 113_400 (25 lb).
+
+        @Test
+        fun `0220 kg is continuous across the 18 lb boundary`() {
+            val below = ConversionTools.convert0220DecigramsToKg(81_649)
+            val atBoundary = ConversionTools.convert0220DecigramsToKg(81_650)
+            // Light branch rounds to 5 g (0.005 kg), medium rounds to 10 g (0.01 kg).
+            // The two values must not jump by more than the medium step.
+            assertThat(kotlin.math.abs(atBoundary - below)).isLessThan(0.011)
+        }
+
+        @Test
+        fun `0220 kg is continuous across the 25 lb boundary`() {
+            val below = ConversionTools.convert0220DecigramsToKg(113_399)
+            val atBoundary = ConversionTools.convert0220DecigramsToKg(113_400)
+            // Medium branch rounds to 10 g, heavy rounds to 50 g.
+            assertThat(kotlin.math.abs(atBoundary - below)).isLessThan(0.051)
+        }
+
+        @Test
+        fun `0220 lbOz is continuous across the 18 lb boundary`() {
+            val (lbsBelow, ozBelow) = ConversionTools.convert0220DecigramsToLbOz(81_649)
+            val (lbsAt, ozAt) = ConversionTools.convert0220DecigramsToLbOz(81_650)
+            // Both values should be ~18 lb 0 oz, drift below ~0.3 oz.
+            val totalBelow = lbsBelow * 16 + ozBelow
+            val totalAt = lbsAt * 16 + ozAt
+            assertThat(kotlin.math.abs(totalAt - totalBelow)).isLessThan(0.3)
+        }
+
+        @Test
+        fun `0220 lbOz is continuous across the 25 lb boundary`() {
+            val (lbsBelow, ozBelow) = ConversionTools.convert0220DecigramsToLbOz(113_399)
+            val (lbsAt, ozAt) = ConversionTools.convert0220DecigramsToLbOz(113_400)
+            val totalBelow = lbsBelow * 16 + ozBelow
+            val totalAt = lbsAt * 16 + ozAt
+            assertThat(kotlin.math.abs(totalAt - totalBelow)).isLessThan(2.1)
+        }
+
+        @Test
+        fun `0222 lbOz is continuous across the 18 lb boundary`() {
+            val (lbsBelow, ozBelow) = ConversionTools.convert0222DecigramsToLbOz(81_649)
+            val (lbsAt, ozAt) = ConversionTools.convert0222DecigramsToLbOz(81_650)
+            val totalBelow = lbsBelow * 16 + ozBelow
+            val totalAt = lbsAt * 16 + ozAt
+            assertThat(kotlin.math.abs(totalAt - totalBelow)).isLessThan(0.3)
+        }
+
+        @Test
+        fun `0222 lbOz is continuous across the 25 lb boundary`() {
+            val (lbsBelow, ozBelow) = ConversionTools.convert0222DecigramsToLbOz(113_399)
+            val (lbsAt, ozAt) = ConversionTools.convert0222DecigramsToLbOz(113_400)
+            val totalBelow = lbsBelow * 16 + ozBelow
+            val totalAt = lbsAt * 16 + ozAt
+            assertThat(kotlin.math.abs(totalAt - totalBelow)).isLessThan(2.1)
         }
     }
 
