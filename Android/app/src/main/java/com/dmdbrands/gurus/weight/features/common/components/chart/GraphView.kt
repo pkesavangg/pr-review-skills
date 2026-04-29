@@ -1,7 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -25,10 +24,9 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.ChartInteractionEvent
 import com.patrykandpatrick.vico.compose.cartesian.SnapBehaviorConfig
-import com.patrykandpatrick.vico.compose.cartesian.VicoScrollState
 import com.patrykandpatrick.vico.compose.cartesian.rememberFadingEdges
+import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
-import com.patrykandpatrick.vico.core.cartesian.AutoScrollCondition
 import com.patrykandpatrick.vico.core.cartesian.InterpolationType
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
@@ -110,22 +108,20 @@ fun GraphView(
     if (isCurrentPage) resetEpoch++
   }
 
-  val scrollState = remember(segment, resetEpoch) {
-    VicoScrollState(
-      scrollEnabled = segment != GraphSegment.TOTAL && !state.isSingleWindow,
-      initialScroll = initialScroll,
-      autoScroll = initialScroll,
-      autoScrollCondition = AutoScrollCondition.Never,
-      autoScrollAnimationSpec = spring(),
-      snapBehaviorConfig = SnapBehaviorConfig(
-        snapToLabelFunction = snapToLabelFunction,
-        animation = SnapBehaviorConfig.SnapAnimation(
-          snapDurationMillis = 500,
-        ),
+  val scrollState = rememberVicoScrollState(
+    scrollEnabled = segment != GraphSegment.TOTAL && !state.isSingleWindow,
+    initialScroll = initialScroll,
+    snapBehaviorConfig = SnapBehaviorConfig(
+      snapToLabelFunction = snapToLabelFunction,
+      animation = SnapBehaviorConfig.SnapAnimation(
+        snapDurationMillis = 500,
       ),
-      scrollStartPaddingXStep = startPaddingXStep,
-    )
-  }
+    ),
+    scrollStartPaddingXStep = startPaddingXStep,
+    // `key = segment` binds scroll-state lifetime to segment identity, not to per-recomp
+    // identity churn of `initialScroll` / `snapBehaviorConfig`. Matches MA-3287 + vico 4.
+    key = segment,
+  )
   val horizontalItemPlacer =
     rememberHorizontalAxisItemPlacer(
       segment = segment,
@@ -158,6 +154,14 @@ fun GraphView(
     if (!isCurrentPage) {
       viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
     }
+    // Re-arm scroll-to-initial on every isCurrentPage transition (both page-entering AND
+    // page-leaving). On the ARRIVING page, the next measure snaps to its initialScroll —
+    // that's what makes WEEK→MONTH show MONTH at its rolling-window-start and MONTH→WEEK
+    // show WEEK at its current week. Bottom-nav returns don't trigger this because
+    // `isCurrentPage` doesn't transition during bottom-nav navigation; the chart screen's
+    // composition either persists (scroll preserved) or rebuilds fresh (scrollState's
+    // built-in `initialScrollHandled = false` constructor default already handles it).
+    scrollState.initialScrollHandled = false
   }
 
   LaunchedEffect(resetEpoch) {
@@ -207,7 +211,6 @@ fun GraphView(
     segment = segment,
     horizontalItemPlacer = horizontalItemPlacer,
     fadingEdges = fadingEdges,
-    handleIntent = viewModel::handleIntent,
     onChartClick = { targets, click ->
       if (click == null || state.isEmptyGraph) {
         return@rememberGraphChart

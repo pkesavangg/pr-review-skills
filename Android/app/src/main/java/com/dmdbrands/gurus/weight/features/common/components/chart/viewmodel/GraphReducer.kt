@@ -33,6 +33,11 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
       )
     }
 
+    is GraphIntent.UpdateSeedYRange -> state.copy(
+      seedMinY = intent.seedMinY,
+      seedMaxY = intent.seedMaxY,
+    )
+
     is GraphIntent.UpdateMarkerIndex -> state.copy(markerIndex = intent.markerIndex)
 
     is GraphIntent.UpdateIsUpdating -> state.copy(isUpdating = intent.isUpdating)

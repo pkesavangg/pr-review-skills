@@ -1,14 +1,13 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart.axis
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dmdbrands.gurus.weight.R
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
-import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toDoublePreserve
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import com.patrykandpatrick.vico.compose.cartesian.axis.ListItemPlacer
 import com.patrykandpatrick.vico.compose.cartesian.axis.fixed
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisLineComponent
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberEnd
@@ -41,28 +40,21 @@ fun startAxis(segment: GraphSegment, isSingleWindow: Boolean) = VerticalAxis.rem
 
 @Composable
 fun endAxis(
-  yStep: Double? = null,
+  ticksProvider: () -> List<Double>,
   isEmptyGraph: Boolean,
   markerDecoration: VerticalAxis.MarkerDecoration? = null
 ): VerticalAxis<Axis.Position.Vertical.End> {
   val resources = LocalResources.current
   val openSans: Typeface = resources.getFont(R.font.open_sans_semi_bold)
 
-  // Vico requires step > 0; pass actual Double step (yStep.roundToInt() would be 0 for small steps e.g. 0.2)
-  val stepForPlacer = (yStep?.takeIf { it > 0 } ?: 1.0)
-  val animatableYStep = animateFloatAsState(
-    targetValue = stepForPlacer.toFloat(),
-    label = "animatableYStep",
-  )
-
   return VerticalAxis.rememberEnd(
     valueFormatter = CartesianValueFormatter { _, value, _ ->
-      if (isEmptyGraph && markerDecoration == null) " " else
+      if (isEmptyGraph && markerDecoration == null || !value.isFinite()) " " else
         value.roundToInt().toString()
     },
-    itemPlacer = VerticalAxis.ItemPlacer.step(
-      { animatableYStep.value.toDoublePreserve() },
-    ),
+    // ListItemPlacer reads [ticksProvider] on every measure/draw — pair it with
+    // ScrollAwareRangeProvider.currentTicks so axis labels track the live range exactly.
+    itemPlacer = ListItemPlacer(ticks = ticksProvider),
     size = BaseAxis.Size.scroll(50.dp),
     line =
       rememberAxisLineComponent(

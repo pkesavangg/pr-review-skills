@@ -56,6 +56,15 @@ data class GraphState(
   val primaryYAxis: CartesianRangeValues? = null,
   val secondaryYAxis: CartesianRangeValues? = null,
   val primaryYStep: Double? = null,
+  /**
+   * Seed Y range for `ScrollAwareRangeProvider`'s frame-0 render. Computed in the VM using
+   * the SAME bracketing window the provider's `onVisibleEntries` callback uses (visible
+   * window + 1 entry on each side). Frame 0 and frame 1+ produce identical Y bounds, so the
+   * chart no longer snaps when transitioning from seed to live range. Mirrors MA-3287's
+   * `SegmentState.seedMinY/seedMaxY` pattern.
+   */
+  val seedMinY: Double? = null,
+  val seedMaxY: Double? = null,
   val goal: Goal? = null,
   val isEmptyGraph: Boolean = false,
   val modelProducer: CartesianChartModelProducer = CartesianChartModelProducer(),
