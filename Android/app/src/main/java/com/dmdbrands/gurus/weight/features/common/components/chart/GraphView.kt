@@ -32,7 +32,6 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
 import com.patrykandpatrick.vico.core.cartesian.InterpolationType
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -164,16 +163,20 @@ fun GraphView(
       )
     }
   }
+  // Re-arm scroll-to-initial only on a real isCurrentPage transition (segment-button tap).
+  // Rotation, history-screen return, and app resume all recreate the composition with the
+  // same isCurrentPage value — without this saveable-flag gate, the LaunchedEffect would
+  // re-run and wipe the user's restored scroll position. The saver preserves the flag
+  // across rotation, so post-rotation comparison reads "no transition" and the reset is
+  // skipped. Marker is also preserved across deactivation so a tab-away-and-back doesn't
+  // clobber the user's prior selection (the resetEpoch path's `state.markerIndex == null`
+  // gate covers cold-start).
+  var lastSeenIsCurrentPage by rememberSaveable(segment) { mutableStateOf(isCurrentPage) }
   LaunchedEffect(isCurrentPage) {
-    if (!isCurrentPage) {
-      viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
+    if (lastSeenIsCurrentPage != isCurrentPage) {
+      scrollState.initialScrollHandled = false
+      lastSeenIsCurrentPage = isCurrentPage
     }
-    // Re-arm scroll-to-initial on every isCurrentPage transition so the arriving page
-    // snaps to its segment-appropriate initial scroll on the next measure. Bottom-nav
-    // returns do not trigger this because isCurrentPage does not toggle during bottom-nav
-    // navigation; the chart screen either preserves its composition (scroll preserved) or
-    // rebuilds fresh (vico's default initialScrollHandled = false handles it).
-    scrollState.initialScrollHandled = false
   }
 
   LaunchedEffect(resetEpoch) {
@@ -205,19 +208,27 @@ fun GraphView(
     }
   }
 
-  // Tracks the wall-clock time of the most recent drag-start so a click event that fires
-  // immediately after a drag (vico emits Stable as the post-drag event, and a finger-down →
-  // drift → finger-up gesture produces both DragStarted and a click) can be suppressed.
-  // Without this, the user sees a marker flicker: DragStarted clears the marker, then the
-  // trailing click sees `Stable` and re-creates one with no deliberate tap.
-  val lastDragStartMs = remember { mutableLongStateOf(0L) }
+  // Suppress the trailing click that vico emits when a finger-down → drift → finger-up
+  // gesture also looks like a tap. Track drag-END (the first non-DragStarted event after
+  // a drag begins) and gate clicks within ~50ms of it. Earlier versions guarded from
+  // drag-START with a 300ms window, but that suppressed deliberate taps that came shortly
+  // after a short drag. drag-END + a short window catches the spurious trailing click
+  // without blocking real follow-up taps.
+  val lastDragEndMs = remember { mutableLongStateOf(0L) }
   LaunchedEffect(scrollState) {
-    scrollState.interactionEvents
-      .filter { it is ChartInteractionEvent.DragStarted }
-      .collect {
-        lastDragStartMs.longValue = System.currentTimeMillis()
-        viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
+    var inDrag = false
+    scrollState.interactionEvents.collect { event ->
+      when {
+        event is ChartInteractionEvent.DragStarted -> {
+          inDrag = true
+          viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
+        }
+        inDrag -> {
+          inDrag = false
+          lastDragEndMs.longValue = System.currentTimeMillis()
+        }
       }
+    }
   }
 
   val defaultMarker = rememberDefaultMarker(
@@ -239,11 +250,10 @@ fun GraphView(
       if (click == null || state.isEmptyGraph) {
         return@rememberGraphChart
       }
-      // Suppress clicks that arrive within ~300ms of a drag-start. A finger-down → drift →
-      // finger-up gesture produces both a DragStarted (which clears the marker) and a
-      // trailing click; without this guard the click reselects a marker the user did not
-      // deliberately tap.
-      if (System.currentTimeMillis() - lastDragStartMs.longValue < 300L) {
+      // Suppress the trailing click that vico emits as part of a drag gesture. We measure
+      // from drag-END with a tight window so a deliberate tap shortly after a short drag
+      // is not suppressed.
+      if (System.currentTimeMillis() - lastDragEndMs.longValue < 50L) {
         return@rememberGraphChart
       }
       val currentInteractionEvent = scrollState.interactionEvents.value

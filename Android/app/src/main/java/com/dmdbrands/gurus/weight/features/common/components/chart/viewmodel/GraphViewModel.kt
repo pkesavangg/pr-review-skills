@@ -560,13 +560,15 @@ class GraphViewModel @AssistedInject constructor(
   private fun handleScroll(min: Long, max: Long, fallback: () -> Unit = {}) {
     val min = GraphUtil.getRelativeStart(segment, min)
     val max = GraphUtil.getRelativeEnd(segment, max)
-    val currentState = _state.value
     scrollDebounceJob?.cancel()
     scrollDebounceJob = viewModelScope.launch(Dispatchers.IO) {
       try {
         kotlinx.coroutines.delay(SCROLL_DEBOUNCE_MS)
-        // Skip target updates when a marker is selected — the marker callback owns the target
-        // and overwriting it here causes the header to flash back to the visible average.
+        // Re-read state AFTER the debounce. If the user clicked a marker during the
+        // 150ms window, the prior `_state.value` snapshot would still report
+        // markerIndex=null and we'd overwrite the marker-owned target with the
+        // visible-range filter — defeating the marker preservation guarantee.
+        val currentState = _state.value
         if (currentState.markerIndex == null) {
           val filteredData = currentState.data.filter {
             it.getTimeStamp() in min..max
