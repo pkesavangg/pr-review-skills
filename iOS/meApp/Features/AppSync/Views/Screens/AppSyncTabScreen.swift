@@ -34,6 +34,7 @@ struct AppSyncTabScreen: View {
             if tabViewModel.selectedTab == .appsync {
                 // Full-screen camera/scanner view
                 AppSyncScannerView(
+                    initialZoom: scanStore.initialZoom,
                     onClose: {
                         resetScannerSession()
                         tabViewModel.restorePreviousTab()
@@ -52,6 +53,9 @@ struct AppSyncTabScreen: View {
             }
         }
         .onChange(of: tabViewModel.selectedTab, { oldValue, newValue in
+            if newValue == .appsync {
+                scanStore.loadSavedZoom()
+            }
             withAnimation {
                 tabViewModel.showTabBar = newValue != .appsync
             }

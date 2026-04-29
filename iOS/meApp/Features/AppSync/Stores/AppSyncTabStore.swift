@@ -28,6 +28,9 @@ final class AppSyncTabStore: ObservableObject {
 
     // Holds last scanned raw data so Save/Edit actions have access.
     private var lastScannedData: AppSyncEntryMetrics?
+
+    /// Last-used camera zoom, restored from UserDefaults before each scan session.
+    @Published var initialZoom: CGFloat? = nil
     
     private enum ScanIgnoreReason: String {
         case invalidWeight = "invalid_weight"
@@ -37,6 +40,14 @@ final class AppSyncTabStore: ObservableObject {
     private static let minWeightKg: Float = 1.0
     private static let maxWeightKg: Float = 450.0
     
+    func loadSavedZoom() {
+        guard let accountId = accountService.activeAccount?.accountId else { return }
+        let key = KvStorageKeys.savedZoomKey(for: accountId)
+        if let stored = KvStorageService.shared.getValue(forKey: key) as? Float, stored > 0 {
+            initialZoom = CGFloat(stored)
+        }
+    }
+
     /// Converts the scanned body-composition data into the format expected by
     /// `AppSyncEntryCardView` and shows the confirmation modal.
     /// - Parameter data: The `BodyCompData` coming from `AppSyncScannerView`.
@@ -87,6 +98,12 @@ final class AppSyncTabStore: ObservableObject {
             isMetric: isMetric,
             rawDisplayWeightKg: Double(data.weight)
         )
+
+        // Persist zoom level so the camera reopens at the same zoom next time
+        if let accountId = accountService.activeAccount?.accountId, data.zoomLevel > 0 {
+            let key = KvStorageKeys.savedZoomKey(for: accountId)
+            KvStorageService.shared.setValue(data.zoomLevel, forKey: key)
+        }
 
         // Persist for Save/Edit actions
         lastScannedData = metrics

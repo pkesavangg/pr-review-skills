@@ -52,6 +52,10 @@ public enum KvStorageKeys: String {
     // MARK: - FCM Token Key
     /// FCM token storage key (device-scoped, not account-scoped)
     case fcmToken = "fcmToken"
+
+    // MARK: - AppSync Camera Keys
+    /// Base key for last-used AppSync camera zoom level (per account)
+    case savedZoom = "savedZoom"
     
     // MARK: - Helper Methods
     
@@ -133,6 +137,13 @@ public enum KvStorageKeys: String {
     /// - Returns: The full key for FCM token storage
     public static func fcmTokenKey(for accountId: String) -> String {
         return "\(Self.fcmToken.rawValue)_\(accountId)"
+    }
+
+    /// Creates an account-scoped key for the last-used AppSync camera zoom level
+    /// - Parameter accountId: The account identifier
+    /// - Returns: The full key for saved zoom storage
+    public static func savedZoomKey(for accountId: String) -> String {
+        return "\(accountId)_\(Self.savedZoom.rawValue)"
     }
 }
 
