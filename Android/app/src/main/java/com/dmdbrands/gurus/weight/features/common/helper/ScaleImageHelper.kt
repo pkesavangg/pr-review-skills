@@ -12,14 +12,14 @@ object ScaleUtility {
     // SKU aliases: paired devices that ship the same hardware image.
     //   - 0340 reuses the image for 0341 (AppSync Body Fat Scale)
     //   - 0397 reuses the image for 0396 (Wi-Fi scale)
-    val sku = when (sku) {
+    val resolvedSku = when (sku) {
       "0340" -> "0341"
       "0397" -> "0396"
       else -> sku
     }
     return try {
       // Use reflection to get the field from R.drawable class
-      val fieldName = "scale_$sku"
+      val fieldName = "scale_$resolvedSku"
       val field = R.drawable::class.java.getDeclaredField(fieldName)
       field.getInt(null) // Static field, so pass null
     } catch (e: Exception) {

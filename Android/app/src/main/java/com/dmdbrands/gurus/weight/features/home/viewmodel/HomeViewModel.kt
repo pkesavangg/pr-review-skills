@@ -142,8 +142,8 @@ constructor(
     viewModelScope.launch {
       deviceService.pairedScales.collect { savedScales ->
         val hasAppSyncScales = savedScales.any { savedScale ->
-          savedScale.deviceType == ScaleSetupType.AppSync.value
-        } && savedScales.isNotEmpty()
+          savedScale.deviceType.equals(ScaleSetupType.AppSync.value, ignoreCase = true)
+        }
 
         handleIntent(HomeIntent.SetShowAppsync(hasAppSyncScales))
 
