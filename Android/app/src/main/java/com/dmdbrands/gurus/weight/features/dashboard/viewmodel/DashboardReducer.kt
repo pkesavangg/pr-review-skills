@@ -25,7 +25,7 @@ data class DashboardState(
   val latestWeight: Double? = null,
   val progress: Progress = Progress(),
   val isProgressUpdating: Boolean = false,
-  val selectedSegment: GraphSegment = GraphSegment.MONTH,
+  val selectedSegment: GraphSegment = GraphSegment.DEFAULT,
   val selectedStat: Stat? = null,
   val pagerState: Int = 0,
   val scrollTarget: Double? = null,

@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -34,13 +35,22 @@ class UserSettingsService
 
     companion object {
       private const val TAG = "UserSettingsService"
+
+      /** WhileSubscribed grace window: keeps the upstream alive across short re-subscribes. */
+      private const val STATE_TIMEOUT_MS = 5_000L
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    // .catch keeps the StateFlow alive when the upstream throws (e.g. proto parse / IO failure)
+    // so collectors don't silently freeze on the seed value with no recovery.
     override val defaultGraphSegment: StateFlow<GraphSegment> =
       userSettingsRepository.defaultGraphSegmentFlow
-        .stateIn(serviceScope, SharingStarted.Eagerly, GraphSegment.MONTH)
+        .catch { e ->
+          AppLog.e(TAG, "Error reading default graph segment; falling back to default", e)
+          emit(GraphSegment.DEFAULT)
+        }
+        .stateIn(serviceScope, SharingStarted.WhileSubscribed(STATE_TIMEOUT_MS), GraphSegment.DEFAULT)
 
 
 

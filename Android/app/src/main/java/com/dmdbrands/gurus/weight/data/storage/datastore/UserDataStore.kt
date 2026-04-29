@@ -414,16 +414,20 @@ class UserDataStore @Inject constructor(
    * Sets the default graph segment for a specific account.
    * @param accountId The account ID to update.
    * @param segment The DefaultGraphSegment to persist.
+   * @throws IllegalStateException when [accountId] is not present in the user accounts map —
+   * this is a programmer error that previously no-op'd silently and made the caller log a
+   * misleading "successfully updated" line.
    */
   suspend fun setDefaultGraphSegment(accountId: String, segment: DefaultGraphSegment) {
-    val current = getData()
-    val updated = current.toBuilder().apply {
-      val account = accountsMap[accountId]?.toBuilder()?.setDefaultGraphSegment(segment)
-      if (account != null) {
-        putAccounts(accountId, account.build())
-      }
-    }.build()
-    updateData { updated }
+    // Build the new state from the lambda's freshly-snapshotted `current` rather than a
+    // separately-read getData(), so this transform is atomic against concurrent writers.
+    updateData { current ->
+      val existing = current.accountsMap[accountId]
+        ?: error("Account $accountId not found when persisting default graph segment")
+      current.toBuilder()
+        .putAccounts(accountId, existing.toBuilder().setDefaultGraphSegment(segment).build())
+        .build()
+    }
   }
 
   /**

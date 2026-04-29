@@ -1,5 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.enums
 
+import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrings
+import com.dmdbrands.gurus.weight.features.settings.strings.toDisplayString
 import com.dmdbrands.gurus.weight.proto.DefaultGraphSegment
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -65,6 +67,51 @@ class GraphSegmentMapperTest {
   fun `round-trip preserves all GraphSegment values`() {
     GraphSegment.entries.forEach { segment ->
       assertEquals(segment, segment.toDefaultGraphSegment().toGraphSegment())
+    }
+  }
+
+  @Test
+  fun `GraphSegment DEFAULT is MONTH per the AC`() {
+    assertEquals(GraphSegment.MONTH, GraphSegment.DEFAULT)
+  }
+
+  @Test
+  fun `proto UNSPECIFIED falls back to GraphSegment DEFAULT`() {
+    // Re-asserts the fresh-install path via the centralised constant — guards against drift
+    // if DEFAULT is ever rebound to a different value.
+    assertEquals(
+      GraphSegment.DEFAULT,
+      DefaultGraphSegment.DEFAULT_GRAPH_SEGMENT_UNSPECIFIED.toGraphSegment(),
+    )
+  }
+
+  @Test
+  fun `toDisplayString WEEK renders the Week label`() {
+    assertEquals(RadioGroupModalStrings.DefaultGraphRange.Week, GraphSegment.WEEK.toDisplayString())
+  }
+
+  @Test
+  fun `toDisplayString MONTH renders the Month label`() {
+    assertEquals(RadioGroupModalStrings.DefaultGraphRange.Month, GraphSegment.MONTH.toDisplayString())
+  }
+
+  @Test
+  fun `toDisplayString YEAR renders the Year label`() {
+    assertEquals(RadioGroupModalStrings.DefaultGraphRange.Year, GraphSegment.YEAR.toDisplayString())
+  }
+
+  @Test
+  fun `toDisplayString TOTAL renders the Total label`() {
+    assertEquals(RadioGroupModalStrings.DefaultGraphRange.Total, GraphSegment.TOTAL.toDisplayString())
+  }
+
+  @Test
+  fun `toDisplayString covers all GraphSegment values`() {
+    GraphSegment.entries.forEach { segment ->
+      // Smoke-test: every enum member must produce a non-empty label so the modal never
+      // renders a blank row if a new segment is added without a label binding.
+      val label = segment.toDisplayString()
+      assert(label.isNotBlank()) { "toDisplayString returned blank for $segment" }
     }
   }
 }

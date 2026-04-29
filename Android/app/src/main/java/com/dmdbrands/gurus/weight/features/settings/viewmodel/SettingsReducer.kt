@@ -23,7 +23,7 @@ data class SettingsState(
   val unreadFeedCount: Int = 0,
   val showUnreadFeedIndication: Boolean = false,
   val isExportEnabled: Boolean = false,
-  val currentDefaultGraphRange: GraphSegment = GraphSegment.MONTH,
+  val currentDefaultGraphRange: GraphSegment = GraphSegment.DEFAULT,
 ) : IReducer.State {
 
   /**
