@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -207,10 +208,17 @@ fun GraphView(
     }
   }
 
+  // Tracks the wall-clock time of the most recent drag-start so a click event that fires
+  // immediately after a drag (vico emits Stable as the post-drag event, and a finger-down →
+  // drift → finger-up gesture produces both DragStarted and a click) can be suppressed.
+  // Without this, the user sees a marker flicker: DragStarted clears the marker, then the
+  // trailing click sees `Stable` and re-creates one with no deliberate tap.
+  val lastDragStartMs = remember { mutableLongStateOf(0L) }
   LaunchedEffect(scrollState) {
     scrollState.interactionEvents
       .filter { it is ChartInteractionEvent.DragStarted }
       .collect {
+        lastDragStartMs.longValue = System.currentTimeMillis()
         viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
       }
   }
@@ -232,6 +240,13 @@ fun GraphView(
     fadingEdges = fadingEdges,
     onChartClick = { targets, click ->
       if (click == null || state.isEmptyGraph) {
+        return@rememberGraphChart
+      }
+      // Suppress clicks that arrive within ~300ms of a drag-start. A finger-down → drift →
+      // finger-up gesture produces both a DragStarted (which clears the marker) and a
+      // trailing click; without this guard the click reselects a marker the user did not
+      // deliberately tap.
+      if (System.currentTimeMillis() - lastDragStartMs.longValue < 300L) {
         return@rememberGraphChart
       }
       val currentInteractionEvent = scrollState.interactionEvents.value

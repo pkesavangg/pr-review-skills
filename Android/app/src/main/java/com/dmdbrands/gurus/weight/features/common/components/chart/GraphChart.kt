@@ -69,32 +69,8 @@ fun rememberGraphChart(
       DateTimeConverter.isoToTimestamp(it.entryTimestamp)
     }
     val now = Calendar.getInstance().timeInMillis
-    val minX: Double? = when (segment) {
-      GraphSegment.TOTAL -> firstTs?.let { ts ->
-        Calendar.getInstance().apply {
-          timeInMillis = ts; add(Calendar.MONTH, -6)
-        }.timeInMillis.toDouble()
-      }
-
-      else -> GraphUtil.getStartRange(segment, firstTs)?.toDouble()
-    }
-    val maxX: Double? = when (segment) {
-      GraphSegment.TOTAL -> lastTs?.let { ts ->
-        Calendar.getInstance().apply {
-          timeInMillis = ts; add(Calendar.MONTH, +6)
-        }.timeInMillis.toDouble()
-      }
-
-      GraphSegment.MONTH -> {
-        val paddedStart = GraphUtil.getStartRange(segment, now) ?: now
-        Calendar.getInstance().apply {
-          timeInMillis = paddedStart; add(Calendar.DAY_OF_YEAR, 30)
-        }.timeInMillis.toDouble()
-      }
-
-      else -> GraphUtil.getEndRange(segment, now)?.toDouble()
-    }
-    minX to maxX
+    val (minX, maxX) = GraphUtil.computeChartXBounds(segment, firstTs, lastTs, now)
+    minX?.toDouble() to maxX?.toDouble()
   }
 
   // Seed Y range comes from VM (`state.seedMinY/seedMaxY`), computed using the SAME bracketing
