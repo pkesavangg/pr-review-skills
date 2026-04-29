@@ -4,6 +4,7 @@ import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrin
 import com.dmdbrands.gurus.weight.features.settings.strings.toDisplayString
 import com.dmdbrands.gurus.weight.proto.DefaultGraphSegment
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GraphSegmentMapperTest {
@@ -111,7 +112,7 @@ class GraphSegmentMapperTest {
       // Smoke-test: every enum member must produce a non-empty label so the modal never
       // renders a blank row if a new segment is added without a label binding.
       val label = segment.toDisplayString()
-      assert(label.isNotBlank()) { "toDisplayString returned blank for $segment" }
+      assertTrue("toDisplayString returned blank for $segment", label.isNotBlank())
     }
   }
 }

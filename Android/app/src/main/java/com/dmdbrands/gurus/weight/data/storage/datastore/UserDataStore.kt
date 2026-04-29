@@ -70,6 +70,7 @@ class UserDataStore @Inject constructor(
     it.accountsMap.values.firstOrNull { account -> account.isActive }?.defaultGraphSegment
       ?: DefaultGraphSegment.DEFAULT_GRAPH_SEGMENT_UNSPECIFIED
   }
+
   /**
    * Gets the theme mode for the currently active account, or SYSTEM if none is active.
    */
@@ -141,7 +142,8 @@ class UserDataStore @Inject constructor(
 
     // Otherwise, update the existing account
     val updated = current.toBuilder().apply {
-      val existingAccount = current.accountsMap[accountId]!!
+      val existingAccount = current.accountsMap[accountId]
+        ?: error("Account $accountId not found when updating tokens")
 
       val updatedAccount = existingAccount.toBuilder()
         .setRefreshToken(refreshToken)
@@ -411,21 +413,21 @@ class UserDataStore @Inject constructor(
   }
 
   /**
-   * Sets the default graph segment for a specific account.
-   * @param accountId The account ID to update.
-   * @param segment The DefaultGraphSegment to persist.
-   * @throws IllegalStateException when [accountId] is not present in the user accounts map —
-   * this is a programmer error that previously no-op'd silently and made the caller log a
-   * misleading "successfully updated" line.
+   * Sets the default graph segment for the currently active account.
+   * Both the active-account lookup and the write occur inside the [updateData] lambda so
+   * they are atomic against concurrent account-switch writers.
+   * @throws IllegalStateException when no account is active at write time.
    */
-  suspend fun setDefaultGraphSegment(accountId: String, segment: DefaultGraphSegment) {
-    // Build the new state from the lambda's freshly-snapshotted `current` rather than a
-    // separately-read getData(), so this transform is atomic against concurrent writers.
+  suspend fun setDefaultGraphSegment(segment: DefaultGraphSegment) {
     updateData { current ->
-      val existing = current.accountsMap[accountId]
-        ?: error("Account $accountId not found when persisting default graph segment")
+      val activeEntry = current.accountsMap.entries
+        .firstOrNull { it.value.isActive }
+        ?: error("No active account when persisting default graph segment")
       current.toBuilder()
-        .putAccounts(accountId, existing.toBuilder().setDefaultGraphSegment(segment).build())
+        .putAccounts(
+          activeEntry.key,
+          activeEntry.value.toBuilder().setDefaultGraphSegment(segment).build(),
+        )
         .build()
     }
   }

@@ -9,13 +9,10 @@ import com.dmdbrands.gurus.weight.domain.model.api.metrics.WeightlessRequest
 import com.dmdbrands.gurus.weight.domain.repository.IUserSettingsRepository
 import com.dmdbrands.gurus.weight.domain.services.IUserSettingsService
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.retry
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -35,24 +32,19 @@ class UserSettingsService
 
     companion object {
       private const val TAG = "UserSettingsService"
-
-      /** WhileSubscribed grace window: keeps the upstream alive across short re-subscribes. */
-      private const val STATE_TIMEOUT_MS = 5_000L
     }
 
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-    // .catch keeps the StateFlow alive when the upstream throws (e.g. proto parse / IO failure)
-    // so collectors don't silently freeze on the seed value with no recovery.
-    override val defaultGraphSegment: StateFlow<GraphSegment> =
+    // Cold flow — each ViewModel collects in its own viewModelScope. retry(3) guards
+    // against transient DataStore IO errors (CancellationException is never retried);
+    // .catch is the final backstop that emits DEFAULT after retries are exhausted.
+    override val defaultGraphSegment: Flow<GraphSegment> =
       userSettingsRepository.defaultGraphSegmentFlow
+        .retry(retries = 3)
         .catch { e ->
+          if (e is CancellationException) throw e
           AppLog.e(TAG, "Error reading default graph segment; falling back to default", e)
           emit(GraphSegment.DEFAULT)
         }
-        .stateIn(serviceScope, SharingStarted.WhileSubscribed(STATE_TIMEOUT_MS), GraphSegment.DEFAULT)
-
-
 
     /**
      * Toggles the streak setting for the active account.
@@ -128,6 +120,7 @@ class UserSettingsService
         userSettingsRepository.setDefaultGraphSegment(segment)
         AppLog.i(TAG, "Successfully updated default graph segment to $segment")
       } catch (e: Exception) {
+        if (e is CancellationException) throw e
         AppLog.e(TAG, "Error setting default graph segment", e)
         throw e
       }

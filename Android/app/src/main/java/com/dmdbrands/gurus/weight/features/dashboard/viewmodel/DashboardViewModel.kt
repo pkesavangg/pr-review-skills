@@ -81,7 +81,7 @@ constructor(
     super.handleIntent(DashboardIntent.SetVisibleKeys(metrics))
     super.handleIntent(DashboardIntent.UpdateWeightLess(weightLess))
     // selectedSegment is sourced solely from subscribeDefaultGraphSegment() to avoid
-    // reading the StateFlow before its upstream emits (race) and to avoid double-dispatch.
+    // reading the Flow before its upstream emits (race) and to avoid double-dispatch.
   }
 
   private fun subscribeWeightLess() {
@@ -197,6 +197,9 @@ constructor(
 
   private fun subscribeDefaultGraphSegment() {
     viewModelScope.launch {
+      // Cold Flow — each emission is the persisted value (or DEFAULT on upstream error
+      // via the service's .catch). No StateFlow seed prefix to skip, so cold-start
+      // collectors and late subscribers both observe the same first value.
       userSettingsService.defaultGraphSegment.collect { segment ->
         handleIntent(DashboardIntent.SetSelectedSegment(segment))
       }

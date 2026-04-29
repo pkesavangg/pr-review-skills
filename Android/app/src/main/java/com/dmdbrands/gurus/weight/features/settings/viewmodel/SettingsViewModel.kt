@@ -45,6 +45,7 @@ import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
 import com.dmdbrands.library.ggbluetooth.model.GGBTUserProfile
 import com.greatergoods.blewrapper.GGDeviceService
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -241,7 +242,7 @@ constructor(
       }
 
       is SettingsIntent.ShowDefaultGraphRangeModal -> {
-        onDefaultGraphRangeClick()
+        showDefaultGraphRangeModal()
       }
 
       is SettingsIntent.ToggleStreak -> {
@@ -337,7 +338,7 @@ constructor(
    * Performs the actual export operation with loading and error handling.
    */
   private fun performExport() {
-    AppLog.i("TAG", ExportStrings.ExportStarted)
+    AppLog.i(TAG, ExportStrings.ExportStarted)
 
     // Show loading spinner
     dialogQueueService.showLoader(
@@ -971,11 +972,6 @@ constructor(
     }
   }
 
-  private fun onDefaultGraphRangeClick() {
-    AppLog.d(TAG, "Default Graph Range clicked")
-    showDefaultGraphRangeModal()
-  }
-
   private fun loadDefaultGraphRange() {
     viewModelScope.launch {
       userSettingsService.defaultGraphSegment.collect { segment ->
@@ -1003,13 +999,23 @@ constructor(
   }
 
   private fun onDefaultGraphRangeUpdate(segment: GraphSegment) {
-    dialogQueueService.showLoader("Updating default graph range...")
+    dialogQueueService.showLoader(SettingsScreenStrings.UpdatingDefaultGraphRange)
     viewModelScope.launch {
       try {
         userSettingsService.setDefaultGraphSegment(segment)
         AppLog.i(TAG, "Successfully updated default graph range to ${segment.toDisplayString()}")
+      } catch (e: CancellationException) {
+        // Coroutine cancellation must propagate up so structured concurrency stays intact —
+        // it's not an "error updating default graph range".
+        throw e
       } catch (e: Exception) {
         AppLog.e(TAG, "Error updating default graph range", e)
+        dialogQueueService.showToast(
+          Toast(
+            message = SettingsScreenStrings.Error.MessageGeneric,
+            title = SettingsScreenStrings.Error.Header,
+          ),
+        )
       } finally {
         dialogQueueService.dismissLoader()
       }
