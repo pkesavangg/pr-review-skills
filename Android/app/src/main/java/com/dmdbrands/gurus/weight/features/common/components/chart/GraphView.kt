@@ -6,8 +6,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -100,12 +102,24 @@ fun GraphView(
     }
   }
 
-  // Bumped on every page activation so VicoScrollState is rebuilt fresh
-  // (initialScrollHandled = false). Plain `remember` (not rememberSaveable) avoids
-  // any saver restoring a stale scroll/initialScrollHandled across tab returns.
+  // Reset-to-latest fires on two events: (a) page activation transition (false→true),
+  // and (b) cold-start data arrival while the user is already on this page (data was
+  // empty, then arrived). Both are tracked via `rememberSaveable` flags so rotation
+  // does not retrigger reset (which would wipe the user's scroll position and marker).
+  // `resetEpoch` is plain `remember` because it's a transient signal — restoring its
+  // saved value would re-fire the reset effect on configuration change.
+  var lastSeenAsCurrentPage by rememberSaveable(segment) { mutableStateOf(false) }
+  var lastSeenAsHavingData by rememberSaveable(segment) { mutableStateOf(false) }
   var resetEpoch by remember(segment) { mutableIntStateOf(0) }
-  LaunchedEffect(isCurrentPage, segment) {
-    if (isCurrentPage) resetEpoch++
+  LaunchedEffect(isCurrentPage, state.data.isNotEmpty(), state.isEmptyGraph, segment) {
+    val hasData = state.data.isNotEmpty() && !state.isEmptyGraph
+    val activatedTransition = isCurrentPage && !lastSeenAsCurrentPage
+    val dataArrivedWhileActive = isCurrentPage && hasData && !lastSeenAsHavingData
+    if (activatedTransition || dataArrivedWhileActive) {
+      resetEpoch++
+    }
+    lastSeenAsCurrentPage = isCurrentPage
+    lastSeenAsHavingData = hasData
   }
 
   val scrollState = rememberVicoScrollState(
@@ -177,8 +191,13 @@ fun GraphView(
         onScrollUpdate(windowStart, latestTimeStamp)
       }
     }
-    viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(latestTimeStamp.toDouble()))
-    viewModel.handleIntent(GraphIntent.UpdateTarget(listOf(latestEntry)))
+    // Preserve the user's currently selected marker across tab activations. The auto-select
+    // of the latest entry is only intended for the cold-start / first-visit case, not as
+    // an override of an existing user choice.
+    if (state.markerIndex == null) {
+      viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(latestTimeStamp.toDouble()))
+      viewModel.handleIntent(GraphIntent.UpdateTarget(listOf(latestEntry)))
+    }
     onChartConsuming(false)
   }
 

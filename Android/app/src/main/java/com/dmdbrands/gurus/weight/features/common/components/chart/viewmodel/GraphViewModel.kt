@@ -415,6 +415,13 @@ class GraphViewModel @AssistedInject constructor(
    * side, sorted by X. Mirrors `ScrollAwareRangeProvider.computeVisibleEntries`'s window with
    * `paddingEntries = 1`, so the seed range computed from these values exactly matches the
    * range the provider's callback will produce on the first scroll emission.
+   *
+   * Uses `binarySearchInsertionPoint` semantics on both edges (matching the provider): for
+   * `endX` strictly between two data points, the right-bracketing entry is one position
+   * past the largest entry whose X is `<= endX`. The previous `indexOfFirst/Last in range`
+   * approach was off-by-one on the right edge whenever `endX` did not coincide with a data
+   * point — e.g. after scroll-driven `state.maxTarget` updates — which defeated the seed/live
+   * convergence guarantee.
    */
   private fun computeSeedVisibleYWithBracketing(
     graphLines: GraphLine,
@@ -423,16 +430,25 @@ class GraphViewModel @AssistedInject constructor(
   ): List<Double> {
     val sorted = graphLines.points.sortedBy { it.x.value.toLong() }
     if (sorted.isEmpty()) return emptyList()
-    val firstVisible = sorted.indexOfFirst { it.x.value.toLong() in startX..endX }
-    val lastVisible = sorted.indexOfLast { it.x.value.toLong() in startX..endX }
-    val window: List<GraphPoint> =
-      if (firstVisible < 0 || lastVisible < 0) emptyList()
-      else {
-        val from = (firstVisible - 1).coerceAtLeast(0)
-        val to = (lastVisible + 1).coerceAtMost(sorted.lastIndex)
-        sorted.subList(from, to + 1)
+    val xs = LongArray(sorted.size) { sorted[it].x.value.toLong() }
+    // Insertion point: smallest index where xs[i] >= value (binary search, O(log n)).
+    fun insertionPoint(value: Long): Int {
+      var low = 0
+      var high = xs.size
+      while (low < high) {
+        val mid = (low + high) ushr 1
+        if (xs[mid] < value) low = mid + 1 else high = mid
       }
-    return window.mapNotNull { (it.y.value as? Number)?.toDouble()?.takeIf { v -> v.isFinite() } }
+      return low
+    }
+    val startIndex = insertionPoint(startX).coerceIn(0, sorted.lastIndex)
+    val endIndex = insertionPoint(endX).coerceIn(0, sorted.lastIndex)
+    val paddedStart = (startIndex - 1).coerceAtLeast(0)
+    val paddedEnd = (endIndex + 1).coerceAtMost(sorted.lastIndex)
+    if (paddedStart > paddedEnd) return emptyList()
+    return sorted
+      .subList(paddedStart, paddedEnd + 1)
+      .mapNotNull { (it.y.value as? Number)?.toDouble()?.takeIf { v -> v.isFinite() } }
   }
 
   private fun calculateYAxisRange(

@@ -110,7 +110,29 @@ fun rememberGraphChart(
     // Single-series chart: take entries from the first (and only) series.
     val yValues = visibleEntries.firstOrNull()?.map { it.second }?.filter { it.isFinite() } ?: emptyList()
     if (yValues.isEmpty()) {
-      0.0..1.0 to emptyList()
+      // No entries in the visible window (user scrolled past all data). Reuse the last
+      // known good range from state — either the seed range computed at setup, or the
+      // VM-computed primaryYAxis. Returning a synthetic 0..1 collapses the live range
+      // and creates a visible mismatch with the cached drawing model. Keeping the prior
+      // tick list also prevents the axis labels from blanking during the out-of-data
+      // scroll window.
+      val seedMin = state.seedMinY
+      val seedMax = state.seedMaxY
+      val fallbackMin = seedMin ?: state.primaryYAxis?.minY
+      val fallbackMax = seedMax ?: state.primaryYAxis?.maxY
+      if (fallbackMin != null && fallbackMax != null && fallbackMax > fallbackMin) {
+        val nice = generateNiceScale(
+          minValue = fallbackMin,
+          maxValue = fallbackMax,
+          goalWeight = goalWeight,
+          isWeightLessMode = isWeightlessOn,
+          targetTickCount = 4,
+        )
+        val ticks = buildTicksFromNiceScale(nice)
+        (nice.min..nice.max) to ticks
+      } else {
+        0.0..1.0 to emptyList()
+      }
     } else {
       val nice = generateNiceScale(
         minValue = yValues.min(),
@@ -119,13 +141,7 @@ fun rememberGraphChart(
         isWeightLessMode = isWeightlessOn,
         targetTickCount = 4,
       )
-      val ticks = mutableListOf<Double>()
-      var t = nice.min
-      while (t <= nice.max + nice.step * 0.01) {
-        ticks.add(t)
-        t += nice.step
-      }
-      (nice.min..nice.max) to ticks
+      (nice.min..nice.max) to buildTicksFromNiceScale(nice)
     }
   }
 
@@ -193,6 +209,22 @@ fun getIntervalCount(startTimeStamp: Long, endTimeStamp: Long): Double =
   GraphUtil.getTotalMonthsBetweenYears(startTimeStamp, endTimeStamp)
     .toDouble()
     .coerceAtLeast(1.0)
+
+/**
+ * Materialize evenly spaced tick values across `[nice.min, nice.max]` using `nice.step`. The
+ * loop tolerates floating-point creep at the upper bound by adding a tiny epsilon to the
+ * comparison. Returns an empty list when `nice.step <= 0` to prevent an infinite loop.
+ */
+private fun buildTicksFromNiceScale(nice: com.dmdbrands.gurus.weight.features.common.helper.AxisMeta): List<Double> {
+  if (nice.step <= 0.0 || !nice.step.isFinite()) return emptyList()
+  val ticks = mutableListOf<Double>()
+  var t = nice.min
+  while (t <= nice.max + nice.step * 0.01) {
+    ticks.add(t)
+    t += nice.step
+  }
+  return ticks
+}
 
 /**
  * Render-time normalization of raw secondary metric values into the primary Y range. Mirrors
