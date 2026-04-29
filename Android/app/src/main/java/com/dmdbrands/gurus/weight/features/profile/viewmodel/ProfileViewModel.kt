@@ -47,9 +47,6 @@ class ProfileViewModel @Inject constructor(
 ) {
   companion object {
     private const val TAG = "ProfileViewModel"
-
-    /** Fallback stored-height used when the account has no saved height. Matches legacy default. */
-    private const val DEFAULT_HEIGHT = 1700
   }
 
   init {
@@ -130,7 +127,7 @@ class ProfileViewModel @Inject constructor(
     val isMetric = state.value.weightUnit == WeightUnit.KG
 
     val currentHeightInput = HeightInput.fromStoredHeight(
-      storedHeight = if (currentHeight > 0) currentHeight else DEFAULT_HEIGHT,
+      storedHeight = if (currentHeight > 0) currentHeight else BodyCompUpdateRequest.DEFAULT_HEIGHT,
       isMetric = isMetric,
     )
 
@@ -185,16 +182,15 @@ class ProfileViewModel @Inject constructor(
         var scaleResult: GGUserActionResponseType? = null
         accountService.updateProfile(profileUpdateRequest, true, showToast = false)
 
-        // Server-first, scale-second: server is the source of truth and must persist the user's
-        // edit even if no scale is paired or reachable. Scale update failures are isolated below
-        // and surface their own UX rather than rolling back the server write.
-        // Update height via body composition if changed. Isolate failures so a body-comp
-        // error doesn't skip the downstream R4 scale profile update.
+        // Write order is server-first, scale-second: the server is the source of truth and must
+        // persist the user's edit even if no scale is paired or reachable. The body-comp call is
+        // isolated in its own try/catch so a server failure on height does not skip the
+        // downstream R4 scale profile update; the outer try/catch handles the broader failure UX.
         val heightChanged = newHeight != null && newHeight != currentAccount.height
         if (heightChanged) {
           val bodyComposition = BodyCompUpdateRequest(
-            height = newHeight ?: currentAccount.height ?: DEFAULT_HEIGHT,
-            activityLevel = currentAccount.activityLevel ?: "normal",
+            height = newHeight ?: currentAccount.height ?: BodyCompUpdateRequest.DEFAULT_HEIGHT,
+            activityLevel = currentAccount.activityLevel ?: BodyCompUpdateRequest.DEFAULT_ACTIVITY_LEVEL,
             weightUnit = currentAccount.weightUnit.value,
           )
           try {
@@ -214,7 +210,7 @@ class ProfileViewModel @Inject constructor(
             var updated = profile
             if (genderChanged) updated = updated.copy(sex = newGender)
             if (heightChanged) updated = updated.copy(
-              height = ConversionTools.convertStoredHeightToCm(newHeight ?: DEFAULT_HEIGHT).toDouble(),
+              height = ConversionTools.convertStoredHeightToCm(newHeight ?: BodyCompUpdateRequest.DEFAULT_HEIGHT).toDouble(),
             )
             updated
           }

@@ -257,7 +257,7 @@ constructor(
       try {
         val bodyComposition =
           BodyCompUpdateRequest(
-            height = currentAccount.height ?: 1700,
+            height = currentAccount.height ?: BodyCompUpdateRequest.DEFAULT_HEIGHT,
             activityLevel = activityLevel,
             weightUnit = currentAccount.weightUnit.value,
           )

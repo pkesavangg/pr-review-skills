@@ -33,10 +33,6 @@ constructor(
   companion object {
     private const val TAG = "UnitSettingsManager"
     private val KNOWN_UNIT_VALUES = setOf(WeightUnit.KG.value, WeightUnit.LB.value, WeightUnit.LB_OZ.value)
-
-    /** Fallback stored-height used when the account has no saved height. Matches legacy default. */
-    private const val DEFAULT_HEIGHT = 1700
-    private const val DEFAULT_ACTIVITY_LEVEL = "normal"
   }
 
   override fun onUnitTypeClick(
@@ -103,8 +99,8 @@ constructor(
       try {
         val bodyComposition =
           BodyCompUpdateRequest(
-            height = currentAccount.height ?: DEFAULT_HEIGHT,
-            activityLevel = currentAccount.activityLevel ?: DEFAULT_ACTIVITY_LEVEL,
+            height = currentAccount.height ?: BodyCompUpdateRequest.DEFAULT_HEIGHT,
+            activityLevel = currentAccount.activityLevel ?: BodyCompUpdateRequest.DEFAULT_ACTIVITY_LEVEL,
             weightUnit = newWeightUnit.value,
           )
 
