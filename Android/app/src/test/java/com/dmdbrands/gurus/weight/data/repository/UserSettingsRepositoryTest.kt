@@ -67,10 +67,10 @@ class UserSettingsRepositoryTest {
 
   @Test
   fun `setDefaultGraphSegment forwards correct proto segment for every GraphSegment value`() {
-    // Guard against transposition bugs in the toDefaultGraphSegment() mapper — the
-    // MONTH-only test misses wrong mappings for the other three branches.
+    // Guard against transposition bugs in the toDefaultGraphSegment() mapper — all four branches.
     val cases = mapOf(
       GraphSegment.WEEK to DefaultGraphSegment.DEFAULT_GRAPH_SEGMENT_WEEK,
+      GraphSegment.MONTH to DefaultGraphSegment.DEFAULT_GRAPH_SEGMENT_MONTH,
       GraphSegment.YEAR to DefaultGraphSegment.DEFAULT_GRAPH_SEGMENT_YEAR,
       GraphSegment.TOTAL to DefaultGraphSegment.DEFAULT_GRAPH_SEGMENT_TOTAL,
     )
