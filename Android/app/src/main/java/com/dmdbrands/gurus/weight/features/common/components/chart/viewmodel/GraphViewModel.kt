@@ -58,6 +58,7 @@ class GraphViewModel @AssistedInject constructor(
 
   companion object {
     private const val TAG = "GraphViewModel"
+    private const val SCROLL_DEBOUNCE_MS = 150L
   }
 
   override fun handleIntent(intent: GraphIntent) {
@@ -323,7 +324,7 @@ class GraphViewModel @AssistedInject constructor(
     // Synchronous seed for ScrollAwareRangeProvider — uses the SAME bracketing window the
     // provider's `onVisibleEntries` callback uses (visible + 1 entry each side, matching
     // `paddingEntries = 1`). Frame-0 seed and frame-1 callback produce identical Y bounds, so
-    // the chart no longer snaps when transitioning from seed to live range. Mirrors MA-3287.
+    // the chart no longer snaps when transitioning from seed to live range.
     val isWeightlessSync = accountService.activeAccount.value?.isWeightlessOn == true
     val seedYValues = computeSeedVisibleYWithBracketing(graphLines, startX, endX)
     if (seedYValues.isNotEmpty()) {
@@ -420,8 +421,6 @@ class GraphViewModel @AssistedInject constructor(
               }
             }
           }
-          // Clear loading state after successful update
-          super.handleIntent(GraphIntent.UpdateIsLoading(false))
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Error setting up chart model producer", e)
@@ -554,19 +553,18 @@ class GraphViewModel @AssistedInject constructor(
   }
 
   /**
-   * Handles scroll events and updates the visible range.
-   * Optimized with debouncing and background processing.
-   * iOS-style: Caches Y-axis on scroll end to trigger renormalization.
+   * Handles scroll events and updates the visible range. Debounces with a 150ms delay so
+   * rapid scroll emissions only run the filter+dispatch once after the user settles —
+   * cancel-then-launch alone (no delay) ran reducer + recompose on every micro-tick.
    */
   private fun handleScroll(min: Long, max: Long, fallback: () -> Unit = {}) {
     val min = GraphUtil.getRelativeStart(segment, min)
     val max = GraphUtil.getRelativeEnd(segment, max)
     val currentState = _state.value
-    // Cancel any existing debounce job
     scrollDebounceJob?.cancel()
-    // Debounce heavy computations
     scrollDebounceJob = viewModelScope.launch(Dispatchers.IO) {
       try {
+        kotlinx.coroutines.delay(SCROLL_DEBOUNCE_MS)
         // Skip target updates when a marker is selected — the marker callback owns the target
         // and overwriting it here causes the header to flash back to the visible average.
         if (currentState.markerIndex == null) {

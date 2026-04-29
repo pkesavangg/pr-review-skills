@@ -39,17 +39,8 @@ sealed interface GraphIntent : IReducer.Intent {
   /** Update marker index */
   data class UpdateMarkerIndex(val markerIndex: Double?) : GraphIntent
 
-  /** Update updating state */
-  data class UpdateIsUpdating(val isUpdating: Boolean) : GraphIntent
-
-  /** Update loading state */
-  data class UpdateIsLoading(val isLoading: Boolean) : GraphIntent
-
   /** Update whether the visible range is a single segment window */
   data class UpdateIsSingleWindow(val isSingleWindow: Boolean) : GraphIntent
-
-  /** Reset graph state */
-  object ResetGraph : GraphIntent
 
   data class SetScrollRange(val min: Long, val max: Long, val onFallback: () -> Unit = {}) : GraphIntent
 }

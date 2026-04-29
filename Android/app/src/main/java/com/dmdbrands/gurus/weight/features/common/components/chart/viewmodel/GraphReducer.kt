@@ -40,24 +40,12 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
 
     is GraphIntent.UpdateMarkerIndex -> state.copy(markerIndex = intent.markerIndex)
 
-    is GraphIntent.UpdateIsUpdating -> state.copy(isUpdating = intent.isUpdating)
-
-    is GraphIntent.UpdateIsLoading -> state.copy(isLoading = intent.isLoading)
-
     is GraphIntent.UpdateIsSingleWindow -> state.copy(isSingleWindow = intent.isSingleWindow)
 
     is GraphIntent.UpdateIsEmptyGraph -> state.copy(isEmptyGraph = intent.isEmptyGraph)
 
     is GraphIntent.UpdateWeightUnit -> state.copy(
       weightUnit = intent.weightUnit,
-    )
-
-    is GraphIntent.ResetGraph -> state.copy(
-      minTarget = null,
-      maxTarget = null,
-      markerIndex = null,
-      isUpdating = false,
-      isSingleWindow = false,
     )
 
     is GraphIntent.SetScrollRange -> state.copy(

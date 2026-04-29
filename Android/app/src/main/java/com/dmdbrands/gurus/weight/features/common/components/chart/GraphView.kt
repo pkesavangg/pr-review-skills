@@ -15,7 +15,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
@@ -36,7 +35,6 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import java.util.Calendar
-import android.util.Log
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -133,8 +131,9 @@ fun GraphView(
       ),
     ),
     scrollStartPaddingXStep = startPaddingXStep,
-    // `key = segment` binds scroll-state lifetime to segment identity, not to per-recomp
-    // identity churn of `initialScroll` / `snapBehaviorConfig`. Matches MA-3287 + vico 4.
+    // Bind scroll-state lifetime to segment identity rather than the per-recomposition
+    // identity churn of `initialScroll` / `snapBehaviorConfig`, so segment switches rebuild
+    // a fresh scroll state but recomposition within the same segment preserves it.
     key = segment,
   )
   val horizontalItemPlacer =
@@ -169,13 +168,11 @@ fun GraphView(
     if (!isCurrentPage) {
       viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
     }
-    // Re-arm scroll-to-initial on every isCurrentPage transition (both page-entering AND
-    // page-leaving). On the ARRIVING page, the next measure snaps to its initialScroll —
-    // that's what makes WEEK→MONTH show MONTH at its rolling-window-start and MONTH→WEEK
-    // show WEEK at its current week. Bottom-nav returns don't trigger this because
-    // `isCurrentPage` doesn't transition during bottom-nav navigation; the chart screen's
-    // composition either persists (scroll preserved) or rebuilds fresh (scrollState's
-    // built-in `initialScrollHandled = false` constructor default already handles it).
+    // Re-arm scroll-to-initial on every isCurrentPage transition so the arriving page
+    // snaps to its segment-appropriate initial scroll on the next measure. Bottom-nav
+    // returns do not trigger this because isCurrentPage does not toggle during bottom-nav
+    // navigation; the chart screen either preserves its composition (scroll preserved) or
+    // rebuilds fresh (vico's default initialScrollHandled = false handles it).
     scrollState.initialScrollHandled = false
   }
 
@@ -303,12 +300,6 @@ fun GraphView(
         val relativeMin = GraphUtil.getRelativeStart(segment, min)
         val relativeMax = GraphUtil.getRelativeEnd(segment, max)
         val clipRange = GraphUtil.clipRangeForGraph(segment, relativeMin, relativeMax)
-        Log.d(
-          "GraphView",
-          "start : " + DateTimeConverter.timestampToIso(min) + " end : " + DateTimeConverter.timestampToIso(
-            max,
-          ),
-        )
         onScrollUpdate(clipRange.startMillis, clipRange.endMillis)
         if (!state.isEmptyGraph)
           viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(relativeMin > state.getEndTimestamp()))

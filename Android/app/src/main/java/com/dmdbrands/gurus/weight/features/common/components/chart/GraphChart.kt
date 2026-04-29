@@ -53,14 +53,10 @@ fun rememberGraphChart(
     endMillis = if (timeStamps.isNotEmpty()) timeStamps.last() else null,
   ).map { it.toDouble() }
 
-  // Synchronous chart-wide X bounds — matches MA-3287's chartMinX/chartMaxX computed in
-  // BaseDashboardViewModel.updateSegmentRanges, and the per-segment padding from release
-  // 5.0.0's setupChartData. Used for both primary's scroll-aware provider and secondary's
-  // X-only fixed provider, so both layers share the same X scale even before the VM's
-  // UpdatePrimaryYAxis dispatch lands.
-  //
-  // TOTAL gets ±6 months padding around the data extents so the chart visibly extends past
-  // the first/last entries (matches release 5.0.0).
+  // Chart-wide X bounds computed synchronously here so both primary and secondary layers
+  // share the same X scale on frame 0, before the VM's async UpdatePrimaryYAxis dispatch
+  // lands. The per-segment padding rule lives in `GraphUtil.computeChartXBounds`; see that
+  // function for the rule definition.
   val chartXBounds = remember(state.data) {
     val firstTs = state.data.minOfOrNull {
       DateTimeConverter.isoToTimestamp(it.entryTimestamp)
@@ -76,7 +72,7 @@ fun rememberGraphChart(
   // Seed Y range comes from VM (`state.seedMinY/seedMaxY`), computed using the SAME bracketing
   // window the provider's `onVisibleEntries` callback uses (visible + 1 entry each side, matching
   // `paddingEntries = 1`). Frame-0 seed and frame-1 callback produce identical Y bounds, so
-  // there's no snap on segment switch. Mirrors MA-3287's SegmentState.seedMinY/seedMaxY pattern.
+  // there's no snap on segment switch.
   val scrollAwareRange = rememberScrollAwareRangeProvider(
     minX = chartXBounds.first ?: Double.NaN,
     maxX = chartXBounds.second ?: Double.NaN,
@@ -123,11 +119,12 @@ fun rememberGraphChart(
 
   val primaryLayer = primaryLayer(segment = segment, rangeProvider = scrollAwareRange)
 
-  // Secondary layer is created ONLY when a secondary metric is selected. Matches MA-3287's
-  // pattern (conditional inclusion via config.hasSecondaryLayer) — avoids registering a
-  // data-less layer when no metric is active, which can cause cache + transform side effects.
+  // Secondary layer is created only when a secondary metric is selected. Registering a
+  // data-less layer when no metric is active triggers cache and transform side effects in
+  // vico that surface as flicker on metric toggle.
+  //
   // Secondary uses its own X-only fixed range provider keyed on the synchronous chartXBounds
-  // so it shares primary's X scale even on frame-0; `alwaysUseLiveRange = true` (inside
+  // so it shares primary's X scale on frame 0; `alwaysUseLiveRange = true` (inside
   // `secondaryLayer`) skips the cached drawing model so yTransform output reaches screen.
   val secondaryLayer = if (state.secondaryKey != null) {
     val secondaryRangeProvider =
@@ -203,11 +200,11 @@ private fun buildTicksFromNiceScale(nice: com.dmdbrands.gurus.weight.features.co
 }
 
 /**
- * Render-time normalization of raw secondary metric values into the primary Y range. Mirrors
- * MA-3287's `GraphUtil.normalizeYValues` exactly — single-pass classification of entries into
- * prev/visible/next sentinel buckets (assumes input is sorted by X, which vico guarantees).
- * Returns `null` when the visible window is empty so vico falls back to `entry.y` instead of
- * applying a stale transform.
+ * Render-time normalization of raw secondary metric values into the primary Y range so the
+ * secondary line renders proportionally against the same axis. Single-pass classification of
+ * entries into prev / visible / next sentinel buckets — input must be sorted by X (vico
+ * guarantees this). Returns `null` when the visible window is empty so vico falls back to
+ * `entry.y` instead of applying a stale transform.
  */
 private fun normalizeSecondaryEntriesToWeightRange(
   series: List<LineCartesianLayerModel.Entry>,
