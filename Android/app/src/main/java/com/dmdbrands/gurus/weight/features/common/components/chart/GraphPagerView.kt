@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.flow.MutableSharedFlow
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
@@ -60,6 +61,18 @@ fun GraphPagerView(
   var subText: String by remember { mutableStateOf("") }
   var labelData by remember { mutableStateOf("") }
   var weightValue by remember { mutableStateOf(0.0) }
+
+  // One-shot signal emitted on every segment-button tap. Each GraphView page subscribes
+  // and the page whose segment matches the emitted value re-arms its scroll-to-initial.
+  // Using an explicit user-action signal (rather than inferring from `isCurrentPage`
+  // transitions) avoids both rotation/resume false-positives and pager-timing false-
+  // negatives where `pagerState.currentPage` updates before a freshly composed page
+  // observes the transition.
+  // replay = 1: new subscribers (freshly composed pages) immediately receive the last-emitted
+  // segment even if they subscribed after the emission. `remember { }` recreates this flow on
+  // rotation / navigation-stack push, so the replay cache is always session-scoped — no
+  // spurious resets after a config change.
+  val segmentResetSignal = remember { MutableSharedFlow<GraphSegment>(replay = 1, extraBufferCapacity = 4) }
 
   LaunchedEffect(state.selectedSegment) {
     val targetPage = GraphSegment.entries.indexOf(state.selectedSegment)
@@ -143,6 +156,7 @@ fun GraphPagerView(
           state = graphState,
           viewModel = viewmodel,
           onChartConsuming = onChartConsuming,
+          segmentResetSignal = segmentResetSignal,
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
       }
@@ -155,6 +169,12 @@ fun GraphPagerView(
       onSelected = { segment ->
         onChartConsuming(true)
         onSegmentChange(segment)
+        // Explicit reset-to-initial signal — only the page whose segment matches consumes
+        // it. Fires on every tap (including same-segment taps), which matches the user
+        // expectation that pressing a segment button shows that segment from its initial
+        // window. Rotation, history-screen return, and app resume do NOT emit, so scroll
+        // is preserved across non-tap recompositions.
+        segmentResetSignal.tryEmit(segment)
       },
       modifier = Modifier.padding(horizontal = MeTheme.spacing.xs),
     )

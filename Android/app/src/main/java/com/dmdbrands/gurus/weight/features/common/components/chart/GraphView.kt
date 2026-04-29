@@ -32,6 +32,8 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
 import com.patrykandpatrick.vico.core.cartesian.InterpolationType
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -58,6 +60,14 @@ fun GraphView(
   placeHolder: String? = null,
   viewModel: GraphViewModel = hiltViewModel(),
   onChartConsuming: (Boolean) -> Unit = {},
+  /**
+   * Hot flow emitting the segment that was just tapped on the segment-button row. The page
+   * whose [segment] matches the emission re-arms `initialScrollHandled = false` so its
+   * next measure snaps to the segment-appropriate initial scroll. Default is a no-op flow
+   * for previews / standalone callers that don't have a pager. The signal is intentionally
+   * scoped to user taps; rotation, history-screen return, and app resume preserve scroll.
+   */
+  segmentResetSignal: MutableSharedFlow<GraphSegment> = remember { MutableSharedFlow() },
 ) {
 
   val scope = rememberCoroutineScope()
@@ -106,17 +116,15 @@ fun GraphView(
   // does not retrigger reset (which would wipe the user's scroll position and marker).
   // `resetEpoch` is plain `remember` because it's a transient signal — restoring its
   // saved value would re-fire the reset effect on configuration change.
-  var lastSeenAsCurrentPage by rememberSaveable(segment) { mutableStateOf(false) }
+  // Tracks cold-start: data arriving while the page is already visible (e.g. first load).
+  // rememberSaveable persists across rotation and navigation-back so a returning page that
+  // already loaded data does not spuriously re-fire the scroll + marker auto-select.
   var lastSeenAsHavingData by rememberSaveable(segment) { mutableStateOf(false) }
   var resetEpoch by remember(segment) { mutableIntStateOf(0) }
-  LaunchedEffect(isCurrentPage, state.data.isNotEmpty(), state.isEmptyGraph, segment) {
+  LaunchedEffect(state.data.isNotEmpty(), state.isEmptyGraph, segment, isCurrentPage) {
     val hasData = state.data.isNotEmpty() && !state.isEmptyGraph
-    val activatedTransition = isCurrentPage && !lastSeenAsCurrentPage
     val dataArrivedWhileActive = isCurrentPage && hasData && !lastSeenAsHavingData
-    if (activatedTransition || dataArrivedWhileActive) {
-      resetEpoch++
-    }
-    lastSeenAsCurrentPage = isCurrentPage
+    if (dataArrivedWhileActive) resetEpoch++
     lastSeenAsHavingData = hasData
   }
 
@@ -163,20 +171,21 @@ fun GraphView(
       )
     }
   }
-  // Re-arm scroll-to-initial only on a real isCurrentPage transition (segment-button tap).
-  // Rotation, history-screen return, and app resume all recreate the composition with the
-  // same isCurrentPage value — without this saveable-flag gate, the LaunchedEffect would
-  // re-run and wipe the user's restored scroll position. The saver preserves the flag
-  // across rotation, so post-rotation comparison reads "no transition" and the reset is
-  // skipped. Marker is also preserved across deactivation so a tab-away-and-back doesn't
-  // clobber the user's prior selection (the resetEpoch path's `state.markerIndex == null`
-  // gate covers cold-start).
-  var lastSeenIsCurrentPage by rememberSaveable(segment) { mutableStateOf(isCurrentPage) }
-  LaunchedEffect(isCurrentPage) {
-    if (lastSeenIsCurrentPage != isCurrentPage) {
-      scrollState.initialScrollHandled = false
-      lastSeenIsCurrentPage = isCurrentPage
-    }
+  // Re-arm scroll-to-initial only on an explicit segment-button tap. The pager parent emits
+  // to `segmentResetSignal` from `SegmentButtonGroup.onSelected`; only the page whose
+  // segment matches the emitted value flips its `initialScrollHandled`. Rotation,
+  // history-screen return, and app resume do not emit, so the user's scroll position is
+  // preserved across non-tap recompositions.
+  // Segment-button tap → re-arm vico's initial scroll AND trigger the scroll+marker effect
+  // with fresh state via resetEpoch. The collect lambda must not read `state` directly
+  // because it captures the snapshot from LaunchedEffect start, not the live value.
+  LaunchedEffect(scrollState, segment) {
+    segmentResetSignal
+      .filter { it == segment }
+      .collect {
+        scrollState.initialScrollHandled = false
+        resetEpoch++
+      }
   }
 
   LaunchedEffect(resetEpoch) {
@@ -192,13 +201,11 @@ fun GraphView(
         onScrollUpdate(windowStart, latestTimeStamp)
       }
     }
-    // Preserve the user's currently selected marker across tab activations. The auto-select
-    // of the latest entry is only intended for the cold-start / first-visit case, not as
-    // an override of an existing user choice.
-    if (state.markerIndex == null) {
-      viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(latestTimeStamp.toDouble()))
-      viewModel.handleIntent(GraphIntent.UpdateTarget(listOf(latestEntry)))
-    }
+    // Always select the latest entry: resetEpoch is only incremented by an explicit segment
+    // tap or cold-start data arrival — never by navigation-back or rotation — so there is no
+    // risk of clobbering a user's prior marker choice here.
+    viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(latestTimeStamp.toDouble()))
+    viewModel.handleIntent(GraphIntent.UpdateTarget(listOf(latestEntry)))
     onChartConsuming(false)
   }
 
@@ -209,26 +216,24 @@ fun GraphView(
   }
 
   // Suppress the trailing click that vico emits when a finger-down → drift → finger-up
-  // gesture also looks like a tap. Track drag-END (the first non-DragStarted event after
-  // a drag begins) and gate clicks within ~50ms of it. Earlier versions guarded from
-  // drag-START with a 300ms window, but that suppressed deliberate taps that came shortly
-  // after a short drag. drag-END + a short window catches the spurious trailing click
-  // without blocking real follow-up taps.
+  // gesture also looks like a tap. Watch for the explicit `DragEnded` event and gate
+  // clicks within a short window after it. An earlier version flipped the timestamp on
+  // any non-DragStarted event, but vico emits `Dragging` mid-drag — that fired the flag
+  // ~10ms after drag start, well before the user actually lifted their finger, so the
+  // 50ms guard expired before the trailing click arrived.
   val lastDragEndMs = remember { mutableLongStateOf(0L) }
   LaunchedEffect(scrollState) {
-    var inDrag = false
-    scrollState.interactionEvents.collect { event ->
-      when {
-        event is ChartInteractionEvent.DragStarted -> {
-          inDrag = true
-          viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
-        }
-        inDrag -> {
-          inDrag = false
-          lastDragEndMs.longValue = System.currentTimeMillis()
+    scrollState.interactionEvents
+      .filter { it is ChartInteractionEvent.DragStarted || it is ChartInteractionEvent.DragEnded }
+      .collect { event ->
+        when (event) {
+          is ChartInteractionEvent.DragStarted ->
+            viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
+          is ChartInteractionEvent.DragEnded ->
+            lastDragEndMs.longValue = System.currentTimeMillis()
+          else -> Unit
         }
       }
-    }
   }
 
   val defaultMarker = rememberDefaultMarker(
