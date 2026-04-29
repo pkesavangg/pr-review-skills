@@ -19,37 +19,38 @@ struct AppSyncTabScreen: View {
     @Injector private var logger: LoggerService
     // Store handling scan results
     @StateObject private var scanStore = AppSyncTabStore()
-    // Forces a fresh camera/scanner instance whenever AppSync tab is re-opened.
-    @State private var scannerSessionId = UUID()
-    private let tag = "AppSyncTabScreen"
+    // Gates scanner rendering until zoom is loaded for the active account.
+    @State private var isScannerReady = false
 
     // MARK: - Body
     var body: some View {
         ZStack {
-            if tabViewModel.selectedTab == .appsync {
+            if isScannerReady {
                 // Full-screen camera/scanner view
                 AppSyncScannerView(
                     initialZoom: scanStore.initialZoom,
                     onClose: {
-                        scannerSessionId = UUID()
+                        isScannerReady = false
                         tabViewModel.restorePreviousTab()
                     },
                     onManualEntry: {
-                        scannerSessionId = UUID()
+                        isScannerReady = false
                         tabViewModel.selectTab(.entry)
                     },
                     onScanned: { data in
-                        scannerSessionId = UUID()
+                        isScannerReady = false
                         tabViewModel.restorePreviousTab()
                         scanStore.handleScanned(data, tabViewModel: tabViewModel)
                     }
                 )
-                .id(scannerSessionId)
             }
         }
         .onChange(of: tabViewModel.selectedTab, { oldValue, newValue in
             if newValue == .appsync {
                 scanStore.loadSavedZoom()
+                isScannerReady = true
+            } else {
+                isScannerReady = false
             }
             withAnimation {
                 tabViewModel.showTabBar = newValue != .appsync

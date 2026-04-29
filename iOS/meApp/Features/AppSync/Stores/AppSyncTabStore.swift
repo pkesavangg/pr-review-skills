@@ -42,11 +42,20 @@ final class AppSyncTabStore: ObservableObject {
     private static let maxWeightKg: Float = 450.0
     
     func loadSavedZoom() {
-        guard let accountId = accountService.activeAccount?.accountId else { return }
-        let key = KvStorageKeys.savedZoomKey(for: accountId)
-        if let stored = kvStorage.getValue(forKey: key) as? Double, stored > 0 {
-            initialZoom = CGFloat(stored)
+        guard let accountId = accountService.activeAccount?.accountId else {
+            initialZoom = nil
+            return
         }
+        let zoomMap = kvStorage.getCodable(forKey: KvStorageKeys.appSyncCameraZoomMap.rawValue, as: [String: Double].self)
+        initialZoom = zoomMap?[accountId].map { CGFloat($0) }
+    }
+
+    private func saveZoom(_ zoom: Float, for accountId: String) {
+        var zoomMap = kvStorage.getCodable(forKey: KvStorageKeys.appSyncCameraZoomMap.rawValue, as: [String: Double].self) ?? [:]
+        let newZoom = Double(zoom)
+        guard zoomMap[accountId] != newZoom else { return }
+        zoomMap[accountId] = newZoom
+        kvStorage.setCodable(zoomMap, forKey: KvStorageKeys.appSyncCameraZoomMap.rawValue)
     }
 
     /// Converts the scanned body-composition data into the format expected by
@@ -102,8 +111,7 @@ final class AppSyncTabStore: ObservableObject {
 
         // Persist zoom level so the camera reopens at the same zoom next time
         if let accountId = accountService.activeAccount?.accountId, data.zoomLevel > 0 {
-            let key = KvStorageKeys.savedZoomKey(for: accountId)
-            kvStorage.setValue(Double(data.zoomLevel), forKey: key)
+            saveZoom(data.zoomLevel, for: accountId)
             initialZoom = CGFloat(data.zoomLevel)
         }
 
