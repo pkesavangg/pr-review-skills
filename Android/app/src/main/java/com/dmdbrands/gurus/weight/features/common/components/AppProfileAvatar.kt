@@ -29,8 +29,11 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 private const val INFO_ICON_WIDTH_RATIO = 1.7f
 // Profile icon is ~44% of the avatar size per Figma spec (24dp at size=55dp)
 private const val PROFILE_ICON_SIZE_RATIO = 0.44f
-// Border / inset width used for the info icon variant circles (Figma spec)
+// Border / inset width used for the info icon variant circles (Figma spec).
+// `Dp` is not a primitive, so `const val` is not applicable here.
 private val BORDER_WIDTH_DP = 3.dp
+// Optical nudge that compensates for the profile glyph's geometric asymmetry within its viewport.
+private val ICON_OPTICAL_NUDGE = 2.dp
 
 /**
  * A circular profile avatar that displays the first letter of the provided text and supports active/inactive states.
@@ -135,9 +138,12 @@ fun AppProfileAvatar(
                     contentDescription = "Profile",
                     type = AppIconType.Primary,
                     modifier = Modifier
-                        // 2.dp nudge visually centers the icon inside the border circle per Figma.
-                        // absolutePadding is used instead of start-padding to stay consistent under RTL.
-                        .absolutePadding(left = 2.dp)
+                        // Optical nudge compensates for the SVG path's geometric asymmetry so the
+                        // glyph appears centered inside the border circle (per Figma).
+                        // `absolutePadding` keeps the nudge in a fixed direction relative to the
+                        // path geometry across LTR and RTL layouts, since the path itself is not
+                        // auto-mirrored.
+                        .absolutePadding(left = ICON_OPTICAL_NUDGE)
                         .align(Alignment.Center)
                         .size(size * PROFILE_ICON_SIZE_RATIO),
                 )
