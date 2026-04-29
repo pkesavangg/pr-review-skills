@@ -15,7 +15,14 @@ import SwiftUI
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     /// Upper bound for Dynamic Type. Smaller user choices flow through unchanged;
     /// anything larger (including the Accessibility sizes) is clamped to this value.
-    private static let dynamicTypeCap: UIContentSizeCategory = .extraExtraLarge
+    /// On small devices (iPhone XS, iPhone 12 mini) the cap is lowered to `.large`
+    /// (the unscaled default) so labels in tight layouts — e.g. the Dashboard's
+    /// WEEK/MONTH/YEAR/TOTAL segmented control — don't truncate.
+    private static var dynamicTypeCap: UIContentSizeCategory {
+        (DevicePlatform.isMiniPhone || DevicePlatform.isSmallPhone)
+            ? .large
+            : .extraExtraLarge
+    }
 
     var window: UIWindow?
     var appModal: PassThroughWindow?
