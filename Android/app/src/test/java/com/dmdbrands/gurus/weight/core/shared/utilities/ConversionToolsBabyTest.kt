@@ -354,9 +354,11 @@ class ConversionToolsBabyTest {
             // babyApp uses `source === '0222'` for the 0222 calibration branch and
             // falls through to 0220 graduation for any other 0220/0222-substring match.
             // See unit-conversion.service.ts line 146.
-            val substring0222 = ConversionTools.convertBabyWeightToDisplay(1_460, "BS 0222", false)
-            val exact0220 = ConversionTools.convertBabyWeightToDisplay(1_460, "0220", false)
-            val exact0222 = ConversionTools.convertBabyWeightToDisplay(1_460, "0222", false)
+            // dg=7130 is a value where 0220 and 0222 diverge (0220 → "1 lbs 9.1 oz",
+            // 0222 → "1 lbs 9.2 oz") so we can prove the dispatch lands on 0220.
+            val substring0222 = ConversionTools.convertBabyWeightToDisplay(7_130, "BS 0222", false)
+            val exact0220 = ConversionTools.convertBabyWeightToDisplay(7_130, "0220", false)
+            val exact0222 = ConversionTools.convertBabyWeightToDisplay(7_130, "0222", false)
             assertThat(substring0222).isEqualTo(exact0220)
             assertThat(substring0222).isNotEqualTo(exact0222)
         }
