@@ -1003,12 +1003,15 @@ constructor(
   }
 
   private fun onDefaultGraphRangeUpdate(segment: GraphSegment) {
+    dialogQueueService.showLoader("Updating default graph range...")
     viewModelScope.launch {
       try {
         userSettingsService.setDefaultGraphSegment(segment)
         AppLog.i(TAG, "Successfully updated default graph range to ${segment.toDisplayString()}")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error updating default graph range", e)
+      } finally {
+        dialogQueueService.dismissLoader()
       }
     }
   }
