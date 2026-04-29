@@ -18,7 +18,6 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toGraph
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.chart.AxisMeta
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
-import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
 import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
@@ -82,6 +81,22 @@ class GraphViewModel @AssistedInject constructor(
 
   private var currentModelProducerJob: Job? = null
   private var scrollDebounceJob: Job? = null
+
+  /**
+   * Cold-start guard for the GraphView's reset-to-latest effect. Lives on the ViewModel so it
+   * survives configuration changes (rotation) — preserving the user's selected marker and
+   * scroll position — but resets to `false` on process death (a fresh ViewModel instance is
+   * constructed). On a fresh app launch the cold-start path correctly fires once and selects
+   * the latest entry. Compose tracks this via `hasInitialResetFired` (read-only) and flips
+   * it via [markInitialResetFired] when a real reset has been dispatched.
+   */
+  @Volatile
+  var hasInitialResetFired: Boolean = false
+    private set
+
+  fun markInitialResetFired() {
+    hasInitialResetFired = true
+  }
 
   init {
     // Set loading state immediately to prevent blank screen

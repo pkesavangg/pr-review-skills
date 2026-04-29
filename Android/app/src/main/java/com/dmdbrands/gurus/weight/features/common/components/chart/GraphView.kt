@@ -7,10 +7,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -110,22 +108,19 @@ fun GraphView(
     }
   }
 
-  // Reset-to-latest fires on two events: (a) page activation transition (false→true),
-  // and (b) cold-start data arrival while the user is already on this page (data was
-  // empty, then arrived). Both are tracked via `rememberSaveable` flags so rotation
-  // does not retrigger reset (which would wipe the user's scroll position and marker).
-  // `resetEpoch` is plain `remember` because it's a transient signal — restoring its
-  // saved value would re-fire the reset effect on configuration change.
-  // Tracks cold-start: data arriving while the page is already visible (e.g. first load).
-  // rememberSaveable persists across rotation and navigation-back so a returning page that
-  // already loaded data does not spuriously re-fire the scroll + marker auto-select.
-  var lastSeenAsHavingData by rememberSaveable(segment) { mutableStateOf(false) }
+  // Cold-start trigger for the reset-to-latest effect. The ViewModel-scoped flag
+  // (`viewModel.hasInitialResetFired`) survives rotation (so a returning page does NOT
+  // re-fire and clobber the user's marker/scroll) but is fresh after process death (so a
+  // restored app correctly auto-selects the latest entry on first composition). Gating on
+  // `resetEpoch == 0` prevents this path and the segment-tap signal from both incrementing
+  // resetEpoch on the same first activation, which would dispatch a duplicate scroll+marker
+  // update.
   var resetEpoch by remember(segment) { mutableIntStateOf(0) }
   LaunchedEffect(state.data.isNotEmpty(), state.isEmptyGraph, segment, isCurrentPage) {
     val hasData = state.data.isNotEmpty() && !state.isEmptyGraph
-    val dataArrivedWhileActive = isCurrentPage && hasData && !lastSeenAsHavingData
-    if (dataArrivedWhileActive) resetEpoch++
-    lastSeenAsHavingData = hasData
+    if (isCurrentPage && hasData && !viewModel.hasInitialResetFired && resetEpoch == 0) {
+      resetEpoch++
+    }
   }
 
   val scrollState = rememberVicoScrollState(
@@ -206,6 +201,7 @@ fun GraphView(
     // risk of clobbering a user's prior marker choice here.
     viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(latestTimeStamp.toDouble()))
     viewModel.handleIntent(GraphIntent.UpdateTarget(listOf(latestEntry)))
+    viewModel.markInitialResetFired()
     onChartConsuming(false)
   }
 

@@ -73,6 +73,10 @@ fun rememberGraphChart(
   // window the provider's `onVisibleEntries` callback uses (visible + 1 entry each side, matching
   // `paddingEntries = 1`). Frame-0 seed and frame-1 callback produce identical Y bounds, so
   // there's no snap on segment switch.
+  // NaN coalescing is intentional: vico's ScrollAwareRangeProvider explicitly falls through
+  // to its intrinsic range when min/max are NaN (verified in vico 3.0.7). On empty data the
+  // chart is gated by `state.isEmptyGraph` upstream, so a NaN range never reaches drawing
+  // — but we still pass NaN rather than guessing bounds, so vico picks the safe default.
   val scrollAwareRange = rememberScrollAwareRangeProvider(
     minX = chartXBounds.first ?: Double.NaN,
     maxX = chartXBounds.second ?: Double.NaN,
