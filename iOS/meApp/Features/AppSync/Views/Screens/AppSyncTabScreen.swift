@@ -23,11 +23,6 @@ struct AppSyncTabScreen: View {
     @State private var scannerSessionId = UUID()
     private let tag = "AppSyncTabScreen"
 
-    /// Resets the scanner session so the next time the tab is shown a fresh camera instance is created.
-    private func resetScannerSession() {
-        scannerSessionId = UUID()
-    }
-
     // MARK: - Body
     var body: some View {
         ZStack {
@@ -36,15 +31,15 @@ struct AppSyncTabScreen: View {
                 AppSyncScannerView(
                     initialZoom: scanStore.initialZoom,
                     onClose: {
-                        resetScannerSession()
+                        scannerSessionId = UUID()
                         tabViewModel.restorePreviousTab()
                     },
                     onManualEntry: {
-                        resetScannerSession()
+                        scannerSessionId = UUID()
                         tabViewModel.selectTab(.entry)
                     },
                     onScanned: { data in
-                        resetScannerSession()
+                        scannerSessionId = UUID()
                         tabViewModel.restorePreviousTab()
                         scanStore.handleScanned(data, tabViewModel: tabViewModel)
                     }

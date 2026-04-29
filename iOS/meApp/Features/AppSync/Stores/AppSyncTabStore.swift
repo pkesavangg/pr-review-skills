@@ -19,6 +19,7 @@ final class AppSyncTabStore: ObservableObject {
     @Injector var notificationHelperService: NotificationHelperService
     @Injector var entryService: EntryService
     @Injector var logger: LoggerService
+    @Injector var kvStorage: KvStorageService
     private let toastLang = ToastStrings.self
     private let loaderLang = LoaderStrings.self
     private let tag = "AppSyncTabStore"
@@ -43,7 +44,7 @@ final class AppSyncTabStore: ObservableObject {
     func loadSavedZoom() {
         guard let accountId = accountService.activeAccount?.accountId else { return }
         let key = KvStorageKeys.savedZoomKey(for: accountId)
-        if let stored = KvStorageService.shared.getValue(forKey: key) as? Float, stored > 0 {
+        if let stored = kvStorage.getValue(forKey: key) as? Double, stored > 0 {
             initialZoom = CGFloat(stored)
         }
     }
@@ -102,7 +103,8 @@ final class AppSyncTabStore: ObservableObject {
         // Persist zoom level so the camera reopens at the same zoom next time
         if let accountId = accountService.activeAccount?.accountId, data.zoomLevel > 0 {
             let key = KvStorageKeys.savedZoomKey(for: accountId)
-            KvStorageService.shared.setValue(data.zoomLevel, forKey: key)
+            kvStorage.setValue(Double(data.zoomLevel), forKey: key)
+            initialZoom = CGFloat(data.zoomLevel)
         }
 
         // Persist for Save/Edit actions
