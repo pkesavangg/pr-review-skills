@@ -3,41 +3,28 @@ package com.dmdbrands.gurus.weight.features.scaleDetails.strings
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 
 object ScaleDetailsStrings {
-  fun deleteConfirmation(sku: String?) = when {
-    DeviceHelper.isBpmDevice(sku) -> "Are you sure you want to delete this device?"
-    else -> "Are you sure you want to delete this scale?"
-  }
+  const val DeleteConfirmation = "Are you sure you want to delete this device?"
   const val Delete = "Delete"
   const val Cancel = "Cancel"
-  fun deleteSuccessMessage(sku: String?) = when {
-    DeviceHelper.isBpmDevice(sku) -> "device deleted successfully"
-    else -> "scale deleted successfully"
-  }
-  fun deleteErrorMessage(sku: String?) = when {
-    DeviceHelper.isBpmDevice(sku) -> "Error deleting device"
-    else -> "Error deleting scale"
-  }
-  fun deleteLoaderMessage(sku: String?) = when {
-    DeviceHelper.isBpmDevice(sku) -> "Deleting device..."
-    else -> "Deleting scale..."
-  }
-  fun deleteLabel(sku: String?) = when {
-    DeviceHelper.isBpmDevice(sku) -> "Delete Device"
-    else -> "Delete Scale"
-  }
+  const val DeleteSuccessMessage = "device deleted successfully"
+  const val DeleteErrorMessage = "Error deleting device"
+  const val DeleteLoaderMessage = "Deleting device..."
+  const val DeleteLabel = "Delete Device"
   const val Close = "Close"
   const val Mode = "Mode"
   const val AllBodyMetrics = "All Body Metrics"
   const val WeightOnly = "Weight Only"
   const val DisplayMetrics = "Display Metrics"
   const val Users = "Users"
+
+  /**
+   * Label for the user-slot setting row. BPM devices identify users with letters (A/B) or digits
+   * (1/2), so we show the generic "User" label; weight scales show "User Number" because the
+   * value is always numeric.
+   */
   fun userNumberLabel(sku: String?) = when {
     DeviceHelper.isBpmDevice(sku) -> "User"
     else -> "User Number"
-  }
-  fun scaleName(sku: String?) = when {
-    DeviceHelper.isBpmDevice(sku) -> "Device Name"
-    else -> "Scale Name"
   }
   const val Connection = "Connection"
   const val Bluetooth = "Bluetooth"

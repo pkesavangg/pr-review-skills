@@ -7,7 +7,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
-import com.dmdbrands.gurus.weight.core.navigation.LocalProductType
 import com.dmdbrands.gurus.weight.features.addScale.reducer.AddScaleIntent
 import com.dmdbrands.gurus.weight.features.addScale.strings.ChooseScaleStrings
 import com.dmdbrands.gurus.weight.features.addScale.viewmodel.AddScaleViewModel
@@ -31,7 +30,7 @@ fun ChooseScaleScreenContent(handleIntent: (AddScaleIntent) -> Unit = {}) {
   val coroutineScope = rememberCoroutineScope()
 
   AppScaffold(
-    title = ChooseScaleStrings.header(LocalProductType.current),
+    title = ChooseScaleStrings.Header,
     navigationIcon = {
       AppIconButton(AppIcons.Default.Close) {
         coroutineScope.launch {

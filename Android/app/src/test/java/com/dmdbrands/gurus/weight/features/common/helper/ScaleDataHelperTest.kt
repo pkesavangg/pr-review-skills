@@ -51,23 +51,20 @@ class ScaleDataHelperTest {
     @Test
     fun `findScaleInfoBySku returns ScaleInfo for known SKU`() {
         val info = ScaleDataHelper.findScaleInfoBySku("0603")
-        assertThat(info).isNotNull()
-        assertThat(info!!.sku).isEqualTo("0603")
-        assertThat(info.hasNumericUsers).isTrue()
+        assertThat(info?.sku).isEqualTo("0603")
+        assertThat(info?.hasNumericUsers).isTrue()
     }
 
     @Test
     fun `findScaleInfoBySku maps variant SKU 0022 to 0383`() {
         val info = ScaleDataHelper.findScaleInfoBySku("0022")
-        assertThat(info).isNotNull()
-        assertThat(info!!.sku).isEqualTo("0383")
+        assertThat(info?.sku).isEqualTo("0383")
     }
 
     @Test
     fun `findScaleInfoBySku returns hasNumericUsers false for 0634`() {
         val info = ScaleDataHelper.findScaleInfoBySku("0634")
-        assertThat(info).isNotNull()
-        assertThat(info!!.hasNumericUsers).isFalse()
+        assertThat(info?.hasNumericUsers).isFalse()
     }
 
     // endregion

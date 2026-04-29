@@ -11,10 +11,13 @@ import com.dmdbrands.gurus.weight.resources.AppIcons
  * Helper object providing conversion functions for scale data.
  */
 object ScaleDataHelper {
+  private const val USER_A = "A"
+  private const val USER_B = "B"
+
   /**
-   * Finds ScaleInfo by SKU, mapping variant SKUs (e.g., 0022 -> 0383) for lookup.
-   * @param sku The SKU to look up (can be original or variant SKU)
-   * @return The ScaleInfo if found, null otherwise
+   * Finds [ScaleInfo] by SKU, mapping variant SKUs (e.g. 0022 -> 0383) for lookup.
+   * @param sku original or variant SKU; `null` short-circuits to `null`.
+   * @return matching [ScaleInfo], or `null` when [sku] is null or unknown.
    */
   fun findScaleInfoBySku(sku: String?): ScaleInfo? {
     val lookupSku = sku?.let { DeviceHelper.mapSkuForDisplay(it) } ?: return null
@@ -57,13 +60,10 @@ object ScaleDataHelper {
   }
 
   /**
-   * Formats the user display string for a BPM device.
-   * hasNumericUsers=true shows "1"/"2", otherwise "A"/"B".
-   * Stored value is always an Int (1 or 2).
+   * Formats a BPM user-slot for display: numeric (`"1"`/`"2"`) when [hasNumericUsers] is `true`,
+   * otherwise alphabetic (`"A"`/`"B"`). Returns an empty string for null or out-of-range
+   * [userNumber] (callers should treat empty as "do not show").
    */
-  private const val USER_A = "A"
-  private const val USER_B = "B"
-
   fun formatUserDisplay(hasNumericUsers: Boolean, userNumber: Int?): String {
     val num = userNumber ?: return ""
     if (num !in 1..2) return ""

@@ -257,16 +257,15 @@ constructor(
       viewModelScope.launch {
         dialogQueueService.showDialog(
           DialogModel.Confirm(
-            message = ScaleDetailsStrings.deleteConfirmation(state.value.scale?.getSKU()),
+            message = ScaleDetailsStrings.DeleteConfirmation,
             confirmText = ScaleDetailsStrings.Delete,
             cancelText = ScaleDetailsStrings.Cancel,
             primaryActionType = com.dmdbrands.gurus.weight.features.common.components.ButtonType.ErrorText,
             onConfirm = {
               viewModelScope.launch {
                 val scale = state.value.scale ?: return@launch
-                val sku = scale.getSKU()
                 dialogQueueService.dismissCurrent()
-                dialogQueueService.showLoader(message = ScaleDetailsStrings.deleteLoaderMessage(sku))
+                dialogQueueService.showLoader(message = ScaleDetailsStrings.DeleteLoaderMessage)
                 try {
                   if (scale.deviceType == ScaleSetupType.BtWifiR4.value && scale.connectionStatus == BLEStatus.CONNECTED) {
                     ggDeviceService.deleteAccount(scale.toGGBTDevice()) {
@@ -275,7 +274,7 @@ constructor(
                       } else {
                         dialogQueueService.showToast(
                           Toast(
-                            message = ScaleDetailsStrings.deleteErrorMessage(sku),
+                            message = ScaleDetailsStrings.DeleteErrorMessage,
                           ),
                         )
                       }
@@ -284,13 +283,13 @@ constructor(
                   deviceService.deleteScale(scale.id)
                   dialogQueueService.showToast(
                     Toast(
-                      message = ScaleDetailsStrings.deleteSuccessMessage(sku),
+                      message = ScaleDetailsStrings.DeleteSuccessMessage,
                     ),
                   )
                 } catch (e: Exception) {
                   dialogQueueService.showToast(
                     Toast(
-                      message = ScaleDetailsStrings.deleteErrorMessage(sku),
+                      message = ScaleDetailsStrings.DeleteErrorMessage,
                     ),
                   )
                 } finally {

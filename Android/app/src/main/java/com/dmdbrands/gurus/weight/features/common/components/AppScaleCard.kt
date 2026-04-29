@@ -106,6 +106,9 @@ fun AppScaleCard(
         if (showConnectionStatus) {
           Spacer(modifier = Modifier.height(spacing.x3s))
           Row(verticalAlignment = Alignment.CenterVertically) {
+            // Only flag incomplete WiFi setup when we are sure: BtWifiR4 scale connected over BT
+            // but reporting WiFi unconfigured. We require isConnected==true so that "unknown"
+            // (null isWifiConfigured prior to first connection) does not trigger a false alarm.
             val showExclamation =
               scale.isWifiConfigured != true &&
               scale.isConnected == true &&

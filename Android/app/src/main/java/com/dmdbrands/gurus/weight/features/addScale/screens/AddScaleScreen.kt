@@ -28,7 +28,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
-import com.dmdbrands.gurus.weight.core.navigation.LocalProductType
 import com.dmdbrands.gurus.weight.features.addScale.reducer.AddScaleFormControls
 import com.dmdbrands.gurus.weight.features.addScale.reducer.AddScaleIntent
 import com.dmdbrands.gurus.weight.features.addScale.reducer.AddScaleState
@@ -77,10 +76,8 @@ fun AddScaleScreenContent(
     }
   }
 
-  val productType = LocalProductType.current
-
   AppScaffold(
-    title = AddScaleScreenStrings.header(productType),
+    title = AddScaleScreenStrings.Header,
     navigationIcon = {
       AppIconButton(AppIcons.Default.Close) {
         coroutineScope.launch {
@@ -106,12 +103,12 @@ fun AddScaleScreenContent(
             .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
       ) {
         AppText(
-          text = AddScaleScreenStrings.title(productType),
+          text = AddScaleScreenStrings.Title,
           textType = TextType.Title,
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
         AppText(
-          text = AddScaleScreenStrings.subtitle(productType),
+          text = AddScaleScreenStrings.Subtitle,
           textType = TextType.Body,
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
@@ -160,7 +157,7 @@ fun AddScaleScreenContent(
         Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
         if (state.savedScales.isNotEmpty()) {
           AppText(
-            text = AddScaleScreenStrings.myDevices(productType),
+            text = AddScaleScreenStrings.MyDevices,
             textType = TextType.Title,
           )
         }

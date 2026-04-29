@@ -1,19 +1,10 @@
 package com.dmdbrands.gurus.weight.features.settings.strings
 
-import com.dmdbrands.gurus.weight.domain.enums.ProductType
-
 object SettingsScreenStrings {
     const val Title = "Settings"
 
     // Account Settings
     const val AccountSettings = "Account Settings"
-    const val AddEditScales = "Add & Edit Scales"
-    const val AddEditDevices = "Add & Edit Devices"
-
-    fun addEditLabel(productType: ProductType) = when (productType) {
-        ProductType.BLOOD_PRESSURE -> AddEditDevices
-        else -> AddEditScales
-    }
     const val Integrations = "Integrations"
     const val ExportData = "Export Data"
     const val ChangePassword = "Change Password"

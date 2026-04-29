@@ -191,7 +191,7 @@ fun ScaleDetailsScreenContent(
             }
             add(
               SettingsItem(
-                title = ScaleDetailsStrings.scaleName(device?.getSKU()),
+                title = ScaleDetailsStrings.DeviceName,
                 type =
                   SettingsItemType.TextOnly(
                     scaleName ?: "", // Display truncated name to match SDK limit
@@ -211,12 +211,14 @@ fun ScaleDetailsScreenContent(
               } else {
                 "U${device.userNumber}"
               }
-              add(
-                SettingsItem(
-                  title = ScaleDetailsStrings.userNumberLabel(device.getSKU()),
-                  type = SettingsItemType.TextOnly(userLabel),
-                ),
-              )
+              if (userLabel.isNotEmpty()) {
+                add(
+                  SettingsItem(
+                    title = ScaleDetailsStrings.userNumberLabel(device.getSKU()),
+                    type = SettingsItemType.TextOnly(userLabel),
+                  ),
+                )
+              }
             }
           },
       )
@@ -309,7 +311,7 @@ fun ScaleDetailsScreenContent(
         items =
           listOf(
             SettingsItem(
-              title = ScaleDetailsStrings.deleteLabel(device?.getSKU()),
+              title = ScaleDetailsStrings.DeleteLabel,
               type = SettingsItemType.None,
               color = SettingColorType.Danger,
               onClick = { handleIntent(ScaleDetailsIntent.DeleteScale) },
