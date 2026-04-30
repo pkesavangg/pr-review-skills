@@ -10,41 +10,53 @@ import com.dmdbrands.gurus.weight.domain.repository.IUserSettingsRepository
 import com.dmdbrands.gurus.weight.domain.services.IUserSettingsService
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.retry
-import javax.inject.Inject
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.retryWhen
+import kotlinx.coroutines.flow.stateIn
 import javax.inject.Singleton
 
 /**
  * Service implementation for user settings operations.
  * Handles business logic for streak and weightless mode settings.
  */
+// Constructed via ServiceModule.provideUserSettingsService — no @Inject on the constructor.
+// `dispatcher` is a Kotlin default (Dispatchers.IO in production); tests override it.
 @Singleton
-class UserSettingsService
-  @Inject
-  constructor(
-    private val userSettingsRepository: IUserSettingsRepository,
-    connectivityObserver: IConnectivityObserver,
-    dialogQueueService: IDialogQueueService,
-    appNavigationService: IAppNavigationService,
-  ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IUserSettingsService {
+class UserSettingsService(
+  private val userSettingsRepository: IUserSettingsRepository,
+  connectivityObserver: IConnectivityObserver,
+  dialogQueueService: IDialogQueueService,
+  appNavigationService: IAppNavigationService,
+  dispatcher: CoroutineDispatcher = Dispatchers.IO,
+) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IUserSettingsService {
 
     companion object {
       private const val TAG = "UserSettingsService"
     }
 
-    // Cold flow — each ViewModel collects in its own viewModelScope. retry(3) guards
-    // against transient DataStore IO errors (CancellationException is never retried);
-    // .catch is the final backstop that emits DEFAULT after retries are exhausted.
-    override val defaultGraphSegment: Flow<GraphSegment> =
+    private val serviceScope = CoroutineScope(SupervisorJob() + dispatcher)
+
+    // Eagerly seeded so consumers can read `.value` synchronously. The seed
+    // (GraphSegment.DEFAULT) is what callers see until DataStore emits the persisted
+    // value. retryWhen keeps the upstream alive forever on transient DataStore errors
+    // — terminating with .catch would freeze the StateFlow and break account-switch /
+    // setDefaultGraphSegment write-back propagation. CancellationException always
+    // propagates so structured concurrency is preserved.
+    override val defaultGraphSegment: StateFlow<GraphSegment> =
       userSettingsRepository.defaultGraphSegmentFlow
-        .retry(retries = 3)
-        .catch { e ->
-          if (e is CancellationException) throw e
-          AppLog.e(TAG, "Error reading default graph segment; falling back to default", e)
-          emit(GraphSegment.DEFAULT)
+        .retryWhen { cause, attempt ->
+          if (cause is CancellationException) return@retryWhen false
+          AppLog.e(TAG, "Error reading default graph segment (attempt ${attempt + 1}); retrying", cause)
+          delay(((attempt + 1) * 200L).coerceAtMost(5000L))
+          true
         }
+        .stateIn(serviceScope, SharingStarted.Eagerly, GraphSegment.DEFAULT)
 
     /**
      * Toggles the streak setting for the active account.

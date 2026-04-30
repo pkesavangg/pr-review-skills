@@ -77,11 +77,24 @@ constructor(
       DashboardType.DASHBOARD_12_METRICS else DashboardType.DASHBOARD_4_METRICS
     val weightLess = activeAccount.toWeightless()
     val metrics = dashboardService.visibleKeys.value
+    // Optimistic seed read: avoids the visible jump on warm starts where the singleton's
+    // StateFlow has already pumped the persisted value. The drop(1) collector below
+    // corrects state on cold starts where .value is still the DEFAULT seed.
+    val defaultSegment = userSettingsService.defaultGraphSegment.value
     super.handleIntent(DashboardIntent.SetDashboardType(dashboardType))
     super.handleIntent(DashboardIntent.SetVisibleKeys(metrics))
     super.handleIntent(DashboardIntent.UpdateWeightLess(weightLess))
-    // selectedSegment is sourced solely from subscribeDefaultGraphSegment() to avoid
-    // reading the Flow before its upstream emits (race) and to avoid double-dispatch.
+    super.handleIntent(DashboardIntent.SetSelectedSegment(defaultSegment))
+  }
+
+  private fun subscribeDefaultGraphSegment() {
+    viewModelScope.launch {
+      userSettingsService.defaultGraphSegment
+        .drop(1)
+        .collect { segment ->
+          handleIntent(DashboardIntent.SetSelectedSegment(segment))
+        }
+    }
   }
 
   private fun subscribeWeightLess() {
@@ -191,17 +204,6 @@ constructor(
             DashboardType.DASHBOARD_12_METRICS else DashboardType.DASHBOARD_4_METRICS
           handleIntent(DashboardIntent.SetDashboardType(dashboardType))
         }
-      }
-    }
-  }
-
-  private fun subscribeDefaultGraphSegment() {
-    viewModelScope.launch {
-      // Cold Flow — each emission is the persisted value (or DEFAULT on upstream error
-      // via the service's .catch). No StateFlow seed prefix to skip, so cold-start
-      // collectors and late subscribers both observe the same first value.
-      userSettingsService.defaultGraphSegment.collect { segment ->
-        handleIntent(DashboardIntent.SetSelectedSegment(segment))
       }
     }
   }

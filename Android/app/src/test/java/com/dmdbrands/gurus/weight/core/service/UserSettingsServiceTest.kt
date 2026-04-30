@@ -9,9 +9,9 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -27,29 +27,43 @@ class UserSettingsServiceTest {
     connectivityObserver = mockk<IConnectivityObserver>(relaxed = true),
     dialogQueueService = mockk<IDialogQueueService>(relaxed = true),
     appNavigationService = mockk<IAppNavigationService>(relaxed = true),
+    // Unconfined makes the eagerly-started StateFlow pump its upstream synchronously
+    // during construction so tests can assert on `.value` without races.
+    dispatcher = Dispatchers.Unconfined,
   )
 
   @Test
-  fun `defaultGraphSegment falls back to DEFAULT when upstream throws`() {
-    // Repo emits WEEK then throws — the service's .catch must intercept the error and
-    // emit GraphSegment.DEFAULT so collectors don't freeze on a stale value.
+  fun `defaultGraphSegment stays at DEFAULT seed while upstream is perpetually failing`() {
+    // Throw-only upstream: retryWhen will keep re-subscribing forever, but since the
+    // upstream never emits a value, the eagerly-seeded StateFlow stays at DEFAULT.
+    // This pins the contract that consumers see DEFAULT (not a stale value or crash)
+    // when DataStore is broken.
     val repository = mockk<IUserSettingsRepository>(relaxed = true) {
       every { defaultGraphSegmentFlow } returns flow {
-        emit(GraphSegment.WEEK)
         throw RuntimeException("simulated DataStore IO failure")
       }
     }
 
     val service = makeService(repository)
 
-    val collected = runBlocking { service.defaultGraphSegment.toList() }
+    assertEquals(GraphSegment.DEFAULT, service.defaultGraphSegment.value)
+  }
 
-    // retry(3) restarts the cold upstream on each failure; WEEK is re-emitted per attempt
-    // (1 original + 3 retries = 4), then .catch emits DEFAULT after retries are exhausted.
-    assertEquals(
-      listOf(GraphSegment.WEEK, GraphSegment.WEEK, GraphSegment.WEEK, GraphSegment.WEEK, GraphSegment.DEFAULT),
-      collected,
-    )
+  @Test
+  fun `defaultGraphSegment retains last successful emission across upstream errors`() {
+    // Critical regression guard for the prior catch-then-stateIn bug: emitting a value
+    // and then throwing must not leave the StateFlow stuck — and must not lose the
+    // already-observed value. retryWhen keeps the upstream alive; .value reflects WEEK.
+    val repository = mockk<IUserSettingsRepository>(relaxed = true) {
+      every { defaultGraphSegmentFlow } returns flow {
+        emit(GraphSegment.WEEK)
+        throw RuntimeException("simulated transient DataStore failure")
+      }
+    }
+
+    val service = makeService(repository)
+
+    assertEquals(GraphSegment.WEEK, service.defaultGraphSegment.value)
   }
 
   @Test
@@ -60,9 +74,28 @@ class UserSettingsServiceTest {
 
     val service = makeService(repository)
 
-    val collected = runBlocking { service.defaultGraphSegment.toList() }
+    assertEquals(GraphSegment.YEAR, service.defaultGraphSegment.value)
+  }
 
-    assertEquals(listOf(GraphSegment.YEAR), collected)
+  @Test
+  fun `defaultGraphSegment retryWhen does not retry CancellationException — structured concurrency contract`() {
+    // retryWhen must return false for CancellationException. If it returned true,
+    // cooperative cancellation would loop forever, hanging tests and leaking the
+    // serviceScope's collector in production. Pin this with a counter: if the upstream
+    // is subscribed more than once, retryWhen has swallowed the cancellation.
+    var subscriptionCount = 0
+    val repository = mockk<IUserSettingsRepository>(relaxed = true) {
+      every { defaultGraphSegmentFlow } returns flow {
+        subscriptionCount++
+        throw CancellationException("upstream cancelled")
+      }
+    }
+
+    val service = makeService(repository)
+
+    assertEquals(1, subscriptionCount)
+    // Cancellation is not converted to a fallback emission, so .value stays at the seed.
+    assertEquals(GraphSegment.DEFAULT, service.defaultGraphSegment.value)
   }
 
   @Test
@@ -77,26 +110,6 @@ class UserSettingsServiceTest {
     runBlocking { service.setDefaultGraphSegment(GraphSegment.YEAR) }
 
     coVerify(exactly = 1) { repository.setDefaultGraphSegment(GraphSegment.YEAR) }
-  }
-
-  @Test
-  fun `defaultGraphSegment does not swallow CancellationException — structured concurrency contract`() {
-    // .catch catches all Throwable; this test pins that CancellationException is NOT consumed
-    // by .catch but propagates out, preserving structured concurrency for coroutine cancellation.
-    val repository = mockk<IUserSettingsRepository>(relaxed = true) {
-      every { defaultGraphSegmentFlow } returns flow {
-        throw CancellationException("scope cancelled")
-      }
-    }
-
-    val service = makeService(repository)
-
-    try {
-      runBlocking { service.defaultGraphSegment.toList() }
-      fail("Expected CancellationException to propagate through the flow, not be swallowed by .catch")
-    } catch (e: CancellationException) {
-      assertTrue("CancellationException message preserved", e.message == "scope cancelled")
-    }
   }
 
   @Test

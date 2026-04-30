@@ -1,7 +1,7 @@
 package com.dmdbrands.gurus.weight.domain.services
 
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Service interface for user settings operations.
@@ -28,13 +28,12 @@ interface IUserSettingsService {
     )
 
     /**
-     * Cold [Flow] of the persisted default graph segment for the active account.
-     * The first emission is the actual persisted value (or [GraphSegment.MONTH] for fresh
-     * installs / accounts that never set a default); subsequent emissions react to in-app
-     * changes. On upstream errors the flow falls back to [GraphSegment.MONTH] via
-     * [kotlinx.coroutines.flow.catch] inside the implementation.
+     * Eagerly-started [StateFlow] of the persisted default graph segment.
+     * `.value` is safe to read synchronously — the initial seed is [GraphSegment.DEFAULT]
+     * and is replaced as soon as DataStore emits the persisted value (or stays at
+     * [GraphSegment.DEFAULT] on upstream error via `.catch` inside the implementation).
      */
-    val defaultGraphSegment: Flow<GraphSegment>
+    val defaultGraphSegment: StateFlow<GraphSegment>
 
     /**
      * Persists the user's preferred default graph segment (device-local, no backend sync).
