@@ -37,8 +37,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
+import com.dmdbrands.gurus.weight.features.common.helper.isPhoneLike
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.flow.collectLatest
@@ -59,6 +59,12 @@ enum class ButtonType {
   SuccessFilled
 }
 
+/**
+ * True for the three `InlineText*` variants. Inline-text buttons opt out of
+ * fixed height and horizontal padding so they sit flush in surrounding text.
+ * Centralising the predicate ensures any future inline variant only needs to be
+ * added here — no `==` chain at call sites can fall out of sync.
+ */
 val ButtonType.isInlineText: Boolean
   get() = this == ButtonType.InlineTextPrimary ||
     this == ButtonType.InlineTextSecondary ||
@@ -318,14 +324,16 @@ fun AppButton(
   val shape = RoundedCornerShape(50)
   val vPadding = 0.dp
   val maxLines = 1
-  val deviceType = getDeviceType()
-  val isPhoneLike = deviceType == DeviceType.Phone || deviceType == DeviceType.Fold
+  // Phones / folded displays keep pixel-parity fixed height; tablets use
+  // heightIn so the button can grow with the label instead of clipping the
+  // text under tablet density (MA-3713).
+  val isPhoneLike = getDeviceType().isPhoneLike
   val buttonModifier = modifier
     .then(
-      if (!type.isInlineText) {
-        if (isPhoneLike) Modifier.height(height) else Modifier.heightIn(min = height)
-      } else {
-        Modifier
+      when {
+        type.isInlineText -> Modifier
+        isPhoneLike -> Modifier.height(height)
+        else -> Modifier.heightIn(min = height)
       },
     )
     .defaultMinSize(minWidth = minWidth)

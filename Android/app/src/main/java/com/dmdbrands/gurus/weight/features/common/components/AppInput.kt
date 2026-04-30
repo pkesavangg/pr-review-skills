@@ -39,8 +39,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppInputDefaults.visualTransformation
-import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
+import com.dmdbrands.gurus.weight.features.common.helper.isPhoneLike
 import com.dmdbrands.gurus.weight.features.common.helper.form.DecimalInputVisualTransformation
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.strings.AppInputStrings
@@ -67,6 +67,11 @@ enum class AppInputType {
 }
 
 object AppInputDefaults {
+    /**
+     * Default visual height for a single-line input. On phones at default font
+     * scale this is the fixed height; tablets and large-font-scale phones treat
+     * it as a minimum so the input grows instead of clipping its label/value.
+     */
     val SingleLineHeight = 56.dp
 
     fun visualTransformation(type: AppInputType): VisualTransformation =
@@ -263,8 +268,10 @@ fun <T> InputFieldBase(
     val isError = formControl?.error?.type != null && (formControl.dirty || formControl.touched)
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    val deviceType = getDeviceType()
-    val isPhoneLike = deviceType == DeviceType.Phone || deviceType == DeviceType.Fold
+    // Phones / folded displays keep pixel-parity fixed height; tablets use
+    // heightIn so the input can grow with the value/label instead of clipping
+    // the text under tablet density (MA-3713).
+    val isPhoneLike = getDeviceType().isPhoneLike
     val isPassword = inputType == AppInputType.PASSWORD
     val showPasswordToggle = isPassword && showTrailingIcon
     val showTrailingButton = showTrailingIcon && !isPassword &&
@@ -352,11 +359,10 @@ fun <T> InputFieldBase(
             modifier
                 .fillMaxWidth()
                 .then(
-                    if (singleLine) {
-                        if (isPhoneLike) Modifier.height(AppInputDefaults.SingleLineHeight)
-                        else Modifier.heightIn(min = AppInputDefaults.SingleLineHeight)
-                    } else {
-                        Modifier
+                    when {
+                        !singleLine -> Modifier
+                        isPhoneLike -> Modifier.height(AppInputDefaults.SingleLineHeight)
+                        else -> Modifier.heightIn(min = AppInputDefaults.SingleLineHeight)
                     },
                 )
                 .focusRequester(focusRequester)
