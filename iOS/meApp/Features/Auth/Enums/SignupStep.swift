@@ -67,6 +67,15 @@ enum SignupDeviceType: String, CaseIterable, Identifiable {
         }
     }
 
+    /// The product-type string persisted on the account for this device.
+    var productType: String {
+        switch self {
+        case .weightScale: return "myWeight"
+        case .bpm: return "myBloodPressure"
+        case .babyScale: return "baby"
+        }
+    }
+
     /// Device types that should drive HealthKit permission selection
     /// before any paired hardware has been saved.
     var healthKitFallbackDeviceTypes: Set<String> {

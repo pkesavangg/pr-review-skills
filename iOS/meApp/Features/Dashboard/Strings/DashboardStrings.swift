@@ -81,11 +81,16 @@ struct DashboardStrings {
         return "You haven't added any entries this \(timePeriod)."
     }
 
+    // Reading arrival relative timestamp
+    static let justNow = "Just now"
+    static let oneMinuteAgo = "1 min ago"
+    static let minutesAgoFormat = "%d min ago"
+    static let yesterdayAtFormat = "Yesterday %@"
+
     // Baby reading arrival
     static let babyReadingArrivalTitle = "New Baby Scale Reading Received"
     static let babyReadingArrivalAssign = "ASSIGN"
     static let babyReadingArrivalDontAssign = "DON'T ASSIGN"
-    static let babyReadingArrivalJustNow = "Just now"
 
     // Assign baby modal
     static let assignMeasurementTitle = "Assign Measurement"
@@ -102,7 +107,6 @@ struct DashboardStrings {
     static let weightReadingArrivalTitle = "New Weight Scale Reading Received"
     static let weightReadingArrivalSave = "SAVE"
     static let weightReadingArrivalDiscard = "DISCARD"
-    static let weightReadingArrivalJustNow = "Just now"
 
     // BPM reading arrival
     static let bpmReadingArrivalTitle = "New BP Reading Received"

@@ -410,7 +410,7 @@ struct SignupStoreTests {
         #expect(successCalled == true)
     }
 
-    @Test("createUser navigates to signupError when device save fails")
+    @Test("createUser navigates to signupError when the accumulated product-type write fails")
     func createUserNavigatesToErrorScreen() async {
         let (store, accountService, _, _) = makeSUT()
         accountService.signUpResult = .success(())
@@ -738,7 +738,7 @@ struct SignupStoreTests {
         #expect(store.disabledDeviceTypes.contains(.weightScale))
     }
 
-    @Test("createUser sends all registered device types to backend")
+    @Test("createUser persists every registered device type in a single accumulated write")
     func createUserSendsAllRegisteredDeviceTypes() async {
         let (store, accountService, _, _) = makeSUT()
         accountService.signUpResult = .success(())
@@ -749,12 +749,11 @@ struct SignupStoreTests {
 
         await store.createUser()
 
-        // Each device is saved individually — 2 devices = 2 updateProductTypes calls
-        #expect(accountService.updateProductTypesCalls == 2)
-        // allUpdatedProductTypes accumulates all calls
-        let allSent = accountService.allUpdatedProductTypes
-        #expect(allSent.contains(["myWeight"]))
-        #expect(allSent.contains(["myBloodPressure"]))
+        // The final accumulated write must contain every successful device's
+        // product type so `updateProductTypes` (which replaces the array) doesn't
+        // leave the account with only the last-written device.
+        let lastSent = accountService.allUpdatedProductTypes.last ?? []
+        #expect(Set(lastSent) == Set(["myWeight", "myBloodPressure"]))
     }
 
     @Test("resetForm clears registeredDeviceTypes")

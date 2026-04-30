@@ -61,7 +61,7 @@ final class EntryRepository: EntryRepositoryProtocol {
         let entryTimestamp = entry.entryTimestamp
         let serverTimestamp = entry.serverTimestamp
         let operationType = entry.operationType
-        let entryType = entry.entryType
+        let entryType = entry.entryType ?? EntryType.scale.rawValue
         let isSynced = entry.isSynced
         let isFailedToSync = entry.isFailedToSync
         let attempts = entry.attempts
@@ -177,7 +177,7 @@ final class EntryRepository: EntryRepositoryProtocol {
         let entryTimestamp = entry.entryTimestamp
         let serverTimestamp = entry.serverTimestamp
         let operationType = entry.operationType
-        let entryType = entry.entryType
+        let entryType = entry.entryType ?? EntryType.scale.rawValue
         let isSynced = entry.isSynced
         let isFailedToSync = entry.isFailedToSync
         let attempts = entry.attempts
@@ -430,7 +430,10 @@ final class EntryRepository: EntryRepositoryProtocol {
 
     /// Fetches BPM entries and returns BpmOperationDTOs with all relationship data extracted.
     func fetchEntriesAsBpmDTO(forUserId userId: String, operationType: String? = nil) async throws -> [BpmOperationDTO] {
-        let bpmEntryType = EntryType.bpm.rawValue
+        // entryType is optional in storage so SwiftData migration can synthesize nil
+        // for legacy rows. Wrap the comparison constant in Optional to keep the
+        // #Predicate types aligned.
+        let bpmEntryType: String? = EntryType.bpm.rawValue
         return try await performBackgroundTask { backgroundContext in
             let descriptor: FetchDescriptor<Entry>
             if let opType = operationType {
@@ -630,7 +633,7 @@ final class EntryRepository: EntryRepositoryProtocol {
                 entryTimestamp: entry.entryTimestamp,
                 serverTimestamp: entry.serverTimestamp,
                 operationType: entry.operationType,
-                entryType: entry.entryType,
+                entryType: entry.entryType ?? EntryType.scale.rawValue,
                 isSynced: entry.isSynced,
                 isFailedToSync: entry.isFailedToSync,
                 attempts: entry.attempts,

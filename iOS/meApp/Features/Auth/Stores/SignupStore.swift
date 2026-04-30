@@ -566,6 +566,11 @@ final class SignupStore: ObservableObject {
             }
         }
 
+        // Persist all successfully-saved devices in a single productTypes write so
+        // intermediate per-device updates (including ones from babyService.saveBaby)
+        // don't clobber each other.
+        await writeAccumulatedProductTypes()
+
         notificationService.dismissLoader()
 
         // Step 4: Navigate to the appropriate terminal screen.
@@ -610,6 +615,8 @@ final class SignupStore: ObservableObject {
             }
         }
 
+        await writeAccumulatedProductTypes()
+
         notificationService.dismissLoader()
 
         let anyFailed = deviceStatuses.contains { if case .failure = $0.status { return true }; return false }
@@ -618,20 +625,14 @@ final class SignupStore: ObservableObject {
         }
     }
 
-    /// Saves the product type, babies (if applicable), and goal for a single device.
+    /// Saves the per-device side-effects (babies, goal) for a single device.
+    /// Does NOT write `productTypes` — that's done once after the loop so individual
+    /// writes don't clobber each other.
     private func saveDeviceProfile(
         deviceType: SignupDeviceType,
         account: AccountSnapshot,
         goal: Goal?
     ) async throws {
-        let productType: String
-        switch deviceType {
-        case .weightScale: productType = "myWeight"
-        case .bpm:         productType = "myBloodPressure"
-        case .babyScale:   productType = "baby"
-        }
-        try await accountService.updateProductTypes([productType])
-
         if deviceType == .babyScale {
             try await persistSignupBabies(for: account)
         }
@@ -640,6 +641,29 @@ final class SignupStore: ObservableObject {
             logger.log(level: .info, tag: tag,
                 message: "Creating goal. goalType=\(goal.goalType.rawValue), goalWeight=\(goal.goalWeight)")
             _ = try await accountService.createGoal(goal)
+        }
+    }
+
+    /// Writes the union of product types for every device that saved successfully.
+    /// `updateProductTypes` replaces the array, so we must send all of them in one call.
+    /// On failure, every previously-successful device is flipped to `.failure` so the
+    /// error screen surfaces — the account state is otherwise out of sync with what
+    /// the user thinks they registered.
+    private func writeAccumulatedProductTypes() async {
+        let successfulIndices = deviceStatuses.indices.filter {
+            if case .success = deviceStatuses[$0].status { return true }
+            return false
+        }
+        let productTypes = successfulIndices.map { deviceStatuses[$0].device.productType }
+        guard !productTypes.isEmpty else { return }
+        do {
+            try await accountService.updateProductTypes(productTypes)
+        } catch {
+            logger.log(level: .error, tag: tag,
+                message: "Failed to write accumulated product types. error=\(error.localizedDescription)")
+            for index in successfulIndices {
+                deviceStatuses[index] = (deviceStatuses[index].device, .failure(error))
+            }
         }
     }
     

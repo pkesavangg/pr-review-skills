@@ -14,6 +14,7 @@ struct BpmReadingArrivalCTAView: View {
     let systolic: Int
     let diastolic: Int
     let pulse: Int
+    let timestamp: String
     let onSave: () -> Void
     let onDiscard: () -> Void
 
@@ -63,7 +64,7 @@ struct BpmReadingArrivalCTAView: View {
         Text("\(pulse)")
             .font(.system(size: 28, weight: .bold))
             .foregroundColor(theme.textHeading)
-        + Text(" \(DashboardStrings.bpmReadingArrivalPulse)")
+        + Text(" \(DashboardStrings.bpmReadingArrivalPulse) - \(timestamp)")
             .fontOpenSans(.body2)
             .foregroundColor(theme.textHeading)
     }
