@@ -120,4 +120,38 @@ class BtWifiScaleSetupReducerTest {
 
         assertThat(result?.wifiList).hasSize(1)
     }
+
+    @Test
+    fun `repeated SetWifiList with overlapping inputs stays dedupe-stable across refreshes`() {
+        // Mirrors the ticket symptom: user taps Refresh repeatedly and each scan
+        // returns overlapping duplicates. State after each reduce must remain a
+        // unique-key list so LazyColumn never sees the same key twice.
+        val firstScan = listOf(
+            aWifi(ssid = "Home-2.4G", mac = "AA:BB:CC:00:00:01"),
+            aWifi(ssid = "Home-5G", mac = "AA:BB:CC:00:00:02"),
+            aWifi(ssid = "Home-2.4G", mac = "AA:BB:CC:00:00:01"), // duplicate
+        )
+        val secondScan = listOf(
+            aWifi(ssid = "Home-2.4G", mac = "AA:BB:CC:00:00:01"),
+            aWifi(ssid = "Home-2.4G", mac = "AA:BB:CC:00:00:01"), // duplicate
+            aWifi(ssid = "Home-5G", mac = "AA:BB:CC:00:00:02"),
+            aWifi(ssid = "Cafe", mac = "AA:BB:CC:00:00:03"), // newly visible
+        )
+
+        val afterFirst = reducer.reduce(initialState, BtWifiScaleSetupIntent.SetWifiList(firstScan))
+        val afterSecond = reducer.reduce(afterFirst ?: initialState, BtWifiScaleSetupIntent.SetWifiList(secondScan))
+
+        assertThat(afterFirst?.wifiList?.map { it.listKey() })
+            .containsExactly("AA:BB:CC:00:00:01|Home-2.4G", "AA:BB:CC:00:00:02|Home-5G")
+            .inOrder()
+        assertThat(afterSecond?.wifiList?.map { it.listKey() })
+            .containsExactly(
+                "AA:BB:CC:00:00:01|Home-2.4G",
+                "AA:BB:CC:00:00:02|Home-5G",
+                "AA:BB:CC:00:00:03|Cafe",
+            )
+            .inOrder()
+        assertThat(afterSecond?.wifiList?.map { it.listKey() }?.toSet()?.size)
+            .isEqualTo(afterSecond?.wifiList?.size)
+    }
 }
