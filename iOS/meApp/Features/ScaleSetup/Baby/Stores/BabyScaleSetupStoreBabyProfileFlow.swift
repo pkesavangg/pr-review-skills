@@ -75,7 +75,7 @@ extension BabyScaleSetupStore {
             birthLengthInches: baby.birthLengthInches,
             birthWeightLbs: baby.birthWeightLbs,
             birthWeightOz: baby.birthWeightOz,
-            preferredWeightUnit: accountService.activeAccount?.weightSettings?.weightUnit == .kg ? .kg : .lbsOz
+            preferredWeightUnit: accountService.activeAccount?.weightUnit == .kg ? .kg : .lbsOz
         )
         navigateToStep(.babyProfile)
     }

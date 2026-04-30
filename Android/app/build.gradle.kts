@@ -44,12 +44,8 @@ android {
       abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
     }
 
-    // Enable 16KB page alignment for Android 15 compliance
-    externalNativeBuild {
-      cmake {
-        arguments += listOf("-DANDROID_PAGE_SIZE_AGNOSTIC=ON")
-      }
-    }
+    // 16KB page alignment is handled by linker flags in appsync/scripts/build-android-libs.sh
+    // No CMakeLists.txt exists — externalNativeBuild is not needed
   }
 
   testOptions {
@@ -231,10 +227,7 @@ dependencies {
   implementation(libs.play.review.ktx)
 
   // Vico charts
-
-  implementation(libs.vico.core)
-  implementation(libs.lib.vico.compose)
-  implementation(libs.lib.vico.compose.m3)
+  implementation(libs.vico.gg)
 
   // Gif Image
   implementation(libs.coil.compose) // For Jetpack Compose

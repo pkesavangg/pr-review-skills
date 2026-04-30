@@ -86,8 +86,8 @@ struct WeightSnapshotCard: View {
     private func recomputeCache() async {
         // Capture inputs on the main actor, then compute off-thread.
         let inputSummaries = summaries
-        let weightUnit = viewModel.activeAccount?.weightSettings?.weightUnit ?? .lb
-        let goalWeightStored = viewModel.activeAccount?.goalSettings?.goalWeight
+        let weightUnit = viewModel.activeAccount?.weightUnit ?? .lb
+        let goalWeightStored = viewModel.activeAccount?.goalWeight
 
         let result = await Task.detached(priority: .utility) {
             let window = DashboardSnapshotChartWindow.make(summaries: inputSummaries) { $0.weight > 0 }
@@ -241,7 +241,15 @@ struct WeightSnapshotCard: View {
         Self.convertStoredWeightToDisplay(storedWeight, unit: cachedWeightUnit)
     }
 
+    private func convertStoredWeightToDisplay(_ storedWeight: Double) -> Double {
+        Self.convertStoredWeightToDisplay(storedWeight, unit: cachedWeightUnit)
+    }
+
     private static func convertStoredWeightToDisplay(_ storedWeight: Int, unit: WeightUnit) -> Double {
+        Self.convertStoredWeightToDisplay(Double(storedWeight), unit: unit)
+    }
+
+    private static func convertStoredWeightToDisplay(_ storedWeight: Double, unit: WeightUnit) -> Double {
         unit == .kg
             ? ConversionTools.convertStoredToKg(storedWeight)
             : ConversionTools.convertStoredToLbs(storedWeight)

@@ -106,9 +106,8 @@ private struct BpmUserIconButton: View {
             bodyComp: false,
             toggleButton: true
         ),
-        selectedUser: .constant(1),
-        onSelect: { _ in }
-    )
+        selectedUser: .constant(1)
+    ) { _ in }
     .padding(.horizontal)
     .environmentObject(Theme.shared)
 }

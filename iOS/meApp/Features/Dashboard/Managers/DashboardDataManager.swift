@@ -63,7 +63,7 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
     func switchDataSource(to entryType: EntryType) {
         cancellables.removeAll()
         switch entryType {
-        case .wg:
+        case .scale, .baby:
             entryService.$dailySummaries
                 .receive(on: DispatchQueue.main)
                 .sink { [weak self] in self?.updateStateFromDailySummaries($0) }

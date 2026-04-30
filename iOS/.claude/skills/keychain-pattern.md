@@ -91,10 +91,12 @@ final class KeychainService {
     }
 }
 
-// Usage:
+// Usage (feature code):
 try keychain.storeToken(accessToken, for: accountId, type: .access)
 let token = try keychain.retrieveToken(for: accountId, type: .access)
 ```
+
+**How tokens reach feature code:** `AccountService.updatePublishedState()` hydrates tokens from Keychain and stamps them onto `AccountSnapshot.accessToken` / `.refreshToken` / `.expiresAt` (`let` fields). Consumers read `accountService.activeAccount?.accessToken` directly — that read is a plain `String?` access on a `Sendable` struct, safe on any actor. The `Account` `@Model`'s `@Transient` token fields are internal to `AccountService` and never leave it.
 
 ---
 

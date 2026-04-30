@@ -53,7 +53,7 @@ extension BtWifiScaleSetupStore {
                     guard let self else { return }
                     // Reset refresh flag after starting the task
                     self.isRefreshingWifiNetworks = false
-                    await self.fetchWifiNetworks(for: savedScale)
+                    await self.fetchWifiNetworks(for: savedScale.broadcastIdString ?? "")
                 }
             } else {
                 // Reset refresh flag even if we skip fetch
@@ -98,7 +98,7 @@ extension BtWifiScaleSetupStore {
             Task {
                 guard let savedScale = self.savedScale else { return }
                 // Subscribe to live measurement updates and proceed when weight > 0
-                _ = await bluetoothService.startLiveMeasurement(for: savedScale)
+                _ = await bluetoothService.startLiveMeasurement(broadcastId: savedScale.broadcastIdString ?? "")
                 self.liveMeasurementSubscription = self.bluetoothService.liveMeasurementPublisher
                     .receive(on: DispatchQueue.main)
                     .sink { [weak self] (liveEntry: GGWeightEntry) in
@@ -109,7 +109,7 @@ extension BtWifiScaleSetupStore {
                         
                         if liveEntry.displayWeight > 0 && savedScale.broadcastIdString == liveEntry.broadcastId {
                             Task {
-                                _ = await self.bluetoothService.stopLiveMeasurement(for: savedScale)
+                                _ = await self.bluetoothService.stopLiveMeasurement(broadcastId: savedScale.broadcastIdString ?? "")
                                 self.cancelMeasurementSubscription()
                                 self.cancelStepOnTimeout()
                                 self.scaleSetupError = .none
@@ -226,8 +226,92 @@ extension BtWifiScaleSetupStore {
             return
         }
         
+        // Resume setup after permissions recover.
+        if !missingPermissions && !noNetwork && currentStep == .permissions && savedScale != nil {
+            if let resumeStep = stepToResumeAfterPermissions {
+                stepToResumeAfterPermissions = nil
+                scaleSetupError = .none
+                connectionState = .loading
+                navigateToStep(resumeStep)
+            } else {
+                isRefreshingWifiNetworks = true
+                navigateToStep(.gatheringNetwork)
+            }
+            return
+        }
+
+        // Restore stepOn subscriptions after Bluetooth returns.
+        if !missingPermissions && currentStep == .stepOn && liveMeasurementSubscription == nil && savedScale != nil {
+            navigateToStep(.stepOn)
+            return
+        }
+
+        // Reconnect before retrying settings update.
+        if !missingPermissions && currentStep == .updateSettings, let scaleToRecover = savedScale {
+            guard updateSettingsRecoveryTask == nil else { return }
+
+            scaleSetupError = .none
+            connectionState = .loading
+            // Re-populate the SDK's paired-device list immediately. A fast Bluetooth off/on
+            // can leave scanning resumed but no saved device synced back into the BLE layer.
+            bluetoothService.syncDevices([scaleToRecover])
+            bluetoothService.resumeSmartScan(clearOnlyPairing: false)
+
+            updateSettingsRecoveryTask = Task { [weak self] in
+                guard let self = self else { return }
+                defer { self.updateSettingsRecoveryTask = nil }
+                guard self.currentStep == .updateSettings else { return }
+
+                var reconnected = false
+                // Wait up to reconnectAttemptCap seconds for reconnect.
+                for attempt in 1...self.reconnectAttemptCap {
+                    try? await Task.sleep(nanoseconds: self.reconnectPollInterval)
+                    guard self.currentStep == .updateSettings else {
+                        return
+                    }
+                    do {
+                        try await self.scaleService.updateAllScalesStatus([scaleToRecover.toDevice()])
+                        if let refreshed = try await self.scaleService.getDevice(by: scaleToRecover.id),
+                           refreshed.isConnected == true {
+                            LoggerService.shared.log(
+                                level: .info,
+                                tag: self.tag,
+                                message: "Reconnect observed isConnected==true after \(attempt) attempt(s)"
+                            )
+                            await MainActor.run {
+                                self.savedScale = refreshed
+                                self.bluetoothService.syncDevices([refreshed])
+                            }
+                            reconnected = true
+                            break
+                        }
+                    } catch {
+                        LoggerService.shared.log(
+                            level: .info,
+                            tag: self.tag,
+                            message: "Reconnect attempt \(attempt) failed: \(error.localizedDescription)"
+                        )
+                        continue
+                    }
+                }
+
+                if !reconnected {
+                    LoggerService.shared.log(
+                        level: .error,
+                        tag: self.tag,
+                        message: "Reconnect timed out after \(self.reconnectAttemptCap) attempts — retrying settings with stale state"
+                    )
+                }
+
+                guard self.currentStep == .updateSettings else { return }
+                self.updateSettingsRecoveryTask = nil
+                await self.updateCustomizeSettings()
+            }
+            return
+        }
+
         guard missingPermissions || noNetwork else { return }
-        
+
         // Only handle errors for steps that have been reached
         switch currentStep {
         case .intro:
@@ -294,50 +378,8 @@ extension BtWifiScaleSetupStore {
                 showBluetoothTurnedOffAlert()
             }
         case .updateSettings:
-            let bluetoothSwitchOff =
-                permissionsService.getPermissionState(.BLUETOOTH_SWITCH) != .ENABLED
-
-            if !bluetoothSwitchOff {
-                Task { [weak self] in
-                    guard let self = self, let savedScale = self.savedScale else {
-                        return
-                    }
-
-                    do {
-                        try await self.scaleService.updateAllScalesStatus([savedScale])
-                    } catch {
-                        LoggerService.shared.log(
-                            level: .error,
-                            tag: self.tag,
-                            message: "BtWifiScaleSetupStore.handlePermissionChange(.updateSettings): " +
-                                "failed to update scale status for id \(savedScale.id): \(error.localizedDescription)"
-                        )
-                        return
-                    }
-
-                    do {
-                        guard let refreshedScale = try await self.scaleService.getDevice(by: savedScale.id) else {
-                            LoggerService.shared.log(
-                                level: .error,
-                                tag: self.tag,
-                                message: "BtWifiScaleSetupStore.handlePermissionChange(.updateSettings): device not found for id \(savedScale.id)"
-                            )
-                            return
-                        }
-                        await MainActor.run {
-                            self.savedScale = refreshedScale
-                            self.bluetoothService.syncDevices([refreshedScale])
-                        }
-                    } catch {
-                        LoggerService.shared.log(
-                            level: .error,
-                            tag: self.tag,
-                            message: "BtWifiScaleSetupStore.handlePermissionChange(.updateSettings): " +
-                                "failed to refresh scale device for id \(savedScale.id): \(error.localizedDescription)"
-                        )
-                    }
-                }
-            }
+            // BT-on is handled above the guard.
+            break
             
         default:
             // For other steps, don't automatically navigate
@@ -395,9 +437,10 @@ extension BtWifiScaleSetupStore {
             switch response {
             case .creationCompleted:
                 LoggerService.shared.log(level: .info, tag: tag, message: "Creation Completed \(response)")
-                await saveScale()
                 connectionState = .success
                 scaleSetupError = .none
+                await saveScale()
+                guard connectionState == .success else { return }
                 Task { @MainActor in
                     try? await Task.sleep(nanoseconds: 2_000_000_000)
                     self.navigateToStep(.gatheringNetwork)
@@ -463,7 +506,7 @@ extension BtWifiScaleSetupStore {
             
             // Get device metadata for R4 scales
             var deviceMetadata: DeviceMetaData?
-            let deviceInfoResult = await bluetoothService.getDeviceInfo(for: scale, skipConnectionCheck: true)
+            let deviceInfoResult = await bluetoothService.getDeviceInfo(broadcastId: scale.broadcastIdString ?? "", skipConnectionCheck: true)
             switch deviceInfoResult {
             case .success(let deviceInfo):
                 let dto = ScaleMetaDataDTO(
@@ -482,10 +525,10 @@ extension BtWifiScaleSetupStore {
             case .failure(let error):
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get device info: \(error.localizedDescription)")
             }
-            
+
             // Get WiFi MAC address for R4 scales
             var wifiMacAddress: String? = scale.wifiMac
-            let wifiMacResult = await bluetoothService.getWifiMacAddress(for: scale)
+            let wifiMacResult = await bluetoothService.getWifiMacAddress(broadcastId: scale.broadcastIdString ?? "")
             switch wifiMacResult {
             case .success(let macAddress):
                 wifiMacAddress = macAddress
@@ -513,7 +556,7 @@ extension BtWifiScaleSetupStore {
                 skipDuplicateCheck: isReconnect
             )
             
-            self.savedScale = savedScale
+            self.savedScale = savedScale.toSnapshot(isConnected: true, isWifiConfigured: isWifiConfigured)
             await self.scaleService.syncAllScalesWithRemote()
             
             // Ensure connection status is updated after sync completes
@@ -596,7 +639,7 @@ extension BtWifiScaleSetupStore {
         deviceDiscoveryCancellable = nil
         stepTimerTask?.cancel()
         self.discoveryEvent = event
-        self.discoveredScale = event.device
+        self.discoveredScale = event.device.toDevice()
 
         if !event.isNew {
             if let broadcastId = event.device.broadcastIdString, !broadcastId.isEmpty {

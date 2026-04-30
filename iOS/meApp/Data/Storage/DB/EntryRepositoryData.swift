@@ -13,11 +13,10 @@ struct EntrySyncData: Sendable {
     let entryTimestamp: String
     let serverTimestamp: String?
     let operationType: String
-    let deviceType: String
+    let entryType: String
     let isSynced: Bool
     let isFailedToSync: Bool
     let attempts: Int
-    let babyId: String?
     let scaleEntry: ScaleEntryData?
     let scaleEntryMetric: ScaleMetricData?
     // BPM scalars
@@ -25,12 +24,12 @@ struct EntrySyncData: Sendable {
     let bpmDiastolic: Int?
     let bpmMeanArterial: String?
     let bpmPulse: Int?
-    let bpmNote: String?
+    // Entry-level note (shared across all entry types)
+    let note: String?
     // Baby scalars
     let babyEntryBabyId: String?
     let babyEntryLength: Int?
     let babyEntryWeight: Int?
-    let babyEntryNote: String?
 }
 
 struct ScaleEntryData: Sendable {

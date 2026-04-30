@@ -134,12 +134,6 @@ struct AppInputField: View {
                 floatingLabelView
                 baseInputView
             }
-            if let trailingLabel = config.trailingLabel {
-                Text(trailingLabel)
-                    .fontOpenSans(.subHeading1)
-                    .foregroundColor(theme.textSubheading)
-                    .padding(.trailing, .spacingSM)
-            }
         }
     }
 
@@ -209,7 +203,12 @@ struct AppInputField: View {
     }
     
     private var trailingIconView: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
+            if let trailingLabel = config.trailingLabel {
+                Text(trailingLabel)
+                    .fontOpenSans(.subHeading1)
+                    .foregroundColor(theme.textSubheading)
+            }
             if let customIcon = config.customIcon {
                 Button(action: {
                     config.onCustomIconTap?()

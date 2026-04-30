@@ -347,6 +347,42 @@ struct UsersViewModelTests {
         #expect(bluetooth.deleteUserByTokenCalls == 0)
     }
 
+    @Test("showDeleteUserAlert blocks deletion when scale becomes disconnected after status refresh")
+    func showDeleteUserAlertBlocksDeletionWhenScaleDisconnectedAfterRefresh() async {
+        let scale = makeScale(isConnected: true, token: "owner-token", broadcastIdString: "ABC")
+        let scaleService = MockScaleService()
+        // Seed scale as connected initially; the refresh will re-read from scaleService.scales
+        // which we update to disconnected below.
+        let bluetooth = MockBluetoothService()
+        bluetooth.deleteUserByTokenResult = .success(.success)
+        let (store, _, _, notification, _) = makeSUT(
+            scale: scale,
+            bluetooth: bluetooth,
+            scaleService: scaleService
+        )
+
+        // After updateAllScalesStatus, flip the scale to disconnected
+        let disconnectedScale = makeScale(isConnected: false, token: "owner-token", broadcastIdString: "ABC")
+        scaleService.scales = [disconnectedScale.toSnapshot(isConnected: false)]
+
+        var onDeleteCalls = 0
+        store.showDeleteUserAlert(for: makeUser(name: "Guest", token: "guest-token")) {
+            onDeleteCalls += 1
+        }
+        notification.alertData?.buttons.last?.action(nil as String?)
+        await Task.yield()
+
+        let completed = await waitUntil(timeoutNanoseconds: 3_000_000_000) {
+            notification.showToastCalls >= 1
+        }
+
+        #expect(completed == true)
+        #expect(bluetooth.deleteUserByTokenCalls == 0)
+        #expect(onDeleteCalls == 0)
+        #expect(notification.toastData?.title == ToastStrings.error)
+        #expect(notification.toastData?.message == ToastStrings.errorDeletingUser)
+    }
+
     @Test("form helper properties expose validation and touched state")
     func formHelperPropertiesExposeValidationAndTouchedState() async {
         let (store, _, _, _, _) = makeSUT(scale: makeScale(isConnected: false))
@@ -368,6 +404,7 @@ struct UsersViewModelTests {
         notification: MockNotificationHelperService? = nil,
         permissions: MockPermissionsService? = nil,
         logger: MockLoggerService? = nil
+    // swiftlint:disable:next large_tuple
     ) -> (UsersViewModel, MockBluetoothService, MockScaleService, MockNotificationHelperService, MockPermissionsService) {
         let bluetooth = bluetooth ?? MockBluetoothService()
         let scaleService = scaleService ?? MockScaleService()
@@ -385,6 +422,9 @@ struct UsersViewModelTests {
         DependencyContainer.shared.register(permissions as PermissionsServiceProtocol)
         DependencyContainer.shared.register(scaleService as ScaleServiceProtocol)
         DependencyContainer.shared.register(logger as LoggerServiceProtocol)
+
+        // Publish the scale as a DeviceSnapshot so the ViewModel can resolve it via ScaleService.
+        scaleService.scales = [scale.toSnapshot(isConnected: scale.isConnected ?? false)]
 
         let store = UsersViewModel(scale: scale, initialUsersList: initialUsersList, userDeletionDelayNanoseconds: 0)
         // Pin dependencies on the instance to avoid cross-suite DI races from global container mutation.

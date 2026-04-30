@@ -43,21 +43,19 @@ struct HeightStepView: View {
             options: signupStore.heightInchesOptions,
             displayValue: { $0 },
             pickerType: .heightInches,
-            title: heightStepLang.pickerHeader,
-            onUpdate: { newValues in // swiftlint:disable:this trailing_closure
-                signupStore.updateFormHeight(fromMetric: false, values: newValues)
-            }
-        )
+            title: heightStepLang.pickerHeader
+        ) { newValues in
+            signupStore.updateFormHeight(fromMetric: false, values: newValues)
+        }
         .pickerSheet(
             isPresented: $signupStore.showHeightCmPicker,
             selectedValues: signupStore.selectedHeightCm,
             options: signupStore.heightCmOptions,
             displayValue: { $0 },
             pickerType: .heightCm,
-            title: heightStepLang.pickerHeader,
-            onUpdate: { newValues in // swiftlint:disable:this trailing_closure
-                signupStore.updateFormHeight(fromMetric: true, values: newValues)
-            }
-        )
+            title: heightStepLang.pickerHeader
+        ) { newValues in
+            signupStore.updateFormHeight(fromMetric: true, values: newValues)
+        }
     }
 }

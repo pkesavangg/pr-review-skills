@@ -44,9 +44,8 @@ extension BaseGraphView {
 
                     if viewModel.timePeriod == .month {
                         let calendar = Calendar.current
-                        let components = calendar.dateComponents([.day, .weekday], from: date)
-                        let isMonthStartSunday = components.day == 1 && components.weekday == 1
-                        if isMonthStartSunday {
+                        let isMonthStart = calendar.component(.day, from: date) == 1
+                        if isMonthStart {
                             AxisTick(stroke: StrokeStyle(lineWidth: 1, dash: []))
                                 .foregroundStyle(theme.statusIconSecondaryDisabled)
                         } else {

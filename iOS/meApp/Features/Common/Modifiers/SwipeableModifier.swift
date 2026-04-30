@@ -63,6 +63,7 @@ struct SwipeableModifier: ViewModifier {
     var openItemID: Binding<UUID?>?
     let openThresholdFraction: CGFloat
     let closeWithoutAnimationOnAction: Bool
+    var trailingCornerRadius: CGFloat
 
     // MARK: - Configuration
     private let swipeMinimumDistance: CGFloat = 20 // Increased to avoid conflicts with scrolling
@@ -97,7 +98,7 @@ struct SwipeableModifier: ViewModifier {
     }
 
     private var maxSwipeDistance: CGFloat {
-        totalButtonWidth + 20 // Small padding for overscroll
+        totalButtonWidth
     }
 
 // swiftlint:disable:next function_body_length
@@ -152,7 +153,16 @@ struct SwipeableModifier: ViewModifier {
                     .allowsHitTesting(isSwipedOpen)
                 }
             }
-            .frame(width: totalButtonWidth)
+            .frame(width: totalButtonWidth, alignment: .trailing)
+            .frame(minHeight: 0, maxHeight: .infinity)
+            .clipShape(
+                UnevenRoundedRectangle(
+                    topLeadingRadius: 0,
+                    bottomLeadingRadius: 0,
+                    bottomTrailingRadius: trailingCornerRadius,
+                    topTrailingRadius: trailingCornerRadius
+                )
+            )
             .opacity(swipeState == .closed ? 0 : 1)
 
             // Main content

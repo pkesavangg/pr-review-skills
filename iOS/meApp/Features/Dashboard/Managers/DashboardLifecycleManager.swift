@@ -163,7 +163,7 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
 
     private func determineDashboardTypeFromAccount() -> DashboardType {
         guard let account = accountService.activeAccount,
-              let dashboardTypeString = account.dashboardSettings?.dashboardType
+              let dashboardTypeString = account.dashboardType
         else {
             return .dashboard12
         }
@@ -464,7 +464,11 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
         stateProvider.state.graph.clearSelection()
 
         Task { [weak self] in
-            await self?.syncEntries()
+            guard let self else { return }
+            await self.syncEntries()
+            await MainActor.run {
+                self.chartManager.initializeChart()
+            }
         }
         loadLatestEntryData()
         loadGoalCardData()

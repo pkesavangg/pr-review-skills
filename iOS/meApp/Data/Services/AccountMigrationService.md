@@ -85,6 +85,8 @@ The Ionic data is converted to:
 - **DashboardSettings**: Dashboard type and metrics
 - **IntegrationSettings**: Third-party integration flags
 
+> **Note:** The migration writes these `@Model` records directly. After migration completes, `AccountService.updatePublishedState()` converts the saved `Account` + children into a flat `AccountSnapshot` and publishes it via `activeAccount` for feature code. Feature code never sees the `@Model` — it reads the snapshot. See `iOS/architecture.md` §4.1a and `docs/account-snapshot-implementation.md`.
+
 ### 4. Comprehensive Migration Support
 The AccountMigrationService also supports comprehensive migration that includes account, scale, and goal alert data:
 

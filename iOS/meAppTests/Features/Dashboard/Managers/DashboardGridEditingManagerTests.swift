@@ -10,7 +10,7 @@ struct DashboardGridEditingManagerTests {
         DashboardStoreTestSupport.makeSUT()
     }
 
-    private func makeSaveSUT(activeAccount: Account) async throws -> (store: DashboardStore, apiRepo: MockAccountAPIRepository) {
+    private func makeSaveSUT(activeAccount: AccountSnapshot) async throws -> (store: DashboardStore, apiRepo: MockAccountAPIRepository) {
         TestDependencyContainer.reset()
 
         let apiRepo = MockAccountAPIRepository()
@@ -53,7 +53,7 @@ struct DashboardGridEditingManagerTests {
         store.lifecycleManager.accountService = accountService
         store.lifecycleManager.logger = loggerService
 
-        try await accountService.setActiveAccount(activeAccount)
+        accountService.activeAccount = activeAccount
 
         // Prime lazy @Injector resolution now, while this test's custom dependencies are still registered.
         store.metricsManager.state.metrics = makeDefaultMetrics()
@@ -216,8 +216,10 @@ struct DashboardGridEditingManagerTests {
     @Test("loadProgressMetricsFromAccount marks all progress metrics removed when configured empty after initial load")
     func loadProgressMetricsFromAccountHandlesAllRemovedState() async {
         let (store, accountService, cacheManager) = makeSUT()
-        let activeAccount = DashboardStoreTestSupport.makeActiveAccount(id: "progress-empty")
-        activeAccount.dashboardSettings?.progressMetrics = ""
+        let activeAccount = DashboardStoreTestSupport.makeActiveAccount(
+            id: "progress-empty",
+            progressMetrics: ""
+        )
         accountService.activeAccount = activeAccount
 
         let streaks = makeDefaultStreaks()
@@ -236,8 +238,10 @@ struct DashboardGridEditingManagerTests {
     @Test("loadProgressMetricsFromAccount restores saved goal card position, streak order, and removals")
     func loadProgressMetricsFromAccountRestoresSavedOrder() async {
         let (store, accountService, _) = makeSUT()
-        let activeAccount = DashboardStoreTestSupport.makeActiveAccount(id: "progress-saved")
-        activeAccount.dashboardSettings?.progressMetrics = "currentStreak,goal,weeklyChange"
+        let activeAccount = DashboardStoreTestSupport.makeActiveAccount(
+            id: "progress-saved",
+            progressMetrics: "currentStreak,goal,weeklyChange"
+        )
         accountService.activeAccount = activeAccount
 
         let streaks = makeDefaultStreaks()
@@ -636,7 +640,7 @@ struct DashboardGridEditingManagerTests {
 
     @Test("saveChanges persists metric and progress order changes and clears edit state")
     func saveChangesPersistsEditedGridState() async throws {
-        UserDefaults.standard.removeObject(forKey: "dashboard.allProgressMetricsRemoved")
+        UserDefaults.standard.removeObject(forKey: "dashboard.allProgressMetricsRemoved") // swiftlint:disable:this no_direct_userdefaults
 
         let activeAccount = DashboardStoreTestSupport.makeActiveAccount(id: "dashboard-grid-save")
         let (store, apiRepo) = try await makeSaveSUT(activeAccount: activeAccount)

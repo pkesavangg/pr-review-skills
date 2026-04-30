@@ -147,6 +147,7 @@ struct HelpScreen: View {
     }
 
     // MARK: - Device Category Card
+    // swiftlint:disable:next function_body_length
     private func deviceCategoryCard(_ category: DeviceCategory, isFirst: Bool = false) -> some View {
         let isExpanded = expandedCategory == category
         return VStack(spacing: 0) {

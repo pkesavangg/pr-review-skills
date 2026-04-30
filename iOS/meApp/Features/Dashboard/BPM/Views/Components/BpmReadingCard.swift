@@ -48,6 +48,12 @@ struct BpmReadingCard: View {
                 .foregroundColor(classification.color(theme: theme))
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(BpmDashboardStrings.bpReadingCardAccessibility(systolic: systolic, diastolic: diastolic, pulse: pulse, label: classification.label, date: date))
+        .accessibilityLabel(BpmDashboardStrings.bpReadingCardAccessibility(
+            systolic: systolic,
+            diastolic: diastolic,
+            pulse: pulse,
+            label: classification.label,
+            date: date
+        ))
     }
 }

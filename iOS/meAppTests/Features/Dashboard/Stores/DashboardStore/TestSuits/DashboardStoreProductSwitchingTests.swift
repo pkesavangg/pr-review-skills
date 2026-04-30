@@ -91,7 +91,7 @@ extension DashboardStoreTests {
         @Test("switchProductType updates productType from wg to bpm")
         func switchProductTypeWgToBpm() {
             let (store, _, _) = DashboardStoreTestSupport.makeSUT()
-            #expect(store.productType == .wg) // default
+            #expect(store.productType == .scale) // default
 
             store.switchProductType(to: .bpm)
 
@@ -101,12 +101,12 @@ extension DashboardStoreTests {
         @Test("switchProductType is no-op when switching to the same type")
         func switchProductTypeSameTypeNoOp() {
             let (store, _, _) = DashboardStoreTestSupport.makeSUT()
-            store.productType = .wg
+            store.productType = .scale
 
-            store.switchProductType(to: .wg)
+            store.switchProductType(to: .scale)
 
             // State should remain unchanged
-            #expect(store.productType == .wg)
+            #expect(store.productType == .scale)
         }
 
         @Test("switchProductType clears selectedMetricLabel")
@@ -135,9 +135,9 @@ extension DashboardStoreTests {
             store.switchProductType(to: .bpm)
             #expect(store.productType == .bpm)
 
-            store.switchProductType(to: .wg)
+            store.switchProductType(to: .scale)
 
-            #expect(store.productType == .wg)
+            #expect(store.productType == .scale)
         }
 
         // MARK: - selectProductItem
@@ -160,7 +160,7 @@ extension DashboardStoreTests {
             store.selectProductItem(.baby(profile: baby))
 
             #expect(store.selectedProductItem == .baby(profile: baby))
-            #expect(store.productType == .wg)
+            #expect(store.productType == .scale)
         }
 
         @Test("selectProductItem back to myWeight clears baby selection")
@@ -283,7 +283,7 @@ extension DashboardStoreTests {
         @Test("refreshSelectedProductContext clears caches when switching baby profiles")
         func refreshSelectedProductContextClearsCaches() {
             let (store, _, cacheManager) = DashboardStoreTestSupport.makeSUT()
-            store.productType = .wg
+            store.productType = .scale
             store.state.ui.hasInitializedChart = true
 
             let baby1 = makeBaby(id: "b1")
