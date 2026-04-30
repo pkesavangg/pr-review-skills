@@ -48,6 +48,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -975,8 +976,11 @@ constructor(
   }
 
   private fun loadDefaultGraphRange() {
+    val initial = accountService.activeAccount.value?.defaultGraphSegment ?: GraphSegment.DEFAULT
+    handleIntent(SettingsIntent.UpdateDefaultGraphRange(initial))
     viewModelScope.launch {
-      accountService.activeAccountFlow
+      accountService.activeAccount
+        .drop(1)
         .map { it?.defaultGraphSegment ?: GraphSegment.DEFAULT }
         .distinctUntilChanged()
         .collect { segment ->
