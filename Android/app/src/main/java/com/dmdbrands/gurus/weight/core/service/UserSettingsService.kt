@@ -10,9 +10,6 @@ import com.dmdbrands.gurus.weight.domain.repository.IUserSettingsRepository
 import com.dmdbrands.gurus.weight.domain.services.IUserSettingsService
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.retry
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -33,18 +30,6 @@ class UserSettingsService
     companion object {
       private const val TAG = "UserSettingsService"
     }
-
-    // Cold flow — each ViewModel collects in its own viewModelScope. retry(3) guards
-    // against transient DataStore IO errors (CancellationException is never retried);
-    // .catch is the final backstop that emits DEFAULT after retries are exhausted.
-    override val defaultGraphSegment: Flow<GraphSegment> =
-      userSettingsRepository.defaultGraphSegmentFlow
-        .retry(retries = 3)
-        .catch { e ->
-          if (e is CancellationException) throw e
-          AppLog.e(TAG, "Error reading default graph segment; falling back to default", e)
-          emit(GraphSegment.DEFAULT)
-        }
 
     /**
      * Toggles the streak setting for the active account.
