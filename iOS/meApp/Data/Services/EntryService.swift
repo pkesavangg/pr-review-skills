@@ -859,16 +859,20 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
         }
 
-        do {
-            let latestEntry = try await getLatestEntry()
-            if let entry = latestEntry {
-                // Create notification on MainActor to safely extract relationship data
-                let notification = await MainActor.run { EntryNotification(from: entry) }
-                entrySaved.send(notification)
-                try await self.handleEntryAdded(entry)
+        // Only notify UI listeners when the remote merge actually inserted new
+        // entries locally. Calling handleEntryAdded here would re-route the
+        // overall latest entry through integrationService.syncNewEntry on every
+        // sync — pushing previously-unsynced historical entries into Apple Health
+        // after operations like deletes.
+        if hadNewCreates {
+            do {
+                if let entry = try await getLatestEntry() {
+                    let notification = await MainActor.run { EntryNotification(from: entry) }
+                    entrySaved.send(notification)
+                }
+            } catch {
+                await logger.log(level: .error, tag: tag, message: "Failed to get latest entry: \(error.localizedDescription)")
             }
-        } catch {
-            await logger.log(level: .error, tag: tag, message: "Failed to get latest entry: \(error.localizedDescription)")
         }
         return hadNewCreates
     }

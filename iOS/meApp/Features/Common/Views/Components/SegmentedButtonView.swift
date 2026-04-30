@@ -9,9 +9,16 @@ import SwiftUI
 struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & Hashable>: View where T.RawValue == String {
     let segments: [T]
     @Binding var selectedSegment: T
+    /// Opt-in — scales all segments together to one shared font size.
+    var useUniformFontScaling: Bool = false
     @Environment(\.appTheme) private var theme
     /// Stores the width of each segment (indexed by its position in the `segments` array).
     @State private var segmentWidths: [Int: CGFloat] = [:]
+
+    /// heading5 size — used only when `useUniformFontScaling` is on.
+    private static var baseFontSize: CGFloat { 16 }
+    /// Horizontal padding (left + right) applied inside each segment button in uniform mode.
+    private static var buttonHorizontalPadding: CGFloat { 16 }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -21,14 +28,12 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
                         selectedSegment = segment
                     }
                 }) {
-                    Text(segmentDisplayName(for: segment))
-                        .fontOpenSans(.heading5)
+                    labelText(for: segment)
                         .foregroundColor(selectedSegment == segment ? theme.textInverse : theme.actionSecondary)
                         .frame(maxWidth: .infinity)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.8)
                         .padding(.vertical, 8)
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, useUniformFontScaling ? 8 : 12)
                         .background(
                             GeometryReader { geometry in
                                 Color.clear
@@ -53,15 +58,52 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
         .clipShape(RoundedRectangle(cornerRadius: .radiusMD))
     }
     
+    /// Renders the label with the uniform-scaling font when opted in, otherwise the default heading5.
+    @ViewBuilder
+    private func labelText(for segment: T) -> some View {
+        if useUniformFontScaling {
+            Text(segmentDisplayName(for: segment))
+                .font(.custom("OpenSans-Regular", size: uniformFontSize))
+                .fontWeight(.bold)
+                .allowsTightening(true)
+        } else {
+            Text(segmentDisplayName(for: segment))
+                .fontOpenSans(.heading5)
+                .minimumScaleFactor(0.8)
+        }
+    }
+
     /// Returns the display name for a segment based on type
     private func segmentDisplayName(for segment: T) -> String {
         // Type-specific handling
         if let bodyMetric = segment as? BodyMetric {
             return bodyMetric.displayName.uppercased()
         }
-        
+
         // Fallback for other types
         return segment.rawValue.uppercased()
+    }
+
+    /// Natural (unscaled) width of the widest label at the base font size.
+    private var widestLabelWidth: CGFloat {
+        let font = UIFont(name: "OpenSans-Bold", size: Self.baseFontSize)
+            ?? .systemFont(ofSize: Self.baseFontSize, weight: .bold)
+        return segments
+            .map { (segmentDisplayName(for: $0) as NSString).size(withAttributes: [.font: font]).width }
+            .max() ?? 0
+    }
+
+    /// Single font size applied to every segment so they scale together.
+    /// If the widest label exceeds available width, all four shrink proportionally (floor 0.7×).
+    private var uniformFontSize: CGFloat {
+        guard let minSegmentWidth = segmentWidths.values.min(),
+              minSegmentWidth > 0,
+              widestLabelWidth > 0 else { return Self.baseFontSize }
+        let contentWidth = minSegmentWidth - Self.buttonHorizontalPadding
+        guard contentWidth > 0 else { return Self.baseFontSize }
+        let ratio = contentWidth / widestLabelWidth
+        if ratio >= 1.0 { return Self.baseFontSize }
+        return max(Self.baseFontSize * 0.7, Self.baseFontSize * ratio)
     }
 
     /// Calculates the x-offset required to place the highlight behind the selected segment.

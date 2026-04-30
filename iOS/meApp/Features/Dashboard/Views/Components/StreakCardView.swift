@@ -20,27 +20,37 @@ struct StreakCardView: View {
     let parentView: DashboardMetricsParentView
     
     @Environment(\.appTheme) private var theme
-    
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     private var borderColor: Color {
         isDropTarget ? theme.actionSecondary : Color.clear
     }
-    
+
     private var borderWidth: CGFloat {
         isDropTarget ? 2 : 0
     }
-    
+
     /// Returns true if this is a streak item (current streak or longest streak)
     private var isStreakItem: Bool {
         label == DashboardStrings.currentStreak || label == DashboardStrings.longestStreak
     }
-    
+
     /// Returns the minimum height based on parentView
     private var cardMinHeight: CGFloat {
         parentView == .R4ScaleSetup ? 74 : 70
     }
-    
+
+    /// Reduces NoteBox padding at larger Dynamic Type sizes so longer streak values fit.
+    /// Small phones keep more padding since their baseline icon/text is already compact.
+    private var cardPadding: CGFloat {
+        let isCompactDevice = DevicePlatform.isSmallPhone || DevicePlatform.isMiniPhone
+        if dynamicTypeSize.isAccessibilitySize { return isCompactDevice ? .spacingXS : 4 }
+        if dynamicTypeSize >= .xxLarge { return isCompactDevice ? .spacingXSM : .spacingXS } // 12 vs 8
+        return .spacingSM                                                                     // 16pt
+    }
+
     var body: some View {
-        NoteBox(alignCenter: true) {
+        NoteBox(alignCenter: true, padding: cardPadding) {
             content()
         }
         .frame(minHeight: cardMinHeight)
@@ -54,15 +64,34 @@ struct StreakCardView: View {
     
     /// Computes the icon size based on the label
     private var iconSize: IconSize {
-        let baseSize: CGFloat = {
+        var baseSize: CGFloat = {
             if DevicePlatform.isMiniPhone { return 24 }
             if DevicePlatform.isSmallPhone { return 32 }
             return 40
         }()
 
+        // At XXL and larger, shrink the streak icons so the value/label text has room to grow.
+        // Reduction is gentler on small/mini phones where the icon already starts at 32pt (or 24pt).
+        if isStreakItem {
+            let isCompactDevice = DevicePlatform.isSmallPhone || DevicePlatform.isMiniPhone
+            if dynamicTypeSize.isAccessibilitySize {
+                let reduction: CGFloat = isCompactDevice ? 8 : 16
+                baseSize = max(baseSize - reduction, 20)
+            } else if dynamicTypeSize >= .xxLarge {
+                let reduction: CGFloat = isCompactDevice ? 4 : 8
+                baseSize = max(baseSize - reduction, 24)
+            }
+        }
+
+        // "Current streak" normally gets an extra 5pt width, but at XXL+ that extra width
+        // squeezes the label into a truncated "Current strea…" — drop the bonus at large sizes
+        // so it matches the "Longest streak" icon and both labels render fully.
+        let isCompressed = dynamicTypeSize >= .xxLarge
+        let currentWidthBonus: CGFloat = isCompressed ? 0 : 5
+
         switch label {
         case DashboardStrings.currentStreak:
-            return IconSize(width: baseSize + 5, height: baseSize + 5)
+            return IconSize(width: baseSize + currentWidthBonus, height: baseSize + 5)
 
         case DashboardStrings.longestStreak:
             return IconSize(width: baseSize, height: baseSize + 5)
@@ -86,8 +115,17 @@ struct StreakCardView: View {
         return value == DashboardStrings.placeholder ? "0" : value
     }
     
+    /// Horizontal gap between the icon and the value/label — tightens with Dynamic Type.
+    /// Small phones keep a larger gap since the baseline spacing is already tight.
+    private var contentSpacing: CGFloat {
+        let isCompactDevice = DevicePlatform.isSmallPhone || DevicePlatform.isMiniPhone
+        if dynamicTypeSize.isAccessibilitySize { return isCompactDevice ? 4 : 2 }
+        if dynamicTypeSize >= .xxLarge { return isCompactDevice ? 6 : 4 }
+        return 8
+    }
+
     private func content() -> some View {
-        HStack(alignment: .center, spacing: 8) {
+        HStack(alignment: .center, spacing: contentSpacing) {
             if let icon = icon {
                 AppIconView(
                     icon: icon,

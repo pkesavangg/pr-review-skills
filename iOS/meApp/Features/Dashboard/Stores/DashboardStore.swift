@@ -372,6 +372,23 @@ class DashboardStore: ObservableObject {
                 self?.handleDashboardTypeChange()
             }
             .store(in: &cancellables)
+
+        // Apply the per-account default graph range exactly once when the active
+        // account first becomes known. The selection is intentionally not retargeted
+        // for later changes from Settings — the new default takes effect on the
+        // next app launch, not while the graph is on screen.
+        accountService.$activeAccount
+            .compactMap { $0?.accountId }
+            .first()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] accountId in
+                guard let self else { return }
+                let stored = DefaultGraphPeriodPreference.current(for: accountId)
+                if self.state.graph.selectedPeriod != stored {
+                    self.updateSelectedPeriod(stored)
+                }
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Computed Properties
@@ -2093,11 +2110,10 @@ class DashboardStore: ObservableObject {
         notificationService.showAlert(alert)
     }
 
-    /// Updates the selected time period with optional anchor date for temporal context preservation
-    /// - Parameters:
-    ///   - period: The new time period to switch to
-    ///   - anchorDate: Optional anchor date to center the viewport around (preserves user's temporal focus)
-    func updateSelectedPeriod(_ period: TimePeriod, anchorDate: Date? = nil) {
+    /// Updates the selected time period. The viewport snaps to the latest entry
+    /// (right edge of the chart) and the latest entry is auto-selected so the
+    /// header shows its value/date immediately after the switch.
+    func updateSelectedPeriod(_ period: TimePeriod) {
         // Reset chart initialization for new period
         state.ui.hasInitializedChart = false
 
@@ -2110,25 +2126,18 @@ class DashboardStore: ObservableObject {
         // IMPORTANT: Get the correct operations for the NEW period directly from dataManager
         let operationsForNewPeriod = dataManager.getContinuousOperations(for: period)
 
-        // Calculate optimal scroll position based on X-axis computation logic for segment change
-        // This ensures the leftmost visible X-axis value aligns with computed X-axis ticks
-        // Use cached bounds for O(1) lookup
-        // If anchorDate is provided, center the viewport around it for temporal context preservation
+        // Calculate optimal scroll position with showingLatest=true so the right
+        // edge aligns with the most recent entry.
         let optimalScrollPosition = graphManager.calculateOptimalScrollPosition(
             for: period,
             from: operationsForNewPeriod,
-            anchorDate: anchorDate,
-            showingLatest: anchorDate == nil, // Only show latest if no anchor
+            anchorDate: nil,
+            showingLatest: true,
             cachedBounds: dataManager.getDateBounds(for: period)
         )
 
-        // Keep section switches aligned to tick grids, but preserve explicit anchor semantics.
-        // - Do not snap when an anchor is provided (preserve temporal centering intent).
-        // - Do not force month snapping here (month uses its own tick scheme).
-        // Week/year must always be tick-aligned after section switches; otherwise transitions
-        // can land between visible grid lines.
-        let requiresSnapWithAnchor = (period == .week || period == .year)
-        let shouldSnapProgrammaticPosition = period != .total && period != .month && (anchorDate == nil || requiresSnapWithAnchor)
+        // Keep section switches aligned to tick grids (month/total use their own schemes).
+        let shouldSnapProgrammaticPosition = period != .total && period != .month
         let alignedScrollPosition = shouldSnapProgrammaticPosition
             ? graphManager.snapScrollPosition(optimalScrollPosition, for: period)
             : optimalScrollPosition
@@ -2144,6 +2153,29 @@ class DashboardStore: ObservableObject {
         // For TOTAL period, immediately compute and show visible-window averages
         if period == .total {
             updateMetricsForCurrentView()
+        }
+
+        // Auto-select the latest entry so the header reflects the most recent
+        // data point after the tab switch. Runs after GraphView's 50ms configure
+        // task so the active section view model is ready to accept selection.
+        selectLatestEntryAfterPeriodChange()
+    }
+
+    /// Auto-selects the latest entry after a period switch so the header shows
+    /// the most recent entry's details without requiring a chart tap.
+    @MainActor
+    private func selectLatestEntryAfterPeriodChange() {
+        let targetDate: Date? = {
+            let ops = continuousOperations
+            guard !ops.isEmpty else { return nil }
+            return ops.max(by: { $0.date < $1.date })?.date
+        }()
+        guard let targetDate else { return }
+
+        Task { @MainActor in
+            // Wait past GraphView's 50ms VM configure delay before selecting.
+            try? await Task.sleep(nanoseconds: 120_000_000)
+            await self.handleChartSelection(at: targetDate)
         }
     }
 

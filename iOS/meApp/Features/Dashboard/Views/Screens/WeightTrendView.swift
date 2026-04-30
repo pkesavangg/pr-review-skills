@@ -10,7 +10,7 @@ import SwiftUI
 struct WeightTrendView: View {
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
-    @State private var localSelectedPeriod: TimePeriod = .week
+    @State private var localSelectedPeriod: TimePeriod = DefaultGraphPeriodPreference.fallback
 
     var body: some View {
         ZStack {
@@ -19,7 +19,8 @@ struct WeightTrendView: View {
                 GraphView(dashboardStore: dashboardStore)
                 SegmentedButtonView(
                     segments: TimePeriod.allCases,
-                    selectedSegment: $localSelectedPeriod
+                    selectedSegment: $localSelectedPeriod,
+                    useUniformFontScaling: true
                 )
                 .padding(.vertical, .spacingSM)
                 .padding(.horizontal, 15)
@@ -38,21 +39,10 @@ struct WeightTrendView: View {
                 localSelectedPeriod = newValue
             }
         }
-        // Update store period immediately without animating the whole subtree
-        // Capture anchor date using the OLD period for temporal context preservation
-        .onChange(of: localSelectedPeriod) { oldValue, newValue in
-            // Always use midpoint as anchor to ensure consistent positioning
-            // regardless of zoom direction. This keeps the same date centered
-            // even when switching between periods multiple times.
-            let anchorDate: Date?
-            if oldValue == .total {
-                anchorDate = nil
-            } else {
-                // Always anchor to midpoint for consistent behavior
-                anchorDate = dashboardStore.graphManager.visibleMidpoint(for: oldValue)
-            }
-
-            dashboardStore.updateSelectedPeriod(newValue, anchorDate: anchorDate)
+        // Switching Week/Month/Year/Total always snaps to the latest entry and
+        // auto-selects it so the header reflects the most recent data point.
+        .onChange(of: localSelectedPeriod) { _, newValue in
+            dashboardStore.updateSelectedPeriod(newValue)
         }
     }
 

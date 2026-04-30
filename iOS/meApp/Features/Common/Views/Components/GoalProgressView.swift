@@ -10,7 +10,27 @@ struct GoalProgressView: View {
 
     // MARK: - Environment
     @Environment(\.appTheme) private var theme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
+
+    /// Reduces the NoteBox's outer padding at larger text sizes so the progress bar + labels fit
+    private var cardPadding: CGFloat {
+        if dynamicTypeSize.isAccessibilitySize { return 4 }
+        if dynamicTypeSize >= .xxLarge { return .spacingXS }             // 8pt
+        return .spacingSM             // 16pt
+    }
+
+    /// Reduces the inner vertical/horizontal insets of the goal card body at larger text sizes
+    private var innerVerticalPadding: CGFloat {
+        if dynamicTypeSize.isAccessibilitySize { return 0 }
+        if dynamicTypeSize >= .xxLarge { return 4 }
+        return .spacingXS
+    }
+    private var innerHorizontalPadding: CGFloat {
+        if dynamicTypeSize.isAccessibilitySize { return 4 }
+        if dynamicTypeSize >= .xxLarge { return .spacingXS }             // 8pt
+        return .spacingSM                                                 // 16pt
+    }
 
     // MARK: - Constants
     private let lang = DashboardStrings.self
@@ -38,7 +58,7 @@ struct GoalProgressView: View {
     }
 
     var body: some View {
-        NoteBox(alignCenter: false) {
+        NoteBox(alignCenter: false, padding: cardPadding) {
             Group {
                 if !viewModel.isLoaded {
                     // Keep last UI while loading to avoid flicker
@@ -88,8 +108,8 @@ struct GoalProgressView: View {
                 labelForegroundColor: theme.textSubheading
             )
         }
-        .padding(.vertical, .spacingXS)
-        .padding(.horizontal, .spacingSM)
+        .padding(.vertical, innerVerticalPadding)
+        .padding(.horizontal, innerHorizontalPadding)
     }
 
     // MARK: - Maintain goal UI (no progress bar)

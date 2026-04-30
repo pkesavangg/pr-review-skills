@@ -1278,22 +1278,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return DateTimeTools.visibleDomainLength(for: period)
     }
 
-    /// Returns the midpoint of the currently visible date range.
-    /// Used for preserving temporal context when switching between time periods.
-    var currentVisibleMidpoint: Date {
-        let domainLength = visibleDomainLength(for: state.selectedPeriod)
-        return state.xScrollPosition.addingTimeInterval(domainLength / 2)
-    }
-
-    /// Returns the midpoint of the visible date range for a specific period.
-    /// Use this when capturing the midpoint BEFORE a period change, passing the old period.
-    /// - Parameter period: The time period to calculate the midpoint for
-    /// - Returns: The midpoint date of the visible range for the given period
-    func visibleMidpoint(for period: TimePeriod) -> Date {
-        let domainLength = visibleDomainLength(for: period)
-        return state.xScrollPosition.addingTimeInterval(domainLength / 2)
-    }
-
     private func areEntriesInSameEra(_ summaries: [BathScaleWeightSummary]) -> Bool {
         guard !summaries.isEmpty else { return true }
         let validSummaries = summaries.filter { summary in

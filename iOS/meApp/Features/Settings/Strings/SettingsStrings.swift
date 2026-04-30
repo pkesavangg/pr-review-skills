@@ -36,6 +36,7 @@ struct SettingsStrings {
     static let streaks = "Streaks"
     static let appPermissions = "App Permissions"
     static let appearance = "Appearance"
+    static let defaultGraphRange = "Default Graph Range"
 
     // Support
     static let supportSettings = "Support"
