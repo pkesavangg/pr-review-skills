@@ -609,12 +609,14 @@ class DashboardStore: ObservableObject {
         state.data.hasAnyEntries
     }
 
+    #if DEBUG
     enum MetricRefreshKind: Equatable {
         case selectedPoint
         case interpolatedSelection
         case visibleAverage
         case emptySelection
     }
+    #endif
 
     private struct MetricRefreshSnapshot: Equatable {
         let selectedPointID: UUID?
@@ -964,7 +966,6 @@ class DashboardStore: ObservableObject {
         }
     }
     
-    /// Updates metric card values to display averages from the visible region
     @MainActor
     private func updateMetricsWithVisibleRegionAverage() {
         updateMetricsForCurrentView()
@@ -1088,6 +1089,7 @@ class DashboardStore: ObservableObject {
         }
     }
 
+    @MainActor
     private func refreshLatestEntryData() async {
         do {
             guard let latestEntry = try await dataManager.getLatestEntry() else { return }
@@ -1101,19 +1103,16 @@ class DashboardStore: ObservableObject {
 
             // During initial dashboard setup, prefer the latest entry selection over
             // visible-region averages so the first rendered tiles match the selected point.
-            let initialLatestSelectionDate = await MainActor.run { () -> Date? in
-                guard self.shouldPreferLatestSelectionForInitialMetrics else { return nil }
-                return self.latestSelectionDateForCurrentPeriod()
-            }
+            let initialLatestSelectionDate: Date? = shouldPreferLatestSelectionForInitialMetrics
+                ? latestSelectionDateForCurrentPeriod()
+                : nil
 
             if let initialLatestSelectionDate {
-                await self.handleChartSelection(at: initialLatestSelectionDate)
+                await handleChartSelection(at: initialLatestSelectionDate)
             } else {
                 // Otherwise preserve current selection state and update metrics for the
                 // active view mode (selected point, placeholders, or visible averages).
-                await MainActor.run {
-                    self.updateMetricsForCurrentView()
-                }
+                updateMetricsForCurrentView()
             }
 
         } catch {
@@ -3483,6 +3482,7 @@ class DashboardStore: ObservableObject {
         scheduleMetricRefresh(for: currentMetricRefreshMode())
     }
 
+    #if DEBUG
     @MainActor
     func currentMetricRefreshKind() -> MetricRefreshKind {
         if state.graph.selectedPoint != nil {
@@ -3493,6 +3493,7 @@ class DashboardStore: ObservableObject {
         }
         return getOperationsForLabelDateRange().isEmpty ? .emptySelection : .visibleAverage
     }
+    #endif
 
     @MainActor
     private func currentMetricRefreshMode() -> MetricRefreshMode {

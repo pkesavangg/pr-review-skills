@@ -25,6 +25,8 @@ struct DashboardStoreGraphSelectionSyncTests {
 
     @Test
     func exactChartSelectionUpdatesSelectedPointMetricsForAllPeriods() async throws {
+        defer { Task { await clearEntrySummaries() } }
+
         let dailyOlder = makeSummary(
             date: makeDate(2026, 4, 18),
             weight: 176,
@@ -61,7 +63,8 @@ struct DashboardStoreGraphSelectionSyncTests {
         for (period, latestPoint) in scenarios {
             store.state.graph.selectedPeriod = period
             await store.handleChartSelection(at: latestPoint.date)
-            try await Task.sleep(nanoseconds: 50_000_000)
+
+            try await waitUntil(timeout: 2.0) { store.state.ui.hasLoadedMetricValues }
 
             #expect(store.state.graph.selectedPoint?.date == latestPoint.date)
             #expect(store.currentMetricRefreshKind() == .selectedPoint)
@@ -78,13 +81,26 @@ struct DashboardStoreGraphSelectionSyncTests {
             let actualBMI = store.metricsManager.state.metrics.first(where: { $0.label == DashboardStrings.bmi })?.value
             #expect(actualBMI == expectedBMI)
 
+            store.state.ui.hasLoadedMetricValues = false
             await store.graphManager.handleChartSelection(at: nil)
-            try await Task.sleep(nanoseconds: 20_000_000)
         }
-
-        await clearEntrySummaries()
     }
 
+}
+
+// MARK: - Helpers
+
+/// Polls `condition` every 10ms until it returns true or `timeout` seconds elapses.
+@MainActor
+private func waitUntil(timeout: TimeInterval = 2.0, condition: @MainActor () -> Bool) async throws {
+    let deadline = Date().addingTimeInterval(timeout)
+    while !condition() {
+        guard Date() < deadline else {
+            Issue.record("waitUntil timed out after \(timeout)s")
+            return
+        }
+        try await Task.sleep(nanoseconds: 10_000_000) // 10ms
+    }
 }
 
 @MainActor
@@ -99,7 +115,8 @@ private func makeStore(
     let store = DashboardStore(lightweight: true)
     store.state.ui.hasLoadedDashboardConfig = true
 
-    try? await Task.sleep(nanoseconds: 50_000_000)
+    // Let any init-time async work settle before returning.
+    try? await waitUntil(timeout: 2.0) { store.state.ui.hasLoadedMetricValues }
     return store
 }
 
@@ -107,7 +124,6 @@ private func makeStore(
 private func clearEntrySummaries() async {
     EntryService.shared.dailySummaries = []
     EntryService.shared.monthlySummaries = []
-    try? await Task.sleep(nanoseconds: 20_000_000)
 }
 
 private func makeDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
