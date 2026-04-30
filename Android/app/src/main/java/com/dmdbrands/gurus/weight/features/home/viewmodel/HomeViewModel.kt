@@ -71,6 +71,7 @@ constructor(
     subscribeToWeightOnlyModeEvents()
     subscribeToWeightOnlyModeAlertDismissed()
     observeFeedIndicator()
+    observeAppSyncZoomLevel()
     checkHealthConnectPermission()
     viewModelScope.launch {
       ggInAppMessagingService.setAccountId(accountService.activeAccount.first()?.id ?: "")
@@ -258,11 +259,24 @@ constructor(
   }
 
   private fun handleAppSyncResult(result: AppSyncResult) {
-    if (result.weight != null && !result.canceled) {
+    if (result.canceled) {
+      return
+    }
+    viewModelScope.launch {
+      appSyncService.saveLastZoomLevel(result.zoom)
+    }
+    if (result.weight != null) {
       handleNewEntry(result)
     } else if (result.manual) {
       navigateToManualEntry()
-    } else {
+    }
+  }
+
+  private fun observeAppSyncZoomLevel() {
+    viewModelScope.launch {
+      appSyncService.lastZoomLevel.collect { zoom ->
+        handleIntent(HomeIntent.SetAppSyncZoomLevel(zoom))
+      }
     }
   }
 

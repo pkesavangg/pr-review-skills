@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.domain.services
 
 import com.dmdbrands.gurus.weight.domain.model.api.entry.ScaleApiEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -37,4 +38,14 @@ interface IAppSyncService {
      * Gets AppSync data for manual entry editing
      */
     val appSyncDataForEditing: StateFlow<ScaleEntry?>
+
+    /**
+     * Flow of the last AppSync zoom level for the active account.
+     */
+    val lastZoomLevel: Flow<Int>
+
+    /**
+     * Saves the last AppSync zoom level for the active account.
+     */
+    suspend fun saveLastZoomLevel(zoom: Int)
 }
