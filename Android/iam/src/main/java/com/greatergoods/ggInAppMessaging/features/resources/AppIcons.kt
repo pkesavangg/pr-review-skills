@@ -1,0 +1,14 @@
+package com.greatergoods.ggInAppMessaging.features.resources
+
+import com.greatergoods.ggInAppMessaging.R
+
+object AppIcons {
+  val Settings = R.drawable.gg_settings
+  val Logo = R.drawable.ic_gg_logo
+  val ggLogo = R.drawable.greater_goods_logo
+  val PromoCode = R.drawable.promo_code_apply
+  object Iam{
+    val placeholderImage = R.drawable.iam_placeholder
+    val RoundedClose = R.drawable.rounded_close
+  }
+}

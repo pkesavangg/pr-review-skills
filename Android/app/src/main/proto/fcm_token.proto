@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+option java_package = "com.dmdbrands.gurus.weight.data.storage.datastore";
+option java_multiple_files = true;
+
+/**
+ * Stores the FCM (Firebase Cloud Messaging) token for the user/device.
+ */
+message FcmToken {
+    // The FCM token string.
+    string token = 1;
+}

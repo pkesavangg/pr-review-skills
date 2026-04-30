@@ -1,0 +1,38 @@
+//
+//  InlineButtonText.swift
+//  meApp
+//
+//  Created by Lakshmi Priya on 25/06/25.
+//
+
+import SwiftUI
+
+struct InlineButtonText: View {
+    let prefix: String
+    let linkText: String
+    let suffix: String
+    let action: () -> Void
+    @Environment(\.appTheme) private var theme
+    
+    var body: some View {
+        let attributed = createAttributedString()
+        Text(attributed)
+            .onTapGesture { action() }
+    }
+    
+    private func createAttributedString() -> AttributedString {
+        var attributed = AttributedString(prefix + linkText + suffix)
+        
+        // Set base style for the whole string
+        attributed.font = .custom("OpenSans-Regular", size: CustomTextStyle.body2.size)
+        attributed.foregroundColor = theme.textBody
+        
+        // Style only the linkText part
+        if let range = attributed.range(of: linkText) {
+            attributed[range].foregroundColor = theme.actionPrimary
+            attributed[range].underlineStyle = .single
+            attributed[range].font = .system(size: CustomTextStyle.body2.size, weight: .bold)
+        }
+        return attributed
+    }
+}

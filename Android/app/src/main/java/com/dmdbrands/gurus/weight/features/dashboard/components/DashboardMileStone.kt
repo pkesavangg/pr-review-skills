@@ -1,0 +1,138 @@
+package com.dmdbrands.gurus.weight.features.dashboard.components
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
+import com.dmdbrands.gurus.weight.features.common.helper.StatHelper
+import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
+import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
+import com.dmdbrands.gurus.weight.features.common.model.Stat
+import com.dmdbrands.gurus.weight.theme.MeTheme
+
+/**
+ * Composable for the dashboard milestone section that displays weight progress and milestone stats.
+ *
+ * @param progress Progress data containing weight information
+ * @param latestWeight Latest weight value for display
+ * @param inEditMode Whether the dashboard is in edit mode
+ * @param isFromSetup Whether the item is from setup flow
+ * @param hasVisibleMetrics Whether there are visible metrics
+ * @param visibleKeys List of currently visible dashboard keys
+ * @param onMilestonesChanged Callback when visible milestones are changed (for save functionality)
+ * @param onNavigateToGoal Callback when navigating to goal screen
+ * @param modifier Modifier for the composable
+ */
+@Composable
+fun DashboardMilestone(
+  progress: Progress,
+  isProgressUpdating: Boolean = false,
+  latestWeight: Double? = null,
+  inEditMode: Boolean = false,
+  isFromSetup: Boolean = false,
+  hasVisibleMetrics: Boolean = false,
+  visibleKeys: List<DashboardKey> = listOf(),
+  onMilestonesChanged: (List<DashboardKey>) -> Unit = { },
+  onNavigateToGoal: () -> Unit = {},
+  onLongClick: (Stat?, Progress?) -> Unit = { _, _ -> },
+  modifier: Modifier = Modifier
+) {
+  val currentDeviceType = getDeviceType()
+  val spanCount = if (currentDeviceType == DeviceType.Tablet) {
+    3
+  } else {
+    2
+  }
+  var localVisibleKeys by remember(visibleKeys) { mutableStateOf(visibleKeys) }
+
+  val milestoneKeys = remember(localVisibleKeys) {
+    localVisibleKeys.mapNotNull { key ->
+      when (key) {
+        is DashboardKey.Milestone -> key.key
+        is DashboardKey.Metric -> null
+      }
+    }
+  }
+
+  // Recalculate milestones when progress changes - use remember with progress as key
+  val visibleMilestones = remember(progress, milestoneKeys, spanCount) {
+    StatHelper.getMilestone(
+      progress = progress,
+      visibleKeys = milestoneKeys,
+      filterNulls = false,
+      unit = progress.unit,
+    ).reorderGrid(
+      spanCount = spanCount,
+    )
+  }
+
+  val allMilestones = remember(progress) {
+    StatHelper.getMilestone(progress = progress, visibleKeys = null, filterNulls = false)
+  }
+
+  // Compare by key instead of object equality to handle progress updates gracefully
+  val visibleMilestoneKeys = remember(visibleMilestones) {
+    visibleMilestones.map { it.key }.toSet()
+  }
+
+  val hiddenMilestones = remember(allMilestones, visibleMilestoneKeys) {
+    allMilestones.filter { milestone -> milestone.key !in visibleMilestoneKeys }
+  }
+
+  val onMilestoneMoved = { isAdded: Boolean, milestone: Stat ->
+    val milestoneKey = milestone.key
+    val newStats = if (!isAdded) {
+      // Moving from visible to hidden - filter by key comparison
+      visibleMilestones.filterNot { it.key == milestoneKey }
+    } else {
+      // Moving from hidden to visible - find the milestone from allMilestones by key
+      visibleMilestones + milestone
+    }.reorderGrid(
+      spanCount = spanCount,
+    )
+    localVisibleKeys = newStats.map { stat ->
+      stat.key
+    }
+    onMilestonesChanged(localVisibleKeys)
+  }
+
+  val onMilestoneReordered = { newOrder: List<Stat> ->
+    val newVisibleKeys = newOrder.map { stat ->
+      stat.key
+    }
+    localVisibleKeys = newVisibleKeys
+    onMilestonesChanged(newVisibleKeys)
+  }
+
+  Column(modifier = modifier) {
+    DashboardMilestoneGrid(
+      visibleMilestones = visibleMilestones,
+      hiddenMilestones = hiddenMilestones,
+      inEditMode = inEditMode,
+      isFromSetup = isFromSetup,
+      hasVisibleMetrics = hasVisibleMetrics,
+      isProgressUpdating = isProgressUpdating,
+      onMilestoneMoved = onMilestoneMoved,
+      onMilestoneReordered = onMilestoneReordered,
+      onNavigateToGoal = if (inEditMode) {
+        // Disable navigation to goal screen in edit mode
+        {}
+      } else {
+        // Allow navigation to goal screen when not in edit mode
+        onNavigateToGoal
+      },
+      onLongClick = onLongClick,
+      progress = progress,
+      latestWeight = latestWeight,
+    )
+  }
+
+  Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+}

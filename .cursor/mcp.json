@@ -1,0 +1,14 @@
+{
+    "mcpServers": {
+        "mcp-atlassian": {
+            "command": "npx",
+            "args": [
+                "mcp-remote",
+                "https://mcp.atlassian.com/v1/sse"
+            ]
+        },
+        "Figma": {
+            "url": "http://127.0.0.1:3845/sse"
+        }
+    }
+}

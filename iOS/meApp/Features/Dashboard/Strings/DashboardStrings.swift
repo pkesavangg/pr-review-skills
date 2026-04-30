@@ -1,0 +1,83 @@
+//
+//  DashboardStrings.swift
+//  meApp
+//
+//  Created by Lakshmi Priya on 01/07/25.
+//
+
+import Foundation
+
+struct DashboardStrings {
+    // Action buttons
+    static let editDashboard = "Edit dashboard"
+    static let updateGoal = "Update Goal"
+    static let metricInfo = "Metric info"
+    static let saveChanges = "Save Changes"
+    static let resetDashboard = "Reset Dashboard"
+    
+    // Dashboard Metrics
+    static let customizeDashboardTitle = "Customize App Dashboard"
+    static let customizeDashboardSubtitle = "Rearrange tiles and/or hide unwanted metrics from your dashboard."
+    
+    static let weight = "weight"
+    static let bmi = "bmi"
+    static let bodyFatBase = "body fat"
+    static let muscleBase = "muscle"
+    static let waterBase = "water"
+    static let heartBase = "heart"
+    static let boneBase = "bone"
+    static let visceralFat = "visceral fat"
+    static let subFatBase = "sub fat"
+    static let proteinBase = "protein"
+    static let skelMuscle = "skel muscle"
+    static let bmrBase = "bmr"
+    static let metAge = "meta age" 
+    
+    // Units
+    static let percentageUnitSymbol = "%"
+    static let bpmUnitSymbol = "bpm"
+    static let kcalUnitSymbol = "kcal"
+
+    static let bodyFat = "\(bodyFatBase) \(percentageUnitSymbol)"
+    static let muscle = "\(muscleBase) \(percentageUnitSymbol)"
+    static let water = "\(waterBase) \(percentageUnitSymbol)"
+    static let heartBpm = "\(heartBase) \(bpmUnitSymbol)"
+    static let bone = "\(boneBase) \(percentageUnitSymbol)"
+    static let visceralFatPre = "Lv."
+    static let subFat = "\(subFatBase) \(percentageUnitSymbol)"
+    static let protein = "\(proteinBase) \(percentageUnitSymbol)"
+    static let bmrKcal = "\(bmrBase) \(kcalUnitSymbol)"
+    static let metAgeUnit = "yrs"
+    
+    // Streak/Loss labels
+    static let currentStreak = "current streak"
+    static let longestStreak = "longest streak"
+    static func daySuffix(forStreak streak: Int) -> String {
+        streak == 1 ? " day" : " days"
+    }
+    static let lbsWeek = "lbs/week"
+    static let lbsMonth = "lbs/month"
+    static let lbsYear = "lbs/year"
+    static let lbsTotal = "lbs/total"
+    
+    // Goal Card/Progress strings
+    static let goalTypeLabel = "Goal Type: %@"
+    static let plus  = "+"
+    static let minus  = "-"
+    static let placeholder = "--"
+    static let goalReached = "goal reached!"
+    static let reachYourGoals = "Reach Your Goals!"
+    static let setGoalWeight = "Set a goal weight"
+    static func loseGoalWeightLabel(_ unit: String) -> String{
+        return "\(unit) to goal"
+    }
+    static func gainGoalWeightLabel(_ goalWeight: String, _ unit: String) -> String {
+        return "\(unit) to \(goalWeight) \(unit) goal weight"
+    }
+    
+    // Empty state messages
+    static let noEntriesMessage = "To collect an entry, connect a scale or add a manual entry."
+    static func noEntriesInPeriodMessage(_ timePeriod: String) -> String {
+        return "You haven't added any entries this \(timePeriod)."
+    }
+}

@@ -1,20 +1,29 @@
-# iOS
+# meApp iOS
 
-This directory contains the iOS-specific code and resources for the MeApp project.
+This is the iOS application for the meApp project.
 
-## Structure
+## Project Overview
+meApp is an iOS application built using Swift and SwiftUI. It includes core app functionality, UI assets, and test targets.
 
-- `MeApp.xcodeproj` - Xcode project file
-- `MeApp/` - Main application source code
-- Other iOS-specific files and folders
+## Directory Structure
+- `meApp/` - Main app source code
+- `meAppTests/` - Unit tests
+- `meAppUITests/` - UI tests
+- `meApp.xcodeproj/` - Xcode project file
 
 ## Getting Started
+1. Clone the repository.
+2. Open `meApp.xcodeproj` in Xcode.
+3. Build and run the app on a simulator or device.
 
-1. Open this folder in Xcode.
-2. Install required pods (if using CocoaPods): `pod install`
-3. Build and run the project on a simulator or device.
+## Development
+- The app uses Swift and SwiftUI.
+- All dependencies are managed via Xcode (no CocoaPods or Carthage by default).
+- For custom assets, add them to `Assets.xcassets`.
 
-## Notes
+## Testing
+- Run unit tests with `Cmd+U` in Xcode.
+- UI tests are located in the `meAppUITests` directory.
 
-- Ensure you have the correct Xcode version and dependencies installed.
-- Refer to the main project documentation for shared information.
+
+

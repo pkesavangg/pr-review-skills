@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package com.greatergoods.ggInAppMessaging.proto;
+
+option java_package = "com.greatergoods.ggInAppMessaging.proto";
+option java_multiple_files = true;
+
+/**
+ * Feed settings proto for managing pop-up messages and notification badges per account
+ */
+message FeedSettings {
+  /** Map of account ID to account-specific feed settings */
+  map<string, AccountFeedSettings> account_settings = 1;
+
+  /** Last updated timestamp */
+  string last_updated = 2;
+}
+
+/**
+ * Account-specific feed settings
+ */
+message AccountFeedSettings {
+  /** Whether a popup modal should be shown on login trigger */
+  bool show_popup_message = 1;
+
+  /** Whether the notification badge should be displayed */
+  bool show_notification_badge = 2;
+
+  /** Account ID for which these settings apply */
+  string account_id = 3;
+
+  /** Last time a feed modal was triggered (for cooldown period) */
+  int64 feed_last_triggered_at = 4;
+
+  /** Last updated timestamp for this account */
+  string last_updated = 5;
+}

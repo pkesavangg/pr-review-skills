@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package com.dmdbrands.gurus.weight.proto;
+
+option java_multiple_files = true;
+option java_package = "com.dmdbrands.gurus.weight.proto";
+
+// Theme preferences
+enum ThemeMode {
+    SYSTEM = 0;
+    LIGHT = 1;
+    DARK = 2;
+}
+
+// User account information
+message UserAccount {
+    bool is_active = 1;
+    string sync_timestamp = 2;
+    string refresh_token = 3;
+    string access_token = 4;
+    string expires_at = 5;
+    ThemeMode theme_mode = 6;
+    bool notification_alert_shown = 7;
+    int32 last_appsync_zoom_level = 8;
+    DefaultGraphSegment default_graph_segment = 9;
+}
+
+// Default graph range preference
+enum DefaultGraphSegment {
+    DEFAULT_GRAPH_SEGMENT_UNSPECIFIED = 0;
+    DEFAULT_GRAPH_SEGMENT_WEEK = 1;
+    DEFAULT_GRAPH_SEGMENT_MONTH = 2;
+    DEFAULT_GRAPH_SEGMENT_YEAR = 3;
+    DEFAULT_GRAPH_SEGMENT_TOTAL = 4;
+}
+
+// User preferences message
+message UserPreferences {
+    string isActive = 1;
+    map<string, UserAccount> accounts = 2;
+    bool has_shown_account_switch_info_modal_for_device = 3;
+}

@@ -1,0 +1,29 @@
+package com.dmdbrands.gurus.weight.domain.services
+
+import com.dmdbrands.gurus.weight.domain.model.common.DeviceInfo
+
+/**
+ * Service interface for device information operations including FCM token management and device info updates.
+ */
+interface IDeviceInfoService {
+    /**
+     * Returns a DeviceInfo object with local device and app information.
+     * @return DeviceInfo with app and device details.
+     */
+    fun getDeviceInfo(): DeviceInfo
+
+    /**
+     * Updates device information on the server with current device details and FCM token.
+     * This method fetches device details and sends them to the server.
+     */
+    suspend fun updateDeviceInfo()
+
+
+  suspend fun updateLocalIntegrationInfo()
+
+  /**
+     * Gets the current FCM token.
+     * @return The current FCM token string.
+     */
+    suspend fun getFcmToken(): String
+}

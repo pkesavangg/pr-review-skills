@@ -1,0 +1,18 @@
+struct MetricStrings {
+    static let weight = "Weight"
+    static let bmi = "bmi"
+    static let bodyFat = "Body Fat"
+    static let muscleMass = "Muscle Mass"
+    static let bodyWater = "Body Water"
+    static let heartRate = "Heart Rate"
+    static let boneMass = "Bone Mass"
+    static let visceralFat = "Visceral Fat"
+    static let subcutaneousFat = "Subcutaneous Fat"
+    static let protein = "Protein"
+    static let skeletalMuscles = "Skeletal Muscles"
+    static let basalMetabolicRate = "Basal Metabolic Rate"
+    static let metabolicAge = "Metabolic Age"
+    static let noMeasurementAvailable = "No measurement available"
+    static let measurementTaken = "Measurement taken"
+    static let bodyMetrics = "Body Metrics"
+}

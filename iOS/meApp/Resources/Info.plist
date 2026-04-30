@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>API_BASE_URL</key>
+    <string>$(API_BASE_URL)</string>
+    <key>APP_ENV</key>
+    <string>$(APP_ENV)</string>
+    <key>FirebaseAppDelegateProxyEnabled</key>
+    <false/>
+    <key>FirebaseMessagingAutoInitEnabled</key>
+    <true/>
+    <key>UIAppFonts</key>
+    <array>
+        <string>OpenSans-Italic.ttf</string>
+        <string>OpenSans-Regular.ttf</string>
+    </array>
+    <key>NSCameraUsageDescription</key>
+    <string>Weight Gurus uses the camera to sync with AppSync scales.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>Weight Gurus uses Location to pair with Wi-Fi scales.</string>
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>Weight Gurus uses Location to pair with Wi-Fi scales.</string>
+    <key>NSLocationTemporaryUsageDescriptionDictionary</key>
+    <dict>
+        <key>wifi setup</key>
+        <string>Weight Gurus uses Location to pair with Wi-Fi scales.</string>
+    </dict>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Weight Gurus uses Location to pair with Wi-Fi scales.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Weight Gurus uses camera and photo access to sync with AppSync scales.</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Weight Gurus needs local network access to connect and configure Wi-Fi scales on your network.</string>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>fetch</string>
+        <string>remote-notification</string>
+    </array>
+    <key>UIDesignRequiresCompatibility</key>
+    <true/>
+</dict>
+</plist>

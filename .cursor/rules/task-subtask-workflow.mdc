@@ -1,0 +1,13 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Task and Subtask Workflow Rule
+
+* When a new task is created, break it down into clear, actionable subtasks.
+* For each subtask, create a dedicated file documenting its requirements, progress, and completion status.
+* Work on only one subtask at a time. Do not start the next subtask until the current one is fully completed and documented.
+* After completing a subtask, update the main task file to reflect the subtask's completion and any relevant outcomes or changes.
+* Repeat this process for each subtask until the main task is fully completed.
+* Ensure all task and subtask files are clearly named and organized for easy tracking and review.

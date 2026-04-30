@@ -1,0 +1,81 @@
+package com.dmdbrands.gurus.weight.domain.model.storage
+
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.DEFAULT_SKU
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0412
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
+import com.dmdbrands.library.ggbluetooth.enums.GGAppType
+import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
+import com.greatergoods.blewrapper.GGCacheDevice
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import java.util.Calendar
+import java.util.UUID
+import kotlin.random.Random
+
+enum class BLEStatus {
+  CONNECTED, DISCONNECTED
+}
+
+data class Device(
+  val id: String = UUID.randomUUID().toString(),
+  val device: GGDeviceDetail? = null,
+  val connectionStatus: BLEStatus = BLEStatus.DISCONNECTED,
+  val nickname: String = device?.deviceName ?: "",
+  val deviceType: String? = null,
+  val alreadyPaired: Boolean = false,
+  val userNumber: Int? = 0,
+  val hasServerID: Boolean = false,
+  val createdAt: String? = Calendar.getInstance().timeInMillis.toString(),
+  val sku: String? = null,
+  val isWeighOnlyModeEnabledByOthers: Boolean = false,
+  val token: String? = null,
+  val preferences: Preferences? = null,
+  val isDeleted: Boolean = false,
+  val isSynced: Boolean = false,
+  val latestVersion: String? = null
+) : GGCacheDevice {
+
+  fun getAppType(): String {
+    return GGAppType.WEIGHT_GURUS
+  }
+
+  fun hasNumericUsers(): Boolean {
+    return getAppType() == GGAppType.BALANCE_HEALTH
+  }
+
+  fun getSKU(): String {
+    return sku ?: device?.getSKU() ?: DEFAULT_SKU
+  }
+
+  /** Bluetooth broadcast ID string for scale log / support; e.g. "00:00:00:00:00:00". */
+  fun getBroadcastIdString(): String = device?.broadcastIdString ?: "00:00:00:00:00:00"
+
+  companion object {
+    fun fromDevice(device: GGDeviceDetail, deviceType: String): Device {
+      val preferences = if (device.getSKU() == SKU_0412) {
+        Preferences(shouldMeasureImpedance = device.impedanceSwitchState)
+      } else null
+      return Device(
+        device = device,
+        hasServerID = false,
+        isWeighOnlyModeEnabledByOthers = false,
+        preferences = preferences,
+        deviceType = deviceType,
+      )
+    }
+  }
+}
+
+@Serializable
+data class Preferences(
+  val id: String = Random.nextLong().toString(),
+  @SerialName("tzOffset") val tzOffset: Int? = null,
+  @SerialName("timeFormat") val timeFormat: String? = null,
+  @SerialName("displayName") val displayName: String? = null,
+  @SerialName("displayMetrics") val displayMetrics: List<String>? = null,
+  @SerialName("shouldMeasurePulse") val shouldMeasurePulse: Boolean? = false,
+  @SerialName("shouldMeasureImpedance") val shouldMeasureImpedance: Boolean? = false,
+  @SerialName("shouldFactoryReset") val shouldFactoryReset: Boolean? = false,
+  @SerialName("wifiFotaScheduleTime") val wifiFotaScheduleTime: Long? = null,
+  val isSynced: Boolean = false
+)
