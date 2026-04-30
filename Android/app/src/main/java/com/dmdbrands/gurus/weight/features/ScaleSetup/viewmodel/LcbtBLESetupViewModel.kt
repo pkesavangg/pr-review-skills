@@ -20,7 +20,10 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import java.time.Instant
 
@@ -253,8 +256,20 @@ constructor(
         handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
         AppLog.d(TAG, "Holding success state for ${SetupLoaderTimings.SUCCESS_DISPLAY_MS}ms to let loader animation complete")
         delay(SetupLoaderTimings.SUCCESS_DISPLAY_MS)
+        // Honour cancellation if the user backed out during the success hold.
+        currentCoroutineContext().ensureActive()
+        // Guard against a late BLE callback flipping the state to Failed during
+        // the success hold — only auto-advance if we're still in Success.
+        val finalState = state.value.scaleSetupState.setupState.connectionState
+        if (finalState !is ConnectionState.Success) {
+          AppLog.w(TAG, "Connection state changed during success hold to $finalState — skipping auto-advance")
+          return@launch
+        }
         AppLog.d(TAG, "Success state displayed, advancing to next step")
         onNext()
+      } catch (e: CancellationException) {
+        // Never swallow cancellation — let viewModelScope unwind cleanly.
+        throw e
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during bluetooth connection", e)
         clearBluetoothTimeout()

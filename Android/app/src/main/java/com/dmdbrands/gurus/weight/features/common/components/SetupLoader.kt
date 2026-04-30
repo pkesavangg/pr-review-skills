@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
+import android.provider.Settings
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -25,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
 import com.dmdbrands.gurus.weight.features.common.components.strings.SetupLoaderStrings
@@ -43,8 +45,12 @@ object SetupLoaderTimings {
   /** Duration of the crossfade on the middle dot between Loading and Success/Failed. */
   const val CROSSFADE_MS: Int = 400
 
-  /** Visibility buffer added on top of the crossfade so the final frame is perceived. */
-  const val SUCCESS_BUFFER_MS: Long = 400L
+  /**
+   * Visibility buffer added on top of the crossfade so the final frame is perceived.
+   * 250ms balances "seeing the checkmark" against "feeling laggy" — total hold is
+   * [SUCCESS_DISPLAY_MS] (650ms).
+   */
+  const val SUCCESS_BUFFER_MS: Long = 250L
 
   /**
    * Delay callers should wait after emitting [ConnectionState.Success] before
@@ -82,6 +88,26 @@ private fun LoaderDisplay.dotColor(): Color = when (this) {
 }
 
 /**
+ * Reads `Settings.Global.ANIMATOR_DURATION_SCALE` to honour the system-wide
+ * "Remove animations" / "Animator duration scale = Off" accessibility setting.
+ * Returns `true` when animations are disabled and the loader should snap rather
+ * than crossfade. Falls back to enabling animation on any read failure.
+ */
+@Composable
+private fun isReduceMotionEnabled(): Boolean {
+  val context = LocalContext.current
+  return remember(context) {
+    runCatching {
+      Settings.Global.getFloat(
+        context.contentResolver,
+        Settings.Global.ANIMATOR_DURATION_SCALE,
+        1f,
+      ) == 0f
+    }.getOrDefault(false)
+  }
+}
+
+/**
  * SetupLoader component that displays animated dots during loading
  * and shows appropriate icons for success/error states.
  *
@@ -94,13 +120,14 @@ fun SetupLoader(
   modifier: Modifier = Modifier
 ) {
   val display = connectionState.toLoaderDisplay()
+  val crossfadeMs = if (isReduceMotionEnabled()) 0 else SetupLoaderTimings.CROSSFADE_MS
 
   // Animate the outer dots' color over the same window as the middle-dot
   // crossfade so the whole loader transitions as a single visual gesture
   // rather than the middle dot fading while the ring snaps.
   val outerDotColor by animateColorAsState(
     targetValue = display.dotColor(),
-    animationSpec = tween(SetupLoaderTimings.CROSSFADE_MS),
+    animationSpec = tween(crossfadeMs),
     label = "SetupLoaderOuterDotColor",
   )
 
@@ -109,6 +136,10 @@ fun SetupLoader(
 
   LaunchedEffect(display) {
     if (display == LoaderDisplay.Loading) {
+      // Reset progress on each entry into Loading so the dot phase starts from
+      // a known position after a Failed → Loading retry, rather than resuming
+      // from a frozen mid-cycle value.
+      animationProgress = 0f
       while (true) {
         animationProgress = (animationProgress + 0.06f) % 5f
         delay(20) // 20ms per frame = 50fps, 1.67 seconds total cycle
@@ -123,7 +154,11 @@ fun SetupLoader(
   ) {
     repeat(DOT_COUNT) { index ->
       if (index == MIDDLE_DOT_INDEX) {
-        MiddleDot(display = display, animationProgress = animationProgress)
+        MiddleDot(
+          display = display,
+          animationProgress = animationProgress,
+          crossfadeMs = crossfadeMs,
+        )
       } else {
         AnimatedDot(
           color = outerDotColor,
@@ -151,12 +186,13 @@ fun SetupLoader(
 private fun MiddleDot(
   display: LoaderDisplay,
   animationProgress: Float,
+  crossfadeMs: Int,
 ) {
   AnimatedContent(
     targetState = display,
     transitionSpec = {
-      fadeIn(animationSpec = tween(SetupLoaderTimings.CROSSFADE_MS)) togetherWith
-        fadeOut(animationSpec = tween(SetupLoaderTimings.CROSSFADE_MS))
+      fadeIn(animationSpec = tween(crossfadeMs)) togetherWith
+        fadeOut(animationSpec = tween(crossfadeMs))
     },
     label = "SetupLoaderMiddleDotTransition",
   ) { state ->
