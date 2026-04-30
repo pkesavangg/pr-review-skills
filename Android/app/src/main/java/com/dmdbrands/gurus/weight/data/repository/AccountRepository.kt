@@ -33,6 +33,7 @@ import com.dmdbrands.gurus.weight.domain.model.api.dashboard.DashboardTypeReques
 import com.dmdbrands.gurus.weight.domain.model.api.dashboard.ProgressMetricsRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountInfo
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountToken
+import com.dmdbrands.gurus.weight.features.common.enums.toGraphSegment
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.Token
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
@@ -42,6 +43,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
 import com.dmdbrands.gurus.weight.proto.ThemeMode
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -445,8 +447,11 @@ constructor(
    * Gets the stored active account from the database as a Flow.
    */
   override fun getActiveAccount(): Flow<Account?> =
-    accountDao.getActiveAccount().distinctUntilChanged().map {
-      it?.toDomainAccount()
+    combine(
+      accountDao.getActiveAccount().distinctUntilChanged(),
+      userDataStore.defaultGraphSegmentFlow.distinctUntilChanged(),
+    ) { entity, segmentProto ->
+      entity?.toDomainAccount()?.copy(defaultGraphSegment = segmentProto.toGraphSegment())
     }
 
   /**

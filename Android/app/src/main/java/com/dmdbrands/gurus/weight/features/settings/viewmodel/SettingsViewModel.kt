@@ -47,6 +47,8 @@ import com.greatergoods.blewrapper.GGDeviceService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import retrofit2.HttpException
@@ -974,13 +976,12 @@ constructor(
 
   private fun loadDefaultGraphRange() {
     viewModelScope.launch {
-      // StateFlow replays its current `.value` on subscription. By the time the user
-      // reaches Settings, the singleton has long since pumped DataStore, so the first
-      // emission is the persisted value — no DEFAULT flicker. Avoid drop(1): the seed
-      // (GraphSegment.DEFAULT) may legitimately equal the user's persisted choice.
-      userSettingsService.defaultGraphSegment.collect { segment ->
-        handleIntent(SettingsIntent.UpdateDefaultGraphRange(segment))
-      }
+      accountService.activeAccountFlow
+        .map { it?.defaultGraphSegment ?: GraphSegment.DEFAULT }
+        .distinctUntilChanged()
+        .collect { segment ->
+          handleIntent(SettingsIntent.UpdateDefaultGraphRange(segment))
+        }
     }
   }
 
