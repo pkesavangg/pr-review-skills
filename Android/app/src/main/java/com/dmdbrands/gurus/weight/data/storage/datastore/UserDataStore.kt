@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.data.storage.datastore
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.Serializer
 import androidx.datastore.dataStore
+import com.dmdbrands.gurus.weight.core.config.AppSyncConfig
 import com.dmdbrands.gurus.weight.proto.DefaultGraphSegment
 import com.dmdbrands.gurus.weight.proto.ThemeMode
 import com.dmdbrands.gurus.weight.proto.UserAccount
@@ -31,6 +32,7 @@ class UserDataStore @Inject constructor(
 ) : BaseProtoDataStore<UserPreferences>(
   dataStore = context.userDataStore,
 ) {
+
   /**
    * Emits a Flow of all user accounts, keyed by account ID.
    */
@@ -69,6 +71,33 @@ class UserDataStore @Inject constructor(
   val defaultGraphSegmentFlow: Flow<DefaultGraphSegment> = dataFlow.map {
     it.accountsMap.values.firstOrNull { account -> account.isActive }?.defaultGraphSegment
       ?: DefaultGraphSegment.DEFAULT_GRAPH_SEGMENT_UNSPECIFIED
+  }
+
+  /**
+   * Emits a Flow of the last AppSync zoom level for the active account.
+   * Falls back to DEFAULT_APPSYNC_ZOOM if not set or out of range.
+   */
+  val lastAppSyncZoomLevelFlow: Flow<Int> = currentAccountFlow.map { account ->
+    val stored = account?.lastAppsyncZoomLevel ?: 0
+    if (stored in AppSyncConfig.MIN_ZOOM..AppSyncConfig.MAX_ZOOM) stored else AppSyncConfig.DEFAULT_ZOOM
+  }
+
+  /**
+   * Saves the last AppSync zoom level for the active account.
+   * @param zoom The zoom level to save (clamped to 1-5).
+   */
+  suspend fun setLastAppSyncZoomLevel(zoom: Int) {
+    val current = getData()
+    val activeEntry = current.accountsMap.entries.firstOrNull { it.value.isActive } ?: return
+    val updated = current.toBuilder().apply {
+      putAccounts(
+        activeEntry.key,
+        activeEntry.value.toBuilder()
+          .setLastAppsyncZoomLevel(zoom.coerceIn(AppSyncConfig.MIN_ZOOM, AppSyncConfig.MAX_ZOOM))
+          .build(),
+      )
+    }.build()
+    updateData { updated }
   }
 
   /**

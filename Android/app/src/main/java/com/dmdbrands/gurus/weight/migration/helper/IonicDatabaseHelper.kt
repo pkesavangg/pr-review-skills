@@ -225,4 +225,48 @@ object IonicDatabaseHelper {
       null
     }
   }
+
+  /**
+   * Persists the highest rowid successfully migrated for the given source table scope.
+   * Used so a crash mid-migration resumes from this rowid instead of restarting from row 0.
+   */
+  fun saveResumeRowid(context: Context, scope: String, rowid: Long) {
+    try {
+      val prefs = context.getSharedPreferences("migration_prefs", Context.MODE_PRIVATE)
+      prefs.edit().putLong(resumeKey(scope), rowid).apply()
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to save resume rowid for scope=$scope: ${e.message}")
+    }
+  }
+
+  /**
+   * Returns the resume rowid for the given source table scope, or null if none is recorded.
+   */
+  fun getResumeRowid(context: Context, scope: String): Long? {
+    return try {
+      val prefs = context.getSharedPreferences("migration_prefs", Context.MODE_PRIVATE)
+      val rowid = prefs.getLong(resumeKey(scope), -1L)
+      if (rowid != -1L) rowid else null
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to get resume rowid for scope=$scope: ${e.message}")
+      null
+    }
+  }
+
+  /**
+   * Clears all resume rowid checkpoints. Called after a full migration succeeds.
+   */
+  fun clearResumeRowids(context: Context) {
+    try {
+      val prefs = context.getSharedPreferences("migration_prefs", Context.MODE_PRIVATE)
+      prefs.edit()
+        .remove(resumeKey("entry"))
+        .remove(resumeKey("opstack"))
+        .apply()
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to clear resume rowids: ${e.message}")
+    }
+  }
+
+  private fun resumeKey(scope: String): String = "resume_rowid_$scope"
 }

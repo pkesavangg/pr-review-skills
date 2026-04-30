@@ -88,11 +88,11 @@ fun HomeScreenContent(
                     try {
                       val result = startAppSyncScan(
                         context = context,
-                        zoom = 2,
+                        zoom = state.appSyncZoomLevel,
                         showManualEntryButton = true,
                         onBack = {
                           // Create cancelled result and call intent handler immediately
-                          val cancelResult = AppSyncResultFactory.createCancelResult(2)
+                          val cancelResult = AppSyncResultFactory.createCancelResult(state.appSyncZoomLevel)
                           AppSyncResultHolder.result = cancelResult
                           handleIntent(HomeIntent.HandleAppSyncResult(cancelResult))
                         },

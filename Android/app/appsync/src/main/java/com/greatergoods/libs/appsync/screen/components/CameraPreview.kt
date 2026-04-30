@@ -66,6 +66,7 @@ fun CameraPreview(
   onCameraReady: (Camera, CameraControl, CameraInfo) -> Unit,
   cameraExecutor: ExecutorService,
   onScanResult: (AppSyncResult) -> Unit,
+  currentZoom: () -> Int,
   onError: (String) -> Unit = {},
   onLowLightDetected: (Boolean) -> Unit = {},
 ) {
@@ -111,7 +112,7 @@ fun CameraPreview(
               imageAnalyzer.setAnalyzer(
                 cameraExecutor,
                 { imageProxy ->
-                  processFrameWithJNI(imageProxy, onScanResult, onLowLightDetected)
+                  processFrameWithJNI(imageProxy, onScanResult, onLowLightDetected, currentZoom)
                 },
               )
 
@@ -173,6 +174,7 @@ private fun processFrameWithJNI(
   imageProxy: ImageProxy,
   onScanResult: (AppSyncResult) -> Unit,
   onLowLightDetected: (Boolean) -> Unit,
+  currentZoom: () -> Int,
 ) {
   try {
     // Only process YUV_420_888 format images
@@ -213,7 +215,7 @@ private fun processFrameWithJNI(
           if (bits != null && bits.isNotEmpty()) {
             Log.d("AppSyncScan", "✅ Pattern detected! Bits count: ${bits.size}, resolution: ${convertedWidth}x${convertedHeight}")
             // Interpret the detected bits using FS003 protocol
-            val result = AppSyncFs003Interpreter.interpret(bits)
+            val result = AppSyncFs003Interpreter.interpret(bits, currentZoom())
             if (result != null) {
               Log.i("AppSyncScan", "✅ Scan successful! Weight: ${result.weight}, Fat: ${result.fat}, Muscle: ${result.muscle}")
               // Deliver the successful scan result

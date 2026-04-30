@@ -301,22 +301,26 @@ constructor(
   }
 
   /**
-   * Refreshes all entry-related StateFlows to trigger progress recalculation.
-   * This should be called after sync operations to ensure streak values are updated.
-   * Adds a small delay to ensure database operations are fully committed before querying.
+   * Refreshes the cached streak/total/starting-weight values after a sync.
+   *
+   * The other entry StateFlows (_latestEntry, _last7Days, _last30Days, _monthYear) are kept
+   * fresh by the long-lived Room Flow subscriptions launched once in updateAllData(); they
+   * react to DB changes automatically. Only updateProgressCache() is a one-shot recompute,
+   * so that's the only thing this needs to call.
+   *
+   * (Older versions of this method also called updateLatestEntry/Last7/Last30/MonthYear
+   * sequentially. Each of those .collect { } calls on a Room Flow never returns, so the
+   * first call blocked forever and updateProgressCache never ran — leaving streak counts
+   * stale after every addEntry. See MA dashboard streak fix.)
    */
   override suspend fun refreshEntryData() {
     val currentAccountId = accountId ?: return
     try {
-      updateLatestEntry(currentAccountId)
-      updateLast7Days(currentAccountId)
-      updateLast30Days(currentAccountId)
-      updateMonthYear(currentAccountId)
       updateProgressCache(currentAccountId)
-      AppLog.d("EntryService", "Entry data refreshed - streak values should update")
+      AppLog.d("EntryService", "Progress cache refreshed - streak values updated")
     } catch (e: Exception) {
       if (e is CancellationException) throw e
-      AppLog.e("EntryService", "Error refreshing entry data", e)
+      AppLog.e("EntryService", "Error refreshing progress cache", e)
     }
   }
 
@@ -692,15 +696,14 @@ constructor(
         )
       }
 
-      // 7. API sync is done: clear loader now. Then refresh caches in background.
-      // refreshEntryData() never returns (it uses Flow.collect {} which runs indefinitely),
-      // so we must clear _isUpdating here, not in a finally after refreshEntryData().
+      // 7. API sync is done: clear loader now and refresh the progress cache in the background
+      // so the dashboard streak/total updates without blocking the user.
       _lastUpdated.value = System.currentTimeMillis()
 
       repositoryScope.launch {
         refreshEntryData()
       }
-        _isUpdating.value = false
+      _isUpdating.value = false
 
       // 8. Handle goal alerts (similar to TypeScript operation.service.ts)
       // Use lastValidOperation directly to avoid race condition with _latestEntry StateFlow

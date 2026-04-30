@@ -21,7 +21,8 @@ message UserAccount {
     string expires_at = 5;
     ThemeMode theme_mode = 6;
     bool notification_alert_shown = 7;
-    DefaultGraphSegment default_graph_segment = 8;
+    int32 last_appsync_zoom_level = 8;
+    DefaultGraphSegment default_graph_segment = 9;
 }
 
 // Default graph range preference

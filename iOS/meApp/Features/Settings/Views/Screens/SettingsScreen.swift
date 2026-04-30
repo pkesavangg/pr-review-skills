@@ -236,6 +236,12 @@ struct SettingsScreen: View {
                 router.navigate(to: .editProfile)
             }))
             .listRowInsets()
+            ActionListItemView(config: ActionListItemConfig(
+                title: settingsLang.defaultGraphRange,
+                value: settingsStore.defaultGraphPeriodText,
+                chevronType: .upDown,
+                onTap: { settingsStore.presentDefaultGraphPeriodPicker() }))
+            .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
@@ -313,12 +319,6 @@ struct SettingsScreen: View {
                 value: settingsStore.appearanceModeText,
                 chevronType: .upDown,
                 onTap: { settingsStore.presentAppearancePicker() }))
-            .listRowInsets()
-            ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.defaultGraphRange,
-                value: settingsStore.defaultGraphPeriodText,
-                chevronType: .upDown,
-                onTap: { settingsStore.presentDefaultGraphPeriodPicker() }))
             .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
