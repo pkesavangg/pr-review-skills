@@ -29,20 +29,18 @@ sealed interface GraphIntent : IReducer.Intent {
   /** Update primary Y-axis */
   data class UpdatePrimaryYAxis(val yRangeValues: CartesianRangeValues, val yStep: Double?) : GraphIntent
 
+  /**
+   * Update the seed Y range for `ScrollAwareRangeProvider`'s frame-0 render. Dispatched from
+   * the VM with the same bracketing window the provider's `onVisibleEntries` callback uses,
+   * so frame 0 and frame 1+ produce identical Y bounds (no snap on segment switch).
+   */
+  data class UpdateSeedYRange(val seedMinY: Double, val seedMaxY: Double) : GraphIntent
+
   /** Update marker index */
   data class UpdateMarkerIndex(val markerIndex: Double?) : GraphIntent
 
-  /** Update updating state */
-  data class UpdateIsUpdating(val isUpdating: Boolean) : GraphIntent
-
-  /** Update loading state */
-  data class UpdateIsLoading(val isLoading: Boolean) : GraphIntent
-
   /** Update whether the visible range is a single segment window */
   data class UpdateIsSingleWindow(val isSingleWindow: Boolean) : GraphIntent
-
-  /** Reset graph state */
-  object ResetGraph : GraphIntent
 
   data class SetScrollRange(val min: Long, val max: Long, val onFallback: () -> Unit = {}) : GraphIntent
 }
