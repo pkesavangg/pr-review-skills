@@ -7,13 +7,15 @@ plugins {
   alias(libs.plugins.google.service)
   alias(libs.plugins.firebase.crashlytics.plugin)
   alias(libs.plugins.kotlin.compose)
-  // parcelize is bundled with AGP's built-in Kotlin (AGP 9+); do not pin its version.
-  id("org.jetbrains.kotlin.plugin.parcelize")
   alias(libs.plugins.hilt)
   alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.ksp)
   alias(libs.plugins.google.proto)
   alias(libs.plugins.baselineprofile)
+  // parcelize ships with AGP's bundled Kotlin facet. Do NOT alias it via libs.versions.toml —
+  // Gradle errors with "plugin already on classpath with unknown version" because AGP applies
+  // kotlin-android transitively.
+  id("org.jetbrains.kotlin.plugin.parcelize")
   id("jacoco")
 }
 
@@ -99,16 +101,24 @@ release {
   }
 }
 
-// onVariants replaces applicationVariants under AGP 9 newDsl. The VariantOutputImpl
-// cast stays until outputFileName is promoted to the public VariantOutput interface.
+// onVariants replaces applicationVariants under AGP 9 newDsl. The VariantOutputImpl cast
+// is required because outputFileName is not yet on the public VariantOutput API.
+// Drop the cast once Google promotes outputFileName.
+// AGP component tracker: https://issuetracker.google.com/issues?q=componentid:192709%20outputFileName
+// Note: buildDateStamp is captured at configuration time; with config cache enabled the value
+// would be cached across days. Acceptable today (no config cache); switch to a ValueSource if enabled.
 androidComponents {
   val appName = "Weight gurus"
   val buildDateStamp = SimpleDateFormat("yyyyMMdd").format(Date())
   onVariants { variant ->
     variant.outputs.forEach { output ->
-      val versionName = output.versionName.get()
-      val versionCode = output.versionCode.get()
-      (output as VariantOutputImpl).outputFileName.set(
+      val versionName = output.versionName.orNull ?: "0.0.0"
+      val versionCode = output.versionCode.orNull ?: 0
+      val outputImpl = output as? VariantOutputImpl ?: error(
+        "APK rename: expected VariantOutputImpl, got ${output::class.qualifiedName}. " +
+          "AGP upgrade likely broke the cast — see MA-3818.",
+      )
+      outputImpl.outputFileName.set(
         "$appName-${variant.name}-v$versionName($versionCode)-$buildDateStamp.apk",
       )
     }
