@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.core.Serializer
 import androidx.datastore.dataStore
 import com.dmdbrands.gurus.weight.core.config.AppSyncConfig
+import com.dmdbrands.gurus.weight.proto.DefaultGraphSegment
 import com.dmdbrands.gurus.weight.proto.ThemeMode
 import com.dmdbrands.gurus.weight.proto.UserAccount
 import com.dmdbrands.gurus.weight.proto.UserPreferences
@@ -60,6 +61,18 @@ class UserDataStore @Inject constructor(
   val currentAccountFlow: Flow<UserAccount?> = dataFlow.map {
     it.accountsMap.values.firstOrNull { account -> account.isActive }
   }
+
+  /**
+   * Emits a Flow of the raw [DefaultGraphSegment] proto enum for the currently active account.
+   * Returns [DefaultGraphSegment.DEFAULT_GRAPH_SEGMENT_UNSPECIFIED] when no account is active or
+   * the field has never been set. UNSPECIFIED → MONTH mapping is performed by
+   * [com.dmdbrands.gurus.weight.features.common.enums.toGraphSegment] in the repository layer.
+   */
+  val defaultGraphSegmentFlow: Flow<DefaultGraphSegment> = dataFlow.map {
+    it.accountsMap.values.firstOrNull { account -> account.isActive }?.defaultGraphSegment
+      ?: DefaultGraphSegment.DEFAULT_GRAPH_SEGMENT_UNSPECIFIED
+  }
+
   /**
    * Emits a Flow of the last AppSync zoom level for the active account.
    * Falls back to DEFAULT_APPSYNC_ZOOM if not set or out of range.
@@ -158,7 +171,8 @@ class UserDataStore @Inject constructor(
 
     // Otherwise, update the existing account
     val updated = current.toBuilder().apply {
-      val existingAccount = current.accountsMap[accountId]!!
+      val existingAccount = current.accountsMap[accountId]
+        ?: error("Account $accountId not found when updating tokens")
 
       val updatedAccount = existingAccount.toBuilder()
         .setRefreshToken(refreshToken)
@@ -425,6 +439,26 @@ class UserDataStore @Inject constructor(
       .setHasShownAccountSwitchInfoModalForDevice(hasShown)
       .build()
     updateData { updated }
+  }
+
+  /**
+   * Sets the default graph segment for the currently active account.
+   * Both the active-account lookup and the write occur inside the [updateData] lambda so
+   * they are atomic against concurrent account-switch writers.
+   * @throws IllegalStateException when no account is active at write time.
+   */
+  suspend fun setDefaultGraphSegment(segment: DefaultGraphSegment) {
+    updateData { current ->
+      val activeEntry = current.accountsMap.entries
+        .firstOrNull { it.value.isActive }
+        ?: error("No active account when persisting default graph segment")
+      current.toBuilder()
+        .putAccounts(
+          activeEntry.key,
+          activeEntry.value.toBuilder().setDefaultGraphSegment(segment).build(),
+        )
+        .build()
+    }
   }
 
   /**

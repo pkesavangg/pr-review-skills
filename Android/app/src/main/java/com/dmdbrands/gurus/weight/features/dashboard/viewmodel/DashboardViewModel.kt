@@ -5,6 +5,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
+import com.dmdbrands.gurus.weight.domain.services.IUserSettingsService
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.toWeightless
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
@@ -45,7 +46,8 @@ constructor(
   private val appNavigationService: IAppNavigationService,
   private val dashboardService: IDashboardService,
   private val healthConnectService: IHealthConnectService,
-  private val goalService: IGoalService
+  private val goalService: IGoalService,
+  private val userSettingsService: IUserSettingsService
 ) : BaseIntentViewModel<DashboardState, DashboardIntent>(
   reducer = DashboardReducer(),
 ), DefaultLifecycleObserver {
@@ -65,6 +67,7 @@ constructor(
       subscribeLatestWeight()
       subscribeIsEmpty()
       subscribeWeightLess()
+      subscribeDefaultGraphSegment()
     }
   }
 
@@ -77,6 +80,8 @@ constructor(
     super.handleIntent(DashboardIntent.SetDashboardType(dashboardType))
     super.handleIntent(DashboardIntent.SetVisibleKeys(metrics))
     super.handleIntent(DashboardIntent.UpdateWeightLess(weightLess))
+    // selectedSegment is sourced solely from subscribeDefaultGraphSegment() to avoid
+    // reading the Flow before its upstream emits (race) and to avoid double-dispatch.
   }
 
   private fun subscribeWeightLess() {
@@ -186,6 +191,17 @@ constructor(
             DashboardType.DASHBOARD_12_METRICS else DashboardType.DASHBOARD_4_METRICS
           handleIntent(DashboardIntent.SetDashboardType(dashboardType))
         }
+      }
+    }
+  }
+
+  private fun subscribeDefaultGraphSegment() {
+    viewModelScope.launch {
+      // Cold Flow — each emission is the persisted value (or DEFAULT on upstream error
+      // via the service's .catch). No StateFlow seed prefix to skip, so cold-start
+      // collectors and late subscribers both observe the same first value.
+      userSettingsService.defaultGraphSegment.collect { segment ->
+        handleIntent(DashboardIntent.SetSelectedSegment(segment))
       }
     }
   }

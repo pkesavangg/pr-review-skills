@@ -9,7 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -26,6 +26,7 @@ import com.dmdbrands.gurus.weight.features.common.model.SettingsItem
 import com.dmdbrands.gurus.weight.features.common.model.SettingsItemType
 import com.dmdbrands.gurus.weight.features.settings.components.UserProfileSection
 import com.dmdbrands.gurus.weight.features.settings.strings.SettingsScreenStrings
+import com.dmdbrands.gurus.weight.features.settings.strings.toDisplayString
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsIntent
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsState
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsViewModel
@@ -42,7 +43,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsScreen() {
   val viewmodel: SettingsViewModel = hiltViewModel()
-  val state by viewmodel.state.collectAsState()
+  val state by viewmodel.state.collectAsStateWithLifecycle()
   SettingsScreenContent(state, viewmodel::handleIntent, viewmodel)
 }
 
@@ -112,6 +113,13 @@ fun SettingsScreenContent(
                 coroutineScope.launch {
                   backStack.addRoute(AppRoute.AccountSettings.Profile)
                 }
+              },
+            ),
+            SettingsItem(
+              title = SettingsScreenStrings.DefaultGraphRange,
+              type = SettingsItemType.Dropdown(state.currentDefaultGraphRange.toDisplayString()),
+              onClick = {
+                handleIntent.invoke(SettingsIntent.ShowDefaultGraphRangeModal)
               },
             ),
           ),
