@@ -36,8 +36,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
  * @param state The dashboard state containing data and configuration.
  * @param onSelected Callback when entries are selected from the graph.
  * @param onPagerStateChange Callback when pager state changes.
- * @param onSegmentChange Callback when segment is selected; receives new segment and anchor timestamp (current visible center from previous segment), or null if none.
- * @param onScrollTargetConsumed Callback when the chart has scrolled to [state.scrollTarget] once.
+ * @param onSegmentChange Callback when segment is selected.
  * @param onRangeChange Callback for date range label updates.
  * @param onMarkerIndexChange Callback when marker selection changes.
  * @param entries List of entries to be used by the graph viewmodels.
@@ -47,11 +46,10 @@ fun GraphPagerView(
   state: DashboardState,
   onSelected: (List<PeriodBodyScaleSummary>) -> Unit,
   onPagerStateChange: (Int) -> Unit,
-  onSegmentChange: (GraphSegment, Long?) -> Unit = { _, _ -> },
+  onSegmentChange: (GraphSegment) -> Unit = {},
   onChartConsuming: (Boolean) -> Unit = {},
   onRangeChange: (String) -> Unit = { },
   onMarkerIndexChange: (Double?) -> Unit = {},
-  onScrollTargetConsumed: (Boolean) -> Unit = {},
   entries: List<PeriodBodyScaleSummary> = emptyList()
 ) {
   val pagerState = rememberPagerState(
@@ -59,8 +57,6 @@ fun GraphPagerView(
     pageCount = { GraphSegment.entries.size },
   )
 
-  /** Visible center (midpoint) of the *currently displayed* segment only; used as anchor when user taps another segment. */
-  var currentVisibleCenter by remember { mutableStateOf<Long?>(null) }
   var subText: String by remember { mutableStateOf("") }
   var labelData by remember { mutableStateOf("") }
   var weightValue by remember { mutableStateOf(0.0) }
@@ -88,10 +84,7 @@ fun GraphPagerView(
     ) { page ->
       val currentSegment = GraphSegment.entries.getOrNull(page) ?: GraphSegment.WEEK
       val viewmodel = hiltViewModel<GraphViewModel, GraphViewModel.Factory>(key = "GraphViewModel-$page") { factory ->
-        val anchoredTarget = state.scrollTarget?.let {
-          GraphUtil.getStartOnAnchored(currentSegment, it.toLong())
-        }
-        factory.create(currentSegment, anchoredTarget?.toDouble())
+        factory.create(currentSegment)
       }
       val graphState by viewmodel.state.collectAsState()
 
@@ -132,9 +125,6 @@ fun GraphPagerView(
           )
           subText = formattedRange
           onRangeChange(formattedRange)
-          if (currentSegment != GraphSegment.TOTAL && page == pagerState.currentPage) {
-            currentVisibleCenter = (minTarget + maxTarget).div(2)
-          }
         }
       }
       Column {
@@ -148,13 +138,11 @@ fun GraphPagerView(
 
         GraphView(
           modifier = Modifier.fillMaxWidth(),
-          scrollTarget = state.scrollTarget,
           segment = currentSegment,
-          canScrollToAnchor = state.selectedSegment == currentSegment && !state.isScrollTargetConsumed,
+          isCurrentPage = pagerState.currentPage == page,
           state = graphState,
           viewModel = viewmodel,
           onChartConsuming = onChartConsuming,
-          onScrollTargetConsumed = onScrollTargetConsumed,
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
       }
@@ -166,8 +154,7 @@ fun GraphPagerView(
       key = GraphSegment::name,
       onSelected = { segment ->
         onChartConsuming(true)
-        onScrollTargetConsumed(false)
-        onSegmentChange(segment, currentVisibleCenter)
+        onSegmentChange(segment)
       },
       modifier = Modifier.padding(horizontal = MeTheme.spacing.xs),
     )

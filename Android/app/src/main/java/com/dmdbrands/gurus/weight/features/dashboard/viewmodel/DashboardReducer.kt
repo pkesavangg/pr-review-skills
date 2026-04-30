@@ -28,8 +28,6 @@ data class DashboardState(
   val selectedSegment: GraphSegment = GraphSegment.WEEK,
   val selectedStat: Stat? = null,
   val pagerState: Int = 0,
-  val scrollTarget: Double? = null,
-  val isScrollTargetConsumed: Boolean = false,
   val isEmpty: Boolean = false,
   val isRefreshing: Boolean = false,
   val weightless: Weightless? = null,
@@ -50,29 +48,19 @@ sealed interface DashboardIntent : IReducer.Intent {
   data class SetProgress(val progress: Progress) : DashboardIntent
   data class SetProgressUpdating(val isUpdating: Boolean) : DashboardIntent
 
-  /**
-   * Switches the selected segment. When [anchorTimestamp] is non-null, it is the visible center
-   * (midpoint) from the *previous* segment; the new segment will scroll to this anchor once.
-   */
-  data class SetSelectedSegment(
-    val segment: GraphSegment,
-    val anchorTimestamp: Long? = null,
-  ) : DashboardIntent
+  /** Switches the selected segment. The new segment resets to its default range (latest entry at right edge). */
+  data class SetSelectedSegment(val segment: GraphSegment) : DashboardIntent
 
   data class SetSelectedStat(val stat: Stat?) : DashboardIntent
 
   data class SetData(val data: List<PeriodBodyScaleSummary>) : DashboardIntent
   data class SetPagerState(val pagerState: Int) : DashboardIntent
-  data class SetScrollTarget(val scrollTarget: Double?) : DashboardIntent
-
-  /** Called after the chart has scrolled to [scrollTarget] once; clears it to avoid double scroll. */
   data class SetIsChartConsuming(val isConsuming: Boolean) : DashboardIntent
   data class SetDashboardType(val dashboardType: DashboardType) : DashboardIntent
   data class UpdateIsRefreshing(val isRefreshing: Boolean) : DashboardIntent
   object OnConnectScale : DashboardIntent
   data class SetLatestWeight(val latestWeight: Double?) : DashboardIntent
   data class UpdateWeightLess(val weightless: Weightless?) : DashboardIntent
-  data class SetIsScrollTargetConsumed(val isScrollTargetConsumed: Boolean) : DashboardIntent
 }
 
 /**
@@ -88,21 +76,16 @@ class DashboardReducer : IReducer<DashboardState, DashboardIntent> {
     is DashboardIntent.SetSelectedSegment -> if (intent.segment == state.selectedSegment) {
       state
     } else {
-      state.copy(
-        selectedSegment = intent.segment,
-        scrollTarget = intent.anchorTimestamp?.toDouble(),
-      )
+      state.copy(selectedSegment = intent.segment)
     }
 
     is DashboardIntent.SetIsChartConsuming -> state.copy(isConsuming = intent.isConsuming)
     is DashboardIntent.SetSelectedStat -> state.copy(selectedStat = intent.stat)
     is DashboardIntent.SetData -> state.copy(data = intent.data)
     is DashboardIntent.SetPagerState -> state.copy(pagerState = intent.pagerState)
-    is DashboardIntent.SetScrollTarget -> state.copy(scrollTarget = intent.scrollTarget)
     is DashboardIntent.SetDashboardType -> state.copy(dashboardType = intent.dashboardType)
     is DashboardIntent.SetLatestWeight -> state.copy(latestWeight = intent.latestWeight)
     is DashboardIntent.UpdateWeightLess -> state.copy(weightless = intent.weightless)
-    is DashboardIntent.SetIsScrollTargetConsumed -> state.copy(isScrollTargetConsumed = intent.isScrollTargetConsumed)
     else -> state
   }
 }

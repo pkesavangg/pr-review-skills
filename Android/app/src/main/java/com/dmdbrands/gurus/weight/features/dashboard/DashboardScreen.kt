@@ -144,8 +144,8 @@ private fun DashboardScreenContent(
 
       GraphPagerView(
         state = state,
-        onSegmentChange = { segment, anchorTimestamp ->
-          handleIntent(DashboardIntent.SetSelectedSegment(segment, anchorTimestamp))
+        onSegmentChange = { segment ->
+          handleIntent(DashboardIntent.SetSelectedSegment(segment))
         },
         onChartConsuming = {
           handleIntent(DashboardIntent.SetIsChartConsuming(it))
@@ -161,9 +161,6 @@ private fun DashboardScreenContent(
         },
         onMarkerIndexChange = {
           isSingleEntry = it != null
-        },
-        onScrollTargetConsumed = {
-          handleIntent(DashboardIntent.SetIsScrollTargetConsumed(it))
         },
       )
 

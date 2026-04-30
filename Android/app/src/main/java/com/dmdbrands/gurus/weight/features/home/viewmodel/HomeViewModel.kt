@@ -104,6 +104,10 @@ constructor(
   companion object {
     private const val HEALTH_CONNECT_CHECK_DELAY_MS = 1000L
     private const val IAM_FEED_MODAL_RETRY_DELAY_MS = 1500L
+    private val APPSYNC_SKUS = setOf(
+      "0340", "0341", "0342", "0343", "0345", "0346", "0347",
+      "0358", "0359", "0364", "0369", "0370", "0371",
+    )
   }
 
   override fun handleIntent(intent: HomeIntent) {
@@ -142,12 +146,12 @@ constructor(
     viewModelScope.launch {
       deviceService.pairedScales.collect { savedScales ->
         val hasAppSyncScales = savedScales.any { savedScale ->
-          val scaleInfo = ScaleDataHelper.findScaleInfoBySku(savedScale.getSKU())
-          scaleInfo?.setupType == ScaleSetupType.AppSync
-        } && savedScales.isNotEmpty()
-
+          val sku = savedScale.getSKU()
+          savedScale.deviceType.equals(ScaleSetupType.AppSync.value, ignoreCase = true) ||
+            ScaleDataHelper.findScaleInfoBySku(sku)?.setupType == ScaleSetupType.AppSync ||
+            sku in APPSYNC_SKUS
+        }
         handleIntent(HomeIntent.SetShowAppsync(hasAppSyncScales))
-
       }
     }
   }
