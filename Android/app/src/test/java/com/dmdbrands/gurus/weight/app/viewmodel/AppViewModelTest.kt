@@ -24,6 +24,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
 import com.dmdbrands.library.ggbluetooth.enums.GGAppType
+import com.dmdbrands.library.ggbluetooth.model.GGBTUserProfile
 import com.google.common.truth.Truth.assertThat
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
@@ -34,6 +35,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -463,14 +465,17 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `startScan uses GGAppType ME_HEALTH namespace`() = runTest {
+    fun `scan starts with ME_HEALTH app type and active account profile on login`() = runTest {
+        val profileSlot = slot<GGBTUserProfile>()
         viewModel = createViewModel()
         advanceUntilIdle()
 
         authEventFlow.emit(AuthState.LoggedInFromLoading(account = TestFixtures.activeAccount))
         advanceUntilIdle()
 
-        verify { ggPermissionService.startScan(eq(GGAppType.ME_HEALTH), any()) }
+        verify { ggPermissionService.startScan(eq(GGAppType.ME_HEALTH), capture(profileSlot)) }
+        assertThat(profileSlot.captured.name).isEqualTo(TestFixtures.activeAccount.firstName)
+        assertThat(profileSlot.captured.unit).isEqualTo(TestFixtures.activeAccount.weightUnit.value)
     }
 
     // -------------------------------------------------------------------------
