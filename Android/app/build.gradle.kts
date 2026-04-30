@@ -23,8 +23,8 @@ android {
     applicationId = "com.dmdbrands.gurus.weight"
     minSdk = 26
     targetSdk = 36
-    versionCode = 800000
-    versionName = "5.0.0"
+    versionCode = 800001
+    versionName = "5.0.1"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     // 16KB page alignment for Android 15 compliance
