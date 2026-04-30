@@ -31,12 +31,10 @@ final class SignupStore: ObservableObject {
         didSet {
             currentStep = steps[currentStepIndex]
             updateNextButtonState()
-            if currentStep == .profileReady && !canConnectAnotherDevice {
-                finishSignup()
-            }
         }
     }
     @Published private(set) var currentStep: SignupStep = .name
+    @Published private(set) var steps: [SignupStep] = []
     @Published var signupForm = SignupForm()
     @Published var isNextEnabled = false
     @Published var isGoalSkipped = false
@@ -93,16 +91,17 @@ final class SignupStore: ObservableObject {
         self.updateWeightValidators(isMetric: self.signupForm.useMetric.value)
         updateHeightPickerValues(from: Int(signupForm.height.value))
         self.updateWeightValidators(isMetric: self.signupForm.useMetric.value)
+        rebuildSteps()
+        currentStep = steps[currentStepIndex]
     }
     
-    /// The ordered steps for the current signup flow.
-    /// Dynamically computed based on the selected device type and data already collected.
-    var steps: [SignupStep] {
+    /// Builds the ordered steps for the current signup flow.
+    /// Called only at navigation milestones (init, device pick, connect-another-device)
+    /// so the published `steps` array stays stable for the duration of a single device loop.
+    /// Recomputing reactively on form-field changes would shift indices under the SwiperView
+    /// and cause visual jumps without a Next tap.
+    private func computeSteps() -> [SignupStep] {
         let isSubsequentDevice = !disabledDeviceTypes.isEmpty
-        // Sex is only skipped on subsequent device loops where it was already
-        // collected in a prior loop. We do NOT skip it based on the form field
-        // being non-empty mid-navigation, to avoid the steps array shrinking
-        // while the user is still on the sex step (which would cause a visual jump).
         let skipSex = isSubsequentDevice && !signupForm.gender.value.isEmpty
 
         // Email is the 2nd step (per design): Name → Email → Birthday → Pick a Device
@@ -140,6 +139,10 @@ final class SignupStore: ObservableObject {
         return result
     }
 
+    private func rebuildSteps() {
+        steps = computeSteps()
+    }
+
     /// True while there are still device types the user has not yet added.
     /// Used to show or hide the "CONNECT ANOTHER DEVICE" button.
     var canConnectAnotherDevice: Bool {
@@ -151,7 +154,12 @@ final class SignupStore: ObservableObject {
     }
 
     var profileReadyTitle: String {
-        selectedDeviceType?.profileReadyTitle ?? SignupStrings.ProfileReadyStep.weightScaleTitle
+        // When the current device completes the full set, the per-device "Your X
+        // profile is ready" reads oddly — show the all-profiles message instead.
+        if !canConnectAnotherDevice {
+            return SignupStrings.AllProfilesReadyStep.title
+        }
+        return selectedDeviceType?.profileReadyTitle ?? SignupStrings.ProfileReadyStep.weightScaleTitle
     }
 
     // MARK: - Height Management
@@ -277,6 +285,7 @@ final class SignupStore: ObservableObject {
             registeredDeviceTypes.append(current)
         }
         selectedDeviceType = nil
+        rebuildSteps()
         guard let pickDeviceIndex = steps.firstIndex(of: .pickDevice) else { return }
         currentStepIndex = pickDeviceIndex
     }
@@ -292,6 +301,7 @@ final class SignupStore: ObservableObject {
     /// Called when user changes device type on the Pick a Device step.
     func selectDeviceType(_ type: SignupDeviceType) {
         selectedDeviceType = type
+        rebuildSteps()
         updateNextButtonState()
     }
 
@@ -559,15 +569,21 @@ final class SignupStore: ObservableObject {
         notificationService.dismissLoader()
 
         // Step 4: Navigate to the appropriate terminal screen.
+        // The "all profiles ready" success screen is reserved for the case where
+        // the user added every available device type. With fewer devices, all-success
+        // dismisses straight to the dashboard.
         let anyFailed = deviceStatuses.contains { if case .failure = $0.status { return true }; return false }
+        let allDevicesSelected = deviceStatuses.count == SignupDeviceType.allCases.count
         if anyFailed {
             if let errorIndex = steps.firstIndex(of: .signupError) {
                 currentStepIndex = errorIndex
             }
-        } else {
+        } else if allDevicesSelected {
             if let successIndex = steps.firstIndex(of: .allProfilesReady) {
                 currentStepIndex = successIndex
             }
+        } else {
+            completeSignup()
         }
     }
 

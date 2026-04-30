@@ -194,7 +194,8 @@ extension BluetoothService {
     private func saveSingleBpmEntry(_ bpmData: GGBPMEntry) async {
         handleBpmMeasurement(bpmData)
         let timestamp = bpmData.date.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) } ?? Date()
-        await saveBpmEntry(BpmMeasurement(
+        // Live single readings stage as pending — the toast handler will confirm/discard.
+        await stagePendingBpmEntry(BpmMeasurement(
             systolic: bpmData.systolic ?? 0,
             diastolic: bpmData.diastolic ?? 0,
             pulse: bpmData.pulse ?? 0,
@@ -208,28 +209,27 @@ extension BluetoothService {
             logger.log(level: .info, tag: tag, message: "No valid BPM entries to save")
             return
         }
-        for bpmData in bpmEntryList.list {
-            handleBpmMeasurement(bpmData)
+        // Mirror the weight-list pattern: persist historical entries silently and surface
+        // only the most recent reading as a pending confirmation toast.
+        let measurements = bpmEntryList.list.map { bpmData -> BpmMeasurement in
             let timestamp = bpmData.date.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) } ?? Date()
-            await saveBpmEntry(BpmMeasurement(
+            return BpmMeasurement(
                 systolic: bpmData.systolic ?? 0,
                 diastolic: bpmData.diastolic ?? 0,
                 pulse: bpmData.pulse ?? 0,
                 timestamp: timestamp,
                 broadcastId: bpmData.broadcastId
-            ), suppressNotification: true)
-        }
-        // Send a single notification after all entries are saved (matching weight entry pattern)
-        if let firstData = bpmEntryList.list.first {
-            let timestamp = firstData.date.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) } ?? Date()
-            let entry = Entry(
-                entryTimestamp: ISO8601DateFormatter().string(from: timestamp),
-                accountId: activeAccount?.accountId ?? "",
-                operationType: OperationType.create.rawValue,
-                entryType: EntryType.bpm.rawValue,
-                isSynced: false
             )
-            newEntryReceivedSubject.send(EntryNotification(from: entry))
+        }
+        for bpmData in bpmEntryList.list {
+            handleBpmMeasurement(bpmData)
+        }
+        let historical = measurements.dropFirst()
+        for measurement in historical {
+            await persistBpmEntry(measurement)
+        }
+        if let latest = measurements.first {
+            await stagePendingBpmEntry(latest)
         }
     }
 
