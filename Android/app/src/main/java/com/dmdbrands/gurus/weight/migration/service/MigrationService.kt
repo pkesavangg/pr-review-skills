@@ -40,7 +40,11 @@ class MigrationService @Inject constructor(
 
   companion object {
     private const val TAG = "MigrationService"
-    private const val BATCH_SIZE = 500
+    // Small page size keeps both the SQLite cursor window and the JVM accumulator bounded
+    // on low-RAM devices. See MA-3852 for the native OOM that motivated keyset paging.
+    private const val PAGE_SIZE = 100
+    private const val SCOPE_ENTRY = "entry"
+    private const val SCOPE_OPSTACK = "opstack"
   }
 
   /**
@@ -100,6 +104,9 @@ class MigrationService @Inject constructor(
         return MigrationResult.Success(0, accountMigrated)
       }
       sqliteDb = SQLiteDatabase.openDatabase(dbPath, null, SQLiteDatabase.OPEN_READONLY)
+      // // Cap native heap usage on the legacy DB connection during migration (MA-3852).
+      // sqliteDb.setMaxSqlCacheSize(1)
+      // sqliteDb.setForeignKeyConstraintsEnabled(false)
 
       // Step 4: Migrate entries. Check table existence before querying to support 4.0.1 vs 4.2.0.
       val regularEntries = if (tableExists(sqliteDb, "entry")) {
@@ -116,8 +123,9 @@ class MigrationService @Inject constructor(
       }
       totalMigratedEntries = regularEntries + opStackEntries
 
-      // Step 5: Save migration timestamp
+      // Step 5: Save migration timestamp and clear resume checkpoints (full success path)
       IonicDatabaseHelper.saveMigrationTimestamp(context)
+      IonicDatabaseHelper.clearResumeRowids(context)
 
       AppLog.i(
         TAG,
@@ -448,142 +456,168 @@ class MigrationService @Inject constructor(
   /**
    * Migrates entries using raw SQL queries.
    * Only called when opStack table exists. Uses opStack_metric if present, else selects from opStack only.
+   *
+   * Reads the legacy table in pages keyed on rowid (MA-3852). Each page is a bounded query
+   * (`WHERE rowid > ? LIMIT PAGE_SIZE`) so the SQLite native heap is never asked to materialize
+   * the whole table at once. Per-page progress is checkpointed in SharedPreferences so a process
+   * abort during migration resumes from the last completed rowid instead of restarting at 0.
+   *
    * @param activeAccountId When non-null, only entries for this account are migrated (same ID as account migration).
    */
   private suspend fun migrateEntriesWithRawSQL(context: Context, sqliteDb: SQLiteDatabase, activeAccountId: String?): Int {
-    var migratedCount = 0
-    var cursor: Cursor? = null
+    val hasMetric = tableExists(sqliteDb, "opStack_metric")
+    val pagedQuery = buildOpStackPagedQuery(hasMetric)
+    return migrateEntriesPaged(
+      context = context,
+      sqliteDb = sqliteDb,
+      activeAccountId = activeAccountId,
+      scope = SCOPE_OPSTACK,
+      pagedQuery = pagedQuery,
+      isOpStack = true,
+    )
+  }
 
-    try {
-      // Build query depending on whether opStack_metric exists (LEFT JOIN would fail if table missing)
-      val hasMetric = tableExists(sqliteDb, "opStack_metric")
-      val query = if (hasMetric) {
-        """
-        SELECT
-          e.id, e.userId, e.entryTimestamp, e.operationType, e.weight, e.bodyFat,
-          e.muscleMass, e.water, e.bmi, e.source, e.attempts,
-          m.bmr, m.metabolicAge, m.proteinPercent, m.pulse, m.skeletalMusclePercent,
-          m.subcutaneousFatPercent, m.visceralFatLevel, m.boneMass, NULL AS impedance, NULL AS unit
-        FROM opStack e
-        LEFT JOIN opStack_metric m ON e.userId = m.userId AND e.entryTimestamp = m.entryTimestamp
-        ORDER BY e.entryTimestamp ASC
-        """
-      } else {
-        """
-        SELECT
-          e.id, e.userId, e.entryTimestamp, e.operationType, e.weight, e.bodyFat,
-          e.muscleMass, e.water, e.bmi, e.source, e.attempts,
-          NULL AS bmr, NULL AS metabolicAge, NULL AS proteinPercent, NULL AS pulse, NULL AS skeletalMusclePercent,
-          NULL AS subcutaneousFatPercent, NULL AS visceralFatLevel, NULL AS boneMass, NULL AS impedance, NULL AS unit
-        FROM opStack e
-        ORDER BY e.entryTimestamp ASC
-        """
-      }
-
-      cursor = sqliteDb.rawQuery(query, null)
-
-      val scaleEntries = mutableListOf<ScaleEntry>()
-
-      while (cursor.moveToNext()) {
-        try {
-          val scaleEntry = IonicDataConverter.convertCursorToScaleEntry(cursor, isOpStack = true)
-          if (scaleEntry != null) {
-            val matchesAccount = activeAccountId == null || scaleEntry.entry.accountId == activeAccountId
-            if (matchesAccount) {
-              scaleEntries.add(scaleEntry)
-              // Process in batches
-              if (scaleEntries.size >= BATCH_SIZE) {
-                val batchResult = migrationRepository.insertScaleEntries(scaleEntries)
-                migratedCount += batchResult
-                scaleEntries.clear()
-              }
-            }
-          }
-        } catch (e: Exception) {
-          AppLog.w(TAG, "Failed to convert entry at position ${cursor.position}: ${e.message}")
-        }
-      }
-
-      // Process remaining entries
-      if (scaleEntries.isNotEmpty()) {
-        val batchResult = migrationRepository.insertScaleEntries(scaleEntries)
-        migratedCount += batchResult
-      }
-    } finally {
-      cursor?.close()
-    }
-
-    return migratedCount
+  private fun buildOpStackPagedQuery(hasMetric: Boolean): String = if (hasMetric) {
+    """
+    SELECT
+      e.id, e.userId, e.entryTimestamp, e.operationType, e.weight, e.bodyFat,
+      e.muscleMass, e.water, e.bmi, e.source, e.attempts,
+      m.bmr, m.metabolicAge, m.proteinPercent, m.pulse, m.skeletalMusclePercent,
+      m.subcutaneousFatPercent, m.visceralFatLevel, m.boneMass, NULL AS impedance, NULL AS unit,
+      e.rowid AS rowid
+    FROM opStack e
+    LEFT JOIN opStack_metric m ON e.userId = m.userId AND e.entryTimestamp = m.entryTimestamp
+    WHERE e.rowid > ?
+    ORDER BY e.rowid ASC
+    LIMIT ?
+    """.trimIndent()
+  } else {
+    """
+    SELECT
+      e.id, e.userId, e.entryTimestamp, e.operationType, e.weight, e.bodyFat,
+      e.muscleMass, e.water, e.bmi, e.source, e.attempts,
+      NULL AS bmr, NULL AS metabolicAge, NULL AS proteinPercent, NULL AS pulse, NULL AS skeletalMusclePercent,
+      NULL AS subcutaneousFatPercent, NULL AS visceralFatLevel, NULL AS boneMass, NULL AS impedance, NULL AS unit,
+      e.rowid AS rowid
+    FROM opStack e
+    WHERE e.rowid > ?
+    ORDER BY e.rowid ASC
+    LIMIT ?
+    """.trimIndent()
   }
 
   /**
    * Migrates entries from entry (and optionally entry_metric) tables using raw SQL queries.
    * Only called when entry table exists. Uses entry_metric if present, else selects from entry only.
+   *
+   * See `migrateEntriesWithRawSQL` for the keyset-paging strategy (MA-3852).
+   *
    * @param activeAccountId When non-null, only entries for this account are migrated (same ID as account migration).
    */
   private suspend fun migrateEntriesFromEntryTables(context: Context, sqliteDb: SQLiteDatabase, activeAccountId: String?): Int {
+    val hasMetric = tableExists(sqliteDb, "entry_metric")
+    val pagedQuery = buildEntryPagedQuery(hasMetric)
+    return migrateEntriesPaged(
+      context = context,
+      sqliteDb = sqliteDb,
+      activeAccountId = activeAccountId,
+      scope = SCOPE_ENTRY,
+      pagedQuery = pagedQuery,
+      isOpStack = false,
+    )
+  }
+
+  private fun buildEntryPagedQuery(hasMetric: Boolean): String = if (hasMetric) {
+    """
+    SELECT
+      e.id, e.userId, e.entryTimestamp, e.operationType, e.weight, e.bodyFat,
+      e.muscleMass, e.water, e.bmi, e.source, 0 AS attempts,
+      m.bmr, m.metabolicAge, m.proteinPercent, m.pulse, m.skeletalMusclePercent,
+      m.subcutaneousFatPercent, m.visceralFatLevel, m.boneMass, m.impedance, m.unit,
+      e.rowid AS rowid
+    FROM entry e
+    LEFT JOIN entry_metric m ON e.userId = m.userId AND e.entryTimestamp = m.entryTimestamp
+    WHERE e.rowid > ?
+    ORDER BY e.rowid ASC
+    LIMIT ?
+    """.trimIndent()
+  } else {
+    """
+    SELECT
+      e.id, e.userId, e.entryTimestamp, e.operationType, e.weight, e.bodyFat,
+      e.muscleMass, e.water, e.bmi, e.source, 0 AS attempts,
+      NULL AS bmr, NULL AS metabolicAge, NULL AS proteinPercent, NULL AS pulse, NULL AS skeletalMusclePercent,
+      NULL AS subcutaneousFatPercent, NULL AS visceralFatLevel, NULL AS boneMass, NULL AS impedance, NULL AS unit,
+      e.rowid AS rowid
+    FROM entry e
+    WHERE e.rowid > ?
+    ORDER BY e.rowid ASC
+    LIMIT ?
+    """.trimIndent()
+  }
+
+  /**
+   * Shared paging engine for both `entry` and `opStack` migrations.
+   *
+   * Each iteration runs `pagedQuery` bound with `(lastRowid, PAGE_SIZE)`, drains the cursor into a
+   * bounded list, inserts via the repository, advances `lastRowid` to the highest rowid seen in
+   * this page, and persists the resume checkpoint. The loop terminates when a page returns fewer
+   * rows than `PAGE_SIZE` (final page) or zero rows (already complete).
+   *
+   * Idempotency: a crash between insert and checkpoint save means the next run will re-insert the
+   * overlapping rows. `EntryDao.insertEntryEntity` uses `OnConflictStrategy.REPLACE` against the
+   * unique `(accountId, entryTimestamp)` index, so the overlap rewrites identical rows safely.
+   */
+  private suspend fun migrateEntriesPaged(
+    context: Context,
+    sqliteDb: SQLiteDatabase,
+    activeAccountId: String?,
+    scope: String,
+    pagedQuery: String,
+    isOpStack: Boolean,
+  ): Int {
     var migratedCount = 0
-    var cursor: Cursor? = null
+    var lastRowid = IonicDatabaseHelper.getResumeRowid(context, scope) ?: 0L
+    AppLog.i(TAG, "Paged migration starting for scope=$scope, resumeRowid=$lastRowid")
 
-    try {
-      // Build query depending on whether entry_metric exists (LEFT JOIN would fail if table missing)
-      val hasMetric = tableExists(sqliteDb, "entry_metric")
-      val query = if (hasMetric) {
-        """
-        SELECT
-          e.id, e.userId, e.entryTimestamp, e.operationType, e.weight, e.bodyFat,
-          e.muscleMass, e.water, e.bmi, e.source, 0 AS attempts,
-          m.bmr, m.metabolicAge, m.proteinPercent, m.pulse, m.skeletalMusclePercent,
-          m.subcutaneousFatPercent, m.visceralFatLevel, m.boneMass, m.impedance, m.unit
-        FROM entry e
-        LEFT JOIN entry_metric m ON e.userId = m.userId AND e.entryTimestamp = m.entryTimestamp
-        ORDER BY e.entryTimestamp ASC
-        """
-      } else {
-        """
-        SELECT
-          e.id, e.userId, e.entryTimestamp, e.operationType, e.weight, e.bodyFat,
-          e.muscleMass, e.water, e.bmi, e.source, 0 AS attempts,
-          NULL AS bmr, NULL AS metabolicAge, NULL AS proteinPercent, NULL AS pulse, NULL AS skeletalMusclePercent,
-          NULL AS subcutaneousFatPercent, NULL AS visceralFatLevel, NULL AS boneMass, NULL AS impedance, NULL AS unit
-        FROM entry e
-        ORDER BY e.entryTimestamp ASC
-        """
-      }
+    while (true) {
+      val pageRows = mutableListOf<ScaleEntry>()
+      var maxRowidThisPage = lastRowid
+      var rawCursorCount = 0
 
-      cursor = sqliteDb.rawQuery(query, null)
-
-      val scaleEntries = mutableListOf<ScaleEntry>()
-
-      while (cursor.moveToNext()) {
-        try {
-          val scaleEntry = IonicDataConverter.convertCursorToScaleEntry(cursor, isOpStack = false)
-          if (scaleEntry != null) {
-            val matchesAccount = activeAccountId == null || scaleEntry.entry.accountId == activeAccountId
-            if (matchesAccount) {
-              scaleEntries.add(scaleEntry)
-              // Process in batches
-              if (scaleEntries.size >= BATCH_SIZE) {
-                val batchResult = migrationRepository.insertScaleEntries(scaleEntries)
-                migratedCount += batchResult
-                scaleEntries.clear()
-              }
+      sqliteDb.rawQuery(pagedQuery, arrayOf(lastRowid.toString(), PAGE_SIZE.toString())).use { cursor ->
+        val rowedIndex = cursor.getColumnIndexOrThrow("rowid")
+        while (cursor.moveToNext()) {
+          rawCursorCount++
+          val rowed = cursor.getLong(rowedIndex)
+          if (rowed > maxRowidThisPage) maxRowidThisPage = rowed
+          try {
+            val scaleEntry = IonicDataConverter.convertCursorToScaleEntry(cursor, isOpStack = isOpStack)
+            if (scaleEntry != null) {
+              val matchesAccount = activeAccountId == null || scaleEntry.entry.accountId == activeAccountId
+              if (matchesAccount) pageRows.add(scaleEntry)
             }
+          } catch (e: Exception) {
+            AppLog.w(TAG, "Failed to convert entry at rowid=$rowed scope=$scope: ${e.message}")
           }
-        } catch (e: Exception) {
-          AppLog.w(TAG, "Failed to convert entry at position ${cursor.position}: ${e.message}")
         }
       }
 
-      // Process remaining entries
-      if (scaleEntries.isNotEmpty()) {
-        val batchResult = migrationRepository.insertScaleEntries(scaleEntries)
-        migratedCount += batchResult
+      if (pageRows.isNotEmpty()) {
+        migratedCount += migrationRepository.insertScaleEntries(pageRows)
       }
-    } finally {
-      cursor?.close()
+
+      // Advance the resume marker even when the account filter rejected every row in this page,
+      // so a subsequent run does not re-scan rejected rows.
+      if (maxRowidThisPage > lastRowid) {
+        lastRowid = maxRowidThisPage
+        IonicDatabaseHelper.saveResumeRowid(context, scope, lastRowid)
+      }
+
+      if (rawCursorCount < PAGE_SIZE) break
     }
 
+    AppLog.i(TAG, "Paged migration finished for scope=$scope, inserted=$migratedCount, lastRowid=$lastRowid")
     return migratedCount
   }
 
