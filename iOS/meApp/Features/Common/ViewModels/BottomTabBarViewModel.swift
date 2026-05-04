@@ -89,6 +89,8 @@ class BottomTabBarViewModel: ObservableObject {
     private var cancellables: Set<AnyCancellable> = []
     /// Tracks the auto-save timeout task for the weight reading arrival toast.
     private var weightReadingTimeoutTask: Task<Void, Never>?
+    /// Tracks the auto-save timeout task for the BPM reading arrival toast.
+    private var bpmReadingTimeoutTask: Task<Void, Never>?
     private let promptDelay = 3.0 // Delay before checking Apple Health integration status and set a goal prompt
     /// Retains the Combine subscription for app-active notifications specifically used
     /// when we need to re-check HealthKit permissions after the user is redirected to
@@ -129,6 +131,16 @@ class BottomTabBarViewModel: ObservableObject {
             .sink { [weak self] notification in
                 guard let self, !self.bluetoothService.isSetupInProgress else { return }
                 self.showWeightScaleReadingArrivalCard(notification: notification)
+            }
+            .store(in: &cancellables)
+
+        // BPM readings are held in BluetoothService pending user confirmation. Same
+        // setup-suppression rule as weight to skip buffered readings on reconnect.
+        bluetoothService.pendingBpmEntryPublisher
+            .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
+            .sink { [weak self] notification in
+                guard let self, !self.bluetoothService.isSetupInProgress else { return }
+                self.showBpmReadingArrivalCard(notification: notification)
             }
             .store(in: &cancellables)
 
@@ -677,7 +689,9 @@ class BottomTabBarViewModel: ObservableObject {
             weightString = "--"
         }
 
-        let message = "\(weightString) · \(lang.babyReadingArrivalJustNow)"
+        let relativeTime = DateTimeTools.getArrivalRelativeTime(fromISOString: notification.entryTimestamp)
+            ?? DashboardStrings.justNow
+        let message = "\(weightString) · \(relativeTime)"
         let entryId = notification.id
 
         var didUserAct = false
@@ -711,7 +725,7 @@ class BottomTabBarViewModel: ObservableObject {
             btnTextView: AnyView(
                 BabyReadingArrivalCTAView(
                     weightString: weightString,
-                    timestamp: lang.babyReadingArrivalJustNow,
+                    timestamp: relativeTime,
                     onAssign: { [weak self] in
                         didUserAct = true
                         self?.notificationService.dismissToast()
@@ -826,7 +840,9 @@ class BottomTabBarViewModel: ObservableObject {
             weightString = "--"
         }
 
-        let message = "\(weightString) - \(lang.weightReadingArrivalJustNow)"
+        let relativeTime = DateTimeTools.getArrivalRelativeTime(fromISOString: notification.entryTimestamp)
+            ?? DashboardStrings.justNow
+        let message = "\(weightString) - \(relativeTime)"
         let toastDuration = 8.0
 
         // Cancel any in-flight timeout task for a previous toast
@@ -876,6 +892,71 @@ class BottomTabBarViewModel: ObservableObject {
         }
 
         logger.log(level: .info, tag: tag, message: "Showing weight reading arrival card. weight=\(weightString)")
+        notificationService.showToast(toast)
+    }
+
+    /// Shows a reading-arrival card when a BPM reading arrives via Bluetooth.
+    /// The entry has NOT been saved yet. Tapping SAVE confirms it; tapping DISCARD drops it.
+    /// If the toast times out without user interaction the entry is saved automatically.
+    private func showBpmReadingArrivalCard(notification: EntryNotification) {
+        let lang = DashboardStrings.self
+        let systolic = notification.systolic ?? 0
+        let diastolic = notification.diastolic ?? 0
+        let pulse = notification.pulse ?? 0
+        let relativeTime = DateTimeTools.getArrivalRelativeTime(fromISOString: notification.entryTimestamp)
+            ?? DashboardStrings.justNow
+        let toastDuration = 8.0
+
+        bpmReadingTimeoutTask?.cancel()
+
+        let toast = ToastModel(
+            title: lang.bpmReadingArrivalTitle,
+            message: "",
+            btnTextView: AnyView(
+                BpmReadingArrivalCTAView(
+                    systolic: systolic,
+                    diastolic: diastolic,
+                    pulse: pulse,
+                    timestamp: relativeTime,
+                    onSave: { [weak self] in
+                        guard let self else { return }
+                        self.bpmReadingTimeoutTask?.cancel()
+                        self.notificationService.dismissToast()
+                        Task { [weak self] in
+                            guard let self else { return }
+                            do {
+                                try await self.bluetoothService.confirmPendingBpmEntry()
+                            } catch {
+                                self.logger.log(level: .error, tag: self.tag, message: "Failed to save BPM reading.", data: error.localizedDescription)
+                            }
+                        }
+                    },
+                    onDiscard: { [weak self] in
+                        guard let self else { return }
+                        self.bpmReadingTimeoutTask?.cancel()
+                        self.bluetoothService.discardPendingBpmEntry()
+                        self.notificationService.dismissToast()
+                        self.logger.log(level: .info, tag: self.tag, message: "BPM reading discarded.")
+                    }
+                )
+            ),
+            duration: toastDuration
+        )
+
+        // Auto-save after the toast duration if the user didn't act.
+        // confirmPendingBpmEntry() is a no-op if pendingBpmEntry is already nil
+        // (meaning the user tapped SAVE or DISCARD before the timeout fired).
+        bpmReadingTimeoutTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(toastDuration * 1_000_000_000))
+            guard !Task.isCancelled, let self else { return }
+            do {
+                try await self.bluetoothService.confirmPendingBpmEntry()
+            } catch {
+                self.logger.log(level: .error, tag: self.tag, message: "Failed to auto-save BPM reading on timeout.", data: error.localizedDescription)
+            }
+        }
+
+        logger.log(level: .info, tag: tag, message: "Showing BPM reading arrival card. \(systolic)/\(diastolic) pulse=\(pulse)")
         notificationService.showToast(toast)
     }
 

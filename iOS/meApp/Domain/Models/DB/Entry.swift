@@ -28,8 +28,11 @@ final class Entry {
     var opTimestamp: String?
     /// Type of operation (eg., 'create', 'delete', 'note')
     var operationType: String
-    /// Entry type: "scale" (adult weight), "bpm" (blood pressure), or "baby" (baby scale)
-    var entryType: String
+    /// Entry type: "scale" (adult weight), "bpm" (blood pressure), or "baby" (baby scale).
+    /// Optional at the schema level so SwiftData's lightweight migration can synthesize
+    /// `nil` for rows written before this column existed; consumers that need a concrete
+    /// value should coalesce to `EntryType.scale.rawValue` (the original implicit default).
+    var entryType: String?
     /// Whether entry is synced online
     var isSynced: Bool
     /// User note for the entry
