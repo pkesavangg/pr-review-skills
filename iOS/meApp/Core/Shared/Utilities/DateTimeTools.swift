@@ -204,6 +204,41 @@ final class DateTimeTools {
         return formatter("yyyy-MM").string(from: date)
     }
 
+    // MARK: - Arrival Relative Time
+
+    /// Formats a date as a relative-to-absolute timestamp for the dashboard reading-arrival CTAs.
+    /// Anchored to `now` (defaults to `Date()`). Returns `Just now` when `date` is in the future or within 60 seconds.
+    static func getArrivalRelativeTime(_ date: Date, now: Date = Date()) -> String {
+        let delta = now.timeIntervalSince(date)
+        if delta < 60 {
+            return DashboardStrings.justNow
+        }
+        if delta < 3600 {
+            let minutes = Int(delta / 60)
+            return minutes == 1
+                ? DashboardStrings.oneMinuteAgo
+                : String(format: DashboardStrings.minutesAgoFormat, minutes)
+        }
+        let cal = Calendar.current
+        if cal.isDate(date, inSameDayAs: now) {
+            return formatter("h:mm a").string(from: date)
+        }
+        if cal.isDateInYesterday(date) {
+            return String(format: DashboardStrings.yesterdayAtFormat, formatter("h:mm a").string(from: date))
+        }
+        if cal.component(.year, from: date) == cal.component(.year, from: now) {
+            return formatter("MMM d, h:mm a").string(from: date)
+        }
+        return formatter("MMM d, yyyy").string(from: date)
+    }
+
+    /// Convenience: parses an ISO8601 entry timestamp and formats it via `getArrivalRelativeTime`.
+    /// Returns nil when the string is empty or unparseable.
+    static func getArrivalRelativeTime(fromISOString iso: String, now: Date = Date()) -> String? {
+        guard !iso.isEmpty, let date = parse(iso) else { return nil }
+        return getArrivalRelativeTime(date, now: now)
+    }
+
     // MARK: - ISO String
 
     /// Returns the current date and time as an ISO8601 string with fractional seconds.

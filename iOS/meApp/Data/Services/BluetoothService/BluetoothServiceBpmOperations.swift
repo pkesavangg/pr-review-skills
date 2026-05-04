@@ -91,17 +91,12 @@ extension BluetoothService {
         newBpmReadingReceivedSubject.send(measurement)
     }
 
-    /// Converts a BpmMeasurement into an Entry and saves it.
-    func saveBpmEntry(_ measurement: BpmMeasurement, suppressNotification: Bool = false) async {
-        guard let activeAccount = activeAccount else {
-            logger.log(level: .error, tag: tag, message: BluetoothServiceError.noActiveAccount.localizedDescription)
-            return
-        }
-
+    /// Builds an Entry from a BpmMeasurement. Caller decides whether to stage or persist.
+    private func buildBpmEntry(_ measurement: BpmMeasurement, accountId: String) -> Entry {
         let timestamp = ISO8601DateFormatter().string(from: measurement.timestamp)
         let entry = Entry(
             entryTimestamp: timestamp,
-            accountId: activeAccount.accountId,
+            accountId: accountId,
             operationType: OperationType.create.rawValue,
             entryType: EntryType.bpm.rawValue,
             isSynced: false
@@ -121,13 +116,36 @@ extension BluetoothService {
             meanArterial: measurement.meanArterial ?? "",
             pulse: measurement.pulse
         )
+        return entry
+    }
 
+    /// Stages a single live BPM measurement as a pending entry awaiting user confirmation.
+    /// Fires `pendingBpmEntryPublisher`; the subscriber must call `confirmPendingBpmEntry()` or
+    /// `discardPendingBpmEntry()` (or rely on the toast timeout to auto-confirm).
+    func stagePendingBpmEntry(_ measurement: BpmMeasurement) async {
+        guard let activeAccount = activeAccount else {
+            logger.log(level: .error, tag: tag, message: BluetoothServiceError.noActiveAccount.localizedDescription)
+            return
+        }
+
+        let entry = buildBpmEntry(measurement, accountId: activeAccount.accountId)
+        pendingBpmEntry = entry
+        pendingBpmEntrySubject.send(EntryNotification(from: entry))
+    }
+
+    /// Persists a BPM measurement immediately without showing a toast.
+    /// Used by the bulk-history sync path so historical entries don't surface as live readings.
+    func persistBpmEntry(_ measurement: BpmMeasurement) async {
+        guard let activeAccount = activeAccount else {
+            logger.log(level: .error, tag: tag, message: BluetoothServiceError.noActiveAccount.localizedDescription)
+            return
+        }
+
+        let entry = buildBpmEntry(measurement, accountId: activeAccount.accountId)
         do {
             try await entryService.saveNewEntry(entry)
-            if !suppressNotification {
-                let notification = EntryNotification(from: entry)
-                newEntryReceivedSubject.send(notification)
-            }
+            let notification = EntryNotification(from: entry)
+            newEntryReceivedSubject.send(notification)
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to save BPM entry: \(error.localizedDescription)")
         }

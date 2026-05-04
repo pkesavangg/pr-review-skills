@@ -13,6 +13,7 @@ final class MockAccountService: AccountServiceProtocol {
     var logInResult: Result<Void, Error> = .failure(UnexpectedCallError.methodCalled("logIn"))
     var signUpResult: Result<Void, Error> = .failure(UnexpectedCallError.methodCalled("signUp"))
     var createGoalResult: Result<Void, Error> = .failure(UnexpectedCallError.methodCalled("createGoal"))
+    var updateProductTypesResult: Result<Void, Error> = .success(())
     var requestPasswordResetResult: Result<Void, Error> = .success(())
     var updateIntegrationsResult: Result<Void, Error> = .failure(UnexpectedCallError.methodCalled("updateIntegrations"))
     var deleteHealthIntegrationResult: Result<Void, Error> = .failure(UnexpectedCallError.methodCalled("deleteHealthIntegration"))
@@ -34,6 +35,9 @@ final class MockAccountService: AccountServiceProtocol {
     private(set) var deleteAllAccountsCalls = 0
     private(set) var signUpCalls = 0
     private(set) var createGoalCalls = 0
+    private(set) var updateProductTypesCalls = 0
+    private(set) var lastUpdatedProductTypes: [String]?
+    private(set) var allUpdatedProductTypes: [[String]] = []
     private(set) var requestPasswordResetCalls = 0
     private(set) var updateIntegrationsCalls = 0
     private(set) var deleteHealthIntegrationCalls = 0
@@ -82,6 +86,8 @@ final class MockAccountService: AccountServiceProtocol {
         lastSignUpProfile = profile
 
         try signUpResult.get()
+        // On success, set a stub activeAccount so createUser can proceed to device saves
+        activeAccount = AccountTestFixtures.makeAccountSnapshot(email: email, isActiveAccount: true)
     }
 
     func logIn(email: String, password: String) async throws {
@@ -252,6 +258,9 @@ final class MockAccountService: AccountServiceProtocol {
     }
 
     func updateProductTypes(_ productTypes: [String]) async throws {
-        throw UnexpectedCallError.methodCalled("updateProductTypes")
+        updateProductTypesCalls += 1
+        lastUpdatedProductTypes = productTypes
+        allUpdatedProductTypes.append(productTypes)
+        try updateProductTypesResult.get()
     }
 }

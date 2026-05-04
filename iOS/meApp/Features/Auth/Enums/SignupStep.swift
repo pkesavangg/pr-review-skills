@@ -15,7 +15,16 @@ enum SignupStep: Int, CaseIterable {
     case password
     case addBaby
     case babyList
-        case profileReady
+    case profileReady
+    case allProfilesReady
+    case signupError
+}
+
+/// The save-status of a single device during the FINISH submission.
+enum SignupDeviceStatus {
+    case success
+    case failure(Error)
+    case pending
 }
 
 /// The device type the user selects during signup.
@@ -55,6 +64,15 @@ enum SignupDeviceType: String, CaseIterable, Identifiable {
         case .babyScale: return SignupStrings.ProfileReadyStep.babyScaleTitle
         case .bpm: return SignupStrings.ProfileReadyStep.bpmTitle
         case .weightScale: return SignupStrings.ProfileReadyStep.weightScaleTitle
+        }
+    }
+
+    /// The product-type string persisted on the account for this device.
+    var productType: String {
+        switch self {
+        case .weightScale: return "myWeight"
+        case .bpm: return "myBloodPressure"
+        case .babyScale: return "baby"
         }
     }
 
