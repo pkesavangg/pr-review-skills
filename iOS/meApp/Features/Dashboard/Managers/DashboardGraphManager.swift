@@ -1541,7 +1541,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         if showingLatest {
             let latestEntry = overallMaxDate
             let domainLength = visibleDomainLength(for: period)
-            let scrollPosition: Date
+            var scrollPosition: Date
 
             switch period {
             case .week:
@@ -1558,6 +1558,15 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
             case .total:
                 scrollPosition = overallMinDate
+            }
+
+            // Safety clamp: guarantee the latest entry is inside the visible window.
+            // Month-boundary alignment can otherwise leave the right edge before the latest entry.
+            if period != .total {
+                let rightEdge = scrollPosition.addingTimeInterval(domainLength)
+                if rightEdge < latestEntry {
+                    scrollPosition = latestEntry.addingTimeInterval(-domainLength)
+                }
             }
 
             return scrollPosition

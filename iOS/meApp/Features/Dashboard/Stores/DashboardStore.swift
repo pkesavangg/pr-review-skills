@@ -24,6 +24,12 @@ private struct AccountSettingsSnapshot: Equatable {
     }
 }
 
+private struct LatestSelectionSignature: Equatable {
+    let latestDate: Date?
+    let latestEntryTimestamp: String?
+    let summaryCount: Int
+}
+
 /// Simplified DashboardStore focused on coordination between managers
 /// Uses specialized managers for business logic while exposing centralized state for UI
 @MainActor
@@ -60,6 +66,7 @@ class DashboardStore: ObservableObject {
     /// cannot overwrite a newer exact-point selection.
     private var metricRefreshTask: Task<Void, Never>?
     private var metricRefreshGeneration: UInt = 0
+    private var lastObservedLatestSelectionSignature: LatestSelectionSignature?
     
     // MARK: - Initialization Tracking
 
@@ -201,6 +208,7 @@ class DashboardStore: ObservableObject {
         // Set up reactive bindings
         setupBindings()
         setupSubscriptions()
+        lastObservedLatestSelectionSignature = latestSelectionSignature(for: state.graph.selectedPeriod)
         
         // Preemptively set flag to prevent empty state during initialization
         if !streakManager.state.streakItems.isEmpty {
@@ -238,6 +246,7 @@ class DashboardStore: ObservableObject {
 
         // Bind state so basic computed properties can work
         setupBindings()
+        lastObservedLatestSelectionSignature = latestSelectionSignature(for: state.graph.selectedPeriod)
 
         // Skip subscriptions and async initialization to avoid network/processing
         if !lightweight {
@@ -298,11 +307,9 @@ class DashboardStore: ObservableObject {
         // Invalidate continuousOperations cache when summary counts change
         // (e.g. after migration inserts entries without firing entrySaved)
         dataManager.$state
-            .map { ($0.dailySummaries.count, $0.monthlySummaries.count) }
-            .removeDuplicates { $0 == $1 }
             .dropFirst()
             .sink { [weak self] _ in
-                self?.invalidateContinuousOperationsCache()
+                self?.handleActivePeriodSummaryMutation()
             }
             .store(in: &cancellables)
 
@@ -750,7 +757,9 @@ class DashboardStore: ObservableObject {
     private func handleActiveAccountChanged() {
         // Clear caches and scrolling flags to ensure fresh computations
         clearAllCaches()
+        lastObservedLatestSelectionSignature = nil
         state.ui.hasInitializedChart = false
+        state.ui.hasLandedInitialSelection = false
         graphManager.state.isGraphReady = false
         state.graph.clearSelection()
 
@@ -1109,6 +1118,7 @@ class DashboardStore: ObservableObject {
 
             if let initialLatestSelectionDate {
                 await handleChartSelection(at: initialLatestSelectionDate)
+                state.ui.hasLandedInitialSelection = true
             } else {
                 // Otherwise preserve current selection state and update metrics for the
                 // active view mode (selected point, placeholders, or visible averages).
@@ -1122,7 +1132,7 @@ class DashboardStore: ObservableObject {
 
     @MainActor
     private var shouldPreferLatestSelectionForInitialMetrics: Bool {
-        !state.ui.hasInitializedChart &&
+        (!state.ui.hasInitializedChart || !state.ui.hasLandedInitialSelection) &&
         state.graph.selectedPoint == nil &&
         state.graph.selectedXValue == nil &&
         !continuousOperations.isEmpty
@@ -1130,7 +1140,70 @@ class DashboardStore: ObservableObject {
 
     @MainActor
     private func latestSelectionDateForCurrentPeriod() -> Date? {
-        continuousOperations.max(by: { $0.date < $1.date })?.date
+        latestSelectionSignature(for: state.graph.selectedPeriod).latestDate
+    }
+
+    @MainActor
+    private func latestSelectionSignature(for period: TimePeriod) -> LatestSelectionSignature {
+        let operations = dataManager.getContinuousOperations(for: period)
+        let latest = operations.last
+        return LatestSelectionSignature(
+            latestDate: latest?.date,
+            latestEntryTimestamp: latest?.entryTimestamp,
+            summaryCount: operations.count
+        )
+    }
+
+    @MainActor
+    private func currentGraphSelectedDate() -> Date? {
+        state.graph.selectedPoint?.date ?? state.graph.selectedXValue
+    }
+
+    @MainActor
+    private func datesMatchForSelection(_ lhs: Date, _ rhs: Date, period: TimePeriod) -> Bool {
+        let calendar = Calendar.current
+        switch period {
+        case .week, .month:
+            return calendar.isDate(lhs, inSameDayAs: rhs)
+        case .year, .total:
+            return calendar.isDate(lhs, equalTo: rhs, toGranularity: .month)
+        }
+    }
+
+    @MainActor
+    private func isFollowingLatestSelection(_ signature: LatestSelectionSignature, period: TimePeriod) -> Bool {
+        guard let selectedDate = currentGraphSelectedDate() else { return true }
+        guard let latestDate = signature.latestDate else { return false }
+        return datesMatchForSelection(selectedDate, latestDate, period: period)
+    }
+
+    @MainActor
+    private func isDateVisibleInCurrentViewport(_ date: Date, period: TimePeriod) -> Bool {
+        guard period != .total else { return true }
+        let leftEdge = graphManager.state.xScrollPosition
+        let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period))
+        return date >= leftEdge && date <= rightEdge
+    }
+
+    @MainActor
+    private func handleActivePeriodSummaryMutation() {
+        let period = state.graph.selectedPeriod
+        let previousSignature = lastObservedLatestSelectionSignature
+
+        invalidateContinuousOperationsCache()
+        let newSignature = latestSelectionSignature(for: period)
+        lastObservedLatestSelectionSignature = newSignature
+
+        guard let previousSignature, previousSignature != newSignature else { return }
+        guard isFollowingLatestSelection(previousSignature, period: period) else { return }
+        guard let latestDate = newSignature.latestDate else { return }
+
+        Task { @MainActor in
+            if !self.isDateVisibleInCurrentViewport(latestDate, period: period) {
+                self.ensureLatestEntriesVisible()
+            }
+            await self.handleChartSelection(at: latestDate)
+        }
     }
 
     // Delegate goal loading to GoalManager
@@ -2196,10 +2269,29 @@ class DashboardStore: ObservableObject {
         graphManager.updateScrollPosition(to: alignedScrollPosition)
         // Delegate period update to graph manager (this will clear chart data cache)
         graphManager.updateSelectedPeriod(period)
+        lastObservedLatestSelectionSignature = latestSelectionSignature(for: period)
 
         self.forceCompleteRecalculationAfterScrollPosition()
 
         state.ui.hasInitializedChart = true
+
+        // Auto-select the latest entry for the new period so the header tile
+        // shows its value/date immediately after the switch. Read the latest
+        // date from operationsForNewPeriod (already filtered for `period` above)
+        // rather than from continuousOperations, which depends on the mirrored
+        // state.graph.selectedPeriod that may not yet reflect the new period.
+        let targetPeriod = period
+        let latestDateForNewPeriod = operationsForNewPeriod.max(by: { $0.date < $1.date })?.date
+        if let latestDateForNewPeriod {
+            Task { @MainActor in
+                // Yield so SwiftUI commits the new scroll position first.
+                await Task.yield()
+                // Bail if the user has already switched to another tab.
+                guard self.state.graph.selectedPeriod == targetPeriod else { return }
+                await self.handleChartSelection(at: latestDateForNewPeriod)
+                self.state.ui.hasLandedInitialSelection = true
+            }
+        }
     }
 
     // Delegate chart selection to GraphManager
@@ -3347,6 +3439,18 @@ class DashboardStore: ObservableObject {
         self.forceCompleteRecalculationAfterScrollPosition()
 
         state.ui.hasInitializedChart = true
+
+        if shouldPreferLatestSelectionForInitialMetrics,
+           let initialLatestSelectionDate = latestSelectionDateForCurrentPeriod() {
+            Task { @MainActor in
+                await Task.yield()
+                guard self.state.ui.hasInitializedChart else { return }
+                guard self.state.graph.selectedPoint == nil,
+                      self.state.graph.selectedXValue == nil else { return }
+                await self.handleChartSelection(at: initialLatestSelectionDate)
+                self.state.ui.hasLandedInitialSelection = true
+            }
+        }
 
         // Mark graph as ready after a settling delay to allow computations to complete
         // This hides the skeleton loader once the graph has stabilized

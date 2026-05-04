@@ -71,6 +71,7 @@ protocol SectionViewModelProtocol: ObservableObject {
     
     // MARK: - Selection Management
     func handleChartSelection(at date: Date?)
+    func applyProgrammaticSelection(at date: Date?)
     func clearSelection()
     
     // MARK: - Goal Chip Positioning
