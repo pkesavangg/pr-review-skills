@@ -75,7 +75,7 @@ extension Entry {
             serverTimestamp: serverTimestamp,
             opTimestamp: opTimestamp,
             operationType: operationType,
-            entryType: entryType,
+            entryType: entryType ?? EntryType.scale.rawValue,
             isSynced: isSynced,
             note: note,
             attempts: attempts,

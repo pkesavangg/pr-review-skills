@@ -82,6 +82,7 @@ final class MockPushEntryService: EntryServiceProtocol {
     func saveNewEntries(_ entries: [Entry]) async throws {}
     func deleteEntry(_ entry: Entry) async throws {}
     func deleteEntry(entryId: UUID) async throws {}
+    func assignBabyEntry(entryId: UUID, babyId: String) async throws {}
     func fetchEntrySnapshot(byId id: UUID) async throws -> EntrySnapshot? { nil }
     func fetchAllEntrySnapshots() async throws -> [EntrySnapshot] { [] }
     func fetchEntrySnapshots(forMonth month: String, entryType: EntryType) async throws -> [EntrySnapshot] { [] }

@@ -100,9 +100,11 @@ struct ToastModifier: ViewModifier {
                         .truncationMode(.tail)
                 }
 
-                Text(data.message)
-                    .fontOpenSans(.body2)
-                    .foregroundColor(theme.textBody)
+                if !data.message.isEmpty {
+                    Text(data.message)
+                        .fontOpenSans(.body2)
+                        .foregroundColor(theme.textBody)
+                }
 
                 if let buttonTextView = data.btnTextView {
                     Button {

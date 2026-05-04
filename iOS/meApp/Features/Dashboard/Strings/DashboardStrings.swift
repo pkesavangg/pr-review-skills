@@ -14,11 +14,11 @@ struct DashboardStrings {
     static let metricInfo = "Metric info"
     static let saveChanges = "Save Changes"
     static let resetDashboard = "Reset Dashboard"
-    
+
     // Dashboard Metrics
     static let customizeDashboardTitle = "Customize App Dashboard"
     static let customizeDashboardSubtitle = "Rearrange tiles and/or hide unwanted metrics from your dashboard."
-    
+
     static let weight = "weight"
     static let bmi = "bmi"
     static let bodyFatBase = "body fat"
@@ -31,8 +31,8 @@ struct DashboardStrings {
     static let proteinBase = "protein"
     static let skelMuscle = "skel muscle"
     static let bmrBase = "bmr"
-    static let metAge = "meta age" 
-    
+    static let metAge = "meta age"
+
     // Units
     static let percentageUnitSymbol = "%"
     static let bpmUnitSymbol = "bpm"
@@ -48,7 +48,7 @@ struct DashboardStrings {
     static let protein = "\(proteinBase) \(percentageUnitSymbol)"
     static let bmrKcal = "\(bmrBase) \(kcalUnitSymbol)"
     static let metAgeUnit = "yrs"
-    
+
     // Streak/Loss labels
     static let currentStreak = "current streak"
     static let longestStreak = "longest streak"
@@ -59,7 +59,7 @@ struct DashboardStrings {
     static let lbsMonth = "lbs/month"
     static let lbsYear = "lbs/year"
     static let lbsTotal = "lbs/total"
-    
+
     // Goal Card/Progress strings
     static let goalTypeLabel = "Goal Type: %@"
     static let plus = "+"
@@ -74,26 +74,45 @@ struct DashboardStrings {
     static func gainGoalWeightLabel(_ goalWeight: String, _ unit: String) -> String {
         return "\(unit) to \(goalWeight) \(unit) goal weight"
     }
-    
+
     // Empty state messages
     static let noEntriesMessage = "To collect an entry, connect a scale or add a manual entry."
     static func noEntriesInPeriodMessage(_ timePeriod: String) -> String {
         return "You haven't added any entries this \(timePeriod)."
     }
 
+    // Reading arrival relative timestamp
+    static let justNow = "Just now"
+    static let oneMinuteAgo = "1 min ago"
+    static let minutesAgoFormat = "%d min ago"
+    static let yesterdayAtFormat = "Yesterday %@"
+
     // Baby reading arrival
     static let babyReadingArrivalTitle = "New Baby Scale Reading Received"
     static let babyReadingArrivalAssign = "ASSIGN"
     static let babyReadingArrivalDontAssign = "DON'T ASSIGN"
-    static let babyReadingArrivalJustNow = "Just now"
+
+    // Assign baby modal
+    static let assignMeasurementTitle = "Assign Measurement"
+    static let assignMeasurementSubtitle = "Which baby is this measurement for?"
+    static let assignMeasurementAssign = "ASSIGN"
+    static let assignMeasurementDontAssign = "DON'T ASSIGN"
+
+    // Assigned baby toast
+    static let babyReadingAssignedTo = "Reading assigned to"
+    static let babyReadingWrongBaby = "Have you assigned to Wrong baby?"
+    static let babyReadingReassign = "Reassign"
 
     // Weight scale reading arrival
     static let weightReadingArrivalTitle = "New Weight Scale Reading Received"
     static let weightReadingArrivalSave = "SAVE"
     static let weightReadingArrivalDiscard = "DISCARD"
-    static let weightReadingArrivalJustNow = "Just now"
 
     // BPM reading arrival
-    static let bpmReadingArrivalTitle = "New Blood Pressure Reading Received"
-    static let bpmReadingArrivalJustNow = "Just now"
+    static let bpmReadingArrivalTitle = "New BP Reading Received"
+    static let bpmReadingArrivalSave = "SAVE"
+    static let bpmReadingArrivalDiscard = "DISCARD"
+    static let bpmReadingArrivalMmhg = "mmhg"
+    static let bpmReadingArrivalPulse = "pulse"
+    static let weightReadingArrivalJustNow = "Just now"
 }

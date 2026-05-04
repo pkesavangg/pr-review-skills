@@ -81,6 +81,7 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     let deviceDiscoveredSubject = PassthroughSubject<DeviceDiscoveryEvent, Never>()
     let newEntryReceivedSubject = PassthroughSubject<EntryNotification, Never>()
     let pendingScaleEntrySubject = PassthroughSubject<EntryNotification, Never>()
+    let pendingBpmEntrySubject = PassthroughSubject<EntryNotification, Never>()
     let liveMeasurementSubject = PassthroughSubject<GGWeightEntry, Never>()
 
     var deviceDiscoveredPublisher: AnyPublisher<DeviceDiscoveryEvent, Never> { deviceDiscoveredSubject.eraseToAnyPublisher() }
@@ -88,6 +89,7 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     var showWeightOnlyModeAlertPublisher: AnyPublisher<Bool, Never> { Empty().eraseToAnyPublisher() }
     var newEntryReceivedPublisher: AnyPublisher<EntryNotification, Never> { newEntryReceivedSubject.eraseToAnyPublisher() }
     var pendingScaleEntryPublisher: AnyPublisher<EntryNotification, Never> { pendingScaleEntrySubject.eraseToAnyPublisher() }
+    var pendingBpmEntryPublisher: AnyPublisher<EntryNotification, Never> { pendingBpmEntrySubject.eraseToAnyPublisher() }
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> { Empty().eraseToAnyPublisher() }
     var liveMeasurementPublisher: AnyPublisher<GGWeightEntry, Never> { liveMeasurementSubject.eraseToAnyPublisher() }
 
@@ -101,6 +103,8 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     func initialize() {}
     func stopScan() {}
     func startBluetoothOperations() async {}
+    func confirmPendingBpmEntry() async throws {}
+    func discardPendingBpmEntry() {}
     func confirmPendingScaleEntry() async throws {
         confirmPendingScaleEntryCalls += 1
         if let error = confirmPendingScaleEntryError { throw error }

@@ -172,8 +172,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
             try await handleEntryAdded(entry)
 
-            // Broadcast change
-            await syncUnsyncedEntries()
             await checkGoalAlerts()
         } catch {
             logger.log(
@@ -202,7 +200,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
 
             logger.log(level: .info, tag: tag, message: "Bulk entry save completed: count=\(entries.count)")
-            await syncUnsyncedEntries()
         } catch {
             logger.log(
                 level: .error,
@@ -222,7 +219,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         do {
             try await localRepo.updateEntry(deletedEntry)
             try await handleEntryDeleted(deletedEntry)
-            await syncUnsyncedEntries()
             logger.log(
                 level: .info,
                 tag: tag,
@@ -248,6 +244,26 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             return
         }
         try await deleteEntry(entry)
+    }
+
+    func assignBabyEntry(entryId: UUID, babyId: String) async throws {
+        guard let entry = try await localRepo.fetchEntry(byId: entryId.uuidString) else {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Baby entry assign failed — not found: entryId=\(entryId.uuidString)"
+            )
+            return
+        }
+        entry.babyEntry?.babyId = babyId
+        try await localRepo.updateEntry(entry)
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Baby entry assigned: entryId=\(entryId.uuidString), babyId=\(babyId)"
+        )
+        let notification = EntryNotification(from: entry)
+        entrySaved.send(notification)
     }
 
     // MARK: - Snapshot Queries
@@ -1312,8 +1328,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Checks if an Entry matches the given entryType.
     /// Legacy entries without an entryType default to `.scale`.
     private func matchesEntryType(_ entry: Entry, entryType: EntryType) -> Bool {
-        let type = entry.entryType
-        if type.isEmpty { return entryType == .scale }
+        guard let type = entry.entryType, !type.isEmpty else { return entryType == .scale }
         return type == entryType.rawValue
     }
 

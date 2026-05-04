@@ -75,6 +75,7 @@ final class MockEntryService: EntryServiceProtocol {
         deletedEntryIds.append(entryId)
         if let error = deleteEntryByIdError { throw error }
     }
+    func assignBabyEntry(entryId: UUID, babyId: String) async throws {}
     func fetchEntrySnapshot(byId id: UUID) async throws -> EntrySnapshot? {
         fetchEntrySnapshotByIdCalls += 1
         return try fetchEntrySnapshotByIdResult.get()

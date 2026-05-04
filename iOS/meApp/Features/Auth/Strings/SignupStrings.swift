@@ -50,6 +50,7 @@ struct SignupStrings {
         static let babyScaleSubtitle = "Track baby growth"
         static let bpmSubtitle = "BP trends & reminders"
         static let weightScaleSubtitle = "BMI & weight insights"
+        static let alreadyAdded = "already added to your profile"
     }
 
     struct AddBabyStep {
@@ -70,5 +71,28 @@ struct SignupStrings {
         static let termsOfService = "Terms of Service"
         static let privacyPolicy = "Privacy Policy"
         static let andText = "&"
-    }    
+    }
+
+    struct ProfileReadyStep {
+        static let weightScaleTitle = "Your weight scale profile is ready!"
+        static let bpmTitle = "Your blood pressure monitor profile is ready!"
+        static let babyScaleTitle = "Your baby scale profile is ready!"
+        static let finishButton = "FINISH"
+        static let connectAnotherDevice = "CONNECT ANOTHER DEVICE"
+    }
+
+    struct AllProfilesReadyStep {
+        static let title = "All your health profiles have been set up successfully!"
+        static let doneButton = "DONE"
+    }
+
+    struct SignupErrorStep {
+        static let title = "Something went wrong."
+        static let subtitle = "We couldn't save your profile. Check your connection and try again."
+        static let deviceSuccess = "Added to your profile"
+        static let deviceFailure = "Profile couldn't be saved — tap Try Again"
+        static let devicePending = "Not yet started"
+        static let cancelButton = "CANCEL"
+        static let tryAgainButton = "TRY AGAIN"
+    }
 }
