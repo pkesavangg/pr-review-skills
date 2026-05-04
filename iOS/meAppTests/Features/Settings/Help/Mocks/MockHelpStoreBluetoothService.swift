@@ -19,6 +19,8 @@ final class MockHelpStoreBluetoothService: BluetoothServiceProtocol {
     var deviceInfoUpdatedPublisher: AnyPublisher<DeviceInfo, Never> { Empty().eraseToAnyPublisher() }
     var showWeightOnlyModeAlertPublisher: AnyPublisher<Bool, Never> { Empty().eraseToAnyPublisher() }
     var newEntryReceivedPublisher: AnyPublisher<EntryNotification, Never> { Empty().eraseToAnyPublisher() }
+    var pendingScaleEntryPublisher: AnyPublisher<EntryNotification, Never> { Empty().eraseToAnyPublisher() }
+    var pendingBpmEntryPublisher: AnyPublisher<EntryNotification, Never> { Empty().eraseToAnyPublisher() }
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> { Empty().eraseToAnyPublisher() }
     var liveMeasurementPublisher: AnyPublisher<GGWeightEntry, Never> { Empty().eraseToAnyPublisher() }
     var newBpmReadingReceivedPublisher: AnyPublisher<BpmMeasurement, Never> { Empty().eraseToAnyPublisher() }
@@ -36,6 +38,10 @@ final class MockHelpStoreBluetoothService: BluetoothServiceProtocol {
     func initialize() {}
     func stopScan() {}
     func startBluetoothOperations() async {}
+    func confirmPendingScaleEntry() async throws {}
+    func discardPendingScaleEntry() {}
+    func confirmPendingBpmEntry() async throws {}
+    func discardPendingBpmEntry() {}
     func disconnectConnectedScales() async {}
     func reapplySkipDevicesExcludingPaired() {}
     func handleWeightOnlyModeAlertDismissed() {}

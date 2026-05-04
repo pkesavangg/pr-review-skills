@@ -35,6 +35,16 @@ protocol BluetoothServiceProtocol {
     /// Uses EntryNotification (Sendable) to safely pass data across actor boundaries.
     var newEntryReceivedPublisher: AnyPublisher<EntryNotification, Never> { get }
 
+    /// Publisher that fires when a weight scale entry arrives but has NOT yet been saved.
+    /// Call confirmPendingScaleEntry() to save or discardPendingScaleEntry() to drop.
+    var pendingScaleEntryPublisher: AnyPublisher<EntryNotification, Never> { get }
+
+    /// Saves the pending weight scale entry. Call on SAVE or timeout.
+    func confirmPendingScaleEntry() async throws
+
+    /// Drops the pending weight scale entry without saving. Call on DISCARD.
+    func discardPendingScaleEntry()
+
     /// Publisher for firmware update progress.
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> { get }
 
@@ -43,6 +53,16 @@ protocol BluetoothServiceProtocol {
 
     /// Publisher for new BPM reading events received from a blood pressure monitor.
     var newBpmReadingReceivedPublisher: AnyPublisher<BpmMeasurement, Never> { get }
+
+    /// Publisher that fires when a BPM reading arrives but has NOT yet been saved.
+    /// Call confirmPendingBpmEntry() to save or discardPendingBpmEntry() to drop.
+    var pendingBpmEntryPublisher: AnyPublisher<EntryNotification, Never> { get }
+
+    /// Saves the pending BPM entry. Call on SAVE or timeout.
+    func confirmPendingBpmEntry() async throws
+
+    /// Drops the pending BPM entry without saving. Call on DISCARD.
+    func discardPendingBpmEntry()
 
     /// Publisher for setup progress changes so cross-cutting services can defer disruptive UI until setup exits.
     var isSetupInProgressPublisher: AnyPublisher<Bool, Never> { get }

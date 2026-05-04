@@ -886,6 +886,105 @@ struct AccountMigrationServiceTests {
         #expect(kv.hasClearedValue(forKey: scaleKey))
     }
 
+    // MARK: - migrateProductTypesIfNeeded
+
+    @Test("migrateProductTypesIfNeeded is a no-op when productTypes is already populated")
+    func migrateProductTypesIfNeeded_alreadyPopulated_doesNotOverwrite() {
+        let (sut, _, _, _, _) = makeSUT()
+        let account = AccountTestFixtures.makeAccountModel()
+        account.productTypes = ["myWeight"]
+
+        sut.migrateProductTypesIfNeeded(for: account, devices: [makeDevice(id: "d1")])
+
+        #expect(account.productTypes == ["myWeight"])
+    }
+
+    @Test("migrateProductTypesIfNeeded skips migration when devices list is empty")
+    func migrateProductTypesIfNeeded_emptyDevices_doesNotWrite() {
+        let (sut, _, _, _, _) = makeSUT()
+        let account = AccountTestFixtures.makeAccountModel()
+
+        sut.migrateProductTypesIfNeeded(for: account, devices: [])
+
+        #expect(account.productTypes.isEmpty)
+    }
+
+    @Test("migrateProductTypesIfNeeded sets [myWeight] for weight scale only")
+    func migrateProductTypesIfNeeded_weightScaleOnly_setsMyWeight() {
+        let (sut, _, _, _, _) = makeSUT()
+        let account = AccountTestFixtures.makeAccountModel()
+        let device = makeDevice(id: "d1", deviceType: DeviceType.scale.rawValue)
+
+        sut.migrateProductTypesIfNeeded(for: account, devices: [device])
+
+        #expect(account.productTypes == ["myWeight"])
+    }
+
+    @Test("migrateProductTypesIfNeeded sets [myBloodPressure] for BPM only")
+    func migrateProductTypesIfNeeded_bpmOnly_setsMyBloodPressure() {
+        let (sut, _, _, _, _) = makeSUT()
+        let account = AccountTestFixtures.makeAccountModel()
+        let device = makeDevice(id: "d1", deviceType: DeviceType.bpm.rawValue)
+
+        sut.migrateProductTypesIfNeeded(for: account, devices: [device])
+
+        #expect(account.productTypes == ["myBloodPressure"])
+    }
+
+    @Test("migrateProductTypesIfNeeded sets [baby] for baby scale only")
+    func migrateProductTypesIfNeeded_babyScaleOnly_setsBaby() {
+        let (sut, _, _, _, _) = makeSUT()
+        let account = AccountTestFixtures.makeAccountModel()
+        let device = makeDevice(id: "d1", deviceType: DeviceType.babyScale.rawValue)
+
+        sut.migrateProductTypesIfNeeded(for: account, devices: [device])
+
+        #expect(account.productTypes == ["baby"])
+    }
+
+    @Test("migrateProductTypesIfNeeded sets [myWeight, myBloodPressure] for weight + BPM")
+    func migrateProductTypesIfNeeded_weightAndBpm_setsBoth() {
+        let (sut, _, _, _, _) = makeSUT()
+        let account = AccountTestFixtures.makeAccountModel()
+        let devices = [
+            makeDevice(id: "d1", deviceType: DeviceType.scale.rawValue),
+            makeDevice(id: "d2", deviceType: DeviceType.bpm.rawValue)
+        ]
+
+        sut.migrateProductTypesIfNeeded(for: account, devices: devices)
+
+        #expect(account.productTypes.sorted() == ["myBloodPressure", "myWeight"])
+    }
+
+    @Test("migrateProductTypesIfNeeded sets [myWeight, baby] for weight + baby scale")
+    func migrateProductTypesIfNeeded_weightAndBaby_setsBoth() {
+        let (sut, _, _, _, _) = makeSUT()
+        let account = AccountTestFixtures.makeAccountModel()
+        let devices = [
+            makeDevice(id: "d1", deviceType: DeviceType.scale.rawValue),
+            makeDevice(id: "d2", deviceType: DeviceType.babyScale.rawValue)
+        ]
+
+        sut.migrateProductTypesIfNeeded(for: account, devices: devices)
+
+        #expect(account.productTypes.sorted() == ["baby", "myWeight"])
+    }
+
+    @Test("migrateProductTypesIfNeeded sets all three types for weight + BPM + baby scale")
+    func migrateProductTypesIfNeeded_allThreeTypes_setsAll() {
+        let (sut, _, _, _, _) = makeSUT()
+        let account = AccountTestFixtures.makeAccountModel()
+        let devices = [
+            makeDevice(id: "d1", deviceType: DeviceType.scale.rawValue),
+            makeDevice(id: "d2", deviceType: DeviceType.bpm.rawValue),
+            makeDevice(id: "d3", deviceType: DeviceType.babyScale.rawValue)
+        ]
+
+        sut.migrateProductTypesIfNeeded(for: account, devices: devices)
+
+        #expect(account.productTypes.sorted() == ["baby", "myBloodPressure", "myWeight"])
+    }
+
     // MARK: - makeSUT
 
     @MainActor
@@ -957,8 +1056,10 @@ struct AccountMigrationServiceTests {
         """
     }
 
-    private func makeDevice(id: String) -> Device {
-        ScaleTestFixtures.makeDevice(id: id)
+    private func makeDevice(id: String, deviceType: String = DeviceType.scale.rawValue) -> Device {
+        let device = ScaleTestFixtures.makeDevice(id: id)
+        device.deviceType = deviceType
+        return device
     }
 }
 

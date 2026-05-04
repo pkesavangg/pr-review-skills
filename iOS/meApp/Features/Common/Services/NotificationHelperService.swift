@@ -4,6 +4,7 @@
 //
 //  Created by Kesavan Panchabakesan on 04/06/25.
 //
+import Combine
 import Foundation
 
 @MainActor
@@ -14,7 +15,10 @@ class NotificationHelperService: NotificationHelperServiceProtocol, ObservableOb
     @Published var loaderData: LoaderModel?
     @Published var modalViewData: [ModalData] = []
     @Published var isOverlayActive: Bool = false
-    
+
+    /// Fires when `dismissToast()` is called so `ToastModifier` can remove the active toast immediately.
+    let dismissToastSignal = PassthroughSubject<Void, Never>()
+
     /// property to track if any toasts are active in the modifier
     @Published private var hasActiveToasts: Bool = false
     
@@ -83,6 +87,7 @@ class NotificationHelperService: NotificationHelperServiceProtocol, ObservableOb
     
     @MainActor func dismissToast() {
         self.toastData = nil
+        dismissToastSignal.send()
         // Don't immediately set hasActiveToasts to false - let ToastModifier manage this
         self.updateOverlayState()
     }

@@ -403,4 +403,23 @@ class IntegrationStore: ObservableObject {
         case .myFitnessPal: return "my_fitness_pal"
         }
     }
+
+    // MARK: - Request New Integration
+
+    /// Presents the "Request an Integration" modal where users can submit a free-text request.
+    func showRequestIntegrationModal() {
+        notificationService.showModal(ModalData(
+            presentedView: AnyView(RequestIntegrationModalView(
+                onSend: { [weak self] text in
+                    guard let self else { return }
+                    logger.log(level: .info, tag: tag, message: "Request new integration submitted: \(text)")
+                    notificationService.dismissModal()
+                },
+                onCancel: { [weak self] in
+                    self?.notificationService.dismissModal()
+                }
+            )),
+            backdropDismiss: true
+        ))
+    }
 }

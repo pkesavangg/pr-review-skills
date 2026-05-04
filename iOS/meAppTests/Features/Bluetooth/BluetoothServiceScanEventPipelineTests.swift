@@ -63,7 +63,7 @@ struct BluetoothServiceScanEventPipelineTests {
         #expect(loggedMalformed == true)
     }
 
-    @Test("single and multi-entry responses save valid entries and ignore malformed batches safely")
+    @Test("single and multi-entry responses fire pending notifications and ignore malformed batches safely")
     func entryResponsesSaveValidEntriesAndIgnoreMalformedBatches() async throws {
         let sdk = MockBluetoothSDKClient()
         let account = MockAccountService()
@@ -74,15 +74,18 @@ struct BluetoothServiceScanEventPipelineTests {
         _ = await waitUntil { sut.activeAccount?.accountId == "acct-entry" }
 
         try await sut.startSmartScan()
-        let notifications = await collectValues(count: 2, from: sut.newEntryReceivedPublisher) {
+        // Scale entries now fire pendingScaleEntryPublisher (not newEntryReceivedPublisher)
+        // because the entry is held pending user confirmation before saving.
+        let notifications = await collectValues(count: 2, from: sut.pendingScaleEntryPublisher) {
             await sendScanResponse(makeScanResponse(type: .SINGLE_ENTRY, data: makeEntry(protocolType: "A6", timestamp: 1_730_000_000_000, weightInKg: 72.5)), through: sdk)
             await sendScanResponse(makeScanResponse(type: .SINGLE_ENTRY, data: makeEntry(protocolType: "A6", timestamp: 1_730_000_100_000, weightInKg: 73.0)), through: sdk)
             await sendScanResponse(makeScanResponse(type: .MULTI_ENTRIES, data: MalformedScanData()), through: sdk)
         }
-        let savedEntries = await waitUntil { entry.savedEntries.count == 2 }
 
-        #expect(savedEntries == true)
+        #expect(notifications.count == 2)
         #expect(notifications.first?.accountId == "acct-entry")
+        // Entries are not saved until confirmed — entryService must not have been called yet
+        #expect(entry.savedEntries.isEmpty)
         #expect(logger.messages.contains { $0.contains("Bluetooth service initialize called") })
         #expect(logger.messages.contains { $0.contains("No valid entries") } == false)
     }

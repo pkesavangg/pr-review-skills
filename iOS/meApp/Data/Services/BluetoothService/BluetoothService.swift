@@ -75,6 +75,22 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         newEntryReceivedSubject.eraseToAnyPublisher()
     }
 
+    /// Publisher that fires when a weight scale entry arrives but has NOT yet been saved.
+    /// Subscribers (e.g. BottomTabBarViewModel) must call confirmPendingScaleEntry() to save
+    /// or discardPendingScaleEntry() to drop it. If neither is called within the toast duration
+    /// the entry is saved automatically by the subscriber's timeout handler.
+    var pendingScaleEntryPublisher: AnyPublisher<EntryNotification, Never> {
+        pendingScaleEntrySubject.eraseToAnyPublisher()
+    }
+
+    /// Publisher that fires when a BPM reading arrives but has NOT yet been saved.
+    /// Subscribers (e.g. BottomTabBarViewModel) must call confirmPendingBpmEntry() to save
+    /// or discardPendingBpmEntry() to drop it. If neither is called within the toast duration
+    /// the entry is saved automatically by the subscriber's timeout handler.
+    var pendingBpmEntryPublisher: AnyPublisher<EntryNotification, Never> {
+        pendingBpmEntrySubject.eraseToAnyPublisher()
+    }
+
     /// Publisher for firmware update progress.
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> {
         firmwareUpdateProgressSubject.eraseToAnyPublisher()
@@ -108,6 +124,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
     let deviceDiscoveredSubject = PassthroughSubject<DeviceDiscoveryEvent, Never>()
     let newEntryReceivedSubject = PassthroughSubject<EntryNotification, Never>()
+    let pendingScaleEntrySubject = PassthroughSubject<EntryNotification, Never>()
+    let pendingBpmEntrySubject = PassthroughSubject<EntryNotification, Never>()
     let deviceInfoUpdatedSubject = PassthroughSubject<DeviceInfo, Never>()
     let showWeightOnlyModeAlertSubject = PassthroughSubject<Bool, Never>()
     let firmwareUpdateProgressSubject = PassthroughSubject<FirmwareUpdateStatus, Never>()
@@ -115,6 +133,14 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     let liveMeasurementSubject = PassthroughSubject<GGWeightEntry, Never>()
     /// Subject for BPM reading events.
     let newBpmReadingReceivedSubject = PassthroughSubject<BpmMeasurement, Never>()
+
+    /// The most recently received weight scale entry that is awaiting user confirmation.
+    /// Set by the scan pipeline before firing pendingScaleEntrySubject; cleared by confirm/discard.
+    var pendingScaleEntry: Entry?
+
+    /// The most recently received BPM entry that is awaiting user confirmation.
+    /// Set by the scan pipeline before firing pendingBpmEntrySubject; cleared by confirm/discard.
+    var pendingBpmEntry: Entry?
 
     // MARK: - Private Properties
 
@@ -216,6 +242,48 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 self.scheduleProfileUpdateIfNeeded(for: account)
             }
             .store(in: &cancellables)
+    }
+
+    // MARK: - Pending Scale Entry Confirmation
+
+    /// Saves the pending weight scale entry to persistent storage.
+    /// Called when the user taps SAVE on the reading-arrival toast, or when the toast times out.
+    func confirmPendingScaleEntry() async throws {
+        guard let entry = pendingScaleEntry else { return }
+        pendingScaleEntry = nil
+        try await entryService.saveNewEntry(entry)
+        let notification = EntryNotification(from: entry)
+        newEntryReceivedSubject.send(notification)
+        logger.log(level: .info, tag: tag, message: "Pending scale entry confirmed. entryId=\(entry.id.uuidString)")
+    }
+
+    /// Drops the pending weight scale entry without saving it.
+    /// Called when the user taps DISCARD on the reading-arrival toast.
+    func discardPendingScaleEntry() {
+        guard let entry = pendingScaleEntry else { return }
+        logger.log(level: .info, tag: tag, message: "Pending scale entry discarded. entryId=\(entry.id.uuidString)")
+        pendingScaleEntry = nil
+    }
+
+    // MARK: - Pending BPM Entry Confirmation
+
+    /// Saves the pending BPM entry to persistent storage.
+    /// Called when the user taps SAVE on the BPM reading-arrival toast, or when the toast times out.
+    func confirmPendingBpmEntry() async throws {
+        guard let entry = pendingBpmEntry else { return }
+        pendingBpmEntry = nil
+        try await entryService.saveNewEntry(entry)
+        let notification = EntryNotification(from: entry)
+        newEntryReceivedSubject.send(notification)
+        logger.log(level: .info, tag: tag, message: "Pending BPM entry confirmed. entryId=\(entry.id.uuidString)")
+    }
+
+    /// Drops the pending BPM entry without saving it.
+    /// Called when the user taps DISCARD on the BPM reading-arrival toast.
+    func discardPendingBpmEntry() {
+        guard let entry = pendingBpmEntry else { return }
+        logger.log(level: .info, tag: tag, message: "Pending BPM entry discarded. entryId=\(entry.id.uuidString)")
+        pendingBpmEntry = nil
     }
 
     /**

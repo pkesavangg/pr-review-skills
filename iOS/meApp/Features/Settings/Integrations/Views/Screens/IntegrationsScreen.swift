@@ -38,6 +38,19 @@ struct IntegrationsScreen: View {
                         .listRowInsets()
                     }
                 }
+
+                // Request new integration — sits just below the list section
+                Section {
+                    Button(action: { store.showRequestIntegrationModal() }) {
+                        Text(IntegrationsStrings.requestNewIntegration)
+                            .fontOpenSans(.button1)
+                            .foregroundColor(theme.textHeading)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
+                    .padding(.vertical, .spacingSM)
+                }
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
