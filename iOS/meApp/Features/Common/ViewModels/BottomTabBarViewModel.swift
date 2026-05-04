@@ -689,7 +689,9 @@ class BottomTabBarViewModel: ObservableObject {
             weightString = "--"
         }
 
-        let message = "\(weightString) · \(lang.babyReadingArrivalJustNow)"
+        let relativeTime = DateTimeTools.getArrivalRelativeTime(fromISOString: notification.entryTimestamp)
+            ?? DashboardStrings.justNow
+        let message = "\(weightString) · \(relativeTime)"
         let entryId = notification.id
 
         var didUserAct = false
@@ -723,7 +725,7 @@ class BottomTabBarViewModel: ObservableObject {
             btnTextView: AnyView(
                 BabyReadingArrivalCTAView(
                     weightString: weightString,
-                    timestamp: lang.babyReadingArrivalJustNow,
+                    timestamp: relativeTime,
                     onAssign: { [weak self] in
                         didUserAct = true
                         self?.notificationService.dismissToast()
@@ -838,7 +840,9 @@ class BottomTabBarViewModel: ObservableObject {
             weightString = "--"
         }
 
-        let message = "\(weightString) - \(lang.weightReadingArrivalJustNow)"
+        let relativeTime = DateTimeTools.getArrivalRelativeTime(fromISOString: notification.entryTimestamp)
+            ?? DashboardStrings.justNow
+        let message = "\(weightString) - \(relativeTime)"
         let toastDuration = 8.0
 
         // Cancel any in-flight timeout task for a previous toast
@@ -899,6 +903,8 @@ class BottomTabBarViewModel: ObservableObject {
         let systolic = notification.systolic ?? 0
         let diastolic = notification.diastolic ?? 0
         let pulse = notification.pulse ?? 0
+        let relativeTime = DateTimeTools.getArrivalRelativeTime(fromISOString: notification.entryTimestamp)
+            ?? DashboardStrings.justNow
         let toastDuration = 8.0
 
         bpmReadingTimeoutTask?.cancel()
@@ -911,6 +917,7 @@ class BottomTabBarViewModel: ObservableObject {
                     systolic: systolic,
                     diastolic: diastolic,
                     pulse: pulse,
+                    timestamp: relativeTime,
                     onSave: { [weak self] in
                         guard let self else { return }
                         self.bpmReadingTimeoutTask?.cancel()

@@ -149,16 +149,14 @@ struct SignupScreen: View {
                     }
                     .padding(.horizontal, .spacingSM)
 
-                    if signupStore.canConnectAnotherDevice {
-                        ButtonView(
-                            text: SignupStrings.ProfileReadyStep.connectAnotherDevice,
-                            type: .textPrimary,
-                            size: .small,
-                            isDisabled: false
-                        ) {
-                            withAnimation {
-                                signupStore.connectAnotherDevice()
-                            }
+                    ButtonView(
+                        text: SignupStrings.ProfileReadyStep.connectAnotherDevice,
+                        type: .textPrimary,
+                        size: .small,
+                        isDisabled: !signupStore.canConnectAnotherDevice
+                    ) {
+                        withAnimation {
+                            signupStore.connectAnotherDevice()
                         }
                     }
                 }

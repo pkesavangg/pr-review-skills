@@ -1328,8 +1328,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Checks if an Entry matches the given entryType.
     /// Legacy entries without an entryType default to `.scale`.
     private func matchesEntryType(_ entry: Entry, entryType: EntryType) -> Bool {
-        let type = entry.entryType
-        if type.isEmpty { return entryType == .scale }
+        guard let type = entry.entryType, !type.isEmpty else { return entryType == .scale }
         return type == entryType.rawValue
     }
 

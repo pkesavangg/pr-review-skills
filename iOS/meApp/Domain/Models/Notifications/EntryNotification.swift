@@ -79,7 +79,7 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
         self.entryTimestamp = entry.entryTimestamp
         self.serverTimestamp = entry.serverTimestamp
         self.operationType = entry.operationType
-        self.entryType = entry.entryType
+        self.entryType = entry.entryType ?? EntryType.scale.rawValue
         self.isSynced = entry.isSynced
         self.isFailedToSync = entry.isFailedToSync
         self.attempts = entry.attempts
