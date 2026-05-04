@@ -662,32 +662,33 @@ class BottomTabBarViewModel: ObservableObject {
 
     // MARK: - Baby Reading Arrival Card
 
+    private func babyWeightString(decigrams: Int, source: String?, isMetric: Bool) -> String {
+        guard decigrams > 0 else { return "--" }
+        if isMetric {
+            let grad = ConversionTools.convertToDisplayWeightBase(
+                decigrams: decigrams, source: source, unit: .kg, isBabyScaleEntry: true
+            )
+            let kg = ConversionTools.convertBabyDecigramsToKg(grad)
+            return String(format: "%.3f kg", kg)
+        } else {
+            let grad = ConversionTools.convertToDisplayWeightBase(
+                decigrams: decigrams, source: source, unit: .lbOz, isBabyScaleEntry: true
+            )
+            let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(grad)
+            return "\(lbsOz.lbs) lbs \(String(format: "%.1f", lbsOz.oz)) oz"
+        }
+    }
+
     /// Shows a reading-arrival card when a baby scale entry arrives via Bluetooth.
     /// The entry is already persisted at this point; tapping DON'T ASSIGN deletes it.
     private func showBabyReadingArrivalCard(notification: EntryNotification) {
         let lang = DashboardStrings.self
         let isMetric = accountService.activeAccount?.weightUnit == .kg
-        let decigrams = notification.babyWeight ?? 0
-
-        let weightString: String
-        if decigrams > 0 {
-            let source = notification.babySource
-            if isMetric {
-                let graduatedDecigrams = ConversionTools.convertToDisplayWeightBase(
-                    decigrams: decigrams, source: source, unit: .kg, isBabyScaleEntry: true
-                )
-                let kg = ConversionTools.convertBabyDecigramsToKg(graduatedDecigrams)
-                weightString = String(format: "%.3f kg", kg)
-            } else {
-                let graduatedDecigrams = ConversionTools.convertToDisplayWeightBase(
-                    decigrams: decigrams, source: source, unit: .lbOz, isBabyScaleEntry: true
-                )
-                let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(graduatedDecigrams)
-                weightString = "\(lbsOz.lbs) lbs \(String(format: "%.1f", lbsOz.oz)) oz"
-            }
-        } else {
-            weightString = "--"
-        }
+        let weightString = babyWeightString(
+            decigrams: notification.babyWeight ?? 0,
+            source: notification.babySource,
+            isMetric: isMetric
+        )
 
         let relativeTime = DateTimeTools.getArrivalRelativeTime(fromISOString: notification.entryTimestamp)
             ?? DashboardStrings.justNow
@@ -729,7 +730,12 @@ class BottomTabBarViewModel: ObservableObject {
                     onAssign: { [weak self] in
                         didUserAct = true
                         self?.notificationService.dismissToast()
-                        self?.showAssignBabyModal(entryId: entryId, weightString: weightString, weightMessage: message, babyItems: babyItems)
+                        self?.showAssignBabyModal(
+                            entryId: entryId,
+                            weightString: weightString,
+                            weightMessage: message,
+                            babyItems: babyItems
+                        )
                     },
                     onDiscard: { [weak self] in
                         didUserAct = true
@@ -741,7 +747,15 @@ class BottomTabBarViewModel: ObservableObject {
                                 try await self.entryService.deleteEntry(entryId: entryId)
                                 self.logger.log(level: .info, tag: self.tag, message: "Baby reading discarded. entryId=\(entryId)")
                             } catch {
-                                self.logger.log(level: .error, tag: self.tag, message: "Failed to discard baby reading. entryId=\(entryId)", data: error.localizedDescription)
+                                self.logger.log(
+                                    level: .error,
+                                    tag: self.tag,
+                                    message: "Failed to discard baby reading. entryId=\(entryId)",
+                                    data: error.localizedDescription
+                                )
+                                self.notificationService.showToast(
+                                    ToastModel(message: "Failed to remove reading. Please try again.")
+                                )
                             }
                         }
                     }
@@ -759,7 +773,12 @@ class BottomTabBarViewModel: ObservableObject {
     }
 
     /// Presents the baby-selection modal so the user can choose which baby to assign the entry to.
-    private func showAssignBabyModal(entryId: UUID, weightString: String, weightMessage: String, babyItems: [AssignBabyModalView.BabyItem]) {
+    private func showAssignBabyModal(
+        entryId: UUID,
+        weightString: String,
+        weightMessage: String,
+        babyItems: [AssignBabyModalView.BabyItem]
+    ) {
         let modalView = AssignBabyModalView(
             babies: babyItems,
             weightMessage: weightMessage,
@@ -771,10 +790,25 @@ class BottomTabBarViewModel: ObservableObject {
                     do {
                         try await self.entryService.assignBabyEntry(entryId: entryId, babyId: selectedBabyId)
                         let babyName = babyItems.first(where: { $0.id == selectedBabyId })?.name ?? ""
-                        self.logger.log(level: .info, tag: self.tag, message: "Baby reading assigned to babyId=\(selectedBabyId), entryId=\(entryId)")
-                        self.showAssignedBabyToast(babyName: babyName, entryId: entryId, weightString: weightString, weightMessage: weightMessage, babyItems: babyItems)
+                        self.logger.log(
+                            level: .info,
+                            tag: self.tag,
+                            message: "Baby reading assigned to babyId=\(selectedBabyId), entryId=\(entryId)"
+                        )
+                        self.showAssignedBabyToast(
+                            babyName: babyName,
+                            entryId: entryId,
+                            weightString: weightString,
+                            weightMessage: weightMessage,
+                            babyItems: babyItems
+                        )
                     } catch {
-                        self.logger.log(level: .error, tag: self.tag, message: "Failed to assign baby reading. entryId=\(entryId)", data: error.localizedDescription)
+                        self.logger.log(
+                            level: .error,
+                            tag: self.tag,
+                            message: "Failed to assign baby reading. entryId=\(entryId)",
+                            data: error.localizedDescription
+                        )
                     }
                 }
             },
@@ -785,9 +819,18 @@ class BottomTabBarViewModel: ObservableObject {
                     guard let self else { return }
                     do {
                         try await self.entryService.deleteEntry(entryId: entryId)
-                        self.logger.log(level: .info, tag: self.tag, message: "Baby reading discarded from assign modal. entryId=\(entryId)")
+                        self.logger.log(
+                            level: .info,
+                            tag: self.tag,
+                            message: "Baby reading discarded from assign modal. entryId=\(entryId)"
+                        )
                     } catch {
-                        self.logger.log(level: .error, tag: self.tag, message: "Failed to discard baby reading from assign modal. entryId=\(entryId)", data: error.localizedDescription)
+                        self.logger.log(
+                            level: .error,
+                            tag: self.tag,
+                            message: "Failed to discard baby reading from assign modal. entryId=\(entryId)",
+                            data: error.localizedDescription
+                        )
                     }
                 }
             },
@@ -800,7 +843,13 @@ class BottomTabBarViewModel: ObservableObject {
 
     /// Shows a confirmation toast after a baby reading has been successfully assigned.
     /// Includes a REASSIGN button to re-open the baby selection modal.
-    private func showAssignedBabyToast(babyName: String, entryId: UUID, weightString: String, weightMessage: String, babyItems: [AssignBabyModalView.BabyItem]) {
+    private func showAssignedBabyToast(
+        babyName: String,
+        entryId: UUID,
+        weightString: String,
+        weightMessage: String,
+        babyItems: [AssignBabyModalView.BabyItem]
+    ) {
         let toast = ToastModel(
             title: nil,
             message: "",
@@ -810,7 +859,12 @@ class BottomTabBarViewModel: ObservableObject {
                     babyName: babyName,
                     onReassign: { [weak self] in
                         self?.notificationService.dismissToast()
-                        self?.showAssignBabyModal(entryId: entryId, weightString: weightString, weightMessage: weightMessage, babyItems: babyItems)
+                        self?.showAssignBabyModal(
+                            entryId: entryId,
+                            weightString: weightString,
+                            weightMessage: weightMessage,
+                            babyItems: babyItems
+                        )
                     }
                 )
             ),
@@ -822,23 +876,21 @@ class BottomTabBarViewModel: ObservableObject {
         notificationService.showToast(toast)
     }
 
+    private func weightDisplayString(stored: Int, isMetric: Bool) -> String {
+        guard stored > 0 else { return "--" }
+        let display = ConversionTools.convertStoredToDisplay(Double(stored), isMetric: isMetric)
+        return isMetric
+            ? String(format: "%.1f kg", display)
+            : String(format: "%.1f lbs", display)
+    }
+
     /// Shows a reading-arrival card when a weight scale entry arrives via Bluetooth.
     /// The entry has NOT been saved yet. Tapping SAVE confirms it; tapping DISCARD drops it.
     /// If the toast times out without user interaction the entry is saved automatically.
-    private func showWeightScaleReadingArrivalCard(notification: EntryNotification) {
+    private func showWeightScaleReadingArrivalCard(notification: EntryNotification) { // swiftlint:disable:this function_body_length
         let lang = DashboardStrings.self
         let isMetric = accountService.activeAccount?.weightUnit == .kg
-        let stored = notification.weight ?? 0
-
-        let weightString: String
-        if stored > 0 {
-            let display = ConversionTools.convertStoredToDisplay(Double(stored), isMetric: isMetric)
-            weightString = isMetric
-                ? String(format: "%.1f kg", display)
-                : String(format: "%.1f lbs", display)
-        } else {
-            weightString = "--"
-        }
+        let weightString = weightDisplayString(stored: notification.weight ?? 0, isMetric: isMetric)
 
         let relativeTime = DateTimeTools.getArrivalRelativeTime(fromISOString: notification.entryTimestamp)
             ?? DashboardStrings.justNow
@@ -862,7 +914,12 @@ class BottomTabBarViewModel: ObservableObject {
                             do {
                                 try await self.bluetoothService.confirmPendingScaleEntry()
                             } catch {
-                                self.logger.log(level: .error, tag: self.tag, message: "Failed to save weight reading.", data: error.localizedDescription)
+                                self.logger.log(
+                                    level: .error,
+                                    tag: self.tag,
+                                    message: "Failed to save weight reading.",
+                                    data: error.localizedDescription
+                                )
                             }
                         }
                     },
@@ -882,12 +939,21 @@ class BottomTabBarViewModel: ObservableObject {
         // confirmPendingScaleEntry() is a no-op if pendingScaleEntry is already nil
         // (meaning the user tapped SAVE or DISCARD before the timeout fired).
         weightReadingTimeoutTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(toastDuration * 1_000_000_000))
-            guard !Task.isCancelled, let self else { return }
+            do {
+                try await Task.sleep(nanoseconds: UInt64(toastDuration * 1_000_000_000))
+            } catch {
+                return // cancelled or interrupted — do not auto-save
+            }
+            guard let self else { return }
             do {
                 try await self.bluetoothService.confirmPendingScaleEntry()
             } catch {
-                self.logger.log(level: .error, tag: self.tag, message: "Failed to auto-save weight reading on timeout.", data: error.localizedDescription)
+                self.logger.log(
+                    level: .error,
+                    tag: self.tag,
+                    message: "Failed to auto-save weight reading on timeout.",
+                    data: error.localizedDescription
+                )
             }
         }
 
@@ -927,7 +993,12 @@ class BottomTabBarViewModel: ObservableObject {
                             do {
                                 try await self.bluetoothService.confirmPendingBpmEntry()
                             } catch {
-                                self.logger.log(level: .error, tag: self.tag, message: "Failed to save BPM reading.", data: error.localizedDescription)
+                                self.logger.log(
+                                    level: .error,
+                                    tag: self.tag,
+                                    message: "Failed to save BPM reading.",
+                                    data: error.localizedDescription
+                                )
                             }
                         }
                     },
@@ -952,7 +1023,12 @@ class BottomTabBarViewModel: ObservableObject {
             do {
                 try await self.bluetoothService.confirmPendingBpmEntry()
             } catch {
-                self.logger.log(level: .error, tag: self.tag, message: "Failed to auto-save BPM reading on timeout.", data: error.localizedDescription)
+                self.logger.log(
+                    level: .error,
+                    tag: self.tag,
+                    message: "Failed to auto-save BPM reading on timeout.",
+                    data: error.localizedDescription
+                )
             }
         }
 

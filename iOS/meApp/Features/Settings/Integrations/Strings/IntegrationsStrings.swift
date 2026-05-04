@@ -14,4 +14,12 @@ struct IntegrationsStrings {
     static let appleHealth = "Apple Health"
     static let fitbit = "Fitbit"
     static let myFitnessPal = "My Fitness Pal"
-} 
+
+    /// Request new integration button and modal.
+    static let requestNewIntegration = "REQUEST NEW INTEGRATION"
+    static let requestIntegrationTitle = "Request an Integration"
+    static let requestIntegrationMessage = "What would you like to see added?"
+    static let requestIntegrationPlaceholder = "integration"
+    static let requestIntegrationSend = "SEND"
+    static let requestIntegrationCancel = "CANCEL"
+}

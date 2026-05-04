@@ -14,11 +14,11 @@ struct DashboardStrings {
     static let metricInfo = "Metric info"
     static let saveChanges = "Save Changes"
     static let resetDashboard = "Reset Dashboard"
-    
+
     // Dashboard Metrics
     static let customizeDashboardTitle = "Customize App Dashboard"
     static let customizeDashboardSubtitle = "Rearrange tiles and/or hide unwanted metrics from your dashboard."
-    
+
     static let weight = "weight"
     static let bmi = "bmi"
     static let bodyFatBase = "body fat"
@@ -31,8 +31,8 @@ struct DashboardStrings {
     static let proteinBase = "protein"
     static let skelMuscle = "skel muscle"
     static let bmrBase = "bmr"
-    static let metAge = "meta age" 
-    
+    static let metAge = "meta age"
+
     // Units
     static let percentageUnitSymbol = "%"
     static let bpmUnitSymbol = "bpm"
@@ -48,7 +48,7 @@ struct DashboardStrings {
     static let protein = "\(proteinBase) \(percentageUnitSymbol)"
     static let bmrKcal = "\(bmrBase) \(kcalUnitSymbol)"
     static let metAgeUnit = "yrs"
-    
+
     // Streak/Loss labels
     static let currentStreak = "current streak"
     static let longestStreak = "longest streak"
@@ -59,7 +59,7 @@ struct DashboardStrings {
     static let lbsMonth = "lbs/month"
     static let lbsYear = "lbs/year"
     static let lbsTotal = "lbs/total"
-    
+
     // Goal Card/Progress strings
     static let goalTypeLabel = "Goal Type: %@"
     static let plus = "+"
@@ -74,7 +74,7 @@ struct DashboardStrings {
     static func gainGoalWeightLabel(_ goalWeight: String, _ unit: String) -> String {
         return "\(unit) to \(goalWeight) \(unit) goal weight"
     }
-    
+
     // Empty state messages
     static let noEntriesMessage = "To collect an entry, connect a scale or add a manual entry."
     static func noEntriesInPeriodMessage(_ timePeriod: String) -> String {
@@ -114,4 +114,5 @@ struct DashboardStrings {
     static let bpmReadingArrivalDiscard = "DISCARD"
     static let bpmReadingArrivalMmhg = "mmhg"
     static let bpmReadingArrivalPulse = "pulse"
+    static let weightReadingArrivalJustNow = "Just now"
 }

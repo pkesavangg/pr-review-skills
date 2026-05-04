@@ -22,6 +22,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
     private let integrationApiRepo: IntegrationRepositoryAPIProtocol
     /// Migration service for Ionic app data
     private let migrationService: AccountMigrationService
+    private let scaleRepo: ScaleRepositoryProtocol
     @Published private(set) var isIonicMigrationInProgress: Bool = false
     @Published var activeAccount: AccountSnapshot?
     @Published var allAccounts: [AccountSnapshot] = []
@@ -38,6 +39,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         integrationApiRepo: IntegrationRepositoryAPIProtocol? = nil,
         networkMonitor: NetworkMonitoring? = nil,
         migrationService: AccountMigrationService? = nil,
+        scaleRepo: ScaleRepositoryProtocol? = nil,
         performInitialLoad: Bool = true
     ) {
         self.apiRepo = apiRepo ?? AccountRepositoryAPI()
@@ -45,6 +47,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         self.integrationApiRepo = integrationApiRepo ?? IntegrationAPIRepository()
         self.networkMonitor = networkMonitor ?? NetworkMonitor.shared
         self.migrationService = migrationService ?? AccountMigrationService()
+        self.scaleRepo = scaleRepo ?? ScaleRepository()
         
         $activeAccount
             .dropFirst()
@@ -57,9 +60,18 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
                     // One-time migration: ensure productTypes is populated
                     if let accountId = snapshot?.accountId {
                         Task { @MainActor [weak self] in
-                            guard let self,
-                                  let account = try? await self.localRepo.fetchAccount(byId: accountId) else { return }
-                            self.migrationService.migrateProductTypesIfNeeded(for: account)
+                            guard let self else { return }
+                            do {
+                                guard let account = try await self.localRepo.fetchAccount(byId: accountId) else { return }
+                                let devices = try await self.scaleRepo.listScales(forAccountId: accountId)
+                                self.migrationService.migrateProductTypesIfNeeded(for: account, devices: devices)
+                            } catch {
+                                self.logger.log(
+                                    level: .error,
+                                    tag: self.tag,
+                                    message: "productTypes migration skipped: \(error)"
+                                )
+                            }
                         }
                     }
                 }
