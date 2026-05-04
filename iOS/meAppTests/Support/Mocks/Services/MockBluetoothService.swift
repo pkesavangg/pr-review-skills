@@ -80,21 +80,32 @@ final class MockBluetoothService: BluetoothServiceProtocol {
 
     let deviceDiscoveredSubject = PassthroughSubject<DeviceDiscoveryEvent, Never>()
     let newEntryReceivedSubject = PassthroughSubject<EntryNotification, Never>()
+    let pendingScaleEntrySubject = PassthroughSubject<EntryNotification, Never>()
     let liveMeasurementSubject = PassthroughSubject<GGWeightEntry, Never>()
 
     var deviceDiscoveredPublisher: AnyPublisher<DeviceDiscoveryEvent, Never> { deviceDiscoveredSubject.eraseToAnyPublisher() }
     var deviceInfoUpdatedPublisher: AnyPublisher<DeviceInfo, Never> { Empty().eraseToAnyPublisher() }
     var showWeightOnlyModeAlertPublisher: AnyPublisher<Bool, Never> { Empty().eraseToAnyPublisher() }
     var newEntryReceivedPublisher: AnyPublisher<EntryNotification, Never> { newEntryReceivedSubject.eraseToAnyPublisher() }
+    var pendingScaleEntryPublisher: AnyPublisher<EntryNotification, Never> { pendingScaleEntrySubject.eraseToAnyPublisher() }
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> { Empty().eraseToAnyPublisher() }
     var liveMeasurementPublisher: AnyPublisher<GGWeightEntry, Never> { liveMeasurementSubject.eraseToAnyPublisher() }
 
     let newBpmReadingReceivedSubject = PassthroughSubject<BpmMeasurement, Never>()
     var newBpmReadingReceivedPublisher: AnyPublisher<BpmMeasurement, Never> { newBpmReadingReceivedSubject.eraseToAnyPublisher() }
 
+    private(set) var confirmPendingScaleEntryCalls = 0
+    private(set) var discardPendingScaleEntryCalls = 0
+    var confirmPendingScaleEntryError: Error?
+
     func initialize() {}
     func stopScan() {}
     func startBluetoothOperations() async {}
+    func confirmPendingScaleEntry() async throws {
+        confirmPendingScaleEntryCalls += 1
+        if let error = confirmPendingScaleEntryError { throw error }
+    }
+    func discardPendingScaleEntry() { discardPendingScaleEntryCalls += 1 }
     func disconnectConnectedScales() async { disconnectConnectedScalesCalls += 1 }
     func reapplySkipDevicesExcludingPaired() { reapplySkipDevicesExcludingPairedCalls += 1 }
     func handleWeightOnlyModeAlertDismissed() { handleWeightOnlyModeAlertDismissedCalls += 1 }

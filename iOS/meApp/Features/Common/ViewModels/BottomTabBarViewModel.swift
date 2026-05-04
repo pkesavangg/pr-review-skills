@@ -86,6 +86,8 @@ class BottomTabBarViewModel: ObservableObject {
     private let toastLang = ToastStrings.self
     private let tag = "BottomTabBarViewModel"
     private var cancellables: Set<AnyCancellable> = []
+    /// Tracks the auto-save timeout task for the weight reading arrival toast.
+    private var weightReadingTimeoutTask: Task<Void, Never>?
     private let promptDelay = 3.0 // Delay before checking Apple Health integration status and set a goal prompt
     /// Retains the Combine subscription for app-active notifications specifically used
     /// when we need to re-check HealthKit permissions after the user is redirected to
@@ -107,16 +109,37 @@ class BottomTabBarViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Subscribe to new entry events (uses EntryNotification for safe cross-actor data passing).
-        // Debounce to coalesce rapid emissions (e.g. multiple buffered entries syncing after
-        // Bluetooth reconnect) into a single toast instead of one per entry.
+        // Baby scale entries arrive already saved — show the assign/discard card.
+        // Always surface baby readings even during setup (first reading from a newly paired
+        // scale arrives while isSetupInProgress is still true).
         bluetoothService.newEntryReceivedPublisher
             .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
-            .sink { [weak self] _ in
-                guard let self else { return }
-                if !self.bluetoothService.isSetupInProgress {
-                    notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
-                }
+            .filter { $0.entryType == EntryType.baby.rawValue }
+            .sink { [weak self] notification in
+                self?.showBabyReadingArrivalCard(notification: notification)
+            }
+            .store(in: &cancellables)
+
+        // BPM entries are saved immediately and fire newEntryReceivedPublisher.
+        // Show the weight-style SAVE/DISCARD card so the user can keep or drop the reading.
+        // Suppress during setup to avoid bulk-sync noise.
+        bluetoothService.newEntryReceivedPublisher
+            .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
+            .filter { $0.entryType == EntryType.bpm.rawValue }
+            .sink { [weak self] notification in
+                guard let self, !self.bluetoothService.isSetupInProgress else { return }
+                self.showBpmReadingArrivalCard(notification: notification)
+            }
+            .store(in: &cancellables)
+
+        // Weight scale entries are held in BluetoothService pending user confirmation.
+        // The entry is NOT yet saved when this fires. Suppress during setup to avoid
+        // bulk-sync noise from buffered entries reconnecting.
+        bluetoothService.pendingScaleEntryPublisher
+            .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
+            .sink { [weak self] notification in
+                guard let self, !self.bluetoothService.isSetupInProgress else { return }
+                self.showWeightScaleReadingArrivalCard(notification: notification)
             }
             .store(in: &cancellables)
 
@@ -634,6 +657,227 @@ class BottomTabBarViewModel: ObservableObject {
             )
             notificationService.showAlert(alert)
         }
+    }
+
+    // MARK: - Baby Reading Arrival Card
+
+    private func babyWeightString(decigrams: Int, source: String?, isMetric: Bool) -> String {
+        guard decigrams > 0 else { return "--" }
+        if isMetric {
+            let grad = ConversionTools.convertToDisplayWeightBase(
+                decigrams: decigrams, source: source, unit: .kg, isBabyScaleEntry: true
+            )
+            let kg = ConversionTools.convertBabyDecigramsToKg(grad)
+            return String(format: "%.3f kg", kg)
+        } else {
+            let grad = ConversionTools.convertToDisplayWeightBase(
+                decigrams: decigrams, source: source, unit: .lbOz, isBabyScaleEntry: true
+            )
+            let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(grad)
+            return "\(lbsOz.lbs) lbs \(String(format: "%.1f", lbsOz.oz)) oz"
+        }
+    }
+
+    /// Shows a reading-arrival card when a baby scale entry arrives via Bluetooth.
+    /// The entry is already persisted at this point; tapping DON'T ASSIGN deletes it.
+    private func showBabyReadingArrivalCard(notification: EntryNotification) {
+        let lang = DashboardStrings.self
+        let isMetric = accountService.activeAccount?.weightUnit == .kg
+        let weightString = babyWeightString(
+            decigrams: notification.babyWeight ?? 0,
+            source: notification.babySource,
+            isMetric: isMetric
+        )
+
+        let message = "\(weightString) · \(lang.babyReadingArrivalJustNow)"
+        let entryId = notification.id
+
+        let toast = ToastModel(
+            title: lang.babyReadingArrivalTitle,
+            message: message,
+            btnTextView: AnyView(
+                BabyReadingArrivalCTAView(
+                    onAssign: { [weak self] in
+                        // Entry is already saved — nothing to do; card dismisses automatically
+                        self?.notificationService.dismissToast()
+                        self?.logger.log(
+                            level: .info,
+                            tag: self?.tag ?? "",
+                            message: "Baby reading assigned. entryId=\(entryId)"
+                        )
+                    },
+                    onDiscard: { [weak self] in
+                        guard let self else { return }
+                        self.notificationService.dismissToast()
+                        Task { [weak self] in
+                            guard let self else { return }
+                            do {
+                                try await self.entryService.deleteEntry(entryId: entryId)
+                                self.logger.log(level: .info, tag: self.tag, message: "Baby reading discarded. entryId=\(entryId)")
+                            } catch {
+                                self.logger.log(
+                                    level: .error,
+                                    tag: self.tag,
+                                    message: "Failed to discard baby reading. entryId=\(entryId)",
+                                    data: error.localizedDescription
+                                )
+                                self.notificationService.showToast(
+                                    ToastModel(message: "Failed to remove reading. Please try again.")
+                                )
+                            }
+                        }
+                    }
+                )
+            ),
+            duration: 8.0
+        )
+
+        logger.log(level: .info, tag: tag, message: "Showing baby reading arrival card. weight=\(weightString)")
+        notificationService.showToast(toast)
+    }
+
+    private func weightDisplayString(stored: Int, isMetric: Bool) -> String {
+        guard stored > 0 else { return "--" }
+        let display = ConversionTools.convertStoredToDisplay(Double(stored), isMetric: isMetric)
+        return isMetric
+            ? String(format: "%.1f kg", display)
+            : String(format: "%.1f lbs", display)
+    }
+
+    /// Shows a reading-arrival card when a weight scale entry arrives via Bluetooth.
+    /// The entry has NOT been saved yet. Tapping SAVE confirms it; tapping DISCARD drops it.
+    /// If the toast times out without user interaction the entry is saved automatically.
+    private func showWeightScaleReadingArrivalCard(notification: EntryNotification) { // swiftlint:disable:this function_body_length
+        let lang = DashboardStrings.self
+        let isMetric = accountService.activeAccount?.weightUnit == .kg
+        let weightString = weightDisplayString(stored: notification.weight ?? 0, isMetric: isMetric)
+
+        let message = "\(weightString) - \(lang.weightReadingArrivalJustNow)"
+        let toastDuration = 8.0
+
+        // Cancel any in-flight timeout task for a previous toast
+        weightReadingTimeoutTask?.cancel()
+
+        let toast = ToastModel(
+            title: lang.weightReadingArrivalTitle,
+            message: message,
+            btnTextView: AnyView(
+                WeightScaleReadingArrivalCTAView(
+                    onSave: { [weak self] in
+                        guard let self else { return }
+                        self.weightReadingTimeoutTask?.cancel()
+                        self.notificationService.dismissToast()
+                        Task { [weak self] in
+                            guard let self else { return }
+                            do {
+                                try await self.bluetoothService.confirmPendingScaleEntry()
+                            } catch {
+                                self.logger.log(
+                                    level: .error,
+                                    tag: self.tag,
+                                    message: "Failed to save weight reading.",
+                                    data: error.localizedDescription
+                                )
+                            }
+                        }
+                    },
+                    onDiscard: { [weak self] in
+                        guard let self else { return }
+                        self.weightReadingTimeoutTask?.cancel()
+                        self.bluetoothService.discardPendingScaleEntry()
+                        self.notificationService.dismissToast()
+                        self.logger.log(level: .info, tag: self.tag, message: "Weight reading discarded.")
+                    }
+                )
+            ),
+            duration: toastDuration
+        )
+
+        // Auto-save after the toast duration if the user didn't act.
+        // confirmPendingScaleEntry() is a no-op if pendingScaleEntry is already nil
+        // (meaning the user tapped SAVE or DISCARD before the timeout fired).
+        weightReadingTimeoutTask = Task { [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: UInt64(toastDuration * 1_000_000_000))
+            } catch {
+                return // cancelled or interrupted — do not auto-save
+            }
+            guard let self else { return }
+            do {
+                try await self.bluetoothService.confirmPendingScaleEntry()
+            } catch {
+                self.logger.log(
+                    level: .error,
+                    tag: self.tag,
+                    message: "Failed to auto-save weight reading on timeout.",
+                    data: error.localizedDescription
+                )
+            }
+        }
+
+        logger.log(level: .info, tag: tag, message: "Showing weight reading arrival card. weight=\(weightString)")
+        notificationService.showToast(toast)
+    }
+
+    /// Shows a reading-arrival card when a BPM entry arrives via Bluetooth.
+    /// The entry is already persisted at this point; tapping DISCARD deletes it.
+    private func showBpmReadingArrivalCard(notification: EntryNotification) { // swiftlint:disable:this function_body_length
+        let lang = DashboardStrings.self
+        let entryId = notification.id
+
+        let systolic = notification.systolic ?? 0
+        let diastolic = notification.diastolic ?? 0
+        let readingString = systolic > 0 && diastolic > 0
+            ? "\(systolic)/\(diastolic) mmHg"
+            : "--"
+
+        let message = "\(readingString) - \(lang.bpmReadingArrivalJustNow)"
+
+        let toast = ToastModel(
+            title: lang.bpmReadingArrivalTitle,
+            message: message,
+            btnTextView: AnyView(
+                WeightScaleReadingArrivalCTAView(
+                    onSave: { [weak self] in
+                        self?.notificationService.dismissToast()
+                        self?.logger.log(
+                            level: .info,
+                            tag: self?.tag ?? "",
+                            message: "BPM reading kept. entryId=\(entryId)"
+                        )
+                    },
+                    onDiscard: { [weak self] in
+                        guard let self else { return }
+                        self.notificationService.dismissToast()
+                        Task { [weak self] in
+                            guard let self else { return }
+                            do {
+                                try await self.entryService.deleteEntry(entryId: entryId)
+                                self.logger.log(
+                                    level: .info,
+                                    tag: self.tag,
+                                    message: "BPM reading discarded. entryId=\(entryId)"
+                                )
+                            } catch {
+                                self.logger.log(
+                                    level: .error,
+                                    tag: self.tag,
+                                    message: "Failed to discard BPM reading. entryId=\(entryId)",
+                                    data: error.localizedDescription
+                                )
+                                self.notificationService.showToast(
+                                    ToastModel(message: "Failed to remove reading. Please try again.")
+                                )
+                            }
+                        }
+                    }
+                )
+            ),
+            duration: 8.0
+        )
+
+        logger.log(level: .info, tag: tag, message: "Showing BPM reading arrival card. reading=\(readingString)")
+        notificationService.showToast(toast)
     }
 
     // MARK: - Scale Discovery Handling

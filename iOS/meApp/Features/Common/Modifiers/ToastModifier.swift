@@ -4,6 +4,7 @@
 //
 //  Created by Kesavan Panchabakesan on 04/06/25.
 //
+import Combine
 import SwiftUI
 
 /// A view modifier that presents a customizable toast notification with optional action button.
@@ -43,6 +44,7 @@ import SwiftUI
 struct ToastModifier: ViewModifier {
     @Environment(\.appTheme) private var theme
     @Binding var toastData: ToastModel?
+    var dismissSignal: AnyPublisher<Void, Never>?
 
     @State private var offset = CGSize.zero
     @State private var isDragging = false
@@ -73,6 +75,13 @@ struct ToastModifier: ViewModifier {
             .onChange(of: toastData) {
                 if let toast = toastData {
                     addToast(toast)
+                }
+            }
+            .ifLet(dismissSignal) { view, signal in
+                view.onReceive(signal) { _ in
+                    if let first = activeToasts.first {
+                        removeToast(id: first.id)
+                    }
                 }
             }
         }

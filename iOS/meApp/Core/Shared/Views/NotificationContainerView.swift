@@ -30,7 +30,7 @@ struct NotificationContainerView: View {
     var body: some View {
         VStack {}
         .presentAlert(alertData: $viewModel.alertData)
-        .presentToast(data: $viewModel.toastData)
+        .presentToast(data: $viewModel.toastData, dismissSignal: viewModel.dismissToastSignal)
         .presentLoader(loaderData: $viewModel.loaderData)
         .presentModal(modalStack: $viewModel.modalViewData)
         .preferredColorScheme(themeManager.getPreferredAppearanceMode())
