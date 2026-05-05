@@ -694,6 +694,16 @@ constructor(
           entryRepository,
           operationsFromApi,
         )
+        // Mirrors operation.service.ts#executeOperations (Ionic app): forward
+        // every server-side CREATE to Health Connect. Covers Wi-Fi and R4
+        // scales whose readings reach the app only via the server, not
+        // through addEntry()/syncOperations(newEntries=...).
+        // Server responses use lowercase operationType ("create"), while
+        // locally-built entries use OperationType.CREATE.name ("CREATE"),
+        // so compare ignoring case.
+        operationsFromApi
+          .filter { it.entry.operationType.equals(OperationType.CREATE.name, ignoreCase = true) }
+          .forEach { tryLocalIntegration(it) }
       }
 
       // 7. API sync is done: clear loader now and refresh the progress cache in the background
