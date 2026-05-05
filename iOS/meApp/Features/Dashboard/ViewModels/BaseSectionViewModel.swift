@@ -143,7 +143,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     var chartSeriesData: [GraphSeries] {
         guard let store = dashboardStore else { return [] }
         
-        let currentMetric = store.state.ui.selectedMetricLabel
+        let currentMetric = store.ui.selectedMetricLabel
         
         // During scrolling, use cached data ONLY if the metric selection hasn't changed
         // If metric changed (selection or deselection), get fresh data from store
@@ -291,13 +291,13 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         // We should NOT recalculate here as it would overwrite anchor-based positioning
         if hasXAxis {
             // Use the store's already-calculated scroll position
-            self.scrollPosition = store.state.graph.xScrollPosition
+            self.scrollPosition = store.graph.xScrollPosition
         } else {
             // Non-scrollable periods (Total) don't need scroll positioning
-            self.scrollPosition = store.state.graph.xScrollPosition
+            self.scrollPosition = store.graph.xScrollPosition
         }
         
-        self.isScrolling = store.state.graph.isScrolling
+        self.isScrolling = store.graph.isScrolling
         updateYAxisConfiguration()
         // Sync with any existing cached Y-axis values from the store
         syncYAxisFromStore()
@@ -416,7 +416,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         // Cache current data and metric for use during scrolling
         if let store = dashboardStore {
             cachedChartSeriesData = store.chartSeriesData
-            cachedChartSeriesMetric = store.state.ui.selectedMetricLabel
+            cachedChartSeriesMetric = store.ui.selectedMetricLabel
         } else {
             cachedChartSeriesData = []
             cachedChartSeriesMetric = nil
@@ -602,9 +602,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     func formatSelectedXAxisLabel() -> String? {
         guard let store = dashboardStore else { return nil }
         // Prefer the view model's snapped selection first for immediate UI sync
-        let date: Date? = self.selectedDate ?? store.state.graph.selectedXValue ?? store.state.graph.selectedPoint?.date
+        let date: Date? = self.selectedDate ?? store.graph.selectedXValue ?? store.graph.selectedPoint?.date
         guard let date else { return nil }
-        return store.graphManager.formatSelectedDate(date, for: store.state.graph.selectedPeriod)
+        return store.graphManager.formatSelectedDate(date, for: store.graph.selectedPeriod)
     }
     
     // MARK: - Chart Content Helpers
@@ -664,14 +664,14 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         guard let store = dashboardStore else { return }
 
         // Read cached values from dashboard store
-        if let cachedDomain = store.state.graph.cachedYAxisDomain {
+        if let cachedDomain = store.graph.cachedYAxisDomain {
             // Animate domain changes smoothly
             withAnimation(.easeInOut(duration: 0.15)) {
                 self.yAxisDomain = cachedDomain
             }
         }
 
-        if let cachedTicks = store.state.graph.cachedYAxisTicks {
+        if let cachedTicks = store.graph.cachedYAxisTicks {
             // Suppress animation for tick changes
             withTransaction(Transaction(animation: nil)) {
                 self.yAxisTicks = cachedTicks

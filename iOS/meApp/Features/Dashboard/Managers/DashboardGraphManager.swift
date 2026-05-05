@@ -48,6 +48,38 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return cal
     }()
 
+    // MARK: - Interpolation cache (Step 9, history doc §3.14 follow-up)
+
+    /// Cheap identity key for `interpolatedDisplayWeight`'s precomputed segment
+    /// data. Samples first/last operation + count to detect data mutations
+    /// without hashing the entire array per call. Inputs that don't change
+    /// during a scroll gesture (operations, weightless mode, anchor weight,
+    /// unit) form the key; only the query date varies, so the cache hits on
+    /// every per-tick call inside a single scroll gesture.
+    fileprivate struct InterpolationCacheKey: Equatable {
+        let count: Int
+        let firstDate: Double
+        let firstWeight: Double
+        let lastDate: Double
+        let lastWeight: Double
+        let isWeightlessMode: Bool
+        let anchorWeightBits: UInt64
+        let conversionProbe: UInt64
+        let selectedPeriod: String
+    }
+
+    /// Precomputed Hermite spline segment data, valid as long as the matching
+    /// `InterpolationCacheKey` is unchanged.
+    fileprivate struct InterpolationCache {
+        let key: InterpolationCacheKey
+        let xs: [Double]
+        let ys: [Double]
+        let d: [Double]
+    }
+
+    /// Cache of the last-computed Hermite segment data. `nil` until first call.
+    private var interpCache: InterpolationCache?
+
     private var lastCalculatedVisibleOps: [BathScaleWeightSummary] = []
     private var lastVisibleOpsScrollPosition: Date?
     private var lastVisibleOpsPeriod: TimePeriod?
@@ -178,6 +210,14 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     /// Computes an interpolated display weight at a given date using surrounding summaries.
     /// If only one side exists, falls back to that side's display weight.
+    ///
+    /// Step 9 (history doc §3.14 follow-up): the precomputed segment data
+    /// (`xs`, `ys`, Hermite tangents `d`) is cached in `interpCache` so that
+    /// per-scroll-tick calls — which keep `operations` / `isWeightlessMode` /
+    /// `anchorWeight` / unit constant — skip the O(n) sort + slope + tangent
+    /// build (steps 1–5) and execute only the O(log n) segment locate +
+    /// O(1) Hermite eval (step 6). Drops a 7-sample leaf to ~0 in the worst
+    /// scroll hang.
     func interpolatedDisplayWeight(
         at date: Date,
         from operations: [BathScaleWeightSummary],
@@ -198,36 +238,135 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return cal.date(byAdding: .hour, value: 12, to: dayStart) ?? input
         }
 
-        // 1) Sort and map to (x,y) in display space (units or weightless delta)
-        let sorted = operations.sorted { $0.date < $1.date }
-        let xs: [Double] = sorted.map { normalizedInterpolationDate($0.date).timeIntervalSinceReferenceDate }
+        // ----- Cache key -----
+        // Cheap signature of inputs that affect steps 1–5. The signature samples
+        // first/last operations + count to detect data mutations without hashing
+        // the entire array per call.
+        let firstOp = operations.first
+        let lastOp = operations.last
+        // Probe convertWeight(1000) so a unit toggle (lb ↔ kg) busts the cache.
+        let conversionProbe = convertWeight(1000).bitPattern
+        let key = InterpolationCacheKey(
+            count: operations.count,
+            firstDate: firstOp?.date.timeIntervalSinceReferenceDate ?? 0,
+            firstWeight: firstOp?.weight ?? 0,
+            lastDate: lastOp?.date.timeIntervalSinceReferenceDate ?? 0,
+            lastWeight: lastOp?.weight ?? 0,
+            isWeightlessMode: isWeightlessMode,
+            anchorWeightBits: (anchorWeight ?? .nan).bitPattern,
+            conversionProbe: conversionProbe,
+            selectedPeriod: state.selectedPeriod.rawValue
+        )
 
-        func mapWeight(_ w: Int) -> Double {
-            if isWeightlessMode {
-                guard let anchor = anchorWeight else { return 0 }
-                return convertWeight(w) - anchor
-            }
-            return convertWeight(w)
+        // Single-point fast path (no spline)
+        if operations.count == 1 {
+            let only = operations[0]
+            let onlyY: Double = {
+                if isWeightlessMode {
+                    guard let anchor = anchorWeight else { return 0 }
+                    return convertWeight(Int(only.weight)) - anchor
+                }
+                return convertWeight(Int(only.weight))
+            }()
+            return onlyY
         }
-        let ys: [Double] = sorted.map { mapWeight(Int($0.weight)) }
+
+        let xs: [Double]
+        let ys: [Double]
+        let d: [Double]
+
+        if let cached = interpCache, cached.key == key {
+            // Cache hit — skip steps 1–5.
+            xs = cached.xs
+            ys = cached.ys
+            d = cached.d
+        } else {
+            // Cache miss — recompute steps 1–5.
+            // 1) Sort and map to (x,y) in display space (units or weightless delta)
+            let sorted = operations.sorted { $0.date < $1.date }
+            xs = sorted.map { normalizedInterpolationDate($0.date).timeIntervalSinceReferenceDate }
+
+            func mapWeight(_ w: Int) -> Double {
+                if isWeightlessMode {
+                    guard let anchor = anchorWeight else { return 0 }
+                    return convertWeight(w) - anchor
+                }
+                return convertWeight(w)
+            }
+            ys = sorted.map { mapWeight(Int($0.weight)) }
+
+            let n = xs.count
+
+            // 4) Slopes m[k] across all segments (needed for monotone tangents)
+            var m = Array(repeating: 0.0, count: n - 1)
+            for k in 0..<(n - 1) {
+                let h = xs[k + 1] - xs[k]
+                m[k] = h == 0 ? 0 : (ys[k + 1] - ys[k]) / h
+            }
+
+            // 5) Compute Fritsch–Carlson tangents d[k]
+            var dCalc = Array(repeating: 0.0, count: n)
+            if n == 2 {
+                // Straight line case
+                dCalc[0] = m[0]
+                dCalc[1] = m[0]
+            } else {
+                // Interior points
+                for k in 1..<(n - 1) {
+                    let m0 = m[k - 1], m1 = m[k]
+                    if m0 == 0 || m1 == 0 || m0.sign != m1.sign {
+                        dCalc[k] = 0
+                    } else {
+                        let h0 = xs[k] - xs[k - 1]
+                        let h1 = xs[k + 1] - xs[k]
+                        let w1 = 2 * h1 + h0
+                        let w2 = h1 + 2 * h0
+                        dCalc[k] = (w1 + w2) / (w1 / m0 + w2 / m1)
+                    }
+                }
+                // Endpoints (Fritsch–Carlson one-sided)
+                do {
+                    let h0 = xs[1] - xs[0]
+                    let h1 = xs[2] - xs[1]
+                    var d0: Double
+                    if h0 + h1 == 0 {
+                        d0 = 0
+                    } else {
+                        d0 = ((2 * h0 + h1) * m[0] - h0 * m[1]) / (h0 + h1)
+                    }
+                    if d0.sign != m[0].sign { d0 = 0 }
+                    else if abs(d0) > 3 * abs(m[0]) { d0 = 3 * m[0] }
+                    dCalc[0] = d0
+                }
+                do {
+                    let hm1 = xs[n - 1] - xs[n - 2]
+                    let hm2 = xs[n - 2] - xs[n - 3]
+                    var dn1: Double
+                    if hm1 + hm2 == 0 {
+                        dn1 = 0
+                    } else {
+                        dn1 = ((2 * hm1 + hm2) * m[n - 2] - hm1 * m[n - 3]) / (hm1 + hm2)
+                    }
+                    if dn1.sign != m[n - 2].sign { dn1 = 0 }
+                    else if abs(dn1) > 3 * abs(m[n - 2]) { dn1 = 3 * m[n - 2] }
+                    dCalc[n - 1] = dn1
+                }
+            }
+            d = dCalc
+            interpCache = InterpolationCache(key: key, xs: xs, ys: ys, d: d)
+        }
 
         let n = xs.count
-        if n == 1 { return ys[0] }
-
         let t = normalizedInterpolationDate(date).timeIntervalSinceReferenceDate
 
         // 2) For dates outside the data range, return the edge values (clamping behavior)
-        // This allows interpolation to work at the boundaries while the calling method
-        // can decide whether to use these edge values or filter them out
         if t <= xs[0] { return ys[0] }
         if t >= xs[n - 1] { return ys[n - 1] }
 
-        // 3) Locate segment i such that xs[i] <= t <= xs[i+1]
-        //    (upperBound - 1)
+        // 3) Locate segment i such that xs[i] <= t <= xs[i+1] (upperBound - 1)
         var low = 0, high = n - 1
         while low <= high {
             let mid = (low + high) >> 1
-            // Use upperBound semantics so exact matches select the right segment (i = upperBound - 1)
             if xs[mid] <= t {
                 low = mid + 1
             } else {
@@ -237,68 +376,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let i = max(0, min(n - 2, low - 1))
         let h_i = xs[i + 1] - xs[i]
         if h_i == 0 { return ys[i] } // degenerate
-
-        // 4) Slopes m[k] across all segments (needed for monotone tangents)
-        var m = Array(repeating: 0.0, count: n - 1)
-        for k in 0..<(n - 1) {
-            let h = xs[k + 1] - xs[k]
-            m[k] = h == 0 ? 0 : (ys[k + 1] - ys[k]) / h
-        }
-
-        // 5) Compute Fritsch–Carlson tangents d[k]
-        var d = Array(repeating: 0.0, count: n)
-
-        if n == 2 {
-            // Straight line case
-            d[0] = m[0]
-            d[1] = m[0]
-        } else {
-            // Interior points
-            for k in 1..<(n - 1) {
-                let m0 = m[k - 1], m1 = m[k]
-                if m0 == 0 || m1 == 0 || m0.sign != m1.sign {
-                    d[k] = 0
-                } else {
-                    let h0 = xs[k] - xs[k - 1]
-                    let h1 = xs[k + 1] - xs[k]
-                    let w1 = 2 * h1 + h0
-                    let w2 = h1 + 2 * h0
-                    d[k] = (w1 + w2) / (w1 / m0 + w2 / m1)
-                }
-            }
-
-            // Endpoints (Fritsch–Carlson one-sided)
-            // d0
-            do {
-                let h0 = xs[1] - xs[0]
-                let h1 = xs[2] - xs[1]
-                // Guard against division by zero when consecutive timestamps are identical
-                var d0: Double
-                if h0 + h1 == 0 {
-                    d0 = 0
-                } else {
-                    d0 = ((2 * h0 + h1) * m[0] - h0 * m[1]) / (h0 + h1)
-                }
-                if d0.sign != m[0].sign { d0 = 0 }
-                else if abs(d0) > 3 * abs(m[0]) { d0 = 3 * m[0] }
-                d[0] = d0
-            }
-            // d_{n-1}
-            do {
-                let hm1 = xs[n - 1] - xs[n - 2]
-                let hm2 = xs[n - 2] - xs[n - 3]
-                // Guard against division by zero when consecutive timestamps are identical
-                var dn1: Double
-                if hm1 + hm2 == 0 {
-                    dn1 = 0
-                } else {
-                    dn1 = ((2 * hm1 + hm2) * m[n - 2] - hm1 * m[n - 3]) / (hm1 + hm2)
-                }
-                if dn1.sign != m[n - 2].sign { dn1 = 0 }
-                else if abs(dn1) > 3 * abs(m[n - 2]) { dn1 = 3 * m[n - 2] }
-                d[n - 1] = dn1
-            }
-        }
 
         // 6) Hermite evaluation on segment i
         let s = (t - xs[i]) / h_i

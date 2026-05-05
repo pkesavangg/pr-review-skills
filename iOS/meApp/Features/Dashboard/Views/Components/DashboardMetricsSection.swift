@@ -53,8 +53,8 @@ struct DashboardMetricsSection: View {
         .onAppear {
             if parentView == .R4ScaleSetup {
                 // Force edit mode in Scale Setup context
-                if !store.state.ui.isEditMode {
-                    store.state.ui.isEditMode = true
+                if !store.ui.isEditMode {
+                    store.ui.isEditMode = true
                 }
                 store.syncRemovalStateFromMetricsManager()
                 store.objectWillChange.send()
@@ -72,15 +72,15 @@ struct DashboardMetricsSection: View {
         }
         .onChange(of: parentView) { _, newValue in
             if newValue == .R4ScaleSetup {
-                if !store.state.ui.isEditMode {
-                    store.state.ui.isEditMode = true
+                if !store.ui.isEditMode {
+                    store.ui.isEditMode = true
                 }
             }
         }
-        .onChange(of: store.state.ui.isEditMode) { _, newValue in
+        .onChange(of: store.ui.isEditMode) { _, newValue in
             if parentView == .R4ScaleSetup && newValue == false {
                 // Keep edit mode on while customizing from Scale Setup
-                store.state.ui.isEditMode = true
+                store.ui.isEditMode = true
             }
         }
     }
@@ -89,14 +89,14 @@ struct DashboardMetricsSection: View {
         Group {
             MetricGridUIKitView(parentView: parentView, store: store, onMetricLongPress: { label in
                 // Long press on any metric should directly open edit dashboard mode
-                if !store.state.ui.isEditMode {
+                if !store.ui.isEditMode {
                     store.toggleEditMode()
                 }
             })
             .frame(minHeight: DevicePlatform.isTablet ? 74 : 100)
             .padding(.top, .spacingSM)
-            .id(store.state.ui.gridLayoutId)
-            .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
+            .id(store.ui.gridLayoutId)
+            .animation(.easeInOut(duration: 0.3), value: store.ui.gridLayoutId)
         }
     }
     
@@ -113,9 +113,9 @@ struct DashboardMetricsSection: View {
         Group {
             GoalStreakGridUIKitView(parentView: parentView, store: store)
                 .frame(minHeight: store.shouldShowGoalCardOrStreaks ? 100 : 200)
-                .padding(.top, store.state.ui.isGoalCardRemoved ? 0 : .spacingXS)
-                .id(store.state.ui.gridLayoutId)
-                .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
+                .padding(.top, store.ui.isGoalCardRemoved ? 0 : .spacingXS)
+                .id(store.ui.gridLayoutId)
+                .animation(.easeInOut(duration: 0.3), value: store.ui.gridLayoutId)
         }
     }
     
@@ -140,8 +140,8 @@ struct DashboardMetricsSection: View {
     
     private func skeletonProgressMetrics(hasContentAbove: Bool) -> some View {
         let columns = DevicePlatform.isTablet ? 4 : 2
-        let topInset: CGFloat = store.state.ui.isGoalCardRemoved ? .spacingLG : .spacingSM
-        let extraTopPadding: CGFloat = store.state.ui.isGoalCardRemoved ? 0 : .spacingXS
+        let topInset: CGFloat = store.ui.isGoalCardRemoved ? .spacingLG : .spacingSM
+        let extraTopPadding: CGFloat = store.ui.isGoalCardRemoved ? 0 : .spacingXS
 
         return VStack(spacing: .spacingLG) {
             SkeletonGoalCardView()

@@ -136,27 +136,27 @@ class MetricCell: UICollectionViewCell {
             label: item.label,
             icon: item.icon,
             dashboardType: dashboardType,
-            isEditMode: store.state.ui.isEditMode,
+            isEditMode: store.ui.isEditMode,
             isRemoved: itemIsRemoved,
-            isSelected: store.state.ui.selectedMetricLabel == item.label,
+            isSelected: store.ui.selectedMetricLabel == item.label,
             onToggleRemoval: {
                 store.toggleMetricRemoval(item.label)
             },
             onTap: {
                 // Only allow selection if not in edit mode
-                if !store.state.ui.isEditMode {
-                    if store.state.ui.selectedMetricLabel == item.label {
+                if !store.ui.isEditMode {
+                    if store.ui.selectedMetricLabel == item.label {
                         // Deselect if already selected
-                        store.state.ui.selectedMetricLabel = nil
+                        store.ui.selectedMetricLabel = nil
                         onSelectMetric?("")
                     } else {
                         // Select if not selected
-                        store.state.ui.selectedMetricLabel = item.label
+                        store.ui.selectedMetricLabel = item.label
                         onSelectMetric?(item.label)
                     }
                 }
             },
-            isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
+            isDropTarget: store.ui.dropHoverId == item.id.uuidString,
             onDrop: { _, _ in false }, // Drag and drop handled by UIKit
             onDropTargetChanged: { _ in },
             verticalPadding: dashboardType == .dashboard12 
@@ -166,25 +166,25 @@ class MetricCell: UICollectionViewCell {
         )
         
         // Only apply EditModeOverlay when in edit mode
-        let finalView = store.state.ui.isEditMode ? AnyView(
+        let finalView = store.ui.isEditMode ? AnyView(
             metricCardView
                 .editModeOverlay(
-                    isEditMode: store.state.ui.isEditMode,
+                    isEditMode: store.ui.isEditMode,
                     isRemoved: itemIsRemoved,
                     onToggleRemoval: {
                         store.toggleMetricRemoval(item.label)
                     },
-                    isBeingDragged: store.state.ui.draggingMetric?.id == item.id || isLongPressed || isTapped,
-                    isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
+                    isBeingDragged: store.ui.draggingMetric?.id == item.id || isLongPressed || isTapped,
+                    isDropTarget: store.ui.dropHoverId == item.id.uuidString,
                     rowIndex: rowIndex,
                     disableWiggle: itemIsRemoved // removed items must not wiggle
                 )
         ) : AnyView(metricCardView)
 
         overlayButtonAction = { store.toggleMetricRemoval(item.label) }
-        overlayButtonVisible = store.state.ui.isEditMode &&
-            !(isBeingDragged || store.state.ui.draggingMetric?.id == item.id || isLongPressed || isTapped) &&
-            !(store.state.ui.dropHoverId == item.id.uuidString)
+        overlayButtonVisible = store.ui.isEditMode &&
+            !(isBeingDragged || store.ui.draggingMetric?.id == item.id || isLongPressed || isTapped) &&
+            !(store.ui.dropHoverId == item.id.uuidString)
         setNeedsLayout()
         
         // Update root view with animation disabled to prevent visual glitches during cell configuration; rely on natural layout pass for better performance
@@ -195,7 +195,7 @@ class MetricCell: UICollectionViewCell {
         CATransaction.commit()
         // Remove previous gesture recognizers
         gestureRecognizers?.forEach { self.removeGestureRecognizer($0) }
-        if store.state.ui.isEditMode {
+        if store.ui.isEditMode {
             // In edit mode, rely on SwiftUI overlay buttons for add/remove; avoid intercepting taps here
         } else {
 
@@ -307,7 +307,7 @@ class MetricCell: UICollectionViewCell {
     override func layoutSubviews() {
         super.layoutSubviews()
         // Wiggle only in edit mode and only if not removed
-        if let store = currentStore, store.state.ui.isEditMode, isWiggling && !isRemoved {
+        if let store = currentStore, store.ui.isEditMode, isWiggling && !isRemoved {
             contentView.startWiggleWithRowIndex(rowIndex)
         } else {
             contentView.stopWiggle()
@@ -513,7 +513,7 @@ class MetricCell: UICollectionViewCell {
         case .began:
             isLongPressed = true
             // Enter edit mode on long press if not already in edit mode
-            if let store = currentStore, !store.state.ui.isEditMode {
+            if let store = currentStore, !store.ui.isEditMode {
                 store.toggleEditMode()
             }
             // Reconfigure to hide overlay during long press
@@ -544,7 +544,7 @@ class MetricCell: UICollectionViewCell {
     @objc private func handleNonEditSelectTap(_ gesture: UITapGestureRecognizer) {
         guard gesture.state == .ended, let item = representedItem else { return }
         // Toggle selection: deselect if same, otherwise select tapped
-        if currentStore?.state.ui.selectedMetricLabel == item.label {
+        if currentStore?.ui.selectedMetricLabel == item.label {
             onSelectMetricCallback?("")
         } else {
             onSelectMetricCallback?(item.label)

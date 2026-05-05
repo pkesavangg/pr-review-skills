@@ -87,9 +87,9 @@ class StreakCardCell: UICollectionViewCell {
             value: streakValue,
             label: item.label,
             icon: item.icon,
-            isEditMode: store.state.ui.isEditMode,
+            isEditMode: store.ui.isEditMode,
             isRemoved: isRemoved,
-            isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
+            isDropTarget: store.ui.dropHoverId == item.id.uuidString,
             onToggleRemoval: {
                 store.toggleStreakRemoval(item.label)
             },
@@ -99,7 +99,7 @@ class StreakCardCell: UICollectionViewCell {
         )
         
         // Apply EditModeOverlay to the StreakCardView only when appropriate
-        let shouldShowOverlay = store.state.ui.isEditMode && 
+        let shouldShowOverlay = store.ui.isEditMode && 
                                !(currentIsBeingDragged || isLongPressed || suppressOverlay)
         
         let viewWithOverlay: AnyView
@@ -113,13 +113,13 @@ class StreakCardCell: UICollectionViewCell {
                             store.toggleStreakRemoval(item.label)
                         },
                         isBeingDragged: currentIsBeingDragged || isLongPressed, // Use actual drag state
-                        isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
+                        isDropTarget: store.ui.dropHoverId == item.id.uuidString,
                         rowIndex: rowIndex,
                         disableWiggle: isRemoved, 
                         iconOffset: CGSize(width: 22, height: -32)
                     )
             )
-            overlayButtonVisible = store.state.ui.dropHoverId != item.id.uuidString
+            overlayButtonVisible = store.ui.dropHoverId != item.id.uuidString
             overlayButtonAction = { store.toggleStreakRemoval(item.label) }
         } else {
             viewWithOverlay = AnyView(streakCardView)
@@ -157,7 +157,7 @@ class StreakCardCell: UICollectionViewCell {
         // Set up gesture recognizers based on edit mode
         gestureRecognizers?.forEach { self.removeGestureRecognizer($0) }
         
-        if store.state.ui.isEditMode {
+        if store.ui.isEditMode {
             // In edit mode, rely on SwiftUI overlay buttons for add/remove
             // No custom gesture recognizers needed
         } else {
@@ -375,7 +375,7 @@ class StreakCardCell: UICollectionViewCell {
     override func layoutSubviews() {
         super.layoutSubviews()
         // Wiggle only in edit mode and only if not removed
-        if let store = currentStore, store.state.ui.isEditMode, isWiggling && !isRemoved {
+        if let store = currentStore, store.ui.isEditMode, isWiggling && !isRemoved {
             contentView.startWiggleWithRowIndex(rowIndex)
         } else {
             contentView.stopWiggle()
@@ -424,7 +424,7 @@ class StreakCardCell: UICollectionViewCell {
             // Apply mild selection shadow to indicate selection like MetricCell
             applySelectionShadow()
             // Enter edit mode on long press if not already in edit mode
-            if let store = currentStore, !store.state.ui.isEditMode {
+            if let store = currentStore, !store.ui.isEditMode {
                 store.toggleEditMode()
             }
             // Reconfigure to hide overlay during long press
@@ -454,7 +454,7 @@ class StreakCardCell: UICollectionViewCell {
     @objc private func handleNonEditSelectTap(_ gesture: UITapGestureRecognizer) {
         guard gesture.state == .ended, let item = representedItem else { return }
         // Toggle selection: deselect if same, otherwise select tapped
-        if currentStore?.state.ui.selectedMetricLabel == item.label {
+        if currentStore?.ui.selectedMetricLabel == item.label {
             onSelectMetricCallback?("")
         } else {
             onSelectMetricCallback?(item.label)

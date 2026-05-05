@@ -49,7 +49,7 @@ struct GraphView: View {
 
     // Whether the selection callout is currently visible for the active period
     private var isShowingSelectionCallout: Bool {
-        switch dashboardStore.state.graph.selectedPeriod {
+        switch dashboardStore.graph.selectedPeriod {
         case .week:
             return weekSectionViewModel.showCrosshair
         case .month:
@@ -63,7 +63,7 @@ struct GraphView: View {
 
     // Show skeleton until graph is ready (set after settling delay)
     private var shouldShowSkeleton: Bool {
-        !dashboardStore.state.graph.isGraphReady
+        !dashboardStore.graph.isGraphReady
     }
 
     // Latest entry date in the active period, used to detect when a newly added
@@ -95,8 +95,8 @@ struct GraphView: View {
             }
             .opacity(shouldShowSkeleton ? 0 : 1)
         }
-        .animation(.easeInOut(duration: 0.3), value: dashboardStore.state.graph.isGraphReady)
-        .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, newValue in
+        .animation(.easeInOut(duration: 0.3), value: dashboardStore.graph.isGraphReady)
+        .onChange(of: dashboardStore.graph.selectedPeriod) { _, newValue in
             // PERFORMANCE: Cancel any pending period change configuration
             periodChangeTask?.cancel()
 
@@ -132,7 +132,7 @@ struct GraphView: View {
                 // Force the active view model to sync with the scroll position set by WeightTrendView
                 guard !Task.isCancelled else { return }
 
-                let finalPosition = dashboardStore.state.graph.xScrollPosition
+                let finalPosition = dashboardStore.graph.xScrollPosition
                 switch newValue {
                 case .week:
                     weekSectionViewModel.forceScrollPositionUpdate(to: finalPosition)
@@ -236,7 +236,7 @@ struct GraphView: View {
     // month for year/total).
     private func activeSectionSelectionMatches(_ date: Date) -> Bool {
         let (showCrosshair, pointDate): (Bool, Date?) = {
-            switch dashboardStore.state.graph.selectedPeriod {
+            switch dashboardStore.graph.selectedPeriod {
             case .week:
                 return (weekSectionViewModel.showCrosshair, weekSectionViewModel.selectedPoint?.date)
             case .month:
@@ -250,7 +250,7 @@ struct GraphView: View {
         guard showCrosshair, let pointDate else { return false }
 
         let calendar = Calendar.current
-        switch dashboardStore.state.graph.selectedPeriod {
+        switch dashboardStore.graph.selectedPeriod {
         case .week, .month:
             return calendar.isDate(pointDate, inSameDayAs: date)
         case .year, .total:
@@ -259,7 +259,7 @@ struct GraphView: View {
     }
 
     private func selectOnActiveSectionViewModel(_ date: Date) {
-        switch dashboardStore.state.graph.selectedPeriod {
+        switch dashboardStore.graph.selectedPeriod {
         case .week:
             weekSectionViewModel.handleChartSelection(at: weekSectionViewModel.plotXDate(for: date))
         case .month:
@@ -273,7 +273,7 @@ struct GraphView: View {
 
     // True when the active section view model currently shows a crosshair on a real point.
     private func activeSectionHasSelection() -> Bool {
-        switch dashboardStore.state.graph.selectedPeriod {
+        switch dashboardStore.graph.selectedPeriod {
         case .week:
             return weekSectionViewModel.showCrosshair && weekSectionViewModel.selectedPoint != nil
         case .month:
@@ -289,7 +289,7 @@ struct GraphView: View {
     // continuousOperations (matched at the period's display granularity).
     private func activeSectionSelectionExistsInOperations() -> Bool {
         let selectedDate: Date? = {
-            switch dashboardStore.state.graph.selectedPeriod {
+            switch dashboardStore.graph.selectedPeriod {
             case .week:  return weekSectionViewModel.selectedPoint?.date
             case .month: return monthSectionViewModel.selectedPoint?.date
             case .year:  return yearSectionViewModel.selectedPoint?.date
@@ -299,7 +299,7 @@ struct GraphView: View {
         guard let selectedDate else { return false }
         let calendar = Calendar.current
         let granularity: Calendar.Component
-        switch dashboardStore.state.graph.selectedPeriod {
+        switch dashboardStore.graph.selectedPeriod {
         case .week, .month: granularity = .day
         case .year, .total: granularity = .month
         }
@@ -312,7 +312,7 @@ struct GraphView: View {
     private var chartView: some View {
         return HStack(spacing: 0) {
             // Use switch case for different time periods (total, year, month, week)
-            switch dashboardStore.state.graph.selectedPeriod {
+            switch dashboardStore.graph.selectedPeriod {
             case .week:
                 WeekGraphView(
                     viewModel: weekSectionViewModel,

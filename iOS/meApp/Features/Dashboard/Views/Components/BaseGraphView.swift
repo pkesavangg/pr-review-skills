@@ -113,7 +113,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     private var dataChangeSignature: Int {
         var hasher = Hasher()
         hasher.combine(dashboardStore.continuousOperations.count)
-        hasher.combine(dashboardStore.state.ui.selectedMetricLabel)
+        hasher.combine(dashboardStore.ui.selectedMetricLabel)
         return hasher.finalize()
     }
 
@@ -197,7 +197,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         hasher.combine(viewModel.goalWeight)
         hasher.combine(viewModel.showCrosshair)
         hasher.combine(viewModel.selectedDate?.timeIntervalSince1970 ?? 0)
-        hasher.combine(dashboardStore.state.ui.selectedMetricLabel)
+        hasher.combine(dashboardStore.ui.selectedMetricLabel)
         return hasher.finalize()
     }
 
@@ -265,7 +265,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 // - Normal state: standard animations
                 .animation(coordinatedChartAnimation, value: viewModel.yAxisDomain)
                 .animation(coordinatedChartAnimation, value: seriesAnimationToken)
-                .animation(coordinatedChartAnimation, value: dashboardStore.state.ui.selectedMetricLabel)
+                .animation(coordinatedChartAnimation, value: dashboardStore.ui.selectedMetricLabel)
                 .animation(.none, value: viewModel.scrollPosition) // Never animate scroll position
                 .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes
                 .conditionalTouchModifiers(
@@ -275,7 +275,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 )
 
                 // Selection callout overlay
-                if let selectedDate = (viewModel.selectedDate ?? viewModel.dashboardStore?.state.graph.selectedXValue),
+                if let selectedDate = (viewModel.selectedDate ?? viewModel.dashboardStore?.graph.selectedXValue),
                    let displayWeight = viewModel.displayWeight,
                    viewModel.showCrosshair {
                     selectionCallout(for: selectedDate, weight: displayWeight)
@@ -561,7 +561,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
 
     @ChartContentBuilder
     private var crosshairContent: some ChartContent {
-        if let selectedDate = (viewModel.selectedDate ?? viewModel.dashboardStore?.state.graph.selectedXValue), viewModel.showCrosshair {
+        if let selectedDate = (viewModel.selectedDate ?? viewModel.dashboardStore?.graph.selectedXValue), viewModel.showCrosshair {
             let xDate = viewModel.plotXDate(for: selectedDate)
             RuleMark(x: .value("Date", xDate))
                 .zIndex(-100)
@@ -871,7 +871,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         if h != lastChartHeight {
             lastChartHeight = h
             if isScrollable {
-                dashboardStore.state.graph.chartHeight = h
+                dashboardStore.graph.chartHeight = h
             }
         }
     }
@@ -1121,7 +1121,13 @@ extension View {
     func conditionalPreferenceChange(isScrollable: Bool, dashboardStore: DashboardStore) -> some View {
         if isScrollable {
             self.onPreferenceChange(AnnotationHeightKey.self) { height in
-                dashboardStore.state.graph.annotationHeight = height
+                // Idempotent: short-circuit when the value hasn't changed. Without this,
+                // `onPreferenceChange` fires on every BaseGraphView body recompute,
+                // mutates `graph.annotationHeight`, and re-invalidates the body — the
+                // same feedback-loop pattern Step 6 fixed in `SegmentedButtonView`.
+                // See history doc §3.13 / Step 8.
+                guard dashboardStore.graph.annotationHeight != height else { return }
+                dashboardStore.graph.annotationHeight = height
             }
         } else {
             self
@@ -1189,13 +1195,13 @@ extension View {
     ) -> some View {
         if isScrollable {
             self
-                .onChange(of: dashboardStore.state.graph.xScrollPosition) { oldPosition, newPosition in
+                .onChange(of: dashboardStore.graph.xScrollPosition) { oldPosition, newPosition in
                     // Only sync if position actually changed (programmatic navigation)
                     // Skip if viewModel already has this position to avoid redundant updates
                     guard abs(newPosition.timeIntervalSince(viewModel.scrollPosition)) > 0.1 else { return }
                     viewModel.updateScrollPosition(to: newPosition)
                 }
-                .onChange(of: dashboardStore.state.graph.isScrolling) { oldValue, newValue in
+                .onChange(of: dashboardStore.graph.isScrolling) { oldValue, newValue in
                     viewModel.isScrolling = newValue
                     // Immediately clear local selection when scrolling starts to remove crosshair and label
                     if newValue {
@@ -1204,16 +1210,16 @@ extension View {
                         viewModel.clearSelection()
                     }
                 }
-                .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, _ in
+                .onChange(of: dashboardStore.graph.selectedPeriod) { _, _ in
                     // Clear local selection when period changes (similar to scrolling behavior)
                     localSelectedXValue.wrappedValue = nil
                     viewModel.clearSelection()
                 }
             // CRITICAL: Sync Y-axis domain and ticks from dashboard store cache
-                .onChange(of: dashboardStore.state.graph.cachedYAxisDomain) { _, _ in
+                .onChange(of: dashboardStore.graph.cachedYAxisDomain) { _, _ in
                     viewModel.syncYAxisFromStore()
                 }
-                .onChange(of: dashboardStore.state.graph.cachedYAxisTicks) { _, _ in
+                .onChange(of: dashboardStore.graph.cachedYAxisTicks) { _, _ in
                     viewModel.syncYAxisFromStore()
                 }
         } else {
