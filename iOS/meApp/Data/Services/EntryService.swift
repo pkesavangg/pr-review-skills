@@ -747,6 +747,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     private func mergeRemoteOperations(_ remoteOps: [BathScaleOperationDTO], accountId: String) async -> Bool {
         // Tracks whether we inserted at least one new entry from remote; drives goal met card visibility.
         var hadNewCreates = false
+        // Tracks the create operations we actually inserted locally so we can sync each
+        // to the active health integration (e.g., Apple Health) after the merge loop.
+        var newlyCreatedOps: [BathScaleOperationDTO] = []
         // Group operations by timestamp to determine final state for each timestamp
         let groupedOps = Dictionary(grouping: remoteOps) { op in
             op.entryTimestamp ?? ""
@@ -852,6 +855,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                     // Final state is create - add to local storage
                     let newEntry = Entry(from: finalOp, accountId: accountId, isSynced: true)
                     try? await localRepo.saveEntry(newEntry)
+                    newlyCreatedOps.append(finalOp)
                     // Notify downstream listeners/UI about the new entry so lists refresh
                 }
                 // If final operation is delete and no local entry exists, nothing to do
@@ -860,9 +864,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
 
         // Only notify UI listeners when the remote merge actually inserted new
-        // entries locally. Calling handleEntryAdded here would re-route the
-        // overall latest entry through integrationService.syncNewEntry on every
-        // sync — pushing previously-unsynced historical entries into Apple Health
+        // entries locally. We restrict downstream syncs to the entries that were
+        // freshly created in this merge — pushing the overall "latest" entry would
+        // risk re-pushing previously-unsynced historical entries into Apple Health
         // after operations like deletes.
         if hadNewCreates {
             do {
@@ -872,6 +876,22 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 }
             } catch {
                 await logger.log(level: .error, tag: tag, message: "Failed to get latest entry: \(error.localizedDescription)")
+            }
+
+            // Forward each newly-created entry to active health integrations
+            // (e.g., Apple Health). Without this, WiFi-scale entries arriving via
+            // push-triggered remote sync would never reach HealthKit.
+            for op in newlyCreatedOps {
+                let notification = EntryNotification(from: op)
+                do {
+                    try await integrationService.syncNewEntry(notification: notification)
+                } catch {
+                    await logger.log(
+                        level: .error,
+                        tag: tag,
+                        message: "Failed to sync remote-merged entry to integrations: timestamp=\(notification.entryTimestamp), error=\(error.localizedDescription)"
+                    )
+                }
             }
         }
         return hadNewCreates
