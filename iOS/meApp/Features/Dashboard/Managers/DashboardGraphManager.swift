@@ -14,7 +14,39 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     @Published var state: GraphState
 
     // MARK: - Private Properties
+    /// Cached calendars used on the chart hot path. Reading `Calendar.current` and
+    /// constructing fresh `Calendar(identifier:)` instances both trigger
+    /// `_LocaleICU` queries (`minimumDaysInFirstWeek` / `Calendar.locale.setter`)
+    /// which appear in scroll-hang call stacks. Cache once at init time.
     private let calendar = Calendar.current
+
+    /// Gregorian calendar used for yearly tick generation and yearly snap
+    /// quantization. Aligned with the user's timezone/locale.
+    private let yearlyTickCalendar: Calendar = {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = Calendar.current.timeZone
+        cal.locale = Calendar.current.locale
+        return cal
+    }()
+
+    /// Gregorian calendar aligned with `WeekSectionViewModel.plotXDate`.
+    private let weekPlotCalendar: Calendar = {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = Calendar.current.timeZone
+        cal.locale = Calendar.current.locale
+        return cal
+    }()
+
+    /// Sunday-start Gregorian calendar used by weekly/monthly X-axis generation.
+    /// Replaces previously inline ad-hoc `Calendar(identifier: .gregorian)` instances
+    /// that were rebuilt per chart body recompute.
+    private let sundayCalendar: Calendar = {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = Calendar.current.timeZone
+        cal.locale = Calendar.current.locale
+        cal.firstWeekday = 1 // Sunday
+        return cal
+    }()
 
     private var lastCalculatedVisibleOps: [BathScaleWeightSummary] = []
     private var lastVisibleOpsScrollPosition: Date?
@@ -41,23 +73,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     private var lastCachedOperationsCount: Int = 0
     private var chartDataGenerationThrottle: Timer?
     
-    /// Gregorian calendar used for yearly tick generation and yearly snap quantization.
-    /// This keeps rendered month grid lines and snap targets in the same calendar system.
-    private var yearlyTickCalendar: Calendar {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = calendar.timeZone
-        cal.locale = calendar.locale
-        return cal
-    }
-
-    /// Gregorian calendar aligned with WeekSectionViewModel.plotXDate.
-    private var weekPlotCalendar: Calendar {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = Calendar.current.timeZone
-        cal.locale = Calendar.current.locale
-        return cal
-    }
-
     // MARK: - Constants
 
     /// Position for single metric points within the Y-axis domain (0.0 = bottom, 1.0 = top)
@@ -131,7 +146,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
 
         // Determine if there's an exact data point for the selected date based on the current period granularity
-        let calendar = Calendar.current
+        // Use the cached `calendar` property (see line 21).
         let exactPoint: BathScaleWeightSummary? = {
             switch state.selectedPeriod {
             case .week, .month:
@@ -1326,8 +1341,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let buffer: TimeInterval = domainLength * 2.0
         let currentDate = Date()
 
-        // Calculate additional buffer for X-axis ticks when entries fall on calendar boundaries
-        let calendar = Calendar.current
+        // Calculate additional buffer for X-axis ticks when entries fall on calendar boundaries.
+        // Reuse the cached `calendar` property; previously this re-read `Calendar.current`.
         var minDateBuffer: TimeInterval = 0
         var maxDateBuffer: TimeInterval = 0
 
@@ -1571,11 +1586,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let startDate = min(visibleStart, visibleEnd)
         let endDate = max(visibleStart, visibleEnd)
 
-        // Use a Sunday-start Gregorian calendar locally to avoid region differences
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = calendar.timeZone
-        cal.locale = calendar.locale
-        cal.firstWeekday = 1 // Sunday
+        // Use the cached Sunday-start Gregorian calendar (see property declaration).
+        let cal = sundayCalendar
 
         var dates: [Date] = []
 
@@ -1629,10 +1641,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // Calculate total months from start of oldest month to end of latest month
         let timeInterval = monthEndForLatest.timeIntervalSince(monthStartForOldest)
         let totalMonths = max(1, Int(ceil(timeInterval / DashboardConstants.TimeInterval.month)))
-        var sundayCalendar = Calendar(identifier: .gregorian)
-        sundayCalendar.timeZone = calendar.timeZone
-        sundayCalendar.locale = calendar.locale
-        sundayCalendar.firstWeekday = 1
+        // Reuse the cached Sunday-start calendar (see property declaration).
+        let sundayCalendar = self.sundayCalendar
 
         for monthOffset in 0..<totalMonths {
             guard let currentMonthStart = sundayCalendar.date(byAdding: .month, value: monthOffset, to: monthStartForOldest),
@@ -1754,7 +1764,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     func formatDateRange(minDate: Date, maxDate: Date, for period: TimePeriod) -> String {
-        let calendar = Calendar.current
+        // Reuse the cached `calendar` property.
         // Normalize order to avoid inverted labels when inputs are swapped or nudged
         var startDate = min(minDate, maxDate)
         var endDate = max(minDate, maxDate)
@@ -1824,7 +1834,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     func fallbackTimeLabel(for period: TimePeriod) -> String {
         let now = Date()
-        let calendar = Calendar.current
+        // Reuse the cached `calendar` property.
         switch period {
         case .week:
             let formatter = DateTimeTools.formatter("MMM d")
@@ -2318,8 +2328,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     ///   - period: Current time period
     /// - Returns: Snapped position aligned to period's grid
     func snapScrollPosition(_ position: Date, for period: TimePeriod) -> Date {
-        let calendar = Calendar.current
-
+        // Reuse the cached `calendar` property; this function is called per scroll tick.
         switch period {
         case .week:
             // Snap to start of day (noon for plotting consistency)

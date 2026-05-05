@@ -8,6 +8,55 @@
 import SwiftUI
 import Charts
 
+/// Cached `Calendar.current` for the chart render path. Reading `Calendar.current`
+/// per body recompute triggers `_LocaleICU.minimumDaysInFirstWeek.getter` and
+/// related ICU lookups that show up in scroll-hang call stacks. Hoist to file
+/// scope so every body recompute reuses the same instance.
+private let renderCalendar = Calendar.current
+
+/// Builds the `chartXAxis` grid-tick set. Extracted out of the inline closure
+/// inside `View.conditionalModifiers` so the calendar-arithmetic loop runs only
+/// when the inputs change (and shows up as a discrete leaf in time-profiler
+/// attribution rather than buried under `View.conditionalModifiers`).
+@inline(__always)
+private func computeGridTicks(
+    nonLastTicks: [Date],
+    timePeriod: TimePeriod
+) -> [Date] {
+    guard timePeriod == .month, !nonLastTicks.isEmpty else {
+        return nonLastTicks
+    }
+    let calendar = renderCalendar
+    let sortedTicks = nonLastTicks.sorted()
+    guard let firstTick = sortedTicks.first,
+          let lastTick = sortedTicks.last else {
+        return nonLastTicks
+    }
+
+    // Ensure month starts are always present as grid ticks so the solid
+    // month-start line appears for every visible month.
+    var monthStartTicks: [Date] = []
+    var currentMonthStart = calendar.dateInterval(of: .month, for: firstTick)?.start ?? firstTick
+    while currentMonthStart <= lastTick {
+        let monthStartNoon = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: currentMonthStart) ?? currentMonthStart
+        monthStartTicks.append(monthStartNoon)
+        guard let next = calendar.date(byAdding: .month, value: 1, to: currentMonthStart) else { break }
+        currentMonthStart = next
+    }
+    // Deduplicate by calendar day to avoid double lines when two ticks
+    // represent the same day with different time components.
+    let combined = nonLastTicks + monthStartTicks
+    var uniqueByDay: [Date] = []
+    var seenDays: Set<Date> = []
+    for tick in combined.sorted() {
+        let day = calendar.startOfDay(for: tick)
+        if seenDays.insert(day).inserted {
+            uniqueByDay.append(tick)
+        }
+    }
+    return uniqueByDay
+}
+
 /// Base graph view that provides common chart rendering functionality for all time periods
 /// Eliminates code duplication across WeekGraphView, MonthGraphView, YearGraphView, and TotalGraphView
 struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equatable {
@@ -527,14 +576,13 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         AxisMarks(values: viewModel.yAxisTicks) { value in
             if let doubleValue = value.as(Double.self) {
                 AxisValueLabel {
-                    Text(getCachedYAxisLabel(doubleValue))
-                        .fontOpenSans(.subHeading2)
-                        .multilineTextAlignment(.leading)
-                        .fontWeight(.regular)
-                        .monospacedDigit()
-                        .foregroundColor(theme.textSubheading)
-                        .frame(width: yAxisLabelWidth, alignment: .center)
-                        .opacity(shouldShowYAxisLabels ? 1 : 0)
+                    CachedYAxisLabel(
+                        text: getCachedYAxisLabel(doubleValue),
+                        color: theme.textSubheading,
+                        width: yAxisLabelWidth,
+                        isVisible: shouldShowYAxisLabels
+                    )
+                    .equatable()
                 }
             }
         }
@@ -863,40 +911,10 @@ extension View {
                 .chartXAxis {
                     let allTicks = viewModel.xAxisValues
                     let nonLastTicks = Array(allTicks.dropLast())
-                    let gridTicks: [Date] = {
-                        guard viewModel.timePeriod == .month, !nonLastTicks.isEmpty else {
-                            return nonLastTicks
-                        }
-                        let calendar = Calendar.current
-                        let sortedTicks = nonLastTicks.sorted()
-                        guard let firstTick = sortedTicks.first,
-                              let lastTick = sortedTicks.last else {
-                            return nonLastTicks
-                        }
-
-                        // Ensure month starts are always present as grid ticks so the solid
-                        // month-start line appears for every visible month.
-                        var monthStartTicks: [Date] = []
-                        var currentMonthStart = calendar.dateInterval(of: .month, for: firstTick)?.start ?? firstTick
-                        while currentMonthStart <= lastTick {
-                            let monthStartNoon = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: currentMonthStart) ?? currentMonthStart
-                            monthStartTicks.append(monthStartNoon)
-                            guard let next = calendar.date(byAdding: .month, value: 1, to: currentMonthStart) else { break }
-                            currentMonthStart = next
-                        }
-                        // Deduplicate by calendar day to avoid double lines when two ticks
-                        // represent the same day with different time components.
-                        let combined = nonLastTicks + monthStartTicks
-                        var uniqueByDay: [Date] = []
-                        var seenDays: Set<Date> = []
-                        for tick in combined.sorted() {
-                            let day = calendar.startOfDay(for: tick)
-                            if seenDays.insert(day).inserted {
-                                uniqueByDay.append(tick)
-                            }
-                        }
-                        return uniqueByDay
-                    }()
+                    let gridTicks = computeGridTicks(
+                        nonLastTicks: nonLastTicks,
+                        timePeriod: viewModel.timePeriod
+                    )
                     // Use ticks as-is; we keep Saturday visible via a phantom extra tick in data
                     let adjustedLabelTicks: [Date] = allTicks
                     // Grid lines and ticks for all but the last value (to avoid the trailing thick edge)
@@ -908,8 +926,7 @@ extension View {
                             // For month-start lines, show the tick below X-axis only when
                             // the 1st day of month is also Sunday.
                             if viewModel.timePeriod == .month {
-                                let calendar = Calendar.current
-                                let comps = calendar.dateComponents([.day, .weekday], from: date)
+                                let comps = renderCalendar.dateComponents([.day, .weekday], from: date)
                                 let isMonthStartSunday = (comps.day == 1 && comps.weekday == 1)
                                 if isMonthStartSunday {
                                     AxisTick(stroke: StrokeStyle(lineWidth: 1, dash: []))
@@ -940,16 +957,14 @@ extension View {
                             if let date = value.as(Date.self),
                                let labelString = getCachedXAxisLabel(date) {
                                 if viewModel.timePeriod == .month {
-                                    Text(labelString)
-                                        .font(.caption)
-                                        .foregroundColor(theme.textSubheading)
+                                    CachedXAxisLabel(text: labelString, color: theme.textSubheading)
+                                        .equatable()
                                         .fixedSize(horizontal: true, vertical: false)
                                         .padding(.horizontal, 2)
                                         .background(theme.textInverse)
                                 } else {
-                                    Text(labelString)
-                                        .font(.caption)
-                                        .foregroundColor(theme.textSubheading)
+                                    CachedXAxisLabel(text: labelString, color: theme.textSubheading)
+                                        .equatable()
                                 }
                             }
                         }
