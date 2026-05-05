@@ -54,6 +54,12 @@ class DashboardStore: ObservableObject {
     // MARK: - Debounced Sync
     /// Debounce task to prevent excessive sync calls during drag operations or rapid metric toggles
     private var syncDebounceTask: Task<Void, Never>?
+
+    // MARK: - Metric Refresh Coordination
+    /// Coordinates graph-driven body metric refreshes so stale average/placeholder work
+    /// cannot overwrite a newer exact-point selection.
+    private var metricRefreshTask: Task<Void, Never>?
+    private var metricRefreshGeneration: UInt = 0
     
     // MARK: - Initialization Tracking
 
@@ -611,6 +617,29 @@ class DashboardStore: ObservableObject {
         state.data.hasAnyEntries
     }
 
+    #if DEBUG
+    enum MetricRefreshKind: Equatable {
+        case selectedPoint
+        case interpolatedSelection
+        case visibleAverage
+        case emptySelection
+    }
+    #endif
+
+    private struct MetricRefreshSnapshot: Equatable {
+        let selectedPointID: UUID?
+        let selectedPointDate: Date?
+        let selectedXValue: Date?
+        let period: TimePeriod
+    }
+
+    private enum MetricRefreshMode {
+        case selectedPoint(BathScaleWeightSummary, MetricRefreshSnapshot)
+        case interpolatedSelection(MetricRefreshSnapshot)
+        case visibleAverage([BathScaleWeightSummary], MetricRefreshSnapshot)
+        case emptySelection(MetricRefreshSnapshot)
+    }
+
     // Delegate weightless mode to managers
     var isWeightlessModeEnabled: Bool {
         accountService.activeAccount?.weightlessSettings?.isWeightlessOn ?? false
@@ -988,15 +1017,9 @@ class DashboardStore: ObservableObject {
         }
     }
     
-    /// Updates metric card values to display averages from the visible region
+    @MainActor
     private func updateMetricsWithVisibleRegionAverage() {
-        let visibleOps = getOperationsForLabelDateRange()
-        Task {
-            await metricsManager.updateMetricsForVisibleAverage(visibleOperations: visibleOps)
-            await MainActor.run {
-                state.ui.hasLoadedMetricValues = true
-            }
-        }
+        updateMetricsForCurrentView()
     }
 
     // MARK: - Dashboard Initialization
@@ -1065,8 +1088,9 @@ class DashboardStore: ObservableObject {
         // already sets the removal state correctly from the account data
         syncRemovalStateFromMetricsManager()
 
-        // Load other data - metrics will be updated via updateMetricsForCurrentView() based on visible region
-        loadLatestEntryData()
+        // Load latest-entry-backed metric state before chart initialization so
+        // the first rendered tiles match the initial selected point.
+        await refreshLatestEntryData()
 
         // Initialize chart AFTER all metrics are loaded
         // This ensures graph and metrics appear together, preventing gaps
@@ -1112,26 +1136,52 @@ class DashboardStore: ObservableObject {
 
     func loadLatestEntryData() {
         Task {
-            do {
-                guard let latestEntry = try await dataManager.getLatestEntry() else { return }
-
-                // R7: Extract relationship data immediately after fetch, before any further await
-                let weight = latestEntry.scaleEntry?.weight
-
-                if let weight {
-                    state.data.latestWeightStored = weight
-                }
-
-                // Instead of always updating with latest entry, preserve current selection state
-                // and update metrics appropriately for the current view
-                await MainActor.run {
-                    self.updateMetricsForCurrentView()
-                }
-
-            } catch {
-                logger.log(level: .error, tag: "DashboardStore", message: "Failed to load latest entry data: \(error)")
-            }
+            await self.refreshLatestEntryData()
         }
+    }
+
+    @MainActor
+    private func refreshLatestEntryData() async {
+        do {
+            guard let latestEntry = try await dataManager.getLatestEntry() else { return }
+
+            // R7: Extract relationship data immediately after fetch, before any further await
+            let weight = latestEntry.scaleEntry?.weight
+
+            if let weight {
+                state.data.latestWeightStored = weight
+            }
+
+            // During initial dashboard setup, prefer the latest entry selection over
+            // visible-region averages so the first rendered tiles match the selected point.
+            let initialLatestSelectionDate: Date? = shouldPreferLatestSelectionForInitialMetrics
+                ? latestSelectionDateForCurrentPeriod()
+                : nil
+
+            if let initialLatestSelectionDate {
+                await handleChartSelection(at: initialLatestSelectionDate)
+            } else {
+                // Otherwise preserve current selection state and update metrics for the
+                // active view mode (selected point, placeholders, or visible averages).
+                updateMetricsForCurrentView()
+            }
+
+        } catch {
+            logger.log(level: .error, tag: "DashboardStore", message: "Failed to load latest entry data: \(error)")
+        }
+    }
+
+    @MainActor
+    private var shouldPreferLatestSelectionForInitialMetrics: Bool {
+        !state.ui.hasInitializedChart &&
+        state.graph.selectedPoint == nil &&
+        state.graph.selectedXValue == nil &&
+        !continuousOperations.isEmpty
+    }
+
+    @MainActor
+    private func latestSelectionDateForCurrentPeriod() -> Date? {
+        continuousOperations.max(by: { $0.date < $1.date })?.date
     }
 
     // Delegate goal loading to GoalManager
@@ -2170,6 +2220,7 @@ class DashboardStore: ObservableObject {
 
         // Clear all caches when period changes
         clearAllCaches()
+        cancelMetricRefresh()
 
         // End any scrolling immediately so new period computes fresh domain/x-axis
         graphManager.endScrollingImmediately()
@@ -2200,34 +2251,6 @@ class DashboardStore: ObservableObject {
         self.forceCompleteRecalculationAfterScrollPosition()
 
         state.ui.hasInitializedChart = true
-
-        // For TOTAL period, immediately compute and show visible-window averages
-        if period == .total {
-            updateMetricsForCurrentView()
-        }
-
-        // Auto-select the latest entry so the header reflects the most recent
-        // data point after the tab switch. Runs after GraphView's 50ms configure
-        // task so the active section view model is ready to accept selection.
-        selectLatestEntryAfterPeriodChange()
-    }
-
-    /// Auto-selects the latest entry after a period switch so the header shows
-    /// the most recent entry's details without requiring a chart tap.
-    @MainActor
-    private func selectLatestEntryAfterPeriodChange() {
-        let targetDate: Date? = {
-            let ops = continuousOperations
-            guard !ops.isEmpty else { return nil }
-            return ops.max(by: { $0.date < $1.date })?.date
-        }()
-        guard let targetDate else { return }
-
-        Task { @MainActor in
-            // Wait past GraphView's 50ms VM configure delay before selecting.
-            try? await Task.sleep(nanoseconds: 120_000_000)
-            await self.handleChartSelection(at: targetDate)
-        }
     }
 
     // Delegate chart selection to GraphManager
@@ -2242,19 +2265,14 @@ class DashboardStore: ObservableObject {
         await graphManager.handleCompleteChartSelection(
             at: selectedDate,
             operations: continuousOperations,
-            updateMetrics: { selectedPoint in
-                try await self.metricsManager.updateMetrics(with: selectedPoint)
-            },
-            resetMetrics: {
-                self.resetMetricsToLatestEntry()
-            },
-            setMetricPlaceholders: {
-                self.metricsManager.setPlaceholdersForAllMetrics()
-            }
+            updateMetrics: { _ in },
+            resetMetrics: {},
+            setMetricPlaceholders: {}
         )
 
         // Force UI update
         await MainActor.run {
+            self.updateMetricsForCurrentView()
             self.scheduleUIUpdate()
         }
     }
@@ -3467,6 +3485,7 @@ class DashboardStore: ObservableObject {
         cachedVisibleOperations = []
         lastVisibleOperationsCacheTime = Date.distantPast
         isProcessingScrollEnd = false
+        cancelMetricRefresh()
     }
 
     func handleScrollPhaseChange(to phase: ScrollPhase) async {
@@ -3511,43 +3530,99 @@ class DashboardStore: ObservableObject {
         guard !state.ui.isResettingDashboard && state.ui.hasLoadedDashboardConfig else {
             return
         }
+        scheduleMetricRefresh(for: currentMetricRefreshMode())
+    }
+
+    #if DEBUG
+    @MainActor
+    func currentMetricRefreshKind() -> MetricRefreshKind {
+        if state.graph.selectedPoint != nil {
+            return .selectedPoint
+        }
+        if state.graph.selectedXValue != nil {
+            return .interpolatedSelection
+        }
+        return getOperationsForLabelDateRange().isEmpty ? .emptySelection : .visibleAverage
+    }
+    #endif
+
+    @MainActor
+    private func currentMetricRefreshMode() -> MetricRefreshMode {
+        let snapshot = currentMetricRefreshSnapshot()
 
         if let selectedPoint = state.graph.selectedPoint {
-            // Exact data point selected - show its values
-            Task {
-                try? await self.metricsManager.updateMetrics(with: selectedPoint)
-                await MainActor.run {
-                    self.state.ui.hasLoadedMetricValues = true
-                }
-            }
-            return // Exit early to prevent showing averages
+            return .selectedPoint(selectedPoint, snapshot)
         }
-         if state.graph.selectedXValue != nil {
-            // Interpolated position selected (no exact data point) - show placeholders
-            // Mark as loaded so skeleton loaders can hide even when showing placeholders
-            metricsManager.setPlaceholdersForAllMetrics()
-            self.state.ui.hasLoadedMetricValues = true
-            return
-        }
-        let ops = self.getOperationsForLabelDateRange()
-        
-        // If no visible operations, show placeholders for body metrics
-        if ops.isEmpty {
-            metricsManager.setPlaceholdersForAllMetrics()
-            // Mark as loaded so skeleton loaders can hide
-            self.state.ui.hasLoadedMetricValues = true
-            return
+        if state.graph.selectedXValue != nil {
+            return .interpolatedSelection(snapshot)
         }
 
-        // Has visible operations - compute averages
-        Task {
-            await self.metricsManager.updateMetricsForVisibleAverage(visibleOperations: ops)
-            await MainActor.run {
-                // Mark metrics as loaded after updating visible averages so skeleton loaders can hide
-                // This ensures skeleton loaders are dismissed once data for the visible range is available
-                self.state.ui.hasLoadedMetricValues = true
+        let ops = getOperationsForLabelDateRange()
+        if ops.isEmpty {
+            return .emptySelection(snapshot)
+        }
+        return .visibleAverage(ops, snapshot)
+    }
+
+    @MainActor
+    private func currentMetricRefreshSnapshot() -> MetricRefreshSnapshot {
+        MetricRefreshSnapshot(
+            selectedPointID: state.graph.selectedPoint?.id,
+            selectedPointDate: state.graph.selectedPoint?.date,
+            selectedXValue: state.graph.selectedXValue,
+            period: state.graph.selectedPeriod
+        )
+    }
+
+    @MainActor
+    private func scheduleMetricRefresh(for mode: MetricRefreshMode) {
+        cancelMetricRefresh()
+        metricRefreshGeneration &+= 1
+        let generation = metricRefreshGeneration
+
+        metricRefreshTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            guard !Task.isCancelled else { return }
+
+            switch mode {
+            case let .selectedPoint(selectedPoint, snapshot):
+                do {
+                    try await self.metricsManager.updateMetrics(with: selectedPoint)
+                } catch {
+                    self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to refresh metrics for selected point: \(error)")
+                    self.metricsManager.setPlaceholdersForAllMetrics()
+                }
+                self.finishMetricRefreshIfCurrent(generation: generation, snapshot: snapshot)
+
+            case let .interpolatedSelection(snapshot),
+                 let .emptySelection(snapshot):
+                self.metricsManager.setPlaceholdersForAllMetrics()
+                self.finishMetricRefreshIfCurrent(generation: generation, snapshot: snapshot)
+
+            case let .visibleAverage(visibleOperations, snapshot):
+                await self.metricsManager.updateMetricsForVisibleAverage(visibleOperations: visibleOperations)
+                self.finishMetricRefreshIfCurrent(generation: generation, snapshot: snapshot)
             }
         }
+    }
+
+    @MainActor
+    private func finishMetricRefreshIfCurrent(generation: UInt, snapshot: MetricRefreshSnapshot) {
+        guard isMetricRefreshStillCurrent(generation: generation, snapshot: snapshot) else { return }
+        state.ui.hasLoadedMetricValues = true
+    }
+
+    @MainActor
+    private func isMetricRefreshStillCurrent(generation: UInt, snapshot: MetricRefreshSnapshot) -> Bool {
+        generation == metricRefreshGeneration &&
+        currentMetricRefreshSnapshot() == snapshot &&
+        !(metricRefreshTask?.isCancelled ?? false)
+    }
+
+    @MainActor
+    private func cancelMetricRefresh() {
+        metricRefreshTask?.cancel()
+        metricRefreshTask = nil
     }
 
     // MARK: - UI State Management

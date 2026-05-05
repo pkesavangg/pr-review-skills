@@ -11,6 +11,10 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
     @Binding var selectedSegment: T
     /// Opt-in — scales all segments together to one shared font size.
     var useUniformFontScaling: Bool = false
+    /// Opt-in — sizes each segment to its intrinsic content width instead of
+    /// dividing the parent equally. Required when the control is hosted in a
+    /// horizontal ScrollView so it can actually scroll under Dynamic Type.
+    var usesIntrinsicWidth: Bool = false
     @Environment(\.appTheme) private var theme
     /// Stores the width of each segment (indexed by its position in the `segments` array).
     @State private var segmentWidths: [Int: CGFloat] = [:]
@@ -30,22 +34,26 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
                 }) {
                     labelText(for: segment)
                         .foregroundColor(selectedSegment == segment ? theme.textInverse : theme.actionSecondary)
-                        .frame(maxWidth: .infinity)
+                        .frame(maxWidth: usesIntrinsicWidth ? nil : .infinity)
                         .lineLimit(1)
                         .padding(.vertical, 8)
                         .padding(.horizontal, useUniformFontScaling ? 8 : 12)
                         .background(
                             GeometryReader { geometry in
                                 Color.clear
-                                    .onAppear {
-                                        segmentWidths[index] = geometry.size.width
-                                    }
+                                    .preference(
+                                        key: SegmentWidthPreferenceKey.self,
+                                        value: [index: geometry.size.width]
+                                    )
                             }
                         )
                 }
                 .zIndex(1)
                 .id(segment)
             }
+        }
+        .onPreferenceChange(SegmentWidthPreferenceKey.self) { newWidths in
+            segmentWidths.merge(newWidths) { _, new in new }
         }
         .background(
             // Animated background
@@ -126,6 +134,13 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
     private func selectedWidth() -> CGFloat {
         guard let index = segments.firstIndex(where: { $0.id == selectedSegment.id }) else { return 0 }
         return segmentWidths[index] ?? 0
+    }
+}
+
+private struct SegmentWidthPreferenceKey: PreferenceKey {
+    static let defaultValue: [Int: CGFloat] = [:]
+    static func reduce(value: inout [Int: CGFloat], nextValue: () -> [Int: CGFloat]) {
+        value.merge(nextValue()) { _, new in new }
     }
 }
 

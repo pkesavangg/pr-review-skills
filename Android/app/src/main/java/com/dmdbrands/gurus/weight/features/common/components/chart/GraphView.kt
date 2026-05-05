@@ -1,19 +1,19 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
@@ -25,17 +25,17 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.ChartInteractionEvent
 import com.patrykandpatrick.vico.compose.cartesian.SnapBehaviorConfig
-import com.patrykandpatrick.vico.compose.cartesian.VicoScrollState
 import com.patrykandpatrick.vico.compose.cartesian.rememberFadingEdges
+import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
-import com.patrykandpatrick.vico.core.cartesian.AutoScrollCondition
 import com.patrykandpatrick.vico.core.cartesian.InterpolationType
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import java.util.Calendar
-import android.util.Log
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -60,6 +60,14 @@ fun GraphView(
   placeHolder: String? = null,
   viewModel: GraphViewModel = hiltViewModel(),
   onChartConsuming: (Boolean) -> Unit = {},
+  /**
+   * Hot flow emitting the segment that was just tapped on the segment-button row. The page
+   * whose [segment] matches the emission re-arms `initialScrollHandled = false` so its
+   * next measure snaps to the segment-appropriate initial scroll. Default is a no-op flow
+   * for previews / standalone callers that don't have a pager. The signal is intentionally
+   * scoped to user taps; rotation, history-screen return, and app resume preserve scroll.
+   */
+  segmentResetSignal: MutableSharedFlow<GraphSegment> = remember { MutableSharedFlow() },
 ) {
 
   val scope = rememberCoroutineScope()
@@ -72,9 +80,20 @@ fun GraphView(
     }
   }
 
-  val initialStartX = GraphUtil.getRollingWindowStart(segment, state.getEndTimestamp())?.toDouble()
-    ?: GraphUtil.getStartRange(segment, state.getEndTimestamp())?.toDouble()
-    ?: Calendar.getInstance().timeInMillis.toDouble()
+  // `state` and `isCurrentPage` are read from a long-running collector below, so we wrap
+  // them in `rememberUpdatedState` to avoid reading the snapshot captured when the effect
+  // first launched.
+  val currentState by rememberUpdatedState(state)
+  val currentIsCurrentPage by rememberUpdatedState(isCurrentPage)
+
+  // Reactive so the merged effect below can observe changes via snapshotFlow.
+  val initialStartX by remember(segment) {
+    derivedStateOf {
+      GraphUtil.getRollingWindowStart(segment, currentState.getEndTimestamp())?.toDouble()
+        ?: GraphUtil.getStartRange(segment, currentState.getEndTimestamp())?.toDouble()
+        ?: Calendar.getInstance().timeInMillis.toDouble()
+    }
+  }
 
   val (startPaddingXStep, _) = remember(state.isEmptyGraph, segment) {
     if (!state.isEmptyGraph || segment != GraphSegment.TOTAL)
@@ -102,30 +121,21 @@ fun GraphView(
     }
   }
 
-  // Bumped on every page activation so VicoScrollState is rebuilt fresh
-  // (initialScrollHandled = false). Plain `remember` (not rememberSaveable) avoids
-  // any saver restoring a stale scroll/initialScrollHandled across tab returns.
-  var resetEpoch by remember(segment) { mutableIntStateOf(0) }
-  LaunchedEffect(isCurrentPage, segment) {
-    if (isCurrentPage) resetEpoch++
-  }
-
-  val scrollState = remember(segment, resetEpoch) {
-    VicoScrollState(
-      scrollEnabled = segment != GraphSegment.TOTAL && !state.isSingleWindow,
-      initialScroll = initialScroll,
-      autoScroll = initialScroll,
-      autoScrollCondition = AutoScrollCondition.Never,
-      autoScrollAnimationSpec = spring(),
-      snapBehaviorConfig = SnapBehaviorConfig(
-        snapToLabelFunction = snapToLabelFunction,
-        animation = SnapBehaviorConfig.SnapAnimation(
-          snapDurationMillis = 500,
-        ),
+  val scrollState = rememberVicoScrollState(
+    scrollEnabled = segment != GraphSegment.TOTAL && !state.isSingleWindow,
+    initialScroll = initialScroll,
+    snapBehaviorConfig = SnapBehaviorConfig(
+      snapToLabelFunction = snapToLabelFunction,
+      animation = SnapBehaviorConfig.SnapAnimation(
+        snapDurationMillis = 500,
       ),
-      scrollStartPaddingXStep = startPaddingXStep,
-    )
-  }
+    ),
+    scrollStartPaddingXStep = startPaddingXStep,
+    // Bind scroll-state lifetime to segment identity rather than the per-recomposition
+    // identity churn of `initialScroll` / `snapBehaviorConfig`, so segment switches rebuild
+    // a fresh scroll state but recomposition within the same segment preserves it.
+    key = segment,
+  )
   val horizontalItemPlacer =
     rememberHorizontalAxisItemPlacer(
       segment = segment,
@@ -143,7 +153,7 @@ fun GraphView(
               xValues = visibleLabels,
               interpolationType = InterpolationType.MONOTONE,
             )
-            val fallbackData = state.createFallBackData(
+            val fallbackData = currentState.createFallBackData(
               segment = segment,
               timeStamps = visibleLabels.map { it.toLong() },
               fallbackValues = fallbackValues.map { it.map { it.toDouble() } },
@@ -154,17 +164,14 @@ fun GraphView(
       )
     }
   }
-  LaunchedEffect(isCurrentPage) {
-    if (!isCurrentPage) {
-      viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
-    }
-  }
 
-  LaunchedEffect(resetEpoch) {
-    if (resetEpoch == 0 || !isCurrentPage || state.isEmptyGraph || state.data.isEmpty()) {
-      return@LaunchedEffect
-    }
-    val latestEntry = state.data.maxByOrNull { it.getTimeStamp() } ?: return@LaunchedEffect
+  // Scrolls to the segment-appropriate initial range and selects the latest entry.
+  // Reads `currentState` / `currentIsCurrentPage` so callers in long-running collectors
+  // see live composition values rather than launch-time snapshots.
+  suspend fun performInitialReset() {
+    val s = currentState
+    if (!currentIsCurrentPage || s.isEmptyGraph || s.data.isEmpty()) return
+    val latestEntry = s.data.maxByOrNull { it.getTimeStamp() } ?: return
     val latestTimeStamp = latestEntry.getTimeStamp()
     if (segment != GraphSegment.TOTAL) {
       val windowStart = GraphUtil.getRollingWindowStart(segment, latestTimeStamp)
@@ -178,17 +185,49 @@ fun GraphView(
     onChartConsuming(false)
   }
 
+  // Re-arm vico's initial scroll and re-select the latest entry on two triggers:
+  //   1. Initial-scroll anchor changes (i.e., new data lands and `state.getEndTimestamp()`
+  //      shifts) — fixes the Week-tab marker not following the latest entry on add/delete.
+  //   2. Explicit segment-button tap from the pager parent (`segmentResetSignal`).
+  // `snapshotFlow` also emits the current value on subscription, so cold-start composition
+  // immediately runs through `performInitialReset()` (which is a no-op when data is empty
+  // or the page is not current).
+  LaunchedEffect(scrollState, segment) {
+    merge(
+      snapshotFlow { initialStartX },
+      segmentResetSignal.filter { it == segment },
+    ).collect {
+      scrollState.initialScrollHandled = false
+      performInitialReset()
+    }
+  }
+
   LaunchedEffect(state.markerIndex == null) {
     if (state.markerIndex == null && state.minTarget != null && state.maxTarget != null) {
       onScrollUpdate(state.minTarget, state.maxTarget)
     }
   }
 
+  // Suppress the trailing click that vico emits when a finger-down → drift → finger-up
+  // gesture also looks like a tap. Watch for the explicit `DragEnded` event and gate
+  // clicks within a short window after it. An earlier version flipped the timestamp on
+  // any non-DragStarted event, but vico emits `Dragging` mid-drag — that fired the flag
+  // ~10ms after drag start, well before the user actually lifted their finger, so the
+  // 50ms guard expired before the trailing click arrived.
+  val lastDragEndMs = remember { mutableLongStateOf(0L) }
   LaunchedEffect(scrollState) {
     scrollState.interactionEvents
-      .filter { it is ChartInteractionEvent.DragStarted }
-      .collect {
-        viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
+      .filter { it is ChartInteractionEvent.DragStarted || it is ChartInteractionEvent.DragEnded }
+      .collect { event ->
+        when (event) {
+          is ChartInteractionEvent.DragStarted ->
+            viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
+
+          is ChartInteractionEvent.DragEnded ->
+            lastDragEndMs.longValue = System.currentTimeMillis()
+
+          else -> Unit
+        }
       }
   }
 
@@ -207,9 +246,14 @@ fun GraphView(
     segment = segment,
     horizontalItemPlacer = horizontalItemPlacer,
     fadingEdges = fadingEdges,
-    handleIntent = viewModel::handleIntent,
     onChartClick = { targets, click ->
       if (click == null || state.isEmptyGraph) {
+        return@rememberGraphChart
+      }
+      // Suppress the trailing click that vico emits as part of a drag gesture. We measure
+      // from drag-END with a tight window so a deliberate tap shortly after a short drag
+      // is not suppressed.
+      if (System.currentTimeMillis() - lastDragEndMs.longValue < 50L) {
         return@rememberGraphChart
       }
       val currentInteractionEvent = scrollState.interactionEvents.value

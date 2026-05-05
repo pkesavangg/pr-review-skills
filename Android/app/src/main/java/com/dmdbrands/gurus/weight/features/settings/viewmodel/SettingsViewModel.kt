@@ -25,6 +25,7 @@ import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.domain.services.INotificationService
 import com.dmdbrands.gurus.weight.domain.services.IUserSettingsService
 import com.dmdbrands.gurus.weight.features.common.ScaleProfileConstants
+import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.components.HeightInput
@@ -38,12 +39,17 @@ import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
 import com.dmdbrands.gurus.weight.features.export.strings.ExportStrings
 import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrings
 import com.dmdbrands.gurus.weight.features.settings.strings.SettingsScreenStrings
+import com.dmdbrands.gurus.weight.features.settings.strings.toDisplayString
 import com.dmdbrands.gurus.weight.features.weightless.helper.WeightlessHelper
 import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
 import com.dmdbrands.library.ggbluetooth.model.GGBTUserProfile
 import com.greatergoods.blewrapper.GGDeviceService
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import retrofit2.HttpException
@@ -83,6 +89,7 @@ constructor(
     getUserProfile()
     showAccountSwitchInfoModal()
     loadCurrentThemeMode()
+    loadDefaultGraphRange()
     loadMacAddressSettings()
     initFeedNotificationListener()
     checkExportEnabled()
@@ -237,6 +244,10 @@ constructor(
         onAppearanceClick()
       }
 
+      is SettingsIntent.ShowDefaultGraphRangeModal -> {
+        showDefaultGraphRangeModal()
+      }
+
       is SettingsIntent.ToggleStreak -> {
         onStreakUpdate(intent.checked)
       }
@@ -330,7 +341,7 @@ constructor(
    * Performs the actual export operation with loading and error handling.
    */
   private fun performExport() {
-    AppLog.i("TAG", ExportStrings.ExportStarted)
+    AppLog.i(TAG, ExportStrings.ExportStarted)
 
     // Show loading spinner
     dialogQueueService.showLoader(
@@ -958,6 +969,62 @@ constructor(
         AppLog.i(TAG, "Successfully updated appearance to $displayString")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error updating appearance", e)
+      } finally {
+        dialogQueueService.dismissLoader()
+      }
+    }
+  }
+
+  private fun loadDefaultGraphRange() {
+    val initial = accountService.activeAccount.value?.defaultGraphSegment ?: GraphSegment.DEFAULT
+    handleIntent(SettingsIntent.UpdateDefaultGraphRange(initial))
+    viewModelScope.launch {
+      accountService.activeAccount
+        .drop(1)
+        .map { it?.defaultGraphSegment ?: GraphSegment.DEFAULT }
+        .distinctUntilChanged()
+        .collect { segment ->
+          handleIntent(SettingsIntent.UpdateDefaultGraphRange(segment))
+        }
+    }
+  }
+
+  private fun showDefaultGraphRangeModal() {
+    showRadioGroupModal(
+      dialogService = dialogQueueService,
+      title = RadioGroupModalStrings.Titles.DefaultGraphRange,
+      options = GraphSegment.entries.map { segment ->
+        RadioButtonOption(segment, segment.toDisplayString())
+      },
+      selectedItem = state.value.currentDefaultGraphRange,
+      confirmText = RadioGroupModalStrings.Button.Save,
+      onConfirm = { selected ->
+        selected?.let { onDefaultGraphRangeUpdate(it) }
+      },
+      onCancel = {
+        AppLog.d(TAG, "Default graph range selection cancelled")
+      },
+    )
+  }
+
+  private fun onDefaultGraphRangeUpdate(segment: GraphSegment) {
+    dialogQueueService.showLoader(SettingsScreenStrings.UpdatingDefaultGraphRange)
+    viewModelScope.launch {
+      try {
+        userSettingsService.setDefaultGraphSegment(segment)
+        AppLog.i(TAG, "Successfully updated default graph range to ${segment.toDisplayString()}")
+      } catch (e: CancellationException) {
+        // Coroutine cancellation must propagate up so structured concurrency stays intact —
+        // it's not an "error updating default graph range".
+        throw e
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error updating default graph range", e)
+        dialogQueueService.showToast(
+          Toast(
+            message = SettingsScreenStrings.Error.MessageGeneric,
+            title = SettingsScreenStrings.Error.Header,
+          ),
+        )
       } finally {
         dialogQueueService.dismissLoader()
       }

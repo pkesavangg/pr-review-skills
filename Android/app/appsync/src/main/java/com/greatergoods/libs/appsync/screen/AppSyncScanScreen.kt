@@ -222,6 +222,7 @@ fun AppSyncScanScreen(
                             onResult(result)
                         }
                     },
+                    currentZoom = { zoomLevel.toInt() },
                     onError = { errorMsg ->
                         cameraError = errorMsg
                     },

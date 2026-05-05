@@ -79,11 +79,11 @@ fun AppsyncScaleSetupScreenContent(
         try {
           val result = startAppSyncScan(
             context = context,
-            zoom = 4,
+            zoom = state.appSyncZoomLevel,
             showManualEntryButton = false,
             onBack = {
               // Create cancelled result and call intent handler immediately
-              val cancelResult = AppSyncResultFactory.createCancelResult(4)
+              val cancelResult = AppSyncResultFactory.createCancelResult(state.appSyncZoomLevel)
               com.greatergoods.libs.appsync.AppSyncResultHolder.result = cancelResult
               onIntent(AppsyncScaleSetupIntent.HandleAppSyncResult(cancelResult))
             },

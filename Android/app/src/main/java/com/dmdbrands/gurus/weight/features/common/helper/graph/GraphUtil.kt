@@ -568,6 +568,49 @@ object GraphUtil {
   }
 
   /**
+   * The chart-wide X bounds for [segment] given the data extents [firstTs]/[lastTs] and the
+   * current wall-clock [now]. Single source of truth for the X-bounds rule, used by
+   * `GraphChart.chartXBounds`, `GraphViewModel.setupChartModelProducer`, and
+   * `GraphViewModel.calculateYAxisRange` so the three call sites cannot drift.
+   *
+   * Rules:
+   * - **TOTAL**: data extents padded by ±6 months so the chart visibly extends past the
+   *   first/last entries.
+   * - **MONTH**: minX = month-start of the oldest entry; maxX = `now`'s month-start + 30 days
+   *   so the chart's right-edge reaches into the current month even when the latest entry is
+   *   earlier in the month.
+   * - **WEEK / YEAR**: minX = segment-start of the oldest entry; maxX = segment-end of `now`.
+   *
+   * Returns `(null, null)` when both timestamps are null (empty data set).
+   */
+  fun computeChartXBounds(
+    segment: GraphSegment,
+    firstTs: Long?,
+    lastTs: Long?,
+    now: Long,
+  ): Pair<Long?, Long?> {
+    val minX: Long? = when (segment) {
+      GraphSegment.TOTAL -> firstTs?.let { ts ->
+        Calendar.getInstance().apply { timeInMillis = ts; add(Calendar.MONTH, -6) }.timeInMillis
+      }
+      else -> getStartRange(segment, firstTs)
+    }
+    val maxX: Long? = when (segment) {
+      GraphSegment.TOTAL -> lastTs?.let { ts ->
+        Calendar.getInstance().apply { timeInMillis = ts; add(Calendar.MONTH, +6) }.timeInMillis
+      }
+      GraphSegment.MONTH -> {
+        val paddedStart = getStartRange(segment, now) ?: now
+        Calendar.getInstance().apply {
+          timeInMillis = paddedStart; add(Calendar.DAY_OF_YEAR, 30)
+        }.timeInMillis
+      }
+      else -> getEndRange(segment, now)
+    }
+    return minX to maxX
+  }
+
+  /**
    * Returns whether the range from [initialTimestamp] to [endTimestamp] lies entirely within
    * a single segment window (e.g. same week for WEEK, same month for MONTH, same year for YEAR/TOTAL).
    *
