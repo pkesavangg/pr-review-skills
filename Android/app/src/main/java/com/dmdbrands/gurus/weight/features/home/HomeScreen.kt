@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.app.components.HomeNavHost
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.features.common.components.AppFab
 import com.dmdbrands.gurus.weight.features.common.components.MainBottomNav
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
@@ -97,9 +98,13 @@ fun HomeScreenContent(
                           handleIntent(HomeIntent.HandleAppSyncResult(cancelResult))
                         },
                       )
+                        AppLog.w(
+                          "AppSyncScan",
+                          "Scale display detected results on home flow (device=${android.os.Build.MODEL}, weight=${result.weight} errors=${result.errors})",
+                        )
                       handleIntent(HomeIntent.HandleAppSyncResult(result))
                     } catch (e: Exception) {
-                      // Handle error
+                      AppLog.e("AppSyncScan", "AppSync scan failed on home flow: ${e.message}", e)
                     } finally {
                       isScanning = false
                     }

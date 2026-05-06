@@ -99,31 +99,43 @@ class MigrationService @Inject constructor(
       migrateIntegration(context, activeAccountId)
 
       // Step 2: Locate and open Ionic database for entries
-      val dbPath = IonicDatabaseHelper.locateIonicDb(context)
-      if (dbPath == null) {
-        return MigrationResult.Success(0, accountMigrated)
+      val dbPath = IonicDatabaseHelper.locateIonicDb(context) ?: return MigrationResult.Success(0, accountMigrated)
+
+      // Step 2a: a source entry DB exists, so we need an AccountEntity in Room or every
+      // insert will FK-fail. Fail-stop so the worker retries; if it stays broken, the
+      // blank lastSyncTimestamp drives a full server re-sync via getAllOperations().
+      if (!accountMigrated || activeAccountId == null) {
+        return MigrationResult.failure(
+          "Source entry DB found but account migration did not produce an activeAccountId"
+        )
       }
+
       sqliteDb = SQLiteDatabase.openDatabase(dbPath, null, SQLiteDatabase.OPEN_READONLY)
-      // // Cap native heap usage on the legacy DB connection during migration (MA-3852).
-      // sqliteDb.setMaxSqlCacheSize(1)
-      // sqliteDb.setForeignKeyConstraintsEnabled(false)
 
       // Step 4: Migrate entries. Check table existence before querying to support 4.0.1 vs 4.2.0.
       val regularEntries = if (tableExists(sqliteDb, "entry")) {
-        migrateEntriesFromEntryTables(context, sqliteDb, activeAccountId)
+        migrateEntriesFromEntryTables(sqliteDb, activeAccountId)
       } else {
         AppLog.i(TAG, "entry table not present, skipping entry migration")
         0
       }
       val opStackEntries = if (tableExists(sqliteDb, "opStack")) {
-        migrateEntriesWithRawSQL(context, sqliteDb, activeAccountId)
+        migrateEntriesWithRawSQL(sqliteDb, activeAccountId)
       } else {
         AppLog.i(TAG, "opStack table not present (e.g. 4.0.1), skipping opStack migration")
         0
       }
       totalMigratedEntries = regularEntries + opStackEntries
 
-      // Step 5: Save migration timestamp and clear resume checkpoints (full success path)
+      // Step 5: All entries saved — only now write the last sync timestamp.
+      // If entry migration threw above, this is skipped via the catch block.
+      val lastSyncTimestamp = CapacitorStorageHelper.getLastSyncTimestampForAccount(context, activeAccountId)
+      if (!lastSyncTimestamp.isNullOrBlank()) {
+        UserDataStore(context).updateSyncTimestamp(activeAccountId, lastSyncTimestamp)
+        AppLog.i(TAG, "Last sync timestamp written for $activeAccountId after entry migration")
+      }
+
+      // Step 6: Save migration timestamp and clear resume checkpoints (full success path)
       IonicDatabaseHelper.saveMigrationTimestamp(context)
       IonicDatabaseHelper.clearResumeRowids(context)
 
@@ -131,13 +143,13 @@ class MigrationService @Inject constructor(
         TAG,
         "Migration completed: Account=$accountMigrated, activeAccountId=$activeAccountId, OpStack Entries=$opStackEntries, Regular Entries=$regularEntries, Total=$totalMigratedEntries",
       )
-      MigrationResult.Companion.success(totalMigratedEntries, accountMigrated)
+      clearAllIonicData(context)
+      MigrationResult.success(totalMigratedEntries, accountMigrated)
     } catch (e: Exception) {
       AppLog.e(TAG, "Migration failed: ${e.message}")
-      MigrationResult.Companion.failure(e.message ?: "Unknown error")
+      MigrationResult.failure(e.message ?: "Unknown error")
     } finally {
       sqliteDb?.close()
-      clearAllIonicData(context)
     }
   }
 
@@ -377,12 +389,9 @@ class MigrationService @Inject constructor(
         return@withContext Pair(false, null)
       }
 
-      // Read last sync timestamp from Capacitor (Ionic key: timestampkey-{accountId})
-      val lastSyncTimestamp =
-        CapacitorStorageHelper.getLastSyncTimestampForAccount(context, accountEntity.id)
-
-      // Save account and related data
-      saveAccountAndSettings(context, ionicAccount, accountEntity, themeModeMap, lastSyncTimestamp)
+      // Sync timestamp is intentionally NOT read here — it is written only after
+      // all entries finish saving successfully (see migrateIonicDatabase Step 5).
+      saveAccountAndSettings(context, ionicAccount, accountEntity, themeModeMap)
       AppLog.d(TAG, "Account migration completed")
       AppLog.i(TAG, "Account migration successful: ${accountEntity.email}, activeAccountId=${accountEntity.id}")
       Pair(true, accountEntity.id)
@@ -394,22 +403,19 @@ class MigrationService @Inject constructor(
 
   /**
    * Saves account and all related settings to the database.
-   * @param lastSyncTimestamp Optional last operations sync timestamp from Ionic Capacitor storage (timestampkey-{accountId}); stored in UserDataStore when present.
+   * Note: sync timestamp is deliberately not handled here — it is written from
+   * migrateIonicDatabase only after entry migration succeeds.
    */
   private suspend fun saveAccountAndSettings(
     context: Context,
     ionicAccount: IonicAccount,
     accountEntity: AccountEntity,
     themeModeMap: Map<String, String>,
-    lastSyncTimestamp: String? = null
   ) {
-    // Update UserDataStore with UserAccount
     val userDataStore = UserDataStore(context)
-    // Save theme modes
 
     themeModeMap.forEach { (key, value) ->
       val themeMode = value.toThemeMode()
-      val syncTs = if (key == accountEntity.id && !lastSyncTimestamp.isNullOrBlank()) lastSyncTimestamp else ""
       val refreshToken = if (key == accountEntity.id) ionicAccount.refreshToken else ""
       val accessToken = if (key == accountEntity.id) ionicAccount.accessToken else ""
 
@@ -419,7 +425,6 @@ class MigrationService @Inject constructor(
         refreshToken = refreshToken ?: "",
         accessToken = accessToken ?: "",
         themeMode = themeMode,
-        syncTimestamp = syncTs,
         forceUpdate = userDataStore.containsAccount(key),
       )
     }
@@ -432,11 +437,6 @@ class MigrationService @Inject constructor(
       true,
     )
     userDataStore.setActiveAccount(accountEntity.id)
-
-    // If account was not in themeModeMap, set sync timestamp here (addAccount already set it when key == accountEntity.id)
-    if (!lastSyncTimestamp.isNullOrBlank() && accountEntity.id !in themeModeMap) {
-      userDataStore.updateSyncTimestamp(accountEntity.id, lastSyncTimestamp)
-    }
 
     // Insert account and settings using extension functions
     migrationRepository.insertAccountWithSettings(
@@ -464,11 +464,10 @@ class MigrationService @Inject constructor(
    *
    * @param activeAccountId When non-null, only entries for this account are migrated (same ID as account migration).
    */
-  private suspend fun migrateEntriesWithRawSQL(context: Context, sqliteDb: SQLiteDatabase, activeAccountId: String?): Int {
+  private suspend fun migrateEntriesWithRawSQL(sqliteDb: SQLiteDatabase, activeAccountId: String?): Int {
     val hasMetric = tableExists(sqliteDb, "opStack_metric")
     val pagedQuery = buildOpStackPagedQuery(hasMetric)
     return migrateEntriesPaged(
-      context = context,
       sqliteDb = sqliteDb,
       activeAccountId = activeAccountId,
       scope = SCOPE_OPSTACK,
@@ -514,11 +513,10 @@ class MigrationService @Inject constructor(
    *
    * @param activeAccountId When non-null, only entries for this account are migrated (same ID as account migration).
    */
-  private suspend fun migrateEntriesFromEntryTables(context: Context, sqliteDb: SQLiteDatabase, activeAccountId: String?): Int {
+  private suspend fun migrateEntriesFromEntryTables(sqliteDb: SQLiteDatabase, activeAccountId: String?): Int {
     val hasMetric = tableExists(sqliteDb, "entry_metric")
     val pagedQuery = buildEntryPagedQuery(hasMetric)
     return migrateEntriesPaged(
-      context = context,
       sqliteDb = sqliteDb,
       activeAccountId = activeAccountId,
       scope = SCOPE_ENTRY,
@@ -569,7 +567,6 @@ class MigrationService @Inject constructor(
    * unique `(accountId, entryTimestamp)` index, so the overlap rewrites identical rows safely.
    */
   private suspend fun migrateEntriesPaged(
-    context: Context,
     sqliteDb: SQLiteDatabase,
     activeAccountId: String?,
     scope: String,
@@ -577,8 +574,8 @@ class MigrationService @Inject constructor(
     isOpStack: Boolean,
   ): Int {
     var migratedCount = 0
-    var lastRowid = IonicDatabaseHelper.getResumeRowid(context, scope) ?: 0L
-    AppLog.i(TAG, "Paged migration starting for scope=$scope, resumeRowid=$lastRowid")
+    var lastRowid = 0L
+    AppLog.i(TAG, "Paged migration starting for scope=$scope")
 
     while (true) {
       val pageRows = mutableListOf<ScaleEntry>()
@@ -591,15 +588,13 @@ class MigrationService @Inject constructor(
           rawCursorCount++
           val rowed = cursor.getLong(rowedIndex)
           if (rowed > maxRowidThisPage) maxRowidThisPage = rowed
-          try {
-            val scaleEntry = IonicDataConverter.convertCursorToScaleEntry(cursor, isOpStack = isOpStack)
-            if (scaleEntry != null) {
-              val matchesAccount = activeAccountId == null || scaleEntry.entry.accountId == activeAccountId
-              if (matchesAccount) pageRows.add(scaleEntry)
-            }
-          } catch (e: Exception) {
-            AppLog.w(TAG, "Failed to convert entry at rowid=$rowed scope=$scope: ${e.message}")
-          }
+          // Conversion exceptions and downstream insert failures both propagate.
+          // The whole migration fails-fast and the worker retries; if it stays broken,
+          // the blank lastSyncTimestamp drives getAllOperations() to re-pull from the server.
+          val scaleEntry = IonicDataConverter.convertCursorToScaleEntry(cursor, isOpStack = isOpStack)
+            ?: continue   // null = nothing to migrate for this row (e.g. tombstone), not a failure
+          val matchesAccount = activeAccountId == null || scaleEntry.entry.accountId == activeAccountId
+          if (matchesAccount) pageRows.add(scaleEntry)
         }
       }
 
@@ -607,13 +602,9 @@ class MigrationService @Inject constructor(
         migratedCount += migrationRepository.insertScaleEntries(pageRows)
       }
 
-      // Advance the resume marker even when the account filter rejected every row in this page,
-      // so a subsequent run does not re-scan rejected rows.
-      if (maxRowidThisPage > lastRowid) {
-        lastRowid = maxRowidThisPage
-        IonicDatabaseHelper.saveResumeRowid(context, scope, lastRowid)
-      }
-
+      // In-memory cursor pointer only — a retry re-walks from rowid 0.
+      // REPLACE on the unique (accountId, entryTimestamp) index makes that idempotent.
+      if (maxRowidThisPage > lastRowid) lastRowid = maxRowidThisPage
       if (rawCursorCount < PAGE_SIZE) break
     }
 

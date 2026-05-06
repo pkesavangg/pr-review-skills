@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.dmdbrands.gurus.weight.data.storage.db.converter.DateConverter
@@ -95,13 +96,16 @@ abstract class AppDatabase : RoomDatabase() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                   super.onCreate(db)
 
-                  // Start Ionic migration worker when database is first created
+                  // Start Ionic migration worker when database is first created.
+                  // Unique-work + KEEP policy ensures that if Room is recreated mid-retry
+                  // (e.g. after performEmergencyCleanup), we don't stack duplicate workers
+                  // on top of one that's already retrying.
                   val migrationWork = OneTimeWorkRequestBuilder<IonicMigrationWorker>()
                     .addTag("ionic_migration")
                     .build()
 
                   WorkManager.getInstance(context.applicationContext)
-                    .enqueue(migrationWork)
+                    .enqueueUniqueWork("ionic_migration", ExistingWorkPolicy.KEEP, migrationWork)
                 }
               },
             )

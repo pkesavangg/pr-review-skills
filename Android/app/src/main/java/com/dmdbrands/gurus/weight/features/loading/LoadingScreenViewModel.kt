@@ -14,7 +14,6 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
-import com.greatergoods.blewrapper.GGDeviceService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -36,7 +35,6 @@ constructor(
   private val entryService: IEntryService,
   private val dashboardService: IDashboardService,
   private val deviceService: IDeviceService,
-  private val ggDeviceService: GGDeviceService,
   private val deviceInfoService: IDeviceInfoService
 ) : ViewModel() {
   private val TAG = "Loadingscreenviewmodel"
