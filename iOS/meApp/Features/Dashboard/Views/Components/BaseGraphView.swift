@@ -420,6 +420,20 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         .onChange(of: storeSelectionSyncState) { _, _ in
             syncViewModelSelectionFromStore()
         }
+        // Cold-start race recovery: at cold start, `BaseGraphView.onAppear` calls
+        // `syncViewModelSelectionFromStore()` once. If `dashboardStore.graph` already
+        // has the latest selection but `viewModel.chartOperations` is still empty
+        // (because the `data` slice hasn't been mirrored from the data manager yet),
+        // section-specific overrides like `MonthSectionViewModel.handleChartSelection`
+        // hit their geometry guards (line 64 — `effectiveDates.isEmpty`) and clear
+        // the selection. When operations finally arrive, the existing
+        // `.onChange(of: storeSelectionSyncState)` does NOT fire — the store-side
+        // selection didn't change, only the chart data did — so the VM stays
+        // crosshair-less. Re-sync on the 0 → N transition of `chartOperations`.
+        .onChange(of: viewModel.chartOperations.count) { oldCount, newCount in
+            guard oldCount == 0, newCount > 0 else { return }
+            syncViewModelSelectionFromStore()
+        }
         .graphViewStyle(canAddPadding: !viewModel.hasXAxis, canAddTrailingPadding: !viewModel.chartOperations.isEmpty)
     }
 
