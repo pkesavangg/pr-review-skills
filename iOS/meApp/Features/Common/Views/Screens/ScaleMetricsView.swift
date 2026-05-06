@@ -33,7 +33,7 @@ struct ScaleMetricsView: View {
     ]
 
     private var metricOrder: [BodyMetric] {
-        switch dashboardStore.state.metrics.dashboardType {
+        switch dashboardStore.metrics.dashboardType {
         case .dashboard4:
             return [.weight, .bmi, .bodyFat, .muscleMass, .water]
         case .dashboard12:
@@ -100,7 +100,7 @@ struct ScaleMetricsView: View {
             .onAppear {
                 selectedMetricState = dashboardStore.validateMetricInfoSelection(selectedMetricState)
             }
-            .onChange(of: dashboardStore.state.metrics.dashboardType) { _, _ in
+            .onChange(of: dashboardStore.metrics.dashboardType) { _, _ in
                 selectedMetricState = dashboardStore.validateMetricInfoSelection(selectedMetricState)
             }
         }

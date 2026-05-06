@@ -210,10 +210,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
 
     private var storeSelectionSyncState: StoreSelectionSyncState {
         StoreSelectionSyncState(
-            selectedPointDate: dashboardStore.state.graph.selectedPoint?.date,
-            selectedPointTimestamp: dashboardStore.state.graph.selectedPoint?.entryTimestamp,
-            selectedXValue: dashboardStore.state.graph.selectedXValue,
-            showCrosshair: dashboardStore.state.graph.showCrosshair
+            selectedPointDate: dashboardStore.graph.selectedPoint?.date,
+            selectedPointTimestamp: dashboardStore.graph.selectedPoint?.entryTimestamp,
+            selectedXValue: dashboardStore.graph.selectedXValue,
+            showCrosshair: dashboardStore.graph.showCrosshair
         )
     }
 
@@ -875,14 +875,14 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     }
 
     private func syncViewModelSelectionFromStore() {
-        guard dashboardStore.state.graph.showCrosshair else {
+        guard dashboardStore.graph.showCrosshair else {
             localSelectedXValue = nil
             viewModel.clearSelection()
             return
         }
 
-        let storeSelectedDate = dashboardStore.state.graph.selectedXValue
-            ?? dashboardStore.state.graph.selectedPoint?.date
+        let storeSelectedDate = dashboardStore.graph.selectedXValue
+            ?? dashboardStore.graph.selectedPoint?.date
         guard let storeSelectedDate else {
             localSelectedXValue = nil
             viewModel.clearSelection()
