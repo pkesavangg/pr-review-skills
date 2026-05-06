@@ -191,6 +191,7 @@ class BottomTabBarViewModel: ObservableObject {
             .map { scales in
                 scales.contains { $0.bathScale?.scaleType == ScaleSourceType.appsync.rawValue }
             }
+            .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .assign(to: \.showAppSync, on: self)
             .store(in: &cancellables)

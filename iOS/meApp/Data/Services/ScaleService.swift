@@ -302,7 +302,12 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             return
         }
 
-        var state = ephemeralState[key] ?? DeviceEphemeralState()
+        let existing = ephemeralState[key] ?? DeviceEphemeralState()
+        if existing.isConnected == isConnected && existing.isWifiConfigured == isWifiConfigured {
+            return
+        }
+
+        var state = existing
         state.isConnected = isConnected
         state.isWifiConfigured = isWifiConfigured
         ephemeralState[key] = state
@@ -316,7 +321,11 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
 
     /// Updates WiFi configuration status via in-memory ephemeral state. No SwiftData write.
     func updateConnectedDeviceWifiStatus(broadcastId: String, isConfigured: Bool) async {
-        var state = ephemeralState[broadcastId] ?? DeviceEphemeralState()
+        let existing = ephemeralState[broadcastId] ?? DeviceEphemeralState()
+        if existing.isWifiConfigured == isConfigured {
+            return
+        }
+        var state = existing
         state.isWifiConfigured = isConfigured
         ephemeralState[broadcastId] = state
         await refreshScalesFromLocal()
@@ -630,6 +639,8 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                     isWeighOnlyModeEnabledByOthers: ephemeral.isWeighOnlyModeEnabledByOthers
                 )
             }
+
+            guard snapshots != scales else { return }
 
             let previousIds = scales.map(\.id).sorted()
             let currentIds = snapshots.map(\.id).sorted()

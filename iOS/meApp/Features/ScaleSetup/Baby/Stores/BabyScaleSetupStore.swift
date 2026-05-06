@@ -27,7 +27,7 @@ final class BabyScaleSetupStore: ObservableObject {
     /// Callback used by the screen to dismiss itself.
     var dismissAction: (() -> Void)?
     /// Discovered scale information.
-    var discoveredScale: Device?
+    var discoveredScale: DeviceSnapshot?
     /// Discovery event from Bluetooth service.
     var discoveryEvent: DeviceDiscoveryEvent?
 

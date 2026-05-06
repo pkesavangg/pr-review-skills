@@ -70,7 +70,7 @@ extension BabyScaleSetupStore {
         scanTimeoutTask?.cancel()
 
         self.discoveryEvent = event
-        self.discoveredScale = event.device.toDevice()
+        self.discoveredScale = event.device
 
         if event.isNew {
             Task {
@@ -94,7 +94,7 @@ extension BabyScaleSetupStore {
         let displayName = accountService.activeAccount?.firstName ?? "User"
 
         let pairResult = await bluetoothService.confirmSmartPair(
-            device: scale,
+            device: scale.toDevice(),
             token: "",
             displayName: displayName,
             userNumber: nil
