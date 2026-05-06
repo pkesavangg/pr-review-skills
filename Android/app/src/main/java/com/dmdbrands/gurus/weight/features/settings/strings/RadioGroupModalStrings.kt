@@ -1,5 +1,7 @@
 package com.dmdbrands.gurus.weight.features.settings.strings
 
+import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+
 /**
  * Strings for the RadioGroupModal component.
  * Contains default text values and common labels.
@@ -14,6 +16,7 @@ object RadioGroupModalStrings {
         const val Notifications = "Notifications"
         const val Weightless = "Weightless"
         const val Appearance = "Appearance"
+        const val DefaultGraphRange = "Default Graph Range"
     }
 
     object Button {
@@ -53,4 +56,24 @@ object RadioGroupModalStrings {
         const val Dark = "Dark"
         const val System = "System Settings"
     }
+
+    // Default Graph Range Options
+    object DefaultGraphRange {
+        const val Week = "Week"
+        const val Month = "Month"
+        const val Year = "Year"
+        const val Total = "Total"
+    }
+}
+
+/**
+ * Maps a [GraphSegment] enum to its user-facing display label defined in
+ * [RadioGroupModalStrings.DefaultGraphRange]. Centralised here so callers across the
+ * settings ViewModel and screen render labels consistently.
+ */
+fun GraphSegment.toDisplayString(): String = when (this) {
+    GraphSegment.WEEK -> RadioGroupModalStrings.DefaultGraphRange.Week
+    GraphSegment.MONTH -> RadioGroupModalStrings.DefaultGraphRange.Month
+    GraphSegment.YEAR -> RadioGroupModalStrings.DefaultGraphRange.Year
+    GraphSegment.TOTAL -> RadioGroupModalStrings.DefaultGraphRange.Total
 }

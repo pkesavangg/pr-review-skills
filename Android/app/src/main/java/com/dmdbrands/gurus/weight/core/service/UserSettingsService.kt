@@ -6,9 +6,10 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.metrics.StreakRequest
 import com.dmdbrands.gurus.weight.domain.model.api.metrics.WeightlessRequest
-import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.repository.IUserSettingsRepository
 import com.dmdbrands.gurus.weight.domain.services.IUserSettingsService
+import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,9 +26,10 @@ class UserSettingsService
     dialogQueueService: IDialogQueueService,
     appNavigationService: IAppNavigationService,
   ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IUserSettingsService {
-    private val TAG = "UserSettingsService"
 
-
+    companion object {
+      private const val TAG = "UserSettingsService"
+    }
 
     /**
      * Toggles the streak setting for the active account.
@@ -93,6 +95,18 @@ class UserSettingsService
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Error toggling weightless setting", e)
+        throw e
+      }
+    }
+
+    override suspend fun setDefaultGraphSegment(segment: GraphSegment) {
+      try {
+        AppLog.d(TAG, "Setting default graph segment to: $segment")
+        userSettingsRepository.setDefaultGraphSegment(segment)
+        AppLog.i(TAG, "Successfully updated default graph segment to $segment")
+      } catch (e: Exception) {
+        if (e is CancellationException) throw e
+        AppLog.e(TAG, "Error setting default graph segment", e)
         throw e
       }
     }

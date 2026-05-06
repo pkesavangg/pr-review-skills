@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.settings.viewmodel
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 
 // TODO: MyAccountsReducer and related state/intent may be implemented for MyAccountsScreen if needed, following the same pattern.
 
@@ -22,6 +23,7 @@ data class SettingsState(
   val unreadFeedCount: Int = 0,
   val showUnreadFeedIndication: Boolean = false,
   val isExportEnabled: Boolean = false,
+  val currentDefaultGraphRange: GraphSegment = GraphSegment.DEFAULT,
 ) : IReducer.State {
 
   /**
@@ -74,7 +76,9 @@ sealed interface SettingsIntent : IReducer.Intent {
   data class ToggleStreak(val checked: Boolean) : SettingsIntent
   object goalSettingModal : SettingsIntent
   object ShowAppearanceModal : SettingsIntent
+  object ShowDefaultGraphRangeModal : SettingsIntent
   data class UpdateThemeMode(val themeMode: String) : SettingsIntent
+  data class UpdateDefaultGraphRange(val range: GraphSegment) : SettingsIntent
   // MAC Address Filter Intents (for 0412 scale testing)
   object ShowMacAddressFilterModal : SettingsIntent
   data class UpdateSelectedMacAddress(val macAddress: String) : SettingsIntent
@@ -104,6 +108,7 @@ class SettingsReducer : IReducer<SettingsState, SettingsIntent> {
       )
 
       is SettingsIntent.UpdateThemeMode -> state.copy(currentThemeMode = intent.themeMode)
+      is SettingsIntent.UpdateDefaultGraphRange -> state.copy(currentDefaultGraphRange = intent.range)
       is SettingsIntent.UpdateSelectedMacAddress -> state.copy(selectedMacAddress = intent.macAddress)
       is SettingsIntent.UpdateTestingFeatures -> state.copy(enableTestingFeatures = intent.enabled)
       is SettingsIntent.SetUnreadFeedCount -> state.copy(unreadFeedCount = intent.count)
