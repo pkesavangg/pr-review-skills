@@ -86,6 +86,79 @@ struct DashboardStoreGraphSelectionSyncTests {
         }
     }
 
+    @Test
+    func monthViewModelAppliesExistingStoreLatestSelectionAfterConfiguration() async throws {
+        defer { Task { await clearEntrySummaries() } }
+
+        let older = makeSummary(
+            date: makeDate(2026, 4, 18),
+            weight: 176,
+            bmi: 22.1
+        )
+        let latest = makeSummary(
+            date: makeDate(2026, 4, 22),
+            weight: 182,
+            bmi: 24.4
+        )
+
+        let store = await makeStore(
+            daily: [older, latest],
+            monthly: []
+        )
+
+        store.updateSelectedPeriod(.month)
+        store.state.graph.selectedPoint = latest
+        store.state.graph.selectedXValue = latest.date
+        store.state.graph.showCrosshair = true
+
+        let viewModel = MonthSectionViewModel()
+        viewModel.configure(with: store)
+        viewModel.applyProgrammaticSelection(at: store.state.graph.selectedXValue)
+
+        #expect(viewModel.showCrosshair)
+        #expect(viewModel.selectedPoint?.entryTimestamp == latest.entryTimestamp)
+        #expect(viewModel.selectedDate == viewModel.plotXDate(for: latest.date))
+    }
+
+    @Test
+    func initializeChartSelectsLatestEntryWhenMonthIsVisibleInitially() async throws {
+        defer { Task { await clearEntrySummaries() } }
+
+        let older = makeSummary(
+            date: makeDate(2026, 4, 18),
+            weight: 176,
+            bmi: 22.1
+        )
+        let latest = makeSummary(
+            date: makeDate(2026, 4, 22),
+            weight: 182,
+            bmi: 24.4
+        )
+
+        let store = await makeStore(
+            daily: [older, latest],
+            monthly: []
+        )
+
+        store.state.graph.selectedPeriod = .month
+        store.state.graph.selectedPoint = nil
+        store.state.graph.selectedXValue = nil
+        store.state.ui.hasInitializedChart = false
+        store.state.ui.hasLandedInitialSelection = false
+
+        store.initializeChart()
+
+        try await waitUntil(timeout: 2.0) {
+            store.state.graph.selectedPoint?.entryTimestamp == latest.entryTimestamp &&
+            store.state.graph.selectedXValue == latest.date &&
+            store.state.ui.hasLandedInitialSelection
+        }
+
+        #expect(store.state.graph.selectedPoint?.entryTimestamp == latest.entryTimestamp)
+        #expect(store.state.graph.selectedXValue == latest.date)
+        #expect(store.state.ui.hasLandedInitialSelection)
+    }
+
 }
 
 // MARK: - Helpers

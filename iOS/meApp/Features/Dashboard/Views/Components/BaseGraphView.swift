@@ -12,6 +12,13 @@ import Charts
 /// Eliminates code duplication across WeekGraphView, MonthGraphView, YearGraphView, and TotalGraphView
 struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equatable {
 
+    private struct StoreSelectionSyncState: Equatable {
+        let selectedPointDate: Date?
+        let selectedPointTimestamp: String?
+        let selectedXValue: Date?
+        let showCrosshair: Bool
+    }
+
     // MARK: - Dependencies
     @ObservedObject var viewModel: ViewModel
     @ObservedObject var dashboardStore: DashboardStore
@@ -152,6 +159,15 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         return hasher.finalize()
     }
 
+    private var storeSelectionSyncState: StoreSelectionSyncState {
+        StoreSelectionSyncState(
+            selectedPointDate: dashboardStore.state.graph.selectedPoint?.date,
+            selectedPointTimestamp: dashboardStore.state.graph.selectedPoint?.entryTimestamp,
+            selectedXValue: dashboardStore.state.graph.selectedXValue,
+            showCrosshair: dashboardStore.state.graph.showCrosshair
+        )
+    }
+
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -249,6 +265,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             precomputeLabels()
             // Flip on animation after first frame so the initial mount does not animate
             DispatchQueue.main.async { enableYAxisAnimation = true }
+            syncViewModelSelectionFromStore()
 
             // Force chart to sync with the initial scroll position after configuration
             if isScrollable {
@@ -351,6 +368,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             dashboardStore: dashboardStore,
             localSelectedXValue: $localSelectedXValue
         )
+        .onChange(of: storeSelectionSyncState) { _, _ in
+            syncViewModelSelectionFromStore()
+        }
         .graphViewStyle(canAddPadding: !viewModel.hasXAxis, canAddTrailingPadding: !viewModel.chartOperations.isEmpty)
     }
 
@@ -804,6 +824,25 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     private func invalidateLabelCaches() {
         cachedYAxisLabels.removeAll()
         cachedXAxisLabels.removeAll()
+    }
+
+    private func syncViewModelSelectionFromStore() {
+        guard dashboardStore.state.graph.showCrosshair else {
+            localSelectedXValue = nil
+            viewModel.clearSelection()
+            return
+        }
+
+        let storeSelectedDate = dashboardStore.state.graph.selectedXValue
+            ?? dashboardStore.state.graph.selectedPoint?.date
+        guard let storeSelectedDate else {
+            localSelectedXValue = nil
+            viewModel.clearSelection()
+            return
+        }
+
+        localSelectedXValue = storeSelectedDate
+        viewModel.applyProgrammaticSelection(at: storeSelectedDate)
     }
 
     // MARK: - Helpers
