@@ -440,12 +440,19 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         
         selectedDate = date
         showCrosshair = true
-        
-        // Find the closest operation to the selected date
-        let operations = chartOperations
-        selectedPoint = operations.min { op1, op2 in
-            abs(op1.date.timeIntervalSince(date)) < abs(op2.date.timeIntervalSince(date))
+        selectedPoint = closestOperation(to: date)
+    }
+
+    /// Applies a selection driven by dashboard store state.
+    /// Uses the same selection path as user interactions so period-specific snapping
+    /// stays consistent between manual and programmatic selection.
+    func applyProgrammaticSelection(at date: Date?) {
+        guard let date else {
+            clearSelection()
+            return
         }
+
+        handleChartSelection(at: plotXDate(for: date))
     }
     
     /// Clears all selection state
@@ -453,6 +460,15 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         selectedPoint = nil
         selectedDate = nil
         showCrosshair = false
+    }
+
+    /// Finds the operation nearest to the given X position.
+    /// Subclasses can reuse this when they snap the selection before resolving the point.
+    func closestOperation(to date: Date) -> BathScaleWeightSummary? {
+        let operations = chartOperations
+        return operations.min { op1, op2 in
+            abs(plotXDate(for: op1.date).timeIntervalSince(date)) < abs(plotXDate(for: op2.date).timeIntervalSince(date))
+        }
     }
     
     // MARK: - Goal Chip Positioning

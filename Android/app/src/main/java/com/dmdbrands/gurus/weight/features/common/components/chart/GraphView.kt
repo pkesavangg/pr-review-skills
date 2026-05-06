@@ -4,12 +4,13 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -32,6 +33,7 @@ import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -78,9 +80,20 @@ fun GraphView(
     }
   }
 
-  val initialStartX = GraphUtil.getRollingWindowStart(segment, state.getEndTimestamp())?.toDouble()
-    ?: GraphUtil.getStartRange(segment, state.getEndTimestamp())?.toDouble()
-    ?: Calendar.getInstance().timeInMillis.toDouble()
+  // `state` and `isCurrentPage` are read from a long-running collector below, so we wrap
+  // them in `rememberUpdatedState` to avoid reading the snapshot captured when the effect
+  // first launched.
+  val currentState by rememberUpdatedState(state)
+  val currentIsCurrentPage by rememberUpdatedState(isCurrentPage)
+
+  // Reactive so the merged effect below can observe changes via snapshotFlow.
+  val initialStartX by remember(segment) {
+    derivedStateOf {
+      GraphUtil.getRollingWindowStart(segment, currentState.getEndTimestamp())?.toDouble()
+        ?: GraphUtil.getStartRange(segment, currentState.getEndTimestamp())?.toDouble()
+        ?: Calendar.getInstance().timeInMillis.toDouble()
+    }
+  }
 
   val (startPaddingXStep, _) = remember(state.isEmptyGraph, segment) {
     if (!state.isEmptyGraph || segment != GraphSegment.TOTAL)
@@ -105,24 +118,6 @@ fun GraphView(
       } else {
         GraphSnapHelper.getSnapPositionOnFling(timeStamp = scrolledX, segment = segment, isForward = isForward)
       }
-    }
-  }
-
-  // Cold-start trigger for the reset-to-latest effect. The ViewModel-scoped flag
-  // (`viewModel.hasInitialResetFired`) survives rotation (so a returning page does NOT
-  // re-fire and clobber the user's marker/scroll) but is fresh after process death (so a
-  // restored app correctly auto-selects the latest entry on first composition). The flag
-  // is the authoritative gate; we deliberately do NOT also gate on `resetEpoch`. If the
-  // segment-tap signal arrives while data is still empty, `LaunchedEffect(resetEpoch)`
-  // early-returns without flipping the flag — the cold-start path must remain eligible to
-  // fire when data eventually lands. Worst case is an idempotent double-dispatch on first
-  // activation when both signal and cold-start race; both writes target the same latest
-  // entry, so user-visible behavior is unchanged.
-  var resetEpoch by remember(segment) { mutableIntStateOf(0) }
-  LaunchedEffect(state.data.isNotEmpty(), state.isEmptyGraph, segment, isCurrentPage) {
-    val hasData = state.data.isNotEmpty() && !state.isEmptyGraph
-    if (isCurrentPage && hasData && !viewModel.hasInitialResetFired) {
-      resetEpoch++
     }
   }
 
@@ -158,7 +153,7 @@ fun GraphView(
               xValues = visibleLabels,
               interpolationType = InterpolationType.MONOTONE,
             )
-            val fallbackData = state.createFallBackData(
+            val fallbackData = currentState.createFallBackData(
               segment = segment,
               timeStamps = visibleLabels.map { it.toLong() },
               fallbackValues = fallbackValues.map { it.map { it.toDouble() } },
@@ -169,28 +164,14 @@ fun GraphView(
       )
     }
   }
-  // Re-arm scroll-to-initial only on an explicit segment-button tap. The pager parent emits
-  // to `segmentResetSignal` from `SegmentButtonGroup.onSelected`; only the page whose
-  // segment matches the emitted value flips its `initialScrollHandled`. Rotation,
-  // history-screen return, and app resume do not emit, so the user's scroll position is
-  // preserved across non-tap recompositions.
-  // Segment-button tap → re-arm vico's initial scroll AND trigger the scroll+marker effect
-  // with fresh state via resetEpoch. The collect lambda must not read `state` directly
-  // because it captures the snapshot from LaunchedEffect start, not the live value.
-  LaunchedEffect(scrollState, segment) {
-    segmentResetSignal
-      .filter { it == segment }
-      .collect {
-        scrollState.initialScrollHandled = false
-        resetEpoch++
-      }
-  }
 
-  LaunchedEffect(resetEpoch) {
-    if (resetEpoch == 0 || !isCurrentPage || state.isEmptyGraph || state.data.isEmpty()) {
-      return@LaunchedEffect
-    }
-    val latestEntry = state.data.maxByOrNull { it.getTimeStamp() } ?: return@LaunchedEffect
+  // Scrolls to the segment-appropriate initial range and selects the latest entry.
+  // Reads `currentState` / `currentIsCurrentPage` so callers in long-running collectors
+  // see live composition values rather than launch-time snapshots.
+  suspend fun performInitialReset() {
+    val s = currentState
+    if (!currentIsCurrentPage || s.isEmptyGraph || s.data.isEmpty()) return
+    val latestEntry = s.data.maxByOrNull { it.getTimeStamp() } ?: return
     val latestTimeStamp = latestEntry.getTimeStamp()
     if (segment != GraphSegment.TOTAL) {
       val windowStart = GraphUtil.getRollingWindowStart(segment, latestTimeStamp)
@@ -199,13 +180,26 @@ fun GraphView(
         onScrollUpdate(windowStart, latestTimeStamp)
       }
     }
-    // Always select the latest entry: resetEpoch is only incremented by an explicit segment
-    // tap or cold-start data arrival — never by navigation-back or rotation — so there is no
-    // risk of clobbering a user's prior marker choice here.
     viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(latestTimeStamp.toDouble()))
     viewModel.handleIntent(GraphIntent.UpdateTarget(listOf(latestEntry)))
-    viewModel.markInitialResetFired()
     onChartConsuming(false)
+  }
+
+  // Re-arm vico's initial scroll and re-select the latest entry on two triggers:
+  //   1. Initial-scroll anchor changes (i.e., new data lands and `state.getEndTimestamp()`
+  //      shifts) — fixes the Week-tab marker not following the latest entry on add/delete.
+  //   2. Explicit segment-button tap from the pager parent (`segmentResetSignal`).
+  // `snapshotFlow` also emits the current value on subscription, so cold-start composition
+  // immediately runs through `performInitialReset()` (which is a no-op when data is empty
+  // or the page is not current).
+  LaunchedEffect(scrollState, segment) {
+    merge(
+      snapshotFlow { initialStartX },
+      segmentResetSignal.filter { it == segment },
+    ).collect {
+      scrollState.initialScrollHandled = false
+      performInitialReset()
+    }
   }
 
   LaunchedEffect(state.markerIndex == null) {
@@ -228,8 +222,10 @@ fun GraphView(
         when (event) {
           is ChartInteractionEvent.DragStarted ->
             viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
+
           is ChartInteractionEvent.DragEnded ->
             lastDragEndMs.longValue = System.currentTimeMillis()
+
           else -> Unit
         }
       }
