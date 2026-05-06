@@ -121,7 +121,8 @@ fun ScaleDetailsScreenContent(
     ) {
       // Scale Image - map SKU for display (e.g., 0022 -> 0383)
       AppScaleImage(
-        sku = DeviceHelper.mapSkuForDisplay(device!!.getSKU()),
+        // Unknown-SKU devices fall through to AppScaleImage's default placeholder via empty string.
+        sku = DeviceHelper.mapSkuForDisplay(device!!.getSKU()) ?: "unknowscale",
         modifier = Modifier.fillMaxWidth(),
         scaleImageSize = ScaleImageSize.Large,
       )
@@ -138,8 +139,8 @@ fun ScaleDetailsScreenContent(
           )
         }
         // Show SetupIncomplete note if Wi-Fi is not configured AND no SSID is connected
-        val isWifiConfigured = state.scale?.device?.isWifiConfigured == true || !state.connectedSSID.isNullOrEmpty()
-        if (!isWifiConfigured && state.scale?.connectionStatus == BLEStatus.CONNECTED && scaleSetupType == ScaleSetupType.BtWifiR4) {
+        val isWifiConfigured = state.scale.device?.isWifiConfigured == true || !state.connectedSSID.isNullOrEmpty()
+        if (!isWifiConfigured && state.scale.connectionStatus == BLEStatus.CONNECTED && scaleSetupType == ScaleSetupType.BtWifiR4) {
           AppNote(
             message = ScaleDetailsStrings.SetupIncomplete,
             icon = AppIcons.Default.Exclamation,
@@ -231,7 +232,7 @@ fun ScaleDetailsScreenContent(
               )
               if (scaleSetupType == ScaleSetupType.BtWifiR4) {
                 // Wi-Fi is considered configured if we have isWifiConfigured=true OR if we have a connected SSID
-                val isWifiConfigured = device?.device?.isWifiConfigured == true || !state.connectedSSID.isNullOrEmpty()
+                val isWifiConfigured = device.device?.isWifiConfigured == true || !state.connectedSSID.isNullOrEmpty()
                 add(
                   SettingsItem(
                     title = ScaleDetailsStrings.WiFi,
@@ -269,11 +270,11 @@ fun ScaleDetailsScreenContent(
               title = ScaleDetailsStrings.ScaleType,
               type =
                 SettingsItemType.CustomIcon(
-                  text = ScaleSetupType.toLabel(device?.deviceType),
+                  text = ScaleSetupType.toLabel(device.deviceType),
                   icon = {
                     AppIcon(
                       id = ScaleDataHelper.scaleTypeIcon(scaleSetupType),
-                      contentDescription = ScaleSetupType.toLabel(device?.deviceType),
+                      contentDescription = ScaleSetupType.toLabel(device.deviceType),
                       type = AppIconType.Primary,
                     )
                   },
@@ -281,11 +282,11 @@ fun ScaleDetailsScreenContent(
             ),
             SettingsItem(
               title = ScaleDetailsStrings.Sku,
-              type = SettingsItemType.TextOnly(DeviceHelper.mapSkuForDisplay(device!!.getSKU())),
+              type = SettingsItemType.TextOnly(DeviceHelper.mapSkuForDisplay(device.getSKU()) ?: "unknown"),
             ),
             SettingsItem(
               title = ScaleDetailsStrings.DatePaired,
-              type = SettingsItemType.TextDate(state.scale?.createdAt ?: ""), // Not available in GGDevice
+              type = SettingsItemType.TextDate(state.scale.createdAt ?: ""), // Not available in GGDevice
             ),
             SettingsItem(
               title = ScaleDetailsStrings.ProductGuide,
@@ -313,7 +314,7 @@ fun ScaleDetailsScreenContent(
           items = listOf(
             SettingsItem(
               title = ScaleDetailsStrings.ScaleMac,
-              type = SettingsItemType.TextOnly(device?.device?.macAddress ?: "Unknown"),
+              type = SettingsItemType.TextOnly(device.device?.macAddress ?: "Unknown"),
             ),
             SettingsItem(
               title = ScaleDetailsStrings.SoftwareUpdate,

@@ -535,14 +535,14 @@ constructor(
               AppLog.d(TAG, "isSkipped: $isSkipped, isIgnored: $isIgnored")
 
               // Apply MAC address filtering for 0412 scales (similar to Angular's onfoundnewsmartwifiscale)
-              val deviceSku = data.getSKU()
+              val deviceSku = data.getSKU() ?: return@launch
               val shouldShow = if (deviceSku == "0412") {
                 val isAllow = bluetoothPreferencesService.shouldShowDevice(data.macAddress)
                 isAllow
               } else {
                 true // Don't filter non-0412 scales
               }
-
+              AppLog.d(TAG, "devicesku: $deviceSku")
               // Only show if not skipped, not ignored, not known, and shouldShow is true
               if (!isSkipped && !isIgnored && !isKnownScale && shouldShow) {
                 handleIntent(AppIntent.SetScaleDiscovered(true))
@@ -627,13 +627,17 @@ constructor(
                     val accountId = currentAccountId ?: return@launch
                     dialogQueueService.showLoader("Loading...")
                     val device = deviceService.getScaleByBroadcastId(data.broadcastId!!, accountId) ?: return@launch
+                    val deviceSku = data.getSKU() ?: run {
+                      dialogQueueService.dismissLoader()
+                      return@launch
+                    }
                     ggDeviceService.addCacheDevice(data.broadcastId, device)
                     ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
                       viewModelScope.launch {
                         dialogQueueService.dismissLoader()
                         navigationService.navigateTo(
                           AppRoute.ScaleSetup.BtWifiScaleSetup(
-                            sku = data.getSKU(),
+                            sku = deviceSku,
                             initialStep = BtWifiSetupStep.USER_LIMIT_REACHED,
                             broadcastId = data.broadcastId,
                             userList = response.user,
@@ -663,6 +667,7 @@ constructor(
                     viewModelScope.launch {
                       val accountId = currentAccountId ?: return@launch
                       val device = deviceService.getScaleByBroadcastId(data.broadcastId!!, accountId) ?: return@launch
+                      val deviceSku = data.getSKU() ?: return@launch
                       val userList = suspendCoroutine { continuation ->
                         ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
                           continuation.resume(response.user)
@@ -675,7 +680,7 @@ constructor(
                             ggDeviceService.addCacheDevice(data.broadcastId, device)
                             navigationService.navigateTo(
                               AppRoute.ScaleSetup.BtWifiScaleSetup(
-                                data.getSKU(),
+                                deviceSku,
                                 BtWifiSetupStep.CONNECTING_BLUETOOTH,
                                 data.broadcastId,
                               ),
