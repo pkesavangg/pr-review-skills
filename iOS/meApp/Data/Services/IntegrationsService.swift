@@ -128,20 +128,23 @@ final class IntegrationsService: IntegrationServiceProtocol {
     /// Syncs a new entry to the integrated health service (e.g., HealthKit) if integration is active.
     /// This method checks if HealthKit integration is active and delegates to the appropriate service.
     func syncNewEntry(_ entry: Entry) async throws {
+        // Create notification to safely pass data across actor boundaries, then delegate.
+        try await syncNewEntry(notification: EntryNotification(from: entry))
+    }
+
+    /// Syncs a new entry to the integrated health service using an EntryNotification.
+    /// Used by paths where the source is not a MainActor-bound `Entry` (e.g., remote merge).
+    func syncNewEntry(notification: EntryNotification) async throws {
         guard let integrationInfo = try await getStoredIntegrationData(),
               integrationInfo.isIntegrated else {
             // No integration active, nothing to sync
             return
         }
 
-        // Create notification to safely pass data across actor boundaries
-        let notification = EntryNotification(from: entry)
-
         switch integrationInfo.type {
         case .healthKit:
-            // Delegate to HealthKit service for syncing using notification (safe cross-actor)
             try await HealthKitService.shared.syncNewData(notification: notification)
-            logger.log(level: .success, tag: tag, message: "Synced new entry to HealthKit. entryId=\(entry.id)")
+            logger.log(level: .success, tag: tag, message: "Synced new entry to HealthKit. timestamp=\(notification.entryTimestamp)")
         default:
             // Other integrations not implemented for entry sync yet
             logger.log(level: .debug, tag: tag, message: "Entry sync not implemented for integration type: \(integrationInfo.type.rawValue)")

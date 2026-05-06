@@ -271,31 +271,34 @@ public final class HealthKitService: HealthKitServiceProtocol {
             continue
           }
            
-          if let weight = scaleEntry.weight {
+          // A stored `0` for any metric means the scale could not measure it — treat as
+          // missing so we don't push bogus samples or compute derived values from them.
+          if let weight = scaleEntry.weight, weight > 0 {
             healthKitData.append(HealthKitData(
               type: .weight,
               value: ConversionTools.convertStoredToLbs(weight),
               timestamp: timestamp
             ))
           }
-           
-          if let bodyFat = scaleEntry.bodyFat {
+
+          if let bodyFat = scaleEntry.bodyFat, bodyFat > 0 {
             healthKitData.append(HealthKitData(
               type: .bodyFat,
               value: ConversionTools.convertStoredToLbs(bodyFat),
               timestamp: timestamp
             ))
           }
-           
-          if let pulse = entry.scaleEntryMetric?.pulse {
+
+          if let pulse = entry.scaleEntryMetric?.pulse, pulse > 0 {
             healthKitData.append(HealthKitData(
               type: .heartRate,
               value: Double(pulse),
               timestamp: timestamp
             ))
           }
-           
-          if let weight = scaleEntry.weight, let bodyFat = scaleEntry.bodyFat {
+
+          if let weight = scaleEntry.weight, weight > 0,
+             let bodyFat = scaleEntry.bodyFat, bodyFat > 0 {
             let convertedWeight = ConversionTools.convertStoredToLbs(weight)
             let convertedBodyFat = ConversionTools.convertStoredToLbs(bodyFat)
             let leanBodyMass = convertedWeight - (convertedWeight * (convertedBodyFat / 100))
@@ -305,8 +308,8 @@ public final class HealthKitService: HealthKitServiceProtocol {
               timestamp: timestamp
             ))
           }
-           
-          if let bmi = scaleEntry.bmi {
+
+          if let bmi = scaleEntry.bmi, bmi > 0 {
             healthKitData.append(HealthKitData(
               type: .bmi,
               value: ConversionTools.convertStoredToLbs(bmi),
@@ -327,7 +330,9 @@ public final class HealthKitService: HealthKitServiceProtocol {
         for item in exports {
             guard let timestamp = formatter.date(from: item.timestamp) else { continue }
 
-            if let weight = item.weight {
+            // A stored `0` for any metric means the scale could not measure it — treat
+            // as missing so we don't push bogus samples or compute derived values from them.
+            if let weight = item.weight, weight > 0 {
                 healthKitData.append(HealthKitData(
                     type: .weight,
                     value: ConversionTools.convertStoredToLbs(weight),
@@ -335,7 +340,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
                 ))
             }
 
-            if let bodyFat = item.bodyFat {
+            if let bodyFat = item.bodyFat, bodyFat > 0 {
                 healthKitData.append(HealthKitData(
                     type: .bodyFat,
                     value: ConversionTools.convertStoredToLbs(bodyFat),
@@ -343,7 +348,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
                 ))
             }
 
-            if let muscleMass = item.muscleMass {
+            if let muscleMass = item.muscleMass, muscleMass > 0 {
                 healthKitData.append(HealthKitData(
                     type: .leanBodyMass,
                     value: ConversionTools.convertStoredToLbs(muscleMass),
@@ -351,7 +356,8 @@ public final class HealthKitService: HealthKitServiceProtocol {
                 ))
             }
 
-            if let weight = item.weight, let bodyFat = item.bodyFat {
+            if let weight = item.weight, weight > 0,
+               let bodyFat = item.bodyFat, bodyFat > 0 {
                 let convertedWeight = ConversionTools.convertStoredToLbs(weight)
                 let convertedBodyFat = ConversionTools.convertStoredToLbs(bodyFat)
                 let leanBodyMass = convertedWeight - (convertedWeight * (convertedBodyFat / 100))
@@ -362,7 +368,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
                 ))
             }
 
-            if let bmi = item.bmi {
+            if let bmi = item.bmi, bmi > 0 {
                 healthKitData.append(HealthKitData(
                     type: .bmi,
                     value: ConversionTools.convertStoredToLbs(bmi),
@@ -403,7 +409,9 @@ public final class HealthKitService: HealthKitServiceProtocol {
             return healthKitData
         }
 
-        if let weight = export.weight {
+        // A stored `0` for any metric means the scale could not measure it — treat as
+        // missing so we don't push bogus samples or compute derived values from them.
+        if let weight = export.weight, weight > 0 {
             healthKitData.append(HealthKitData(
                 type: .weight,
                 value: ConversionTools.convertStoredToLbs(weight),
@@ -411,7 +419,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
             ))
         }
 
-        if let bodyFat = export.bodyFat {
+        if let bodyFat = export.bodyFat, bodyFat > 0 {
             healthKitData.append(HealthKitData(
                 type: .bodyFat,
                 value: ConversionTools.convertStoredToLbs(bodyFat),
@@ -419,7 +427,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
             ))
         }
 
-        if let pulse = export.pulse {
+        if let pulse = export.pulse, pulse > 0 {
             healthKitData.append(HealthKitData(
                 type: .heartRate,
                 value: Double(pulse),
@@ -427,7 +435,8 @@ public final class HealthKitService: HealthKitServiceProtocol {
             ))
         }
 
-        if let weight = export.weight, let bodyFat = export.bodyFat {
+        if let weight = export.weight, weight > 0,
+           let bodyFat = export.bodyFat, bodyFat > 0 {
             let convertedWeight = ConversionTools.convertStoredToLbs(weight)
             let convertedBodyFat = ConversionTools.convertStoredToLbs(bodyFat)
             let leanBodyMass = convertedWeight - (convertedWeight * (convertedBodyFat / 100))
@@ -438,7 +447,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
             ))
         }
 
-        if let bmi = export.bmi {
+        if let bmi = export.bmi, bmi > 0 {
             healthKitData.append(HealthKitData(
                 type: .bmi,
                 value: ConversionTools.convertStoredToLbs(bmi),
