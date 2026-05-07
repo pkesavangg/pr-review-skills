@@ -1023,13 +1023,12 @@ extension View {
                         }
                     }
                 }
-            // Add padding to left side of chart area
+            // Add padding to left side of chart area so the leading axis label
+            // (e.g. "sun") never lands flush with the screen edge — including
+            // during the scroll-end snap, where the prior boundary-conditional
+            // version flickered the gap on, then off, as the snap settled.
                 .chartPlotStyle { plot in
-                    if viewModel.isAtLeftBoundary {
-                        plot.padding(.leading, .spacingXS)
-                    } else {
-                        plot
-                    }
+                    plot.padding(.leading, .spacingXS)
                 }
                 .chartXSelection(value: Binding(
                     get: { localSelectedXValue.wrappedValue },

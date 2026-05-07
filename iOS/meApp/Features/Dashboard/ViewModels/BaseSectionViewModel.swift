@@ -573,8 +573,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         // Calculate position within the available chart area (excluding X-axis)
         let yPosition = (availableChartHeight * (1 - yRatio)) // Invert because chart y grows downward
         
-        // Add padding offsets for left boundary
-        let adjustedX = xPosition + (isAtLeftBoundary ? 4 : 0) // spacingXS approximation
+        // Compensate for the leading .spacingXS padding applied unconditionally
+        // by `chartPlotStyle` in BaseGraphView (half of 8 ≈ visual centerline).
+        let adjustedX = xPosition + 4
         let adjustedY = yPosition
         
         return CGPoint(x: adjustedX, y: adjustedY)
