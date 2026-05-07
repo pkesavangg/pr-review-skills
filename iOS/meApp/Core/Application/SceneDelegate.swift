@@ -49,6 +49,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         let root = ContentView()
             .themeable()
             .weightUnitable()
+            .buttonStyle(AppDefaultButtonStyle())
             .environmentObject(appState.themeManager)
             .environmentObject(appState.accountService)
 
@@ -62,6 +63,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         let modalRoot = NotificationContainerView()
             .themeable()
             .weightUnitable()
+            .buttonStyle(AppDefaultButtonStyle())
             .environmentObject(appState.themeManager)
             .environmentObject(appState.accountService)
 
