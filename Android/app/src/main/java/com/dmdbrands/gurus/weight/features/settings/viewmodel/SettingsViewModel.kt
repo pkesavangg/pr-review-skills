@@ -25,12 +25,12 @@ import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.domain.services.INotificationService
 import com.dmdbrands.gurus.weight.domain.services.IUserSettingsService
 import com.dmdbrands.gurus.weight.features.common.ScaleProfileConstants
-import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.components.HeightInput
 import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
 import com.dmdbrands.gurus.weight.features.common.components.showRadioGroupModal
+import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
@@ -54,6 +54,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import retrofit2.HttpException
 import javax.inject.Inject
+
 /**
  * ViewModel for the settings feature, managing state and handling settings intents.
  *
@@ -1008,7 +1009,7 @@ constructor(
   }
 
   private fun onDefaultGraphRangeUpdate(segment: GraphSegment) {
-    dialogQueueService.showLoader(SettingsScreenStrings.UpdatingDefaultGraphRange)
+    dialogQueueService.showLoader(SettingsScreenStrings.Loading)
     viewModelScope.launch {
       try {
         userSettingsService.setDefaultGraphSegment(segment)
