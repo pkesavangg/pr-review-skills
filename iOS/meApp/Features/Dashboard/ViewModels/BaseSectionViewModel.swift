@@ -648,11 +648,20 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     func handleSettingsChange() {
         // Update store's Y-axis cache FIRST before invalidating local cache
         dashboardStore?.updateYAxisCache(force: true)
-        
+
         invalidateCache()
         updateYAxisConfiguration()
         syncYAxisFromStore()
-        clearSelection() // Clear selection as values may have changed
+
+        // Preserve selection: unit / weightless toggles change displayed values
+        // but not which date is selected. Fall back to the store's preserved
+        // selection in case the VM-side selection was cleared elsewhere.
+        let preservedDate = selectedDate
+            ?? dashboardStore?.graph.selectedXValue
+            ?? dashboardStore?.graph.selectedPoint?.date
+        if let preservedDate {
+            handleChartSelection(at: preservedDate)
+        }
     }
     
     /// Called when scroll position is updated programmatically
