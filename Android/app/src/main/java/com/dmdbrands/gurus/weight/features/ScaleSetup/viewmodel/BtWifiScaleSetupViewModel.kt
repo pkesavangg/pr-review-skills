@@ -959,19 +959,31 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
     // --- UI helpers ---
 
     /**
-     * Shows the "Saving..." loader on a Customize-Your-Settings sub-page SAVE, waits
-     * [ScaleSetupConstants.DELAY_AFTER_SAVE_MS] so the loader is perceivable, dismisses it,
-     * and invokes [onComplete] so the UI can navigate back. Fixes MA-2501.
+     * Shows a fixed-duration cosmetic "Saving..." loader after the user taps SAVE on a
+     * Customize Settings sub-page, then signals the UI to scroll back to page 0.
+     *
+     * The delay is intentionally fixed (UX-only) and not tied to actual save completion —
+     * the SAVE handler dispatches Set* intents which are pure reducer state mutations;
+     * persistence to the device happens later when the user finalizes setup via
+     * [BtWifiScaleSetupIntent.UpdateSettings]. If persistence is ever moved into this flow,
+     * gate dismissal on completion instead of [ScaleSetupConstants.DELAY_AFTER_SAVE_MS].
+     *
+     * The [BtWifiScaleSetupIntent.SetIsSaving] flag prevents double-tap re-entry while the
+     * loader is up (the SAVE button gates on `state.isSaving`). The try/finally guarantees
+     * the flag, the loader, and the scroll-back signal all clear even if the dialog service
+     * throws or the coroutine is cancelled. Fixes MA-2501.
      */
     private fun showSavingLoader() {
         viewModelScope.launch {
+            handleIntent(BtWifiScaleSetupIntent.SetIsSaving(true))
             try {
                 dialogQueueService.showLoader(ScaleSetupStrings.SaveScaleLoader)
                 delay(ScaleSetupConstants.DELAY_AFTER_SAVE_MS)
             } finally {
                 dialogQueueService.dismissLoader()
+                handleIntent(BtWifiScaleSetupIntent.SetIsSaving(false))
+                handleIntent(BtWifiScaleSetupIntent.ScrollToRootPage)
             }
-            handleIntent(BtWifiScaleSetupIntent.ScrollToRootPage)
         }
     }
 

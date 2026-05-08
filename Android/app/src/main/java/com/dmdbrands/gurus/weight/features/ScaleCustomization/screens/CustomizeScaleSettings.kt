@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -155,7 +156,17 @@ fun CustomizeScaleSettings(
 
   LaunchedEffect(state.scrollToRootPage) {
     if (state.scrollToRootPage) {
+      // Clear before the suspending scroll so the flag is reset even if recomposition
+      // re-keys this effect mid-suspend.
+      onIntent(BtWifiScaleSetupIntent.ClearScrollToRootPage)
       pagerState.scrollToPage(0)
+    }
+  }
+
+  // Covers the case where the user navigates away mid-save-delay: ensures the flag
+  // doesn't survive in ViewModel state and re-trigger an unwanted scroll on re-entry.
+  DisposableEffect(Unit) {
+    onDispose {
       onIntent(BtWifiScaleSetupIntent.ClearScrollToRootPage)
     }
   }
@@ -243,7 +254,7 @@ fun CustomizeScaleSettings(
             type = ButtonType.PrimaryFilled,
             label = ScaleSetupStrings.saveButton,
             size = ButtonSize.Small,
-            enabled = hasUnsavedChanges && (pagerState.currentPage != CustomizeSettings.SCALE_USERNAME.ordinal || localUsernameFormControl.isValueValid()),
+            enabled = !state.isSaving && hasUnsavedChanges && (pagerState.currentPage != CustomizeSettings.SCALE_USERNAME.ordinal || localUsernameFormControl.isValueValid()),
             onClick = {
               hasSavedSettings.value = true
               // Update reducer state immediately so it's preserved if navigation back occurs

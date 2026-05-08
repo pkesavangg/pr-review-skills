@@ -123,6 +123,7 @@ data class BtWifiScaleSetupState(
   val isHeartRateOn: Boolean = false, // Default heart rate off
   val hasSavedSettings: Boolean = false, // Track if any customization settings have been saved
   val scrollToRootPage: Boolean = false,
+  val isSaving: Boolean = false, // Gates SAVE button during the cosmetic saving-loader window (MA-2501)
   val visitedCustomizeSteps: Set<CustomizeSettings> = emptySet(), // Preserve visited steps when returning from UPDATE_SETTINGS Try again
   val scaleMetrics: ImmutableList<String> = ScaleMetricsHelper.getAllMetrics().toImmutableList(),
   val initialStep: BtWifiSetupStep = BtWifiSetupStep.SCALE_INFO, // Track the initial step for button visibility logic
@@ -150,10 +151,15 @@ sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
 
   data class SetDashboardKeys(val dashboardKeys: List<DashboardKey>) : BtWifiScaleSetupIntent
 
-  /** Shows the "Saving..." loader, then signals the UI to scroll back to page 0 (MA-2501). */
+  /**
+   * Triggers the ViewModel's [showSavingLoader] side-effect. Pure side-effect intent — the
+   * reducer maps it to a no-op `state.copy()` so every UI action still flows through the same
+   * `handleIntent` pipeline, keeping the intent contract single-streamed (MA-2501).
+   */
   data object ShowSavingLoader : BtWifiScaleSetupIntent
   data object ScrollToRootPage : BtWifiScaleSetupIntent
   data object ClearScrollToRootPage : BtWifiScaleSetupIntent
+  data class SetIsSaving(val value: Boolean) : BtWifiScaleSetupIntent
   data class SetGoalProgress(val progress: Progress) : BtWifiScaleSetupIntent
   data class SetWifiList(val wifiList: List<GGWifiInfo>) : BtWifiScaleSetupIntent
   data class SetScaleSku(
@@ -320,9 +326,11 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
         isHeartRateOn = intent.isHeartRateOn,
       )
       is BtWifiScaleSetupIntent.SetHasSavedSettings -> state.copy(hasSavedSettings = intent.hasSavedSettings)
+      // Pure side-effect intent — see ShowSavingLoader KDoc on the intent class.
       BtWifiScaleSetupIntent.ShowSavingLoader -> state.copy()
       BtWifiScaleSetupIntent.ScrollToRootPage -> state.copy(scrollToRootPage = true)
       BtWifiScaleSetupIntent.ClearScrollToRootPage -> state.copy(scrollToRootPage = false)
+      is BtWifiScaleSetupIntent.SetIsSaving -> state.copy(isSaving = intent.value)
       is BtWifiScaleSetupIntent.SetVisitedCustomizeSteps -> state.copy(visitedCustomizeSteps = intent.steps)
       is BtWifiScaleSetupIntent.SetScaleMetrics -> state.copy(scaleMetrics = intent.scaleMetrics.toImmutableList())
       is BtWifiScaleSetupIntent.SetInitialStep -> state.copy(initialStep = intent.initialStep)
