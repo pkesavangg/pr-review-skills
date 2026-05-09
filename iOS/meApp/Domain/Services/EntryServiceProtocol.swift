@@ -32,6 +32,12 @@ protocol EntryServiceProtocol {
     /// - Returns: An array of all entries.
     func getAllEntries() async throws -> [Entry]
 
+    /// Retrieves all entries for the current user as Sendable snapshots.
+    /// Prefer this over `getAllEntries()` whenever the caller will read fields
+    /// after an `await` boundary or pass the values to another actor — see MA-3898.
+    /// - Returns: An array of EntrySnapshot value types.
+    func getAllEntriesAsSnapshots() async throws -> [EntrySnapshot]
+
     /// Checks if an entry with the given timestamp exists for the current user.
     /// - Parameter entryTimestamp: The timestamp to check for.
     /// - Returns: True if an entry exists, false otherwise.
