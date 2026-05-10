@@ -100,7 +100,7 @@ fun HomeScreenContent(
                       )
                         AppLog.w(
                           "AppSyncScan",
-                          "Scale display detected results on home flow (device=${android.os.Build.MODEL}, weight=${result.weight} errors=${result.errors})",
+                          "Scale display detected results on home flow (device=${android.os.Build.MODEL}, result=${result} errors=${result.errors})",
                         )
                       handleIntent(HomeIntent.HandleAppSyncResult(result))
                     } catch (e: Exception) {

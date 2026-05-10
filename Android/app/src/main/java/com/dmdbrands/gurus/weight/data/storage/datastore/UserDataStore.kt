@@ -234,6 +234,7 @@ class UserDataStore @Inject constructor(
         accessToken = accessToken,
         expiresAt = expiresAt,
         isActive = isActive,
+        themeMode = themeMode
       )
       return
     }

@@ -116,6 +116,18 @@ constructor(
 
   init {
 
+    // Drive Compose theme directly from the persisted preference so toggling
+    // appearance repaints surfaces immediately, without relying on
+    // setDefaultNightMode/UiModeManager to round-trip through Configuration
+    // (which is unreliable on API < 31).
+    viewModelScope.launch {
+      appRepository.themeModeFlow
+        .distinctUntilChanged()
+        .collect { mode ->
+          handleIntent(AppIntent.SetThemeMode(mode))
+        }
+    }
+
     // Initialize and maintain currentAccountId globally
     viewModelScope.launch {
       accountService.activeAccountFlow.collect {
