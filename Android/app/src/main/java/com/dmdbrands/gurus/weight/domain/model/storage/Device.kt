@@ -37,11 +37,7 @@ data class Device(
 ) : GGCacheDevice {
 
   fun getAppType(): String {
-    return GGAppType.WEIGHT_GURUS
-  }
-
-  fun hasNumericUsers(): Boolean {
-    return getAppType() == GGAppType.BALANCE_HEALTH
+    return GGAppType.ME_HEALTH
   }
 
   fun getSKU(): String {
