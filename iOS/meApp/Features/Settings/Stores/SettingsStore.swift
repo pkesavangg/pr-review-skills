@@ -413,7 +413,7 @@ class SettingsStore: ObservableObject {
         }
     }
 
-    /// Trailing detail text for the Default Graph Range row.
+    /// Trailing detail text for the Default Graph View row.
     var defaultGraphPeriodText: String { defaultGraphPeriod.title }
     
     var isGoalFormValid: Bool {
@@ -1709,7 +1709,7 @@ class SettingsStore: ObservableObject {
                 selectedValues: [defaultGraphPeriod],
                 options: [TimePeriod.allCases],
                 displayValue: { $0.title },
-                title: SettingsStrings.defaultGraphRange,
+                title: SettingsStrings.defaultGraphView,
                 showCancel: false,
                 updateValues: { vals in
                     self.notificationService.dismissModal()
