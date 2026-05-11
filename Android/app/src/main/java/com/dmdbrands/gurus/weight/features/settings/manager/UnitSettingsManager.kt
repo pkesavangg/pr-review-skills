@@ -9,6 +9,7 @@ import com.dmdbrands.gurus.weight.domain.services.IBodyCompositionService
 import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
 import com.dmdbrands.gurus.weight.features.common.components.showRadioGroupModal
 import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrings
+import com.dmdbrands.gurus.weight.features.settings.strings.SettingsScreenStrings
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsState
 import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +32,7 @@ constructor(
 ) : IUnitSettingsManager {
   companion object {
     private const val TAG = "UnitSettingsManager"
+    private val KNOWN_UNIT_VALUES = setOf(WeightUnit.KG.value, WeightUnit.LB.value, WeightUnit.LB_OZ.value)
   }
 
   override fun onUnitTypeClick(
@@ -45,14 +47,18 @@ constructor(
     scope: CoroutineScope,
     stateProvider: () -> SettingsState,
   ) {
+    val hasBabyScale = stateProvider().isBabyProduct
+    val options = buildList {
+      add(RadioButtonOption(WeightUnit.LB.value, RadioGroupModalStrings.UnitType.Imperial))
+      add(RadioButtonOption(WeightUnit.KG.value, RadioGroupModalStrings.UnitType.Metric))
+      if (hasBabyScale) {
+        add(RadioButtonOption(WeightUnit.LB_OZ.value, RadioGroupModalStrings.UnitType.ImperialBaby))
+      }
+    }
     showRadioGroupModal(
       dialogService = dialogQueueService,
       title = RadioGroupModalStrings.Titles.UnitType,
-      options =
-        listOf(
-          RadioButtonOption(WeightUnit.LB.value, RadioGroupModalStrings.UnitType.Imperial),
-          RadioButtonOption(WeightUnit.KG.value, RadioGroupModalStrings.UnitType.Metric),
-        ),
+      options = options,
       selectedItem = stateProvider().account?.weightUnit?.value,
       confirmText = RadioGroupModalStrings.Button.Save,
       onConfirm = { selectedUnitType ->
@@ -77,27 +83,24 @@ constructor(
       return
     }
 
-    val newWeightUnit =
-      when (unitTypeValue) {
-        WeightUnit.KG.value -> WeightUnit.KG
-        WeightUnit.LB.value -> WeightUnit.LB
-        else -> {
-          return
-        }
-      }
-
-    if (currentAccount.weightUnit == newWeightUnit) {
+    val trimmed = unitTypeValue.lowercase().trim()
+    if (trimmed !in KNOWN_UNIT_VALUES) {
+      AppLog.w(TAG, "Unknown unit type value; ignoring: $unitTypeValue")
+      return
+    }
+    val newWeightUnit = WeightUnit.from(unitTypeValue)
+    if (newWeightUnit == currentAccount.weightUnit) {
       return
     }
 
-    dialogQueueService.showLoader("Updating unit type...")
+    dialogQueueService.showLoader(SettingsScreenStrings.UpdatingUnitType)
 
     scope.launch {
       try {
         val bodyComposition =
           BodyCompUpdateRequest(
-            height = currentAccount.height ?: 1700,
-            activityLevel = currentAccount.activityLevel ?: "normal",
+            height = currentAccount.height ?: BodyCompUpdateRequest.DEFAULT_HEIGHT,
+            activityLevel = currentAccount.activityLevel ?: BodyCompUpdateRequest.DEFAULT_ACTIVITY_LEVEL,
             weightUnit = newWeightUnit.value,
           )
 
