@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
@@ -16,6 +17,7 @@ import com.dmdbrands.gurus.weight.features.common.components.HorizontalPagerWith
 import com.dmdbrands.gurus.weight.features.signup.model.BabyFormControls
 import com.dmdbrands.gurus.weight.features.signup.model.SignupIntent
 import com.dmdbrands.gurus.weight.features.signup.model.SignupState
+import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import com.dmdbrands.gurus.weight.features.signup.model.SignupStep
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -32,9 +34,11 @@ fun SignupPager(
   onIntent: (SignupIntent) -> Unit = {},
 ) {
   val focusManager = LocalFocusManager.current
+  val keyboardController = LocalSoftwareKeyboardController.current
   val guardedOnNext: () -> Unit = {
     if (state.isCurrentStepValid) {
       focusManager.clearFocus()
+      keyboardController?.hide()
       onNext()
     }
   }
@@ -79,7 +83,8 @@ fun SignupPager(
         Column(
           modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
+            .verticalScroll(rememberScrollState())
+            .dismissKeyboardOnTap(),
         ) {
           when (step) {
             SignupStep.NAME ->

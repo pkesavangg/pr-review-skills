@@ -1,8 +1,6 @@
 package com.dmdbrands.gurus.weight.features.profile.screen
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,6 +23,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeUtil
+import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
@@ -74,7 +73,6 @@ fun ProfileScreen() {
 private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) -> Unit,onBack: () -> Unit,) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
-    val interactionSource = remember { MutableInteractionSource() }
     // Focus requesters for proper focus management
     val firstNameFocusRequester = remember { FocusRequester() }
     val lastNameFocusRequester = remember { FocusRequester() }
@@ -93,6 +91,8 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
         },
         actions = {
             AppButton(ProfileStrings.SaveButton, enabled = state.form.isValid && state.form.isDirty, type = ButtonType.InlineTextPrimary, size = ButtonSize.Small) {
+                focusManager.clearFocus()
+                keyboardController?.hide()
                 handleIntent.invoke(ProfileIntent.Submit)
             }
         },
@@ -102,13 +102,9 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
             AppStyledCard {
                 Column(
                     modifier = Modifier
-                      .fillMaxWidth()
-                      .clickable(
-                        interactionSource = interactionSource,
-                        indication = null,
-                        onClick = { focusManager.clearFocus() },
-                      )
-                      .verticalScroll(scrollState),
+                        .fillMaxWidth()
+                        .verticalScroll(scrollState)
+                        .dismissKeyboardOnTap(),
                     horizontalAlignment = Alignment.Start,
                 ) {
                     Spacer(modifier = Modifier.padding(top = MeTheme.spacing.md))

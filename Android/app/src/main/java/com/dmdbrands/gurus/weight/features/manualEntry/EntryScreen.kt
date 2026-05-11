@@ -1,8 +1,6 @@
 package com.dmdbrands.gurus.weight.features.manualEntry
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +25,7 @@ import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
+import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
@@ -89,7 +88,6 @@ private fun EntryScreenContent(
   }
 
   val scrollState = rememberScrollState()
-  val interactionSource = remember { MutableInteractionSource() }
 
   AppScaffold(
     title = null,
@@ -105,11 +103,7 @@ private fun EntryScreenContent(
         .verticalScroll(scrollState)
         .padding(horizontal = MeTheme.spacing.sm)
         .padding(top = MeTheme.spacing.md)
-        .clickable(
-          interactionSource = interactionSource,
-          indication = null,
-          onClick = { focusManager.clearFocus() },
-        ),
+        .dismissKeyboardOnTap(),
       verticalArrangement = Arrangement.Top,
     ) {
       when (selectedProduct) {

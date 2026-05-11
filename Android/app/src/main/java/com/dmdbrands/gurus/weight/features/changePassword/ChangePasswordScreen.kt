@@ -1,8 +1,6 @@
 package com.dmdbrands.gurus.weight.features.changePassword
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -11,7 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -25,6 +22,7 @@ import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dmdbrands.gurus.weight.features.changePassword.model.ChangePasswordFormControls
 import com.dmdbrands.gurus.weight.features.changePassword.model.ChangePasswordIntent
 import com.dmdbrands.gurus.weight.features.changePassword.model.ChangePasswordState
@@ -39,6 +37,7 @@ import com.dmdbrands.gurus.weight.features.common.components.AppStyledCard
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
+import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.resources.AppIcons
@@ -63,7 +62,6 @@ private fun ChangePasswordContent(
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
-    val interactionSource = remember { MutableInteractionSource() }
     val currentPasswordFocusRequester = remember { FocusRequester() }
     val newPasswordFocusRequester = remember { FocusRequester() }
     val confirmPasswordFocusRequester = remember { FocusRequester() }
@@ -86,7 +84,9 @@ private fun ChangePasswordContent(
                 size = ButtonSize.Small,
                 enabled = state.form.isValid && state.form.isDirty,
             ) {
-                handleIntent.invoke(ChangePasswordIntent.Submit)
+              keyboardController?.hide()
+              focusManager.clearFocus()
+              handleIntent.invoke(ChangePasswordIntent.Submit)
             }
         },
     ) { scaffoldModifier ->
@@ -101,11 +101,7 @@ private fun ChangePasswordContent(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .clickable(
-                                interactionSource = interactionSource,
-                                indication = null,
-                                onClick = { focusManager.clearFocus() },
-                            ),
+                            .dismissKeyboardOnTap(),
                     horizontalAlignment = Alignment.Start,
                 ) {
                     AppInput(

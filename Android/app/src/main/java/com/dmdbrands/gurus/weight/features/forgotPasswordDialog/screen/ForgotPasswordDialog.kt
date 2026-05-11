@@ -1,7 +1,5 @@
 package com.dmdbrands.gurus.weight.features.forgotPasswordDialog.screen
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -14,6 +12,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
 import com.dmdbrands.gurus.weight.features.common.components.BaseModal
@@ -41,7 +40,6 @@ fun PasswordResetModal(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
-    val interactionSource = remember { MutableInteractionSource() }
     // Set email when the modal is first shown
     LaunchedEffect(Unit) {
         viewModel.setInitialEmail(email)
@@ -65,11 +63,7 @@ fun PasswordResetModal(
                         viewModel.handleIntent(ForgotPasswordDialogIntent.Close)
                         onDismiss()
                     },
-                    modifier = modifier.clickable(
-                        interactionSource = interactionSource,
-                        indication = null,
-                        onClick = { focusManager.clearFocus() }
-                    ),
+                    modifier = modifier.dismissKeyboardOnTap(),
                 ) {
                   Spacer(modifier = Modifier.padding(top = spacing.xs))
                     AppInput(
