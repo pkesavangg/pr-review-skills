@@ -12,7 +12,6 @@ struct ContentView: View {
     @Environment(\.appTheme) private var theme
     @Environment(\.colorScheme) private var colorScheme
     @StateObject private var viewModel = ContentViewModel()
-    @State private var didShowGraphScrollHint = false
 
     var body: some View {
         VStack {
@@ -32,26 +31,6 @@ struct ContentView: View {
         .onAppear {
             viewModel.performAppInitialization()
             themeManager.syncWithSystemColorScheme(colorScheme)
-            showGraphScrollHintForTesting()
-        }
-    }
-
-    // TODO: Testing-only — show graph-scroll discoverability hint on every app
-    // launch. Replace with a one-time UserDefaults gate before shipping.
-    private func showGraphScrollHintForTesting() {
-        guard !didShowGraphScrollHint else { return }
-        didShowGraphScrollHint = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-            NotificationHelperService.shared.showModal(
-                ModalData(
-                    presentedView: AnyView(
-                        GraphScrollHintModalView {
-                            NotificationHelperService.shared.dismissModal()
-                        }
-                    ),
-                    backdropDismiss: true
-                )
-            )
         }
     }
 }

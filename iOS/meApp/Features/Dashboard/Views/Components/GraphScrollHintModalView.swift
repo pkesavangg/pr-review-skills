@@ -20,9 +20,12 @@ struct GraphScrollHintModalView: View {
     @State private var fingerLiftY: CGFloat = 0
     @State private var fingerOpacity: Double = 0
 
-    private let demoHeight: CGFloat = 180
+    /// Aspect ratio (W:H) of the chart card in the Figma design (212 × 153).
+    /// Driving size from the ratio — instead of a fixed height — keeps the
+    /// card from looking chunky/tall when the popup stretches wider.
+    private let demoAspectRatio: CGFloat = 212.0 / 153.0
     private let chartContentMultiplier: CGFloat = 2.6
-    private let demoCornerRadius: CGFloat = .radiusLG
+    private let demoCornerRadius: CGFloat = .radiusSM
 
     /// 3 swipes that ratchet the chart back through history (older readings).
     /// Finger drags right; chart follows, exposing older data on the left.
@@ -36,32 +39,36 @@ struct GraphScrollHintModalView: View {
         VStack(spacing: 0) {
             closeButtonRow
 
-            animatedDemo
-                .frame(height: demoHeight)
-                .padding(.bottom, .spacingMD)
+            VStack(spacing: .spacingLG) {
+                VStack(spacing: .spacingSM) {
+                    animatedDemo
+                        .aspectRatio(demoAspectRatio, contentMode: .fit)
+                        .padding(.horizontal, .spacingMD)
 
-            Text("See your full history")
-                .fontOpenSans(.heading4)
-                .foregroundColor(theme.textHeading)
-                .multilineTextAlignment(.center)
-                .padding(.bottom, .spacingXS)
+                    VStack(spacing: .spacingSM) {
+                        Text(DashboardStrings.graphScrollHintTitle)
+                            .fontOpenSans(.heading4)
+                            .foregroundColor(theme.textHeading)
+                            .multilineTextAlignment(.center)
 
-            Text("Swipe left or right on the chart to scroll through your weight history.")
-                .fontOpenSans(.body2)
-                .foregroundColor(theme.textSubheading)
-                .multilineTextAlignment(.center)
-                .padding(.bottom, .spacingMD)
+                        Text(DashboardStrings.graphScrollHintMessage)
+                            .fontOpenSans(.body2)
+                            .foregroundColor(theme.textBody)
+                            .multilineTextAlignment(.center)
+                    }
+                }
 
-            ButtonView(
-                text: "Got it",
-                type: .filledPrimary,
-                size: .large,
-                isDisabled: false,
-                action: onClose
-            )
+                ButtonView(
+                    text: DashboardStrings.graphScrollHintConfirm,
+                    type: .filledPrimary,
+                    size: .large,
+                    isDisabled: false,
+                    action: onClose
+                )
+            }
         }
         .padding(.spacingMD)
-        .background(theme.backgroundSecondary)
+        .background(theme.backgroundPrimary)
         .cornerRadius(.radiusXL)
         .shadow(color: Color.black.opacity(0.12), radius: 10, x: 0, y: 5)
         .task { await runSwipeLoop() }
@@ -73,7 +80,7 @@ struct GraphScrollHintModalView: View {
         HStack(spacing: 0) {
             Button(action: onClose) {
                 AppIconView(icon: AppAssets.xmarkSmall, size: IconSize(width: 20, height: 20))
-                    .foregroundColor(theme.statusIconPrimary)
+                    .foregroundColor(theme.actionPrimary)
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
@@ -89,17 +96,15 @@ struct GraphScrollHintModalView: View {
 
             ZStack {
                 RoundedRectangle(cornerRadius: demoCornerRadius)
-                    .fill(theme.backgroundPrimary)
+                    .fill(theme.backgroundSecondary)
 
                 // The chart is wider than the viewport and slides under the
                 // clip, mimicking a real horizontal scroll.
                 MiniChartDemoView()
-                    .frame(width: chartContentWidth, height: viewportHeight - 24)
+                    .frame(width: chartContentWidth, height: viewportHeight)
                     .offset(x: -maxScroll * scrollProgress)
                     .frame(width: viewportWidth, height: viewportHeight, alignment: .leading)
                     .clipShape(RoundedRectangle(cornerRadius: demoCornerRadius))
-
-                edgeFades(width: viewportWidth)
 
                 // Finger appears at the swipe start, drags the chart, then
                 // lifts (fades out) — a single discrete gesture per cycle.
@@ -114,41 +119,20 @@ struct GraphScrollHintModalView: View {
         }
     }
 
-    /// Two stacked symbols give the finger a dark outline, so the warm
-    /// fill color stays readable on both light and dark chart backgrounds
-    /// regardless of theme.
+    /// Light-fill + blue-stroke finger, matching the Figma. Stacking a
+    /// low-alpha filled glyph under the outline version produces a translucent
+    /// interior with a crisp brand-colored stroke — reads as an outlined
+    /// pointer rather than a solid blob on the dark chart card.
     private var fingerIcon: some View {
         ZStack {
             Image(systemName: "hand.point.up.left.fill")
-                .font(.system(size: 42, weight: .regular))
-                .foregroundColor(Color.black.opacity(0.85))
+                .font(.system(size: 34, weight: .regular))
+                .foregroundColor(theme.actionPrimary.opacity(0.2))
 
-            Image(systemName: "hand.point.up.left.fill")
-                .font(.system(size: 36, weight: .regular))
-                .foregroundColor(theme.statusIconPrimary)
+            Image(systemName: "hand.point.up.left")
+                .font(.system(size: 34, weight: .regular))
+                .foregroundColor(theme.actionPrimary)
         }
-        .shadow(color: Color.black.opacity(0.35), radius: 5, x: 0, y: 2)
-    }
-
-    private func edgeFades(width: CGFloat) -> some View {
-        HStack(spacing: 0) {
-            LinearGradient(
-                colors: [theme.backgroundPrimary, theme.backgroundPrimary.opacity(0)],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-            .frame(width: 28)
-
-            Spacer()
-
-            LinearGradient(
-                colors: [theme.backgroundPrimary.opacity(0), theme.backgroundPrimary],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-            .frame(width: 28)
-        }
-        .allowsHitTesting(false)
     }
 
     // MARK: - Animation
@@ -236,7 +220,7 @@ struct GraphScrollHintModalView: View {
 private struct MiniChartDemoView: View {
     @Environment(\.appTheme) private var theme
 
-    /// Time flows left → right (oldest → newest), and weight decreases over
+    /// Time flows left → right (oldest → newest), and weight trends down over
     /// that time — the typical weight-loss arc users see in the real graph.
     private let points: [CGFloat] = [
         0.78, 0.62, 0.70, 0.55, 0.66, 0.48, 0.58, 0.40, 0.52,
@@ -247,12 +231,12 @@ private struct MiniChartDemoView: View {
         GeometryReader { geo in
             let stepX = geo.size.width / CGFloat(points.count - 1)
             let chartHeight = geo.size.height
-            let topInset: CGFloat = 12
-            let bottomInset: CGFloat = 18
+            let topInset: CGFloat = 8
+            let bottomInset: CGFloat = 8
             let usable = chartHeight - topInset - bottomInset
 
             ZStack(alignment: .topLeading) {
-                gridlines(height: chartHeight, topInset: topInset, usable: usable)
+                gridlines(height: chartHeight)
 
                 line(stepX: stepX, topInset: topInset, usable: usable)
 
@@ -261,42 +245,62 @@ private struct MiniChartDemoView: View {
         }
     }
 
-    private func gridlines(height: CGFloat, topInset: CGFloat, usable: CGFloat) -> some View {
-        VStack(spacing: 0) {
-            ForEach(0..<3, id: \.self) { i in
-                Rectangle()
-                    .fill(theme.textSubheading.opacity(0.12))
-                    .frame(height: 1)
-                    .padding(.top, i == 0 ? topInset : usable / 2 - 0.5)
-                    .padding(.leading, 0)
-            }
-            Spacer()
+    /// Three evenly-spaced interior gridlines. Top and bottom edges are
+    /// intentionally bare — gridlines flush with the card's rounded
+    /// corners read as a border instead of a chart axis.
+    private func gridlines(height: CGFloat) -> some View {
+        let lineColor = theme.textSubheading.opacity(0.35)
+        return VStack(spacing: 0) {
+            Spacer(minLength: 0)
+            Rectangle().fill(lineColor).frame(height: 1)
+            Spacer(minLength: 0)
+            Rectangle().fill(lineColor).frame(height: 1)
+            Spacer(minLength: 0)
+            Rectangle().fill(lineColor).frame(height: 1)
+            Spacer(minLength: 0)
         }
+        .frame(height: height)
     }
 
+    /// Gently smoothed polyline: each segment is a cubic Bézier whose control
+    /// points sit just slightly off the straight line between samples
+    /// (`smoothing` < 1 dampens the full Catmull-Rom curvature). The result
+    /// rounds the corners without turning the chart into a wavy curve.
     private func line(stepX: CGFloat, topInset: CGFloat, usable: CGFloat) -> some View {
         Path { path in
-            for (i, value) in points.enumerated() {
-                let x = CGFloat(i) * stepX
-                let y = topInset + usable - (value * usable)
-                if i == 0 {
-                    path.move(to: CGPoint(x: x, y: y))
-                } else {
-                    path.addLine(to: CGPoint(x: x, y: y))
-                }
+            guard points.count > 1 else { return }
+            let smoothing: CGFloat = 0.35
+            let cgPoints: [CGPoint] = points.enumerated().map { i, value in
+                CGPoint(x: CGFloat(i) * stepX, y: topInset + usable - (value * usable))
+            }
+            path.move(to: cgPoints[0])
+            for i in 1..<cgPoints.count {
+                let p0 = cgPoints[max(i - 2, 0)]
+                let p1 = cgPoints[i - 1]
+                let p2 = cgPoints[i]
+                let p3 = cgPoints[min(i + 1, cgPoints.count - 1)]
+                let c1 = CGPoint(
+                    x: p1.x + (p2.x - p0.x) * smoothing / 3,
+                    y: p1.y + (p2.y - p0.y) * smoothing / 3
+                )
+                let c2 = CGPoint(
+                    x: p2.x - (p3.x - p1.x) * smoothing / 3,
+                    y: p2.y - (p3.y - p1.y) * smoothing / 3
+                )
+                path.addCurve(to: p2, control1: c1, control2: c2)
             }
         }
         .stroke(
-            theme.statusIconPrimary,
-            style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round)
+            theme.actionPrimary,
+            style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
         )
     }
 
     private func dots(stepX: CGFloat, topInset: CGFloat, usable: CGFloat) -> some View {
         ForEach(points.indices, id: \.self) { i in
             Circle()
-                .fill(theme.statusIconPrimary)
-                .frame(width: 6, height: 6)
+                .fill(theme.actionPrimary)
+                .frame(width: 5, height: 5)
                 .position(
                     x: CGFloat(i) * stepX,
                     y: topInset + usable - (points[i] * usable)

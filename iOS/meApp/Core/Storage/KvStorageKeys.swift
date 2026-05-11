@@ -48,6 +48,8 @@ public enum KvStorageKeys: String {
     /// Feed last triggered at timestamp key suffix (per account)
     case feedLastTriggeredAt = "feedLastTriggeredAt"
     case setAGoalCardViewed = "setAGoalCardViewed"
+    /// "Scrollable graph" first-time hint modal viewed flag suffix (per account)
+    case graphScrollHintViewed = "graphScrollHintViewed"
     
     // MARK: - FCM Token Key
     /// FCM token storage key (device-scoped, not account-scoped)
@@ -130,6 +132,13 @@ public enum KvStorageKeys: String {
     /// - Returns: The full key for goal met flag storage
     public static func setAGoalModalFlagKey(for accountId: String) -> String {
         return "\(accountId)_\(Self.setAGoalCardViewed.rawValue)"
+    }
+
+    /// Creates an account-scoped key for the "Scrollable graph" first-time hint flag
+    /// - Parameter accountId: The account identifier
+    /// - Returns: The full key for graph scroll hint viewed flag storage
+    public static func graphScrollHintViewedKey(for accountId: String) -> String {
+        return "\(accountId)_\(Self.graphScrollHintViewed.rawValue)"
     }
     
     /// Creates an account-scoped key for FCM token storage
