@@ -187,7 +187,7 @@ constructor(
     AppLog.d(TAG, "Moving to previous step from: ${currentState.step}")
 
     when {
-      currentState.isFirstStep -> navigateTo(AppRoute.AccountSettings.AddEditScales)
+      currentState.isFirstStep -> navigateTo(AppRoute.AccountSettings.MyDevices)
 
       currentState.step == MonitorSetupStep.USER_SELECTION && isPermissionGranted ->
         handleIntent(ScaleSetupIntent.SetNewStep(MonitorSetupStep.MONITOR_DETAIL))
