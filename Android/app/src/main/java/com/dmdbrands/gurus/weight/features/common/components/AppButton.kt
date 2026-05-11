@@ -62,7 +62,8 @@ internal val ButtonType.isInlineText: Boolean
   get() = when (this) {
     ButtonType.InlineTextPrimary,
     ButtonType.InlineTextSecondary,
-    ButtonType.InlineTextTertiary -> true
+    ButtonType.ErrorText,
+    ButtonType.InlineTextTertiary,  -> true
 
     ButtonType.PrimaryFilled,
     ButtonType.SecondaryFilled,
@@ -71,7 +72,6 @@ internal val ButtonType.isInlineText: Boolean
     ButtonType.TextPrimary,
     ButtonType.TextSecondary,
     ButtonType.TextTertiary,
-    ButtonType.ErrorText,
     ButtonType.SuccessFilled -> false
   }
 
