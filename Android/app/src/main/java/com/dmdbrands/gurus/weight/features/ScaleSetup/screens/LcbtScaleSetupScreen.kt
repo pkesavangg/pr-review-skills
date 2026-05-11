@@ -7,7 +7,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
@@ -32,7 +31,6 @@ import com.dmdbrands.gurus.weight.features.common.components.HorizontalPagerWith
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.theme.MeTheme
-import kotlinx.coroutines.delay
 
 @Composable
 fun LcbtScaleSetupScreen(
@@ -68,18 +66,14 @@ fun LcbtScaleSetupScreenContent(
   val setupState = state.scaleSetupState.setupState
   val focusManager = LocalFocusManager.current
   val pagerState = rememberPagerState { state.scaleSetupState.steps.size }
-  val isAnimating = remember { mutableStateOf(false) }
 
-  // Sync ViewModel state to Pager state
+  // Sync ViewModel state to Pager state. animateScrollToPage handles its own
+  // cancellation when LaunchedEffect restarts — a manual isAnimating guard
+  // could get stuck on `true` if the coroutine was cancelled mid-animation,
+  // swallowing the slide animation on rapid step changes.
   LaunchedEffect(setupState.step) {
-    if (!isAnimating.value) {
-      isAnimating.value = true
-      try {
-        pagerState.animateScrollToPage(setupState.step.ordinal)
-      } finally {
-        delay(100)
-        isAnimating.value = false
-      }
+    if (pagerState.currentPage != setupState.step.ordinal) {
+      pagerState.animateScrollToPage(setupState.step.ordinal)
     }
   }
 

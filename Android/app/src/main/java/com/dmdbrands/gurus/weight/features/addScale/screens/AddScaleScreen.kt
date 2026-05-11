@@ -151,7 +151,7 @@ fun AddScaleScreenContent(
         Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
         if (state.savedScales.isNotEmpty()) {
           AppText(
-            text = AddScaleScreenStrings.MyScales,
+            text = AddScaleScreenStrings.MyDevices,
             textType = TextType.Title,
           )
         }

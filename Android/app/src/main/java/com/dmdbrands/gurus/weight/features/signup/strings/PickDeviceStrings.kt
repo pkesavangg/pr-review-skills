@@ -13,6 +13,9 @@ object PickDeviceStrings {
     const val bloodPressureSubtitle = "bp trends & reminders"
     const val weightScaleSubtitle = "bmi & weight insights"
 
+    // Subtitle shown on cards for devices already registered in this session
+    const val alreadyAdded = "already added"
+
     // Device IDs
     object Devices {
         const val BABY_SCALE = "baby_scale"

@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.signup.model
 
 import androidx.compose.runtime.Stable
 import com.dmdbrands.gurus.weight.domain.enums.GoalType
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
@@ -380,10 +381,24 @@ data class SignupState(
   val error: String? = null,
   val goalSkipped: Boolean = false,
   val babyState: BabyState? = null,
+  val registeredDevices: Set<ProductType> = emptySet(),
 ) : IReducer.State {
   val currentStepIndex: Int get() = steps.indexOf(currentStep).coerceAtLeast(0)
   val isFirstStep: Boolean get() = currentStepIndex == 0
   val isLastStep: Boolean get() = currentStepIndex == steps.size - 1
+  val accountCreated: Boolean get() = registeredDevices.isNotEmpty()
+
+  /**
+   * True when the next step in [steps] is a Ready terminal screen — i.e.
+   * the user has reached the form-completion step for this device pass.
+   * The reducer short-circuits Next on this step; SignupViewModel runs the
+   * signup/side-effect work and dispatches RegisterDevice on success.
+   */
+  val isFinalDataStep: Boolean
+    get() {
+      val next = steps.getOrNull(currentStepIndex + 1)
+      return next == SignupStep.DEVICE_READY || next == SignupStep.ALL_DEVICES_READY
+    }
   val showSkipButton: Boolean
     get() = currentStep == SignupStep.GOAL
       || currentStep == SignupStep.ADD_BABY
@@ -439,6 +454,9 @@ data class SignupState(
           form.controls.password.isValueValid()
             && form.controls.confirmPassword.isValueValid()
             && form.controls.zipcode.isValueValid()
+
+        SignupStep.DEVICE_READY,
+        SignupStep.ALL_DEVICES_READY -> true
       }
 
   companion object {
@@ -448,21 +466,60 @@ data class SignupState(
       SignupStep.PASSWORD,
     )
 
-    fun stepsForDevice(device: String): ImmutableList<SignupStep> {
-      val common = listOf(
-        SignupStep.NAME, SignupStep.EMAIL,
-        SignupStep.BIRTHDAY, SignupStep.PICK_DEVICE,
-      )
+    /**
+     * Builds the ordered step list for the current signup pass.
+     *
+     * On the first pass (registeredDevices is empty), the full common head
+     * (NAME → EMAIL → BIRTHDAY → PICK_DEVICE) and PASSWORD are included.
+     * On subsequent passes, the head collapses to just PICK_DEVICE and
+     * PASSWORD is omitted because the account already exists. The
+     * device-specific path also omits any slide whose data was already
+     * captured by a previously-registered device. The terminal step is
+     * ALL_DEVICES_READY when this pass will register the final device.
+     */
+    fun stepsForDevice(
+      device: ProductType?,
+      registeredDevices: Set<ProductType> = emptySet(),
+    ): ImmutableList<SignupStep> {
+      // Loop placeholder: user tapped Connect Another but hasn't picked yet.
+      if (device == null) return persistentListOf(SignupStep.PICK_DEVICE)
+
+      val isFirstPass = registeredDevices.isEmpty()
+      val isLastDevice = registeredDevices.size + 1 == ProductType.ALL.size
+      val terminalStep =
+        if (isLastDevice) SignupStep.ALL_DEVICES_READY else SignupStep.DEVICE_READY
+
+      val sexCaptured =
+        ProductType.MY_WEIGHT in registeredDevices
+          || ProductType.BLOOD_PRESSURE in registeredDevices
+      val heightCaptured = ProductType.MY_WEIGHT in registeredDevices
+      val goalCaptured = ProductType.MY_WEIGHT in registeredDevices
+
+      val head =
+        if (isFirstPass) {
+          listOf(
+            SignupStep.NAME, SignupStep.EMAIL,
+            SignupStep.BIRTHDAY, SignupStep.PICK_DEVICE,
+          )
+        } else {
+          listOf(SignupStep.PICK_DEVICE)
+        }
+
       val pathSteps = when (device) {
-        PickDeviceStrings.Devices.BABY_SCALE ->
-          listOf(SignupStep.ADD_BABY, SignupStep.BABY_ADDED)
-        PickDeviceStrings.Devices.BLOOD_PRESSURE ->
-          listOf(SignupStep.GENDER)
-        PickDeviceStrings.Devices.WEIGHT_SCALE ->
-          listOf(SignupStep.GENDER, SignupStep.HEIGHT, SignupStep.GOAL)
-        else -> emptyList()
+        ProductType.BABY -> listOf(SignupStep.ADD_BABY, SignupStep.BABY_ADDED)
+        ProductType.BLOOD_PRESSURE -> buildList {
+          if (!sexCaptured) add(SignupStep.GENDER)
+        }
+        ProductType.MY_WEIGHT -> buildList {
+          if (!sexCaptured) add(SignupStep.GENDER)
+          if (!heightCaptured) add(SignupStep.HEIGHT)
+          if (!goalCaptured) add(SignupStep.GOAL)
+        }
       }
-      return (common + pathSteps + SignupStep.PASSWORD).toPersistentList()
+
+      val tail = if (isFirstPass) listOf(SignupStep.PASSWORD, terminalStep) else listOf(terminalStep)
+
+      return (head + pathSteps + tail).toPersistentList()
     }
   }
 }
@@ -489,6 +546,18 @@ sealed class SignupIntent : IReducer.Intent {
   data class DeleteBaby(val babyId: String) : SignupIntent()
   data class EditBaby(val baby: BabyProfile) : SignupIntent()
   object AddAnotherBaby : SignupIntent()
+
+  /** Multi-device loop intents (MA-3825) */
+  object ConnectAnotherDevice : SignupIntent()
+  object FinishSignup : SignupIntent()
+
+  /**
+   * Dispatched by SignupViewModel only after signup (first pass) or
+   * device-specific side effects (loop pass) succeed. Reducer adds the
+   * current device to [SignupState.registeredDevices] and advances to
+   * the terminal Ready step.
+   */
+  object RegisterDevice : SignupIntent()
 }
 
 /**
@@ -502,6 +571,11 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
     when (intent) {
       is SignupIntent.Next -> {
         when {
+          // Last data step before a Ready terminal — advancement is gated on
+          // SignupViewModel dispatching RegisterDevice once the signup API
+          // call (or device-specific side effects) completes successfully.
+          state.isFinalDataStep -> state.copy(error = null)
+
           // On ADD_BABY: save baby and go to BABY_ADDED
           state.currentStep == SignupStep.ADD_BABY -> {
             val bs = state.babyState ?: return state
@@ -563,28 +637,66 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
             state.form.controls.currentWeight.reset()
             state.form.controls.goalWeight.reset()
             state.form.controls.goalType.reset()
-            val nextIndex = (state.currentStepIndex + 1).coerceAtMost(state.steps.lastIndex)
-            state.copy(currentStep = state.steps[nextIndex], goalSkipped = true, error = null)
+            if (state.registeredDevices.isEmpty()) {
+              // First pass: advance to PASSWORD (next step in steps list).
+              val nextIndex = (state.currentStepIndex + 1).coerceAtMost(state.steps.lastIndex)
+              state.copy(currentStep = state.steps[nextIndex], goalSkipped = true, error = null)
+            } else {
+              // Loop pass: no goal to create, no other side effects needed.
+              // Register the device immediately and jump to the terminal.
+              val device = ProductType.fromId(state.form.controls.device.value)
+              if (device == null) {
+                state.copy(goalSkipped = true, error = null)
+              } else {
+                state.copy(
+                  registeredDevices = state.registeredDevices + device,
+                  currentStep = state.steps.last(),
+                  goalSkipped = true,
+                  error = null,
+                )
+              }
+            }
           }
           state.currentStep == SignupStep.ADD_BABY
             || state.currentStep == SignupStep.BABY_ADDED -> {
-            state.copy(
-              babyState = BabyState(),
-              currentStep = SignupStep.PASSWORD,
-              error = null,
-            )
+            if (state.registeredDevices.isEmpty()) {
+              // First pass: skip past baby steps to PASSWORD.
+              state.copy(
+                babyState = BabyState(),
+                currentStep = SignupStep.PASSWORD,
+                error = null,
+              )
+            } else {
+              // Loop pass: no babies to persist, no other side effects.
+              // Register the device immediately and jump to the terminal.
+              val device = ProductType.fromId(state.form.controls.device.value)
+              if (device == null) {
+                state.copy(babyState = BabyState(), error = null)
+              } else {
+                state.copy(
+                  babyState = BabyState(),
+                  registeredDevices = state.registeredDevices + device,
+                  currentStep = state.steps.last(),
+                  error = null,
+                )
+              }
+            }
           }
           else -> state
         }
       }
 
       is SignupIntent.SelectDevice -> {
-        val newSteps = SignupState.stepsForDevice(intent.device)
+        val productType = ProductType.fromId(intent.device)
+        val newSteps = SignupState.stepsForDevice(productType, state.registeredDevices)
         val newBabyState = if (intent.device == PickDeviceStrings.Devices.BABY_SCALE)
           BabyState() else null
 
-        // Reset abandoned path data
-        if (state.form.controls.device.value != intent.device) {
+        // Reset abandoned path data only on the first pass — on loop iterations
+        // the previously-captured shared data must be preserved.
+        if (state.registeredDevices.isEmpty()
+          && state.form.controls.device.value != intent.device
+        ) {
           state.form.controls.sex.reset()
           state.form.controls.height.onValueChange(HeightInput.FtIn(5, 10))
           state.form.controls.currentWeight.reset()
@@ -629,6 +741,37 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
           currentStep = SignupStep.ADD_BABY,
         )
       }
+
+      is SignupIntent.ConnectAnotherDevice -> {
+        // Reset the device control so the loop pass starts unselected.
+        // Shared form data (sex, height, goal) is intentionally preserved.
+        state.form.controls.device.reset()
+        state.copy(
+          currentStep = SignupStep.PICK_DEVICE,
+          steps = SignupState.stepsForDevice(
+            device = null,
+            registeredDevices = state.registeredDevices,
+          ),
+          error = null,
+        )
+      }
+
+      is SignupIntent.RegisterDevice -> {
+        val device = ProductType.fromId(state.form.controls.device.value)
+          ?: return state.copy(error = "Missing device")
+        val newRegistered = state.registeredDevices + device
+        // Always jump to the terminal Ready step — the user may dispatch
+        // RegisterDevice from the final data step (Next on PASSWORD/GOAL/
+        // BABY_ADDED) or from earlier (Skip on ADD_BABY in a loop pass).
+        state.copy(
+          registeredDevices = newRegistered,
+          currentStep = state.steps.last(),
+          isLoading = false,
+          error = null,
+        )
+      }
+
+      is SignupIntent.FinishSignup -> state.copy(isLoading = false, error = null)
 
       is SignupIntent.OnRequestBack -> state.copy(isLoading = false, error = null)
       is SignupIntent.OpenHelpModal -> state.copy(isLoading = false, error = null)

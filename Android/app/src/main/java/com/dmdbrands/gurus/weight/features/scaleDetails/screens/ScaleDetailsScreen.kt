@@ -90,6 +90,7 @@ fun ScaleDetailsScreenContent(
   val scaleSetupType =
     device?.deviceType?.let { ScaleSetupType.fromString(it) } ?: ScaleSetupType.Bluetooth
   val isWifiSetup = scaleSetupType == ScaleSetupType.Wifi || scaleSetupType == ScaleSetupType.EspTouchWifi
+  val isBpm = DeviceHelper.isBpmDevice(device?.getSKU())
   val showUserNumber = (isWifiSetup || scaleSetupType == ScaleSetupType.Bluetooth) && state.scale?.userNumber != null
   val isConnected = device?.connectionStatus == BLEStatus.CONNECTED
   val scaleMode =
@@ -190,7 +191,7 @@ fun ScaleDetailsScreenContent(
             }
             add(
               SettingsItem(
-                title = ScaleDetailsStrings.ScaleName,
+                title = ScaleDetailsStrings.DeviceName,
                 type =
                   SettingsItemType.TextOnly(
                     scaleName ?: "", // Display truncated name to match SDK limit
@@ -201,12 +202,23 @@ fun ScaleDetailsScreenContent(
               ),
             )
             if (showUserNumber) {
-              add(
-                SettingsItem(
-                  title = ScaleDetailsStrings.UserNumber,
-                  type = SettingsItemType.TextOnly("U${device.userNumber}"),
-                ),
-              )
+              val userLabel = if (isBpm) {
+                val scaleInfo = ScaleDataHelper.findScaleInfoBySku(device.getSKU())
+                ScaleDataHelper.formatUserDisplay(
+                  scaleInfo?.hasNumericUsers ?: true,
+                  device.userNumber,
+                )
+              } else {
+                "U${device.userNumber}"
+              }
+              if (userLabel.isNotEmpty()) {
+                add(
+                  SettingsItem(
+                    title = ScaleDetailsStrings.userNumberLabel(device.getSKU()),
+                    type = SettingsItemType.TextOnly(userLabel),
+                  ),
+                )
+              }
             }
           },
       )
@@ -299,7 +311,7 @@ fun ScaleDetailsScreenContent(
         items =
           listOf(
             SettingsItem(
-              title = ScaleDetailsStrings.DeleteScale,
+              title = ScaleDetailsStrings.DeleteLabel,
               type = SettingsItemType.None,
               color = SettingColorType.Danger,
               onClick = { handleIntent(ScaleDetailsIntent.DeleteScale) },
