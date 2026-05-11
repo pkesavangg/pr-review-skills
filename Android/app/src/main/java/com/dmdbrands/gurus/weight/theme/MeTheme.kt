@@ -82,6 +82,27 @@ private fun StatusBarTheme(colorScheme: ColorScheme) {
 }
 
 /**
+ * Resolves whether the dark color scheme should be used.
+ *
+ * For LIGHT/DARK the user's explicit choice short-circuits any Configuration
+ * read, so Compose surfaces flip immediately on toggle regardless of whether
+ * AppCompat / UiModeManager has propagated the change to Configuration yet.
+ *
+ * For SYSTEM, we read isSystemInDarkTheme() — which observes LocalConfiguration
+ * and recomposes when the OS theme changes. This is reliable across API
+ * levels because OS-driven Configuration updates (the user changing the
+ * system theme) are broadcast normally; the runtime unreliability we hit on
+ * API < 31 is specifically with app-driven setDefaultNightMode overrides,
+ * which only matter when the user picks LIGHT or DARK.
+ */
+@Composable
+private fun resolveDarkTheme(themeMode: ThemeMode): Boolean = when (themeMode) {
+  ThemeMode.DARK -> true
+  ThemeMode.LIGHT -> false
+  ThemeMode.SYSTEM, ThemeMode.UNRECOGNIZED -> isSystemInDarkTheme()
+}
+
+/**
  * Main theme composable that sets up the app's theme.
  * This combines all theme components (colors, typography, spacing, animations) into a single theme.
  * It also provides IAM colors via LocalComposition for IAM components to access.
@@ -91,13 +112,7 @@ fun MeAppTheme(
   themeMode: ThemeMode = ThemeMode.SYSTEM,
   content: @Composable (() -> Unit),
 ) {
-  val darkTheme =
-    when (themeMode) {
-      ThemeMode.DARK -> true
-      ThemeMode.LIGHT -> false
-      ThemeMode.SYSTEM -> isSystemInDarkTheme()
-      ThemeMode.UNRECOGNIZED -> isSystemInDarkTheme()
-    }
+  val darkTheme = resolveDarkTheme(themeMode)
 
   val meAppColorScheme =
     if (darkTheme) {

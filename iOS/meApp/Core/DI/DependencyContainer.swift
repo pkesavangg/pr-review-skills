@@ -36,10 +36,15 @@ struct Injector<Value> {
 
     var wrappedValue: Value {
         mutating get {
-           if value == nil {
+            if value == nil {
                 value = DependencyContainer.shared.resolve(Value.self)
             }
-            return value!
+            guard let resolved = value else {
+                // Symbolicates to the missing service name in Crashlytics /
+                // Xcode Organizer instead of the opaque <deduplicated_symbol>.
+                preconditionFailure("Dependency \(Value.self) not registered in DependencyContainer")
+            }
+            return resolved
         }
         set {
             value = newValue

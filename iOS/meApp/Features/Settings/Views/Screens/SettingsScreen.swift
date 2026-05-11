@@ -176,7 +176,7 @@ struct SettingsScreen: View {
             selectedValues: [settingsStore.defaultGraphPeriod],
             options: [TimePeriod.allCases],
             displayValue: { $0.title },
-            title: settingsLang.defaultGraphRange,
+            title: settingsLang.defaultGraphView,
             onUpdate: { vals in
                 if let period = vals.first {
                     settingsStore.updateDefaultGraphPeriod(period)
@@ -237,7 +237,7 @@ struct SettingsScreen: View {
             }))
             .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.defaultGraphRange,
+                title: settingsLang.defaultGraphView,
                 value: settingsStore.defaultGraphPeriodText,
                 chevronType: .upDown,
                 onTap: { settingsStore.presentDefaultGraphPeriodPicker() }))

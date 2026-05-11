@@ -22,16 +22,21 @@ object DeviceHelper {
   const val SKU_0634 = "0634"
   const val SKU_0344 = "0344"
 
-  fun GGDeviceDetail.getSKU() = SKU_MAP[deviceName] ?: DEFAULT_SKU
+  fun GGDeviceDetail.getSKU(): String? = SKU_MAP[deviceName]
 
   /**
    * Maps a SKU to its display SKU for UI purposes only.
    * For example, SKU 0022 is displayed as 0383.
-   * This should only be used for display, not for saving.
-   * @param sku The SKU to map for display
-   * @return The display SKU
+   * Returns null when [sku] is null so callers can decide on a UI fallback rather than
+   * masquerading unknown devices as a default SKU.
+   * @param sku The SKU to map for display, or null when no SKU is known
+   * @return The display SKU, or null if [sku] is null
    */
-  fun mapSkuForDisplay(sku: String): String = if (sku == SKU_0022) SKU_0383 else sku
+  fun mapSkuForDisplay(sku: String?): String? = when (sku) {
+      null -> null
+      SKU_0022 -> SKU_0383
+      else -> sku
+  }
 
   private val SKU_MAP = mapOf(
     "MY_SCALE" to SKU_0480,
