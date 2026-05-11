@@ -20,12 +20,14 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
 import com.dmdbrands.gurus.weight.features.history.strings.HistoryItemStrings
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.getTime
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import java.util.Locale
 
 /**
  * A single baby history detail entry row.
@@ -35,6 +37,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 @Composable
 fun BabyDayHistoryItem(
     item: BabyEntry,
+    isMetric: Boolean = false,
     isExpanded: Boolean = false,
     onToggleExpand: () -> Unit = {},
 ) {
@@ -48,28 +51,39 @@ fun BabyDayHistoryItem(
     val boldStyle = SpanStyle(color = babyColor, fontWeight = FontWeight.Bold)
     val unitStyle = SpanStyle(color = unitColor, fontWeight = FontWeight.Normal)
 
-    // Build weight text: "8 lbs 14.9 oz"
+    // Build weight text: "8 lbs 14.9 oz" or "4.05 kg"
+    // Source-aware graduation is applied inside ConversionTools.
     val weightText = buildAnnotatedString {
         val dg = item.babyWeightDecigrams
+        val source = item.babyEntry.source
         if (dg != null) {
-            val totalOz = dg / 28.3495
-            val lbs = (totalOz / 16).toInt()
-            val oz = totalOz % 16
-            withStyle(boldStyle) { append("$lbs ") }
-            withStyle(unitStyle) { append("lbs ") }
-            withStyle(boldStyle) { append(String.format("%.1f", oz)) }
-            withStyle(unitStyle) { append(" oz") }
+            if (isMetric) {
+                val kg = ConversionTools.convertBabyWeightToKg(dg, source)
+                withStyle(boldStyle) { append(String.format(Locale.US, "%.2f", kg)) }
+                withStyle(unitStyle) { append(" kg") }
+            } else {
+                val (lbs, oz) = ConversionTools.convertBabyWeightToLbOz(dg, source)
+                withStyle(boldStyle) { append("$lbs ") }
+                withStyle(unitStyle) { append("lbs ") }
+                withStyle(boldStyle) { append(String.format(Locale.US, "%.1f", oz)) }
+                withStyle(unitStyle) { append(" oz") }
+            }
         } else {
             withStyle(boldStyle) { append("--") }
         }
     }
 
-    // Build length text: "12 in"
+    // Build length text: "12 in" or "30.5 cm"
     val lengthText = buildAnnotatedString {
         val mm = item.babyLengthMillimeters
         if (mm != null) {
-            withStyle(boldStyle) { append(String.format("%.0f", mm / 25.4)) }
-            withStyle(unitStyle) { append(" in") }
+            if (isMetric) {
+                withStyle(boldStyle) { append(String.format(Locale.US, "%.1f", ConversionTools.convertMmToCm(mm))) }
+                withStyle(unitStyle) { append(" cm") }
+            } else {
+                withStyle(boldStyle) { append(String.format(Locale.US, "%.0f", ConversionTools.convertMmToInches(mm))) }
+                withStyle(unitStyle) { append(" in") }
+            }
         } else {
             withStyle(boldStyle) { append("--") }
         }

@@ -13,6 +13,7 @@ import kotlinx.collections.immutable.toImmutableList
 @Stable
 data class HistoryDetailState(
   val isLoading: Boolean = false,
+  val isMetric: Boolean = false,
   val errorMessage: String? = null,
   val month: String = "",
   val itemsOpened: ImmutableList<Long> = persistentListOf(),
@@ -35,6 +36,7 @@ sealed interface HistoryDetailIntent : IReducer.Intent {
     val items: List<Entry>,
   ) : HistoryDetailIntent
   data class SetRefreshing(val isRefreshing: Boolean) : HistoryDetailIntent
+  data class SetMetric(val isMetric: Boolean) : HistoryDetailIntent
 }
 
 /**
@@ -58,6 +60,7 @@ class HistoryDetailReducer : IReducer<HistoryDetailState, HistoryDetailIntent> {
           errorMessage = null,
         )
       is HistoryDetailIntent.SetRefreshing -> state.copy(isLoading = intent.isRefreshing)
+      is HistoryDetailIntent.SetMetric -> state.copy(isMetric = intent.isMetric)
       HistoryDetailIntent.Retry -> state.copy(isLoading = true)
       else -> state
     }
