@@ -170,7 +170,7 @@ final class BpmDeviceSettingsStore: ObservableObject {
             bluetoothService.isSetupInProgress = true
             if let broadcastId = device.broadcastIdString {
                 let deletionTask = Task { @MainActor in
-                    _ = await bluetoothService.deleteCurrentUserFromScaleIfPossible(device, disconnect: false)
+                    _ = await bluetoothService.deleteCurrentUserFromScaleIfPossible(broadcastId: broadcastId, disconnect: false)
                 }
                 try? await Task.sleep(nanoseconds: UInt64(AppConstants.TimeoutsAndRetention.scaleDeletionGraceTimeoutNs))
                 deletionTask.cancel()

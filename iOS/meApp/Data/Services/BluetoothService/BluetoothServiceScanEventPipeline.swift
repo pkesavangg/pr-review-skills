@@ -7,7 +7,7 @@ import Combine
 import Foundation
 import GGBluetoothSwiftPackage
 import SwiftData
-// swiftlint:disable cyclomatic_complexity
+// swiftlint:disable cyclomatic_complexity file_length
 
 @MainActor
 extension BluetoothService {
@@ -79,6 +79,7 @@ extension BluetoothService {
             if !isWeightOnlyModeAlertDismissed {
                 await checkCanShowWeightOnlyModeAlert()
             }
+            logger.log(level: .info, tag: tag, message: "DEVICE_DISCONNECTED called in handleSmartScaleData", data: scanData)
         case .DEVICE_MEMORY_FULL:
             await handleDeviceEventAlert(scanData, isDuplicateUserError: false)
         case .DEVICE_DUPLICATE_USER:
@@ -154,7 +155,7 @@ extension BluetoothService {
         let category: DeviceCategory = scaleInfo.setupType == .bpm ? .bpm : .scale
 
         let discoveryEvent = DeviceDiscoveryEvent(
-            device: device,
+            device: device.toSnapshot(),
             deviceInfo: scaleInfo,
             protocolType: protocolType,
             isNew: isNew,
@@ -193,7 +194,8 @@ extension BluetoothService {
     private func saveSingleBpmEntry(_ bpmData: GGBPMEntry) async {
         handleBpmMeasurement(bpmData)
         let timestamp = bpmData.date.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) } ?? Date()
-        await saveBpmEntry(BpmMeasurement(
+        // Live single readings stage as pending — the toast handler will confirm/discard.
+        await stagePendingBpmEntry(BpmMeasurement(
             systolic: bpmData.systolic ?? 0,
             diastolic: bpmData.diastolic ?? 0,
             pulse: bpmData.pulse ?? 0,
@@ -207,51 +209,149 @@ extension BluetoothService {
             logger.log(level: .info, tag: tag, message: "No valid BPM entries to save")
             return
         }
-        for bpmData in bpmEntryList.list {
-            handleBpmMeasurement(bpmData)
+        // Mirror the weight-list pattern: persist historical entries silently and surface
+        // only the most recent reading as a pending confirmation toast.
+        let measurements = bpmEntryList.list.map { bpmData -> BpmMeasurement in
             let timestamp = bpmData.date.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) } ?? Date()
-            await saveBpmEntry(BpmMeasurement(
+            return BpmMeasurement(
                 systolic: bpmData.systolic ?? 0,
                 diastolic: bpmData.diastolic ?? 0,
                 pulse: bpmData.pulse ?? 0,
                 timestamp: timestamp,
                 broadcastId: bpmData.broadcastId
-            ), suppressNotification: true)
-        }
-        // Send a single notification after all entries are saved (matching weight entry pattern)
-        if let firstData = bpmEntryList.list.first {
-            let timestamp = firstData.date.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) } ?? Date()
-            let entry = Entry(
-                entryTimestamp: ISO8601DateFormatter().string(from: timestamp),
-                accountId: activeAccount?.accountId ?? "",
-                operationType: OperationType.create.rawValue,
-                deviceType: DeviceType.bpm.rawValue,
-                isSynced: false
             )
-            newEntryReceivedSubject.send(EntryNotification(from: entry))
+        }
+        for bpmData in bpmEntryList.list {
+            handleBpmMeasurement(bpmData)
+        }
+        let historical = measurements.dropFirst()
+        for measurement in historical {
+            await persistBpmEntry(measurement)
+        }
+        if let latest = measurements.first {
+            await stagePendingBpmEntry(latest)
         }
     }
 
     private func saveSingleWeightEntry(_ weightEntry: GGEntry) async {
-        let entry = convertGGEntry(weightEntry)
-        guard let entry = entry else { return }
-        try? await entryService.saveNewEntry(entry)
-        let notification = EntryNotification(from: entry)
-        newEntryReceivedSubject.send(notification)
+        guard let entry = convertGGEntry(weightEntry) else { return }
+
+        if entry.entryType == EntryType.baby.rawValue {
+            // Baby entries are saved immediately; the assign/discard toast is driven by newEntryReceivedSubject.
+            do {
+                try await entryService.saveNewEntry(entry)
+            } catch {
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Failed to save baby entry. entryId=\(entry.id.uuidString)",
+                    data: error.localizedDescription
+                )
+                return
+            }
+            newEntryReceivedSubject.send(EntryNotification(from: entry))
+            return
+        }
+
+        // Weight/BPM entries: hold pending user confirmation via the toast.
+        // If a previous entry is still awaiting confirmation, save it automatically
+        // before overwriting — the user only sees one toast at a time.
+        if let existing = pendingScaleEntry {
+            do {
+                try await entryService.saveNewEntry(existing)
+                logger.log(
+                    level: .info,
+                    tag: tag,
+                    message: "Auto-saved displaced pending entry. entryId=\(existing.id.uuidString)"
+                )
+            } catch {
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Failed to auto-save displaced pending entry. entryId=\(existing.id.uuidString)",
+                    data: error.localizedDescription
+                )
+            }
+        }
+        pendingScaleEntry = entry
+        pendingScaleEntrySubject.send(EntryNotification(from: entry))
     }
 
-    private func saveWeightEntryList(_ entryList: GGEntryList) async {
+    private func saveWeightEntryList(_ entryList: GGEntryList) async { // swiftlint:disable:this function_body_length
         let entries = entryList.list.compactMap { convertGGEntry($0) }
         if entries.isEmpty {
             logger.log(level: .info, tag: tag, message: "No valid entries to save")
             return
         }
-        for entry in entries {
-            try? await entryService.saveNewEntry(entry)
+
+        // Baby-scale batches: all entries are saved immediately and the most recent fires
+        // newEntryReceivedSubject for the assign/discard card. Mirror saveSingleWeightEntry logic.
+        if let firstEntry = entries.first, firstEntry.entryType == EntryType.baby.rawValue {
+            let historicalEntries = entries.dropFirst()
+            for entry in historicalEntries {
+                do {
+                    try await entryService.saveNewEntry(entry)
+                } catch {
+                    logger.log(
+                        level: .error,
+                        tag: tag,
+                        message: "Failed to save historical baby entry. entryId=\(entry.id.uuidString)",
+                        data: error.localizedDescription
+                    )
+                }
+            }
+            do {
+                try await entryService.saveNewEntry(firstEntry)
+            } catch {
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Failed to save baby entry. entryId=\(firstEntry.id.uuidString)",
+                    data: error.localizedDescription
+                )
+                return
+            }
+            newEntryReceivedSubject.send(EntryNotification(from: firstEntry))
+            return
         }
-        if !entries.isEmpty {
-            let notification = EntryNotification(from: entries[0])
-            newEntryReceivedSubject.send(notification)
+
+        // Weight/BPM batches: save historical entries immediately; hold the most recent
+        // (first in the list) pending user confirmation via the toast.
+        let historicalEntries = entries.dropFirst()
+        for entry in historicalEntries {
+            do {
+                try await entryService.saveNewEntry(entry)
+            } catch {
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Failed to save historical entry. entryId=\(entry.id.uuidString)",
+                    data: error.localizedDescription
+                )
+            }
+        }
+        if let latestEntry = entries.first {
+            // Auto-save any displaced pending entry before replacing it.
+            if let existing = pendingScaleEntry {
+                do {
+                    try await entryService.saveNewEntry(existing)
+                    logger.log(
+                        level: .info,
+                        tag: tag,
+                        message: "Auto-saved displaced pending entry. entryId=\(existing.id.uuidString)"
+                    )
+                } catch {
+                    logger.log(
+                        level: .error,
+                        tag: tag,
+                        message: "Failed to auto-save displaced pending entry. entryId=\(existing.id.uuidString)",
+                        data: error.localizedDescription
+                    )
+                }
+            }
+            pendingScaleEntry = latestEntry
+            let notification = EntryNotification(from: latestEntry)
+            pendingScaleEntrySubject.send(notification)
         }
     }
 
@@ -269,11 +369,12 @@ extension BluetoothService {
             return convertBabyScaleEntry(ggEntry: ggEntry, activeAccount: activeAccount, timestamp: timestamp)
         }
 
+        let resolvedEntryType: EntryType = deviceType == .bpm ? .bpm : .scale
         let entry = Entry(
             entryTimestamp: timestamp,
             accountId: activeAccount.accountId,
             operationType: OperationType.create.rawValue,
-            deviceType: deviceType.rawValue,
+            entryType: resolvedEntryType.rawValue,
             isSynced: false
         )
         let protocolType = ProtocolType(rawValue: ggEntry.protocolType ?? "") ?? .A6
@@ -294,7 +395,7 @@ extension BluetoothService {
         }
     }
 
-    private func createBathScaleEntry(ggEntry: GGEntry, protocolType: ProtocolType, activeAccount: Account) -> BathScaleEntry {
+    private func createBathScaleEntry(ggEntry: GGEntry, protocolType: ProtocolType, activeAccount: AccountSnapshot) -> BathScaleEntry {
         var sourceType = ScaleSourceType.bluetoothScale
         if protocolType == .R4 {
             sourceType = .btWifiR4
@@ -308,7 +409,7 @@ extension BluetoothService {
             ? roundMetric(ggEntry.bmi)
             : ConversionTools.calculateBMI(
                 weight: Double(ggEntry.weightInKg),
-                height: calculateHeightCm(height: activeAccount.weightSettings?.height)
+                height: calculateHeightCm(height: activeAccount.weightHeight)
             ),
             source: sourceType.rawValue
         )
@@ -344,8 +445,8 @@ extension BluetoothService {
         return .scale
     }
 
-    /// Resolves the Device for the given broadcast ID from the paired bluetooth scales.
-    private func resolveDevice(forBroadcastId broadcastId: String?) -> Device? {
+    /// Resolves the DeviceSnapshot for the given broadcast ID from the paired bluetooth scales.
+    private func resolveDevice(forBroadcastId broadcastId: String?) -> DeviceSnapshot? {
         guard let broadcastId = broadcastId else { return nil }
         return bluetoothScales.first { $0.broadcastIdString == broadcastId }
     }
@@ -363,15 +464,17 @@ extension BluetoothService {
     }
 
     /// Converts a BLE baby scale measurement into a baby Entry with a BabyEntry relationship.
-    private func convertBabyScaleEntry(ggEntry: GGEntry, activeAccount: Account, timestamp: String) -> Entry? {
-        guard let baby = resolveBaby(forBroadcastId: ggEntry.broadcastIdString) else {
+    /// If no baby profile is linked to the scale the entry is still created with an empty babyId
+    /// so the reading-arrival toast can surface it — the user can then ASSIGN or DON'T ASSIGN.
+    private func convertBabyScaleEntry(ggEntry: GGEntry, activeAccount: AccountSnapshot, timestamp: String) -> Entry? {
+        let baby = resolveBaby(forBroadcastId: ggEntry.broadcastIdString)
+        if baby == nil {
             logger.log(
-                level: .error,
+                level: .info,
                 tag: tag,
-                message: "Baby scale entry received but no baby linked for broadcastId: \(ggEntry.broadcastIdString ?? "nil")"
+                // swiftlint:disable:next line_length
+                message: "Baby scale entry received but no baby linked for broadcastId: \(ggEntry.broadcastIdString ?? "nil") — creating unassigned entry"
             )
-            notificationService.showToast(ToastModel(message: "Baby scale measurement received but no baby is linked to this scale."))
-            return nil
         }
         let weightDecigrams = ConversionTools.convertBabyKgToDecigrams(Double(ggEntry.weightInKg))
         let scaleSku = resolveScaleSku(forBroadcastId: ggEntry.broadcastIdString)
@@ -379,11 +482,10 @@ extension BluetoothService {
             entryTimestamp: timestamp,
             accountId: activeAccount.accountId,
             operationType: OperationType.create.rawValue,
-            deviceType: DeviceType.babyScale.rawValue,
-            isSynced: false,
-            babyId: baby.id
+            entryType: EntryType.baby.rawValue,
+            isSynced: false
         )
-        entry.babyEntry = BabyEntry(babyId: baby.id, length: 0, weight: weightDecigrams, note: "", source: scaleSku)
+        entry.babyEntry = BabyEntry(babyId: baby?.id ?? "", length: 0, weight: weightDecigrams, source: scaleSku)
         return entry
     }
 
@@ -397,7 +499,7 @@ extension BluetoothService {
             guard !Task.isCancelled, let self = self else { return }
 
             let connectedScales = self.bluetoothScales.filter { scale in
-                guard scale.isConnected ?? false else { return false }
+                guard scale.isConnected else { return false }
                 // Exclude baby scales — weight-only mode only applies to adult weight scales
                 if let sku = scale.sku,
                    ScaleInfoUtils.shared.getScaleInfo(bySku: sku)?.setupType == .babyScale {
@@ -408,11 +510,9 @@ extension BluetoothService {
 
             var hasWeightOnlyModeEnabledByOthers = false
 
-            for scale in connectedScales {
-                if let isWeightOnlyEnabled = scale.isWeighOnlyModeEnabledByOthers, isWeightOnlyEnabled {
-                    hasWeightOnlyModeEnabledByOthers = true
-                    break
-                }
+            for scale in connectedScales where scale.isWeighOnlyModeEnabledByOthers {
+                hasWeightOnlyModeEnabledByOthers = true
+                break
             }
 
             if hasWeightOnlyModeEnabledByOthers && !self.isWeightOnlyModeAlertDismissed {
@@ -431,14 +531,14 @@ extension BluetoothService {
         showWeightOnlyModeAlertSubject.send(false)
     }
 
-    private func syncPreferencesIfNeeded(for scale: Device, deviceInfo: DeviceInfo) async {
+    private func syncPreferencesIfNeeded(for scale: DeviceSnapshot, deviceInfo: DeviceInfo) async {
         guard !isSyncingPreferences else {
             return
         }
         isSyncingPreferences = true
         defer { isSyncingPreferences = false }
 
-        guard scale.isConnected == true,
+        guard scale.isConnected,
               let preference = fetchAttachedPreference(by: scale.id)
         else {
             return
@@ -451,7 +551,7 @@ extension BluetoothService {
             return
         }
         let broadcastId = scale.broadcastIdString ?? "unknown"
-        switch await updateAccount(on: scale, preference: preference) {
+        switch await updateAccount(broadcastId: broadcastId) {
         case .success:
             logger.log(level: .info, tag: tag, message: "Synced preference settings to scale \(broadcastId)")
             preference.isSynced = true
@@ -484,7 +584,7 @@ extension BluetoothService {
             return false
         }()
 
-        let updatedDeviceInfoResult = await getDeviceInfo(for: scale, skipConnectionCheck: true)
+        let updatedDeviceInfoResult = await getDeviceInfo(broadcastId: broadcastId, skipConnectionCheck: true)
         let finalImpedanceSwitchState: Bool
         if case .success(let updatedInfo) = updatedDeviceInfoResult {
             finalImpedanceSwitchState = updatedInfo.impedanceSwitchState ?? false
@@ -493,8 +593,6 @@ extension BluetoothService {
         }
 
         let isWeightOnlyModeEnabledByOthers = !finalImpedanceSwitchState && shouldMeasureImpedance
-
-        scale.isWeighOnlyModeEnabledByOthers = isWeightOnlyModeEnabledByOthers
 
         await scaleService.updateConnectedDeviceWeightOnlyMode(
             broadcastId: broadcastId,
@@ -509,8 +607,9 @@ extension BluetoothService {
             return
         }
         let scale = resolvedScale.scale
+        let broadcastId = resolvedScale.broadcastId
 
-        let deviceInfoResult = await getDeviceInfo(for: scale, skipConnectionCheck: true)
+        let deviceInfoResult = await getDeviceInfo(broadcastId: broadcastId, skipConnectionCheck: true)
         switch deviceInfoResult {
         case .success(let deviceInfo):
             await syncPreferencesIfNeeded(for: scale, deviceInfo: deviceInfo)
@@ -524,10 +623,7 @@ extension BluetoothService {
         guard let resolvedScale = resolveScaleForWeightOnlyMode(deviceDetails) else {
             return
         }
-        let scale = resolvedScale.scale
         let broadcastId = resolvedScale.broadcastId
-
-        scale.isWeighOnlyModeEnabledByOthers = false
 
         await scaleService.updateConnectedDeviceWeightOnlyMode(
             broadcastId: broadcastId,
@@ -537,7 +633,7 @@ extension BluetoothService {
         logger.log(level: .debug, tag: tag, message: "Cleared weight-only mode status for disconnected scale \(broadcastId)")
     }
 
-    private func resolveScaleForWeightOnlyMode(_ deviceDetails: GGDeviceDetails) -> (scale: Device, broadcastId: String)? {
+    private func resolveScaleForWeightOnlyMode(_ deviceDetails: GGDeviceDetails) -> (scale: DeviceSnapshot, broadcastId: String)? {
         let candidateIds = [deviceDetails.broadcastIdString, deviceDetails.broadcastId]
             .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
@@ -560,4 +656,4 @@ extension BluetoothService {
         return (scale, scale.broadcastIdString ?? candidateIds[0])
     }
 }
-// swiftlint:enable cyclomatic_complexity
+// swiftlint:enable cyclomatic_complexity file_length

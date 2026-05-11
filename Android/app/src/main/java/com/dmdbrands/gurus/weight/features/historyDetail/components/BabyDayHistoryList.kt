@@ -14,6 +14,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 @Composable
 fun BabyDayHistoryList(
     entries: List<BabyEntry>,
+    isMetric: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val expandedIndices = remember { mutableStateListOf<Int>() }
@@ -22,6 +23,7 @@ fun BabyDayHistoryList(
         itemsIndexed(entries, key = { _, item -> item.entry.id }) { index, item ->
             BabyDayHistoryItem(
                 item = item,
+                isMetric = isMetric,
                 isExpanded = expandedIndices.contains(index),
                 onToggleExpand = {
                     if (expandedIndices.contains(index)) {

@@ -91,7 +91,7 @@ extension BabyScaleSetupStore {
         connectionState = .loading
 
         switch currentStep {
-        case .connectingBluetooth:
+        case .connectingBluetooth, .connectionError:
             navigateToStep(.wakeup)
         default:
             break

@@ -27,7 +27,7 @@ struct ContentViewModelTests {
     func initializationLoggedInPathLoadsStartupData() async {
         let (viewModel, account, _, entry, feed, scale, bluetooth, accountFlag) = makeSUT()
         account.activeAccount = ContentViewModelTestFixtures.makeActiveAccount(id: "content-1", lastActiveTime: "t1")
-        account.refreshAccountResult = .success(ContentViewModelTestFixtures.makeActiveAccount(id: "content-1", lastActiveTime: "t1"))
+        account.refreshAccountResult = .success(())
         entry.allEntriesResult = .success(ContentViewModelTestFixtures.makeEntries(accountId: "content-1", count: 2))
 
         viewModel.performAppInitialization()
@@ -70,7 +70,7 @@ struct ContentViewModelTests {
     func initializationEntryFetchFailure() async {
         let (viewModel, account, _, entry, _, _, _, _) = makeSUT()
         account.activeAccount = ContentViewModelTestFixtures.makeActiveAccount(id: "content-3")
-        account.refreshAccountResult = .success(ContentViewModelTestFixtures.makeActiveAccount(id: "content-3"))
+        account.refreshAccountResult = .success(())
         entry.allEntriesResult = .failure(ContentViewModelTestError.fetchEntriesFailed)
 
         viewModel.performAppInitialization()
@@ -119,7 +119,7 @@ struct ContentViewModelTests {
     func accountPublisherTriggersInitialization() async {
         let (viewModel, account, _, entry, _, _, _, _) = makeSUT()
         viewModel.contentViewState = .landing
-        account.refreshAccountResult = .success(ContentViewModelTestFixtures.makeActiveAccount(id: "content-5", lastActiveTime: "t1"))
+        account.refreshAccountResult = .success(())
         entry.allEntriesResult = .success(ContentViewModelTestFixtures.makeEntries(accountId: "content-5", count: 1))
 
         account.activeAccount = ContentViewModelTestFixtures.makeActiveAccount(id: "content-5", lastActiveTime: "t1")
@@ -145,7 +145,7 @@ struct ContentViewModelTests {
     func accountPublisherIgnoresDuplicates() async {
         let (viewModel, account, _, entry, _, _, _, _) = makeSUT()
         viewModel.contentViewState = .landing
-        account.refreshAccountResult = .success(ContentViewModelTestFixtures.makeActiveAccount(id: "content-7", lastActiveTime: "t1"))
+        account.refreshAccountResult = .success(())
         entry.allEntriesResult = .success(ContentViewModelTestFixtures.makeEntries(accountId: "content-7", count: 1))
 
         account.activeAccount = ContentViewModelTestFixtures.makeActiveAccount(id: "content-7", lastActiveTime: "t1")
@@ -162,14 +162,14 @@ struct ContentViewModelTests {
     func accountPublisherReinitializesOnNewLastActiveTime() async {
         let (viewModel, account, _, entry, _, _, _, _) = makeSUT()
         viewModel.contentViewState = .landing
-        account.refreshAccountResult = .success(ContentViewModelTestFixtures.makeActiveAccount(id: "content-8", lastActiveTime: "t1"))
+        account.refreshAccountResult = .success(())
         entry.allEntriesResult = .success(ContentViewModelTestFixtures.makeEntries(accountId: "content-8", count: 1))
 
         account.activeAccount = ContentViewModelTestFixtures.makeActiveAccount(id: "content-8", lastActiveTime: "t1")
         _ = await waitUntil { account.refreshAccountCalls == 1 }
         await viewModel.waitForInitialization()
 
-        account.refreshAccountResult = .success(ContentViewModelTestFixtures.makeActiveAccount(id: "content-8", lastActiveTime: "t2"))
+        account.refreshAccountResult = .success(())
         viewModel.contentViewState = .landing
         account.activeAccount = ContentViewModelTestFixtures.makeActiveAccount(id: "content-8", lastActiveTime: "t2")
         await Task.yield()
@@ -214,7 +214,7 @@ struct ContentViewModelTests {
     func checkAccountFlagsAfterLoginProcessesFlag() async {
         let (viewModel, account, _, entry, _, _, _, accountFlag) = makeSUT()
         account.activeAccount = ContentViewModelTestFixtures.makeActiveAccount(id: "content-flag-1")
-        account.refreshAccountResult = .success(ContentViewModelTestFixtures.makeActiveAccount(id: "content-flag-1"))
+        account.refreshAccountResult = .success(())
         entry.allEntriesResult = .success(ContentViewModelTestFixtures.makeEntries(accountId: "content-flag-1", count: 1))
         accountFlag.getAccountFlagResult = .success(ContentViewModelTestFixtures.makeAccountFlag(trigger: "login"))
         accountFlag.checkAccountFlagResult = .success(true)
@@ -234,7 +234,7 @@ struct ContentViewModelTests {
     func checkAccountFlagsHandlesGetAccountFlagError() async {
         let (viewModel, account, _, entry, _, _, _, accountFlag) = makeSUT()
         account.activeAccount = ContentViewModelTestFixtures.makeActiveAccount(id: "content-flag-error-1")
-        account.refreshAccountResult = .success(ContentViewModelTestFixtures.makeActiveAccount(id: "content-flag-error-1"))
+        account.refreshAccountResult = .success(())
         entry.allEntriesResult = .success(ContentViewModelTestFixtures.makeEntries(accountId: "content-flag-error-1", count: 1))
         accountFlag.getAccountFlagResult = .failure(ContentViewModelTestError.accountFlagFailed)
 
@@ -281,7 +281,7 @@ private func makeSUT(
     bluetoothService: MockContentViewModelBluetoothService? = nil,
     accountFlagService: MockContentViewModelAccountFlagService? = nil,
     loggerService: MockLoggerService? = nil
-) -> (
+) -> ( // swiftlint:disable:this large_tuple
     viewModel: ContentViewModel,
     accountService: MockAccountService,
     loggerService: MockLoggerService,

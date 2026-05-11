@@ -11,19 +11,18 @@ import SwiftData
 @MainActor
 extension BluetoothService {
     // MARK: - Device Info
-    func getDeviceInfo(for device: Device, skipConnectionCheck: Bool = false) async -> Result<DeviceInfo, BluetoothServiceError> {
-        guard skipConnectionCheck || device.isConnected == true else {
-            logger.log(level: .error, tag: tag, message: "Cannot get device info - device is not connected: \(device.id)")
+    func getDeviceInfo(broadcastId: String, skipConnectionCheck: Bool = false) async -> Result<DeviceInfo, BluetoothServiceError> {
+        let isConnected = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId })?.isConnected ?? false
+        guard skipConnectionCheck || isConnected else {
+            logger.log(level: .error, tag: tag, message: "Cannot get device info - device is not connected: \(broadcastId)")
             return .failure(.deviceNotConnected)
         }
 
         do {
-            guard let ggDevice = mapToGGBTDevice(device) else {
-                throw BluetoothServiceError.invalidBroadcastId
-            }
+            let ggDevice = mapToGGBTDevice(broadcastId)
 
             let details = try await sdkOperationSerializer.execute(
-                operationKey: "\(device.id):getDeviceInfo"
+                operationKey: "\(broadcastId):getDeviceInfo"
             ) { @MainActor in
                 try await self.withTimeout(seconds: 10) {
                     try await self.ggBleSDK.getDeviceInfo(ggDevice)
@@ -42,11 +41,9 @@ extension BluetoothService {
         }
     }
 
-    func getDeviceLogs(for device: Device) async -> Result<DeviceLogs, BluetoothServiceError> {
+    func getDeviceLogs(broadcastId: String) async -> Result<DeviceLogs, BluetoothServiceError> {
         do {
-            guard let ggDevice = mapToGGBTDevice(device) else {
-                throw BluetoothServiceError.invalidBroadcastId
-            }
+            let ggDevice = mapToGGBTDevice(broadcastId)
             let response = try await ggBleSDK.getDeviceLogs(ggDevice)
             let deviceLogs = DeviceLogs(logs: response.logs.map { log in
                 DeviceLogEntry(macAddress: log.macAddress, log: log.log)
@@ -72,15 +69,15 @@ extension BluetoothService {
         }
     }
 
-    func updateWeightOnlyMode(on connectedScale: Device?) async -> Result<Void, BluetoothServiceError> {
-        var scales: [Device] = []
-        if let connectedScale = connectedScale {
-            scales.append(connectedScale)
+    func updateWeightOnlyMode(broadcastId: String?) async -> Result<Void, BluetoothServiceError> {
+        let scales: [DeviceSnapshot]
+        if let broadcastId {
+            scales = bluetoothScales.filter { $0.broadcastIdString == broadcastId }
         } else {
-            scales = bluetoothScales.filter { scale in (scale.isConnected ?? false) }
+            scales = bluetoothScales.filter { $0.isConnected }
         }
         for scale in scales {
-            _ = await updateSetting(on: scale, settings: [
+            _ = await updateSetting(broadcastId: scale.broadcastIdString ?? "", settings: [
                 DeviceSetting(key: "SESSION_IMPEDANCE", value: DeviceSettingValue.bool(true))
             ])
         }
@@ -93,10 +90,9 @@ extension BluetoothService {
     }
 
     func disconnectConnectedScales() async {
-        let connectedScales = bluetoothScales.filter { $0.isConnected == true }
+        let connectedScales = bluetoothScales.filter { $0.isConnected }
         for scale in connectedScales {
             if let broadcastId = scale.broadcastIdString {
-                scale.isWeighOnlyModeEnabledByOthers = false
                 await scaleService.updateConnectedDeviceWeightOnlyMode(
                     broadcastId: broadcastId,
                     isWeightOnlyModeEnabledByOthers: false
@@ -109,25 +105,20 @@ extension BluetoothService {
 
     func deleteR4Scales() async -> Result<Void, BluetoothServiceError> {
         let connectedR4Scales = bluetoothScales.filter { scale in
-            let isConnected = scale.isConnected ?? false
-            let isR4Scale: Bool = {
-                if let raw = getSafeScaleType(for: scale) { return ScaleSourceType(rawValue: raw) == .btWifiR4 }
-                return false
-            }()
-            return isConnected && isR4Scale
+            guard scale.isConnected else { return false }
+            guard let raw = scale.bathScale?.scaleType else { return false }
+            return ScaleSourceType(rawValue: raw) == .btWifiR4
         }
 
         logger.log(level: .info, tag: tag, message: "Found \(connectedR4Scales.count) connected R4 scales to delete")
 
         for scale in connectedR4Scales {
-            if let broadcastId = scale.broadcastIdString {
-                scale.isWeighOnlyModeEnabledByOthers = false
-                await scaleService.updateConnectedDeviceWeightOnlyMode(
-                    broadcastId: broadcastId,
-                    isWeightOnlyModeEnabledByOthers: false
-                )
-            }
-            let deleteResult = await deleteDevice(scale, disconnect: false)
+            let broadcastId = scale.broadcastIdString ?? ""
+            await scaleService.updateConnectedDeviceWeightOnlyMode(
+                broadcastId: broadcastId,
+                isWeightOnlyModeEnabledByOthers: false
+            )
+            let deleteResult = await deleteDevice(broadcastId: broadcastId, disconnect: false)
             switch deleteResult {
             case .success(let result):
                 logger.log(level: .info, tag: tag, message: "Successfully deleted R4 scale: \(scale.deviceName ?? "Unknown")", data: result)
@@ -139,7 +130,7 @@ extension BluetoothService {
                 )
             }
 
-            if let broadcastId = scale.broadcastIdString {
+            if !broadcastId.isEmpty {
                 let disconnectResult = await disconnectDevice(broadcastId: broadcastId)
                 switch disconnectResult {
                 case .success(let result):

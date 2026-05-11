@@ -27,7 +27,7 @@ final class BabyScaleSetupStore: ObservableObject {
     /// Callback used by the screen to dismiss itself.
     var dismissAction: (() -> Void)?
     /// Discovered scale information.
-    var discoveredScale: Device?
+    var discoveredScale: DeviceSnapshot?
     /// Discovery event from Bluetooth service.
     var discoveryEvent: DeviceDiscoveryEvent?
 
@@ -76,7 +76,7 @@ final class BabyScaleSetupStore: ObservableObject {
     var isRevertingStepIndex: Bool = false
 
     @Published var connectionState: ConnectionState = .loading
-    @Published var savedScale: Device?
+    @Published var savedScale: DeviceSnapshot?
     @Published var scaleSetupError: BabyScaleSetupError = .none
     @Published private(set) var steps: [BabyScaleSetupStep] = BabyScaleSetupStep.allCases
     @Published var isNextEnabled: Bool = true
@@ -106,14 +106,12 @@ final class BabyScaleSetupStore: ObservableObject {
             case .wakeup:
                 return AnyView(BabyScaleScanningView())
             case .connectingBluetooth:
+                return AnyView(BabyScaleConnectingView())
+            case .connectionError:
                 return AnyView(
-                    BabyScaleConnectionErrorView(
-                        onPairAgain: { [weak self] in
-                            self?.tryAgainButtonHandler()
-                        },
-                        onSupport: { [weak self] in
-                            self?.showHelpModal()
-                        }
+                    BabyScaleConnectionFailureView(
+                        onPairAgain: { [weak self] in self?.tryAgainButtonHandler() },
+                        onSupport: { [weak self] in self?.showHelpModal() }
                     )
                 )
             case .scaleName:
@@ -143,7 +141,7 @@ final class BabyScaleSetupStore: ObservableObject {
     /// Updates the enabled state of the footer "Next" button based on the current step.
     func updateNextEnabled() {
         switch currentStep {
-        case .intro, .wakeup, .connectingBluetooth, .paired, .babyAdded:
+        case .intro, .wakeup, .connectingBluetooth, .connectionError, .paired, .babyAdded:
             isNextEnabled = true
         case .permissions:
             isNextEnabled = arePermissionsEnabled()

@@ -53,6 +53,19 @@ sealed class Entry : IUnitProcessable<Entry> {
     }
 }
 
+/**
+ * Adapts a single [BpmEntry] to the [PeriodBpmSummary] shape expected by Health Connect sync.
+ * [PeriodBpmSummary.period] is intentionally empty because HC sync operates on individual
+ * entries, not period aggregations.
+ */
+fun BpmEntry.toBpmSummary(): PeriodBpmSummary = PeriodBpmSummary(
+    period = "",
+    entryTimestamp = this.entry.entryTimestamp,
+    avgSystolic = this.systolic,
+    avgDiastolic = this.diastolic,
+    avgPulse = this.pulse,
+)
+
 fun Entry.toPeriodBodyScaleSummary(): PeriodBodyScaleSummary? {
     return when (this) {
         is ScaleEntry -> {

@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.login.screen
 
+import android.view.autofill.AutofillManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -15,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -24,6 +26,7 @@ import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentType
@@ -82,6 +85,15 @@ private fun LoginContent(
   val interactionSource = remember { MutableInteractionSource() }
   val emailFocusRequester = remember { FocusRequester() }
   val passwordFocusRequester = remember { FocusRequester() }
+
+  val context = LocalContext.current
+  val autofillManager = remember { context.getSystemService(AutofillManager::class.java) }
+
+  LaunchedEffect(state.error) {
+    if (state.error != null) {
+      autofillManager?.cancel()
+    }
+  }
 
   AppScaffold(
     title = null,

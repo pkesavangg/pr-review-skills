@@ -257,7 +257,7 @@ final class DashboardDateRangeManager: DashboardDateRangeManagerProtocol {
                 return "\(startString) - \(endString)"
             }
         case .month:
-            return DateTimeTools.formatter("MMM, yyyy").string(from: today)
+            return DateTimeTools.formatter("MMM yyyy").string(from: today)
         case .year:
             return DateTimeTools.formatter("yyyy").string(from: today)
         case .total:

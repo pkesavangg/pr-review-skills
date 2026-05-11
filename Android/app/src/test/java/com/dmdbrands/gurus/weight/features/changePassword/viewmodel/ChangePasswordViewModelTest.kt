@@ -238,6 +238,27 @@ class ChangePasswordViewModelTest {
         verify { dialogQueueService.dismissCurrent() }
     }
 
+    @Test
+    fun `OnRequestBack confirm resets form fields before navigating back`() = runTest {
+        fillValidForm()
+        viewModel.state.value.form.controls.currentPassword.onBlur()
+
+        viewModel.handleIntent(ChangePasswordIntent.OnRequestBack)
+        advanceUntilIdle()
+
+        val dialogSlot = slot<DialogModel>()
+        verify { dialogQueueService.enqueue(capture(dialogSlot)) }
+        val confirm = dialogSlot.captured as DialogModel.Confirm
+        confirm.onConfirm?.invoke()
+        advanceUntilIdle()
+
+        val controls = viewModel.state.value.form.controls
+        assertThat(controls.currentPassword.value).isEmpty()
+        assertThat(controls.newPassword.value).isEmpty()
+        assertThat(controls.confirmPassword.value).isEmpty()
+        assertThat(viewModel.state.value.form.isDirty).isFalse()
+    }
+
     // -------------------------------------------------------------------------
     // Success
     // -------------------------------------------------------------------------

@@ -248,7 +248,7 @@ extension BtWifiScaleSetupStore {
     }
 
     /// Applies the updated preference locally and navigates to stepOn on success.
-    private func applyUpdatedPreferenceLocallyAndNavigate(savedScale: Device, updatedPreference: R4ScalePreference) async {
+    private func applyUpdatedPreferenceLocallyAndNavigate(savedScale: DeviceSnapshot, updatedPreference: R4ScalePreference) async {
         do {
             try await scaleService.updateScalePreference(savedScale.id, updatedPreference)
             hasCustomizeChanges = false
@@ -260,9 +260,10 @@ extension BtWifiScaleSetupStore {
                 try? await Task.sleep(nanoseconds: 250_000_000)
                 self.navigateToStep(.stepOn)
             }
+            syncSavedScaleAfterSuccessfulSettingsUpdate(savedScale)
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed locally: \(error.localizedDescription)")
-            await MainActor.run { self.scaleSetupError = .updateSettingsFailed }
+            await MainActor.run { self.markUpdateSettingsFailedIfCurrentStep() }
         }
     }
 
@@ -270,7 +271,7 @@ extension BtWifiScaleSetupStore {
     func updateCustomizeSettings() async {
         guard let savedScale = savedScale else {
             LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - no saved scale")
-            await MainActor.run { self.scaleSetupError = .updateSettingsFailed }
+            await MainActor.run { self.markUpdateSettingsFailedIfCurrentStep() }
             return
         }
 
@@ -284,7 +285,7 @@ extension BtWifiScaleSetupStore {
 
             try await scaleService.updateScalePreference(savedScale.id, updatedPreference)
             await scaleService.pushLocalChangesToServer()
-            let result = await bluetoothService.updateAccount(on: savedScale, preference: updatedPreference)
+            let result = await bluetoothService.updateAccount(broadcastId: savedScale.broadcastIdString ?? "")
 
             switch result {
             case .success:
@@ -300,19 +301,28 @@ extension BtWifiScaleSetupStore {
                 await applyUpdatedPreferenceLocallyAndNavigate(savedScale: savedScale, updatedPreference: updatedPreference)
             case .failure:
                 LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed to update account")
-                await MainActor.run { self.scaleSetupError = .updateSettingsFailed }
+                await MainActor.run { self.markUpdateSettingsFailedIfCurrentStep() }
             }
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed: \(error.localizedDescription)")
-            await MainActor.run { self.scaleSetupError = .updateSettingsFailed }
-        }
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            self.bluetoothService.syncDevices([])
+            await MainActor.run { self.markUpdateSettingsFailedIfCurrentStep() }
         }
     }
 
-    private func fetchOrCreateCurrentPreference(for savedScale: Device) async -> R4ScalePreference {
+    private func markUpdateSettingsFailedIfCurrentStep() {
+        guard currentStep != .stepOn, updateSettingsRecoveryTask == nil else { return }
+        scaleSetupError = .updateSettingsFailed
+    }
+
+    private func syncSavedScaleAfterSuccessfulSettingsUpdate(_ savedScale: DeviceSnapshot) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard !self.isExiting else { return }
+            self.bluetoothService.syncDevices([savedScale])
+        }
+    }
+
+    private func fetchOrCreateCurrentPreference(for savedScale: DeviceSnapshot) async -> R4ScalePreference {
         if let attached = await scaleService.fetchAttachedPreference(by: savedScale.id) {
             return attached
         }
@@ -332,7 +342,7 @@ extension BtWifiScaleSetupStore {
         return R4ScalePreference(from: defaultDTO, scaleId: savedScale.id)
     }
 
-    private func buildUpdatedPreference(savedScale: Device, currentPreference: R4ScalePreference) -> R4ScalePreference {
+    private func buildUpdatedPreference(savedScale: DeviceSnapshot, currentPreference: R4ScalePreference) -> R4ScalePreference {
         let saveScaleMetrics = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleMetrics.rawValue)
         let saveScaleMode = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleModes.rawValue)
         let saveScaleUsername = selectedCustomizeItems.contains(CustomizeSettingsItem.userName.rawValue)
@@ -362,7 +372,7 @@ extension BtWifiScaleSetupStore {
             guard !Task.isCancelled else { return }
             await MainActor.run {
                 guard let self = self else { return }
-                if self.currentStep == .updateSettings {
+                if self.currentStep == .updateSettings, self.updateSettingsRecoveryTask == nil {
                     self.scaleSetupError = .updateSettingsFailed
                     LoggerService.shared.log(level: .error, tag: self.tag, message: "updateCustomizeSettings - timeout occurred")
                 }
@@ -396,6 +406,8 @@ extension BtWifiScaleSetupStore {
         // Cancel all tasks
         fetchWifiNetworksTask?.cancel()
         fetchWifiNetworksTask = nil
+        updateSettingsRecoveryTask?.cancel()
+        updateSettingsRecoveryTask = nil
 
         deviceDiscoveryCancellable?.cancel()
         deviceDiscoveryCancellable = nil
@@ -523,7 +535,7 @@ extension BtWifiScaleSetupStore {
         do {
             let apiRepo = AccountRepositoryAPI()
             _ = try await apiRepo.patchDashboardType(.dashboard12)
-            _ = try await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
+            try await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
         } catch {
             LoggerService.shared.log(
                 level: .error,
@@ -548,12 +560,12 @@ extension BtWifiScaleSetupStore {
             LoggerService.shared.log(level: .error, tag: tag, message: "R4 setup: Failed to save metrics to API: \(error.localizedDescription)")
         }
 
-        _ = try? await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
+        try? await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
     }
 
     /// Checks if the current dashboard type is dashboard4
     var isDashboardTypeFour: Bool {
-        let currentDashboardType = accountService.activeAccount?.dashboardSettings?.dashboardType
+        let currentDashboardType = accountService.activeAccount?.dashboardType
         return (currentDashboardType == "dashboard_4_metrics" || currentDashboardType == "dashboard4") &&
             dashboardStore.effectiveDashboardType == .dashboard4
     }
@@ -653,7 +665,7 @@ extension BtWifiScaleSetupStore {
             dashboardStore.gridEditingManager.syncRemovalStateFromStreakManager()
             try await dashboardStore.metricsManager.saveMetricsToAPI()
             try await dashboardStore.lifecycleManager.saveProgressMetricsToAPI()
-            _ = try? await accountService.refreshAccount(
+            try? await accountService.refreshAccount(
                 accountId: accountService.activeAccount?.accountId
             )
             dashboardStore.updateSnapshot()

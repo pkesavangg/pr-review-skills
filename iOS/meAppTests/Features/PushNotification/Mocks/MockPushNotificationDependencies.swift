@@ -81,6 +81,11 @@ final class MockPushEntryService: EntryServiceProtocol {
     func saveNewEntry(_ entry: Entry) async throws {}
     func saveNewEntries(_ entries: [Entry]) async throws {}
     func deleteEntry(_ entry: Entry) async throws {}
+    func deleteEntry(entryId: UUID) async throws {}
+    func assignBabyEntry(entryId: UUID, babyId: String) async throws {}
+    func fetchEntrySnapshot(byId id: UUID) async throws -> EntrySnapshot? { nil }
+    func fetchAllEntrySnapshots() async throws -> [EntrySnapshot] { [] }
+    func fetchEntrySnapshots(forMonth month: String, entryType: EntryType) async throws -> [EntrySnapshot] { [] }
     func getAllEntries() async throws -> [Entry] { [] }
     func getAllEntriesAsDTO() async throws -> [BathScaleOperationDTO] { [] }
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool { false }
@@ -169,12 +174,12 @@ final class MockPushPermissionsService: PermissionsServiceProtocol {
 
 @MainActor
 final class MockPushScaleService: ScaleServiceProtocol {
-    @Published var scales: [Device] = []
-    var scalesPublisher: AnyPublisher<[Device], Never> { $scales.eraseToAnyPublisher() }
+    @Published var scales: [DeviceSnapshot] = []
+    var scalesPublisher: AnyPublisher<[DeviceSnapshot], Never> { $scales.eraseToAnyPublisher() }
     private(set) var syncAllScalesCalls = 0
 
     func clearAllData() async {}
-    func getDevices() async throws -> [Device] { [] }
+    func getDevices() async throws -> [DeviceSnapshot] { [] }
     func getConnectedDevices() async -> [String: Any] { [:] }
     func updateConnectedDevices(device: Any, isConnected: Bool) async {}
     func updateConnectedDeviceWifiStatus(broadcastId: String, isConfigured: Bool) async {}
@@ -232,7 +237,7 @@ final class MockPushScaleService: ScaleServiceProtocol {
     func createScaleInLocal(_ device: Device) async throws -> Device { device }
     func syncAllScalesWithRemote() async { syncAllScalesCalls += 1 }
     func pushLocalChangesToServer() async {}
-    func getDevice(by deviceId: String) async throws -> Device? { nil }
+    func getDevice(by deviceId: String) async throws -> DeviceSnapshot? { nil }
     func fetchAttachedPreference(by id: String) async -> R4ScalePreference? { nil }
     func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? { nil }
     func deleteSingleDeviceEntry(_ deviceId: String) async throws {}

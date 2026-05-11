@@ -44,7 +44,7 @@ struct EntrySummaryBucket {
     let period: String
     var latestTimestamp: String = ""
     var count: Int = 0
-    var weightSum: Int = 0
+    var weightSum: Double = 0
     var weightCount: Int = 0
     var bodyFat = EntryMetricAccumulator()
     var muscleMass = EntryMetricAccumulator()
@@ -74,7 +74,7 @@ struct EntrySummaryBucket {
             latestTimestamp = timestamp
         }
         if let weight = dto.weight, weight > 0 {
-            weightSum += Int(weight)
+            weightSum += weight
             weightCount += 1
         }
         bodyFat.add(dto.bodyFat)
@@ -97,7 +97,7 @@ struct EntrySummaryBucket {
 
     var averagedWeight: Double {
         guard weightCount > 0 else { return 0 }
-        return Double(Int(round(Double(weightSum) / Double(weightCount))))
+        return weightSum / Double(weightCount)
     }
 }
 

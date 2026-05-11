@@ -17,7 +17,7 @@ struct HealthKitServiceTests {
         handler.availableResult = true
         handler.requestAuthorizationResult = true
         handler.getApprovedPermissionListReturn = ["HKQuantityTypeIdentifierBodyMass"]
-        let account = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        let account = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
         let accountService = MockAccountService()
         accountService.seedAccounts([account], active: account)
 
@@ -43,7 +43,7 @@ struct HealthKitServiceTests {
         let integration = MockIntegrationService()
         integration.isIntegrationAlreadyUsedResult = true
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
 
         let sut = makeSUT(integrationService: integration, accountService: accountService)
 
@@ -62,7 +62,7 @@ struct HealthKitServiceTests {
         let integration = MockIntegrationService()
         integration.isIntegrationAlreadyUsedError = HealthKitTestError.persistenceFailed
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
 
         let sut = makeSUT(integrationService: integration, accountService: accountService)
 
@@ -81,7 +81,7 @@ struct HealthKitServiceTests {
         let handler = MockHealthKitHandler()
         handler.availableResult = false
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
 
         let sut = makeSUT(integrationService: integration, accountService: accountService, healthKitHandler: handler)
 
@@ -100,7 +100,7 @@ struct HealthKitServiceTests {
         handler.availableResult = true
         handler.requestAuthorizationResult = false
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
 
         let sut = makeSUT(integrationService: integration, accountService: accountService, healthKitHandler: handler)
 
@@ -119,7 +119,7 @@ struct HealthKitServiceTests {
         handler.requestAuthorizationResult = true
         handler.getApprovedPermissionListReturn = []
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
 
         let sut = makeSUT(integrationService: integration, accountService: accountService, healthKitHandler: handler)
 
@@ -140,7 +140,7 @@ struct HealthKitServiceTests {
         handler.requestAuthorizationResult = true
         handler.getApprovedPermissionListReturn = ["HKQuantityTypeIdentifierBodyMass"]
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
 
         let sut = makeSUT(integrationService: integration, accountService: accountService, healthKitHandler: handler)
 
@@ -155,7 +155,7 @@ struct HealthKitServiceTests {
         let integration = MockIntegrationService()
         let handler = MockHealthKitHandler()
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
 
         let sut = makeSUT(integrationService: integration, accountService: accountService, healthKitHandler: handler)
 
@@ -240,7 +240,7 @@ struct HealthKitServiceTests {
     func syncAllDataNoCreateEntries() async throws {
         let accountId = "hk-sync-\(UUID().uuidString)"
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: accountId, email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: accountId, email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
         let handler = MockHealthKitHandler()
 
         let nonCreate = HealthKitTestFixtures.makeEntry(
@@ -260,7 +260,7 @@ struct HealthKitServiceTests {
     func syncAllDataWithEntries() async throws {
         let accountId = "hk-sync-\(UUID().uuidString)"
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: accountId, email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: accountId, email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
         let handler = MockHealthKitHandler()
 
         let validEntry = HealthKitTestFixtures.makeEntry(
@@ -289,7 +289,7 @@ struct HealthKitServiceTests {
     func syncAllDataSaveThrows() async {
         let accountId = "hk-sync-\(UUID().uuidString)"
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: accountId, email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: accountId, email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
         let handler = MockHealthKitHandler()
         handler.saveDataError = HealthKitTestError.persistenceFailed
 
@@ -490,7 +490,7 @@ struct HealthKitServiceTests {
         let integration = MockIntegrationService()
         let handler = MockHealthKitHandler()
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
 
         let sut = makeSUT(integrationService: integration, accountService: accountService, healthKitHandler: handler)
 
@@ -506,7 +506,7 @@ struct HealthKitServiceTests {
         integration.clearIntegrationStatusError = HealthKitTestError.persistenceFailed
         let handler = MockHealthKitHandler()
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
 
         let sut = makeSUT(integrationService: integration, accountService: accountService, healthKitHandler: handler)
 
@@ -522,7 +522,7 @@ struct HealthKitServiceTests {
         let handler = MockHealthKitHandler()
         handler.deleteAllDataError = HealthKitTestError.persistenceFailed
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
 
         let sut = makeSUT(integrationService: integration, accountService: accountService, healthKitHandler: handler)
 
@@ -558,7 +558,7 @@ struct HealthKitServiceTests {
         handler.getApprovedPermissionListReturn = []
         let kv = MockKvStorageService()
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
 
         let sut = makeSUT(integrationService: integration, accountService: accountService, kvStore: kv, healthKitHandler: handler)
 
@@ -576,7 +576,7 @@ struct HealthKitServiceTests {
         handler.getApprovedPermissionListReturn = ["HKQuantityTypeIdentifierBodyMass"]
         let kv = MockKvStorageService()
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
 
         let sut = makeSUT(integrationService: integration, accountService: accountService, kvStore: kv, healthKitHandler: handler)
 
@@ -593,10 +593,8 @@ struct HealthKitServiceTests {
         let kv = MockKvStorageService()
         let handler = MockHealthKitHandler()
         handler.getApprovedPermissionListReturn = []
-        let account = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
-        account.integrationSettings?.isHealthKitOn = true
         let accountService = MockAccountService()
-        accountService.activeAccount = account
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true, isHealthKitOn: true)
 
         let sut = makeSUT(integrationService: integration, accountService: accountService, kvStore: kv, healthKitHandler: handler)
 
@@ -612,7 +610,7 @@ struct HealthKitServiceTests {
         let handler = MockHealthKitHandler()
         handler.getApprovedPermissionListReturn = ["HKQuantityTypeIdentifierBodyMass"]
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
 
         let sut = makeSUT(integrationService: integration, accountService: accountService, healthKitHandler: handler)
 
@@ -629,7 +627,7 @@ struct HealthKitServiceTests {
         handler.getApprovedPermissionListReturn = []
         let kv = MockKvStorageService()
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
         let key = KvStorageKeys.scopedHealthKitModalKey(.outOfSyncAppleHealthModalBase, accountId: "101")
         kv.setValue(true, forKey: key)
 
@@ -666,7 +664,7 @@ struct HealthKitServiceTests {
         let handler = MockHealthKitHandler()
         handler.getApprovedPermissionListReturn = ["HKQuantityTypeIdentifierBodyMass"]
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
 
         let sut = makeSUT(integrationService: integration, accountService: accountService, healthKitHandler: handler)
 
@@ -681,7 +679,7 @@ struct HealthKitServiceTests {
     func setWaitingForPermissionsRestored() {
         let kv = MockKvStorageService()
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
 
         let sut = makeSUT(accountService: accountService, kvStore: kv)
         sut.setWaitingForPermissionsRestored()
@@ -694,7 +692,7 @@ struct HealthKitServiceTests {
     func clearWaitingForPermissionsRestored() {
         let kv = MockKvStorageService()
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
         let key = KvStorageKeys.scopedHealthKitModalKey(.waitingForHKPermissionsRestoredBase, accountId: "101")
         kv.setValue(true, forKey: key)
 
@@ -710,7 +708,7 @@ struct HealthKitServiceTests {
     func checkIfPermissionsRestoredNotWaiting() async {
         let kv = MockKvStorageService()
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
 
         let sut = makeSUT(accountService: accountService, kvStore: kv)
 
@@ -723,7 +721,7 @@ struct HealthKitServiceTests {
     func checkIfPermissionsRestoredRestored() async {
         let kv = MockKvStorageService()
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
         let key = KvStorageKeys.scopedHealthKitModalKey(.waitingForHKPermissionsRestoredBase, accountId: "101")
         kv.setValue(true, forKey: key)
         let handler = MockHealthKitHandler()
@@ -741,7 +739,7 @@ struct HealthKitServiceTests {
     func checkIfPermissionsRestoredStillNotRestored() async {
         let kv = MockKvStorageService()
         let accountService = MockAccountService()
-        accountService.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
         let key = KvStorageKeys.scopedHealthKitModalKey(.waitingForHKPermissionsRestoredBase, accountId: "101")
         kv.setValue(true, forKey: key)
         let handler = MockHealthKitHandler()

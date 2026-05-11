@@ -13,8 +13,10 @@ enum BabyScaleSetupStep: Int, CaseIterable {
     case permissions
     /// "Turn on your Scale" — scanning for device.
     case wakeup
-    /// Connecting to the scale via Bluetooth / error state.
+    /// Connecting to the scale via Bluetooth — loading state.
     case connectingBluetooth
+    /// Connection failed — error screen with PAIR AGAIN / SUPPORT.
+    case connectionError
     /// "Give your scale a name" — nickname input.
     case scaleName
     /// "You're Paired!" — success with baby profile prompt.

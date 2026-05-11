@@ -137,7 +137,7 @@ final class IntegrationsService: IntegrationServiceProtocol {
             """
         )
         try await localRepository.setIntegrationData(accountId: accountId, info: info)
-        // TODO: Re-enable remote sync once backend is ready
+        // Re-enable remote sync once backend is ready:
         // if let integrationType = info?.type {
         //     do {
         //         _ = try await accountService.updateIntegrations(integrationType: integrationType)
@@ -178,7 +178,7 @@ final class IntegrationsService: IntegrationServiceProtocol {
         )
         do {
             try await setStoredIntegrationData(integrationInfo)
-            // TODO: Re-enable remote sync once backend is ready
+            // Re-enable remote sync once backend is ready:
             // try await accountService.deleteHealthIntegration(integrationType)
             logger.log(
                 level: .success,

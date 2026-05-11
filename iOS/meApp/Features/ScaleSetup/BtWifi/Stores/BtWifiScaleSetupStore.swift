@@ -69,6 +69,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
     var isDuplicated: Bool = false
     /// Public accessor for duplicate user mode
     var isDuplicatedMode: Bool { isDuplicated }
+
+    /// Step to resume after permissions recover.
+    var stepToResumeAfterPermissions: BtWifiScaleSetupStep?
     
     // MARK: - Private
     var cancellables = Set<AnyCancellable>()
@@ -86,6 +89,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
     var stepOnTimeoutTask: Task<Void, Never>?
     /// Task handling WiFi networks fetch - stored so we can cancel it when exiting
     var fetchWifiNetworksTask: Task<Void, Never>?
+    /// Task handling Bluetooth restoration while the update-settings step is active.
+    var updateSettingsRecoveryTask: Task<Void, Never>?
+
+    /// Interval between reconnect polling attempts (nanoseconds). Injectable for testing.
+    let reconnectPollInterval: UInt64
+    /// Maximum number of reconnect attempts before giving up.
+    let reconnectAttemptCap: Int
     
     // MARK: - Published State
     @Published var currentStepIndex: Int = 0 {
@@ -159,7 +169,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
     }
         
-    @Published var savedScale: Device?
+    @Published var savedScale: DeviceSnapshot?
     
     /// Current error state for the setup flow
     @Published var scaleSetupError: BtWifiScaleSetupError = .none
@@ -548,6 +558,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         setupCoordinator: ScaleSetupCoordinating = ScaleSetupCoordinator(),
         setupValidationService: SetupValidationServicing = SetupValidationService(),
         networkMonitor: NetworkMonitoring? = nil,
+        reconnectPollInterval: UInt64 = 1_000_000_000,
+        reconnectAttemptCap: Int = 10,
         dashboardStoreFactory: @escaping @MainActor () -> DashboardStore = { DashboardStore() }
     ) {
         self.bluetoothSetupManager = bluetoothSetupManager
@@ -555,6 +567,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         self.setupCoordinator = setupCoordinator
         self.setupValidationService = setupValidationService
         self.networkMonitor = networkMonitor ?? NetworkMonitor.shared
+        self.reconnectPollInterval = reconnectPollInterval
+        self.reconnectAttemptCap = reconnectAttemptCap
         self.makeDashboardStore = dashboardStoreFactory
 
         // Cache the first name from active account

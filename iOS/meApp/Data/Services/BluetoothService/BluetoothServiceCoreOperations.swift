@@ -70,22 +70,9 @@ extension BluetoothService {
      Synchronises the provided device list with the Bluetooth plugin.
      - Parameter devices: The devices to sync. Passing an empty array clears the list.
      */
-    func syncDevices(_ devices: [Device]) {
+    func syncDevices(_ devices: [DeviceSnapshot]) {
         let scalesToSync = devices.isEmpty ? bluetoothScales : devices
-        let ggDevices = scalesToSync.map { device in
-            GGBTDevice(
-                name: device.deviceName ?? "",
-                broadcastId: device.broadcastIdString ?? "",
-                password: convertIntToHex(device.password ?? 0, protocolType: ProtocolType(rawValue: device.protocolType ?? "") ?? .A6),
-                token: device.token,
-                userNumber: Int(device.userNumber ?? "0"),
-                preference: mapToGGPreference(deviceId: device.id, preference: device.r4ScalePreference),
-                syncAllData: nil,
-                batteryLevel: 0,
-                protocolType: device.protocolType ?? "",
-                macAddress: device.mac ?? ""
-            )
-        }
+        let ggDevices = scalesToSync.compactMap { mapToGGBTDevice($0) }
         let deviceNames = ggDevices.map { $0.name }
         let broadcastIds = ggDevices.map { $0.broadcastId }
         let passwords = ggDevices.map { $0.password }
@@ -110,9 +97,9 @@ extension BluetoothService {
             scaleToSave.nickname = scale.nickname ?? "Bluetooth Smart Scale"
             scaleToSave.password = scale.password
             var metaData = deviceDetails
-            let scaleType = getSafeScaleType(for: scale) ?? ""
+            let scaleType = scale.bathScale?.scaleType ?? ""
             if metaData == nil && (scaleType == ScaleSourceType.btWifiR4.rawValue || scaleType == ScaleSourceType.bluetooth.rawValue) {
-                let deviceInfoResult = await getDeviceInfo(for: scale, skipConnectionCheck: true)
+                let deviceInfoResult = await getDeviceInfo(broadcastId: scale.broadcastIdString ?? "", skipConnectionCheck: true)
                 switch deviceInfoResult {
                 case .success(let deviceInfo):
                     let dto = ScaleMetaDataDTO(
@@ -128,7 +115,7 @@ extension BluetoothService {
                     )
                     metaData = DeviceMetaData(from: dto)
                     if scaleType == ScaleSourceType.btWifiR4.rawValue {
-                        let wifiMacResult = await getWifiMacAddress(for: scale)
+                        let wifiMacResult = await getWifiMacAddress(broadcastId: scale.broadcastIdString ?? "")
                         switch wifiMacResult {
                         case .success(let wifiMacAddress):
                             scaleToSave.wifiMac = wifiMacAddress
@@ -182,52 +169,38 @@ extension BluetoothService {
     }
 
     /**
-     Deletes a scale from storage (and optionally from the physical device).
+     Deletes a scale's user slot from the physical device by looking up the token from the in-memory bluetoothScales list.
      - Returns: Result<UserDeletionResponse, BluetoothServiceError>
      */
-    func deleteDevice(_ device: Device, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError> {
-        do {
-            guard let ggDevice = mapToGGBTDevice(device) else {
-                throw BluetoothServiceError.invalidBroadcastId
-            }
-
-            let result = try await sdkOperationSerializer.execute(
-                operationKey: "\(device.id):deleteUser"
-            ) { @MainActor in
-                try await self.withTimeout(seconds: 10) {
-                    try await self.ggBleSDK.deleteUser(ggDevice, canDisconnect: disconnect)
-                }
-            }
-
-            return .success(UserDeletionResponse(sdkType: result))
-        } catch let error as BluetoothServiceError {
-            return .failure(error)
-        } catch {
-            return .failure(.updateProfileFailed(error))
+    func deleteDevice(broadcastId: String, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError> {
+        guard let scale = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId }),
+              let token = scale.token, !token.isEmpty else {
+            logger.log(level: .error, tag: tag, message: "deleteDevice: scale or token not found for broadcastId \(broadcastId)")
+            return .failure(.deviceNotFound)
         }
+        return await deleteUserByToken(broadcastId: broadcastId, token: token, disconnect: disconnect)
     }
 
     /// Deletes the current app user's slot on the BT WiFi (R4) scale when possible.
-    func deleteCurrentUserFromScaleIfPossible(_ device: Device, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError> {
-        guard let broadcastId = device.broadcastIdString else {
-            logger.log(level: .error, tag: tag, message: "deleteCurrentUserFromScaleIfPossible - missing broadcastId")
-            return .failure(.invalidBroadcastId)
-        }
-
-        if let token = device.token, !token.isEmpty {
+    func deleteCurrentUserFromScaleIfPossible(broadcastId: String, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError> {
+        if let scale = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId }),
+           let token = scale.token, !token.isEmpty {
             logger.log(level: .debug, tag: tag, message: "Deleting scale user using persisted token")
             if Task.isCancelled { return .failure(.timeout) }
-            return await deleteScaleByBroadcastId(broadcastId: broadcastId, token: token, disconnect: disconnect)
+            return await deleteUserByToken(broadcastId: broadcastId, token: token, disconnect: disconnect)
         }
 
         if Task.isCancelled { return .failure(.timeout) }
-        let listResult = await getScaleUserList(for: device)
+        let listResult = await getScaleUserList(broadcastId: broadcastId, skipConnectionCheck: true)
         switch listResult {
         case .success(let users):
             if Task.isCancelled { return .failure(.timeout) }
-            if let match = findUserToDelete(userList: users, discoveredScale: device), let token = match.token, !token.isEmpty {
+            let discoveredScale = bluetoothScales.first { $0.broadcastIdString == broadcastId }
+            if let discoveredScale,
+               let match = findUserToDelete(userList: users, discoveredScale: discoveredScale),
+               let token = match.token, !token.isEmpty {
                 logger.log(level: .debug, tag: tag, message: "Deleting matched scale user: \(match.name)")
-                return await deleteScaleByBroadcastId(broadcastId: broadcastId, token: token, disconnect: disconnect)
+                return await deleteUserByToken(broadcastId: broadcastId, token: token, disconnect: disconnect)
             } else {
                 logger.log(level: .error, tag: tag, message: "No matching user found to delete on scale for broadcastId \(broadcastId)")
                 return .failure(.deviceNotFound)
@@ -239,11 +212,9 @@ extension BluetoothService {
     }
 
     // MARK: - Wi-Fi Configuration
-    func getWifiList(for device: Device) async -> Result<[WifiDetails], BluetoothServiceError> {
+    func getWifiList(broadcastId: String) async -> Result<[WifiDetails], BluetoothServiceError> {
         do {
-            guard let ggDevice = mapToGGBTDevice(device) else {
-                throw BluetoothServiceError.invalidBroadcastId
-            }
+            let ggDevice = mapToGGBTDevice(broadcastId)
             let result = try await ggBleSDK.getWifiList(ggDevice)
             return .success(result.wifi.map { WifiDetails(macAddress: $0.macAddress, ssid: $0.ssid, rssi: $0.rssi, password: $0.password) })
         } catch let error as BluetoothServiceError {
@@ -253,11 +224,9 @@ extension BluetoothService {
         }
     }
 
-    func setupWifi(on device: Device, config: WifiConfig) async -> Result<WifiSetupResponse, BluetoothServiceError> {
+    func setupWifi(broadcastId: String, config: WifiConfig) async -> Result<WifiSetupResponse, BluetoothServiceError> {
         do {
-            guard let ggDevice = mapToGGBTDevice(device) else {
-                throw BluetoothServiceError.invalidBroadcastId
-            }
+            let ggDevice = mapToGGBTDevice(broadcastId)
             let ggConfig = GGBTWifiConfig(ssid: config.ssid, password: config.password ?? "")
             let ggResponse = try await ggBleSDK.setupWifi(ggDevice, ggConfig)
             let response = WifiSetupResponse(wifiState: ggResponse.wifiState, errorCode: ggResponse.errorCode)
@@ -269,11 +238,9 @@ extension BluetoothService {
         }
     }
 
-    func cancelWifi(on: Device) async -> Result<Void, BluetoothServiceError> {
+    func cancelWifi(broadcastId: String) async -> Result<Void, BluetoothServiceError> {
         do {
-            guard let ggDevice = mapToGGBTDevice(on) else {
-                throw BluetoothServiceError.invalidBroadcastId
-            }
+            let ggDevice = mapToGGBTDevice(broadcastId)
             try ggBleSDK.cancelWifi(ggDevice)
             return .success(())
         } catch let error as BluetoothServiceError {
@@ -297,11 +264,9 @@ extension BluetoothService {
         }
     }
 
-    func getWifiMacAddress(for device: Device) async -> Result<String, BluetoothServiceError> {
+    func getWifiMacAddress(broadcastId: String) async -> Result<String, BluetoothServiceError> {
         do {
-            guard let ggDevice = mapToGGBTDevice(device) else {
-                throw BluetoothServiceError.invalidBroadcastId
-            }
+            let ggDevice = mapToGGBTDevice(broadcastId)
             let mac = try await withTimeout(seconds: 10) {
                 try await self.ggBleSDK.getWifiMacAddress(ggDevice)
             }
@@ -315,11 +280,9 @@ extension BluetoothService {
 
     // MARK: - Live Measurement
     @discardableResult
-    func startLiveMeasurement(for device: Device) async -> Result<Void, BluetoothServiceError> {
+    func startLiveMeasurement(broadcastId: String) async -> Result<Void, BluetoothServiceError> {
         do {
-            guard let ggDevice = mapToGGBTDevice(device) else {
-                throw BluetoothServiceError.invalidBroadcastId
-            }
+            let ggDevice = mapToGGBTDevice(broadcastId)
             try ggBleSDK.startLiveMeasurement(ggDevice)
             return .success(())
         } catch let error as BluetoothServiceError {
@@ -330,11 +293,9 @@ extension BluetoothService {
     }
 
     @discardableResult
-    func stopLiveMeasurement(for device: Device) async -> Result<Void, BluetoothServiceError> {
+    func stopLiveMeasurement(broadcastId: String) async -> Result<Void, BluetoothServiceError> {
         do {
-            guard let ggDevice = mapToGGBTDevice(device) else {
-                throw BluetoothServiceError.invalidBroadcastId
-            }
+            let ggDevice = mapToGGBTDevice(broadcastId)
             try ggBleSDK.stopLiveMeasurement(ggDevice)
             return .success(())
         } catch let error as BluetoothServiceError {
@@ -345,11 +306,9 @@ extension BluetoothService {
     }
 
     // MARK: - Settings & Firmware
-    func updateSetting(on device: Device, settings: [DeviceSetting]) async -> Result<Void, BluetoothServiceError> {
+    func updateSetting(broadcastId: String, settings: [DeviceSetting]) async -> Result<Void, BluetoothServiceError> {
         do {
-            guard let ggDevice = mapToGGBTDevice(device) else {
-                throw BluetoothServiceError.invalidBroadcastId
-            }
+            let ggDevice = mapToGGBTDevice(broadcastId)
             let ggSettings = settings.map { setting in
                 GGBTSetting(
                     key: GGBTSettingType(rawValue: setting.key) ?? .SESSION_IMPEDANCE,
@@ -365,11 +324,9 @@ extension BluetoothService {
         }
     }
 
-    func updateFirmware(on device: Device, timestamp: UInt32) async -> Result<Void, BluetoothServiceError> {
+    func updateFirmware(broadcastId: String, timestamp: UInt32) async -> Result<Void, BluetoothServiceError> {
         do {
-            guard let ggDevice = mapToGGBTDevice(device) else {
-                throw BluetoothServiceError.invalidBroadcastId
-            }
+            let ggDevice = mapToGGBTDevice(broadcastId)
             try ggBleSDK.startFirmwareUpdate(ggDevice, timestamp)
             let initialStatus = FirmwareUpdateStatus(progress: 0.0, isComplete: false)
             firmwareUpdateProgressSubject.send(initialStatus)
@@ -381,11 +338,9 @@ extension BluetoothService {
         }
     }
 
-    func clearData(on device: Device, dataType: DeviceClearType) async -> Result<Void, BluetoothServiceError> {
+    func clearData(broadcastId: String, dataType: DeviceClearType) async -> Result<Void, BluetoothServiceError> {
         do {
-            guard let ggDevice = mapToGGBTDevice(device) else {
-                throw BluetoothServiceError.invalidBroadcastId
-            }
+            let ggDevice = mapToGGBTDevice(broadcastId)
             let sdkType: ClearDataType = {
                 switch dataType {
                 case .userData: return .ACCOUNT
@@ -431,15 +386,14 @@ extension BluetoothService {
         }
     }
 
-    func updateAccount(on device: Device, preference: R4ScalePreference) async -> Result<UserCreationResponse, BluetoothServiceError> {
+    func updateAccount(broadcastId: String) async -> Result<UserCreationResponse, BluetoothServiceError> {
         do {
-            guard let ggDevice = mapToGGBTDevice(device) else {
+            guard let ggDevice = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId }).flatMap({ mapToGGBTDevice($0) }) else {
                 throw BluetoothServiceError.invalidBroadcastId
             }
-            ggDevice.preference = mapToGGPreference(deviceId: device.id, preference: preference)
 
             let result = try await sdkOperationSerializer.execute(
-                operationKey: "\(device.id):updateAccount"
+                operationKey: "\(broadcastId):updateAccount"
             ) { @MainActor in
                 try await self.withTimeout(seconds: 10) {
                     try await self.ggBleSDK.updateAccount(ggDevice)
@@ -453,19 +407,18 @@ extension BluetoothService {
         }
     }
 
-    func getScaleUserList(for device: Device, skipConnectionCheck: Bool = false) async -> Result<[DeviceUser], BluetoothServiceError> {
-        guard skipConnectionCheck || device.isConnected == true else {
-            logger.log(level: .error, tag: tag, message: "Cannot get user list - device is not connected: \(device.id)")
+    func getScaleUserList(broadcastId: String, skipConnectionCheck: Bool = false) async -> Result<[DeviceUser], BluetoothServiceError> {
+        let isConnected = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId })?.isConnected ?? false
+        guard skipConnectionCheck || isConnected else {
+            logger.log(level: .error, tag: tag, message: "Cannot get user list - device is not connected: \(broadcastId)")
             return .failure(.deviceNotConnected)
         }
 
         do {
-            guard let ggDevice = mapToGGBTDevice(device) else {
-                throw BluetoothServiceError.invalidBroadcastId
-            }
+            let ggDevice = mapToGGBTDevice(broadcastId)
 
             let users = try await sdkOperationSerializer.execute(
-                operationKey: "\(device.id):getUsers"
+                operationKey: "\(broadcastId):getUsers"
             ) { @MainActor in
                 try await self.withTimeout(seconds: 10) {
                     try await self.ggBleSDK.getUsers(ggDevice)

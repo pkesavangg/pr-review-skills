@@ -43,6 +43,7 @@ class HistoryDetailReducerTest {
         val state = HistoryDetailState()
 
         assertThat(state.isLoading).isFalse()
+        assertThat(state.isMetric).isFalse()
         assertThat(state.errorMessage).isNull()
         assertThat(state.month).isEmpty()
         assertThat(state.itemsOpened).isEmpty()
@@ -241,5 +242,42 @@ class HistoryDetailReducerTest {
         val result = reducer.reduce(state, HistoryDetailIntent.DeleteEntry(itemA))
 
         assertThat(result).isEqualTo(state)
+    }
+
+    // -------------------------------------------------------------------------
+    // SetMetric
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `SetMetric true sets isMetric to true`() {
+        val state = HistoryDetailState(isMetric = false)
+
+        val result = reducer.reduce(state, HistoryDetailIntent.SetMetric(true))
+
+        assertThat(result?.isMetric).isTrue()
+    }
+
+    @Test
+    fun `SetMetric false sets isMetric to false`() {
+        val state = HistoryDetailState(isMetric = true)
+
+        val result = reducer.reduce(state, HistoryDetailIntent.SetMetric(false))
+
+        assertThat(result?.isMetric).isFalse()
+    }
+
+    @Test
+    fun `SetMetric preserves other fields`() {
+        val state = HistoryDetailState(
+            isMetric = false,
+            month = TEST_MONTH,
+            isLoading = true,
+        )
+
+        val result = reducer.reduce(state, HistoryDetailIntent.SetMetric(true))
+
+        assertThat(result?.isMetric).isTrue()
+        assertThat(result?.month).isEqualTo(TEST_MONTH)
+        assertThat(result?.isLoading).isTrue()
     }
 }

@@ -12,7 +12,7 @@ struct ScaleStoreTests {
         let newest = makeScale(id: "newest", createdAt: "2026-03-05T00:00:00Z")
         let missingDate = makeScale(id: "missing-date", createdAt: nil)
 
-        scaleService.scales = [oldest, missingDate, newest]
+        scaleService.scales = [oldest.toSnapshot(), missingDate.toSnapshot(), newest.toSnapshot()]
         let loaded = await waitUntil {
             store.scales.map(\.id) == ["newest", "oldest", "missing-date"]
         }
@@ -27,7 +27,7 @@ struct ScaleStoreTests {
         let invalid = makeScale(id: "invalid", createdAt: "not-a-date")
         let nilDate = makeScale(id: "nil-date", createdAt: nil)
 
-        scaleService.scales = [invalid, nilDate, valid]
+        scaleService.scales = [invalid.toSnapshot(), nilDate.toSnapshot(), valid.toSnapshot()]
         let loaded = await waitUntil {
             store.scales.count == 3 &&
                 store.scales.first?.id == "valid" &&
@@ -64,7 +64,7 @@ struct ScaleStoreTests {
         let (store, _, _, _, _) = makeSUT(permissions: permissions)
         let connectedScale = makeScale(id: "connected", isConnected: true)
 
-        let bluetoothOff = store.determineConnectionStatus(for: connectedScale)
+        let bluetoothOff = store.determineConnectionStatus(for: connectedScale.toSnapshot())
         if case .notConnected = bluetoothOff {
             #expect(true)
         } else {
@@ -73,7 +73,7 @@ struct ScaleStoreTests {
 
         permissions.setPermissions([.BLUETOOTH_SWITCH: .ENABLED])
         connectedScale.isConnected = false
-        let disconnected = store.determineConnectionStatus(for: connectedScale)
+        let disconnected = store.determineConnectionStatus(for: connectedScale.toSnapshot())
         if case .notConnected = disconnected {
             #expect(true)
         } else {
@@ -99,14 +99,14 @@ struct ScaleStoreTests {
             shouldMeasureImpedance: false
         )
 
-        let setupIncompleteStatus = store.determineConnectionStatus(for: setupIncomplete)
+        let setupIncompleteStatus = store.determineConnectionStatus(for: setupIncomplete.toSnapshot())
         if case .setupIncomplete = setupIncompleteStatus {
             #expect(true)
         } else {
             Issue.record("Expected setupIncomplete for connected R4 scale with WiFi not configured")
         }
 
-        let weightOnlyStatus = store.determineConnectionStatus(for: weightOnlyConnected)
+        let weightOnlyStatus = store.determineConnectionStatus(for: weightOnlyConnected.toSnapshot())
         if case .connected = weightOnlyStatus {
             #expect(true)
         } else {
@@ -119,7 +119,7 @@ struct ScaleStoreTests {
         let (store, _, _, _, _) = makeSUT()
         let appSyncScale = makeScale(id: "appsync", sku: "UNKNOWN-APPSYNC-SKU", sourceType: .appsync)
 
-        let status = store.determineConnectionStatus(for: appSyncScale)
+        let status = store.determineConnectionStatus(for: appSyncScale.toSnapshot())
         if case .noStatus = status {
             #expect(true)
         } else {
@@ -170,7 +170,7 @@ struct ScaleStoreTests {
         bluetooth: MockBluetoothService? = nil,
         logger: MockLoggerService? = nil,
         permissions: MockPermissionsService? = nil
-    ) -> (ScaleStore, MockNotificationHelperService, MockScaleService, MockBluetoothService, MockPermissionsService) {
+    ) -> (ScaleStore, MockNotificationHelperService, MockScaleService, MockBluetoothService, MockPermissionsService) { // swiftlint:disable:this large_tuple
         let notification = notification ?? MockNotificationHelperService()
         let scaleService = scaleService ?? MockScaleService()
         let bluetooth = bluetooth ?? MockBluetoothService()

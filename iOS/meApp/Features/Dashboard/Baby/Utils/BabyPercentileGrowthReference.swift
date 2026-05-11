@@ -209,8 +209,8 @@ enum BabyPercentileGrowthReference {
         }
 
         let sortedEntries = entries.sorted { $0.day < $1.day }
-        let lower = sortedEntries.last(where: { $0.day < dayOfLife }) ?? sortedEntries.first
-        let upper = sortedEntries.first(where: { $0.day > dayOfLife }) ?? sortedEntries.last
+        let lower = sortedEntries.last { $0.day < dayOfLife } ?? sortedEntries.first
+        let upper = sortedEntries.first { $0.day > dayOfLife } ?? sortedEntries.last
 
         guard let lower, let upper else { return nil }
         guard lower.day != upper.day else {

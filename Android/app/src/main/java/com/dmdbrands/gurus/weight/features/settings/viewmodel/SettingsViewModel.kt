@@ -1,10 +1,11 @@
 package com.dmdbrands.gurus.weight.features.settings.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.BuildConfig
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
-import com.dmdbrands.gurus.weight.BuildConfig
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.services.ICrashReportingService
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.settings.manager.IDataSettingsManager
@@ -13,6 +14,8 @@ import com.dmdbrands.gurus.weight.features.settings.manager.IProfileSettingsMana
 import com.dmdbrands.gurus.weight.features.settings.manager.IScaleSettingsManager
 import com.dmdbrands.gurus.weight.features.settings.manager.IUnitSettingsManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -44,12 +47,16 @@ constructor(
     dataSettingsManager.observeExportEnabled(viewModelScope, ::dispatchIntent)
   }
 
+  override fun onDependenciesReady() {
+    observeProductSelection()
+  }
+
   override fun handleIntent(intent: SettingsIntent) {
     super.handleIntent(intent)
 
     when (intent) {
-      SettingsIntent.OpenAddScales -> {
-        navigateTo(AppRoute.AccountSettings.AddEditScales)
+      SettingsIntent.OpenMyDevices -> {
+        navigateTo(AppRoute.AccountSettings.MyDevices)
       }
 
       SettingsIntent.OpenHelp -> {
@@ -80,10 +87,6 @@ constructor(
         onSwitchAccountClick()
       }
 
-      SettingsIntent.ShowBiologicalSexModal -> {
-        profileSettingsManager.onBiologicalSexClick(viewModelScope, ::currentState)
-      }
-
       SettingsIntent.ShowActivityLevelModal -> {
         profileSettingsManager.onActivityLevelClick(viewModelScope, ::currentState)
       }
@@ -94,10 +97,6 @@ constructor(
 
       SettingsIntent.ShowNotificationsModal -> {
         notificationSettingsManager.onNotificationsClick(viewModelScope, ::currentState)
-      }
-
-      SettingsIntent.ShowHeightModal -> {
-        profileSettingsManager.onHeightClick(viewModelScope, ::currentState)
       }
 
       SettingsIntent.ShowWeightlessModal -> {
@@ -181,6 +180,15 @@ constructor(
 
   private fun dispatchIntent(intent: SettingsIntent) {
     handleIntent(intent)
+  }
+
+  private fun observeProductSelection() {
+    viewModelScope.launch {
+      productSelectionManager.selectedProduct
+        .map { it.productType == ProductType.BABY }
+        .distinctUntilChanged()
+        .collect { isBaby -> dispatchIntent(SettingsIntent.SetIsBabyProduct(isBaby)) }
+    }
   }
 
   private fun navigateTo(route: AppRoute) {

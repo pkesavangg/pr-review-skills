@@ -5,16 +5,18 @@
 //  Created by Kesavan Panchabakesan on 11/06/25.
 //
 
-import Combine
+// swiftlint:disable file_length
 // This store intentionally aggregates all signup flow logic to maintain
 // a single source of truth for the multi-step signup process. Splitting would
 // fragment state management and reduce maintainability.
+import Combine
 import Foundation
 import SwiftUI
 
 // MARK: SignupStore
 /// This store is responsible for managing the signup process.
 @MainActor
+// swiftlint:disable:next type_body_length
 final class SignupStore: ObservableObject {
     @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var accountService: AccountServiceProtocol
@@ -32,12 +34,21 @@ final class SignupStore: ObservableObject {
         }
     }
     @Published private(set) var currentStep: SignupStep = .name
+    @Published private(set) var steps: [SignupStep] = []
     @Published var signupForm = SignupForm()
     @Published var isNextEnabled = false
     @Published var isGoalSkipped = false
 
     // Device type selection
     @Published var selectedDeviceType: SignupDeviceType?
+    // Devices already added during this signup session — shown as disabled on the pick screen
+    @Published var disabledDeviceTypes: Set<SignupDeviceType> = []
+    // Accumulates every device type confirmed through connectAnotherDevice().
+    // Used by setInitialProductTypes to send ALL selected devices on FINISH.
+    @Published var registeredDeviceTypes: [SignupDeviceType] = []
+    // Per-device save status populated during FINISH submission.
+    // Drives the allProfilesReady / signupError terminal screens.
+    @Published var deviceStatuses: [(device: SignupDeviceType, status: SignupDeviceStatus)] = []
 
     // Baby management
     @Published var babies: [SignupBaby] = []
@@ -80,31 +91,77 @@ final class SignupStore: ObservableObject {
         self.updateWeightValidators(isMetric: self.signupForm.useMetric.value)
         updateHeightPickerValues(from: Int(signupForm.height.value))
         self.updateWeightValidators(isMetric: self.signupForm.useMetric.value)
+        rebuildSteps()
+        currentStep = steps[currentStepIndex]
     }
     
-    /// The ordered steps for the current signup flow.
-    /// Dynamically computed based on the selected device type.
-    var steps: [SignupStep] {
-        var result: [SignupStep] = [.name, .dateOfBirth, .pickDevice]
+    /// Builds the ordered steps for the current signup flow.
+    /// Called only at navigation milestones (init, device pick, connect-another-device)
+    /// so the published `steps` array stays stable for the duration of a single device loop.
+    /// Recomputing reactively on form-field changes would shift indices under the SwiperView
+    /// and cause visual jumps without a Next tap.
+    private func computeSteps() -> [SignupStep] {
+        let isSubsequentDevice = !disabledDeviceTypes.isEmpty
+        let skipSex = isSubsequentDevice && !signupForm.gender.value.isEmpty
+
+        // Email is the 2nd step (per design): Name → Email → Birthday → Pick a Device
+        // On subsequent device loops email is already collected — skip it
+        var result: [SignupStep] = isSubsequentDevice
+            ? [.name, .dateOfBirth, .pickDevice]
+            : [.name, .email, .dateOfBirth, .pickDevice]
+
         switch selectedDeviceType {
         case .babyScale:
-            // Baby: add baby → baby list → straight to email/password
+            // Baby: add baby → baby list; no sex/height/goal
             result += [.addBaby, .babyList]
         case .bpm:
-            // BPM: only sex selection, no height/goal
-            result.append(.sex)
+            // BPM: only sex (skip if already collected in a prior device loop)
+            if !skipSex {
+                result.append(.sex)
+            }
         default:
-            // Weight scale (default): full flow
-            result += [.sex, .height, .goal]
+            // weightScale (and nil/unselected)
+            if !skipSex {
+                result.append(.sex)
+            }
+            result += [.height, .goal]
         }
-        result += [.email, .password]
+
+        // Password is per-account: only collected on the first device loop
+        if !isSubsequentDevice {
+            result.append(.password)
+        }
+
+        result.append(.profileReady)
+        // Terminal screens appended so currentStepIndex can point to them after FINISH.
+        // They are never shown during normal forward navigation.
+        result += [.allProfilesReady, .signupError]
         return result
+    }
+
+    private func rebuildSteps() {
+        steps = computeSteps()
+    }
+
+    /// True while there are still device types the user has not yet added.
+    /// Used to show or hide the "CONNECT ANOTHER DEVICE" button.
+    var canConnectAnotherDevice: Bool {
+        disabledDeviceTypes.count < SignupDeviceType.allCases.count - 1
     }
     
     var progressValue: Double {
         Double(currentStepIndex + 1) / Double(steps.count)
     }
-    
+
+    var profileReadyTitle: String {
+        // When the current device completes the full set, the per-device "Your X
+        // profile is ready" reads oddly — show the all-profiles message instead.
+        if !canConnectAnotherDevice {
+            return SignupStrings.AllProfilesReadyStep.title
+        }
+        return selectedDeviceType?.profileReadyTitle ?? SignupStrings.ProfileReadyStep.weightScaleTitle
+    }
+
     // MARK: - Height Management
     
     func updateHeightPickerValues(from storedHeight: Int) {
@@ -166,11 +223,12 @@ final class SignupStore: ObservableObject {
             objectWillChange.send()
             moveToNextStep()
         case .addBaby:
-            // Skip baby flow entirely — jump to email step
+            // Skip baby flow entirely — jump to password (first loop) or profileReady (subsequent loops)
             resetBabyProfileForm()
             objectWillChange.send()
-            if let emailIndex = steps.firstIndex(of: .email) {
-                currentStepIndex = emailIndex
+            let jumpTarget: SignupStep = steps.contains(.password) ? .password : .profileReady
+            if let targetIndex = steps.firstIndex(of: jumpTarget) {
+                currentStepIndex = targetIndex
             }
         default:
             objectWillChange.send()
@@ -179,17 +237,57 @@ final class SignupStore: ObservableObject {
     }
 
     func moveToNextStep() {
-        if currentStep == .password {
-            Task {
-                await createUser()
-            }
-        }
+        // createUser is deferred for all device types — called only when FINISH is tapped
         // When leaving addBaby, save the baby and move to babyList
         if currentStep == .addBaby {
             saveBabyFromForm()
         }
         guard currentStepIndex < steps.count - 1 else { return }
         currentStepIndex += 1
+    }
+
+    func finishSignup() {
+        Task {
+            await createUser()
+        }
+    }
+
+    /// Called from the error screen — retries only the devices that failed.
+    func retryFailedDevices() {
+        Task {
+            await retryDeviceSaves()
+        }
+    }
+
+    /// Called from the error screen CANCEL button — discards the entire signup and resets.
+    func cancelSignup(router: Router<AuthRoute>? = nil) {
+        resetForm()
+        if isFromAccountSwitching {
+            dismissAction?()
+        } else {
+            router?.navigateBack()
+        }
+    }
+
+    /// Called from the success screen DONE button.
+    func completeSignup() {
+        if let onSignupSuccess {
+            onSignupSuccess()
+        } else if isFromAccountSwitching {
+            dismissAction?()
+        }
+        resetForm()
+    }
+
+    func connectAnotherDevice() {
+        if let current = selectedDeviceType {
+            disabledDeviceTypes.insert(current)
+            registeredDeviceTypes.append(current)
+        }
+        selectedDeviceType = nil
+        rebuildSteps()
+        guard let pickDeviceIndex = steps.firstIndex(of: .pickDevice) else { return }
+        currentStepIndex = pickDeviceIndex
     }
 
     func moveToPreviousStep() {
@@ -203,6 +301,7 @@ final class SignupStore: ObservableObject {
     /// Called when user changes device type on the Pick a Device step.
     func selectDeviceType(_ type: SignupDeviceType) {
         selectedDeviceType = type
+        rebuildSteps()
         updateNextButtonState()
     }
 
@@ -294,6 +393,10 @@ final class SignupStore: ObservableObject {
             let fieldsValid = signupForm.password.isValid && signupForm.confirmPassword.isValid && signupForm.zipcode.isValid
             let passwordsMatch = !signupForm.formErrors[.passwordMatch]
             isNextEnabled = fieldsValid && passwordsMatch
+        case .profileReady:
+            isNextEnabled = true
+        case .allProfilesReady, .signupError:
+            isNextEnabled = true
         }
     }
     
@@ -408,57 +511,160 @@ final class SignupStore: ObservableObject {
     
     func createUser() async {
         notificationService.showLoader(LoaderModel(text: loaderLang.creatingAccount))
-        
+
         let email = removeWhiteSpace(signupForm.email.value)
         let password = signupForm.password.value
         logger.log(level: .info, tag: tag, message: "Signup flow started. accountSwitching=\(isFromAccountSwitching)")
-        
+
         let profile = generateProfile()
         let goal = generateGoalRequest()
+
+        // Step 1: Create the account. If this fails, show the existing toast/alert —
+        // the error screen only applies to per-device profile saves.
         do {
-            let account = try await accountService.signUp(
-                email: email,
-                password: password,
-                profile: profile
-            )
-            persistSelectedSignupDeviceType(for: account.accountId)
-            try await setInitialProductTypes(on: account)
-            try await persistSignupBabies(for: account)
-            // Create the goal if it's not skipped
-            if let goal = goal {
-                logger.log(
-                    level: .info,
-                    tag: tag,
-                    message: "Signup flow creating initial goal. goalType=\(goal.goalType.rawValue), "
-                        + "goalWeight=\(goal.goalWeight), initialWeight=\(goal.initialWeight)"
-                )
-                _ = try await accountService.createGoal(goal)
-            }
-            logger.log(
-                level: .success,
-                tag: tag,
-                message: "Signup flow succeeded. goalSkipped=\(goal == nil), accountSwitching=\(isFromAccountSwitching)"
-            )
-            if let onSignupSuccess {
-                onSignupSuccess()
-            } else if isFromAccountSwitching {
-                dismissAction?()
-            }
-            resetForm()
+            try await accountService.signUp(email: email, password: password, profile: profile)
         } catch {
-            logger.log(
-                level: .error,
-                tag: tag,
-                message: "Signup flow failed. error=\(error.localizedDescription), "
-                    + "errorType=\(String(describing: type(of: error)))"
-            )
+            notificationService.dismissLoader()
+            logger.log(level: .error, tag: tag,
+                message: "Signup account creation failed. error=\(error.localizedDescription)")
             if case AccountError.maxAccountsReached = error {
                 showMaxUserAccountsAlert()
                 return
             }
             handleSignupError(error)
+            return
         }
+
+        guard let account = accountService.activeAccount else {
+            notificationService.dismissLoader()
+            handleSignupError(AccountError.noActiveAccount)
+            return
+        }
+
+        persistSelectedSignupDeviceType(for: account.accountId)
+
+        // Step 2: Build ordered list of all devices selected this session.
+        var allDevices: [SignupDeviceType] = registeredDeviceTypes
+        if let current = selectedDeviceType, !allDevices.contains(current) {
+            allDevices.append(current)
+        }
+
+        // Initialize statuses as pending before any saves.
+        deviceStatuses = allDevices.map { ($0, .pending) }
+
+        // Step 3: Save each device profile individually, recording per-device status.
+        for (index, deviceType) in allDevices.enumerated() {
+            do {
+                try await saveDeviceProfile(deviceType: deviceType, account: account, goal: goal)
+                deviceStatuses[index] = (deviceType, .success)
+                logger.log(level: .success, tag: tag,
+                    message: "Device profile saved. deviceType=\(deviceType.rawValue)")
+            } catch {
+                deviceStatuses[index] = (deviceType, .failure(error))
+                logger.log(level: .error, tag: tag,
+                    message: "Device profile failed. deviceType=\(deviceType.rawValue), error=\(error.localizedDescription)")
+            }
+        }
+
+        // Persist all successfully-saved devices in a single productTypes write so
+        // intermediate per-device updates (including ones from babyService.saveBaby)
+        // don't clobber each other.
+        await writeAccumulatedProductTypes()
+
         notificationService.dismissLoader()
+
+        // Step 4: Navigate to the appropriate terminal screen.
+        // The "all profiles ready" success screen is reserved for the case where
+        // the user added every available device type. With fewer devices, all-success
+        // dismisses straight to the dashboard.
+        let anyFailed = deviceStatuses.contains { if case .failure = $0.status { return true }; return false }
+        let allDevicesSelected = deviceStatuses.count == SignupDeviceType.allCases.count
+        if anyFailed {
+            if let errorIndex = steps.firstIndex(of: .signupError) {
+                currentStepIndex = errorIndex
+            }
+        } else if allDevicesSelected {
+            if let successIndex = steps.firstIndex(of: .allProfilesReady) {
+                currentStepIndex = successIndex
+            }
+        } else {
+            completeSignup()
+        }
+    }
+
+    /// Retries only devices whose status is `.failure`. Succeeds → allProfilesReady, otherwise stays on error screen.
+    private func retryDeviceSaves() async {
+        guard let account = accountService.activeAccount else {
+            handleSignupError(AccountError.noActiveAccount)
+            return
+        }
+        let goal = generateGoalRequest()
+        notificationService.showLoader(LoaderModel(text: loaderLang.creatingAccount))
+
+        for (index, item) in deviceStatuses.enumerated() {
+            guard case .failure = item.status else { continue }
+            do {
+                try await saveDeviceProfile(deviceType: item.device, account: account, goal: goal)
+                deviceStatuses[index] = (item.device, .success)
+                logger.log(level: .success, tag: tag,
+                    message: "Retry succeeded. deviceType=\(item.device.rawValue)")
+            } catch {
+                deviceStatuses[index] = (item.device, .failure(error))
+                logger.log(level: .error, tag: tag,
+                    message: "Retry failed. deviceType=\(item.device.rawValue), error=\(error.localizedDescription)")
+            }
+        }
+
+        await writeAccumulatedProductTypes()
+
+        notificationService.dismissLoader()
+
+        let anyFailed = deviceStatuses.contains { if case .failure = $0.status { return true }; return false }
+        if !anyFailed, let successIndex = steps.firstIndex(of: .allProfilesReady) {
+            currentStepIndex = successIndex
+        }
+    }
+
+    /// Saves the per-device side-effects (babies, goal) for a single device.
+    /// Does NOT write `productTypes` — that's done once after the loop so individual
+    /// writes don't clobber each other.
+    private func saveDeviceProfile(
+        deviceType: SignupDeviceType,
+        account: AccountSnapshot,
+        goal: Goal?
+    ) async throws {
+        if deviceType == .babyScale {
+            try await persistSignupBabies(for: account)
+        }
+
+        if deviceType == .weightScale, let goal = goal {
+            logger.log(level: .info, tag: tag,
+                message: "Creating goal. goalType=\(goal.goalType.rawValue), goalWeight=\(goal.goalWeight)")
+            _ = try await accountService.createGoal(goal)
+        }
+    }
+
+    /// Writes the union of product types for every device that saved successfully.
+    /// `updateProductTypes` replaces the array, so we must send all of them in one call.
+    /// On failure, every previously-successful device is flipped to `.failure` so the
+    /// error screen surfaces — the account state is otherwise out of sync with what
+    /// the user thinks they registered.
+    private func writeAccumulatedProductTypes() async {
+        let successfulIndices = deviceStatuses.indices.filter {
+            if case .success = deviceStatuses[$0].status { return true }
+            return false
+        }
+        let productTypes = successfulIndices.map { deviceStatuses[$0].device.productType }
+        guard !productTypes.isEmpty else { return }
+        do {
+            try await accountService.updateProductTypes(productTypes)
+        } catch {
+            logger.log(level: .error, tag: tag,
+                message: "Failed to write accumulated product types. error=\(error.localizedDescription)")
+            for index in successfulIndices {
+                deviceStatuses[index] = (deviceStatuses[index].device, .failure(error))
+            }
+        }
     }
     
     // MARK: - Private Methods
@@ -512,27 +718,7 @@ final class SignupStore: ObservableObject {
         }
     }
 
-    private func setInitialProductTypes(on account: Account) async throws {
-        guard let selectedDeviceType else { return }
-        let types: [String]
-        switch selectedDeviceType {
-        case .weightScale:
-            types = ["myWeight"]
-        case .bpm:
-            types = ["myBloodPressure"]
-        case .babyScale:
-            types = ["baby"]
-        }
-        account.productTypes = types
-        _ = try await accountService.updateProductTypes(types)
-        logger.log(
-            level: .info,
-            tag: tag,
-            message: "Set initial productTypes=\(account.productTypes) for accountId=\(account.accountId)"
-        )
-    }
-
-    private func persistSignupBabies(for account: Account) async throws {
+    private func persistSignupBabies(for account: AccountSnapshot) async throws {
         guard !babies.isEmpty else { return }
 
         var firstSavedSelection: ProductSelection?
@@ -579,15 +765,18 @@ final class SignupStore: ObservableObject {
     }
 
     private func persistSelectedSignupDeviceType(for accountId: String) {
-        guard let selectedDeviceType else { return }
+        // Persist the first device from the session as the primary signup device type.
+        // This drives HealthKit permission scoping — use the user's first intent.
+        let primaryDevice = registeredDeviceTypes.first ?? selectedDeviceType
+        guard let primaryDevice else { return }
         let key = KvStorageKeys.selectedSignupDeviceTypeKey(for: accountId)
-        kvStorage.setValue(selectedDeviceType.rawValue, forKey: key)
+        kvStorage.setValue(primaryDevice.rawValue, forKey: key)
         kvStorage.setValue(accountId, forKey: KvStorageKeys.recentSignupAccountId.rawValue)
-        kvStorage.setValue(selectedDeviceType.rawValue, forKey: KvStorageKeys.recentSignupDeviceType.rawValue)
+        kvStorage.setValue(primaryDevice.rawValue, forKey: KvStorageKeys.recentSignupDeviceType.rawValue)
         logger.log(
             level: .info,
             tag: tag,
-            message: "Persisted signup-selected device type. accountId=\(accountId), deviceType=\(selectedDeviceType.rawValue)"
+            message: "Persisted signup-selected device type. accountId=\(accountId), deviceType=\(primaryDevice.rawValue)"
         )
     }
     
@@ -730,6 +919,9 @@ final class SignupStore: ObservableObject {
 
         // Reset navigation/UI state.
         selectedDeviceType = nil
+        disabledDeviceTypes = []
+        registeredDeviceTypes = []
+        deviceStatuses = []
         babies.removeAll()
         isEditingBabyIndex = nil
         showBabySexPicker = false

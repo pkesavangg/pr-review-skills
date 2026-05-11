@@ -65,7 +65,7 @@ class NavigationViewModelTest {
 
     @Test
     fun `navigateTo calls appEventService navigateTo with route`() = runTest {
-        val route = AppRoute.AccountSettings.AddEditScales
+      val route = AppRoute.AccountSettings.MyDevices
         viewModel.navigateTo(route)
         advanceUntilIdle()
 
@@ -74,7 +74,7 @@ class NavigationViewModelTest {
 
     @Test
     fun `navigateTo passes topLevel parameter`() = runTest {
-        val route = AppRoute.AccountSettings.AddEditScales
+      val route = AppRoute.AccountSettings.MyDevices
         val topLevel = AppRoute.Main.Dashboard
 
         viewModel.navigateTo(route, topLevel = topLevel)
@@ -85,7 +85,7 @@ class NavigationViewModelTest {
 
     @Test
     fun `navigateTo passes popUpTo parameter`() = runTest {
-        val route = AppRoute.AccountSettings.AddEditScales
+      val route = AppRoute.AccountSettings.MyDevices
         val popUpTo = AppRoute.Main.Dashboard
 
         viewModel.navigateTo(route, popUpTo = popUpTo)
@@ -96,7 +96,7 @@ class NavigationViewModelTest {
 
     @Test
     fun `navigateTo passes all parameters`() = runTest {
-        val route = AppRoute.AccountSettings.AddEditScales
+      val route = AppRoute.AccountSettings.MyDevices
         val topLevel = AppRoute.Main.Dashboard
         val popUpTo = AppRoute.Integration.IntegrationList
 

@@ -102,7 +102,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                                 self.babySummaryCacheByProfile.removeAll()
                                 try? await self.clearLastSyncTimestamp()
                                 await self.syncAllEntriesWithRemote()
-                                await self.loadDashboardData(entryType: .wg)
+                                await self.loadDashboardData(entryType: .scale)
                             }
                         }
                     }
@@ -123,14 +123,14 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Reads goal initial weight on MainActor to avoid crossing SwiftData model objects between executors.
     private func getGoalInitialWeight() async -> Int? {
         await MainActor.run {
-            accountService.activeAccount?.goalSettings?.initialWeight.map(Int.init)
+            accountService.activeAccount?.initialWeight.map(Int.init)
         }
     }
 
     /// Reads dashboard type on MainActor to avoid crossing SwiftData model objects between executors.
     private func getDashboardType() async -> String? {
         await MainActor.run {
-            accountService.activeAccount?.dashboardSettings?.dashboardType
+            accountService.activeAccount?.dashboardType
         }
     }
 
@@ -172,8 +172,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
             try await handleEntryAdded(entry)
 
-            // Broadcast change
-            await syncUnsyncedEntries()
             await checkGoalAlerts()
         } catch {
             logger.log(
@@ -202,7 +200,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
 
             logger.log(level: .info, tag: tag, message: "Bulk entry save completed: count=\(entries.count)")
-            await syncUnsyncedEntries()
         } catch {
             logger.log(
                 level: .error,
@@ -222,7 +219,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         do {
             try await localRepo.updateEntry(deletedEntry)
             try await handleEntryDeleted(deletedEntry)
-            await syncUnsyncedEntries()
             logger.log(
                 level: .info,
                 tag: tag,
@@ -236,6 +232,57 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             )
             throw error
         }
+    }
+
+    func deleteEntry(entryId: UUID) async throws {
+        guard let entry = try await localRepo.fetchEntry(byId: entryId.uuidString) else {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Entry delete failed — not found: entryId=\(entryId.uuidString)"
+            )
+            return
+        }
+        try await deleteEntry(entry)
+    }
+
+    func assignBabyEntry(entryId: UUID, babyId: String) async throws {
+        guard let entry = try await localRepo.fetchEntry(byId: entryId.uuidString) else {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Baby entry assign failed — not found: entryId=\(entryId.uuidString)"
+            )
+            return
+        }
+        entry.babyEntry?.babyId = babyId
+        try await localRepo.updateEntry(entry)
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Baby entry assigned: entryId=\(entryId.uuidString), babyId=\(babyId)"
+        )
+        let notification = EntryNotification(from: entry)
+        entrySaved.send(notification)
+    }
+
+    // MARK: - Snapshot Queries
+
+    func fetchEntrySnapshot(byId id: UUID) async throws -> EntrySnapshot? {
+        guard let entry = try await localRepo.fetchEntry(byId: id.uuidString) else {
+            return nil
+        }
+        return entry.toSnapshot()
+    }
+
+    func fetchAllEntrySnapshots() async throws -> [EntrySnapshot] {
+        let entries = try await getAllEntries()
+        return entries.map { $0.toSnapshot() }
+    }
+
+    func fetchEntrySnapshots(forMonth month: String, entryType: EntryType = .scale) async throws -> [EntrySnapshot] {
+        let entries = try await getEntries(forMonth: month, entryType: entryType)
+        return entries.map { $0.toSnapshot() }
     }
 
     // MARK: - Query
@@ -277,13 +324,13 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         return try await localRepo.fetchLatestEntry(forUserId: accountId)
     }
 
-    func getEntries(lastNDays: Int, entryType: EntryType = .wg) async throws -> [Entry] {
+    func getEntries(lastNDays: Int, entryType: EntryType = .scale) async throws -> [Entry] {
         let accountId = try getAccountId()
         let entries = try await localRepo.fetchEntries(lastNDays: lastNDays, userId: accountId)
         return entries.filter { matchesEntryType($0, entryType: entryType) }
     }
 
-    func getEntries(forMonth month: String, entryType: EntryType = .wg) async throws -> [Entry] {
+    func getEntries(forMonth month: String, entryType: EntryType = .scale) async throws -> [Entry] {
         let accountId = try getAccountId()
         let entries = try await localRepo.fetchEntries(forMonth: month, userId: accountId)
         return entries.filter { $0.operationType == OperationType.create.rawValue && matchesEntryType($0, entryType: entryType) }
@@ -297,7 +344,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     // MARK: - Month/History
 
-    func getMonthsAll(entryType: EntryType = .wg) async throws -> [HistoryMonth] {
+    func getMonthsAll(entryType: EntryType = .scale) async throws -> [HistoryMonth] {
         let accountId = try getAccountId()
         let allEntries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
         let entries = allEntries.filter { matchesEntryType($0, entryType: entryType) }
@@ -321,7 +368,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         return result.sorted { $0.entryTimestamp > $1.entryTimestamp }
     }
 
-    func getMonthDetail(month: String, entryType: EntryType = .wg) async throws -> [Entry] {
+    func getMonthDetail(month: String, entryType: EntryType = .scale) async throws -> [Entry] {
         return try await getEntries(forMonth: month, entryType: entryType)
     }
 
@@ -357,7 +404,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     // MARK: - Progress/Stats
 
-    func getProgress(entryType: EntryType = .wg) async throws -> Progress {
+    func getProgress(entryType: EntryType = .scale) async throws -> Progress {
         let accountId = try getAccountId()
 
         // Reuse the worker so progress refreshes do not keep creating fresh model contexts.
@@ -567,7 +614,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             hasher.combine(entry.serverTimestamp)
             hasher.combine(entry.operationType)
             hasher.combine(entry.entryType)
-            hasher.combine(entry.deviceType)
             hasher.combine(entry.isSynced)
             hasher.combine(entry.weight)
             hasher.combine(entry.bodyFat)
@@ -618,13 +664,13 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         )
     }
 
-    func getStreak(entryType: EntryType = .wg) async throws -> Streak {
+    func getStreak(entryType: EntryType = .scale) async throws -> Streak {
         let dtos = try await getAllEntriesAsDTO()
         let cachedSignature = streakCacheByEntryType[entryType]?.datasetSignature
         let result = await Task.detached(priority: .userInitiated) {
             let filtered = dtos.filter { dto in
                 let type = dto.entryType ?? ""
-                if type.isEmpty { return entryType == .wg }
+                if type.isEmpty { return entryType == .scale }
                 return type == entryType.rawValue
             }
             let signature = Self.makeDTOSignature(filtered)
@@ -646,7 +692,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
         let streak = Self.computeStreak(from: dtos.filter { dto in
             let type = dto.entryType ?? ""
-            if type.isEmpty { return entryType == .wg }
+            if type.isEmpty { return entryType == .scale }
             return type == entryType.rawValue
         })
         streakCacheByEntryType[entryType] = EntryStreakCacheEntry(datasetSignature: result.0, streak: streak)
@@ -687,7 +733,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let weightsConcat = weightPairs.joined(separator: ",")
 
         let weightValues = monthEntries.compactMap { $0.weight }.filter { $0 > 0 }.map(Double.init)
-        let avgWeight: Double? = weightValues.isEmpty ? nil : Double(Int(round(weightValues.reduce(0, +) / Double(weightValues.count))))
+        let avgWeight: Double? = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count)
         let minWeight = weightValues.min()
         let maxWeight = weightValues.max()
 
@@ -719,10 +765,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         )
     }
 
-    private nonisolated static func computeStreak(entryType: EntryType = .wg, from allEntries: [EntryData]) -> Streak {
+    private nonisolated static func computeStreak(entryType: EntryType = .scale, from allEntries: [EntryData]) -> Streak {
         let entries = allEntries.filter { entry in
             let type = entry.entryType
-            if type.isEmpty { return entryType == .wg }
+            if type.isEmpty { return entryType == .scale }
             return type == entryType.rawValue
         }
         let calendar = Calendar.current
@@ -895,12 +941,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             guard (kvStorage.getValue(forKey: key) as? Bool) != true else { return }
 
             let allEntries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
-            let babyEntries = allEntries.filter { $0.deviceType == DeviceType.babyScale.rawValue && $0.babyEntry != nil }
+            let babyEntries = allEntries.filter { $0.entryType == EntryType.baby.rawValue && $0.babyEntry != nil }
 
             // Idempotency: the heuristic (weight < 2835) skips already-converted entries,
             // so a crash mid-loop is safely re-runnable on next launch.
             for entry in babyEntries {
-                guard let baby = entry.babyEntry else { continue }
+                guard entry.babyEntry != nil else { continue }
                 try await localRepo.updateEntry(entry)
             }
 
@@ -1280,24 +1326,15 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     // MARK: - Entry Type Filtering
 
     /// Checks if an Entry matches the given entryType.
-    /// Entries without an entryType (legacy data) default to `.wg`.
-    /// Note: Baby scale entries use entryType "wg" but are excluded from adult weight queries.
-    /// Baby entries are served through the dedicated baby entry CRUD path (createBabyEntry/getBabyEntries).
+    /// Legacy entries without an entryType default to `.scale`.
     private func matchesEntryType(_ entry: Entry, entryType: EntryType) -> Bool {
-        let type = entry.entryType
-        if type.isEmpty { return entryType == .wg }
-        guard type == entryType.rawValue else { return false }
-        // Baby scale entries have entryType "wg" but belong in baby history, not weight history.
-        if entryType == .wg && entry.deviceType == DeviceType.babyScale.rawValue { return false }
-        // BPM entries should never appear in weight history, even if entryType was incorrectly set to "wg".
-        if entryType == .wg && entry.deviceType == DeviceType.bpm.rawValue { return false }
-        if entryType == .wg && entry.bpmEntry != nil { return false }
-        return true
+        guard let type = entry.entryType, !type.isEmpty else { return entryType == .scale }
+        return type == entryType.rawValue
     }
 
     /// DTO-level entry type matching for background-thread aggregation.
     private nonisolated func matchesDTOEntryType(_ dto: BathScaleOperationDTO, entryType: EntryType) -> Bool {
-        guard let type = dto.entryType, !type.isEmpty else { return entryType == .wg }
+        guard let type = dto.entryType, !type.isEmpty else { return entryType == .scale }
         return type == entryType.rawValue
     }
 
@@ -1309,14 +1346,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         return vals.isEmpty ? nil : vals.reduce(0, +) / Double(vals.count)
     }
 
-    /// Helper function for weight: average stored values (tenths of lbs) and round to whole tenths
-    /// This matches the logic in buildHistoryMonth to ensure consistent rounding
+    /// Helper function for weight: average stored values (tenths of lbs) without rounding early.
     private nonisolated func avgWeight(_ values: [Int]) -> Double {
         guard !values.isEmpty else { return 0 }
         let filtered = values.filter { $0 > 0 }
         guard !filtered.isEmpty else { return 0 }
-        // Round average to whole tenths of lbs, then convert to Double
-        return Double(Int(round(Double(filtered.reduce(0, +)) / Double(filtered.count))))
+        return Double(filtered.reduce(0, +)) / Double(filtered.count)
     }
 
     /// Aggregate entries by day, returning BathScaleWeightSummary for each day
@@ -1586,11 +1621,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Fetches baby entries for a given babyId and returns snapshots safe for background aggregation.
     private func fetchBabyEntrySnapshots(accountId: String, babyId: String) async throws -> [BabyEntrySnapshot] {
         let allEntries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
-        let babyDeviceType = DeviceType.babyScale.rawValue
+        let babyEntryType = EntryType.baby.rawValue
         return allEntries.compactMap { entry -> BabyEntrySnapshot? in
-            guard entry.deviceType == babyDeviceType,
-                  entry.babyId == babyId,
+            guard entry.entryType == babyEntryType,
                   let babyEntry = entry.babyEntry,
+                  babyEntry.babyId == babyId,
                   babyEntry.weight > 0
             else { return nil }
             return BabyEntrySnapshot(
@@ -1793,7 +1828,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
         // Numeric helpers - filter out zero values for average calculation
         let weightValues = monthEntries.compactMap { $0.scaleEntry?.weight }.filter { $0 > 0 }.map(Double.init)
-        let avgWeight: Double? = weightValues.isEmpty ? nil : Double(Int(round(weightValues.reduce(0, +) / Double(weightValues.count))))
+        let avgWeight: Double? = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count)
         let minWeight = weightValues.min()
         let maxWeight = weightValues.max()
 
@@ -1830,7 +1865,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     /// Loads and aggregates all entry data for dashboard display
     /// Uses DTOs and background aggregation to avoid blocking main thread
-    func loadDashboardData(entryType: EntryType = .wg) async {
+    func loadDashboardData(entryType: EntryType = .scale) async {
         if let existingTask = activeDashboardLoadTasks[entryType] {
             let didSucceed = await existingTask.value
             if didSucceed { return }
@@ -1874,7 +1909,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                     return EntrySummaryLoadResult.cached(signature: signature)
                 }
                 switch entryType {
-                case .wg:
+                case .scale, .baby:
                     let daily = self.aggregateByDayFromDTOs(dtos, accountId: accountId)
                     let monthly = self.aggregateByMonthFromDTOs(dtos, accountId: accountId)
                     return EntrySummaryLoadResult.computed(signature: signature, daily: daily, monthly: monthly)
@@ -2055,7 +2090,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         accountId: String
     ) {
         switch entryType {
-        case .wg:
+        case .scale, .baby:
             if dailySummaries != daily {
                 dailySummaries = daily
             }
@@ -2109,7 +2144,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             // Remove if no summary (empty day)
             dailySummaries.removeAll { $0.period == dayKey }
         }
-        invalidateSummaryCaches(for: .wg)
+        invalidateSummaryCaches(for: .scale)
     }
 
     /// Updates the monthly summary for a specific month key
@@ -2126,7 +2161,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             // Remove if no summary (empty month)
             monthlySummaries.removeAll { $0.period == monthKey }
         }
-        invalidateSummaryCaches(for: .wg)
+        invalidateSummaryCaches(for: .scale)
     }
 
     // MARK: - BPM Entry CRUD
@@ -2161,7 +2196,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
             let notification = EntryNotification(from: entry)
             entrySaved.send(notification)
-            await syncUnsyncedBpmEntries()
         } catch {
             logger.log(
                 level: .error,
@@ -2181,7 +2215,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let accountId = try getAccountId()
 
         let entries = try await localRepo.fetchEntriesOfTimestamp(forUserId: accountId, timestamp: entryTimestamp)
-        guard let entry = entries.first(where: { $0.deviceType == DeviceType.bpm.rawValue }) else {
+        guard let entry = entries.first(where: { $0.entryType == EntryType.bpm.rawValue }) else {
             throw NSError(domain: "EntryService", code: 404, userInfo: [NSLocalizedDescriptionKey: "BPM entry not found"])
         }
 
@@ -2193,7 +2227,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             await refreshBpmDashboardSummaries()
             let notification = EntryNotification(from: entry)
             entryDeleted.send(notification)
-            await syncUnsyncedBpmEntries()
             logger.log(
                 level: .info,
                 tag: tag,
@@ -2209,10 +2242,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
     }
 
-    func exportBpmCSV() async throws {
-        _ = try await remoteRepo.exportBpmCsv()
-    }
-
     // MARK: - Baby Entry CRUD
 
     func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String? = nil) async throws {
@@ -2222,12 +2251,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             entryTimestamp: entryTimestamp,
             accountId: accountId,
             operationType: OperationType.create.rawValue,
-            deviceType: DeviceType.babyScale.rawValue,
-            isSynced: false,
-            babyId: babyId
+            entryType: EntryType.baby.rawValue,
+            isSynced: false
         )
         entry.attempts = 0
-        entry.babyEntry = BabyEntry(babyId: babyId, length: length, weight: weight, note: note, source: source)
+        entry.note = note
+        entry.babyEntry = BabyEntry(babyId: babyId, length: length, weight: weight, source: source)
 
         do {
             try await localRepo.saveEntry(entry)
@@ -2246,50 +2275,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 message: "Failed to save baby entry: accountId=\(accountId), babyId=\(babyId), error=\(error.localizedDescription)"
             )
             throw error
-        }
-    }
-
-    /// Pushes unsynced BPM entries to the remote API and pulls remote BPM operations.
-    private func syncUnsyncedBpmEntries() async {
-        guard let accountId = try? getAccountId() else { return }
-
-        do {
-            let unsynced = try await localRepo.fetchUnsyncedEntries(forUserId: accountId)
-            let bpmUnsynced = unsynced.filter { $0.deviceType == DeviceType.bpm.rawValue }
-
-            for operation in bpmUnsynced {
-                let entryIdString = operation.id.uuidString
-                let operationType = operation.operationType
-                let currentAttempts = operation.attempts
-                let dto = operation.toBpmOperationDTO()
-
-                do {
-                    try await remoteRepo.syncBpmOperation(operation: dto)
-
-                    if operationType == OperationType.create.rawValue {
-                        try await localRepo.updateEntrySyncStatus(
-                            entryId: entryIdString,
-                            isSynced: true,
-                            isFailedToSync: false,
-                            attempts: currentAttempts
-                        )
-                    } else {
-                        try await localRepo.deleteEntry(byId: entryIdString)
-                    }
-                } catch {
-                    let newAttempts = currentAttempts + 1
-                    let markAsFailed = newAttempts > 8
-
-                    try? await localRepo.updateEntrySyncStatus(
-                        entryId: entryIdString,
-                        isSynced: markAsFailed,
-                        isFailedToSync: markAsFailed,
-                        attempts: newAttempts
-                    )
-                }
-            }
-        } catch {
-            logger.log(level: .error, tag: tag, message: "BPM sync failed: \(error.localizedDescription)")
         }
     }
 

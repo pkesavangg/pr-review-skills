@@ -105,6 +105,7 @@ fun HistoryDetailScreenContent(
                         ProductType.BABY -> {
                             BabyDayHistoryList(
                                 entries = state.historyItems.filterIsInstance<BabyEntry>(),
+                                isMetric = state.isMetric,
                             )
                         }
                         else -> {

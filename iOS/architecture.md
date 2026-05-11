@@ -167,7 +167,22 @@ Registered via `ServiceRegistry` at launch (essential) or post-login (session-sc
 | `NotificationSettings` | Notification preferences |
 | `R4ScalePreference` | R4 scale-specific settings |
 
-**Rules:** All CRUD must run on the main actor. Stack managed via `PersistenceController` singleton. Use in-memory containers for all tests.
+**Rules:** All CRUD must run on the main actor. Stack managed via `PersistenceController` singleton. Use in-memory containers for all tests. **The `@Model` must not leave the owning service** — feature code reads value-type snapshots instead (see §4.1a).
+
+### 4.1a. Value-type Snapshots
+
+**Purpose:** Publish `Sendable`, flat-field, `Equatable` structs to feature code instead of the SwiftData `@Model`. Prevents off-actor `@Model` reads (a production `EXC_BAD_ACCESS` crash class) and makes `@Published` fire correctly on value changes.
+
+| Snapshot | Mirrors | Published by |
+|----------|---------|--------------|
+| `AccountSnapshot` | `Account` + all 8 child settings models (flattened) | `AccountService.activeAccount` / `allAccounts` |
+| `DeviceSnapshot` + `BathScaleSnapshot` + `R4ScalePreferenceSnapshot` + `DeviceMetaDataSnapshot` | `Device` and its child `@Model`s (nested) | `ScaleService.scales` |
+| `EntrySnapshot` + `BathScaleEntrySnapshot` + `BathScaleMetricSnapshot` + `BPMEntrySnapshot` + `BabyEntrySnapshot` | `Entry` and its four child `@Model` relationships (nested) | `HistoryStore.entries`, `ContentViewModel.entries`, `EntryService.fetchEntrySnapshots*` |
+| `DeviceEphemeralState` | in-memory connection state (`isConnected`, `isWifiConfigured`, `isWeighOnlyModeEnabledByOthers`) | merged into `DeviceSnapshot` at publish time |
+
+**Write path** (pairing flows, sync, DTO construction) still uses the `@Model` internally. Only the read surface flips to snapshots. Conversion is a single `model.toSnapshot()` call on the main actor before any `await`.
+
+See `docs/account-snapshot-implementation.md`, `docs/DEVICESNAPSHOT_IMPLEMENTATION.md`, `docs/ENTRYSNAPSHOT_IMPLEMENTATION.md` for the detailed migration playbooks.
 
 ### 4.2. Keychain
 

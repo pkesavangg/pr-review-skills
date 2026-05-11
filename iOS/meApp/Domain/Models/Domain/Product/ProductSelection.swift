@@ -94,7 +94,8 @@ enum ProductSelection: Equatable, Hashable, Identifiable {
     var entryType: EntryType {
         switch self {
         case .myBloodPressure: return .bpm
-        case .myWeight, .baby: return .wg
+        case .myWeight: return .scale
+        case .baby: return .baby
         }
     }
 }

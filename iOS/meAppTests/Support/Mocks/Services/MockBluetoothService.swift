@@ -8,7 +8,7 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     var canShowScaleDiscoveredModal: Bool = false
     var isSetupInProgress: Bool = false
     var skipDevices: [String] = []
-    var onOpenScaleSetup: ((Device, DeviceDiscoveryEvent?, Bool, Bool) -> Void)?
+    var onOpenScaleSetup: ((DeviceSnapshot, DeviceDiscoveryEvent?, Bool, Bool) -> Void)?
     var resyncAndScanResult: Result<Void, BluetoothServiceError> = .success(())
     var deleteCurrentUserFromScaleIfPossibleResult: Result<UserDeletionResponse, BluetoothServiceError> = .failure(.notImplemented)
     var disconnectDeviceResult: Result<Void, BluetoothServiceError> = .success(())
@@ -55,14 +55,13 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     private(set) var startLiveMeasurementCalls = 0
     private(set) var stopLiveMeasurementCalls = 0
     private(set) var lastConnectedWifiSSIDBroadcastId: String?
-    private(set) var lastUpdateSettingDevice: Device?
+    private(set) var lastUpdateSettingBroadcastId: String?
     private(set) var lastUpdateSettings: [DeviceSetting] = []
-    private(set) var lastUpdateAccountDevice: Device?
-    private(set) var lastUpdateAccountPreference: R4ScalePreference?
-    private(set) var lastDeviceInfoDevice: Device?
-    private(set) var lastWifiMacDevice: Device?
-    private(set) var lastUserListDevice: Device?
-    private(set) var lastWeightOnlyModeDevice: Device?
+    private(set) var lastUpdateAccountBroadcastId: String?
+    private(set) var lastDeviceInfoBroadcastId: String?
+    private(set) var lastWifiMacBroadcastId: String?
+    private(set) var lastUserListBroadcastId: String?
+    private(set) var lastWeightOnlyModeBroadcastId: String?
     private(set) var lastConfirmedPairDevice: Device?
     private(set) var lastConfirmedPairToken: String?
     private(set) var lastConfirmedPairDisplayName: String?
@@ -70,32 +69,47 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     private(set) var lastDeleteUserBroadcastId: String?
     private(set) var lastDeleteUserToken: String?
     private(set) var lastDeleteUserDisconnect: Bool?
-    private(set) var lastWifiListDevice: Device?
-    private(set) var lastWifiSetupDevice: Device?
+    private(set) var lastWifiListBroadcastId: String?
+    private(set) var lastWifiSetupBroadcastId: String?
     private(set) var lastWifiSetupConfig: WifiConfig?
-    private(set) var lastCancelWifiDevice: Device?
-    private(set) var lastStartLiveMeasurementDevice: Device?
-    private(set) var lastStopLiveMeasurementDevice: Device?
+    private(set) var lastCancelWifiBroadcastId: String?
+    private(set) var lastStartLiveMeasurementBroadcastId: String?
+    private(set) var lastStopLiveMeasurementBroadcastId: String?
     private(set) var lastResumeClearOnlyPairing: Bool?
-    private(set) var lastSyncedDevices: [Device] = []
+    private(set) var lastSyncedDevices: [DeviceSnapshot] = []
 
     let deviceDiscoveredSubject = PassthroughSubject<DeviceDiscoveryEvent, Never>()
     let newEntryReceivedSubject = PassthroughSubject<EntryNotification, Never>()
+    let pendingScaleEntrySubject = PassthroughSubject<EntryNotification, Never>()
+    let pendingBpmEntrySubject = PassthroughSubject<EntryNotification, Never>()
     let liveMeasurementSubject = PassthroughSubject<GGWeightEntry, Never>()
 
     var deviceDiscoveredPublisher: AnyPublisher<DeviceDiscoveryEvent, Never> { deviceDiscoveredSubject.eraseToAnyPublisher() }
     var deviceInfoUpdatedPublisher: AnyPublisher<DeviceInfo, Never> { Empty().eraseToAnyPublisher() }
     var showWeightOnlyModeAlertPublisher: AnyPublisher<Bool, Never> { Empty().eraseToAnyPublisher() }
     var newEntryReceivedPublisher: AnyPublisher<EntryNotification, Never> { newEntryReceivedSubject.eraseToAnyPublisher() }
+    var pendingScaleEntryPublisher: AnyPublisher<EntryNotification, Never> { pendingScaleEntrySubject.eraseToAnyPublisher() }
+    var pendingBpmEntryPublisher: AnyPublisher<EntryNotification, Never> { pendingBpmEntrySubject.eraseToAnyPublisher() }
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> { Empty().eraseToAnyPublisher() }
     var liveMeasurementPublisher: AnyPublisher<GGWeightEntry, Never> { liveMeasurementSubject.eraseToAnyPublisher() }
 
     let newBpmReadingReceivedSubject = PassthroughSubject<BpmMeasurement, Never>()
     var newBpmReadingReceivedPublisher: AnyPublisher<BpmMeasurement, Never> { newBpmReadingReceivedSubject.eraseToAnyPublisher() }
 
+    private(set) var confirmPendingScaleEntryCalls = 0
+    private(set) var discardPendingScaleEntryCalls = 0
+    var confirmPendingScaleEntryError: Error?
+
     func initialize() {}
     func stopScan() {}
     func startBluetoothOperations() async {}
+    func confirmPendingBpmEntry() async throws {}
+    func discardPendingBpmEntry() {}
+    func confirmPendingScaleEntry() async throws {
+        confirmPendingScaleEntryCalls += 1
+        if let error = confirmPendingScaleEntryError { throw error }
+    }
+    func discardPendingScaleEntry() { discardPendingScaleEntryCalls += 1 }
     func disconnectConnectedScales() async { disconnectConnectedScalesCalls += 1 }
     func reapplySkipDevicesExcludingPaired() { reapplySkipDevicesExcludingPairedCalls += 1 }
     func handleWeightOnlyModeAlertDismissed() { handleWeightOnlyModeAlertDismissedCalls += 1 }
@@ -119,7 +133,7 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     var receiveBpmReadingResult: Result<Void, BluetoothServiceError> = .success(())
 
     func scanForBpm() { scanForBpmCalls += 1 }
-    func connectBpm(broadcastId: String, userNumber: Int, replaceUser: Bool, pairedSKUMonitors: [Device]) async -> Result<UserCreationResponse, BluetoothServiceError> {
+    func connectBpm(broadcastId: String, userNumber: Int, replaceUser: Bool, pairedSKUMonitors: [DeviceSnapshot]) async -> Result<UserCreationResponse, BluetoothServiceError> {
         connectBpmCalls += 1
         lastConnectBpmBroadcastId = broadcastId
         if !connectBpmResults.isEmpty {
@@ -137,7 +151,7 @@ final class MockBluetoothService: BluetoothServiceProtocol {
         resyncAndScanCalls += 1
         return resyncAndScanResult
     }
-    func syncDevices(_ devices: [Device]) {
+    func syncDevices(_ devices: [DeviceSnapshot]) {
         syncDevicesCalls += 1
         lastSyncedDevices = devices
     }
@@ -150,7 +164,7 @@ final class MockBluetoothService: BluetoothServiceProtocol {
         lastConfirmedPairUserNumber = userNumber
         return confirmSmartPairResult
     }
-    func deleteDevice(_ device: Device, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError> { .failure(.notImplemented) }
+    func deleteDevice(broadcastId: String, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError> { .failure(.notImplemented) }
     func deleteUserByToken(broadcastId: String, token: String, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError> {
         deleteUserByTokenCalls += 1
         lastDeleteUserBroadcastId = broadcastId
@@ -158,7 +172,7 @@ final class MockBluetoothService: BluetoothServiceProtocol {
         lastDeleteUserDisconnect = disconnect
         return deleteUserByTokenResult
     }
-    func deleteCurrentUserFromScaleIfPossible(_ device: Device, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError> {
+    func deleteCurrentUserFromScaleIfPossible(broadcastId: String, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError> {
         deleteCurrentUserFromScaleIfPossibleCalls += 1
         return deleteCurrentUserFromScaleIfPossibleResult
     }
@@ -166,20 +180,20 @@ final class MockBluetoothService: BluetoothServiceProtocol {
         disconnectDeviceCalls += 1
         return disconnectDeviceResult
     }
-    func getWifiList(for device: Device) async -> Result<[WifiDetails], BluetoothServiceError> {
+    func getWifiList(broadcastId: String) async -> Result<[WifiDetails], BluetoothServiceError> {
         getWifiListCalls += 1
-        lastWifiListDevice = device
+        lastWifiListBroadcastId = broadcastId
         return getWifiListResult
     }
-    func setupWifi(on device: Device, config: WifiConfig) async -> Result<WifiSetupResponse, BluetoothServiceError> {
+    func setupWifi(broadcastId: String, config: WifiConfig) async -> Result<WifiSetupResponse, BluetoothServiceError> {
         setupWifiCalls += 1
-        lastWifiSetupDevice = device
+        lastWifiSetupBroadcastId = broadcastId
         lastWifiSetupConfig = config
         return setupWifiResult
     }
-    func cancelWifi(on device: Device) async -> Result<Void, BluetoothServiceError> {
+    func cancelWifi(broadcastId: String) async -> Result<Void, BluetoothServiceError> {
         cancelWifiCalls += 1
-        lastCancelWifiDevice = device
+        lastCancelWifiBroadcastId = broadcastId
         return cancelWifiResult
     }
     func getConnectedWifiSSID(broadcastId: String) async -> Result<String, BluetoothServiceError> {
@@ -187,54 +201,53 @@ final class MockBluetoothService: BluetoothServiceProtocol {
         lastConnectedWifiSSIDBroadcastId = broadcastId
         return getConnectedWifiSSIDResult
     }
-    func updateSetting(on device: Device, settings: [DeviceSetting]) async -> Result<Void, BluetoothServiceError> {
+    func updateSetting(broadcastId: String, settings: [DeviceSetting]) async -> Result<Void, BluetoothServiceError> {
         updateSettingCalls += 1
-        lastUpdateSettingDevice = device
+        lastUpdateSettingBroadcastId = broadcastId
         lastUpdateSettings = settings
         return updateSettingResult
     }
-    func updateFirmware(on device: Device, timestamp: UInt32) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
-    func clearData(on device: Device, dataType: DeviceClearType) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
+    func updateFirmware(broadcastId: String, timestamp: UInt32) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
+    func clearData(broadcastId: String, dataType: DeviceClearType) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
     func updateUserProfileForR4Scales() async -> Result<[String], BluetoothServiceError> {
         updateUserProfileForR4ScalesCalls += 1
         return updateUserProfileForR4ScalesResult
     }
-    func updateAccount(on device: Device, preference: R4ScalePreference) async -> Result<UserCreationResponse, BluetoothServiceError> {
+    func updateAccount(broadcastId: String) async -> Result<UserCreationResponse, BluetoothServiceError> {
         updateAccountCalls += 1
-        lastUpdateAccountDevice = device
-        lastUpdateAccountPreference = preference
+        lastUpdateAccountBroadcastId = broadcastId
         return updateAccountResult
     }
-    func getDeviceInfo(for device: Device, skipConnectionCheck: Bool) async -> Result<DeviceInfo, BluetoothServiceError> {
+    func getDeviceInfo(broadcastId: String, skipConnectionCheck: Bool) async -> Result<DeviceInfo, BluetoothServiceError> {
         getDeviceInfoCalls += 1
-        lastDeviceInfoDevice = device
+        lastDeviceInfoBroadcastId = broadcastId
         return getDeviceInfoResult
     }
-    func getWifiMacAddress(for device: Device) async -> Result<String, BluetoothServiceError> {
+    func getWifiMacAddress(broadcastId: String) async -> Result<String, BluetoothServiceError> {
         getWifiMacAddressCalls += 1
-        lastWifiMacDevice = device
+        lastWifiMacBroadcastId = broadcastId
         return getWifiMacAddressResult
     }
-    func startLiveMeasurement(for device: Device) async -> Result<Void, BluetoothServiceError> {
+    func startLiveMeasurement(broadcastId: String) async -> Result<Void, BluetoothServiceError> {
         startLiveMeasurementCalls += 1
-        lastStartLiveMeasurementDevice = device
+        lastStartLiveMeasurementBroadcastId = broadcastId
         return startLiveMeasurementResult
     }
-    func stopLiveMeasurement(for device: Device) async -> Result<Void, BluetoothServiceError> {
+    func stopLiveMeasurement(broadcastId: String) async -> Result<Void, BluetoothServiceError> {
         stopLiveMeasurementCalls += 1
-        lastStopLiveMeasurementDevice = device
+        lastStopLiveMeasurementBroadcastId = broadcastId
         return stopLiveMeasurementResult
     }
     func getMeasurementLiveData(broadcastId: String) async -> Result<MeasurementLiveData, BluetoothServiceError> { .failure(.notImplemented) }
-    func getScaleUserList(for device: Device, skipConnectionCheck: Bool) async -> Result<[DeviceUser], BluetoothServiceError> {
+    func getScaleUserList(broadcastId: String, skipConnectionCheck: Bool) async -> Result<[DeviceUser], BluetoothServiceError> {
         getScaleUserListCalls += 1
-        lastUserListDevice = device
+        lastUserListBroadcastId = broadcastId
         return getScaleUserListResult
     }
-    func getDeviceLogs(for device: Device) async -> Result<DeviceLogs, BluetoothServiceError> { .failure(.notImplemented) }
-    func updateWeightOnlyMode(on device: Device?) async -> Result<Void, BluetoothServiceError> {
+    func getDeviceLogs(broadcastId: String) async -> Result<DeviceLogs, BluetoothServiceError> { .failure(.notImplemented) }
+    func updateWeightOnlyMode(broadcastId: String?) async -> Result<Void, BluetoothServiceError> {
         updateWeightOnlyModeCalls += 1
-        lastWeightOnlyModeDevice = device
+        lastWeightOnlyModeBroadcastId = broadcastId
         return updateWeightOnlyModeResult
     }
     func deleteR4Scales() async -> Result<Void, BluetoothServiceError> {

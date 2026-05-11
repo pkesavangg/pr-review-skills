@@ -163,6 +163,7 @@
     <ID>LongMethod:TokenAuthenticator.kt$TokenAuthenticator$private suspend fun tokenRefresh(accountId: String?): Token?</ID>
     <ID>LongMethod:TokenMigrationHelper.kt$TokenMigrationHelper$suspend fun migrateIfNeeded()</ID>
     <ID>LongMethod:WebViewScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun WebViewScreen( url: String, onClose: () -&gt; Unit, )</ID>
+    <ID>LongMethod:WeightHistoryDetailItem.kt$@Composable fun WeightHistoryDetailItemHeader( item: ScaleEntry, canExpand: Boolean, isExpanded: Boolean, onClick: () -&gt; Unit, )</ID>
     <ID>LongMethod:WeightlessScreen.kt$@Composable private fun WeightlessContent(state: WeightlessState, handleIntent: (WeightlessIntent) -&gt; Unit)</ID>
     <ID>LongMethod:WiFiConfigManager.kt$WiFiConfigManager$private fun setupWifi()</ID>
     <ID>LongMethod:WifiScaleService.kt$WifiScaleService$fun connect( setupInfo: WifiSetupInfo, setupType: WifiSetupType, onSuccess: () -&gt; Unit, onError: (String) -&gt; Unit )</ID>

@@ -120,12 +120,12 @@ private struct ScaleDiscoveredSheetTestView: View {
             )
             
             let dummyDiscoveryEvent = DeviceDiscoveryEvent(
-                device: dummyDevice,
+                device: dummyDevice.toSnapshot(),
                 deviceInfo: dummyDeviceInfo,
                 protocolType: .R4,
                 isNew: true
             )
-            
+
             ScaleDiscoveredSheetView(
                 device: dummyDevice,
                 discoveryEvent: dummyDiscoveryEvent,

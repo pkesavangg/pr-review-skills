@@ -30,11 +30,10 @@ struct A3BpmNicknameView: View {
                     submitLabel: .done
                 ),
                 value: $nickname,
-                focusedField: $focusedField,
-                onCommit: {
-                    focusedField = nil
-                }
-            )
+                focusedField: $focusedField
+            ) {
+                focusedField = nil
+            }
 
             Spacer()
         }

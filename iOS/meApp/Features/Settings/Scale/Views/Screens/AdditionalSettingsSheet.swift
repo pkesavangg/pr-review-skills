@@ -76,7 +76,7 @@ struct AdditionalSettingsSheet: View {
                     ActionListItemView(
                         config: ActionListItemConfig(
                             title: lang.timeFormat,
-                            value: (viewModel.scale.r4ScalePreference?.timeFormat ?? "12") + "H"
+                            value: viewModel.timeFormat + "H"
                         ) { showTimeFormatPicker = true }
                     )
                     ActionListItemView(

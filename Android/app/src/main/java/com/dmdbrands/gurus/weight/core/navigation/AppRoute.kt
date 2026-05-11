@@ -105,7 +105,7 @@ sealed class AppRoute : NavKey {
     data object Weightless : AccountSettings()
 
     @Serializable
-    data object AddEditScales : AccountSettings()
+    data object MyDevices : AccountSettings()
 
     @Serializable
     data object ChooseScale : AccountSettings()
