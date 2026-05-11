@@ -22,16 +22,12 @@ final class YearSectionViewModel: BaseSectionViewModel {
     /// Align plotted monthly points to the same month-start noon positions used by
     /// year-view tick generation and selection snapping.
     override func plotXDate(for original: Date) -> Date {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = Calendar.current.timeZone
-        cal.locale = Calendar.current.locale
-
+        let cal = localCalendar
         var components = cal.dateComponents([.year, .month], from: original)
         components.day = 1
         components.hour = 12
         components.minute = 0
         components.second = 0
-
         return cal.date(from: components) ?? super.plotXDate(for: original)
     }
 

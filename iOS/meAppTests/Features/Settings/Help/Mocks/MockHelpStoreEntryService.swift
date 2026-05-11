@@ -22,12 +22,19 @@ final class MockHelpStoreEntryService: EntryServiceProtocol {
         clearLastSyncTimestampCalls += 1
         if let error = clearLastSyncTimestampError { throw error }
     }
+    func removeAccountFromDevice(accountId: String) async throws {}
     func syncAllEntriesWithRemote() async { syncAllEntriesWithRemoteCalls += 1 }
     func migrateFromSQLiteIfNeeded() async {}
     func loadDashboardData(entryType: EntryType) async {}
+    func loadBabyDashboardData(babyId: String) async {}
     func saveNewEntry(_ entry: Entry) async throws {}
     func saveNewEntries(_ entries: [Entry]) async throws {}
     func deleteEntry(_ entry: Entry) async throws {}
+    func deleteEntry(entryId: UUID) async throws {}
+    func assignBabyEntry(entryId: UUID, babyId: String) async throws {}
+    func fetchEntrySnapshot(byId id: UUID) async throws -> EntrySnapshot? { nil }
+    func fetchAllEntrySnapshots() async throws -> [EntrySnapshot] { [] }
+    func fetchEntrySnapshots(forMonth month: String, entryType: EntryType) async throws -> [EntrySnapshot] { [] }
     func getAllEntries() async throws -> [Entry] { [] }
     func getAllEntriesAsDTO() async throws -> [BathScaleOperationDTO] { [] }
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool { false }
@@ -59,7 +66,11 @@ final class MockHelpStoreEntryService: EntryServiceProtocol {
     func getStreak(entryType: EntryType) async throws -> Streak { Streak(current: 0, max: 0) }
     func exportCSV() async throws {}
     func createBpmEntry(_ dto: BpmOperationDTO) async throws {}
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {}
     func fetchBpmEntries() async throws -> [BpmOperationDTO] { [] }
     func deleteBpmEntry(entryTimestamp: String) async throws {}
     func exportBpmCSV() async throws {}
+    func migrateBabyEntriesToDecigrams() async {}
+    func getEntry(byId id: UUID) async throws -> Entry? { nil }
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws {}
 }

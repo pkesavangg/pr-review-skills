@@ -63,7 +63,7 @@ extension BabyScaleSetupStore {
             let step = steps[idx]
             if step == .permissions && arePermissionsEnabled() {
                 idx += direction
-            } else if direction == -1 && (step == .wakeup || step == .connectingBluetooth) {
+            } else if direction == -1 && (step == .wakeup || step == .connectingBluetooth || step == .connectionError) {
                 idx += direction
             } else {
                 break
@@ -90,7 +90,7 @@ extension BabyScaleSetupStore {
 
     /// Steps where the footer buttons should be hidden.
     private var stepsToHideFooter: Set<BabyScaleSetupStep> {
-        [.wakeup, .connectingBluetooth]
+        [.wakeup, .connectingBluetooth, .connectionError]
     }
 
     func shouldShowFooter() -> Bool {
@@ -123,7 +123,7 @@ extension BabyScaleSetupStore {
         bluetoothService.isSetupInProgress = true
 
         // Inject discovery context if provided.
-        self.discoveredScale = discoveredScale
+        self.discoveredScale = discoveredScale?.toSnapshot()
         self.discoveryEvent = discoveryEvent
 
         // Subscribe to permission changes
@@ -156,12 +156,9 @@ extension BabyScaleSetupStore {
             message: "Baby scale setup started for SKU: \(sku)"
         )
 
-        // If a discovered scale was passed in and permissions are granted, pair directly
+        // If a discovered scale was passed in and permissions are granted, go to wakeup step
         if discoveredScale != nil && discoveryEvent != nil && arePermissionsEnabled() {
-            Task {
-                connectionState = .loading
-                await confirmPair()
-            }
+            navigateToStep(.wakeup)
         } else if discoveredScale != nil && discoveryEvent != nil {
             navigateToStep(.permissions)
         }

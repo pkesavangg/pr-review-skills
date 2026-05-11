@@ -1,15 +1,17 @@
-import Combine
 //
 //  HistoryStore.swift
 //  meApp
 //
 //  Created by Barath Chittibabu on 17/06/25.
 //
+// swiftlint:disable file_length
+import Combine
 import Foundation
 import SwiftUI
 
 /// Store / ViewModel that powers the History feature (monthly summaries, month detail, entry detail, metric info).
 @MainActor
+// swiftlint:disable:next type_body_length
 final class HistoryStore: ObservableObject {
 
     // MARK: - Dependencies
@@ -24,7 +26,7 @@ final class HistoryStore: ObservableObject {
 
     // MARK: - Month Detail State
     @Published private(set) var selectedMonth: HistoryMonth?
-    @Published private(set) var entries: [Entry] = []
+    @Published private(set) var entries: [EntrySnapshot] = []
 
     /// Set of entry ids that are currently expanded in the Month Detail screen.
     @Published var expandedEntries: Set<String> = []
@@ -72,11 +74,15 @@ final class HistoryStore: ObservableObject {
 
     // MARK: - Init ------------------------------------------------------
 
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     init() {
         entryService.entrySaved
             .sink { [weak self] entry in
                 guard let self = self else { return }
-                Task {
+                Task { @MainActor in
+                    // Cancel any in-flight month load so the new entry is always picked up
+                    self.monthsLoadTask?.cancel()
+                    self.monthsLoadTask = nil
                     self.invalidateCacheForCurrentType()
                     await self.loadMonthsInternal(canShowLoader: false)
                     // If we're viewing a month and the saved entry belongs to that month, refresh entries inline
@@ -100,7 +106,10 @@ final class HistoryStore: ObservableObject {
         entryService.entryDeleted
             .sink { [weak self] entry in
                 guard let self = self else { return }
-                Task {
+                Task { @MainActor in
+                    // Cancel any in-flight month load so the deleted entry is always reflected
+                    self.monthsLoadTask?.cancel()
+                    self.monthsLoadTask = nil
                     self.invalidateCacheForCurrentType()
                     await self.loadMonthsInternal(canShowLoader: false)
                     // If we're viewing a month and the deleted entry belongs to that month, refresh entries inline
@@ -126,10 +135,13 @@ final class HistoryStore: ObservableObject {
         productTypeStore.selectedItemPublisher
             .dropFirst()
             .debounce(for: .milliseconds(300), scheduler: DispatchQueue.main)
-            .sink { [weak self] _ in
+            .sink { [weak self] newItem in
                 guard let self = self else { return }
                 self.monthsLoadTask?.cancel()
                 self.monthsLoadTask = nil
+                // Always force a fresh load when product type changes — the selected baby
+                // may have received new entries since we last viewed it.
+                self.loadedProductTypes.remove(newItem.id)
                 self.loadMonths()
             }
             .store(in: &cancellables)
@@ -173,7 +185,7 @@ final class HistoryStore: ObservableObject {
     func refreshAllEntries() async {
         invalidateCacheForCurrentType()
         // Refresh account data to ensure we have latest unit settings
-        _ = try? await accountService.refreshAccount()
+        try? await accountService.refreshAccount()
         await entryService.syncAllEntriesWithRemote()
         await loadMonthsInternal(canShowLoader: false)
         if let selectedMonth {
@@ -186,14 +198,14 @@ final class HistoryStore: ObservableObject {
     ///   - entry: The entry to be deleted.
     ///   - onConfirm: Executed when user confirms deletion.
     ///   - onCancel:  Executed when user cancels (optional).
-    func showDeleteEntryAlert(entry: Entry, onCancel: (() -> Void)? = nil) {
+    func showDeleteEntryAlert(entry: EntrySnapshot, onCancel: (() -> Void)? = nil) {
         let alert = AlertModel(
             title: AlertStrings.DeleteEntryAlert.title,
             message: AlertStrings.DeleteEntryAlert.message,
             buttons: [
                 AlertButtonModel(title: AlertStrings.DeleteEntryAlert.deleteButton, type: .danger) { _ in
                     Task {
-                        await self.deleteEntryInternal(entry)
+                        await self.deleteEntryInternal(entryId: entry.id)
                         onCancel?()
                     }
                 },
@@ -244,6 +256,7 @@ final class HistoryStore: ObservableObject {
         loadedProductTypes.remove(currentId)
     }
 
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     private func loadMonthsInternal(canShowLoader: Bool = true) async {
         guard monthsLoadTask == nil else { return }            // prevent overlap
 
@@ -272,17 +285,17 @@ final class HistoryStore: ObservableObject {
             monthsLoadTask = Task { [weak self] in
                 guard let self else { return }
                 do {
-                    let allEntries = try await self.entryService.getAllEntries()
-                    let babyId: String? = {
-                        if case .baby(let profile) = self.productTypeStore.selectedItem { return profile.id }
+                    let allEntries = try await self.entryService.fetchAllEntrySnapshots()
+                    let babyProfile: BabyProfile? = {
+                        if case .baby(let profile) = self.productTypeStore.selectedItem { return profile }
                         return nil
                     }()
                     let babyEntries = allEntries.filter {
-                        $0.deviceType == DeviceType.babyScale.rawValue
+                        $0.entryType == EntryType.baby.rawValue
                         && $0.operationType == OperationType.create.rawValue
-                        && $0.babyId == babyId
+                        && $0.babyEntry?.babyId == babyProfile?.id
                     }
-                    let result = self.mapBabyEntriesToWeeks(babyEntries)
+                    let result = self.mapBabyEntriesToWeeks(babyEntries, profile: babyProfile)
                     self.babyWeeks = result
                     self.isEmptyState = result.isEmpty
                 } catch {
@@ -322,18 +335,18 @@ final class HistoryStore: ObservableObject {
         guard let selectedMonth else { return }
 
         do {
-            let fetched = try await entryService.getMonthDetail(month: selectedMonth.id)
+            let fetched = try await entryService.fetchEntrySnapshots(forMonth: selectedMonth.id)
 
             // UI-level deduplication:
             // Group by entryTimestamp and keep the latest operation by serverTimestamp.
             let grouped = Dictionary(grouping: fetched) { $0.entryTimestamp }
-            let latestPerTimestamp: [Entry] = grouped.compactMap { _, values in
+            let latestPerTimestamp: [EntrySnapshot] = grouped.compactMap { _, values in
                 values.max { ($0.serverTimestamp ?? "") < ($1.serverTimestamp ?? "") }
             }
             // Show only final creates; hide deletes
             let visible = latestPerTimestamp.filter { $0.operationType == OperationType.create.rawValue }
             // Sort newest first by entryTimestamp
-            let pairs = visible.map { entry -> (Entry, Int64) in
+            let pairs = visible.map { entry -> (EntrySnapshot, Int64) in
                 (entry, DateTimeTools.getTimestamp(entry.entryTimestamp))
             }
             let sorted = pairs.sorted { $0.1 > $1.1 }.map { $0.0 }
@@ -344,12 +357,70 @@ final class HistoryStore: ObservableObject {
         }
     }
 
-    private func deleteEntryInternal(_ entry: Entry) async {
+    private func deleteEntryInternal(entryId: UUID) async {
         do {
             notificationService.showLoader(LoaderModel(text: loaderLang.deletingEntry))
-            try await entryService.deleteEntry(entry)
+            try await entryService.deleteEntry(entryId: entryId)
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to delete entry:", data: error.localizedDescription)
+        }
+        notificationService.dismissLoader()
+    }
+
+    // MARK: - BP Delete
+
+    func showDeleteBPEntryAlert(entry: BPHistoryEntry) {
+        let alert = AlertModel(
+            title: AlertStrings.DeleteEntryAlert.title,
+            message: AlertStrings.DeleteEntryAlert.message,
+            buttons: [
+                AlertButtonModel(title: AlertStrings.DeleteEntryAlert.deleteButton, type: .danger) { _ in
+                    Task { await self.deleteBPEntryInternal(entry) }
+                },
+                AlertButtonModel(title: AlertStrings.DeleteEntryAlert.cancelButton, type: .secondary) { _ in
+                    self.notificationService.dismissAlert()
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+
+    private func deleteBPEntryInternal(_ entry: BPHistoryEntry) async {
+        do {
+            notificationService.showLoader(LoaderModel(text: loaderLang.deletingEntry))
+            try await entryService.deleteBpmEntry(entryTimestamp: entry.entryTimestamp)
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to delete BP entry: \(error.localizedDescription)")
+            notificationService.showToast(ToastModel(message: toastLang.errorDeletingEntry))
+        }
+        notificationService.dismissLoader()
+    }
+
+    // MARK: - Baby Delete
+
+    func showDeleteBabyEntryAlert(entry: BabyHistoryEntry) {
+        let alert = AlertModel(
+            title: AlertStrings.DeleteEntryAlert.title,
+            message: AlertStrings.DeleteEntryAlert.message,
+            buttons: [
+                AlertButtonModel(title: AlertStrings.DeleteEntryAlert.deleteButton, type: .danger) { _ in
+                    Task { await self.deleteBabyEntryInternal(entry) }
+                },
+                AlertButtonModel(title: AlertStrings.DeleteEntryAlert.cancelButton, type: .secondary) { _ in
+                    self.notificationService.dismissAlert()
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+
+    private func deleteBabyEntryInternal(_ babyEntry: BabyHistoryEntry) async {
+        do {
+            notificationService.showLoader(LoaderModel(text: loaderLang.deletingEntry))
+            try await entryService.deleteEntry(entryId: babyEntry.id)
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to delete baby entry: \(error.localizedDescription)")
+            notificationService.showToast(ToastModel(message: toastLang.errorDeletingEntry))
         }
         notificationService.dismissLoader()
     }
@@ -399,35 +470,62 @@ final class HistoryStore: ObservableObject {
 
     // MARK: - Baby API
 
+    /// Whether the active account uses metric (kg) for weight.
+    var isMetric: Bool {
+        accountService.activeAccount?.weightUnit == .kg
+    }
+
     /// User tapped a baby day row.
-    func selectBabyDay(_ day: BabyHistoryDay) {
+    func selectBabyDay(_ day: BabyHistoryDay) { // swiftlint:disable:this function_body_length
         selectedBabyDay = day
         Task {
             do {
-                let allEntries = try await entryService.getAllEntries()
-                let babyId: String? = {
-                    if case .baby(let profile) = productTypeStore.selectedItem { return profile.id }
+                let allEntries = try await entryService.fetchAllEntrySnapshots()
+                let babyProfile: BabyProfile? = {
+                    if case .baby(let profile) = productTypeStore.selectedItem { return profile }
                     return nil
                 }()
+                let babyId = babyProfile?.id
                 let dayEntries = allEntries.filter {
-                    $0.deviceType == DeviceType.babyScale.rawValue
+                    $0.entryType == EntryType.baby.rawValue
                     && $0.operationType == OperationType.create.rawValue
-                    && $0.babyId == babyId
+                    && $0.babyEntry?.babyId == babyId
                     && self.localDayString(from: $0.entryTimestamp) == day.id
                 }
+                let metric = self.isMetric
                 babyEntries = dayEntries.compactMap { entry -> BabyHistoryEntry? in
                     guard let baby = entry.babyEntry else { return nil }
-                    let totalOz = baby.weight
-                    let lbs = totalOz / 16
-                    let oz = Double(totalOz % 16)
+                    let decigrams = baby.weight
+                    let source = baby.source
+                    let displayUnit: ConversionTools.BabyDisplayUnit = metric ? .kg : .lbOz
+                    let graduatedDecigrams = ConversionTools.convertToDisplayWeightBase(
+                        decigrams: decigrams, source: source, unit: displayUnit, isBabyScaleEntry: true
+                    )
+                    let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(graduatedDecigrams)
+                    let kg = ConversionTools.convertBabyDecigramsToKg(graduatedDecigrams)
+                    let lbDecimal = ConversionTools.convertBabyDecigramsToLb(graduatedDecigrams)
+                    let mm = baby.length
+                    let lengthInches = ConversionTools.convertBabyMmToInches(mm)
+                    let lengthCm = ConversionTools.convertBabyMmToCm(mm)
+                    let pct = BabyWeightPercentileCalculator.calculatePercentile(
+                        weightDecigrams: decigrams,
+                        biologicalSex: babyProfile?.biologicalSex,
+                        birthday: babyProfile?.birthday,
+                        entryDate: DateTimeTools.parse(entry.entryTimestamp) ?? Date()
+                    )
                     return BabyHistoryEntry(
                         id: entry.id,
                         entryTimestamp: entry.entryTimestamp,
-                        weightLbs: lbs,
-                        weightOz: oz,
-                        lengthInches: Double(baby.length),
-                        percentile: 0,
-                        notes: baby.note.isEmpty ? nil : baby.note
+                        weightLbs: lbsOz.lbs,
+                        weightOz: lbsOz.oz,
+                        weightKg: kg,
+                        weightLb: lbDecimal,
+                        lengthInches: lengthInches,
+                        lengthCm: lengthCm,
+                        percentile: pct,
+                        notes: entry.note?.isEmpty == false ? entry.note : nil,
+                        weightDisplay: self.formatBabyWeightDisplay(decigrams: decigrams, source: source, isMetric: metric),
+                        lengthDisplay: self.formatBabyLengthDisplay(mm: mm, isMetric: metric)
                     )
                 }.sorted { $0.entryTimestamp > $1.entryTimestamp }
             } catch {
@@ -440,6 +538,37 @@ final class HistoryStore: ObservableObject {
     func resetSelectedBabyDay() {
         selectedBabyDay = nil
         babyEntries = []
+    }
+
+    // MARK: - Baby Display Formatting
+
+    /// Formats baby weight in decigrams as a display string based on unit preference.
+    /// When source is provided (e.g. "0220", "0222"), applies graduation rounding to match scale LCD.
+    private func formatBabyWeightDisplay(decigrams: Int, source: String? = nil, isMetric: Bool) -> String {
+        guard decigrams > 0 else { return "--" }
+        let displayUnit: ConversionTools.BabyDisplayUnit = isMetric ? .kg : .lbOz
+        let graduatedDecigrams = ConversionTools.convertToDisplayWeightBase(
+            decigrams: decigrams, source: source, unit: displayUnit, isBabyScaleEntry: true
+        )
+        if isMetric {
+            let kg = ConversionTools.convertBabyDecigramsToKg(graduatedDecigrams)
+            return "\(String(format: "%.3f", kg)) \(HistoryListStrings.kg)"
+        } else {
+            let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(graduatedDecigrams)
+            return "\(lbsOz.lbs) \(HistoryListStrings.lbs) \(String(format: "%.1f", lbsOz.oz)) \(HistoryListStrings.oz)"
+        }
+    }
+
+    /// Formats baby length in millimeters as a display string based on unit preference.
+    private func formatBabyLengthDisplay(mm: Int, isMetric: Bool) -> String {
+        guard mm > 0 else { return "--" }
+        if isMetric {
+            let cm = ConversionTools.convertBabyMmToCm(mm)
+            return "\(String(format: "%.1f", cm)) \(HistoryListStrings.cm)"
+        } else {
+            let inches = ConversionTools.convertBabyMmToInches(mm)
+            return "\(String(format: "%.1f", inches)) \(HistoryListStrings.inUnit)"
+        }
     }
 
     // MARK: - Date Helpers
@@ -497,35 +626,60 @@ final class HistoryStore: ObservableObject {
     }
 
     /// Groups baby entries by day, then by week, building weekly summaries.
-    private func mapBabyEntriesToWeeks(_ entries: [Entry]) -> [BabyHistoryWeek] {
+    private func mapBabyEntriesToWeeks(_ entries: [EntrySnapshot], profile: BabyProfile? = nil) -> [BabyHistoryWeek] {
         // Group by local day
         let grouped = Dictionary(grouping: entries) { entry -> String in
             return self.localDayString(from: entry.entryTimestamp)
         }.filter { !$0.key.isEmpty }
 
         // Build days sorted newest first
+        let metric = self.isMetric
         let days: [BabyHistoryDay] = grouped.map { dayId, dayEntries in
             let count = dayEntries.count
             let weights = dayEntries.compactMap { $0.babyEntry?.weight }
             let avgWeight = weights.isEmpty ? 0 : weights.reduce(0, +) / weights.count
             let lengths = dayEntries.compactMap { $0.babyEntry?.length }
-            let avgLength = lengths.isEmpty ? 0.0 : Double(lengths.reduce(0, +)) / Double(lengths.count)
+            let avgMm = lengths.isEmpty ? 0 : lengths.reduce(0, +) / lengths.count
+            let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(avgWeight)
+            let kg = ConversionTools.convertBabyDecigramsToKg(avgWeight)
+            let lbDecimal = ConversionTools.convertBabyDecigramsToLb(avgWeight)
+            let lengthInches = ConversionTools.convertBabyMmToInches(avgMm)
+            let lengthCm = ConversionTools.convertBabyMmToCm(avgMm)
+            let pct: Int = {
+                let fmt = DateFormatter()
+                fmt.dateFormat = "yyyy-MM-dd"
+                let entryDate = fmt.date(from: dayId) ?? Date()
+                return BabyWeightPercentileCalculator.calculatePercentile(
+                    weightDecigrams: avgWeight,
+                    biologicalSex: profile?.biologicalSex,
+                    birthday: profile?.birthday,
+                    entryDate: entryDate
+                )
+            }()
             return BabyHistoryDay(
                 id: dayId,
                 entryCount: count,
-                weightLbs: avgWeight / 16,
-                weightOz: Double(avgWeight % 16),
-                lengthInches: avgLength,
-                percentile: 0
+                weightLbs: lbsOz.lbs,
+                weightOz: lbsOz.oz,
+                weightKg: kg,
+                weightLb: lbDecimal,
+                lengthInches: lengthInches,
+                lengthCm: lengthCm,
+                percentile: pct,
+                weightDisplay: self.formatBabyWeightDisplay(decigrams: avgWeight, isMetric: metric),
+                lengthDisplay: self.formatBabyLengthDisplay(mm: avgMm, isMetric: metric)
             )
         }.sorted { $0.id > $1.id }
 
         // Group days into weeks of 7
         var weeks: [BabyHistoryWeek] = []
-        for (index, chunk) in days.chunked(into: 7).enumerated() {
+        let chunks = days.chunked(into: 7)
+        let totalWeeks = chunks.count
+        for (index, chunk) in chunks.enumerated() {
+            let weekNumber = totalWeeks - index
             weeks.append(BabyHistoryWeek(
-                id: "week-\(index + 1)",
-                weekNumber: index + 1,
+                id: "week-\(weekNumber)",
+                weekNumber: weekNumber,
                 days: chunk
             ))
         }

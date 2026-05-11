@@ -1,7 +1,7 @@
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -21,7 +21,7 @@ struct BluetoothServiceBpmTests {
         )
 
         let event = DeviceDiscoveryEvent(
-            device: device,
+            device: device.toSnapshot(),
             deviceInfo: bpmInfo,
             protocolType: .A6,
             isNew: true,
@@ -46,7 +46,7 @@ struct BluetoothServiceBpmTests {
         )
 
         let event = DeviceDiscoveryEvent(
-            device: device,
+            device: device.toSnapshot(),
             deviceInfo: scaleInfo,
             protocolType: .A6,
             isNew: true
@@ -171,7 +171,7 @@ struct BluetoothServiceBpmTests {
     @Test("MockBluetoothService: connectBpm records broadcast ID")
     func mockConnectBpm() async {
         let mock = MockBluetoothService()
-        _ = await mock.connectBpm(broadcastId: "BPM001")
+        _ = await mock.connectBpm(broadcastId: "BPM001", userNumber: 1, replaceUser: false, pairedSKUMonitors: [])
 
         #expect(mock.connectBpmCalls == 1)
         #expect(mock.lastConnectBpmBroadcastId == "BPM001")
@@ -202,7 +202,7 @@ struct BluetoothServiceBpmTests {
     func connectBpmEmptyBroadcastId() async {
         let sut = makeSUT()
 
-        let result = await sut.connectBpm(broadcastId: "")
+        let result = await sut.connectBpm(broadcastId: "", userNumber: 1, replaceUser: false, pairedSKUMonitors: [])
 
         switch result {
         case .success:
@@ -275,6 +275,7 @@ struct BluetoothServiceBpmTests {
             accountService: account ?? MockAccountService(),
             scaleService: scale ?? MockScaleService(),
             entryService: entry ?? MockEntryService(),
+            babyService: MockBabyService(),
             logger: logger ?? MockLoggerService(),
             discoveryManager: discovery ?? MockBLEDiscoveryManager()
         )

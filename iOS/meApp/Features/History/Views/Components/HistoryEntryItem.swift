@@ -15,15 +15,33 @@ struct HistoryEntryItem: View {
     @Environment(\.weightlessSettings) private var weightlessSettings
     @Environment(\.weightUnit) private var weightUnit
     
-    let entry: Entry
+    let entry: EntrySnapshot
     let isExpanded: Bool
     let onTap: () -> Void
     let onDelete: () -> Void
-    let onMetricTap: (Entry, BodyMetric) -> Void
+    let onMetricTap: (EntrySnapshot, BodyMetric) -> Void
     var openItemID: Binding<UUID?>? // Optional binding for swipeable open tracking
     
     // MARK: - Computed Properties
-    
+
+    // Hide "bpm" on pulse for weight-scale entries so heart rate renders as a bare number.
+    private func displayMetric(for metric: BodyMetric, config: MetricData) -> MetricData {
+        guard metric == .pulse, entry.entryType == EntryType.scale.rawValue else {
+            return config
+        }
+        return MetricData(
+            unit: "",
+            label: config.label,
+            expandedLabel: config.expandedLabel,
+            bodyCompositionRelated: config.bodyCompositionRelated,
+            icon: config.icon,
+            min: config.min,
+            max: config.max,
+            isWholeNumber: config.isWholeNumber,
+            preLabel: config.preLabel
+        )
+    }
+
     // MARK: - Body
     
     var body: some View {
@@ -61,11 +79,15 @@ struct HistoryEntryItem: View {
                         .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
                 
-                // Expansion chevron (only if metrics exist)
+                // Expansion chevron (only if metrics exist); placeholder preserves alignment otherwise
                 if !entry.metricItems.isEmpty {
                     AppIconView(icon: AppAssets.chevronDown)
                         .foregroundColor(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                        .padding(.leading, .spacingSM)
+                } else {
+                    Color.clear
+                        .frame(width: 24, height: 24)
                         .padding(.leading, .spacingSM)
                 }
             }
@@ -102,7 +124,7 @@ struct HistoryEntryItem: View {
                     ForEach(Array(entry.metricItems.enumerated()), id: \.0) { index, item in
                         if let metricConfig = BodyMetrics.config[item.metric] {
                             HistoryMetricItem(
-                                metric: metricConfig,
+                                metric: displayMetric(for: item.metric, config: metricConfig),
                                 metricType: item.metric,
                                 value: item.value,
                                 index: index,
@@ -129,34 +151,45 @@ struct HistoryEntryItem: View {
 #if DEBUG
 struct HistoryEntryItem_Previews: PreviewProvider {
     static var previews: some View {
-        let entry = Entry(
+        let entry = EntrySnapshot(
             id: UUID(),
-            entryTimestamp: "2025-12-16T14:10:00Z",
             accountId: "123",
+            entryTimestamp: "2025-12-16T14:10:00Z",
+            serverTimestamp: nil,
+            opTimestamp: nil,
             operationType: OperationType.create.rawValue,
-            deviceType: "scale",
-            isSynced: true
+            entryType: EntryType.scale.rawValue,
+            isSynced: true,
+            note: nil,
+            attempts: 0,
+            isFailedToSync: false,
+            scaleEntry: BathScaleEntrySnapshot(
+                weight: 1492,
+                bodyFat: 50,
+                muscleMass: 569,
+                water: 53,
+                bmi: nil,
+                source: nil,
+                systolic: nil,
+                diastolic: nil,
+                meanArterial: nil
+            ),
+            scaleEntryMetric: BathScaleMetricSnapshot(
+                bmr: 1862,
+                metabolicAge: 28,
+                proteinPercent: nil,
+                pulse: 80,
+                skeletalMusclePercent: 527,
+                subcutaneousFatPercent: 103,
+                visceralFatLevel: 8,
+                boneMass: 44,
+                impedance: 100,
+                unit: "kg"
+            ),
+            bpmEntry: nil,
+            babyEntry: nil
         )
-        
-        entry.scaleEntry = BathScaleEntry(
-            weight: 1492,
-            bodyFat: 50,
-            muscleMass: 569,
-            water: 53
-        )
-        
-        entry.scaleEntryMetric = BathScaleMetric(
-            bmr: 1862,
-            metabolicAge: 28,
-            pulse: 80,
-            skeletalMusclePercent: 527,
-            subcutaneousFatPercent: 103,
-            visceralFatLevel: 8,
-            boneMass: 44,
-            impedance: 100,
-            unit: "kg"
-        )
-        
+
         @State var openItemID: UUID?
         return VStack(spacing: .spacingMD) {
             HistoryEntryItem(
@@ -167,7 +200,7 @@ struct HistoryEntryItem_Previews: PreviewProvider {
                 onMetricTap: { _, _ in },
                 openItemID: .constant(nil)
             )
-            
+
             HistoryEntryItem(
                 entry: entry,
                 isExpanded: true,

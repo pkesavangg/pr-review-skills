@@ -32,16 +32,12 @@ struct BpmEntryServiceTests {
         #expect(repo.saveEntryCalls == 1)
         #expect(repo.entries.count == 1)
         let savedEntry = repo.entries.first
-        #expect(savedEntry?.deviceType == DeviceType.bpm.rawValue)
+        #expect(savedEntry?.entryType == EntryType.bpm.rawValue)
         #expect(savedEntry?.scaleEntry?.systolic == 130)
         #expect(savedEntry?.scaleEntry?.diastolic == 85)
         #expect(savedEntry?.scaleEntryMetric?.pulse == 68)
         #expect(savedEntry?.operationType == OperationType.create.rawValue)
         #expect(savedNotifications.count >= 1)
-
-        // Verify sync was attempted
-        #expect(remote.syncBpmOperationCalls == 1)
-        #expect(remote.lastSyncedBpmOperation?.systolic == 130.0)
         cancellable.cancel()
     }
 
@@ -58,8 +54,6 @@ struct BpmEntryServiceTests {
         } catch {
             #expect(error as? EntryTestError == .localFailure)
         }
-
-        #expect(remote.syncBpmOperationCalls == 0)
     }
 
     @Test("createBpmEntry: sets accountId from active account")
@@ -159,7 +153,6 @@ struct BpmEntryServiceTests {
         #expect(updatedEntry?.operationType == OperationType.delete.rawValue)
         #expect(updatedEntry?.isSynced == false)
         #expect(deletedNotifications.count >= 1)
-        #expect(remote.syncBpmOperationCalls == 1)
         cancellable.cancel()
     }
 
@@ -193,35 +186,6 @@ struct BpmEntryServiceTests {
         #expect(!sut.bpmDailySummaries.contains { $0.period == "2026-03-01" })
     }
 
-    // MARK: - exportBpmCSV
-
-    @Test("exportBpmCSV: calls remote export")
-    func exportBpmCSVSuccess() async throws {
-        let remote = MockEntryRepositoryAPI()
-        let sut = makeSUT(remote: remote)
-
-        try await sut.exportBpmCSV()
-
-        #expect(remote.exportBpmCsvCalls == 1)
-    }
-
-    // MARK: - BPM Sync
-
-    @Test("createBpmEntry: sync failure increments attempts but entry is saved")
-    func createBpmEntrySyncFailure() async throws {
-        let repo = MockEntryRepository()
-        let remote = MockEntryRepositoryAPI()
-        remote.syncBpmOperationError = EntryTestError.remoteFailure
-        let sut = makeSUT(repo: repo, remote: remote)
-
-        try await sut.createBpmEntry(EntryTestFixtures.makeBpmDTO())
-
-        #expect(repo.entries.count == 1)
-        #expect(remote.syncBpmOperationCalls == 1)
-        // Entry should have incremented attempts due to sync failure
-        #expect(repo.updateEntrySyncStatusCalls == 1)
-    }
-
     // MARK: - Helpers
 
     private func makeSUT(
@@ -231,7 +195,7 @@ struct BpmEntryServiceTests {
         integration: MockIntegrationService? = nil,
         goalAlert: MockGoalAlertService? = nil,
         logger: MockLoggerService? = nil,
-        activeAccount: Account? = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "bpm@example.com", isActive: true)
+        activeAccount: AccountSnapshot? = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "bpm@example.com", isActiveAccount: true)
     ) -> EntryService {
         let account = MockAccountService()
         account.activeAccount = activeAccount

@@ -12,6 +12,7 @@ struct MyAccountsScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject private var router: Router<SettingsRoute>
     @EnvironmentObject private var settingsStore: SettingsStore
+    @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
     @StateObject private var accountsStore = AccountsStore()
     @State private var openItemID: UUID?
     
@@ -36,12 +37,32 @@ struct MyAccountsScreen: View {
                 .scrollContentBackground(.hidden)
             }
         }
+        .onAppear {
+            accountsStore.onAccountSwitchSuccess = {
+                tabViewModel.selectedTab = .dash
+                router.navigateBack()
+            }
+        }
         .sheet(isPresented: $accountsStore.canShowLoginScreen) {
-            LoginScreen(prefilledEmail: accountsStore.emailForLogin, isFromAccountSwitching: true)
+            LoginScreen(
+                prefilledEmail: accountsStore.emailForLogin,
+                isFromAccountSwitching: true,
+                onAccountSwitchingLoginSuccess: {
+                    accountsStore.canShowLoginScreen = false
+                    tabViewModel.selectedTab = .dash
+                    router.navigateBack()
+                }
+            )
                 .interactiveDismissDisabled()
         }
         .sheet(isPresented: $accountsStore.canShowAccountSignupScreen) {
-            SignupScreen(isFromAccountSwitching: true)
+            SignupScreen(
+                isFromAccountSwitching: true,
+                onAccountSwitchingSignupSuccess: {
+                    accountsStore.canShowAccountSignupScreen = false
+                    tabViewModel.selectedTab = .dash
+                }
+            )
                 .interactiveDismissDisabled()
         }
         .navigationBarBackButtonHidden(true)

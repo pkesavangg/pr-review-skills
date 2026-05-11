@@ -86,9 +86,8 @@ private struct BpmModelCard: View {
 #Preview {
     A3BpmModelSelectionView(
         models: BPMS,
-        selectedSku: "0603",
-        onSelect: { _ in }
-    )
+        selectedSku: "0603"
+    ) { _ in }
     .padding(.horizontal)
     .environmentObject(Theme.shared)
 }

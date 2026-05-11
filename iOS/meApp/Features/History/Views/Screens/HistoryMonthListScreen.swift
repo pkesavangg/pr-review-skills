@@ -14,10 +14,10 @@ struct HistoryMonthListScreen: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var historyStore: HistoryStore
     @EnvironmentObject var router: Router<HistoryRoute>
-    @State private var selectedEntry: Entry?
+    @State private var selectedEntry: EntrySnapshot?
     @State private var selectedMetric: BodyMetric?
     @State private var showDeleteAlert = false
-    @State private var entryToDelete: Entry?
+    @State private var entryToDelete: EntrySnapshot?
     @State private var openItemID: UUID?
     @State private var isOnboardingComplete: Bool = false
     
@@ -33,7 +33,7 @@ struct HistoryMonthListScreen: View {
     // MARK: - Private Methods
     
     /// Toggle expand/collapse for an entry row.
-    private func toggleEntry(_ entry: Entry) {
+    private func toggleEntry(_ entry: EntrySnapshot) {
         let id = entry.id.uuidString
         
         // Animate the expansion/collapse transition

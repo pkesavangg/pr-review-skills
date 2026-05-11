@@ -40,6 +40,11 @@ final class DashboardChartManager: DashboardChartManaging {
     var isProcessingScrollEnd = false
     var scrollEndTask: Task<Void, Never>?
 
+    /// Cancellable task for the delayed `isGraphReady = true` transition.
+    /// Cancelled on every new `initializeChart()` call so a stale task from a
+    /// previous product switch cannot briefly flash the old chart.
+    private var graphReadyTask: Task<Void, Never>?
+
     // MARK: - Initialization
 
     init(
@@ -148,10 +153,11 @@ final class DashboardChartManager: DashboardChartManaging {
            let previousDomain = previousYAxisDomain,
            newYAxisDomain != previousDomain {
             cacheManager.invalidateChartSeriesCache()
-// swiftlint:disable:next multiline_arguments
-            logger.log(level: .debug, tag: "DashboardChartManager",
-// swiftlint:disable:next vertical_parameter_alignment_on_call
-                      message: "Y-axis domain changed from \(previousDomain) to \(newYAxisDomain), invalidating cached chart series")
+            logger.log(
+                level: .debug,
+                tag: "DashboardChartManager",
+                message: "Y-axis domain changed from \(previousDomain) to \(newYAxisDomain), invalidating cached chart series"
+            )
         }
 
         stateProvider.scheduleUIUpdate()
@@ -181,7 +187,7 @@ final class DashboardChartManager: DashboardChartManaging {
         )
 
         let period = stateProvider.state.graph.selectedPeriod
-        let shouldSnapProgrammaticPosition = period != .total && period != .month
+        let shouldSnapProgrammaticPosition = period != .total
         let alignedScrollPosition = shouldSnapProgrammaticPosition
             ? graphManager.snapScrollPosition(optimalScrollPosition, for: period)
             : optimalScrollPosition
@@ -192,8 +198,10 @@ final class DashboardChartManager: DashboardChartManaging {
 
         stateProvider.state.ui.hasInitializedChart = true
 
-        Task { @MainActor in
+        graphReadyTask?.cancel()
+        graphReadyTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
             graphManager.state.isGraphReady = true
         }
     }
@@ -252,6 +260,10 @@ final class DashboardChartManager: DashboardChartManaging {
     }
 
     func clearAllCaches() {
+        scrollEndTask?.cancel()
+        scrollEndTask = nil
+        graphReadyTask?.cancel()
+        graphReadyTask = nil
         cacheManager.clearAllCaches()
         isProcessingScrollEnd = false
     }
@@ -339,8 +351,8 @@ final class DashboardChartManager: DashboardChartManaging {
             cachedBounds: dataManager.getDateBounds(for: period)
         )
 
-        let requiresSnapWithAnchor = (period == .week || period == .year)
-        let shouldSnapProgrammaticPosition = period != .total && period != .month && (anchorDate == nil || requiresSnapWithAnchor)
+        let requiresSnapWithAnchor = (period == .week || period == .month || period == .year)
+        let shouldSnapProgrammaticPosition = period != .total && (anchorDate == nil || requiresSnapWithAnchor)
         let alignedScrollPosition = shouldSnapProgrammaticPosition
             ? graphManager.snapScrollPosition(optimalScrollPosition, for: period)
             : optimalScrollPosition
@@ -351,6 +363,19 @@ final class DashboardChartManager: DashboardChartManaging {
         forceCompleteRecalculationAfterScrollPosition()
 
         stateProvider.state.ui.hasInitializedChart = true
+
+        // Ensure the graph-ready flag is restored after the period switch.
+        // clearAllCaches() above cancels the in-flight graphReadyTask, so if
+        // the user switches period while the initial skeleton is still showing
+        // (isGraphReady == false), the flag would stay false forever.
+        if !graphManager.state.isGraphReady {
+            graphReadyTask?.cancel()
+            graphReadyTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                guard !Task.isCancelled else { return }
+                graphManager.state.isGraphReady = true
+            }
+        }
 
         if period == .total {
             displayManager?.updateMetricsForCurrentView()

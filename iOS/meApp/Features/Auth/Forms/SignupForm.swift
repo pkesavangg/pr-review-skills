@@ -27,16 +27,6 @@ class SignupForm: ObservableForm {
     var confirmPassword = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
     var zipcode = FormControl("", validators: [.required, .noWhiteSpace, .maxLength(20)])
 
-    // Baby form controls (used in Add Baby step)
-    var babyName = FormControl("", validators: [.required, .noWhiteSpace, .maxLength(100)])
-    var babyBirthday: FormControl<Date> = {
-        let defaultDate = Date()
-        return FormControl(defaultDate)
-    }()
-    var babySex = FormControl("")
-    var babyBirthLength = FormControl("", validators: [.required, .numericOnly])
-    var babyBirthWeight = FormControl("", validators: [.required, .numericOnly])
-    
     /// Publisher that merges all value changes in the form
     var formDidChange: AnyPublisher<Void, Never> {
         let accountFields: [AnyPublisher<Void, Never>] = [
@@ -56,14 +46,7 @@ class SignupForm: ObservableForm {
             confirmPassword.$value.map { _ in () }.eraseToAnyPublisher(),
             zipcode.$value.map { _ in () }.eraseToAnyPublisher()
         ]
-        let babyFields: [AnyPublisher<Void, Never>] = [
-            babyName.$value.map { _ in () }.eraseToAnyPublisher(),
-            babyBirthday.$value.map { _ in () }.eraseToAnyPublisher(),
-            babySex.$value.map { _ in () }.eraseToAnyPublisher(),
-            babyBirthLength.$value.map { _ in () }.eraseToAnyPublisher(),
-            babyBirthWeight.$value.map { _ in () }.eraseToAnyPublisher()
-        ]
-        return Publishers.MergeMany(accountFields + authFields + babyFields)
+        return Publishers.MergeMany(accountFields + authFields)
             .eraseToAnyPublisher()
     }
     
@@ -191,20 +174,6 @@ class SignupForm: ObservableForm {
         return nil
     }
     
-    /// Resets the baby-related form fields to their default state.
-    func resetBaby() {
-        babyName.value = ""
-        babyBirthday.value = Date()
-        babySex.value = ""
-        babyBirthLength.value = ""
-        babyBirthWeight.value = ""
-        babyName.resetInteractionState()
-        babyBirthday.resetInteractionState()
-        babySex.resetInteractionState()
-        babyBirthLength.resetInteractionState()
-        babyBirthWeight.resetInteractionState()
-    }
-
     /// Resets the goal-related form fields to their default state.
     func resetGoal() {
         goalType.value = GoalTypeSegment.losegainValue

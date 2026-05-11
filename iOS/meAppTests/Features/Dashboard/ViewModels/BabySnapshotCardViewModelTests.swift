@@ -9,7 +9,7 @@ struct BabySnapshotCardViewModelTests {
 
     // MARK: - Helpers
 
-    private func makeSUT(account: Account? = nil) -> (sut: BabySnapshotCardViewModel, mockAccount: MockAccountService) {
+    private func makeSUT(account: AccountSnapshot? = nil) -> (sut: BabySnapshotCardViewModel, mockAccount: MockAccountService) {
         TestDependencyContainer.reset()
         let mockAccount = MockAccountService()
         mockAccount.activeAccount = account
@@ -18,15 +18,14 @@ struct BabySnapshotCardViewModelTests {
         return (sut, mockAccount)
     }
 
-    private func makeAccount(weightUnit: WeightUnit) -> Account {
-        let account = AccountTestFixtures.makeAccountModel(id: "acct-baby", isActive: true)
-        account.weightSettings = WeightCompSettings(
-            accountId: "acct-baby",
-            height: "70",
-            activityLevel: .normal,
-            weightUnit: weightUnit
+    private func makeAccount(weightUnit: WeightUnit) -> AccountSnapshot {
+        AccountTestFixtures.makeAccountSnapshot(
+            id: "acct-baby",
+            isActiveAccount: true,
+            weightUnit: weightUnit,
+            weightHeight: "70",
+            activityLevel: .normal
         )
-        return account
     }
 
     // MARK: - Initial State

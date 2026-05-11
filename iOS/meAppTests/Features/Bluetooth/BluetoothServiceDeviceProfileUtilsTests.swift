@@ -15,7 +15,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
         let sut = makeSUT()
         let device = makeDevice(bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true))
 
-        let result = sut.getSafeScaleType(for: device)
+        let result = sut.getSafeScaleType(for: device.toSnapshot())
 
         #expect(result == ScaleSourceType.btWifiR4.rawValue)
     }
@@ -25,7 +25,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
         let sut = makeSUT()
         let device = makeDevice()
 
-        let result = sut.getSafeScaleType(for: device)
+        let result = sut.getSafeScaleType(for: device.toSnapshot())
 
         #expect(result == nil)
     }
@@ -35,7 +35,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
         let sut = makeSUT()
         let device = makeDevice(bathScale: BathScale(scaleType: nil, bodyComp: nil))
 
-        let result = sut.getSafeScaleType(for: device)
+        let result = sut.getSafeScaleType(for: device.toSnapshot())
 
         #expect(result == nil)
     }
@@ -47,7 +47,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
 
         for variant in variants {
             let device = makeDevice(id: "dev-\(variant.rawValue)", bathScale: BathScale(scaleType: variant.rawValue, bodyComp: false))
-            let result = sut.getSafeScaleType(for: device)
+            let result = sut.getSafeScaleType(for: device.toSnapshot())
             #expect(result == variant.rawValue)
         }
     }
@@ -110,7 +110,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
     @Test("createScanData returns ScanData with correct defaults for minimal account")
     func createScanDataMinimalAccount() {
         let sut = makeSUT()
-        let account = AccountTestFixtures.makeAccountModel()
+        let account = AccountTestFixtures.makeAccountSnapshot()
         // AccountDTO defaults: gender=male, weightUnit=kg, activityLevel=normal, height=170, dob="2000-01-01"
 
         let result = sut.createScanData(from: account)
@@ -125,8 +125,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
     @Test("createScanData maps athlete activityLevel correctly")
     func createScanDataAthlete() {
         let sut = makeSUT()
-        let account = AccountTestFixtures.makeAccountModel()
-        account.weightSettings?.activityLevel = .athlete
+        let account = AccountTestFixtures.makeAccountSnapshot(activityLevel: .athlete)
 
         let result = sut.createScanData(from: account)
 
@@ -136,8 +135,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
     @Test("createScanData uses fallback age 30 for nil dob")
     func createScanDataNilDob() {
         let sut = makeSUT()
-        let account = AccountTestFixtures.makeAccountModel()
-        account.dob = nil
+        let account = AccountTestFixtures.makeAccountSnapshot(dob: nil)
 
         let result = sut.createScanData(from: account)
 
@@ -147,8 +145,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
     @Test("createScanData uses fallback age 30 for invalid dob format")
     func createScanDataInvalidDob() {
         let sut = makeSUT()
-        let account = AccountTestFixtures.makeAccountModel()
-        account.dob = "not-a-date"
+        let account = AccountTestFixtures.makeAccountSnapshot(dob: "not-a-date")
 
         let result = sut.createScanData(from: account)
 
@@ -158,8 +155,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
     @Test("createScanData defaults sex to male when gender is nil")
     func createScanDataNilGender() {
         let sut = makeSUT()
-        let account = AccountTestFixtures.makeAccountModel()
-        account.gender = nil
+        let account = AccountTestFixtures.makeAccountSnapshot(gender: nil)
 
         let result = sut.createScanData(from: account)
 
@@ -169,19 +165,17 @@ struct BluetoothServiceDeviceProfileUtilsTests {
     @Test("createScanData maps female gender correctly")
     func createScanDataFemaleGender() {
         let sut = makeSUT()
-        let account = AccountTestFixtures.makeAccountModel()
-        account.gender = .female
+        let account = AccountTestFixtures.makeAccountSnapshot(gender: .female)
 
         let result = sut.createScanData(from: account)
 
         #expect(result?.sex == "female")
     }
 
-    @Test("createScanData defaults unit to kg when weightUnit is nil")
-    func createScanDataNilWeightUnit() {
+    @Test("createScanData defaults unit to kg when weightUnit is kg")
+    func createScanDataDefaultWeightUnit() {
         let sut = makeSUT()
-        let account = AccountTestFixtures.makeAccountModel()
-        account.weightSettings?.weightUnit = nil
+        let account = AccountTestFixtures.makeAccountSnapshot(weightUnit: .kg)
 
         let result = sut.createScanData(from: account)
 
@@ -191,9 +185,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
     @Test("createScanData converts goalWeight when present")
     func createScanDataWithGoalWeight() {
         let sut = makeSUT()
-        let account = AccountTestFixtures.makeAccountModel()
-        let goalSettings = GoalSettings(accountId: account.accountId, goalType: .lose, initialWeight: 180, goalWeight: 1500)
-        account.goalSettings = goalSettings
+        let account = AccountTestFixtures.makeAccountSnapshot(goalType: .lose, goalWeight: 1500, initialWeight: 180)
 
         let result = sut.createScanData(from: account)
 
@@ -204,7 +196,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
     @Test("createScanData calculates height using stored height conversion")
     func createScanDataHeightConversion() {
         let sut = makeSUT()
-        let account = AccountTestFixtures.makeAccountModel()
+        let account = AccountTestFixtures.makeAccountSnapshot()
         // AccountDTO height is 170 → stored as string "170" in WeightCompSettings
         // calculateHeightCm("170") → round(170.0) = 170 → convertStoredHeightToCm(170)
 
@@ -220,7 +212,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
     func getProfileInfoWithLatestEntry() async {
         let entry = MockEntryService()
         let sut = makeSUT(entry: entry)
-        let account = AccountTestFixtures.makeAccountModel(firstName: "Alice")
+        let account = AccountTestFixtures.makeAccountSnapshot(firstName: "Alice")
 
         let testEntry = Entry(entryTimestamp: "2026-01-01T00:00:00Z", accountId: account.accountId, operationType: "create")
         testEntry.scaleEntry = BathScaleEntry(weight: 1500) // stored weight
@@ -239,7 +231,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
         let entry = MockEntryService()
         entry.latestEntry = nil
         let sut = makeSUT(entry: entry)
-        let account = AccountTestFixtures.makeAccountModel(firstName: "Bob")
+        let account = AccountTestFixtures.makeAccountSnapshot(firstName: "Bob")
 
         let result = await sut.getProfileInfo(from: account)
 
@@ -251,8 +243,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
     @Test("getProfileInfo uses 'User' when firstName is nil")
     func getProfileInfoNilFirstName() async {
         let sut = makeSUT()
-        let account = AccountTestFixtures.makeAccountModel()
-        account.firstName = nil
+        let account = AccountTestFixtures.makeAccountSnapshot(firstName: nil)
 
         let result = await sut.getProfileInfo(from: account)
 
@@ -262,9 +253,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
     @Test("getProfileInfo includes goalType from account")
     func getProfileInfoWithGoalType() async {
         let sut = makeSUT()
-        let account = AccountTestFixtures.makeAccountModel()
-        let goalSettings = GoalSettings(accountId: account.accountId, goalType: .lose, initialWeight: 180, goalWeight: 150)
-        account.goalSettings = goalSettings
+        let account = AccountTestFixtures.makeAccountSnapshot(goalType: .lose, goalWeight: 150, initialWeight: 180)
 
         let result = await sut.getProfileInfo(from: account)
 
@@ -274,10 +263,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
     @Test("getProfileInfo maps scan data fields to profile")
     func getProfileInfoMapsFields() async {
         let sut = makeSUT()
-        let account = AccountTestFixtures.makeAccountModel()
-        account.gender = .female
-        account.weightSettings?.activityLevel = .athlete
-        account.weightSettings?.weightUnit = .lb
+        let account = AccountTestFixtures.makeAccountSnapshot(gender: .female, weightUnit: .lb, activityLevel: .athlete)
 
         let result = await sut.getProfileInfo(from: account)
 
@@ -420,8 +406,8 @@ struct BluetoothServiceDeviceProfileUtilsTests {
         let sut = makeSUT(sdk: sdk)
         sut.skipDevices = ["PAIRED-1", "UNPAIRED-1", "PAIRED-2"]
         sut.bluetoothScales = [
-            makeDevice(id: "d1", broadcastIdString: "PAIRED-1"),
-            makeDevice(id: "d2", broadcastIdString: "PAIRED-2")
+            makeSnapshot(id: "d1", broadcastIdString: "PAIRED-1"),
+            makeSnapshot(id: "d2", broadcastIdString: "PAIRED-2")
         ]
 
         sut.reapplySkipDevicesExcludingPaired()
@@ -434,7 +420,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk)
         sut.skipDevices = ["PAIRED-1", "KEEP-1", "KEEP-2"]
-        sut.bluetoothScales = [makeDevice(id: "d1", broadcastIdString: "PAIRED-1")]
+        sut.bluetoothScales = [makeDevice(id: "d1", broadcastIdString: "PAIRED-1").toSnapshot()]
 
         sut.reapplySkipDevicesExcludingPaired()
 
@@ -446,7 +432,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
     func reapplySkipDevicesCaseInsensitive() {
         let sut = makeSUT()
         sut.skipDevices = ["paired-1", "keep-1"]
-        sut.bluetoothScales = [makeDevice(id: "d1", broadcastIdString: "PAIRED-1")]
+        sut.bluetoothScales = [makeDevice(id: "d1", broadcastIdString: "PAIRED-1").toSnapshot()]
 
         sut.reapplySkipDevicesExcludingPaired()
 
@@ -473,10 +459,9 @@ struct BluetoothServiceDeviceProfileUtilsTests {
         let sdk = MockBluetoothSDKClient()
         let scale = MockScaleService()
         let sut = makeSUT(scale: scale, sdk: sdk)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", isActiveAccount: true)
 
-        let currentDevice = makeDevice(id: "del-1", accountId: "acct-1", broadcastIdString: "DEL-BID")
-        currentDevice.isConnected = true
+        let currentDevice = makeSnapshot(id: "del-1", accountId: "acct-1", broadcastIdString: "DEL-BID", isConnected: true)
 
         await sut.disconnectDeletedScales(currentScales: [currentDevice], newScales: [])
 
@@ -490,10 +475,9 @@ struct BluetoothServiceDeviceProfileUtilsTests {
         let sdk = MockBluetoothSDKClient()
         let scale = MockScaleService()
         let sut = makeSUT(scale: scale, sdk: sdk)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", isActiveAccount: true)
 
-        let currentDevice = makeDevice(id: "del-2", accountId: "acct-1", broadcastIdString: "BID-2")
-        currentDevice.isConnected = false
+        let currentDevice = makeSnapshot(id: "del-2", accountId: "acct-1", broadcastIdString: "BID-2", isConnected: false)
 
         await sut.disconnectDeletedScales(currentScales: [currentDevice], newScales: [])
 
@@ -506,10 +490,9 @@ struct BluetoothServiceDeviceProfileUtilsTests {
         let sdk = MockBluetoothSDKClient()
         let scale = MockScaleService()
         let sut = makeSUT(scale: scale, sdk: sdk)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", isActiveAccount: true)
 
-        let otherAccountDevice = makeDevice(id: "other-1", accountId: "other-acct", broadcastIdString: "OTHER-BID")
-        otherAccountDevice.isConnected = true
+        let otherAccountDevice = makeSnapshot(id: "other-1", accountId: "other-acct", broadcastIdString: "OTHER-BID", isConnected: true)
 
         await sut.disconnectDeletedScales(currentScales: [otherAccountDevice], newScales: [])
 
@@ -523,10 +506,9 @@ struct BluetoothServiceDeviceProfileUtilsTests {
         let sdk = MockBluetoothSDKClient()
         let scale = MockScaleService()
         let sut = makeSUT(scale: scale, sdk: sdk)
-        sut.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", isActive: true)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", isActiveAccount: true)
 
-        let device = makeDevice(id: "keep-1", accountId: "acct-1", broadcastIdString: "KEEP-BID")
-        device.isConnected = true
+        let device = makeSnapshot(id: "keep-1", accountId: "acct-1", broadcastIdString: "KEEP-BID", isConnected: true)
 
         // Same device in both lists (broadcastId match — both nil Int64, so they match)
         await sut.disconnectDeletedScales(currentScales: [device], newScales: [device])
@@ -550,6 +532,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
             accountService: account ?? MockAccountService(),
             scaleService: scale ?? MockScaleService(),
             entryService: entry ?? MockEntryService(),
+            babyService: MockBabyService(),
             logger: logger ?? MockLoggerService(),
             discoveryManager: discovery ?? MockBLEDiscoveryManager(),
             ggBleSDK: sdk ?? MockBluetoothSDKClient(),
@@ -571,5 +554,21 @@ struct BluetoothServiceDeviceProfileUtilsTests {
             isConnected: isConnected,
             bathScale: bathScale
         )
+    }
+
+    private func makeSnapshot(
+        id: String = "device-1",
+        accountId: String = "101",
+        broadcastIdString: String? = "ABC123",
+        isConnected: Bool = true,
+        bathScale: BathScale? = nil
+    ) -> DeviceSnapshot {
+        makeDevice(
+            id: id,
+            accountId: accountId,
+            broadcastIdString: broadcastIdString,
+            isConnected: isConnected,
+            bathScale: bathScale
+        ).toSnapshot(isConnected: isConnected)
     }
 }

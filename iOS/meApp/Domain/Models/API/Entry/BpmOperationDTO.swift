@@ -38,20 +38,3 @@ extension BpmOperationDTO: Identifiable {
         )
     }
 }
-
-extension BpmOperationDTO {
-    func toAPIRequest() -> BpmOperationRequest {
-        return BpmOperationRequest(
-            userId: self.accountId,
-            systolic: self.systolic,
-            diastolic: self.diastolic,
-            pulse: self.pulse,
-            meanArterial: self.meanArterial,
-            note: self.note,
-            source: self.source,
-            unit: self.unit,
-            entryTimestamp: self.entryTimestamp,
-            operationType: self.operationType
-        )
-    }
-}

@@ -11,6 +11,8 @@ struct SignupBaby: Identifiable {
     var name: String
     var birthday: Date
     var sex: Sex?
-    var birthLength: String
-    var birthWeight: String
+    var selectedWeightUnit: BabyWeightUnit
+    var birthLengthInches: Double?
+    var birthWeightLbs: Double?
+    var birthWeightOz: Double?
 }

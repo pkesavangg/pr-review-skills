@@ -231,8 +231,8 @@ final class SQLiteMigrationService {
             accountId: accountId,
             operationType: operationType,
             serverTimestamp: nil, // opStack operations don't have serverTimestamp yet
-            deviceType: "scale",
-            isSynced: false, // Mark as unsynced since it's from opStack
+            entryType: EntryType.scale.rawValue,
+            isSynced: false // Mark as unsynced since it's from opStack
         )
         
         // Create scale entry if weight data exists

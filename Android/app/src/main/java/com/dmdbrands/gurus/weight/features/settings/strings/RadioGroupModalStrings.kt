@@ -36,8 +36,9 @@ object RadioGroupModalStrings {
 
     // Unit Type Options
     object UnitType {
-        const val Imperial = "lbs & feet"
-        const val Metric = "kg & cm"
+        const val Imperial = "lbs / in"
+        const val Metric = "kg / cm"
+        const val ImperialBaby = "lbs & oz / in"
     }
 
     // Notification Options (following Angular pattern)

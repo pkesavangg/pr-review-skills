@@ -26,15 +26,8 @@ struct DashboardScreen: View {
     private let weightEmptyStateOffset: CGFloat = 650
     private let bpmEmptyStateOffset: CGFloat = 400
 
-    private var hasBabySnapshotItem: Bool {
-        store.availableProductItems.contains { item in
-            if case .baby = item { return true }
-            return false
-        }
-    }
-
     private var canShowSnapshotOverview: Bool {
-        store.availableProductItems.count > 1 || hasBabySnapshotItem
+        store.availableProductItems.count > 1
     }
 
     private var shouldShowSnapshotOverview: Bool {
@@ -93,7 +86,6 @@ struct DashboardScreen: View {
             if let wrapper = openMetricInfoWithoutSelection {
                 metricInfoEntry = store.displayManager.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
             }
-            store.lifecycleManager.handleMetricInfoSheetDismiss(openMetricInfoWithoutSelection)
         }
         // Keep the metric info entry in sync with metric tile values while the sheet is open
         .task(id: store.state.metrics.metrics) {
@@ -106,12 +98,6 @@ struct DashboardScreen: View {
             if let wrapper = openMetricInfoWithoutSelection {
                 metricInfoEntry = store.displayManager.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
             }
-        }
-        .task(id: store.state.ui.selectedMetricLabel) {
-            store.lifecycleManager.handleSelectedMetricLabelChange(store.state.ui.selectedMetricLabel)
-        }
-        .task(id: selectedEntry) {
-            store.lifecycleManager.handleSelectedEntryChange(selectedEntry)
         }
         .task(id: store.currentUnit) {
             store.lifecycleManager.handleUnitChange()
@@ -161,15 +147,18 @@ struct DashboardScreen: View {
     }
 
     private func navbarHeader() -> some View {
-        NavbarHeaderView<EmptyView, EmptyView>(
-            title: store.availableProductItems.count > 1 && isInProductDashboard
-                ? store.selectedProductItem.dashboardTitle
+        let isProductDashboardFromSnapshot = canShowSnapshotOverview && isInProductDashboard
+        return NavbarHeaderView<AppIconView, EmptyView>(
+            title: isProductDashboardFromSnapshot ? store.selectedProductItem.dashboardTitle : nil,
+            leadingContent: isProductDashboardFromSnapshot
+                ? { AppIconView(icon: AppAssets.chevronLeft) }
                 : nil,
-            onTitleTap: store.availableProductItems.count > 1 && isInProductDashboard ? {
+            onLeadingTap: isProductDashboardFromSnapshot ? { isInProductDashboard = false } : nil,
+            onTitleTap: isProductDashboardFromSnapshot ? {
                 isProductTypeSelectorPresented = true
             } : nil,
             canShowBorder: false,
-            canShowTitleChevron: store.availableProductItems.count > 1 && isInProductDashboard
+            canShowTitleChevron: isProductDashboardFromSnapshot
         )
         .sheet(isPresented: $isProductTypeSelectorPresented) {
             ProductTypeSelectorSheet(

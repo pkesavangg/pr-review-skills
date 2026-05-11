@@ -224,6 +224,8 @@ public enum UserCreationResponse: String, Sendable, Codable, Equatable, CaseIter
     case userSelectionInProgress = "USER_SELECTION_IN_PROGRESS"
     case differentUser = "DIFFERENT_USER"
     case notInPairingMode = "NOT_IN_PAIRING_MODE"
+    case deviceExistsWithSameUser = "DEVICE_EXISTS_WITH_SAME_USER"
+    case deviceExistsWithDifferentUser = "DEVICE_EXISTS_WITH_DIFFERENT_USER"
 
     // Conversion from SDK type
     public init(sdkType: UserCreationResponseType) {
@@ -236,6 +238,8 @@ public enum UserCreationResponse: String, Sendable, Codable, Equatable, CaseIter
         case .USER_SELECTION_IN_PROGRESS: self = .userSelectionInProgress
         case .DIFFERENT_USER: self = .differentUser
         case .NOT_IN_PAIRING_MODE: self = .notInPairingMode
+        case .DEVICE_EXISTS_WITH_SAME_USER: self = .deviceExistsWithSameUser
+        case .DEVICE_EXISTS_WITH_DIFFERENT_USER: self = .deviceExistsWithDifferentUser
         }
     }
 
@@ -250,6 +254,8 @@ public enum UserCreationResponse: String, Sendable, Codable, Equatable, CaseIter
         case .userSelectionInProgress: return .USER_SELECTION_IN_PROGRESS
         case .differentUser: return .DIFFERENT_USER
         case .notInPairingMode: return .NOT_IN_PAIRING_MODE
+        case .deviceExistsWithSameUser: return .DEVICE_EXISTS_WITH_SAME_USER
+        case .deviceExistsWithDifferentUser: return .DEVICE_EXISTS_WITH_DIFFERENT_USER
         }
     }
 }
@@ -356,18 +362,17 @@ public enum DeviceCategory: String, Sendable, Equatable {
 ///     }
 ///     .store(in: &cancellables)
 /// ```
-/// NOTE: `@unchecked Sendable` because `Device` is `@Model` (not thread-safe).
-/// This is safe only because all creation (BluetoothService) and consumption
-/// (stores/ViewModels) happen on `@MainActor`. Do not send across actor boundaries.
-public struct DeviceDiscoveryEvent: @unchecked Sendable, Equatable {
-    let device: Device
+/// Unified device discovery event. All fields are `Sendable`, so this struct is properly
+/// `Sendable` — no `@unchecked` marker needed.
+public struct DeviceDiscoveryEvent: Sendable, Equatable {
+    let device: DeviceSnapshot
     let deviceInfo: ScaleItemInfo
     let protocolType: ProtocolType
     let isNew: Bool
     let deviceCategory: DeviceCategory
 
     init(
-        device: Device,
+        device: DeviceSnapshot,
         deviceInfo: ScaleItemInfo,
         protocolType: ProtocolType,
         isNew: Bool,

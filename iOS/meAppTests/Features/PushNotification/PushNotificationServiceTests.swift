@@ -218,10 +218,10 @@ struct PushNotificationServiceTests {
 
     private func makeDependencies() -> PushTestDependencies {
         let account = MockAccountService()
-        account.activeAccount = AccountTestFixtures.makeAccountModel(
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(
             id: "acct-1",
             email: "push@example.com",
-            isActive: true
+            isActiveAccount: true
         )
         return PushTestDependencies(
             api: MockPushNotificationAPIRepository(),

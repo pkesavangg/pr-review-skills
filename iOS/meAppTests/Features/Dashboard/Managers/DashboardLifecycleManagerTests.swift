@@ -10,6 +10,7 @@ struct DashboardLifecycleManagerTests {
 
     // MARK: - SUT Factory
 
+    // swiftlint:disable:next large_tuple
     private typealias SUTBundle = (
         store: DashboardStore,
         accountService: AccountService,
@@ -40,9 +41,7 @@ struct DashboardLifecycleManagerTests {
     @Test("onAppearActions: triggers entry data and goal card load")
     func onAppearActionsTriggersDataLoad() async throws {
         let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService; let entryService = sut.entryService
-        try await accountService.setActiveAccount(
-            DashboardStoreTestSupport.makeActiveAccount(id: "on-appear-load")
-        )
+        accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(id: "on-appear-load")
 
         let daily = [
             DashboardTestFixtures.makeSummary(accountId: "on-appear-load", period: "2026-03-01", weight: 1800),
@@ -63,9 +62,7 @@ struct DashboardLifecycleManagerTests {
     @Test("onAppearActions: syncs removal state after config load")
     func onAppearActionsSyncsRemovalState() async throws {
         let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
-        try await accountService.setActiveAccount(
-            DashboardStoreTestSupport.makeActiveAccount(id: "on-appear-removal")
-        )
+        accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(id: "on-appear-removal")
 
         store.lifecycleManager.onAppearActions()
 
@@ -82,9 +79,7 @@ struct DashboardLifecycleManagerTests {
     @Test("onAppearActions: schedules UI update")
     func onAppearActionsSchedulesUIUpdate() async throws {
         let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
-        try await accountService.setActiveAccount(
-            DashboardStoreTestSupport.makeActiveAccount(id: "on-appear-ui-update")
-        )
+        accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(id: "on-appear-ui-update")
 
         store.lifecycleManager.onAppearActions()
 
@@ -371,9 +366,7 @@ struct DashboardLifecycleManagerTests {
     func handleUnitChangeTriggers() async throws {
         let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         let accountId = "unit-change-success"
-        try await accountService.setActiveAccount(
-            DashboardStoreTestSupport.makeActiveAccount(id: accountId)
-        )
+        accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(id: accountId)
         try persistEntries([
             EntryTestFixtures.makeEntry(
                 accountId: accountId,
@@ -485,7 +478,7 @@ struct DashboardLifecycleManagerTests {
     func saveChangesSuccessFlow() async throws {
         let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         let activeAccount = DashboardStoreTestSupport.makeActiveAccount(id: "lifecycle-save-success")
-        try await accountService.setActiveAccount(activeAccount)
+        accountService.activeAccount = activeAccount
 
         store.state.ui.isEditMode = true
         store.state.ui.selectedMetricLabel = DashboardStrings.water
@@ -506,7 +499,7 @@ struct DashboardLifecycleManagerTests {
     func saveProgressMetricsToAPIPersistsOrder() async throws {
         let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         let activeAccount = DashboardStoreTestSupport.makeActiveAccount(id: "lifecycle-progress-save")
-        try await accountService.setActiveAccount(activeAccount)
+        accountService.activeAccount = activeAccount
 
         let streaks = [
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.currentStreak),
@@ -521,7 +514,7 @@ struct DashboardLifecycleManagerTests {
 
         try await store.lifecycleManager.saveProgressMetricsToAPI()
 
-        #expect(accountService.activeAccount?.dashboardSettings?.progressMetrics == "weeklyChange,goal,currentStreak")
+        #expect(accountService.activeAccount?.progressMetrics == "weeklyChange,goal,currentStreak")
     }
 
     @Test("resetDashboard: success flow restores UI defaults and clears snapshot")
@@ -529,7 +522,7 @@ struct DashboardLifecycleManagerTests {
         let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         let accountId = "reset-success"
         let activeAccount = DashboardStoreTestSupport.makeActiveAccount(id: accountId)
-        try await accountService.setActiveAccount(activeAccount)
+        accountService.activeAccount = activeAccount
         try persistEntries([
             EntryTestFixtures.makeEntry(
                 accountId: accountId,

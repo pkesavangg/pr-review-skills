@@ -22,10 +22,7 @@ final class MonthSectionViewModel: BaseSectionViewModel {
     /// Align plotted daily points to local noon so they overlap month X-axis Sunday ticks,
     /// which are generated at local noon.
     override func plotXDate(for original: Date) -> Date {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = Calendar.current.timeZone
-        cal.locale = Calendar.current.locale
-
+        let cal = localCalendar
         let dayStart = cal.startOfDay(for: original)
         guard let noon = cal.date(byAdding: .hour, value: 12, to: dayStart) else {
             return super.plotXDate(for: original)
@@ -117,16 +114,31 @@ final class MonthSectionViewModel: BaseSectionViewModel {
             selectedDate = startTick
             showCrosshair = true
         } else {
-            // Pick the nearest candidate inside the section with deterministic tie-break (earlier first)
-            if let chosen = candidates.min(by: { first, second in
+            // Find nearest data point in the section
+            let nearestCandidate = candidates.min { first, second in
                 let firstDistance = abs(first.timeIntervalSince(clampedDate))
                 let secondDistance = abs(second.timeIntervalSince(clampedDate))
                 if firstDistance == secondDistance { return first < second }
                 return firstDistance < secondDistance
-            }) {
-                selectedDate = chosen
-                showCrosshair = true
             }
+
+            // Also find nearest grid tick within the current section
+            let realTicks: [Date] = allTicks.count > 1 ? Array(allTicks.dropLast()) : allTicks
+            let sectionTicks = realTicks.filter { $0 >= startTick && $0 < sectionEnd }
+            let nearestTick = sectionTicks.min {
+                abs($0.timeIntervalSince(clampedDate)) < abs($1.timeIntervalSince(clampedDate))
+            }
+
+            // Select whichever is closer: the grid tick or the data point.
+            // On ties, prefer the tick so grid lines are always selectable.
+            if let candidate = nearestCandidate, let tick = nearestTick {
+                let distToCandidate = abs(candidate.timeIntervalSince(clampedDate))
+                let distToTick = abs(tick.timeIntervalSince(clampedDate))
+                selectedDate = distToTick <= distToCandidate ? tick : candidate
+            } else {
+                selectedDate = nearestCandidate ?? startTick
+            }
+            showCrosshair = true
         }
     }
     

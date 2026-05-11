@@ -39,10 +39,17 @@ final class MockEntryStoreEntryService: EntryServiceProtocol {
     func syncAllEntriesWithRemote() async {}
     func migrateFromSQLiteIfNeeded() async {}
     func loadDashboardData(entryType: EntryType) async {}
+    func loadBabyDashboardData(babyId: String) async {}
     func clearAllData() async {}
     func clearLastSyncTimestamp() async throws {}
     func saveNewEntries(_ entries: [Entry]) async throws {}
     func deleteEntry(_ entry: Entry) async throws {}
+    func deleteEntry(entryId: UUID) async throws {}
+    func assignBabyEntry(entryId: UUID, babyId: String) async throws {}
+    func fetchEntrySnapshot(byId id: UUID) async throws -> EntrySnapshot? { nil }
+    func fetchAllEntrySnapshots() async throws -> [EntrySnapshot] { [] }
+    func fetchEntrySnapshots(forMonth month: String, entryType: EntryType) async throws -> [EntrySnapshot] { [] }
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {}
     func getAllEntries() async throws -> [Entry] { [] }
     func getAllEntriesAsDTO() async throws -> [BathScaleOperationDTO] { [] }
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool { false }
@@ -63,4 +70,7 @@ final class MockEntryStoreEntryService: EntryServiceProtocol {
     func fetchBpmEntries() async throws -> [BpmOperationDTO] { [] }
     func deleteBpmEntry(entryTimestamp: String) async throws {}
     func exportBpmCSV() async throws {}
+    func migrateBabyEntriesToDecigrams() async {}
+    func getEntry(byId id: UUID) async throws -> Entry? { nil }
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws {}
 }

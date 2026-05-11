@@ -11,17 +11,14 @@ import SwiftUI
 /// Dedicated view for rendering the Week time period chart
 /// Uses BaseGraphView for common chart rendering functionality
 struct WeekGraphView: View {
-    
+
     // MARK: - Dependencies
     @ObservedObject var viewModel: WeekSectionViewModel
     @ObservedObject var dashboardStore: DashboardStore
-    
+    var isActive: Bool = true
+
     var body: some View {
-        BaseGraphView(
-            viewModel: viewModel,
-// swiftlint:disable:next vertical_parameter_alignment_on_call
-                    dashboardStore: dashboardStore
-        )
+        BaseGraphView(viewModel: viewModel, dashboardStore: dashboardStore, isActive: isActive)
     }
 }
 

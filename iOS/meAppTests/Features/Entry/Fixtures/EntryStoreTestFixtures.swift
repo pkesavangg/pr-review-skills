@@ -6,8 +6,7 @@ enum EntryStoreTestError: Error, Equatable {
 }
 
 enum EntryStoreTestFixtures {
-    static func makeActiveAccount(id: String = "entry-account") -> Account {
-        let account = AccountTestFixtures.makeAccountModel(id: id, email: "entry@example.com", isActive: true)
-        return account
+    static func makeActiveAccount(id: String = "entry-account") -> AccountSnapshot {
+        AccountTestFixtures.makeAccountSnapshot(id: id, email: "entry@example.com", isActiveAccount: true)
     }
 }

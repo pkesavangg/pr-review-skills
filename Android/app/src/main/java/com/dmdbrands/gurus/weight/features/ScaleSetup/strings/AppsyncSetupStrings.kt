@@ -2,7 +2,7 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.strings
 
 object AppsyncSetupStrings {
   object ActivateScale {
-    const val Title = "Activate your scale"
+    const val Title = "Activate your scale."
     const val Message = "Wake up your scale by tapping it with your foot. Then press and hold the SET " +
       "button until the screen is flashing."
   }

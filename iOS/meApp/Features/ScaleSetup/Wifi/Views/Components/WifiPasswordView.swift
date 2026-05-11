@@ -34,8 +34,8 @@ struct WifiPasswordView: View {
                         AppInputField(
                             config: TextInputConfig(
                                 label: labels.networkName,
-// swiftlint:disable:next multiline_arguments
-                                placeholder: store.permissionsSkipped ? "" : nil, inputType: .text,
+                                placeholder: store.permissionsSkipped ? "" : nil,
+                                inputType: .text,
                                 submitLabel: .next,
                                 errorMessage: store.networkForm.getError(for: store.networkForm.ssid),
                                 focusField: .networkName
@@ -59,7 +59,9 @@ struct WifiPasswordView: View {
                         }
                         // Clear SSID only if permissions were skipped and are still disabled
                         .onAppear {
-                            if store.permissionsSkipped && !store.arePermissionsEnabled() {
+                            if store.permissionsSkipped
+                                && !store.arePermissionsEnabled()
+                                && store.networkForm.ssid.value.isEmpty {
                                 store.networkForm.clearSSIDAndMarkPristine()
                             }
                         }

@@ -391,33 +391,28 @@ struct DisplayMetricsViewModelTests {
         #expect((viewModel.bluetoothService as? MockBluetoothService) === bluetooth)
     }
 
-    @Test("refreshScale fetches latest model from persistent store by scale id")
-    func refreshScaleFetchesFromStoreByScaleId() async {
-        let detached = makeScale(
+    @Test("loadDisplayMetricsData reflects the latest snapshot published by ScaleService")
+    func loadDisplayMetricsDataReflectsLatestSnapshot() async {
+        let initial = makeScale(
             preference: ScaleTestFixtures.makePreferenceDTO(
                 displayMetrics: ["bmi"],
                 shouldMeasureImpedance: true
             ),
             isConnected: false
         )
-        detached.id = "display-refresh-\(UUID().uuidString)"
+        let scaleService = MockScaleService()
+        let (viewModel, _, _, _, _) = makeSUT(scale: initial, scaleService: scaleService)
 
-        let persisted = ScaleTestFixtures.makeDevice(
-            id: detached.id,
-            accountId: detached.accountId,
-            displayName: "Persisted"
-        )
-        persisted.r4ScalePreference = R4ScalePreference(
+        let fresh = ScaleTestFixtures.makeDevice(id: initial.id, accountId: initial.accountId)
+        fresh.r4ScalePreference = R4ScalePreference(
             from: ScaleTestFixtures.makePreferenceDTO(
                 displayMetrics: ["bodyFatPercent", "goalProgress"],
                 shouldMeasureImpedance: true
             ),
-            scaleId: detached.id
+            scaleId: initial.id
         )
-        PersistenceController.shared.context.insert(persisted)
-        try? PersistenceController.shared.context.save()
+        scaleService.scales = [fresh.toSnapshot(isConnected: false)]
 
-        let (viewModel, _, _, _, _) = makeSUT(scale: detached)
         await viewModel.loadDisplayMetricsData()
 
         #expect(viewModel.displayMetricsValue == "bodyFatPercent,goalProgress")
@@ -431,6 +426,7 @@ struct DisplayMetricsViewModelTests {
         scaleService: MockScaleService? = nil,
         bluetooth: MockBluetoothService? = nil,
         accountService: MockAccountService? = nil
+    // swiftlint:disable:next large_tuple
     ) -> (
         viewModel: DisplayMetricsViewModel,
         logger: MockLoggerService,
@@ -443,6 +439,9 @@ struct DisplayMetricsViewModelTests {
         let scaleService = scaleService ?? MockScaleService()
         let bluetooth = bluetooth ?? MockBluetoothService()
         let accountService = accountService ?? MockAccountService()
+
+        // Publish the scale as a DeviceSnapshot so the ViewModel can resolve it via ScaleService.
+        scaleService.scales = [scale.toSnapshot(isConnected: scale.isConnected ?? false)]
 
         let viewModel = DisplayMetricsViewModel(
             scale: scale,

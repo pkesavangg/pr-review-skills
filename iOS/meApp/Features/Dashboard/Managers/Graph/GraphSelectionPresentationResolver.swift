@@ -12,6 +12,7 @@ struct BabyGraphSelectionPresentation {
 /// rendering can stay focused on marks and annotations.
 struct GraphSelectionPresentationResolver {
 
+    // swiftlint:disable:next function_parameter_count
     func babySelectionPresentation(
         babyProfile: BabyProfile?,
         metric: BabyMetric,
@@ -67,6 +68,7 @@ struct GraphSelectionPresentationResolver {
             .sorted { $0.xDate < $1.xDate }
     }
 
+    // swiftlint:disable:next function_parameter_count
     private func primaryValue(
         at plottedDate: Date,
         sourceDate: Date,

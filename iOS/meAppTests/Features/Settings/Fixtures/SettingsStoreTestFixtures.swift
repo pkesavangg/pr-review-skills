@@ -12,7 +12,7 @@ enum SettingsStoreTestFixtures {
         integrationService: MockIntegrationService? = nil,
         logger: MockLoggerService? = nil,
         seedDefaultAccount: Bool = true
-    ) -> (SettingsStore, TestNotificationHelperService, MockAccountService, MockEntryService, MockFeedService) {
+    ) -> (SettingsStore, TestNotificationHelperService, MockAccountService, MockEntryService, MockFeedService) { // swiftlint:disable:this large_tuple
         TestDependencyContainer.reset()
 
         let notification = notification ?? TestNotificationHelperService()
@@ -60,21 +60,25 @@ enum SettingsStoreTestFixtures {
         email: String = "lakshmi@example.com",
         firstName: String = "Lakshmi",
         unit: WeightUnit = .kg
-    ) -> Account {
-        let account = AccountTestFixtures.makeAccountModel(id: id, email: email, firstName: firstName, isActive: true)
-        account.lastName = "Priya"
-        account.gender = .female
-        account.zipcode = "560001"
-        account.dob = "1992-03-04"
-        account.weightSettings?.weightUnit = unit
-        account.weightSettings?.activityLevel = .athlete
-        account.weightSettings?.height = "681"
-        account.weightlessSettings?.isWeightlessOn = true
-        account.weightlessSettings?.weightlessWeight = 1550
-        account.notificationSettings?.shouldSendEntryNotifications = true
-        account.notificationSettings?.shouldSendWeightInEntryNotifications = true
-        account.streaksSettings?.isStreakOn = true
-        return account
+    ) -> AccountSnapshot {
+        AccountTestFixtures.makeAccountSnapshot(
+            id: id,
+            email: email,
+            firstName: firstName,
+            lastName: "Priya",
+            gender: .female,
+            dob: "1992-03-04",
+            zipcode: "560001",
+            isActiveAccount: true,
+            weightUnit: unit,
+            weightHeight: "681",
+            activityLevel: .athlete,
+            isStreakOn: true,
+            isWeightlessOn: true,
+            weightlessWeight: 1550,
+            shouldSendEntryNotifications: true,
+            shouldSendWeightInEntryNotifications: true
+        )
     }
 
     @MainActor

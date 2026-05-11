@@ -63,7 +63,7 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
     func switchDataSource(to entryType: EntryType) {
         cancellables.removeAll()
         switch entryType {
-        case .wg:
+        case .scale, .baby:
             entryService.$dailySummaries
                 .receive(on: DispatchQueue.main)
                 .sink { [weak self] in self?.updateStateFromDailySummaries($0) }
@@ -245,6 +245,15 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
 
     // MARK: - Private Methods
     private func updateStateFromDailySummaries(_ dailySummaries: [BathScaleWeightSummary]) {
+        let nextSummaries = dailySummaries.map { Optional($0) }
+        let nextCache = Dictionary(
+            uniqueKeysWithValues: dailySummaries.map { ($0.period, $0) }
+        )
+
+        if state.dailySummaries == nextSummaries && state.dailyCache == nextCache {
+            return
+        }
+
         // Update caches FIRST — state mutation fires $state synchronously and
         // subscribers (e.g. DashboardStore chart re-init) read cachedSortedDailySummaries
         // via getContinuousOperations(). If state is set first, subscribers see stale caches.
@@ -253,10 +262,8 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
         cachedDailyMaxDate = cachedSortedDailySummaries.last?.date
 
         // Update state LAST — triggers $state publisher and downstream subscribers
-        state.dailySummaries = dailySummaries.map { $0 }
-        state.dailyCache = Dictionary(
-            uniqueKeysWithValues: dailySummaries.map { ($0.period, $0) }
-        )
+        state.dailySummaries = nextSummaries
+        state.dailyCache = nextCache
 
         logger.log(
             level: .debug,
@@ -268,16 +275,23 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
     }
 
     private func updateStateFromMonthlySummaries(_ monthlySummaries: [BathScaleWeightSummary]) {
+        let nextSummaries = monthlySummaries.map { Optional($0) }
+        let nextCache = Dictionary(
+            uniqueKeysWithValues: monthlySummaries.map { ($0.period, $0) }
+        )
+
+        if state.monthlySummaries == nextSummaries && state.monthlyCache == nextCache {
+            return
+        }
+
         // Update caches FIRST (same reason as daily — see above)
         cachedSortedMonthlySummaries = monthlySummaries.sorted { $0.date < $1.date }
         cachedMonthlyMinDate = cachedSortedMonthlySummaries.first?.date
         cachedMonthlyMaxDate = cachedSortedMonthlySummaries.last?.date
 
         // Update state LAST
-        state.monthlySummaries = monthlySummaries.map { $0 }
-        state.monthlyCache = Dictionary(
-            uniqueKeysWithValues: monthlySummaries.map { ($0.period, $0) }
-        )
+        state.monthlySummaries = nextSummaries
+        state.monthlyCache = nextCache
 
         logger.log(
             level: .debug,

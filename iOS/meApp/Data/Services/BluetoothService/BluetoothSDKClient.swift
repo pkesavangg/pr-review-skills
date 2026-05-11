@@ -5,7 +5,7 @@ import GGBluetoothSwiftPackage
 protocol BluetoothSDKClient {
     func scan(_ appType: GGAppType, _ profile: GGBTUserProfile, _ callback: @escaping GGBTScanCallback)
     func scanForPairing()
-    func confirmPair(_ device: GGBTDevice) async throws -> UserCreationResponseType
+    func confirmPair(_ device: GGBTDevice, replaceUser: Bool, pairedSKUMonitors: [GGBTDevice]) async throws -> UserCreationResponseType
     func updateAccount(_ device: GGBTDevice) async throws -> UserCreationResponseType
     func deleteUser(_ device: GGBTDevice, canDisconnect: Bool) async throws -> UserDeletionResponseType
     func getWifiList(_ device: GGBTDevice) async throws -> GGWifiResponse<GGWifiDetails>
@@ -48,8 +48,8 @@ final class GGBluetoothSDKClient: BluetoothSDKClient {
         sdk.scanForPairing()
     }
 
-    func confirmPair(_ device: GGBTDevice) async throws -> UserCreationResponseType {
-        await sdk.confirmPair(device)
+    func confirmPair(_ device: GGBTDevice, replaceUser: Bool, pairedSKUMonitors: [GGBTDevice]) async throws -> UserCreationResponseType {
+        await sdk.confirmPair(device, replaceUser: replaceUser, pairedSKUMonitors: pairedSKUMonitors)
     }
 
     func updateAccount(_ device: GGBTDevice) async throws -> UserCreationResponseType {

@@ -4,8 +4,8 @@ import Foundation
 
 @MainActor
 final class MockScaleService: ScaleServiceProtocol {
-    @Published var scales: [Device] = []
-    var scalesPublisher: AnyPublisher<[Device], Never> { $scales.eraseToAnyPublisher() }
+    @Published var scales: [DeviceSnapshot] = []
+    var scalesPublisher: AnyPublisher<[DeviceSnapshot], Never> { $scales.eraseToAnyPublisher() }
     var attachedPreferences: [String: R4ScalePreference] = [:]
 
     var updateAllScalesStatusError: Error?
@@ -15,6 +15,7 @@ final class MockScaleService: ScaleServiceProtocol {
     var updateScalePreferenceError: Error?
     var updateScalePreferenceErrorsByCall: [Int: Error] = [:]
     var deleteDeviceError: Error?
+    var deleteSingleDeviceEntryError: Error?
     var createR4ScaleError: Error?
     var fetchAttachedPreferenceResult: R4ScalePreference?
 
@@ -27,6 +28,7 @@ final class MockScaleService: ScaleServiceProtocol {
     private(set) var createA6ScaleCalls = 0
     private(set) var createR4ScaleCalls = 0
     private(set) var deleteDeviceCalls = 0
+    private(set) var deleteSingleDeviceEntryCalls = 0
     private(set) var pushLocalChangesToServerCalls = 0
     private(set) var syncAllScalesWithRemoteCalls = 0
     private(set) var updateScalePreferenceCalls = 0
@@ -46,7 +48,7 @@ final class MockScaleService: ScaleServiceProtocol {
     var createA6ScaleError: Error?
 
     func clearAllData() async {}
-    func getDevices() async throws -> [Device] {
+    func getDevices() async throws -> [DeviceSnapshot] {
         if let getDevicesError {
             throw getDevicesError
         }
@@ -168,8 +170,17 @@ final class MockScaleService: ScaleServiceProtocol {
         return device
     }
 
+    var editDeviceError: Error?
+    private(set) var editDeviceCalls = 0
+    private(set) var lastEditDeviceId: String?
+    private(set) var lastEditDeviceProperties: [String: Any]?
+
     func editDevice(_ deviceId: String, properties: [String: Any]) async throws -> Device {
-        throw UnexpectedCallError.methodCalled("editDevice")
+        editDeviceCalls += 1
+        lastEditDeviceId = deviceId
+        lastEditDeviceProperties = properties
+        if let editDeviceError { throw editDeviceError }
+        return Device(id: deviceId, accountId: "", deviceType: DeviceType.scale.rawValue, createdAt: "")
     }
 
     func deleteDevice(_ deviceId: String, showToast: Bool) async throws {
@@ -177,6 +188,11 @@ final class MockScaleService: ScaleServiceProtocol {
         lastDeletedDeviceId = deviceId
         lastDeletedShowToast = showToast
         if let deleteDeviceError { throw deleteDeviceError }
+    }
+
+    func deleteSingleDeviceEntry(_ deviceId: String) async throws {
+        deleteSingleDeviceEntryCalls += 1
+        if let deleteSingleDeviceEntryError { throw deleteSingleDeviceEntryError }
     }
 
     func updateScaleMeta(_ deviceId: String, metaData: DeviceMetaData) async throws {}
@@ -205,7 +221,7 @@ final class MockScaleService: ScaleServiceProtocol {
     }
     func syncAllScalesWithRemote() async { syncAllScalesWithRemoteCalls += 1 }
     func pushLocalChangesToServer() async { pushLocalChangesToServerCalls += 1 }
-    func getDevice(by deviceId: String) async throws -> Device? { scales.first { $0.id == deviceId } }
+    func getDevice(by deviceId: String) async throws -> DeviceSnapshot? { scales.first { $0.id == deviceId } }
     func fetchAttachedPreference(by id: String) async -> R4ScalePreference? { attachedPreferences[id] ?? fetchAttachedPreferenceResult }
     func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? { attachedPreferences[id] ?? fetchAttachedPreferenceResult }
 }

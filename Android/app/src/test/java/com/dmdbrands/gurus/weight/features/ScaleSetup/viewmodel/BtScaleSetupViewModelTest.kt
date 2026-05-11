@@ -276,7 +276,7 @@ class BtScaleSetupViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `onBack from first step navigates to AddEditScales`() {
+    fun `onBack from first step navigates to MyDevices`() {
         advanceScheduler()
         viewModel.handleIntent(ScaleSetupIntent.Back)
         advanceScheduler()

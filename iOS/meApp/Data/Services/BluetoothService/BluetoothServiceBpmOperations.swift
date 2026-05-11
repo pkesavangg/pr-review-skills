@@ -20,19 +20,32 @@ extension BluetoothService {
 
     // MARK: - BPM Connection
 
-    /// Connects to a BPM device by its broadcast ID.
-    func connectBpm(broadcastId: String) async -> Result<Void, BluetoothServiceError> {
+    /// Connects to a BPM device by its broadcast ID and selected user number.
+    /// Returns the SDK's user-creation response so the caller can detect user mismatch.
+    func connectBpm(broadcastId: String, userNumber: Int, replaceUser: Bool, pairedSKUMonitors: [DeviceSnapshot]) async -> Result<UserCreationResponse, BluetoothServiceError> {
         guard !broadcastId.isEmpty else {
             return .failure(.invalidBroadcastId)
         }
 
         do {
             let ggDevice = mapToGGBTDevice(broadcastId)
-            try await withTimeout(seconds: 10) {
-                try await self.ggBleSDK.confirmPair(ggDevice)
+            ggDevice.userNumber = userNumber
+            let ggPairedMonitors = pairedSKUMonitors.compactMap { mapToGGBTDevice($0) }
+            logger.log(level: .info, tag: tag, message: "Connecting BPM device: \(broadcastId), user: \(userNumber), replace: \(replaceUser)")
+            let sdkResult = try await withTimeout(seconds: 10) {
+                try await self.ggBleSDK.confirmPair(ggDevice, replaceUser: replaceUser, pairedSKUMonitors: ggPairedMonitors)
             }
-            logger.log(level: .info, tag: tag, message: "BPM device connected: \(broadcastId)")
-            return .success(())
+            if let snapshot = accountService.activeAccount,
+               !snapshot.productTypes.contains("myBloodPressure") {
+                try await accountService.updateProductTypes(snapshot.productTypes + ["myBloodPressure"])
+                logger.log(
+                    level: .info,
+                    tag: tag,
+                    message: "Appended myBloodPressure to productTypes for accountId=\(snapshot.accountId)"
+                )
+            }
+            logger.log(level: .info, tag: tag, message: "BPM device connected: \(broadcastId), result: \(sdkResult)")
+            return .success(UserCreationResponse(sdkType: sdkResult))
         } catch let error as BluetoothServiceError {
             return .failure(error)
         } catch {
@@ -78,19 +91,14 @@ extension BluetoothService {
         newBpmReadingReceivedSubject.send(measurement)
     }
 
-    /// Converts a BpmMeasurement into an Entry and saves it.
-    func saveBpmEntry(_ measurement: BpmMeasurement) async {
-        guard let activeAccount = activeAccount else {
-            logger.log(level: .error, tag: tag, message: BluetoothServiceError.noActiveAccount.localizedDescription)
-            return
-        }
-
+    /// Builds an Entry from a BpmMeasurement. Caller decides whether to stage or persist.
+    private func buildBpmEntry(_ measurement: BpmMeasurement, accountId: String) -> Entry {
         let timestamp = ISO8601DateFormatter().string(from: measurement.timestamp)
         let entry = Entry(
             entryTimestamp: timestamp,
-            accountId: activeAccount.accountId,
+            accountId: accountId,
             operationType: OperationType.create.rawValue,
-            deviceType: DeviceType.bpm.rawValue,
+            entryType: EntryType.bpm.rawValue,
             isSynced: false
         )
         entry.scaleEntry = BathScaleEntry(
@@ -106,10 +114,34 @@ extension BluetoothService {
             systolic: measurement.systolic,
             diastolic: measurement.diastolic,
             meanArterial: measurement.meanArterial ?? "",
-            pulse: measurement.pulse,
-            note: ""
+            pulse: measurement.pulse
         )
+        return entry
+    }
 
+    /// Stages a single live BPM measurement as a pending entry awaiting user confirmation.
+    /// Fires `pendingBpmEntryPublisher`; the subscriber must call `confirmPendingBpmEntry()` or
+    /// `discardPendingBpmEntry()` (or rely on the toast timeout to auto-confirm).
+    func stagePendingBpmEntry(_ measurement: BpmMeasurement) async {
+        guard let activeAccount = activeAccount else {
+            logger.log(level: .error, tag: tag, message: BluetoothServiceError.noActiveAccount.localizedDescription)
+            return
+        }
+
+        let entry = buildBpmEntry(measurement, accountId: activeAccount.accountId)
+        pendingBpmEntry = entry
+        pendingBpmEntrySubject.send(EntryNotification(from: entry))
+    }
+
+    /// Persists a BPM measurement immediately without showing a toast.
+    /// Used by the bulk-history sync path so historical entries don't surface as live readings.
+    func persistBpmEntry(_ measurement: BpmMeasurement) async {
+        guard let activeAccount = activeAccount else {
+            logger.log(level: .error, tag: tag, message: BluetoothServiceError.noActiveAccount.localizedDescription)
+            return
+        }
+
+        let entry = buildBpmEntry(measurement, accountId: activeAccount.accountId)
         do {
             try await entryService.saveNewEntry(entry)
             let notification = EntryNotification(from: entry)

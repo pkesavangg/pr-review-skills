@@ -89,7 +89,33 @@ Flag as **FAIL** if a new injectable dependency has no registration.
 
 ---
 
-### 6 — Build Config & Endpoint Parity
+### 6 — Migration Audit
+
+If any file in CHANGED_FILES contains migration logic (function/method names containing `migrat`, `migrate`, flag keys with `migrated`, or `KvStorageKeys` constants for migration markers), run all four checks below:
+
+**Check A — Error boundary placement:**
+The migration success flag (`kvStorage.setValue(true, ...)`, `UserDefaults.set(true, ...)`, `kvStorage.setValue(true, forKey:)`) must be set **inside** the `do { }` block, not after the `catch`. Read the full migration function body from the worktree and verify placement.
+
+Flag as `[Critical] Migration success flag set outside error boundary at {file}:{line} — if migration throws midway, the flag is set anyway and the migration is permanently skipped on next launch`.
+
+**Check B — Account-scoping:**
+If the migrated model is fetched using an `accountId`, `userId`, or account filter (e.g. `fetchEntries(forUserId:)`, `predicate: #Predicate { $0.accountId == ... }`), the migration flag key must also include the account ID (e.g. `"babyMigrated_\(accountId)"`). A global flag prevents migration from running for any other account loaded later.
+
+Flag as `[Critical] Migration flag is global but model is account-scoped at {file}:{line} — multi-account migration will be permanently skipped for accounts not active at migration time. Use per-account flag key`.
+
+**Check C — Atomicity:**
+If the migration iterates entries with per-entry writes (e.g. `for entry in entries { updateEntry(entry) }`) and there is no batch commit or transaction boundary, a crash mid-loop leaves some entries in old format and some in new format. The heuristic check at migration start won't catch this.
+
+Flag as `[High] Migration has no transaction boundary at {file}:{line} — crash mid-loop leaves database in inconsistent state. Consider accumulating all changes and calling context.save() once at the end`.
+
+**Check D — Commented-out remote sync calls:**
+Scan diff for `+` lines containing `// try await` or lines where a complete service/API call is commented out inside `Service`, `API`, `Repository`, or `Store` files (pattern: `//.*try await.*Service\|Repository\|API`).
+
+Flag as `[High] Remote sync call disabled with comment at {file}:{line} — this creates permanent client/server drift for multi-device users. Verify this is intentional and tracked with a follow-up ticket; do not leave disabled sync in production without an explicit TODO issue link`.
+
+---
+
+### 7 — Build Config & Endpoint Parity
 
 If any of these files appear in CHANGED_FILES:
 - `EndPoints.swift` — confirm new endpoint cases are handled in both `Dev` and `Production` `urlRequest` implementations
@@ -113,6 +139,7 @@ Flag as **WARNING** if endpoint/config changes look asymmetric across environmen
 | SwiftData Models | Low / Medium / High / N/A | … |
 | DI Registration | Low / Medium / High / N/A | … |
 | Build Config Parity | Low / Medium / High / N/A | … |
+| Migration Audit | Low / Medium / High / N/A | … |
 
 **Regression risk:** Low / Medium / High
 

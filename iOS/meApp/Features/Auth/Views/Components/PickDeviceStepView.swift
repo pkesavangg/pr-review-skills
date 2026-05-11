@@ -18,11 +18,15 @@ struct PickDeviceStepView: View {
                     .foregroundColor(theme.textHeading)
 
                 ForEach(SignupDeviceType.allCases) { deviceType in
+                    let isDisabled = signupStore.disabledDeviceTypes.contains(deviceType)
                     DeviceCard(
                         deviceType: deviceType,
-                        isSelected: signupStore.selectedDeviceType == deviceType
+                        isSelected: signupStore.selectedDeviceType == deviceType,
+                        isDisabled: isDisabled
                     ) {
-                        signupStore.selectDeviceType(deviceType)
+                        if !isDisabled {
+                            signupStore.selectDeviceType(deviceType)
+                        }
                     }
                 }
             }
@@ -36,6 +40,7 @@ private struct DeviceCard: View {
     @Environment(\.appTheme) private var theme
     let deviceType: SignupDeviceType
     let isSelected: Bool
+    let isDisabled: Bool
     let action: () -> Void
 
     var body: some View {
@@ -45,12 +50,13 @@ private struct DeviceCard: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 75, height: 75)
+                    .opacity(isDisabled ? 0.4 : 1)
 
                 VStack(alignment: .leading, spacing: 0) {
                     Text(deviceType.title)
                         .fontOpenSans(.heading5)
-                        .foregroundColor(theme.textHeading)
-                    Text(deviceType.subtitle.lowercased())
+                        .foregroundColor(isDisabled ? theme.textSubheading : theme.textHeading)
+                    Text(isDisabled ? SignupStrings.PickDeviceStep.alreadyAdded : deviceType.subtitle.lowercased())
                         .fontOpenSans(.body3)
                         .foregroundColor(theme.textSubheading)
                 }
@@ -58,7 +64,7 @@ private struct DeviceCard: View {
                 Spacer()
 
                 Image(systemName: isSelected ? "circle.inset.filled" : "circle")
-                    .foregroundColor(isSelected ? theme.actionPrimary : theme.textSubheading)
+                    .foregroundColor(isDisabled ? theme.textSubheading.opacity(0.4) : (isSelected ? theme.actionPrimary : theme.textSubheading))
                     .font(.system(size: 22))
             }
             .padding(.spacingSM)
@@ -67,6 +73,7 @@ private struct DeviceCard: View {
             .cornerRadius(.spacingSM)
         }
         .buttonStyle(.plain)
+        .disabled(isDisabled)
     }
 }
 

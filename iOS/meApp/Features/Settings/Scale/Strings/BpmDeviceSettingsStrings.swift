@@ -27,8 +27,22 @@ struct BpmDeviceSettingsStrings {
     static let deleteDevice = "Delete Device"
 
     // User Number
+    static let user = "User"
     static let userNumber = "User Number"
-    static let userNumberInfo: (String) -> String = { userNumber in
-        return "U\(userNumber)"
+    static let userALabel = "A"
+    static let userBLabel = "B"
+    /// Formats user number for display. Only 0603 (hasNumericUsers) shows "User 1"/"User 2";
+    /// all other monitors show "User A"/"User B" regardless of protocol type.
+    static let userNumberInfo: (String, String?) -> String = { userNumber, sku in
+        let hasNumeric = sku.flatMap { bpmCatalogItem(forEnteredCode: $0) }?.hasNumericUsers ?? false
+        let userLabel: String
+
+        if hasNumeric {
+            userLabel = userNumber
+        } else {
+            userLabel = userNumber == "1" ? userALabel : userBLabel
+        }
+
+        return "\(user) \(userLabel)"
     }
 }

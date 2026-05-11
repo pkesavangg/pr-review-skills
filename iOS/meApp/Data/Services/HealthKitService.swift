@@ -7,8 +7,8 @@ import Combine
 import Foundation
 import ggHealthKitPackage
 import HealthKit
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 @MainActor
 final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:this type_body_length
@@ -75,24 +75,35 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
             NotificationCenter.default.removeObserver(devicePairingObserver)
         }
     }
-    
+
     // MARK: - Helpers
     private func getActiveAccountId() async -> String? {
         await MainActor.run {
             accountService.activeAccount?.accountId
         }
     }
-    
+
     private func isHealthKitEnabledForActiveAccount() async -> Bool {
         await MainActor.run {
-            accountService.activeAccount?.integrationSettings?.isHealthKitOn ?? false
+            accountService.activeAccount?.isHealthKitOn ?? false
         }
     }
 
     /// Returns the set of device type raw values for paired devices on the active account.
     private func getPairedDeviceTypes() async -> Set<String> {
-        guard let devices = try? await deviceService.getDevices() else { return [] }
-        return Set(devices.compactMap { $0.deviceType })
+        do {
+            let devices = try await deviceService.getDevices()
+            return Set(devices.compactMap { $0.deviceType })
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to fetch paired device types: \(error)")
+            return []
+        }
+    }
+
+    /// Maps a raw DeviceType value to its HealthKit permission category.
+    /// babyScale has no distinct HealthKit data types from scale — both use Weight Gurus permissions.
+    private func healthKitPermissionCategory(for deviceType: String) -> String {
+        deviceType == DeviceType.babyScale.rawValue ? DeviceType.scale.rawValue : deviceType
     }
 
     private func getSignupSelectedDeviceType(for accountId: String) -> SignupDeviceType? {
@@ -286,6 +297,12 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
         let expandedDeviceTypes = currentPermissionScope.union(pairedDeviceTypes)
         guard expandedDeviceTypes != currentPermissionScope else { return nil }
 
+        // babyScale maps to the same HealthKit permissions as scale — adding a baby scale
+        // should not trigger a permission expansion modal.
+        let currentCategories = Set(currentPermissionScope.map { healthKitPermissionCategory(for: $0) })
+        let expandedCategories = Set(expandedDeviceTypes.map { healthKitPermissionCategory(for: $0) })
+        guard expandedCategories != currentCategories else { return nil }
+
         logger.log(
             level: .info,
             tag: tag,
@@ -339,7 +356,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
 
     private func schedulePermissionExpansionRetry() {
         Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: permissionExpansionAlertRetryDelayNs)
+            try? await Task.sleep(nanoseconds: self?.permissionExpansionAlertRetryDelayNs ?? 500_000_000)
             await self?.processPendingPermissionExpansionIfNeeded()
         }
     }
@@ -459,7 +476,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
     }
 
     // MARK: - HealthKitServiceProtocol
-    
+
     /// Integrates or de-integrates Apple Health based on `turnOn`. Returns `true` when integration remains enabled after the call.
     public func integrate(turnOn: Bool) async throws -> Bool { // swiftlint:disable:this function_body_length
         let accountId = accountService.activeAccount?.accountId ?? "nil"
@@ -480,7 +497,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
                 throw IntegrationError.userConflict
             }
         }
-        
+
         if turnOn {
             let isAvailable = hkPackage.available()
             if !isAvailable {
@@ -533,7 +550,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
             return false
         }
     }
-    
+
     public func isHKOutOfSync() async -> Bool {
         do {
             let result = try await self.integrationService.getStoredIntegrationData()
@@ -545,7 +562,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
             return false
         }
     }
-    
+
     /// Pushes the entire local entry history into Apple Health.
     public func syncAllData() async throws { // swiftlint:disable:this function_body_length
         // Get accountId on main actor first
@@ -555,7 +572,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
 
         // Use the configured permission scope so initial Balance Health integrations
         // do not silently expand into Weight Gurus until we explicitly re-request.
-        await updateAppTypeForConfiguredPermissionScope()
+        _ = await updateAppTypeForConfiguredPermissionScope()
 
         // Materialize simple export values off the main actor to avoid cross-context @Model access
         let (scaleExports, bpmExports): ([HealthKitExport], [HealthKitExportExtended]) = try await Task.detached(priority: .userInitiated) {
@@ -571,10 +588,10 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
 
             var scaleItems: [HealthKitExport] = []
             var bpmItems: [HealthKitExportExtended] = []
-            let bpmType = DeviceType.bpm.rawValue
+            let bpmType = EntryType.bpm.rawValue
 
             for entry in entries {
-                if entry.deviceType == bpmType, let bpmEntry = entry.bpmEntry {
+                if entry.entryType == bpmType, let bpmEntry = entry.bpmEntry {
                     // BPM entries → systolic, diastolic, pulse
                     bpmItems.append(HealthKitExportExtended(
                         timestamp: entry.entryTimestamp,
@@ -618,7 +635,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
         try await saveHealthKitData(finalData: healthKitData)
         logger.log(level: .success, tag: tag, message: "HealthKit full sync completed. accountId=\(accountId), payloadCount=\(healthKitData.count)")
     }
-    
+
     /// Opens the Apple Health app so the user can review permissions.
     public func openAppleHealth() {
         logger.log(level: .info, tag: tag, message: "Opening Apple Health app from integration flow")
@@ -626,7 +643,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
             await hkPackage.openAppleHealth()
         }
     }
-    
+
     /// Writes a single `Entry` into Apple Health.
     /// - Note: Prefer `syncNewData(notification:)` when crossing actor boundaries.
     func syncNewData(entry: Entry) async throws {
@@ -637,7 +654,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
     /// Writes entry data into Apple Health using an EntryNotification.
     /// This method is safe to call from any actor as it uses extracted data.
     func syncNewData(notification: EntryNotification) async throws {
-        logger.log(level: .info, tag: tag, message: "HealthKit sync new entry started. timestamp=\(notification.entryTimestamp), deviceType=\(notification.deviceType)")
+        logger.log(level: .info, tag: tag, message: "HealthKit sync new entry started. timestamp=\(notification.entryTimestamp), entryType=\(notification.entryType)")
         let export = HealthKitExportExtended(
             timestamp: notification.entryTimestamp,
             weight: notification.weight,
@@ -690,7 +707,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
         )
         return true
     }
-    
+
     /// Requests additional HealthKit permissions if the paired device types have expanded
     /// since the last authorization (e.g., user added a weight scale after only having BPM).
     /// iOS only prompts for types with `.notDetermined` status — already-granted types are silently skipped.
@@ -736,20 +753,20 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
             throw error
         }
     }
-    
+
     /// Returns `true` if at least one HealthKit permission is granted.
     func checkAuthorizationStatus() -> Bool {
         let approvedPermissionList = self.getApprovedPermissionList()
         return !approvedPermissionList.isEmpty
     }
-    
+
     /// Lists the granted HealthKit permission identifiers.
     func getApprovedPermissionList() -> [String] {
         hkPackage.getApprovedPermissionList()
     }
-    
+
     // MARK: - Private Helpers ------------------------------------------------
-    
+
     /// Fetches all entries from the local database.
     private func fetchAllEntries() async throws -> [Entry] {
         do {
@@ -760,7 +777,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
             throw error
         }
     }
-    
+
     /// Normalizes timestamp to include fractional seconds if missing
     private func normalizeTimestamp(_ timestamp: String) -> String {
         // If timestamp ends with 'Z' and does NOT already contain fractional seconds
@@ -769,7 +786,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
         }
         return timestamp
     }
-    
+
     /// Converts entries into `HealthKitData` payloads ready for saving.
     private func buildHealthKitData(from entries: [Entry]) -> [HealthKitData] {
         var healthKitData: [HealthKitData] = []
@@ -777,13 +794,13 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         for entry in entries {
           guard let scaleEntry = entry.scaleEntry else { continue }
-           
+
           // Normalize timestamp to include fractional seconds if missing
           let normalizedTimestamp = normalizeTimestamp(entry.entryTimestamp)
           guard let timestamp = formatter.date(from: normalizedTimestamp) else {
             continue
           }
-           
+
           if let weight = scaleEntry.weight {
             healthKitData.append(HealthKitData(
               type: .weight,
@@ -791,7 +808,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
               timestamp: timestamp
             ))
           }
-           
+
           if let bodyFat = scaleEntry.bodyFat {
             healthKitData.append(HealthKitData(
               type: .bodyFat,
@@ -799,7 +816,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
               timestamp: timestamp
             ))
           }
-           
+
           if let pulse = entry.scaleEntryMetric?.pulse {
             healthKitData.append(HealthKitData(
               type: .heartRate,
@@ -807,7 +824,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
               timestamp: timestamp
             ))
           }
-           
+
           if let weight = scaleEntry.weight, let bodyFat = scaleEntry.bodyFat {
             let convertedWeight = ConversionTools.convertStoredToLbs(weight)
             let convertedBodyFat = ConversionTools.convertStoredToLbs(bodyFat)
@@ -818,7 +835,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
               timestamp: timestamp
             ))
           }
-           
+
           if let bmi = scaleEntry.bmi {
             healthKitData.append(HealthKitData(
               type: .bmi,
@@ -826,9 +843,9 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
               timestamp: timestamp
             ))
           }
-           
+
         }
-         
+
         return healthKitData
       }
 
@@ -908,7 +925,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
     }
 
     /// Converts a single extended export into HealthKitData payloads.
-    private func buildHealthKitData(from export: HealthKitExportExtended) -> [HealthKitData] {
+    private func buildHealthKitData(from export: HealthKitExportExtended) -> [HealthKitData] { // swiftlint:disable:this function_body_length
         var healthKitData: [HealthKitData] = []
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -999,7 +1016,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
             throw error
         }
     }
-    
+
     // MARK: - Integration Helper ------------------------------------------------
     /// Determines which Apple Health integration modal (if any) should be presented on app launch.
     /// - Returns: A `HKIntegrationModalState` value (`.addIntegration` / `.finishAdding`) when a prompt
@@ -1082,9 +1099,9 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
             throw error
         }
     }
-    
+
     // MARK: - Out of Sync Permission Restoration Tracking
-    
+
     /// Sets a flag indicating we're waiting for permissions to be restored after out-of-sync.
     /// Called when user taps "OPEN APPLE HEALTH" from the out-of-sync modal.
     public func setWaitingForPermissionsRestored() {
@@ -1093,7 +1110,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
         kvStore.setValue(true, forKey: scopedKey)
         logger.log(level: .info, tag: tag, message: "Set waiting-for-permissions-restored flag. accountId=\(accountId ?? "nil")")
     }
-    
+
     /// Clears the flag indicating we're waiting for permissions to be restored.
     public func clearWaitingForPermissionsRestored() {
         let accountId = accountService.activeAccount?.accountId
@@ -1101,19 +1118,19 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
         kvStore.clearValue(forKey: scopedKey)
         logger.log(level: .info, tag: tag, message: "Cleared waiting-for-permissions-restored flag. accountId=\(accountId ?? "nil")")
     }
-    
+
     /// Checks if permissions were restored after being out of sync.
     /// Returns `true` if we were waiting for permissions and they are now restored.
     /// This should be called on app launch to show the success toast.
     public func checkIfPermissionsRestoredAfterOutOfSync() async -> Bool {
         let accountId = accountService.activeAccount?.accountId
         let scopedKey = KvStorageKeys.scopedHealthKitModalKey(waitingForHKPermissionsRestoredBase, accountId: accountId)
-        
+
         // Check if we were waiting for permissions to be restored
         guard (kvStore.getValue(forKey: scopedKey) as? Bool) == true else {
             return false
         }
-        
+
         // Check if permissions are now restored (at least one permission granted)
         let approvedPermissions = getApprovedPermissionList()
         if !approvedPermissions.isEmpty {
@@ -1127,7 +1144,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
             )
             return true
         }
-        
+
         logger.log(level: .info, tag: tag, message: "HealthKit permissions still not restored after out-of-sync. accountId=\(accountId ?? "nil")")
         return false
     }

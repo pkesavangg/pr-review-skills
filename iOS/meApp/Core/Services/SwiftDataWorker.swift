@@ -21,7 +21,7 @@ struct EntryData: Sendable {
     let entryTimestamp: String
     let serverTimestamp: String?
     let operationType: String
-    let deviceType: String
+    let entryType: String
     let isSynced: Bool
 
     // Extracted from BathScaleEntry relationship
@@ -148,13 +148,14 @@ actor SwiftDataWorker {
               let monthStartDate = calendar.date(byAdding: .day, value: -30, to: now) else {
             throw NSError(domain: "SwiftDataWorker", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to calculate date ranges"])
         }
-        
-        let isoFormatter = ISO8601DateFormatter()
+        let isoFormatter = DateTimeTools.isoFormatter(useUTC: true)
+        let nowString = isoFormatter.string(from: now)
         let weekStartString = isoFormatter.string(from: weekStartDate)
         let monthStartString = isoFormatter.string(from: monthStartDate)
-        let nowString = isoFormatter.string(from: now)
         
-        // Fetch all entries ordered DESC (newest first)
+        // Fetch once ordered DESC (newest first), then derive the week/month slices
+        // in memory. This avoids repeating nearly identical SQLite work three times
+        // during a single dashboard progress refresh.
         let allDescriptor = FetchDescriptor<Entry>(
             predicate: #Predicate<Entry> { entry in
                 entry.accountId == accountId && entry.operationType == operationType
@@ -163,32 +164,16 @@ actor SwiftDataWorker {
         )
         let allEntries = try modelContext.fetch(allDescriptor)
         let allEntryData = allEntries.map { extractEntryData($0) }
-        
-        // Fetch entries from last 7 days, ordered DESC (newest first)
-        let weekDescriptor = FetchDescriptor<Entry>(
-            predicate: #Predicate<Entry> { entry in
-                entry.accountId == accountId 
-                && entry.operationType == operationType
-                && entry.entryTimestamp >= weekStartString
-                && entry.entryTimestamp <= nowString
-            },
-            sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
-        )
-        let weekEntries = try modelContext.fetch(weekDescriptor)
-        let weekEntryData = weekEntries.map { extractEntryData($0) }
-        
-        // Fetch entries from last 30 days, ordered DESC (newest first)
-        let monthDescriptor = FetchDescriptor<Entry>(
-            predicate: #Predicate<Entry> { entry in
-                entry.accountId == accountId 
-                && entry.operationType == operationType
-                && entry.entryTimestamp >= monthStartString
-                && entry.entryTimestamp <= nowString
-            },
-            sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
-        )
-        let monthEntries = try modelContext.fetch(monthDescriptor)
-        let monthEntryData = monthEntries.map { extractEntryData($0) }
+
+        // Entry timestamps are stored in ISO-8601 UTC format, so lexical comparison
+        // preserves ordering without reparsing every timestamp during streak refreshes.
+        let weekEntryData = allEntryData.filter { entry in
+            entry.entryTimestamp >= weekStartString && entry.entryTimestamp <= nowString
+        }
+
+        let monthEntryData = allEntryData.filter { entry in
+            entry.entryTimestamp >= monthStartString && entry.entryTimestamp <= nowString
+        }
 
         return ProgressFetchResult(
             latestEntry: allEntryData.first,
@@ -289,7 +274,7 @@ actor SwiftDataWorker {
             entryTimestamp: entry.entryTimestamp,
             serverTimestamp: entry.serverTimestamp,
             operationType: entry.operationType,
-            deviceType: entry.deviceType,
+            entryType: entry.entryType ?? EntryType.scale.rawValue,
             isSynced: entry.isSynced,
             // BathScaleEntry relationship - safe to access here
             weight: entry.scaleEntry?.weight,

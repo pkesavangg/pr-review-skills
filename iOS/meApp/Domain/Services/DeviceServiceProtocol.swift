@@ -6,8 +6,8 @@ import Foundation
 /// editing, deleting, updating scale meta and preferences, connection management, and pairing logic.
 protocol DeviceServiceProtocol {
     /// Fetches the latest paired scales for the current user.
-    /// - Returns: An array of Scale.
-    func getDevices() async throws -> [Device]
+    /// - Returns: An array of DeviceSnapshot (value-type, safe across async boundaries).
+    func getDevices() async throws -> [DeviceSnapshot]
 
     /// Fetches the currently connected scales (by broadcastId).
     /// - Returns: A dictionary of broadcastId to device details.

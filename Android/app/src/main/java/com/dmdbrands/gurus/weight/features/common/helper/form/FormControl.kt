@@ -79,6 +79,7 @@ class FormControl<T> private constructor(
         val oldValue = _value.value
         _value.value = newValue
         _dirty.value = true
+        suppressNextBlurTouch = false
         onValueChangeCallback?.invoke(oldValue, newValue)
         validate()
     }

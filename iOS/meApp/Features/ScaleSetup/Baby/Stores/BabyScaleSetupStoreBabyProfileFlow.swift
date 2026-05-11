@@ -65,26 +65,18 @@ extension BabyScaleSetupStore {
 
     func editBaby(_ baby: Baby) {
         editingBaby = baby
+        babyProfileForm.reset()
         babyProfileForm.name.value = baby.name
         if let birthday = baby.birthday {
             babyProfileForm.birthday.value = birthday
         }
         babyProfileForm.biologicalSex.value = baby.biologicalSex ?? ""
-        if let length = baby.birthLengthInches {
-            babyProfileForm.birthLengthInches.value = String(length)
-        } else {
-            babyProfileForm.birthLengthInches.value = ""
-        }
-        if let lbs = baby.birthWeightLbs {
-            babyProfileForm.birthWeightLbs.value = String(Int(lbs))
-        } else {
-            babyProfileForm.birthWeightLbs.value = ""
-        }
-        if let oz = baby.birthWeightOz {
-            babyProfileForm.birthWeightOz.value = String(oz)
-        } else {
-            babyProfileForm.birthWeightOz.value = ""
-        }
+        babyProfileForm.populateStoredMeasurements(
+            birthLengthInches: baby.birthLengthInches,
+            birthWeightLbs: baby.birthWeightLbs,
+            birthWeightOz: baby.birthWeightOz,
+            preferredWeightUnit: accountService.activeAccount?.weightUnit == .kg ? .kg : .lbsOz
+        )
         navigateToStep(.babyProfile)
     }
 

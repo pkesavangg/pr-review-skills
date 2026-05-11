@@ -6,11 +6,14 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryDetail
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
+import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.domain.services.IHistoryService
-import com.dmdbrands.gurus.weight.features.common.components.ButtonType
+import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
@@ -24,7 +27,6 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -46,6 +48,9 @@ class HistoryDetailViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @MockK(relaxUnitFun = true)
+    lateinit var accountService: IAccountService
+
+    @MockK(relaxUnitFun = true)
     lateinit var entryService: IEntryService
 
     @MockK(relaxUnitFun = true)
@@ -59,6 +64,8 @@ class HistoryDetailViewModelTest {
     private lateinit var productSelectionManager: IProductSelectionManager
     private lateinit var viewModel: HistoryDetailViewModel
 
+    private val activeAccountFlow = MutableStateFlow<Account?>(null)
+
     @BeforeEach
     fun setUp() {
         MockKAnnotations.init(this)
@@ -66,6 +73,7 @@ class HistoryDetailViewModelTest {
         dialogQueueService = mockk(relaxed = true)
         productSelectionManager = mockk(relaxed = true)
         every { productSelectionManager.selectedProduct } returns MutableStateFlow(ProductSelection.MyWeight)
+        every { accountService.activeAccount } returns activeAccountFlow
     }
 
     private fun createViewModel(
@@ -74,6 +82,7 @@ class HistoryDetailViewModelTest {
     ): HistoryDetailViewModel {
         every { historyService.getDetail(any(), eq(month)) } returns flowOf(HistoryDetail.Weight(entries))
         return HistoryDetailViewModel(
+            accountService = accountService,
             entryService = entryService,
             healthConnectService = healthConnectService,
             historyService = historyService,
@@ -463,6 +472,7 @@ class HistoryDetailViewModelTest {
         every { historyService.getDetail(any(), eq(TEST_MONTH)) } returns flowOf(HistoryDetail.Weight(emptyList()))
 
         viewModel = HistoryDetailViewModel(
+            accountService = accountService,
             entryService = entryService,
             healthConnectService = healthConnectService,
             historyService = historyService,
@@ -496,6 +506,7 @@ class HistoryDetailViewModelTest {
         every { historyService.getDetail(any(), any()) } throws RuntimeException("test error")
 
         viewModel = HistoryDetailViewModel(
+            accountService = accountService,
             entryService = entryService,
             healthConnectService = healthConnectService,
             historyService = historyService,
@@ -587,5 +598,39 @@ class HistoryDetailViewModelTest {
         verify { dialogQueueService.showDialog(capture(dialogSlot)) }
         val dialog = dialogSlot.captured as DialogModel.Confirm
         assertThat(dialog.onDismiss).isNotNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // isMetric state
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `isMetric is true when account uses KG`() = runTest {
+        activeAccountFlow.value = TestFixtures.anAccount(weightUnit = WeightUnit.KG)
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.isMetric).isTrue()
+    }
+
+    @Test
+    fun `isMetric is false when account uses LB`() = runTest {
+        activeAccountFlow.value = TestFixtures.anAccount(weightUnit = WeightUnit.LB)
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.isMetric).isFalse()
+    }
+
+    @Test
+    fun `isMetric updates reactively when account changes`() = runTest {
+        activeAccountFlow.value = TestFixtures.anAccount(weightUnit = WeightUnit.LB)
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        assertThat(viewModel.state.value.isMetric).isFalse()
+
+        activeAccountFlow.value = TestFixtures.anAccount(weightUnit = WeightUnit.KG)
+        advanceUntilIdle()
+        assertThat(viewModel.state.value.isMetric).isTrue()
     }
 }

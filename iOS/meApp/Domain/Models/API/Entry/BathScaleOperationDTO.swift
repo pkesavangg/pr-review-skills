@@ -1,6 +1,6 @@
 import Foundation
 
-struct BathScaleOperationDTO: Codable, Sendable {
+struct BathScaleOperationDTO: Codable, Sendable, Equatable {
     let accountId: String?
     let bmr: Double?
     let bmi: Double?
@@ -25,6 +25,10 @@ struct BathScaleOperationDTO: Codable, Sendable {
     let visceralFatLevel: Double?
     let water: Double?
     let weight: Double?
+    // Baby scale fields
+    var babyId: String? = nil
+    var babyWeight: Double? = nil
+    var babyLength: Double? = nil
 }
 
 // Extend BathScaleOperationDTO to conform to Identifiable and provide a computed date property
@@ -63,7 +67,10 @@ extension BathScaleOperationDTO: Identifiable {
             unit: unit,
             visceralFatLevel: visceralFatLevel,
             water: water,
-            weight: weight
+            weight: weight,
+            babyId: babyId,
+            babyWeight: babyWeight,
+            babyLength: babyLength
         )
     }    
 }
@@ -92,7 +99,10 @@ extension BathScaleOperationDTO {
             unit: self.unit,
             visceralFatLevel: self.visceralFatLevel,
             water: self.water,
-            weight: self.weight
+            weight: self.weight,
+            babyId: self.babyId,
+            babyWeight: self.babyWeight,
+            babyLength: self.babyLength
         )
     }
 
@@ -122,5 +132,8 @@ extension BathScaleOperationDTO {
         self.visceralFatLevel = summary.visceralFatLevel
         self.water = summary.water
         self.weight = summary.weight
+        self.babyId = nil
+        self.babyWeight = nil
+        self.babyLength = nil
     }
 }

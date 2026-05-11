@@ -6,6 +6,9 @@
 import Foundation
 
 struct BpmSetupStrings {
+    static let troubleSettingUp = "If you have any trouble setting up your monitor, you can connect with our team "
+        + "via the help button in the top right."
+
     static let setupHeader: (String) -> String = { sku in
         let displaySku = DeviceHelper.mapSkuForDisplay(sku)
         return "Device Setup - \(displaySku)"
@@ -31,15 +34,36 @@ struct BpmSetupStrings {
     }
 
     struct SetUser {
-        static let title: (Int) -> String = { userNumber in
-            "Set the monitor to User \(userNumber)."
+        static let title: (String) -> String = { userLabel in
+            "Set the monitor to User \(userLabel)."
         }
-        static let description = "Change the user by tapping the USER button."
+        static func description(for item: ScaleItemInfo) -> String {
+            if item.toggleButton {
+                return "With the monitor off, toggle the user switch to change users."
+            }
+            if item.hasNumericUsers {
+                return "Change the user by tapping the USER button."
+            }
+            return "Change the user by tapping the A/B button."
+        }
     }
 
     struct ConfirmUser {
         static let title = "Press the START/STOP button to confirm user selection."
-        static let description = "The monitor will confirm and turn off."
+        static func description(for sku: String) -> String {
+            switch sku {
+            case "0603":
+                return "The monitor will confirm and turn off."
+            default:
+                return "The monitor will say done and turn off."
+            }
+        }
+    }
+
+    struct PowerSwitch {
+        static let title = "Set the monitor\u{2019}s power switch to ON."
+        static let description = "Keep the switch set to ON unless you need to reset the monitor. "
+            + "To enter sleep mode, press SET or let the monitor enter it automatically after one minute of non-use."
     }
 
     struct PrePairing {
@@ -80,5 +104,37 @@ struct BpmSetupStrings {
         static let title = "Your measurement has been recorded!"
         static let description = "That's it! When you want to record your next measurement simply open the app, "
             + "put the cuff on, and press start on the monitor."
+    }
+
+    struct DeviceConflictAlert {
+
+        struct SameUser {
+            static let title = "Caution: User Already Paired"
+            static let message = "This monitor is already paired under the same User. By continuing the connection will be reset."
+            static let continueButton = "CONTINUE"
+        }
+
+        struct DifferentUser {
+            static let title = "Caution: Adding Second User"
+            static func message(_ user: String) -> String {
+                "This monitor has already been paired under User \(user). Balance cannot distinguish between multiple users on the same account."
+            }
+            static let replaceButton = "REPLACE USER"
+        }
+
+    }
+
+    struct UserMismatchAlert {
+        static let title = "Unable to Connect"
+        static let message = "The user settings chosen on the monitor and in the app do not match. Please review and try again."
+        static let cancelSetupButton = "CANCEL SETUP"
+        static let reviewButton = "REVIEW"
+    }
+
+    struct ConnectionErrorAlert {
+        static let title = "Unable to Connect"
+        static let message = "This may be caused by interference from another Bluetooth device. Try again or contact customer service."
+        static let dismissButton = "DISMISS"
+        static let tryAgainButton = "TRY AGAIN"
     }
 }

@@ -150,7 +150,7 @@ class MetricInfoViewModel @AssistedInject constructor(
           // If multiple scales have heart rate OFF, navigate to My Scales screen
           scalesWithHeartRateOff.size > 1 -> {
             AppLog.d("MetricInfoViewModel", "Navigating to My Scales screen (multiple scales with heart rate OFF)")
-            navigationService.navigateTo(AppRoute.AccountSettings.AddEditScales)
+            navigationService.navigateTo(AppRoute.AccountSettings.MyDevices)
           }
 
           // If only one scale has heart rate OFF, navigate to that scale

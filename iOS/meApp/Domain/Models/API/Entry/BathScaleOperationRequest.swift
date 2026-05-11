@@ -29,4 +29,8 @@ struct BathScaleOperationRequest: Codable {
     let visceralFatLevel: Double?
     let water: Double?
     let weight: Double?
+    // Baby scale fields
+    var babyId: String? = nil
+    var babyWeight: Double? = nil
+    var babyLength: Double? = nil
 }

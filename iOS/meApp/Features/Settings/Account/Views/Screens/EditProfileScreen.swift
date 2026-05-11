@@ -33,38 +33,35 @@ struct EditProfileScreen: View {
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .pickerSheet(
             isPresented: $settingsStore.showGenderPicker,
-            selectedValues: [settingsStore.activeAccount?.gender ?? .male],
+            selectedValues: [settingsStore.editProfileForm.gender.value],
             options: [Sex.allCases],
             displayValue: { $0.rawValue.capitalized },
-            title: SettingsStrings.biologicalSex,
-            onUpdate: { vals in // swiftlint:disable:this trailing_closure
-                if let sex = vals.first {
-                    settingsStore.updateGender(sex)
-                }
+            title: SettingsStrings.biologicalSex
+        ) { vals in
+            if let sex = vals.first {
+                settingsStore.updateGenderInForm(sex)
             }
-        )
+        }
         .pickerSheet(
             isPresented: $settingsStore.showHeightInchesPicker,
             selectedValues: settingsStore.selectedHeightInches,
             options: settingsStore.heightInchesOptions,
             displayValue: { $0 },
             pickerType: .heightInches,
-            title: SettingsStrings.height,
-            onUpdate: { newValues in // swiftlint:disable:this trailing_closure
-                settingsStore.updateHeight(fromMetric: false, values: newValues)
-            }
-        )
+            title: SettingsStrings.height
+        ) { newValues in
+            settingsStore.updateHeightInForm(fromMetric: false, values: newValues)
+        }
         .pickerSheet(
             isPresented: $settingsStore.showHeightCmPicker,
             selectedValues: settingsStore.selectedHeightCm,
             options: settingsStore.heightCmOptions,
             displayValue: { $0 },
             pickerType: .heightCm,
-            title: SettingsStrings.height,
-            onUpdate: { newValues in // swiftlint:disable:this trailing_closure
-                settingsStore.updateHeight(fromMetric: true, values: newValues)
-            }
-        )
+            title: SettingsStrings.height
+        ) { newValues in
+            settingsStore.updateHeightInForm(fromMetric: true, values: newValues)
+        }
         .onAppear {
             settingsStore.populateEditFormIfNeeded()
 
@@ -223,7 +220,7 @@ struct EditProfileScreen: View {
                 VStack(alignment: .leading, spacing: .spacingXS) {
                     ActionListItemView(config: ActionListItemConfig(
                         title: settingsLang.biologicalSex,
-                        value: settingsStore.biologicalSexText,
+                        value: settingsStore.editBiologicalSexText,
                         chevronType: .upDown) { settingsStore.presentGenderPicker() })
                         .padding(.horizontal, .spacingSM)
                         .padding(.vertical, .spacingXS / 2)
@@ -239,7 +236,7 @@ struct EditProfileScreen: View {
                 VStack(alignment: .leading, spacing: .spacingXS) {
                     ActionListItemView(config: ActionListItemConfig(
                         title: settingsLang.height,
-                        value: settingsStore.heightText,
+                        value: settingsStore.editHeightText,
                         chevronType: .upDown) { settingsStore.presentHeightPicker() })
                         .padding(.horizontal, .spacingSM)
                         .padding(.vertical, .spacingXS / 2)

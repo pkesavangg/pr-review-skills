@@ -18,7 +18,7 @@ final class WeightOnlyModeAlertStore: ObservableObject {
 
     // MARK: - Published Properties
     @Published var isLoading = false
-    @Published var weightOnlyScales: [Device] = []
+    @Published var weightOnlyScales: [DeviceSnapshot] = []
     @Published var showingScaleList = false
 
     // MARK: - Private Properties
@@ -70,11 +70,9 @@ final class WeightOnlyModeAlertStore: ObservableObject {
     /// Enables body metrics for the specified scale temporarily
     /// - Parameter scale: The scale to enable body metrics for
     func enableBodyMetricsForScale(onCancel: (() -> Void)? = nil) {
-       let alert = AlertModel(
-          title: AlertStrings.EnableBodyMetricsAlert.title,
-// swiftlint:disable:next vertical_parameter_alignment_on_call
+        let alert = AlertModel(
+            title: AlertStrings.EnableBodyMetricsAlert.title,
             message: AlertStrings.EnableBodyMetricsAlert.message,
-// swiftlint:disable:next vertical_parameter_alignment_on_call
             buttons: [
                 AlertButtonModel(title: AlertStrings.EnableBodyMetricsAlert.enableButton, type: .primary) { _ in
                     self.handleEnableBodyMetrics()
@@ -99,7 +97,7 @@ final class WeightOnlyModeAlertStore: ObservableObject {
         Task { @MainActor [weak self] in
             guard let self else { return }
             // Use the same logic as ScaleSettingsStore - call updateWeightOnlyMode for connected scales.
-            let result = await self.bluetoothService.updateWeightOnlyMode(on: nil) // nil means all connected scales
+            let result = await self.bluetoothService.updateWeightOnlyMode(broadcastId: nil) // nil means all connected scales
             self.notificationService.dismissLoader()
             switch result {
             case .success:
@@ -129,11 +127,9 @@ final class WeightOnlyModeAlertStore: ObservableObject {
     }
 
     func dismissWeightOnlyModeAlert(onCancel: (() -> Void)? = nil) {
-         let alert = AlertModel(
-          title: AlertStrings.DisableWeightOnlyModeAlert.title,
-// swiftlint:disable:next vertical_parameter_alignment_on_call
+        let alert = AlertModel(
+            title: AlertStrings.DisableWeightOnlyModeAlert.title,
             message: AlertStrings.DisableWeightOnlyModeAlert.message,
-// swiftlint:disable:next vertical_parameter_alignment_on_call
             buttons: [
                 AlertButtonModel(title: AlertStrings.DisableWeightOnlyModeAlert.dismissButton, type: .primary) { _ in
                   self.bluetoothService.handleWeightOnlyModeAlertDismissed()

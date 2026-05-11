@@ -8,18 +8,16 @@ enum IntegrationStoreTestFixtures {
         fitbitValid: Bool = true,
         mfpOn: Bool = false,
         mfpValid: Bool = true
-    ) -> Account {
-        let account = AccountTestFixtures.makeAccountModel(
+    ) -> AccountSnapshot {
+        AccountTestFixtures.makeAccountSnapshot(
             id: id,
             email: "user@example.com",
             isLoggedIn: true,
-            isActive: true
+            isActiveAccount: true,
+            isFitbitOn: fitbitOn,
+            isFitbitValid: fitbitValid,
+            isMfpOn: mfpOn,
+            isMfpValid: mfpValid
         )
-
-        account.integrationSettings?.isFitbitOn = fitbitOn
-        account.integrationSettings?.isFitbitValid = fitbitValid
-        account.integrationSettings?.isMfpOn = mfpOn
-        account.integrationSettings?.isMfpValid = mfpValid
-        return account
     }
 }

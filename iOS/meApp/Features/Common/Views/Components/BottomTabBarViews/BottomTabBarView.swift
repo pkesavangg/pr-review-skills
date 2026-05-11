@@ -100,7 +100,7 @@ struct BottomTabBarView: View {
                 .onChange(of: viewModel.discoveredScale) { _, scale in
                     if let scale = scale {
                         let sheetView = ScaleDiscoveredSheetView(
-                            device: scale,
+                            device: scale.toDevice(),
                             discoveryEvent: viewModel.discoveryEvent,
                             onClose: {
                                 viewModel.notificationService.dismissModal()
@@ -126,7 +126,7 @@ struct BottomTabBarView: View {
             view
                 .sheet(item: $viewModel.discoveredScale) { scale in
                     ScaleDiscoveredSheetView(
-                        device: scale,
+                        device: scale.toDevice(),
                         discoveryEvent: viewModel.discoveryEvent,
                         onClose: {
                             viewModel.dismissDiscoveredScaleSheet()
@@ -150,25 +150,30 @@ struct BottomTabBarView: View {
             switch setupType {
             case .lcbt:
                 A6ScaleSetupScreen(sku: payload.sku,
-                                   discoveredScale: payload.scale,
+                                   discoveredScale: payload.scale.toDevice(),
                                    discoveryEvent: payload.event)
                 .interactiveDismissDisabled(true)
             case .btWifiR4:
                 BtWifiScaleSetupScreen(sku: payload.sku,
-                                       discoveredScale: payload.scale,
+                                       discoveredScale: payload.scale.toDevice(),
                                        discoveryEvent: payload.event,
                                        isReconnect: payload.isReconnect,
                                        isDuplicated: payload.isDuplicated)
                 .interactiveDismissDisabled(true)
             case .babyScale:
                 BabyScaleSetupScreen(sku: payload.sku,
-                                     discoveredScale: payload.scale,
+                                     discoveredScale: payload.scale.toDevice(),
                                      discoveryEvent: payload.event)
+                .interactiveDismissDisabled(true)
+            case .bpm:
+                BpmSetupScreen(sku: payload.sku,
+                               discoveredScale: payload.scale.toDevice(),
+                               discoveryEvent: payload.event)
                 .interactiveDismissDisabled(true)
             default:
                 // Fallback to A6 setup for other types
                 A6ScaleSetupScreen(sku: payload.sku,
-                                   discoveredScale: payload.scale,
+                                   discoveredScale: payload.scale.toDevice(),
                                    discoveryEvent: payload.event)
                 .interactiveDismissDisabled(true)
             }
