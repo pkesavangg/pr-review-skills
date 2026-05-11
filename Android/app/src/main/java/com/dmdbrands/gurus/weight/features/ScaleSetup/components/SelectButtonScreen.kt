@@ -86,7 +86,7 @@ fun  SelectButton(
       AppNote(
         message = noteMessage,
         showNote = true,
-        modifier = Modifier.padding(horizontal = spacing.sm)
+        modifier = Modifier.padding(horizontal = spacing.sm),
       )
     }
 

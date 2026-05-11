@@ -144,7 +144,7 @@ fun SetupContent(
           AppNote(
             message = noteMessage,
             showNote = true,
-            modifier = Modifier.padding(top = spacing.md)
+            modifier = Modifier.padding(top = spacing.md),
           )
         }
 
@@ -175,6 +175,7 @@ private fun SetupContentPreview() {
       subtitle = AppsyncSetupStrings.SetupComplete.Message,
       setupFinished = true,
       supportingImage = AppIcons.Setup.AppSyncNavBar,
+      noteMessage = "Sample note for preview"
     )
   }
 }
