@@ -18,6 +18,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BtWifiScaleSetupSt
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleUsers.strings.ScaleUsersStrings
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
+import com.dmdbrands.gurus.weight.features.common.components.SetupLoaderTimings
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.StatHelper
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -25,9 +26,12 @@ import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
 import com.dmdbrands.library.ggbluetooth.model.GGBTDevice
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.greatergoods.blewrapper.GGDeviceService
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -120,8 +124,24 @@ class ScalePairingManager(
                                         val metricKeys = updatedMetrics.mapNotNull { MetricKeyConstants.CAMEL_CASE_TO_ENUM[it] }
                                         dashboardService.updateVisibleMetricKeys(getAccountId(), metricKeys, DashboardType.DASHBOARD_12_METRICS)
                                     }
+                                } catch (e: CancellationException) {
+                                    throw e
                                 } catch (e: Exception) {
+                                    // Pairing has already succeeded; this catch only swallows
+                                    // background-housekeeping failures so the user still sees
+                                    // the success visual and advances to the next step.
                                     AppLog.e(TAG, "Error in background operations (user list fetch or dashboard update)", e)
+                                }
+                                AppLog.d(TAG, "BT pairing complete, holding success state for ${SetupLoaderTimings.SUCCESS_DISPLAY_MS}ms before advancing")
+                                delay(SetupLoaderTimings.SUCCESS_DISPLAY_MS)
+                                // Honour cancellation if the screen was disposed during the success hold.
+                                currentCoroutineContext().ensureActive()
+                                // Guard against a late state change (e.g. BLE disconnect during the hold)
+                                // before navigating; the success visual was raised pre-try, so re-check now.
+                                val finalState = getState().stepConnectionStates[BtWifiSetupStep.CONNECTING_BLUETOOTH]
+                                if (finalState !is ConnectionState.Success) {
+                                    AppLog.w(TAG, "Connection state changed during success hold to $finalState — skipping auto-advance")
+                                    return@launch
                                 }
                                 onNext()
                             }

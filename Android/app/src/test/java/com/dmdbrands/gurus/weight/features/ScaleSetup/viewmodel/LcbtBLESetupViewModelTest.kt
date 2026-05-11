@@ -8,6 +8,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.SetupInitData
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.ScaleSetupIntent
+import com.dmdbrands.gurus.weight.features.common.components.SetupLoaderTimings
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
 import com.google.common.truth.Truth.assertThat
@@ -41,6 +42,9 @@ class LcbtBLESetupViewModelTest {
 
     companion object {
         private const val TEST_SKU = "0375"
+
+        /** Mirrors the private `CONNECTION_SETUP_DELAY_MS` in the production VM. */
+        private const val CONNECTION_SETTLE_DELAY_MS = 3000L
     }
 
     private val testDispatcher = StandardTestDispatcher()
@@ -496,5 +500,72 @@ class LcbtBLESetupViewModelTest {
         advanceScheduler()
         assertThat(viewModel.state.value.scaleSetupState.setupState.connectionState)
             .isEqualTo(ConnectionState.Loading)
+    }
+
+    // -------------------------------------------------------------------------
+    // CONNECTING_BLUETOOTH timing contract
+    //
+    // These tests lock in the three-phase sequence the BLE animation review
+    // depends on: (1) Loading while the BLE stack settles, (2) Success raised
+    // before the success-hold delay, (3) onNext only after both delays *and*
+    // only if the state is still Success.
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `connectToBluetooth raises Success after settle delay before advancing`() {
+        createViewModel()
+        advanceScheduler()
+        viewModel.handleIntent(ScaleSetupIntent.SetNewStep(LcbtScaleSetupStep.CONNECTING_BLUETOOTH))
+        advanceScheduler()
+
+        // After the BLE settle delay: state should be Success but step should not have advanced yet.
+        testDispatcher.scheduler.advanceTimeBy(CONNECTION_SETTLE_DELAY_MS)
+        testDispatcher.scheduler.runCurrent()
+
+        assertThat(viewModel.state.value.scaleSetupState.setupState.connectionState)
+            .isEqualTo(ConnectionState.Success)
+        assertThat(viewModel.state.value.step).isEqualTo(LcbtScaleSetupStep.CONNECTING_BLUETOOTH)
+    }
+
+    @Test
+    fun `connectToBluetooth advances to next step after settle delay plus success hold`() {
+        createViewModel()
+        advanceScheduler()
+        viewModel.handleIntent(ScaleSetupIntent.SetNewStep(LcbtScaleSetupStep.CONNECTING_BLUETOOTH))
+        advanceScheduler()
+
+        // Cross both delays: settle (3000ms) + success hold (SUCCESS_DISPLAY_MS).
+        testDispatcher.scheduler.advanceTimeBy(
+            CONNECTION_SETTLE_DELAY_MS + SetupLoaderTimings.SUCCESS_DISPLAY_MS
+        )
+        testDispatcher.scheduler.runCurrent()
+
+        // onNext from CONNECTING_BLUETOOTH advances to the configured next step.
+        assertThat(viewModel.state.value.step).isEqualTo(LcbtScaleSetupStep.SETUP_FINISHED)
+    }
+
+    @Test
+    fun `connectToBluetooth aborts auto-advance when state flips to Failed during success hold`() {
+        createViewModel()
+        advanceScheduler()
+        viewModel.handleIntent(ScaleSetupIntent.SetNewStep(LcbtScaleSetupStep.CONNECTING_BLUETOOTH))
+        advanceScheduler()
+
+        // Cross the settle delay so Success has been raised and the success hold has started.
+        testDispatcher.scheduler.advanceTimeBy(CONNECTION_SETTLE_DELAY_MS)
+        testDispatcher.scheduler.runCurrent()
+
+        // Simulate a late BLE failure callback during the hold window.
+        viewModel.handleIntent(
+            ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.Error)
+        )
+
+        // Now cross the success hold; the auto-advance must be skipped.
+        testDispatcher.scheduler.advanceTimeBy(SetupLoaderTimings.SUCCESS_DISPLAY_MS)
+        testDispatcher.scheduler.runCurrent()
+
+        assertThat(viewModel.state.value.step).isEqualTo(LcbtScaleSetupStep.CONNECTING_BLUETOOTH)
+        assertThat(viewModel.state.value.scaleSetupState.setupState.connectionState)
+            .isInstanceOf(ConnectionState.Failed.Error::class.java)
     }
 }
