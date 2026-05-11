@@ -217,6 +217,11 @@ sealed class AppRoute : NavKey {
     ) : ScaleSetup()
 
     @Serializable
+    data class BpmSetup(
+      val sku: String
+    ) : ScaleSetup()
+
+    @Serializable
     data class BabyScaleSetup(
       val sku: String,
       val initialStep: BabyScaleSetupStep = BabyScaleSetupStep.SCALE_INFO,

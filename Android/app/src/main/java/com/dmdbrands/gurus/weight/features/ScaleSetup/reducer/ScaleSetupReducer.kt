@@ -16,7 +16,11 @@ data class SetupState<T>(
   val connectionState: ConnectionState = ConnectionState.Loading
 )
 
-sealed interface BaseState<Step : ScaleSetupStep, S : BaseState<Step, S>> : IReducer.State {
+/**
+ * Intentionally not sealed to allow cross-package extension by feature-specific state classes.
+ * Should only be implemented by data classes that represent concrete setup flow states.
+ */
+interface BaseState<Step : ScaleSetupStep, S : BaseState<Step, S>> : IReducer.State {
 
   // Holds the core setup state for the flow and provides a type-safe copy function
 // to create a new instance of the concrete state with updated setup data.
@@ -61,7 +65,11 @@ data class ScaleSetupState<T>(
   val nextEnabled: Boolean = true
 ) : IReducer.State
 
-sealed interface ScaleSetupIntent : IReducer.Intent {
+/**
+ * Intentionally not sealed to allow cross-package extension by feature-specific intent classes.
+ * Should only be extended via sealed interfaces or objects within feature-specific reducers.
+ */
+interface ScaleSetupIntent : IReducer.Intent {
   object Next : ScaleSetupIntent
 
   object Back : ScaleSetupIntent

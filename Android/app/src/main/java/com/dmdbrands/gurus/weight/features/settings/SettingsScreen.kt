@@ -262,6 +262,15 @@ fun SettingsScreenContent(
             if (BuildConfig.DEBUG) {
               add(
                 SettingsItem(
+                  title = "A3 Monitor Setup (Preview)",
+                  type = SettingsItemType.Action(),
+                  onClick = {
+                    handleIntent(SettingsIntent.OpenA3MonitorSetup)
+                  },
+                ),
+              )
+              add(
+                SettingsItem(
                   title = "Test Crash (Fatal)",
                   type = SettingsItemType.None,
                   color = SettingColorType.Danger,

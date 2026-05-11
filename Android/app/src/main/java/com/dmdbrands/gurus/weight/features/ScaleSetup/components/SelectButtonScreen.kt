@@ -20,6 +20,8 @@ import com.dmdbrands.gurus.weight.features.common.components.AppNote
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.SelectButtonGrid
 import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.common.helper.SelectButtonHelper
@@ -41,6 +43,8 @@ fun  SelectButton(
   content: (@Composable () -> Unit)? = null,
   onSupportingButtonClick: (() -> Unit)? = null,
   sku: String? = null,
+  imageWidth: Dp? = null,
+  imageHeight: Dp? = null,
 ) {
   Column(
     modifier = modifier
@@ -73,6 +77,8 @@ fun  SelectButton(
         onItemSelected = onItemSelected,
         modifier = Modifier.fillMaxWidth(),
         sku = sku,
+        imageWidth = imageWidth ?: 150.dp,
+        imageHeight = imageHeight ?: 84.dp,
       )
     }
 

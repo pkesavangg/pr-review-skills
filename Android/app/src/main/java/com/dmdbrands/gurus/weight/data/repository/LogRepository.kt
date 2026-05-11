@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.data.repository
 
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.gurus.weight.core.service.AppStatusService
 import com.dmdbrands.gurus.weight.core.shared.utilities.DeviceInfoUtil
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
@@ -11,7 +12,6 @@ import com.dmdbrands.gurus.weight.domain.model.api.support.LogEntry
 import com.dmdbrands.gurus.weight.domain.model.api.support.SendLogRequest
 import com.dmdbrands.gurus.weight.domain.repository.ILogRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
-import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -119,7 +119,6 @@ class LogRepository
             data: String?,
         ) {
             if (!isInitialized) {
-                AppLog.e("LogRepository", "Attempting to log before initialization")
                 return
             }
 

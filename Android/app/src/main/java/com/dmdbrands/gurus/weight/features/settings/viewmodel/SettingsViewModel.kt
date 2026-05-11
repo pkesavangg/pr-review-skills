@@ -146,6 +146,10 @@ constructor(
         }
       }
 
+      SettingsIntent.OpenA3MonitorSetup -> {
+        navigateTo(AppRoute.ScaleSetup.BpmSetup(sku = "0603"))
+      }
+
       SettingsIntent.TriggerTestNonFatal -> {
         if (BuildConfig.DEBUG) {
           val exception = RuntimeException("Crashlytics test non-fatal exception")

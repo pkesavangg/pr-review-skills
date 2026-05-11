@@ -86,6 +86,7 @@ sealed interface SettingsIntent : IReducer.Intent {
   object ConfirmDeleteAccount : SettingsIntent
   object TriggerTestCrash : SettingsIntent
   object TriggerTestNonFatal : SettingsIntent
+  object OpenA3MonitorSetup : SettingsIntent
 }
 
 /**
