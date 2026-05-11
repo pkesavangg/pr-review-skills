@@ -58,7 +58,7 @@ private val metricInfoResources: Map<MetricKey, List<MetricInfoResource>> = mapO
       "Merck Manual",
       "https://www.merckmanuals.com/home/hormonal-and-metabolic-disorders/water-balance/about-body-water",
     ),
-    MetricInfoResource("Texas A&M Health", "https://vitalrecord.tamhsc.edu/you-asked-what-is-water-weight/"),
+    MetricInfoResource("Texas A&M Health", "https://vitalrecord.tamu.edu/you-asked-what-is-water-weight/"),
   ),
   MetricKey.HEART_RATE to listOf(
     MetricInfoResource(
