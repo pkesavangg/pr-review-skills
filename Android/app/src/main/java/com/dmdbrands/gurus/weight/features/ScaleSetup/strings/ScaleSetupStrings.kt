@@ -24,6 +24,7 @@ object ScaleSetupStrings {
     fun Title(sku: String) = "Model $sku"
     val BabyScaleTitle = "Model ${DeviceHelper.SKU_0220}/${DeviceHelper.SKU_0222}"
     const val WifiScaleButtonText = "Get your scale’s MAC address"
+    const val MonitorSubtitle = "If you have any trouble setting up your monitor, you can connect with our team via the help button in the top right."
     const val Subtitle =
       "If you’re having trouble setting up your scale, press the help button in the top right to connect with our team."
     const val BabyScaleSubtitle =
@@ -67,6 +68,8 @@ object ScaleSetupStrings {
       ScaleSetupType.Bluetooth -> "Weight Gurus needs Bluetooth and Location permissions to connect to your scale."
 
       ScaleSetupType.Lcbt -> "Weight Gurus requires location access to view your Wi-Fi network information and connect to your scale."
+      ScaleSetupType.BpmBluetooth,
+      ScaleSetupType.BpmA6Bluetooth -> "Weight Gurus needs Bluetooth and Location permissions to connect to your monitor."
 
       ScaleSetupType.BabyScale -> "meApp needs access to the following permissions to connect with your scale."
     }

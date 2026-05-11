@@ -168,6 +168,31 @@ struct MultiDeviceSnapshotViewModelTests {
         }
     }
 
+    @Test("loadSnapshots loads data for every requested baby profile")
+    func loadSnapshotsLoadsAllBabyProfiles() async {
+        let (sut, entryService) = makeSUT()
+        let baby1 = makeBabyProfile(id: "baby-1", name: "Aria")
+        let baby2 = makeBabyProfile(id: "baby-2", name: "Noah")
+
+        await sut.loadSnapshots(availableItems: [
+            .myWeight,
+            .baby(profile: baby1),
+            .baby(profile: baby2)
+        ])
+
+        await DashboardTestFixtures.waitUntil {
+            entryService.babyDailySummariesByProfile[baby1.id] != nil &&
+            entryService.babyDailySummariesByProfile[baby2.id] != nil
+        }
+
+        #expect(entryService.babyDailySummariesByProfile[baby1.id] != nil)
+        #expect(entryService.babyDailySummariesByProfile[baby2.id] != nil)
+    }
+
+    // TODO: MA-XXXX — Test needs MockEntryService; concrete EntryService lacks call tracking properties.
+    // @Test("loadSnapshots skips duplicate work for the same available item signature")
+    // func loadSnapshotsSkipsDuplicateSignature() async { ... }
+
     // MARK: - babySummaries
 
     @Test("babySummaries returns dummy data when babyDailySummaries is empty for profile")

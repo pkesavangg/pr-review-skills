@@ -45,6 +45,8 @@ object ScaleSetupNavigationUtils {
         val wifiSetupType = determineWifiSetupType(scaleInfo)
         AppRoute.ScaleSetup.WifiScaleSetup(scaleInfo.sku, wifiSetupType, scaleInfo)
       }
+
+      ScaleSetupType.BpmBluetooth, ScaleSetupType.BpmA6Bluetooth -> AppRoute.ScaleSetup.BpmSetup(scaleInfo.sku)
     }
   }
 

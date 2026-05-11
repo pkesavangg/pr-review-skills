@@ -21,38 +21,41 @@ struct WeightSnapshotCard: View {
     @Environment(\.appTheme) private var theme
     private let yAxisFormatter = DashboardFormatter()
 
-    private var snapshotWindow: DashboardSnapshotChartWindow? {
-        DashboardSnapshotChartWindow.make(summaries: summaries) { $0.weight > 0 }
-    }
+    // MARK: - Cached State (Performance Optimization)
+    // Pre-computed in .task{} so unrelated parent state changes don't re-derive these.
 
-    private var chartSummaries: [BathScaleWeightSummary] {
-        snapshotWindow?.chartSummaries ?? []
-    }
-
-    private var recentWeekSummaries: [BathScaleWeightSummary] {
-        snapshotWindow?.visibleSummaries ?? []
-    }
-
-    private var weekAverage: String {
-        let weights = recentWeekSummaries.map(\.weight).filter { $0 > 0 }
-        guard !weights.isEmpty else { return "--" }
-        let avgStored = Int((weights.reduce(0, +) / Double(weights.count)).rounded())
-        let avgDisplay = viewModel.convertStoredWeightToDisplay(avgStored)
-        return String(format: "%.1f", avgDisplay)
-    }
+    @State private var cachedSnapshotWindow: DashboardSnapshotChartWindow?
+    @State private var cachedChartSummaries: [BathScaleWeightSummary] = []
+    @State private var cachedRecentWeekSummaries: [BathScaleWeightSummary] = []
+    @State private var cachedWeekAverage: String = "--"
+    @State private var cachedWeightUnit: WeightUnit = .lb
+    @State private var cachedGoalWeightDisplay: Double?
+    @State private var hasCacheLoaded = false
 
     private var unitText: String {
-        viewModel.unitText
+        cachedWeightUnit.rawValue
     }
 
     var body: some View {
         Button(action: onTap) {
+            content
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+        .task(id: summariesTaskID) {
+            await recomputeCache()
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if hasCacheLoaded {
             VStack(alignment: .leading, spacing: .zero) {
                 headlineSection
                     .padding(.horizontal, .spacingSM)
                     .padding(.top, .spacingSM)
 
-                if !recentWeekSummaries.isEmpty {
+                if !cachedRecentWeekSummaries.isEmpty {
                     snapshotChart
                         .frame(height: 240)
                         .padding(.top, .spacingXS)
@@ -64,9 +67,53 @@ struct WeightSnapshotCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(theme.backgroundPrimary)
             .cornerRadius(.radiusSM)
+        } else {
+            SnapshotSkeletonCardView(style: .weight)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(accessibilityLabel)
+    }
+
+    // MARK: - Cache Computation
+
+    private var summariesTaskID: Int {
+        var hasher = Hasher()
+        hasher.combine(summaries.count)
+        if let first = summaries.first { hasher.combine(first.entryTimestamp) }
+        if let last = summaries.last { hasher.combine(last.entryTimestamp) }
+        return hasher.finalize()
+    }
+
+    @MainActor
+    private func recomputeCache() async {
+        // Capture inputs on the main actor, then compute off-thread.
+        let inputSummaries = summaries
+        let weightUnit = viewModel.activeAccount?.weightUnit ?? .lb
+        let goalWeightStored = viewModel.activeAccount?.goalWeight
+
+        let result = await Task.detached(priority: .utility) {
+            let window = DashboardSnapshotChartWindow.make(summaries: inputSummaries) { $0.weight > 0 }
+            let chart = window?.chartSummaries ?? []
+            let recent = window?.visibleSummaries ?? []
+
+            let weights = recent.map(\.weight).filter { $0 > 0 }
+            let avg: String
+            if weights.isEmpty {
+                avg = "--"
+            } else {
+                let avgStored = Int((weights.reduce(0, +) / Double(weights.count)).rounded())
+                let avgDisplay = Self.convertStoredWeightToDisplay(avgStored, unit: weightUnit)
+                avg = String(format: "%.1f", avgDisplay)
+            }
+            let goalWeightDisplay = goalWeightStored.map { Self.convertStoredWeightToDisplay(Int($0), unit: weightUnit) }
+            return (window, chart, recent, avg, weightUnit, goalWeightDisplay)
+        }.value
+
+        cachedSnapshotWindow = result.0
+        cachedChartSummaries = result.1
+        cachedRecentWeekSummaries = result.2
+        cachedWeekAverage = result.3
+        cachedWeightUnit = result.4
+        cachedGoalWeightDisplay = result.5
+        hasCacheLoaded = true
     }
 
     // MARK: - Headline
@@ -78,7 +125,7 @@ struct WeightSnapshotCard: View {
                 .foregroundColor(theme.textSubheading)
 
             HStack(alignment: .lastTextBaseline, spacing: Layout.unitSpacing) {
-                Text(weekAverage)
+                Text(cachedWeekAverage)
                     .fontOpenSans(.heading1)
                     .fontWeight(.heavy)
                     .foregroundColor(theme.textHeading)
@@ -93,7 +140,7 @@ struct WeightSnapshotCard: View {
     // MARK: - Chart
 
     private var snapshotChart: some View {
-        let displayWeights = chartSummaries.map { ($0.date, viewModel.convertStoredWeightToDisplay(Int($0.weight))) }
+        let displayWeights = cachedChartSummaries.map { ($0.date, convertStoredWeightToDisplay(Int($0.weight))) }
         let yScale = calculateYAxisScale()
         let xDomain = weekXDomain()
         let yRange = yScale.domain
@@ -144,15 +191,52 @@ struct WeightSnapshotCard: View {
         .chartLegend(.hidden)
         .chartPlotStyle { plot in
             plot.overlay {
-                SnapshotChartPlotBorderView(
-                    color: theme.textSubheading.opacity(0.3),
-                    yDomain: yRange,
-                    yTicks: yTickValues
-                )
+                ZStack {
+                    SnapshotChartPlotBorderView(
+                        color: theme.textSubheading.opacity(0.3),
+                        yDomain: yRange,
+                        yTicks: yTickValues
+                    )
+                    goalChipOverlay(yRange: yRange)
+                }
             }
         }
         .padding(.horizontal, .spacingXS)
     }
+
+    // MARK: - Goal Chip
+
+    @ViewBuilder
+    private func goalChipOverlay(yRange: ClosedRange<Double>) -> some View {
+        if let goal = cachedGoalWeightDisplay {
+            GeometryReader { geo in
+                GoalWeightChipView(
+                    label: yAxisFormatter.formatYAxisTickLabel(goal),
+                    theme: theme
+                )
+                .position(
+                    x: geo.size.width,
+                    y: goalChipY(goal: goal, yRange: yRange, plotHeight: geo.size.height)
+                )
+            }
+        }
+    }
+
+    // Offsets keep the chip clear of the top/bottom y-axis tick label when the goal
+    // falls outside the visible domain. The top label is centered on plot_top (y=0),
+    // so the chip center needs to sit above the label + half-chip; the bottom label
+    // sits on plot_bottom and the x-axis tick labels live just below that.
+    private func goalChipY(goal: Double, yRange: ClosedRange<Double>, plotHeight: CGFloat) -> CGFloat {
+        let range = yRange.upperBound - yRange.lowerBound
+        guard range > 0, plotHeight > 0 else { return plotHeight / 2 }
+        if goal > yRange.upperBound { return -goalChipTopOffset }
+        if goal < yRange.lowerBound { return plotHeight + goalChipBottomOffset }
+        let ratio = (goal - yRange.lowerBound) / range
+        return plotHeight * (1 - ratio)
+    }
+
+    private var goalChipTopOffset: CGFloat { 22 }
+    private var goalChipBottomOffset: CGFloat { 22 }
 
     // MARK: - Empty State
 
@@ -171,22 +255,40 @@ struct WeightSnapshotCard: View {
     // MARK: - Helpers
 
     private func weekXDomain() -> ClosedRange<Date> {
-        guard let bounds = snapshotWindow?.bounds else { return Date()...Date() }
+        guard let bounds = cachedSnapshotWindow?.bounds else { return Date()...Date() }
         return bounds.start...bounds.end
     }
 
     private func calculateYAxisScale() -> YAxisScale {
         DashboardChartScaleProvider.weightScale(
-            operations: chartSummaries,
-            goalWeight: viewModel.goalWeightForDisplay(),
-            convertStoredWeightToDisplay: viewModel.convertStoredWeightToDisplay
+            operations: cachedChartSummaries,
+            goalWeight: cachedGoalWeightDisplay,
+            convertStoredWeightToDisplay: convertStoredWeightToDisplay
         )
     }
 
     private var accessibilityLabel: String {
-        if weekAverage != "--" {
-            return "Weight snapshot, week average \(weekAverage) \(unitText)"
+        if cachedWeekAverage != "--" {
+            return "Weight snapshot, week average \(cachedWeekAverage) \(unitText)"
         }
         return "Weight snapshot, no readings yet"
+    }
+
+    private func convertStoredWeightToDisplay(_ storedWeight: Int) -> Double {
+        Self.convertStoredWeightToDisplay(storedWeight, unit: cachedWeightUnit)
+    }
+
+    private func convertStoredWeightToDisplay(_ storedWeight: Double) -> Double {
+        Self.convertStoredWeightToDisplay(storedWeight, unit: cachedWeightUnit)
+    }
+
+    private static func convertStoredWeightToDisplay(_ storedWeight: Int, unit: WeightUnit) -> Double {
+        Self.convertStoredWeightToDisplay(Double(storedWeight), unit: unit)
+    }
+
+    private static func convertStoredWeightToDisplay(_ storedWeight: Double, unit: WeightUnit) -> Double {
+        unit == .kg
+            ? ConversionTools.convertStoredToKg(storedWeight)
+            : ConversionTools.convertStoredToLbs(storedWeight)
     }
 }

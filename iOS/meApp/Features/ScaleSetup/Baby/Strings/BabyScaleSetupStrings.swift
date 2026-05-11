@@ -21,8 +21,8 @@ struct BabyScaleSetupStrings {
     // MARK: - Intro
     struct Intro {
         static let smartBabyScale = "Smart Baby Scale"
-        // swiftlint:disable:next line_length
-        static let troubleSettingUp = "If you have any trouble setting up your monitor, you can connect with our team via the help button in the top right."
+        static let troubleSettingUp = "If you have any trouble setting up your monitor, "
+            + "you can connect with our team via the help button in the top right."
         static let cantFindModelNumber = "CAN'T FIND YOUR MODEL NUMBER?"
     }
 
@@ -78,6 +78,18 @@ struct BabyScaleSetupStrings {
         static let required = "Required."
         static let invalidWeight = "Please enter a valid weight."
         static let invalidLength = "Please enter a valid length."
+        static let kgUnit = "kg"
+        static let cmUnit = "cm"
+        static let inUnit = "in"
+        static let unitNoteText = "Note: The selected weight unit determines the length unit automatically."
+    }
+
+    // MARK: - Skip Dialog
+    struct SkipDialog {
+        static let title = "Skip Baby Profile?"
+        static let message = "Setup is complete. You can add a baby profile later from Settings."
+        static let cancel = "CANCEL"
+        static let finishSetup = "FINISH SETUP"
     }
 
     // MARK: - Baby Added

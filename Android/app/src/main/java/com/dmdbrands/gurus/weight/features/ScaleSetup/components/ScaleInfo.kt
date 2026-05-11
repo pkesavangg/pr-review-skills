@@ -64,7 +64,9 @@ fun ScaleInfo(
     AppText(
       text = if (setupType == ScaleSetupType.BabyScale) {
         ScaleSetupStrings.ScaleInfo.BabyScaleSubtitle
-      } else {
+      } else if(setupType == ScaleSetupType.BpmBluetooth || setupType == ScaleSetupType.BpmA6Bluetooth) {
+        ScaleSetupStrings.ScaleInfo.MonitorSubtitle
+      }else {
         ScaleSetupStrings.ScaleInfo.Subtitle
       },
       textType = TextType.Body,

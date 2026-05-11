@@ -107,15 +107,18 @@ struct SignupStoreTests {
     func moveToNextStepAdvances() {
         let (store, _, _, _) = makeSUT()
 
+        // New order: Name → Email → Birthday → …
         #expect(store.currentStep == .name)
         store.moveToNextStep()
-        #expect(store.currentStep == .dateOfBirth)
+        #expect(store.currentStep == .email)
     }
 
     @Test("moveToPreviousStep resets goal skipped when returning to goal")
     func moveToPreviousStepResetsGoalSkipped() {
         let (store, _, _, _) = makeSUT()
-        store.currentStepIndex = stepIndex(.email, in: store)
+        // With new order Name→Email→Birthday→PickDevice→…→goal→password→profileReady,
+        // navigating back from password lands on goal (for weightScale default flow)
+        store.currentStepIndex = stepIndex(.password, in: store)
         store.isGoalSkipped = true
 
         store.moveToPreviousStep()
@@ -176,7 +179,8 @@ struct SignupStoreTests {
         #expect(store.isGoalSkipped == true)
         #expect(store.signupForm.currentWeight.value == "")
         #expect(store.signupForm.goalWeight.value == "")
-        #expect(store.currentStepIndex == stepIndex(.email, in: store))
+        // With new order, skipping goal advances to password (email is now before pickDevice)
+        #expect(store.currentStepIndex == stepIndex(.password, in: store))
     }
 
     @Test("showHeightPicker toggles correct picker by unit")
@@ -290,16 +294,19 @@ struct SignupStoreTests {
         #expect(notificationService.modalViewData.count == 1)
     }
 
-    @Test("createUser success without goal")
+    @Test("createUser success without goal for single device dismisses via completeSignup")
     func createUserSuccessWithoutGoal() async {
         let (store, accountService, notificationService, _) = makeSUT()
-        accountService.signUpResult = .success(AuthTestFixtures.makeAccount(email: "signup@example.com"))
+        accountService.signUpResult = .success(())
 
         var successCalled = false
         store.onSignupSuccess = { successCalled = true }
 
         fillRequiredSignupFields(store)
         store.isGoalSkipped = true
+        // Single device → success screen is reserved for full coverage,
+        // so signup falls through to completeSignup() and dismisses.
+        store.selectedDeviceType = .weightScale
 
         await store.createUser()
 
@@ -307,15 +314,14 @@ struct SignupStoreTests {
         #expect(accountService.createGoalCalls == 0)
         #expect(accountService.lastSignUpEmail == "signup@example.com")
         #expect(successCalled == true)
-        #expect(store.currentStep == .name)
-        #expect(store.signupForm.firstName.value == "")
+        #expect(store.currentStep != .allProfilesReady)
         #expect(notificationService.isLoaderVisible == false)
     }
 
     @Test("createUser trims email and profile fields before API call")
     func createUserTrimsValuesBeforeAPICall() async {
         let (store, accountService, _, _) = makeSUT()
-        accountService.signUpResult = .success(AuthTestFixtures.makeAccount(email: "signup@example.com"))
+        accountService.signUpResult = .success(())
         store.isGoalSkipped = true
 
         store.signupForm.firstName.value = "  John  "
@@ -334,13 +340,14 @@ struct SignupStoreTests {
         #expect(accountService.lastSignUpProfile?.zipcode == "10001")
     }
 
-    @Test("createUser success with goal creates derived goal")
+    @Test("createUser success with goal creates derived goal for weight scale")
     func createUserSuccessWithGoal() async {
         let (store, accountService, _, _) = makeSUT()
-        accountService.signUpResult = .success(AuthTestFixtures.makeAccount(email: "signup@example.com"))
-        accountService.createGoalResult = .success(AuthTestFixtures.makeAccount(email: "signup@example.com"))
+        accountService.signUpResult = .success(())
+        accountService.createGoalResult = .success(())
 
         fillRequiredSignupFields(store)
+        store.selectedDeviceType = .weightScale
         store.signupForm.goalType.value = GoalTypeSegment.losegainValue
         store.signupForm.currentWeight.value = "150"
         store.signupForm.goalWeight.value = "170"
@@ -355,10 +362,11 @@ struct SignupStoreTests {
     @Test("createUser success with maintain goal")
     func createUserSuccessWithMaintainGoal() async {
         let (store, accountService, _, _) = makeSUT()
-        accountService.signUpResult = .success(AuthTestFixtures.makeAccount(email: "signup@example.com"))
-        accountService.createGoalResult = .success(AuthTestFixtures.makeAccount(email: "signup@example.com"))
+        accountService.signUpResult = .success(())
+        accountService.createGoalResult = .success(())
 
         fillRequiredSignupFields(store)
+        store.selectedDeviceType = .weightScale
         store.signupForm.goalType.value = GoalType.maintain.rawValue
         store.signupForm.goalWeight.value = "160"
         store.signupForm.currentWeight.value = "0"
@@ -369,12 +377,80 @@ struct SignupStoreTests {
         #expect(accountService.lastCreatedGoal?.goalType == .maintain)
     }
 
-    @Test("createUser from account switching does not call signup success callback")
+    @Test("createUser navigates to allProfilesReady only when all device types are registered")
+    func createUserNavigatesToSuccessScreen() async {
+        let (store, accountService, _, _) = makeSUT()
+        accountService.signUpResult = .success(())
+        fillRequiredSignupFields(store)
+        store.isGoalSkipped = true
+        store.signupForm.gender.value = Sex.male.rawValue
+        store.registeredDeviceTypes = [.weightScale, .bpm]
+        store.selectedDeviceType = .babyScale
+
+        await store.createUser()
+
+        #expect(store.currentStep == .allProfilesReady)
+    }
+
+    @Test("createUser with partial device coverage dismisses via completeSignup")
+    func createUserPartialDevicesCallsCompleteSignup() async {
+        let (store, accountService, _, _) = makeSUT()
+        accountService.signUpResult = .success(())
+        fillRequiredSignupFields(store)
+        store.isGoalSkipped = true
+        var successCalled = false
+        store.onSignupSuccess = { successCalled = true }
+        // Two of three device types — not full coverage.
+        store.registeredDeviceTypes = [.weightScale]
+        store.selectedDeviceType = .bpm
+
+        await store.createUser()
+
+        #expect(store.currentStep != .allProfilesReady)
+        #expect(successCalled == true)
+    }
+
+    @Test("createUser navigates to signupError when the accumulated product-type write fails")
+    func createUserNavigatesToErrorScreen() async {
+        let (store, accountService, _, _) = makeSUT()
+        accountService.signUpResult = .success(())
+        accountService.updateProductTypesResult = .failure(HTTPError.serverError)
+        fillRequiredSignupFields(store)
+        store.isGoalSkipped = true
+        store.selectedDeviceType = .bpm
+
+        await store.createUser()
+
+        #expect(store.currentStep == .signupError)
+        let failedCount = store.deviceStatuses.filter {
+            if case .failure = $0.status { return true }
+            return false
+        }.count
+        #expect(failedCount == 1)
+    }
+
+    @Test("completeSignup calls onSignupSuccess and resets form")
+    func completeSignupCallsSuccessAndResets() {
+        let (store, _, _, _) = makeSUT()
+        var successCalled = false
+        store.onSignupSuccess = { successCalled = true }
+        store.signupForm.firstName.value = "John"
+
+        store.completeSignup()
+
+        #expect(successCalled == true)
+        #expect(store.signupForm.firstName.value == "")
+    }
+
+    @Test("createUser from account switching with full device coverage shows success screen and defers callback")
     func createUserAccountSwitchingSkipsSuccessCallback() async {
         let (store, accountService, _, _) = makeSUT()
-        accountService.signUpResult = .success(AuthTestFixtures.makeAccount(email: "signup@example.com"))
+        accountService.signUpResult = .success(())
         store.isGoalSkipped = true
         store.isFromAccountSwitching = true
+        store.signupForm.gender.value = Sex.male.rawValue
+        store.registeredDeviceTypes = [.weightScale, .bpm]
+        store.selectedDeviceType = .babyScale
         fillRequiredSignupFields(store)
 
         var successCalled = false
@@ -382,7 +458,10 @@ struct SignupStoreTests {
 
         await store.createUser()
 
+        // With full device coverage, the success screen is shown and onSignupSuccess
+        // is deferred until the user taps DONE (completeSignup).
         #expect(successCalled == false)
+        #expect(store.currentStep == .allProfilesReady)
     }
 
     @Test("createUser max accounts reached shows alert")
@@ -468,21 +547,18 @@ struct SignupStoreTests {
         #expect(notificationService.toastData?.message == SignupStoreTestText.somethingWentWrongMessage)
     }
 
-    @Test("moveToNextStep on password triggers createUser")
-    func moveToNextStepAtPasswordTriggersCreateUser() async {
+    @Test("moveToNextStep on password advances to profileReady (createUser deferred to FINISH)")
+    func moveToNextStepAtPasswordAdvancesToProfileReady() {
         let (store, accountService, _, _) = makeSUT()
-        accountService.signUpResult = .success(AuthTestFixtures.makeAccount(email: "signup@example.com"))
         fillRequiredSignupFields(store)
         store.isGoalSkipped = true
         store.currentStepIndex = stepIndex(.password, in: store)
 
         store.moveToNextStep()
-        await waitUntil {
-            accountService.signUpCalls == 1
-        }
 
-        #expect(accountService.signUpCalls == 1)
-        #expect(store.currentStep == .name)
+        // createUser is deferred — triggered only when the user taps FINISH on profileReady
+        #expect(accountService.signUpCalls == 0)
+        #expect(store.currentStep == .profileReady)
     }
 
     @Test("resetForm resets key state")
@@ -499,6 +575,195 @@ struct SignupStoreTests {
         #expect(store.isGoalSkipped == false)
         #expect(store.showHeightCmPicker == false)
         #expect(store.signupForm.firstName.value == "")
+    }
+
+    // MARK: - Sequential Multi-Device Loop Tests
+
+    @Test("steps excludes email and password on second device loop")
+    func stepsExcludesEmailPasswordOnSecondLoop() {
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.weightScale)
+        store.signupForm.gender.value = Sex.male.rawValue
+        store.connectAnotherDevice()
+        store.selectDeviceType(.bpm)
+
+        #expect(!store.steps.contains(.email))
+        #expect(!store.steps.contains(.password))
+        #expect(store.steps.contains(.profileReady))
+    }
+
+    @Test("steps includes sex step when gender not yet collected")
+    func stepsIncludesSexWhenNotCollected() {
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.bpm)
+
+        #expect(store.steps.contains(.sex))
+    }
+
+    @Test("steps excludes sex step only on subsequent loop when gender already collected")
+    func stepsExcludesSexWhenAlreadyCollected() {
+        let (store, _, _, _) = makeSUT()
+        // Sex is only omitted when it was collected in a PRIOR device loop.
+        // Gender must be filled BEFORE entering the next loop so the rebuild on
+        // selectDeviceType evaluates skipSex against a non-empty value.
+        store.selectDeviceType(.weightScale)
+        store.signupForm.gender.value = Sex.female.rawValue
+        store.connectAnotherDevice()
+        store.selectDeviceType(.bpm)
+
+        #expect(!store.steps.contains(.sex))
+    }
+
+    @Test("changing gender mid-loop does not reshape steps under the user")
+    func changingGenderMidLoopKeepsStepsStable() {
+        // Reproduces the auto-nav bug: on a subsequent device loop the user lands
+        // on .sex with gender empty. Tapping a sex option used to shrink the steps
+        // array via the computed property and visually advance the swiper.
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.babyScale)
+        store.connectAnotherDevice()
+        store.selectDeviceType(.bpm)
+        let stepsBefore = store.steps
+        let indexBefore = store.currentStepIndex
+
+        store.signupForm.gender.value = Sex.male.rawValue
+
+        #expect(store.steps == stepsBefore)
+        #expect(store.currentStepIndex == indexBefore)
+    }
+
+    @Test("selecting a sex on a subsequent device loop does not auto-advance from .sex")
+    func selectingSexOnSubsequentLoopDoesNotAdvance() {
+        // First loop: baby scale (no sex step) — gender stays empty.
+        // Second loop: BPM — sex is collected. Tapping a sex option must keep
+        // the user on .sex until they explicitly tap Next.
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.babyScale)
+        store.connectAnotherDevice()
+        store.selectDeviceType(.bpm)
+        guard let sexIndex = store.steps.firstIndex(of: .sex) else {
+            Issue.record("expected .sex in steps for BPM second loop")
+            return
+        }
+        store.currentStepIndex = sexIndex
+
+        store.signupForm.gender.value = Sex.male.rawValue
+
+        #expect(store.currentStep == .sex)
+        #expect(store.currentStepIndex == sexIndex)
+    }
+
+    @Test("profileReadyTitle uses per-device copy while more devices can be added")
+    func profileReadyTitlePerDeviceWhileMoreRemain() {
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.weightScale)
+        #expect(store.profileReadyTitle == SignupStrings.ProfileReadyStep.weightScaleTitle)
+
+        store.connectAnotherDevice()
+        store.selectDeviceType(.babyScale)
+        #expect(store.profileReadyTitle == SignupStrings.ProfileReadyStep.babyScaleTitle)
+    }
+
+    @Test("profileReadyTitle switches to all-profiles copy on the final device")
+    func profileReadyTitleAllProfilesOnFinalDevice() {
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.weightScale)
+        store.connectAnotherDevice()
+        store.selectDeviceType(.babyScale)
+        store.connectAnotherDevice()
+        store.selectDeviceType(.bpm)
+
+        #expect(store.canConnectAnotherDevice == false)
+        #expect(store.profileReadyTitle == SignupStrings.AllProfilesReadyStep.title)
+    }
+
+    @Test("canConnectAnotherDevice is true when fewer than 2 devices disabled")
+    func canConnectAnotherDeviceWhenDevicesRemain() {
+        let (store, _, _, _) = makeSUT()
+
+        store.disabledDeviceTypes = []
+        #expect(store.canConnectAnotherDevice == true)
+
+        store.disabledDeviceTypes = [.weightScale]
+        #expect(store.canConnectAnotherDevice == true)
+    }
+
+    @Test("canConnectAnotherDevice is false when all 3 device types are used")
+    func cannotConnectAnotherDeviceWhenAllUsed() {
+        let (store, _, _, _) = makeSUT()
+        store.disabledDeviceTypes = [.weightScale, .bpm]
+
+        #expect(store.canConnectAnotherDevice == false)
+    }
+
+    @Test("profileReady does not auto-finish even when all devices are registered")
+    func profileReadyDoesNotAutoFinish() async {
+        let (store, accountService, _, _) = makeSUT()
+        accountService.signUpResult = .success(())
+        fillRequiredSignupFields(store)
+        store.isGoalSkipped = true
+        store.signupForm.gender.value = Sex.male.rawValue
+        // First two devices recorded, third is current — full coverage.
+        store.registeredDeviceTypes = [.weightScale, .babyScale]
+        store.selectedDeviceType = .bpm
+        store.disabledDeviceTypes = [.weightScale, .babyScale]
+
+        // Landing on profileReady must not trigger signup; FINISH is required.
+        if let profileReadyIndex = store.steps.firstIndex(of: .profileReady) {
+            store.currentStepIndex = profileReadyIndex
+        }
+
+        // Give any stray async work a chance to run before asserting nothing fired.
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        #expect(accountService.signUpCalls == 0)
+        #expect(store.currentStep == .profileReady)
+
+        // Explicit FINISH tap drives the success screen.
+        store.finishSignup()
+        await waitUntil {
+            store.currentStep == .allProfilesReady || store.currentStep == .signupError
+        }
+        #expect(accountService.signUpCalls == 1)
+        #expect(store.currentStep == .allProfilesReady)
+    }
+
+    @Test("connectAnotherDevice appends current device to registeredDeviceTypes")
+    func connectAnotherDeviceAccumulatesRegistered() {
+        let (store, _, _, _) = makeSUT()
+        store.selectedDeviceType = .weightScale
+
+        store.connectAnotherDevice()
+
+        #expect(store.registeredDeviceTypes == [.weightScale])
+        #expect(store.disabledDeviceTypes.contains(.weightScale))
+    }
+
+    @Test("createUser persists every registered device type in a single accumulated write")
+    func createUserSendsAllRegisteredDeviceTypes() async {
+        let (store, accountService, _, _) = makeSUT()
+        accountService.signUpResult = .success(())
+        fillRequiredSignupFields(store)
+        store.isGoalSkipped = true
+        store.registeredDeviceTypes = [.weightScale]
+        store.selectedDeviceType = .bpm
+
+        await store.createUser()
+
+        // The final accumulated write must contain every successful device's
+        // product type so `updateProductTypes` (which replaces the array) doesn't
+        // leave the account with only the last-written device.
+        let lastSent = accountService.allUpdatedProductTypes.last ?? []
+        #expect(Set(lastSent) == Set(["myWeight", "myBloodPressure"]))
+    }
+
+    @Test("resetForm clears registeredDeviceTypes")
+    func resetFormClearsRegisteredDeviceTypes() {
+        let (store, _, _, _) = makeSUT()
+        store.registeredDeviceTypes = [.weightScale, .bpm]
+
+        store.resetForm()
+
+        #expect(store.registeredDeviceTypes.isEmpty)
     }
 
     @Test("metric toggle converts weight values and updates validators")

@@ -25,6 +25,7 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.helper.AccountHelper.isMetricUnit
+import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.goal.components.GoalMilestoneDisplay
@@ -78,7 +79,8 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
     Column(
       modifier = Modifier
         .fillMaxSize()
-        .verticalScroll(scrollState),
+        .verticalScroll(scrollState)
+        .dismissKeyboardOnTap(),
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.Top,
     ) {

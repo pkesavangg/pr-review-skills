@@ -118,7 +118,10 @@ private func makeBPEntry(
 private func makeBabyEntry(
     weightLbs: Int = 8,
     weightOz: Double = 5.0,
+    weightKg: Double = 3.6,
+    weightLb: Double = 8.31,
     lengthInches: Double = 20.0,
+    lengthCm: Double = 50.8,
     percentile: Int = 50,
     notes: String? = nil
 ) -> BabyHistoryEntry {
@@ -127,9 +130,14 @@ private func makeBabyEntry(
         entryTimestamp: "2026-03-27T10:00:00Z",
         weightLbs: weightLbs,
         weightOz: weightOz,
+        weightKg: weightKg,
+        weightLb: weightLb,
         lengthInches: lengthInches,
+        lengthCm: lengthCm,
         percentile: percentile,
-        notes: notes
+        notes: notes,
+        weightDisplay: "\(weightLbs) lbs \(weightOz) oz",
+        lengthDisplay: "\(Int(lengthInches)) in"
     )
 }
 

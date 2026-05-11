@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.features.MyAccounts.screen.MyAccountsScreen
 import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.AppsyncScaleSetupScreen
 import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.BabyScaleSetupScreen
+import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.BpmSetupScreen
 import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.BtScaleSetupScreen
 import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.BtWifiScaleSetupScreen
 import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.LcbtScaleSetupScreen
@@ -70,7 +71,7 @@ fun EntryProviderScope<NavKey>.accountSettingsEntries() {
   entry<AppRoute.AccountSettings.ChangePassword> { ChangePasswordScreen() }
   entry<AppRoute.AccountSettings.MyAccounts> { MyAccountsScreen() }
   entry<AppRoute.AccountSettings.Weightless> { WeightlessScreen() }
-  entry<AppRoute.AccountSettings.AddEditScales> { AddScaleScreen() }
+  entry<AppRoute.AccountSettings.MyDevices> { AddScaleScreen() }
   entry<AppRoute.AccountSettings.ChooseScale> { ChooseScaleScreen() }
   entry<AppRoute.AccountSettings.Goal> { GoalScreen() }
   entry<AppRoute.AccountSettings.HelpScreen> { HelpScreen() }
@@ -116,6 +117,9 @@ fun EntryProviderScope<NavKey>.scaleSetupEntries() {
   }
   entry<AppRoute.ScaleSetup.AppsyncScaleSetup> { scaleInfo ->
     AppsyncScaleSetupScreen(scaleInfo.sku)
+  }
+  entry<AppRoute.ScaleSetup.BpmSetup> { info ->
+    BpmSetupScreen(info.sku)
   }
   entry<AppRoute.ScaleSetup.BabyScaleSetup> { scaleInfo ->
     BabyScaleSetupScreen(scaleInfo.sku, scaleInfo.scaleInfo, scaleInfo.broadcastId, scaleInfo.initialStep)

@@ -218,6 +218,7 @@ struct HTTPClientTests {
         let (sut, _, _, _, _) = makeSUT(
             requestExecutor: { request in
                 let response = URLResponse(
+                    // swiftlint:disable:next force_unwrapping
                     url: request.url ?? URL(string: "https://example.com")!,
                     mimeType: nil,
                     expectedContentLength: 0,
@@ -324,7 +325,7 @@ struct HTTPClientTests {
 
     @Test("get with auth refreshes expired token before request and succeeds")
     func get_needsAuthExpiredToken_refreshesBeforeRequest() async throws {
-        let account = makeActiveAccount(accessToken: "old-token")
+        let account = makeActiveAccount(accessToken: "old-token") // swiftlint:disable:this no_hardcoded_credentials
         let tokenManager = MockHTTPClientTokenManager()
         tokenManager.checkTokenExpirationResult = true
         tokenManager.refreshTokenResult = .success(makeTokens(access: "new-token"))
@@ -350,7 +351,7 @@ struct HTTPClientTests {
 
     @Test("get with auth retries once on unauthorized using refreshed token")
     func get_needsAuthUnauthorized_retriesWithRefreshedToken() async throws {
-        let account = makeActiveAccount(accessToken: "old-token")
+        let account = makeActiveAccount(accessToken: "old-token") // swiftlint:disable:this no_hardcoded_credentials
         let tokenManager = MockHTTPClientTokenManager()
         tokenManager.checkTokenExpirationResult = false
         tokenManager.refreshTokenResult = .success(makeTokens(access: "retry-token"))
@@ -387,9 +388,10 @@ struct HTTPClientTests {
     @Test("get with accountId uses fetchAccount token for auth header")
     func get_needsAuthWithAccountId_usesFetchedAccountToken() async throws {
         let accountService = MockTokenManagerAccountService()
-        let fetched = AccountTestFixtures.makeAccountModel(id: "acc-2", email: "b@example.com", isLoggedIn: true, isActive: false)
-        fetched.accessToken = "fetched-token"
-        fetched.expiresAt = "2099-01-01T00:00:00.000Z"
+        let fetched = AccountTestFixtures.makeAccountSnapshot(
+            id: "acc-2", email: "b@example.com", isLoggedIn: true,
+            accessToken: "fetched-token", expiresAt: "2099-01-01T00:00:00.000Z" // swiftlint:disable:this no_hardcoded_credentials
+        )
         accountService.fetchAccountById["acc-2"] = fetched
 
         let tokenManager = MockHTTPClientTokenManager()
@@ -424,14 +426,14 @@ struct HTTPClientTests {
         tokenManager: MockHTTPClientTokenManager? = nil,
         connectivity: Bool = true,
         requestExecutor: ((URLRequest) async throws -> (Data, URLResponse))? = nil
-    ) -> (
+    ) -> ( // swiftlint:disable:this large_tuple
         sut: HTTPClient,
         account: MockTokenManagerAccountService,
         notification: MockNotificationHelperService,
         logger: MockLoggerService,
         tokenManager: MockHTTPClientTokenManager
     ) {
-        let account = account ?? makeActiveAccount(accessToken: "active-token")
+        let account = account ?? makeActiveAccount(accessToken: "active-token") // swiftlint:disable:this no_hardcoded_credentials
         let notification = notification ?? MockNotificationHelperService()
         let logger = logger ?? MockLoggerService()
         let tokenManager = tokenManager ?? MockHTTPClientTokenManager()
@@ -461,14 +463,14 @@ struct HTTPClientTests {
         expiresAt: String = "2099-01-01T00:00:00.000Z"
     ) -> MockTokenManagerAccountService {
         let accountService = MockTokenManagerAccountService()
-        let account = AccountTestFixtures.makeAccountModel(id: accountId, email: "user@example.com", isLoggedIn: true, isActive: true)
-        account.accessToken = accessToken
-        account.expiresAt = expiresAt
-        accountService.activeAccount = account
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(
+            id: accountId, email: "user@example.com", isLoggedIn: true, isActiveAccount: true,
+            accessToken: accessToken, expiresAt: expiresAt
+        )
         return accountService
     }
 
-    private func makeTokens(
+    private func makeTokens( // swiftlint:disable:this no_hardcoded_credentials
         access: String = "new-token",
         refresh: String = "refresh-token",
         expiresAt: String = "2099-01-01T00:00:00.000Z"
@@ -477,11 +479,9 @@ struct HTTPClientTests {
     }
 
     private func makeHTTPResponse(statusCode: Int, request: URLRequest) -> HTTPURLResponse {
-        HTTPURLResponse(
-            url: request.url ?? URL(string: "https://example.com")!,
-            statusCode: statusCode,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        // swiftlint:disable:next force_unwrapping
+        let url = request.url ?? URL(string: "https://example.com")!
+        // swiftlint:disable:next force_unwrapping
+        return HTTPURLResponse(url: url, statusCode: statusCode, httpVersion: nil, headerFields: nil)!
     }
 }

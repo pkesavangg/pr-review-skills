@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
+import android.util.Log
 
 interface GGCacheDevice
 
@@ -169,10 +170,16 @@ class GGDeviceService @Inject constructor(
   }
 
   /**
-   * Starts the scan for pairing process for the devices that have protocol type A6
+   * Starts the scan for pairing process.
+   * Guards against calling the library before BLE is initialized (which would crash
+   * due to an uninitialized bleHandler in GlobalScope inside the SDK).
    */
   fun scanForPairing() {
-    ggBluetooth.scanForPairing()
+    try {
+      ggBluetooth.scanForPairing()
+    } catch (e: UninitializedPropertyAccessException) {
+      Log.w("GGDeviceService", "scanForPairing called before BLE initialized — skipping")
+    }
   }
 
   /**

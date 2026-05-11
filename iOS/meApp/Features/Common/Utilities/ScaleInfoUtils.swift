@@ -156,7 +156,7 @@ class ScaleInfoUtils {
             return path
         }
         let bpmPrimary = primaryBpmSetupSku(for: lookupSku)
-        return allDevices.first(where: { $0.sku == bpmPrimary })?.imgPath
+        return allDevices.first { $0.sku == bpmPrimary }?.imgPath
     }
 }
 
@@ -174,11 +174,23 @@ extension ScaleInfoUtils {
     /// - Parameter deviceName: The uppercased BPM device name
     /// - Returns: ScaleItemInfo if the name matches a known BPM device
     public func getBpmInfo(byDeviceName deviceName: String) -> ScaleItemInfo? {
+        // First try matching by SKU codes embedded in the device name (e.g. "gG BPM 0603").
         let sortedCodes = bpmSkus.sorted { $0.count > $1.count }
         for code in sortedCodes where deviceName.contains(code) {
             guard let item = bpmCatalogItem(forEnteredCode: code) else { continue }
             return getScaleInfo(bySku: item.sku)
         }
+
+        // Fallback: match by broadcast name prefix (e.g. "1490BT" matches "1490BT1").
+        // Some BPM monitors append a user number to their broadcast name.
+        let upperName = deviceName.uppercased()
+        for bpm in BPMS {
+            guard let broadcastName = bpm.broadcastName, !broadcastName.isEmpty else { continue }
+            if upperName.hasPrefix(broadcastName.uppercased()) {
+                return getScaleInfo(bySku: bpm.sku)
+            }
+        }
+
         return nil
     }
 

@@ -5,11 +5,12 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct GraphRenderingConfigurationTests {
-    private func makeSUT() -> GraphRenderingConfiguration {
+    private func makeSUT(now: Date? = nil) -> GraphRenderingConfiguration {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         calendar.locale = Locale(identifier: "en_US_POSIX")
-        return GraphRenderingConfiguration(calendar: calendar)
+        let resolvedNow = now ?? DateTimeTools.getDateFromDateString("2026-03-15", format: "yyyy-MM-dd")
+        return GraphRenderingConfiguration(calendar: calendar, now: { resolvedNow })
     }
 
     @Test("visible domain length and sample dates: match the selected period")
@@ -20,6 +21,8 @@ struct GraphRenderingConfigurationTests {
         let year = sut.sampleDates(for: .year, scrollPosition: date("2026-01-01"))
 
         #expect(sut.visibleDomainLength(for: .week) == DateTimeTools.visibleDomainLength(for: .week))
+        #expect(sut.visibleDomainLength(for: .month, at: date("2026-02-10")) == 28 * DashboardConstants.TimeInterval.day)
+        #expect(sut.visibleDomainLength(for: .month, at: date("2026-03-10")) == 31 * DashboardConstants.TimeInterval.day)
         #expect(week.count == 8)
         #expect(month.count >= 4)
         #expect(year.count >= 12)
@@ -85,6 +88,59 @@ struct GraphRenderingConfigurationTests {
         #expect(yearTicks.last == isoDate("2027-01-01T12:00:00Z"))
     }
 
+    @Test("month ticks: start at day 1 and stay inside the calendar month")
+    func monthTicksStartAtFirstOfMonth() {
+        let sut = makeSUT()
+        let ticks = sut.monthlyTicks(
+            from: isoDate("2026-03-01T00:00:00Z"),
+            to: isoDate("2026-03-31T00:00:00Z")
+        )
+
+        #expect(ticks == [
+            isoDate("2026-03-01T12:00:00Z"),
+            isoDate("2026-03-08T12:00:00Z"),
+            isoDate("2026-03-15T12:00:00Z"),
+            isoDate("2026-03-22T12:00:00Z"),
+            isoDate("2026-03-29T12:00:00Z"),
+            isoDate("2026-03-31T12:00:00Z")
+        ])
+    }
+
+    @Test("xAxisValues: month view for March does not include next-month label ticks")
+    func monthXAxisValuesStayWithinCalendarMonth() {
+        let sut = makeSUT()
+        let ops = [
+            DashboardTestFixtures.makeSummary(date: isoDate("2026-03-01T00:00:00Z")),
+            DashboardTestFixtures.makeSummary(date: isoDate("2026-03-02T00:00:00Z")),
+            DashboardTestFixtures.makeSummary(date: isoDate("2026-03-03T00:00:00Z"))
+        ]
+        let ticks = sut.xAxisValues(for: .month, from: ops, scrollPosition: isoDate("2026-03-01T00:00:00Z"))
+
+        #expect(ticks == [
+            isoDate("2026-03-01T12:00:00Z"),
+            isoDate("2026-03-08T12:00:00Z"),
+            isoDate("2026-03-15T12:00:00Z"),
+            isoDate("2026-03-22T12:00:00Z"),
+            isoDate("2026-03-29T12:00:00Z"),
+            isoDate("2026-03-31T12:00:00Z")
+        ])
+    }
+
+    @Test("xAxisValues: month view with older single entry extends through current month")
+    func monthXAxisValuesForOlderSingleEntryExtendThroughCurrentMonth() {
+        let sut = makeSUT(now: isoDate("2026-04-13T12:00:00Z"))
+        let ops = [
+            DashboardTestFixtures.makeSummary(date: isoDate("2026-01-07T00:00:00Z"))
+        ]
+
+        let ticks = sut.xAxisValues(for: .month, from: ops, scrollPosition: isoDate("2026-01-01T00:00:00Z"))
+
+        #expect(ticks.first == isoDate("2026-01-01T12:00:00Z"))
+        #expect(ticks.contains(isoDate("2026-04-01T12:00:00Z")))
+        #expect(ticks.last == isoDate("2026-04-30T12:00:00Z"))
+        #expect(!ticks.contains(isoDate("2026-05-01T12:00:00Z")))
+    }
+
     @Test("optimal scroll position: total returns minimum and latest mode biases right edge")
     func optimalScrollPosition() {
         let sut = makeSUT()
@@ -108,6 +164,7 @@ struct GraphRenderingConfigurationTests {
 
         #expect(week == isoDate("2026-03-03T12:00:00Z"))
         #expect(month == isoDate("2026-03-01T00:00:00Z"))
+        #expect(sut.snapScrollPosition(date("2026-03-20"), for: .month) == isoDate("2026-03-01T00:00:00Z"))
         #expect(year == isoDate("2026-03-01T12:00:00Z"))
         #expect(clamped == isoDate("2026-03-16T22:06:00Z"))
     }

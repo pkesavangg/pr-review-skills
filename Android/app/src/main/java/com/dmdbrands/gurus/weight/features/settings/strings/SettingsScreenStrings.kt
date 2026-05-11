@@ -4,35 +4,34 @@ object SettingsScreenStrings {
     const val Title = "Settings"
 
     // Account Settings
-    const val AccountSettings = "Account Settings"
+    const val Account = "Account"
+    const val MyKids = "My Kids"
+    const val MyDevices = "My Devices"
     const val Integrations = "Integrations"
     const val ExportData = "Export Data"
     const val ChangePassword = "Change Password"
     const val UserProfile = "User Profile"
-    const val MyKids = "My Kids"
     const val NotSet = "Not Set"
 
-    // Profile Settings
-    const val ProfileSettings = "Profile Settings"
+    // Weight Scale Settings
     const val GoalSetting = "Goal Setting"
-    const val BiologicalSex = "Biological Sex"
     const val ActivityLevel = "Activity Level"
-    const val Height = "Height"
     const val UnitType = "Unit Type"
     const val Weightless = "Weightless"
 
     // App Settings
-    const val AppSettings = "App Settings"
+    const val App = "App"
     const val Notifications = "Notifications"
     const val Messages = "Messages"
+    const val WeightScale = "Weight Scale"
     fun MessagesWithCount(count: Int) = "Messages ($count new)"
     const val Streaks = "Streaks"
-    const val AppPermissions = "App Permissions"
+    const val Permissions = "Permissions"
     const val Appearance = "Appearance"
 
     // Support
     const val Support = "Support"
-    const val HelpCustomerService = "Help & Customer Service"
+    const val Help = "Help"
     const val PrivacyPolicy = "Privacy Policy"
     const val TermsOfService = "Terms of Service"
     const val GreaterGoodsDotCom = "GreaterGoods.com"
@@ -48,6 +47,7 @@ object SettingsScreenStrings {
     const val LoggingOut = "Logging out..."
     const val LoggingOutAll = "Logging out all Accounts..."
     const val DeletingAccount = "Deleting Account..."
+    const val UpdatingUnitType = "Updating unit type..."
 
     object Error {
         const val Header = "Profile Update Error"

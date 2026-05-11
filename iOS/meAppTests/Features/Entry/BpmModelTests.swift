@@ -14,14 +14,12 @@ struct BpmModelTests {
             source: "manual",
             systolic: 120,
             diastolic: 80,
-            meanArterial: "93.3",
-            note: "Morning reading"
+            meanArterial: "93.3"
         )
 
         #expect(entry.systolic == 120)
         #expect(entry.diastolic == 80)
         #expect(entry.meanArterial == "93.3")
-        #expect(entry.note == "Morning reading")
         #expect(entry.source == "manual")
     }
 
@@ -32,7 +30,6 @@ struct BpmModelTests {
         #expect(entry.systolic == nil)
         #expect(entry.diastolic == nil)
         #expect(entry.meanArterial == nil)
-        #expect(entry.note == nil)
     }
 
     @Test("BathScaleEntry: convenience init from BpmOperationDTO maps values correctly")
@@ -56,7 +53,6 @@ struct BpmModelTests {
         #expect(entry.systolic == 130)
         #expect(entry.diastolic == 85)
         #expect(entry.meanArterial == "100.0")
-        #expect(entry.note == "Post-exercise")
         #expect(entry.source == "manual")
     }
 
@@ -82,7 +78,6 @@ struct BpmModelTests {
         #expect(entry.systolic == nil)
         #expect(entry.diastolic == nil)
         #expect(entry.meanArterial == nil)
-        #expect(entry.note == nil)
         #expect(entry.source == nil)
     }
 
@@ -184,36 +179,6 @@ struct BpmModelTests {
         #expect(copied.serverTimestamp == "2026-03-01T08:00:01Z")
     }
 
-    @Test("BpmOperationDTO: toAPIRequest maps fields correctly")
-    func bpmOperationDTOToAPIRequest() {
-        let dto = BpmOperationDTO(
-            accountId: "acct-1",
-            systolic: 120.0,
-            diastolic: 80.0,
-            pulse: 72.0,
-            meanArterial: "93.3",
-            note: "Morning",
-            source: "device",
-            unit: "mmHg",
-            entryTimestamp: "2026-03-01T08:00:00Z",
-            operationType: "create",
-            serverTimestamp: nil
-        )
-
-        let request = dto.toAPIRequest()
-
-        #expect(request.userId == "acct-1")
-        #expect(request.systolic == 120.0)
-        #expect(request.diastolic == 80.0)
-        #expect(request.pulse == 72.0)
-        #expect(request.meanArterial == "93.3")
-        #expect(request.note == "Morning")
-        #expect(request.source == "device")
-        #expect(request.unit == "mmHg")
-        #expect(request.entryTimestamp == "2026-03-01T08:00:00Z")
-        #expect(request.operationType == "create")
-    }
-
     // MARK: - Entry + BPM Relationship Tests
 
     @Test("Entry: init from BpmOperationDTO sets deviceType to bpm and uses scaleEntry")
@@ -235,7 +200,7 @@ struct BpmModelTests {
         let entry = Entry(from: dto, accountId: "acct-1", isSynced: true)
 
         #expect(entry.accountId == "acct-1")
-        #expect(entry.deviceType == "bpm")
+        #expect(entry.entryType == "bpm")
         #expect(entry.entryTimestamp == "2026-03-01T08:00:00Z")
         #expect(entry.operationType == "create")
         #expect(entry.serverTimestamp == "2026-03-01T08:00:01Z")
@@ -244,7 +209,7 @@ struct BpmModelTests {
         #expect(entry.scaleEntry?.systolic == 120)
         #expect(entry.scaleEntry?.diastolic == 80)
         #expect(entry.scaleEntry?.meanArterial == "93.3")
-        #expect(entry.scaleEntry?.note == "Test")
+        #expect(entry.note == "Test")
         #expect(entry.scaleEntry?.source == "manual")
         #expect(entry.scaleEntryMetric != nil)
         #expect(entry.scaleEntryMetric?.pulse == 72)

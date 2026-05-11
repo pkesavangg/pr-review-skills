@@ -8,10 +8,27 @@ extension SettingsStoreTests {
     struct Goal {
         @Test("populateGoalFormIfNeeded loads stored goal values")
         func populateGoalFormLoadsStoredGoalValues() {
-            let account = SettingsStoreTestFixtures.makeAccount()
-            account.goalSettings?.goalType = .lose
-            account.goalSettings?.initialWeight = 1800
-            account.goalSettings?.goalWeight = 1500
+            let account = AccountTestFixtures.makeAccountSnapshot(
+                id: "acct-1",
+                email: "lakshmi@example.com",
+                firstName: "Lakshmi",
+                lastName: "Priya",
+                gender: .female,
+                dob: "1992-03-04",
+                zipcode: "560001",
+                isActiveAccount: true,
+                weightUnit: .kg,
+                weightHeight: "681",
+                activityLevel: .athlete,
+                goalType: .lose,
+                goalWeight: 1500,
+                initialWeight: 1800,
+                isStreakOn: true,
+                isWeightlessOn: true,
+                weightlessWeight: 1550,
+                shouldSendEntryNotifications: true,
+                shouldSendWeightInEntryNotifications: true
+            )
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService)
@@ -25,10 +42,27 @@ extension SettingsStoreTests {
 
         @Test("populateGoalFormIfNeeded formats imperial values and validators")
         func populateGoalFormFormatsImperialValuesAndValidators() {
-            let account = SettingsStoreTestFixtures.makeAccount(unit: .lb)
-            account.goalSettings?.goalType = .lose
-            account.goalSettings?.initialWeight = 1800
-            account.goalSettings?.goalWeight = 1500
+            let account = AccountTestFixtures.makeAccountSnapshot(
+                id: "acct-1",
+                email: "lakshmi@example.com",
+                firstName: "Lakshmi",
+                lastName: "Priya",
+                gender: .female,
+                dob: "1992-03-04",
+                zipcode: "560001",
+                isActiveAccount: true,
+                weightUnit: .lb,
+                weightHeight: "681",
+                activityLevel: .athlete,
+                goalType: .lose,
+                goalWeight: 1500,
+                initialWeight: 1800,
+                isStreakOn: true,
+                isWeightlessOn: true,
+                weightlessWeight: 1550,
+                shouldSendEntryNotifications: true,
+                shouldSendWeightInEntryNotifications: true
+            )
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService)
@@ -58,9 +92,26 @@ extension SettingsStoreTests {
         @Test("handleGoalExit dirty form resets and navigates on exit")
         func handleGoalExitDirtyFormResetsAndNavigatesOnExit() {
             let notification = TestNotificationHelperService()
-            let account = SettingsStoreTestFixtures.makeAccount()
-            account.goalSettings?.goalType = .lose
-            account.goalSettings?.goalWeight = 1500
+            let account = AccountTestFixtures.makeAccountSnapshot(
+                id: "acct-1",
+                email: "lakshmi@example.com",
+                firstName: "Lakshmi",
+                lastName: "Priya",
+                gender: .female,
+                dob: "1992-03-04",
+                zipcode: "560001",
+                isActiveAccount: true,
+                weightUnit: .kg,
+                weightHeight: "681",
+                activityLevel: .athlete,
+                goalType: .lose,
+                goalWeight: 1500,
+                isStreakOn: true,
+                isWeightlessOn: true,
+                weightlessWeight: 1550,
+                shouldSendEntryNotifications: true,
+                shouldSendWeightInEntryNotifications: true
+            )
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService)
@@ -157,9 +208,26 @@ extension SettingsStoreTests {
 
         @Test("resetGoalForm restores account goal values")
         func resetGoalFormRestoresAccountGoalValues() {
-            let account = SettingsStoreTestFixtures.makeAccount()
-            account.goalSettings?.goalType = .lose
-            account.goalSettings?.goalWeight = 1500
+            let account = AccountTestFixtures.makeAccountSnapshot(
+                id: "acct-1",
+                email: "lakshmi@example.com",
+                firstName: "Lakshmi",
+                lastName: "Priya",
+                gender: .female,
+                dob: "1992-03-04",
+                zipcode: "560001",
+                isActiveAccount: true,
+                weightUnit: .kg,
+                weightHeight: "681",
+                activityLevel: .athlete,
+                goalType: .lose,
+                goalWeight: 1500,
+                isStreakOn: true,
+                isWeightlessOn: true,
+                weightlessWeight: 1550,
+                shouldSendEntryNotifications: true,
+                shouldSendWeightInEntryNotifications: true
+            )
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService)
@@ -194,7 +262,7 @@ extension SettingsStoreTests {
             let account = SettingsStoreTestFixtures.makeAccount()
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
-            accountService.createGoalResult = .success(account)
+            accountService.createGoalResult = .success(())
             let entryService = MockEntryService()
             entryService.getLatestEntryResult = .success(EntryTestFixtures.makeEntry(weight: 1720))
             let bluetooth = MockBluetoothService()
@@ -230,7 +298,7 @@ extension SettingsStoreTests {
             let account = SettingsStoreTestFixtures.makeAccount()
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
-            accountService.createGoalResult = .success(account)
+            accountService.createGoalResult = .success(())
             let entryService = MockEntryService()
             entryService.getLatestEntryResult = .success(EntryTestFixtures.makeEntry(weight: 1720))
             let bluetooth = MockBluetoothService()
@@ -290,7 +358,7 @@ extension SettingsStoreTests {
             let account = SettingsStoreTestFixtures.makeAccount()
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
-            accountService.createGoalResult = .success(account)
+            accountService.createGoalResult = .success(())
             let entryService = MockEntryService()
             entryService.getLatestEntryResult = .success(nil)
             let bluetooth = MockBluetoothService()
@@ -322,7 +390,7 @@ extension SettingsStoreTests {
             let account = SettingsStoreTestFixtures.makeAccount()
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
-            accountService.createGoalResult = .success(account)
+            accountService.createGoalResult = .success(())
             let bluetooth = MockBluetoothService()
             bluetooth.updateUserProfileForR4ScalesResult = .failure(.notImplemented)
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(
@@ -355,7 +423,7 @@ extension SettingsStoreTests {
             let account = SettingsStoreTestFixtures.makeAccount()
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
-            accountService.createGoalResult = .success(account)
+            accountService.createGoalResult = .success(())
             let bluetooth = MockBluetoothService()
             bluetooth.updateUserProfileForR4ScalesResult = .failure(.notImplemented)
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(

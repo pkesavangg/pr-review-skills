@@ -5,7 +5,7 @@ import Foundation
 final class WeightSnapshotCardViewModel: ObservableObject {
     @Injector private var accountService: AccountServiceProtocol
 
-    @Published private(set) var activeAccount: Account?
+    @Published private(set) var activeAccount: AccountSnapshot?
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -19,18 +19,18 @@ final class WeightSnapshotCardViewModel: ObservableObject {
     }
 
     var unitText: String {
-        activeAccount?.weightSettings?.weightUnit?.rawValue ?? "lbs"
+        activeAccount?.weightUnit.rawValue ?? "lbs"
     }
 
     func convertStoredWeightToDisplay(_ storedWeight: Int) -> Double {
-        let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
+        let unit = activeAccount?.weightUnit ?? .lb
         return unit == .kg
             ? ConversionTools.convertStoredToKg(storedWeight)
             : ConversionTools.convertStoredToLbs(storedWeight)
     }
 
     func goalWeightForDisplay() -> Double? {
-        guard let storedGoal = activeAccount?.goalSettings?.goalWeight else { return nil }
+        guard let storedGoal = activeAccount?.goalWeight else { return nil }
         return convertStoredWeightToDisplay(Int(storedGoal))
     }
 }

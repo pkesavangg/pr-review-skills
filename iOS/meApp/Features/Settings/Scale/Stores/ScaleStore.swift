@@ -21,7 +21,7 @@ class ScaleStore: ObservableObject {
     @Injector private var logger: LoggerServiceProtocol
     @Injector private var permissionsService: PermissionsServiceProtocol
     
-    @Published var scales: [Device] = []
+    @Published var scales: [DeviceSnapshot] = []
     @Published var addScaleForm = AddScaleForm()    
     
     private let tag = "ScaleStore"
@@ -84,31 +84,21 @@ class ScaleStore: ObservableObject {
         }
     }
     
-    func determineConnectionStatus(for scale: Device) -> ScaleConnectionStatus {
-        let st = ScaleTypeHelper.determineScaleType(for: scale)
+    func determineConnectionStatus(for scale: DeviceSnapshot) -> ScaleConnectionStatus {
+        let st = ScaleTypeHelper.determineScaleType(sku: scale.sku, scaleType: scale.bathScale?.scaleType, deviceType: scale.deviceType)
         if st == .appsync { return .noStatus }
-        
-        // Check if Bluetooth is actually enabled - if not, scale cannot be connected
+
         let isBluetoothOn = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
-        if !isBluetoothOn {
-            return .notConnected
-        }
-        
-        // Only check for setupIncomplete if scale is actually connected
-        guard scale.isConnected == true else {
-            return .notConnected
-        }
-        
-        // For BtWifiR4 scales, check if WiFi setup is incomplete
+        if !isBluetoothOn { return .notConnected }
+
+        guard scale.isConnected else { return .notConnected }
+
         if st == .bluetoothR4 {
-            let wifiOk = scale.isWifiConfigured == true
+            let wifiOk = scale.isWifiConfigured
             let weightOnly = !(scale.r4ScalePreference?.shouldMeasureImpedance ?? true)
-            // Only show setupIncomplete if WiFi is not configured AND scale is not in weight-only mode
-            if !wifiOk && !weightOnly {
-                return .setupIncomplete
-            }
+            if !wifiOk && !weightOnly { return .setupIncomplete }
         }
-        
+
         return .connected
     }
     

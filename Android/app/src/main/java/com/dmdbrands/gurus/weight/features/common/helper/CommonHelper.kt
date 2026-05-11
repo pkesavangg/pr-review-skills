@@ -9,6 +9,14 @@ enum class DeviceType {
   Fold
 }
 
+/**
+ * True for `Phone` and `Fold` (folded outer display). Tablets render with
+ * `heightIn(min = …)` so component heights can grow with content; phone-like
+ * devices keep fixed pixel-parity heights.
+ */
+val DeviceType.isPhoneLike: Boolean
+  get() = this == DeviceType.Phone || this == DeviceType.Fold
+
 @Composable
 fun getDeviceType(): DeviceType {
   val configuration = LocalConfiguration.current

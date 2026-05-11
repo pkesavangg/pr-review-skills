@@ -186,6 +186,7 @@ constructor(
      * Call this when user wants to exit the change password flow.
      */
     private fun navigateBack() {
+        state.value.form.resetForm()
         viewModelScope.launch {
             try {
                 navigationService.navigateBack()

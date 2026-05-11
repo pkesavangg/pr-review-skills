@@ -18,6 +18,10 @@ class NotificationContainerViewModel: ObservableObject {
     @Published var loaderData: LoaderModel?
     @Published var modalViewData: [ModalData] = []
 
+    var dismissToastSignal: AnyPublisher<Void, Never> {
+        notificationHelperService.dismissToastSignal.eraseToAnyPublisher()
+    }
+
     var cancellables = Set<AnyCancellable>()
 
     init() {

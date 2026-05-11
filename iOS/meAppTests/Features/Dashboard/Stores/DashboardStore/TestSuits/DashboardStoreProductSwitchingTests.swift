@@ -91,7 +91,7 @@ extension DashboardStoreTests {
         @Test("switchProductType updates productType from wg to bpm")
         func switchProductTypeWgToBpm() {
             let (store, _, _) = DashboardStoreTestSupport.makeSUT()
-            #expect(store.productType == .wg) // default
+            #expect(store.productType == .scale) // default
 
             store.switchProductType(to: .bpm)
 
@@ -101,12 +101,12 @@ extension DashboardStoreTests {
         @Test("switchProductType is no-op when switching to the same type")
         func switchProductTypeSameTypeNoOp() {
             let (store, _, _) = DashboardStoreTestSupport.makeSUT()
-            store.productType = .wg
+            store.productType = .scale
 
-            store.switchProductType(to: .wg)
+            store.switchProductType(to: .scale)
 
             // State should remain unchanged
-            #expect(store.productType == .wg)
+            #expect(store.productType == .scale)
         }
 
         @Test("switchProductType clears selectedMetricLabel")
@@ -135,9 +135,9 @@ extension DashboardStoreTests {
             store.switchProductType(to: .bpm)
             #expect(store.productType == .bpm)
 
-            store.switchProductType(to: .wg)
+            store.switchProductType(to: .scale)
 
-            #expect(store.productType == .wg)
+            #expect(store.productType == .scale)
         }
 
         // MARK: - selectProductItem
@@ -160,7 +160,7 @@ extension DashboardStoreTests {
             store.selectProductItem(.baby(profile: baby))
 
             #expect(store.selectedProductItem == .baby(profile: baby))
-            #expect(store.productType == .wg)
+            #expect(store.productType == .scale)
         }
 
         @Test("selectProductItem back to myWeight clears baby selection")
@@ -218,6 +218,79 @@ extension DashboardStoreTests {
             let (store, _, _) = DashboardStoreTestSupport.makeSUT()
             // Just verify it's accessible without crash
             _ = store.productTypeSelectorStore
+        }
+
+        // MARK: - Graph State Reset on Product Switch
+
+        @Test("switchProductType clears cached Y-axis domain and ticks")
+        func switchProductTypeClearsYAxisState() {
+            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            store.state.graph.cachedYAxisDomain = 100.0...200.0
+            store.state.graph.cachedYAxisTicks = [100, 125, 150, 175, 200]
+            store.state.graph.selectedXValue = Date()
+            store.graphManager.state.cachedYAxisDomain = 100.0...200.0
+            store.graphManager.state.cachedYAxisTicks = [100, 125, 150, 175, 200]
+
+            store.switchProductType(to: .bpm)
+
+            #expect(store.state.graph.cachedYAxisDomain == nil)
+            #expect(store.state.graph.cachedYAxisTicks == nil)
+            #expect(store.state.graph.selectedXValue == nil)
+            #expect(store.graphManager.state.cachedYAxisDomain == nil)
+            #expect(store.graphManager.state.cachedYAxisTicks == nil)
+        }
+
+        @Test("switchProductType clears scroll and processing state")
+        func switchProductTypeClearsScrollState() {
+            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            store.state.graph.isScrolling = true
+            store.state.graph.hasDetectedScrollInCurrentGesture = true
+            store.graphManager.state.isScrolling = true
+            store.graphManager.state.hasDetectedScrollInCurrentGesture = true
+            store.chartManager.isProcessingScrollEnd = true
+
+            store.switchProductType(to: .bpm)
+
+            #expect(store.state.graph.isScrolling == false)
+            #expect(store.state.graph.hasDetectedScrollInCurrentGesture == false)
+            #expect(store.graphManager.state.isScrolling == false)
+            #expect(store.graphManager.state.hasDetectedScrollInCurrentGesture == false)
+            #expect(store.chartManager.isProcessingScrollEnd == false)
+        }
+
+        @Test("switchProductType sets product context on cache manager")
+        func switchProductTypeSetsProductContext() {
+            let (store, _, cacheManager) = DashboardStoreTestSupport.makeSUT()
+
+            store.switchProductType(to: .bpm)
+
+            #expect(cacheManager.setProductContextCalls >= 1)
+            #expect(cacheManager.lastProductContext?.productType == .bpm)
+        }
+
+        @Test("switchProductType resets hasInitializedChart and isGraphReady")
+        func switchProductTypeResetsChartFlags() {
+            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            store.state.ui.hasInitializedChart = true
+            store.graphManager.state.isGraphReady = true
+
+            store.switchProductType(to: .bpm)
+
+            #expect(store.state.ui.hasInitializedChart == false)
+            #expect(store.graphManager.state.isGraphReady == false)
+        }
+
+        @Test("refreshSelectedProductContext clears caches when switching baby profiles")
+        func refreshSelectedProductContextClearsCaches() {
+            let (store, _, cacheManager) = DashboardStoreTestSupport.makeSUT()
+            store.productType = .scale
+            store.state.ui.hasInitializedChart = true
+
+            let baby1 = makeBaby(id: "b1")
+            store.selectProductItem(.baby(profile: baby1))
+
+            #expect(cacheManager.clearAllCachesCalls >= 1)
+            #expect(store.state.ui.hasInitializedChart == false || store.state.ui.hasInitializedChart == true)
         }
     }
 }

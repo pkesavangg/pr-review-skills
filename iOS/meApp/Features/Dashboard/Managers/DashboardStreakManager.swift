@@ -15,6 +15,8 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     
     // MARK: - Private Properties
     private var hasUpdatedWithRealData: Bool = false
+    private var activeRefreshTask: Task<Void, Error>?
+    private var activeRefreshToken: UUID?
     private var originalStreakItems: [MetricItem] {
         let streakLabels = getStreakLabels()
         return [
@@ -54,12 +56,8 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
 
     // MARK: - Streak Data Management
     func refreshStreakData() async throws {
-        do {
-            let progress = try await entryService.getProgress(entryType: .wg)
-            try await updateStreakItems(with: progress)
-        } catch {
-            logger.log(level: .error, tag: "DashboardStreakManager", message: "Failed to refresh streak data: \(error)")
-            throw DashboardError.dataLoadingFailed(error)
+        try await performCoalescedRefresh {
+            try await self.entryService.getProgress(entryType: .scale)
         }
     }
 
@@ -86,13 +84,13 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         ))
 
         // Resolve unit once
-        let weightUnit: WeightUnit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
+        let weightUnit: WeightUnit = accountService.activeAccount?.weightUnit ?? .lb
 
         // Weekly change
         let weeklyValue = Double(progress.week)
         let weeklyDisplay = weightUnit == .kg
-            ? ConversionTools.convertStoredToKg(Int(weeklyValue))
-            : ConversionTools.convertStoredToLbs(Int(weeklyValue))
+            ? ConversionTools.convertStoredToKg(weeklyValue)
+            : ConversionTools.convertStoredToLbs(weeklyValue)
         let weeklyUnitLabel = WeightValueConvertor.unitForDisplay(value: abs(weeklyDisplay), unit: weightUnit)
         updatedStreakItems.append(MetricItem(
             value: formatWeightChange(weeklyValue, unit: weightUnit.rawValue),
@@ -105,8 +103,8 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         // Monthly change
         let monthlyValue = Double(progress.month)
         let monthlyDisplay = weightUnit == .kg
-            ? ConversionTools.convertStoredToKg(Int(monthlyValue))
-            : ConversionTools.convertStoredToLbs(Int(monthlyValue))
+            ? ConversionTools.convertStoredToKg(monthlyValue)
+            : ConversionTools.convertStoredToLbs(monthlyValue)
         let monthlyUnitLabel = WeightValueConvertor.unitForDisplay(value: abs(monthlyDisplay), unit: weightUnit)
         updatedStreakItems.append(MetricItem(
             value: formatWeightChange(monthlyValue, unit: weightUnit.rawValue),
@@ -119,8 +117,8 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         // Yearly change
         let yearlyValue = Double(progress.year)
         let yearlyDisplay = weightUnit == .kg
-            ? ConversionTools.convertStoredToKg(Int(yearlyValue))
-            : ConversionTools.convertStoredToLbs(Int(yearlyValue))
+            ? ConversionTools.convertStoredToKg(yearlyValue)
+            : ConversionTools.convertStoredToLbs(yearlyValue)
         let yearlyUnitLabel = WeightValueConvertor.unitForDisplay(value: abs(yearlyDisplay), unit: weightUnit)
         updatedStreakItems.append(MetricItem(
             value: formatWeightChange(yearlyValue, unit: weightUnit.rawValue),
@@ -133,8 +131,8 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         // Total change
         let totalValue = Double(progress.total ?? 0)
         let totalDisplay = weightUnit == .kg
-            ? ConversionTools.convertStoredToKg(Int(totalValue))
-            : ConversionTools.convertStoredToLbs(Int(totalValue))
+            ? ConversionTools.convertStoredToKg(totalValue)
+            : ConversionTools.convertStoredToLbs(totalValue)
         let totalUnitLabel = WeightValueConvertor.unitForDisplay(value: abs(totalDisplay), unit: weightUnit)
         updatedStreakItems.append(MetricItem(
             value: formatWeightChange(totalValue, unit: weightUnit.rawValue),
@@ -174,9 +172,43 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     
     /// Refreshes streak data when unit changes
     func refreshStreakDataForUnitChange() async throws {
-        // Re-fetch progress data and update with new unit
-        let progress = try await entryService.getProgress()
-        try await updateStreakItems(with: progress)
+        try await performCoalescedRefresh {
+            try await self.entryService.getProgress()
+        }
+    }
+
+    private func performCoalescedRefresh(
+        progressProvider: @escaping @MainActor () async throws -> Progress
+    ) async throws {
+        if let activeRefreshTask {
+            try await activeRefreshTask.value
+            return
+        }
+
+        let refreshToken = UUID()
+        activeRefreshToken = refreshToken
+
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let progress = try await progressProvider()
+            try await self.updateStreakItems(with: progress)
+        }
+        activeRefreshTask = task
+
+        do {
+            try await task.value
+            if activeRefreshToken == refreshToken {
+                activeRefreshTask = nil
+                activeRefreshToken = nil
+            }
+        } catch {
+            if activeRefreshToken == refreshToken {
+                activeRefreshTask = nil
+                activeRefreshToken = nil
+            }
+            logger.log(level: .error, tag: "DashboardStreakManager", message: "Failed to refresh streak data: \(error)")
+            throw DashboardError.dataLoadingFailed(error)
+        }
     }
 
     // MARK: - Streak Item Management
@@ -246,7 +278,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     
     /// Returns the current weight unit as a string (e.g., "lbs" or "kg")
     private func getUnitText() -> String {
-        return accountService.activeAccount?.weightSettings?.weightUnit?.rawValue ?? "lbs"
+        return accountService.activeAccount?.weightUnit.rawValue ?? "lbs"
     }
     
     /// Returns dynamic streak labels based on current unit
@@ -272,9 +304,9 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         // Convert stored weight to display unit
         let displayValue: Double
         if unit == "kg" {
-            displayValue = ConversionTools.convertStoredToKg(Int(value))
+            displayValue = ConversionTools.convertStoredToKg(value)
         } else {
-            displayValue = ConversionTools.convertStoredToLbs(Int(value))
+            displayValue = ConversionTools.convertStoredToLbs(value)
         }
         
         // Round to one decimal to determine if the displayed value is effectively zero

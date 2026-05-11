@@ -27,6 +27,8 @@ import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGEntry
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
 import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
@@ -170,7 +172,10 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
           AppLog.d(TAG, "New device found with matching protocol: ${ggDeviceDetail.deviceName}")
           viewModelScope.launch {
             try {
-              if (deviceService.scaleExistsByMac(ggDeviceDetail.macAddress) && ggDeviceDetail.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value) {
+              if (!DeviceHelper.isBpmDevice(ggDeviceDetail.getSKU()) &&
+                deviceService.scaleExistsByMac(ggDeviceDetail.macAddress) &&
+                ggDeviceDetail.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value
+              ) {
                 AppLog.w(TAG, "Known scale discovered with MAC: ${ggDeviceDetail.macAddress}")
                 stopObservingDevices()
                 dialogQueueService.showDialog(

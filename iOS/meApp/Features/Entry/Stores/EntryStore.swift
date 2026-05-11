@@ -1,8 +1,10 @@
+// swiftlint:disable file_length
 import Combine
 import Foundation
 import SwiftUI
 
 @MainActor
+// swiftlint:disable:next type_body_length
 final class EntryStore: ObservableObject {
     // Dependencies
     @Injector var accountService: AccountServiceProtocol
@@ -24,6 +26,8 @@ final class EntryStore: ObservableObject {
     @Published var manualEntryForm = ManualEntryForm()
     @Published var bpForm = BloodPressureEntryForm()
     @Published var babyForm = BabyEntryForm()
+    @Published var babyWeightUnit: BabyWeightUnit = .lbsOz
+    @Published var babyLengthUnit: BabyLengthUnit = .inches
     @Published var weightUnit: WeightUnit = .lb
     @Published var canShowOtherBodyMetrics = false
     @Published var showMetrics = false
@@ -62,6 +66,7 @@ final class EntryStore: ObservableObject {
     init() {
         scaleService.scalesPublisher
             .map { $0.contains { $0.bathScale?.scaleType == ScaleSourceType.btWifiR4.rawValue } }
+            .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .assign(to: \.canShowOtherBodyMetrics, on: self)
             .store(in: &cancellables)
@@ -177,7 +182,7 @@ final class EntryStore: ObservableObject {
             entryTimestamp: entryTimestamp,
             accountId: accountId,
             operationType: OperationType.create.rawValue,
-            deviceType: DeviceType.scale.rawValue,
+            entryType: EntryType.scale.rawValue,
             isSynced: false
         )
         entry.scaleEntry = scaleEntry
@@ -319,11 +324,13 @@ final class EntryStore: ObservableObject {
             .store(in: &cancellables)
     }
 
-    @MainActor private func updateWeightUnitFromAccount(_ account: Account?) {
-        let unit = account?.weightSettings?.weightUnit ?? .lb
+    @MainActor private func updateWeightUnitFromAccount(_ account: AccountSnapshot?) {
+        let unit = account?.weightUnit ?? .lb
 
         if self.weightUnit != unit {
             self.weightUnit = unit
+            self.babyWeightUnit = unit == .kg ? .kg : .lbsOz
+            self.babyLengthUnit = unit == .kg ? .cm : .inches
             self.updateWeightValidators()
             self.calculateBMI()
             // Force UI update
@@ -351,7 +358,7 @@ final class EntryStore: ObservableObject {
             return
         }
 
-        let heightString = accountService.activeAccount?.weightSettings?.height ?? "0"
+        let heightString = accountService.activeAccount?.weightHeight ?? "0"
         let storedHeight = ConversionTools.convertStoredHeightToCm(Int(round(Double(heightString) ?? 0)))
 
         let storedWeight: Double = {
@@ -455,6 +462,7 @@ final class EntryStore: ObservableObject {
         }
     }
 
+    // swiftlint:disable:next function_body_length
     func saveBabyEntry() async {
         guard !isSaving else { return }
         isSaving = true
@@ -466,7 +474,8 @@ final class EntryStore: ObservableObject {
 
         guard babyForm.isValid else { return }
 
-        guard case .baby(let profile) = productTypeStore.selectedItem else { return }
+        guard case .baby(let profile) = productTypeStore.selectedItem,
+              !profile.isPendingSelection else { return }
 
         let entryTimestamp = DateTimeTools.isoString(
             date: babyForm.date.value,
@@ -475,10 +484,34 @@ final class EntryStore: ObservableObject {
             randomizeSubMinute: true
         )
 
-        let pounds = Int(Double(babyForm.pounds.value) ?? 0)
-        let ounces = Int(Double(babyForm.ounces.value) ?? 0)
-        let weight = pounds * 16 + ounces
-        let length = Int(Double(babyForm.inches.value) ?? 0)
+        let weight: Int
+        switch babyWeightUnit {
+        case .kg:
+            let kgValue = Double(babyForm.kg.value) ?? 0
+            weight = ConversionTools.convertBabyKgToDecigrams(kgValue)
+        case .lb:
+            let lbValue = Double(babyForm.lb.value) ?? 0
+            weight = ConversionTools.convertBabyLbToDecigrams(lbValue)
+        case .lbsOz:
+            let pounds = Int(Double(babyForm.pounds.value) ?? 0)
+            let ounces = Double(babyForm.ounces.value) ?? 0
+            weight = ConversionTools.convertBabyLbsOzToDecigrams(lbs: pounds, oz: ounces)
+        }
+
+        guard weight > 0 else {
+            logger.log(level: .info, tag: tag, message: "Baby entry save skipped: weight is zero")
+            return
+        }
+
+        let length: Int
+        switch babyLengthUnit {
+        case .cm:
+            let cmValue = Double(babyForm.cm.value) ?? 0
+            length = ConversionTools.convertBabyCmToMm(cmValue)
+        case .inches:
+            let inchesValue = Double(babyForm.inches.value) ?? 0
+            length = ConversionTools.convertBabyInchesToMm(inchesValue)
+        }
         let note = babyForm.notes.value
 
         do {
@@ -519,14 +552,35 @@ final class EntryStore: ObservableObject {
     }
 
     var babyWeightError: String? {
-        babyForm.weightError
+        switch babyWeightUnit {
+        case .kg: return babyForm.weightErrorMetric
+        case .lb: return babyForm.weightErrorLb
+        case .lbsOz: return babyForm.weightError
+        }
     }
 
     var babyLengthError: String? {
-        babyForm.lengthError
+        switch babyLengthUnit {
+        case .cm: return babyForm.lengthErrorCm
+        case .inches: return babyForm.lengthError
+        }
+    }
+
+    /// Called when user toggles the baby weight unit segmented control.
+    func updateBabyWeightUnit(_ unit: BabyWeightUnit) {
+        guard unit != babyWeightUnit else { return }
+        babyWeightUnit = unit
+    }
+
+    /// Called when user toggles the baby length unit segmented control.
+    func updateBabyLengthUnit(_ unit: BabyLengthUnit) {
+        guard unit != babyLengthUnit else { return }
+        babyLengthUnit = unit
     }
 
     @MainActor func resetBabyForm() {
+        babyWeightUnit = weightUnit == .kg ? .kg : .lbsOz
+        babyLengthUnit = weightUnit == .kg ? .cm : .inches
         babyForm = BabyEntryForm()
         babyForm.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }

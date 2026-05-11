@@ -582,7 +582,69 @@ struct DashboardCacheManagerTests {
 
         #expect(sut.getBool(forKey: key) == true)
 
-        UserDefaults.standard.removeObject(forKey: key)
+        UserDefaults.standard.removeObject(forKey: key) // swiftlint:disable:this no_direct_userdefaults
+    }
+
+    // MARK: - setProductContext Tests
+
+    @Test("setProductContext: changing product type invalidates all caches")
+    func setProductContextChangingProductTypeInvalidates() {
+        let sut = makeSUT()
+        var callCount = 0
+
+        sut.setProductContext(productType: .scale, babyProfileId: nil)
+        _ = sut.getContinuousOperations(for: .week) {
+            callCount += 1
+            return [makeSummary(period: "2026-03-01")]
+        }
+
+        sut.setProductContext(productType: .bpm, babyProfileId: nil)
+        _ = sut.getContinuousOperations(for: .week) {
+            callCount += 1
+            return [makeSummary(period: "2026-03-02")]
+        }
+
+        #expect(callCount == 2)
+    }
+
+    @Test("setProductContext: same product type does not invalidate caches")
+    func setProductContextSameProductTypeDoesNotInvalidate() {
+        let sut = makeSUT()
+        var callCount = 0
+
+        sut.setProductContext(productType: .scale, babyProfileId: nil)
+        _ = sut.getContinuousOperations(for: .week) {
+            callCount += 1
+            return [makeSummary(period: "2026-03-01")]
+        }
+
+        sut.setProductContext(productType: .scale, babyProfileId: nil)
+        _ = sut.getContinuousOperations(for: .week) {
+            callCount += 1
+            return [makeSummary(period: "2026-03-02")]
+        }
+
+        #expect(callCount == 1)
+    }
+
+    @Test("setProductContext: changing baby profile invalidates caches")
+    func setProductContextChangingBabyProfileInvalidates() {
+        let sut = makeSUT()
+        var callCount = 0
+
+        sut.setProductContext(productType: .scale, babyProfileId: "baby1")
+        _ = sut.getContinuousOperations(for: .week) {
+            callCount += 1
+            return [makeSummary(period: "2026-03-01")]
+        }
+
+        sut.setProductContext(productType: .scale, babyProfileId: "baby2")
+        _ = sut.getContinuousOperations(for: .week) {
+            callCount += 1
+            return [makeSummary(period: "2026-03-02")]
+        }
+
+        #expect(callCount == 2)
     }
 
     @Test("clearAllCaches: resets all cache layers")

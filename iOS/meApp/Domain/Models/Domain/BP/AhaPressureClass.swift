@@ -64,7 +64,7 @@ enum AhaPressureClass: String, CaseIterable, Identifiable {
     // MARK: - Colors
 
     /// The primary color for this pressure classification.
-    /// TODO: Replace inline colors with asset catalog colors once design tokens are added.
+    /// Replace inline colors with asset catalog colors once design tokens are added.
     func color(theme: AppColors.Palette) -> Color {
         switch self {
         case .normal:             return theme.statusSuccess

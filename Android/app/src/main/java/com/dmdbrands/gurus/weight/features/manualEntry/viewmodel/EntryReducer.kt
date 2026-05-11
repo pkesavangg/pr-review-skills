@@ -116,9 +116,8 @@ data class EntryForm(
               if (height != null && isValueChangeAllowed(old, new)) {
                 val weight = when {
                   new.isBlank() -> 0.0
-                  weightUnit == WeightUnit.LB -> ConversionTools.convertStoredToKg(
-                    new.toDouble(),
-                  )
+                  weightUnit == WeightUnit.LB || weightUnit == WeightUnit.LB_OZ ->
+                    ConversionTools.convertStoredToKg(new.toDouble())
 
                   else -> new.toDouble() / 10
                 }
@@ -155,7 +154,7 @@ data class EntryForm(
               "",
               listOf(
                 FormValidations.bodyCompValidator(
-                  AppValidatorConfig.VisceralAge.MIN, AppValidatorConfig.VisceralAge.MAX, false,
+                  AppValidatorConfig.VisceralFat.MIN, AppValidatorConfig.VisceralFat.MAX, false,
                 ),
               ),
             ),

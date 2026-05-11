@@ -64,7 +64,6 @@ fun AppsyncScaleSetupScreenContent(
 ) {
   val focusManager = LocalFocusManager.current
   val pagerState = rememberPagerState { state.steps.size }
-  val isAnimating = remember { mutableStateOf(false) }
   var isScanning by remember { mutableStateOf(false) }
   val coroutineScope = rememberCoroutineScope()
 

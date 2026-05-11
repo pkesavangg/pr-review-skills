@@ -45,6 +45,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BabyScaleSetupStri
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
+import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppRadioGroupModal
 import com.dmdbrands.gurus.weight.features.common.components.AppSwipeableActionItem
@@ -84,7 +85,8 @@ fun ScaleNameContent(
     modifier = modifier
       .fillMaxSize()
       .verticalScroll(rememberScrollState())
-      .padding(vertical = spacing.md, horizontal = spacing.sm),
+      .padding(vertical = spacing.md, horizontal = spacing.sm)
+      .dismissKeyboardOnTap(),
     verticalArrangement = Arrangement.spacedBy(spacing.lg),
   ) {
     AppText(

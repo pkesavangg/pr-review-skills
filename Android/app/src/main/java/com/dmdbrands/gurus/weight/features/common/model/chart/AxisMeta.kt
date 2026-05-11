@@ -1,6 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.model.chart
 
-import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
+import com.dmdbrands.gurus.weight.features.common.components.chart.CartesianRangeValues
 
 data class AxisMeta(
   val axisRange: CartesianRangeValues,

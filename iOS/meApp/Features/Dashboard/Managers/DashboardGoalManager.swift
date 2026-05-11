@@ -26,16 +26,12 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
                 throw DashboardError.noActiveAccount
             }
 
-            guard let goalSettings = account.goalSettings else {
-                return
-            }
-
-            // Extract all relationship data BEFORE async call (R7)
-            let goalType = goalSettings.goalType ?? .gain
-            let goalUnit = account.weightSettings?.weightUnit ?? .lb
-            let hasGoalSet = goalSettings.goalWeight != nil
-            let initialWeightStored = Int(goalSettings.initialWeight ?? 0)
-            let goalWeightStored = Int(goalSettings.goalWeight ?? 0)
+            // Extract all flattened fields from snapshot
+            let goalType = account.goalType ?? .gain
+            let goalUnit = account.weightUnit
+            let hasGoalSet = account.goalWeight != nil
+            let initialWeightStored = Int(account.initialWeight ?? 0)
+            let goalWeightStored = Int(account.goalWeight ?? 0)
 
             // Update goal state with extracted settings
             state.goalType = goalType
@@ -92,13 +88,9 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
                 throw DashboardError.noActiveAccount
             }
 
-            guard let goalSettings = account.goalSettings else {
-                return
-            }
-
             // Convert weights to display units
-            let initialWeightStored = Int(goalSettings.initialWeight ?? 0)
-            let goalWeightStored = Int(goalSettings.goalWeight ?? 0)
+            let initialWeightStored = Int(account.initialWeight ?? 0)
+            let goalWeightStored = Int(account.goalWeight ?? 0)
 
             let initialWeightDisplay = convertStoredWeightToDisplay(initialWeightStored)
             let goalWeightDisplay = convertStoredWeightToDisplay(goalWeightStored)
@@ -141,13 +133,9 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
                 throw DashboardError.noActiveAccount
             }
 
-            guard let goalSettings = account.goalSettings else {
-                return
-            }
-
-            // Extract all relationship data BEFORE async call (R7)
-            let initialWeightStored = Int(goalSettings.initialWeight ?? 0)
-            let goalWeightStored = Int(goalSettings.goalWeight ?? 0)
+            // Extract flattened fields from snapshot
+            let initialWeightStored = Int(account.initialWeight ?? 0)
+            let goalWeightStored = Int(account.goalWeight ?? 0)
 
             // Get current weight from latest entry
             let latestEntry = try await entryService.getLatestEntry()
@@ -190,7 +178,7 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
 
         // Fallback to live account goal if state has not refreshed yet
         if !hasGoal,
-           let storedGoal = accountService.activeAccount?.goalSettings?.goalWeight {
+           let storedGoal = accountService.activeAccount?.goalWeight {
             hasGoal = true
             effectiveGoalWeight = convertStoredWeightToDisplay(Int(storedGoal))
         }
@@ -216,21 +204,17 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
             throw DashboardError.noActiveAccount
         }
 
-        guard let goalSettings = account.goalSettings else {
-            throw DashboardError.goalCalculationFailed("No goal settings configured")
-        }
-
-        guard let initialWeight = goalSettings.initialWeight, initialWeight > 0 else {
+        guard let initialWeight = account.initialWeight, initialWeight > 0 else {
             throw DashboardError.goalCalculationFailed("Invalid initial weight")
         }
 
-        guard let goalWeight = goalSettings.goalWeight, goalWeight > 0 else {
+        guard let goalWeight = account.goalWeight, goalWeight > 0 else {
             throw DashboardError.goalCalculationFailed("Invalid goal weight")
         }
 
         // Validate goal type consistency
         let weightDifference = goalWeight - initialWeight
-        switch goalSettings.goalType {
+        switch account.goalType {
         case .gain:
             if weightDifference <= 0 {
                 throw DashboardError.goalCalculationFailed("Goal weight must be higher than initial weight for gain goals")
@@ -282,6 +266,10 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
         return convertStoredWeightToDisplay(storedWeight)
     }
 
+    func convertWeightToDisplay(_ storedWeight: Double) -> Double {
+        return convertStoredWeightToDisplay(storedWeight)
+    }
+
     func formatWeightForDisplay(_ weight: Double, isWeightlessMode: Bool) -> String {
         // Round to 1 decimal place using Decimal to avoid binary floating-point artifacts
         let decimal = Decimal(weight)
@@ -326,8 +314,13 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
     func updateGoalUnit(_ unit: WeightUnit) {
         state.goalUnit = unit
     }
+
     func convertStoredWeightToDisplay(_ storedWeight: Int) -> Double {
-        let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
+        return convertStoredWeightToDisplay(Double(storedWeight))
+    }
+
+    func convertStoredWeightToDisplay(_ storedWeight: Double) -> Double {
+        let unit = accountService.activeAccount?.weightUnit ?? .lb
         if unit == .kg {
             return ConversionTools.convertStoredToKg(storedWeight)
         } else {
@@ -339,7 +332,7 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
     
     /// Returns the current weight unit as a string (e.g., "lbs" or "kg")
     func getUnitText() -> String {
-        return accountService.activeAccount?.weightSettings?.weightUnit?.rawValue ?? "lbs"
+        return accountService.activeAccount?.weightUnit.rawValue ?? "lbs"
     }
 
     /// Returns the weight display label for the current period
@@ -354,16 +347,16 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
 
     // Updates visible data after scroll ends (forces UI update and logs average weight)
     // swiftlint:disable:next function_parameter_count
-    func updateVisibleDataAfterScroll(visibleOperations: [BathScaleWeightSummary], isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, triggerUpdate: @escaping () -> Void, logAverage: @escaping (Double) -> Void) {
+    func updateVisibleDataAfterScroll(visibleOperations: [BathScaleWeightSummary], isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Double) -> Double, triggerUpdate: @escaping () -> Void, logAverage: @escaping (Double) -> Void) {
         triggerUpdate()
         let opsToUse = visibleOperations.isEmpty ? visibleOperations : visibleOperations
         let weightValues = opsToUse.map { summary -> Double in
             if isWeightlessMode {
                 guard let anchorWeight = anchorWeight else { return 0 }
-                let currentWeight = convertWeight(Int(summary.weight))
+                let currentWeight = convertWeight(summary.weight)
                 return currentWeight - anchorWeight
             } else {
-                return convertWeight(Int(summary.weight))
+                return convertWeight(summary.weight)
             }
         }
         if !weightValues.isEmpty {

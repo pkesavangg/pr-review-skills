@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -36,6 +36,13 @@ object ScaleImageDefaults {
             ScaleImageSize.Medium -> 120.dp
             ScaleImageSize.Large -> 180.dp
         }
+
+    fun monitorWidth(size: ScaleImageSize): Dp =
+        when (size) {
+            ScaleImageSize.Small -> 55.dp
+            ScaleImageSize.Medium -> 90.dp
+            ScaleImageSize.Large -> 140.dp
+        }
 }
 
 @Composable
@@ -45,35 +52,33 @@ fun AppScaleImage(
   scaleImageSize: ScaleImageSize = ScaleImageSize.Small,
   showShadow: Boolean = sku !in ScaleImageDefaults.BABY_SCALE_SKUS,
 ) {
+  val isBpm = DeviceHelper.isBpmDevice(sku)
+  val imageHeight = ScaleImageDefaults.size(scaleImageSize)
+  val imageWidth = if (isBpm) ScaleImageDefaults.monitorWidth(scaleImageSize) else imageHeight
+
   Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
     Box(
       modifier =
         Modifier
-          .size(ScaleImageDefaults.size(scaleImageSize))
-          .then(
-            if (showShadow) {
-              Modifier.dropShadow(
-                shape = RoundedCornerShape(borderRadius.sm),
-                shadow = Shadow(
-                  radius = spacing.sm,
-                  spread = (-4).dp,
-                  color = MeTheme.colorScheme.glow,
-                  offset = DpOffset(x = 0.dp, 0.dp),
-                ),
-              )
-            } else {
-              Modifier
-            },
+          .width(imageWidth)
+          .height(imageHeight)
+          .dropShadow(
+            shape = RoundedCornerShape(borderRadius.sm),
+            shadow = Shadow(
+              radius = spacing.sm,
+              spread = (-4).dp,
+              color = MeTheme.colorScheme.glow,
+              offset = DpOffset(x = 0.dp, 0.dp),
+            ),
           ).clip(RoundedCornerShape(borderRadius.xs)),
       contentAlignment = Alignment.Center,
     ) {
-      val context = androidx.compose.ui.platform.LocalContext.current
       Image(
         painter =
           painterResource(
-            id = ScaleUtility.scaleImageResource(context, sku),
+            id = ScaleUtility.scaleImageResource(sku),
           ),
-        contentDescription = if (DeviceHelper.isBpmDevice(sku)) "$sku monitor" else "$sku scale",
+        contentDescription = if (isBpm) "$sku monitor" else "$sku scale",
       )
     }
   }
@@ -91,6 +96,10 @@ fun PreviewAppScaleImage() {
       AppScaleImage("0412", scaleImageSize = ScaleImageSize.Large)
       Spacer(Modifier.height(spacing.md))
       AppScaleImage("0397", scaleImageSize = ScaleImageSize.Large)
+      Spacer(Modifier.height(spacing.md))
+      AppScaleImage("0603", scaleImageSize = ScaleImageSize.Large)
+      Spacer(Modifier.height(spacing.md))
+      AppScaleImage("0663", scaleImageSize = ScaleImageSize.Large)
     }
   }
 }

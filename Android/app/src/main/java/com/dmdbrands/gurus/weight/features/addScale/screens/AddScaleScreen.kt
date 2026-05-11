@@ -1,7 +1,5 @@
 package com.dmdbrands.gurus.weight.features.addScale.screens
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +31,7 @@ import com.dmdbrands.gurus.weight.features.addScale.reducer.AddScaleIntent
 import com.dmdbrands.gurus.weight.features.addScale.reducer.AddScaleState
 import com.dmdbrands.gurus.weight.features.addScale.strings.AddScaleScreenStrings
 import com.dmdbrands.gurus.weight.features.addScale.viewmodel.AddScaleViewModel
+import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
@@ -68,7 +67,6 @@ fun AddScaleScreenContent(
   val keyboardController = LocalSoftwareKeyboardController.current
   val modelNumberControl = state.form.controls.modelNumber
   val modelNumberFocusRequester = remember { FocusRequester() }
-  val interactionSource = remember { MutableInteractionSource() }
 
   DisposableEffect(Unit) {
     onDispose {
@@ -91,11 +89,7 @@ fun AddScaleScreenContent(
         Modifier
           .fillMaxSize()
           .verticalScroll(rememberScrollState())
-          .clickable(
-            interactionSource = interactionSource,
-            indication = null,
-            onClick = { focusManager.clearFocus() },
-          ),
+          .dismissKeyboardOnTap(),
     ) {
       Column(
         modifier =

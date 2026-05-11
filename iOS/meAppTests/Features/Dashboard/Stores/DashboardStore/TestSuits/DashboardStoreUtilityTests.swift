@@ -93,6 +93,20 @@ extension DashboardStoreTests {
         #expect(result.isEmpty)
     }
 
+    @Test("dataChangeRevision increments when dashboard data changes")
+    func dataChangeRevisionIncrementsOnDataUpdate() async {
+        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let entryService = DependencyContainer.shared.resolve(EntryService.self)
+
+        #expect(entryService != nil)
+        #expect(store.dataChangeRevision == 0)
+
+        entryService?.dailySummaries = DashboardTestFixtures.makeSortedDailySummaries()
+
+        await DashboardTestFixtures.waitUntil { store.dataChangeRevision == 1 }
+        #expect(store.dataChangeRevision == 1)
+    }
+
     @Test("continuousOperations: returns sorted daily summaries from data manager")
     func continuousOperationsReturnsSortedData() async {
         let (store, _, _) = DashboardStoreTestSupport.makeSUT()

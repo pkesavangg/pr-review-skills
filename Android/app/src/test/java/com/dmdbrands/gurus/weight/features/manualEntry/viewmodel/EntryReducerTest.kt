@@ -366,6 +366,52 @@ class EntryReducerTest {
     }
 
     @Test
+    fun `visceral fat field accepts value 1 as valid`() {
+        val form = EntryForm.create(includeR4ScaleMetrics = true)
+        val visceralFatControl = form.r4ScaleMetrics!!.controls.visceralFat
+
+        visceralFatControl.onValueChange("1")
+        val isValid = visceralFatControl.validate()
+
+        assertThat(isValid).isTrue()
+        assertThat(visceralFatControl.error).isNull()
+    }
+
+    @Test
+    fun `visceral fat field rejects value 0 as invalid`() {
+        val form = EntryForm.create(includeR4ScaleMetrics = true)
+        val visceralFatControl = form.r4ScaleMetrics!!.controls.visceralFat
+
+        visceralFatControl.onValueChange("0")
+        val isValid = visceralFatControl.validate()
+
+        assertThat(isValid).isFalse()
+    }
+
+    @Test
+    fun `visceral fat field accepts value 59 as valid`() {
+        val form = EntryForm.create(includeR4ScaleMetrics = true)
+        val visceralFatControl = form.r4ScaleMetrics!!.controls.visceralFat
+
+        visceralFatControl.onValueChange("59")
+        val isValid = visceralFatControl.validate()
+
+        assertThat(isValid).isTrue()
+        assertThat(visceralFatControl.error).isNull()
+    }
+
+    @Test
+    fun `visceral fat field rejects value 60 as too high`() {
+        val form = EntryForm.create(includeR4ScaleMetrics = true)
+        val visceralFatControl = form.r4ScaleMetrics!!.controls.visceralFat
+
+        visceralFatControl.onValueChange("60")
+        val isValid = visceralFatControl.validate()
+
+        assertThat(isValid).isFalse()
+    }
+
+    @Test
     fun `EntryForm create with null scaleEntry values returns empty strings`() {
         val scaleEntryEntity = com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEntity(
             id = 1L,

@@ -424,9 +424,11 @@ final class WifiScaleSetupStore: ObservableObject {
             //   • If required permissions are now granted we can return to the intro.
             //   • Otherwise we must guide the user back to the permissions screen.
             if isForGetMac {
-                // Ternary chooses the appropriate destination based on current permission state.
-// swiftlint:disable:next void_function_in_ternary
-                arePermissionsEnabled() ? navigateToStep(.intro) : navigateToStep(.permissions)
+                if arePermissionsEnabled() {
+                    navigateToStep(.intro)
+                } else {
+                    navigateToStep(.permissions)
+                }
             } else {
                 moveToPreviousStep()
             }
@@ -467,12 +469,14 @@ final class WifiScaleSetupStore: ObservableObject {
                     guard let self = self else { return }
                     // User chose to skip – flag this so smart-connect can bail.
                     self.permissionsSkipped = true
-                    // Clear the network form SSID when permissions are skipped and mark as pristine to avoid validation errors
-                    self.networkForm.clearSSIDAndMarkPristine()
+                    // Keep a manually entered network name when the user backs up and skips permissions again.
+                    if self.networkForm.ssid.value.isEmpty {
+                        self.networkForm.clearSSIDAndMarkPristine()
+                    }
                     self.wifiStatus = nil
-                    // Reset the manual clear flag and sync previousSSID since this is a programmatic clear, not user-initiated
+                    // Reset the manual clear flag only when this skip leaves the field empty.
                     self.hasUserManuallyClearedSSID = false
-                    self.previousSSID = ""
+                    self.previousSSID = self.networkForm.ssid.value
                     // Continue to next step.
                     self.moveToNextStep()
                 }
@@ -538,12 +542,15 @@ final class WifiScaleSetupStore: ObservableObject {
             let shouldAutoPopulate = !permissionsSkipped || isForGetMac || arePermissionsCurrentlyEnabled
             
             if !shouldAutoPopulate {
-                // Permissions were skipped and not in Get-MAC mode - clear SSID and mark as pristine to avoid validation errors
-                self.networkForm.clearSSIDAndMarkPristine()
+                // Permissions were skipped and not in Get-MAC mode. Keep any user-entered SSID,
+                // but leave an empty field pristine so the screen does not show a validation error.
+                if self.networkForm.ssid.value.isEmpty {
+                    self.networkForm.clearSSIDAndMarkPristine()
+                }
                 self.wifiStatus = nil
-                // Reset the manual clear flag and sync previousSSID since this is a programmatic clear, not user-initiated
+                // Reset the manual clear flag and sync previousSSID since this is a programmatic update.
                 self.hasUserManuallyClearedSSID = false
-                self.previousSSID = ""
+                self.previousSSID = self.networkForm.ssid.value
             } else {
                 // Normal flow: update WiFi status and populate SSID
                 if let ssid = status.ssid, !ssid.isEmpty {
@@ -708,6 +715,7 @@ final class WifiScaleSetupStore: ObservableObject {
                 logger.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
                 self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
             }
+            self.bluetoothService.isSetupInProgress = false
         }
     }
     

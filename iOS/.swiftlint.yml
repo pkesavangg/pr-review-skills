@@ -141,6 +141,10 @@ identifier_name:
     - API                        # Application Programming Interface
     - ok                         # Common boolean/status variable
     - no                         # Common boolean variable
+    - A3                         # Bluetooth protocol specification name
+    - A6                         # Bluetooth protocol specification name
+    - R4                         # Bluetooth protocol specification name
+    - R4ScaleSetup               # Enum case matching R4 scale protocol naming convention
 
 # ============================================
 # General Settings
@@ -189,3 +193,34 @@ custom_rules:
     regex: '(?i)(apiKey|apiSecret|secretKey|privateKey|accessKey|accessToken|authToken|bearerToken|clientSecret)\s*[:=]\s*"[^"]+"'
     message: "Do not hardcode credentials in source code — HIPAA compliance"
     severity: error
+
+# ============================================
+# Custom Rules — Snapshot Boundary Enforcement
+# Feature code must use value-type snapshots (AccountSnapshot / DeviceSnapshot / EntrySnapshot),
+# never the SwiftData @Model types. Rationale: @Model objects are not Sendable, and reading
+# their properties off the main actor caused production EXC_BAD_ACCESS crashes (v5.0 Build 19).
+# ============================================
+  no_published_swiftdata_model:
+    name: "Snapshot, not @Model, in @Published"
+    regex: '@Published[^:\n]*:\s*\[?(Account|Device|Entry)\b(?!Snapshot|MetaData|Ephemeral|Type|Flag|Source|Unit|Notification|Data)'
+    message: "Publish AccountSnapshot / DeviceSnapshot / EntrySnapshot — not the SwiftData @Model. The @Model must not cross the service boundary. See iOS/CLAUDE.md §Key Decisions and docs/account-snapshot-implementation.md."
+    severity: error
+    excluded:
+      - "meApp/Data/Services/AccountService.swift"
+      - "meApp/Data/Services/ScaleService.swift"
+      - "meApp/Data/Services/EntryService.swift"
+      - "meApp/Data/Services/BluetoothService"
+      - "meApp/Data/Storage"
+      - "meApp/Data/API"
+      - "meApp/Domain/Models/DB"
+      - "meApp/Core/Services/SwiftDataWorker.swift"
+
+  no_unchecked_sendable_with_model:
+    name: "@unchecked Sendable hiding a SwiftData @Model"
+    regex: '@unchecked\s+Sendable[\s\S]{0,400}?\b(Account|Device|Entry)\b(?!Snapshot|MetaData|Ephemeral|Type|Flag|Source|Unit|Notification|Data)'
+    message: "@unchecked Sendable on a type holding a SwiftData @Model is an actor-safety lie. Convert the held value to a snapshot (AccountSnapshot / DeviceSnapshot / EntrySnapshot) and drop @unchecked."
+    severity: error
+    excluded:
+      - "meApp/Domain/Models/DB"
+      - "meAppTests"
+      - "meAppUITests"

@@ -75,25 +75,21 @@ enum BpmSetupStoreTestFixtures {
         id: String = "acct-1",
         email: String = "bpm-setup@example.com",
         firstName: String = "Test"
-    ) -> Account {
-        AccountTestFixtures.makeAccountModel(id: id, email: email, firstName: firstName, isActive: true)
+    ) -> AccountSnapshot {
+        AccountTestFixtures.makeAccountSnapshot(id: id, email: email, firstName: firstName, isActiveAccount: true)
     }
 
     static func enabledPermissions() -> [GGPermissionType: GGPermissionState] {
         [
             .BLUETOOTH: .ENABLED,
-            .BLUETOOTH_SWITCH: .ENABLED,
-            .LOCATION: .ENABLED,
-            .LOCATION_SWITCH: .ENABLED
+            .BLUETOOTH_SWITCH: .ENABLED
         ]
     }
 
     static func disabledPermissions() -> [GGPermissionType: GGPermissionState] {
         [
             .BLUETOOTH: .DISABLED,
-            .BLUETOOTH_SWITCH: .DISABLED,
-            .LOCATION: .DISABLED,
-            .LOCATION_SWITCH: .DISABLED
+            .BLUETOOTH_SWITCH: .DISABLED
         ]
     }
 
@@ -112,7 +108,8 @@ enum BpmSetupStoreTestFixtures {
 
     static func makeBpmDiscoveryEvent(
         device: Device? = nil,
-        setupType: ScaleSetupType = .bpm
+        setupType: ScaleSetupType = .bpm,
+        protocolType: ProtocolType = .A3
     ) -> DeviceDiscoveryEvent {
         let bpmDevice = device ?? makeBpmDevice()
         let info = ScaleItemInfo(
@@ -123,9 +120,9 @@ enum BpmSetupStoreTestFixtures {
             bodyComp: false
         )
         return DeviceDiscoveryEvent(
-            device: bpmDevice,
+            device: bpmDevice.toSnapshot(),
             deviceInfo: info,
-            protocolType: .A6,
+            protocolType: protocolType,
             isNew: true
         )
     }
@@ -141,6 +138,12 @@ enum BpmSetupStoreTestFixtures {
             pulse: pulse,
             timestamp: Date()
         )
+    }
+
+    /// Returns the actual array index of a step within the store's configured steps.
+    @MainActor
+    static func stepIndex(_ step: BpmSetupStep, in store: BpmSetupStore) -> Int {
+        store.steps.firstIndex(of: step)! // swiftlint:disable:this force_unwrapping
     }
 
     @MainActor

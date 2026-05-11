@@ -6,8 +6,9 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.absoluteOffset
+import androidx.compose.foundation.layout.absolutePadding
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -23,6 +24,16 @@ import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
+
+// Width ratio for the combined letter + profile icon variant (Figma node 7453:121594)
+private const val INFO_ICON_WIDTH_RATIO = 1.7f
+// Profile icon is ~44% of the avatar size per Figma spec (24dp at size=55dp)
+private const val PROFILE_ICON_SIZE_RATIO = 0.44f
+// Border / inset width used for the info icon variant circles (Figma spec).
+// `Dp` is not a primitive, so `const val` is not applicable here.
+private val BORDER_WIDTH_DP = 3.dp
+// Optical nudge that compensates for the profile glyph's geometric asymmetry within its viewport.
+private val ICON_OPTICAL_NUDGE = 2.dp
 
 /**
  * A circular profile avatar that displays the first letter of the provided text and supports active/inactive states.
@@ -87,11 +98,11 @@ fun AppProfileAvatar(
         // Default single avatar
         Box(
             modifier = modifier
-              .size(size)
-              .then(borderModifier)
-              .then(gestureModifier)
-              .clip(CircleShape)
-              .background(backgroundColor),
+                .size(size)
+                .then(borderModifier)
+                .then(gestureModifier)
+                .clip(CircleShape)
+                .background(backgroundColor),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -101,32 +112,53 @@ fun AppProfileAvatar(
             )
         }
     } else {
-        // Combined "K" + profile icon
+        // Combined name initial letter avatar + profile icon
         Box(
             modifier = modifier
-              .width(size * 1.6f) // adjusted width for better centering
+                .width(size * INFO_ICON_WIDTH_RATIO)
                 .height(size)
-              .then(gestureModifier),
+                .then(gestureModifier),
             contentAlignment = Alignment.Center,
         ) {
-            // Profile icon - overlapping on the right (rendered first, lower z-index)
-            AppIcon(
-                id = AppIcons.Default.profile,
-                contentDescription = "Profile",
-                type = AppIconType.Primary,
-                modifier = Modifier
-                  .align(Alignment.CenterEnd)
-                  .size(size),
-            )
-
-            // Letter box - positioned on the left (rendered second, higher z-index)
+            // Profile icon - overlapping on the right (rendered first, lower z-index).
+            // Info icon variant is only used in AccountSwitchInfoModal where the avatar
+            // is always active/enabled, so isActive/enabled states are intentionally
+            // not reflected here.
             Box(
                 modifier = Modifier
-                  .align(Alignment.CenterStart)
-                  .size(size / 1.06f)
-                  .border(3.dp, MeTheme.colorScheme.inverseAction, CircleShape)
-                  .clip(CircleShape)
-                  .background(backgroundColor),
+                    .align(Alignment.CenterEnd)
+                    .size(size)
+                    .border(BORDER_WIDTH_DP, MeTheme.colorScheme.iconPrimary, CircleShape)
+                    .clip(CircleShape)
+                    .background(Color.Transparent),
+                contentAlignment = Alignment.Center,
+            ) {
+                AppIcon(
+                    id = AppIcons.Filled.Profile,
+                    contentDescription = "Profile",
+                    type = AppIconType.Primary,
+                    modifier = Modifier
+                        // Optical nudge compensates for the SVG path's geometric asymmetry so the
+                        // glyph appears centered inside the border circle (per Figma).
+                        // `absolutePadding` keeps the nudge in a fixed direction relative to the
+                        // path geometry across LTR and RTL layouts, since the path itself is not
+                        // auto-mirrored.
+                        .absolutePadding(left = ICON_OPTICAL_NUDGE)
+                        .align(Alignment.Center)
+                        .size(size * PROFILE_ICON_SIZE_RATIO),
+                )
+            }
+
+            // Letter box - positioned on the left (rendered second, higher z-index)
+            // Using padding(3.dp) instead of border() to avoid the background bleeding
+            // past the circle edge and forming a ring-like outline. Size matches Figma.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .size(size)
+                    .clip(CircleShape)
+                    .background(backgroundColor)
+                    .padding(BORDER_WIDTH_DP),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -152,6 +184,20 @@ fun AppProfileImagePreview() {
                 AppProfileAvatar(text = "Kevin", isActive = false, enabled = false)
             }
         }
+    }
+}
+
+@PreviewTheme
+@Composable
+fun AppProfileInfoIconPreview() {
+    MeAppTheme {
+        AppProfileAvatar(
+            text = "Kevin",
+            size = 55.dp,
+            isInfoIcon = true,
+            isActive = true,
+            enabled = true,
+        )
     }
 }
 

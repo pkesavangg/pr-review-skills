@@ -129,9 +129,11 @@ struct AppInputField: View {
     }
 
     private var inputContent: some View {
-        ZStack(alignment: .leading) {
-            floatingLabelView
-            baseInputView
+        HStack(spacing: 0) {
+            ZStack(alignment: .leading) {
+                floatingLabelView
+                baseInputView
+            }
         }
     }
 
@@ -201,7 +203,12 @@ struct AppInputField: View {
     }
     
     private var trailingIconView: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
+            if let trailingLabel = config.trailingLabel {
+                Text(trailingLabel)
+                    .fontOpenSans(.subHeading1)
+                    .foregroundColor(theme.textSubheading)
+            }
             if let customIcon = config.customIcon {
                 Button(action: {
                     config.onCustomIconTap?()

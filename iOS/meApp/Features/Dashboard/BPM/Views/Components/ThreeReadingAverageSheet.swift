@@ -65,7 +65,12 @@ struct ThreeReadingAverageSheet: View {
                                 )
                                 .accessibilityElement(children: .combine)
                                 .accessibilityLabel(
-                                    BpmDashboardStrings.bpReadingMmhgAccessibility(systolic: reading.systolic, diastolic: reading.diastolic, pulse: reading.pulse, date: reading.formattedDate)
+                                    BpmDashboardStrings.bpReadingMmhgAccessibility(
+                                        systolic: reading.systolic,
+                                        diastolic: reading.diastolic,
+                                        pulse: reading.pulse,
+                                        date: reading.formattedDate
+                                    )
                                 )
                             }
                         }

@@ -27,14 +27,16 @@ class AccountsStore: ObservableObject {
 
     var theme = Theme.shared
 
-    @Published var activeAccount: Account?
-    @Published var accounts: [Account] = []
+    @Published var activeAccount: AccountSnapshot?
+    @Published var accounts: [AccountSnapshot] = []
     @Published var userItems: [UserItemInfo] = []
 
     @Published var canShowLoginScreen = false
     /// Holds the email to prefill in `LoginScreen` when opening from account switching flow.
     @Published var emailForLogin: String?
     @Published var canShowAccountSignupScreen = false
+
+    var onAccountSwitchSuccess: (() -> Void)?
 
     private let tag = "AccountsStore"
     var cancellables: Set<AnyCancellable> = []
@@ -80,14 +82,14 @@ class AccountsStore: ObservableObject {
 
                 // Split by login state: fully logged-in vs anything that needs re-login
                 let loggedInAccounts = allAccounts.filter {
-                    $0.isLoggedIn == true && ($0.isExpired ?? false) == false
+                    $0.isLoggedIn && !$0.isExpired
                 }
                 let loggedOutAccounts = allAccounts.filter {
-                    $0.isLoggedIn != true || ($0.isExpired ?? false) == true
+                    !$0.isLoggedIn || $0.isExpired
                 }
 
                 // Sort each group by last active time (most recent first)
-                let sortByLastActive: (Account, Account) -> Bool = {
+                let sortByLastActive: (AccountSnapshot, AccountSnapshot) -> Bool = {
                     (DateTimeTools.parse($0.lastActiveTime ?? "") ?? .distantPast) >
                     (DateTimeTools.parse($1.lastActiveTime ?? "") ?? .distantPast)
                 }
@@ -97,15 +99,15 @@ class AccountsStore: ObservableObject {
                 self.accounts = allSortedAccounts
 
                 self.userItems = allSortedAccounts.map {
-                    let isLoggedIn = $0.isLoggedIn == true
-                    let isExpired = $0.isExpired ?? false
+                    let isLoggedIn = $0.isLoggedIn
+                    let isExpired = $0.isExpired
                     // Show "Log In" button for any account that isn't fully authenticated.
                     let needsLogin = !isLoggedIn || isExpired
                     return UserItemInfo(
                         accountID: $0.accountId,
                         name: ($0.firstName?.isEmpty == false ? $0.firstName : nil) ?? $0.email,
                         email: $0.email,
-                        isSelected: $0.isActiveAccount ?? false,
+                        isSelected: $0.isActiveAccount,
                         isExpired: needsLogin,
                         canShowSelection: true
                     )
@@ -121,7 +123,7 @@ class AccountsStore: ObservableObject {
         // If the user is expired, allow login with the same email.
         // If the user modifies the email and the account limit has been reached, show the max accounts alert.
         // Only count logged-in accounts toward the limit, since logged-out accounts
-        let loggedInCount = accounts.filter { $0.isLoggedIn == true }.count
+        let loggedInCount = accounts.filter { $0.isLoggedIn }.count
         if loggedInCount >= appConstants.Account.maxAccounts && !isUserExpired {
             showMaxUserAccountsAlert()
             return
@@ -132,7 +134,7 @@ class AccountsStore: ObservableObject {
 
     func handleSignupCTA() {
         // Only count logged-in accounts toward the limit
-        let loggedInCount = accounts.filter { $0.isLoggedIn == true }.count
+        let loggedInCount = accounts.filter { $0.isLoggedIn }.count
         if loggedInCount >= appConstants.Account.maxAccounts {
             showMaxUserAccountsAlert()
             return
@@ -164,7 +166,6 @@ class AccountsStore: ObservableObject {
             return
         }
 
-        // R1: Extract @Model data before async boundary
         let userName = account.firstName?.isEmpty == false ? account.firstName ?? account.email : account.email
 
         Task {
@@ -173,9 +174,10 @@ class AccountsStore: ObservableObject {
                 notificationService.dismissLoader()
             }
             do {
-                try await accountService.switchAccount(to: account)
+                try await accountService.switchAccount(to: account.accountId)
                 logger.log(level: .info, tag: tag, message: "Switched active account to \(accountId)")
                 notificationService.showToast(ToastModel(message: toastLang.switchingAccount(userName)))
+                onAccountSwitchSuccess?()
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to switch active account", data: error.localizedDescription)
                 switch error {
@@ -212,7 +214,7 @@ class AccountsStore: ObservableObject {
 
         // Only require connectivity when the account is still logged in (needs API logout).
         // Already-logged-out accounts can be removed from the device without a network call.
-        let isLoggedIn = account.isLoggedIn == true && (account.isExpired ?? false) == false
+        let isLoggedIn = account.isLoggedIn && !account.isExpired
         if isLoggedIn && !networkMonitor.isConnected {
             notificationService.showToast(ToastModel(message: toastLang.unableToConnect))
             logger.log(level: .error, tag: tag, message: "Cannot remove logged-in account while offline")

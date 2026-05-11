@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 // This repository intentionally aggregates all Entry CRUD operations to maintain
 // a single source of truth for data access patterns. Splitting would fragment
 // the SwiftData context management and reduce maintainability.
@@ -11,6 +12,7 @@ import SwiftData
 /// - Note: This repository uses background contexts for all operations to avoid blocking the main thread.
 ///   Methods that need MainActor access are explicitly marked.
 @MainActor
+// swiftlint:disable:next type_body_length
 final class EntryRepository: EntryRepositoryProtocol {
 
     // MARK: - Properties
@@ -59,7 +61,7 @@ final class EntryRepository: EntryRepositoryProtocol {
         let entryTimestamp = entry.entryTimestamp
         let serverTimestamp = entry.serverTimestamp
         let operationType = entry.operationType
-        let deviceType = entry.deviceType
+        let entryType = entry.entryType ?? EntryType.scale.rawValue
         let isSynced = entry.isSynced
         let isFailedToSync = entry.isFailedToSync
         let attempts = entry.attempts
@@ -93,12 +95,10 @@ final class EntryRepository: EntryRepositoryProtocol {
         let bpmDiastolic = entry.bpmEntry?.diastolic
         let bpmMeanArterial = entry.bpmEntry?.meanArterial
         let bpmPulse = entry.bpmEntry?.pulse
-        let bpmNote = entry.bpmEntry?.note
+        let entryNote = entry.note
         let babyEntryBabyId = entry.babyEntry?.babyId
         let babyEntryLength = entry.babyEntry?.length
         let babyEntryWeight = entry.babyEntry?.weight
-        let babyEntryNote = entry.babyEntry?.note
-        let babyId = entry.babyId
 
         try await performBackgroundTask { ctx in
             let newEntry = Entry(
@@ -107,9 +107,8 @@ final class EntryRepository: EntryRepositoryProtocol {
                 accountId: accountId,
                 operationType: operationType,
                 serverTimestamp: serverTimestamp,
-                deviceType: deviceType,
-                isSynced: isSynced,
-                babyId: babyId
+                entryType: entryType,
+                isSynced: isSynced
             )
             newEntry.isFailedToSync = isFailedToSync
             newEntry.attempts = attempts
@@ -142,25 +141,25 @@ final class EntryRepository: EntryRepositoryProtocol {
             }
 
             if let systolic = bpmSystolic, let diastolic = bpmDiastolic,
-               let meanArterial = bpmMeanArterial, let pulse = bpmPulse, let note = bpmNote {
+               let meanArterial = bpmMeanArterial, let pulse = bpmPulse {
                 newEntry.bpmEntry = BPMEntry(
                     systolic: systolic,
                     diastolic: diastolic,
                     meanArterial: meanArterial,
-                    pulse: pulse,
-                    note: note
+                    pulse: pulse
                 )
             }
 
             if let entryBabyId = babyEntryBabyId, let length = babyEntryLength,
-               let weight = babyEntryWeight, let note = babyEntryNote {
+               let weight = babyEntryWeight {
                 newEntry.babyEntry = BabyEntry(
                     babyId: entryBabyId,
                     length: length,
-                    weight: weight,
-                    note: note
+                    weight: weight
                 )
             }
+
+            newEntry.note = entryNote
 
             ctx.insert(newEntry)
             try ctx.save()
@@ -178,7 +177,7 @@ final class EntryRepository: EntryRepositoryProtocol {
         let entryTimestamp = entry.entryTimestamp
         let serverTimestamp = entry.serverTimestamp
         let operationType = entry.operationType
-        let deviceType = entry.deviceType
+        let entryType = entry.entryType ?? EntryType.scale.rawValue
         let isSynced = entry.isSynced
         let isFailedToSync = entry.isFailedToSync
         let attempts = entry.attempts
@@ -190,7 +189,7 @@ final class EntryRepository: EntryRepositoryProtocol {
                 existing.entryTimestamp = entryTimestamp
                 existing.serverTimestamp = serverTimestamp
                 existing.operationType = operationType
-                existing.deviceType = deviceType
+                existing.entryType = entryType
                 existing.isSynced = isSynced
                 existing.isFailedToSync = isFailedToSync
                 existing.attempts = attempts
@@ -431,20 +430,23 @@ final class EntryRepository: EntryRepositoryProtocol {
 
     /// Fetches BPM entries and returns BpmOperationDTOs with all relationship data extracted.
     func fetchEntriesAsBpmDTO(forUserId userId: String, operationType: String? = nil) async throws -> [BpmOperationDTO] {
-        let bpmDeviceType = DeviceType.bpm.rawValue
+        // entryType is optional in storage so SwiftData migration can synthesize nil
+        // for legacy rows. Wrap the comparison constant in Optional to keep the
+        // #Predicate types aligned.
+        let bpmEntryType: String? = EntryType.bpm.rawValue
         return try await performBackgroundTask { backgroundContext in
             let descriptor: FetchDescriptor<Entry>
             if let opType = operationType {
                 descriptor = FetchDescriptor<Entry>(
                     predicate: #Predicate {
-                        $0.accountId == userId && $0.operationType == opType && $0.deviceType == bpmDeviceType
+                        $0.accountId == userId && $0.operationType == opType && $0.entryType == bpmEntryType
                     },
                     sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
                 )
             } else {
                 descriptor = FetchDescriptor<Entry>(
                     predicate: #Predicate {
-                        $0.accountId == userId && $0.deviceType == bpmDeviceType
+                        $0.accountId == userId && $0.entryType == bpmEntryType
                     },
                     sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
                 )
@@ -631,22 +633,20 @@ final class EntryRepository: EntryRepositoryProtocol {
                 entryTimestamp: entry.entryTimestamp,
                 serverTimestamp: entry.serverTimestamp,
                 operationType: entry.operationType,
-                deviceType: entry.deviceType,
+                entryType: entry.entryType ?? EntryType.scale.rawValue,
                 isSynced: entry.isSynced,
                 isFailedToSync: entry.isFailedToSync,
                 attempts: entry.attempts,
-                babyId: entry.babyId,
                 scaleEntry: scaleEntryData,
                 scaleEntryMetric: metricData,
                 bpmSystolic: entry.bpmEntry?.systolic,
                 bpmDiastolic: entry.bpmEntry?.diastolic,
                 bpmMeanArterial: entry.bpmEntry?.meanArterial,
                 bpmPulse: entry.bpmEntry?.pulse,
-                bpmNote: entry.bpmEntry?.note,
+                note: entry.note,
                 babyEntryBabyId: entry.babyEntry?.babyId,
                 babyEntryLength: entry.babyEntry?.length,
-                babyEntryWeight: entry.babyEntry?.weight,
-                babyEntryNote: entry.babyEntry?.note
+                babyEntryWeight: entry.babyEntry?.weight
             )
         }
     }
@@ -664,16 +664,15 @@ final class EntryRepository: EntryRepositoryProtocol {
     }
     
     /// Creates an Entry instance from EntrySyncData
-    private func createEntry(from data: EntrySyncData) -> Entry {
+    private func createEntry(from data: EntrySyncData) -> Entry { // swiftlint:disable:this function_body_length
         let newEntry = Entry(
             id: data.id,
             entryTimestamp: data.entryTimestamp,
             accountId: data.accountId,
             operationType: data.operationType,
             serverTimestamp: data.serverTimestamp,
-            deviceType: data.deviceType,
-            isSynced: data.isSynced,
-            babyId: data.babyId
+            entryType: data.entryType,
+            isSynced: data.isSynced
         )
         newEntry.isFailedToSync = data.isFailedToSync
         newEntry.attempts = data.attempts
@@ -705,25 +704,25 @@ final class EntryRepository: EntryRepositoryProtocol {
         }
 
         if let systolic = data.bpmSystolic, let diastolic = data.bpmDiastolic,
-           let meanArterial = data.bpmMeanArterial, let pulse = data.bpmPulse, let note = data.bpmNote {
+           let meanArterial = data.bpmMeanArterial, let pulse = data.bpmPulse {
             newEntry.bpmEntry = BPMEntry(
                 systolic: systolic,
                 diastolic: diastolic,
                 meanArterial: meanArterial,
-                pulse: pulse,
-                note: note
+                pulse: pulse
             )
         }
 
         if let entryBabyId = data.babyEntryBabyId, let length = data.babyEntryLength,
-           let weight = data.babyEntryWeight, let note = data.babyEntryNote {
+           let weight = data.babyEntryWeight {
             newEntry.babyEntry = BabyEntry(
                 babyId: entryBabyId,
                 length: length,
-                weight: weight,
-                note: note
+                weight: weight
             )
         }
+
+        newEntry.note = data.note
 
         return newEntry
     }

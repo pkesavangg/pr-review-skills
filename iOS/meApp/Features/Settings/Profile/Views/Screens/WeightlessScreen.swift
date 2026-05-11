@@ -17,7 +17,7 @@ struct WeightlessScreen: View {
     private let inputLabels = InputFieldLabels.self
     // Local helpers
     private var weightUnit: WeightUnit {
-        settingsStore.activeAccount?.weightSettings?.weightUnit ?? .lb
+        settingsStore.activeAccount?.weightUnit ?? .lb
     }
     
     var body: some View {

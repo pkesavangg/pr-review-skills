@@ -2,20 +2,16 @@ package com.dmdbrands.gurus.weight.features.settings.manager
 
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
-import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.enums.ActivityLevel
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.user.BodyCompUpdateRequest
-import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
-import com.dmdbrands.gurus.weight.domain.model.common.Gender
 import com.dmdbrands.gurus.weight.domain.services.BodyCompUpdateType
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IBodyCompositionService
 import com.dmdbrands.gurus.weight.domain.services.IUserSettingsService
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
-import com.dmdbrands.gurus.weight.features.common.components.HeightInput
 import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
 import com.dmdbrands.gurus.weight.features.common.components.showRadioGroupModal
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -23,7 +19,6 @@ import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrin
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsIntent
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsState
 import com.dmdbrands.gurus.weight.features.weightless.helper.WeightlessHelper
-import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -34,17 +29,7 @@ interface IProfileSettingsManager {
     dispatch: (SettingsIntent) -> Unit,
   )
 
-  fun onBiologicalSexClick(
-    scope: CoroutineScope,
-    stateProvider: () -> SettingsState,
-  )
-
   fun onActivityLevelClick(
-    scope: CoroutineScope,
-    stateProvider: () -> SettingsState,
-  )
-
-  fun onHeightClick(
     scope: CoroutineScope,
     stateProvider: () -> SettingsState,
   )
@@ -99,28 +84,12 @@ constructor(
     }
   }
 
-  override fun onBiologicalSexClick(
-    scope: CoroutineScope,
-    stateProvider: () -> SettingsState,
-  ) {
-    AppLog.d(TAG, "Biological sex clicked")
-    showBiologicalSexModal(scope, stateProvider)
-  }
-
   override fun onActivityLevelClick(
     scope: CoroutineScope,
     stateProvider: () -> SettingsState,
   ) {
     AppLog.d(TAG, "Activity level clicked")
     showActivityLevelModal(scope, stateProvider)
-  }
-
-  override fun onHeightClick(
-    scope: CoroutineScope,
-    stateProvider: () -> SettingsState,
-  ) {
-    AppLog.d(TAG, "Height clicked")
-    showHeightModal(scope, stateProvider)
   }
 
   override fun onGoalSettingClick(scope: CoroutineScope) {
@@ -238,77 +207,6 @@ constructor(
     }
   }
 
-  private fun showBiologicalSexModal(
-    scope: CoroutineScope,
-    stateProvider: () -> SettingsState,
-  ) {
-    showRadioGroupModal(
-      dialogService = dialogQueueService,
-      title = RadioGroupModalStrings.Titles.BiologicalSex,
-      options =
-        listOf(
-          RadioButtonOption(Gender.MALE.name.lowercase(), RadioGroupModalStrings.BiologicalSex.Male),
-          RadioButtonOption(Gender.FEMALE.name.lowercase(), RadioGroupModalStrings.BiologicalSex.Female),
-        ),
-      selectedItem = stateProvider().account?.gender,
-      confirmText = RadioGroupModalStrings.Button.Save,
-      onConfirm = { selectedSex ->
-        AppLog.d(TAG, "Biological sex modal onConfirm called with: $selectedSex")
-        selectedSex?.let { gender ->
-          onBiologicalSexUpdate(scope, stateProvider, gender.toString())
-        }
-      },
-      onCancel = {
-        AppLog.d(TAG, "Biological sex selection cancelled")
-      },
-    )
-  }
-
-  private fun onBiologicalSexUpdate(
-    scope: CoroutineScope,
-    stateProvider: () -> SettingsState,
-    gender: String,
-  ) {
-    val currentAccount = stateProvider().account
-    if (currentAccount == null) {
-      AppLog.e(TAG, "No active account found for biological sex update")
-      return
-    }
-    if (currentAccount.gender == gender) {
-      AppLog.d(TAG, "Gender is already set to $gender, no update needed")
-      return
-    }
-
-    dialogQueueService.showLoader("Loading...")
-    scope.launch {
-      try {
-        val updatedCurrentProfile =
-          ProfileUpdateRequest(
-            id = currentAccount.id,
-            firstName = currentAccount.firstName,
-            lastName = currentAccount.lastName,
-            email = currentAccount.email,
-            dob = currentAccount.dob,
-            gender = gender,
-            zipcode = currentAccount.zipcode,
-          )
-
-        val updatedProfile = currentAccount.toGGBTUserProfile().copy(sex = gender)
-        val scaleResult = scaleSettingsManager.updateR4Profile(updatedProfile)
-        AppLog.d(TAG, "Scale result: $scaleResult")
-        scaleSettingsManager.handleScaleUpdateResult(scaleResult)
-
-        accountService.updateProfile(updatedCurrentProfile, isFromProfile = false, showToast = false)
-        AppLog.i(TAG, "Successfully updated biological sex")
-      } catch (e: Exception) {
-        dialogQueueService.dismissLoader()
-        AppLog.e(TAG, "Error updating biological sex", e)
-      } finally {
-        dialogQueueService.dismissLoader()
-      }
-    }
-  }
-
   private fun showActivityLevelModal(
     scope: CoroutineScope,
     stateProvider: () -> SettingsState,
@@ -359,7 +257,7 @@ constructor(
       try {
         val bodyComposition =
           BodyCompUpdateRequest(
-            height = currentAccount.height ?: 1700,
+            height = currentAccount.height ?: BodyCompUpdateRequest.DEFAULT_HEIGHT,
             activityLevel = activityLevel,
             weightUnit = currentAccount.weightUnit.value,
           )
@@ -374,82 +272,6 @@ constructor(
         AppLog.i(TAG, "Successfully updated activity level")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error updating activity level", e)
-      } finally {
-        dialogQueueService.dismissLoader()
-      }
-    }
-  }
-
-  private fun showHeightModal(
-    scope: CoroutineScope,
-    stateProvider: () -> SettingsState,
-  ) {
-    val currentAccount = stateProvider().account
-    if (currentAccount == null) {
-      AppLog.e(TAG, "No active account found for height update")
-      return
-    }
-
-    val currentHeightInput =
-      HeightInput.fromStoredHeight(
-        storedHeight = currentAccount.height ?: 1700,
-        isMetric = currentAccount.weightUnit.value == "kg",
-      )
-
-    dialogQueueService.enqueue(
-      DialogModel.Custom(
-        contentKey = DialogType.HeightPicker,
-        params = mapOf("value" to currentHeightInput, "confirmText" to RadioGroupModalStrings.Button.Save),
-        onConfirm = { selectedHeight ->
-          if (selectedHeight is HeightInput) {
-            onHeightUpdate(scope, stateProvider, selectedHeight)
-          }
-        },
-        onDismiss = {
-          dialogQueueService.dismissCurrent()
-        },
-        dismissOnBackPress = true,
-      ),
-    )
-  }
-
-  private fun onHeightUpdate(
-    scope: CoroutineScope,
-    stateProvider: () -> SettingsState,
-    heightInput: HeightInput,
-  ) {
-    val currentAccount = stateProvider().account
-    if (currentAccount == null) {
-      AppLog.e(TAG, "No active account found for height update")
-      return
-    }
-
-    val newStoredHeight = heightInput.toStoredHeight()
-    if (currentAccount.height == newStoredHeight) {
-      AppLog.d(TAG, "Height is already set to $newStoredHeight, no update needed")
-      return
-    }
-
-    dialogQueueService.showLoader("Updating height...")
-    scope.launch {
-      try {
-        val bodyComposition =
-          BodyCompUpdateRequest(
-            height = newStoredHeight,
-            activityLevel = currentAccount.activityLevel ?: "normal",
-            weightUnit = currentAccount.weightUnit.value,
-          )
-        val updatedProfile = currentAccount.toGGBTUserProfile().copy(
-          height = ConversionTools.convertStoredHeightToCm(newStoredHeight).toDouble(),
-        )
-        val scaleResult = scaleSettingsManager.updateR4Profile(updatedProfile)
-        AppLog.d(TAG, "Scale result: $scaleResult")
-        scaleSettingsManager.handleScaleUpdateResult(scaleResult)
-
-        bodyCompositionService.updateBodyComposition(BodyCompUpdateType.HEIGHT, bodyComposition)
-        AppLog.i(TAG, "Successfully updated height to ${heightInput.getString()}")
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error updating height", e)
       } finally {
         dialogQueueService.dismissLoader()
       }

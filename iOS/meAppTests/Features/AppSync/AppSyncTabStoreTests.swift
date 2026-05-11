@@ -93,7 +93,7 @@ struct AppSyncTabStoreTests {
             return
         }
         #expect(savedEntry.accountId == "appsync-save-1")
-        #expect(savedEntry.deviceType == DeviceType.scale.rawValue)
+        #expect(savedEntry.entryType == EntryType.scale.rawValue)
         #expect(savedEntry.operationType == OperationType.create.rawValue)
         #expect(savedEntry.scaleEntry?.source == EntrySource.appsyncScale.rawValue)
         #expect(savedEntry.scaleEntry?.weight != nil)
@@ -182,6 +182,7 @@ struct AppSyncTabStoreTests {
     }
 }
 
+// swiftlint:disable large_tuple
 @MainActor
 private func makeSUT(
     accountService: MockAccountService? = nil,
@@ -195,6 +196,7 @@ private func makeSUT(
     entryService: MockAppSyncTabStoreEntryService,
     loggerService: MockLoggerService
 ) {
+// swiftlint:enable large_tuple
     let account = accountService ?? MockAccountService()
     let notification = notificationService ?? MockAppSyncTabStoreNotificationService()
     let entry = entryService ?? MockAppSyncTabStoreEntryService()

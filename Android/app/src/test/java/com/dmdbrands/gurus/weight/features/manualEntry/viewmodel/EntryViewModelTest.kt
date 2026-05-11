@@ -24,6 +24,7 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.clearMocks
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -74,6 +75,7 @@ class EntryViewModelTest {
     }
 
     private fun stubDefaultFlows() {
+        every { accountService.activeAccount } returns MutableStateFlow(TestFixtures.activeAccount)
         every { accountService.activeAccountFlow } returns flowOf(TestFixtures.activeAccount)
         every { appSyncService.appSyncDataForEditing } returns MutableStateFlow(null)
         every { deviceService.hasBluetoothWifiScale } returns flowOf(false)
@@ -102,6 +104,19 @@ class EntryViewModelTest {
         assertThat(state.isLoading).isFalse()
         assertThat(state.isMetricFieldsExpandedInitially).isFalse()
         assertThat(state.dashboardType).isEqualTo(DashboardType.DASHBOARD_4_METRICS)
+    }
+
+    @Test
+    fun `initial weightMode reads from active account synchronously in init`() {
+        val kgAccount = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
+            .copy(weightUnit = WeightUnit.KG)
+        every { accountService.activeAccount } returns MutableStateFlow(kgAccount)
+        every { accountService.activeAccountFlow } returns flowOf(kgAccount)
+
+        viewModel = createViewModel()
+
+        // weightMode should be KG immediately — set synchronously in init, no async delay
+        assertThat(viewModel.state.value.weightMode).isEqualTo(WeightUnit.KG)
     }
 
     // -------------------------------------------------------------------------
@@ -272,6 +287,7 @@ class EntryViewModelTest {
     fun `subscribes to activeAccountFlow and updates weightMode`() = runTest {
         val account = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
             .copy(weightUnit = WeightUnit.KG)
+        every { accountService.activeAccount } returns MutableStateFlow(account)
         every { accountService.activeAccountFlow } returns flowOf(account)
 
         viewModel = createViewModel()
@@ -330,6 +346,32 @@ class EntryViewModelTest {
         advanceUntilIdle()
         // Form should be recreated (new instance)
         assertThat(viewModel.state.value.form).isNotEqualTo(initialForm)
+    }
+
+    @Test
+    fun `UpdateOnRelaunch reads weight unit from accountService not stale state`() = runTest {
+        val kgAccount = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
+            .copy(weightUnit = WeightUnit.KG)
+        every { accountService.activeAccount } returns MutableStateFlow(kgAccount)
+        every { accountService.activeAccountFlow } returns flowOf(kgAccount)
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // Force weightMode to LB to simulate stale state
+        viewModel.handleIntent(EntryIntent.UpdateWeightUnit(WeightUnit.LB))
+        assertThat(viewModel.state.value.weightMode).isEqualTo(WeightUnit.LB)
+
+        // Clear recorded calls so we can verify UpdateOnRelaunch specifically
+        clearMocks(accountService, answers = false, recordedCalls = true)
+        every { accountService.activeAccountFlow } returns flowOf(kgAccount)
+
+        viewModel.handleIntent(EntryIntent.UpdateOnRelaunch)
+        advanceUntilIdle()
+
+        // Verify UpdateOnRelaunch consulted accountService (source of truth),
+        // not just state.weightMode which is stale LB
+        verify { accountService.activeAccountFlow }
     }
 
     @Test
@@ -412,6 +454,7 @@ class EntryViewModelTest {
 
     @Test
     fun `Save returns early when activeAccount id is null`() = runTest {
+        every { accountService.activeAccount } returns MutableStateFlow(null)
         every { accountService.activeAccountFlow } returns flowOf(null)
         viewModel = createViewModel()
         advanceUntilIdle()

@@ -10,6 +10,7 @@ enum ProductTypeStrings {
     // MARK: - Dropdown item names
     static let myWeight = "My Weight"
     static let myBloodPressure = "My Blood Pressure"
+    static let babyScale = "Baby Scale"
 
     // MARK: - History screen titles
     static let weightHistory = "Weight History"

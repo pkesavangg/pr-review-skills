@@ -211,7 +211,7 @@ struct EntryServiceExtendedTests {
         repo.entries = [legacyWeightEntry, bpmEntry]
         let sut = makeSUT(repo: repo)
 
-        let weightEntries = try await sut.getMonthDetail(month: "2026-03", entryType: .wg)
+        let weightEntries = try await sut.getMonthDetail(month: "2026-03", entryType: .scale)
         let bpmEntries = try await sut.getMonthDetail(month: "2026-03", entryType: .bpm)
 
         #expect(weightEntries.count == 1)
@@ -322,8 +322,7 @@ struct EntryServiceExtendedTests {
 
     @Test("exportCSV no dashboard type: throws AccountError.noActiveAccount")
     func exportCSVNoDashboardType() async {
-        let account = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "e@e.com", isActive: true)
-        account.dashboardSettings?.dashboardType = nil
+        let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "e@e.com", isActiveAccount: true, dashboardType: nil)
         let sut = makeSUT(activeAccount: account)
 
         do {
@@ -337,8 +336,7 @@ struct EntryServiceExtendedTests {
     @Test("exportCSV with dashboard4: uses non-R4 endpoint")
     func exportCSVDashboard4() async throws {
         let remote = MockEntryRepositoryAPI()
-        let account = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "e@e.com", isActive: true)
-        account.dashboardSettings?.dashboardType = DashboardType.dashboard4.rawValue
+        let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "e@e.com", isActiveAccount: true, dashboardType: DashboardType.dashboard4.rawValue)
         let sut = makeSUT(remote: remote, activeAccount: account)
 
         try await sut.exportCSV()
@@ -349,8 +347,7 @@ struct EntryServiceExtendedTests {
     func exportCSVRemoteFailure() async {
         let remote = MockEntryRepositoryAPI()
         remote.exportCsvError = EntryTestError.remoteFailure
-        let account = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "e@e.com", isActive: true)
-        account.dashboardSettings?.dashboardType = DashboardType.dashboard12.rawValue
+        let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "e@e.com", isActiveAccount: true, dashboardType: DashboardType.dashboard12.rawValue)
         let sut = makeSUT(remote: remote, activeAccount: account)
 
         do {
@@ -551,6 +548,33 @@ struct EntryServiceExtendedTests {
         #expect(logger.messages.contains { $0.contains("loadDashboardData failed") })
     }
 
+    @Test("loadDashboardData concurrent retry: piggybacked caller retries after failed load")
+    func loadDashboardDataConcurrentRetryAfterFailure() async {
+        let repo = MockEntryRepository()
+        let entry = EntryTestFixtures.makeEntry(timestamp: "2026-03-01T08:00:00Z", weight: 1800)
+        repo.entries = [entry]
+        repo.fetchEntriesAsDTODelayNanoseconds = 50_000_000
+        repo.fetchEntriesAsDTOResults = [
+            .failure(EntryTestError.localFailure),
+            .success([entry.toOperationDTO()])
+        ]
+        let sut = makeSUT(repo: repo)
+
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask {
+                await sut.loadDashboardData()
+            }
+            group.addTask {
+                await Task.yield()
+                await sut.loadDashboardData()
+            }
+        }
+
+        #expect(repo.fetchEntriesAsDTOCalls == 2)
+        #expect(sut.dailySummaries.count == 1)
+        #expect(sut.dailySummaries.first?.period == "2026-03-01")
+    }
+
     // MARK: - sync push failure marks entry as failed after retries
 
     @Test("sync push remote failure: increments attempts on entry")
@@ -625,7 +649,7 @@ struct EntryServiceExtendedTests {
         integration: MockIntegrationService? = nil,
         goalAlert: MockGoalAlertService? = nil,
         logger: MockLoggerService? = nil,
-        activeAccount: Account? = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "entry@example.com", isActive: true)
+        activeAccount: AccountSnapshot? = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "entry@example.com", isActiveAccount: true)
     ) -> EntryService {
         let account = MockAccountService()
         account.activeAccount = activeAccount

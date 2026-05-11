@@ -19,7 +19,7 @@ struct GoalSettingScreen: View {
     
     // Helpers
     private var weightUnit: WeightUnit {
-        settingsStore.activeAccount?.weightSettings?.weightUnit ?? .lb
+        settingsStore.activeAccount?.weightUnit ?? .lb
     }
     
     var body: some View {
@@ -47,7 +47,7 @@ struct GoalSettingScreen: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: .spacingMD) {
                     VStack(alignment: .leading, spacing: .spacingXS) {
-                        if settingsStore.activeAccount?.goalSettings?.goalType != nil {
+                        if settingsStore.activeAccount?.goalType != nil {
                             VStack(alignment: .leading, spacing: .spacingMD) {
                                 GoalProgressView()
                                 Text(strings.updateGoalHeading)
@@ -177,21 +177,21 @@ struct GoalSettingScreen: View {
     // MARK: - Current Goal Card
     @ViewBuilder
     private func currentGoalCard() -> some View {
-        if let goalSettings = settingsStore.activeAccount?.goalSettings,
-           let goalType = goalSettings.goalType {
+        if let account = settingsStore.activeAccount,
+           let goalType = account.goalType {
             VStack(alignment: .leading, spacing: .spacingXS) {
                 Text(strings.subtitle)
                     .fontOpenSans(.heading4)
                     .foregroundColor(theme.textHeading)
                 Group {
                     HStack { Text(strings.goalTypeLabel).bold(); Spacer(); Text(goalType.rawValue.capitalized) }
-                    if let initial = goalSettings.initialWeight {
+                    if let initial = account.initialWeight {
                         HStack {
                             Text(strings.startingWeightLabel).bold(); Spacer()
                             Text(formatDisplayWeight(initial))
                         }
                     }
-                    if let gWeight = goalSettings.goalWeight {
+                    if let gWeight = account.goalWeight {
                         HStack {
                             Text(strings.goalWeightLabel).bold(); Spacer()
                             Text(formatDisplayWeight(gWeight))

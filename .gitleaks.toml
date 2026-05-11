@@ -103,6 +103,9 @@ tags = ["phi", "mrn", "hipaa"]
     # iOS settings strings — contains "changePassword" UI label, not a credential
     '''Features/Settings/Strings/SettingsStrings\.swift''',
 
+    # iOS common strings — contains UI labels like "password", "confirm password" etc., not credentials
+    '''Features/Common/Strings/AppStrings\.swift''',
+
     # CircleCI config references env var names ($GOOGLESERVICE_INFO_BASE64), not actual secrets
     '''\.circleci/config\.yml''',
 

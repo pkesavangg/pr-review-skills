@@ -37,21 +37,26 @@ Determine whether it is primarily:
 ### 3 — Apply The Repo Rules
 
 Use the project’s actual patterns:
-- Prefer in-memory `ModelContainer` injection in tests
-- Use background `ModelContext` work when repository operations should not block the main actor
-- Extract scalar data before async boundaries when dealing with `@Model` relationships
-- Prefer DTO/value transfer when model objects would cross actor/context boundaries
-- Use `PersistentIdentifier` + refetch when later main-actor access is required
-- Keep secrets/tokens in Keychain, not SwiftData or `UserDefaults`
-- When modifying relationship-heavy entities, recreate or update them in the correct context rather than mutating live models across boundaries
+- **Publish snapshots, not `@Model`:** `AccountService`, `ScaleService`, `EntryService`, `HistoryStore`, and `ContentViewModel` expose `AccountSnapshot` / `DeviceSnapshot` / `EntrySnapshot` (flat `Sendable` structs) — the `@Model` must not leak past the owning service. Production `EXC_BAD_ACCESS` crashes came from this exact leak.
+- Conversion lives in `Domain/Models/DB/*+Snapshot.swift` extensions (`.toSnapshot()`). Call on the main actor, before any `await`.
+- Write path (construction, sync, DTO conversion) keeps using the `@Model` internally. Only the read surface flips to snapshots.
+- Prefer in-memory `ModelContainer` injection in tests.
+- Use background `ModelContext` work when repository operations should not block the main actor.
+- Extract scalar data before async boundaries when dealing with `@Model` relationships (or better, convert to a snapshot).
+- Prefer DTO/value transfer when model objects would cross actor/context boundaries.
+- Use `PersistentIdentifier` + refetch when later main-actor access is required.
+- Keep secrets/tokens in Keychain, not SwiftData or `UserDefaults`.
+- When modifying relationship-heavy entities, recreate or update them in the correct context rather than mutating live models across boundaries.
 
 ### 4 — SwiftData Risk Checklist
 
 Before finishing, explicitly answer:
-- Will any `@Model` object cross a context or actor boundary?
+- Will any `@Model` object cross a context or actor boundary? (If yes, convert to snapshot first.)
+- Does a public service method still return `@Model`? If so, is there a reason it can't return a snapshot?
+- Does any feature store hold an `@Model` reference across an `await`?
 - Is the chosen context correct for this work?
 - Does the change require relationship reconstruction in the target context?
-- Does the test strategy use an isolated in-memory container?
+- Does the test strategy use an isolated in-memory container (for repository tests) or snapshot factories (for feature/store tests)?
 - Does the change affect migration/rollback behavior or secure-storage guarantees?
 
 ### 5 — Follow-Up

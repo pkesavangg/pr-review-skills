@@ -22,6 +22,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
+import com.dmdbrands.gurus.weight.features.ScaleSetup.ScaleSetupConstants
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.manager.BLEDiscoveryManager
 import com.dmdbrands.gurus.weight.features.ScaleSetup.manager.IBLEDiscoveryManager
@@ -66,6 +67,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Instant
 import java.util.TimeZone
+import kotlin.coroutines.resume
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
  * Coordinator ViewModel for the BtWifiScaleSetupScreen.
@@ -107,8 +110,12 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
     private val operationTimeout: Long = 5 * 60 * 1000L
     private val permissionCheckTimeOut: Long = 5 * 1000
     private val connectionDelay: Long = 2000L
+    private val cleanupTimeoutMs: Long = 10_000L
 
     private var isScaleConnected: Boolean = discoveredScale?.connectionStatus == BLEStatus.CONNECTED
+    private var isScaleSaved: Boolean = false
+    private var isExiting: Boolean = false
+    private var fetchUserListJob: kotlinx.coroutines.Job? = null
     private var accountId: String? = null
     private var updateSettingsTimeoutJob: kotlinx.coroutines.Job? = null
     private var measurementTimeoutJob: kotlinx.coroutines.Job? = null
@@ -163,7 +170,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
         onIntent = ::handleIntent,
         getDiscoveredScale = { discoveredScale },
         setDiscoveredScale = { discoveredScale = it },
-        setIsScaleConnected = { isScaleConnected = it },
+        setIsScaleSaved = { isScaleSaved = it },
         getAccountId = { accountId },
         onNext = ::onNext,
         enqueueDialog = { dialogQueueService.enqueue(it) },
@@ -196,6 +203,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
             BtWifiScaleSetupIntent.Skip -> onSkip()
             BtWifiScaleSetupIntent.TryAgain -> onTryAgain()
             is BtWifiScaleSetupIntent.UpdateSettings -> updateDevicePreferences(intent.dashboardKeys, intent.preferences)
+            BtWifiScaleSetupIntent.ShowSavingLoader -> showSavingLoader()
             BtWifiScaleSetupIntent.RefreshNetworks -> onRefreshNetworks()
             BtWifiScaleSetupIntent.HandlePasswordNetworkStatus -> wifiManager.handlePasswordNetworkStatus()
             is BtWifiScaleSetupIntent.RequestPermission -> requestPermission(intent.permissionType)
@@ -306,6 +314,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
     }
 
     private fun onNext() {
+        if (isExiting) return
         val currentState = state.value
         if (currentState.isLastStep) handleIntent(BtWifiScaleSetupIntent.ExitSetup(true))
         when (currentState.currentStep) {
@@ -452,6 +461,8 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
         if (isSetupFinished) {
             onExit()
         } else {
+            isExiting = true
+            fetchUserListForExit()
             dialogQueueService.enqueue(
                 DialogModel.Confirm(
                     title = ScaleSetupStrings.ExitSetupAlert.Title,
@@ -459,26 +470,67 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
                     confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
                     cancelText = ScaleSetupStrings.ExitSetupAlert.GoBack,
                     onConfirm = { onExit() },
+                    onCancel = { cancelExitFetch() },
+                    onDismiss = { cancelExitFetch() },
                 ),
             )
         }
     }
 
+    private fun cancelExitFetch() {
+        fetchUserListJob?.cancel()
+        fetchUserListJob = null
+        isExiting = false
+    }
+
+    private fun fetchUserListForExit() {
+        val scale = discoveredScale ?: return
+        fetchUserListJob = viewModelScope.launch {
+            try {
+                ggDeviceService.getUsers(scale.toGGBTDevice()) { response ->
+                    handleIntent(BtWifiScaleSetupIntent.SetUserList(response.user))
+                }
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error fetching user list for exit", e)
+            }
+        }
+    }
+
     private fun onExit() {
+        isExiting = true
         clearAllTimeouts()
         viewModelScope.launch {
             try {
                 ggDeviceService.resumeScan(false)
                 discoveredScale?.let { scale ->
                     ggDeviceService.cancelWifi(scale.toGGBTDevice()) {}
-                    if (!isScaleConnected && initialStep != BtWifiSetupStep.GATHERING_NETWORK) {
-                        ggDeviceService.deleteAccount(scale.toGGBTDevice(), true) {}
-                        ggDeviceService.disconnectDevice(scale.toGGBTDevice())
+                    if (!isScaleSaved && initialStep != BtWifiSetupStep.GATHERING_NETWORK) {
+                        if (state.value.currentStep.ordinal >= BtWifiSetupStep.CONNECTING_BLUETOOTH.ordinal) {
+                            dialogQueueService.showLoader("Exiting..")
+                            val scaleToken = state.value.userList
+                                .find { user -> user.name == scale.preferences?.displayName }
+                                ?.token
+                                ?: scale.token
+                            val deleteResult = withTimeoutOrNull(cleanupTimeoutMs) {
+                                suspendCancellableCoroutine { continuation ->
+                                    ggDeviceService.deleteAccount(scale.toGGBTDevice().copy(token = scaleToken)) { result ->
+                                        AppLog.d(TAG, "deleteAccount completed with result: $result")
+                                        if (continuation.isActive) continuation.resume(result)
+                                    }
+                                }
+                            }
+                            if (deleteResult == null) {
+                                AppLog.w(TAG, "deleteAccount timed out")
+                            }
+                            ggDeviceService.disconnectDevice(scale.toGGBTDevice())
+                        }
                     }
                 }
                 loadPluginData()
             } catch (e: Exception) {
                 AppLog.e(TAG, "Error during Bluetooth cleanup", e)
+            } finally {
+                dialogQueueService.dismissLoader()
             }
             try {
                 navigationService.navigateBack()
@@ -955,6 +1007,35 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
     }
 
     // --- UI helpers ---
+
+    /**
+     * Shows a fixed-duration cosmetic "Saving..." loader after the user taps SAVE on a
+     * Customize Settings sub-page, then signals the UI to scroll back to page 0.
+     *
+     * The delay is intentionally fixed (UX-only) and not tied to actual save completion —
+     * the SAVE handler dispatches Set* intents which are pure reducer state mutations;
+     * persistence to the device happens later when the user finalizes setup via
+     * [BtWifiScaleSetupIntent.UpdateSettings]. If persistence is ever moved into this flow,
+     * gate dismissal on completion instead of [ScaleSetupConstants.DELAY_AFTER_SAVE_MS].
+     *
+     * The [BtWifiScaleSetupIntent.SetIsSaving] flag prevents double-tap re-entry while the
+     * loader is up (the SAVE button gates on `state.isSaving`). The try/finally guarantees
+     * the flag, the loader, and the scroll-back signal all clear even if the dialog service
+     * throws or the coroutine is cancelled. Fixes MA-2501.
+     */
+    private fun showSavingLoader() {
+        viewModelScope.launch {
+            handleIntent(BtWifiScaleSetupIntent.SetIsSaving(true))
+            try {
+                dialogQueueService.showLoader(ScaleSetupStrings.SaveScaleLoader)
+                delay(ScaleSetupConstants.DELAY_AFTER_SAVE_MS)
+            } finally {
+                dialogQueueService.dismissLoader()
+                handleIntent(BtWifiScaleSetupIntent.SetIsSaving(false))
+                handleIntent(BtWifiScaleSetupIntent.ScrollToRootPage)
+            }
+        }
+    }
 
     private fun openHelpModal() {
         dialogQueueService.enqueue(

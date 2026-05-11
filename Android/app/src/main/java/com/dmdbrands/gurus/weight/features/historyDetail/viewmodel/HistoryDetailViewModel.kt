@@ -5,9 +5,11 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryDetail
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
+import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.domain.services.IHistoryService
+import com.dmdbrands.gurus.weight.features.common.helper.AccountHelper.isMetricUnit
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
@@ -16,12 +18,15 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 @HiltViewModel(
     assistedFactory = HistoryDetailViewModel.Factory::class,
 )
 class HistoryDetailViewModel @AssistedInject constructor(
+    private val accountService: IAccountService,
     private val entryService: IEntryService,
     private val healthConnectService: IHealthConnectService,
     private val historyService: IHistoryService,
@@ -38,6 +43,12 @@ class HistoryDetailViewModel @AssistedInject constructor(
 
     override fun onDependenciesReady() {
         AppLog.d(TAG, "HistoryDetailViewModel ready for month: $month")
+        viewModelScope.launch {
+            accountService.activeAccount
+                .map { it?.isMetricUnit() ?: false }
+                .distinctUntilChanged()
+                .collect { handleIntent(HistoryDetailIntent.SetMetric(it)) }
+        }
         loadDetail()
     }
 

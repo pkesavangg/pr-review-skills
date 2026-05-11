@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.listKey
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
@@ -128,7 +129,10 @@ fun WifiSelection(
           )
         }
 
-        itemsIndexed(availableNetworks, key = { _, wifi -> wifi.ssid }) { index, wifi ->
+        itemsIndexed(
+          items = availableNetworks,
+          key = { _, wifi -> wifi.listKey() },
+        ) { index, wifi ->
           WifiItem(
             ssid = wifi.ssid,
             isConfigured = false,
@@ -237,17 +241,21 @@ fun WifiItem(
 @Composable
 private fun WifiSelectionPreview() {
   MeAppTheme {
+    val sampleNetworks = listOf(
+      "greatergoods1" to "AA:BB:CC:00:00:01",
+      "Home-2.4G" to "AA:BB:CC:00:00:02",
+      "Home-5G" to "AA:BB:CC:00:00:03",
+      "Cafe Wi-Fi" to "AA:BB:CC:00:00:04",
+      "Guest" to "AA:BB:CC:00:00:05",
+    ).map { (networkSsid, mac) ->
+      GGWifiInfo().apply {
+        ssid = networkSsid
+        macAddress = mac
+      }
+    }
+
     WifiSelection(
-      wifiList = listOf(
-        GGWifiInfo(),
-        GGWifiInfo(),
-        GGWifiInfo(),
-        GGWifiInfo(),
-        GGWifiInfo(),
-        GGWifiInfo(),
-        GGWifiInfo(),
-        GGWifiInfo(),
-      ),
+      wifiList = sampleNetworks,
       title = "Select WiFi Network",
       subtitle = "Choose a WiFi network to configure your scale",
       configuredSSID = "greatergoods1",

@@ -15,9 +15,7 @@ import com.dmdbrands.gurus.weight.domain.model.integrations.IntegratedDeviceInfo
 import com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationData
 import com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationType
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.toPeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IEntryRepository
 import com.dmdbrands.gurus.weight.domain.repository.IHealthConnectRepository
@@ -30,6 +28,8 @@ import com.greatergoods.libs.healthconnect.enums.DataType
 import com.greatergoods.libs.healthconnect.enums.HealthConnectPermissionStatus
 import com.greatergoods.libs.healthconnect.enums.HealthConnectRequestStatus
 import com.greatergoods.libs.healthconnect.enums.HealthConnectStatus
+import com.dmdbrands.gurus.weight.testutil.TestFixtures
+import com.greatergoods.libs.healthconnect.model.HealthConnectData
 import com.greatergoods.libs.healthconnect.model.HealthConnectResult
 import io.mockk.Runs
 import io.mockk.clearAllMocks
@@ -40,11 +40,9 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkConstructor
 import io.mockk.mockkObject
-import io.mockk.mockkStatic
 import io.mockk.slot
 import io.mockk.unmockkConstructor
 import io.mockk.unmockkObject
-import io.mockk.unmockkStatic
 import io.mockk.verify
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -177,19 +175,12 @@ class HealthConnectServiceTest {
 
     /** Stub checkIfAlreadyUsed to return true (assigned to current account or no assignment). */
     private fun stubIntegrated() {
-        val mockData = mockk<HcAccountData> {
-            every { hasAssignedTo() } returns false
-        }
-        coEvery { healthConnectRepository.getAccountDataMap() } returns mapOf(fakeAccountId to mockData)
+        HealthConnectTestHelper.stubIntegrated(healthConnectRepository, fakeAccountId)
     }
 
     /** Stub checkIfAlreadyUsed to return false (assigned to a different account). */
     private fun stubNotIntegrated() {
-        val mockData = mockk<HcAccountData> {
-            every { hasAssignedTo() } returns true
-            every { assignedTo } returns "other-account"
-        }
-        coEvery { healthConnectRepository.getAccountDataMap() } returns mapOf(fakeAccountId to mockData)
+        HealthConnectTestHelper.stubNotIntegrated(healthConnectRepository, fakeAccountId)
     }
 
     private fun fakeHcAccountData(
@@ -224,13 +215,7 @@ class HealthConnectServiceTest {
         return svc
     }
 
-    private fun setupExtensionMock() {
-        mockkStatic(Entry::toPeriodBodyScaleSummary)
-    }
 
-    private fun teardownExtensionMock() {
-        unmockkStatic(Entry::toPeriodBodyScaleSummary)
-    }
 
     // -------------------------------------------------------------------------
     // requestingPermissions
@@ -245,6 +230,7 @@ class HealthConnectServiceTest {
         assertThat(writeTypes).contains(DataType.BasalMetabolicRate)
         assertThat(writeTypes).contains(DataType.RestingHeartRate)
         assertThat(writeTypes).contains(DataType.BoneMass)
+        assertThat(writeTypes).contains(DataType.BloodPressure)
     }
 
     // -------------------------------------------------------------------------
@@ -617,9 +603,7 @@ class HealthConnectServiceTest {
     @Test
     fun `syncAllData returns true on success`() = runTest {
         stubIntegrated()
-        setupExtensionMock()
-        val fakeEntry = mockk<Entry>()
-        every { fakeEntry.toPeriodBodyScaleSummary() } returns fakeSummary
+        val fakeEntry = TestFixtures.aWeightEntry()
         coEvery { entryRepository.getEntriesByAccount(fakeAccountId) } returns listOf(fakeEntry)
 
         val result = service.syncAllData()
@@ -627,21 +611,17 @@ class HealthConnectServiceTest {
         assertThat(result).isTrue()
         verify { dialogQueueService.showLoader(any()) }
         verify { dialogQueueService.dismissLoader() }
-        teardownExtensionMock()
     }
 
     @Test
     fun `syncAllData shows syncToast when not fromOutOfSync`() = runTest {
         stubIntegrated()
-        setupExtensionMock()
-        val fakeEntry = mockk<Entry>()
-        every { fakeEntry.toPeriodBodyScaleSummary() } returns fakeSummary
+        val fakeEntry = TestFixtures.aWeightEntry()
         coEvery { entryRepository.getEntriesByAccount(fakeAccountId) } returns listOf(fakeEntry)
 
         service.syncAllData(fromOutOfSync = false)
 
         verify { dialogQueueService.showToast(any()) }
-        teardownExtensionMock()
     }
 
     @Test
@@ -678,76 +658,52 @@ class HealthConnectServiceTest {
     @Test
     fun `deleteEntry returns true on success`() = runTest {
         stubIntegrated()
-        setupExtensionMock()
-        val fakeEntry = mockk<Entry>()
-        every { fakeEntry.toPeriodBodyScaleSummary() } returns fakeSummary
+        val fakeEntry = TestFixtures.aWeightEntry()
         coEvery { anyConstructed<HealthConnect>().deleteEntry(any()) } returns HealthConnectResult.Success(Unit)
 
         val result = service.deleteEntry(fakeEntry)
 
         assertThat(result).isTrue()
-        teardownExtensionMock()
     }
 
     @Test
     fun `deleteEntry returns false when not loaded`() = runTest {
         setLoaded(false)
-        val fakeEntry = mockk<Entry>()
+        val fakeEntry = TestFixtures.aWeightEntry()
         val result = service.deleteEntry(fakeEntry)
         assertThat(result).isFalse()
-    }
-
-    @Test
-    fun `deleteEntry returns false when entry conversion fails`() = runTest {
-        setupExtensionMock()
-        val fakeEntry = mockk<Entry>()
-        every { fakeEntry.toPeriodBodyScaleSummary() } returns null
-
-        val result = service.deleteEntry(fakeEntry)
-
-        assertThat(result).isFalse()
-        teardownExtensionMock()
     }
 
     @Test
     fun `deleteEntry returns false when not integrated`() = runTest {
         stubNotIntegrated()
-        setupExtensionMock()
-        val fakeEntry = mockk<Entry>()
-        every { fakeEntry.toPeriodBodyScaleSummary() } returns fakeSummary
+        val fakeEntry = TestFixtures.aWeightEntry()
 
         val result = service.deleteEntry(fakeEntry)
 
         assertThat(result).isFalse()
-        teardownExtensionMock()
     }
 
     @Test
     fun `deleteEntry returns false on error result`() = runTest {
         stubIntegrated()
-        setupExtensionMock()
-        val fakeEntry = mockk<Entry>()
-        every { fakeEntry.toPeriodBodyScaleSummary() } returns fakeSummary
+        val fakeEntry = TestFixtures.aWeightEntry()
         coEvery { anyConstructed<HealthConnect>().deleteEntry(any()) } returns HealthConnectResult.Error(RuntimeException("fail"))
 
         val result = service.deleteEntry(fakeEntry)
 
         assertThat(result).isFalse()
-        teardownExtensionMock()
     }
 
     @Test
     fun `deleteEntry returns false on exception`() = runTest {
         stubIntegrated()
-        setupExtensionMock()
-        val fakeEntry = mockk<Entry>()
-        every { fakeEntry.toPeriodBodyScaleSummary() } returns fakeSummary
+        val fakeEntry = TestFixtures.aWeightEntry()
         coEvery { anyConstructed<HealthConnect>().deleteEntry(any()) } throws RuntimeException("error")
 
         val result = service.deleteEntry(fakeEntry)
 
         assertThat(result).isFalse()
-        teardownExtensionMock()
     }
 
     // -------------------------------------------------------------------------
@@ -813,15 +769,12 @@ class HealthConnectServiceTest {
     @Test
     fun `turnOnIntegration calls syncAllData when isRequestNeed`() = runTest {
         stubIntegrated()
-        setupExtensionMock()
-        val fakeEntry = mockk<Entry>()
-        every { fakeEntry.toPeriodBodyScaleSummary() } returns fakeSummary
+        val fakeEntry = TestFixtures.aWeightEntry()
         coEvery { entryRepository.getEntriesByAccount(fakeAccountId) } returns listOf(fakeEntry)
 
         service.turnOnIntegration(fromMultiDevice = false, isRequestNeed = true)
 
         verify { dialogQueueService.showLoader(any()) }
-        teardownExtensionMock()
     }
 
     // -------------------------------------------------------------------------

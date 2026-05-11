@@ -40,6 +40,7 @@ struct ScaleSetupFinishView: View {
                 }
             }
             .padding(.top, .spacingLG)
+            .padding(.horizontal, .spacingSM)
         }
     }
 }

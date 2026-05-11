@@ -8,6 +8,8 @@ import Foundation
 /// Read-only domain view of a baby, used in ProductSelection and the UI.
 /// Derived from the `Baby` SwiftData model — not stored separately.
 struct BabyProfile: Identifiable, Equatable, Hashable {
+    static let pendingSelectionId = "pending-baby-profile"
+
     let id: String
     let name: String
     let deviceId: String?
@@ -33,5 +35,9 @@ struct BabyProfile: Identifiable, Equatable, Hashable {
         self.birthLengthInches = birthLengthInches
         self.birthWeightLbs = birthWeightLbs
         self.birthWeightOz = birthWeightOz
+    }
+
+    var isPendingSelection: Bool {
+        id == Self.pendingSelectionId
     }
 }

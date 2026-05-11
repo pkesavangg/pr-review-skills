@@ -28,6 +28,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
@@ -170,7 +171,8 @@ fun AddBabyScreen(viewModel: MyKidsViewModel = hiltViewModel()) {
             modifier = scaffoldModifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
+                .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md)
+                .dismissKeyboardOnTap(),
         ) {
             // AppInput already has a built-in xs spacer + error placeholder at the bottom,
             // so we use no extra spacing here — just the birthday label immediately after.

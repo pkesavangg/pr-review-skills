@@ -100,7 +100,7 @@ extension BtWifiScaleSetupStore {
         
         // Determine if this is a standalone Wi-Fi setup flow (opened from Settings > Wi-Fi)
         if let savedScaleParam = saveScale {
-            self.savedScale = savedScaleParam
+            self.savedScale = savedScaleParam.toSnapshot()
             self.scaleToken = savedScaleParam.token
             self.isWifiSetupOnly = !isReconnect
         } else {
@@ -115,7 +115,10 @@ extension BtWifiScaleSetupStore {
         
         // Reset error state
         self.scaleSetupError = .none
-        
+
+        // Reset resume-after-permissions tracking
+        self.stepToResumeAfterPermissions = nil
+
         // Reset customize settings state
         self.hasCustomizeChanges = false
         self.hasSavedSettings = false
@@ -182,15 +185,17 @@ extension BtWifiScaleSetupStore {
         // Post notification to refresh dashboard when setup is dismissed
         NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
         
+        // Clear setup in progress flag immediately
+        bluetoothService.isSetupInProgress = false
+
         // Dismiss first so post-setup prompts happen after the setup flow is off-screen.
         dismissAction?()
-        
+
         // Delay state clearing until after sheet has started dismissing
         // This prevents state changes from happening before sheet dismissal animation
         Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 300_000_000)
             guard let self = self else { return }
-            self.bluetoothService.isSetupInProgress = false
             // Clear error and connection states after sheet dismissal has started
             if wasOnGatheringNetwork || wasOnAvailableWifiList {
                 self.scaleSetupError = .none

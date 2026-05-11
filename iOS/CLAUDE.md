@@ -85,6 +85,7 @@ Theme/             # Design tokens, typography
 - **Keychain for auth tokens:** Tokens moved from SwiftData `Account` model to Keychain via `KeychainService` for security compliance. The `Account` model retains `@Transient` token fields but they are no longer the source of truth.
 - **Two-tier service registration:** `ServiceRegistry` registers essential services (Logger, Keychain, Account, Bluetooth, etc.) at launch and session-scoped services (Feed, etc.) after login. Services unavailable before their tier registers.
 - **`@MainActor` convention for SwiftData:** All SwiftData CRUD runs on main actor. Cross-async-boundary access requires extracting primitives *before* the `await`.
+- **Snapshots, not `@Model`, cross the service boundary (PROJECT RULE):** `AccountService`, `ScaleService`, `EntryService`, and `HistoryStore` publish `AccountSnapshot` / `DeviceSnapshot` / `EntrySnapshot` (flat `Sendable` structs) — the SwiftData `@Model` never leaves the owning service. This is what makes feature code safe off the main actor. **Enforced by:** SwiftLint custom rules `no_published_swiftdata_model` and `no_unchecked_sendable_with_model` (fire on every Swift edit via the PostToolUse hook, Xcode, and CI lint), plus the audit script `./scripts/check-snapshot-boundary.sh` (exit 1 on violation, runnable locally and in CI).
 - **Physical device testing only:** Unit tests must run on a connected device, never a simulator. This is a hard project requirement.
 
 ---
@@ -108,6 +109,21 @@ Theme/             # Design tokens, typography
 ### Domain Models (`Domain/Models/Domain/`)
 
 `Profile`, `Goal`, `BodyComp`, `Tokens` (auth) · `Entry`, `BodyMetric`, `HistoryMonth`, `ProgressSummary` · `BTScaleData`, `ScaleEnums`, `WifiConnectionStatus` · `FeedItem`, `FeedAction` · `Integrations`, `IntegrationInfo` · `Streak`, `Progress`
+
+### Value-type Snapshots (`Domain/Models/Domain/...`)
+
+Flat `Equatable, Sendable` structs that services publish instead of the SwiftData `@Model`. Safe to cross actor boundaries, safe as Combine publisher payloads.
+
+| Snapshot | Mirrors | Published by |
+|----------|---------|--------------|
+| `AccountSnapshot` (+ flattened child settings) | `Account` | `AccountService.activeAccount` / `allAccounts` |
+| `DeviceSnapshot` (+ `BathScaleSnapshot`, `R4ScalePreferenceSnapshot`, `DeviceMetaDataSnapshot`) | `Device` | `ScaleService.scales` |
+| `EntrySnapshot` (+ `BathScaleEntrySnapshot`, `BathScaleMetricSnapshot`, `BPMEntrySnapshot`, `BabyEntrySnapshot`) | `Entry` | `HistoryStore.entries`, `ContentViewModel.entries`, `EntryService.fetchEntrySnapshots*` |
+| `DeviceEphemeralState` | in-memory runtime state (connection / Wi-Fi status) | merged into `DeviceSnapshot` by `ScaleService` |
+
+Conversion: `model.toSnapshot()` on the main actor, right before any `await`. Snapshots are immutable (`let` fields) — construct with the desired values, don't mutate.
+
+Further reading: `docs/account-snapshot-implementation.md`, `docs/DEVICESNAPSHOT_IMPLEMENTATION.md`, `docs/ENTRYSNAPSHOT_IMPLEMENTATION.md`.
 
 ---
 
@@ -197,7 +213,7 @@ API base URL is read from `API_BASE_URL` in `Info.plist` via `AppEnvironment.api
 
 ## Gotchas & Pitfalls
 
-- **SwiftData models are NOT `Sendable`:** Never mark `@Model` classes as `Sendable` or pass them across actor boundaries. Extract primitives (e.g., `accountId`, `expiresAt`) before any `await`.
+- **SwiftData models are NOT `Sendable`:** Never mark `@Model` classes as `Sendable` or pass them across actor boundaries. Feature code should read `AccountSnapshot` / `DeviceSnapshot` / `EntrySnapshot` — the `@Model` stays inside the owning service. Production `EXC_BAD_ACCESS` crashes in v5.0 were caused by reading `@Model` fields off-actor; the snapshot pattern makes that crash class structurally impossible.
 - **DI double-registration required:** `DependencyContainer` must register both the concrete instance AND the protocol cast. Missing either causes `fatalError` at runtime:
   ```swift
   DependencyContainer.shared.register(accountService)
@@ -302,6 +318,7 @@ When the user describes a task in natural language, match it to the appropriate 
 | "code standards review", "check conventions", "architecture review" | `.claude/skills/review-code-standards.md` |
 | "UI review", "check theme usage", "design standards review" | `.claude/skills/review-ui-standards.md` |
 | "raise a PR", "open a PR" | `.claude/skills/raise-pr.md` |
+| "fix PR comments", "address review feedback", "apply reviewer suggestions", "resolve PR comments", "act on code review" | `.claude/skills/fix-pr-comments.md` |
 | "write a PR description", "draft a PR description", "describe this PR", "what should I put in the PR description" | `.claude/skills/pr-description.md` |
 | "log time", "log work" | `.claude/skills/log-work.md` |
 | "create a branch", "start working on MA-XXXX" | `.claude/skills/create-branch.md` |

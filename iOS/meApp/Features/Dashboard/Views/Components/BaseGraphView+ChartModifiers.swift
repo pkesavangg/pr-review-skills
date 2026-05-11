@@ -4,9 +4,12 @@ import SwiftUI
 extension BaseGraphView {
 
     @ViewBuilder
-    func conditionalModifiers<Content: View>(_ content: Content) -> some View {
+    func conditionalModifiers<Content: View>(
+        _ content: Content,
+        xAxisLabels: [Date: String]
+    ) -> some View {
         if viewModel.hasXAxis {
-            scrollableChartModifiers(content)
+            scrollableChartModifiers(content, xAxisLabels: xAxisLabels)
         } else {
             nonScrollableChartModifiers(content)
         }
@@ -14,7 +17,7 @@ extension BaseGraphView {
 
     @ViewBuilder
     // swiftlint:disable:next function_body_length cyclomatic_complexity
-    func scrollableChartModifiers<Content: View>(_ content: Content) -> some View {
+    func scrollableChartModifiers<Content: View>(_ content: Content, xAxisLabels: [Date: String]) -> some View {
         babyScrollDomainCap(
             conditionalEmptyDomain(
                 content
@@ -32,62 +35,17 @@ extension BaseGraphView {
             }
         ))
         .chartXAxis {
-            let allTicks = viewModel.xAxisValues
-            let nonLastTicks = Array(allTicks.dropLast())
-            let gridTicks: [Date] = {
-                guard viewModel.timePeriod == .month, !nonLastTicks.isEmpty else {
-                    return nonLastTicks
-                }
-                let calendar = Calendar.current
-                let sortedTicks = nonLastTicks.sorted()
-                guard let firstTick = sortedTicks.first,
-                      let lastTick = sortedTicks.last else {
-                    return nonLastTicks
-                }
-
-                var monthStartTicks: [Date] = []
-                var currentMonthStart = calendar.dateInterval(of: .month, for: firstTick)?.start ?? firstTick
-                while currentMonthStart <= lastTick {
-                    let monthStartNoon = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: currentMonthStart) ?? currentMonthStart
-                    monthStartTicks.append(monthStartNoon)
-                    guard let next = calendar.date(byAdding: .month, value: 1, to: currentMonthStart) else { break }
-                    currentMonthStart = next
-                }
-
-                let combined = nonLastTicks + monthStartTicks
-                var uniqueByDay: [Date] = []
-                var seenDays: Set<Date> = []
-                for tick in combined.sorted() {
-                    let day = calendar.startOfDay(for: tick)
-                    if seenDays.insert(day).inserted {
-                        uniqueByDay.append(tick)
-                    }
-                }
-                return uniqueByDay
-            }()
-            let adjustedLabelTicks: [Date] = {
-                if viewModel.timePeriod == .year {
-                    return nonLastTicks
-                }
-                return allTicks
-            }()
-            let renderedGridTicks: [Date] = {
-                if dashboardStore.selectedBabyProfile != nil && viewModel.hasXAxis {
-                    return Array(gridTicks.dropLast())
-                }
-                return gridTicks
-            }()
-
-            AxisMarks(values: renderedGridTicks) { value in
+            let gridTicks = viewModel.gridTicks
+            let adjustedLabelTicks = viewModel.adjustedLabelTicks
+            AxisMarks(values: gridTicks) { value in
                 if let date = value.as(Date.self), viewModel.shouldShowSolidLine(for: date) {
                     AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: []))
                         .foregroundStyle(theme.statusIconSecondaryDisabled)
 
                     if viewModel.timePeriod == .month {
                         let calendar = Calendar.current
-                        let components = calendar.dateComponents([.day, .weekday], from: date)
-                        let isMonthStartSunday = components.day == 1 && components.weekday == 1
-                        if isMonthStartSunday {
+                        let isMonthStart = calendar.component(.day, from: date) == 1
+                        if isMonthStart {
                             AxisTick(stroke: StrokeStyle(lineWidth: 1, dash: []))
                                 .foregroundStyle(theme.statusIconSecondaryDisabled)
                         } else {
@@ -110,18 +68,18 @@ extension BaseGraphView {
                 }
                 AxisValueLabel {
                     if let date = value.as(Date.self),
-                       let labelString = getCachedXAxisLabel(date) {
+                       let labelString = xAxisLabels[date] ?? viewModel.formatXAxisLabel(for: date) {
                         if viewModel.timePeriod == .month {
                             Text(labelString)
                                 .font(.caption)
-                                .foregroundColor(theme.textSubheading)
+                                .foregroundStyle(theme.textSubheading)
                                 .fixedSize(horizontal: true, vertical: false)
                                 .padding(.horizontal, 2)
                                 .background(theme.textInverse)
                         } else {
                             Text(labelString)
                                 .font(.caption)
-                                .foregroundColor(theme.textSubheading)
+                                .foregroundStyle(theme.textSubheading)
                         }
                     }
                 }
@@ -136,7 +94,8 @@ extension BaseGraphView {
                             yDomain: viewModel.yAxisDomain,
                             yTicks: viewModel.yAxisTicks,
                             showHorizontalGridLines: false,
-                            visibleHorizontalTicks: BaseGraphViewCacheSupport.boundaryYAxisTicks(from: viewModel.yAxisTicks)
+                            visibleHorizontalTicks: BaseGraphViewCacheSupport.boundaryYAxisTicks(from: viewModel.yAxisTicks),
+                            showTrailingBorder: viewModel.timePeriod != .month
                         )
                     }
                 }
@@ -282,27 +241,27 @@ extension BaseGraphView {
             let dates = operations.map(\.date)
             if let minDate = dates.min(), let maxDate = dates.max() {
                 let now = Date()
-                let buffer: TimeInterval = {
+                let cappedMax: Date = {
+                    let calendar = Calendar.current
                     switch viewModel.timePeriod {
                     case .week:
-                        let weekday = Calendar.current.component(.weekday, from: now)
+                        let weekday = calendar.component(.weekday, from: now)
                         let daysToSaturday = (7 - weekday + 7) % 7
-                        return TimeInterval(daysToSaturday + 1) * DashboardConstants.TimeInterval.day
+                        let buffer = TimeInterval(daysToSaturday + 1) * DashboardConstants.TimeInterval.day
+                        return now.addingTimeInterval(buffer)
                     case .month:
-                        return DashboardConstants.TimeInterval.calendarWeek
+                        if let interval = calendar.dateInterval(of: .month, for: now) {
+                            // Extend to noon on the 1st of the next month so the month-boundary
+                            // solid grid line (day == 1) is not clipped by the domain.
+                            return calendar.date(bySettingHour: 12, minute: 0, second: 0, of: interval.end) ?? interval.end
+                        }
+                        return now.addingTimeInterval(DashboardConstants.TimeInterval.calendarWeek)
                     case .year:
-                        return DashboardConstants.TimeInterval.month
-                    case .total:
-                        return 0
-                    }
-                }()
-                let cappedMax: Date = {
-                    if viewModel.timePeriod == .year {
-                        let calendar = Calendar.current
                         let yearEnd = calendar.dateInterval(of: .year, for: max(maxDate, now))?.end ?? now
-                        return max(yearEnd, now.addingTimeInterval(buffer))
+                        return max(yearEnd, now.addingTimeInterval(DashboardConstants.TimeInterval.month))
+                    case .total:
+                        return now
                     }
-                    return now.addingTimeInterval(buffer)
                 }()
                 let domainMin: Date = {
                     if viewModel.timePeriod == .year {
@@ -389,10 +348,7 @@ extension BaseGraphView {
                     localSelectedXValue = nil
                     viewModel.clearSelection()
                 }
-                .onChange(of: dashboardStore.state.graph.cachedYAxisDomain) { _, _ in
-                    viewModel.syncYAxisFromStore()
-                }
-                .onChange(of: dashboardStore.state.graph.cachedYAxisTicks) { _, _ in
+                .onChange(of: dashboardYAxisCacheSignature) { _, _ in
                     viewModel.syncYAxisFromStore()
                 }
         } else {

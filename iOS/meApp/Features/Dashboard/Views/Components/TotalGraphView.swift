@@ -11,16 +11,14 @@ import SwiftUI
 /// Dedicated view for rendering the Total time period chart
 /// Uses BaseGraphView for common chart rendering functionality
 struct TotalGraphView: View {
-    
+
     // MARK: - Dependencies
     @ObservedObject var viewModel: TotalSectionViewModel
     @ObservedObject var dashboardStore: DashboardStore
-    
+    var isActive: Bool = true
+
     var body: some View {
-        BaseGraphView(
-            viewModel: viewModel,
-            dashboardStore: dashboardStore
-        )
+        BaseGraphView(viewModel: viewModel, dashboardStore: dashboardStore, isActive: isActive)
     }
 }
 

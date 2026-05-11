@@ -188,6 +188,22 @@ struct BabyDashboardChartSupportTests {
         #expect(result.allSatisfy { BabyDashboardChartSupport.isPercentileSeries($0.series) })
     }
 
+    @Test("percentileSeries spans the operation range")
+    func percentileSeriesUsesOperationRange() {
+        let baby = makeBabyProfile()
+        let operations = makeDailySummaries(count: 8, from: cal.date(byAdding: .day, value: -20, to: Date())!) // swiftlint:disable:this force_unwrapping
+
+        let result = BabyDashboardChartSupport.percentileSeries(
+            for: baby,
+            operations: operations,
+            convertDecigramsToDisplay: { Double($0) / 10000.0 }
+        )
+
+        let dates = result.map(\.date)
+        #expect(dates.min() == operations.first?.date)
+        #expect(dates.max() == operations.last?.date)
+    }
+
     // MARK: - dummyHeightSeries
 
     @Test("dummyHeightSeries returns same count as operations")
@@ -230,6 +246,21 @@ struct BabyDashboardChartSupportTests {
         let ops = makeDailySummaries(count: 3, from: cal.date(byAdding: .day, value: -3, to: Date()) ?? Date())
         let result = BabyDashboardChartSupport.heightPercentileSeries(for: baby, operations: ops)
         #expect(result.allSatisfy { $0.value > 0 })
+    }
+
+    @Test("heightPercentileSeries spans the operation range")
+    func heightPercentileSeriesUsesOperationRange() {
+        let baby = makeBabyProfile()
+        let operations = makeDailySummaries(count: 8, from: cal.date(byAdding: .day, value: -20, to: Date())!) // swiftlint:disable:this force_unwrapping
+
+        let result = BabyDashboardChartSupport.heightPercentileSeries(
+            for: baby,
+            operations: operations
+        )
+
+        let dates = result.map(\.date)
+        #expect(dates.min() == operations.first?.date)
+        #expect(dates.max() == operations.last?.date)
     }
 
     // MARK: - yAxisScale
@@ -399,5 +430,59 @@ struct BabyDashboardChartSupportTests {
     func percentileLineNilForWeight() {
         #expect(BabyDashboardChartSupport.percentileLine(for: "weight") == nil)
         #expect(BabyDashboardChartSupport.percentileLine(for: "baby_height") == nil)
+    }
+
+    // MARK: - Dummy Summaries Cache
+
+    @Test("dummySummaries returns cached result on repeated calls for same profile and period")
+    func dummySummariesCacheHit() {
+        BabyDashboardChartSupport.clearDummySummariesCache()
+        let profile = makeBabyProfile(id: "cache-test-1")
+
+        let first = BabyDashboardChartSupport.dummySummaries(for: profile, period: .week)
+        let second = BabyDashboardChartSupport.dummySummaries(for: profile, period: .week)
+
+        #expect(!first.isEmpty)
+        #expect(first.count == second.count)
+        #expect(first.first?.period == second.first?.period)
+    }
+
+    @Test("dummySummaries invalidates cache for different baby profile")
+    func dummySummariesDifferentProfileRecalculates() {
+        BabyDashboardChartSupport.clearDummySummariesCache()
+        let profile1 = makeBabyProfile(id: "cache-p1")
+        let profile2 = makeBabyProfile(id: "cache-p2")
+
+        let first = BabyDashboardChartSupport.dummySummaries(for: profile1, period: .week)
+        let second = BabyDashboardChartSupport.dummySummaries(for: profile2, period: .week)
+
+        // Both should return data but from separate cache entries
+        #expect(!first.isEmpty)
+        #expect(!second.isEmpty)
+        #expect(first.first?.accountId != second.first?.accountId)
+    }
+
+    @Test("dummySummaries returns different data for different periods")
+    func dummySummariesDifferentPeriodsReturnDifferentData() {
+        BabyDashboardChartSupport.clearDummySummariesCache()
+        let profile = makeBabyProfile(id: "cache-period-test")
+
+        let weekly = BabyDashboardChartSupport.dummySummaries(for: profile, period: .week)
+        let yearly = BabyDashboardChartSupport.dummySummaries(for: profile, period: .year)
+
+        // Year/total uses monthly aggregation so should have fewer entries
+        #expect(weekly.count >= yearly.count)
+    }
+
+    @Test("clearDummySummariesCache forces recomputation")
+    func clearDummySummariesCacheInvalidates() {
+        let profile = makeBabyProfile(id: "cache-clear-test")
+        _ = BabyDashboardChartSupport.dummySummaries(for: profile, period: .week)
+
+        BabyDashboardChartSupport.clearDummySummariesCache()
+
+        // After clearing, next call should produce fresh (but equivalent) data
+        let fresh = BabyDashboardChartSupport.dummySummaries(for: profile, period: .week)
+        #expect(!fresh.isEmpty)
     }
 }

@@ -16,8 +16,7 @@ struct BabyTrendView: View {
     @State private var isGrowthPercentilesSheetPresented = false
     private let viewModel = BabyTrendViewModel()
 
-    // TODO: Replace with ColorTokens.babyPrimary once color tokens are updated
-    private let babyColor = Color(red: 0x88 / 255.0, green: 0x41 / 255.0, blue: 0xA4 / 255.0)
+    private var babyColor: Color { theme.babyPrimary }
 
     private var displayState: BabyTrendDisplayState {
         viewModel.displayState(dashboardStore: dashboardStore, babyProfile: babyProfile)

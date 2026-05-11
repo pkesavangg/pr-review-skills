@@ -79,12 +79,13 @@ fun AppScaleCard(
       AppScaleImage(sku = scale.sku)
 
       Spacer(modifier = Modifier.width(spacing.sm))
+      val displaySku = scale.sku
       Column(
         modifier = Modifier.weight(1f),
         verticalArrangement = Arrangement.Center,
       ) {
         AppText(
-          text = scale.sku,
+          text = displaySku,
           textType = TextType.ListTitle1,
         )
         AppText(

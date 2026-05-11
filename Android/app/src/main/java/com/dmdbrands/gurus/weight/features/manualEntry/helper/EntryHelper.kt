@@ -18,6 +18,8 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntryWithMetri
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.manualEntry.viewmodel.EntryForm
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
+import com.dmdbrands.library.ggbluetooth.model.GGBPMEntry
 import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
 import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import java.math.BigDecimal
@@ -172,26 +174,24 @@ object EntryHelper {
     return timeFormatter.format(instant)
   }
 
-  /** Formatted weight as "X lbs Y.Z oz", or "--" if null. */
-  fun BabyEntry.formattedWeight(): String {
+  /** Formatted weight based on unit preference, or "--" if null. */
+  fun BabyEntry.formattedWeight(isMetric: Boolean = false): String {
     val dg = babyWeightDecigrams ?: return "--"
-    val totalOz = dg / 28.3495
-    val lbs = (totalOz / 16).toInt()
-    val oz = totalOz % 16
-    return "$lbs lbs ${String.format(Locale.US, "%.1f", oz)} oz"
+    return ConversionTools.convertBabyWeightToDisplay(dg, babyEntry.source, isMetric)
   }
 
-  /** Formatted length as "X in", or "--" if null. */
-  fun BabyEntry.formattedLength(): String {
+  /** Formatted length based on unit preference, or "--" if null. */
+  fun BabyEntry.formattedLength(isMetric: Boolean = false): String {
     val mm = babyLengthMillimeters ?: return "--"
-    return "${String.format(Locale.US, "%.0f", mm / 25.4)} in"
+    return ConversionTools.convertBabyLengthToDisplay(mm, isMetric)
   }
 
   fun convertWeight(value: Double, from: WeightUnit, to: WeightUnit): Double {
     return when {
       from == to -> value
-      from == WeightUnit.KG && to == WeightUnit.LB -> value * 2.20462
-      from == WeightUnit.LB && to == WeightUnit.KG -> value / 2.20462
+      from == WeightUnit.KG && (to == WeightUnit.LB || to == WeightUnit.LB_OZ) -> value * 2.20462
+      (from == WeightUnit.LB || from == WeightUnit.LB_OZ) && to == WeightUnit.KG -> value / 2.20462
+      // LB <-> LB_OZ share the same underlying pounds scale — no numeric conversion
       else -> value
     }
   }
@@ -366,6 +366,52 @@ object EntryHelper {
     return ScaleEntry(
       entry = entryEntity,
       scale = scaleEntryWithMetrics,
+    )
+  }
+
+  /**
+   * Converts a GGBPMEntry from the BLE SDK into a domain BpmEntry.
+   * Uses the current time as the entry timestamp (per BPM requirements)
+   * instead of the device-reported time, matching the Angular implementation.
+   */
+  fun GGBPMEntry.toBpmEntry(accountId: String, deviceId: String, offsetMillis: Long = 0): BpmEntry {
+    val systolic = systolic?.toInt() ?: 0
+    val diastolic = diastolic?.toInt() ?: 0
+    val pulse = this.pulse?.toInt() ?: 0
+    // If both systolic and diastolic are 0 (null from BLE), MAP will be "0" —
+    // clinically meaningless but arithmetically correct for an invalid reading.
+    val meanArterial = meanPressure?.toInt()?.toString()
+      ?: "${(systolic + 2 * diastolic) / 3}"
+
+    val entryEntity = EntryEntity(
+      accountId = accountId,
+      // Uses phone time instead of monitor clock because BPM monitors may have
+      // incorrect clocks or no RTC. Matches the Angular/iOS implementation.
+      // offsetMillis ensures unique timestamps when processing MULTI_ENTRIES batches.
+      entryTimestamp = Instant.now().plusMillis(offsetMillis).toString(),
+      serverTimestamp = null,
+      opTimestamp = null,
+      operationType = operationType ?: "create",
+      deviceType = protocolType,
+      deviceId = deviceId,
+      // BPM entries have no weight data, so the unit field is semantically unused.
+      // LB is set as a placeholder to satisfy the non-null EntryEntity column constraint.
+      unit = WeightUnit.LB,
+      isSynced = false,
+    )
+
+    val bpmEntryEntity = BpmEntryEntity(
+      entryId = 0,
+      systolic = systolic,
+      diastolic = diastolic,
+      pulse = pulse,
+      meanArterial = meanArterial,
+      note = null,
+    )
+
+    return BpmEntry(
+      entry = entryEntity,
+      bpmEntry = bpmEntryEntity,
     )
   }
 

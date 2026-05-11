@@ -71,7 +71,8 @@ struct EntryStrings {
 
 /// Constants for scale discovered sheet strings used in the app
 struct ScaleDiscoveredSheetStrings {
-    static let title = "New Scale Discovered"
+    static let scaleTitle = "New Scale Discovered"
+    static let bpmTitle = "New Device Discovered"
 }
 
 struct WeightOnlyModeAlertStrings {
@@ -93,7 +94,7 @@ struct ToastStrings {
     static let errorCreatingAccount = "Error creating account."
     static let invalidEmailTitle = "Invalid Email ID!"
     static let invalidEmailMessage = "Enter a valid email address."
-    static let invalidCredentials = "Your Email or password is incorrect. Please try again."
+    static let invalidCredentials = "Your email or password is incorrect. Please try again."
     static let passwordResetSuccessMessage = { (email: String) in
         "An email with a link to reset your password has been sent to \(email). The link will be valid for the next 30 minutes."
     }
@@ -114,6 +115,7 @@ struct ToastStrings {
     static let errorUpdatingWeightless = "Error updating Weightless Settings."
     static let restartAndTryAgain = "Restart the app and try again."
     static let csvExportError = "Error sending .CSV file. Please try again."
+    static let errorDeletingEntry = "Error deleting entry. Please try again."
     static let unitSettingUpdated = "Unit settings updated."
     static let notificationSettingUpdated = "Notification settings updated."
     static let streakSettingUpdated = "Streak settings updated."
@@ -223,7 +225,7 @@ struct HKIntegrationModalStrings {
         message: nil,
         primaryButtonTitle: "OPEN APPLE HEALTH",
         secondaryButtonTitle: "REMOVE INTEGRATION",
-        attributedParts: (
+        attributedParts: .init(
             prefix: "Enable settings in Apple Health by navigating to ",
             highlight: "Profile → Privacy → Apps → Weight Gurus",
             suffix: ". Or remove the integration in Weight Gurus."
@@ -901,8 +903,7 @@ struct AppAssets {
     // MARK: - WiFi series
     static let scale0384 = "0384"
     static let scale0385 = "0385"
-    // swiftlint:disable:next identifier_name
-    static let scale0396_0397 = "0396_0397" // Wi-Fi Smart Scale (0396 & 0397 share artwork)
+    static let scale0396And0397 = "0396_0397" // Wi-Fi Smart Scale (0396 & 0397 share artwork)
 
     // MARK: - Bluetooth wifi series
     static let scale0412 = "0412"
