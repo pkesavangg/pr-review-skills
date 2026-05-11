@@ -27,7 +27,7 @@ struct DashboardScreen: View {
             navbarHeader()
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    if store.state.ui.isEditMode {
+                    if store.ui.isEditMode {
                         store.cancelEdit()
                     }
                 }
@@ -62,19 +62,19 @@ struct DashboardScreen: View {
             store.handleMetricInfoSheetDismiss(openMetricInfoWithoutSelection)
         }
         // Keep the metric info entry in sync with metric tile values while the sheet is open
-        .task(id: store.state.metrics.metrics) {
+        .task(id: store.metrics.metrics) {
             if let wrapper = openMetricInfoWithoutSelection {
                 metricInfoEntry = store.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
             }
         }
         // Update metric info entry when time period changes
-        .task(id: store.state.graph.selectedPeriod) {
+        .task(id: store.graph.selectedPeriod) {
             if let wrapper = openMetricInfoWithoutSelection {
                 metricInfoEntry = store.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
             }
         }
-        .task(id: store.state.ui.selectedMetricLabel) {
-            store.handleSelectedMetricLabelChange(store.state.ui.selectedMetricLabel)
+        .task(id: store.ui.selectedMetricLabel) {
+            store.handleSelectedMetricLabelChange(store.ui.selectedMetricLabel)
         }
         .task(id: selectedEntry) {
             store.handleSelectedEntryChange(selectedEntry)
@@ -82,11 +82,11 @@ struct DashboardScreen: View {
         .task(id: store.currentUnit) {
             store.handleUnitChange()
         }
-        .task(id: store.state.data.latestWeightStored) {
+        .task(id: store.data.latestWeightStored) {
             store.resetMetricsToLatestEntry()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-            if store.state.ui.isEditMode {
+            if store.ui.isEditMode {
                 DispatchQueue.main.asyncAfter(deadline: .now() + WiggleAnimationConstants.wiggleRestartDelayAfterAppActive) {
 store.restartWiggleAnimations()
                 }
@@ -101,15 +101,15 @@ store.restartWiggleAnimations()
                 NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
             ])
         ) { _ in
-            if store.state.ui.isEditMode { store.cancelEdit() }
+            if store.ui.isEditMode { store.cancelEdit() }
         }
         .onChange(of: scenePhase) { _, newPhase in
-            if store.state.ui.isEditMode && (newPhase == .background || newPhase == .inactive) {
+            if store.ui.isEditMode && (newPhase == .background || newPhase == .inactive) {
                 store.cancelEdit()
             }
         }
         .onChange(of: tabViewModel.selectedTab) { _, newTab in
-            if store.state.ui.isEditMode && newTab != .dash {
+            if store.ui.isEditMode && newTab != .dash {
                 store.cancelEdit()
             }
 
@@ -126,21 +126,21 @@ store.restartWiggleAnimations()
                 WeightTrendView(dashboardStore: store)
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        if store.state.ui.isEditMode && store.state.ui.alertData == nil {
+                        if store.ui.isEditMode && store.ui.alertData == nil {
                             store.cancelEdit()
                         }
                     }
-                if store.state.ui.isEditMode || (!store.allContentRemoved && store.state.data.hasAnyEntries) {
+                if store.ui.isEditMode || (!store.allContentRemoved && store.data.hasAnyEntries) {
                     DashboardMetricsSection(store: store, parentView: .dashboard, openMetricInfoWithoutSelection: $openMetricInfoWithoutSelection)
                 }
 
-                if store.state.data.hasAnyEntries {
+                if store.data.hasAnyEntries {
                     let hasNoContentToShow = store.metricsToShow.isEmpty && 
-                                           (!store.streakManager.shouldShowStreakGrid() || store.state.ui.isGoalCardRemoved)
+                                           (!store.streakManager.shouldShowStreakGrid() || store.ui.isGoalCardRemoved)
                     actionButtons()
                         .padding(.top, (store.allContentRemoved || hasNoContentToShow) ? .spacingLG : .spacingSM)
                 }
-                if !store.state.data.hasAnyEntries {
+                if !store.data.hasAnyEntries {
                     VStack {
                         Spacer(minLength: 0)
                         noEntrySection()
@@ -154,7 +154,7 @@ store.restartWiggleAnimations()
         .background(
             Color.clear.contentShape(Rectangle())
                 .onTapGesture {
-                    if store.state.ui.isEditMode && store.state.ui.alertData == nil && !suppressOutsideCancel {
+                    if store.ui.isEditMode && store.ui.alertData == nil && !suppressOutsideCancel {
                         store.cancelEdit()
                     }
                 }
@@ -164,25 +164,25 @@ store.restartWiggleAnimations()
 
     private func actionButtons() -> some View {
         VStack(alignment: .center, spacing: .spacingSM) {
-            if store.state.ui.isEditMode {
-                ButtonView(text: lang.saveChanges, type: .filledPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
+            if store.ui.isEditMode {
+                ButtonView(text: lang.saveChanges, type: .filledPrimary, size: .large, isDisabled: store.ui.isLoading, action: {
                     store.saveChanges()
                     store.resetDragState()
                 })
-                ButtonView(text: lang.resetDashboard, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
+                ButtonView(text: lang.resetDashboard, type: .textPrimary, size: .large, isDisabled: store.ui.isLoading, action: {
                     store.showResetDashboardAlert()
                 })
             } else {
-                ButtonView(text: lang.editDashboard, type: .outlinedPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
+                ButtonView(text: lang.editDashboard, type: .outlinedPrimary, size: .large, isDisabled: store.ui.isLoading, action: {
                     store.toggleEditMode()
                 })
                 if store.hasGoalSet {
-                    ButtonView(text: lang.updateGoal, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
+                    ButtonView(text: lang.updateGoal, type: .textPrimary, size: .large, isDisabled: store.ui.isLoading, action: {
                         tabViewModel.navigateToGoalSetting()
                     })
                 }
-                ButtonView(text: lang.metricInfo, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
-                    let label = store.state.ui.selectedMetricLabel ?? DashboardStrings.weight
+                ButtonView(text: lang.metricInfo, type: .textPrimary, size: .large, isDisabled: store.ui.isLoading, action: {
+                    let label = store.ui.selectedMetricLabel ?? DashboardStrings.weight
                     openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)
                 })
             }
@@ -194,7 +194,7 @@ store.restartWiggleAnimations()
                 .contentShape(Rectangle())
                 .onTapGesture {
                     // Dismiss edit mode when tapping on horizontal spaces around action buttons
-                    if store.state.ui.isEditMode && store.state.ui.alertData == nil {
+                    if store.ui.isEditMode && store.ui.alertData == nil {
                         store.cancelEdit()
                     }
                 }

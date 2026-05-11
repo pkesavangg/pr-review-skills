@@ -19,8 +19,9 @@ struct WeekGraphView: View {
     var body: some View {
         BaseGraphView(
             viewModel: viewModel,
-                    dashboardStore: dashboardStore
+            dashboardStore: dashboardStore
         )
+        .equatable()
     }
 }
 

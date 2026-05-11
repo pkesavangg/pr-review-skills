@@ -34,10 +34,10 @@ struct MetricGridUIKitView: UIViewRepresentable {
         coordinator.store = store
         // Determine if content or layout actually changed
         let newIds = store.metricsToShow.map { $0.id }
-        let newDashboardType = store.state.metrics.dashboardType
-        let newIsEditMode = store.state.ui.isEditMode
-        let newSelectedLabel = store.state.ui.selectedMetricLabel
-        let newRemovedMetrics = store.state.ui.removedMetrics
+        let newDashboardType = store.metrics.dashboardType
+        let newIsEditMode = store.ui.isEditMode
+        let newSelectedLabel = store.ui.selectedMetricLabel
+        let newRemovedMetrics = store.ui.removedMetrics
         let newActiveMetricsCount = store.metricsManager.state.activeMetricsCount
         
         let contentChanged = newIds != coordinator.lastItemIds
@@ -55,7 +55,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
         uiView.dragInteractionEnabled = false
 
         // Suppress reloads during reset to prevent flickering
-        if store.state.ui.isResettingDashboard {
+        if store.ui.isResettingDashboard {
             return
         }
 
@@ -97,7 +97,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
                         if let item = metricCell.representedItem {
                             metricCell.configure(
                                 with: item,
-                                dashboardType: store.state.metrics.dashboardType,
+                                dashboardType: store.metrics.dashboardType,
                                 store: store,
                                 isBeingDragged: false,
                                 parentView: parentView
@@ -114,7 +114,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
                     if let metricCell = cell as? MetricCell, let item = metricCell.representedItem {
                         metricCell.configure(
                             with: item,
-                            dashboardType: store.state.metrics.dashboardType,
+                            dashboardType: store.metrics.dashboardType,
                             store: store,
                             isBeingDragged: false,
                             parentView: parentView
@@ -142,7 +142,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
                         if let item = metricCell.representedItem {
                             metricCell.configure(
                                 with: item,
-                                dashboardType: store.state.metrics.dashboardType,
+                                dashboardType: store.metrics.dashboardType,
                                 store: store,
                                 isBeingDragged: false,
                                 parentView: parentView
@@ -190,7 +190,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
         // Add long-press gesture for interactive movement with clamped bounds
         let longPress = UILongPressGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleLongPress(_:)))
         // Use longer duration when not in edit mode (to enter edit mode), shorter when in edit mode (for dragging)
-        longPress.minimumPressDuration = context.coordinator.store.state.ui.isEditMode ? 0.15 : 0.5
+        longPress.minimumPressDuration = context.coordinator.store.ui.isEditMode ? 0.15 : 0.5
         longPress.cancelsTouchesInView = false
         longPress.delaysTouchesBegan = false
         context.coordinator.longPressGestureRecognizer = longPress
@@ -218,7 +218,7 @@ extension MetricGridUIKitView {
         /// Returns the number of non-removed (active) metrics that can be reordered
         private var activeMetricsCount: Int {
             let metrics = store.metricsToShow
-            return metrics.count - store.state.ui.removedMetrics.count
+            return metrics.count - store.ui.removedMetrics.count
         }
         
         /// Returns the first index of removed metrics (where dropping should be prevented)
@@ -267,23 +267,23 @@ extension MetricGridUIKitView {
             // Configure cell - the configure method handles synchronous updates internally
             cell.configure(
                 with: item,
-                dashboardType: store.state.metrics.dashboardType,
+                dashboardType: store.metrics.dashboardType,
                 store: store,
                 isBeingDragged: false,
                 parentView: parent.parentView,
                 onMetricLongPress: parent.onMetricLongPress,
                 onSelectMetric: { label in
                     if label.isEmpty {
-                        self.store.state.ui.selectedMetricLabel = nil
+                        self.store.ui.selectedMetricLabel = nil
                     } else {
-                        self.store.state.ui.selectedMetricLabel = label
+                        self.store.ui.selectedMetricLabel = label
                     }
                     // Publish selection change so the grid reconfigures visible cells immediately
                     self.store.objectWillChange.send()
                 }
             )
             cell.rowIndex = indexPath.row
-            cell.isWiggling = store.state.ui.isEditMode
+            cell.isWiggling = store.ui.isEditMode
             // Reflect removal status on the cell so UI can render accordingly
             cell.isRemoved = store.isMetricRemoved(item.label)
             // Do not add custom gesture recognizers in edit mode; allow SwiftUI buttons to receive taps.
@@ -314,7 +314,7 @@ extension MetricGridUIKitView {
         
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
             // Calculate item size based on device type and dashboard type
-            let verticalPadding = store.state.metrics.dashboardType == .dashboard12
+            let verticalPadding = store.metrics.dashboardType == .dashboard12
                 ? MetricCardView.twelveCardVerticalPadding
                 : MetricCardView.fourCardVerticalPadding
 
@@ -341,7 +341,7 @@ extension MetricGridUIKitView {
         
         func collectionView(_ collectionView: UICollectionView, canMoveItemAt indexPath: IndexPath) -> Bool {
             // Only allow moving items that are non-removed (active) items
-            return store.state.ui.isEditMode && indexPath.item < firstRemovedIndex
+            return store.ui.isEditMode && indexPath.item < firstRemovedIndex
         }
         
         func collectionView(_ collectionView: UICollectionView, targetIndexPathForMoveFromItemAt originalIndexPath: IndexPath, toProposedIndexPath proposedIndexPath: IndexPath) -> IndexPath {
@@ -375,7 +375,7 @@ extension MetricGridUIKitView {
 
         // MARK: - Gesture Sink
         @objc func consumeTap(_ sender: UITapGestureRecognizer) {
-            guard store.state.ui.isEditMode,
+            guard store.ui.isEditMode,
                   let collectionView = sender.view as? UICollectionView else {
                 return
             }
@@ -405,7 +405,7 @@ extension MetricGridUIKitView {
                 
                 // If not in edit mode, enter edit mode on long press of a metric cell,
                 // then immediately proceed to start the drag for the same cell.
-                if !store.state.ui.isEditMode {
+                if !store.ui.isEditMode {
                     store.toggleEditMode()
                 }
                 

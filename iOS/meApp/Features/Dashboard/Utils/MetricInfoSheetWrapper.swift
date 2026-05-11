@@ -28,12 +28,12 @@ struct MetricInfoSheetWrapper: View {
         .task(id: entry.id) {
             await extractDTO()
         }
-        .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, _ in
+        .onChange(of: dashboardStore.graph.selectedPeriod) { _, _ in
             Task {
                 await extractDTO()
             }
         }
-        .onChange(of: dashboardStore.state.metrics.metrics) { _, _ in
+        .onChange(of: dashboardStore.metrics.metrics) { _, _ in
             Task {
                 await extractDTO()
             }

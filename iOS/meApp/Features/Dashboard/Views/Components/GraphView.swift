@@ -45,7 +45,7 @@ struct GraphView: View {
 
     // Whether the selection callout is currently visible for the active period
     private var isShowingSelectionCallout: Bool {
-        switch dashboardStore.state.graph.selectedPeriod {
+        switch dashboardStore.graph.selectedPeriod {
         case .week:
             return weekSectionViewModel.showCrosshair
         case .month:
@@ -59,7 +59,7 @@ struct GraphView: View {
 
     // Show skeleton until graph is ready (set after settling delay)
     private var shouldShowSkeleton: Bool {
-        !dashboardStore.state.graph.isGraphReady
+        !dashboardStore.graph.isGraphReady
     }
 
     var body: some View {
@@ -85,8 +85,8 @@ struct GraphView: View {
             }
             .opacity(shouldShowSkeleton ? 0 : 1)
         }
-        .animation(.easeInOut(duration: 0.3), value: dashboardStore.state.graph.isGraphReady)
-        .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, newValue in
+        .animation(.easeInOut(duration: 0.3), value: dashboardStore.graph.isGraphReady)
+        .onChange(of: dashboardStore.graph.selectedPeriod) { _, newValue in
             // PERFORMANCE: Cancel any pending period change configuration
             periodChangeTask?.cancel()
 
@@ -122,7 +122,7 @@ struct GraphView: View {
                 // Force the active view model to sync with the scroll position set by WeightTrendView
                 guard !Task.isCancelled else { return }
 
-                let finalPosition = dashboardStore.state.graph.xScrollPosition
+                let finalPosition = dashboardStore.graph.xScrollPosition
                 switch newValue {
                 case .week:
                     weekSectionViewModel.forceScrollPositionUpdate(to: finalPosition)
@@ -148,7 +148,7 @@ struct GraphView: View {
     private var chartView: some View {
         return HStack(spacing: 0) {
             // Use switch case for different time periods (total, year, month, week)
-            switch dashboardStore.state.graph.selectedPeriod {
+            switch dashboardStore.graph.selectedPeriod {
             case .week:
                 WeekGraphView(
                     viewModel: weekSectionViewModel,

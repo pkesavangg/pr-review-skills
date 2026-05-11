@@ -32,9 +32,9 @@ struct WeightTrendView: View {
         }
         .onAppear {
             // Ensure local pill state matches current store on first appear
-            localSelectedPeriod = dashboardStore.state.graph.selectedPeriod
+            localSelectedPeriod = dashboardStore.graph.selectedPeriod
         }
-        .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, newValue in
+        .onChange(of: dashboardStore.graph.selectedPeriod) { _, newValue in
             if localSelectedPeriod != newValue {
                 localSelectedPeriod = newValue
             }
