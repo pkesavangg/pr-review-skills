@@ -7,6 +7,23 @@
 
 import SwiftUI
 
+// MARK: - App-wide default ButtonStyle
+/// Project-wide default applied at the root of every window in `SceneDelegate`.
+/// Opts every `Button` out of `DefaultButtonStyle`'s system decoration — most
+/// importantly, the grey rounded-rectangle iOS adds when the *Button Shapes*
+/// accessibility setting is enabled — while preserving press feedback.
+///
+/// Override at the call site only when the system styling is desired
+/// (e.g. `.buttonStyle(.borderless)` for keyboard-toolbar Done buttons that
+/// need the system tint).
+struct AppDefaultButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.5 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+    }
+}
+
 struct BasicButtonStyle: ViewModifier {
     var foreGroundColor: Color
     var buttonSize: ButtonSize? = nil

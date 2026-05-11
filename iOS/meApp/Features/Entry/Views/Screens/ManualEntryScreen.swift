@@ -378,6 +378,7 @@ struct ManualEntryScreen: View {
                         focusedField = nil
                     }
                 }
+                .buttonStyle(.borderless)
             }
         }
     }
