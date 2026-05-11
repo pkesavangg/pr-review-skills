@@ -57,6 +57,7 @@ object AppIcons {
     val CaretDown = R.drawable.ic_filled_caret_down
     val AddCircle = R.drawable.ic_plus_circle_filled
     val MinusCircle = R.drawable.ic_minus_circle_filled
+    val Profile = R.drawable.ic_profile_fill
   }
 
   object Selection {
