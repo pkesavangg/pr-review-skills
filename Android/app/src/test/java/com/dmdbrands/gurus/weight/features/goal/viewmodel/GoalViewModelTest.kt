@@ -429,6 +429,59 @@ class GoalViewModelTest {
         assertThat(controls.goalType.value).isEqualTo(GoalType.LOSE_GAIN.value)
     }
 
+    @Test
+    fun `ChangeGoalType to LOSE_GAIN with empty fields does not mark weight controls dirty`() = runTest {
+        viewModel = createViewModel() // new account — weights are ""
+        advanceUntilIdle()
+
+        viewModel.handleIntent(GoalIntent.ChangeGoalType(GoalType.LOSE_GAIN))
+
+        val controls = viewModel.state.value.form.controls
+        assertThat(controls.startingWeight.dirty).isFalse()
+        assertThat(controls.goalWeight.dirty).isFalse()
+    }
+
+    @Test
+    fun `ChangeGoalType to LOSE_GAIN with empty fields shows no weight field error`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.handleIntent(GoalIntent.ChangeGoalType(GoalType.LOSE_GAIN))
+
+        val controls = viewModel.state.value.form.controls
+        assertThat(controls.startingWeight.error).isNull()
+        assertThat(controls.goalWeight.error).isNull()
+    }
+
+    @Test
+    fun `ChangeGoalType to LOSE_GAIN with pre-filled fields marks weight controls dirty`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        val controls = viewModel.state.value.form.controls
+        controls.startingWeight.onValueChange("150")
+        controls.goalWeight.onValueChange("140")
+
+        viewModel.handleIntent(GoalIntent.ChangeGoalType(GoalType.LOSE_GAIN))
+
+        assertThat(controls.startingWeight.dirty).isTrue()
+        assertThat(controls.goalWeight.dirty).isTrue()
+    }
+
+    @Test
+    fun `ChangeGoalType to LOSE_GAIN with empty-but-touched field clears stale touched state`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        val controls = viewModel.state.value.form.controls
+        // Simulate spurious onBlur that fires when AppInput leaves composition (MAINTAIN switch)
+        controls.startingWeight.onBlur()
+
+        viewModel.handleIntent(GoalIntent.ChangeGoalType(GoalType.MAINTAIN))
+        viewModel.handleIntent(GoalIntent.ChangeGoalType(GoalType.LOSE_GAIN))
+
+        assertThat(controls.startingWeight.error).isNull()
+        assertThat(controls.startingWeight.touched).isFalse()
+    }
+
     // -------------------------------------------------------------------------
     // Reducer — Error
     // -------------------------------------------------------------------------

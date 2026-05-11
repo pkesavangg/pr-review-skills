@@ -229,10 +229,20 @@ class GoalReducer : IReducer<GoalState, GoalIntent> {
         } else {
           // Add required validator for lose/gain mode
           controls.startingWeight.addValidator(FormValidations.required())
-          // Mark weight controls as dirty so cross-field validation (weightMatchValidator)
-          // runs immediately when pre-filled values are equal after switching goal type
-          controls.startingWeight.markAsDirty()
-          controls.goalWeight.markAsDirty()
+          when {
+            controls.startingWeight.value.isNotEmpty() ->
+              // Pre-filled: mark dirty so weightMatchValidator fires immediately (MA-3776)
+              controls.startingWeight.markAsDirty()
+            !controls.startingWeight.dirty ->
+              // Empty and untouched: reset clears any stale touched state from Compose
+              // focus/blur events when the field re-enters composition after MAINTAIN mode.
+              // reset() also sets suppressNextBlurTouch=true to absorb the re-composition
+              // focus noise, and leaves validators intact (MA-3776).
+              controls.startingWeight.reset()
+            // else: empty AND dirty (user cleared the field) — leave as-is; error shows correctly
+          }
+          // Only mark dirty when a value exists — empty fields must stay clean (MA-3776)
+          if (controls.goalWeight.value.isNotEmpty()) controls.goalWeight.markAsDirty()
         }
         // Change goal type value last — this triggers the onValueChangeListener which
         // re-validates both weight controls (now marked dirty, so validation won't skip)
