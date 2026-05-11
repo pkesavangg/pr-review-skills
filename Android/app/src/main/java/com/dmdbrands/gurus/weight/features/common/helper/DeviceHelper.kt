@@ -49,8 +49,8 @@ object DeviceHelper {
     setOf(SKU_0603, SKU_0604, SKU_0634, SKU_0636, SKU_0661, SKU_0663) +
       BPM_ALTERNATE_TO_PRIMARY_SKU.keys
 
-  /** Returns `true` when the given [sku] identifies a Blood Pressure Monitor. */
-  fun isBpmDevice(sku: String): Boolean = sku in BPM_SKUS
+  /** Returns `true` when [sku] is non-null and identifies a Blood Pressure Monitor; `false` when [sku] is null. */
+  fun isBpmDevice(sku: String?): Boolean = sku != null && sku in BPM_SKUS
 
   /**
    * Resolves a variant BPM SKU to its primary (canonical) SKU. Non-variant SKUs pass through unchanged.
