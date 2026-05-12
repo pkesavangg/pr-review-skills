@@ -2964,25 +2964,42 @@ class DashboardStore: ObservableObject {
         let period = graph.selectedPeriod
 
         if isFromHistory, let entryDate = entryDate {
-            let dateText = DateTimeTools.formatter("MMMM d, yyyy").string(from: entryDate)
-            return "Measurement taken \(dateText)"
+            return measurementTakenLabel(for: entryDate)
         }
 
         if let selectedPoint = graph.selectedPoint {
-            let prefix = selectionPrefix(for: period)
-            let dateText = formatMetricInfoSingleDate(selectedPoint.date, period: period)
-            return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
+            return metricInfoSelectionLabel(date: selectedPoint.date, period: period)
         }
         if let crosshairDate = graph.selectedXValue {
-            let prefix = selectionPrefix(for: period)
-            let dateText = formatMetricInfoSingleDate(crosshairDate, period: period)
-            return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
+            return metricInfoSelectionLabel(date: crosshairDate, period: period)
         }
 
         // No graph selection — show the same period summary the trend-view header shows.
         let prefix = "\(period.rawValue) average"
         let dateText = weightLabel // already computed from visible region
         return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
+    }
+
+    /// Label format for a single dashboard-selected day on Week/Month, and the shared
+    /// "Measurement taken" format used by history entries. Capitalised and not lowercased
+    /// so it reads as a sentence: "Measurement taken February 1, 2025".
+    private func measurementTakenLabel(for date: Date) -> String {
+        let dateText = DateTimeTools.formatter("MMMM d, yyyy").string(from: date)
+        return "Measurement taken \(dateText)"
+    }
+
+    /// Resolves the metric-info label for a dashboard-selected point/crosshair.
+    /// Week/Month use the same "Measurement taken …" format as history entries so the user sees
+    /// consistent wording regardless of how they reached the sheet. Year/Total still surface
+    /// "month average …" since those values genuinely are averages.
+    private func metricInfoSelectionLabel(date: Date, period: TimePeriod) -> String {
+        switch period {
+        case .week, .month:
+            return measurementTakenLabel(for: date)
+        case .year, .total:
+            let dateText = formatMetricInfoSingleDate(date, period: period)
+            return composeMetricInfoLabel(prefix: "month average", dateText: dateText)
+        }
     }
 
     // MARK: - Private Helpers
