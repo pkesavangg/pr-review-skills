@@ -6,7 +6,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.dao.BabyEntryDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.BabyProfileDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.DeviceDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryDao
-import com.dmdbrands.gurus.weight.data.storage.db.dao.HistoryDao
+import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryReadDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.LogDao
 import dagger.Module
 import dagger.Provides
@@ -79,6 +79,6 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideHistoryDao(database: AppDatabase): HistoryDao = database.historyDao()
+    fun provideEntryReadDao(database: AppDatabase): EntryReadDao = database.entryReadDao()
 
 }

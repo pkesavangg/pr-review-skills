@@ -19,6 +19,7 @@ interface BaseGraphIntent : IReducer.Intent {
   data class ScrollRange(val segment: GraphSegment, val min: Long, val max: Long, val onFallback: () -> Unit = {}) : BaseGraphIntent
   data class UpdateIsEmptyGraph(val segment: GraphSegment, val isEmpty: Boolean) : BaseGraphIntent
   data class UpdateSegmentTarget(val segment: GraphSegment, val target: List<PeriodSummary>) : BaseGraphIntent
+  data class UpdateSeedYRange(val segment: GraphSegment, val minY: Double, val maxY: Double) : BaseGraphIntent
 }
 
 // ── Base Reducer ──
@@ -50,7 +51,7 @@ abstract class BaseGraphReducer<S : BaseDashboardState> {
     }
 
     is BaseGraphIntent.SetRefreshing -> copyBaseFields(state, isRefreshing = intent.isRefreshing)
-    is BaseGraphIntent.SetSelectedSegment -> copyBaseFields(state, selectedSegment = intent.segment, scrollTarget = intent.anchorTimestamp)
+    is BaseGraphIntent.SetSelectedSegment -> copyBaseFields(state, selectedSegment = intent.segment, scrollTarget = intent.anchorTimestamp, markerIndex = null)
     is BaseGraphIntent.UpdateMarkerIndex -> copyBaseFields(state, markerIndex = intent.markerIndex)
     is BaseGraphIntent.ScrollRange -> {
       val current = state.segmentStates[intent.segment] ?: SegmentState()
@@ -73,9 +74,26 @@ abstract class BaseGraphReducer<S : BaseDashboardState> {
 
     is BaseGraphIntent.UpdateSegmentTarget -> {
       val current = state.segmentStates[intent.segment] ?: SegmentState()
+      // Clear markerIndex if the saved position is outside the new target's data range
+      val clearMarker = state.markerIndex?.let { idx ->
+        val timestamps = intent.target.map { it.getTimeStamp() }
+        timestamps.isNotEmpty() && idx.toLong() !in timestamps.min()..timestamps.max()
+      } ?: false
       copyBaseFields(
         state,
         segmentStates = state.segmentStates + (intent.segment to current.copy(target = intent.target.toImmutableList())),
+        markerIndex = if (clearMarker) null else state.markerIndex,
+      )
+    }
+
+    is BaseGraphIntent.UpdateSeedYRange -> {
+      val current = state.segmentStates[intent.segment] ?: SegmentState()
+      copyBaseFields(
+        state,
+        segmentStates = state.segmentStates + (intent.segment to current.copy(
+          seedMinY = intent.minY,
+          seedMaxY = intent.maxY,
+        )),
       )
     }
 

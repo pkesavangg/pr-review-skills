@@ -25,6 +25,9 @@ data class SegmentState(
   /** Current visible X range from scroll — updated on scroll stop. */
   val visibleMin: Long? = null,
   val visibleMax: Long? = null,
+  /** Last settled Y range from ScrollAwareRangeProvider — seeds frame-0 on segment switch. */
+  val seedMinY: Double? = null,
+  val seedMaxY: Double? = null,
 )
 
 /**
@@ -39,6 +42,7 @@ interface BaseDashboardState : IReducer.State {
   val selectedSegment: GraphSegment
   val scrollTarget: Double?
   val isRefreshing: Boolean
+  /** Transient UI state — not persisted via SavedStateHandle. Marker resets on process death; acceptable since it's a momentary selection, not user data. */
   val markerIndex: Double?
 
   fun forSegment(segment: GraphSegment): SegmentState {

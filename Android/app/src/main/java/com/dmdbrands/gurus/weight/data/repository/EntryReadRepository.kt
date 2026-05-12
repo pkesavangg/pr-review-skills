@@ -1,7 +1,7 @@
 package com.dmdbrands.gurus.weight.data.repository
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
-import com.dmdbrands.gurus.weight.data.storage.db.dao.HistoryDao
+import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryReadDao
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
@@ -10,30 +10,33 @@ import com.dmdbrands.gurus.weight.domain.model.common.BabyWeekGroup
 import com.dmdbrands.gurus.weight.domain.model.common.BabyWeekHistory
 import com.dmdbrands.gurus.weight.domain.model.common.BpHistoryMonth
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertToDisplay
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
-import com.dmdbrands.gurus.weight.domain.repository.IHistoryRepository
+import com.dmdbrands.gurus.weight.domain.repository.IEntryReadRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 /**
- * Single implementation of [IHistoryRepository].
- * Delegates all queries to [HistoryDao] and converts Room types to domain types.
+ * Single implementation of [IEntryReadRepository].
+ * Delegates all queries to [EntryReadDao] and converts Room types to domain types.
  */
-class HistoryRepository @Inject constructor(
-    private val historyDao: HistoryDao,
-) : IHistoryRepository {
+class EntryReadRepository @Inject constructor(
+    private val entryReadDao: EntryReadDao,
+) : IEntryReadRepository {
 
     companion object {
         /** Flip to true to return sample data instead of querying the database. */
         var USE_SAMPLE_DATA = true
+        private const val SAMPLE_BABY_ID = "sample-1"
     }
 
     // ---------------------------------------------------------------------------
@@ -41,10 +44,11 @@ class HistoryRepository @Inject constructor(
     // ---------------------------------------------------------------------------
 
     override fun getWeightMonthlyHistory(accountId: String): Flow<List<HistoryMonth>> =
-        historyDao.getWeightMonthlyHistory(accountId)
+        entryReadDao.getWeightMonthlyHistory(accountId)
+            .map { months -> months.map { it.convertToDisplay() } }
 
     override fun getWeightMonthDetail(accountId: String, month: String): Flow<List<ScaleEntry>> =
-        historyDao.getWeightMonthDetail(accountId, month).map { entries ->
+        entryReadDao.getWeightMonthDetail(accountId, month).map { entries ->
             entries.mapNotNull { it.toEntry() }.filterIsInstance<ScaleEntry>()
         }
 
@@ -54,12 +58,12 @@ class HistoryRepository @Inject constructor(
 
     override fun getBpmMonthlyHistory(accountId: String): Flow<List<BpHistoryMonth>> {
         if (USE_SAMPLE_DATA) return flowOf(sampleBpMonthlyHistory())
-        return historyDao.getBpmMonthlyHistory(accountId)
+        return entryReadDao.getBpmMonthlyHistory(accountId)
     }
 
     override fun getBpmMonthDetail(accountId: String, month: String): Flow<List<BpmEntry>> {
         if (USE_SAMPLE_DATA) return flowOf(sampleBpmEntries())
-        return historyDao.getBpmMonthDetail(accountId, month).map { entries ->
+        return entryReadDao.getBpmMonthDetail(accountId, month).map { entries ->
             entries.mapNotNull { it.toEntry() }.filterIsInstance<BpmEntry>()
         }
     }
@@ -73,7 +77,7 @@ class HistoryRepository @Inject constructor(
         babyId: String,
     ): Flow<List<BabyWeekGroup>> {
         if (USE_SAMPLE_DATA) return flowOf(groupByWeek(sampleBabyDailySummaries()))
-        return historyDao.getBabyWeeklyHistory(accountId, babyId).map { groupByWeek(it) }
+        return entryReadDao.getBabyWeeklyHistory(accountId, babyId).map { groupByWeek(it) }
     }
 
     override fun getBabyDayDetail(
@@ -82,7 +86,7 @@ class HistoryRepository @Inject constructor(
         date: String,
     ): Flow<List<BabyEntry>> {
         if (USE_SAMPLE_DATA) return flowOf(sampleBabyEntries())
-        return historyDao.getBabyDayDetail(accountId, babyId, date).map { entries ->
+        return entryReadDao.getBabyDayDetail(accountId, babyId, date).map { entries ->
             entries.mapNotNull { it.toEntry() }.filterIsInstance<BabyEntry>()
         }
     }
@@ -92,17 +96,19 @@ class HistoryRepository @Inject constructor(
     // ---------------------------------------------------------------------------
 
     override fun getWeightMonthlyGraphData(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
-        historyDao.getWeightMonthlyGraphData(accountId)
+        entryReadDao.getWeightMonthlyGraphData(accountId)
+            .map { list -> list.map { it.convertToDisplay() } }
 
     override fun getWeightDailyGraphData(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
-        historyDao.getWeightDailyGraphData(accountId)
+        entryReadDao.getWeightDailyGraphData(accountId)
+            .map { list -> list.map { it.convertToDisplay() } }
 
     // ---------------------------------------------------------------------------
     // Weight Snapshot (Dashboard mini-chart)
     // ---------------------------------------------------------------------------
 
     override fun getWeightSnapshotGraphData(accountId: String): Flow<List<WeightSnapshotPoint>> =
-        historyDao.getWeightSnapshotGraphData(accountId)
+        entryReadDao.getWeightSnapshotGraphData(accountId)
 
     // ---------------------------------------------------------------------------
     // BPM Graph
@@ -110,12 +116,12 @@ class HistoryRepository @Inject constructor(
 
     override fun getBpmMonthlyGraphData(accountId: String): Flow<List<PeriodBpmSummary>> {
         if (USE_SAMPLE_DATA) return flowOf(sampleBpmMonthlyGraphData())
-        return historyDao.getBpmMonthlyGraphData(accountId)
+        return entryReadDao.getBpmMonthlyGraphData(accountId)
     }
 
     override fun getBpmDailyGraphData(accountId: String): Flow<List<PeriodBpmSummary>> {
         if (USE_SAMPLE_DATA) return flowOf(sampleBpmDailyGraphData())
-        return historyDao.getBpmDailyGraphData(accountId)
+        return entryReadDao.getBpmDailyGraphData(accountId)
     }
 
     // ---------------------------------------------------------------------------
@@ -124,7 +130,12 @@ class HistoryRepository @Inject constructor(
 
     override fun getBpmSnapshotGraphData(accountId: String): Flow<List<PeriodBpmSummary>> {
         if (USE_SAMPLE_DATA) return flowOf(sampleBpmSnapshotData())
-        return historyDao.getBpmSnapshotGraphData(accountId)
+        return entryReadDao.getBpmSnapshotGraphData(accountId)
+    }
+
+    override fun getBpmLastNDayEntries(accountId: String, n: Int): Flow<List<PeriodBpmSummary>> {
+        if (USE_SAMPLE_DATA) return flowOf(sampleBpmSnapshotData().takeLast(n).reversed())
+        return entryReadDao.getBpmLastNDayEntries(accountId, n)
     }
 
     private fun sampleBpmSnapshotData(): List<PeriodBpmSummary> = listOf(
@@ -214,69 +225,122 @@ class HistoryRepository @Inject constructor(
 
     override fun getBabyMonthlyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>> {
         if (USE_SAMPLE_DATA) return flowOf(sampleBabyMonthlyGraphData())
-        return historyDao.getBabyMonthlyGraphData(accountId, babyId)
+        return entryReadDao.getBabyMonthlyGraphData(accountId, babyId)
     }
 
     override fun getBabyDailyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>> {
         if (USE_SAMPLE_DATA) return flowOf(sampleBabyDailyGraphData())
-        return historyDao.getBabyDailyGraphData(accountId, babyId)
+        return entryReadDao.getBabyDailyGraphData(accountId, babyId)
     }
 
     // ---------------------------------------------------------------------------
-    // Baby Snapshot (Dashboard mini-chart)
+    // Baby Snapshot — all babies in one query (Dashboard mini-chart)
     // ---------------------------------------------------------------------------
 
-    override fun getBabySnapshotGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>> {
-        if (USE_SAMPLE_DATA) return flowOf(sampleBabySnapshotData())
-        return historyDao.getBabySnapshotGraphData(accountId, babyId)
+    override fun getAllBabySnapshotGraphData(accountId: String): Flow<List<PeriodBabySummary>> {
+        if (USE_SAMPLE_DATA) return flowOf(sampleBabySnapshotData(SAMPLE_BABY_ID))
+        return entryReadDao.getAllBabySnapshotGraphData(accountId)
     }
+
+    // ---------------------------------------------------------------------------
+    // Cross-product read queries (moved from EntryRepository)
+    // ---------------------------------------------------------------------------
+
+    override fun getLatestEntry(accountId: String): Flow<Entry?> =
+        entryReadDao.getLatestEntry(accountId).map { it?.toEntry() }
+
+    override fun getLastNDaysEntries(accountId: String, days: Int): Flow<List<Entry>> {
+        val startInstant = java.time.Instant.now().minus(java.time.Duration.ofDays(days.toLong()))
+        val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+        val startDate = java.time.ZonedDateTime.ofInstant(startInstant, java.time.ZoneOffset.UTC).format(formatter)
+        return entryReadDao.getEntriesSince(accountId, startDate).map { list ->
+            list.mapNotNull { it.toEntry() }
+        }
+    }
+
+    override fun getEntriesByOperationType(accountId: String, operationType: String): Flow<List<Entry>> =
+        entryReadDao.getEntriesByOperationType(accountId, operationType).map { flow ->
+            flow.mapNotNull { it.toEntry() }
+        }
+
+    override fun getMonthlyHistoryLastYear(accountId: String): Flow<List<HistoryMonth>> =
+        entryReadDao.getMonthlyHistoryLastYear(accountId).map { list -> list.map { it.convertToDisplay() } }
+
+    override suspend fun getOldestEntry(accountId: String): Entry? =
+        entryReadDao.getOldestEntry(accountId)?.toEntry()
+
+    override suspend fun getStreakData(accountId: String): List<String> =
+        entryReadDao.getStreakData(accountId)
+
+    override suspend fun getLongestStreakCount(accountId: String): Int =
+        entryReadDao.getLongestStreakCount(accountId)
+
+    override suspend fun getTotalCount(accountId: String): Int =
+        entryReadDao.getTotalCount(accountId)
+
+    override fun getBpmStreakDays(accountId: String): Flow<List<String>> {
+        if (USE_SAMPLE_DATA) return flowOf(sampleBpmStreakDays())
+        return entryReadDao.getBpmStreakDays(accountId)
+    }
+
+    /** Sample BP streak days (newest first) — matches sampleBpmDailyGraphData dates.
+     *  Clusters with gaps produce: current streak = 5 (Apr 1–8), longest streak = 5. */
+    private fun sampleBpmStreakDays(): List<String> = listOf(
+        "2026-04-08", "2026-04-06", "2026-04-05", "2026-04-04", "2026-04-03",
+        "2026-04-02", "2026-04-01", "2026-03-30", "2026-03-27", "2026-03-24",
+        "2026-03-22", "2026-03-20", "2026-02-14", "2026-02-10", "2026-02-07",
+        "2026-02-04", "2026-02-01", "2025-12-05", "2025-12-02", "2025-11-30",
+        "2025-11-27", "2025-11-25", "2025-10-22", "2025-10-20", "2025-10-17",
+        "2025-10-15", "2025-08-10", "2025-08-08", "2025-08-05", "2025-08-03",
+        "2025-08-01",
+    )
 
     /**
      * Sample Baby daily data — born Jan 1 2026, starts day 10.
      * WHO p50 boy: birth ~3.3 kg (33000 dg), ~50 cm (500 mm).
      */
     private fun sampleBabyDailyGraphData(): List<PeriodBabySummary> = listOf(
-        PeriodBabySummary("2026-01-11", "2026-01-11 00:00:00", avgWeightDecigrams = 33000, avgLengthMillimeters = 500),
-        PeriodBabySummary("2026-01-14", "2026-01-14 00:00:00", avgWeightDecigrams = 33500, avgLengthMillimeters = 502),
-        PeriodBabySummary("2026-01-18", "2026-01-18 00:00:00", avgWeightDecigrams = 34200, avgLengthMillimeters = 505),
-        PeriodBabySummary("2026-01-22", "2026-01-22 00:00:00", avgWeightDecigrams = 35000, avgLengthMillimeters = 508),
-        PeriodBabySummary("2026-01-26", "2026-01-26 00:00:00", avgWeightDecigrams = 36000, avgLengthMillimeters = 511),
-        PeriodBabySummary("2026-01-30", "2026-01-30 00:00:00", avgWeightDecigrams = 37000, avgLengthMillimeters = 514),
-        PeriodBabySummary("2026-02-03", "2026-02-03 00:00:00", avgWeightDecigrams = 38200, avgLengthMillimeters = 518),
-        PeriodBabySummary("2026-02-07", "2026-02-07 00:00:00", avgWeightDecigrams = 39500, avgLengthMillimeters = 522),
-        PeriodBabySummary("2026-02-11", "2026-02-11 00:00:00", avgWeightDecigrams = 40800, avgLengthMillimeters = 526),
-        PeriodBabySummary("2026-02-15", "2026-02-15 00:00:00", avgWeightDecigrams = 42000, avgLengthMillimeters = 530),
-        PeriodBabySummary("2026-02-20", "2026-02-20 00:00:00", avgWeightDecigrams = 43500, avgLengthMillimeters = 535),
-        PeriodBabySummary("2026-02-25", "2026-02-25 00:00:00", avgWeightDecigrams = 45000, avgLengthMillimeters = 540),
-        PeriodBabySummary("2026-03-02", "2026-03-02 00:00:00", avgWeightDecigrams = 46500, avgLengthMillimeters = 545),
-        PeriodBabySummary("2026-03-07", "2026-03-07 00:00:00", avgWeightDecigrams = 48000, avgLengthMillimeters = 550),
-        PeriodBabySummary("2026-03-12", "2026-03-12 00:00:00", avgWeightDecigrams = 49500, avgLengthMillimeters = 555),
-        PeriodBabySummary("2026-03-17", "2026-03-17 00:00:00", avgWeightDecigrams = 51000, avgLengthMillimeters = 560),
-        PeriodBabySummary("2026-03-22", "2026-03-22 00:00:00", avgWeightDecigrams = 52500, avgLengthMillimeters = 565),
-        PeriodBabySummary("2026-03-27", "2026-03-27 00:00:00", avgWeightDecigrams = 54000, avgLengthMillimeters = 570),
-        PeriodBabySummary("2026-04-01", "2026-04-01 00:00:00", avgWeightDecigrams = 55500, avgLengthMillimeters = 575),
-        PeriodBabySummary("2026-04-05", "2026-04-05 00:00:00", avgWeightDecigrams = 57000, avgLengthMillimeters = 580),
-        PeriodBabySummary("2026-04-08", "2026-04-08 00:00:00", avgWeightDecigrams = 58000, avgLengthMillimeters = 583),
+        PeriodBabySummary("2026-01-11", "2026-01-11 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 33000, avgLengthMillimeters = 500),
+        PeriodBabySummary("2026-01-14", "2026-01-14 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 33500, avgLengthMillimeters = 502),
+        PeriodBabySummary("2026-01-18", "2026-01-18 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 34200, avgLengthMillimeters = 505),
+        PeriodBabySummary("2026-01-22", "2026-01-22 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 35000, avgLengthMillimeters = 508),
+        PeriodBabySummary("2026-01-26", "2026-01-26 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 36000, avgLengthMillimeters = 511),
+        PeriodBabySummary("2026-01-30", "2026-01-30 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 37000, avgLengthMillimeters = 514),
+        PeriodBabySummary("2026-02-03", "2026-02-03 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 38200, avgLengthMillimeters = 518),
+        PeriodBabySummary("2026-02-07", "2026-02-07 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 39500, avgLengthMillimeters = 522),
+        PeriodBabySummary("2026-02-11", "2026-02-11 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 40800, avgLengthMillimeters = 526),
+        PeriodBabySummary("2026-02-15", "2026-02-15 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 42000, avgLengthMillimeters = 530),
+        PeriodBabySummary("2026-02-20", "2026-02-20 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 43500, avgLengthMillimeters = 535),
+        PeriodBabySummary("2026-02-25", "2026-02-25 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 45000, avgLengthMillimeters = 540),
+        PeriodBabySummary("2026-03-02", "2026-03-02 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 46500, avgLengthMillimeters = 545),
+        PeriodBabySummary("2026-03-07", "2026-03-07 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 48000, avgLengthMillimeters = 550),
+        PeriodBabySummary("2026-03-12", "2026-03-12 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 49500, avgLengthMillimeters = 555),
+        PeriodBabySummary("2026-03-17", "2026-03-17 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 51000, avgLengthMillimeters = 560),
+        PeriodBabySummary("2026-03-22", "2026-03-22 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 52500, avgLengthMillimeters = 565),
+        PeriodBabySummary("2026-03-27", "2026-03-27 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 54000, avgLengthMillimeters = 570),
+        PeriodBabySummary("2026-04-01", "2026-04-01 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 55500, avgLengthMillimeters = 575),
+        PeriodBabySummary("2026-04-05", "2026-04-05 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 57000, avgLengthMillimeters = 580),
+        PeriodBabySummary("2026-04-08", "2026-04-08 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 58000, avgLengthMillimeters = 583),
     )
 
     /** Sample Baby monthly data — born Jan 1 2026, starts month 1. */
     private fun sampleBabyMonthlyGraphData(): List<PeriodBabySummary> = listOf(
-        PeriodBabySummary("2026-01", "2026-01-01 00:00:00", avgWeightDecigrams = 33000, avgLengthMillimeters = 500),
-        PeriodBabySummary("2026-02", "2026-02-01 00:00:00", avgWeightDecigrams = 42000, avgLengthMillimeters = 530),
-        PeriodBabySummary("2026-03", "2026-03-01 00:00:00", avgWeightDecigrams = 50000, avgLengthMillimeters = 555),
-        PeriodBabySummary("2026-04", "2026-04-01 00:00:00", avgWeightDecigrams = 58000, avgLengthMillimeters = 580),
+        PeriodBabySummary("2026-01", "2026-01-01 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 33000, avgLengthMillimeters = 500),
+        PeriodBabySummary("2026-02", "2026-02-01 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 42000, avgLengthMillimeters = 530),
+        PeriodBabySummary("2026-03", "2026-03-01 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 50000, avgLengthMillimeters = 555),
+        PeriodBabySummary("2026-04", "2026-04-01 00:00:00", SAMPLE_BABY_ID, avgWeightDecigrams = 58000, avgLengthMillimeters = 580),
     )
 
     /** Realistic sample: ~90-day-old baby around p50 (~60000 decigrams = 13.2 lbs) */
-    private fun sampleBabySnapshotData(): List<PeriodBabySummary> = listOf(
-        PeriodBabySummary("2026-03-30", "2026-03-30 00:00:00", avgWeightDecigrams = 58200, avgLengthMillimeters = 580),
-        PeriodBabySummary("2026-03-31", "2026-03-31 00:00:00", avgWeightDecigrams = 58500, avgLengthMillimeters = 581),
-        PeriodBabySummary("2026-04-01", "2026-04-01 00:00:00", avgWeightDecigrams = 58800, avgLengthMillimeters = 582),
-        PeriodBabySummary("2026-04-02", "2026-04-02 00:00:00", avgWeightDecigrams = 59200, avgLengthMillimeters = 583),
-        PeriodBabySummary("2026-04-03", "2026-04-03 00:00:00", avgWeightDecigrams = 59500, avgLengthMillimeters = 584),
-        PeriodBabySummary("2026-04-04", "2026-04-04 00:00:00", avgWeightDecigrams = 59900, avgLengthMillimeters = 585),
-        PeriodBabySummary("2026-04-05", "2026-04-05 00:00:00", avgWeightDecigrams = 60200, avgLengthMillimeters = 587),
-        PeriodBabySummary("2026-04-06", "2026-04-06 00:00:00", avgWeightDecigrams = 60500, avgLengthMillimeters = 588),
+    private fun sampleBabySnapshotData(babyId: String = SAMPLE_BABY_ID): List<PeriodBabySummary> = listOf(
+        PeriodBabySummary("2026-03-30", "2026-03-30 00:00:00", babyId, avgWeightDecigrams = 58200, avgLengthMillimeters = 580),
+        PeriodBabySummary("2026-03-31", "2026-03-31 00:00:00", babyId, avgWeightDecigrams = 58500, avgLengthMillimeters = 581),
+        PeriodBabySummary("2026-04-01", "2026-04-01 00:00:00", babyId, avgWeightDecigrams = 58800, avgLengthMillimeters = 582),
+        PeriodBabySummary("2026-04-02", "2026-04-02 00:00:00", babyId, avgWeightDecigrams = 59200, avgLengthMillimeters = 583),
+        PeriodBabySummary("2026-04-03", "2026-04-03 00:00:00", babyId, avgWeightDecigrams = 59500, avgLengthMillimeters = 584),
+        PeriodBabySummary("2026-04-04", "2026-04-04 00:00:00", babyId, avgWeightDecigrams = 59900, avgLengthMillimeters = 585),
+        PeriodBabySummary("2026-04-05", "2026-04-05 00:00:00", babyId, avgWeightDecigrams = 60200, avgLengthMillimeters = 587),
+        PeriodBabySummary("2026-04-06", "2026-04-06 00:00:00", babyId, avgWeightDecigrams = 60500, avgLengthMillimeters = 588),
     )
 
     // ---------------------------------------------------------------------------

@@ -19,7 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
-import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.features.common.components.reorderable.ReorderableItem
 import com.dmdbrands.gurus.weight.features.common.components.reorderable.rememberReorderableLazyGridState
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
@@ -43,7 +43,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
  */
 @Composable
 fun DashboardMilestoneGrid(
-  progress: Progress,
+  progress: WeightProgress,
   visibleMilestones: List<Stat>,
   hiddenMilestones: List<Stat>,
   hasVisibleMetrics: Boolean = false,
@@ -53,7 +53,7 @@ fun DashboardMilestoneGrid(
   latestWeight: Double? = null,
   onMilestoneMoved: (isAdded: Boolean, milestone: Stat) -> Unit,
   onMilestoneReordered: (List<Stat>) -> Unit,
-  onLongClick: (Stat?, Progress?) -> Unit = { _, _ -> },
+  onLongClick: (Stat?, WeightProgress?) -> Unit = { _, _ -> },
   onNavigateToGoal: () -> Unit = {},
 ) {
   val currentDeviceType = getDeviceType()

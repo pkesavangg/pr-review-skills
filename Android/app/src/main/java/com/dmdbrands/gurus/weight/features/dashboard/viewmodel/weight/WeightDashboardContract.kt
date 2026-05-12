@@ -3,9 +3,10 @@ package com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight
 import androidx.compose.runtime.Stable
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
-import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
+import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
@@ -31,14 +32,17 @@ data class WeightDashboardState(
   override val scrollTarget: Double? = null,
   override val isRefreshing: Boolean = false,
   override val markerIndex: Double? = null,
-  // Weight-specific
-  val weightUnit: WeightUnit = WeightUnit.KG,
+  // Weight-specific. Default must match DashboardChartHeader + ProductChart
+  // fallback (WeightUnit.LB) so frame-0 labels don't flash in KG before
+  // subscribeWeightUnit() emits the real account unit.
+  val weightUnit: WeightUnit = WeightUnit.LB,
+  val weightless: Weightless? = null,
   val goal: Goal? = null,
   val data: ImmutableList<PeriodBodyScaleSummary> = persistentListOf(),
   val visibleKeys: ImmutableList<DashboardKey> = persistentListOf(),
   val selectedStat: Stat? = null,
   val latestWeight: Double? = null,
-  val progress: Progress = Progress(),
+  val progress: WeightProgress = WeightProgress(),
   val isProgressUpdating: Boolean = false,
   val isEmpty: Boolean = false,
   val dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS,
@@ -53,12 +57,13 @@ sealed interface WeightDashboardIntent : BaseGraphIntent {
   data class SetVisibleKeys(val keys: List<DashboardKey>) : WeightDashboardIntent
   data class SetSelectedStat(val stat: Stat?) : WeightDashboardIntent
   data class SetLatestWeight(val latestWeight: Double?) : WeightDashboardIntent
-  data class SetProgress(val progress: Progress) : WeightDashboardIntent
+  data class SetProgress(val progress: WeightProgress) : WeightDashboardIntent
   data class SetProgressUpdating(val isUpdating: Boolean) : WeightDashboardIntent
   data class SetIsEmpty(val isEmpty: Boolean) : WeightDashboardIntent
   data class SetDashboardType(val dashboardType: DashboardType) : WeightDashboardIntent
   data class SetGoal(val goal: Goal?) : WeightDashboardIntent
   data class SetWeightUnit(val weightUnit: WeightUnit) : WeightDashboardIntent
+  data class SetWeightless(val weightless: Weightless?) : WeightDashboardIntent
   data class SetSecondaryKey(val key: DashboardKey?) : WeightDashboardIntent
 
   // Weight-only action intents (side effects in VM)
@@ -101,6 +106,7 @@ class WeightDashboardReducer : BaseGraphReducer<WeightDashboardState>(), IReduce
       is WeightDashboardIntent.SetDashboardType -> state.copy(dashboardType = intent.dashboardType)
       is WeightDashboardIntent.SetGoal -> state.copy(goal = intent.goal)
       is WeightDashboardIntent.SetWeightUnit -> state.copy(weightUnit = intent.weightUnit)
+      is WeightDashboardIntent.SetWeightless -> state.copy(weightless = intent.weightless)
       is WeightDashboardIntent.SetSecondaryKey -> state.copy(secondaryKey = intent.key)
       // Action intents — no state change
       is WeightDashboardIntent.Refresh -> state

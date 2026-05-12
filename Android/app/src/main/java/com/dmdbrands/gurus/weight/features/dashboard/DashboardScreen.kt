@@ -41,6 +41,7 @@ import com.dmdbrands.gurus.weight.features.dashboard.components.BpDashboardConte
 import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardChartHeader
 import com.dmdbrands.gurus.weight.features.dashboard.components.WeightDashboardContent
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
@@ -159,7 +160,7 @@ fun DashboardScreen() {
             )
           },
         ) { s ->
-          BpDashboardContent(segmentState = s.forSegment(s.selectedSegment), state = s)
+          BpDashboardContent(state = s)
         }
       }
 
@@ -175,18 +176,21 @@ fun DashboardScreen() {
           hasPercentile = true,
           chartFillsHeight = true,
           onRefresh = { vm.handleIntent(BabyDashboardIntent.Refresh) },
-          onMetricSelect = { vm.handleIntent(BabyDashboardIntent.SetSelectedMetric(it)) },
           createFallbackEntry = { ts, yValues, seg ->
             val y = yValues.firstOrNull() ?: return@DashboardPage null
             val period = java.time.Instant.ofEpochMilli(ts).atZone(java.time.ZoneId.systemDefault()).let { dt ->
               if (seg == GraphSegment.WEEK || seg == GraphSegment.MONTH) dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
               else dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
             }
+            // Chart plots ONE metric at a time (weight in lbs OR height in inches).
+            // Convert the interpolated Y back to storage units for PeriodBabySummary.
+            val isWeight = state.selectedMetric == BabyMetric.WEIGHT
             PeriodBabySummary(
               period = period,
               entryTimestamp = DateTimeConverter.timestampToIso(ts),
-              avgWeightDecigrams = (y * 10.0).toInt(),
-              avgLengthMillimeters = yValues.getOrNull(1)?.let { (it * 25.4).toInt() },
+              babyId = babyProduct.profile.id,
+              avgWeightDecigrams = if (isWeight) ConversionTools.convertLbToDecigrams(y) else null,
+              avgLengthMillimeters = if (!isWeight) ConversionTools.convertInchesToMm(y) else null,
             )
           },
         ) { _ -> }
@@ -208,7 +212,6 @@ private fun <S : BaseDashboardState> DashboardPage(
   hasPercentile: Boolean = false,
   chartFillsHeight: Boolean = false,
   onRefresh: () -> Unit,
-  onMetricSelect: ((BabyMetric) -> Unit)? = null,
   createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   belowChart: @Composable (S) -> Unit,
 ) {
@@ -244,7 +247,7 @@ private fun <S : BaseDashboardState> DashboardPage(
         chartFillsHeight = chartFillsHeight,
         handleGraphIntent = vm::handleIntent,
         createFallbackEntry = createFallbackEntry,
-        header = { segment -> DashboardChartHeader(state = state, segment = segment, product = product, onMetricSelect = onMetricSelect) },
+        header = { segment -> DashboardChartHeader(state = state, segment = segment, product = product, handleIntent = vm::handleIntent) },
         onSegmentChange = {
           val currentSegmentState = state.forSegment(state.selectedSegment)
           val anchorTimeStamp = if (currentSegmentState.visibleMin != null && currentSegmentState.visibleMax != null) {

@@ -4,23 +4,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -32,15 +23,15 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import com.dmdbrands.gurus.weight.theme.MeTheme.typography
-import kotlinx.coroutines.launch
 
 private val BabyPurple = Color(0xFF8841A4)
 
 /**
  * Bottom sheet showing available product selections.
  * Each item is a [ProductSelection] — MyWeight, BloodPressure, or Baby(profile).
+ *
+ * Built on top of [AppBottomSheet] which provides the shared header/drag-handle pattern.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductSelectionBottomSheet(
     title: String,
@@ -49,62 +40,25 @@ fun ProductSelectionBottomSheet(
     onSelect: (ProductSelection) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val scope = rememberCoroutineScope()
-
-    ModalBottomSheet(
-        sheetState = sheetState,
-        modifier = Modifier
-          .systemBarsPadding()
-          .navigationBarsPadding(),
-        onDismissRequest = onDismiss,
-        containerColor = colorScheme.primaryBackground,
-        scrimColor = colorScheme.overlay,
+    AppBottomSheet(
+        title = title,
+        onDismiss = onDismiss,
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Title bar with close button
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = spacing.md),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                AppIconButton(AppIcons.Default.Close) {
-                    scope.launch {
-                        sheetState.hide()
-                        onDismiss()
-                    }
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    text = title,
-                    style = typography.heading5,
-                    color = colorScheme.textHeading,
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                Spacer(modifier = Modifier.size(48.dp))
-            }
+        Spacer(modifier = Modifier.height(spacing.sm))
 
-            Spacer(modifier = Modifier.height(spacing.sm))
-
-            // Product rows — each availableProduct is one row
-            availableProducts.forEach { product ->
-                ProductRow(
-                    label = product.displayName(),
-                    color = product.displayColor(),
-                    isSelected = product == selectedProduct,
-                    onClick = {
-                        onSelect(product)
-                        scope.launch {
-                            sheetState.hide()
-                            onDismiss()
-                        }
-                    },
-                )
-            }
-
-            Spacer(modifier = Modifier.height(spacing.lg))
+        availableProducts.forEach { product ->
+            ProductRow(
+                label = product.displayName(),
+                color = product.displayColor(),
+                isSelected = product == selectedProduct,
+                onClick = {
+                    onSelect(product)
+                    onDismiss()
+                },
+            )
         }
+
+        Spacer(modifier = Modifier.height(spacing.lg))
     }
 }
 

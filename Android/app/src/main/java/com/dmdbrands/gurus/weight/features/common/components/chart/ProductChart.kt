@@ -4,6 +4,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.bottomAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.endAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.startAxis
@@ -15,12 +16,14 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.visibleLabelsCount
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardState
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.FadingEdges
 import com.patrykandpatrick.vico.compose.cartesian.axis.Axis
 import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianLayerRangeProvider
 import com.patrykandpatrick.vico.compose.cartesian.data.rememberScrollAwareRangeProvider
+import com.patrykandpatrick.vico.compose.common.data.ExtraStore
 import com.patrykandpatrick.vico.compose.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
@@ -49,6 +52,7 @@ fun rememberProductChart(
   horizontalItemPlacer: HorizontalAxis.ItemPlacer,
   fadingEdges: FadingEdges? = null,
   scrubController: ScrubMarkerController? = null,
+  onYRangeSettled: (Double, Double) -> Unit = { _, _ -> },
 ): CartesianChart {
   // ── Separators (shared) ──
   val separators = GraphUtil.periodStarts(
@@ -78,9 +82,13 @@ fun rememberProductChart(
   }
 
   // ── Y-range provider (config-driven) ──
+  // seedMinY/seedMaxY are pre-computed in the respective ViewModel (updateSegmentRanges)
+  // so the correct range is available on frame-0 for both first load and segment switches.
   val scrollAwareRange = rememberScrollAwareRangeProvider(
     minX = segmentState.chartMinX ?: Double.NaN,
     maxX = segmentState.chartMaxX ?: Double.NaN,
+    seedMinY = segmentState.seedMinY ?: Double.NaN,
+    seedMaxY = segmentState.seedMaxY ?: Double.NaN,
   ) { visibleSeriesEntries, visibleXRange ->
     // Extract Y values: all series (BP), first series only (weight/baby)
     val yValues = if (config.useAllSeriesForYRange) {
@@ -103,7 +111,8 @@ fun rememberProductChart(
     val rangeMaxY = axisMeta.max
     val step = axisMeta.step
 
-    // Y range managed by ScrollAwareRangeProvider — no VM intent needed
+    onYRangeSettled(rangeMinY, rangeMaxY)
+
     val ticks = mutableListOf<Double>()
     var tick = rangeMinY
     while (tick <= rangeMaxY + step * 0.01) {
@@ -148,18 +157,26 @@ fun rememberProductChart(
         pointProvider = null,
       )
     }
-    val percentileRangeProvider = remember(segmentState.chartMinX, segmentState.chartMaxX) {
-      CartesianLayerRangeProvider.fixed(
-        minX = segmentState.chartMinX ?: Double.NaN,
-        maxX = segmentState.chartMaxX ?: Double.NaN,
-      )
+    val percentileRangeProvider = remember {
+      object : CartesianLayerRangeProvider {
+        override fun getMinX(minX: Double, maxX: Double, extraStore: ExtraStore) =
+          scrollAwareRange.xRangeMin.takeIf { !it.isNaN() } ?: minX
+        override fun getMaxX(minX: Double, maxX: Double, extraStore: ExtraStore) =
+          scrollAwareRange.xRangeMax.takeIf { !it.isNaN() } ?: maxX
+        override fun getMinY(minY: Double, maxY: Double, extraStore: ExtraStore) =
+          scrollAwareRange.getMinY(minY, maxY, extraStore)
+        override fun getMaxY(minY: Double, maxY: Double, extraStore: ExtraStore) =
+          scrollAwareRange.getMaxY(minY, maxY, extraStore)
+      }
     }
+    // Percentile bands share the primary Y range via percentileRangeProvider;
+    // alwaysUseLiveRange is intentionally omitted — setting it true would bypass
+    // the range provider and cause a frame-0 Y-axis flash on the baby chart.
     rememberLineCartesianLayer(
       lineProvider = remember(bandLines) { LineCartesianLayer.LineProvider.series(bandLines) },
       verticalAxisPosition = Axis.Position.Vertical.End,
       rangeProvider = percentileRangeProvider,
       markerTargetsEnabled = false,
-      alwaysUseLiveRange = true,
     )
   } else null
 
@@ -167,9 +184,15 @@ fun rememberProductChart(
   val layers = if (percentileLayer != null) {
     arrayOf(percentileLayer, primaryLayer)
   } else if (config.hasSecondaryLayer && config.secondaryLineColor != null) {
+    val secondaryRangeProvider = remember(segmentState.chartMinX, segmentState.chartMaxX) {
+      CartesianLayerRangeProvider.fixed(
+        minX = segmentState.chartMinX ?: Double.NaN,
+        maxX = segmentState.chartMaxX ?: Double.NaN,
+      )
+    }
     val secLayer = secondaryLayer(
       segment = segment,
-      rangeProvider = scrollAwareRange,
+      rangeProvider = secondaryRangeProvider,
       yTransform = { series, yRange, visibleXRange ->
         GraphUtil.normalizeYValues(
           series = series,
@@ -185,9 +208,19 @@ fun rememberProductChart(
     arrayOf(primaryLayer)
   }
 
+  // ── Unit + weightless for display-time conversion ──
+  val weightUnit = (graphState as? WeightDashboardState)?.weightUnit
+  val weightless = (graphState as? WeightDashboardState)?.weightless
+  val weightlessOffset = if (weightless?.isWeightlessOn == true) weightless.weightlessWeight.toDouble() else 0.0
+
   // ── Goal marker (config-driven) ──
   val goalMarker = if (config.goalWeight != null) {
-    rememberGoalMarker(goal = config.goal, isWeightlessOn = config.isWeightlessMode)
+    rememberGoalMarker(
+      goal = config.goal,
+      isWeightlessOn = config.isWeightlessMode,
+      weightUnit = weightUnit ?: WeightUnit.LB,
+      weightlessOffset = weightlessOffset,
+    )
   } else null
 
   // ── Build chart ──
@@ -199,6 +232,8 @@ fun rememberProductChart(
       isEmptyGraph = segmentState.isEmptyGraph,
       markerDecoration = goalMarker,
       ticksProvider = { scrollAwareRange.currentTicks },
+      weightUnit = weightUnit,
+      weightlessOffset = weightlessOffset,
     ),
     bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer),
     marker = defaultMarker,

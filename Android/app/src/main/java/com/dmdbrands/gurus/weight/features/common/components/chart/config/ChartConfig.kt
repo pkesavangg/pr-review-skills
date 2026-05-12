@@ -60,6 +60,7 @@ fun rememberChartConfig(
         lines = listOf(LineSpec(color = SnapshotColors.Baby)),
         hasPercentileLayer = hasPercentile,
         percentileBandColor = SnapshotColors.PercentileBand,
+        // Baby avgWeightDecigrams is raw storage (not display units) — skip pre-warming.
       )
     }
   }

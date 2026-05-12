@@ -15,6 +15,9 @@ import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
+import com.dmdbrands.gurus.weight.domain.model.common.GraphData
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.SeriesData
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toGraphPoints
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
@@ -42,6 +45,7 @@ class WeightDashboardViewModel @Inject constructor(
   private val dashboardService: IDashboardService,
   private val goalService: IGoalService,
   private val healthConnectService: IHealthConnectService,
+  private val entryReadService: IEntryReadService,
 ) : BaseDashboardViewModel<WeightDashboardState, BaseGraphIntent>(
   reducer = WeightDashboardReducer(),
 ), DefaultLifecycleObserver {
@@ -75,6 +79,7 @@ class WeightDashboardViewModel @Inject constructor(
   init {
     initLoadData()
     subscribeWeightUnit()
+    subscribeWeightless()
     subscribeGoal()
   }
 
@@ -100,20 +105,42 @@ class WeightDashboardViewModel @Inject constructor(
 
   private fun startGraphSubscriptions() {
     viewModelScope.launch {
-      entryService.daywiseBodyScaleAverages.collect { entries ->
-        latestDailyData = entries
-        val series = toWeightSeries(entries)
-        updateSegmentRanges(entries, listOf(GraphSegment.WEEK, GraphSegment.MONTH))
-        pushWeightProducer(_state.value.dailyProducer, series)
-      }
+      entryReadService.getDailyGraphData(ProductSelection.MyWeight)
+        .map { (it as? GraphData.Weight)?.data ?: emptyList() }
+        .collect { entries ->
+          latestDailyData = entries
+          val series = toWeightSeries(entries)
+          updateSegmentRanges(
+            entries = entries,
+            segments = listOf(GraphSegment.WEEK, GraphSegment.MONTH),
+            goalWeight = _state.value.goal?.goalWeight ?: 0.0,
+            isWeightlessMode = _state.value.weightless?.isWeightlessOn == true,
+          ) { data ->
+            data.filterIsInstance<PeriodBodyScaleSummary>()
+              .map { it.weight }
+              .filter { it.isFinite() && it > 0.0 }
+          }
+          pushWeightProducer(_state.value.dailyProducer, series)
+        }
     }
     viewModelScope.launch {
-      entryService.monthlyBodyScaleAverages.collect { entries ->
-        latestMonthlyData = entries
-        val series = toWeightSeries(entries)
-        updateSegmentRanges(entries, listOf(GraphSegment.YEAR, GraphSegment.TOTAL))
-        pushWeightProducer(_state.value.monthlyProducer, series)
-      }
+      entryReadService.getMonthlyGraphData(ProductSelection.MyWeight)
+        .map { (it as? GraphData.Weight)?.data ?: emptyList() }
+        .collect { entries ->
+          latestMonthlyData = entries
+          val series = toWeightSeries(entries)
+          updateSegmentRanges(
+            entries = entries,
+            segments = listOf(GraphSegment.YEAR, GraphSegment.TOTAL),
+            goalWeight = _state.value.goal?.goalWeight ?: 0.0,
+            isWeightlessMode = _state.value.weightless?.isWeightlessOn == true,
+          ) { data ->
+            data.filterIsInstance<PeriodBodyScaleSummary>()
+              .map { it.weight }
+              .filter { it.isFinite() && it > 0.0 }
+          }
+          pushWeightProducer(_state.value.monthlyProducer, series)
+        }
     }
   }
 
@@ -202,16 +229,38 @@ class WeightDashboardViewModel @Inject constructor(
     }
   }
 
+  private fun subscribeWeightless() {
+    viewModelScope.launch {
+      accountService.activeAccountFlow
+        .map { it?.toWeightless() }
+        .distinctUntilChanged()
+        .collect { weightless ->
+          handleIntent(WeightDashboardIntent.SetWeightless(weightless))
+        }
+    }
+  }
+
   private fun subscribeGoal() {
     viewModelScope.launch {
-      goalService.getCurrentGoal().collect { goal ->
+      // goalService flow is used only as a change signal — the emitted value
+      // is intentionally dropped. The authoritative goal data lives on the
+      // Account entity, so we rebuild it via activeAccount.toGoal() INSIDE the
+      // collect block. This ensures we read the latest account state after
+      // goalService emits (account may have been updated by the same write that
+      // triggered the goal flow).
+      goalService.getCurrentGoal().collect { _ ->
         val currentAccount = accountService.activeAccount.value
-        val processedGoal = currentAccount?.toGoal()?.let { g ->
-          val weightUnit = currentAccount.weightUnit
-          val weightless = currentAccount.toWeightless()
-          g.process(weightUnit, weightless)
-        }
-        handleIntent(WeightDashboardIntent.SetGoal(processedGoal))
+        val rawGoal = currentAccount?.toGoal()
+        // goalWeight is stored in decigrams (Int). Dividing by 10.0 gives
+        // display-lb with 0.1 precision. This display-lb value is never written
+        // back to storage — it only flows to the chart/header for rendering.
+        // Goal edits go through GoalService which operates on the decigram form
+        // directly.
+        val displayGoal = rawGoal?.copy(
+          goalWeight = rawGoal.goalWeight / 10.0,
+          initialWeight = rawGoal.initialWeight / 10.0,
+        )
+        handleIntent(WeightDashboardIntent.SetGoal(displayGoal))
       }
     }
   }
@@ -238,7 +287,7 @@ class WeightDashboardViewModel @Inject constructor(
 
   private fun subscribeProgress() {
     viewModelScope.launch {
-      entryService.progress.collect { handleIntent(WeightDashboardIntent.SetProgress(it)) }
+      entryReadService.weightProgress().collect { handleIntent(WeightDashboardIntent.SetProgress(it)) }
     }
   }
 
@@ -250,7 +299,7 @@ class WeightDashboardViewModel @Inject constructor(
 
   private fun subscribeLatestWeight() {
     viewModelScope.launch {
-      entryService.latestEntry.collect { latestEntry ->
+      entryReadService.latestEntry().collect { latestEntry ->
         val latestWeight = when (latestEntry) {
           is ScaleEntry -> latestEntry.scale.scaleEntry.weight
           else -> null
@@ -262,7 +311,7 @@ class WeightDashboardViewModel @Inject constructor(
 
   private fun subscribeIsEmpty() {
     viewModelScope.launch {
-      entryService.isEmpty.collect { handleIntent(WeightDashboardIntent.SetIsEmpty(it)) }
+      entryReadService.isWeightEmpty().collect { handleIntent(WeightDashboardIntent.SetIsEmpty(it)) }
     }
   }
 

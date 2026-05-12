@@ -166,7 +166,7 @@ class DebugMenuViewModel @Inject constructor(
                     // Send logs using LogManager (now account-specific)
                     logManager.sendLogs()
                     dialogQueueService.showToast(
-                        Toast(
+                        Toast.Simple(
                             message = DebugMenuStrings.Success.LogSent,
                         ),
                     )
@@ -201,7 +201,7 @@ class DebugMenuViewModel @Inject constructor(
                     accountService.clearSyncTimestampForResync()
                     entryService.syncOperations()
                     dialogQueueService.showToast(
-                        Toast(
+                        Toast.Simple(
                             message = DebugMenuStrings.Success.Synced,
                         ),
                     )
@@ -257,7 +257,7 @@ class DebugMenuViewModel @Inject constructor(
                     try {
                         val broadcastId = singularScale?.getBroadcastIdString() ?: return@launch
                         exportService.sendScaleLog(broadcastId)
-                        dialogQueueService.showToast(Toast(message = DebugMenuStrings.Success.LogSent))
+                        dialogQueueService.showToast(Toast.Simple(message = DebugMenuStrings.Success.LogSent))
                         AppLog.i(tag, "Scale logs sent for singular scale")
                     } catch (e: Exception) {
                         AppLog.e(tag, "Failed to send scale logs", e)
@@ -299,7 +299,7 @@ class DebugMenuViewModel @Inject constructor(
             dialogQueueService.showLoader(message = DebugMenuStrings.Loading.SendScaleLogs)
             try {
                 exportService.sendScaleLog(device.getBroadcastIdString())
-                dialogQueueService.showToast(Toast(message = DebugMenuStrings.Success.LogSent))
+                dialogQueueService.showToast(Toast.Simple(message = DebugMenuStrings.Success.LogSent))
                 AppLog.i(tag, "Scale logs sent for scale from picker")
                 navigationService.navigateBack()
             } catch (e: Exception) {

@@ -2,7 +2,8 @@ package com.dmdbrands.gurus.weight.features.dashboard.viewmodel
 
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
-import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.domain.model.common.Streak
+import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
@@ -31,7 +32,7 @@ class DashboardReducerTest {
         private const val TEST_ANCHOR_TIMESTAMP = 1700000000L
     }
 
-    private val fakeProgress = Progress(currentStreak = 5, longestStreak = 10, count = 42)
+    private val fakeProgress = WeightProgress(streak = Streak(current = 5, longest = 10), count = 42)
     private val fakeStat: Stat = mockk(relaxed = true)
     private val fakeWeightless = Weightless(isWeightlessOn = true, weightlessWeight = 5.0f)
     private val fakeSummaryA: PeriodBodyScaleSummary = mockk(relaxed = true)
@@ -54,7 +55,7 @@ class DashboardReducerTest {
         assertThat(state.visibleKeys).isEmpty()
         assertThat(state.data).isEmpty()
         assertThat(state.latestWeight).isNull()
-        assertThat(state.progress).isEqualTo(Progress())
+        assertThat(state.progress).isEqualTo(WeightProgress())
         assertThat(state.isProgressUpdating).isFalse()
         assertThat(state.selectedSegment).isEqualTo(GraphSegment.WEEK)
         assertThat(state.selectedStat).isNull()

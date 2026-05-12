@@ -292,7 +292,7 @@ constructor(
       } catch (e: Exception) {
         AppLog.e(TAG, "Error handling new entry: ${e.message}", e)
         dialogQueueService.showToast(
-          Toast(message = "Failed to process AppSync data: ${e.message}"),
+          Toast.Simple(message = "Failed to process AppSync data: ${e.message}"),
         )
       }
     }
@@ -374,7 +374,7 @@ constructor(
           }
           // Show success toast
           dialogQueueService.showToast(
-            Toast(message = "Body metrics enabled successfully!"),
+            Toast.Simple(message = "Body metrics enabled successfully!"),
           )
         }
 
@@ -382,7 +382,7 @@ constructor(
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to enable weight-only mode", e)
         dialogQueueService.showToast(
-          Toast(message = "Failed to update scale settings"),
+          Toast.Simple(message = "Failed to update scale settings"),
         )
       }
       finally {
