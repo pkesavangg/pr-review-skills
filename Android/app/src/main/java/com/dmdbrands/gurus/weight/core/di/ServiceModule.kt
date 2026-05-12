@@ -416,8 +416,9 @@ object ServiceModule {
       dialogQueueService: IDialogQueueService,
       appNavigationService: IAppNavigationService,
       selectedFeedItemHolder: SelectedFeedItemHolder,
+      userDataStore: com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore,
       @ApplicationContext context: Context
-    ): IFeedService = FeedService(feedRepository, accountService, ggIAMService, connectivityObserver, dialogQueueService, appNavigationService, selectedFeedItemHolder, context)
+    ): IFeedService = FeedService(feedRepository, accountService, ggIAMService, connectivityObserver, dialogQueueService, appNavigationService, selectedFeedItemHolder, userDataStore, context)
 
     /**
      * Provides the device service implementation.

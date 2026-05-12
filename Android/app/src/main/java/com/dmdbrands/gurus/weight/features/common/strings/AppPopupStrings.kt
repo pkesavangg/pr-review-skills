@@ -48,6 +48,13 @@ object AppPopupStrings {
     const val CloseContentDescription = "Close"
   }
 
+  object GraphScrollHint {
+    const val Header = "NEW: Scrollable Graph"
+    const val Message = "Swipe left or right on the graph to view more growth data over time."
+    const val ConfirmButton = "GOT IT"
+    const val CloseContentDescription = "Close"
+  }
+
   object ModelNumberHelpPopup {
     const val Title = "Where to find your model number"
     const val Message =

@@ -53,4 +53,11 @@ interface IFeedService {
     suspend fun checkAndTriggerFeedModal(): Boolean
 
     fun showIAMFeedModal(feedItem: FeedItem)
+
+    /**
+     * Shows the one-time educational "graph is scrollable" modal for the active account
+     * if it has not been shown before. No-op otherwise. Persists the per-account flag
+     * once the user dismisses the modal.
+     */
+    suspend fun checkAndTriggerGraphScrollHint()
 }

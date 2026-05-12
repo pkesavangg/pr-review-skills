@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.core.service
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.feed.FeedItem
 import com.dmdbrands.gurus.weight.domain.repository.FeedAction
@@ -42,13 +43,22 @@ class FeedService @Inject constructor(
   dialogQueueService: IDialogQueueService,
   appNavigationService: IAppNavigationService,
   private val selectedFeedItemHolder: SelectedFeedItemHolder,
+  private val userDataStore: UserDataStore,
   @ApplicationContext private val context: Context
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService),
   IFeedService {
 
+  @Volatile
+  private var graphScrollHintShownThisSession: Boolean = false
+
   private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
   private val TAG = "FeedService"
+
+  private companion object {
+    const val GRAPH_SCROLL_HINT_PRIORITY = 5
+    const val GRAPH_SCROLL_HINT_DELAY_MS = 1_500L
+  }
 
   private val _feedsChanged = MutableSharedFlow<List<FeedItem>>()
   override val feedsChanged: Flow<List<FeedItem>> = _feedsChanged.asSharedFlow()
@@ -253,6 +263,39 @@ class FeedService @Inject constructor(
     } catch (e: Exception) {
       AppLog.e(TAG, "Failed to check feed modal trigger", e.toString())
       false
+    }
+  }
+
+  override suspend fun checkAndTriggerGraphScrollHint() {
+    try {
+      if (graphScrollHintShownThisSession) return
+      val accountId = accountService.getCurrentAccount()?.id ?: return
+      if (userDataStore.hasShownGraphScrollHintForAccount(accountId)) return
+
+      graphScrollHintShownThisSession = true
+      val dialog = DialogModel.Custom(
+        contentKey = DialogType.GraphScrollHintModal,
+        params = emptyMap(),
+        // Lower priority (higher number) than IAM feed modal so it queues behind it.
+        customPriority = GRAPH_SCROLL_HINT_PRIORITY,
+        // Small gap after any preceding login-time modal settles before this one appears.
+        customDelayMillis = GRAPH_SCROLL_HINT_DELAY_MS,
+        dismissOnBackPress = true,
+        dismissOnClickOutside = true,
+        onDismiss = {
+          serviceScope.launch {
+            try {
+              userDataStore.setGraphScrollHintShownForAccount(accountId, true)
+            } catch (e: Exception) {
+              AppLog.e(TAG, "Failed to persist graph scroll hint flag", e.toString())
+            }
+          }
+        },
+      )
+      dialogQueueService.showDialog(dialog)
+      AppLog.d(TAG, "Queued graph scroll hint modal for account $accountId")
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Failed to check graph scroll hint trigger", e.toString())
     }
   }
 

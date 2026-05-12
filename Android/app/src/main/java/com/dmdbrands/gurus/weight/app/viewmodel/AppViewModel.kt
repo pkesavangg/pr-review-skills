@@ -396,6 +396,7 @@ constructor(
         feedService.fetchFeedItems()
         initialiseIAMDialogListener()
         feedService.checkAndTriggerFeedModal()
+        feedService.checkAndTriggerGraphScrollHint()
         updateUnRead()
       } catch (e: Exception) {
         AppLog.e(TAG, "startObserversOnly failed", e)
