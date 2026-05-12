@@ -931,12 +931,7 @@ class DashboardStore: ObservableObject {
 
         // If a point is selected, override period label granularity
         if graph.selectedXValue != nil {
-            switch graph.selectedPeriod {
-            case .week, .month:
-                return "day average"
-            case .year, .total:
-                return "month average"
-            }
+            return selectionPrefix(for: graph.selectedPeriod)
         }
         return goalManager.getWeightDisplayLabel(for: graph.selectedPeriod)
     }
@@ -2962,10 +2957,16 @@ class DashboardStore: ObservableObject {
         let period = graph.selectedPeriod
 
         if let entryDate = entryDate {
-            let prefix = isFromHistory ? "Measurement taken" : "day average"
-            // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call
-            let format = isFromHistory ? "MMMM d, yyyy" : "MMM d, yyyy"
-            let dateText = DateTimeTools.formatter(format).string(from: entryDate)
+            let prefix = isFromHistory ? "Measurement taken" : selectionPrefix(for: period)
+            // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call.
+            // History entries always show a specific day; otherwise, format granularity follows the
+            // selected period — month-granularity for year/total (avoids "Feb 1, 2025" for a monthly point).
+            let dateText: String
+            if isFromHistory {
+                dateText = DateTimeTools.formatter("MMMM d, yyyy").string(from: entryDate)
+            } else {
+                dateText = formatMetricInfoSingleDate(entryDate, period: period)
+            }
             return isFromHistory ? "\(prefix) \(dateText)" : composeMetricInfoLabel(prefix: prefix, dateText: dateText)
         }
 
@@ -3013,7 +3014,7 @@ class DashboardStore: ObservableObject {
 
     private func selectionPrefix(for period: TimePeriod) -> String {
         switch period {
-        case .week, .month: return "day average"
+        case .week, .month: return "latest entry"
         case .year, .total: return "month average"
         }
     }
