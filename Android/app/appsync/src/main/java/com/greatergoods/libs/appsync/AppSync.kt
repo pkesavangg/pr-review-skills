@@ -3,7 +3,6 @@ package com.greatergoods.libs.appsync
 import com.greatergoods.libs.appsync.AppSyncResultHolder.result
 import com.greatergoods.libs.appsync.activity.AppSyncScanActivity
 import com.greatergoods.libs.appsync.model.AppSyncResult
-import com.greatergoods.libs.appsync.utility.AppSyncResultFactory
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import android.app.Activity
@@ -68,6 +67,7 @@ suspend fun startAppSyncScan(
   suspendCancellableCoroutine { cont ->
     // Clear any previous result to ensure we get a fresh result
     AppSyncResultHolder.result = null
+    AppSyncLogger.i("AppSyncScan", "Scan started (zoom=$zoom, showManualEntry=$showManualEntryButton)")
 
     // Launch the scan activity
     val activity = context as? Activity ?: error("Context must be an Activity")
@@ -87,12 +87,14 @@ suspend fun startAppSyncScan(
           val result = AppSyncResultHolder.result
           if (result != null) {
             // Result is available, resume the coroutine with the result
+            AppSyncLogger.i("AppSyncScan", "Scan finished with result")
             cont.resume(result)
           } else if (!activity.isFinishing) {
             // Result not yet available and activity is still running, continue polling
             activity.window.decorView.postDelayed(this, 100)
           } else {
             // Activity finished without a result (back button pressed), call onBack callback
+            AppSyncLogger.w("AppSyncScan", "Activity finished without a result — invoking onBack")
             onBack() // The callback will handle result creation and intent calling
             // Check if result was set by the callback
             val result = AppSyncResultHolder.result

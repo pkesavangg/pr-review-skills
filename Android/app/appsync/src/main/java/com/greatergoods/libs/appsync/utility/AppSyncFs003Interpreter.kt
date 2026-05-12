@@ -1,9 +1,9 @@
 package com.greatergoods.libs.appsync.utility
 
+import com.greatergoods.libs.appsync.AppSyncLogger
 import com.greatergoods.libs.appsync.config.AppSyncConstants
 import com.greatergoods.libs.appsync.model.AppSyncResult
 import com.greatergoods.libs.appsync.strings.AppSyncStrings
-import android.util.Log
 
 /**
  * Interpreter for FS003 protocol data from smart scales.
@@ -48,7 +48,7 @@ object AppSyncFs003Interpreter {
   fun interpret(bits: IntArray, currentZoom: Int = AppSyncConstants.DEFAULT_ZOOM): AppSyncResult? {
     // Validate input
     if (bits.isEmpty()) {
-      Log.w(TAG, AppSyncStrings.EmptyBitArrayReceived)
+      AppSyncLogger.w(TAG, AppSyncStrings.EmptyBitArrayReceived)
       return null
     }
 
@@ -58,7 +58,7 @@ object AppSyncFs003Interpreter {
 
     // Validate the extracted measurements
     if (isInvalidScan(measurements)) {
-      Log.w(TAG, AppSyncStrings.InvalidScanDetected)
+      AppSyncLogger.w(TAG, AppSyncStrings.InvalidScanDetected)
       return null
     }
 
