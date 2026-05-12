@@ -8,7 +8,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import kotlinx.coroutines.flow.collectLatest
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
-import com.dmdbrands.gurus.weight.domain.services.IHistoryService
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import kotlinx.coroutines.Job
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
@@ -23,7 +23,7 @@ class HistoryViewModel
 constructor(
   private val entryService: IEntryService,
   private val exportService: IExportService,
-  private val historyService: IHistoryService,
+  private val entryReadService: IEntryReadService,
 ) : BaseIntentViewModel<HistoryState, HistoryIntent>(
   HistoryReducer(),
 ) {
@@ -76,7 +76,7 @@ constructor(
   }
 
   private fun loadAllHistory(availableProducts: List<ProductSelection>) {
-    if (historyService.accountId == null) return
+    if (entryReadService.accountId == null) return
 
     // Cancel previous collectors
     historyJobs.forEach { it.cancel() }
@@ -86,7 +86,7 @@ constructor(
     availableProducts.forEach { product ->
       historyJobs += viewModelScope.launch {
         AppLog.d(TAG, "Loading history for ${product.productType}")
-        historyService.getGroupedHistory(product).collect { grouped ->
+        entryReadService.getGroupedHistory(product).collect { grouped ->
           when (grouped) {
             is GroupedHistory.Weight -> handleIntent(HistoryIntent.SetHistoryItems(grouped.months))
             is GroupedHistory.BloodPressure -> handleIntent(HistoryIntent.SetBpHistoryItems(grouped.months))

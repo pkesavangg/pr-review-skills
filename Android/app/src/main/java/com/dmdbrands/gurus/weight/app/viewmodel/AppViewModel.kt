@@ -31,6 +31,7 @@ import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BabyScaleSetupStep
@@ -43,9 +44,15 @@ import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0412
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
 import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
+import com.dmdbrands.gurus.weight.features.common.components.DialogType
+import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.common.model.ReadingToast
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toBpmEntry
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
@@ -87,6 +94,7 @@ class AppViewModel
 constructor(
   private val appRepository: IAppRepository,
   private val entryService: IEntryService,
+  private val entryReadService: IEntryReadService,
   private val logManager: LogManager,
   private val appNavigationService: IAppNavigationService,
   private val tokenManager: ITokenManager,
@@ -337,7 +345,7 @@ constructor(
             if (authState.showToast) {
               val accountName = authState.account.firstName
               dialogQueueService.showToast(
-                Toast(
+                Toast.Simple(
                   title = null,
                   message = ToastStrings.Success.AccountSwitchSuccess.Message(
                     accountName,
@@ -385,7 +393,7 @@ constructor(
 
           NotificationEventType.NOTIFICATION_RECEIVED -> {
             entryService.syncOperations()
-            dialogQueueService.showToast(Toast(message = "Success! Entry added"))
+            dialogQueueService.showToast(Toast.Simple(message = "Success! Entry added"))
           }
 
           else -> {}
@@ -882,20 +890,104 @@ constructor(
         }
       }
 
-      try {
-        entryService.addEntry(entry)
-        if (!isSetupInProgress) {
-          dialogQueueService.showToast(
-            Toast(
-              message = "entry saved successfully",
-            ),
-          )
+      if (isSetupInProgress) {
+        // During setup, save immediately without toast
+        try {
+          entryService.addEntry(entry)
+          checkAccountFlags("entry")
+        } catch (e: Exception) {
+          AppLog.e(TAG, "Error during saving entry", e)
         }
-        // Check for account flags after entry is saved
-        checkAccountFlags("entry")
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error during saving entry", e)
+      } else {
+        // Show reading toast — user decides to save or discard
+        val readingType = device?.sku?.let { sku ->
+          when {
+            DeviceHelper.isBabyScale(sku) -> ProductType.BABY
+            DeviceHelper.isBpmDevice(sku) -> ProductType.BLOOD_PRESSURE
+            else -> ProductType.MY_WEIGHT
+          }
+        } ?: ProductType.MY_WEIGHT
+
+        val firstEntry = entry.firstOrNull() ?: return@launch
+        val reading = formatReadingForDisplay(firstEntry, readingType)
+
+        dialogQueueService.showToast(
+          Toast.Custom(
+            ReadingToast(
+              reading = reading,
+              type = readingType,
+              timestamp = "Just now",
+              primaryAction = {
+                if (readingType == ProductType.BABY) {
+                  showAssignMeasurementDialog(reading, entry)
+                } else {
+                  viewModelScope.launch {
+                    try {
+                      entryService.addEntry(entry)
+                      checkAccountFlags("entry")
+                      AppLog.i(TAG, "Entry saved via reading toast")
+                    } catch (e: Exception) {
+                      AppLog.e(TAG, "Error saving entry from toast", e)
+                    }
+                  }
+                }
+              },
+              secondaryAction = {
+                AppLog.i(TAG, "Entry discarded via reading toast")
+              },
+            ),
+          ),
+        )
       }
+    }
+  }
+
+  private fun showAssignMeasurementDialog(reading: String, entry: List<ScaleEntry>) {
+    val babies = productSelectionManager.availableProducts.value
+      .filterIsInstance<ProductSelection.Baby>()
+      .map { it.profile }
+    dialogQueueService.showDialog(
+      DialogModel.Custom(
+        contentKey = DialogType.AssignMeasurement,
+        params = mapOf(
+          "babies" to babies,
+          "reading" to reading,
+          "timestamp" to "Just now",
+        ),
+        onConfirm = { result ->
+          val babyId = result as? String ?: return@Custom
+          viewModelScope.launch {
+            try {
+              // TODO: Create BabyEntry with babyId and save
+              entryService.addEntry(entry)
+              checkAccountFlags("entry")
+              AppLog.i(TAG, "Baby entry assigned to $babyId")
+            } catch (e: Exception) {
+              AppLog.e(TAG, "Error saving baby entry", e)
+            }
+          }
+        },
+        dismissOnBackPress = true,
+        dismissOnClickOutside = true,
+      ),
+    )
+  }
+
+  private fun formatReadingForDisplay(entry: ScaleEntry, type: ProductType): String {
+    val weight = entry.scale.scaleEntry.weight
+    val unit = entry.entry.unit
+    return when (type) {
+      ProductType.BABY -> {
+        val totalOz = weight / 10.0 * 0.035274 * 16 // decigrams → oz approximation
+        val lbs = (totalOz / 16).toInt()
+        val oz = totalOz % 16
+        "$lbs ${unit.label} ${formatWeightValue(oz)} oz"
+      }
+      ProductType.BLOOD_PRESSURE -> {
+        // Weight field stores systolic for BPM protocol entries
+        "${formatWeightValue(weight)} ${unit.label}"
+      }
+      ProductType.MY_WEIGHT -> "${formatWeightValue(weight)} ${unit.label}"
     }
   }
 
@@ -957,7 +1049,10 @@ constructor(
         it?.toGGBTUserProfile()
       }.distinctUntilChanged().collect { ggBTUserProfile ->
         if (ggBTUserProfile != null) {
-          val currentWeight = when (val latestWeightEntry = entryService.latestEntry.value) {
+          // Cold Flow: creates a new Room observer each call. Acceptable here because
+          // .first() materialises a single value and disposes immediately; this path
+          // only runs when activeAccountFlow emits (account switch / login).
+          val currentWeight = when (val latestWeightEntry = entryReadService.latestEntry().first()) {
             is ScaleEntry -> latestWeightEntry.scale.scaleEntry.weight
             else -> ggBTUserProfile.weight // Fallback to initial weight
           }
@@ -1100,7 +1195,7 @@ constructor(
 
       is IAMDialogEvent.PromoCodeCopied -> {
         dialogQueueService.showToast(
-          Toast(
+          Toast.Simple(
             message = ToastStrings.Success.PromoCodeCopied.Message,
           ),
         )

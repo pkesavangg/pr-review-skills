@@ -12,26 +12,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.app.components.NavHost
 import com.dmdbrands.gurus.weight.app.string.AppString.SCALEDISCOVEREDTIMEOUT
 import com.dmdbrands.gurus.weight.app.viewmodel.AppIntent
 import com.dmdbrands.gurus.weight.app.viewmodel.AppViewModel
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.core.navigation.LocalDialogQueueService
+import com.dmdbrands.gurus.weight.core.navigation.LocalProductSelectionManager
 import com.dmdbrands.gurus.weight.features.common.components.DialogHost
 import com.dmdbrands.gurus.weight.features.common.components.ProductSelectionBottomSheet
 import com.dmdbrands.gurus.weight.features.common.components.ScaleDiscoveredModal
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.example.nav3integration.rememberTopLevelBackStack
-import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -50,7 +52,7 @@ fun MeApp() {
     rememberTopLevelBackStack(
       Pair(AppRoute.App, AppRoute.Init.Loading),
       AppRoute.Auth.Login(),
-      Pair(AppRoute.Home, AppRoute.Main.Dashboard),
+      Pair(AppRoute.Home, AppRoute.Main.DashboardSnapshot),
     )
 
   MeAppTheme(themeMode = uiState.themeMode) {
@@ -62,7 +64,11 @@ fun MeApp() {
           .imePadding(),
       color = colorScheme.primaryBackground,
     ) {
-      CompositionLocalProvider(LocalNavBackStack provides topLevelBackStack) {
+      CompositionLocalProvider(
+        LocalNavBackStack provides topLevelBackStack,
+        LocalProductSelectionManager provides appViewModel.productSelectionManager,
+        LocalDialogQueueService provides appViewModel.dialogQueueService,
+      ) {
         DialogHost()
         NavHost(topLevelBackStack, appViewModel)
       }
@@ -72,9 +78,9 @@ fun MeApp() {
     val showProductSheet by productManager.showSheet.collectAsStateWithLifecycle()
     val productSheetTitle by productManager.sheetTitle.collectAsStateWithLifecycle()
     val availableProducts by productManager.availableProducts
-        .collectAsStateWithLifecycle()
+      .collectAsStateWithLifecycle()
     val selectedProduct by productManager.selectedProduct
-        .collectAsStateWithLifecycle()
+      .collectAsStateWithLifecycle()
 
     if (showProductSheet) {
       ProductSelectionBottomSheet(

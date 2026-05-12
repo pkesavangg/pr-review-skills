@@ -377,9 +377,9 @@ class HealthConnectService @Inject constructor(
       }
       dialogQueueService.dismissLoader()
       if (!fromOutOfSync) {
-        dialogQueueService.showToast(Toast(HealthConnectStrings.ToastStrings.syncToast))
+        dialogQueueService.showToast(Toast.Simple(HealthConnectStrings.ToastStrings.syncToast))
       } else {
-        dialogQueueService.showToast(Toast(HealthConnectStrings.ToastStrings.syncHc))
+        dialogQueueService.showToast(Toast.Simple(HealthConnectStrings.ToastStrings.syncHc))
       }
       return true
     } catch (e: CancellationException) {
@@ -710,7 +710,7 @@ class HealthConnectService @Inject constructor(
         integrationRepository.updateLocalAccount()
       }
       _outOfSyncState.value = false
-      dialogQueueService.showToast(Toast(HealthConnectStrings.ToastStrings.removeHC))
+      dialogQueueService.showToast(Toast.Simple(HealthConnectStrings.ToastStrings.removeHC))
       true
     } catch (e: Exception) {
       AppLog.e(tag, "Failed to remove Health Connect integration", e)
@@ -924,7 +924,7 @@ class HealthConnectService @Inject constructor(
             syncAllData()
             dialogQueueService.dismissCurrent()
             dialogQueueService.dismissLoader()
-            dialogQueueService.showToast(Toast(HealthConnectStrings.ToastStrings.syncToast))
+            dialogQueueService.showToast(Toast.Simple(HealthConnectStrings.ToastStrings.syncToast))
           }
         },
         onCancel = {

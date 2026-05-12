@@ -5,7 +5,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.axis.Axis
@@ -28,12 +27,12 @@ internal fun rememberLineLayerWithConnection(
   lineColor: Color,
   verticalAxisPosition: Axis.Position.Vertical,
   rangeProvider: CartesianLayerRangeProvider = remember { CartesianLayerRangeProvider.auto() },
-  handleIntent: (GraphIntent) -> Unit,
   yTransform: ((
     series: List<com.patrykandpatrick.vico.compose.cartesian.data.LineCartesianLayerModel.Entry>,
     yRange: com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartRanges.YRange,
     visibleXRange: ClosedFloatingPointRange<Double>,
   ) -> DoubleArray?)? = null,
+  alwaysUseLiveRange: Boolean = false,
 ): LineCartesianLayer {
 
   val lineThickness = if (segment == GraphSegment.TOTAL) 2.dp else 3.dp
@@ -66,6 +65,7 @@ internal fun rememberLineLayerWithConnection(
     verticalAxisPosition = verticalAxisPosition,
     rangeProvider = rangeProvider,
     yTransform = yTransform,
+    alwaysUseLiveRange = alwaysUseLiveRange,
   )
 }
 
@@ -76,14 +76,12 @@ internal fun rememberLineLayerWithConnection(
 internal fun primaryLayer(
   segment: GraphSegment,
   rangeProvider: CartesianLayerRangeProvider = remember { CartesianLayerRangeProvider.auto() },
-  handleIntent: (GraphIntent) -> Unit
 ): LineCartesianLayer {
   return rememberLineLayerWithConnection(
     segment = segment,
     lineColor = MeTheme.colorScheme.primaryAction,
     verticalAxisPosition = Axis.Position.Vertical.End,
     rangeProvider = rangeProvider,
-    handleIntent = handleIntent,
   )
 }
 
@@ -95,7 +93,6 @@ internal fun primaryLayer(
 internal fun secondaryLayer(
   segment: GraphSegment,
   rangeProvider: CartesianLayerRangeProvider = remember { CartesianLayerRangeProvider.auto() },
-  handleIntent: (GraphIntent) -> Unit,
   yTransform: ((
     series: List<com.patrykandpatrick.vico.compose.cartesian.data.LineCartesianLayerModel.Entry>,
     yRange: com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartRanges.YRange,
@@ -107,7 +104,7 @@ internal fun secondaryLayer(
     lineColor = MeTheme.colorScheme.secondaryAction,
     verticalAxisPosition = Axis.Position.Vertical.End,
     rangeProvider = rangeProvider,
-    handleIntent = handleIntent,
     yTransform = yTransform,
+    alwaysUseLiveRange = true,
   )
 }

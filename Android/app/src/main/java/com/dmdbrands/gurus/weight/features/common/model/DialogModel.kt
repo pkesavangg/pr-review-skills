@@ -87,11 +87,23 @@ sealed class DialogModel(
         }
 }
 
-data class Toast(
-    val message: String,
-    val title: String? = null,
-    val action: ActionButton? = null,
-)
+sealed class Toast {
+    abstract val message: String
+
+    data class Simple(
+        override val message: String,
+        val title: String? = null,
+        val action: ActionButton? = null,
+    ) : Toast()
+
+    data class Custom(val content: ToastContent) : Toast() {
+        override val message: String get() = content.message
+    }
+}
+
+sealed interface ToastContent {
+    val message: String
+}
 
 data class Loader(
     val message: String,

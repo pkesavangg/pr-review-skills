@@ -4,14 +4,14 @@ import java.util.Properties
 val localProperties = Properties()
 val localPropertiesFile = file("local.properties")
 if (localPropertiesFile.exists()) {
-    localPropertiesFile.inputStream().use { localProperties.load(it) }
+  localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
 
 val githubUser = System.getenv("GITHUB_USERNAME") ?: localProperties["gpr.user"]?.toString() ?: ""
 val githubToken = System.getenv("GITHUB_TOKEN") ?: localProperties["gpr.key"]?.toString() ?: ""
 
 if (githubUser.isEmpty() || githubToken.isEmpty()) {
-    logger.warn("GitHub credentials missing. Set GITHUB_USERNAME/GITHUB_TOKEN env vars or gpr.user/gpr.key in local.properties. GitHub Package Registry repos will fail to resolve.")
+  logger.warn("GitHub credentials missing. Set GITHUB_USERNAME/GITHUB_TOKEN env vars or gpr.user/gpr.key in local.properties. GitHub Package Registry repos will fail to resolve.")
 }
 
 pluginManagement {
@@ -60,7 +60,7 @@ include(":bleWrapper")
 include(":iam")
 include(":benchmark")
 
-// Local vico development — comment out to use published GPR version
+// Local vico development — uncomment to use local vico source
 //includeBuild("/Users/selvakumar/Projects/vico") {
 //  dependencySubstitution {
 //    substitute(module("com.dmdbrands.lib:compose-android")).using(project(":vico:compose"))

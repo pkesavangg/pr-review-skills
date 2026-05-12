@@ -43,6 +43,9 @@ sealed class AppRoute : NavKey {
     data object Dashboard : Main()
 
     @Serializable
+    data object DashboardSnapshot : Main()
+
+    @Serializable
     data object Entry : Main()
 
     @Serializable

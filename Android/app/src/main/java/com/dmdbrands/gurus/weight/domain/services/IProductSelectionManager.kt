@@ -9,6 +9,11 @@ interface IProductSelectionManager {
 
     val selectedProduct: StateFlow<ProductSelection>
 
+    /** True when snapshot multi-product view should be shown instead of single-product dashboard. */
+    val isSnapshotMode: StateFlow<Boolean>
+
+    fun setSnapshotMode(enabled: Boolean)
+
     suspend fun selectProduct(selection: ProductSelection)
 
     suspend fun loadAvailableProducts(accountId: String)

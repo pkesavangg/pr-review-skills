@@ -425,7 +425,7 @@ constructor(
   private fun showRetryToast() {
     AppLog.d(TAG, "Showing retry toast")
     dialogQueueService.showToast(
-      Toast(
+      Toast.Simple(
         title = BtScaleSetupStrings.PairingMode.RetryToast.Title,
         message = BtScaleSetupStrings.PairingMode.RetryToast.Message,
         action = null,

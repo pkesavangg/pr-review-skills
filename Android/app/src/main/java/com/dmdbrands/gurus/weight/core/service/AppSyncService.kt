@@ -51,7 +51,7 @@ class AppSyncService @Inject constructor(
     } catch (e: Exception) {
       AppLog.e("AppSyncService", "Error handling edit AppSync data: ${e.message}", e)
       dialogQueueService.showToast(
-        Toast(message = "Failed to navigate to manual entry: ${e.message}"),
+        Toast.Simple(message = "Failed to navigate to manual entry: ${e.message}"),
       )
     }
   }
@@ -60,7 +60,7 @@ class AppSyncService @Inject constructor(
     try {
       entryService.addEntry(scaleEntry)
       dialogQueueService.showToast(
-        Toast(
+        Toast.Simple(
           title = EntryScreenStrings.EntryAddedTitle,
           message = EntryScreenStrings.EntryAdded,
         ),
@@ -70,7 +70,7 @@ class AppSyncService @Inject constructor(
     } catch (e: Exception) {
       AppLog.e("AppSyncService", "Error saving AppSync entry: ${e.message}", e)
       dialogQueueService.showToast(
-        Toast(message = "Failed to save entry: ${e.message}"),
+        Toast.Simple(message = "Failed to save entry: ${e.message}"),
       )
     }
   }

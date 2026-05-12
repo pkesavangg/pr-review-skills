@@ -714,7 +714,7 @@ constructor(
     if (scaleToken.isNullOrEmpty()) {
       AppLog.w(TAG, "checkScaleToken - No scale token available")
       dialogQueueService.showToast(
-        Toast(
+        Toast.Simple(
           title = ScaleSetupStrings.PermissionAlerts.InternetRequired.Title,
           message = ScaleSetupStrings.PermissionAlerts.InternetRequired.Message,
           action = null,

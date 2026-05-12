@@ -60,7 +60,7 @@ android {
       buildConfigField(
         "String",
         "BASE_URL",
-        "\"http://ec2-54-161-28-150.compute-1.amazonaws.com:3005/\"",
+        "\"https://api.weightgurus.com/v3/\"",
       )
       buildConfigField("Boolean", "ENABLE_ANALYTICS", "false")
     }

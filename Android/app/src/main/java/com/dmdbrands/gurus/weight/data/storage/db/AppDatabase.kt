@@ -16,7 +16,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.dao.BabyEntryDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.BabyProfileDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.DeviceDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryDao
-import com.dmdbrands.gurus.weight.data.storage.db.dao.HistoryDao
+import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryReadDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.LogDao
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.DashboardSettingsEntity
@@ -69,7 +69,7 @@ import android.content.Context
     BabyEntryEntity::class,
   ],
   views = [ActiveEntryEntity::class],
-  version = 2,
+  version = 6,
   exportSchema = true,
 )
 @TypeConverters(DateConverter::class, JsonConverter::class, WeightUnitConverter::class)
@@ -86,49 +86,169 @@ abstract class AppDatabase : RoomDatabase() {
 
   abstract fun babyEntryDao(): BabyEntryDao
 
-  abstract fun historyDao(): HistoryDao
+  abstract fun entryReadDao(): EntryReadDao
 
   companion object {
-    // Production 5.0.0 ships DB version 1. This single migration brings it to version 2.
-    internal val MIGRATION_1_2 = object : Migration(1, 2) {
+    private val MIGRATION_1_2 = object : Migration(1, 2) {
       override fun migrate(db: SupportSQLiteDatabase) {
-        // device — add 2 columns
         db.execSQL("ALTER TABLE device ADD COLUMN productType TEXT DEFAULT NULL")
-        db.execSQL("ALTER TABLE device ADD COLUMN lastModified INTEGER DEFAULT NULL")
+      }
+    }
 
-        // account — add 3 columns
+    private val MIGRATION_2_3 = object : Migration(2, 3) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE device ADD COLUMN lastModified INTEGER DEFAULT NULL")
+      }
+    }
+
+    private val MIGRATION_3_4 = object : Migration(3, 4) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE account ADD COLUMN activeBabyId TEXT DEFAULT NULL")
+      }
+    }
+
+    // ----- Migration 4 → 5 -----
+    // Task 1: account — add 4 new columns
+    // Task 2: notification_settings — add willReceiveEmails
+    // Task 3: baby_entry — rename babyProfileId→babyId, photo→photoUri (table recreation)
+    // Task 4: bpm_entry — rename PK id→entryId (table recreation)
+    // Task 5: baby_profiles → baby table, rename PK + columns, add new fields (table recreation)
+    @Suppress("LongMethod")
+    private val MIGRATION_4_5 = object : Migration(4, 5) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+
+        // ── Task 1: account — add 3 columns ────────────────────────────────────
         db.execSQL("ALTER TABLE account ADD COLUMN hasSeenAppReview INTEGER NOT NULL DEFAULT 0")
         db.execSQL("ALTER TABLE account ADD COLUMN hasSeenScaleReview INTEGER NOT NULL DEFAULT 0")
         db.execSQL("ALTER TABLE account ADD COLUMN accountSettings TEXT DEFAULT NULL")
 
-        // notification_settings — add 1 column
-        db.execSQL("ALTER TABLE notification_settings ADD COLUMN willReceiveEmails INTEGER NOT NULL DEFAULT 0")
+        // ── Task 2: notification_settings — add willReceiveEmails ───────────────
+        db.execSQL(
+          "ALTER TABLE notification_settings ADD COLUMN willReceiveEmails INTEGER NOT NULL DEFAULT 0",
+        )
 
-        // baby — new table (FK to account.accountId)
-        db.execSQL("""
+        // ── Task 5: baby_profiles → baby (table rename + column renames + new fields)
+        //    Do this before Task 3 because baby_entry has a FK into this table.
+        db.execSQL(
+          """
           CREATE TABLE IF NOT EXISTS `baby` (
-            `babyId` TEXT NOT NULL, `accountId` TEXT NOT NULL, `name` TEXT NOT NULL,
-            `birthdate` TEXT, `sex` TEXT, `birthWeightDecigrams` INTEGER,
-            `birthLengthMillimeters` INTEGER, `isBorn` INTEGER, `isOwnedByAccount` INTEGER,
-            `permissions` INTEGER, `createdAt` INTEGER, `dueDate` TEXT, `lastUpdated` TEXT,
-            `isSynced` INTEGER NOT NULL DEFAULT 0, `isDeleted` INTEGER NOT NULL DEFAULT 0,
-            `activeBabyId` TEXT DEFAULT NULL, PRIMARY KEY(`babyId`),
-            FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON DELETE CASCADE)
-        """.trimIndent())
-        db.execSQL("CREATE INDEX IF NOT EXISTS `index_baby_accountId` ON `baby` (`accountId`)")
+            `babyId` TEXT NOT NULL,
+            `accountId` TEXT NOT NULL,
+            `name` TEXT NOT NULL,
+            `birthdate` TEXT,
+            `sex` TEXT,
+            `birthWeightDecigrams` INTEGER,
+            `birthLengthMillimeters` INTEGER,
+            `isBorn` INTEGER,
+            `isOwnedByAccount` INTEGER,
+            `permissions` INTEGER,
+            `createdAt` INTEGER,
+            `dueDate` TEXT,
+            `lastUpdated` TEXT,
+            `isSynced` INTEGER NOT NULL DEFAULT 0,
+            `isDeleted` INTEGER NOT NULL DEFAULT 0,
+            `activeBabyId` TEXT DEFAULT NULL,
+            PRIMARY KEY(`babyId`)
+          )
+          """.trimIndent(),
+        )
+        db.execSQL(
+          "CREATE INDEX IF NOT EXISTS `index_baby_accountId` ON `baby` (`accountId`)",
+        )
+        // Copy data — birthDate (Long) is cast to TEXT to match new String? type
+        db.execSQL(
+          """
+          INSERT INTO `baby`
+            (babyId, accountId, name, birthdate, sex, birthWeightDecigrams,
+             birthLengthMillimeters, isBorn, isOwnedByAccount, permissions, createdAt,
+             dueDate, lastUpdated, isSynced, isDeleted, activeBabyId)
+          SELECT
+            id, accountId, name,
+            CASE WHEN birthDate IS NULL THEN NULL ELSE CAST(birthDate AS TEXT) END,
+            biologicalSex, birthWeightDecigrams, birthLengthMillimeters,
+            isBorn, isOwnedByAccount, babyPermissions, createdAt,
+            NULL, NULL, 0, 0, NULL
+          FROM `baby_profiles`
+          """.trimIndent(),
+        )
+        db.execSQL("DROP TABLE IF EXISTS `baby_profiles`")
 
-        // baby_entry — new table
-        db.execSQL("""
-          CREATE TABLE IF NOT EXISTS `baby_entry` (
-            `id` INTEGER NOT NULL, `babyId` TEXT NOT NULL, `babyWeightDecigrams` INTEGER,
-            `babyLengthMillimeters` INTEGER, `entryNote` TEXT, `entryType` TEXT,
-            `feedingTimeLeft` INTEGER, `feedingTimeRight` INTEGER, `feedingMilliliters` INTEGER,
-            `diaperType` TEXT, `sleepTime` INTEGER, `babyDisplayWeightDecigrams` INTEGER,
-            `photoUri` TEXT, `isPlaceholder` INTEGER, `source` TEXT, PRIMARY KEY(`id`),
+        // ── Task 3: baby_entry — rename babyProfileId→babyId, photo→photoUri ──
+        db.execSQL(
+          """
+          CREATE TABLE IF NOT EXISTS `baby_entry_new` (
+            `id` INTEGER NOT NULL,
+            `babyId` TEXT NOT NULL,
+            `babyWeightDecigrams` INTEGER,
+            `babyLengthMillimeters` INTEGER,
+            `entryNote` TEXT,
+            `entryType` TEXT,
+            `feedingTimeLeft` INTEGER,
+            `feedingTimeRight` INTEGER,
+            `feedingMilliliters` INTEGER,
+            `diaperType` TEXT,
+            `sleepTime` INTEGER,
+            `babyDisplayWeightDecigrams` INTEGER,
+            `photoUri` TEXT,
+            `isPlaceholder` INTEGER,
+            `source` TEXT,
+            PRIMARY KEY(`id`),
             FOREIGN KEY(`id`) REFERENCES `entry`(`id`) ON DELETE CASCADE,
-            FOREIGN KEY(`babyId`) REFERENCES `baby`(`babyId`) ON DELETE CASCADE)
-        """.trimIndent())
-        db.execSQL("CREATE INDEX IF NOT EXISTS `index_baby_entry_babyId` ON `baby_entry` (`babyId`)")
+            FOREIGN KEY(`babyId`) REFERENCES `baby`(`babyId`) ON DELETE CASCADE
+          )
+          """.trimIndent(),
+        )
+        db.execSQL(
+          "CREATE INDEX IF NOT EXISTS `index_baby_entry_babyId` ON `baby_entry_new` (`babyId`)",
+        )
+        db.execSQL(
+          """
+          INSERT INTO `baby_entry_new`
+            (id, babyId, babyWeightDecigrams, babyLengthMillimeters, entryNote, entryType,
+             feedingTimeLeft, feedingTimeRight, feedingMilliliters, diaperType, sleepTime,
+             babyDisplayWeightDecigrams, photoUri, isPlaceholder, source)
+          SELECT
+            id, babyProfileId, babyWeightDecigrams, babyLengthMillimeters, entryNote, entryType,
+            feedingTimeLeft, feedingTimeRight, feedingMilliliters, diaperType, sleepTime,
+            babyDisplayWeightDecigrams, photo, isPlaceholder, source
+          FROM `baby_entry`
+          """.trimIndent(),
+        )
+        db.execSQL("DROP TABLE IF EXISTS `baby_entry`")
+        db.execSQL("ALTER TABLE `baby_entry_new` RENAME TO `baby_entry`")
+
+        // ── Task 4: bpm_entry — rename PK id → entryId ─────────────────────────
+        db.execSQL(
+          """
+          CREATE TABLE IF NOT EXISTS `bpm_entry_new` (
+            `entryId` INTEGER NOT NULL,
+            `systolic` INTEGER NOT NULL,
+            `diastolic` INTEGER NOT NULL,
+            `pulse` INTEGER NOT NULL,
+            `meanArterial` TEXT NOT NULL,
+            `note` TEXT,
+            PRIMARY KEY(`entryId`),
+            FOREIGN KEY(`entryId`) REFERENCES `entry`(`id`) ON DELETE CASCADE
+          )
+          """.trimIndent(),
+        )
+        db.execSQL(
+          """
+          INSERT INTO `bpm_entry_new` (entryId, systolic, diastolic, pulse, meanArterial, note)
+          SELECT id, systolic, diastolic, pulse, meanArterial, note
+          FROM `bpm_entry`
+          """.trimIndent(),
+        )
+        db.execSQL("DROP TABLE IF EXISTS `bpm_entry`")
+        db.execSQL("ALTER TABLE `bpm_entry_new` RENAME TO `bpm_entry`")
+      }
+    }
+
+    // ----- Migration 5 → 6 -----
+    // Add composite index on (accountId, operationType) to speed up entry_view's NOT EXISTS subquery.
+    private val MIGRATION_5_6 = object : Migration(5, 6) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_entry_accountId_operationType` ON `entry` (`accountId`, `operationType`)")
       }
     }
 
@@ -159,7 +279,7 @@ abstract class AppDatabase : RoomDatabase() {
                 }
               },
             )
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .fallbackToDestructiveMigration(false)
             .build()
         Companion.instance = instance

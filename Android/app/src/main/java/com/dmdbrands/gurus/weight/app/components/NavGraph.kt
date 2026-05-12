@@ -18,6 +18,7 @@ import com.dmdbrands.gurus.weight.features.appPermissions.AppPermissionsScreen
 import com.dmdbrands.gurus.weight.features.appSync.AppSync
 import com.dmdbrands.gurus.weight.features.changePassword.ChangePasswordScreen
 import com.dmdbrands.gurus.weight.features.dashboard.DashboardScreen
+import com.dmdbrands.gurus.weight.features.dashboard.snapshot.DashboardSnapshotScreen
 import com.dmdbrands.gurus.weight.features.debugMenu.screen.DebugMenuScreen
 import com.dmdbrands.gurus.weight.features.debugMenu.screen.ScaleLogsPickerScreen
 import com.dmdbrands.gurus.weight.features.feed.FeedFAQScreen
@@ -59,6 +60,7 @@ fun EntryProviderScope<NavKey>.authEntries() {
 }
 
 fun EntryProviderScope<NavKey>.topLevelEntries() {
+  entry<AppRoute.Main.DashboardSnapshot> { DashboardSnapshotScreen() }
   entry<AppRoute.Main.Dashboard> { DashboardScreen() }
   entry<AppRoute.Main.History> { HistoryScreen() }
   entry<AppRoute.Main.Entry> { EntryScreen() } // Placeholder for EntryScreen

@@ -48,10 +48,13 @@ import android.app.Activity
 fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
   val state by viewModel.state.collectAsStateWithLifecycle()
 
+  val isSnapshotMode by viewModel.productSelectionManager.isSnapshotMode.collectAsStateWithLifecycle()
+
   HomeScreenContent(
     state = state,
     handleIntent = viewModel::handleIntent,
     showUnreadFeedIndicator = state.showUnreadFeedIndicator,
+    isSnapshotMode = isSnapshotMode,
   )
 }
 
@@ -60,6 +63,7 @@ fun HomeScreenContent(
   state: HomeState,
   handleIntent: (HomeIntent) -> Unit,
   showUnreadFeedIndicator: Boolean = false,
+  isSnapshotMode: Boolean = false,
 ) {
   val topLevelBackStack = LocalNavBackStack.current
   val context = LocalContext.current
@@ -79,6 +83,7 @@ fun HomeScreenContent(
         MainBottomNav(
           showAppsync = state.showAppsync,
           showUnreadFeedIndicator = showUnreadFeedIndicator,
+          isSnapshotMode = isSnapshotMode,
           onOpenAppSync = {
             handleIntent(
               HomeIntent.CheckAndRequestPermission { isEnabled ->

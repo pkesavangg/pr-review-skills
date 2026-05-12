@@ -51,18 +51,27 @@ fun MainBottomNav(
   showAppsync: Boolean,
   onOpenAppSync: () -> Unit,
   showUnreadFeedIndicator: Boolean = false,
+  isSnapshotMode: Boolean = false,
 ) {
   val topBackStack = LocalNavBackStack.current
   val backStack = topBackStack.getStackForTopLevel(AppRoute.Home)
-  var selectedItem by remember {
-    mutableStateOf(BOTTOM_NAV_ITEMS.find { it.route == backStack.lastOrNull() } ?: BOTTOM_NAV_ITEMS[0])
+  val dashRoute: AppRoute = if (isSnapshotMode) AppRoute.Main.DashboardSnapshot else AppRoute.Main.Dashboard
+  val navItems = remember(isSnapshotMode) {
+    BOTTOM_NAV_ITEMS.map { item ->
+      if (item.route == AppRoute.Main.Dashboard || item.route == AppRoute.Main.DashboardSnapshot) {
+        item.copy(route = dashRoute)
+      } else item
+    }
+  }
+  var selectedItem by remember(isSnapshotMode) {
+    mutableStateOf(navItems.find { it.route == backStack.lastOrNull() } ?: navItems[0])
   }
 
   val coroutineScope = rememberCoroutineScope()
 
-  LaunchedEffect(backStack.lastOrNull()) {
+  LaunchedEffect(backStack.lastOrNull(), isSnapshotMode) {
     selectedItem =
-      BOTTOM_NAV_ITEMS.find { it.route == backStack.lastOrNull() } ?: BOTTOM_NAV_ITEMS[0]
+      navItems.find { it.route == backStack.lastOrNull() } ?: navItems[0]
   }
   LocalContext.current
 
@@ -77,7 +86,7 @@ fun MainBottomNav(
           .padding(horizontal = MeTheme.spacing.xs),
       horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-      BOTTOM_NAV_ITEMS.forEachIndexed { index, item ->
+      navItems.forEachIndexed { index, item ->
         val isSelected = (selectedItem == item)
         val icon = if (isSelected && item.selectedIcon != null) item.selectedIcon else item.icon
         if (!showAppsync && item.label === DashboardString.BottomNav.appsync) return@Row
@@ -129,9 +138,9 @@ fun MainBottomNav(
               if (item.label === DashboardString.BottomNav.appsync) {
                 onOpenAppSync()
               } else {
-                topBackStack.addRoute(item.route, AppRoute.Home, popUpTo = AppRoute.Main.Dashboard)
+                topBackStack.addRoute(item.route, AppRoute.Home, popUpTo = dashRoute)
                 val requiredItem =
-                  BOTTOM_NAV_ITEMS.find {
+                  navItems.find {
                     it.route == topBackStack.getStackForTopLevel(AppRoute.Home).lastOrNull()
                   }
                 if (requiredItem != null && requiredItem != selectedItem) {

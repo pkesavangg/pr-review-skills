@@ -301,7 +301,7 @@ constructor(
         appSyncService.setAppSyncDataForEditing(null)
 
         dialogQueueService.showToast(
-          Toast(
+          Toast.Simple(
             title = EntryScreenStrings.EntryAddedTitle,
             message = EntryScreenStrings.EntryAdded,
           ),
@@ -311,7 +311,7 @@ constructor(
       } catch (e: Exception) {
         AppLog.e(TAG, "Error saving entry: ${e.message}", e)
         dialogQueueService.showToast(
-          Toast(
+          Toast.Simple(
             title = EntryScreenStrings.EntryErrorTitle,
             message = EntryScreenStrings.EntryErrorMessage,
           ),
@@ -357,7 +357,7 @@ constructor(
         entryService.addEntry(entry = bpmEntry)
         analyticsService.logEvent(IAnalyticsService.Events.MANUAL_ENTRY_CREATED)
         dialogQueueService.showToast(
-          Toast(
+          Toast.Simple(
             title = EntryScreenStrings.EntryAddedTitle,
             message = EntryScreenStrings.EntryAdded,
           ),
@@ -375,7 +375,7 @@ constructor(
       } catch (e: Exception) {
         AppLog.e(TAG, "Error saving BP entry: ${e.message}", e)
         dialogQueueService.showToast(
-          Toast(
+          Toast.Simple(
             title = EntryScreenStrings.EntryErrorTitle,
             message = EntryScreenStrings.EntryErrorMessage,
           ),
@@ -393,7 +393,7 @@ constructor(
       try {
         analyticsService.logEvent(IAnalyticsService.Events.MANUAL_ENTRY_CREATED)
         dialogQueueService.showToast(
-          Toast(
+          Toast.Simple(
             title = EntryScreenStrings.EntryAddedTitle,
             message = EntryScreenStrings.EntryAdded,
           ),
@@ -410,7 +410,7 @@ constructor(
       } catch (e: Exception) {
         AppLog.e(TAG, "Error saving baby entry: ${e.message}", e)
         dialogQueueService.showToast(
-          Toast(
+          Toast.Simple(
             title = EntryScreenStrings.EntryErrorTitle,
             message = EntryScreenStrings.EntryErrorMessage,
           ),
@@ -460,7 +460,7 @@ constructor(
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to load AppSync data", e)
         dialogQueueService.showToast(
-          Toast(message = "Failed to load AppSync data: ${e.message}"),
+          Toast.Simple(message = "Failed to load AppSync data: ${e.message}"),
         )
       }
     }

@@ -4,7 +4,7 @@ import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
-import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
@@ -222,7 +222,7 @@ class BtWifiScaleSetupViewModelTest {
 
     @Test
     fun `SetGoalProgress updates goal progress`() {
-        val progress = mockk<Progress>(relaxed = true)
+        val progress = mockk<WeightProgress>(relaxed = true)
         viewModel.handleIntent(BtWifiScaleSetupIntent.SetGoalProgress(progress))
         assertThat(viewModel.state.value.goalProgress).isEqualTo(progress)
     }

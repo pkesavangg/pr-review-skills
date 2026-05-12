@@ -20,13 +20,19 @@ class ProductSelectionManager @Inject constructor(
   private val _selectedProduct = MutableStateFlow<ProductSelection>(ProductSelection.MyWeight)
   override val selectedProduct: StateFlow<ProductSelection> = _selectedProduct.asStateFlow()
 
+  private val _isSnapshotMode = MutableStateFlow(true)
+  override val isSnapshotMode: StateFlow<Boolean> = _isSnapshotMode.asStateFlow()
+
+  override fun setSnapshotMode(enabled: Boolean) {
+    _isSnapshotMode.value = enabled
+  }
+
   override suspend fun loadAvailableProducts(accountId: String) {
     if (USE_SAMPLE_PRODUCTS) {
       _availableProducts.value = listOf(
         ProductSelection.MyWeight,
         ProductSelection.BloodPressure,
-        ProductSelection.Baby(BabyProfile(id = "sample-1", name = "Timmy", birthdate = null, accountId = accountId)),
-        ProductSelection.Baby(BabyProfile(id = "sample-2", name = "Lucy", birthdate = null, accountId = accountId)),
+        ProductSelection.Baby(BabyProfile(id = "sample-1", name = "Timmy", birthdate = "2026-01-10", sex = "male", accountId = accountId)),
       )
       AppLog.d(TAG, "Available (sample): ${_availableProducts.value}")
       return
