@@ -21,7 +21,14 @@ object ReadingToastStrings {
 
     fun assignedTo(name: String): String = "Reading assigned to ${name.uppercase()}"
 
-    const val Pulse = "pulse"
     const val WrongBaby = "Have you assigned to Wrong baby?"
     const val Reassign = "Reassign"
+
+    object AssignModal {
+        const val Title = "Assign Measurement"
+        const val Subtitle = "Which baby is this measurement for?"
+        const val Assign = "ASSIGN"
+        const val DontAssign = "DON'T ASSIGN"
+        fun age(months: Int): String = "$months months old"
+    }
 }
