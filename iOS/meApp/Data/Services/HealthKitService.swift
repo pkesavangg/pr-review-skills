@@ -112,17 +112,20 @@ public final class HealthKitService: HealthKitServiceProtocol {
     }
     
     /// Pushes the entire local entry history into Apple Health.
+    ///
+    /// The work is processed in fixed-size chunks of entries so the in-flight
+    /// HealthKit payload stays bounded regardless of how many entries the
+    /// account has. With a single 9k-entry payload (~45k HK samples), trying to
+    /// commit everything at once previously exhausted memory and tripped the
+    /// main-thread watchdog before completion.
     public func syncAllData() async throws {
-        // Get accountId on main actor first
         let accountId = await getActiveAccountId()
         guard let accountId else { return }
         logger.log(level: .info, tag: tag, message: "HealthKit full sync started. accountId=\(accountId)")
 
-        // Materialize simple export values off the main actor to avoid cross-context @Model access
         let exports: [HealthKitExport] = try await Task.detached(priority: .userInitiated) {
             let container = await PersistenceController.shared.container
             let bgContext = ModelContext(container)
-            // Avoid referencing enum cases inside #Predicate; compare to a captured String constant instead.
             let opCreate = OperationType.create.rawValue
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
                 $0.accountId == accountId && $0.operationType == opCreate
@@ -142,10 +145,21 @@ public final class HealthKitService: HealthKitServiceProtocol {
             return items
         }.value
 
-        let healthKitData = buildHealthKitData(from: exports)
-        logger.log(level: .info, tag: tag, message: "HealthKit full sync prepared payload. accountId=\(accountId), entriesCount=\(exports.count), payloadCount=\(healthKitData.count)")
-        try await saveHealthKitData(finalData: healthKitData)
-        logger.log(level: .success, tag: tag, message: "HealthKit full sync completed. accountId=\(accountId), payloadCount=\(healthKitData.count)")
+        let total = exports.count
+        logger.log(level: .info, tag: tag, message: "HealthKit full sync fetched entries. accountId=\(accountId), entriesCount=\(total)")
+
+        let entryChunkSize = 1000
+        var processed = 0
+        while processed < total {
+            let end = min(processed + entryChunkSize, total)
+            let chunk = Array(exports[processed..<end])
+            let healthKitData = buildHealthKitData(from: chunk)
+            try await saveHealthKitData(finalData: healthKitData)
+            processed = end
+            logger.log(level: .info, tag: tag, message: "HealthKit full sync progress. accountId=\(accountId), processed=\(processed)/\(total)")
+        }
+
+        logger.log(level: .success, tag: tag, message: "HealthKit full sync completed. accountId=\(accountId), entriesCount=\(total)")
     }
     
     /// Opens the Apple Health app so the user can review permissions.
@@ -356,16 +370,18 @@ public final class HealthKitService: HealthKitServiceProtocol {
                 ))
             }
 
+            // Prefer the scale's measured muscleMass; only fall back to the
+            // weight×bodyFat derivation when measured value is unavailable.
+            // Emitting both produces duplicate HealthKit samples at the same
+            // timestamp and roughly doubles the leanBodyMass payload.
             if let muscleMass = item.muscleMass, muscleMass > 0 {
                 healthKitData.append(HealthKitData(
                     type: .leanBodyMass,
                     value: ConversionTools.convertStoredToLbs(muscleMass),
                     timestamp: timestamp
                 ))
-            }
-
-            if let weight = item.weight, weight > 0,
-               let bodyFat = item.bodyFat, bodyFat > 0 {
+            } else if let weight = item.weight, weight > 0,
+                      let bodyFat = item.bodyFat, bodyFat > 0 {
                 let convertedWeight = ConversionTools.convertStoredToLbs(weight)
                 let convertedBodyFat = ConversionTools.convertStoredToLbs(bodyFat)
                 let leanBodyMass = convertedWeight - (convertedWeight * (convertedBodyFat / 100))
