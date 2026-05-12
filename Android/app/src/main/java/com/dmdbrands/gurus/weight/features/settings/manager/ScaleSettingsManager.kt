@@ -68,7 +68,7 @@ constructor(
       -> {
         dialogQueueService.dismissLoader()
         dialogQueueService.showToast(
-          Toast(
+          Toast.Simple(
             ToastStrings.Success.UpdateProfileSuccess.Message,
             ToastStrings.Success.UpdateProfileSuccess.Header,
           ),
@@ -78,7 +78,7 @@ constructor(
       else -> {
         dialogQueueService.dismissLoader()
         dialogQueueService.showToast(
-          Toast(
+          Toast.Simple(
             ToastStrings.Success.UpdateProfileSuccess.Message,
             ToastStrings.Success.UpdateProfileSuccess.Header,
           ),

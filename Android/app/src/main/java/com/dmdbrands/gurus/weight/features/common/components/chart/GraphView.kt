@@ -273,7 +273,8 @@ fun getTargetPoints(
   fullList: List<Double>, points: List<Double>, input: Double, segment: GraphSegment,
   minWindow: Double? = null, maxWindow: Double? = null,
 ): List<Double> {
-  // TOTAL: simple nearest-point (single O(n) pass — list is typically small)
+  // TOTAL: simple nearest-point (single O(n) pass — list is typically small).
+  // points may be empty here — minByOrNull returns null → listOfNotNull yields emptyList().
   if (segment == GraphSegment.TOTAL) {
     return listOfNotNull(points.minByOrNull { kotlin.math.abs(it - input) })
   }

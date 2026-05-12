@@ -51,8 +51,6 @@ fun WeightChartHeader(
   val displayUnit = remember(weightUnit, displayValue) { displayUnit(weightUnit, displayValue) }
 
   ChartHeader(
-    segmentState = segmentState,
-    segment = segment,
     rangeData = rangeText,
     markerIndex = state.markerIndex,
   ) {

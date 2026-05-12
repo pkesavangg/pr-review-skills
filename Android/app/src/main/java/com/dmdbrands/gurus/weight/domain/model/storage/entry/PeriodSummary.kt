@@ -78,6 +78,7 @@ data class PeriodBpmSummary(
 data class PeriodBabySummary(
     override val period: String,
     override val entryTimestamp: String,
+    val babyId: String,
     val avgWeightDecigrams: Int?,
     val avgLengthMillimeters: Int?,
 ) : PeriodSummary {

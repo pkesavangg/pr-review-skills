@@ -21,8 +21,7 @@ import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.format
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -42,16 +41,12 @@ class DashboardSnapshotViewModel @Inject constructor(
   val weightModelProducer = CartesianChartModelProducer()
   val bpModelProducer = CartesianChartModelProducer()
   val babyModelProducers = java.util.concurrent.ConcurrentHashMap<String, CartesianChartModelProducer>()
-  private var weightGraphJob: Job? = null
-  private var bpGraphJob: Job? = null
 
   override fun provideInitialState() = DashboardSnapshotState(isLoading = true)
 
   override fun onDependenciesReady() {
     observeWeightUnit()
-    loadWeightGraph()
-    loadBpGraph()
-    loadBabyGraphs()
+    loadAllGraphs()
   }
 
   private fun observeWeightUnit() {
@@ -67,18 +62,37 @@ class DashboardSnapshotViewModel @Inject constructor(
     }
   }
 
-  private fun loadWeightGraph() {
-    weightGraphJob?.cancel()
-    weightGraphJob = viewModelScope.launch {
-      entryReadService.getWeightSnapshotGraphData()
-        .catch { e ->
-          AppLog.e(TAG, "Failed to load weight graph data", e)
+  private fun loadAllGraphs() {
+    BabyPercentileHelper.loadIfNeeded(context)
+    viewModelScope.launch {
+      combine(
+        entryReadService.snapshots,
+        productSelectionManager.availableProducts,
+      ) { snapshotMap, products ->
+        snapshotMap to products
+      }.collect { (snapshotMap, products) ->
+        // Weight
+        val weightPoints = snapshotMap[IEntryReadService.KEY_WEIGHT]
+        if (weightPoints != null) {
+          updateWeightChart(weightPoints.filterIsInstance<WeightSnapshotPoint>())
+        }
+        if (snapshotMap.isNotEmpty()) {
           handleIntent(DashboardSnapshotIntent.SetLoading(false))
         }
-        .collect { points ->
-          updateWeightChart(points)
-          handleIntent(DashboardSnapshotIntent.SetLoading(false))
+
+        // BP
+        val bpPoints = snapshotMap[IEntryReadService.KEY_BP]
+        if (bpPoints != null) {
+          updateBpChart(bpPoints.filterIsInstance<PeriodBpmSummary>())
         }
+
+        // Babies
+        products.filterIsInstance<ProductSelection.Baby>().forEach { baby ->
+          val babyPoints = snapshotMap[IEntryReadService.keyBaby(baby.profile.id)]
+            ?.filterIsInstance<PeriodBabySummary>() ?: emptyList()
+          updateBabyChart(baby.profile, babyPoints)
+        }
+      }
     }
   }
 
@@ -130,19 +144,6 @@ class DashboardSnapshotViewModel @Inject constructor(
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to update weight chart model", e)
       }
-    }
-  }
-
-  private fun loadBpGraph() {
-    bpGraphJob?.cancel()
-    bpGraphJob = viewModelScope.launch {
-      entryReadService.getBpmSnapshotGraphData()
-        .catch { e ->
-          AppLog.e(TAG, "Failed to load BP graph data", e)
-        }
-        .collect { points ->
-          updateBpChart(points)
-        }
     }
   }
 
@@ -201,29 +202,6 @@ class DashboardSnapshotViewModel @Inject constructor(
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to update BP chart model", e)
       }
-    }
-  }
-
-  private fun loadBabyGraphs() {
-    BabyPercentileHelper.loadIfNeeded(context)
-    viewModelScope.launch {
-      productSelectionManager.availableProducts.collect { products ->
-        products.filterIsInstance<ProductSelection.Baby>().forEach { baby ->
-          loadBabyGraph(baby.profile)
-        }
-      }
-    }
-  }
-
-  private fun loadBabyGraph(profile: BabyProfile) {
-    viewModelScope.launch {
-      entryReadService.getBabySnapshotGraphData(profile.id)
-        .catch { e ->
-          AppLog.e(TAG, "Failed to load baby graph data for ${profile.id}", e)
-        }
-        .collect { points ->
-          updateBabyChart(profile, points)
-        }
     }
   }
 

@@ -273,7 +273,7 @@ constructor(
                         ggDeviceService.disconnectDevice(scale.toGGBTDevice())
                       } else {
                         dialogQueueService.showToast(
-                          Toast(
+                          Toast.Simple(
                             message = ScaleDetailsStrings.DeleteErrorMessage,
                           ),
                         )
@@ -282,13 +282,13 @@ constructor(
                   }
                   deviceService.deleteScale(scale.id)
                   dialogQueueService.showToast(
-                    Toast(
+                    Toast.Simple(
                       message = ScaleDetailsStrings.DeleteSuccessMessage,
                     ),
                   )
                 } catch (e: Exception) {
                   dialogQueueService.showToast(
-                    Toast(
+                    Toast.Simple(
                       message = ScaleDetailsStrings.DeleteErrorMessage,
                     ),
                   )
@@ -401,7 +401,7 @@ constructor(
 
   private fun showToast(message: String) {
     dialogQueueService.showToast(
-      Toast(
+      Toast.Simple(
         title = null,
         message = message,
         action = null,
@@ -801,7 +801,7 @@ constructor(
 
           // Show success toast
           dialogQueueService.showToast(
-            Toast(
+            Toast.Simple(
               message = ScaleDetailsStrings.EnableBodyMetricsAlertSuccess,
             ),
           )

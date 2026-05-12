@@ -17,6 +17,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
@@ -25,15 +26,25 @@ import com.dmdbrands.gurus.weight.domain.repository.IEntryReadRepository
 import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertWeight
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
+import kotlinx.collections.immutable.PersistentMap
+import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.collections.immutable.toPersistentMap
 /**
  * Implementation of [IEntryReadService].
  * Routes by [ProductSelection] to the correct [IEntryReadRepository] function
@@ -44,15 +55,59 @@ class EntryReadService(
     private val entryReadRepository: IEntryReadRepository,
     private val accountRepository: IAccountRepository,
     private val goalRepository: IGoalRepository,
+    private val appScope: CoroutineScope,
 ) : IEntryReadService {
 
     @Volatile
     private var _accountId: String? = null
     override val accountId: String? get() = _accountId
 
+    // ── Single hot snapshot map (populated on setAccountId, instant for consumers) ──
+
+    private val _snapshots = MutableStateFlow<PersistentMap<String, List<PeriodSummary>>>(persistentMapOf())
+    override val snapshots: StateFlow<Map<String, List<PeriodSummary>>> = _snapshots.asStateFlow()
+    private var hotJobs = mutableListOf<Job>()
+
+    @Synchronized
     override fun setAccountId(accountId: String) {
         AppLog.d(TAG, "setAccountId: $accountId")
         _accountId = accountId
+
+        // Cancel previous subscriptions (account switch)
+        hotJobs.forEach { it.cancel() }
+        hotJobs.clear()
+        _snapshots.value = persistentMapOf()
+
+        // Weight snapshot
+        hotJobs += appScope.launch {
+            entryReadRepository.getWeightSnapshotGraphData(accountId).collect { data ->
+                _snapshots.update { it.put(IEntryReadService.KEY_WEIGHT, data) }
+            }
+        }
+
+        // BP snapshot
+        hotJobs += appScope.launch {
+            entryReadRepository.getBpmSnapshotGraphData(accountId).collect { data ->
+                _snapshots.update { it.put(IEntryReadService.KEY_BP, data) }
+            }
+        }
+
+        // Baby snapshots — single query, split by babyId into the same map
+        hotJobs += appScope.launch {
+            entryReadRepository.getAllBabySnapshotGraphData(accountId)
+                .map { list -> list.groupBy { it.babyId } }
+                .collect { babyMap ->
+                    _snapshots.update { current ->
+                        val withoutBabies = current.builder().apply {
+                            keys.filter { it.startsWith("baby:") }.forEach { remove(it) }
+                        }
+                        babyMap.forEach { (babyId, data) ->
+                            withoutBabies[IEntryReadService.keyBaby(babyId)] = data
+                        }
+                        withoutBabies.build()
+                    }
+                }
+        }
     }
 
     /**
@@ -255,24 +310,9 @@ class EntryReadService(
         }
     }
 
-    override fun getWeightSnapshotGraphData(): Flow<List<WeightSnapshotPoint>> {
-        val acctId = requireNotNull(_accountId) { "accountId not set" }
-        return entryReadRepository.getWeightSnapshotGraphData(acctId)
-    }
-
-    override fun getBpmSnapshotGraphData(): Flow<List<PeriodBpmSummary>> {
-        val acctId = requireNotNull(_accountId) { "accountId not set" }
-        return entryReadRepository.getBpmSnapshotGraphData(acctId)
-    }
-
     override fun getBpmLastNDayEntries(n: Int): Flow<List<PeriodBpmSummary>> {
         val acctId = requireNotNull(_accountId) { "accountId not set" }
         return entryReadRepository.getBpmLastNDayEntries(acctId, n)
-    }
-
-    override fun getBabySnapshotGraphData(babyProfileId: String): Flow<List<PeriodBabySummary>> {
-        val acctId = requireNotNull(_accountId) { "accountId not set" }
-        return entryReadRepository.getBabySnapshotGraphData(acctId, babyProfileId)
     }
 
     override fun getBabyDailyGraphData(babyProfileId: String): Flow<List<PeriodBabySummary>> {

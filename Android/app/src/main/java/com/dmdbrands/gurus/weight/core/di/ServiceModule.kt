@@ -568,9 +568,11 @@ object ServiceModule {
     entryReadRepository: IEntryReadRepository,
     accountRepository: IAccountRepository,
     goalRepository: IGoalRepository,
+    @ApplicationScope appScope: CoroutineScope,
   ): IEntryReadService = EntryReadService(
     entryReadRepository = entryReadRepository,
     accountRepository = accountRepository,
     goalRepository = goalRepository,
+    appScope = appScope,
   )
 }

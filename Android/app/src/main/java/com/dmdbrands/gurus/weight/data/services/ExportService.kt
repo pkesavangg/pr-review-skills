@@ -169,7 +169,7 @@ constructor(
    */
   private fun showExportSuccessToast() {
     dialogQueueService.showToast(
-      Toast(
+      Toast.Simple(
         message = ExportStrings.SuccessMessage,
       ),
     )
@@ -200,7 +200,7 @@ constructor(
         }
       }
     val errorToast =
-      Toast(
+      Toast.Simple(
         title = null,
         message = message,
         action = null,

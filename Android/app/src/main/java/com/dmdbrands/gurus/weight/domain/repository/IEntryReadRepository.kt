@@ -53,8 +53,8 @@ interface IEntryReadRepository {
     fun getBabyMonthlyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>
     fun getBabyDailyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>
 
-    // Baby Snapshot (Dashboard mini-chart)
-    fun getBabySnapshotGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>
+    // Baby Snapshot — all babies in one query (Dashboard)
+    fun getAllBabySnapshotGraphData(accountId: String): Flow<List<PeriodBabySummary>>
 
     // ---------------------------------------------------------------------------
     // Cross-product read queries (moved from IEntryRepository)

@@ -42,6 +42,7 @@ interface BaseDashboardState : IReducer.State {
   val selectedSegment: GraphSegment
   val scrollTarget: Double?
   val isRefreshing: Boolean
+  /** Transient UI state — not persisted via SavedStateHandle. Marker resets on process death; acceptable since it's a momentary selection, not user data. */
   val markerIndex: Double?
 
   fun forSegment(segment: GraphSegment): SegmentState {
