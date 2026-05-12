@@ -105,6 +105,12 @@ struct ScaleMetricsView: View {
             }
         }
         .background(theme.backgroundSecondary)
+        // The SceneDelegate-level `AppDefaultButtonStyle` (PR #1936) can drop
+        // through `.sheet` presentations, letting iOS paint its Show Borders
+        // grey rounded-rectangle on the close-X and each segment. Re-applying
+        // it here keeps the close-X icon and the SegmentedButtonView segments
+        // from colliding when the accessibility setting is on.
+        .buttonStyle(AppDefaultButtonStyle())
     }
 }
 

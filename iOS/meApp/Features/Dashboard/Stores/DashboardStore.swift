@@ -929,9 +929,12 @@ class DashboardStore: ObservableObject {
             return "no entries"
         }
 
-        // If a point is selected, override period label granularity
+        // If a point is selected, override period label granularity.
+        // Substitute a non-breaking-style space when the prefix is empty (Week/Month) so the
+        // Text view still reserves line height — the view hides it via `.opacity(0)`.
         if graph.selectedXValue != nil {
-            return selectionPrefix(for: graph.selectedPeriod)
+            let prefix = selectionPrefix(for: graph.selectedPeriod)
+            return prefix.isEmpty ? " " : prefix
         }
         return goalManager.getWeightDisplayLabel(for: graph.selectedPeriod)
     }
@@ -2952,22 +2955,17 @@ class DashboardStore: ObservableObject {
         return formatMetricInfoDateLabel(entryDate: entryDate, isFromHistory: isHistoryEntry)
     }
 
-    /// Formats the date label based on entry date and context. Returns period averages if no date provided.
+    /// Formats the date label shown in the Metric Info sheet.
+    /// History entries always carry their own date with the "Measurement taken" prefix.
+    /// For dashboard (non-history) entries the label must mirror the trend-view header — driven
+    /// by graph selection state, not by the DTO's `entryDate` (which is just the latest stored
+    /// entry used to fill metric values when nothing is selected).
     private func formatMetricInfoDateLabel(entryDate: Date? = nil, isFromHistory: Bool = false) -> String {
         let period = graph.selectedPeriod
 
-        if let entryDate = entryDate {
-            let prefix = isFromHistory ? "Measurement taken" : selectionPrefix(for: period)
-            // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call.
-            // History entries always show a specific day; otherwise, format granularity follows the
-            // selected period — month-granularity for year/total (avoids "Feb 1, 2025" for a monthly point).
-            let dateText: String
-            if isFromHistory {
-                dateText = DateTimeTools.formatter("MMMM d, yyyy").string(from: entryDate)
-            } else {
-                dateText = formatMetricInfoSingleDate(entryDate, period: period)
-            }
-            return isFromHistory ? "\(prefix) \(dateText)" : composeMetricInfoLabel(prefix: prefix, dateText: dateText)
+        if isFromHistory, let entryDate = entryDate {
+            let dateText = DateTimeTools.formatter("MMMM d, yyyy").string(from: entryDate)
+            return "Measurement taken \(dateText)"
         }
 
         if let selectedPoint = graph.selectedPoint {
@@ -2981,6 +2979,7 @@ class DashboardStore: ObservableObject {
             return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
         }
 
+        // No graph selection — show the same period summary the trend-view header shows.
         let prefix = "\(period.rawValue) average"
         let dateText = weightLabel // already computed from visible region
         return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
@@ -3012,10 +3011,25 @@ class DashboardStore: ObservableObject {
         return formatter.date(from: timestamp)
     }
 
+    /// Prefix shown alongside a selected graph point.
+    /// Week/Month return an empty string so the trend-view header collapses (the chart's own
+    /// callout makes the selected day obvious) and the metric-info sheet shows just the date —
+    /// avoids the misleading "latest entry" wording when a past day is selected.
+    /// Year/Total still surface "month average" since those values genuinely are averages.
     private func selectionPrefix(for period: TimePeriod) -> String {
         switch period {
-        case .week, .month: return "latest entry"
+        case .week, .month: return ""
         case .year, .total: return "month average"
+        }
+    }
+
+    /// True when `weightDisplayLabel` is intentionally blank (Week/Month with a point selected).
+    /// The view binds this to `.opacity` so the layout stays stable when the label hides.
+    var hidesWeightDisplayLabel: Bool {
+        guard graph.selectedXValue != nil else { return false }
+        switch graph.selectedPeriod {
+        case .week, .month: return true
+        case .year, .total: return false
         }
     }
 
@@ -3030,7 +3044,10 @@ class DashboardStore: ObservableObject {
     }
 
     private func composeMetricInfoLabel(prefix: String, dateText: String) -> String {
-        return "\(prefix) \(dateText)".lowercased()
+        // Prefix may be empty (Week/Month selection) — trim so we don't render a leading space.
+        return "\(prefix) \(dateText)"
+            .trimmingCharacters(in: .whitespaces)
+            .lowercased()
     }
 
     // MARK: - Metric Info Sheet - Allowed Metrics & Selection Validation

@@ -140,26 +140,35 @@ struct BottomTabBarView: View {
         }) { payload in
             // Determine setup type from the scale item info
             let setupType = payload.event?.deviceInfo.setupType ?? .lcbt
-            switch setupType {
-            case .lcbt:
-                A6ScaleSetupScreen(sku: payload.sku,
-                                   discoveredScale: payload.scale,
-                                   discoveryEvent: payload.event)
-                .interactiveDismissDisabled(true)
-            case .btWifiR4:
-                BtWifiScaleSetupScreen(sku: payload.sku,
+            // This sheet is presented immediately after the ScaleDiscoveredSheet
+            // is dismissed. SwiftUI loses the SceneDelegate-level
+            // `AppDefaultButtonStyle` env value across that back-to-back sheet
+            // transition, which lets iOS paint Show Borders decoration on the
+            // setup-screen navbar X / help icons. Re-applying it here closes
+            // the gap for every setup-flow variant in one place.
+            Group {
+                switch setupType {
+                case .lcbt:
+                    A6ScaleSetupScreen(sku: payload.sku,
                                        discoveredScale: payload.scale,
-                                       discoveryEvent: payload.event,
-                                       isReconnect: payload.isReconnect,
-                                       isDuplicated: payload.isDuplicated)
-                .interactiveDismissDisabled(true)
-            default:
-                // Fallback to A6 setup for other types
-                A6ScaleSetupScreen(sku: payload.sku,
-                                   discoveredScale: payload.scale,
-                                   discoveryEvent: payload.event)
-                .interactiveDismissDisabled(true)
+                                       discoveryEvent: payload.event)
+                    .interactiveDismissDisabled(true)
+                case .btWifiR4:
+                    BtWifiScaleSetupScreen(sku: payload.sku,
+                                           discoveredScale: payload.scale,
+                                           discoveryEvent: payload.event,
+                                           isReconnect: payload.isReconnect,
+                                           isDuplicated: payload.isDuplicated)
+                    .interactiveDismissDisabled(true)
+                default:
+                    // Fallback to A6 setup for other types
+                    A6ScaleSetupScreen(sku: payload.sku,
+                                       discoveredScale: payload.scale,
+                                       discoveryEvent: payload.event)
+                    .interactiveDismissDisabled(true)
+                }
             }
+            .buttonStyle(AppDefaultButtonStyle())
         }
     }
     
