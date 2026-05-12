@@ -5,6 +5,7 @@ import androidx.activity.compose.LocalActivity
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.rememberPagerState
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyMetric
 import com.dmdbrands.gurus.weight.core.navigation.LocalDialogQueueService
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.core.navigation.LocalProductSelectionManager
@@ -39,18 +41,23 @@ import com.dmdbrands.gurus.weight.features.dashboard.components.BpDashboardConte
 import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardChartHeader
 import com.dmdbrands.gurus.weight.features.dashboard.components.WeightDashboardContent
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyDashboardIntent
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyDashboardViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp.BpDashboardIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp.BpDashboardViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardViewModel
+import com.dmdbrands.gurus.weight.features.dashboard.components.BabyDashboardContent
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.launch
 
@@ -86,7 +93,7 @@ fun DashboardScreen() {
           onClick = {
             scope.launch {
               psm.setSnapshotMode(true)
-              navBackStack.addRoute(AppRoute.Main.DashboardSnapshot, AppRoute.Home, popUpTo = AppRoute.Main.Dashboard)
+              navBackStack.replaceStack(listOf(AppRoute.Main.DashboardSnapshot), AppRoute.Home)
             }
           },
         ) {
@@ -153,11 +160,41 @@ fun DashboardScreen() {
             )
           },
         ) { s ->
-          BpDashboardContent(segmentState = s.forSegment(s.selectedSegment), state = s)
+          BpDashboardContent(state = s)
         }
       }
 
-      is ProductSelection.Baby -> Spacer(modifier = Modifier.height(MeTheme.spacing.sm)) // TODO
+      is ProductSelection.Baby -> {
+        val babyProduct = product as ProductSelection.Baby
+        val vm: BabyDashboardViewModel = hiltViewModel(
+          creationCallback = { factory: BabyDashboardViewModel.Factory -> factory.create(babyProduct) },
+        )
+        val state by vm.state.collectAsStateWithLifecycle()
+        DashboardPage(
+          vm = vm,
+          product = product,
+          hasPercentile = true,
+          chartFillsHeight = true,
+          onRefresh = { vm.handleIntent(BabyDashboardIntent.Refresh) },
+          createFallbackEntry = { ts, yValues, seg ->
+            val y = yValues.firstOrNull() ?: return@DashboardPage null
+            val period = java.time.Instant.ofEpochMilli(ts).atZone(java.time.ZoneId.systemDefault()).let { dt ->
+              if (seg == GraphSegment.WEEK || seg == GraphSegment.MONTH) dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+              else dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+            }
+            // Chart plots ONE metric at a time (weight in lbs OR height in inches).
+            // Convert the interpolated Y back to storage units for PeriodBabySummary.
+            val isWeight = state.selectedMetric == BabyMetric.WEIGHT
+            PeriodBabySummary(
+              period = period,
+              entryTimestamp = DateTimeConverter.timestampToIso(ts),
+              babyId = babyProduct.profile.id,
+              avgWeightDecigrams = if (isWeight) ConversionTools.convertLbToDecigrams(y) else null,
+              avgLengthMillimeters = if (!isWeight) ConversionTools.convertInchesToMm(y) else null,
+            )
+          },
+        ) { _ -> }
+      }
     }
   }
 }
@@ -172,6 +209,8 @@ private fun <S : BaseDashboardState> DashboardPage(
   vm: BaseDashboardViewModel<S, BaseGraphIntent>,
   product: ProductSelection,
   goal: Goal? = null,
+  hasPercentile: Boolean = false,
+  chartFillsHeight: Boolean = false,
   onRefresh: () -> Unit,
   createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   belowChart: @Composable (S) -> Unit,
@@ -188,19 +227,27 @@ private fun <S : BaseDashboardState> DashboardPage(
     if (targetPage != pagerState.currentPage) pagerState.scrollToPage(targetPage)
   }
 
+  val columnModifier = if (chartFillsHeight) {
+    Modifier.fillMaxSize()
+  } else {
+    Modifier.verticalScroll(rememberScrollState())
+  }
+
   PullToRefreshBox(
     isRefreshing = state.isRefreshing,
     onRefresh = onRefresh,
   ) {
-    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+    Column(modifier = columnModifier) {
       GraphPagerView(
         pagerState = pagerState,
         state = state,
         selectedProduct = product,
         goal = goal,
+        hasPercentile = hasPercentile,
+        chartFillsHeight = chartFillsHeight,
         handleGraphIntent = vm::handleIntent,
         createFallbackEntry = createFallbackEntry,
-        header = { segment -> DashboardChartHeader(state = state, segment = segment, product = product) },
+        header = { segment -> DashboardChartHeader(state = state, segment = segment, product = product, handleIntent = vm::handleIntent) },
         onSegmentChange = {
           val currentSegmentState = state.forSegment(state.selectedSegment)
           val anchorTimeStamp = if (currentSegmentState.visibleMin != null && currentSegmentState.visibleMax != null) {
@@ -216,3 +263,4 @@ private fun <S : BaseDashboardState> DashboardPage(
     }
   }
 }
+

@@ -16,8 +16,6 @@ import kotlinx.collections.immutable.persistentListOf
 data class SegmentState(
   val data: ImmutableList<PeriodSummary> = persistentListOf(),
   val target: ImmutableList<PeriodSummary> = persistentListOf(),
-  val minTarget: Long? = null,
-  val maxTarget: Long? = null,
   val chartMinX: Double? = null,
   val chartMaxX: Double? = null,
   val isEmptyGraph: Boolean = false,
@@ -27,6 +25,9 @@ data class SegmentState(
   /** Current visible X range from scroll — updated on scroll stop. */
   val visibleMin: Long? = null,
   val visibleMax: Long? = null,
+  /** Last settled Y range from ScrollAwareRangeProvider — seeds frame-0 on segment switch. */
+  val seedMinY: Double? = null,
+  val seedMaxY: Double? = null,
 )
 
 /**
@@ -41,6 +42,7 @@ interface BaseDashboardState : IReducer.State {
   val selectedSegment: GraphSegment
   val scrollTarget: Double?
   val isRefreshing: Boolean
+  /** Transient UI state — not persisted via SavedStateHandle. Marker resets on process death; acceptable since it's a momentary selection, not user data. */
   val markerIndex: Double?
 
   fun forSegment(segment: GraphSegment): SegmentState {

@@ -3,7 +3,6 @@ package com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
-import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import kotlinx.collections.immutable.toImmutableList
 
 // ── Base Intent ──
@@ -14,15 +13,13 @@ import kotlinx.collections.immutable.toImmutableList
  */
 interface BaseGraphIntent : IReducer.Intent {
   data class UpdateSegment(val segment: GraphSegment, val update: (SegmentState) -> SegmentState) : BaseGraphIntent
-  data class SetProducers(val daily: CartesianChartModelProducer, val monthly: CartesianChartModelProducer) :
-    BaseGraphIntent
-
   data class SetRefreshing(val isRefreshing: Boolean) : BaseGraphIntent
   data class SetSelectedSegment(val segment: GraphSegment, val anchorTimestamp: Double? = null) : BaseGraphIntent
   data class UpdateMarkerIndex(val markerIndex: Double?) : BaseGraphIntent
   data class ScrollRange(val segment: GraphSegment, val min: Long, val max: Long, val onFallback: () -> Unit = {}) : BaseGraphIntent
   data class UpdateIsEmptyGraph(val segment: GraphSegment, val isEmpty: Boolean) : BaseGraphIntent
   data class UpdateSegmentTarget(val segment: GraphSegment, val target: List<PeriodSummary>) : BaseGraphIntent
+  data class UpdateSeedYRange(val segment: GraphSegment, val minY: Double, val maxY: Double) : BaseGraphIntent
 }
 
 // ── Base Reducer ──
@@ -44,8 +41,6 @@ abstract class BaseGraphReducer<S : BaseDashboardState> {
     isRefreshing: Boolean = state.isRefreshing,
     markerIndex: Double? = state.markerIndex,
     selectedSegment: GraphSegment = state.selectedSegment,
-    dailyProducer: CartesianChartModelProducer = state.dailyProducer,
-    monthlyProducer: CartesianChartModelProducer = state.monthlyProducer,
     scrollTarget: Double? = state.scrollTarget,
   ): S
 
@@ -55,14 +50,8 @@ abstract class BaseGraphReducer<S : BaseDashboardState> {
       copyBaseFields(state, segmentStates = state.segmentStates + (intent.segment to intent.update(current)))
     }
 
-    is BaseGraphIntent.SetProducers -> copyBaseFields(
-      state,
-      dailyProducer = intent.daily,
-      monthlyProducer = intent.monthly,
-    )
-
     is BaseGraphIntent.SetRefreshing -> copyBaseFields(state, isRefreshing = intent.isRefreshing)
-    is BaseGraphIntent.SetSelectedSegment -> copyBaseFields(state, selectedSegment = intent.segment, scrollTarget = intent.anchorTimestamp)
+    is BaseGraphIntent.SetSelectedSegment -> copyBaseFields(state, selectedSegment = intent.segment, scrollTarget = intent.anchorTimestamp, markerIndex = null)
     is BaseGraphIntent.UpdateMarkerIndex -> copyBaseFields(state, markerIndex = intent.markerIndex)
     is BaseGraphIntent.ScrollRange -> {
       val current = state.segmentStates[intent.segment] ?: SegmentState()
@@ -85,9 +74,26 @@ abstract class BaseGraphReducer<S : BaseDashboardState> {
 
     is BaseGraphIntent.UpdateSegmentTarget -> {
       val current = state.segmentStates[intent.segment] ?: SegmentState()
+      // Clear markerIndex if the saved position is outside the new target's data range
+      val clearMarker = state.markerIndex?.let { idx ->
+        val timestamps = intent.target.map { it.getTimeStamp() }
+        timestamps.isNotEmpty() && idx.toLong() !in timestamps.min()..timestamps.max()
+      } ?: false
       copyBaseFields(
         state,
         segmentStates = state.segmentStates + (intent.segment to current.copy(target = intent.target.toImmutableList())),
+        markerIndex = if (clearMarker) null else state.markerIndex,
+      )
+    }
+
+    is BaseGraphIntent.UpdateSeedYRange -> {
+      val current = state.segmentStates[intent.segment] ?: SegmentState()
+      copyBaseFields(
+        state,
+        segmentStates = state.segmentStates + (intent.segment to current.copy(
+          seedMinY = intent.minY,
+          seedMaxY = intent.maxY,
+        )),
       )
     }
 

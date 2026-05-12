@@ -126,8 +126,8 @@ fun WeightDashboardContent(
         onUpdateGoalClick = { handleIntent(WeightDashboardIntent.NavigateToGoal) },
         onMetricInfoClick = {
           val isSingleEntry = state.markerIndex != null
-          val rangeText = (activeSegmentState.visibleMin ?: activeSegmentState.minTarget)?.let { min ->
-            (activeSegmentState.visibleMax ?: activeSegmentState.maxTarget)?.let { max ->
+          val rangeText = (activeSegmentState.visibleMin ?: activeSegmentState.chartMinX?.toLong())?.let { min ->
+            (activeSegmentState.visibleMax ?: activeSegmentState.chartMaxX?.toLong())?.let { max ->
               GraphUtil.formatDateRange(min, max, state.selectedSegment)
             }
           }

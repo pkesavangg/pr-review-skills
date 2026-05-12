@@ -3,9 +3,9 @@ package com.dmdbrands.gurus.weight.core.di
 import com.dmdbrands.gurus.weight.core.network.ISecureTokenStore
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.data.api.EntryApi
-import com.dmdbrands.gurus.weight.data.repository.HistoryRepository
-import com.dmdbrands.gurus.weight.data.storage.db.dao.HistoryDao
-import com.dmdbrands.gurus.weight.domain.repository.IHistoryRepository
+import com.dmdbrands.gurus.weight.data.repository.EntryReadRepository
+import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryReadDao
+import com.dmdbrands.gurus.weight.domain.repository.IEntryReadRepository
 import com.dmdbrands.gurus.weight.data.api.IAccountFlagAPI
 import com.dmdbrands.gurus.weight.data.api.IAuthAPI
 import com.dmdbrands.gurus.weight.data.api.IBodyCompAPI
@@ -211,7 +211,7 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideHistoryRepository(
-        historyDao: HistoryDao,
-    ): IHistoryRepository = HistoryRepository(historyDao)
+    fun provideEntryReadRepository(
+        entryReadDao: EntryReadDao,
+    ): IEntryReadRepository = EntryReadRepository(entryReadDao)
 }

@@ -8,37 +8,22 @@ import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.SnapshotColors
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
-/**
- * Specification for a single chart line.
- */
 data class LineSpec(
   val color: Color,
 )
 
-/**
- * Declarative configuration for building a product-specific chart.
- * Built via [rememberChartConfig] inside a composable to resolve theme colors.
- *
- * @param lines Line specs per series (1 for weight, 3 for BP, 1 for baby).
- * @param goalWeight Non-null if goal marker should be shown (weight only).
- * @param isWeightlessMode Whether weightless mode affects the Y range.
- * @param hasSecondaryLayer Whether a secondary metric overlay layer exists (weight only).
- * @param useAllSeriesForYRange If true, Y range spans all series (BP). If false, uses first series only.
- */
 data class ChartConfig(
   val lines: List<LineSpec>,
-  val goal: com.dmdbrands.gurus.weight.domain.model.goal.Goal? = null,
+  val goal: Goal? = null,
   val goalWeight: Double? = null,
   val isWeightlessMode: Boolean = false,
   val hasSecondaryLayer: Boolean = false,
   val useAllSeriesForYRange: Boolean = false,
   val secondaryLineColor: Color? = null,
+  val hasPercentileLayer: Boolean = false,
+  val percentileBandColor: Color? = null,
 )
 
-/**
- * Creates and remembers a [ChartConfig] for the given product.
- * Must be called from a composable (resolves theme colors).
- */
 @Composable
 fun rememberChartConfig(
   product: ProductSelection,
@@ -46,10 +31,11 @@ fun rememberChartConfig(
   avgSystolic: Int? = null,
   avgDiastolic: Int? = null,
   avgPulse: Int? = null,
+  hasPercentile: Boolean = false,
 ): ChartConfig {
   val primaryColor = MeTheme.colorScheme.primaryAction
   val secondaryColor = MeTheme.colorScheme.secondaryAction
-  return remember(product, goal, avgSystolic, avgDiastolic, avgPulse) {
+  return remember(product, goal, avgSystolic, avgDiastolic, avgPulse, hasPercentile) {
     when (product) {
       is ProductSelection.MyWeight -> ChartConfig(
         lines = listOf(LineSpec(color = primaryColor)),
@@ -60,6 +46,7 @@ fun rememberChartConfig(
         useAllSeriesForYRange = false,
         secondaryLineColor = secondaryColor,
       )
+
       is ProductSelection.BloodPressure -> ChartConfig(
         lines = listOf(
           LineSpec(color = avgSystolic?.let { SnapshotColors.systolicColor(it) } ?: SnapshotColors.BloodPressure),
@@ -68,8 +55,12 @@ fun rememberChartConfig(
         ),
         useAllSeriesForYRange = true,
       )
+
       is ProductSelection.Baby -> ChartConfig(
         lines = listOf(LineSpec(color = SnapshotColors.Baby)),
+        hasPercentileLayer = hasPercentile,
+        percentileBandColor = SnapshotColors.PercentileBand,
+        // Baby avgWeightDecigrams is raw storage (not display units) — skip pre-warming.
       )
     }
   }

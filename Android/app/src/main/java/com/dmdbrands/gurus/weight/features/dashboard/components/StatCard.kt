@@ -274,8 +274,8 @@ private fun formatStatValue(value: Any?): String {
     is String -> value
     is Number -> {
       when (value) {
-        is Double -> if (value == value.toInt().toDouble()) value.toInt().toString() else String.format("%.1f", value)
-        is Float -> if (value == value.toInt().toFloat()) value.toInt().toString() else String.format("%.1f", value)
+        is Double -> if (value == value.toInt().toDouble()) value.toInt().toString() else String.format(java.util.Locale.US, "%.1f", value)
+        is Float -> if (value == value.toInt().toFloat()) value.toInt().toString() else String.format(java.util.Locale.US, "%.1f", value)
         else -> value.toString()
       }
     }

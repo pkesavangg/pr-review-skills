@@ -7,7 +7,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.HistoryDetail
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
-import com.dmdbrands.gurus.weight.domain.services.IHistoryService
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 class HistoryDetailViewModel @AssistedInject constructor(
     private val entryService: IEntryService,
     private val healthConnectService: IHealthConnectService,
-    private val historyService: IHistoryService,
+    private val entryReadService: IEntryReadService,
     @Assisted val month: String,
     @Assisted val productType: ProductType,
 ) : BaseIntentViewModel<HistoryDetailState, HistoryDetailIntent>(HistoryDetailReducer()) {
@@ -46,7 +46,7 @@ class HistoryDetailViewModel @AssistedInject constructor(
         AppLog.d(TAG, "Loading ${product.productType} details for key: $month")
         viewModelScope.launch {
             try {
-                historyService.getDetail(product, month).collect { detail ->
+                entryReadService.getDetail(product, month).collect { detail ->
                     val entries: List<Entry> = when (detail) {
                         is HistoryDetail.Weight -> detail.entries
                         is HistoryDetail.BloodPressure -> detail.entries
