@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.data.storage.db.entity.device
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -46,6 +47,8 @@ data class DeviceEntity(
   val isSynced: Boolean = false,
   val hasServerID: Boolean = false,
   val token: String?,
+  @ColumnInfo(defaultValue = "NULL")
   val productType: String? = null,
+  @ColumnInfo(defaultValue = "NULL")
   val lastModified: Long? = null,
 )

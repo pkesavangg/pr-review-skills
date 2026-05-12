@@ -336,7 +336,7 @@ constructor(
         val note = controls.notes.value.ifBlank { null }
 
         val bpmEntryEntity = BpmEntryEntity(
-          entryId = 0L,
+          id = 0L,
           systolic = systolic,
           diastolic = diastolic,
           pulse = pulse,

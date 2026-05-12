@@ -37,8 +37,8 @@ android {
     applicationId = "com.dmdbrands.gurus.weight"
     minSdk = 26
     targetSdk = 36
-    versionCode = 800000
-    versionName = "5.0.0"
+    versionCode = 810000
+    versionName = "5.0.1"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     // 16KB page alignment for Android 15 compliance
@@ -64,7 +64,7 @@ android {
       )
       buildConfigField("Boolean", "ENABLE_ANALYTICS", "false")
     }
-release {
+    release {
       isMinifyEnabled = true
       isShrinkResources = true
       configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
@@ -98,6 +98,9 @@ release {
   buildFeatures {
     compose = true
     buildConfig = true
+  }
+  sourceSets {
+    getByName("androidTest").assets.srcDirs("$projectDir/schemas")
   }
 }
 

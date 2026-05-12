@@ -1,11 +1,21 @@
 package com.dmdbrands.gurus.weight.data.storage.db.entity.baby
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntity
 
 @Entity(
     tableName = "baby",
+    foreignKeys = [
+        ForeignKey(
+            entity = AccountEntity::class,
+            parentColumns = ["accountId"],
+            childColumns = ["accountId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
     indices = [
         Index(value = ["accountId"]),
     ],

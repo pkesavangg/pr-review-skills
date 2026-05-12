@@ -71,7 +71,7 @@ interface EntryInfo<T : BaseEntryEntity> {
  */
 data class PopulatedEntry(
   @Embedded override val entry: EntryEntity,
-  @Relation(parentColumn = "id", entityColumn = "entryId")
+  @Relation(parentColumn = "id", entityColumn = "id")
   override val bpmEntry: BpmEntryEntity?,
   @Relation(parentColumn = "id", entityColumn = "id")
   override val scaleEntry: BodyScaleEntryEntity?,
@@ -86,7 +86,7 @@ data class PopulatedEntry(
  */
 data class PopulatedActiveEntry(
   @Embedded override val entry: ActiveEntryEntity,
-  @Relation(parentColumn = "id", entityColumn = "entryId")
+  @Relation(parentColumn = "id", entityColumn = "id")
   override val bpmEntry: BpmEntryEntity?,
   @Relation(parentColumn = "id", entityColumn = "id")
   override val scaleEntry: BodyScaleEntryEntity?,
