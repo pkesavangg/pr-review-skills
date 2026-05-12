@@ -51,10 +51,14 @@ struct WeightTrendView: View {
         dashboardStore: DashboardStore
     ) -> some View {
         VStack(alignment: .leading, spacing: .zero) {
-            // Show label based on selection state
+            // Show label based on selection state.
+            // Hidden via opacity (not removed) on Week/Month selection so layout height stays
+            // stable when the user taps between points — same pattern as the in-graph label.
             Text(dashboardStore.weightDisplayLabel)
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
+                .opacity(dashboardStore.hidesWeightDisplayLabel ? 0 : 1)
+                .animation(.none, value: dashboardStore.hidesWeightDisplayLabel)
                 .padding(.leading, .spacingSM)
 
             WeightDisplayView(

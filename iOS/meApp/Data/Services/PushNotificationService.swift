@@ -128,7 +128,8 @@ class PushNotificationService: NSObject {
         )
         do {
             try await apiRepo.updateDeviceInfo(payload)
-            logger.log(level: .success, tag: tag, message: "Device info updated")
+            let modelId = deviceInfo["modelIdentifier"] ?? "unknown"
+            logger.log(level: .success, tag: tag, message: "Device info updated: model=\(payload.deviceModel) (\(modelId)), manufacturer=\(payload.deviceManufacturer), os=\(payload.deviceOSName) \(payload.deviceOSVersion), appVersion=\(payload.appVersion)")
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to update device info: \(error.localizedDescription)")
             // Silently ignore network errors – will retry on next connectivity change
@@ -205,8 +206,20 @@ class PushNotificationService: NSObject {
             "deviceUuid": device.identifierForVendor?.uuidString ?? "",
             "manufacturer": "Apple",
             "model": device.model,
+            "modelIdentifier": Self.hardwareModelIdentifier(),
             "deviceOSName": device.systemName
         ]
+    }
+
+    private static func hardwareModelIdentifier() -> String {
+        var systemInfo = utsname()
+        uname(&systemInfo)
+        let mirror = Mirror(reflecting: systemInfo.machine)
+        let identifier = mirror.children.reduce(into: "") { result, element in
+            guard let value = element.value as? Int8, value != 0 else { return }
+            result.append(String(UnicodeScalar(UInt8(value))))
+        }
+        return identifier
     }
     
     // MARK: - FCM Token & Device Info Update

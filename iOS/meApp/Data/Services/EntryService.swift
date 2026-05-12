@@ -963,6 +963,36 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         // Round average to whole tenths of lbs, then convert to Double
         return Double(Int(round(Double(filtered.reduce(0, +)) / Double(filtered.count))))
     }
+
+    // MARK: - Latest-per-Day Helpers
+    // Daily aggregation (Week & Month graph tabs) surfaces the latest entry per day so users see
+    // their actual most recent reading rather than an average across same-day weigh-ins.
+    // For each metric, we walk entries from latest timestamp backwards and take the first
+    // value that is non-nil AND > 0 (preserves the old `avgNonZero` "treat 0 as missing" rule).
+
+    private func latestPositive<T: BinaryInteger>(
+        _ entries: [Entry],
+        pick: (Entry) -> T?
+    ) -> Double? {
+        for entry in entries {
+            if let value = pick(entry), value > 0 {
+                return Double(value)
+            }
+        }
+        return nil
+    }
+
+    private func latestPositiveDTO(
+        _ dtos: [BathScaleOperationDTO],
+        pick: (BathScaleOperationDTO) -> Double?
+    ) -> Double? {
+        for dto in dtos {
+            if let value = pick(dto), value > 0 {
+                return value
+            }
+        }
+        return nil
+    }
     
     /// Aggregate entries by day, returning BathScaleWeightSummary for each day
     func aggregateByDay(entries: [Entry], accountId: String) -> [BathScaleWeightSummary?] {
@@ -984,29 +1014,33 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             // Ensure we have a valid date string before parsing
             guard !day.isEmpty else { return nil }
             let date = DateTimeTools.getDateFromDateString(day, format: "yyyy-MM-dd")
-            let latestTimestamp = validEntries.map { $0.entryTimestamp }.max() ?? ""
-            let count = validEntries.count
-            
+            // Sort entries latest-first; every per-metric pick walks this list and takes
+            // the first value that is non-nil and > 0 (latest-non-null-positive).
+            let sortedDesc = validEntries.sorted { $0.entryTimestamp > $1.entryTimestamp }
+            let latestTimestamp = sortedDesc.first?.entryTimestamp ?? ""
+            let count = sortedDesc.count
+            let latestWeight = Double(sortedDesc.first?.scaleEntry?.weight ?? 0)
+
             return BathScaleWeightSummary(
                 accountId: accountId,
                 period: day,
                 entryTimestamp: latestTimestamp,
                 date: date,
                 count: count,
-                weight: avgWeight(validEntries.compactMap { $0.scaleEntry?.weight }),
-                bodyFat: avgNonZero(validEntries.compactMap { $0.scaleEntry?.bodyFat.map(Double.init) }),
-                muscleMass: avgNonZero(validEntries.compactMap { $0.scaleEntry?.muscleMass.map(Double.init) }),
-                water: avgNonZero(validEntries.compactMap { $0.scaleEntry?.water.map(Double.init) }),
-                bmi: avgNonZero(validEntries.compactMap { $0.scaleEntry?.bmi.map(Double.init) }),
-                bmr: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.bmr.map(Double.init) }),
-                metabolicAge: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.metabolicAge.map(Double.init) }),
-                proteinPercent: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.proteinPercent.map(Double.init) }),
-                pulse: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.pulse.map(Double.init) }),
-                skeletalMusclePercent: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.skeletalMusclePercent.map(Double.init) }),
-                subcutaneousFatPercent: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.subcutaneousFatPercent.map(Double.init) }),
-                visceralFatLevel: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.visceralFatLevel.map(Double.init) }),
-                boneMass: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.boneMass.map(Double.init) }),
-                impedance: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.impedance.map(Double.init) })
+                weight: latestWeight,
+                bodyFat:               latestPositive(sortedDesc) { $0.scaleEntry?.bodyFat },
+                muscleMass:            latestPositive(sortedDesc) { $0.scaleEntry?.muscleMass },
+                water:                 latestPositive(sortedDesc) { $0.scaleEntry?.water },
+                bmi:                   latestPositive(sortedDesc) { $0.scaleEntry?.bmi },
+                bmr:                   latestPositive(sortedDesc) { $0.scaleEntryMetric?.bmr },
+                metabolicAge:          latestPositive(sortedDesc) { $0.scaleEntryMetric?.metabolicAge },
+                proteinPercent:        latestPositive(sortedDesc) { $0.scaleEntryMetric?.proteinPercent },
+                pulse:                 latestPositive(sortedDesc) { $0.scaleEntryMetric?.pulse },
+                skeletalMusclePercent: latestPositive(sortedDesc) { $0.scaleEntryMetric?.skeletalMusclePercent },
+                subcutaneousFatPercent:latestPositive(sortedDesc) { $0.scaleEntryMetric?.subcutaneousFatPercent },
+                visceralFatLevel:      latestPositive(sortedDesc) { $0.scaleEntryMetric?.visceralFatLevel },
+                boneMass:              latestPositive(sortedDesc) { $0.scaleEntryMetric?.boneMass },
+                impedance:             latestPositive(sortedDesc) { $0.scaleEntryMetric?.impedance }
             )
         }.sorted { $0.period < $1.period }
     }
@@ -1077,28 +1111,31 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             guard !validDTOs.isEmpty else { return nil }
 
             let date = DateTimeTools.getDateFromDateString(day, format: "yyyy-MM-dd")
-            let latestTimestamp = validDTOs.compactMap { $0.entryTimestamp }.max() ?? ""
+            // Sort DTOs latest-first so per-metric picks return the most recent non-null-positive value.
+            let sortedDesc = validDTOs.sorted { ($0.entryTimestamp ?? "") > ($1.entryTimestamp ?? "") }
+            let latestTimestamp = sortedDesc.first?.entryTimestamp ?? ""
+            let latestWeight = sortedDesc.first?.weight ?? 0
 
             return BathScaleWeightSummary(
                 accountId: accountId,
                 period: day,
                 entryTimestamp: latestTimestamp,
                 date: date,
-                count: validDTOs.count,
-                weight: avgWeight(validDTOs.compactMap { $0.weight.map { Int($0) } }),
-                bodyFat: avgNonZero(validDTOs.compactMap { $0.bodyFat }),
-                muscleMass: avgNonZero(validDTOs.compactMap { $0.muscleMass }),
-                water: avgNonZero(validDTOs.compactMap { $0.water }),
-                bmi: avgNonZero(validDTOs.compactMap { $0.bmi }),
-                bmr: avgNonZero(validDTOs.compactMap { $0.bmr }),
-                metabolicAge: avgNonZero(validDTOs.compactMap { $0.metabolicAge }),
-                proteinPercent: avgNonZero(validDTOs.compactMap { $0.proteinPercent }),
-                pulse: avgNonZero(validDTOs.compactMap { $0.pulse }),
-                skeletalMusclePercent: avgNonZero(validDTOs.compactMap { $0.skeletalMusclePercent }),
-                subcutaneousFatPercent: avgNonZero(validDTOs.compactMap { $0.subcutaneousFatPercent }),
-                visceralFatLevel: avgNonZero(validDTOs.compactMap { $0.visceralFatLevel }),
-                boneMass: avgNonZero(validDTOs.compactMap { $0.boneMass }),
-                impedance: avgNonZero(validDTOs.compactMap { $0.impedance })
+                count: sortedDesc.count,
+                weight: latestWeight,
+                bodyFat:               latestPositiveDTO(sortedDesc) { $0.bodyFat },
+                muscleMass:            latestPositiveDTO(sortedDesc) { $0.muscleMass },
+                water:                 latestPositiveDTO(sortedDesc) { $0.water },
+                bmi:                   latestPositiveDTO(sortedDesc) { $0.bmi },
+                bmr:                   latestPositiveDTO(sortedDesc) { $0.bmr },
+                metabolicAge:          latestPositiveDTO(sortedDesc) { $0.metabolicAge },
+                proteinPercent:        latestPositiveDTO(sortedDesc) { $0.proteinPercent },
+                pulse:                 latestPositiveDTO(sortedDesc) { $0.pulse },
+                skeletalMusclePercent: latestPositiveDTO(sortedDesc) { $0.skeletalMusclePercent },
+                subcutaneousFatPercent:latestPositiveDTO(sortedDesc) { $0.subcutaneousFatPercent },
+                visceralFatLevel:      latestPositiveDTO(sortedDesc) { $0.visceralFatLevel },
+                boneMass:              latestPositiveDTO(sortedDesc) { $0.boneMass },
+                impedance:             latestPositiveDTO(sortedDesc) { $0.impedance }
             )
         }.sorted { $0.period < $1.period }
     }
