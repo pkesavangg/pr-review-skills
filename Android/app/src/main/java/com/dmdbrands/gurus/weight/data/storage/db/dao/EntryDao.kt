@@ -61,7 +61,7 @@ interface EntryDao {
   suspend fun insert(entry: Entry): Long {
     val entryId = insertEntryEntity(entry.entry)
 
-    if (entry is BpmEntry) insertBpm(entry.bpmEntry.copy(entryId = entryId))
+    if (entry is BpmEntry) insertBpm(entry.bpmEntry.copy(id = entryId))
     else if (entry is ScaleEntry) {
       insertBodyScale(entry.scale.scaleEntry.copy(id = entryId))
       if (entry.scale.scaleEntryMetric != null) {
@@ -84,7 +84,7 @@ interface EntryDao {
     for (entry in entries) {
       val entryId = insertEntryEntity(entry.entry)
       when (entry) {
-        is BpmEntry -> insertBpm(entry.bpmEntry.copy(entryId = entryId))
+        is BpmEntry -> insertBpm(entry.bpmEntry.copy(id = entryId))
         is ScaleEntry -> {
           insertBodyScale(entry.scale.scaleEntry.copy(id = entryId))
           entry.scale.scaleEntryMetric?.let { insertBodyScaleMetric(it.copy(id = entryId)) }
@@ -99,7 +99,7 @@ interface EntryDao {
     val updatedId = update(entry.entry).toLong()
 
     if (entry is BpmEntry) {
-      updateBpm(entry.bpmEntry.copy(entryId = updatedId))
+      updateBpm(entry.bpmEntry.copy(id = updatedId))
     } else if (entry is ScaleEntry) {
       updateBodyScale(entry.scale.scaleEntry.copy(id = updatedId))
       if (entry.scale.scaleEntryMetric != null) {
