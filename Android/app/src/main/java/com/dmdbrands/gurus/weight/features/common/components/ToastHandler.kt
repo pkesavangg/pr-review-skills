@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import com.dmdbrands.gurus.weight.features.common.model.ReadingToast
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -104,23 +105,33 @@ fun ToastHandler(
                         clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
                         clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
                     }
-                    ToastCard(
-                        modifier =
-                            Modifier
-                                .offset { IntOffset(-dragState.requireOffset().roundToInt(), 0) }
-                                .anchoredDraggable(
-                                    state = dragState,
-                                    orientation = Orientation.Horizontal,
-                                    reverseDirection = true,
-                                    enabled = true,
-                                ),
-                        toast = toast,
-                        clearToast = {
-                            isDismissed.value = true
-                            clearToast()
-                            snackbarData.dismiss()
-                        },
-                    )
+                    val cardModifier = Modifier
+                        .offset { IntOffset(-dragState.requireOffset().roundToInt(), 0) }
+                        .anchoredDraggable(
+                            state = dragState,
+                            orientation = Orientation.Horizontal,
+                            reverseDirection = true,
+                            enabled = true,
+                        )
+                    val dismiss = {
+                        isDismissed.value = true
+                        clearToast()
+                        snackbarData.dismiss()
+                    }
+                    when (toast) {
+                        is Toast.Simple -> ToastCard(
+                            modifier = cardModifier,
+                            toast = toast,
+                            clearToast = dismiss,
+                        )
+                        is Toast.Custom -> when (toast.content) {
+                            is ReadingToast -> ReadingArrivalCard(
+                                modifier = cardModifier,
+                                readingToast = toast.content,
+                                clearToast = dismiss,
+                            )
+                        }
+                    }
                 }
             }
         }
