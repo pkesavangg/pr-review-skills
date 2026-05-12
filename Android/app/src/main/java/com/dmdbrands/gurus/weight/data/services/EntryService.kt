@@ -412,9 +412,12 @@ constructor(
       updateMonthlyBodyScaleAveragesWithJoin()
     }
 
-    // Add new body scale data updates
+    // Per MA-3938: Week/Month tabs surface the latest non-null positive value per metric
+    // for days with multiple entries (not the daily average). The daywise-latest flow
+    // backs the dashboard graph for those tabs; the averages flow stays subscribed for
+    // any non-dashboard consumers and for safe rollback if needed.
     repositoryScope.launch {
-      updateDaywiseBodyScaleAveragesWithJoin()
+      updateDaywiseBodyScaleLatestWithJoin()
     }
 
     // Add monthly average subscription
@@ -701,9 +704,22 @@ constructor(
         // Server responses use lowercase operationType ("create"), while
         // locally-built entries use OperationType.CREATE.name ("CREATE"),
         // so compare ignoring case.
-        operationsFromApi
+        //
+        // Batch all CREATE entries into a single Health Connect sync call
+        // instead of calling tryLocalIntegration per entry. On first sync
+        // operationsFromApi can contain thousands of historical records;
+        // calling checkIntegrated() + syncData() once per entry caused
+        // thousands of sequential coroutine calls and a very long load time.
+        val createOps = operationsFromApi
           .filter { it.entry.operationType.equals(OperationType.CREATE.name, ignoreCase = true) }
-          .forEach { tryLocalIntegration(it) }
+        if (createOps.isNotEmpty()) {
+          // Run Health Connect sync in the background so it does not block
+          // navigation. syncOperations() is called from loadData() inside
+          // LoadingScreenViewModel; if we await here the dashboard never
+          // appears until all HC IPC batches finish (could be 100+ chunks on
+          // a first login with a large history).
+          repositoryScope.launch { tryLocalIntegrationBatch(createOps) }
+        }
       }
 
       // 7. API sync is done: clear loader now and refresh the progress cache in the background
@@ -767,6 +783,18 @@ constructor(
     } catch (e: Exception) {
       if (e is CancellationException) throw e
       AppLog.e("EntryService", "Error updating day wise entry averages", e)
+    }
+  }
+
+  private suspend fun updateDaywiseBodyScaleLatestWithJoin() {
+    try {
+      getDaywiseBodyScaleLatestWithJoin()
+        .collect {
+          _daywiseBodyScaleLatest.value = it
+        }
+    } catch (e: Exception) {
+      if (e is CancellationException) throw e
+      AppLog.e("EntryService", "Error updating day wise latest entries", e)
     }
   }
 
@@ -905,6 +933,8 @@ constructor(
 
   /**
    * Gets the latest body scale entry for each day for an account using JOINs.
+   * Per MA-3938: backs the dashboard graph for Week/Month tabs so days with multiple
+   * entries surface the latest non-null positive value per metric (not the daily average).
    */
   private fun getDaywiseBodyScaleLatestWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
     combine(
@@ -949,6 +979,54 @@ constructor(
       }
     } catch (err: Exception) {
       AppLog.e("EntryService", "Error syncing to Health Connect", err)
+      // Don't throw - this is a non-critical operation
+    }
+  }
+
+  /**
+   * Batch version of tryLocalIntegration for server-pull entries (operationsFromApi).
+   *
+   * On first sync, the API returns the full entry history (potentially thousands
+   * of records). Calling tryLocalIntegration per entry would invoke checkIntegrated()
+   * and syncData() once per record — causing thousands of sequential coroutine calls
+   * and a very long initial load time.
+   *
+   * This function checks integration status once, converts all entries to summaries
+   * in memory, then issues a single healthConnectService.syncData() call for the
+   * entire batch and a single healthConnectRepository.syncEntry() for the last entry.
+   *
+   * @param entries The CREATE entries received from the API in this sync cycle.
+   */
+  private suspend fun tryLocalIntegrationBatch(entries: List<Entry>) {
+    try {
+      val isIntegrated = healthConnectService.checkIntegrated()
+      if (!isIntegrated) return
+
+      val summaries = entries.filterIsInstance<ScaleEntry>()
+        .mapNotNull { it.toPeriodBodyScaleSummary() }
+
+      if (summaries.isEmpty()) return
+
+      healthConnectService.syncData(summaries)
+      AppLog.d("EntryService", "Batch synced ${summaries.size} entries to Health Connect")
+
+      // Record the most-recent entry in the HC sync table so the integration
+      // service knows up to which timestamp it has synced.
+      val latest = summaries.maxByOrNull { it.entryTimestamp } ?: return
+      val latestEntry = HealthConnectSyncEntry(
+        weight = latest.weight,
+        timestamp = ConversionTools.convertToUTC(latest.entryTimestamp),
+        type = IntegrationType.HEALTH_CONNECT.value,
+        sentAt = DateTimeFormatter.ISO_INSTANT.format(Instant.now()),
+        bodyFat = latest.bodyFat,
+        muscleMass = latest.muscleMass,
+        water = latest.water,
+        bmi = latest.bmi,
+        data = mapOf(),
+      )
+      healthConnectRepository.syncEntry(latestEntry)
+    } catch (err: Exception) {
+      AppLog.e("EntryService", "Error in batch Health Connect sync", err)
       // Don't throw - this is a non-critical operation
     }
   }

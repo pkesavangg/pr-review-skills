@@ -536,7 +536,7 @@ interface EntryDao {
     """
 WITH daily_entries AS (
   SELECT
-    strftime('%Y-%m-%d', datetime(e.entryTimestamp,${UTC}, ${LOCAL_TIME})) AS day,
+    strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS day,
     e.entryTimestamp,
     e.unit,
     bse.weight,
@@ -564,16 +564,10 @@ distinct_days AS (
 )
 SELECT
   d.day AS period,
-  -- Get the latest unit and entryTimestamp for that day
-  (SELECT unit FROM daily_entries
-   WHERE day = d.day AND unit IS NOT NULL
-   ORDER BY entryTimestamp DESC LIMIT 1) AS unit,
-
   (SELECT entryTimestamp FROM daily_entries
    WHERE day = d.day
    ORDER BY entryTimestamp DESC LIMIT 1) AS entryTimestamp,
 
-  -- For each metric, get the latest valid value for that day
   (SELECT weight FROM daily_entries
    WHERE day = d.day AND weight IS NOT NULL AND weight > 0
    ORDER BY entryTimestamp DESC LIMIT 1) AS weight,
@@ -628,10 +622,14 @@ SELECT
 
   (SELECT impedance FROM daily_entries
    WHERE day = d.day AND impedance IS NOT NULL AND impedance > 0
-   ORDER BY entryTimestamp DESC LIMIT 1) AS impedance
+   ORDER BY entryTimestamp DESC LIMIT 1) AS impedance,
+
+  (SELECT unit FROM daily_entries
+   WHERE day = d.day AND unit IS NOT NULL
+   ORDER BY entryTimestamp DESC LIMIT 1) AS unit
 FROM distinct_days d
 ORDER BY d.day DESC
-    """,
+""",
   )
   fun getDaywiseBodyScaleLatestWithJoin(
     accountId: String

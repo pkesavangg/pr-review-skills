@@ -11,11 +11,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphLabelHelper
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
 /**
@@ -52,14 +54,15 @@ fun ChartHeader(
     getDisplayUnit(weightUnit, weightValue)
   }
   
-  val headerText =
-    if (state.markerIndex != null) {
-      when (segment) {
-        GraphSegment.WEEK, GraphSegment.MONTH -> "day"
-        else -> "month"
-      }
-    } else
-      segment.name.lowercase()
+  val hasSelection = state.markerIndex != null
+  val prefix = GraphLabelHelper.selectionPrefix(segment, hasSelection)
+  // Render text even when hidden so the row reserves its vertical slot — prevents the
+  // headline weight from jumping as the user taps between points (mirrors iOS .opacity(0)).
+  val labelText = when {
+    state.isEmptyGraph -> "no entries"
+    prefix != null -> "$prefix average"
+    else -> "day average"
+  }
 
   Column(
     modifier = Modifier.padding(
@@ -68,9 +71,10 @@ fun ChartHeader(
     ),
   ) {
     Text(
-      text = if (state.isEmptyGraph) "no entries" else "$headerText average",
+      text = labelText,
       style = MeTheme.typography.subHeading1,
       color = MeTheme.colorScheme.textSubheading,
+      modifier = if (prefix == null && !state.isEmptyGraph) Modifier.alpha(0f) else Modifier,
     )
 
     Row(verticalAlignment = Alignment.Bottom) {

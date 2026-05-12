@@ -219,26 +219,30 @@ fun MetricInfoScreenContent(
         val currentStat = StatHelper.getMetricValue(info, currentMetricKey)
         val pageScrollState = rememberScrollState()
 
-        val date = when {
-          info.isSingleEntry -> getFormattedDate(
-            DateTimeConverter.isoToTimestamp(info.entryTimeStamp?.lastOrNull()), source = source,
-          )
+        // Per MA-3938: the label must follow graph selection state, NOT the entry DTO's
+        // timestamp. Driving it off `info.entryTimeStamp` for the no-selection case is the
+        // iOS bug we mirrored — it stamped the latest entry's day even though the displayed
+        // value was the period average. The no-selection branch must use `info.rangeText`.
+        val singleEntryDate = getFormattedDate(
+          DateTimeConverter.isoToTimestamp(info.entryTimeStamp?.lastOrNull()),
+          source = source,
+        )
 
-          info.rangeText != null -> info.rangeText
-          else -> ""
+        val measurementTakenString = when {
+          info.isEmpty -> "no entries ${info.rangeText ?: singleEntryDate}"
+          currentStat.getDisplayValue() == null -> MetricInfoStrings.MeasurementNotTaken
+          // Single entry on Week/Month — whether opened from the History list or from a
+          // Dashboard graph point selection. The displayed value is a specific reading on
+          // a specific day, so phrase the label that way (no "day average" wording).
+          info.isSingleEntry && (source == MetricInfoSource.WEEK || source == MetricInfoSource.MONTH) ->
+            "Measurement taken on $singleEntryDate"
+          // Dashboard, point selected on Year/Total — those values are monthly averages.
+          info.isSingleEntry ->
+            "month average $singleEntryDate".lowercase()
+          // Dashboard, no graph selection — mirror the trend-view header's period label.
+          else ->
+            "${source.name.lowercase()} average ${info.rangeText ?: ""}".trim()
         }
-
-        val sourceName = when {
-          info.isSingleEntry -> if (source == MetricInfoSource.WEEK || source == MetricInfoSource.MONTH) "day" else "month"
-          else -> source.name.lowercase()
-        }
-
-        val measurementTakenString = if (info.isEmpty)
-          "no entries".plus(" $date")
-        else if (currentStat.getDisplayValue() != null)
-          sourceName.plus(" average $date").lowercase()
-        else
-          MetricInfoStrings.MeasurementNotTaken
 
         Column(
           modifier = modifier
