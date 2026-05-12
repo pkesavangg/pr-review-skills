@@ -59,7 +59,7 @@ private fun ProductSelection?.displayColor(): Color = when (this) {
 
 private fun ProductSelection?.displayName(): String = when (this) {
     is ProductSelection.MyWeight -> "My Weight"
-    is ProductSelection.BloodPressure -> "My Blood Pressure"
+    is ProductSelection.BloodPressure -> "My BP"
     is ProductSelection.Baby -> profile.name
     null -> "My Weight"
 }

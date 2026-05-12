@@ -153,7 +153,7 @@ constructor(
           crashReportingService.recordException(exception, "test_non_fatal")
           AppLog.d(TAG, "Non-fatal test exception recorded to Crashlytics")
           dialogQueueService.showToast(
-            com.dmdbrands.gurus.weight.features.common.model.Toast(
+            com.dmdbrands.gurus.weight.features.common.model.Toast.Simple(
               title = null,
               message = "Non-fatal exception recorded",
               action = null,

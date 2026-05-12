@@ -217,7 +217,7 @@ constructor(
 
   private fun showToast(message: String) {
     dialogQueueService.showToast(
-      Toast(
+      Toast.Simple(
         title = null,
         message = message,
         action = null,

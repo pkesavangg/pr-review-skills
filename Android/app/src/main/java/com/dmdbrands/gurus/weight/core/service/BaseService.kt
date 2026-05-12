@@ -39,7 +39,7 @@ abstract class BaseService(
    */
   protected fun showNetworkErrorAndThrow() {
     dialogQueueService.showToast(
-      Toast(
+      Toast.Simple(
         title = null,
         message = ToastStrings.Error.NetworkError.Message,
         action = null,
@@ -50,7 +50,7 @@ abstract class BaseService(
 
   protected fun showNetworkError() {
     dialogQueueService.showToast(
-      Toast(
+      Toast.Simple(
         title = null,
         message = ToastStrings.Error.NetworkError.Message,
         action = null,
@@ -65,7 +65,7 @@ abstract class BaseService(
     title: String,
     message: String,
   ) {
-    dialogQueueService.showToast(Toast(title = title, message = message, action = null))
+    dialogQueueService.showToast(Toast.Simple(title = title, message = message, action = null))
   }
 
   /**
@@ -75,7 +75,7 @@ abstract class BaseService(
     title: String? = null,
     message: String,
   ) {
-    dialogQueueService.showToast(Toast(title = title, message = message, action = null))
+    dialogQueueService.showToast(Toast.Simple(title = title, message = message, action = null))
   }
 
   /**

@@ -1,7 +1,7 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.reducer
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
-import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.domain.model.storage.Preferences
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
@@ -104,7 +104,7 @@ data class BtWifiScaleSetupState(
   val wifiPasswordForm: WifiPasswordFormControls = WifiPasswordFormControls.create(),
   val usernameForm: ScaleUsernameFormControls = ScaleUsernameFormControls.create(),
   val dashboardKeys: ImmutableList<DashboardKey> = persistentListOf(),
-  val goalProgress: Progress = Progress(),
+  val goalProgress: WeightProgress = WeightProgress(),
   val duplicateUser: GGBTUser? = null,
   val duplicateUserList: ImmutableList<GGBTUser> = persistentListOf(),
   val userList: ImmutableList<GGBTUser> = persistentListOf(),
@@ -139,7 +139,7 @@ sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
   ) : BtWifiScaleSetupIntent
 
   data class SetDashboardKeys(val dashboardKeys: List<DashboardKey>) : BtWifiScaleSetupIntent
-  data class SetGoalProgress(val progress: Progress) : BtWifiScaleSetupIntent
+  data class SetGoalProgress(val progress: WeightProgress) : BtWifiScaleSetupIntent
   data class SetWifiList(val wifiList: List<GGWifiInfo>) : BtWifiScaleSetupIntent
   data class SetScaleSku(
     val sku: String,

@@ -10,7 +10,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
-import com.dmdbrands.gurus.weight.domain.services.IHistoryService
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
 import com.dmdbrands.gurus.weight.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
@@ -21,18 +21,18 @@ import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.format
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import javax.inject.Inject
 import android.content.Context
 
 @HiltViewModel
 class DashboardSnapshotViewModel @Inject constructor(
   @dagger.hilt.android.qualifiers.ApplicationContext private val context: Context,
-  private val historyService: IHistoryService,
+  private val entryReadService: IEntryReadService,
   private val accountService: IAccountService,
 ) : BaseIntentViewModel<DashboardSnapshotState, DashboardSnapshotIntent>(
   DashboardSnapshotReducer(),
@@ -41,16 +41,12 @@ class DashboardSnapshotViewModel @Inject constructor(
   val weightModelProducer = CartesianChartModelProducer()
   val bpModelProducer = CartesianChartModelProducer()
   val babyModelProducers = java.util.concurrent.ConcurrentHashMap<String, CartesianChartModelProducer>()
-  private var weightGraphJob: Job? = null
-  private var bpGraphJob: Job? = null
 
   override fun provideInitialState() = DashboardSnapshotState(isLoading = true)
 
   override fun onDependenciesReady() {
     observeWeightUnit()
-    loadWeightGraph()
-    loadBpGraph()
-    loadBabyGraphs()
+    loadAllGraphs()
   }
 
   private fun observeWeightUnit() {
@@ -66,18 +62,37 @@ class DashboardSnapshotViewModel @Inject constructor(
     }
   }
 
-  private fun loadWeightGraph() {
-    weightGraphJob?.cancel()
-    weightGraphJob = viewModelScope.launch {
-      historyService.getWeightSnapshotGraphData()
-        .catch { e ->
-          AppLog.e(TAG, "Failed to load weight graph data", e)
+  private fun loadAllGraphs() {
+    BabyPercentileHelper.loadIfNeeded(context)
+    viewModelScope.launch {
+      combine(
+        entryReadService.snapshots,
+        productSelectionManager.availableProducts,
+      ) { snapshotMap, products ->
+        snapshotMap to products
+      }.collect { (snapshotMap, products) ->
+        // Weight
+        val weightPoints = snapshotMap[IEntryReadService.KEY_WEIGHT]
+        if (weightPoints != null) {
+          updateWeightChart(weightPoints.filterIsInstance<WeightSnapshotPoint>())
+        }
+        if (snapshotMap.isNotEmpty()) {
           handleIntent(DashboardSnapshotIntent.SetLoading(false))
         }
-        .collect { points ->
-          updateWeightChart(points)
-          handleIntent(DashboardSnapshotIntent.SetLoading(false))
+
+        // BP
+        val bpPoints = snapshotMap[IEntryReadService.KEY_BP]
+        if (bpPoints != null) {
+          updateBpChart(bpPoints.filterIsInstance<PeriodBpmSummary>())
         }
+
+        // Babies
+        products.filterIsInstance<ProductSelection.Baby>().forEach { baby ->
+          val babyPoints = snapshotMap[IEntryReadService.keyBaby(baby.profile.id)]
+            ?.filterIsInstance<PeriodBabySummary>() ?: emptyList()
+          updateBabyChart(baby.profile, babyPoints)
+        }
+      }
     }
   }
 
@@ -132,19 +147,6 @@ class DashboardSnapshotViewModel @Inject constructor(
     }
   }
 
-  private fun loadBpGraph() {
-    bpGraphJob?.cancel()
-    bpGraphJob = viewModelScope.launch {
-      historyService.getBpmSnapshotGraphData()
-        .catch { e ->
-          AppLog.e(TAG, "Failed to load BP graph data", e)
-        }
-        .collect { points ->
-          updateBpChart(points)
-        }
-    }
-  }
-
   private suspend fun updateBpChart(points: List<PeriodBpmSummary>) {
     if (points.isEmpty()) {
       handleIntent(DashboardSnapshotIntent.SetBpChart(SnapshotChartData(label = "—")))
@@ -152,9 +154,9 @@ class DashboardSnapshotViewModel @Inject constructor(
     }
 
     val sorted = points.sortedBy { it.entryTimestamp }
-    val avgSystolic = sorted.map { it.avgSystolic }.average().toInt()
-    val avgDiastolic = sorted.map { it.avgDiastolic }.average().toInt()
-    val avgPulse = sorted.map { it.avgPulse }.average().toInt()
+    val avgSystolic = sorted.map { it.avgSystolic }.average().roundToInt()
+    val avgDiastolic = sorted.map { it.avgDiastolic }.average().roundToInt()
+    val avgPulse = sorted.map { it.avgPulse }.average().roundToInt()
 
     val xValues = sorted.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp).toDouble() }
     val systolicValues = sorted.map { it.avgSystolic.toDouble() }
@@ -203,29 +205,6 @@ class DashboardSnapshotViewModel @Inject constructor(
     }
   }
 
-  private fun loadBabyGraphs() {
-    BabyPercentileHelper.loadIfNeeded(context)
-    viewModelScope.launch {
-      productSelectionManager.availableProducts.collect { products ->
-        products.filterIsInstance<ProductSelection.Baby>().forEach { baby ->
-          loadBabyGraph(baby.profile)
-        }
-      }
-    }
-  }
-
-  private fun loadBabyGraph(profile: BabyProfile) {
-    viewModelScope.launch {
-      historyService.getBabySnapshotGraphData(profile.id)
-        .catch { e ->
-          AppLog.e(TAG, "Failed to load baby graph data for ${profile.id}", e)
-        }
-        .collect { points ->
-          updateBabyChart(profile, points)
-        }
-    }
-  }
-
   private suspend fun updateBabyChart(profile: BabyProfile, points: List<PeriodBabySummary>) {
     val profileId = profile.id
     val sorted = points.filter { (it.avgWeightDecigrams ?: 0) > 0 }.sortedBy { it.entryTimestamp }
@@ -239,7 +218,7 @@ class DashboardSnapshotViewModel @Inject constructor(
     val latestWeight = sorted.last().avgWeightDecigrams ?: 0
     val lbs = ConversionTools.convertDecigramsToLb(latestWeight)
     val oz = ConversionTools.convertDecigramsToOz(latestWeight)
-    val label = "$lbs ${DashboardSnapshotStrings.Lbs} ${String.format("%.1f", oz)} ${DashboardSnapshotStrings.Oz}"
+    val label = "$lbs ${DashboardSnapshotStrings.Lbs} ${String.format(java.util.Locale.US, "%.1f", oz)} ${DashboardSnapshotStrings.Oz}"
 
     // Convert decigrams to lbs for chart display
     val yValues = sorted.map { ConversionTools.convertDecigramsToLbExact(it.avgWeightDecigrams ?: 0) }

@@ -15,6 +15,7 @@ import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboar
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import javax.inject.Inject
 
 @HiltViewModel
@@ -126,9 +127,9 @@ class BpDashboardViewModel @Inject constructor(
         } else {
           BpLastReadings(
             entries = rows,
-            averageSystolic = rows.map { it.avgSystolic }.average().toInt(),
-            averageDiastolic = rows.map { it.avgDiastolic }.average().toInt(),
-            averagePulse = rows.map { it.avgPulse }.average().toInt(),
+            averageSystolic = rows.map { it.avgSystolic }.average().roundToInt(),
+            averageDiastolic = rows.map { it.avgDiastolic }.average().roundToInt(),
+            averagePulse = rows.map { it.avgPulse }.average().roundToInt(),
           )
         }
         handleIntent(BpDashboardIntent.SetLastReadings(readings))

@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PopulatedActiveEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PopulatedEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
 import kotlinx.coroutines.flow.Flow
 
@@ -19,7 +20,7 @@ import kotlinx.coroutines.flow.Flow
  * All queries use entry_view (filters deleted entries).
  */
 @Dao
-interface HistoryDao {
+interface EntryReadDao {
 
   companion object {
     const val UTC = "'utc'"
@@ -49,56 +50,52 @@ interface HistoryDao {
    * @param accountId The account ID
    * @return Flow of monthly weight summaries ordered by most recent first
    */
+  /**
+   * Optimised: FIRST_VALUE/LAST_VALUE window functions compute first/last weight
+   * in the same scan as avg/count — no correlated subqueries (eliminates 2N point-lookups).
+   * Requires SQLite 3.25+ (Android API 30+ ships 3.32; Room bundles 3.39 for older devices).
+   */
   @Query(
     """
-    WITH entries_with_period AS (
+    WITH entries_windowed AS (
         SELECT
+            strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
             e.entryTimestamp,
             bse.weight,
-            strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period
+            FIRST_VALUE(bse.weight) OVER (
+                PARTITION BY strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
+                ORDER BY e.entryTimestamp ASC
+                ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS firstWeight,
+            LAST_VALUE(bse.weight) OVER (
+                PARTITION BY strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
+                ORDER BY e.entryTimestamp ASC
+                ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS lastWeight
         FROM entry_view e
-        LEFT JOIN body_scale_entry bse ON e.id = bse.id
-        WHERE e.accountId = :accountId AND bse.weight IS NOT NULL
+        INNER JOIN body_scale_entry bse ON e.id = bse.id
+        WHERE e.accountId = :accountId
           AND (e.operationType IS NULL OR e.operationType != 'delete')
-    ),
-    first_last AS (
-        SELECT
-            period,
-            MIN(entryTimestamp) AS firstTimestamp,
-            MAX(entryTimestamp) AS lastTimestamp
-        FROM entries_with_period
-        GROUP BY period
-    ),
-    joined AS (
-        SELECT
-            fl.period,
-            fl.firstTimestamp,
-            fl.lastTimestamp,
-            first_entry.weight AS firstWeight,
-            last_entry.weight AS lastWeight,
-            (SELECT AVG(weight) FROM entries_with_period WHERE period = fl.period) AS avgWeight,
-            (SELECT COUNT(*) FROM entries_with_period WHERE period = fl.period) AS entryCount
-        FROM first_last fl
-        LEFT JOIN entries_with_period first_entry ON fl.firstTimestamp = first_entry.entryTimestamp
-        LEFT JOIN entries_with_period last_entry ON fl.lastTimestamp = last_entry.entryTimestamp
+          AND bse.weight IS NOT NULL
     )
     SELECT
-        CASE CAST(strftime('%m', datetime(firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS INTEGER)
+        CASE CAST(strftime('%m', datetime(MIN(entryTimestamp), ${UTC}, ${LOCAL_TIME})) AS INTEGER)
             WHEN 1 THEN $MONTH_JAN WHEN 2 THEN $MONTH_FEB
             WHEN 3 THEN $MONTH_MAR WHEN 4 THEN $MONTH_APR
             WHEN 5 THEN $MONTH_MAY WHEN 6 THEN $MONTH_JUN
             WHEN 7 THEN $MONTH_JUL WHEN 8 THEN $MONTH_AUG
             WHEN 9 THEN $MONTH_SEP WHEN 10 THEN $MONTH_OCT
             WHEN 11 THEN $MONTH_NOV WHEN 12 THEN $MONTH_DEC
-        END || ' ' || strftime('%Y', datetime(firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS entryTimestamp,
-        avgWeight,
-        entryCount,
+        END || ' ' || strftime('%Y', datetime(MIN(entryTimestamp), ${UTC}, ${LOCAL_TIME})) AS entryTimestamp,
+        AVG(weight) AS avgWeight,
+        COUNT(*) AS entryCount,
         CASE
             WHEN firstWeight IS NOT NULL AND lastWeight IS NOT NULL
             THEN lastWeight - firstWeight
             ELSE NULL
         END AS change
-    FROM joined
+    FROM entries_windowed
+    GROUP BY period
     ORDER BY period DESC
     """,
   )
@@ -346,26 +343,34 @@ interface HistoryDao {
 
   /**
    * Last 10 weight entries for dashboard snapshot mini-chart.
-   * Daily averages ordered by timestamp ascending.
+   * Two-step: find last 10 distinct days FIRST, then aggregate only those days.
    */
   @Query(
     """
-    SELECT * FROM (
-      SELECT
-        strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
-        datetime(MIN(e.entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of day') AS entryTimestamp,
-        AVG(bse.weight) AS weight,
-        MAX(e.unit) AS unit
+    WITH last_10_days AS (
+      SELECT DISTINCT strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS day
       FROM entry_view AS e
-      LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
+      INNER JOIN body_scale_entry AS bse ON e.id = bse.id
       WHERE e.accountId = :accountId
         AND (e.operationType IS NULL OR e.operationType != 'delete')
         AND bse.weight > 0
-      GROUP BY period
-      ORDER BY period DESC
+      ORDER BY day DESC
       LIMIT 10
     )
-    ORDER BY entryTimestamp ASC
+    SELECT
+      d.day AS period,
+      datetime(MIN(e.entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of day') AS entryTimestamp,
+      AVG(bse.weight) AS weight,
+      MAX(e.unit) AS unit
+    FROM last_10_days AS d
+    INNER JOIN entry_view AS e
+      ON strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) = d.day
+    INNER JOIN body_scale_entry AS bse ON e.id = bse.id
+    WHERE e.accountId = :accountId
+      AND (e.operationType IS NULL OR e.operationType != 'delete')
+      AND bse.weight > 0
+    GROUP BY d.day
+    ORDER BY d.day ASC
     """,
   )
   fun getWeightSnapshotGraphData(accountId: String): Flow<List<WeightSnapshotPoint>>
@@ -443,6 +448,214 @@ interface HistoryDao {
   )
   fun getBpmSnapshotGraphData(accountId: String): Flow<List<PeriodBpmSummary>>
 
+  /**
+   * Last N per-day BP averages for the account (most recent day first).
+   *
+   * Each row is a day of BP data averaged into a single [PeriodBpmSummary]. Scoped
+   * to the account — NOT to any selected chart window — used by the dashboard
+   * three-reading-average card and sheet.
+   *
+   * If the account has BP entries on < n days, fewer than n rows are returned.
+   */
+  @Query(
+    """
+    SELECT
+        strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
+        datetime(MIN(e.entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of day') AS entryTimestamp,
+        CAST(AVG(bp.systolic) AS INTEGER) AS avgSystolic,
+        CAST(AVG(bp.diastolic) AS INTEGER) AS avgDiastolic,
+        CAST(AVG(bp.pulse) AS INTEGER) AS avgPulse
+    FROM entry_view e
+    INNER JOIN bpm_entry bp ON e.id = bp.entryId
+    WHERE e.accountId = :accountId
+      AND (e.operationType IS NULL OR e.operationType != 'delete')
+    GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
+    ORDER BY period DESC
+    LIMIT :n
+    """,
+  )
+  fun getBpmLastNDayEntries(accountId: String, n: Int): Flow<List<PeriodBpmSummary>>
+
+  // ---------------------------------------------------------------------------
+  // Cross-product read queries (moved from EntryDao)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Get the latest entry for a specific account with all related details.
+   * @param accountId The account ID
+   * @return The latest Entry with relations if found, null otherwise
+   */
+  @Transaction
+  @Query("SELECT * FROM entry_view WHERE accountId = :accountId AND (operationType IS NULL OR operationType != 'delete') ORDER BY datetime(entryTimestamp) DESC LIMIT 1")
+  fun getLatestEntry(accountId: String): Flow<PopulatedActiveEntry?>
+
+  /**
+   * Get entries by operation type for a specific account.
+   * @param accountId The account ID
+   * @param operationType The operation type
+   * @return A Flow of entries with the specified operation type
+   */
+  @Transaction
+  @Query("SELECT * FROM entry WHERE accountId = :accountId AND operationType = :operationType")
+  fun getEntriesByOperationType(
+    accountId: String,
+    operationType: String,
+  ): Flow<List<PopulatedEntry>>
+
+  /**
+   * Get the oldest entry for an account.
+   * @param accountId The account ID
+   * @return The oldest entry if found, null otherwise
+   */
+  @Query("SELECT * FROM entry_view WHERE accountId = :accountId AND (operationType IS NULL OR operationType != 'delete') ORDER BY entryTimestamp ASC LIMIT 1")
+  suspend fun getOldestEntry(accountId: String): PopulatedActiveEntry?
+
+  /**
+   * Get entry timestamps for streak calculation.
+   * Returns one entry timestamp per day, ordered with newest first.
+   * @param accountId The account ID
+   * @return List of entry timestamps for streak calculation
+   */
+  @Query(
+    """
+         SELECT
+        strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME}))
+        FROM entry_view
+        WHERE accountId = :accountId
+          AND (operationType IS NULL OR operationType != 'delete')
+        GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC}, ${LOCAL_TIME}))
+        ORDER BY datetime(entryTimestamp,${UTC},${LOCAL_TIME}) DESC
+        """,
+  )
+  suspend fun getStreakData(accountId: String): List<String>
+
+  /**
+   * Get the total count of entries for an account.
+   * @param accountId The account ID
+   * @return The total count of entries
+   */
+  @Query("SELECT COUNT(entryTimestamp) as total FROM entry_view WHERE accountId = :accountId AND (operationType IS NULL OR operationType != 'delete')")
+  suspend fun getTotalCount(accountId: String): Int
+
+  /**
+   * Get the longest streak count for an account.
+   * Uses window function (row_number) + GROUP BY to compute max consecutive days; faster than recursive CTE for large datasets.
+   * @param accountId The account ID
+   * @return The longest streak count
+   */
+  @Query(
+    """
+        SELECT COALESCE(MAX(streak_count), 0) AS longestStreak FROM (
+          SELECT COUNT(*) AS streak_count FROM (
+            SELECT day_start, row_number() OVER (ORDER BY day_start) AS row_num FROM (
+              SELECT strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME})) AS day_start
+              FROM entry_view
+              WHERE accountId = :accountId AND (operationType IS NULL OR operationType != 'delete')
+              GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME}))
+            )
+          ) AS t1
+          GROUP BY strftime('%Y-%m-%d', date(day_start, '-' || (row_num - 1) || ' day'))
+        )
+        """,
+  )
+  suspend fun getLongestStreakCount(accountId: String): Int
+
+  /**
+   * Days (newest first) on which the account has at least one BP reading.
+   *
+   * Mirrors [getStreakData] but narrowed to BP entries via an inner join against
+   * `bpm_entry`. Current and longest BP streak are computed in Kotlin from this
+   * list via [com.dmdbrands.gurus.weight.data.services.EntryServiceHelper.computeCurrentStreakFromDates] /
+   * [com.dmdbrands.gurus.weight.data.services.EntryServiceHelper.computeLongestStreakFromDates].
+   *
+   * Returns a [Flow] so the BP progress flow on EntryReadService re-emits
+   * automatically when BP entries are inserted, updated, or deleted.
+   */
+  @Query(
+    """
+        SELECT strftime('%Y-%m-%d', datetime(e.entryTimestamp,${UTC},${LOCAL_TIME}))
+        FROM entry_view AS e
+        INNER JOIN bpm_entry AS b ON b.entryId = e.id
+        WHERE e.accountId = :accountId
+          AND (e.operationType IS NULL OR e.operationType != 'delete')
+        GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp,${UTC},${LOCAL_TIME}))
+        ORDER BY datetime(e.entryTimestamp,${UTC},${LOCAL_TIME}) DESC
+        """,
+  )
+  fun getBpmStreakDays(accountId: String): Flow<List<String>>
+
+  /**
+   * Get monthly history for an account for the last 365 days.
+   * Filters entries from the last 365 days, groups by month, and calculates averages.
+   * @param accountId The account ID
+   * @return Flow of list of monthly history for the last 365 days
+   */
+  @Query(
+    """
+    WITH entries_windowed AS (
+        SELECT
+            strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
+            e.entryTimestamp,
+            bse.weight,
+            FIRST_VALUE(bse.weight) OVER (
+                PARTITION BY strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
+                ORDER BY e.entryTimestamp ASC
+                ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS firstWeight,
+            LAST_VALUE(bse.weight) OVER (
+                PARTITION BY strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
+                ORDER BY e.entryTimestamp ASC
+                ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS lastWeight
+        FROM entry_view e
+        LEFT JOIN body_scale_entry bse ON e.id = bse.id
+        WHERE e.accountId = :accountId
+          AND bse.weight IS NOT NULL
+          AND (e.operationType IS NULL OR e.operationType != 'delete')
+          AND datetime(e.entryTimestamp) >= datetime('now', '-365 days')
+          AND datetime(e.entryTimestamp) <= datetime('now')
+    )
+    SELECT
+        CASE CAST(strftime('%m', datetime(MIN(entryTimestamp), ${UTC}, ${LOCAL_TIME})) AS INTEGER)
+            WHEN 1 THEN $MONTH_JAN WHEN 2 THEN $MONTH_FEB
+            WHEN 3 THEN $MONTH_MAR WHEN 4 THEN $MONTH_APR
+            WHEN 5 THEN $MONTH_MAY WHEN 6 THEN $MONTH_JUN
+            WHEN 7 THEN $MONTH_JUL WHEN 8 THEN $MONTH_AUG
+            WHEN 9 THEN $MONTH_SEP WHEN 10 THEN $MONTH_OCT
+            WHEN 11 THEN $MONTH_NOV WHEN 12 THEN $MONTH_DEC
+        END || ' ' || strftime('%Y', datetime(MIN(entryTimestamp), ${UTC}, ${LOCAL_TIME})) AS entryTimestamp,
+        AVG(weight) AS avgWeight,
+        COUNT(*) AS entryCount,
+        CASE
+            WHEN firstWeight IS NOT NULL AND lastWeight IS NOT NULL
+            THEN lastWeight - firstWeight
+            ELSE NULL
+        END AS change
+    FROM entries_windowed
+    GROUP BY period
+    ORDER BY period DESC
+    """,
+  )
+  fun getMonthlyHistoryLastYear(accountId: String): Flow<List<HistoryMonth>>
+
+  /**
+   * Get entries since a given start date.
+   * @param accountId The account ID
+   * @param startDate The start date (ISO 8601 string)
+   * @return Flow of list of entries since the start date
+   */
+  @Transaction
+  @Query(
+    """
+        SELECT * FROM entry_view
+        WHERE accountId = :accountId
+          AND (operationType IS NULL OR operationType != 'delete')
+          AND entryTimestamp >= :startDate
+        ORDER BY datetime(entryTimestamp) DESC
+    """,
+  )
+  fun getEntriesSince(accountId: String, startDate: String): Flow<List<PopulatedActiveEntry>>
+
   // ---------------------------------------------------------------------------
   // Baby Graph Queries
   // ---------------------------------------------------------------------------
@@ -454,6 +667,7 @@ interface HistoryDao {
   @Query(
     """
     SELECT
+        be.babyId AS babyId,
         strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
         MAX(e.entryTimestamp) AS entryTimestamp,
         CAST(AVG(be.babyWeightDecigrams) AS INTEGER) AS avgWeightDecigrams,
@@ -476,6 +690,7 @@ interface HistoryDao {
   @Query(
     """
     SELECT
+        be.babyId AS babyId,
         strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
         MAX(e.entryTimestamp) AS entryTimestamp,
         CAST(AVG(be.babyWeightDecigrams) AS INTEGER) AS avgWeightDecigrams,
@@ -492,27 +707,33 @@ interface HistoryDao {
   fun getBabyDailyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>
 
   /**
-   * Last 10 daily baby weight averages for dashboard snapshot mini-chart.
+   * Last 10 daily averages per baby for dashboard snapshot — all babies in one query.
+   * Uses ROW_NUMBER() OVER (PARTITION BY babyId) for per-baby LIMIT 10.
+   * Caller groups by [PeriodBabySummary.babyId] in-memory.
    */
   @Query(
     """
-    SELECT * FROM (
+    SELECT babyId, period, entryTimestamp, avgWeightDecigrams, avgLengthMillimeters FROM (
       SELECT
+        be.babyId AS babyId,
         strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
         datetime(MIN(e.entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of day') AS entryTimestamp,
         CAST(AVG(be.babyWeightDecigrams) AS INTEGER) AS avgWeightDecigrams,
-        CAST(AVG(be.babyLengthMillimeters) AS INTEGER) AS avgLengthMillimeters
+        CAST(AVG(be.babyLengthMillimeters) AS INTEGER) AS avgLengthMillimeters,
+        -- Lexicographic ordering on 'YYYY-MM-DD' format is correct for date comparison.
+        -- Equivalent to ORDER BY entryTimestamp DESC but groups by local day.
+        ROW_NUMBER() OVER (
+          PARTITION BY be.babyId
+          ORDER BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) DESC
+        ) AS rn
       FROM entry_view e
       INNER JOIN baby_entry be ON e.id = be.id
       WHERE e.accountId = :accountId
-        AND be.babyId = :babyId
         AND (e.operationType IS NULL OR e.operationType != 'delete')
-      GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
-      ORDER BY period DESC
-      LIMIT 10
-    )
-    ORDER BY entryTimestamp ASC
+      GROUP BY be.babyId, strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
+    ) WHERE rn <= 10
+    ORDER BY babyId, entryTimestamp ASC
     """,
   )
-  fun getBabySnapshotGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>
+  fun getAllBabySnapshotGraphData(accountId: String): Flow<List<PeriodBabySummary>>
 }

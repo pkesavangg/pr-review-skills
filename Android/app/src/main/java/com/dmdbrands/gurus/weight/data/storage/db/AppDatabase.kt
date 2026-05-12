@@ -16,7 +16,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.dao.BabyEntryDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.BabyProfileDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.DeviceDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryDao
-import com.dmdbrands.gurus.weight.data.storage.db.dao.HistoryDao
+import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryReadDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.LogDao
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.DashboardSettingsEntity
@@ -69,7 +69,7 @@ import android.content.Context
     BabyEntryEntity::class,
   ],
   views = [ActiveEntryEntity::class],
-  version = 5,
+  version = 6,
   exportSchema = true,
 )
 @TypeConverters(DateConverter::class, JsonConverter::class, WeightUnitConverter::class)
@@ -86,7 +86,7 @@ abstract class AppDatabase : RoomDatabase() {
 
   abstract fun babyEntryDao(): BabyEntryDao
 
-  abstract fun historyDao(): HistoryDao
+  abstract fun entryReadDao(): EntryReadDao
 
   companion object {
     private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -244,6 +244,14 @@ abstract class AppDatabase : RoomDatabase() {
       }
     }
 
+    // ----- Migration 5 → 6 -----
+    // Add composite index on (accountId, operationType) to speed up entry_view's NOT EXISTS subquery.
+    private val MIGRATION_5_6 = object : Migration(5, 6) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_entry_accountId_operationType` ON `entry` (`accountId`, `operationType`)")
+      }
+    }
+
     @Volatile
     private var instance: AppDatabase? = null
 
@@ -271,7 +279,7 @@ abstract class AppDatabase : RoomDatabase() {
                 }
               },
             )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .fallbackToDestructiveMigration(false)
             .build()
         Companion.instance = instance
