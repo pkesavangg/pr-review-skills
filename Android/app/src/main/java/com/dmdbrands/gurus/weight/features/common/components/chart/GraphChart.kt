@@ -10,13 +10,17 @@ import com.dmdbrands.gurus.weight.features.common.components.chart.axis.topAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.visibleLabelsCount
+import com.patrykandpatrick.vico.compose.cartesian.CartesianChart
+import com.patrykandpatrick.vico.compose.cartesian.FadingEdges
+import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
+import com.patrykandpatrick.vico.compose.cartesian.data.rememberScrollAwareRangeProvider
+import com.patrykandpatrick.vico.compose.cartesian.marker.CartesianMarker
+import com.patrykandpatrick.vico.compose.cartesian.marker.CartesianMarkerController
+import com.patrykandpatrick.vico.compose.cartesian.marker.ScrubMarkerController
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
-import com.patrykandpatrick.vico.core.cartesian.CartesianChart
-import com.patrykandpatrick.vico.core.cartesian.FadingEdges
-import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
-import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
 import java.util.Calendar
 
 @Composable
@@ -26,45 +30,90 @@ fun rememberGraphChart(
   segment: GraphSegment,
   horizontalItemPlacer: HorizontalAxis.ItemPlacer,
   fadingEdges: FadingEdges? = null,
-  onChartClick: ((List<Double>, Double?) -> Unit)? = null,
   handleIntent: (GraphIntent) -> Unit,
+  scrubController: ScrubMarkerController? = null,
 ): CartesianChart {
   // Get weightless mode from goal's account if available
   val isWeightlessOn = state.goal?.account?.isWeightlessOn ?: false
-  val goalMarker = rememberGoalMarker(goal = state.goal, isWeightlessOn = isWeightlessOn)
-  val markerIndex = state.markerIndex
-  val timeStamps = state.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted()
-  // Visible labels count per segment (TOTAL uses dynamic range)
-  val visibleLabelsCount = if (segment != GraphSegment.TOTAL) {
-    remember(segment) {
-      segment.visibleLabelsCount()
-    }
-  } else {
-    remember(state.minTarget, state.maxTarget) {
-      getIntervalCount(
-        startTimeStamp = state.minTarget ?: Calendar.getInstance().timeInMillis,
-        endTimeStamp = state.maxTarget ?: Calendar.getInstance().timeInMillis,
-      )
-    }
-  }
   val separators = GraphUtil.periodStarts(
     segment = segment,
-    startMillis = if (timeStamps.isNotEmpty()) timeStamps.first() else null,
-    endMillis = if (timeStamps.isNotEmpty()) timeStamps.last() else null,
+    startMillis = state.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted().firstOrNull(),
+    endMillis = state.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted().lastOrNull(),
   ).map { it.toDouble() }
+
+  // Compute visible labels count per segment (same logic as v3)
+  val visibleLabelsCount = if (segment != GraphSegment.TOTAL) {
+    remember(segment) { segment.visibleLabelsCount() }
+  } else {
+    remember(state.minTarget, state.maxTarget) {
+      GraphUtil.getTotalMonthsBetweenYears(
+        state.minTarget ?: Calendar.getInstance().timeInMillis,
+        state.maxTarget ?: Calendar.getInstance().timeInMillis,
+      ).toDouble().coerceAtLeast(1.0)
+    }
+  }
+
+  // ScrollAwareRangeProvider: single source of truth for Y-axis range + step
+  val scrollAwareRange = rememberScrollAwareRangeProvider(
+    minX = state.chartMinX ?: Double.NaN,
+    maxX = state.chartMaxX ?: Double.NaN,
+  ) { visibleEntries, visibleXRange ->
+    if (visibleEntries.isEmpty()) {
+      return@rememberScrollAwareRangeProvider (0.0..1.0) to emptyList()
+    }
+    // Clip visible X range to segment boundaries
+    val relativeMin = GraphUtil.getRelativeStart(segment, visibleXRange.start.toLong())
+    val relativeMax = GraphUtil.getRelativeEnd(segment, visibleXRange.endInclusive.toLong())
+    val clipRange = GraphUtil.clipRangeForGraph(segment, relativeMin, relativeMax)
+
+    // Compute Y range from visible entries + padding
+    val yValues = visibleEntries.map { it.second }
+    val goalWeight = state.goal?.goalWeight ?: 0.0
+    val isWeightlessOn = state.goal?.account?.isWeightlessOn ?: false
+    val axisMeta = generateNiceScale(
+      minValue = yValues.min(),
+      maxValue = yValues.max(),
+      goalWeight = goalWeight,
+      isWeightLessMode = isWeightlessOn,
+      targetTickCount = 4,
+    )
+    val rangeMinY = axisMeta.min
+    val rangeMaxY = axisMeta.max
+    val step = axisMeta.step
+
+    // Generate tick labels from min to max at step intervals
+    val ticks = mutableListOf<Double>()
+    var tick = rangeMinY
+    while (tick <= rangeMaxY + step * 0.01) {
+      ticks.add(tick)
+      tick += step
+    }
+    (rangeMinY..rangeMaxY) to ticks
+  }
+
+  val goalMarker = rememberGoalMarker(goal = state.goal, isWeightlessOn = isWeightlessOn)
 
   val primaryLayer = primaryLayer(
     segment = segment,
-    yRangeValues = state.primaryYAxis,
+    rangeProvider = scrollAwareRange,
     handleIntent = handleIntent,
   )
 
-  // Secondary metrics are normalized to weight Y-axis range (iOS-style)
-  // They use the same Y-axis as primary (weight)
+  // Same provider — deduplicated in ScrollAwareRangeEffect (buildCache runs once for primary)
+  // yTransform: render-time normalization — same logic as normalizeMetricToWeightRange
   val secondaryLayer = secondaryLayer(
     segment = segment,
-    yRangeValues = state.primaryYAxis, // Use primary Y-axis range (normalized values)
+    rangeProvider = scrollAwareRange,
     handleIntent = handleIntent,
+    yTransform = { series, yRange, visibleXRange ->
+      GraphUtil.normalizeYValues(
+        series = series,
+        weightMin = yRange.minY,
+        weightMax = yRange.maxY,
+        minX = visibleXRange.start.toLong(),
+        maxX = visibleXRange.endInclusive.toLong(),
+      )
+    },
   )
 
   val primaryChart =
@@ -73,25 +122,17 @@ fun rememberGraphChart(
       secondaryLayer,
       topAxis = topAxis(),
       startAxis = startAxis(segment, state.isSingleWindow),
-      endAxis = endAxis(yStep = state.primaryYStep, isEmptyGraph = state.isEmptyGraph, markerDecoration = goalMarker),
+      endAxis = endAxis(
+        isEmptyGraph = state.isEmptyGraph,
+        markerDecoration = goalMarker,
+        ticksProvider = { scrollAwareRange.currentTicks },
+      ),
       bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer),
-      marker = emptyMarker(),
-      persistentMarkers = if (markerIndex != null) {
-        { defaultMarker at markerIndex }
-      } else {
-        null
-      },
+      marker = defaultMarker,
       fadingEdges = fadingEdges,
-      visibleLabelsCount = visibleLabelsCount,
       getXStep = { GraphUtil.calculateXStep(segment) },
-      onChartClick = onChartClick,
+      markerController = scrubController ?: CartesianMarkerController.rememberShowOnPress(),
+      visibleLabelsCount = visibleLabelsCount,
     )
   return primaryChart
-}
-
-fun getIntervalCount(startTimeStamp: Long, endTimeStamp: Long): Double {
-  return GraphUtil.getTotalMonthsBetweenYears(
-    startTimeStamp,
-    endTimeStamp,
-  ).toDouble().coerceAtLeast(1.0)
 }

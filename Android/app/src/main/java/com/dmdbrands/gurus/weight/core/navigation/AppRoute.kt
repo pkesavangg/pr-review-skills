@@ -105,7 +105,7 @@ sealed class AppRoute : NavKey {
     data object Weightless : AccountSettings()
 
     @Serializable
-    data object AddEditScales : AccountSettings()
+    data object MyDevices : AccountSettings()
 
     @Serializable
     data object ChooseScale : AccountSettings()
@@ -213,6 +213,11 @@ sealed class AppRoute : NavKey {
 
     @Serializable
     data class AppsyncScaleSetup(
+      val sku: String
+    ) : ScaleSetup()
+
+    @Serializable
+    data class BpmSetup(
       val sku: String
     ) : ScaleSetup()
 

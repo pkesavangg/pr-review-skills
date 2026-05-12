@@ -13,6 +13,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BtWifiScaleSetupIn
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BtWifiScaleSetupState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BtWifiScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0412
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -100,7 +101,9 @@ class BLEDiscoveryManager(
             GGScanResponseType.NEW_DEVICE -> {
                 if (ggDeviceDetail.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value) {
                     scope.launch {
-                        if (deviceService.pairedScales.first()
+                        val discoveredSku = ggDeviceDetail.getSKU()
+                        if (!DeviceHelper.isBpmDevice(discoveredSku) &&
+                            deviceService.pairedScales.first()
                                 .any { it.device?.macAddress == ggDeviceDetail.macAddress } &&
                             !ggDeviceService.localSkipDevices.value.contains(ggDeviceDetail.broadcastIdString)
                         ) {

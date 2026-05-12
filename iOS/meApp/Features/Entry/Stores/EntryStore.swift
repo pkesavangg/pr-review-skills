@@ -66,6 +66,7 @@ final class EntryStore: ObservableObject {
     init() {
         scaleService.scalesPublisher
             .map { $0.contains { $0.bathScale?.scaleType == ScaleSourceType.btWifiR4.rawValue } }
+            .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .assign(to: \.canShowOtherBodyMetrics, on: self)
             .store(in: &cancellables)

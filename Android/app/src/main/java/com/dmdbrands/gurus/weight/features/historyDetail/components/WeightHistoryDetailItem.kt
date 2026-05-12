@@ -168,11 +168,11 @@ fun WeightHistoryDetailItemHeader(
               tintColor = tintColor,
               modifier =
                     Modifier
-                        .padding(start = MeTheme.spacing.sm)
+                        .padding(start = MeTheme.spacing.lg)
                         .rotate(rotation),
             )
         } else {
-            Spacer(modifier = Modifier.width(MeTheme.spacing.xl))
+            Spacer(modifier = Modifier.width(MeTheme.spacing.x3l))
         }
     }
 }

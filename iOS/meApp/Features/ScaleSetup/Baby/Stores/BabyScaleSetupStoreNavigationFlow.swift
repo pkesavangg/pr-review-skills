@@ -123,7 +123,7 @@ extension BabyScaleSetupStore {
         bluetoothService.isSetupInProgress = true
 
         // Inject discovery context if provided.
-        self.discoveredScale = discoveredScale
+        self.discoveredScale = discoveredScale?.toSnapshot()
         self.discoveryEvent = discoveryEvent
 
         // Subscribe to permission changes

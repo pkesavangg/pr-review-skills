@@ -234,6 +234,26 @@ final class UsersViewModel: ObservableObject {
             return
         }
 
+        do {
+            try await scaleService.updateAllScalesStatus(nil)
+        } catch {
+            logger.log(level: .error, tag: tag, message: "updateAllScalesStatus failed: \(error.localizedDescription)")
+        }
+        guard deviceSnapshot?.isConnected == true else {
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Scale is not connected. Blocking user deletion and showing toast."
+            )
+            notificationService.showToast(
+                ToastModel(
+                    title: ToastStrings.error,
+                    message: ToastStrings.errorDeletingUser
+                )
+            )
+            return
+        }
+
         await deleteUser(user)
         onDelete()
     }

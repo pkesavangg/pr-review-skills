@@ -59,3 +59,10 @@ include(":bleWrapper")
 // include(":ggBluetoothLibrary")
 include(":iam")
 include(":benchmark")
+
+// Local vico development — comment out to use published GPR version
+//includeBuild("/Users/selvakumar/Projects/vico") {
+//  dependencySubstitution {
+//    substitute(module("com.dmdbrands.lib:compose-android")).using(project(":vico:compose"))
+//  }
+//}

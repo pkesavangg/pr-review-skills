@@ -70,7 +70,7 @@ extension BabyScaleSetupStore {
         scanTimeoutTask?.cancel()
 
         self.discoveryEvent = event
-        self.discoveredScale = event.device.toDevice()
+        self.discoveredScale = event.device
 
         if event.isNew {
             Task {
@@ -94,7 +94,7 @@ extension BabyScaleSetupStore {
         let displayName = accountService.activeAccount?.firstName ?? "User"
 
         let pairResult = await bluetoothService.confirmSmartPair(
-            device: scale,
+            device: scale.toDevice(),
             token: "",
             displayName: displayName,
             userNumber: nil
@@ -167,7 +167,7 @@ extension BabyScaleSetupStore {
                 isConnected: true,
                 skipDuplicateCheck: false
             )
-            self.savedScale = device
+            self.savedScale = device.toSnapshot(isConnected: true)
             await scaleService.syncAllScalesWithRemote()
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
             LoggerService.shared.log(level: .info, tag: tag, message: "Baby scale saved: \(device.id)")

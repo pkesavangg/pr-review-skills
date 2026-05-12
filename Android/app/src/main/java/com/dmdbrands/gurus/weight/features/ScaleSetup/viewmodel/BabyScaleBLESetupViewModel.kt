@@ -116,7 +116,7 @@ constructor(
     val currentStep = currentState.step
 
     if (currentState.isFirstStep) {
-      navigateTo(AppRoute.AccountSettings.AddEditScales)
+      navigateTo(AppRoute.AccountSettings.MyDevices)
       return
     }
 
@@ -130,7 +130,7 @@ constructor(
     if (previousStep != null) {
       handleIntent(ScaleSetupIntent.SetNewStep(previousStep))
     } else {
-      navigateTo(AppRoute.AccountSettings.AddEditScales)
+      navigateTo(AppRoute.AccountSettings.MyDevices)
     }
   }
 

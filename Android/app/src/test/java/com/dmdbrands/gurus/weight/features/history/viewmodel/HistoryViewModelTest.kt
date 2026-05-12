@@ -23,7 +23,6 @@ import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.BeforeEach
@@ -173,10 +172,10 @@ class HistoryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnConnectScale navigates to AddEditScales`() = runTest {
+    fun `OnConnectScale navigates to MyDevices`() = runTest {
         viewModel.handleIntent(HistoryIntent.OnConnectScale)
         advanceUntilIdle()
-        coVerify { navigationService.navigateTo(AppRoute.AccountSettings.AddEditScales) }
+      coVerify { navigationService.navigateTo(AppRoute.AccountSettings.MyDevices) }
     }
 
     // -------------------------------------------------------------------------

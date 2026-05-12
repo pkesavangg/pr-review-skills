@@ -23,7 +23,25 @@ struct HistoryEntryItem: View {
     var openItemID: Binding<UUID?>? // Optional binding for swipeable open tracking
     
     // MARK: - Computed Properties
-    
+
+    // Hide "bpm" on pulse for weight-scale entries so heart rate renders as a bare number.
+    private func displayMetric(for metric: BodyMetric, config: MetricData) -> MetricData {
+        guard metric == .pulse, entry.entryType == EntryType.scale.rawValue else {
+            return config
+        }
+        return MetricData(
+            unit: "",
+            label: config.label,
+            expandedLabel: config.expandedLabel,
+            bodyCompositionRelated: config.bodyCompositionRelated,
+            icon: config.icon,
+            min: config.min,
+            max: config.max,
+            isWholeNumber: config.isWholeNumber,
+            preLabel: config.preLabel
+        )
+    }
+
     // MARK: - Body
     
     var body: some View {
@@ -106,7 +124,7 @@ struct HistoryEntryItem: View {
                     ForEach(Array(entry.metricItems.enumerated()), id: \.0) { index, item in
                         if let metricConfig = BodyMetrics.config[item.metric] {
                             HistoryMetricItem(
-                                metric: metricConfig,
+                                metric: displayMetric(for: item.metric, config: metricConfig),
                                 metricType: item.metric,
                                 value: item.value,
                                 index: index,

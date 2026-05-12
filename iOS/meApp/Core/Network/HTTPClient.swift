@@ -237,6 +237,11 @@ final class HTTPClient: HTTPClientProtocol {
         
         var allHeaders = headers ?? [:]
         if needsAuth {
+            // Always fetch fresh authenticated data; cached responses can become stale when device time is changed.
+            request.cachePolicy = .reloadIgnoringLocalCacheData
+            allHeaders["Cache-Control"] = "no-cache"
+            allHeaders["Pragma"] = "no-cache"
+
             if let account = try? await getAccount(accountId) {
                 // Extract primitive from @Model before crossing async boundaries
                 let token = account.accessToken

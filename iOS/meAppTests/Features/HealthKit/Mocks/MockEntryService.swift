@@ -28,6 +28,7 @@ final class MockEntryService: EntryServiceProtocol {
     private(set) var fetchEntrySnapshotByIdCalls = 0
     private(set) var deleteEntryByIdCalls = 0
     private(set) var deletedEntryIds: [UUID] = []
+    var deleteEntryByIdError: Error?
     private(set) var syncAllEntriesWithRemoteCalls = 0
     private(set) var loadDashboardDataCalls = 0
     private(set) var getAllEntriesCalls = 0
@@ -72,7 +73,9 @@ final class MockEntryService: EntryServiceProtocol {
     func deleteEntry(entryId: UUID) async throws {
         deleteEntryByIdCalls += 1
         deletedEntryIds.append(entryId)
+        if let error = deleteEntryByIdError { throw error }
     }
+    func assignBabyEntry(entryId: UUID, babyId: String) async throws {}
     func fetchEntrySnapshot(byId id: UUID) async throws -> EntrySnapshot? {
         fetchEntrySnapshotByIdCalls += 1
         return try fetchEntrySnapshotByIdResult.get()

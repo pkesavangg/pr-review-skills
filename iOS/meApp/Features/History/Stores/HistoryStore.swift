@@ -79,7 +79,10 @@ final class HistoryStore: ObservableObject {
         entryService.entrySaved
             .sink { [weak self] entry in
                 guard let self = self else { return }
-                Task {
+                Task { @MainActor in
+                    // Cancel any in-flight month load so the new entry is always picked up
+                    self.monthsLoadTask?.cancel()
+                    self.monthsLoadTask = nil
                     self.invalidateCacheForCurrentType()
                     await self.loadMonthsInternal(canShowLoader: false)
                     // If we're viewing a month and the saved entry belongs to that month, refresh entries inline
@@ -103,7 +106,10 @@ final class HistoryStore: ObservableObject {
         entryService.entryDeleted
             .sink { [weak self] entry in
                 guard let self = self else { return }
-                Task {
+                Task { @MainActor in
+                    // Cancel any in-flight month load so the deleted entry is always reflected
+                    self.monthsLoadTask?.cancel()
+                    self.monthsLoadTask = nil
                     self.invalidateCacheForCurrentType()
                     await self.loadMonthsInternal(canShowLoader: false)
                     // If we're viewing a month and the deleted entry belongs to that month, refresh entries inline
@@ -129,10 +135,13 @@ final class HistoryStore: ObservableObject {
         productTypeStore.selectedItemPublisher
             .dropFirst()
             .debounce(for: .milliseconds(300), scheduler: DispatchQueue.main)
-            .sink { [weak self] _ in
+            .sink { [weak self] newItem in
                 guard let self = self else { return }
                 self.monthsLoadTask?.cancel()
                 self.monthsLoadTask = nil
+                // Always force a fresh load when product type changes — the selected baby
+                // may have received new entries since we last viewed it.
+                self.loadedProductTypes.remove(newItem.id)
                 self.loadMonths()
             }
             .store(in: &cancellables)

@@ -1,7 +1,6 @@
 package com.dmdbrands.gurus.weight.features.ScaleUsers.components
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -45,17 +44,12 @@ fun ScaleUserList(
   onDeleteUser: (GGBTUser) -> Unit,
 ) {
   val focusManager = LocalFocusManager.current
-  val interactionSource = remember { MutableInteractionSource() }
 
   Column(
     modifier = modifier
       .fillMaxSize()
       .verticalScroll(rememberScrollState())
-      .clickable(
-        interactionSource = interactionSource,
-        indication = null,
-        onClick = { focusManager.clearFocus() },
-      ),
+      .dismissKeyboardOnTap(),
   ) {
     title?.let {
       AppText(

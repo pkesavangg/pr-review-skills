@@ -1,5 +1,12 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
+import android.provider.Settings
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
 import com.dmdbrands.gurus.weight.features.common.components.strings.SetupLoaderStrings
@@ -27,6 +35,77 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import kotlinx.coroutines.delay
+
+/**
+ * Timing contract for [SetupLoader]. Exposed so non-UI callers (ViewModels,
+ * pairing managers) can coordinate navigation with the loader's animations
+ * without hardcoding magic numbers.
+ */
+object SetupLoaderTimings {
+  /** Duration of the crossfade on the middle dot between Loading and Success/Failed. */
+  const val CROSSFADE_MS: Int = 400
+
+  /**
+   * Visibility buffer added on top of the crossfade so the final frame is perceived.
+   * 250ms balances "seeing the checkmark" against "feeling laggy" — total hold is
+   * [SUCCESS_DISPLAY_MS] (650ms).
+   */
+  const val SUCCESS_BUFFER_MS: Long = 250L
+
+  /**
+   * Delay callers should wait after emitting [ConnectionState.Success] before
+   * navigating away. Covers [CROSSFADE_MS] plus [SUCCESS_BUFFER_MS] for slower
+   * devices so the user reliably perceives the checkmark.
+   */
+  const val SUCCESS_DISPLAY_MS: Long = CROSSFADE_MS.toLong() + SUCCESS_BUFFER_MS
+}
+
+/** Number of dots rendered by [SetupLoader]. */
+private const val DOT_COUNT = 5
+
+/** The only dot whose content swaps between Loading and Success/Failed. */
+private const val MIDDLE_DOT_INDEX = DOT_COUNT / 2
+
+/**
+ * A coarser projection of [ConnectionState] used to drive the visual state of
+ * [SetupLoader]. Collapses the [ConnectionState.Failed] sealed hierarchy into a
+ * single `Failed` bucket so transitions between error variants (e.g. `Error` ↔
+ * `ErrorWithMessage`) do not trigger a redundant crossfade.
+ */
+private enum class LoaderDisplay { Loading, Success, Failed }
+
+private fun ConnectionState.toLoaderDisplay(): LoaderDisplay = when (this) {
+  ConnectionState.Loading -> LoaderDisplay.Loading
+  ConnectionState.Success -> LoaderDisplay.Success
+  is ConnectionState.Failed -> LoaderDisplay.Failed
+}
+
+@Composable
+private fun LoaderDisplay.dotColor(): Color = when (this) {
+  LoaderDisplay.Loading -> colorScheme.iconPrimary
+  LoaderDisplay.Success -> colorScheme.success
+  LoaderDisplay.Failed -> colorScheme.danger
+}
+
+/**
+ * Reads `Settings.Global.ANIMATOR_DURATION_SCALE` to honour the system-wide
+ * "Remove animations" / "Animator duration scale = Off" accessibility setting.
+ * Returns `true` when animations are disabled and the loader should snap rather
+ * than crossfade. Falls back to enabling animation on any read failure.
+ */
+@Composable
+private fun isReduceMotionEnabled(): Boolean {
+  val context = LocalContext.current
+  return remember(context) {
+    runCatching {
+      Settings.Global.getFloat(
+        context.contentResolver,
+        Settings.Global.ANIMATOR_DURATION_SCALE,
+        1f,
+      ) == 0f
+    }.getOrDefault(false)
+  }
+}
 
 /**
  * SetupLoader component that displays animated dots during loading
@@ -40,17 +119,27 @@ fun SetupLoader(
   connectionState: ConnectionState,
   modifier: Modifier = Modifier
 ) {
-  val dotColor = when (connectionState) {
-    ConnectionState.Loading -> colorScheme.iconPrimary
-    ConnectionState.Success -> colorScheme.success
-    else -> colorScheme.danger
-  }
+  val display = connectionState.toLoaderDisplay()
+  val crossfadeMs = if (isReduceMotionEnabled()) 0 else SetupLoaderTimings.CROSSFADE_MS
+
+  // Animate the outer dots' color over the same window as the middle-dot
+  // crossfade so the whole loader transitions as a single visual gesture
+  // rather than the middle dot fading while the ring snaps.
+  val outerDotColor by animateColorAsState(
+    targetValue = display.dotColor(),
+    animationSpec = tween(crossfadeMs),
+    label = "SetupLoaderOuterDotColor",
+  )
 
   // Custom animation state for uniform timing
   var animationProgress by remember { mutableStateOf(0f) }
 
-  LaunchedEffect(connectionState) {
-    if (connectionState == ConnectionState.Loading) {
+  LaunchedEffect(display) {
+    if (display == LoaderDisplay.Loading) {
+      // Reset progress on each entry into Loading so the dot phase starts from
+      // a known position after a Failed → Loading retry, rather than resuming
+      // from a frozen mid-cycle value.
+      animationProgress = 0f
       while (true) {
         animationProgress = (animationProgress + 0.06f) % 5f
         delay(20) // 20ms per frame = 50fps, 1.67 seconds total cycle
@@ -63,31 +152,68 @@ fun SetupLoader(
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.spacedBy(spacing.sm),
   ) {
-    repeat(5) { index ->
-      if ((connectionState == ConnectionState.Success || connectionState is ConnectionState.Failed) && index == 2) {
-        // Show icon for middle dot on success/error
-        AppIcon(
-          id = if (connectionState == ConnectionState.Success) {
-            AppIcons.Selection.CircleSelected
-          } else {
-            AppIcons.Selection.CircleClosed
-          },
-          contentDescription = if (connectionState == ConnectionState.Success) {
-            SetupLoaderStrings.SuccessIconDescription
-          } else {
-            SetupLoaderStrings.ErrorIconDescription
-          },
-          tintColor = dotColor,
+    repeat(DOT_COUNT) { index ->
+      if (index == MIDDLE_DOT_INDEX) {
+        MiddleDot(
+          display = display,
+          animationProgress = animationProgress,
+          crossfadeMs = crossfadeMs,
         )
       } else {
-        // Show animated dot with custom uniform timing
         AnimatedDot(
-          color = dotColor,
-          shouldAnimate = connectionState == ConnectionState.Loading,
+          color = outerDotColor,
+          shouldAnimate = display == LoaderDisplay.Loading,
           dotIndex = index,
           animationProgress = animationProgress,
         )
       }
+    }
+  }
+}
+
+/**
+ * The center dot of the SetupLoader. This is the only dot whose content changes
+ * between Loading and Success/Failed, so it is wrapped in an [AnimatedContent]
+ * crossfade to avoid a visual snap.
+ *
+ * Keyed on [LoaderDisplay] (not the full [ConnectionState]) so transitions
+ * between [ConnectionState.Failed] subtypes do not trigger a redundant crossfade.
+ * The dot color is derived from the `state` parameter inside the lambda so the
+ * outgoing composition renders in its own color rather than inheriting the new
+ * target's color from the outer scope.
+ */
+@Composable
+private fun MiddleDot(
+  display: LoaderDisplay,
+  animationProgress: Float,
+  crossfadeMs: Int,
+) {
+  AnimatedContent(
+    targetState = display,
+    transitionSpec = {
+      fadeIn(animationSpec = tween(crossfadeMs)) togetherWith
+        fadeOut(animationSpec = tween(crossfadeMs))
+    },
+    label = "SetupLoaderMiddleDotTransition",
+  ) { state ->
+    val color = state.dotColor()
+    when (state) {
+      LoaderDisplay.Success -> AppIcon(
+        id = AppIcons.Selection.CircleSelected,
+        contentDescription = SetupLoaderStrings.SuccessIconDescription,
+        tintColor = color,
+      )
+      LoaderDisplay.Failed -> AppIcon(
+        id = AppIcons.Selection.CircleClosed,
+        contentDescription = SetupLoaderStrings.ErrorIconDescription,
+        tintColor = color,
+      )
+      LoaderDisplay.Loading -> AnimatedDot(
+        color = color,
+        shouldAnimate = true,
+        dotIndex = MIDDLE_DOT_INDEX,
+        animationProgress = animationProgress,
+      )
     }
   }
 }

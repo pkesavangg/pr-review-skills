@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel
 
+import androidx.compose.runtime.Stable
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
@@ -10,16 +11,13 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toGraph
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toWeightGraphPoints
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
-import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
-import androidx.compose.runtime.Stable
-import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.toImmutableList
 
 /**
  * UI state for the graph component, holding all chart-related state variables.
@@ -58,9 +56,6 @@ data class GraphState(
   val data: ImmutableList<PeriodBodyScaleSummary> = persistentListOf(),
   val target: ImmutableList<PeriodBodyScaleSummary> = persistentListOf(),
   val secondaryKey: DashboardKey? = null,
-  val primaryYAxis: CartesianRangeValues? = null,
-  val secondaryYAxis: CartesianRangeValues? = null,
-  val primaryYStep: Double? = null,
   val goal: Goal? = null,
   val isEmptyGraph: Boolean = false,
   val modelProducer: CartesianChartModelProducer = CartesianChartModelProducer(),
@@ -70,6 +65,8 @@ data class GraphState(
   val isUpdating: Boolean = false,
   val isLoading: Boolean = false,
   val isSingleWindow: Boolean = false,
+  val chartMinX: Double? = null,
+  val chartMaxX: Double? = null,
 ) : IReducer.State {
   val graphKey: Int = data.hashCode()
   val graphLines: List<GraphLine> = listOf(this.data.getWeightGraphPoints())

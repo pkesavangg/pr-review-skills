@@ -16,7 +16,7 @@ import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsH
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.gurus.weight.features.common.model.DEVICES
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
@@ -100,7 +100,7 @@ constructor(
    */
   private fun loadScaleInfo() {
     AppLog.d(TAG, "Loading scale info for SKU: $sku")
-    val scaleInfo = SCALES.find { it.sku == sku }
+    val scaleInfo = DEVICES.find { it.sku == sku }
     if (scaleInfo != null) {
       AppLog.d(TAG, "Found scale info: ${scaleInfo.productName}, bodyComp: ${scaleInfo.bodyComp}")
       handleIntent(AppsyncScaleSetupIntent.SetScaleSku(sku))
@@ -221,7 +221,7 @@ constructor(
           deviceService.deleteScale(alreadyPairedScale.id)
         }
 
-        val scaleInfo = SCALES.find { it.sku == currentSku }
+        val scaleInfo = DEVICES.find { it.sku == currentSku }
         val productName = scaleInfo?.productName ?: ScaleSetupStrings.UnknownScale
 
         AppLog.d(TAG, "Scale info found: $productName, bodyComp: ${state.value.bodyComp}, SKU: $currentSku")

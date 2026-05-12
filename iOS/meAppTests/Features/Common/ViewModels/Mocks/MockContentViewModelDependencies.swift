@@ -50,6 +50,7 @@ final class MockContentViewModelEntryService: EntryServiceProtocol {
     func saveNewEntries(_ entries: [Entry]) async throws {}
     func deleteEntry(_ entry: Entry) async throws {}
     func deleteEntry(entryId: UUID) async throws {}
+    func assignBabyEntry(entryId: UUID, babyId: String) async throws {}
     func fetchEntrySnapshot(byId id: UUID) async throws -> EntrySnapshot? { nil }
     func fetchAllEntrySnapshots() async throws -> [EntrySnapshot] {
         fetchAllEntrySnapshotsCalls += 1
@@ -217,12 +218,18 @@ final class MockContentViewModelBluetoothService: BluetoothServiceProtocol {
     var deviceInfoUpdatedPublisher: AnyPublisher<DeviceInfo, Never> { Empty().eraseToAnyPublisher() }
     var showWeightOnlyModeAlertPublisher: AnyPublisher<Bool, Never> { Empty().eraseToAnyPublisher() }
     var newEntryReceivedPublisher: AnyPublisher<EntryNotification, Never> { Empty().eraseToAnyPublisher() }
+    var pendingScaleEntryPublisher: AnyPublisher<EntryNotification, Never> { Empty().eraseToAnyPublisher() }
+    var pendingBpmEntryPublisher: AnyPublisher<EntryNotification, Never> { Empty().eraseToAnyPublisher() }
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> { Empty().eraseToAnyPublisher() }
     var liveMeasurementPublisher: AnyPublisher<GGWeightEntry, Never> { Empty().eraseToAnyPublisher() }
     var newBpmReadingReceivedPublisher: AnyPublisher<BpmMeasurement, Never> { Empty().eraseToAnyPublisher() }
 
     func initialize() { initializeCalls += 1 }
     func stopScan() {}
+    func confirmPendingScaleEntry() async throws {}
+    func discardPendingScaleEntry() {}
+    func confirmPendingBpmEntry() async throws {}
+    func discardPendingBpmEntry() {}
 
     func startBluetoothOperations() async {
         startBluetoothOperationsCalls += 1

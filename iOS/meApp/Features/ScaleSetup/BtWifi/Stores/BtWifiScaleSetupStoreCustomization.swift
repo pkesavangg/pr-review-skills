@@ -260,9 +260,10 @@ extension BtWifiScaleSetupStore {
                 try? await Task.sleep(nanoseconds: 250_000_000)
                 self.navigateToStep(.stepOn)
             }
+            syncSavedScaleAfterSuccessfulSettingsUpdate(savedScale)
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed locally: \(error.localizedDescription)")
-            await MainActor.run { self.scaleSetupError = .updateSettingsFailed }
+            await MainActor.run { self.markUpdateSettingsFailedIfCurrentStep() }
         }
     }
 
@@ -270,7 +271,7 @@ extension BtWifiScaleSetupStore {
     func updateCustomizeSettings() async {
         guard let savedScale = savedScale else {
             LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - no saved scale")
-            await MainActor.run { self.scaleSetupError = .updateSettingsFailed }
+            await MainActor.run { self.markUpdateSettingsFailedIfCurrentStep() }
             return
         }
 
@@ -300,15 +301,24 @@ extension BtWifiScaleSetupStore {
                 await applyUpdatedPreferenceLocallyAndNavigate(savedScale: savedScale, updatedPreference: updatedPreference)
             case .failure:
                 LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed to update account")
-                await MainActor.run { self.scaleSetupError = .updateSettingsFailed }
+                await MainActor.run { self.markUpdateSettingsFailedIfCurrentStep() }
             }
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed: \(error.localizedDescription)")
-            await MainActor.run { self.scaleSetupError = .updateSettingsFailed }
+            await MainActor.run { self.markUpdateSettingsFailedIfCurrentStep() }
         }
+    }
+
+    private func markUpdateSettingsFailedIfCurrentStep() {
+        guard currentStep != .stepOn, updateSettingsRecoveryTask == nil else { return }
+        scaleSetupError = .updateSettingsFailed
+    }
+
+    private func syncSavedScaleAfterSuccessfulSettingsUpdate(_ savedScale: DeviceSnapshot) {
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 2_000_000_000)
-            self.bluetoothService.syncDevices([])
+            guard !self.isExiting else { return }
+            self.bluetoothService.syncDevices([savedScale])
         }
     }
 
@@ -362,7 +372,7 @@ extension BtWifiScaleSetupStore {
             guard !Task.isCancelled else { return }
             await MainActor.run {
                 guard let self = self else { return }
-                if self.currentStep == .updateSettings {
+                if self.currentStep == .updateSettings, self.updateSettingsRecoveryTask == nil {
                     self.scaleSetupError = .updateSettingsFailed
                     LoggerService.shared.log(level: .error, tag: self.tag, message: "updateCustomizeSettings - timeout occurred")
                 }
@@ -396,6 +406,8 @@ extension BtWifiScaleSetupStore {
         // Cancel all tasks
         fetchWifiNetworksTask?.cancel()
         fetchWifiNetworksTask = nil
+        updateSettingsRecoveryTask?.cancel()
+        updateSettingsRecoveryTask = nil
 
         deviceDiscoveryCancellable?.cancel()
         deviceDiscoveryCancellable = nil

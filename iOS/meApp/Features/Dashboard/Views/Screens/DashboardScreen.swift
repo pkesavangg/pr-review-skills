@@ -147,15 +147,18 @@ struct DashboardScreen: View {
     }
 
     private func navbarHeader() -> some View {
-        NavbarHeaderView<EmptyView, EmptyView>(
-            title: store.availableProductItems.count > 1 && isInProductDashboard
-                ? store.selectedProductItem.dashboardTitle
+        let isProductDashboardFromSnapshot = canShowSnapshotOverview && isInProductDashboard
+        return NavbarHeaderView<AppIconView, EmptyView>(
+            title: isProductDashboardFromSnapshot ? store.selectedProductItem.dashboardTitle : nil,
+            leadingContent: isProductDashboardFromSnapshot
+                ? { AppIconView(icon: AppAssets.chevronLeft) }
                 : nil,
-            onTitleTap: store.availableProductItems.count > 1 && isInProductDashboard ? {
+            onLeadingTap: isProductDashboardFromSnapshot ? { isInProductDashboard = false } : nil,
+            onTitleTap: isProductDashboardFromSnapshot ? {
                 isProductTypeSelectorPresented = true
             } : nil,
             canShowBorder: false,
-            canShowTitleChevron: store.availableProductItems.count > 1 && isInProductDashboard
+            canShowTitleChevron: isProductDashboardFromSnapshot
         )
         .sheet(isPresented: $isProductTypeSelectorPresented) {
             ProductTypeSelectorSheet(

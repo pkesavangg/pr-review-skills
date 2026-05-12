@@ -274,7 +274,7 @@ actor SwiftDataWorker {
             entryTimestamp: entry.entryTimestamp,
             serverTimestamp: entry.serverTimestamp,
             operationType: entry.operationType,
-            entryType: entry.entryType,
+            entryType: entry.entryType ?? EntryType.scale.rawValue,
             isSynced: entry.isSynced,
             // BathScaleEntry relationship - safe to access here
             weight: entry.scaleEntry?.weight,

@@ -1,8 +1,7 @@
 package com.dmdbrands.gurus.weight.features.login.screen
 
+import android.view.autofill.AutofillManager
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -24,6 +24,7 @@ import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentType
@@ -31,6 +32,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
@@ -79,9 +81,17 @@ private fun LoginContent(
 ) {
   val keyboardController = LocalSoftwareKeyboardController.current
   val focusManager = LocalFocusManager.current
-  val interactionSource = remember { MutableInteractionSource() }
   val emailFocusRequester = remember { FocusRequester() }
   val passwordFocusRequester = remember { FocusRequester() }
+
+  val context = LocalContext.current
+  val autofillManager = remember { context.getSystemService(AutofillManager::class.java) }
+
+  LaunchedEffect(state.error) {
+    if (state.error != null) {
+      autofillManager?.cancel()
+    }
+  }
 
   AppScaffold(
     title = null,
@@ -115,11 +125,7 @@ private fun LoginContent(
           Modifier
             .fillMaxWidth()
             .padding(horizontal = spacing.sm)
-            .clickable(
-              interactionSource = interactionSource,
-              indication = null,
-              onClick = { focusManager.clearFocus() },
-            ),
+            .dismissKeyboardOnTap(),
       ) {
         AppInput(
           formControl = state.form.controls.email,
