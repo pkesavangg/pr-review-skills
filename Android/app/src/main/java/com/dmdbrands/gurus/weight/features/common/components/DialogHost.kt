@@ -20,6 +20,7 @@ enum class DialogType {
   HelpPopup,
   PasswordReset,
   RadioGroupPicker,
+  AssignMeasurement,
   AccountSwitchInfoPopup,
   ModelNumberHelp,
   BiaModal,
@@ -250,6 +251,29 @@ fun DialogHost() {
             dialog.onConfirm?.invoke(actionType)
             dialogQueueViewModel.dismissCurrent()
           }
+        )
+      }
+
+      DialogType.AssignMeasurement -> {
+        @Suppress("UNCHECKED_CAST")
+        val babies = dialog.params["babies"] as List<com.dmdbrands.gurus.weight.domain.model.common.BabyProfile>
+        val reading = dialog.params["reading"] as String
+        val timestamp = dialog.params["timestamp"] as String
+        val preSelectedBabyId = dialog.params["preSelectedBabyId"] as? String
+
+        AssignMeasurementDialog(
+          reading = reading,
+          timestamp = timestamp,
+          babies = babies,
+          preSelectedBabyId = preSelectedBabyId,
+          onAssign = { babyId ->
+            dialog.onConfirm?.invoke(babyId)
+            dialogQueueViewModel.dismissCurrent()
+          },
+          onDismiss = {
+            dialog.onDismiss?.invoke()
+            dialogQueueViewModel.dismissCurrent()
+          },
         )
       }
     }

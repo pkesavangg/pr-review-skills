@@ -1,162 +1,29 @@
 package com.dmdbrands.gurus.weight.features.dashboard.components
 
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
-import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
-import com.dmdbrands.gurus.weight.features.common.components.chart.ChartHeader
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
-import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.SnapshotColors
-import com.dmdbrands.gurus.weight.features.dashboard.snapshot.strings.DashboardSnapshotStrings
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
-import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyDashboardState
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyMetric
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardState
-import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
-import com.dmdbrands.gurus.weight.theme.MeTheme
-
-private fun getDisplayUnit(weightUnit: WeightUnit, weight: Double): String = when (weightUnit) {
-  WeightUnit.KG -> DashboardSnapshotStrings.Kg
-  WeightUnit.LB -> if (weight <= 1.0 && weight != 0.0) DashboardSnapshotStrings.Lb else DashboardSnapshotStrings.Lbs
-}
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 
 /**
- * Product-aware chart header. Uses shared [ChartHeader] for Row 1 + Row 3,
- * provides product-specific value display as the slot.
- * Pure display — receives state, no VM reference.
+ * Thin dispatcher that picks the per-product chart header. Each header lives in its
+ * own file and owns its product-specific logic + sheet triggers:
+ *
+ * - [WeightChartHeader] — value + lb/kg unit
+ * - [BpChartHeader] — mmHg/pulse + AHA ratings sheet
+ * - [BabyChartHeader] — value + W/H toggle + CDC percentiles sheet
  */
 @Composable
 fun DashboardChartHeader(
   state: BaseDashboardState,
   segment: GraphSegment,
   product: ProductSelection,
+  handleIntent: ((BaseGraphIntent) -> Unit)? = null,
 ) {
-  val segmentState = state.forSegment(segment)
-  val rangeText = (segmentState.visibleMin ?: segmentState.minTarget)?.let { min ->
-    (segmentState.visibleMax ?: segmentState.maxTarget)?.let { max -> GraphUtil.formatDateRange(min, max, segment) }
-  } ?: ""
-
-  ChartHeader(
-    segmentState = segmentState,
-    segment = segment,
-    rangeData = rangeText,
-    markerIndex = state.markerIndex,
-  ) {
-    when (product) {
-      is ProductSelection.MyWeight -> {
-        val weightState = state as? WeightDashboardState
-        val target = segmentState.target.filterIsInstance<PeriodBodyScaleSummary>()
-        val avg = if (target.isEmpty()) 0.0 else target.map { it.weight }.average()
-        val label = if (target.isEmpty()) "000.0" else formatWeightValue(avg)
-        val weightUnit = weightState?.weightUnit ?: WeightUnit.KG
-        val displayUnit = remember(weightUnit, avg) { getDisplayUnit(weightUnit, avg) }
-
-        Row(verticalAlignment = Alignment.Bottom) {
-          Text(
-            text = label,
-            style = MeTheme.typography.heading2,
-            color = MeTheme.colorScheme.textBody,
-          )
-          Spacer(modifier = Modifier.width(4.dp))
-          Text(
-            text = displayUnit,
-            style = MeTheme.typography.subHeading2,
-            color = MeTheme.colorScheme.textSubheading,
-            modifier = Modifier.offset(y = (-10).dp),
-          )
-        }
-      }
-
-      is ProductSelection.BloodPressure -> {
-        val target = segmentState.target.filterIsInstance<PeriodBpmSummary>()
-        val avgSys = target.map { it.avgSystolic }.takeIf { it.isNotEmpty() }?.average()?.toInt()
-        val avgDia = target.map { it.avgDiastolic }.takeIf { it.isNotEmpty() }?.average()?.toInt()
-        val avgPulse = target.map { it.avgPulse }.takeIf { it.isNotEmpty() }?.average()?.toInt()
-
-        Row {
-          Text(text = DashboardSnapshotStrings.Mmhg, style = MeTheme.typography.subHeading1, color = MeTheme.colorScheme.textSubheading)
-          Spacer(modifier = Modifier.weight(1f))
-          Text(text = DashboardSnapshotStrings.Pulse, style = MeTheme.typography.subHeading1, color = MeTheme.colorScheme.textSubheading)
-        }
-        Row(verticalAlignment = Alignment.Bottom) {
-          if (avgSys != null && avgDia != null) {
-            Text(
-              text = buildAnnotatedString {
-                withStyle(SpanStyle(color = SnapshotColors.systolicColor(avgSys))) { append("$avgSys") }
-                withStyle(SpanStyle(color = MeTheme.colorScheme.textSubheading)) { append("/") }
-                withStyle(SpanStyle(color = SnapshotColors.diastolicColor(avgDia))) { append("$avgDia") }
-              },
-              style = MeTheme.typography.heading2,
-            )
-          } else {
-            Text(text = DashboardSnapshotStrings.PlaceholderDash, style = MeTheme.typography.heading2, color = SnapshotColors.BloodPressure)
-          }
-          Spacer(modifier = Modifier.weight(1f))
-          Text(
-            text = avgPulse?.toString() ?: DashboardSnapshotStrings.PlaceholderDash,
-            style = MeTheme.typography.heading2,
-            color = if (avgPulse != null) SnapshotColors.pulseColor(avgPulse) else MeTheme.colorScheme.textSubheading,
-          )
-        }
-      }
-
-      is ProductSelection.Baby -> {
-        val babyState = state as? BabyDashboardState
-        val selectedMetric = babyState?.selectedMetric ?: BabyMetric.WEIGHT
-        val target = segmentState.target.filterIsInstance<PeriodBabySummary>()
-
-        when (selectedMetric) {
-          BabyMetric.WEIGHT -> {
-            val avgDecigrams = target.mapNotNull { it.avgWeightDecigrams }.takeIf { it.isNotEmpty() }
-              ?.average()?.toInt()
-            if (avgDecigrams != null) {
-              val lbs = ConversionTools.convertDecigramsToLb(avgDecigrams)
-              val oz = ConversionTools.convertDecigramsToOz(avgDecigrams)
-              Row(verticalAlignment = Alignment.Bottom) {
-                Text(text = "$lbs", style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(text = DashboardSnapshotStrings.Lbs, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = String.format("%.1f", oz), style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(text = DashboardSnapshotStrings.Oz, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
-              }
-            } else {
-              Text(text = DashboardSnapshotStrings.PlaceholderDash, style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
-            }
-          }
-          BabyMetric.HEIGHT -> {
-            val avgMm = target.mapNotNull { it.avgLengthMillimeters }.takeIf { it.isNotEmpty() }
-              ?.average()?.toInt()
-            if (avgMm != null) {
-              val inches = ConversionTools.convertMmToInches(avgMm)
-              Row(verticalAlignment = Alignment.Bottom) {
-                Text(text = String.format("%.1f", inches), style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(text = DashboardSnapshotStrings.Inches, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
-              }
-            } else {
-              Text(text = DashboardSnapshotStrings.PlaceholderDash, style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
-            }
-          }
-        }
-      }
-    }
+  when (product) {
+    is ProductSelection.MyWeight -> WeightChartHeader(state = state, segment = segment)
+    is ProductSelection.BloodPressure -> BpChartHeader(state = state, segment = segment)
+    is ProductSelection.Baby -> BabyChartHeader(state = state, segment = segment, handleIntent = handleIntent)
   }
 }

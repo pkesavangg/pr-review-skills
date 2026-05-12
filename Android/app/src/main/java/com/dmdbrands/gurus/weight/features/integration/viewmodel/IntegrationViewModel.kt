@@ -207,7 +207,7 @@ class IntegrationViewModel @Inject constructor(
             } finally {
               // Refresh integrations to get updated status from server
               dialogQueueService.showToast(
-                Toast(HealthConnectStrings.ToastStrings.removeHC),
+                Toast.Simple(HealthConnectStrings.ToastStrings.removeHC),
               )
             }
           }

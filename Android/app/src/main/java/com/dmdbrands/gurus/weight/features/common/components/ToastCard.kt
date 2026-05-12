@@ -36,7 +36,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 @Composable
 fun ToastCard(
   modifier: Modifier = Modifier,
-  toast: Toast,
+  toast: Toast.Simple,
   clearToast: () -> Unit = {},
 ) {
   Card(

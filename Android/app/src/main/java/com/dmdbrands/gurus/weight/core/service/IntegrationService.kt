@@ -176,7 +176,7 @@ class IntegrationService @Inject constructor(
       accountService.refreshAccount()
       dialogQueueService.dismissLoader()
       dialogQueueService.showToast(
-        Toast(
+        Toast.Simple(
           message = IntegrationStrings.DisconnectSuccess,
           action = null,
         ),

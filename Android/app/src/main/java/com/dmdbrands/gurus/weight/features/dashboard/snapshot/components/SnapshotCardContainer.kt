@@ -10,7 +10,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.mergeDescendants
 import androidx.compose.ui.semantics.semantics
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
@@ -23,7 +22,7 @@ fun SnapshotCardContainer(
 ) {
   Column(
     modifier = modifier
-      .semantics { mergeDescendants = true }
+      .semantics(mergeDescendants = true) {}
       .fillMaxWidth()
       .clip(RoundedCornerShape(MeTheme.borderRadius.md))
       .background(MeTheme.colorScheme.primaryBackground)

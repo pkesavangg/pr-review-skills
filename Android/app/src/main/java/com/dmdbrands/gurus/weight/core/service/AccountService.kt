@@ -264,7 +264,7 @@ class AccountService(
       val accountId = activeAccountFlow.first()?.id ?: return false
       accountRepository.updatePassword(accountId, currentPassword, newPassword)
       AppLog.d(TAG, "Password changed successfully")
-      dialogQueueService.showToast(Toast(ToastStrings.Success.ChangePasswordSuccess.Message))
+      dialogQueueService.showToast(Toast.Simple(ToastStrings.Success.ChangePasswordSuccess.Message))
       true
     } catch (e: Exception) {
       AppLog.e(TAG, "Password change failed", e)
@@ -769,7 +769,7 @@ class AccountService(
     } catch (e: Exception) {
       AppLog.e(TAG, "reset() failed during storage clear", e)
       dialogQueueService.showToast(
-        Toast(
+        Toast.Simple(
           title = null,
           message = LoginError.MessageGeneric,
         ),
@@ -872,7 +872,7 @@ class AccountService(
 
   private fun showNoNetworkErrorToast() {
     dialogQueueService.showToast(
-      Toast(
+      Toast.Simple(
         title = null,
         message = ToastStrings.Error.NetworkError.Message,
         action = null,

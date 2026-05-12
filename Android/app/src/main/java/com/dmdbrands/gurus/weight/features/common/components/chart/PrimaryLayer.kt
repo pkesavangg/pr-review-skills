@@ -32,6 +32,7 @@ internal fun rememberLineLayerWithConnection(
     yRange: com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartRanges.YRange,
     visibleXRange: ClosedFloatingPointRange<Double>,
   ) -> DoubleArray?)? = null,
+  alwaysUseLiveRange: Boolean = false,
 ): LineCartesianLayer {
 
   val lineThickness = if (segment == GraphSegment.TOTAL) 2.dp else 3.dp
@@ -64,6 +65,7 @@ internal fun rememberLineLayerWithConnection(
     verticalAxisPosition = verticalAxisPosition,
     rangeProvider = rangeProvider,
     yTransform = yTransform,
+    alwaysUseLiveRange = alwaysUseLiveRange,
   )
 }
 
@@ -103,5 +105,6 @@ internal fun secondaryLayer(
     verticalAxisPosition = Axis.Position.Vertical.End,
     rangeProvider = rangeProvider,
     yTransform = yTransform,
+    alwaysUseLiveRange = true,
   )
 }

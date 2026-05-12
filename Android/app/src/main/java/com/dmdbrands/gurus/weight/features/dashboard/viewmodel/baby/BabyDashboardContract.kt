@@ -15,40 +15,27 @@ import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProdu
 
 enum class BabyMetric { WEIGHT, HEIGHT }
 
-// ── Per-metric state (segment data + percentile — no producers) ──
-
-@Stable
-data class BabyMetricState(
-  val segmentStates: Map<GraphSegment, SegmentState> = emptyMap(),
-  val percentileSeries: BabyPercentileHelper.PercentileSeries? = null,
-)
-
 // ── State ──
 
 @Stable
 data class BabyDashboardState(
-  // Shared producers (stable, never swapped)
   override val dailyProducer: CartesianChartModelProducer = CartesianChartModelProducer(),
   override val monthlyProducer: CartesianChartModelProducer = CartesianChartModelProducer(),
-  // Per-metric state map
-  val metricStates: Map<BabyMetric, BabyMetricState> = emptyMap(),
-  val selectedMetric: BabyMetric = BabyMetric.WEIGHT,
-  // Shared
+  override val segmentStates: Map<GraphSegment, SegmentState> = emptyMap(),
   override val selectedSegment: GraphSegment = GraphSegment.WEEK,
   override val scrollTarget: Double? = null,
   override val isRefreshing: Boolean = false,
   override val markerIndex: Double? = null,
+  val selectedMetric: BabyMetric = BabyMetric.WEIGHT,
+  val weightPercentile: BabyPercentileHelper.PercentileSeries? = null,
+  val heightPercentile: BabyPercentileHelper.PercentileSeries? = null,
   val babyProfile: BabyProfile? = null,
 ) : BaseDashboardState {
-  // Route segmentStates to active metric
-  override val segmentStates: Map<GraphSegment, SegmentState>
-    get() = metricStates[selectedMetric]?.segmentStates ?: emptyMap()
-
-  val activePercentileSeries: BabyPercentileHelper.PercentileSeries?
-    get() = metricStates[selectedMetric]?.percentileSeries
-
-  fun metricState(metric: BabyMetric): BabyMetricState =
-    metricStates[metric] ?: BabyMetricState()
+  val activePercentile: BabyPercentileHelper.PercentileSeries?
+    get() = when (selectedMetric) {
+      BabyMetric.WEIGHT -> weightPercentile
+      BabyMetric.HEIGHT -> heightPercentile
+    }
 }
 
 // ── Intents ──
@@ -56,13 +43,8 @@ data class BabyDashboardState(
 sealed interface BabyDashboardIntent : BaseGraphIntent {
   data class SetBabyProfile(val profile: BabyProfile) : BabyDashboardIntent
   data class SetSelectedMetric(val metric: BabyMetric) : BabyDashboardIntent
-  data class SetPercentile(val metric: BabyMetric, val series: BabyPercentileHelper.PercentileSeries?) : BabyDashboardIntent
-  /** Update a specific metric's segment state (used during data push to both metrics). */
-  data class UpdateMetricSegment(
-    val metric: BabyMetric,
-    val segment: GraphSegment,
-    val update: (SegmentState) -> SegmentState,
-  ) : BabyDashboardIntent
+  data class SetWeightPercentile(val series: BabyPercentileHelper.PercentileSeries?) : BabyDashboardIntent
+  data class SetHeightPercentile(val series: BabyPercentileHelper.PercentileSeries?) : BabyDashboardIntent
   data object Refresh : BabyDashboardIntent
 }
 
@@ -70,46 +52,27 @@ sealed interface BabyDashboardIntent : BaseGraphIntent {
 
 class BabyDashboardReducer : BaseGraphReducer<BabyDashboardState>(), IReducer<BabyDashboardState, BaseGraphIntent> {
 
-  /**
-   * Routes base field updates. segmentStates writes to the active metric's map.
-   */
   override fun copyBaseFields(
     state: BabyDashboardState,
     segmentStates: Map<GraphSegment, SegmentState>,
     isRefreshing: Boolean,
     markerIndex: Double?,
     selectedSegment: GraphSegment,
-    dailyProducer: CartesianChartModelProducer,
-    monthlyProducer: CartesianChartModelProducer,
     scrollTarget: Double?,
-  ): BabyDashboardState {
-    val activeMetric = state.metricState(state.selectedMetric)
-    val updatedMetric = activeMetric.copy(segmentStates = segmentStates)
-    return state.copy(
-      metricStates = state.metricStates + (state.selectedMetric to updatedMetric),
-      isRefreshing = isRefreshing,
-      markerIndex = markerIndex,
-      selectedSegment = selectedSegment,
-      dailyProducer = dailyProducer,
-      monthlyProducer = monthlyProducer,
-      scrollTarget = scrollTarget,
-    )
-  }
+  ) = state.copy(
+    segmentStates = segmentStates,
+    isRefreshing = isRefreshing,
+    markerIndex = markerIndex,
+    selectedSegment = selectedSegment,
+    scrollTarget = scrollTarget,
+  )
 
   override fun reduce(state: BabyDashboardState, intent: BaseGraphIntent): BabyDashboardState? = when (intent) {
     is BabyDashboardIntent -> when (intent) {
       is BabyDashboardIntent.SetBabyProfile -> state.copy(babyProfile = intent.profile)
       is BabyDashboardIntent.SetSelectedMetric -> state.copy(selectedMetric = intent.metric)
-      is BabyDashboardIntent.SetPercentile -> {
-        val current = state.metricState(intent.metric)
-        state.copy(metricStates = state.metricStates + (intent.metric to current.copy(percentileSeries = intent.series)))
-      }
-      is BabyDashboardIntent.UpdateMetricSegment -> {
-        val current = state.metricState(intent.metric)
-        val segState = current.segmentStates[intent.segment] ?: SegmentState()
-        val updated = current.copy(segmentStates = current.segmentStates + (intent.segment to intent.update(segState)))
-        state.copy(metricStates = state.metricStates + (intent.metric to updated))
-      }
+      is BabyDashboardIntent.SetWeightPercentile -> state.copy(weightPercentile = intent.series)
+      is BabyDashboardIntent.SetHeightPercentile -> state.copy(heightPercentile = intent.series)
       is BabyDashboardIntent.Refresh -> state
     }
     else -> reduceBaseIntent(state, intent)

@@ -3,7 +3,8 @@ package com.dmdbrands.gurus.weight.data.services
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.services.EntryServiceHelper.processWeight
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
-import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.domain.model.common.Streak
+import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
@@ -48,7 +49,7 @@ internal fun calculateProgressPure(
     totalCount: Int,
     unit: WeightUnit,
     goal: Goal?,
-): Progress {
+): WeightProgress {
     var week: Double? = null
     var initWeek: Entry? = null
     var month: Double? = null
@@ -102,11 +103,10 @@ internal fun calculateProgressPure(
             }
         }
     }
-    return Progress(
+    return WeightProgress(
         latest = latestEntry,
         goal = goal,
-        currentStreak = currentStreak,
-        longestStreak = longestStreak,
+        streak = Streak(current = currentStreak, longest = longestStreak),
         count = totalCount,
         initWt = totalBaselineWeight ?: 0.0,
         week = week,
