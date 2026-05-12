@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import android.content.Context
@@ -74,6 +76,7 @@ class CustomTabManager
                 }
             }
 
+        private val bindMutex = Mutex()
         private var binder: CustomTabServiceBinder? = null
         private var intentBuilder: CustomTabIntentBuilder =
             CustomTabIntentBuilder(context)
@@ -81,15 +84,18 @@ class CustomTabManager
         private var packageName: String? = null
 
         override suspend fun bindService(): Boolean =
-            withContext(Dispatchers.IO) {
-                packageName = packageResolver.resolve()
-                if (packageName == null) return@withContext false
-                val resolvedPackage = packageName ?: return@withContext false
-                binder =
-                    CustomTabServiceBinder(context, resolvedPackage, callback).also {
-                        it.bind()
-                    }
-                return@withContext true
+            bindMutex.withLock {
+                if (binder?.session != null) return@withLock true
+                withContext(Dispatchers.IO) {
+                    packageName = packageResolver.resolve()
+                    if (packageName == null) return@withContext false
+                    val resolvedPackage = packageName ?: return@withContext false
+                    binder =
+                        CustomTabServiceBinder(context, resolvedPackage, callback).also {
+                            it.bind()
+                        }
+                    true
+                }
             }
 
         override fun unbind() {
@@ -131,6 +137,7 @@ class CustomTabManager
 
         override fun openChromeTab(url: String) {
             appScope.launch {
+                navigationEvent.value = null
                 val isBound = bindService()
                 delay(300)
                 if (isBound) {

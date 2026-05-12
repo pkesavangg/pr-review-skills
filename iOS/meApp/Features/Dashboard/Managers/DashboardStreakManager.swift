@@ -57,7 +57,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     // MARK: - Streak Data Management
     func refreshStreakData() async throws {
         try await performCoalescedRefresh {
-            try await self.entryService.getProgress(entryType: .wg)
+            try await self.entryService.getProgress(entryType: .scale)
         }
     }
 
@@ -84,13 +84,13 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         ))
 
         // Resolve unit once
-        let weightUnit: WeightUnit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
+        let weightUnit: WeightUnit = accountService.activeAccount?.weightUnit ?? .lb
 
         // Weekly change
         let weeklyValue = Double(progress.week)
         let weeklyDisplay = weightUnit == .kg
-            ? ConversionTools.convertStoredToKg(Int(weeklyValue))
-            : ConversionTools.convertStoredToLbs(Int(weeklyValue))
+            ? ConversionTools.convertStoredToKg(weeklyValue)
+            : ConversionTools.convertStoredToLbs(weeklyValue)
         let weeklyUnitLabel = WeightValueConvertor.unitForDisplay(value: abs(weeklyDisplay), unit: weightUnit)
         updatedStreakItems.append(MetricItem(
             value: formatWeightChange(weeklyValue, unit: weightUnit.rawValue),
@@ -103,8 +103,8 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         // Monthly change
         let monthlyValue = Double(progress.month)
         let monthlyDisplay = weightUnit == .kg
-            ? ConversionTools.convertStoredToKg(Int(monthlyValue))
-            : ConversionTools.convertStoredToLbs(Int(monthlyValue))
+            ? ConversionTools.convertStoredToKg(monthlyValue)
+            : ConversionTools.convertStoredToLbs(monthlyValue)
         let monthlyUnitLabel = WeightValueConvertor.unitForDisplay(value: abs(monthlyDisplay), unit: weightUnit)
         updatedStreakItems.append(MetricItem(
             value: formatWeightChange(monthlyValue, unit: weightUnit.rawValue),
@@ -117,8 +117,8 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         // Yearly change
         let yearlyValue = Double(progress.year)
         let yearlyDisplay = weightUnit == .kg
-            ? ConversionTools.convertStoredToKg(Int(yearlyValue))
-            : ConversionTools.convertStoredToLbs(Int(yearlyValue))
+            ? ConversionTools.convertStoredToKg(yearlyValue)
+            : ConversionTools.convertStoredToLbs(yearlyValue)
         let yearlyUnitLabel = WeightValueConvertor.unitForDisplay(value: abs(yearlyDisplay), unit: weightUnit)
         updatedStreakItems.append(MetricItem(
             value: formatWeightChange(yearlyValue, unit: weightUnit.rawValue),
@@ -131,8 +131,8 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         // Total change
         let totalValue = Double(progress.total ?? 0)
         let totalDisplay = weightUnit == .kg
-            ? ConversionTools.convertStoredToKg(Int(totalValue))
-            : ConversionTools.convertStoredToLbs(Int(totalValue))
+            ? ConversionTools.convertStoredToKg(totalValue)
+            : ConversionTools.convertStoredToLbs(totalValue)
         let totalUnitLabel = WeightValueConvertor.unitForDisplay(value: abs(totalDisplay), unit: weightUnit)
         updatedStreakItems.append(MetricItem(
             value: formatWeightChange(totalValue, unit: weightUnit.rawValue),
@@ -278,7 +278,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     
     /// Returns the current weight unit as a string (e.g., "lbs" or "kg")
     private func getUnitText() -> String {
-        return accountService.activeAccount?.weightSettings?.weightUnit?.rawValue ?? "lbs"
+        return accountService.activeAccount?.weightUnit.rawValue ?? "lbs"
     }
     
     /// Returns dynamic streak labels based on current unit
@@ -304,9 +304,9 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         // Convert stored weight to display unit
         let displayValue: Double
         if unit == "kg" {
-            displayValue = ConversionTools.convertStoredToKg(Int(value))
+            displayValue = ConversionTools.convertStoredToKg(value)
         } else {
-            displayValue = ConversionTools.convertStoredToLbs(Int(value))
+            displayValue = ConversionTools.convertStoredToLbs(value)
         }
         
         // Round to one decimal to determine if the displayed value is effectively zero

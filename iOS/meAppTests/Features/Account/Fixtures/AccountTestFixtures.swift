@@ -44,7 +44,7 @@ enum AccountTestFixtures {
     ) -> AccountResponse {
         AccountResponse(
             account: makeAccountDTO(id: accountId, email: email, firstName: firstName),
-            accessToken: "access-token",
+            accessToken: "access-token", // swiftlint:disable:this no_hardcoded_credentials
             refreshToken: "refresh-token",
             expiresAt: "2099-01-01T00:00:00Z"
         )
@@ -107,6 +107,98 @@ enum AccountTestFixtures {
         account.isSynced = isSynced
         account.expiresAt = "2099-01-01T00:00:00Z"
         return account
+    }
+
+    // MARK: - AccountSnapshot factory
+
+    static func makeAccountSnapshot(
+        id: String = "100",
+        email: String = "user@example.com",
+        firstName: String? = "First",
+        lastName: String? = "Last",
+        gender: Sex? = .male,
+        height: String? = "170",
+        dob: String? = "2000-01-01",
+        zipcode: String? = "10001",
+        isLoggedIn: Bool = true,
+        isExpired: Bool = false,
+        isActiveAccount: Bool = false,
+        fcmToken: String? = nil,
+        lastActiveTime: String? = nil,
+        isSynced: Bool = true,
+        productTypes: [String] = [],
+        weightUnit: WeightUnit = .kg,
+        weightHeight: String = "170",
+        activityLevel: ActivityLevel? = .normal,
+        goalType: GoalType? = .maintain,
+        goalWeight: Double? = nil,
+        initialWeight: Double? = nil,
+        goalPercent: Double? = nil,
+        goalIsSynced: Bool = false,
+        isStreakOn: Bool = false,
+        streakTimestamp: String? = nil,
+        isWeightlessOn: Bool = false,
+        weightlessWeight: Double? = nil,
+        weightlessTimestamp: String? = nil,
+        shouldSendEntryNotifications: Bool = true,
+        shouldSendWeightInEntryNotifications: Bool = false,
+        dashboardType: String? = nil,
+        dashboardMetrics: String? = nil,
+        progressMetrics: String? = nil,
+        isHealthKitOn: Bool = false,
+        isFitbitOn: Bool = false,
+        isFitbitValid: Bool = false,
+        isHealthConnectOn: Bool = false,
+        isMfpOn: Bool = false,
+        isMfpValid: Bool = false,
+        accessToken: String? = nil,
+        refreshToken: String? = nil,
+        expiresAt: String? = "2099-01-01T00:00:00Z"
+    ) -> AccountSnapshot {
+        AccountSnapshot(
+            accountId: id,
+            email: email,
+            firstName: firstName,
+            lastName: lastName,
+            gender: gender,
+            height: height,
+            dob: dob,
+            zipcode: zipcode,
+            isLoggedIn: isLoggedIn,
+            isExpired: isExpired,
+            isActiveAccount: isActiveAccount,
+            fcmToken: fcmToken,
+            lastActiveTime: lastActiveTime,
+            isSynced: isSynced,
+            productTypes: productTypes,
+            weightUnit: weightUnit,
+            weightHeight: weightHeight,
+            activityLevel: activityLevel,
+            goalType: goalType,
+            goalWeight: goalWeight,
+            initialWeight: initialWeight,
+            goalPercent: goalPercent,
+            goalIsSynced: goalIsSynced,
+            isStreakOn: isStreakOn,
+            streakTimestamp: streakTimestamp,
+            isWeightlessOn: isWeightlessOn,
+            weightlessWeight: weightlessWeight,
+            weightlessTimestamp: weightlessTimestamp,
+            shouldSendEntryNotifications: shouldSendEntryNotifications,
+            shouldSendWeightInEntryNotifications: shouldSendWeightInEntryNotifications,
+            dashboardType: dashboardType,
+            dashboardMetrics: dashboardMetrics,
+            progressMetrics: progressMetrics,
+            isHealthKitOn: isHealthKitOn,
+            isFitbitOn: isFitbitOn,
+            isFitbitValid: isFitbitValid,
+            isHealthConnectOn: isHealthConnectOn,
+            isMfpOn: isMfpOn,
+            isMfpValid: isMfpValid,
+            accessToken: accessToken,
+            refreshToken: refreshToken,
+            expiresAt: expiresAt
+        )
     }
 
     // MARK: - Account flag fixtures

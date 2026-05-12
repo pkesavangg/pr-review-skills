@@ -13,7 +13,11 @@ extension SettingsStoreTests {
             accountService.seedAccounts([account, SettingsStoreTestFixtures.makeAccount(id: "acct-2", email: "two@example.com", firstName: "Two")], active: account)
             let entryService = MockEntryService()
             entryService.getMonthsAllResult = .success([
-                HistoryMonth(id: "2026-03", weight: 150, entryTimestamp: "2026-03", count: 3, weights: nil, change: nil, bodyFat: nil, muscleMass: nil, water: nil, bmi: nil, date: nil, time: nil, month: "03", year: "2026", min: nil, max: nil)
+                HistoryMonth(
+                    id: "2026-03", weight: 150, entryTimestamp: "2026-03", count: 3,
+                    weights: nil, change: nil, bodyFat: nil, muscleMass: nil, water: nil,
+                    bmi: nil, date: nil, time: nil, month: "03", year: "2026", min: nil, max: nil
+                )
             ])
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService, entryService: entryService)
 
@@ -76,9 +80,24 @@ extension SettingsStoreTests {
 
         @Test("weightless text shows not set when enabled without stored weight")
         func weightlessTextShowsNotSetWhenEnabledWithoutStoredWeight() {
-            let account = SettingsStoreTestFixtures.makeAccount()
-            account.weightlessSettings?.isWeightlessOn = true
-            account.weightlessSettings?.weightlessWeight = nil
+            let account = AccountTestFixtures.makeAccountSnapshot(
+                id: "acct-1",
+                email: "lakshmi@example.com",
+                firstName: "Lakshmi",
+                lastName: "Priya",
+                gender: .female,
+                dob: "1992-03-04",
+                zipcode: "560001",
+                isActiveAccount: true,
+                weightUnit: .kg,
+                weightHeight: "681",
+                activityLevel: .athlete,
+                isStreakOn: true,
+                isWeightlessOn: true,
+                weightlessWeight: nil,
+                shouldSendEntryNotifications: true,
+                shouldSendWeightInEntryNotifications: true
+            )
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService)
@@ -163,8 +182,24 @@ extension SettingsStoreTests {
             let accountService = MockAccountService()
             accountService.seedAccounts([], active: nil)
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService, seedDefaultAccount: false)
-            let account = SettingsStoreTestFixtures.makeAccount()
-            account.weightSettings?.height = "650"
+            let account = AccountTestFixtures.makeAccountSnapshot(
+                id: "acct-1",
+                email: "lakshmi@example.com",
+                firstName: "Lakshmi",
+                lastName: "Priya",
+                gender: .female,
+                dob: "1992-03-04",
+                zipcode: "560001",
+                isActiveAccount: true,
+                weightUnit: .kg,
+                weightHeight: "650",
+                activityLevel: .athlete,
+                isStreakOn: true,
+                isWeightlessOn: true,
+                weightlessWeight: 1550,
+                shouldSendEntryNotifications: true,
+                shouldSendWeightInEntryNotifications: true
+            )
 
             accountService.seedAccounts([account], active: account)
             await SettingsStoreTestFixtures.waitUntil {
@@ -205,7 +240,11 @@ extension SettingsStoreTests {
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService, entryService: entryService, seedDefaultAccount: false)
             await SettingsStoreTestFixtures.waitUntil { store.hasEntries == false }
             entryService.getMonthsAllResult = .success([
-                HistoryMonth(id: "2026-03", weight: 150, entryTimestamp: "2026-03", count: 3, weights: nil, change: nil, bodyFat: nil, muscleMass: nil, water: nil, bmi: nil, date: nil, time: nil, month: "03", year: "2026", min: nil, max: nil)
+                HistoryMonth(
+                    id: "2026-03", weight: 150, entryTimestamp: "2026-03", count: 3,
+                    weights: nil, change: nil, bodyFat: nil, muscleMass: nil, water: nil,
+                    bmi: nil, date: nil, time: nil, month: "03", year: "2026", min: nil, max: nil
+                )
             ])
 
             entryService.entrySaved.send(EntryNotification(from: EntryTestFixtures.makeEntry()))
@@ -324,11 +363,24 @@ extension SettingsStoreTests {
 
         @Test("weightless and notification text handle off and partial states")
         func derivedStateHandlesOffAndPartialStates() {
-            let account = SettingsStoreTestFixtures.makeAccount()
-            account.weightlessSettings?.isWeightlessOn = false
-            account.weightlessSettings?.weightlessWeight = nil
-            account.notificationSettings?.shouldSendEntryNotifications = true
-            account.notificationSettings?.shouldSendWeightInEntryNotifications = false
+            let account = AccountTestFixtures.makeAccountSnapshot(
+                id: "acct-1",
+                email: "lakshmi@example.com",
+                firstName: "Lakshmi",
+                lastName: "Priya",
+                gender: .female,
+                dob: "1992-03-04",
+                zipcode: "560001",
+                isActiveAccount: true,
+                weightUnit: .kg,
+                weightHeight: "681",
+                activityLevel: .athlete,
+                isStreakOn: true,
+                isWeightlessOn: false,
+                weightlessWeight: nil,
+                shouldSendEntryNotifications: true,
+                shouldSendWeightInEntryNotifications: false
+            )
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService)
@@ -409,7 +461,11 @@ extension SettingsStoreTests {
             accountService.seedAccounts([account], active: account)
             let entryService = MockEntryService()
             entryService.getMonthsAllResult = .success([
-                HistoryMonth(id: "2026-03", weight: 150, entryTimestamp: "2026-03", count: 3, weights: nil, change: nil, bodyFat: nil, muscleMass: nil, water: nil, bmi: nil, date: nil, time: nil, month: "03", year: "2026", min: nil, max: nil)
+                HistoryMonth(
+                    id: "2026-03", weight: 150, entryTimestamp: "2026-03", count: 3,
+                    weights: nil, change: nil, bodyFat: nil, muscleMass: nil, water: nil,
+                    bmi: nil, date: nil, time: nil, month: "03", year: "2026", min: nil, max: nil
+                )
             ])
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService, entryService: entryService, seedDefaultAccount: false)
             await SettingsStoreTestFixtures.waitUntil { store.hasEntries == true }

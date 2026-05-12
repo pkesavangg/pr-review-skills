@@ -12,6 +12,9 @@ final class MockEntryService: EntryServiceProtocol {
     var getMonthsAllResult: Result<[HistoryMonth], Error> = .success([])
     var getMonthDetailResult: Result<[Entry], Error> = .success([])
     var getAllEntriesResult: Result<[Entry], Error> = .success([])
+    var fetchAllEntrySnapshotsResult: Result<[EntrySnapshot], Error> = .success([])
+    var fetchEntrySnapshotsForMonthResult: Result<[EntrySnapshot], Error> = .success([])
+    var fetchEntrySnapshotByIdResult: Result<EntrySnapshot?, Error> = .success(nil)
     var exportCSVResult: Result<Void, Error> = .success(())
     var getLatestEntryResult: Result<Entry?, Error> = .success(nil)
     var getEntryCountResult: Result<Int, Error> = .success(0)
@@ -19,6 +22,13 @@ final class MockEntryService: EntryServiceProtocol {
     private(set) var getMonthsAllCalls = 0
     private(set) var getMonthDetailCalls = 0
     private(set) var getMonthDetailLastMonth: String?
+    private(set) var fetchAllEntrySnapshotsCalls = 0
+    private(set) var fetchEntrySnapshotsForMonthCalls = 0
+    private(set) var fetchEntrySnapshotsForMonthLast: String?
+    private(set) var fetchEntrySnapshotByIdCalls = 0
+    private(set) var deleteEntryByIdCalls = 0
+    private(set) var deletedEntryIds: [UUID] = []
+    var deleteEntryByIdError: Error?
     private(set) var syncAllEntriesWithRemoteCalls = 0
     private(set) var loadDashboardDataCalls = 0
     private(set) var getAllEntriesCalls = 0
@@ -59,6 +69,25 @@ final class MockEntryService: EntryServiceProtocol {
         deleteEntryCalls += 1
         deletedEntries.append(entry)
         entryDeleted.send(EntryNotification(from: entry))
+    }
+    func deleteEntry(entryId: UUID) async throws {
+        deleteEntryByIdCalls += 1
+        deletedEntryIds.append(entryId)
+        if let error = deleteEntryByIdError { throw error }
+    }
+    func assignBabyEntry(entryId: UUID, babyId: String) async throws {}
+    func fetchEntrySnapshot(byId id: UUID) async throws -> EntrySnapshot? {
+        fetchEntrySnapshotByIdCalls += 1
+        return try fetchEntrySnapshotByIdResult.get()
+    }
+    func fetchAllEntrySnapshots() async throws -> [EntrySnapshot] {
+        fetchAllEntrySnapshotsCalls += 1
+        return try fetchAllEntrySnapshotsResult.get()
+    }
+    func fetchEntrySnapshots(forMonth month: String, entryType: EntryType) async throws -> [EntrySnapshot] {
+        fetchEntrySnapshotsForMonthCalls += 1
+        fetchEntrySnapshotsForMonthLast = month
+        return try fetchEntrySnapshotsForMonthResult.get()
     }
     func getAllEntries() async throws -> [Entry] {
         getAllEntriesCalls += 1

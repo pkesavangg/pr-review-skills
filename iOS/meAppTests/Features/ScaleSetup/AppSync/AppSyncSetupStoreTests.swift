@@ -197,7 +197,7 @@ struct AppSyncSetupStoreTests {
             deviceType: DeviceType.scale.rawValue,
             bathScale: BathScale(scaleType: ScaleSourceType.appsync.rawValue, bodyComp: true)
         )
-        scale.scales = [existingDevice]
+        scale.scales = [existingDevice.toSnapshot()]
 
         store.configure(with: "0341")
         var didDismiss = false
@@ -225,7 +225,7 @@ struct AppSyncSetupStoreTests {
             deviceType: DeviceType.scale.rawValue,
             bathScale: BathScale(scaleType: ScaleSourceType.appsync.rawValue, bodyComp: true)
         )
-        scale.scales = [existingDevice]
+        scale.scales = [existingDevice.toSnapshot()]
         scale.deleteDeviceError = AppSyncSetupStoreTestError.saveFailed
 
         store.configure(with: "0341")
@@ -395,7 +395,7 @@ struct AppSyncSetupStoreTests {
             deviceType: DeviceType.scale.rawValue,
             bathScale: BathScale(scaleType: ScaleSourceType.appsync.rawValue, bodyComp: false)
         )
-        scale.scales = [differentDevice]
+        scale.scales = [differentDevice.toSnapshot()]
 
         store.configure(with: "0341")
         var didDismiss = false
@@ -415,6 +415,7 @@ private enum AppSyncSetupStoreTestError: Error {
 }
 
 @MainActor
+// swiftlint:disable:next large_tuple
 private func makeSUT() -> (
     store: AppSyncSetupStore,
     account: MockAccountService,

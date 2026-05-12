@@ -29,7 +29,7 @@ import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.gurus.weight.features.common.model.DEVICES
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
@@ -952,7 +952,7 @@ constructor(
       AppLog.e(TAG, "SKU is blank, cannot save scale")
       return
     }
-    val scaleInfo = SCALES.find { it.sku == currentSku }
+    val scaleInfo = DEVICES.find { it.sku == currentSku }
     val wifiDevice = Device(
       device = GGDeviceDetail(
         deviceName = scaleInfo?.productName ?: "",

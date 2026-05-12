@@ -40,8 +40,7 @@ constructor(
       is HistoryIntent.Export -> {
         onExportDataClick()
       }
-
-      is HistoryIntent.OnConnectScale -> navigateTo(AppRoute.AccountSettings.AddEditScales)
+      is HistoryIntent.OnConnectScale -> navigateTo(AppRoute.AccountSettings.MyDevices)
 
       else -> null
     }

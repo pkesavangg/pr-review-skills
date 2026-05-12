@@ -10,6 +10,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import android.content.Context
 
@@ -27,6 +28,7 @@ object UtilityModule {
     @ApplicationContext context: Context,
   ): IAppReviewManager = AppReviewManager(context)
 
+  @Singleton
   @Provides
   fun provideCustomTabManager(
     @ApplicationContext context: Context,

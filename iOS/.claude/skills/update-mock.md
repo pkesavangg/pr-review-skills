@@ -60,6 +60,12 @@ Follow the project's mock conventions (same as `/gen-mock-single`):
 - Update argument captures if parameters changed
 - Update the method implementation
 
+**When a protocol swaps `@Model` for a snapshot (or adds snapshot-returning overloads):**
+- Add the snapshot-returning stub (e.g. `var fetchAllEntrySnapshotsResult: Result<[EntrySnapshot], Error> = .success([])`) alongside (not replacing) any remaining `@Model`-returning stub. Both may coexist.
+- Flip `@Published` backing types (e.g. `@Published var activeAccount: AccountSnapshot?`) to match the protocol.
+- Add separate call counters for snapshot vs `@Model` variants (`fetchEntrySnapshotsForMonthCalls` vs `getMonthDetailCalls`; `deleteEntryByIdCalls` vs `deleteEntryCalls`).
+- For test files using the mock, reseed via the snapshot-returning result (e.g. `mock.fetchEntrySnapshotsForMonthResult = .success([EntryTestFixtures.makeEntrySnapshot(...)])`); do not feed `@Model` objects into snapshot-typed publishers.
+
 ---
 
 ### 4 — Update Test Call Sites

@@ -6,7 +6,7 @@ import SwiftUI
 
 @MainActor
 extension BtWifiScaleSetupStore {
-    func fetchWifiNetworks(for scale: Device) async {
+    func fetchWifiNetworks(for broadcastId: String) async {
         guard !isExiting, !Task.isCancelled else { return }
 
         let missingPermissions = !hasAllBtPermissions()
@@ -29,7 +29,7 @@ extension BtWifiScaleSetupStore {
         do {
             guard !isExiting, !Task.isCancelled else { return }
 
-            let connectedSSIDResult = await bluetoothService.getConnectedWifiSSID(broadcastId: scale.broadcastIdString ?? "")
+            let connectedSSIDResult = await bluetoothService.getConnectedWifiSSID(broadcastId: broadcastId)
 
             guard !isExiting, !Task.isCancelled else { return }
 
@@ -44,7 +44,7 @@ extension BtWifiScaleSetupStore {
 
             guard !isExiting, !Task.isCancelled else { return }
 
-            let wifiListResult = await bluetoothService.getWifiList(for: scale)
+            let wifiListResult = await bluetoothService.getWifiList(broadcastId: broadcastId)
 
             guard !isExiting, !Task.isCancelled else { return }
 
@@ -123,7 +123,7 @@ extension BtWifiScaleSetupStore {
         let networkConfig = networkForm.getRawValue()
 
         LoggerService.shared.log(level: .info, tag: tag, message: "WiFi setup started for SSID: \(networkConfig.ssid)")
-        let wifiSetupResult = await bluetoothService.setupWifi(on: scale, config: networkConfig)
+        let wifiSetupResult = await bluetoothService.setupWifi(broadcastId: scale.broadcastIdString ?? "", config: networkConfig)
         switch wifiSetupResult {
         case .success(let response):
             switch response.wifiState {
@@ -169,7 +169,7 @@ extension BtWifiScaleSetupStore {
     /// Checks device info and WiFi configuration after WiFi setup for scale SKU 0412
     func checkDeviceInfoAfterWifiSetup(scale: Device) async -> Bool {
         var isWifiConfigured = false
-        let result = await bluetoothService.getDeviceInfo(for: scale, skipConnectionCheck: true)
+        let result = await bluetoothService.getDeviceInfo(broadcastId: scale.broadcastIdString ?? "", skipConnectionCheck: true)
         switch result {
         case .success(let deviceInfo):
             isWifiConfigured = deviceInfo.isWifiConfigured ?? false
@@ -200,10 +200,10 @@ extension BtWifiScaleSetupStore {
 
     /// Cancels Wi-Fi to hide connecting to wifi screen on 0412 scale.
     func cancelWifi() {
-        let scaleToCancel = discoveredScale ?? savedScale
-        if let scaleToCancel = scaleToCancel {
+        let broadcastId = discoveredScale?.broadcastIdString ?? savedScale?.broadcastIdString
+        if let broadcastId {
             Task {
-                await bluetoothSetupManager.cancelWifi(on: scaleToCancel, bluetoothService: bluetoothService)
+                await bluetoothSetupManager.cancelWifi(broadcastId: broadcastId, bluetoothService: bluetoothService)
             }
         }
     }

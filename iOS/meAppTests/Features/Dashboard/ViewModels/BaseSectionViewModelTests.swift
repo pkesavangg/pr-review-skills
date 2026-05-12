@@ -81,7 +81,7 @@ private func makeDate(year: Int = 2026, month: Int = 3, day: Int = 1, hour: Int 
     comps.hour = hour
     comps.minute = 0
     comps.second = 0
-    return Calendar.current.date(from: comps)!
+    return Calendar.current.date(from: comps)! // swiftlint:disable:this force_unwrapping
 }
 
 // MARK: - Tests
@@ -150,12 +150,24 @@ struct BaseSectionViewModelTests {
 
     @Test("adjustedLabelTicks excludes trailing phantom tick for week")
     func adjustedLabelTicksDropsTrailingWeekTick() {
-        let (sut, _) = makeConfiguredSUT(period: .week)
+        let (sut, _, _) = makeConfiguredSUT(period: .week)
         sut.scrollPosition = makeDate(year: 2026, month: 3, day: 1)
 
         let ticks = sut.xAxisValues
         #expect(ticks.count > 1)
         #expect(sut.adjustedLabelTicks == Array(ticks.dropLast()))
+    }
+
+    @Test("gridTicks for month exclude next-month boundary tick")
+    func gridTicksForMonthExcludeNextMonthBoundary() {
+        let (sut, _) = makeConfiguredSUT(period: .month)
+        sut.scrollPosition = makeDate(year: 2026, month: 3, day: 1, hour: 0)
+
+        let calendar = Calendar.current
+        let tickComponents = sut.gridTicks.map { calendar.dateComponents([.month, .day], from: $0) }
+
+        #expect(tickComponents.map(\.day) == [1, 8, 15, 22, 29])
+        #expect(!tickComponents.contains { $0.month == 4 && $0.day == 1 })
     }
 
     // MARK: - hasXAxis
@@ -601,7 +613,7 @@ struct BaseSectionViewModelTests {
         let today = Date()
         var testDate = today
         for offset in 0..<7 {
-            let candidate = calendar.date(byAdding: .day, value: offset, to: today)!
+            let candidate = calendar.date(byAdding: .day, value: offset, to: today)! // swiftlint:disable:this force_unwrapping
             if calendar.component(.weekday, from: candidate) == calendar.firstWeekday {
                 testDate = candidate
                 break
@@ -616,7 +628,7 @@ struct BaseSectionViewModelTests {
         let calendar = Calendar.current
         var comps = calendar.dateComponents([.year, .month], from: Date())
         comps.day = 1
-        let firstOfMonth = calendar.date(from: comps)!
+        let firstOfMonth = calendar.date(from: comps)! // swiftlint:disable:this force_unwrapping
         #expect(vm.shouldShowSolidLine(for: firstOfMonth) == true)
     }
 
@@ -626,7 +638,7 @@ struct BaseSectionViewModelTests {
         let calendar = Calendar.current
         var comps = calendar.dateComponents([.year, .month], from: Date())
         comps.day = 15
-        let mid = calendar.date(from: comps)!
+        let mid = calendar.date(from: comps)! // swiftlint:disable:this force_unwrapping
         #expect(vm.shouldShowSolidLine(for: mid) == false)
     }
 
@@ -638,7 +650,7 @@ struct BaseSectionViewModelTests {
         comps.year = 2026
         comps.month = 1
         comps.day = 1
-        let jan1 = calendar.date(from: comps)!
+        let jan1 = calendar.date(from: comps)! // swiftlint:disable:this force_unwrapping
         #expect(vm.shouldShowSolidLine(for: jan1) == true)
     }
 
@@ -650,7 +662,7 @@ struct BaseSectionViewModelTests {
         comps.year = 2026
         comps.month = 6
         comps.day = 15
-        let midYear = calendar.date(from: comps)!
+        let midYear = calendar.date(from: comps)! // swiftlint:disable:this force_unwrapping
         #expect(vm.shouldShowSolidLine(for: midYear) == false)
     }
 
@@ -662,7 +674,7 @@ struct BaseSectionViewModelTests {
         comps.year = 2026
         comps.month = 1
         comps.day = 1
-        let jan1 = calendar.date(from: comps)!
+        let jan1 = calendar.date(from: comps)! // swiftlint:disable:this force_unwrapping
         #expect(vm.shouldShowSolidLine(for: jan1) == false)
     }
 
@@ -797,8 +809,8 @@ struct BaseSectionViewModelTests {
         let vm = TestSectionViewModel(period: .week)
         let domain = vm.fallbackXAxisDomain()
         #expect(domain != nil)
-        if let d = domain {
-            #expect(d.lowerBound < d.upperBound)
+        if let range = domain {
+            #expect(range.lowerBound < range.upperBound)
         }
     }
 
@@ -807,8 +819,8 @@ struct BaseSectionViewModelTests {
         let vm = TestSectionViewModel(period: .month)
         let domain = vm.fallbackXAxisDomain()
         #expect(domain != nil)
-        if let d = domain {
-            #expect(d.lowerBound < d.upperBound)
+        if let range = domain {
+            #expect(range.lowerBound < range.upperBound)
         }
     }
 
@@ -817,8 +829,8 @@ struct BaseSectionViewModelTests {
         let vm = TestSectionViewModel(period: .year)
         let domain = vm.fallbackXAxisDomain()
         #expect(domain != nil)
-        if let d = domain {
-            #expect(d.lowerBound < d.upperBound)
+        if let range = domain {
+            #expect(range.lowerBound < range.upperBound)
         }
     }
 
@@ -833,7 +845,7 @@ struct BaseSectionViewModelTests {
         comps.year = 2026
         comps.month = 3
         comps.day = 8 // Sunday
-        let sunday = calendar.date(from: comps)!
+        let sunday = calendar.date(from: comps)! // swiftlint:disable:this force_unwrapping
         let label = vm.formatXAxisLabel(for: sunday)
         #expect(label != nil)
         #expect(label == "sun")
@@ -847,7 +859,7 @@ struct BaseSectionViewModelTests {
         comps.year = 2026
         comps.month = 1
         comps.day = 15
-        let jan = calendar.date(from: comps)!
+        let jan = calendar.date(from: comps)! // swiftlint:disable:this force_unwrapping
         let label = vm.formatXAxisLabel(for: jan)
         #expect(label != nil)
         #expect(label == "j")
@@ -861,7 +873,7 @@ struct BaseSectionViewModelTests {
         comps.year = 2026
         comps.month = 3
         comps.day = 8 // Sunday
-        let sunday = calendar.date(from: comps)!
+        let sunday = calendar.date(from: comps)! // swiftlint:disable:this force_unwrapping
         let label = vm.formatXAxisLabel(for: sunday)
         #expect(label == "8")
     }
@@ -874,7 +886,7 @@ struct BaseSectionViewModelTests {
         comps.year = 2026
         comps.month = 3
         comps.day = 9 // Monday
-        let monday = calendar.date(from: comps)!
+        let monday = calendar.date(from: comps)! // swiftlint:disable:this force_unwrapping
         let label = vm.formatXAxisLabel(for: monday)
         #expect(label == nil)
     }

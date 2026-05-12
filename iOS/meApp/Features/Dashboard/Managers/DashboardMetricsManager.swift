@@ -134,7 +134,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             }
           
             // Fully rely on dashboardType parameter from active account
-            let dashboardTypeString = account.dashboardSettings?.dashboardType
+            let dashboardTypeString = account.dashboardType
             let dashboardType: DashboardType
             switch dashboardTypeString {
             case "dashboard4":
@@ -149,7 +149,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             // If metrics exist locally, update from API only when data has changed
            // Preserve local state during in-flow navigation
             if !state.metrics.isEmpty {
-                if let dashboardMetrics = account.dashboardSettings?.dashboardMetrics {
+                if let dashboardMetrics = account.dashboardMetrics {
                     let apiMetricArray = dashboardMetrics.split(separator: ",").map(String.init)
                     let localMetricLabels = state.metrics.prefix(max(0, state.activeMetricsCount)).map { $0.label }
                     
@@ -186,7 +186,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                 return
             }
             
-            if let dashboardMetrics = account.dashboardSettings?.dashboardMetrics {
+            if let dashboardMetrics = account.dashboardMetrics {
                 let metricArray = dashboardMetrics.split(separator: ",").map(String.init)
                 logger.log(level: .info, tag: "DashboardMetricsManager", message: "Loading metrics from API: \(metricArray.joined(separator: ", "))")
                 updateMetricsOrder(from: metricArray)
@@ -640,7 +640,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             entryTimestamp: DateTimeTools.getCurrentDatetimeIsoString(),
             accountId: "dashboard",
             operationType: OperationType.create.rawValue,
-            deviceType: "scale",
+            entryType: EntryType.scale.rawValue,
             isSynced: true
         )
 
@@ -730,7 +730,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         }
     }
 
-// swiftlint:disable:next cyclomatic_complexity
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     func updateMetricsOrder(from apiMetrics: [String]) {
 
         let displayMetrics = apiMetrics.compactMap { apiMetric -> String? in
@@ -814,7 +814,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     }
 
     // MARK: - Entry Selection Methods
-    func selectEntry(_ entry: BathScaleWeightSummary?, convertWeight: @escaping (Int) -> Double, triggerUpdate: @escaping () -> Void) {
+    func selectEntry(_ entry: BathScaleWeightSummary?, convertWeight: @escaping (Double) -> Double, triggerUpdate: @escaping () -> Void) {
         triggerUpdate()
     }
 

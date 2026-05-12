@@ -75,7 +75,7 @@ struct ModalViewModifier: ViewModifier {
                     
                     // Modal content - centered and blocks taps within its bounds
                     modal.presentedView
-                        .frame(width: UIScreen.main.bounds.width * 0.75)
+                        .frame(width: UIScreen.main.bounds.width * 0.88)
                         .fixedSize(horizontal: false, vertical: true)
                         .contentShape(Rectangle())
                         .allowsHitTesting(true)

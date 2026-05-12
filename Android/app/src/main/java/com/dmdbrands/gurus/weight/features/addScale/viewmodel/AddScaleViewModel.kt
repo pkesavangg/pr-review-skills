@@ -165,6 +165,10 @@ constructor(
           route
         }
 
+        ScaleSetupType.BpmBluetooth, ScaleSetupType.BpmA6Bluetooth -> {
+          AppLog.d(TAG, "Navigating to BPM monitor setup")
+          AppRoute.ScaleSetup.BpmSetup(sku)
+        }
       }
       replaceLastAndNavigate(route, replaceLast)
     } else {

@@ -17,8 +17,8 @@ struct HelpStoreTests {
     func isSendScaleLogEnabled_multipleScales_returnsTrue() {
         let (store, _, _, _, _, _, _) = makeSUT()
         store.scales = [
-            ScaleTestFixtures.makeDevice(id: "scale-1"),
-            ScaleTestFixtures.makeDevice(id: "scale-2")
+            ScaleTestFixtures.makeDevice(id: "scale-1").toSnapshot(),
+            ScaleTestFixtures.makeDevice(id: "scale-2").toSnapshot()
         ]
         #expect(store.isSendScaleLogEnabled == true)
     }
@@ -28,7 +28,7 @@ struct HelpStoreTests {
         let (store, _, _, _, _, _, _) = makeSUT()
         let device = ScaleTestFixtures.makeDevice(id: "scale-1")
         device.isConnected = true
-        store.scales = [device]
+        store.scales = [device.toSnapshot()]
         #expect(store.isSendScaleLogEnabled == true)
     }
 
@@ -37,7 +37,7 @@ struct HelpStoreTests {
         let (store, _, _, _, _, _, _) = makeSUT()
         let device = ScaleTestFixtures.makeDevice(id: "scale-1")
         device.isConnected = false
-        store.scales = [device]
+        store.scales = [device.toSnapshot()]
         #expect(store.isSendScaleLogEnabled == false)
     }
 
@@ -51,7 +51,7 @@ struct HelpStoreTests {
     @Test("shouldShowScaleTroubleshooting returns true when scales are present")
     func shouldShowScaleTroubleshooting_hasScales_returnsTrue() {
         let (store, _, _, _, _, _, _) = makeSUT()
-        store.scales = [ScaleTestFixtures.makeDevice(id: "scale-1")]
+        store.scales = [ScaleTestFixtures.makeDevice(id: "scale-1").toSnapshot()]
         #expect(store.shouldShowScaleTroubleshooting == true)
     }
 
@@ -67,7 +67,7 @@ struct HelpStoreTests {
         nonR4Device.bathScale = BathScale(scaleType: ScaleSourceType.bluetooth.rawValue, bodyComp: false)
         let noScaleDevice = Device(id: "no-scale", accountId: "acct-1", hasServerID: false)
 
-        scaleService.scales = [r4Device, nonR4Device, noScaleDevice]
+        scaleService.scales = [r4Device.toSnapshot(), nonR4Device.toSnapshot(), noScaleDevice.toSnapshot()]
 
         let filtered = await waitUntil { store.scales.count == 1 }
         #expect(filtered == true)
@@ -224,10 +224,10 @@ struct HelpStoreTests {
         let bluetooth = MockHelpStoreBluetoothService()
         let (store, notification, _, _, _, _, _) = makeSUT(bluetoothService: bluetooth)
         let device = ScaleTestFixtures.makeDevice(id: "target-scale")
-        store.sendScaleLogHandler(device: device)
+        store.sendScaleLogHandler(device: device.toSnapshot())
         let done = await waitUntil { bluetooth.getDeviceLogsCalls == 1 }
         #expect(done == true)
-        #expect(bluetooth.lastGetDeviceLogsDevice?.id == "target-scale")
+        #expect(bluetooth.lastGetDeviceLogsBroadcastId == device.broadcastIdString)
         #expect(store.showScaleLogSheet == false)
         #expect(notification.showLoaderCalls == 1)
     }
@@ -236,7 +236,7 @@ struct HelpStoreTests {
     func sendScaleLogHandler_noArgSingleScale_sendsDirectly() async {
         let bluetooth = MockHelpStoreBluetoothService()
         let (store, _, _, _, _, _, _) = makeSUT(bluetoothService: bluetooth)
-        store.scales = [ScaleTestFixtures.makeDevice(id: "single-scale")]
+        store.scales = [ScaleTestFixtures.makeDevice(id: "single-scale").toSnapshot()]
         store.sendScaleLogHandler()
         let done = await waitUntil { bluetooth.getDeviceLogsCalls == 1 }
         #expect(done == true)
@@ -247,8 +247,8 @@ struct HelpStoreTests {
     func sendScaleLogHandler_noArgMultipleScales_showsSheet() {
         let (store, _, _, _, _, _, _) = makeSUT()
         store.scales = [
-            ScaleTestFixtures.makeDevice(id: "scale-a"),
-            ScaleTestFixtures.makeDevice(id: "scale-b")
+            ScaleTestFixtures.makeDevice(id: "scale-a").toSnapshot(),
+            ScaleTestFixtures.makeDevice(id: "scale-b").toSnapshot()
         ]
         store.sendScaleLogHandler()
         #expect(store.showScaleLogSheet == true)
@@ -261,7 +261,7 @@ struct HelpStoreTests {
         let bluetooth = MockHelpStoreBluetoothService()
         bluetooth.getDeviceLogsResult = .success(DeviceLogs(logs: [DeviceLogEntry(macAddress: "AA:BB", log: "test")]))
         let (store, notification, _, logger, _, _, _) = makeSUT(bluetoothService: bluetooth)
-        store.scales = [ScaleTestFixtures.makeDevice(id: "ok-scale")]
+        store.scales = [ScaleTestFixtures.makeDevice(id: "ok-scale").toSnapshot()]
         store.showScaleLogSheet = true
         store.sendScaleLogHandler()
         let done = await waitUntil { logger.sendScaleLogsToServerCalls == 1 }
@@ -277,7 +277,7 @@ struct HelpStoreTests {
         let bluetooth = MockHelpStoreBluetoothService()
         bluetooth.getDeviceLogsResult = .failure(.notImplemented)
         let (store, notification, _, _, _, _, _) = makeSUT(bluetoothService: bluetooth)
-        store.scales = [ScaleTestFixtures.makeDevice(id: "fail-scale")]
+        store.scales = [ScaleTestFixtures.makeDevice(id: "fail-scale").toSnapshot()]
         store.sendScaleLogHandler()
         let done = await waitUntil { bluetooth.getDeviceLogsCalls == 1 }
         #expect(done == true)
@@ -292,7 +292,7 @@ struct HelpStoreTests {
         let logger = MockHelpStoreLoggerService()
         logger.sendScaleLogsToServerError = HelpStoreTestError.genericFailure
         let (store, notification, _, _, _, _, _) = makeSUT(loggerService: logger, bluetoothService: bluetooth)
-        store.scales = [ScaleTestFixtures.makeDevice(id: "upload-fail-scale")]
+        store.scales = [ScaleTestFixtures.makeDevice(id: "upload-fail-scale").toSnapshot()]
         store.sendScaleLogHandler()
         let done = await waitUntil { logger.sendScaleLogsToServerCalls == 1 }
         #expect(done == true)
@@ -307,7 +307,7 @@ struct HelpStoreTests {
         let logger = MockHelpStoreLoggerService()
         logger.sendScaleLogsToServerError = HTTPError.noInternet
         let (store, notification, _, _, _, _, _) = makeSUT(loggerService: logger, bluetoothService: bluetooth)
-        store.scales = [ScaleTestFixtures.makeDevice(id: "no-internet-scale")]
+        store.scales = [ScaleTestFixtures.makeDevice(id: "no-internet-scale").toSnapshot()]
         store.sendScaleLogHandler()
         let done = await waitUntil { logger.sendScaleLogsToServerCalls == 1 }
         #expect(done == true)
@@ -342,6 +342,7 @@ private func makeSUT(
     scaleService: MockScaleService? = nil,
     bluetoothService: MockHelpStoreBluetoothService? = nil,
     appReviewHandler: MockAppReviewHandler? = nil
+// swiftlint:disable:next large_tuple
 ) -> (
     store: HelpStore,
     notification: MockNotificationHelperService,

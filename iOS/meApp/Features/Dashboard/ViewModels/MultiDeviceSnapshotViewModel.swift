@@ -63,7 +63,7 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
         await withTaskGroup(of: String?.self) { group in
             if shouldLoadWeight {
                 group.addTask { [entryService] in
-                    await entryService.loadDashboardData(entryType: .wg)
+                    await entryService.loadDashboardData(entryType: .scale)
                     return "weight"
                 }
             }

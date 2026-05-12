@@ -45,7 +45,7 @@ struct EntryStoreTests {
     @Test("saveEntry success: saves entry, converts weight, resets form, shows success toast")
     func saveEntrySuccess() async {
         let (store, entryService, notificationService, accountService) = makeSUT()
-        accountService.activeAccount?.weightSettings?.weightUnit = .kg
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "entry-account", email: "entry@example.com", isActiveAccount: true, weightUnit: .kg)
         store.refreshWeightUnit()
 
         store.manualEntryForm.weight.value = "70.5"
@@ -65,7 +65,7 @@ struct EntryStoreTests {
         let expectedStoredWeight = ConversionTools.convertDisplayToStored(70.5, forceMetric: false, isMetric: true)
         #expect(saved.accountId == accountService.activeAccount?.accountId)
         #expect(saved.operationType == OperationType.create.rawValue)
-        #expect(saved.deviceType == DeviceType.scale.rawValue)
+        #expect(saved.entryType == EntryType.scale.rawValue)
         #expect(saved.isSynced == false)
         #expect(saved.scaleEntry?.weight == expectedStoredWeight)
         #expect(saved.scaleEntry?.source == EntrySource.manual.rawValue)
@@ -188,7 +188,7 @@ struct EntryStoreTests {
     @Test("weight validator switches with unit: kg max applied after refresh")
     func weightValidatorUsesKgMaxAfterRefresh() {
         let (store, _, _, accountService) = makeSUT()
-        accountService.activeAccount?.weightSettings?.weightUnit = .kg
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "entry-account", email: "entry@example.com", isActiveAccount: true, weightUnit: .kg)
 
         store.refreshWeightUnit()
         store.manualEntryForm.weight.value = "451"
@@ -202,7 +202,7 @@ struct EntryStoreTests {
     @Test("weight validator switches with unit: lb max applied after refresh")
     func weightValidatorUsesLbMaxAfterRefresh() {
         let (store, _, _, accountService) = makeSUT()
-        accountService.activeAccount?.weightSettings?.weightUnit = .lb
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "entry-account", email: "entry@example.com", isActiveAccount: true, weightUnit: .lb)
 
         store.refreshWeightUnit()
         store.manualEntryForm.weight.value = "1000"
@@ -379,7 +379,7 @@ struct EntryStoreTests {
     @Test("accountWeightUnitChanged notification updates weight unit from active account")
     func accountWeightUnitChangedNotificationUpdatesUnit() async {
         let (store, _, _, accountService) = makeSUT()
-        accountService.activeAccount?.weightSettings?.weightUnit = .kg
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "entry-account", email: "entry@example.com", isActiveAccount: true, weightUnit: .kg)
 
         NotificationCenter.default.post(name: .accountWeightUnitChanged, object: nil)
         let didUpdate = await waitUntil(timeoutIterations: 200) { store.weightUnit == .kg }
@@ -389,7 +389,7 @@ struct EntryStoreTests {
 }
 
 @MainActor
-private func makeSUT() -> (EntryStore, MockEntryStoreEntryService, TestNotificationHelperService, MockAccountService) {
+private func makeSUT() -> (EntryStore, MockEntryStoreEntryService, TestNotificationHelperService, MockAccountService) { // swiftlint:disable:this large_tuple
     TestDependencyContainer.reset()
 
     let accountService = MockAccountService()

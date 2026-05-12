@@ -15,10 +15,12 @@ struct DashboardSnapshotChartWindow {
             .sorted { $0.date < $1.date }
 
         guard let latestDate = filtered.map(\.date).max() else { return nil }
-        let weekday = calendar.component(.weekday, from: latestDate)
-        let daysToSunday = weekday - calendar.firstWeekday
-        guard let weekStart = calendar.date(byAdding: .day, value: -daysToSunday, to: calendar.startOfDay(for: latestDate)),
-              let weekEnd = calendar.date(byAdding: .day, value: 7, to: weekStart) else { return nil }
+        // Right-align: 7-day window ending on the day after the latest entry so the
+        // latest point sits in the rightmost day slot. A calendar sun–sat window
+        // leaves large empty stretches when the week has few entries (e.g. only Monday).
+        let latestDayStart = calendar.startOfDay(for: latestDate)
+        guard let weekEnd = calendar.date(byAdding: .day, value: 1, to: latestDayStart),
+              let weekStart = calendar.date(byAdding: .day, value: -6, to: latestDayStart) else { return nil }
 
         let visible = filtered.filter { $0.date >= weekStart && $0.date < weekEnd }
         let previous = filtered.last { $0.date < weekStart }
@@ -41,7 +43,7 @@ enum DashboardChartScaleProvider {
     static func weightScale(
         operations: [BathScaleWeightSummary],
         goalWeight: Double?,
-        convertStoredWeightToDisplay: (Int) -> Double
+        convertStoredWeightToDisplay: (Double) -> Double
     ) -> YAxisScale {
         YAxisCalculator.calculateYAxis(
             operations: operations,

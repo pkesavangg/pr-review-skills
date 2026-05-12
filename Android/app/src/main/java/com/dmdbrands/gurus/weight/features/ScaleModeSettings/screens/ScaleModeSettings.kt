@@ -169,7 +169,6 @@ fun ScaleModeSettingsScreen(
           AppNote(
             message = ScaleModeStrings.NoteOtherUsers,
             showNote = true,
-            messageType = TextType.Body
           )
         }
       }

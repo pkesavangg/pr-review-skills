@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.features.common.strings.AppListStrings
@@ -46,6 +47,7 @@ fun AppScaleCard(
 ) {
   val cardSpacing = if (isSavedScale) spacing.md else spacing.sm
   val connectionIcon = ScaleDataHelper.scaleTypeIcon(scale.setupType)
+  val isBpm = DeviceHelper.isBpmDevice(scale.sku)
   val isWifiSetup =
     scale.setupType == ScaleSetupType.Wifi ||
       scale.setupType == ScaleSetupType.EspTouchWifi ||
@@ -55,7 +57,7 @@ fun AppScaleCard(
       scale.setupType == ScaleSetupType.Lcbt ||
       scale.setupType == ScaleSetupType.BtWifiR4
   val showConnectionStatus =
-    isSavedScale && isBluetoothSetup
+    isSavedScale && isBluetoothSetup && !isBpm
 
   Surface(
     modifier =
@@ -77,12 +79,13 @@ fun AppScaleCard(
       AppScaleImage(sku = scale.sku)
 
       Spacer(modifier = Modifier.width(spacing.sm))
+      val displaySku = scale.sku
       Column(
         modifier = Modifier.weight(1f),
         verticalArrangement = Arrangement.Center,
       ) {
         AppText(
-          text = scale.sku,
+          text = displaySku,
           textType = TextType.ListTitle1,
         )
         AppText(
@@ -91,14 +94,22 @@ fun AppScaleCard(
           textOverflow = TextOverflow.Ellipsis,
           softWrap = false,
         )
+        if (isBpm && isSavedScale && scale.userNumber != null) {
+          val displayUser = ScaleDataHelper.formatUserDisplay(scale.hasNumericUsers, scale.userNumber)
+          if (displayUser.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(spacing.x3s))
+            AppText(
+              text = "${AppListStrings.User} $displayUser",
+              textType = TextType.Body,
+            )
+          }
+        }
         if (showConnectionStatus) {
           Spacer(modifier = Modifier.height(spacing.x3s))
           Row(verticalAlignment = Alignment.CenterVertically) {
-            // Show exclamation only when we're certain WiFi setup is incomplete
-            // For BtWifiR4 scales, show exclamation if:
-            // 1. Scale is connected (so we can check WiFi status)
-            // 2. WiFi is explicitly not configured (isWifiConfigured == false)
-            // 3. Scale type is BtWifiR4 (which requires WiFi setup)
+            // Only flag incomplete WiFi setup when we are sure: BtWifiR4 scale connected over BT
+            // but reporting WiFi unconfigured. We require isConnected==true so that "unknown"
+            // (null isWifiConfigured prior to first connection) does not trigger a false alarm.
             val showExclamation =
               scale.isWifiConfigured != true &&
               scale.isConnected == true &&
@@ -212,6 +223,23 @@ fun PreviewAppScaleCard() {
             scaleId = null,
           ),
         isSavedScale = false,
+        onClick = {},
+      )
+
+      // BPM saved device example (User A)
+      AppScaleCard(
+        scale =
+          ScaleInfo(
+            productName = "Smart Blood Pressure Monitor",
+            sku = "0634",
+            setupType = ScaleSetupType.Bluetooth,
+            bodyComp = false,
+            isConnected = true,
+            scaleId = "scaleId3",
+            hasNumericUsers = false,
+            userNumber = 1,
+          ),
+        isSavedScale = true,
         onClick = {},
       )
     }

@@ -36,35 +36,32 @@ struct EditProfileScreen: View {
             selectedValues: [settingsStore.editProfileForm.gender.value],
             options: [Sex.allCases],
             displayValue: { $0.rawValue.capitalized },
-            title: SettingsStrings.biologicalSex,
-            onUpdate: { vals in // swiftlint:disable:this trailing_closure
-                if let sex = vals.first {
-                    settingsStore.updateGenderInForm(sex)
-                }
+            title: SettingsStrings.biologicalSex
+        ) { vals in
+            if let sex = vals.first {
+                settingsStore.updateGenderInForm(sex)
             }
-        )
+        }
         .pickerSheet(
             isPresented: $settingsStore.showHeightInchesPicker,
             selectedValues: settingsStore.selectedHeightInches,
             options: settingsStore.heightInchesOptions,
             displayValue: { $0 },
             pickerType: .heightInches,
-            title: SettingsStrings.height,
-            onUpdate: { newValues in // swiftlint:disable:this trailing_closure
-                settingsStore.updateHeightInForm(fromMetric: false, values: newValues)
-            }
-        )
+            title: SettingsStrings.height
+        ) { newValues in
+            settingsStore.updateHeightInForm(fromMetric: false, values: newValues)
+        }
         .pickerSheet(
             isPresented: $settingsStore.showHeightCmPicker,
             selectedValues: settingsStore.selectedHeightCm,
             options: settingsStore.heightCmOptions,
             displayValue: { $0 },
             pickerType: .heightCm,
-            title: SettingsStrings.height,
-            onUpdate: { newValues in // swiftlint:disable:this trailing_closure
-                settingsStore.updateHeightInForm(fromMetric: true, values: newValues)
-            }
-        )
+            title: SettingsStrings.height
+        ) { newValues in
+            settingsStore.updateHeightInForm(fromMetric: true, values: newValues)
+        }
         .onAppear {
             settingsStore.populateEditFormIfNeeded()
 

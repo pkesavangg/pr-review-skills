@@ -134,7 +134,7 @@ final class ScaleMigrationService: ScaleMigrationServiceProtocol {
         if let getDeviceByIdOverride {
             return try await getDeviceByIdOverride(id)
         }
-        return try await scaleService.getDevice(by: id)
+        return try await scaleService.getDevice(by: id)?.toDevice()
     }
     
     /// Retrieves stored Ionic scale data for a specific account

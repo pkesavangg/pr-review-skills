@@ -46,14 +46,18 @@ Check (in order of likelihood):
 - **Known pitfalls:** check CLAUDE.md Gotchas section if touching SwiftData, DI, or Keychain
 
 For **SwiftData-specific** issues, check:
-- SwiftData `@Model` on screen — are models being crossed actor boundary unsafely?
+- SwiftData `@Model` on screen — are models being crossed actor boundary unsafely? Feature code should read `AccountSnapshot` / `DeviceSnapshot` / `EntrySnapshot`, not the `@Model`. A `@Model` reaching a feature store is a strong signal the snapshot boundary was violated somewhere.
 - `ModelContext` — is CRUD happening on @MainActor?
 - Recent migrations in `AccountMigrationService` — could be incomplete
 
+For **`EXC_BAD_ACCESS` / `_KKMDBackingData` / PAC-failure crashes in stack traces:**
+- Strong fingerprint for an `@Model` property read on a thread that doesn't own its `ModelContext`. Historical production crashes (v5.0 Build 19) showed `account.accessToken.getter` and `account.expiresAt.getter` on background threads — the fix was the snapshot migration. If you see this pattern in a new crash, look for a recently added `Task { ... await someService.fetchFoo() ... foo.someField ... }` where `foo` is still an `@Model`.
+
 For **concurrency-specific** issues, check:
 - `@MainActor` annotations on Stores and Services
-- `@unchecked Sendable` types like `DeviceDiscoveryEvent`
+- `@unchecked Sendable` types (historically `DeviceDiscoveryEvent`; now properly `Sendable` after the `DeviceSnapshot` migration — if you see one, question whether it should still be unchecked)
 - `Task { ... }` or `async let` — are results escaping to wrong actor?
+- Any `let foo = someModel; Task { use(foo) }` where `someModel` is an `@Model` — capture `foo.toSnapshot()` instead.
 
 ### 4 — Produce a Root Cause Note
 

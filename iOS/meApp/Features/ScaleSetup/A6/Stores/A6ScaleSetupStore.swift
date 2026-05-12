@@ -339,8 +339,8 @@ final class A6ScaleSetupStore: ObservableObject {
         deviceDiscoveryCancellable = nil
         stepTimerTask?.cancel()
         self.discoveryEvent = event
-        self.discoveredScale = event.device
-        
+        self.discoveredScale = event.device.toDevice()
+
         // Check if this is a known scale (isNew = false means it's known)
         if !event.isNew {
             // Add device to skip list and stop scanning to prevent rediscovery loop

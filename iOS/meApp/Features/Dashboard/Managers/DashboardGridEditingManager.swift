@@ -64,7 +64,7 @@ final class DashboardGridEditingManager: DashboardGridEditingManaging {
             return
         }
 
-        guard let progressMetricsString = account.dashboardSettings?.progressMetrics else {
+        guard let progressMetricsString = account.progressMetrics else {
             await MainActor.run { setupDefaultProgressMetricsOrder() }
             return
         }

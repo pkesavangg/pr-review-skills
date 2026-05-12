@@ -13,7 +13,7 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.gurus.weight.features.common.model.DEVICES
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
@@ -80,7 +80,7 @@ class DebugMenuViewModel @Inject constructor(
      * Get scale info by SKU, similar to Angular scaleInfoService.getScaleInfoBySku()
      */
     private fun getScaleInfoBySku(sku: String): ScaleInfo? {
-        return SCALES.find { it.sku == sku }
+        return DEVICES.find { it.sku == sku }
     }
 
 

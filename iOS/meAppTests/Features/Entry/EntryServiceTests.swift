@@ -180,6 +180,25 @@ struct EntryServiceTests {
         #expect(summaries.first?.bodyFat == 250)
     }
 
+    @Test("aggregateByDay: keeps fractional stored average until kg display rounding")
+    func aggregateByDayPreservesFractionalStoredAverageForKgDisplay() {
+        let sut = makeSUT()
+        let kgValues = [20.0, 18.7, 9.3, 17.0, 21.3, 24.9]
+        let entries = kgValues.enumerated().map { index, kg in
+            EntryTestFixtures.makeEntry(
+                timestamp: String(format: "2026-02-17T%02d:00:00Z", index),
+                weight: ConversionTools.convertKgToStored(kg)
+            )
+        }
+
+        let summaries = sut.aggregateByDay(entries: entries, accountId: "acct-1").compactMap { $0 }
+        let summary = summaries.first
+
+        #expect(summaries.count == 1)
+        #expect(abs((summary?.weight ?? 0) - (2452.0 / 6.0)) < 0.001)
+        #expect(ConversionTools.convertStoredToKg(summary?.weight ?? 0) == 18.5)
+    }
+
     @Test("aggregateByMonth: groups entries by month and filters zero-weight rows")
     func aggregateByMonthGroupsEntries() {
         let sut = makeSUT()
@@ -214,6 +233,25 @@ struct EntryServiceTests {
         #expect(sut.monthlySummaries.first?.period == "2026-03")
     }
 
+    @Test("loadDashboardData: DTO summaries keep fractional stored averages")
+    func loadDashboardDataKeepsFractionalStoredAverages() async {
+        let repo = MockEntryRepository()
+        let kgValues = [20.0, 18.7, 9.3, 17.0, 21.3, 24.9]
+        repo.entries = kgValues.enumerated().map { index, kg in
+            EntryTestFixtures.makeEntry(
+                timestamp: String(format: "2026-02-17T%02d:00:00Z", index),
+                weight: ConversionTools.convertKgToStored(kg)
+            )
+        }
+        let sut = makeSUT(repo: repo)
+
+        await sut.loadDashboardData()
+
+        #expect(sut.dailySummaries.count == 1)
+        #expect(abs((sut.dailySummaries.first?.weight ?? 0) - (2452.0 / 6.0)) < 0.001)
+        #expect(ConversionTools.convertStoredToKg(sut.dailySummaries.first?.weight ?? 0) == 18.5)
+    }
+
     @Test("loadDashboardData failure: logs error and leaves summaries untouched")
     func loadDashboardDataFailure() async {
         let repo = MockEntryRepository()
@@ -240,8 +278,7 @@ struct EntryServiceTests {
     @Test("exportCSV: uses R4 endpoint for dashboard 12 accounts")
     func exportCSVUsesDashboardType() async throws {
         let remote = MockEntryRepositoryAPI()
-        let account = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "entry@example.com", isActive: true)
-        account.dashboardSettings?.dashboardType = DashboardType.dashboard12.rawValue
+        let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "entry@example.com", isActiveAccount: true, dashboardType: DashboardType.dashboard12.rawValue)
         let sut = makeSUT(remote: remote, activeAccount: account)
 
         try await sut.exportCSV()
@@ -273,7 +310,7 @@ struct EntryServiceTests {
             integration: MockIntegrationService? = nil,
             goalAlert: MockGoalAlertService? = nil,
             logger: MockLoggerService? = nil,
-            activeAccount: Account? = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "entry@example.com", isActive: true)
+            activeAccount: AccountSnapshot? = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "entry@example.com", isActiveAccount: true)
         ) -> EntryService {
             let account = MockAccountService()
             account.activeAccount = activeAccount

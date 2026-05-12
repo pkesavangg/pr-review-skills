@@ -86,8 +86,8 @@ struct WeightSnapshotCard: View {
     private func recomputeCache() async {
         // Capture inputs on the main actor, then compute off-thread.
         let inputSummaries = summaries
-        let weightUnit = viewModel.activeAccount?.weightSettings?.weightUnit ?? .lb
-        let goalWeightStored = viewModel.activeAccount?.goalSettings?.goalWeight
+        let weightUnit = viewModel.activeAccount?.weightUnit ?? .lb
+        let goalWeightStored = viewModel.activeAccount?.goalWeight
 
         let result = await Task.detached(priority: .utility) {
             let window = DashboardSnapshotChartWindow.make(summaries: inputSummaries) { $0.weight > 0 }
@@ -191,15 +191,52 @@ struct WeightSnapshotCard: View {
         .chartLegend(.hidden)
         .chartPlotStyle { plot in
             plot.overlay {
-                SnapshotChartPlotBorderView(
-                    color: theme.textSubheading.opacity(0.3),
-                    yDomain: yRange,
-                    yTicks: yTickValues
-                )
+                ZStack {
+                    SnapshotChartPlotBorderView(
+                        color: theme.textSubheading.opacity(0.3),
+                        yDomain: yRange,
+                        yTicks: yTickValues
+                    )
+                    goalChipOverlay(yRange: yRange)
+                }
             }
         }
         .padding(.horizontal, .spacingXS)
     }
+
+    // MARK: - Goal Chip
+
+    @ViewBuilder
+    private func goalChipOverlay(yRange: ClosedRange<Double>) -> some View {
+        if let goal = cachedGoalWeightDisplay {
+            GeometryReader { geo in
+                GoalWeightChipView(
+                    label: yAxisFormatter.formatYAxisTickLabel(goal),
+                    theme: theme
+                )
+                .position(
+                    x: geo.size.width,
+                    y: goalChipY(goal: goal, yRange: yRange, plotHeight: geo.size.height)
+                )
+            }
+        }
+    }
+
+    // Offsets keep the chip clear of the top/bottom y-axis tick label when the goal
+    // falls outside the visible domain. The top label is centered on plot_top (y=0),
+    // so the chip center needs to sit above the label + half-chip; the bottom label
+    // sits on plot_bottom and the x-axis tick labels live just below that.
+    private func goalChipY(goal: Double, yRange: ClosedRange<Double>, plotHeight: CGFloat) -> CGFloat {
+        let range = yRange.upperBound - yRange.lowerBound
+        guard range > 0, plotHeight > 0 else { return plotHeight / 2 }
+        if goal > yRange.upperBound { return -goalChipTopOffset }
+        if goal < yRange.lowerBound { return plotHeight + goalChipBottomOffset }
+        let ratio = (goal - yRange.lowerBound) / range
+        return plotHeight * (1 - ratio)
+    }
+
+    private var goalChipTopOffset: CGFloat { 22 }
+    private var goalChipBottomOffset: CGFloat { 22 }
 
     // MARK: - Empty State
 
@@ -241,7 +278,15 @@ struct WeightSnapshotCard: View {
         Self.convertStoredWeightToDisplay(storedWeight, unit: cachedWeightUnit)
     }
 
+    private func convertStoredWeightToDisplay(_ storedWeight: Double) -> Double {
+        Self.convertStoredWeightToDisplay(storedWeight, unit: cachedWeightUnit)
+    }
+
     private static func convertStoredWeightToDisplay(_ storedWeight: Int, unit: WeightUnit) -> Double {
+        Self.convertStoredWeightToDisplay(Double(storedWeight), unit: unit)
+    }
+
+    private static func convertStoredWeightToDisplay(_ storedWeight: Double, unit: WeightUnit) -> Double {
         unit == .kg
             ? ConversionTools.convertStoredToKg(storedWeight)
             : ConversionTools.convertStoredToLbs(storedWeight)

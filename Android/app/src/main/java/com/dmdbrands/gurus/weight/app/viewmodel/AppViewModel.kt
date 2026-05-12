@@ -19,6 +19,7 @@ import com.dmdbrands.gurus.weight.domain.model.permission.PermissionState
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IAppRepository
@@ -36,6 +37,7 @@ import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetri
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BabyScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
+import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.MonitorSetupStepHelper
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
@@ -52,12 +54,15 @@ import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toBpmEntry
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
 import com.dmdbrands.library.ggbluetooth.enums.GGAppType
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
 import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
+import com.dmdbrands.library.ggbluetooth.model.GGBPMEntry
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
+import com.dmdbrands.library.ggbluetooth.model.GGEntry
 import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGCacheDevice
@@ -240,9 +245,12 @@ constructor(
             ),
           )
         }
+        DeviceHelper.isBpmDevice(localSku) -> {
+          navigationService.navigateTo(
+            AppRoute.ScaleSetup.BpmSetup(sku = localSku),
+          )
+        }
         else -> {
-          // BPM and LCBT devices both route through LcbtScaleSetup for now.
-          // TODO(MA-3481): Add dedicated BPM setup route once BPM pairing flow is implemented.
           navigationService.navigateTo(
             AppRoute.ScaleSetup.LcbtScaleSetup(
               localSku,
@@ -549,10 +557,48 @@ constructor(
   private fun handleEntryResponse(entryResponse: GGScanResponse.Entry) {
     when (entryResponse.type) {
       GGScanResponseType.SINGLE_ENTRY, GGScanResponseType.MULTI_ENTRIES -> {
-        saveEntry(entryResponse.data.map { it as GGScaleEntry })
+        val scaleEntries = entryResponse.data.filterIsInstance<GGScaleEntry>()
+        val bpmEntries = entryResponse.data.filterIsInstance<GGBPMEntry>()
+        if (scaleEntries.isNotEmpty()) {
+          saveEntry(scaleEntries)
+        }
+        if (bpmEntries.isNotEmpty()) {
+          saveBpmEntry(bpmEntries)
+        }
       }
 
       else -> null
+    }
+  }
+
+  private fun saveBpmEntry(ggEntries: List<GGBPMEntry>) {
+    saveBluetoothEntries(ggEntries) { accountId, deviceId ->
+      ggEntries.mapIndexed { index, entry -> entry.toBpmEntry(accountId, deviceId, index.toLong()) }
+    }
+  }
+
+  private fun <T : GGEntry> saveBluetoothEntries(
+    ggEntries: List<T>,
+    mapEntries: suspend (accountId: String, deviceId: String) -> List<Entry>,
+  ) {
+    viewModelScope.launch {
+      if (ggEntries.isEmpty()) return@launch
+      val accountId = currentAccountId ?: return@launch
+      val isSetupInProgress = deviceService.isSetupInProgress()
+      val device = deviceService.getScaleByBroadcastId(ggEntries.first().broadcastId, accountId)
+
+      if (device == null && !isSetupInProgress) return@launch
+
+      try {
+        val entries = mapEntries(accountId, device?.id ?: "")
+        entryService.addEntry(entries)
+        if (!isSetupInProgress) {
+          dialogQueueService.showToast(Toast(message = "entry saved successfully"))
+        }
+        checkAccountFlags("entry")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error saving entry", e)
+      }
     }
   }
 
@@ -621,7 +667,7 @@ constructor(
                   )
                   DeviceHelper.isBpmDevice(deviceSku) -> Device(
                     device = data,
-                    deviceType = ScaleSetupType.Bluetooth.value,
+                    deviceType = MonitorSetupStepHelper.setupTypeForSku(deviceSku).value,
                     sku = deviceSku,
                   )
                   else -> Device(
@@ -1017,7 +1063,7 @@ constructor(
             ),
           )
           if (!_state.value.hasScanStarted) {
-            ggPermissionService.startScan(GGAppType.WEIGHT_GURUS, updatedProfile)
+            ggPermissionService.startScan(GGAppType.ME_HEALTH, updatedProfile)
             handleIntent(AppIntent.SetScanStatus(true))
           }
           ggDeviceService.updateProfile(updatedProfile) {}

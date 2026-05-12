@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.BabyListContent
@@ -81,6 +82,7 @@ internal fun BabyScaleSetupScreenContent(
 ) {
   val setupState = state.scaleSetupState.setupState
   val focusManager = LocalFocusManager.current
+  val keyboardController = LocalSoftwareKeyboardController.current
   val currentStep = setupState.step
 
   ScaleSetupHeader(
@@ -191,6 +193,7 @@ internal fun BabyScaleSetupScreenContent(
                 enabled = state.nickname.isNotBlank(),
                 onClick = {
                   focusManager.clearFocus()
+                  keyboardController?.hide()
                   onIntent(ScaleSetupIntent.Next)
                 },
               )
@@ -211,6 +214,7 @@ internal fun BabyScaleSetupScreenContent(
                 enabled = state.editingProfile.name.isNotBlank(),
                 onClick = {
                   focusManager.clearFocus()
+                  keyboardController?.hide()
                   onIntent(BabyScaleSetupIntent.SaveBabyProfile)
                   onIntent(ScaleSetupIntent.SetNewStep(BabyScaleSetupStep.BABY_LIST))
                 },

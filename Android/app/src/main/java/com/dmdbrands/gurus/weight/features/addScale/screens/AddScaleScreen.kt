@@ -1,7 +1,5 @@
 package com.dmdbrands.gurus.weight.features.addScale.screens
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,7 +10,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -27,12 +24,14 @@ import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.features.addScale.reducer.AddScaleFormControls
 import com.dmdbrands.gurus.weight.features.addScale.reducer.AddScaleIntent
 import com.dmdbrands.gurus.weight.features.addScale.reducer.AddScaleState
 import com.dmdbrands.gurus.weight.features.addScale.strings.AddScaleScreenStrings
 import com.dmdbrands.gurus.weight.features.addScale.viewmodel.AddScaleViewModel
+import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
@@ -68,7 +67,6 @@ fun AddScaleScreenContent(
   val keyboardController = LocalSoftwareKeyboardController.current
   val modelNumberControl = state.form.controls.modelNumber
   val modelNumberFocusRequester = remember { FocusRequester() }
-  val interactionSource = remember { MutableInteractionSource() }
 
   DisposableEffect(Unit) {
     onDispose {
@@ -91,11 +89,7 @@ fun AddScaleScreenContent(
         Modifier
           .fillMaxSize()
           .verticalScroll(rememberScrollState())
-          .clickable(
-            interactionSource = interactionSource,
-            indication = null,
-            onClick = { focusManager.clearFocus() },
-          ),
+          .dismissKeyboardOnTap(),
     ) {
       Column(
         modifier =
@@ -157,7 +151,7 @@ fun AddScaleScreenContent(
         Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
         if (state.savedScales.isNotEmpty()) {
           AppText(
-            text = AddScaleScreenStrings.MyScales,
+            text = AddScaleScreenStrings.MyDevices,
             textType = TextType.Title,
           )
         }

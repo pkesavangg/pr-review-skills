@@ -257,7 +257,7 @@ constructor(
       viewModelScope.launch {
         dialogQueueService.showDialog(
           DialogModel.Confirm(
-            message = ScaleDetailsStrings.DeleteScaleConfirmation,
+            message = ScaleDetailsStrings.DeleteConfirmation,
             confirmText = ScaleDetailsStrings.Delete,
             cancelText = ScaleDetailsStrings.Cancel,
             primaryActionType = com.dmdbrands.gurus.weight.features.common.components.ButtonType.ErrorText,

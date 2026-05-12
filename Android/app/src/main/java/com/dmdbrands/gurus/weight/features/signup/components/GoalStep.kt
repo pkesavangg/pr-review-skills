@@ -1,9 +1,12 @@
 package com.dmdbrands.gurus.weight.features.signup.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -98,18 +101,21 @@ fun GoalStep(
         true // Always show for lose/gain
       }
 
-    if (shouldShowCurrentWeight) {
-      AppInput(
-        formControl = currentWeightControl,
-        type = AppInputType.BODY_COMP,
-        label = SignupStrings.goalStepCurrentWeightDynamic.format(weightUnit),
-        imeAction = ImeAction.Next,
-        nextFocusRequester = goalWeightFocusRequester,
-        modifier = Modifier.focusRequester(currentWeightFocusRequester),
-        // Enable for any non-maintain variant (lose, gain, lose_gain)
-        enabled = goalTypeControl.value != GoalType.MAINTAIN.value,
-        maxLength = 4,
-      )
+    AnimatedVisibility(visible = shouldShowCurrentWeight) {
+      Column {
+        AppInput(
+          formControl = currentWeightControl,
+          type = AppInputType.BODY_COMP,
+          label = SignupStrings.goalStepCurrentWeightDynamic.format(weightUnit),
+          imeAction = ImeAction.Next,
+          nextFocusRequester = goalWeightFocusRequester,
+          modifier = Modifier.focusRequester(currentWeightFocusRequester),
+          // Enable for any non-maintain variant (lose, gain, lose_gain)
+          enabled = goalTypeControl.value != GoalType.MAINTAIN.value,
+          maxLength = 4,
+        )
+        Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
+      }
     }
 
     AppInput(

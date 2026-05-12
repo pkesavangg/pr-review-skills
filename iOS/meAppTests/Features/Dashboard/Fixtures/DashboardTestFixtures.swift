@@ -165,10 +165,13 @@ enum DashboardTestFixtures {
     // MARK: - Conversion Helpers
 
     /// Simple stored-to-display conversion: stored weight is in tenths of pounds
-    static let convertToLbs: (Int) -> Double = { Double($0) / 10.0 }
+    static let convertToLbs: (Double) -> Double = { $0 / 10.0 }
+
+    /// Raw stored-to-kg conversion without intermediate rounding (matches production)
+    static let convertToKgRaw: (Double) -> Double = { $0 / 22.0462 }
 
     /// Identity conversion for testing (no conversion applied)
-    static let identityConvert: (Int) -> Double = { Double($0) }
+    static let identityConvert: (Double) -> Double = { $0 }
 
     // MARK: - DisplayWeightContext Factory
 
@@ -181,10 +184,10 @@ enum DashboardTestFixtures {
         isWeightlessMode: Bool = false,
         anchorWeight: Double? = nil,
         period: TimePeriod = .week,
-        convertWeight: @escaping (Int) -> Double = convertToLbs,
-        interpolatedWeight: @escaping (Date, [BathScaleWeightSummary], Bool, Double?, @escaping (Int) -> Double) -> Double? = { _, _, _, _, _ in nil },
-        interpolatedAverage: @escaping ([BathScaleWeightSummary], TimePeriod, Bool, Double?, @escaping (Int) -> Double, DateInterval?) -> Double? = { _, _, _, _, _, _ in nil },
-        weightlessDisplay: @escaping ([BathScaleWeightSummary], Double?, TimePeriod, @escaping (Int) -> Double) -> Double? = { _, _, _, _ in nil },
+        convertWeight: @escaping (Double) -> Double = convertToLbs,
+        interpolatedWeight: @escaping (Date, [BathScaleWeightSummary], Bool, Double?, @escaping (Double) -> Double) -> Double? = { _, _, _, _, _ in nil },
+        interpolatedAverage: @escaping ([BathScaleWeightSummary], TimePeriod, Bool, Double?, @escaping (Double) -> Double, DateInterval?) -> Double? = { _, _, _, _, _, _ in nil },
+        weightlessDisplay: @escaping ([BathScaleWeightSummary], Double?, TimePeriod, @escaping (Double) -> Double) -> Double? = { _, _, _, _ in nil },
         labelRangeForPeriod: @escaping (TimePeriod) -> DateInterval? = { _ in nil }
     ) -> DisplayWeightContext {
         DisplayWeightContext(
@@ -217,9 +220,9 @@ enum DashboardTestFixtures {
         period: TimePeriod = .week,
         weightUnit: WeightUnit = .lb,
         latestWeightStored: Int = 0,
-        convertWeight: @escaping (Int) -> Double = convertToLbs,
-        interpolatedWeight: @escaping (Date, [BathScaleWeightSummary], Bool, Double?, @escaping (Int) -> Double) -> Double? = { _, _, _, _, _ in nil },
-        interpolatedAverage: @escaping ([BathScaleWeightSummary], TimePeriod, Bool, Double?, @escaping (Int) -> Double, DateInterval?) -> Double? = { _, _, _, _, _, _ in nil }
+        convertWeight: @escaping (Double) -> Double = convertToLbs,
+        interpolatedWeight: @escaping (Date, [BathScaleWeightSummary], Bool, Double?, @escaping (Double) -> Double) -> Double? = { _, _, _, _, _ in nil },
+        interpolatedAverage: @escaping ([BathScaleWeightSummary], TimePeriod, Bool, Double?, @escaping (Double) -> Double, DateInterval?) -> Double? = { _, _, _, _, _, _ in nil }
     ) -> EntryCreationContext {
         EntryCreationContext(
             selectedPoint: selectedPoint,
@@ -265,8 +268,8 @@ enum DashboardTestFixtures {
 
         let mockAccount = MockAccountService()
         if hasActiveAccount {
-            mockAccount.activeAccount = AccountTestFixtures.makeAccountModel(
-                id: "acct-1", email: "test@example.com", isActive: true
+            mockAccount.activeAccount = AccountTestFixtures.makeAccountSnapshot(
+                id: "acct-1", email: "test@example.com", isActiveAccount: true
             )
         }
 

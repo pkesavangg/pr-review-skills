@@ -128,7 +128,7 @@ extension BtWifiScaleSetupStore {
             if let savedScale = savedScale {
                 Task.detached(priority: .userInitiated) { [weak self] in
                     guard let self else { return }
-                    _ = await self.bluetoothService.stopLiveMeasurement(for: savedScale)
+                    _ = await self.bluetoothService.stopLiveMeasurement(broadcastId: savedScale.broadcastIdString ?? "")
                 }
             }
             scaleSetupError = .none
@@ -259,7 +259,19 @@ extension BtWifiScaleSetupStore {
                 }
             }
         case .permissions:
-            moveToNextStep()
+            // Resume the step that sent us to permissions.
+            if let resumeStep = stepToResumeAfterPermissions {
+                stepToResumeAfterPermissions = nil
+                scaleSetupError = .none
+                connectionState = .loading
+                navigateToStep(resumeStep)
+            } else if savedScale != nil {
+                // Paired scales resume at network gathering.
+                isRefreshingWifiNetworks = true
+                navigateToStep(.gatheringNetwork)
+            } else {
+                moveToNextStep()
+            }
         case .wakeup:
             moveToNextStep()
         case .connectingBluetooth:
@@ -267,6 +279,14 @@ extension BtWifiScaleSetupStore {
         default:
             moveToNextStep()
         }
+    }
+
+    /// Redirects to the permissions screen, optionally recording a step to resume after permissions recover.
+    private func redirectToPermissions(resumingAt step: BtWifiScaleSetupStep? = nil) {
+        stepToResumeAfterPermissions = step
+        scaleSetupError = .none
+        connectionState = .loading
+        navigateToStep(.permissions)
     }
 
     /// Invoked from the *Try Again* button of `BluetoothConnectionView` and `WifiConnectionView` failure state.
@@ -281,10 +301,25 @@ extension BtWifiScaleSetupStore {
                 targetStep = .wakeup
             }
         } else if scaleSetupError == .collectMeasurementFailed {
+            if !hasAllBtPermissions() {
+                redirectToPermissions(resumingAt: .stepOn)
+                return
+            }
             targetStep = .stepOn
         } else if scaleSetupError == .updateSettingsFailed {
-            targetStep = .customizeSettings
+            if !hasAllBtPermissions() {
+                redirectToPermissions(resumingAt: .updateSettings)
+                return
+            }
+            targetStep = .updateSettings
         } else {
+            if !hasAllBtPermissions() {
+                fetchWifiNetworksTask?.cancel()
+                fetchWifiNetworksTask = nil
+                redirectToPermissions()
+                return
+            }
+
             targetStep = .gatheringNetwork
 
             fetchWifiNetworksTask?.cancel()

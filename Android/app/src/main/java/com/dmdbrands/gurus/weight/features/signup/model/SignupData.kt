@@ -22,6 +22,8 @@ enum class SignupStep {
   ADD_BABY,
   BABY_ADDED,
   PASSWORD,
+  DEVICE_READY,
+  ALL_DEVICES_READY,
 }
 
 /**Add commentMore actions

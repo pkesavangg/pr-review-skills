@@ -10,12 +10,12 @@ struct AccountSettingsSnapshot: Equatable {
     let initialWeight: Double?
     let goalType: GoalType?
 
-    init(from account: Account?) {
-        self.weightUnit = account?.weightSettings?.weightUnit
-        self.isWeightlessOn = account?.weightlessSettings?.isWeightlessOn
-        self.weightlessWeight = account?.weightlessSettings?.weightlessWeight
-        self.goalWeight = account?.goalSettings?.goalWeight
-        self.initialWeight = account?.goalSettings?.initialWeight
-        self.goalType = account?.goalSettings?.goalType
+    init(from account: AccountSnapshot?) {
+        self.weightUnit = account?.weightUnit
+        self.isWeightlessOn = account?.isWeightlessOn
+        self.weightlessWeight = account?.weightlessWeight
+        self.goalWeight = account?.goalWeight
+        self.initialWeight = account?.initialWeight
+        self.goalType = account?.goalType
     }
 }

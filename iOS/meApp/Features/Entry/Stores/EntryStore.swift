@@ -1,8 +1,10 @@
+// swiftlint:disable file_length
 import Combine
 import Foundation
 import SwiftUI
 
 @MainActor
+// swiftlint:disable:next type_body_length
 final class EntryStore: ObservableObject {
     // Dependencies
     @Injector var accountService: AccountServiceProtocol
@@ -64,6 +66,7 @@ final class EntryStore: ObservableObject {
     init() {
         scaleService.scalesPublisher
             .map { $0.contains { $0.bathScale?.scaleType == ScaleSourceType.btWifiR4.rawValue } }
+            .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .assign(to: \.canShowOtherBodyMetrics, on: self)
             .store(in: &cancellables)
@@ -179,7 +182,7 @@ final class EntryStore: ObservableObject {
             entryTimestamp: entryTimestamp,
             accountId: accountId,
             operationType: OperationType.create.rawValue,
-            deviceType: DeviceType.scale.rawValue,
+            entryType: EntryType.scale.rawValue,
             isSynced: false
         )
         entry.scaleEntry = scaleEntry
@@ -321,8 +324,8 @@ final class EntryStore: ObservableObject {
             .store(in: &cancellables)
     }
 
-    @MainActor private func updateWeightUnitFromAccount(_ account: Account?) {
-        let unit = account?.weightSettings?.weightUnit ?? .lb
+    @MainActor private func updateWeightUnitFromAccount(_ account: AccountSnapshot?) {
+        let unit = account?.weightUnit ?? .lb
 
         if self.weightUnit != unit {
             self.weightUnit = unit
@@ -355,7 +358,7 @@ final class EntryStore: ObservableObject {
             return
         }
 
-        let heightString = accountService.activeAccount?.weightSettings?.height ?? "0"
+        let heightString = accountService.activeAccount?.weightHeight ?? "0"
         let storedHeight = ConversionTools.convertStoredHeightToCm(Int(round(Double(heightString) ?? 0)))
 
         let storedWeight: Double = {
@@ -459,6 +462,7 @@ final class EntryStore: ObservableObject {
         }
     }
 
+    // swiftlint:disable:next function_body_length
     func saveBabyEntry() async {
         guard !isSaving else { return }
         isSaving = true

@@ -22,7 +22,6 @@ abstract class GGScanService {
     appType: String = GGAppType.BALANCE_HEALTH,
     userProfile: GGBTUserProfile
   ) {
-
     ggBluetooth.scan(
       userProfile,
       appType,
@@ -56,6 +55,10 @@ abstract class GGScanService {
   }
 
   fun resumeScan(clearOnlyPairing: Boolean = true) {
-    ggBluetooth.resumeScan(clearOnlyPairing)
+    try {
+      ggBluetooth.resumeScan(clearOnlyPairing)
+    } catch (e: UninitializedPropertyAccessException) {
+      Log.w("GGScanService", "resumeScan called before BLE initialized — skipping")
+    }
   }
 }
