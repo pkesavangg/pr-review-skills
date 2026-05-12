@@ -62,6 +62,10 @@ class BottomTabBarViewModel: ObservableObject {
     private var hasShownSetGoalCardThisSession: Bool = false
     /// Prevents concurrent execution of checkSetGoalCardPrompt
     private var isCheckingSetGoalCard: Bool = false
+    // MARK: - Graph Scroll Hint Tracking
+    /// Keeps track if the *Scrollable Graph* discoverability hint has been shown
+    /// in this app session, so a single launch can't fire it twice.
+    private var hasShownGraphScrollHintThisSession: Bool = false
     private var notificationOnlyAlertShown: Bool {
         get {
             guard let accountId = accountService.activeAccount?.accountId else { return false }
@@ -129,6 +133,7 @@ class BottomTabBarViewModel: ObservableObject {
                 await self?.checkAppleHealthIntegrationStatus()
                 if self?.selectedTab == .dash {
                     await self?.checkSetGoalCardPrompt()
+                    self?.checkGraphScrollHintPrompt()
                 }
                 self?.evaluateAndShowPermissionAlert()
                 let notificationsRequired = self?.permissionsService.requiredCategories.contains(.notifications) ?? false
@@ -139,13 +144,14 @@ class BottomTabBarViewModel: ObservableObject {
                 }
             }
         }
-        
+
         $selectedTab
             .dropFirst()
             .sink { [weak self] tab in
                 if tab == .dash {
                     Task { [weak self] in
                         await self?.checkSetGoalCardPrompt()
+                        self?.checkGraphScrollHintPrompt()
                     }
                 }
             }
@@ -645,6 +651,30 @@ class BottomTabBarViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Graph Scroll Hint Prompt
+    /// Shows the *Scrollable Graph* first-time discoverability modal once per
+    /// account. Skips when an account is missing, the user is off the Dashboard
+    /// tab, or the per-user flag is already set in local storage.
+    private func checkGraphScrollHintPrompt() {
+        guard !hasShownGraphScrollHintThisSession else { return }
+        guard selectedTab == .dash else { return }
+        guard let account = accountService.activeAccount else { return }
+
+        let key = KvStorageKeys.graphScrollHintViewedKey(for: account.accountId)
+        if (KvStorageService.shared.getValue(forKey: key) as? Bool) == true {
+            return
+        }
+
+        KvStorageService.shared.setValue(true, forKey: key)
+        hasShownGraphScrollHintThisSession = true
+
+        let modalView = GraphScrollHintModalView { [weak notificationService] in
+            notificationService?.dismissModal()
+        }
+        logger.log(level: .info, tag: tag, message: "Presenting Scrollable-Graph hint modal")
+        notificationService.showModal(ModalData(presentedView: AnyView(modalView), backdropDismiss: true))
+    }
+
     /// Presents the Set a Goal card modal.
     private func presentSetGoalCard() {
         guard accountService.activeAccount != nil else { return }
