@@ -337,7 +337,7 @@ object EntryHelper {
       else -> weight.toDoublePreserve() * 0.453592 // Convert lbs to kg
     }
     val heightCm = ConversionTools.convertStoredHeightToCm(height)
-    return ConversionTools.calculateBMIFromMetric(weightKg, heightCm)
+    return ConversionTools.calculateBMIFromMetric(weightKg, round(heightCm).toInt())
   }
 
   /**
@@ -371,7 +371,7 @@ object EntryHelper {
         else -> ConversionTools.convertStoredToKg(weight!!.toDoublePreserve() * 10) // Convert lbs to kg
       }
       val heightCm = ConversionTools.convertStoredHeightToCm(userHeight)
-      ConversionTools.calculateBMIFromMetric(weightKg, heightCm)
+      ConversionTools.calculateBMIFromMetric(weightKg, round(heightCm).toInt())
     } else {
       null
     }

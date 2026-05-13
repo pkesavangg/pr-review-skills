@@ -92,7 +92,12 @@ data class Account(
       )
     }
     val heightCm: Double? =
-      height?.let { ConversionTools.convertStoredHeightToCm(it).toDouble() }
+      height?.let {  val cmPrecise = ConversionTools.convertStoredHeightToCm(it)
+        // BT SDK truncates Double cm with toInt() before BLE write. Pre-round here so
+        // 182.88cm (6'0") becomes 183 instead of being truncated to 182 on the wire.
+        val cmRounded = kotlin.math.round(cmPrecise)
+        cmRounded
+      }
     return GGBTUserProfile(
       name = firstName,
       age = calculateAge(dob),
