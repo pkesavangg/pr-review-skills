@@ -775,8 +775,11 @@ constructor(
             activityLevel = currentAccount.activityLevel ?: "normal",
             weightUnit = currentAccount.weightUnit.value,
           )
+        val heightCmPrecise = ConversionTools.convertStoredHeightToCm(newStoredHeight)
+        // BT SDK truncates Double cm with toInt() before BLE write — pre-round so 182.88 -> 183, not 182.
+        val heightCmForProfile = kotlin.math.round(heightCmPrecise)
         val updatedProfile = currentAccount.toGGBTUserProfile().copy(
-          height = ConversionTools.convertStoredHeightToCm(newStoredHeight).toDouble(),
+          height = heightCmForProfile,
         )
         val scaleResult = updateR4Profile(updatedProfile)
         AppLog.d(TAG, "Scale result: $scaleResult")
