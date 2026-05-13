@@ -18,7 +18,7 @@ dependencyResolutionManagement {
     mavenCentral()
     maven {
       url =
-        uri("https://maven.pkg.github.com/dmdbrands/ggBluetoothNativeLibrary")
+        uri("https://maven.pkg.github.com/gg-engineering/ggBluetoothNativeLibrary")
       credentials {
         username = "Selva-GG"
         password = "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"
