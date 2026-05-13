@@ -47,7 +47,7 @@ This plugin is maintained by [aldefy](https://github.com/aldefy/compose-skill) a
 ## Step 3 — Clone this repo
 
 ```bash
-git clone <internal-host>/pr-review-skills.git ~/pr-review-skills
+git clone https://github.com/pkesavangg/pr-review-skills.git ~/pr-review-skills
 ```
 
 The path `~/pr-review-skills` is a **convention** — the orchestrator looks there for the reference files under [references/security/](references/security/), [references/privacy/](references/privacy/), [references/ios/](references/ios/), and [references/compose/](references/compose/). If you clone somewhere else, edit `~/.claude/commands/review-pr.md` and replace every `$HOME/pr-review-skills` with your chosen path.
