@@ -211,20 +211,39 @@ flowchart TD
     ReadCode --> CompareCode{Code changed<br/>vs comment context?}
 
     CompareCode -- yes, fixed --> Resolved[✅ Resolved]
-    CompareCode -- no, unchanged --> ReadReply{Author replied?}
     CompareCode -- partial --> Partial[⚠️ Partially —<br/>quote what's missing]
+    CompareCode -- no, unchanged --> ReadReply{Author replied?}
 
     ReadReply -- no reply --> StillOpen1[❌ Still open]
-    ReadReply -- 'ok' / 'noted' / 'will fix' --> StillOpen2[❌ Still open]
-    ReadReply -- 'fixed in sha X' but code<br/>doesn't show fix --> StillOpen3[❌ Still open<br/>contradicts code]
-    ReadReply -- ticket filed /<br/>test path verified /<br/>technical justification --> Accepted[✅ Accepted]
+    ReadReply -- hand-wave only<br/>'ok' / 'noted' / 'thanks' --> StillOpen2[❌ Still open]
+    ReadReply -- 'fixed in sha' but<br/>code doesn't show fix --> StillOpen3[❌ Still open<br/>contradicts code]
+    ReadReply -- deferral with<br/>NO ticket ID --> Awaiting[🎫 Awaiting ticket<br/>ask author to file one]
+    ReadReply -- cited ticket ID --> Verify[Run § Ticket verification]
+    ReadReply -- technical justification /<br/>existing test cited --> VerifyEvidence{Evidence checks out?}
+
+    Verify --> Format{Format OK?<br/>MA-1234 / #42 / etc.}
+    Format -- no --> Awaiting
+    Format -- yes --> Exists{Ticket exists?<br/>via Atlassian MCP<br/>or gh issue view}
+    Exists -- no --> StillOpen4[❌ Still open<br/>cited ticket doesn't exist]
+    Exists -- yes --> Relevant{Ticket title/summary<br/>matches concern?}
+    Relevant -- yes --> Accepted[✅ Accepted<br/>quote ticket ID]
+    Relevant -- no --> StillOpen5[❌ Still open<br/>ticket unrelated]
+    Exists -- can't verify --> AcceptedCaveat[✅ Accepted<br/>with caveat<br/>'could not verify']
+
+    VerifyEvidence -- yes --> Accepted
+    VerifyEvidence -- no --> StillOpen6[❌ Still open<br/>evidence didn't check out]
 
     Resolved --> ReplyAPI[Reply on thread<br/>via gh api .../replies]
     Accepted --> ReplyAPI
+    AcceptedCaveat --> ReplyAPI
     Partial --> ReplyAPI
+    Awaiting --> ReplyAPI
     StillOpen1 --> ReplyAPI
     StillOpen2 --> ReplyAPI
     StillOpen3 --> ReplyAPI
+    StillOpen4 --> ReplyAPI
+    StillOpen5 --> ReplyAPI
+    StillOpen6 --> ReplyAPI
 
     ReplyAPI --> Loop
     Loop -- done --> S4b2[4b.2: Re-check PR description<br/>if previously flagged]
@@ -233,11 +252,21 @@ flowchart TD
 
     style Resolved fill:#dfd,stroke:#3a3
     style Accepted fill:#dfd,stroke:#3a3
+    style AcceptedCaveat fill:#dfd,stroke:#3a3
     style Partial fill:#ffd,stroke:#a83
+    style Awaiting fill:#fef,stroke:#a3a
     style StillOpen1 fill:#fdd,stroke:#a33
     style StillOpen2 fill:#fdd,stroke:#a33
     style StillOpen3 fill:#fdd,stroke:#a33
+    style StillOpen4 fill:#fdd,stroke:#a33
+    style StillOpen5 fill:#fdd,stroke:#a33
+    style StillOpen6 fill:#fdd,stroke:#a33
 ```
+
+**Two-pass deferral handling:**
+- **Pass N** — author writes "will fix later" with no ticket. We reply `🎫 Awaiting ticket — please file a Jira/issue ID...`
+- **Pass N+1** — author has replied since with `MA-1234`. We verify the ticket via the Atlassian MCP (`getJiraIssue`) or `gh issue view`. If the ticket exists AND relates to the concern → `✅ Accepted — tracking in MA-1234 (verified)`. If not → `❌ Still open — cited ticket doesn't exist / unrelated`.
+- **Pass N+1 (worst case)** — author still hasn't replied. We re-issue the `🎫 Awaiting ticket` reply (idempotent).
 
 **The key invariant: verify before trusting.** Author replies of "fixed" / "done" carry zero weight unless the code at that line actually reflects the change. The verdict is determined by **observing the code**, not parsing the reply.
 
@@ -246,15 +275,17 @@ flowchart TD
 | Reply pattern | Verdict | Why |
 |---|---|---|
 | Code at file:line no longer has the issue | ✅ Resolved | Observable fix |
-| "Filed follow-up KITC-1234" or "JIRA-567 tracks this" | ✅ Accepted | Concrete ticket (verify it actually exists) |
-| "Already covered by existing test at path/test.kt:42" | ✅ Accepted | Cited test path (verify the test actually exists) |
+| Cited ticket ID verified to exist + relates to concern | ✅ Accepted | Concrete ticket, independently checked |
+| "Already covered by existing test at path/test.kt:42" — and that file exists | ✅ Accepted | Cited test path verified |
 | Intentional choice with specific technical reason cited | ✅ Accepted | Reasoned justification |
-| External constraint explained (e.g. vendor SDK limitation) | ✅ Accepted | Constraint outside author's control |
+| External constraint explained (vendor SDK limitation, platform bug, etc.) | ✅ Accepted | Constraint outside author's control |
+| Some addressed, some remains | ⚠️ Partially | State precisely what's still missing |
+| Deferral phrase ("will fix later", "next sprint") with **no ticket ID** | 🎫 Awaiting ticket | Ask author to file one; verify next pass |
+| Previously asked for ticket; author still hasn't replied | 🎫 Awaiting ticket | Repeat the ask (idempotent) |
 | "ok" / "noted" / "thanks" alone | ❌ Still open | Acknowledgement, not action |
-| "Will fix later" with no ticket | ❌ Still open | Deferral without trace |
 | Silence + code unchanged | ❌ Still open | No engagement |
 | "Fixed in <sha>" but code at line still shows the issue | ❌ Still open | Claim contradicts code |
-| Some addressed, some remains | ⚠️ Partially | State precisely what's still missing |
+| Cited ticket fails verification (doesn't exist / unrelated) | ❌ Still open | Evidence didn't check out |
 
 ---
 

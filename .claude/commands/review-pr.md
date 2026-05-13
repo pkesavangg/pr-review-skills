@@ -222,9 +222,10 @@ For every inline comment from Step 1 where BOTH (a) `user.login == authenticated
 2. Fetch the thread: all comments with `in_reply_to_id == this_comment.id`, sorted by `created_at`.
 3. Decide a verdict by **comparing observed code to the original concern** (see § Re-review verdicts below):
    - **✅ Resolved** — the code at that path:line now demonstrably no longer has the issue. Verified, not claimed.
-   - **✅ Accepted** — code unchanged but the author's reply matches one of the § Valid reasons (ticket filed, technical justification, existing test cited and verified to exist, etc.).
+   - **✅ Accepted** — code unchanged but the author's reply matches one of the § Valid reasons (ticket filed, technical justification, existing test cited and verified to exist, etc.) AND that evidence has been independently checked (see § Ticket verification).
    - **⚠️ Partially** — code partially addresses the concern; state precisely what's still missing.
-   - **❌ Still open** — code unchanged AND no reply, OR reply is a hand-wave ("ok", "noted", "will fix"), OR author's claim of "fixed" contradicts what the code actually shows.
+   - **🎫 Awaiting ticket** — code unchanged AND author replied with a deferral ("will fix later", "addressing in follow-up", "tracking separately") but provided **no concrete ticket ID**. This is *not* a close — it's a request for one. Reply asking for a specific Jira/issue ID. On the next re-review, look for the author's subsequent reply naming the ticket, then promote to ✅ Accepted (if the ticket verifies — see § Ticket verification) or stay in this state.
+   - **❌ Still open** — code unchanged AND no reply, OR reply is a hand-wave acknowledgement only ("ok", "noted", "thanks"), OR author's claim of "fixed" contradicts what the code actually shows, OR a previously-cited ticket fails verification.
 4. Reply on the same thread:
 
 ```
@@ -288,13 +289,26 @@ Use these prefixes verbatim — they are the structural marker re-review uses to
 Replies must begin with exactly one of:
 
 - `✅ Resolved — ` (code was changed; concern addressed)
-- `✅ Accepted — ` (code unchanged but author gave a valid reason)
+- `✅ Accepted — ` (code unchanged but author gave a valid reason AND the evidence verifies)
 - `⚠️ Partially — ` (some addressed, some remains; state what's missing)
-- `❌ Still open — ` (code unchanged AND no reply or hand-wave reply)
+- `🎫 Awaiting ticket — ` (code unchanged; author deferred without a ticket ID — asking them to file one and cite it here)
+- `❌ Still open — ` (code unchanged AND no reply / hand-wave reply / cited ticket failed verification)
+
+**Reply templates** (use verbatim form so future runs can self-detect):
+
+| Verdict | Reply body shape |
+|---|---|
+| ✅ Resolved | `✅ Resolved — <one sentence on what the fix is, citing the new code if non-obvious>` |
+| ✅ Accepted | `✅ Accepted — <one sentence: ticket ID, test path, technical reason, or constraint cited>` |
+| ⚠️ Partially | `⚠️ Partially — <what's done> · still missing: <what isn't>` |
+| 🎫 Awaiting ticket | `🎫 Awaiting ticket — please reply with a Jira/issue ID (e.g., MA-1234) tracking this work. The next /review-pr pass will verify the ticket exists and matches this concern.` |
+| ❌ Still open | `❌ Still open — <one sentence: still no reply / reply contradicts code / cited ticket <ID> doesn't exist or doesn't match>` |
 
 ## § Valid reasons
 
 **Verify before trusting.** Every "Resolved" / "Fixed in <sha>" / "Done" / "Updated" reply MUST be checked against the current code at that `path:line` before accepting it. The system never closes a thread on the author's word alone — only when the code itself demonstrates the change, or when the reply matches one of the cases below AND the cited evidence (ticket / test path / external constraint) is independently checkable.
+
+**Deferrals require a ticket.** If the author replies with any deferral phrase — *"will fix later"*, *"addressing in follow-up"*, *"tracking separately"*, *"next sprint"*, *"backlog"* — without a concrete ticket ID, the verdict is **🎫 Awaiting ticket** (not Accepted, not Still open). The reply asks the author to file a Jira/issue ticket and cite the ID. On the next re-review, the system reads the author's most recent thread reply for a ticket ID; if found, runs § Ticket verification; if still no ID, repeats the 🎫 verdict.
 
 A reply closes a thread (`✅ Accepted`) only if it falls into one of these:
 
@@ -311,6 +325,23 @@ The reply does NOT close the thread if it's any of:
 - Claims that contradict observable code.
 
 In ambiguous cases, prefer `⚠️ Partially` and quote what's still missing.
+
+## § Ticket verification
+
+When the author cites a ticket ID — either in the original reply (`✅ Accepted` candidate) or as a follow-up after a previous `🎫 Awaiting ticket` reply — run these checks before closing the thread:
+
+1. **Format check.** Match the cited ID against `[A-Z]{2,6}-\d+` (Jira), `#\d+` (GitHub issue / PR), or other repo-conventional patterns. If the body just says "filed a ticket" or "in our system" with no ID, treat as **🎫 Awaiting ticket** and ask for the explicit ID.
+
+2. **Existence check.** Verify the ticket actually exists and is accessible:
+   - **For Jira** — if the Atlassian MCP is available in this session (look for `mcp__claude_ai_Atlassian__getJiraIssue` in the deferred tools list), call it with the cited key. If the call returns the issue, it exists. If it errors with a 404 / not-found, the ticket does not exist.
+   - **For GitHub issues** (`#42`) — run `gh issue view 42 --repo {owner}/{repo} --json number,state,title` and verify the result is non-empty.
+   - **If neither verification is available** (no Atlassian MCP, no `gh` access to the issue repo), state this in the reply: `✅ Accepted — Cited ticket <ID>; could not independently verify (no Jira/GitHub tooling). Trusting the author's claim.` Keep the verdict but be explicit about the limitation.
+
+3. **Relevance check (when full verification ran).** Read the ticket's title and summary. Confirm the ticket genuinely tracks the concern — not a generic catch-all like "Tech debt" or a different feature entirely. If the ticket is clearly unrelated, downgrade to `❌ Still open — cited ticket <ID> exists but doesn't appear to track this concern (ticket title: "<title>"). Please file a focused ticket or address inline.`
+
+4. **State check** (optional). If the ticket is already `DONE` / `CLOSED` / `RESOLVED` but the code still has the issue, that's a process gap worth flagging: `⚠️ Partially — cited ticket <ID> is marked <status> but the code at <file>:<line> still has the issue. The ticket may have closed without delivering the fix.`
+
+Always quote the verified ticket ID in the accepting reply so future readers can trace the closure: `✅ Accepted — tracking in <ticket-ID> (verified · title: "<short title>")`.
 
 ## § Guardrails
 
