@@ -14,6 +14,10 @@ One command — `/review-pr <PR-url-or-number>` — that:
 - Reviews any new code added since the previous pass.
 - Posts a top-level summary with `REQUEST_CHANGES` if any P0/P1 remains open, else `COMMENT`. Never auto-approves.
 
+## How it works
+
+See [HOW-IT-WORKS.md](HOW-IT-WORKS.md) for flowcharts of the full pipeline, what gets checked at each step, and the three loops (multi-PR / rule application / re-review thread walk).
+
 ## What's in this repo
 
 ```
