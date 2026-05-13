@@ -392,11 +392,11 @@ constructor(
         subscribeDeviceCallback()
         subscribePairedScales()
         syncScales()
+        accountService.checkAndTriggerGraphScrollHint()
         entryService.initializeGoalCardMonitoring(account.id)
         feedService.fetchFeedItems()
         initialiseIAMDialogListener()
         feedService.checkAndTriggerFeedModal()
-        feedService.checkAndTriggerGraphScrollHint()
         updateUnRead()
       } catch (e: Exception) {
         AppLog.e(TAG, "startObserversOnly failed", e)

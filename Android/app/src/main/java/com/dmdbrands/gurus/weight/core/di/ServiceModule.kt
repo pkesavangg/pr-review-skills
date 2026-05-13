@@ -98,7 +98,8 @@ object ServiceModule {
       dialogQueueService: IDialogQueueService,
       appNavigationService: IAppNavigationService,
       storageClearService: StorageClearService,
-      offlineHandlerService: IOfflineHandlerService
+      offlineHandlerService: IOfflineHandlerService,
+      userDataStore: UserDataStore
     ): IAccountService =
       AccountService(
         accountRepository,
@@ -107,6 +108,7 @@ object ServiceModule {
         dialogQueueService,
         appNavigationService,
         storageClearService,
+        userDataStore,
       )
 
     /**
@@ -416,9 +418,8 @@ object ServiceModule {
       dialogQueueService: IDialogQueueService,
       appNavigationService: IAppNavigationService,
       selectedFeedItemHolder: SelectedFeedItemHolder,
-      userDataStore: com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore,
       @ApplicationContext context: Context
-    ): IFeedService = FeedService(feedRepository, accountService, ggIAMService, connectivityObserver, dialogQueueService, appNavigationService, selectedFeedItemHolder, userDataStore, context)
+    ): IFeedService = FeedService(feedRepository, accountService, ggIAMService, connectivityObserver, dialogQueueService, appNavigationService, selectedFeedItemHolder, context)
 
     /**
      * Provides the device service implementation.
