@@ -94,9 +94,14 @@ Apply iOS rules only when iOS detected, Android rules only when Android detected
 
 ### 4a.1 — SwiftUI (if iOS detected)
 
-**Delegate to `swiftui-pro`.** Use the Skill tool to invoke `swiftui-pro:swiftui-pro`, passing the changed Swift file contents. It returns findings organized by file → line → rule → before/after fix, with a prioritized summary.
+**Apply Paul Hudson's `swiftui-pro` rules from the vendored copy in this repo.** Read these files (expand `$HOME`):
 
-If `swiftui-pro` is not installed, post one top-level comment instructing the author/reviewer to install it (`/plugin marketplace add twostraws/SwiftUI-Agent-Skill` and `/plugin install swiftui-pro@swiftui-agent-skill`), then skip the SwiftUI portion for this run.
+1. `$HOME/pr-review-skills/references/vendored/swiftui-pro/SKILL.md` — the entry point.
+2. All 9 reference files under `$HOME/pr-review-skills/references/vendored/swiftui-pro/references/` (api, views, data, navigation, design, accessibility, performance, swift, hygiene).
+
+The vendored SKILL.md uses `${CLAUDE_SKILL_DIR}/references/...` path tokens — **interpret that token as `$HOME/pr-review-skills/references/vendored/swiftui-pro/`** when resolving paths within the SKILL.md instructions. Apply the rules to the changed Swift files and return findings organized by file → line → rule → before/after fix.
+
+This is a verbatim MIT-licensed snapshot of [swiftui-pro v1.0.0](https://github.com/twostraws/SwiftUI-Agent-Skill); see [`references/vendored/UPSTREAM.md`](../../references/vendored/UPSTREAM.md) for attribution and sync instructions.
 
 **Re-classify** each `swiftui-pro` finding into your priority taxonomy (§ Priorities below):
 
@@ -119,9 +124,15 @@ Each file defines rules with their own severity, sniff pattern, and fix. **Use t
 
 ### 4a.2 — Compose (if Android detected)
 
-**Delegate to `compose-expert`.** Use the Skill tool to invoke `compose-expert:compose-expert`, passing the changed Kotlin file contents. It returns findings organized by file → line → rule → before/after fix, grounded in androidx/androidx source receipts.
+**Apply aldefy's `compose-expert` rules from the vendored copy in this repo.** Read:
 
-If `compose-expert` is not installed, post one top-level comment instructing the author/reviewer to install it (`/plugin marketplace add aldefy/compose-skill` and `/plugin install compose-expert`), then skip the compose-expert portion for this run and proceed to 4a.2.5.
+1. `$HOME/pr-review-skills/references/vendored/compose-expert/SKILL.md` — the entry point. (Skip the "Installation notice" banner near the top; this vendored copy is the install path.)
+2. The relevant subset of files under `$HOME/pr-review-skills/references/vendored/compose-expert/references/` — at minimum: `pr-review.md`, `state-management.md`, `side-effects.md`, `performance.md`, `modifiers.md`, `accessibility.md`, `lists-scrolling.md`, `view-composition.md`, `deprecated-patterns.md`, `composition-locals.md`. Pull in more references (animation, navigation, theming, etc.) when the diff actually touches those areas.
+3. The androidx source-code receipts under `references/source-code/` provide canonical API references — consult when a rule's accuracy depends on current androidx behaviour.
+
+Apply the rules to the changed Kotlin files and return findings organized by file → line → rule → before/after fix.
+
+This is a verbatim MIT-licensed snapshot of [compose-expert v2.3.1](https://github.com/aldefy/compose-skill); see [`references/vendored/UPSTREAM.md`](../../references/vendored/UPSTREAM.md) for attribution and sync instructions.
 
 **Re-classify** each `compose-expert` finding into your priority taxonomy (§ Priorities below):
 
