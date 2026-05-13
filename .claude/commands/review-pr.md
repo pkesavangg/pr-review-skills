@@ -12,7 +12,23 @@ For **each** PR in $ARGUMENTS (space-separated), run the pipeline below independ
 
 If `gh auth status` fails, stop and tell the user to run `gh auth login`.
 
-The Compose reference files live at `$HOME/pr-review-skills/references/compose/`. Expand `$HOME` to the user's actual home directory when calling Read.
+## Step 0 — Resolve reference directory
+
+Before anything else, resolve `$REFS_DIR` once and reuse it everywhere below. The orchestrator may have been cloned to any path; resolve it from the symlink at `~/.claude/commands/review-pr.md`:
+
+```bash
+COMMAND_PATH="$HOME/.claude/commands/review-pr.md"
+# Follow the symlink to find the actual repo location, then derive references/
+RESOLVED="$(readlink "$COMMAND_PATH" 2>/dev/null || echo "$COMMAND_PATH")"
+# If readlink returned a relative path, resolve it against the symlink's dir
+case "$RESOLVED" in
+  /*) ;;
+  *) RESOLVED="$(cd "$(dirname "$COMMAND_PATH")" && cd "$(dirname "$RESOLVED")" && pwd)/$(basename "$RESOLVED")" ;;
+esac
+REFS_DIR="$(cd "$(dirname "$RESOLVED")/../.." && pwd)/references"
+```
+
+All `$REFS_DIR/...` paths below refer to this resolved directory. If the file at `$REFS_DIR/security/secrets-and-storage.md` doesn't exist, stop and tell the user the install is broken (the symlink probably points at a stale location).
 
 ---
 
@@ -76,30 +92,30 @@ Anything left in `$ARGUMENTS` after flag-stripping is the list of PR targets.
 
 ### 4a.0 — Security review (always, both platforms)
 
-Security applies uniformly to iOS and Android. Read these three reference files (expand `$HOME`) and apply them to the diff regardless of detected platform:
+Security applies uniformly to iOS and Android. Read these three reference files and apply them to the diff regardless of detected platform:
 
-- `$HOME/pr-review-skills/references/security/secrets-and-storage.md`
-- `$HOME/pr-review-skills/references/security/transport-crypto-input.md`
-- `$HOME/pr-review-skills/references/security/logging-and-exposure.md`
+- `$REFS_DIR/security/secrets-and-storage.md`
+- `$REFS_DIR/security/transport-crypto-input.md`
+- `$REFS_DIR/security/logging-and-exposure.md`
 
 Each rule provides Swift and Kotlin examples; apply iOS-specific rules only when iOS detected, Android-specific rules only when Android detected, cross-platform rules always. **Use the severity each rule prescribes** — do not re-classify.
 
 ### 4a.0.5 — Privacy compliance (always, both platforms)
 
-Read this reference file (expand `$HOME`):
+Read this reference file:
 
-- `$HOME/pr-review-skills/references/privacy/store-compliance.md`
+- `$REFS_DIR/privacy/store-compliance.md`
 
 Apply iOS rules only when iOS detected, Android rules only when Android detected.
 
 ### 4a.1 — SwiftUI (if iOS detected)
 
-**Apply Paul Hudson's `swiftui-pro` rules from the vendored copy in this repo.** Read these files (expand `$HOME`):
+**Apply Paul Hudson's `swiftui-pro` rules from the vendored copy in this repo.** Read these files:
 
-1. `$HOME/pr-review-skills/references/vendored/swiftui-pro/SKILL.md` — the entry point.
-2. All 9 reference files under `$HOME/pr-review-skills/references/vendored/swiftui-pro/references/` (api, views, data, navigation, design, accessibility, performance, swift, hygiene).
+1. `$REFS_DIR/vendored/swiftui-pro/SKILL.md` — the entry point.
+2. All 9 reference files under `$REFS_DIR/vendored/swiftui-pro/references/` (api, views, data, navigation, design, accessibility, performance, swift, hygiene).
 
-The vendored SKILL.md uses `${CLAUDE_SKILL_DIR}/references/...` path tokens — **interpret that token as `$HOME/pr-review-skills/references/vendored/swiftui-pro/`** when resolving paths within the SKILL.md instructions. Apply the rules to the changed Swift files and return findings organized by file → line → rule → before/after fix.
+The vendored SKILL.md uses `${CLAUDE_SKILL_DIR}/references/...` path tokens — **interpret that token as `$REFS_DIR/vendored/swiftui-pro/`** when resolving paths within the SKILL.md instructions. Apply the rules to the changed Swift files and return findings organized by file → line → rule → before/after fix.
 
 This is a verbatim MIT-licensed snapshot of [swiftui-pro v1.0.0](https://github.com/twostraws/SwiftUI-Agent-Skill); see [`references/vendored/UPSTREAM.md`](../../references/vendored/UPSTREAM.md) for attribution and sync instructions.
 
@@ -112,11 +128,11 @@ This is a verbatim MIT-licensed snapshot of [swiftui-pro v1.0.0](https://github.
 
 ### 4a.1.5 — iOS cross-cutting (if iOS detected)
 
-`swiftui-pro` covers SwiftUI API usage and force-unwraps. It does **not** cover Swift concurrency footguns, logging placement, or test-flake patterns. Read these three reference files (expand `$HOME`) and apply them to the same diff:
+`swiftui-pro` covers SwiftUI API usage and force-unwraps. It does **not** cover Swift concurrency footguns, logging placement, or test-flake patterns. Read these three reference files and apply them to the same diff:
 
-- `$HOME/pr-review-skills/references/ios/concurrency.md`
-- `$HOME/pr-review-skills/references/ios/logging-hygiene.md`
-- `$HOME/pr-review-skills/references/ios/test-hygiene.md`
+- `$REFS_DIR/ios/concurrency.md`
+- `$REFS_DIR/ios/logging-hygiene.md`
+- `$REFS_DIR/ios/test-hygiene.md`
 
 Each file defines rules with their own severity, sniff pattern, and fix. **Use the severity each rule prescribes** — don't re-classify the way you do for swiftui-pro.
 
@@ -126,8 +142,8 @@ Each file defines rules with their own severity, sniff pattern, and fix. **Use t
 
 **Apply aldefy's `compose-expert` rules from the vendored copy in this repo.** Read:
 
-1. `$HOME/pr-review-skills/references/vendored/compose-expert/SKILL.md` — the entry point. (Skip the "Installation notice" banner near the top; this vendored copy is the install path.)
-2. The relevant subset of files under `$HOME/pr-review-skills/references/vendored/compose-expert/references/` — at minimum: `pr-review.md`, `state-management.md`, `side-effects.md`, `performance.md`, `modifiers.md`, `accessibility.md`, `lists-scrolling.md`, `view-composition.md`, `deprecated-patterns.md`, `composition-locals.md`. Pull in more references (animation, navigation, theming, etc.) when the diff actually touches those areas.
+1. `$REFS_DIR/vendored/compose-expert/SKILL.md` — the entry point. (Skip the "Installation notice" banner near the top; this vendored copy is the install path.)
+2. The relevant subset of files under `$REFS_DIR/vendored/compose-expert/references/` — at minimum: `pr-review.md`, `state-management.md`, `side-effects.md`, `performance.md`, `modifiers.md`, `accessibility.md`, `lists-scrolling.md`, `view-composition.md`, `deprecated-patterns.md`, `composition-locals.md`. Pull in more references (animation, navigation, theming, etc.) when the diff actually touches those areas.
 3. The androidx source-code receipts under `references/source-code/` provide canonical API references — consult when a rule's accuracy depends on current androidx behaviour.
 
 Apply the rules to the changed Kotlin files and return findings organized by file → line → rule → before/after fix.
@@ -145,13 +161,13 @@ This is a verbatim MIT-licensed snapshot of [compose-expert v2.3.1](https://gith
 
 ### 4a.2.5 — Compose project-tuned rules (if Android detected)
 
-`compose-expert` covers core Compose APIs and recomposition correctness. The reference files below add project-tuned rules on top. Read them (expand `$HOME`) and apply to the same diff:
+`compose-expert` covers core Compose APIs and recomposition correctness. The reference files below add project-tuned rules on top. Read them and apply to the same diff:
 
-- `$HOME/pr-review-skills/references/compose/recomposition.md`
-- `$HOME/pr-review-skills/references/compose/state-management.md`
-- `$HOME/pr-review-skills/references/compose/modifier-conventions.md`
-- `$HOME/pr-review-skills/references/compose/accessibility.md`
-- `$HOME/pr-review-skills/references/compose/api-guidelines.md`
+- `$REFS_DIR/compose/recomposition.md`
+- `$REFS_DIR/compose/state-management.md`
+- `$REFS_DIR/compose/modifier-conventions.md`
+- `$REFS_DIR/compose/accessibility.md`
+- `$REFS_DIR/compose/api-guidelines.md`
 
 Use each rule's prescribed severity — do not re-classify the way you do for `compose-expert`.
 
@@ -229,7 +245,7 @@ For every inline comment from Step 1 where BOTH (a) `user.login == authenticated
 4. Reply on the same thread:
 
 ```
-gh api repos/{owner}/{repo}/pulls/comments/<original_comment_id>/replies \
+gh api repos/{owner}/{repo}/pulls/<PR>/comments/<original_comment_id>/replies \
   -f body="✅ Resolved — <one sentence>"
 ```
 

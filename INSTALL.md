@@ -14,7 +14,7 @@ One-time setup per teammate. **Takes ~30 seconds.** No plugin installs required 
 git clone https://github.com/pkesavangg/pr-review-skills.git ~/pr-review-skills
 ```
 
-The path `~/pr-review-skills` is a **convention** — the orchestrator looks there for all rule files (`references/security/`, `references/privacy/`, `references/ios/`, `references/compose/`, and the vendored SwiftUI + Compose skills under `references/vendored/`). If you clone somewhere else, edit `~/.claude/commands/review-pr.md` and replace every `$HOME/pr-review-skills` with your chosen path.
+You can clone anywhere — the orchestrator resolves its reference directory at runtime by following the symlink created in Step 2. `~/pr-review-skills` is just a convention. If you clone to `~/code/pr-review-skills`, the symlink target points there and `$REFS_DIR` is derived as `~/code/pr-review-skills/references` automatically. No file edits required.
 
 ## Step 2 — Symlink the slash command into user scope
 
@@ -66,6 +66,6 @@ rm -rf ~/pr-review-skills
 ## Troubleshooting
 
 - **`/review-pr` doesn't appear in the picker.** Confirm the symlink: `ls -la ~/.claude/commands/review-pr.md` should show `→ /Users/<you>/pr-review-skills/.claude/commands/review-pr.md`. Restart Claude Code after creating the symlink.
-- **Reference files not found** (e.g. `references/security/secrets-and-storage.md` or `references/vendored/swiftui-pro/SKILL.md`). You cloned to a non-default path. Edit the orchestrator (`~/.claude/commands/review-pr.md`) and replace every `$HOME/pr-review-skills` with your actual clone path.
+- **Reference files not found** (e.g. `references/security/secrets-and-storage.md` or `references/vendored/swiftui-pro/SKILL.md`). The symlink at `~/.claude/commands/review-pr.md` is broken or points at a stale location. Run `readlink ~/.claude/commands/review-pr.md` to confirm it resolves to your actual clone, then re-create the symlink from Step 2 if needed.
 - **Inline comments return 403.** PR is from a fork or you lack write access. The skill auto-falls-back to a top-level summary with `path:line` references — that's expected.
 - **First run after `git clone` doesn't pick up `/review-pr`.** Restart Claude Code. The slash-command picker is populated at session start; new symlinks need a fresh session.
