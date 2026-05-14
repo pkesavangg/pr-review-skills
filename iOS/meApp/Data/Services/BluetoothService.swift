@@ -773,15 +773,12 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         defer { isUpdatingR4Profile = false }
 
         do {
-            // Read from accountService.activeAccount (source of truth) rather than the
-            // cached self.activeAccount: callers may invoke this immediately after
-            // accountService replaces its activeAccount reference (e.g. updateBodyComp),
-            // before the Combine subscription has delivered the new reference here.
-            guard let account = accountService.activeAccount else {
+            // Fast-fail when there is no active account at all. We deliberately do not
+            // bind the account here: the value can be replaced during the up-to-5s wait
+            // below (e.g. a rapid second settings change), so the authoritative read is
+            // performed after waitForR4ScaleReady returns.
+            guard accountService.activeAccount != nil else {
                 throw BluetoothServiceError.noActiveAccount
-            }
-            guard let userProfile = await getProfileInfo(from: account) else {
-                throw BluetoothServiceError.noProfileInfo
             }
 
             // Wait until at least one R4 scale is present in our list before pushing.
@@ -790,6 +787,17 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             guard await waitForR4ScaleReady(timeout: 5.0) else {
                 throw BluetoothServiceError.deviceNotConnected
             }
+
+            // Re-read the account *after* the wait: a rapid second settings change may have
+            // replaced accountService.activeAccount during the up-to-5s poll, and pushing the
+            // pre-wait snapshot would silently revert that newer change.
+            guard let account = accountService.activeAccount else {
+                throw BluetoothServiceError.noActiveAccount
+            }
+            guard let userProfile = await getProfileInfo(from: account) else {
+                throw BluetoothServiceError.noProfileInfo
+            }
+
             // Defensive re-sync — a prior syncDevices([]) may have cleared the SDK's tracked list.
             syncDevices(bluetoothScales)
 
@@ -816,12 +824,18 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         let deadline = Date().addingTimeInterval(timeout)
         let pollInterval: UInt64 = 100_000_000 // 100ms
         while Date() < deadline {
+            if Task.isCancelled { return false }
             let hasR4 = bluetoothScales.contains { scale in
                 if let raw = getSafeScaleType(for: scale) { return ScaleSourceType(rawValue: raw) == .btWifiR4 }
                 return false
             }
             if hasR4 { return true }
-            try? await Task.sleep(nanoseconds: pollInterval)
+            do {
+                try await Task.sleep(nanoseconds: pollInterval)
+            } catch {
+                // Cancellation: exit promptly instead of spinning until the wall-clock deadline.
+                return false
+            }
         }
         return false
     }
