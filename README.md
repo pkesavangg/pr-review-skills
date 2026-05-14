@@ -1,22 +1,27 @@
 # pr-review-skills
 
-A team-shared Claude Code reviewer for **SwiftUI** and **Jetpack Compose** pull requests.
+A team-shared Claude Code reviewer for **SwiftUI** and **Jetpack Compose** code. Two slash commands sharing one rule set:
 
-One command — `/review-pr <PR-url-or-number>` — that:
+| Command       | Who runs it | When                       | Input                              | Output                                                                       |
+| ------------- | ----------- | -------------------------- | ---------------------------------- | ---------------------------------------------------------------------------- |
+| `/review`     | Author      | Before commit / before PR  | Local working tree (staged + unstaged) | `.claude-review/report.md` + offered in-place fixes (you stage them yourself) |
+| `/review-pr`  | Reviewer    | After PR is opened         | GitHub PR diff + comments           | Inline GitHub review comments + summary                                       |
 
-- Auto-detects whether the PR touches iOS (Swift / SwiftUI), Android (Kotlin / Compose), or both.
-- Auto-detects whether this is a first review or a re-review (looking for prior `P0/P1/P2/Nit` comments the skill left on earlier passes).
-- Runs cross-platform **security** ([references/security/](references/security/)) and **privacy compliance** ([references/privacy/](references/privacy/)) checks on every PR — secrets, insecure storage, TLS bypass, weak crypto, PII/PHI in logs, exposure surfaces, App Store / Play Store submission gates.
-- Applies Paul Hudson's [`swiftui-pro`](https://github.com/twostraws/SwiftUI-Agent-Skill) rules (vendored under [references/vendored/swiftui-pro/](references/vendored/swiftui-pro/), MIT licensed) for SwiftUI quality, then adds iOS cross-cutting checks (concurrency, logging placement, test flake) from [references/ios/](references/ios/).
-- Applies aldefy's [`compose-expert`](https://github.com/aldefy/compose-skill) rules (vendored under [references/vendored/compose-expert/](references/vendored/compose-expert/), MIT licensed) for Compose quality, then adds project-tuned Compose rules from [references/compose/](references/compose/).
-- Posts inline GitHub comments tagged `P0` / `P1` / `P2` / `Nit`.
-- On re-review: walks every prior priority comment, decides if it's now resolved / accepted with a valid reason / partial / still open, and replies on the same thread.
-- Reviews any new code added since the previous pass.
-- Posts a top-level summary with `REQUEST_CHANGES` if any P0/P1 remains open, else `COMMENT`. Never auto-approves.
+Both commands:
+
+- Auto-detect whether the change touches iOS (Swift / SwiftUI), Android (Kotlin / Compose), or both.
+- Run cross-platform **security** ([references/security/](references/security/)) and **privacy compliance** ([references/privacy/](references/privacy/)) checks — secrets, insecure storage, TLS bypass, weak crypto, PII/PHI in logs, exposure surfaces, App Store / Play Store submission gates.
+- Apply Paul Hudson's [`swiftui-pro`](https://github.com/twostraws/SwiftUI-Agent-Skill) rules (vendored under [references/vendored/swiftui-pro/](references/vendored/swiftui-pro/), MIT licensed) for SwiftUI quality, then add iOS cross-cutting checks (concurrency, logging placement, test flake) from [references/ios/](references/ios/).
+- Apply aldefy's [`compose-expert`](https://github.com/aldefy/compose-skill) rules (vendored under [references/vendored/compose-expert/](references/vendored/compose-expert/), MIT licensed) for Compose quality, then add project-tuned Compose rules from [references/compose/](references/compose/).
+- Tag findings `P0` / `P1` / `P2` / `Nit`.
+
+`/review-pr` adds: re-review mode (walks prior priority comments, decides resolved / accepted / partial / still open, replies on the thread; reviews any new code added since the previous pass; posts a top-level summary). Never auto-approves.
+
+`/review` adds: writes findings to a local Markdown report, offers an interactive "apply fixes" picker, applies fixes in-place via `Edit`. Never mutates git state — you `git add` deliberately. Has a `--staged --no-prompt` mode for opt-in pre-commit hooks.
 
 ## How it works
 
-See [HOW-IT-WORKS.md](HOW-IT-WORKS.md) for flowcharts of the full pipeline, what gets checked at each step, and the three loops (multi-PR / rule application / re-review thread walk).
+See [HOW-IT-WORKS.md](HOW-IT-WORKS.md) for flowcharts of both pipelines, what gets checked at each step, and the loops involved.
 
 ## What's in this repo
 
@@ -24,9 +29,11 @@ See [HOW-IT-WORKS.md](HOW-IT-WORKS.md) for flowcharts of the full pipeline, what
 pr-review-skills/
 ├── README.md
 ├── INSTALL.md
+├── HOW-IT-WORKS.md
 ├── .claude/
 │   └── commands/
-│       └── review-pr.md        ← the orchestrator slash command
+│       ├── review-pr.md        ← reviewer-side orchestrator (post-PR)
+│       └── review.md           ← author-side orchestrator (pre-commit, local)
 └── references/
     ├── vendored/                ← MIT-licensed snapshots of swiftui-pro + compose-expert; see UPSTREAM.md
     │   ├── UPSTREAM.md          ← attribution, version pins, quarterly sync routine
@@ -57,20 +64,28 @@ The two upstream SwiftUI / Compose rule sets are vendored verbatim under [refere
 See [INSTALL.md](INSTALL.md) for the full installer. TL;DR:
 
 ```bash
-# One-time: clone this repo and symlink the command. That's it — all rules ship inside.
+# One-time: clone this repo and symlink both commands. That's it — all rules ship inside.
 git clone https://github.com/pkesavangg/pr-review-skills.git ~/pr-review-skills
 mkdir -p ~/.claude/commands
 ln -s ~/pr-review-skills/.claude/commands/review-pr.md ~/.claude/commands/review-pr.md
+ln -s ~/pr-review-skills/.claude/commands/review.md    ~/.claude/commands/review.md
 ```
 
 ## Usage
 
 ```
+# Author flow — pre-commit, local
+/review                                       # staged + unstaged vs HEAD
+/review --staged                              # only staged (matches pre-commit hook)
+/review --vs main                             # everything since branching from main
+/review --no-prompt                           # write report only, no fix picker (for hooks)
+
+# Reviewer flow — post-PR, GitHub
 /review-pr https://github.com/org/repo/pull/123
-/review-pr 123 124 125              # multiple PRs in one call
+/review-pr 123 124 125                        # multiple PRs in one call
 ```
 
-Re-review is the **same** command — the skill detects mode automatically.
+Re-review and re-pass are the **same** commands — both auto-detect mode from prior state (GitHub comments for `/review-pr`, the prior `.claude-review/report.md` for `/review`).
 
 ## Updating
 
