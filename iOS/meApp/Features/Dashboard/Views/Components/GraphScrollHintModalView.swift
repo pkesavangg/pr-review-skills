@@ -119,19 +119,23 @@ struct GraphScrollHintModalView: View {
         }
     }
 
-    /// Light-fill + blue-stroke finger, matching the Figma. Stacking a
-    /// low-alpha filled glyph under the outline version produces a translucent
-    /// interior with a crisp brand-colored stroke — reads as an outlined
-    /// pointer rather than a solid blob on the dark chart card.
+    /// Card-fill + blue-stroke finger, matching the Figma. The filled glyph
+    /// uses the chart card's own background color so the interior reads as
+    /// part of the card, with the outline version on top supplying a crisp
+    /// brand-colored stroke.
     private var fingerIcon: some View {
         ZStack {
             Image(systemName: "hand.point.up.left.fill")
-                .font(.system(size: 34, weight: .regular))
-                .foregroundColor(theme.actionPrimary.opacity(0.2))
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 34, height: 34)
+                .foregroundStyle(theme.backgroundSecondary)
 
             Image(systemName: "hand.point.up.left")
-                .font(.system(size: 34, weight: .regular))
-                .foregroundColor(theme.actionPrimary)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 34, height: 34)
+                .foregroundStyle(theme.actionPrimary)
         }
     }
 
