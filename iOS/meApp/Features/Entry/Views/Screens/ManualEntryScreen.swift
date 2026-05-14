@@ -374,13 +374,16 @@ struct ManualEntryScreen: View {
         .animation(.easeOut(duration: 0.25), value: keyboard.currentHeight)
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button(commonLang.done) {
-                    withAnimation {
-                        focusedField = nil
+                HStack {
+                    Spacer()
+                    Button(commonLang.done) {
+                        withAnimation {
+                            focusedField = nil
+                        }
                     }
+                    .font(.body)
+                    .foregroundColor(theme.actionPrimary)
                 }
-                .foregroundColor(theme.actionPrimary)
             }
         }
     }

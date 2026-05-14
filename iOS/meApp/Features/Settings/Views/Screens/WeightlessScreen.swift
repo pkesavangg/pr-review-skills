@@ -119,13 +119,16 @@ struct WeightlessScreen: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button(commonLang.done) {
-                    withAnimation {
-                        focusedField = nil
+                HStack {
+                    Spacer()
+                    Button(commonLang.done) {
+                        withAnimation {
+                            focusedField = nil
+                        }
                     }
+                    .font(.body)
+                    .foregroundColor(theme.actionPrimary)
                 }
-                .foregroundColor(theme.actionPrimary)
             }
         }
         .navigationBarHidden(true)
