@@ -166,7 +166,7 @@ struct GoalSettingScreen: View {
                     Button(commonLang.done) {
                         dismissKeyboardAndTouchField()
                     }
-                    .buttonStyle(.borderless)
+                    .foregroundColor(theme.actionPrimary)
                 }
             }
         }

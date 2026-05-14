@@ -380,7 +380,7 @@ struct ManualEntryScreen: View {
                         focusedField = nil
                     }
                 }
-                .buttonStyle(.borderless)
+                .foregroundColor(theme.actionPrimary)
             }
         }
     }

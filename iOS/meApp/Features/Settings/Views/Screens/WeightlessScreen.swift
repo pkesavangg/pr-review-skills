@@ -125,7 +125,7 @@ struct WeightlessScreen: View {
                         focusedField = nil
                     }
                 }
-                .buttonStyle(.borderless)
+                .foregroundColor(theme.actionPrimary)
             }
         }
         .navigationBarHidden(true)
