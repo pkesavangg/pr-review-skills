@@ -118,7 +118,7 @@ struct WeightlessScreen: View {
             registerDeactivation { true }
         }
         .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
+            ToolbarItem(placement: .keyboard) {
                 HStack {
                     Spacer()
                     Button(commonLang.done) {
@@ -126,7 +126,7 @@ struct WeightlessScreen: View {
                             focusedField = nil
                         }
                     }
-                    .font(.body)
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(theme.actionPrimary)
                 }
             }
