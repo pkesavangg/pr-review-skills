@@ -773,13 +773,31 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         defer { isUpdatingR4Profile = false }
 
         do {
-            guard let account = activeAccount else {
+            // Read from accountService.activeAccount (source of truth) rather than the
+            // cached self.activeAccount: callers may invoke this immediately after
+            // accountService replaces its activeAccount reference (e.g. updateBodyComp),
+            // before the Combine subscription has delivered the new reference here.
+            guard let account = accountService.activeAccount else {
                 throw BluetoothServiceError.noActiveAccount
             }
             guard let userProfile = await getProfileInfo(from: account) else {
                 throw BluetoothServiceError.noProfileInfo
             }
+
+            // Wait until at least one R4 scale is present in our list before pushing.
+            // Without this, the SDK has an empty device list at the moment of the call and
+            // returns "false" for every scale — silently dropping the update.
+            guard await waitForR4ScaleReady(timeout: 5.0) else {
+                throw BluetoothServiceError.deviceNotConnected
+            }
+            // Defensive re-sync — a prior syncDevices([]) may have cleared the SDK's tracked list.
+            syncDevices(bluetoothScales)
+
             let success = await ggBleSDK.updateProfile(profile: userProfile)
+            let allFailed = !success.isEmpty && success.allSatisfy { $0.caseInsensitiveCompare("false") == .orderedSame }
+            if allFailed {
+                throw BluetoothServiceError.updateProfileFailed(BluetoothServiceError.deviceNotConnected)
+            }
             logger.log(level: .debug, tag: tag, message: "updateUserProfileForR4Scales completed: \(success)")
             return .success(success)
         } catch let error as BluetoothServiceError {
@@ -789,6 +807,23 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             logOperationFailure("updateUserProfileForR4Scales", error: error)
             return .failure(.updateProfileFailed(error))
         }
+    }
+
+    /// Polls `bluetoothScales` until at least one R4 scale is present, up to `timeout` seconds.
+    /// The device list is populated asynchronously by `handleScalesUpdate`, so an explicit profile
+    /// push triggered by a settings change can race ahead of the BLE plugin's initial publish.
+    private func waitForR4ScaleReady(timeout: TimeInterval) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        let pollInterval: UInt64 = 100_000_000 // 100ms
+        while Date() < deadline {
+            let hasR4 = bluetoothScales.contains { scale in
+                if let raw = getSafeScaleType(for: scale) { return ScaleSourceType(rawValue: raw) == .btWifiR4 }
+                return false
+            }
+            if hasR4 { return true }
+            try? await Task.sleep(nanoseconds: pollInterval)
+        }
+        return false
     }
 
     /**
