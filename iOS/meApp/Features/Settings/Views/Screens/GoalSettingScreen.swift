@@ -164,11 +164,13 @@ struct GoalSettingScreen: View {
                 if focusedField == .currentWeight || focusedField == .goalWeight {
                     HStack {
                         Spacer()
-                        Button(commonLang.done) {
+                        Button {
                             dismissKeyboardAndTouchField()
+                        } label: {
+                            Text(commonLang.done)
+                                .fontOpenSans(.button1)
+                                .foregroundColor(theme.actionPrimary)
                         }
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(theme.actionPrimary)
                     }
                 }
             }

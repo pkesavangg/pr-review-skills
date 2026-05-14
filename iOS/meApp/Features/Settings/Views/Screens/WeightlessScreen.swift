@@ -121,13 +121,15 @@ struct WeightlessScreen: View {
             ToolbarItem(placement: .keyboard) {
                 HStack {
                     Spacer()
-                    Button(commonLang.done) {
+                    Button {
                         withAnimation {
                             focusedField = nil
                         }
+                    } label: {
+                        Text(commonLang.done)
+                            .fontOpenSans(.button1)
+                            .foregroundColor(theme.actionPrimary)
                     }
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(theme.actionPrimary)
                 }
             }
         }
