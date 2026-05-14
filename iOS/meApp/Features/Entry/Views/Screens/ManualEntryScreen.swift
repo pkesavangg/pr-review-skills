@@ -372,20 +372,9 @@ struct ManualEntryScreen: View {
         }
         .background(theme.backgroundSecondary)
         .animation(.easeOut(duration: 0.25), value: keyboard.currentHeight)
-        .toolbar {
-            ToolbarItem(placement: .keyboard) {
-                HStack {
-                    Spacer()
-                    Button {
-                        withAnimation {
-                            focusedField = nil
-                        }
-                    } label: {
-                        Text(commonLang.done)
-                            .fontOpenSans(.button1)
-                            .foregroundColor(theme.actionPrimary)
-                    }
-                }
+        .keyboardDoneToolbar {
+            withAnimation {
+                focusedField = nil
             }
         }
     }

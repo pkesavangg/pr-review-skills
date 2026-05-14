@@ -117,20 +117,9 @@ struct WeightlessScreen: View {
             // Remove deactivation handler when leaving the screen.
             registerDeactivation { true }
         }
-        .toolbar {
-            ToolbarItem(placement: .keyboard) {
-                HStack {
-                    Spacer()
-                    Button {
-                        withAnimation {
-                            focusedField = nil
-                        }
-                    } label: {
-                        Text(commonLang.done)
-                            .fontOpenSans(.button1)
-                            .foregroundColor(theme.actionPrimary)
-                    }
-                }
+        .keyboardDoneToolbar {
+            withAnimation {
+                focusedField = nil
             }
         }
         .navigationBarHidden(true)
