@@ -264,8 +264,17 @@ class HealthConnectService @Inject constructor(
         return false
       }
 
+      // MA-3909: ignore HC DataStore entries whose owning accountId is no longer
+      // among the currently logged-in accounts. Stale entries from a previously
+      // logged-in account would otherwise be picked up as an `assignedTo` mismatch
+      // and surface a false-positive User Conflict screen.
+      val loggedInAccountIds = accountRepository.getLoggedInAccounts().first()
+        .map { it.id }
+        .toSet()
       val allAccountData = healthConnectRepository.getAccountDataMap()
-      val assignedToAccountId = allAccountData.values
+      val assignedToAccountId = allAccountData
+        .filterKeys { it in loggedInAccountIds }
+        .values
         .firstOrNull { it.hasAssignedTo() }
         ?.assignedTo
       val isIntegrated: Boolean = assignedToAccountId == null || assignedToAccountId.isEmpty() || assignedToAccountId == currentAccount.id
@@ -291,8 +300,16 @@ class HealthConnectService @Inject constructor(
         return false
       }
 
+      // MA-3909: ignore stale DataStore entries whose owning accountId is no
+      // longer logged in, so a previously-integrated account that has since
+      // been removed cannot mask the current account's integration state.
+      val loggedInAccountIds = accountRepository.getLoggedInAccounts().first()
+        .map { it.id }
+        .toSet()
       val allAccountData = healthConnectRepository.getAccountDataMap()
-      val assignedToAccountId = allAccountData.values
+      val assignedToAccountId = allAccountData
+        .filterKeys { it in loggedInAccountIds }
+        .values
         .firstOrNull { it.hasAssignedTo() }
         ?.assignedTo
 
