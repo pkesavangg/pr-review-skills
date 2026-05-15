@@ -406,26 +406,24 @@ constructor(
     repositoryScope.launch {
       updateProgressCache(accountId)
     }
-
-    // Add new body scale data updates
-    repositoryScope.launch {
-      updateMonthlyBodyScaleAveragesWithJoin()
-    }
-
     // Per MA-3938: Week/Month tabs surface the latest non-null positive value per metric
     // for days with multiple entries (not the daily average). The daywise-latest flow
     // backs the dashboard graph for those tabs; the averages flow stays subscribed for
     // any non-dashboard consumers and for safe rollback if needed.
     repositoryScope.launch {
-      updateDaywiseBodyScaleLatestWithJoin()
+      try{
+        updateDaywiseBodyScaleLatestWithJoin()
+      }
+      catch (e: Exception){
+        if (e is CancellationException) throw e
+        AppLog.e("EntryService", "Error updating daywise latest entries", e)
+      }
     }
 
     // Add monthly average subscription
     repositoryScope.launch {
       updateMonthlyAverage(accountId)
     }
-
-
 
     // Check for goal card after account data is updated
     repositoryScope.launch {
@@ -789,8 +787,8 @@ constructor(
   private suspend fun updateDaywiseBodyScaleLatestWithJoin() {
     try {
       getDaywiseBodyScaleLatestWithJoin()
-        .collect {
-          _daywiseBodyScaleLatest.value = it
+        .collect { list ->
+          _daywiseBodyScaleLatest.value = list
         }
     } catch (e: Exception) {
       if (e is CancellationException) throw e
@@ -941,7 +939,13 @@ constructor(
       entryRepository.getDaywiseBodyScaleLatestWithJoin(this.accountId ?: ""),
       weightSettingsFlow,
     ) { summaries, weightSettings ->
-      summaries.map { it.process(weightSettings.weightUnit, weightSettings.weightless) }
+      try {
+        summaries.map { it.process(weightSettings.weightUnit, weightSettings.weightless) }
+      } catch (e: Exception) {
+        if (e is CancellationException) throw e
+        AppLog.e("EntryService", "Error processing daywise latest entries", e)
+        emptyList()
+      }
     }
 
   /**

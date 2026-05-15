@@ -372,6 +372,7 @@ class GraphViewModel @AssistedInject constructor(
         super.handleIntent(GraphIntent.UpdateTarget(markedData))
     }
 
+
     currentModelProducerJob = viewModelScope.launch(Dispatchers.IO) {
       try {
         // Use synchronous StateFlow value so we don't block the producer on the upstream
@@ -411,6 +412,11 @@ class GraphViewModel @AssistedInject constructor(
               series(
                 x = primaryXDataFiltered,
                 y = primaryYDataFiltered,
+                // Pass ranges explicitly so an empty→first-entry transition overwrites
+                // the CartesianRangeValues baked in by setupEmptyModelProducer; otherwise
+                // the chart keeps the empty-state X domain and the first point doesn't
+                // center on TOTAL until the VM is recreated.
+                ranges = primaryYAxisRange,
               )
             }
             // Secondary metric — RAW values; yTransform projects at draw time.

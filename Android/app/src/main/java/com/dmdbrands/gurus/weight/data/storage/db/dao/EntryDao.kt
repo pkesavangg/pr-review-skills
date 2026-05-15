@@ -559,76 +559,56 @@ WITH daily_entries AS (
   WHERE e.accountId = :accountId
     AND (e.operationType IS NULL OR e.operationType != 'delete')
 ),
-distinct_days AS (
-  SELECT DISTINCT day FROM daily_entries
+-- One window pass per day: for each metric, the latest entryTimestamp on that day where
+-- the metric is non-null and positive. Same semantics as the previous 16 correlated
+-- subqueries, but O(N) instead of O(days * metrics * entries_per_day).
+ranked AS (
+  SELECT
+    day,
+    entryTimestamp,
+    unit,
+    weight, bodyFat, muscleMass, water, bmi,
+    bmr, metabolicAge, proteinPercent, pulse,
+    skeletalMusclePercent, subcutaneousFatPercent,
+    visceralFatLevel, boneMass, impedance,
+    MAX(CASE WHEN weight                 > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_weight,
+    MAX(CASE WHEN bodyFat                > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_bodyFat,
+    MAX(CASE WHEN muscleMass             > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_muscleMass,
+    MAX(CASE WHEN water                  > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_water,
+    MAX(CASE WHEN bmi                    > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_bmi,
+    MAX(CASE WHEN bmr                    > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_bmr,
+    MAX(CASE WHEN metabolicAge           > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_metabolicAge,
+    MAX(CASE WHEN proteinPercent         > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_proteinPercent,
+    MAX(CASE WHEN pulse                  > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_pulse,
+    MAX(CASE WHEN skeletalMusclePercent  > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_skeletalMusclePercent,
+    MAX(CASE WHEN subcutaneousFatPercent > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_subcutaneousFatPercent,
+    MAX(CASE WHEN visceralFatLevel       > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_visceralFatLevel,
+    MAX(CASE WHEN boneMass               > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_boneMass,
+    MAX(CASE WHEN impedance              > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_impedance,
+    MAX(CASE WHEN unit IS NOT NULL           THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_unit
+  FROM daily_entries
 )
 SELECT
-  d.day AS period,
-  (SELECT entryTimestamp FROM daily_entries
-   WHERE day = d.day
-   ORDER BY entryTimestamp DESC LIMIT 1) AS entryTimestamp,
-
-  (SELECT weight FROM daily_entries
-   WHERE day = d.day AND weight IS NOT NULL AND weight > 0
-   ORDER BY entryTimestamp DESC LIMIT 1) AS weight,
-
-  (SELECT bodyFat FROM daily_entries
-   WHERE day = d.day AND bodyFat IS NOT NULL AND bodyFat > 0
-   ORDER BY entryTimestamp DESC LIMIT 1) AS bodyFat,
-
-  (SELECT muscleMass FROM daily_entries
-   WHERE day = d.day AND muscleMass IS NOT NULL AND muscleMass > 0
-   ORDER BY entryTimestamp DESC LIMIT 1) AS muscleMass,
-
-  (SELECT water FROM daily_entries
-   WHERE day = d.day AND water IS NOT NULL AND water > 0
-   ORDER BY entryTimestamp DESC LIMIT 1) AS water,
-
-  (SELECT bmi FROM daily_entries
-   WHERE day = d.day AND bmi IS NOT NULL AND bmi > 0
-   ORDER BY entryTimestamp DESC LIMIT 1) AS bmi,
-
-  (SELECT bmr FROM daily_entries
-   WHERE day = d.day AND bmr IS NOT NULL AND bmr > 0
-   ORDER BY entryTimestamp DESC LIMIT 1) AS bmr,
-
-  (SELECT metabolicAge FROM daily_entries
-   WHERE day = d.day AND metabolicAge IS NOT NULL AND metabolicAge > 0
-   ORDER BY entryTimestamp DESC LIMIT 1) AS metabolicAge,
-
-  (SELECT proteinPercent FROM daily_entries
-   WHERE day = d.day AND proteinPercent IS NOT NULL AND proteinPercent > 0
-   ORDER BY entryTimestamp DESC LIMIT 1) AS proteinPercent,
-
-  (SELECT pulse FROM daily_entries
-   WHERE day = d.day AND pulse IS NOT NULL AND pulse > 0
-   ORDER BY entryTimestamp DESC LIMIT 1) AS pulse,
-
-  (SELECT skeletalMusclePercent FROM daily_entries
-   WHERE day = d.day AND skeletalMusclePercent IS NOT NULL AND skeletalMusclePercent > 0
-   ORDER BY entryTimestamp DESC LIMIT 1) AS skeletalMusclePercent,
-
-  (SELECT subcutaneousFatPercent FROM daily_entries
-   WHERE day = d.day AND subcutaneousFatPercent IS NOT NULL AND subcutaneousFatPercent > 0
-   ORDER BY entryTimestamp DESC LIMIT 1) AS subcutaneousFatPercent,
-
-  (SELECT visceralFatLevel FROM daily_entries
-   WHERE day = d.day AND visceralFatLevel IS NOT NULL AND visceralFatLevel > 0
-   ORDER BY entryTimestamp DESC LIMIT 1) AS visceralFatLevel,
-
-  (SELECT boneMass FROM daily_entries
-   WHERE day = d.day AND boneMass IS NOT NULL AND boneMass > 0
-   ORDER BY entryTimestamp DESC LIMIT 1) AS boneMass,
-
-  (SELECT impedance FROM daily_entries
-   WHERE day = d.day AND impedance IS NOT NULL AND impedance > 0
-   ORDER BY entryTimestamp DESC LIMIT 1) AS impedance,
-
-  (SELECT unit FROM daily_entries
-   WHERE day = d.day AND unit IS NOT NULL
-   ORDER BY entryTimestamp DESC LIMIT 1) AS unit
-FROM distinct_days d
-ORDER BY d.day DESC
+  day AS period,
+  datetime(MAX(entryTimestamp), ${UTC}, ${LOCAL_TIME}, ${START_OF_DAY}) AS entryTimestamp,
+  MAX(CASE WHEN entryTimestamp = lt_weight                 AND weight                 > 0 THEN weight                 END) AS weight,
+  MAX(CASE WHEN entryTimestamp = lt_bodyFat                AND bodyFat                > 0 THEN bodyFat                END) AS bodyFat,
+  MAX(CASE WHEN entryTimestamp = lt_muscleMass             AND muscleMass             > 0 THEN muscleMass             END) AS muscleMass,
+  MAX(CASE WHEN entryTimestamp = lt_water                  AND water                  > 0 THEN water                  END) AS water,
+  MAX(CASE WHEN entryTimestamp = lt_bmi                    AND bmi                    > 0 THEN bmi                    END) AS bmi,
+  MAX(CASE WHEN entryTimestamp = lt_bmr                    AND bmr                    > 0 THEN bmr                    END) AS bmr,
+  MAX(CASE WHEN entryTimestamp = lt_metabolicAge           AND metabolicAge           > 0 THEN metabolicAge           END) AS metabolicAge,
+  MAX(CASE WHEN entryTimestamp = lt_proteinPercent         AND proteinPercent         > 0 THEN proteinPercent         END) AS proteinPercent,
+  MAX(CASE WHEN entryTimestamp = lt_pulse                  AND pulse                  > 0 THEN pulse                  END) AS pulse,
+  MAX(CASE WHEN entryTimestamp = lt_skeletalMusclePercent  AND skeletalMusclePercent  > 0 THEN skeletalMusclePercent  END) AS skeletalMusclePercent,
+  MAX(CASE WHEN entryTimestamp = lt_subcutaneousFatPercent AND subcutaneousFatPercent > 0 THEN subcutaneousFatPercent END) AS subcutaneousFatPercent,
+  MAX(CASE WHEN entryTimestamp = lt_visceralFatLevel       AND visceralFatLevel       > 0 THEN visceralFatLevel       END) AS visceralFatLevel,
+  MAX(CASE WHEN entryTimestamp = lt_boneMass               AND boneMass               > 0 THEN boneMass               END) AS boneMass,
+  MAX(CASE WHEN entryTimestamp = lt_impedance              AND impedance              > 0 THEN impedance              END) AS impedance,
+  MAX(CASE WHEN entryTimestamp = lt_unit                   AND unit IS NOT NULL           THEN unit                   END) AS unit
+FROM ranked
+GROUP BY day
+ORDER BY day DESC
 """,
   )
   fun getDaywiseBodyScaleLatestWithJoin(

@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.bottomAxis
@@ -77,12 +78,19 @@ fun rememberGraphChart(
   // to its intrinsic range when min/max are NaN (verified in vico 3.0.7). On empty data the
   // chart is gated by `state.isEmptyGraph` upstream, so a NaN range never reaches drawing
   // — but we still pass NaN rather than guessing bounds, so vico picks the safe default.
-  val scrollAwareRange = rememberScrollAwareRangeProvider(
-    minX = chartXBounds.first ?: Double.NaN,
-    maxX = chartXBounds.second ?: Double.NaN,
-    seedMinY = state.seedMinY ?: Double.NaN,
-    seedMaxY = state.seedMaxY ?: Double.NaN,
-  ) { visibleEntries, _ ->
+  // Re-key on data emptiness so the rangeProvider rebuilds when the first entry arrives
+  // (and again if data is fully cleared). vico's rememberScrollAwareRangeProvider remembers
+  // the provider across recompositions and uses minX/maxX only for initial construction —
+  // without this key, a provider built during the empty state retains its NaN-derived bounds
+  // even after chartXBounds recomputes from the new data extents. Manifests on TOTAL because
+  // its post-data window (±6mo around the entry) doesn't overlap the empty-state fallback.
+  val scrollAwareRange = key(state.data.isEmpty()) {
+    rememberScrollAwareRangeProvider(
+      minX = chartXBounds.first ?: Double.NaN,
+      maxX = chartXBounds.second ?: Double.NaN,
+      seedMinY = state.seedMinY ?: Double.NaN,
+      seedMaxY = state.seedMaxY ?: Double.NaN,
+    ) { visibleEntries, _ ->
     // Single-series chart: take entries from the first (and only) series.
     val yValues = visibleEntries.firstOrNull()?.map { it.second }?.filter { it.isFinite() } ?: emptyList()
     if (yValues.isEmpty()) {
@@ -119,6 +127,7 @@ fun rememberGraphChart(
       )
       (nice.min..nice.max) to buildTicksFromNiceScale(nice)
     }
+  }
   }
 
   val primaryLayer = primaryLayer(segment = segment, rangeProvider = scrollAwareRange)
