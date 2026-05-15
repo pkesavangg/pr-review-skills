@@ -117,15 +117,9 @@ struct WeightlessScreen: View {
             // Remove deactivation handler when leaving the screen.
             registerDeactivation { true }
         }
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button(commonLang.done) {
-                    withAnimation {
-                        focusedField = nil
-                    }
-                }
-                .buttonStyle(.borderless)
+        .keyboardDoneToolbar {
+            withAnimation {
+                focusedField = nil
             }
         }
         .navigationBarHidden(true)
