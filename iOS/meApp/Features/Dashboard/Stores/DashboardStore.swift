@@ -930,11 +930,8 @@ class DashboardStore: ObservableObject {
         }
 
         // If a point is selected, override period label granularity.
-        // Substitute a non-breaking-style space when the prefix is empty (Week/Month) so the
-        // Text view still reserves line height — the view hides it via `.opacity(0)`.
         if graph.selectedXValue != nil {
-            let prefix = selectionPrefix(for: graph.selectedPeriod)
-            return prefix.isEmpty ? " " : prefix
+            return selectionPrefix(for: graph.selectedPeriod)
         }
         return goalManager.getWeightDisplayLabel(for: graph.selectedPeriod)
     }
@@ -2980,26 +2977,20 @@ class DashboardStore: ObservableObject {
         return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
     }
 
-    /// Label format for a single dashboard-selected day on Week/Month, and the shared
-    /// "Measurement taken" format used by history entries. Capitalised and not lowercased
-    /// so it reads as a sentence: "Measurement taken February 1, 2025".
+    /// History-entry label: "Measurement taken February 1, 2025". Kept capitalised (not routed
+    /// through `composeMetricInfoLabel`) so it reads as a sentence and stays visually distinct
+    /// from dashboard-selected labels.
     private func measurementTakenLabel(for date: Date) -> String {
         let dateText = DateTimeTools.formatter("MMMM d, yyyy").string(from: date)
         return "Measurement taken \(dateText)"
     }
 
-    /// Resolves the metric-info label for a dashboard-selected point/crosshair.
-    /// Week/Month use the same "Measurement taken …" format as history entries so the user sees
-    /// consistent wording regardless of how they reached the sheet. Year/Total still surface
-    /// "month average …" since those values genuinely are averages.
+    /// Resolves the metric-info label for a dashboard-selected point/crosshair. Uses the same
+    /// `selectionPrefix(for:)` as the trend-view header so Week/Month picks up the
+    /// latest-entry vs day-average split automatically.
     private func metricInfoSelectionLabel(date: Date, period: TimePeriod) -> String {
-        switch period {
-        case .week, .month:
-            return measurementTakenLabel(for: date)
-        case .year, .total:
-            let dateText = formatMetricInfoSingleDate(date, period: period)
-            return composeMetricInfoLabel(prefix: "month average", dateText: dateText)
-        }
+        let dateText = formatMetricInfoSingleDate(date, period: period)
+        return composeMetricInfoLabel(prefix: selectionPrefix(for: period), dateText: dateText)
     }
 
     // MARK: - Private Helpers
@@ -3028,26 +3019,36 @@ class DashboardStore: ObservableObject {
         return formatter.date(from: timestamp)
     }
 
-    /// Prefix shown alongside a selected graph point.
-    /// Week/Month return an empty string so the trend-view header collapses (the chart's own
-    /// callout makes the selected day obvious) and the metric-info sheet shows just the date —
-    /// avoids the misleading "latest entry" wording when a past day is selected.
-    /// Year/Total still surface "month average" since those values genuinely are averages.
+    /// Prefix shown alongside a selected graph point in the trend-view header and (lowercased)
+    /// in the metric-info sheet.
+    ///
+    /// Hybrid rule on Week/Month per UX direction — see docs/dashboard-hybrid-latest-vs-average.md:
+    ///   * Most recent day with entries → `latest entry`
+    ///   * Every other day → `day average`
+    /// Year/Total still surface `month average` since those values genuinely are averages.
     private func selectionPrefix(for period: TimePeriod) -> String {
         switch period {
-        case .week, .month: return ""
-        case .year, .total: return "month average"
+        case .week, .month:
+            return isLatestDaySelected ? "latest entry" : "day average"
+        case .year, .total:
+            return "month average"
         }
     }
 
-    /// True when `weightDisplayLabel` is intentionally blank (Week/Month with a point selected).
-    /// The view binds this to `.opacity` so the layout stays stable when the label hides.
-    var hidesWeightDisplayLabel: Bool {
-        guard graph.selectedXValue != nil else { return false }
+    /// True when the currently selected graph point is the most recent day in the data set.
+    /// Drives the `latest entry` vs `day average` label split on Week/Month.
+    private var isLatestDaySelected: Bool {
         switch graph.selectedPeriod {
-        case .week, .month: return true
-        case .year, .total: return false
+        case .week, .month:
+            break
+        case .year, .total:
+            return false
         }
+        guard let selectedDate = graph.selectedPoint?.date ?? graph.selectedXValue,
+              let latestDate = continuousOperations.last?.date else {
+            return false
+        }
+        return Calendar.current.isDate(selectedDate, inSameDayAs: latestDate)
     }
 
     private func formatMetricInfoSingleDate(_ date: Date, period: TimePeriod) -> String {
