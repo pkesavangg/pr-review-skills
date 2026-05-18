@@ -231,6 +231,11 @@ fun MetricInfoScreenContent(
         val measurementTakenString = when {
           info.isEmpty -> "no entries ${info.rangeText ?: singleEntryDate}"
           currentStat.getDisplayValue() == null -> MetricInfoStrings.MeasurementNotTaken
+          // History list → a single concrete reading on a specific day. Phrase the
+          // label that way regardless of segment; "day average" / "latest entry"
+          // wording only makes sense for dashboard graph aggregates.
+          info.isHistoryEntry ->
+            "Measurement taken on $singleEntryDate"
           // Per MA-3965: Week/Month + graph point selected splits between "latest entry"
           // (most recent day in the data set) and "day average" (any earlier day). Mirrors
           // the trend-view header so the two surfaces never drift.

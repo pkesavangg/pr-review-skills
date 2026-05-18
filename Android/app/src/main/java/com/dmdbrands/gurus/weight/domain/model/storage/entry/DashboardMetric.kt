@@ -24,6 +24,13 @@ data class DashboardMetric(
    * (always "month average") and for history-list openings.
    */
   val isLatestDaySelected: Boolean = false,
+  /**
+   * True when the metric-info sheet is opened from the History list (a single concrete
+   * scale reading) rather than from the dashboard graph (a day-level aggregate).
+   * History entries read "Measurement taken on <date>" regardless of segment;
+   * dashboard openings honour the Week/Month/Year/Total label rules.
+   */
+  val isHistoryEntry: Boolean = false,
   val weight: Double?,
   val bmi: Double?,
   val bodyFat: Double?,
@@ -80,6 +87,7 @@ data class DashboardMetric(
     fun fromScaleEntry(scaleEntry: ScaleEntry): DashboardMetric =
       DashboardMetric(
         isSingleEntry = true,
+        isHistoryEntry = true,
         entryTimeStamp = listOf(scaleEntry.entry.entryTimestamp),
         weight = scaleEntry.scale.scaleEntry.weight,
         bmi = scaleEntry.scale.scaleEntry.bmi,
