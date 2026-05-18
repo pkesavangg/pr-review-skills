@@ -33,6 +33,8 @@ import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonGroup
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonType
 import com.dmdbrands.gurus.weight.features.common.helper.StatHelper
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphLabelHelper
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toSegment
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.metricinfo.components.MetricInfoInfoSection
@@ -228,6 +230,11 @@ fun MetricInfoScreenContent(
           source = source,
         )
 
+        // Per MA-3965: dashboard openings route through [GraphLabelHelper.selectionLabel]
+        // — the same helper the trend-view header reads from — so the two surfaces stay
+        // in lockstep. Empty-state, history-list, and missing-metric branches fall
+        // outside the dashboard's selection grammar and keep their own phrasings.
+        val segmentForLabel = source.toSegment()
         val measurementTakenString = when {
           info.isEmpty -> "no entries ${info.rangeText ?: singleEntryDate}"
           currentStat.getDisplayValue() == null -> MetricInfoStrings.MeasurementNotTaken
@@ -236,18 +243,18 @@ fun MetricInfoScreenContent(
           // wording only makes sense for dashboard graph aggregates.
           info.isHistoryEntry ->
             "Measurement taken on $singleEntryDate"
-          // Per MA-3965: Week/Month + graph point selected splits between "latest entry"
-          // (most recent day in the data set) and "day average" (any earlier day). Mirrors
-          // the trend-view header so the two surfaces never drift.
-          info.isSingleEntry && (source == MetricInfoSource.WEEK || source == MetricInfoSource.MONTH) ->
-            if (info.isLatestDaySelected) "latest entry $singleEntryDate".lowercase()
-            else "day average $singleEntryDate".lowercase()
-          // Dashboard, point selected on Year/Total — those values are monthly averages.
           info.isSingleEntry ->
-            "month average $singleEntryDate".lowercase()
-          // Dashboard, no graph selection — mirror the trend-view header's period label.
+            "${GraphLabelHelper.selectionLabel(
+              segment = segmentForLabel,
+              hasSelection = true,
+              isLatestDaySelected = info.isLatestDaySelected,
+            )} $singleEntryDate"
           else ->
-            "${source.name.lowercase()} average ${info.rangeText ?: ""}".trim()
+            "${GraphLabelHelper.selectionLabel(
+              segment = segmentForLabel,
+              hasSelection = false,
+              isLatestDaySelected = false,
+            )} ${info.rangeText ?: ""}".trim()
         }
 
         Column(
