@@ -2372,21 +2372,17 @@ class DashboardStore: ObservableObject {
         ui.hasInitializedChart = true
 
         // Auto-select the latest entry for the new period so the header tile
-        // shows its value/date immediately after the switch. Read the latest
-        // date from operationsForNewPeriod (already filtered for `period` above)
-        // rather than from continuousOperations, which depends on the mirrored
-        // graph.selectedPeriod that may not yet reflect the new period.
-        let targetPeriod = period
-        let latestDateForNewPeriod = operationsForNewPeriod.max(by: { $0.date < $1.date })?.date
-        if let latestDateForNewPeriod {
-            Task { @MainActor in
-                // Yield so SwiftUI commits the new scroll position first.
-                await Task.yield()
-                // Bail if the user has already switched to another tab.
-                guard self.graph.selectedPeriod == targetPeriod else { return }
-                await self.handleChartSelection(at: latestDateForNewPeriod)
-                self.ui.hasLandedInitialSelection = true
-            }
+        // shows its value/date immediately after the switch. Apply this
+        // synchronously so the store carries the new selection (selectedXValue,
+        // selectedPoint, showCrosshair) BEFORE selectedPeriod is observed by
+        // the view layer. The new BaseGraphView mount's sync-from-store path
+        // then lands the crosshair on first render rather than fighting the
+        // chartIdentity remount + section-VM geometry guards from an async tail.
+        if let latestDateForNewPeriod = operationsForNewPeriod.max(by: { $0.date < $1.date })?.date {
+            graphManager.applyChartSelectionSync(at: latestDateForNewPeriod, operations: operationsForNewPeriod)
+            ui.hasLandedInitialSelection = true
+            updateMetricsForCurrentView()
+            scheduleUIUpdate()
         }
     }
 

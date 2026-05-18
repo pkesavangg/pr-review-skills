@@ -930,22 +930,20 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     }
 
     private func syncViewModelSelectionFromStore() {
-        guard dashboardStore.graph.showCrosshair else {
+        // Routes through `GraphState.validatedSelection` +
+        // `applyStoreValidatedSelection` so this on-mount sync and
+        // `GraphView.onChange(of: selectedPeriod)` read the store-side
+        // selection through the same shape. See MA-3977 and the helper docs
+        // for why we bypass `applyProgrammaticSelection`'s
+        // `handleChartSelection` snap/guard pipeline here.
+        guard let selection = dashboardStore.graph.validatedSelection else {
             localSelectedXValue = nil
             viewModel.clearSelection()
             return
         }
 
-        let storeSelectedDate = dashboardStore.graph.selectedXValue
-            ?? dashboardStore.graph.selectedPoint?.date
-        guard let storeSelectedDate else {
-            localSelectedXValue = nil
-            viewModel.clearSelection()
-            return
-        }
-
-        localSelectedXValue = storeSelectedDate
-        viewModel.applyProgrammaticSelection(at: storeSelectedDate)
+        localSelectedXValue = selection.date
+        viewModel.applyStoreValidatedSelection(date: selection.date, point: selection.point)
     }
 
     // MARK: - Helpers

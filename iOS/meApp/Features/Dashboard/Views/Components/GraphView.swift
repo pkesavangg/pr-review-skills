@@ -110,27 +110,37 @@ struct GraphView: View {
             // deferred this behind a 50ms `Task.sleep` to "let the UI settle";
             // with the chartIdentity-driven remount above, the new view mounts
             // pre-configured and we no longer need the deferral.
-            switch newValue {
-            case .week:
-                weekSectionViewModel.configure(with: dashboardStore)
-            case .month:
-                monthSectionViewModel.configure(with: dashboardStore)
-            case .year:
-                yearSectionViewModel.configure(with: dashboardStore)
-            case .total:
-                totalSectionViewModel.configure(with: dashboardStore)
-            }
+            //
+            // The previous `forceScrollPositionUpdate` "nudge" (temp + main.async
+            // re-assign of `scrollPosition`) was removed: combined with
+            // `PagedChartScrollBehavior`, the +0.001s nudge could snap to an
+            // adjacent page on fresh mount, manifesting as "a random window"
+            // appearing instead of the latest window after a tab switch.
+            // `configure(with:)` already sets `scrollPosition` from
+            // `store.graph.xScrollPosition`, and the chartIdentity-driven
+            // remount makes the chart read this value on first mount.
+            let activeViewModel: BaseSectionViewModel = {
+                switch newValue {
+                case .week:  return weekSectionViewModel
+                case .month: return monthSectionViewModel
+                case .year:  return yearSectionViewModel
+                case .total: return totalSectionViewModel
+                }
+            }()
+            activeViewModel.configure(with: dashboardStore)
 
-            let finalPosition = dashboardStore.graph.xScrollPosition
-            switch newValue {
-            case .week:
-                weekSectionViewModel.forceScrollPositionUpdate(to: finalPosition)
-            case .month:
-                monthSectionViewModel.forceScrollPositionUpdate(to: finalPosition)
-            case .year:
-                yearSectionViewModel.forceScrollPositionUpdate(to: finalPosition)
-            case .total:
-                break // Total view is not scrollable
+            // Seed the active VM with the auto-selection that
+            // `DashboardStore.updateSelectedPeriod` has already synchronously
+            // written to `graph`. The helper bypasses the section-specific
+            // `handleChartSelection` snap/range guards — those depend on
+            // `xAxisValues` / `chartSeriesData` which may not yet be populated
+            // on the very first frame after a tab switch, and silently
+            // dropped the selection (most visibly on year). The
+            // `BaseGraphView` re-mount's `syncViewModelSelectionFromStore`
+            // funnels through the same helper so the read-from-store shape
+            // can't drift between the two call sites.
+            if let selection = dashboardStore.graph.validatedSelection {
+                activeViewModel.applyStoreValidatedSelection(date: selection.date, point: selection.point)
             }
 
             // Recalculate and cache Y-axis based on the new visible region.
