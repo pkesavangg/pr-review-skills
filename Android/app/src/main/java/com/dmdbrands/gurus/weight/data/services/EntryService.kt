@@ -122,6 +122,9 @@ constructor(
   private val _daywiseBodyScaleLatest = MutableStateFlow<List<PeriodBodyScaleSummary>>(listOf())
   override val daywiseBodyScaleLatest: StateFlow<List<PeriodBodyScaleSummary>> = _daywiseBodyScaleLatest.asStateFlow()
 
+  private val _daywiseBodyScaleHybrid = MutableStateFlow<List<PeriodBodyScaleSummary>>(listOf())
+  override val daywiseBodyScaleHybrid: StateFlow<List<PeriodBodyScaleSummary>> = _daywiseBodyScaleHybrid.asStateFlow()
+
   private val _monthlyAverage = MutableStateFlow<List<HistoryMonth>>(listOf())
   override val monthlyAverage: StateFlow<List<HistoryMonth>> = _monthlyAverage.asStateFlow()
 
@@ -406,17 +409,29 @@ constructor(
     repositoryScope.launch {
       updateProgressCache(accountId)
     }
-    // Per MA-3938: Week/Month tabs surface the latest non-null positive value per metric
-    // for days with multiple entries (not the daily average). The daywise-latest flow
-    // backs the dashboard graph for those tabs; the averages flow stays subscribed for
-    // any non-dashboard consumers and for safe rollback if needed.
+    // Per MA-3965: Week/Month tabs use the hybrid per-day rule — most-recent day uses
+    // latest-non-null-positive per metric; earlier days use the daily average. The
+    // hybrid combiner subscribes to the two underlying SQL flows directly, so the
+    // standalone latest-per-day writer is no longer launched here. The
+    // [updateDaywiseBodyScaleLatestWithJoin] method (and its public StateFlow) are
+    // retained for safe rollback.
     repositoryScope.launch {
-      try{
-        updateDaywiseBodyScaleLatestWithJoin()
-      }
-      catch (e: Exception){
+      try {
+        updateDaywiseBodyScaleHybrid()
+      } catch (e: Exception) {
         if (e is CancellationException) throw e
-        AppLog.e("EntryService", "Error updating daywise latest entries", e)
+        AppLog.e("EntryService", "Error updating daywise hybrid entries", e)
+      }
+    }
+    // Year/Total tabs read [_monthlyBodyScaleAverages]. MA-3938 dropped this
+    // subscription when it replaced the per-day flow on Week/Month, leaving
+    // Year/Total empty. Re-subscribed here as part of the MA-3965 hybrid wiring.
+    repositoryScope.launch {
+      try {
+        updateMonthlyBodyScaleAveragesWithJoin()
+      } catch (e: Exception) {
+        if (e is CancellationException) throw e
+        AppLog.e("EntryService", "Error updating monthly average entries", e)
       }
     }
 
@@ -449,6 +464,7 @@ constructor(
     _monthlyBodyScaleLatest.value = emptyList()
     _daywiseBodyScaleAverages.value = emptyList()
     _daywiseBodyScaleLatest.value = emptyList()
+    _daywiseBodyScaleHybrid.value = emptyList()
     _isUpdating.value = false
     _lastUpdated.value = null
     _currentStreak.value = 0
@@ -793,6 +809,51 @@ constructor(
     } catch (e: Exception) {
       if (e is CancellationException) throw e
       AppLog.e("EntryService", "Error updating day wise latest entries", e)
+    }
+  }
+
+  /**
+   * Per MA-3965: combines daywise averages and daywise latest into a single per-day
+   * series. For the most recent day with a valid entry the row from the "latest"
+   * flow is used (so the graph point plots the latest entry's weight and the
+   * selection tiles show the latest non-null positive value per metric). Every
+   * other day uses the daily-average row.
+   *
+   * Subscribes to the two underlying SQL flows directly so the hybrid is the sole
+   * launched daywise writer — the standalone latest-per-day and averages-per-day
+   * writers are no longer kicked off from [updateAllData].
+   */
+  private suspend fun updateDaywiseBodyScaleHybrid() {
+    try {
+      combine(
+        getDaywiseBodyScaleAveragesWithJoin(),
+        getDaywiseBodyScaleLatestWithJoin(),
+      ) { averages, latest ->
+        if (averages.isEmpty() && latest.isEmpty()) {
+          emptyList()
+        } else {
+          // "Latest day" is data-driven, not calendar-driven: the highest period
+          // (yyyy-MM-dd lexicographically) in the latest-per-day flow is the most
+          // recent day that actually has an entry. Earlier days fall back to the
+          // average row keyed by the same period.
+          val latestByPeriod = latest.associateBy { it.period }
+          val averagesByPeriod = averages.associateBy { it.period }
+          val latestDayPeriod = latest.maxByOrNull { it.period }?.period
+          val periods = (latestByPeriod.keys + averagesByPeriod.keys).toSortedSet()
+          periods.mapNotNull { period ->
+            if (period == latestDayPeriod) {
+              latestByPeriod[period] ?: averagesByPeriod[period]
+            } else {
+              averagesByPeriod[period] ?: latestByPeriod[period]
+            }
+          }
+        }
+      }.collect { list ->
+        _daywiseBodyScaleHybrid.value = list
+      }
+    } catch (e: Exception) {
+      if (e is CancellationException) throw e
+      AppLog.e("EntryService", "Error updating daywise hybrid entries", e)
     }
   }
 

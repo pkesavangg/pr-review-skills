@@ -11,7 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
@@ -55,13 +54,19 @@ fun ChartHeader(
   }
   
   val hasSelection = state.markerIndex != null
-  val prefix = GraphLabelHelper.selectionPrefix(segment, hasSelection)
-  // Render text even when hidden so the row reserves its vertical slot — prevents the
-  // headline weight from jumping as the user taps between points (mirrors iOS .opacity(0)).
+  // Per MA-3965: on Week/Month the most-recent day shows "latest entry"; every other
+  // day shows "day average". "Latest day" is the highest entry timestamp present in
+  // the current data set, not today's calendar date.
+  val latestDayTimestamp = remember(state.data) {
+    state.data.maxOfOrNull { it.getTimeStamp() }
+  }
+  val isLatestDaySelected = remember(state.markerIndex, latestDayTimestamp) {
+    val marker = state.markerIndex?.toLong()
+    marker != null && latestDayTimestamp != null && marker == latestDayTimestamp
+  }
   val labelText = when {
     state.isEmptyGraph -> "no entries"
-    prefix != null -> "$prefix average"
-    else -> "day average"
+    else -> GraphLabelHelper.selectionLabel(segment, hasSelection, isLatestDaySelected)
   }
 
   Column(
@@ -74,7 +79,6 @@ fun ChartHeader(
       text = labelText,
       style = MeTheme.typography.subHeading1,
       color = MeTheme.colorScheme.textSubheading,
-      modifier = if (prefix == null && !state.isEmptyGraph) Modifier.alpha(0f) else Modifier,
     )
 
     Row(verticalAlignment = Alignment.Bottom) {

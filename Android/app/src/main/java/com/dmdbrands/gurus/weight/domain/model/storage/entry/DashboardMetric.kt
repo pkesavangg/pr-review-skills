@@ -17,6 +17,13 @@ data class DashboardMetric(
   val isSingleEntry: Boolean = true,
   val rangeText: String? = null,
   val entryTimeStamp: List<String>? = null,
+  /**
+   * Per MA-3965: when [isSingleEntry] is true (a graph point is selected on Week/Month),
+   * true iff the selected day is the most recent day in the data set. Drives the
+   * metric-info label between "latest entry" and "day average". Ignored for Year/Total
+   * (always "month average") and for history-list openings.
+   */
+  val isLatestDaySelected: Boolean = false,
   val weight: Double?,
   val bmi: Double?,
   val bodyFat: Double?,
@@ -42,7 +49,8 @@ data class DashboardMetric(
     fun fromPeriodSummaries(
       periodBodyScaleSummaries: List<PeriodBodyScaleSummary>,
       isSingleEntry: Boolean = true,
-      rangeText: String? = null
+      rangeText: String? = null,
+      isLatestDaySelected: Boolean = false,
     ): DashboardMetric =
       if (periodBodyScaleSummaries.isEmpty())
         this.empty(rangeText = rangeText?.lowercase())
@@ -50,6 +58,7 @@ data class DashboardMetric(
         DashboardMetric(
           rangeText = rangeText?.lowercase(),
           isSingleEntry = isSingleEntry,
+          isLatestDaySelected = isLatestDaySelected,
           entryTimeStamp = periodBodyScaleSummaries.map { it.entryTimestamp },
           weight = periodBodyScaleSummaries.map { it.weight }.averageOrNull(),
           bmi = periodBodyScaleSummaries.mapNotNull { it.bmi }.averageOrNull(),

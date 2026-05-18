@@ -72,10 +72,11 @@ class GraphViewModel @AssistedInject constructor(
     fun create(segment: GraphSegment): GraphViewModel
   }
 
-  // Per MA-3938: Week/Month tabs show the latest non-null positive value per metric for days
-  // with multiple entries (not the daily average). Year/Total still read monthly averages.
+  // Per MA-3965: Week/Month tabs use the hybrid flow — the most recent day in the data set
+  // uses latest-non-null-positive values per metric; every earlier day uses daily averages.
+  // Year/Total still read monthly averages.
   private val dataFlow = if (segment == GraphSegment.WEEK || segment == GraphSegment.MONTH) {
-    entryService.daywiseBodyScaleLatest
+    entryService.daywiseBodyScaleHybrid
   } else {
     entryService.monthlyBodyScaleAverages
   }

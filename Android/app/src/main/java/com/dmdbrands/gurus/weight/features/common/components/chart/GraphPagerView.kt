@@ -51,6 +51,7 @@ fun GraphPagerView(
   onChartConsuming: (Boolean) -> Unit = {},
   onRangeChange: (String) -> Unit = { },
   onMarkerIndexChange: (Double?) -> Unit = {},
+  onLatestDaySelectedChange: (Boolean) -> Unit = {},
   entries: List<PeriodBodyScaleSummary> = emptyList()
 ) {
   val pagerState = rememberPagerState(
@@ -113,6 +114,15 @@ fun GraphPagerView(
 
       LaunchedEffect(graphState.markerIndex) {
         onMarkerIndexChange(graphState.markerIndex)
+      }
+
+      // Per MA-3965: report whether the currently selected graph point lands on the
+      // most recent day in the data set, so the dashboard can route the metric-info
+      // sheet's label between "latest entry" and "day average".
+      LaunchedEffect(graphState.markerIndex, graphState.data) {
+        val marker = graphState.markerIndex?.toLong()
+        val latestDay = graphState.data.maxOfOrNull { it.getTimeStamp() }
+        onLatestDaySelectedChange(marker != null && latestDay != null && marker == latestDay)
       }
 
       LaunchedEffect(graphState.minTarget, graphState.maxTarget, pagerState.currentPage, state.isConsuming) {
