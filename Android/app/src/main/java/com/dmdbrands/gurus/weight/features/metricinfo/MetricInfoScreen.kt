@@ -242,7 +242,7 @@ fun MetricInfoScreenContent(
           // label that way regardless of segment; "day average" / "latest entry"
           // wording only makes sense for dashboard graph aggregates.
           info.isHistoryEntry ->
-            "Measurement taken on $singleEntryDate"
+            "Measurement taken $singleEntryDate"
           info.isSingleEntry ->
             "${GraphLabelHelper.selectionLabel(
               segment = segmentForLabel,
