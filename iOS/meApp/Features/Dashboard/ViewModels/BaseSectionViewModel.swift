@@ -17,17 +17,21 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     @Published var selectedPoint: BathScaleWeightSummary?
     @Published var selectedDate: Date?
     @Published var showCrosshair: Bool = false
-    /// Per-tick scroll position. **Intentionally not `@Published`** — Fix 1a in
-    /// `docs/tasks/ios-graph-hang-investigation.md`. The chart binding writes here
-    /// dozens of times per scroll gesture; publishing each write would invalidate
-    /// `BaseGraphView.body` per tick and cause SwiftUI/Charts to re-evaluate the
-    /// entire chart content tree per frame (the dominant cost in the hang traces).
-    /// The chart already updates its visual position internally via the manual
-    /// `Binding(get:, set:)` in `BaseGraphView`, so suppressing the publish here
-    /// does not make the chart visually stale during scroll. At scroll-end, the
-    /// (still-`@Published`) `isScrolling` fires false → body re-runs → reads the
-    /// latest `scrollPosition` and runs all post-scroll cleanup.
-    var scrollPosition: Date = Date()
+    /// Per-tick scroll position. Must be `@Published` so `BaseGraphView.body`
+    /// re-evaluates as the user pans — SwiftUI Charts re-issues its content
+    /// closure against the new viewport from this body recompute, which is
+    /// what keeps `PointMark`s rendered for dates that scroll INTO view
+    /// during a gesture. Suppressing the publish (MA-3845, "Fix 1a" in
+    /// `docs/tasks/ios-graph-hang-investigation.md`) was originally intended
+    /// to avoid per-tick body invalidations, but in practice it left dots
+    /// missing during scroll until the gesture ended and the Y-axis snapped
+    /// the points back into view — the 5.0.0 vs current regression users
+    /// describe as "no points while scrolling, only appears after stop".
+    /// The original hang concern is now mitigated by other optimizations
+    /// that have since landed: cached chart data in BaseGraphView and the
+    /// VM, `.equatable()` on the period wrapper views, cached calendars,
+    /// and cached axis labels — body recompute is cheap.
+    @Published var scrollPosition: Date = Date()
     @Published var isScrolling: Bool = false
     
     /// Default implementation simply returns the current `selectedDate`.
@@ -380,17 +384,14 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     // MARK: - Scroll Management
 
-    /// Handles scroll position changes with throttling to prevent multiple updates per frame
+    /// Handles scroll position changes. Originally throttled at 16ms to defend
+    /// against `@Published` invalidation cascades — that defense is no longer
+    /// needed since `scrollPosition` is a plain `var` (April 2026 Fix 1a) and
+    /// the chart binding's setter is cheap. We keep the 0.1s dedup guard so
+    /// identical writes still short-circuit, but no longer drop ~half the
+    /// drag ticks under a fast flick.
     func handleScrollPositionChange(_ newPosition: Date?) {
         guard let newPosition = newPosition else {
-            return
-        }
-
-        let now = Date()
-        let timeSinceLastUpdate = now.timeIntervalSince(lastScrollUpdateTime)
-
-        // Throttle updates to prevent multiple updates per frame (SwiftUI warning fix)
-        guard timeSinceLastUpdate >= scrollUpdateThrottleInterval else {
             return
         }
 
@@ -401,7 +402,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             return
         }
 
-        lastScrollUpdateTime = now
+        lastScrollUpdateTime = Date()
         self.scrollPosition = newPosition
 
         // Update dashboard store scroll position
@@ -431,11 +432,13 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         cachedChartSeriesData = []
         cachedChartSeriesMetric = nil
         dashboardStore?.handleScrollEndOptimized()
-        
-        // Sync Y-axis values from store cache after scroll end (with delay to allow store to update)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-            self.syncYAxisFromStore()
-        }
+
+        // P1-6 / P2-3: The previous +0.7s `syncYAxisFromStore` here duplicated
+        // the path already triggered by `BaseGraphView.onChange(of: YAxisCacheSignature)`,
+        // which fires `syncYAxisFromStore` as soon as `handleScrollEndOptimized`'s
+        // staggered `updateYAxisCache()` publishes the new domain/ticks at +300ms.
+        // Removing this extra timer eliminates one source of the post-scroll
+        // "double-update" Y-axis stutter.
     }
     
     // MARK: - Selection Management

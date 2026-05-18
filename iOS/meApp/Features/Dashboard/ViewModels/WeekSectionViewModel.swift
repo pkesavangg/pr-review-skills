@@ -9,6 +9,18 @@ import Foundation
 import SwiftUI
 import Charts
 
+/// Cached gregorian calendar configured with the current locale/timezone.
+/// `plotXDate(for:)` is called once per cached point on every chart cache
+/// refresh — building a fresh `Calendar(identifier:)` per call was a
+/// per-point allocation hot enough to show in the scroll-hang stack traces
+/// the April investigation only patched on the chart render path (not here).
+private let weekPlotCalendar: Calendar = {
+    var cal = Calendar(identifier: .gregorian)
+    cal.timeZone = Calendar.current.timeZone
+    cal.locale = Calendar.current.locale
+    return cal
+}()
+
 /// ViewModel specifically for the Week time period chart view
 /// Handles all week-specific chart logic, scrolling, and day-based data processing
 @MainActor
@@ -48,10 +60,7 @@ final class WeekSectionViewModel: BaseSectionViewModel, Equatable {
     /// The week chart's X-axis ticks are generated in local time as well, so
     /// aligning points to local noon keeps them consistently aligned with labels.
     override func plotXDate(for original: Date) -> Date {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = Calendar.current.timeZone
-        cal.locale = Calendar.current.locale
-
+        let cal = weekPlotCalendar
         let dayStart = cal.startOfDay(for: original)
         guard let noon = cal.date(byAdding: .hour, value: 12, to: dayStart) else {
             return super.plotXDate(for: original)

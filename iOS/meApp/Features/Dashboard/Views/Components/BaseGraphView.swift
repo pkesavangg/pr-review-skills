@@ -57,6 +57,39 @@ private func computeGridTicks(
     return uniqueByDay
 }
 
+/// Combined Y-axis cache identity. A single `.onChange` keyed on this struct
+/// fires `syncYAxisFromStore` exactly once per coordinated domain+ticks
+/// refresh, instead of the prior pair of onChange handlers that each ran the
+/// sync (and queued two `withAnimation` transactions) per cache update.
+fileprivate struct YAxisCacheSignature: Equatable {
+    let domain: ClosedRange<Double>?
+    let ticks: [Double]?
+}
+
+/// Coalesces store-side chart-selection broadcasts. The chart's
+/// `.chartXSelection` binding fires per pointer tick during a scrub; without
+/// cancellation each tick spawned a fresh unstructured `Task` that ran
+/// `updateMetricsForCurrentView()` against the main actor, producing a Task
+/// storm that stalled the gesture. Held by `@State` on `BaseGraphView` so the
+/// in-flight reference survives view body recomputes, and passed by reference
+/// into the conditional-modifier extensions where the bindings live.
+@MainActor
+fileprivate final class StoreSelectionBroadcaster {
+    private var pending: Task<Void, Never>?
+
+    func broadcast(_ date: Date?, to store: DashboardStore) {
+        pending?.cancel()
+        pending = Task { [store] in
+            await store.handleChartSelection(at: date)
+        }
+    }
+
+    func cancel() {
+        pending?.cancel()
+        pending = nil
+    }
+}
+
 /// Base graph view that provides common chart rendering functionality for all time periods
 /// Eliminates code duplication across WeekGraphView, MonthGraphView, YearGraphView, and TotalGraphView
 struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equatable {
@@ -79,6 +112,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     @State private var enableYAxisAnimation: Bool = false
     // Scroll position debouncing
     @State private var scrollUpdateWorkItem: DispatchWorkItem?
+    /// Coalesces per-tick `.chartXSelection` store broadcasts; see
+    /// `StoreSelectionBroadcaster` doc above for the full rationale.
+    @State private var selectionBroadcaster = StoreSelectionBroadcaster()
 
     // MARK: - Throttling State (Performance Optimization)
     /// Last time updateCachedChartData was called
@@ -217,6 +253,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         )
     }
 
+
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -246,7 +283,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                     localSelectedXValue: $localSelectedXValue,
                     dashboardStore: dashboardStore,
                     theme: theme,
-                    getCachedXAxisLabel: getCachedXAxisLabel
+                    getCachedXAxisLabel: getCachedXAxisLabel,
+                    selectionBroadcaster: selectionBroadcaster
                 )
                 .frame(height: 265)
                 .frame(maxWidth: .infinity, minHeight: 240)
@@ -315,20 +353,12 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             // Flip on animation after first frame so the initial mount does not animate
             DispatchQueue.main.async { enableYAxisAnimation = true }
             syncViewModelSelectionFromStore()
-
-            // Force chart to sync with the initial scroll position after configuration
-            if isScrollable {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    // Force the chart binding to update by triggering a small change and then setting the correct position
-                    let targetPosition = viewModel.scrollPosition
-                    // Temporarily set to a slightly different position to force binding update
-                    viewModel.scrollPosition = targetPosition.addingTimeInterval(0.001)
-                    // Then immediately set to the correct position
-                    DispatchQueue.main.async {
-                        viewModel.scrollPosition = targetPosition
-                    }
-                }
-            }
+            // The previous 100ms scroll-position "nudge" ping-pong used to live
+            // here as a workaround for the chart binding not reflecting the
+            // configured position on first mount. With `configure(with:)` now
+            // setting `scrollPosition` synchronously before the chart's onAppear,
+            // the nudge is unnecessary — and it was the visible cause of the
+            // "loads then jumps" flash at every tab switch / period change.
         }
         .onDisappear {
             // Cancel any pending scroll updates to prevent memory leaks
@@ -337,6 +367,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             // Cancel any pending cache updates
             cacheUpdateWorkItem?.cancel()
             cacheUpdateWorkItem = nil
+            // Cancel any in-flight selection broadcast so it doesn't outlive the view
+            selectionBroadcaster.cancel()
         }
         // Track scroll end transition to disable animations during Y-axis recalculation
         .onChange(of: viewModel.isScrolling) { oldValue, newValue in
@@ -569,13 +601,22 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             .interpolationMethod(.monotone)
             .lineStyle(StrokeStyle(lineWidth: viewModel.lineWidth))
 
-            // Visible point mark — only shown when within domain to avoid
-            // dots sitting on the axis boundary
+            // Visible point mark. The `isWithinDomain` gate would normally hide
+            // dots whose value falls outside the current Y-axis domain (to avoid
+            // dots sitting on the axis baseline). During scrolling the Y-axis is
+            // intentionally frozen (DashboardStore.updateYAxisCache returns early
+            // while `graph.isScrolling`), so panning into a region with wider
+            // value swings makes those dots disappear mid-gesture — matching the
+            // 5.0.0 vs current regression where dots only "appear and snap to
+            // the Y axis" after the scroll stops. Show the dots during scroll
+            // using the clamped value; once the gesture ends the domain updates
+            // and the points settle to their natural positions.
+            let showPoint = isWithinDomain || viewModel.isScrolling
             PointMark(
                 x: .value("Date", xDate),
                 y: .value(point.series, isWithinDomain ? point.value : clampedValue)
             )
-            .symbolSize(isWithinDomain ? viewModel.pointArea(isSelected: isThisPointSelected) : 0)
+            .symbolSize(showPoint ? viewModel.pointArea(isSelected: isThisPointSelected) : 0)
             .foregroundStyle(pointColor)
         }
     }
@@ -935,13 +976,14 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
 extension View {
 
     @ViewBuilder
-    func conditionalModifiers<ViewModel: SectionViewModelProtocol>(
+    fileprivate func conditionalModifiers<ViewModel: SectionViewModelProtocol>(
         isScrollable: Bool,
         viewModel: ViewModel,
         localSelectedXValue: Binding<Date?>,
         dashboardStore: DashboardStore,
         theme: AppColors.Palette,
-        getCachedXAxisLabel: @escaping (Date) -> String?
+        getCachedXAxisLabel: @escaping (Date) -> String?,
+        selectionBroadcaster: StoreSelectionBroadcaster
     ) -> some View {
         if isScrollable {
             self
@@ -1050,14 +1092,10 @@ extension View {
                             if viewModel.showCrosshair {
                                 // Use view model's preferredSelectedDate if provided, else fallback to raw selection
                                 let dateToSend = viewModel.preferredSelectedDate ?? selectedDate
-                                Task {
-                                    await dashboardStore.handleChartSelection(at: dateToSend)
-                                }
+                                selectionBroadcaster.broadcast(dateToSend, to: dashboardStore)
                             } else {
                                 // Clear any previous selection in the store
-                                Task {
-                                    await dashboardStore.handleChartSelection(at: nil)
-                                }
+                                selectionBroadcaster.broadcast(nil, to: dashboardStore)
                             }
                         }
                     }
@@ -1073,14 +1111,10 @@ extension View {
                                 viewModel.handleChartSelection(at: date)
                                 if viewModel.showCrosshair {
                                     let dateToSend = viewModel.preferredSelectedDate ?? date
-                                    Task {
-                                        await dashboardStore.handleChartSelection(at: dateToSend)
-                                    }
+                                    selectionBroadcaster.broadcast(dateToSend, to: dashboardStore)
                                 } else {
                                     // Clear any previous selection in the store
-                                    Task {
-                                        await dashboardStore.handleChartSelection(at: nil)
-                                    }
+                                    selectionBroadcaster.broadcast(nil, to: dashboardStore)
                                 }
                             }
                         }
@@ -1119,11 +1153,9 @@ extension View {
                         if let rawDate = newValue {
                             if viewModel.showCrosshair {
                                 let dateToSend = viewModel.preferredSelectedDate ?? rawDate
-                                Task {
-                                    await dashboardStore.handleChartSelection(at: dateToSend)
-                                }
+                                selectionBroadcaster.broadcast(dateToSend, to: dashboardStore)
                             } else {
-                                Task { await dashboardStore.handleChartSelection(at: nil) }
+                                selectionBroadcaster.broadcast(nil, to: dashboardStore)
                             }
                         }
                     }
@@ -1138,14 +1170,10 @@ extension View {
                                 viewModel.handleChartSelection(at: date)
                                 if viewModel.showCrosshair {
                                     let dateToSend = viewModel.preferredSelectedDate ?? date
-                                    Task {
-                                        await dashboardStore.handleChartSelection(at: dateToSend)
-                                    }
+                                    selectionBroadcaster.broadcast(dateToSend, to: dashboardStore)
                                 } else {
                                     // Clear any previous selection in the store
-                                    Task {
-                                        await dashboardStore.handleChartSelection(at: nil)
-                                    }
+                                    selectionBroadcaster.broadcast(nil, to: dashboardStore)
                                 }
                             }
                         }
@@ -1267,11 +1295,18 @@ extension View {
                     localSelectedXValue.wrappedValue = nil
                     viewModel.clearSelection()
                 }
-            // CRITICAL: Sync Y-axis domain and ticks from dashboard store cache
-                .onChange(of: dashboardStore.graph.cachedYAxisDomain) { _, _ in
-                    viewModel.syncYAxisFromStore()
-                }
-                .onChange(of: dashboardStore.graph.cachedYAxisTicks) { _, _ in
+            // CRITICAL: Sync Y-axis domain and ticks from dashboard store cache.
+            // Use a single tuple-based onChange so a coordinated cache update
+            // (domain + ticks updated together by `updateYAxisCache`) fires
+            // `syncYAxisFromStore` ONCE, not twice. The previous pair of
+            // onChange handlers each re-ran `invalidateCache` +
+            // `updateCachedSeriesData` and queued two `withAnimation`
+            // transactions, doubling post-scroll Y-axis work and producing
+            // visible scroll-end stutter.
+                .onChange(of: YAxisCacheSignature(
+                    domain: dashboardStore.graph.cachedYAxisDomain,
+                    ticks: dashboardStore.graph.cachedYAxisTicks
+                )) { _, _ in
                     viewModel.syncYAxisFromStore()
                 }
         } else {

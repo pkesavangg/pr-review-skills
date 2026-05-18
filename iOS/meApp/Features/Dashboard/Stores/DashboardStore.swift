@@ -1306,6 +1306,7 @@ class DashboardStore: ObservableObject {
     private func loadMetricsFromLocalAccount() async {
         await MainActor.run {
             // Try to load from local account if available
+            var hasLocalMetricConfig = false
             if let account = accountService.activeAccount {
                 let dashboardTypeString = account.dashboardSettings?.dashboardType
                 let dashboardType: DashboardType
@@ -1325,6 +1326,7 @@ class DashboardStore: ObservableObject {
                     let metricArray = dashboardMetrics.split(separator: ",").map(String.init)
                     metricsManager.updateMetricsOrder(from: metricArray)
                     syncRemovalStateFromMetricsManager()
+                    hasLocalMetricConfig = true
                 } else {
                     if metricsManager.state.metrics.isEmpty {
                         metricsManager.setupInitialMetrics()
@@ -1336,9 +1338,22 @@ class DashboardStore: ObservableObject {
                     metricsManager.setupInitialMetrics()
                 }
             }
-            
-            // DO NOT set hasLoadedDashboardConfig here - wait for API to load
-            // This ensures API metrics are shown, not just local ones
+
+            // P0-3: Originally we deferred `hasLoadedDashboardConfig = true`
+            // until `loadDashboardConfigurationFromAPI` completed. That gated
+            // `metricsToShow` (DashboardStore.swift:451) on a multi-second
+            // network chain (refreshAccount + syncEntries + streak refresh +
+            // goal data + metrics API), producing the customer-reported
+            // "loads with no weight data" state on cold start.
+            //
+            // The locally-cached metric config is authoritative enough to
+            // render the grid; the API path still runs and re-flips the
+            // flag (idempotent) once fresher data arrives. We only flip
+            // here when we actually loaded a non-empty local config so
+            // brand-new accounts still wait for the API to populate.
+            if hasLocalMetricConfig && !metricsManager.state.metrics.isEmpty {
+                ui.hasLoadedDashboardConfig = true
+            }
         }
     }
 
@@ -1707,13 +1722,13 @@ class DashboardStore: ObservableObject {
         DispatchQueue.main.async {
             self.loadLatestEntryData()
             self.loadGoalCardData()
-            
+
             Task {
                 do {
                     // Save the old streak items to preserve order by label
                     let oldStreakItems = self.streakManager.state.streakItems
                     let oldOrder = self.ui.streakGridOrder
-                    
+
                     try await self.streakManager.refreshStreakData()
 
                     await MainActor.run {
@@ -1721,10 +1736,17 @@ class DashboardStore: ObservableObject {
                             oldStreakItems: oldStreakItems,
                             oldOrder: oldOrder
                         )
-                        
-                        // Set flags only after successful refresh to ensure UI state matches actual data
-                        self.ui.hasLoadedProgressMetrics = true
-                        self.ui.hasLoadedDashboardConfig = true
+
+                        // P0-2: Only flip these once. Re-publishing already-true
+                        // flags on every entry save fires `objectWillChange` for
+                        // any view observing `ui`, which is the proximate cause
+                        // of the visible UI churn after a save.
+                        if !self.ui.hasLoadedProgressMetrics {
+                            self.ui.hasLoadedProgressMetrics = true
+                        }
+                        if !self.ui.hasLoadedDashboardConfig {
+                            self.ui.hasLoadedDashboardConfig = true
+                        }
                     }
                 } catch {
                     self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to refresh streak data after entry change: \(error)")
@@ -1735,7 +1757,11 @@ class DashboardStore: ObservableObject {
             self.invalidateContinuousOperationsCache()
             self.lastVisibleOperationsCacheTime = Date.distantPast
 
-            // Force full recomputation of visible operations, Y-axis, and weight display
+            // Force full recomputation of visible operations, Y-axis, and weight
+            // display. This already calls `updateYAxisCache()` internally — the
+            // prior +150ms `asyncAfter` follow-up below was a duplicate that
+            // forced a second Y-axis recompute without animation suppression
+            // and produced the visible post-save Y-axis jump.
             self.forceCompleteRecalculationAfterScrollPosition()
 
             // Check if selected point still exists after deletion
@@ -1764,11 +1790,6 @@ class DashboardStore: ObservableObject {
 
                 // Update metrics for current view (either selected point or averages)
                 self.updateMetricsForCurrentView()
-            }
-
-            // Also schedule a follow-up domain recalc after brief propagation
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                self.updateYAxisCache()
             }
         }
     }
@@ -3661,13 +3682,21 @@ class DashboardStore: ObservableObject {
         await graphManager.handleScrollPhaseChange(phase)
 
         // When scroll ends (phase becomes .idle), defer heavy work to not block scrolling
+        // This prevents the "hang" when user tries to scroll again immediately.
+        //
+        // IMPORTANT: This is the ONLY active scroll-end orchestrator. The earlier
+        // "consolidation" attempt removed these updates on the assumption that
+        // `handleScrollEndOptimized` (called from `BaseSectionViewModel.handleScrollEnd`)
+        // would cover them — but that VM method has no live caller, so removing
+        // these updates left the Y-axis frozen across windows. Without this
+        // block the Y-axis no longer adapts to the visible week/month (Apple
+        // Health–style auto-fit), which is the core behaviour of the chart.
         if phase == .idle {
-            // Defer heavy computation to allow UI to remain responsive
-            // This prevents the "hang" when user tries to scroll again immediately
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
                 guard let self = self else { return }
 
-                // Update Y-axis cache after domain recalculation
+                // Update Y-axis cache against the new visible region — this is
+                // what makes the Y-axis adapt to each week/month window.
                 self.updateYAxisCache()
 
                 // Only update UI elements that don't trigger domain recalculation
