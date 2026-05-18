@@ -467,7 +467,25 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
 
         handleChartSelection(at: plotXDate(for: date))
     }
-    
+
+    /// Applies a selection that has already been validated against the store's
+    /// operations (e.g. by `DashboardStore.updateSelectedPeriod`'s
+    /// `applyChartSelectionSync`). Deliberately bypasses the section-specific
+    /// `handleChartSelection` snap/range guards: those guards are designed for
+    /// user input and can silently clear a perfectly valid programmatic
+    /// selection on the first frame after a tab switch (xAxisValues empty,
+    /// chartOperations not yet bracketed, etc.) — see MA-3977.
+    ///
+    /// `showCrosshair = true` is intentional even when `point == nil` to match
+    /// the established contract in `DashboardGraphManager.handleCompleteChartSelection`,
+    /// which shows the crosshair at the selected X position even when the
+    /// chart is interpolating between data points.
+    func applyStoreValidatedSelection(date: Date, point: BathScaleWeightSummary?) {
+        selectedDate = date
+        selectedPoint = point
+        showCrosshair = true
+    }
+
     /// Clears all selection state
     func clearSelection() {
         selectedPoint = nil

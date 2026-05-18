@@ -414,15 +414,54 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         state.showCrosshair = point != nil
     }
 
+    /// Synchronous selection apply used by `DashboardStore.updateSelectedPeriod` to seed
+    /// the initial auto-selection BEFORE `state.selectedPeriod` publishes. Doing this
+    /// inline (rather than via the previous `Task { await ... }` deferral) ensures the
+    /// new BaseGraphView mounts with the store already holding the latest selection,
+    /// so the on-mount `syncViewModelSelectionFromStore` lands the crosshair on first
+    /// render instead of racing against the chartIdentity remount and section-VM
+    /// geometry guards.
+    func applyChartSelectionSync(at selectedDate: Date, operations: [BathScaleWeightSummary]) {
+        state.selectedXValue = selectedDate
+
+        guard !operations.isEmpty else {
+            state.selectedPoint = nil
+            state.showCrosshair = false
+            return
+        }
+
+        let exactPoint: BathScaleWeightSummary? = {
+            switch state.selectedPeriod {
+            case .week, .month:
+                return operations.first { calendar.isDate($0.date, inSameDayAs: selectedDate) }
+            case .year, .total:
+                return operations.first { calendar.isDate($0.date, equalTo: selectedDate, toGranularity: .month) }
+            }
+        }()
+
+        state.selectedPoint = exactPoint
+        state.showCrosshair = true
+    }
+
     @available(iOS 18.0, *)
     func handleScrollPhaseChange(_ phase: ScrollPhase) async {
         switch phase {
         case .idle:
+            // Only clear selection on `.idle` when the user actually scrolled
+            // (`hasDetectedScrollInCurrentGesture == true`). After a tab switch,
+            // SwiftUI Charts emits a phase change to `.idle` as the chart
+            // re-mounts and settles into the programmatic scroll position —
+            // unconditionally clearing here wiped the auto-selection that
+            // `DashboardStore.updateSelectedPeriod` had just applied,
+            // producing the "selection appears then quickly disappears"
+            // symptom on tab switch.
+            let didUserScroll = state.hasDetectedScrollInCurrentGesture
             state.isScrolling = false
             state.hasDetectedScrollInCurrentGesture = false
 
-            // Clear selection state for better UX
-            state.clearSelection()
+            if didUserScroll {
+                state.clearSelection()
+            }
 
             if let finalPosition = self.latestScrollPosition {
                 self.state.xScrollPosition = finalPosition
