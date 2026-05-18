@@ -9,6 +9,18 @@ import Foundation
 import SwiftUI
 import Charts
 
+/// Cached gregorian calendar configured with the current locale/timezone.
+/// `plotXDate(for:)` is invoked once per cached point on every chart cache
+/// refresh; allocating a fresh `Calendar(identifier:)` per call showed up
+/// in the same `_LocaleICU.minimumDaysInFirstWeek` lookup pattern the April
+/// investigation patched on the chart render path.
+private let monthPlotCalendar: Calendar = {
+    var cal = Calendar(identifier: .gregorian)
+    cal.timeZone = Calendar.current.timeZone
+    cal.locale = Calendar.current.locale
+    return cal
+}()
+
 /// ViewModel specifically for the Month time period chart view
 /// Handles all month-specific chart logic, scrolling, and day-based data processing
 @MainActor
@@ -35,10 +47,7 @@ final class MonthSectionViewModel: BaseSectionViewModel, Equatable {
     /// Align plotted daily points to local noon so they overlap month X-axis Sunday ticks,
     /// which are generated at local noon.
     override func plotXDate(for original: Date) -> Date {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = Calendar.current.timeZone
-        cal.locale = Calendar.current.locale
-
+        let cal = monthPlotCalendar
         let dayStart = cal.startOfDay(for: original)
         guard let noon = cal.date(byAdding: .hour, value: 12, to: dayStart) else {
             return super.plotXDate(for: original)

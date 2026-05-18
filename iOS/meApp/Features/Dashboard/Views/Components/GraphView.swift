@@ -100,48 +100,48 @@ struct GraphView: View {
             monthSectionViewModel.clearSelection()
             weekSectionViewModel.clearSelection()
 
-            // PERFORMANCE: Defer heavy configuration to prevent CPU spike
-            // Only configure the active ViewModel after a brief delay
-            periodChangeTask = Task { @MainActor in
-                // Brief delay to let the UI settle
-                try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
-                guard !Task.isCancelled else { return }
+            // Force a fresh BaseGraphView mount for the new period. Without
+            // this the old chart's last frame stays on-screen while the new
+            // one is configuring (this is what users describe as "graphs
+            // overlap each other" / "graph display changed").
+            chartIdentity = UUID()
 
-                // Configure only the active view model (not all 4)
-                switch newValue {
-                case .week:
-                    weekSectionViewModel.configure(with: dashboardStore)
-                case .month:
-                    monthSectionViewModel.configure(with: dashboardStore)
-                case .year:
-                    yearSectionViewModel.configure(with: dashboardStore)
-                case .total:
-                    totalSectionViewModel.configure(with: dashboardStore)
-                }
-
-                // Force the active view model to sync with the scroll position set by WeightTrendView
-                guard !Task.isCancelled else { return }
-
-                let finalPosition = dashboardStore.graph.xScrollPosition
-                switch newValue {
-                case .week:
-                    weekSectionViewModel.forceScrollPositionUpdate(to: finalPosition)
-                case .month:
-                    monthSectionViewModel.forceScrollPositionUpdate(to: finalPosition)
-                case .year:
-                    yearSectionViewModel.forceScrollPositionUpdate(to: finalPosition)
-                case .total:
-                    break // Total view is not scrollable
-                }
-
-                // Recalculate and cache Y-axis based on the new visible region
-                dashboardStore.updateYAxisCache()
+            // Configure the active view model synchronously. The prior code
+            // deferred this behind a 50ms `Task.sleep` to "let the UI settle";
+            // with the chartIdentity-driven remount above, the new view mounts
+            // pre-configured and we no longer need the deferral.
+            switch newValue {
+            case .week:
+                weekSectionViewModel.configure(with: dashboardStore)
+            case .month:
+                monthSectionViewModel.configure(with: dashboardStore)
+            case .year:
+                yearSectionViewModel.configure(with: dashboardStore)
+            case .total:
+                totalSectionViewModel.configure(with: dashboardStore)
             }
+
+            let finalPosition = dashboardStore.graph.xScrollPosition
+            switch newValue {
+            case .week:
+                weekSectionViewModel.forceScrollPositionUpdate(to: finalPosition)
+            case .month:
+                monthSectionViewModel.forceScrollPositionUpdate(to: finalPosition)
+            case .year:
+                yearSectionViewModel.forceScrollPositionUpdate(to: finalPosition)
+            case .total:
+                break // Total view is not scrollable
+            }
+
+            // Recalculate and cache Y-axis based on the new visible region.
+            dashboardStore.updateYAxisCache()
         }
-        // Immediately react to active account goal updates like GoalProgressView
-        .onReceive(accountService.$activeAccount) { _ in
-            dashboardStore.handleSettingsChange()
-        }
+        // P2-6: The store's `AccountSettingsSnapshot` subscription already
+        // fans out `handleSettingsChange` for any `accountService.$activeAccount`
+        // mutation (see DashboardStore.setupSubscriptions). The previous
+        // `onReceive` here duplicated that call on every emission — login,
+        // settings save, unit toggle, goal save — doing the streak refresh +
+        // goal reload + Y-axis recalc + UI update twice. Removed.
     }
 
     // MARK: - Chart View
