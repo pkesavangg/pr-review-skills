@@ -51,6 +51,20 @@ data class GraphState(
     return this.data.maxByOrNull { it.getTimeStamp() }?.getTimeStamp() ?: Calendar.getInstance().timeInMillis
   }
 
+  /**
+   * Per MA-3965: true when a graph point is selected and that point lands on the
+   * most recent day present in the data set. "Latest day" is data-driven (the
+   * highest entry timestamp in [data]), not the calendar's today. Both the
+   * trend-view header label and the metric-info routing read from this single
+   * derivation, so the two surfaces cannot drift.
+   */
+  val isLatestDaySelected: Boolean
+    get() {
+      val marker = markerIndex?.toLong() ?: return false
+      val latestDay = data.maxOfOrNull { it.getTimeStamp() } ?: return false
+      return marker == latestDay
+    }
+
   fun createFallBackData(
     segment: GraphSegment,
     timeStamps: List<Long>? = null,

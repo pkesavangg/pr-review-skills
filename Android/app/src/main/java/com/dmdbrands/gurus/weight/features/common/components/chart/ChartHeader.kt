@@ -54,19 +54,9 @@ fun ChartHeader(
   }
   
   val hasSelection = state.markerIndex != null
-  // Per MA-3965: on Week/Month the most-recent day shows "latest entry"; every other
-  // day shows "day average". "Latest day" is the highest entry timestamp present in
-  // the current data set, not today's calendar date.
-  val latestDayTimestamp = remember(state.data) {
-    state.data.maxOfOrNull { it.getTimeStamp() }
-  }
-  val isLatestDaySelected = remember(state.markerIndex, latestDayTimestamp) {
-    val marker = state.markerIndex?.toLong()
-    marker != null && latestDayTimestamp != null && marker == latestDayTimestamp
-  }
   val labelText = when {
     state.isEmptyGraph -> "no entries"
-    else -> GraphLabelHelper.selectionLabel(segment, hasSelection, isLatestDaySelected)
+    else -> GraphLabelHelper.selectionLabel(segment, hasSelection, state.isLatestDaySelected)
   }
 
   Column(

@@ -117,12 +117,12 @@ fun GraphPagerView(
       }
 
       // Per MA-3965: report whether the currently selected graph point lands on the
-      // most recent day in the data set, so the dashboard can route the metric-info
-      // sheet's label between "latest entry" and "day average".
-      LaunchedEffect(graphState.markerIndex, graphState.data) {
-        val marker = graphState.markerIndex?.toLong()
-        val latestDay = graphState.data.maxOfOrNull { it.getTimeStamp() }
-        onLatestDaySelectedChange(marker != null && latestDay != null && marker == latestDay)
+      // most recent day in the data set so the dashboard can route the metric-info
+      // sheet's label. Single source of truth lives on [GraphState.isLatestDaySelected]
+      // — the trend-view header reads from the same property, so the two surfaces
+      // cannot drift.
+      LaunchedEffect(graphState.isLatestDaySelected) {
+        onLatestDaySelectedChange(graphState.isLatestDaySelected)
       }
 
       LaunchedEffect(graphState.minTarget, graphState.maxTarget, pagerState.currentPage, state.isConsuming) {
