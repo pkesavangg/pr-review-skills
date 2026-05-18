@@ -16,12 +16,16 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.foundation.MutatePriority
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -227,10 +231,30 @@ private fun <S : BaseDashboardState> DashboardPage(
     if (targetPage != pagerState.currentPage) pagerState.scrollToPage(targetPage)
   }
 
+  val scrollState = rememberScrollState()
+  val flingInterceptScope = rememberCoroutineScope()
+  // Compose consumes the first Down event during a fling to stop the scroll,
+  // which means a clickable child (e.g. UPDATE GOAL / METRIC INFO) misses the
+  // tap if the user fingers down while the scroll is still gliding. We watch
+  // the Initial pass and stop the scroll ourselves without consuming the
+  // event, so the same gesture continues through to the child. (MA-2615)
   val columnModifier = if (chartFillsHeight) {
     Modifier.fillMaxSize()
   } else {
-    Modifier.verticalScroll(rememberScrollState())
+    Modifier
+      .verticalScroll(scrollState)
+      .pointerInput(scrollState) {
+        awaitPointerEventScope {
+          while (true) {
+            val event = awaitPointerEvent(PointerEventPass.Initial)
+            if (event.type == PointerEventType.Press && scrollState.isScrollInProgress) {
+              flingInterceptScope.launch {
+                scrollState.scroll(scrollPriority = MutatePriority.UserInput) { }
+              }
+            }
+          }
+        }
+      }
   }
 
   PullToRefreshBox(

@@ -61,7 +61,7 @@ class WeightDashboardViewModel @Inject constructor(
     if (intent is WeightDashboardIntent) {
       when (intent) {
         is WeightDashboardIntent.Refresh -> refresh()
-        is WeightDashboardIntent.OnConnectScale -> navigateTo(AppRoute.AccountSettings.AddEditScales)
+        is WeightDashboardIntent.OnConnectScale -> navigateTo(AppRoute.AccountSettings.MyDevices)
         is WeightDashboardIntent.ResetDashboard -> showResetDashboardAlert()
         is WeightDashboardIntent.UpdateVisibleKeys -> updateVisibleKeys(intent.keys, intent.dashboardType)
         is WeightDashboardIntent.NavigateToGoal -> navigateTo(AppRoute.AccountSettings.Goal)

@@ -436,7 +436,7 @@ interface EntryReadDao {
         CAST(AVG(bp.diastolic) AS INTEGER) AS avgDiastolic,
         CAST(AVG(bp.pulse) AS INTEGER) AS avgPulse
       FROM entry_view e
-      INNER JOIN bpm_entry bp ON e.id = bp.entryId
+      INNER JOIN bpm_entry bp ON e.id = bp.id
       WHERE e.accountId = :accountId
         AND (e.operationType IS NULL OR e.operationType != 'delete')
       GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
@@ -466,7 +466,7 @@ interface EntryReadDao {
         CAST(AVG(bp.diastolic) AS INTEGER) AS avgDiastolic,
         CAST(AVG(bp.pulse) AS INTEGER) AS avgPulse
     FROM entry_view e
-    INNER JOIN bpm_entry bp ON e.id = bp.entryId
+    INNER JOIN bpm_entry bp ON e.id = bp.id
     WHERE e.accountId = :accountId
       AND (e.operationType IS NULL OR e.operationType != 'delete')
     GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
@@ -575,7 +575,7 @@ interface EntryReadDao {
     """
         SELECT strftime('%Y-%m-%d', datetime(e.entryTimestamp,${UTC},${LOCAL_TIME}))
         FROM entry_view AS e
-        INNER JOIN bpm_entry AS b ON b.entryId = e.id
+        INNER JOIN bpm_entry AS b ON b.id = e.id
         WHERE e.accountId = :accountId
           AND (e.operationType IS NULL OR e.operationType != 'delete')
         GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp,${UTC},${LOCAL_TIME}))

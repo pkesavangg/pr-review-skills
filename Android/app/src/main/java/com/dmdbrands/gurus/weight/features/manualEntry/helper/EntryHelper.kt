@@ -401,7 +401,7 @@ object EntryHelper {
     )
 
     val bpmEntryEntity = BpmEntryEntity(
-      entryId = 0,
+      id = 0,
       systolic = systolic,
       diastolic = diastolic,
       pulse = pulse,

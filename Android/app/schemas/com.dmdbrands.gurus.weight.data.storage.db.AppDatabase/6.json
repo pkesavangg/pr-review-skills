@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 6,
-    "identityHash": "767105ddace77ddcdfd8cc5720aaa02b",
+    "identityHash": "f9809793900f8a78b38a1d5147af43da",
     "entities": [
       {
         "tableName": "account",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `firstName` TEXT NOT NULL, `lastName` TEXT NOT NULL, `dob` TEXT NOT NULL, `email` TEXT NOT NULL, `expiresAt` TEXT, `fcmToken` TEXT, `gender` TEXT NOT NULL, `isActiveAccount` INTEGER NOT NULL, `isLoggedIn` INTEGER NOT NULL, `isExpired` INTEGER NOT NULL, `isSynced` INTEGER NOT NULL, `lastActiveTime` TEXT, `zipcode` TEXT NOT NULL, `hasSeenAppReview` INTEGER NOT NULL, `hasSeenScaleReview` INTEGER NOT NULL, `accountSettings` TEXT, PRIMARY KEY(`accountId`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `firstName` TEXT NOT NULL, `lastName` TEXT NOT NULL, `dob` TEXT NOT NULL, `email` TEXT NOT NULL, `expiresAt` TEXT, `fcmToken` TEXT, `gender` TEXT NOT NULL, `isActiveAccount` INTEGER NOT NULL, `isLoggedIn` INTEGER NOT NULL, `isExpired` INTEGER NOT NULL, `isSynced` INTEGER NOT NULL, `lastActiveTime` TEXT, `zipcode` TEXT NOT NULL, `hasSeenAppReview` INTEGER NOT NULL DEFAULT 0, `hasSeenScaleReview` INTEGER NOT NULL DEFAULT 0, `accountSettings` TEXT DEFAULT NULL, PRIMARY KEY(`accountId`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -93,18 +93,21 @@
             "fieldPath": "hasSeenAppReview",
             "columnName": "hasSeenAppReview",
             "affinity": "INTEGER",
-            "notNull": true
+            "notNull": true,
+            "defaultValue": "0"
           },
           {
             "fieldPath": "hasSeenScaleReview",
             "columnName": "hasSeenScaleReview",
             "affinity": "INTEGER",
-            "notNull": true
+            "notNull": true,
+            "defaultValue": "0"
           },
           {
             "fieldPath": "accountSettings",
             "columnName": "accountSettings",
-            "affinity": "TEXT"
+            "affinity": "TEXT",
+            "defaultValue": "NULL"
           }
         ],
         "primaryKey": {
@@ -789,11 +792,11 @@
       },
       {
         "tableName": "bpm_entry",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`entryId` INTEGER NOT NULL, `systolic` INTEGER NOT NULL, `diastolic` INTEGER NOT NULL, `pulse` INTEGER NOT NULL, `meanArterial` TEXT NOT NULL, `note` TEXT, PRIMARY KEY(`entryId`), FOREIGN KEY(`entryId`) REFERENCES `entry`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `systolic` INTEGER NOT NULL, `diastolic` INTEGER NOT NULL, `pulse` INTEGER NOT NULL, `meanArterial` TEXT NOT NULL, `note` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `entry`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
-            "fieldPath": "entryId",
-            "columnName": "entryId",
+            "fieldPath": "id",
+            "columnName": "id",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -830,7 +833,7 @@
         "primaryKey": {
           "autoGenerate": false,
           "columnNames": [
-            "entryId"
+            "id"
           ]
         },
         "foreignKeys": [
@@ -839,7 +842,7 @@
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
-              "entryId"
+              "id"
             ],
             "referencedColumns": [
               "id"
@@ -1171,7 +1174,7 @@
       },
       {
         "tableName": "notification_settings",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `shouldSendEntryNotifications` INTEGER NOT NULL, `shouldSendWeightInEntryNotifications` INTEGER NOT NULL, `isSynced` INTEGER NOT NULL, `willReceiveEmails` INTEGER NOT NULL, PRIMARY KEY(`accountId`), FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `shouldSendEntryNotifications` INTEGER NOT NULL, `shouldSendWeightInEntryNotifications` INTEGER NOT NULL, `isSynced` INTEGER NOT NULL, `willReceiveEmails` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`accountId`), FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "accountId",
@@ -1201,7 +1204,8 @@
             "fieldPath": "willReceiveEmails",
             "columnName": "willReceiveEmails",
             "affinity": "INTEGER",
-            "notNull": true
+            "notNull": true,
+            "defaultValue": "0"
           }
         ],
         "primaryKey": {
@@ -1354,7 +1358,7 @@
       },
       {
         "tableName": "baby",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`babyId` TEXT NOT NULL, `accountId` TEXT NOT NULL, `name` TEXT NOT NULL, `birthdate` TEXT, `sex` TEXT, `birthWeightDecigrams` INTEGER, `birthLengthMillimeters` INTEGER, `isBorn` INTEGER, `isOwnedByAccount` INTEGER, `permissions` INTEGER, `createdAt` INTEGER, `dueDate` TEXT, `lastUpdated` TEXT, `isSynced` INTEGER NOT NULL, `isDeleted` INTEGER NOT NULL, `activeBabyId` TEXT, PRIMARY KEY(`babyId`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`babyId` TEXT NOT NULL, `accountId` TEXT NOT NULL, `name` TEXT NOT NULL, `birthdate` TEXT, `sex` TEXT, `birthWeightDecigrams` INTEGER, `birthLengthMillimeters` INTEGER, `isBorn` INTEGER, `isOwnedByAccount` INTEGER, `permissions` INTEGER, `createdAt` INTEGER, `dueDate` TEXT, `lastUpdated` TEXT, `isSynced` INTEGER NOT NULL, `isDeleted` INTEGER NOT NULL, `activeBabyId` TEXT, PRIMARY KEY(`babyId`), FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "babyId",
@@ -1457,6 +1461,19 @@
             ],
             "orders": [],
             "createSql": "CREATE INDEX IF NOT EXISTS `index_baby_accountId` ON `${TABLE_NAME}` (`accountId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "account",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "accountId"
+            ],
+            "referencedColumns": [
+              "accountId"
+            ]
           }
         ]
       },
@@ -1593,7 +1610,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '767105ddace77ddcdfd8cc5720aaa02b')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f9809793900f8a78b38a1d5147af43da')"
     ]
   }
 }

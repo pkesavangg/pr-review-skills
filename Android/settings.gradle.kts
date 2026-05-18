@@ -46,6 +46,13 @@ dependencyResolutionManagement {
         password = githubToken
       }
     }
+    maven {
+      url = uri("https://maven.pkg.github.com/gg-engineering/vico")
+      credentials {
+        username = githubUser
+        password = githubToken
+      }
+    }
   }
 }
 

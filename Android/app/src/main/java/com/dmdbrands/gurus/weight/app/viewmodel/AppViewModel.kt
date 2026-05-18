@@ -593,7 +593,7 @@ constructor(
         val entries = mapEntries(accountId, device?.id ?: "")
         entryService.addEntry(entries)
         if (!isSetupInProgress) {
-          dialogQueueService.showToast(Toast(message = "entry saved successfully"))
+          dialogQueueService.showToast(Toast.Simple(message = "entry saved successfully"))
         }
         checkAccountFlags("entry")
       } catch (e: Exception) {

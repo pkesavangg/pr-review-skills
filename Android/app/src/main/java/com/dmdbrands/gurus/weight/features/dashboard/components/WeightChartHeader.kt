@@ -69,7 +69,7 @@ fun WeightChartHeader(
 
 private fun displayUnit(weightUnit: WeightUnit, weight: Double): String = when (weightUnit) {
   WeightUnit.KG -> DashboardSnapshotStrings.Kg
-  WeightUnit.LB -> if (weight <= 1.0 && weight != 0.0) DashboardSnapshotStrings.Lb else DashboardSnapshotStrings.Lbs
+  WeightUnit.LB, WeightUnit.LB_OZ -> if (weight <= 1.0 && weight != 0.0) DashboardSnapshotStrings.Lb else DashboardSnapshotStrings.Lbs
 }
 
 /**
