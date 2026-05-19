@@ -13,6 +13,9 @@ struct GraphScrollHintModalView: View {
 
     @Environment(\.appTheme) private var theme
     @Environment(\.colorScheme) private var colorScheme
+    /// Reveals the card only after the underlying `GifView` reports its first
+    /// successful render, so the card never appears with an empty GIF slot.
+    @State private var isGifReady = false
 
     /// Aspect ratio (W:H) of the source GIF (848 × 612), which also matches the
     /// chart-card slot in the Figma design (212 × 153).
@@ -55,6 +58,8 @@ struct GraphScrollHintModalView: View {
         .background(theme.backgroundPrimary)
         .cornerRadius(.radiusXL)
         .shadow(color: Color.black.opacity(0.12), radius: 10, x: 0, y: 5)
+        .opacity(isGifReady ? 1 : 0)
+        .animation(.easeOut(duration: 0.2), value: isGifReady)
     }
 
     // MARK: - Subviews
@@ -75,7 +80,10 @@ struct GraphScrollHintModalView: View {
             GifView(
                 gifName: AppAssets.graphScrollHintGif(colorScheme == .dark),
                 width: geo.size.width,
-                height: geo.size.height
+                height: geo.size.height,
+                onLoaded: {
+                    isGifReady = true
+                }
             )
             .clipShape(RoundedRectangle(cornerRadius: demoCornerRadius))
         }
