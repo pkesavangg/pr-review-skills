@@ -46,8 +46,6 @@ fun AppHelpModal(
         },
         imageType = AppPopupImageType.DefaultImage(AppIcons.Default.ggLogo),
       ) {
-        // Parent AppPopup column applies sm (16dp) spacedBy; add another sm so the
-        // gap between the supporting text and the first action button reaches lg (32dp).
         Spacer(Modifier.height(MeTheme.spacing.x6s))
         val phoneNumber = AppHelpModalStrings.Phone
 
