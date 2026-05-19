@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -45,11 +46,15 @@ fun AppHelpModal(
         },
         imageType = AppPopupImageType.DefaultImage(AppIcons.Default.ggLogo),
       ) {
-        Spacer(Modifier.height(MeTheme.spacing.x6s))
-        // Phone row
+        // Parent AppPopup column applies sm (16dp) spacedBy; add another sm so the
+        // gap between the supporting text and the first action button reaches lg (32dp).
+        Spacer(Modifier.height(MeTheme.spacing.sm))
         val phoneNumber = AppHelpModalStrings.Phone
 
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+          horizontalAlignment = Alignment.CenterHorizontally,
+          verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
+        ) {
           if (showGuide && onGuideClick != null) {
             AppButton(
               label = AppHelpModalStrings.GuideButton,
