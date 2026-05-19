@@ -1,11 +1,12 @@
 # pr-review-skills
 
-A team-shared Claude Code reviewer for **SwiftUI** and **Jetpack Compose** code. Two slash commands sharing one rule set:
+A team-shared Claude Code reviewer for **SwiftUI** and **Jetpack Compose** code, plus a PR description writer. Two slash commands and one auto-triggering skill sharing one rule set:
 
-| Command       | Who runs it | When                       | Input                              | Output                                                                       |
-| ------------- | ----------- | -------------------------- | ---------------------------------- | ---------------------------------------------------------------------------- |
-| `/review`     | Author      | Before commit / before PR  | Local working tree (staged + unstaged) | `.claude-review/report.md` + offered in-place fixes (you stage them yourself) |
-| `/review-pr`  | Reviewer    | After PR is opened         | GitHub PR diff + comments           | Inline GitHub review comments + summary                                       |
+| Trigger          | Type     | Who runs it | When                       | Input                                              | Output                                                                       |
+| ---------------- | -------- | ----------- | -------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `/review`        | Command  | Author      | Before commit / before PR  | Local working tree (staged + unstaged)             | `.claude-review/report.md` + offered in-place fixes (you stage them yourself) |
+| `/review-pr`     | Command  | Reviewer    | After PR is opened         | GitHub PR diff + comments                          | Inline GitHub review comments + summary                                       |
+| `pr-description` | Skill    | Author      | Before / after opening PR  | Current branch, branch override, or GitHub PR URL  | PR title + Markdown body (Jira-linked) ready to paste or pipe to `gh pr create` |
 
 Both commands:
 
@@ -19,6 +20,8 @@ Both commands:
 
 `/review` adds: writes findings to a local Markdown report, offers an interactive "apply fixes" picker, applies fixes in-place via `Edit`. Never mutates git state — you `git add` deliberately. Has a `--staged --no-prompt` mode for opt-in pre-commit hooks.
 
+`pr-description` is an auto-triggering skill (no slash). It fires on phrases like "write a PR description", "raise a PR against KITC-541", "describe this PR", or when you paste a `github.com/.../pull/N` URL. Resolves the Jira ID from the message, branch name, or commits; reads the diff; emits a Title block + Markdown Body block with Summary / Changes / Test plan / Jira sections. Never adds the AI attribution footer. Will not open or push the PR unless you ask.
+
 ## How it works
 
 See [HOW-IT-WORKS.md](HOW-IT-WORKS.md) for flowcharts of both pipelines, what gets checked at each step, and the loops involved.
@@ -31,9 +34,12 @@ pr-review-skills/
 ├── INSTALL.md
 ├── HOW-IT-WORKS.md
 ├── .claude/
-│   └── commands/
-│       ├── review-pr.md        ← reviewer-side orchestrator (post-PR)
-│       └── review.md           ← author-side orchestrator (pre-commit, local)
+│   ├── commands/
+│   │   ├── review-pr.md        ← reviewer-side orchestrator (post-PR)
+│   │   └── review.md           ← author-side orchestrator (pre-commit, local)
+│   └── skills/
+│       └── pr-description/     ← auto-triggering skill: title + body from branch/PR/Jira
+│           └── SKILL.md
 └── references/
     ├── vendored/                ← MIT-licensed snapshots of swiftui-pro + compose-expert; see UPSTREAM.md
     │   ├── UPSTREAM.md          ← attribution, version pins, quarterly sync routine
@@ -64,11 +70,12 @@ The two upstream SwiftUI / Compose rule sets are vendored verbatim under [refere
 See [INSTALL.md](INSTALL.md) for the full installer. TL;DR:
 
 ```bash
-# One-time: clone this repo and symlink both commands. That's it — all rules ship inside.
+# One-time: clone this repo and symlink both commands + the skill. All rules ship inside.
 git clone https://github.com/pkesavangg/pr-review-skills.git ~/pr-review-skills
-mkdir -p ~/.claude/commands
-ln -s ~/pr-review-skills/.claude/commands/review-pr.md ~/.claude/commands/review-pr.md
-ln -s ~/pr-review-skills/.claude/commands/review.md    ~/.claude/commands/review.md
+mkdir -p ~/.claude/commands ~/.claude/skills
+ln -s ~/pr-review-skills/.claude/commands/review-pr.md      ~/.claude/commands/review-pr.md
+ln -s ~/pr-review-skills/.claude/commands/review.md         ~/.claude/commands/review.md
+ln -s ~/pr-review-skills/.claude/skills/pr-description      ~/.claude/skills/pr-description
 ```
 
 ## Usage
@@ -83,6 +90,11 @@ ln -s ~/pr-review-skills/.claude/commands/review.md    ~/.claude/commands/review
 # Reviewer flow — post-PR, GitHub
 /review-pr https://github.com/org/repo/pull/123
 /review-pr 123 124 125                        # multiple PRs in one call
+
+# PR description — auto-triggers from natural language (no slash needed)
+write a PR description for this branch
+raise a PR against KITC-541
+describe this PR: https://github.com/org/repo/pull/123
 ```
 
 Re-review and re-pass are the **same** commands — both auto-detect mode from prior state (GitHub comments for `/review-pr`, the prior `.claude-review/report.md` for `/review`).

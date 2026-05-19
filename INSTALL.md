@@ -16,26 +16,28 @@ git clone https://github.com/pkesavangg/pr-review-skills.git ~/pr-review-skills
 
 You can clone anywhere — the orchestrator resolves its reference directory at runtime by following the symlink created in Step 2. `~/pr-review-skills` is just a convention. If you clone to `~/code/pr-review-skills`, the symlink target points there and `$REFS_DIR` is derived as `~/code/pr-review-skills/references` automatically. No file edits required.
 
-## Step 2 — Symlink the slash commands into user scope
+## Step 2 — Symlink the slash commands and skill into user scope
 
 ```bash
-mkdir -p ~/.claude/commands
-ln -s ~/pr-review-skills/.claude/commands/review-pr.md ~/.claude/commands/review-pr.md
-ln -s ~/pr-review-skills/.claude/commands/review.md    ~/.claude/commands/review.md
+mkdir -p ~/.claude/commands ~/.claude/skills
+ln -s ~/pr-review-skills/.claude/commands/review-pr.md      ~/.claude/commands/review-pr.md
+ln -s ~/pr-review-skills/.claude/commands/review.md         ~/.claude/commands/review.md
+ln -s ~/pr-review-skills/.claude/skills/pr-description      ~/.claude/skills/pr-description
 ```
 
-This makes `/review-pr` and `/review` available from **any** project on your machine — you don't need to be inside the `pr-review-skills` directory to use them.
+This makes `/review-pr`, `/review`, and the `pr-description` skill available from **any** project on your machine — you don't need to be inside the `pr-review-skills` directory to use them.
 
-Restart Claude Code (or open a new session). Type `/` — you should see both `/review-pr` and `/review`.
+Restart Claude Code (or open a new session). Type `/` — you should see both `/review-pr` and `/review`. The `pr-description` skill auto-triggers from natural language (no slash needed).
 
-### The two commands
+### The two commands + one skill
 
-| Command       | Who runs it     | When                       | Input                          | Output                                                                       |
-| ------------- | --------------- | -------------------------- | ------------------------------ | ---------------------------------------------------------------------------- |
-| `/review`     | Author          | Before commit / before PR  | Local working tree (`git diff`) | `.claude-review/report.md` + offered in-place fixes (you stage them yourself) |
-| `/review-pr`  | Reviewer        | After PR is opened         | GitHub PR diff + comments       | Inline GitHub review comments + summary                                       |
+| Trigger          | Type     | Who runs it | When                       | Input                                              | Output                                                                       |
+| ---------------- | -------- | ----------- | -------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `/review`        | Command  | Author      | Before commit / before PR  | Local working tree (`git diff`)                    | `.claude-review/report.md` + offered in-place fixes (you stage them yourself) |
+| `/review-pr`     | Command  | Reviewer    | After PR is opened         | GitHub PR diff + comments                          | Inline GitHub review comments + summary                                       |
+| `pr-description` | Skill    | Author      | Before / after opening PR  | Current branch, branch override, or GitHub PR URL  | PR title + Markdown body (with Jira link) ready to paste or pass to `gh pr create` |
 
-Both use the same rule references — they only differ in input source and output sink.
+The two review commands use the same rule references — they only differ in input source and output sink. The `pr-description` skill auto-triggers when you say things like "raise a PR against KITC-541", "write a PR description", or paste a `github.com/.../pull/N` URL.
 
 ## Step 3 — Smoke test `/review-pr`
 
@@ -112,11 +114,35 @@ cd ~/pr-review-skills && git pull
 
 That's it. The vendored SwiftUI + Compose rules update along with our own project-tuned rules. (If you previously installed the upstream `swiftui-pro` / `compose-expert` plugins, they're harmless to keep but no longer used by this orchestrator — feel free to uninstall via `/plugin uninstall`.)
 
+## Step 5 — Smoke test the `pr-description` skill
+
+On any feature branch with at least one commit, ask Claude (natural language — no slash):
+
+```
+write a PR description for this branch
+```
+
+or
+
+```
+raise a PR against KITC-541
+```
+
+Expected:
+
+1. The skill resolves the Jira ID (from your message, branch name, or commits) and the base branch.
+2. It reads the diff and recent commits.
+3. It prints a **Title** block and a **Body** block (Markdown) ready to paste into GitHub or pipe to `gh pr create`.
+4. No AI attribution footer is added.
+
+If the skill doesn't fire from natural language, confirm the symlink: `ls -la ~/.claude/skills/pr-description` should point at `~/pr-review-skills/.claude/skills/pr-description`. Restart Claude Code after creating the symlink.
+
 ## Uninstall
 
 ```bash
 rm ~/.claude/commands/review-pr.md
 rm ~/.claude/commands/review.md
+rm ~/.claude/skills/pr-description
 rm -rf ~/pr-review-skills
 # If you installed the pre-commit hook in a repo, also:  rm .git/hooks/pre-commit
 ```
@@ -124,6 +150,7 @@ rm -rf ~/pr-review-skills
 ## Troubleshooting
 
 - **`/review-pr` or `/review` doesn't appear in the picker.** Confirm the symlinks: `ls -la ~/.claude/commands/review-pr.md ~/.claude/commands/review.md` should each show `→ /Users/<you>/pr-review-skills/.claude/commands/<file>.md`. Restart Claude Code after creating the symlinks.
+- **`pr-description` skill doesn't trigger from natural language.** Confirm `ls -la ~/.claude/skills/pr-description` shows a symlink into your clone. Restart Claude Code. As a fallback, you can always say "use the pr-description skill" explicitly.
 - **Reference files not found** (e.g. `references/security/secrets-and-storage.md` or `references/vendored/swiftui-pro/SKILL.md`). One of the symlinks is broken or points at a stale location. Run `readlink ~/.claude/commands/review-pr.md` (and same for `review.md`) to confirm they resolve to your actual clone, then re-create the symlinks from Step 2 if needed.
 - **Inline comments return 403.** PR is from a fork or you lack write access. The skill auto-falls-back to a top-level summary with `path:line` references — that's expected.
 - **First run after `git clone` doesn't pick up the commands.** Restart Claude Code. The slash-command picker is populated at session start; new symlinks need a fresh session.
