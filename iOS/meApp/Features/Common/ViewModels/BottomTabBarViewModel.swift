@@ -87,11 +87,7 @@ class BottomTabBarViewModel: ObservableObject {
     /// when we need to re-check HealthKit permissions after the user is redirected to
     /// the Apple Health app from the out-of-sync modal.
     private var hkForegroundObserver: AnyCancellable? = nil
-    /// Retains the in-flight Graph-Scroll-hint GIF preloader. Released after the modal
-    /// is presented (or the preload is aborted). Required because the preloader owns
-    /// its own off-screen `WKWebView` and would otherwise be deallocated mid-load.
-    private var graphScrollHintPreloader: GifPreloader? = nil
-    
+
     init() {
         self.canShowFeedNotificationBadge = feedService.getUnreadFeedCount() > 0
         // Subscribe to Bluetooth discovery events to surface the half-sheet when appropriate
@@ -659,10 +655,6 @@ class BottomTabBarViewModel: ObservableObject {
     /// Shows the *Scrollable Graph* first-time discoverability modal once per
     /// account. Skips when an account is missing, the user is off the Dashboard
     /// tab, or the per-user flag is already set in local storage.
-    ///
-    /// The GIF is pre-rendered in an off-screen `WKWebView` before `showModal`
-    /// is called, so the rest of the app remains fully interactive during the
-    /// load (no dim backdrop until the modal is ready to appear).
     private func checkGraphScrollHintPrompt() {
         guard !hasShownGraphScrollHintThisSession else { return }
         guard selectedTab == .dash else { return }
@@ -673,23 +665,10 @@ class BottomTabBarViewModel: ObservableObject {
             return
         }
 
-        // Set the persistence + session flags up front so the prompt can't be queued
-        // a second time while the preload is in flight.
         KvStorageService.shared.setValue(true, forKey: key)
         hasShownGraphScrollHintThisSession = true
 
-        let isDark = UITraitCollection.current.userInterfaceStyle == .dark
-        let preloader = GifPreloader(gifName: AppAssets.graphScrollHintGif(isDark))
-        graphScrollHintPreloader = preloader
-        preloader.preload { [weak self] in
-            guard let self else { return }
-            self.graphScrollHintPreloader = nil
-            // Re-validate context — the user may have left the Dashboard or signed
-            // out while the GIF was preloading.
-            guard self.selectedTab == .dash else { return }
-            guard self.accountService.activeAccount != nil else { return }
-            self.presentGraphScrollHintModal()
-        }
+        presentGraphScrollHintModal()
     }
 
     private func presentGraphScrollHintModal() {

@@ -981,11 +981,6 @@ struct AppAssets {
         return "0384_StepOn_\(fillType)\(themeVariant)"
     }
 
-    // MARK: - Dashboard
-    static let graphScrollHintGif: (Bool) -> String = { isDarkMode in
-        isDarkMode ? "graphScrollHintDark" : "graphScrollHintLight"
-    }
-
 }
 
 /// Constants used in the AppSync entry result confirmation card
