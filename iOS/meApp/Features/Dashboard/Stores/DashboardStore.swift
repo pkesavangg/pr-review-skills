@@ -1192,8 +1192,18 @@ class DashboardStore: ObservableObject {
                 : nil
 
             if let initialLatestSelectionDate {
-                await handleChartSelection(at: initialLatestSelectionDate)
+                // Synchronous selection apply — mirrors `initializeChart` and
+                // `updateSelectedPeriod`. The previous `await handleChartSelection`
+                // introduced a suspension point inside this async refresh,
+                // which raced against view mount + section-VM guards on
+                // cold start (MA-3977).
+                graphManager.applyChartSelectionSync(
+                    at: initialLatestSelectionDate,
+                    operations: continuousOperations
+                )
                 ui.hasLandedInitialSelection = true
+                updateMetricsForCurrentView()
+                scheduleUIUpdate()
             } else {
                 // Otherwise preserve current selection state and update metrics for the
                 // active view mode (selected point, placeholders, or visible averages).
@@ -1273,12 +1283,21 @@ class DashboardStore: ObservableObject {
         guard isFollowingLatestSelection(previousSignature, period: period) else { return }
         guard let latestDate = newSignature.latestDate else { return }
 
-        Task { @MainActor in
-            if !self.isDateVisibleInCurrentViewport(latestDate, period: period) {
-                self.ensureLatestEntriesVisible()
-            }
-            await self.handleChartSelection(at: latestDate)
+        // Synchronous selection apply — mirrors `updateSelectedPeriod` and
+        // `initializeChart` (MA-3977). The previous `Task { await ... }`
+        // deferred the follow-the-latest selection update until after the view
+        // had already snapshotted the stale (previous-latest) selection,
+        // leaving the crosshair stuck on the previous entry when a newer
+        // entry was synced from the server shortly after cold start.
+        if !isDateVisibleInCurrentViewport(latestDate, period: period) {
+            ensureLatestEntriesVisible()
         }
+        graphManager.applyChartSelectionSync(
+            at: latestDate,
+            operations: continuousOperations
+        )
+        updateMetricsForCurrentView()
+        scheduleUIUpdate()
     }
 
     // Delegate goal loading to GoalManager
@@ -3573,16 +3592,21 @@ class DashboardStore: ObservableObject {
 
         ui.hasInitializedChart = true
 
+        // Apply the initial latest-entry selection synchronously, the same way
+        // `updateSelectedPeriod` does on tab switch (see MA-3977). The previous
+        // `Task { await Task.yield(); handleChartSelection(...) }` deferral
+        // raced against `BaseGraphView`'s mount + section-VM guards on cold
+        // start with the default period (most visibly on Month) and the
+        // crosshair often didn't land on the latest entry.
         if shouldPreferLatestSelectionForInitialMetrics,
            let initialLatestSelectionDate = latestSelectionDateForCurrentPeriod() {
-            Task { @MainActor in
-                await Task.yield()
-                guard self.ui.hasInitializedChart else { return }
-                guard self.graph.selectedPoint == nil,
-                      self.graph.selectedXValue == nil else { return }
-                await self.handleChartSelection(at: initialLatestSelectionDate)
-                self.ui.hasLandedInitialSelection = true
-            }
+            graphManager.applyChartSelectionSync(
+                at: initialLatestSelectionDate,
+                operations: continuousOperations
+            )
+            ui.hasLandedInitialSelection = true
+            updateMetricsForCurrentView()
+            scheduleUIUpdate()
         }
 
         // Mark graph as ready after a settling delay to allow computations to complete

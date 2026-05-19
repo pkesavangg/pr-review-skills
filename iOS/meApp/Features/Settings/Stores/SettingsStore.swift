@@ -1448,10 +1448,13 @@ class SettingsStore: ObservableObject {
     func handleGoalTypeChange(_ newSegment: GoalTypeSegment) {
         let newGoalTypeValue = newSegment.goalTypeValue
 
-        // No-op when the goal type hasn't actually changed. Otherwise an
-        // external sync of `selectedSegment` (e.g. onAppear) would falsely
-        // dirty the form and trigger the exit-confirmation alert.
-        guard goalForm.goalType.value != newGoalTypeValue else { return }
+        // No-op when the goal type hasn't actually changed. Compare by segment
+        // (not raw string) because the form's goalType may hold "lose"/"gain"
+        // (the GoalForm default and legacy stored values) while the segment
+        // value is "losegain" — semantically equal but unequal as strings.
+        // Otherwise an external sync of `selectedSegment` (e.g. onAppear) would
+        // falsely dirty the form and trigger the exit-confirmation alert.
+        guard GoalTypeSegment.fromGoalType(goalForm.goalType.value) != newSegment else { return }
 
         selectedSegment = newSegment
         goalForm.goalType.value = newGoalTypeValue
