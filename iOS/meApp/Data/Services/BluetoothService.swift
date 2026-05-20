@@ -788,6 +788,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 throw BluetoothServiceError.deviceNotConnected
             }
 
+            // Snapshot the scale list immediately. A concurrent scaleService.scalesPublisher
+            // event (e.g. triggered by the BodyComp save upstream) can fire handleScalesUpdate
+            // with a transient empty list mid-flight, clearing bluetoothScales and causing the
+            // defensive syncDevices below to push an empty device list to the SDK — making
+            // updateProfile silently return "false" for every scale.
+            let scalesSnapshot = bluetoothScales
+
             // Re-read the account *after* the wait: a rapid second settings change may have
             // replaced accountService.activeAccount during the up-to-5s poll, and pushing the
             // pre-wait snapshot would silently revert that newer change.
@@ -798,8 +805,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 throw BluetoothServiceError.noProfileInfo
             }
 
-            // Defensive re-sync — a prior syncDevices([]) may have cleared the SDK's tracked list.
-            syncDevices(bluetoothScales)
+            // Defensive re-sync from the snapshot, not the live field — see snapshot comment above.
+            syncDevices(scalesSnapshot)
 
             let success = await ggBleSDK.updateProfile(profile: userProfile)
             let allFailed = !success.isEmpty && success.allSatisfy { $0.caseInsensitiveCompare("false") == .orderedSame }
