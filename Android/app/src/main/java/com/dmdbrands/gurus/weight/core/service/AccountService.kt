@@ -57,12 +57,9 @@ constructor(
   companion object {
     private const val MAX_ACCOUNTS = 10
     private const val TAG = "AccountService"
-    private const val GRAPH_SCROLL_HINT_PRIORITY = 5
+    private const val GRAPH_SCROLL_HINT_PRIORITY = 1
     private const val GRAPH_SCROLL_HINT_DELAY_MS = 1_500L
   }
-
-  @Volatile
-  private var graphScrollHintShownThisSession: Boolean = false
 
   private var repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -658,9 +655,6 @@ constructor(
       accountRepository.getAccountFromAPI(account.id)
       // Switch to the account using the repository method
       accountRepository.switchToAccount(account.id)
-      // Reset per-session dedup so the graph scroll hint can fire for the newly active account.
-      // The persistent per-account flag in UserDataStore still prevents showing twice for the same account.
-      graphScrollHintShownThisSession = false
       AppLog.d(TAG, "Successfully switched to account: ${account.email}")
       appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
       true
@@ -688,7 +682,6 @@ constructor(
         // Account exists locally and is not expired, allow switch
         AppLog.d(TAG, "Account is valid locally, proceeding with switch despite network failure")
         accountRepository.switchToAccount(account.id)
-        graphScrollHintShownThisSession = false
         appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
         true
       } else {
@@ -832,15 +825,12 @@ constructor(
 
   override suspend fun checkAndTriggerGraphScrollHint() {
     try {
-      if (graphScrollHintShownThisSession) return
       val accountId = getCurrentAccount()?.id ?: return
       if (userDataStore.hasShownGraphScrollHintForAccount(accountId)) return
       userDataStore.setGraphScrollHintShownForAccount(accountId, true)
-      graphScrollHintShownThisSession = true
       val dialog = DialogModel.Custom(
         contentKey = DialogType.GraphScrollHintModal,
         params = emptyMap(),
-        // Lower priority (higher number) than IAM feed modal so it queues behind it.
         customPriority = GRAPH_SCROLL_HINT_PRIORITY,
         // Small gap after any preceding login-time modal settles before this one appears.
         customDelayMillis = GRAPH_SCROLL_HINT_DELAY_MS,
