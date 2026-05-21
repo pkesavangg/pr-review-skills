@@ -84,7 +84,7 @@ object EntryHelper {
           pulse = it.controls.heartRate.toIntSafe(),
           skeletalMusclePercent = it.controls.skeletalMuscles.toDoubleSafe() / 10,
           subcutaneousFatPercent = it.controls.subcutaneousFat.toDoubleSafe() / 10,
-          visceralFatLevel = it.controls.visceralFat.toDoubleSafe() / 10,
+          visceralFatLevel = it.controls.visceralFat.toDoubleSafe(),
           boneMass = it.controls.boneMass.toDoubleSafe() / 10,
           impedance = 0, // You didn’t provide this in form controls – use 0 or calculate if needed
         )
