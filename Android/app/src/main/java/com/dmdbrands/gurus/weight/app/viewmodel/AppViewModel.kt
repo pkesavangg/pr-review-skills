@@ -305,6 +305,9 @@ constructor(
                 ),
               )
             }
+            viewModelScope.launch {
+              accountService.checkAndTriggerGraphScrollHint()
+            }
           }
 
           is AuthState.ProfileUpdated -> {

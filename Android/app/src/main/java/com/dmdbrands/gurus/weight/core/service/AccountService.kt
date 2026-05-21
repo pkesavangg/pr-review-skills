@@ -658,6 +658,9 @@ constructor(
       accountRepository.getAccountFromAPI(account.id)
       // Switch to the account using the repository method
       accountRepository.switchToAccount(account.id)
+      // Reset per-session dedup so the graph scroll hint can fire for the newly active account.
+      // The persistent per-account flag in UserDataStore still prevents showing twice for the same account.
+      graphScrollHintShownThisSession = false
       AppLog.d(TAG, "Successfully switched to account: ${account.email}")
       appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
       true
@@ -685,6 +688,7 @@ constructor(
         // Account exists locally and is not expired, allow switch
         AppLog.d(TAG, "Account is valid locally, proceeding with switch despite network failure")
         accountRepository.switchToAccount(account.id)
+        graphScrollHintShownThisSession = false
         appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
         true
       } else {
