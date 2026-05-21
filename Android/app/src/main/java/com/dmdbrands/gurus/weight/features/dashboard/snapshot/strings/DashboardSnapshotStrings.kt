@@ -16,4 +16,5 @@ object DashboardSnapshotStrings {
     const val OpenBpDashboard = "Open blood pressure dashboard"
     const val OpenBabyDashboard = "Open baby dashboard"
     const val AppLogoDescription = "Me App"
+    const val AhaRangeInfo = "AHA Range information"
 }
