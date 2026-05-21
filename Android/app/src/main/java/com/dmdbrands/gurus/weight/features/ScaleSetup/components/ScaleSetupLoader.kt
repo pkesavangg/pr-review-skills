@@ -198,6 +198,7 @@ fun ScaleSetupLoader(
               label = contentButtonText,
               type = ButtonType.InlineTextPrimary,
               onClick = contentButtonClick,
+              modifier = Modifier.padding(top = spacing.xs)
             )
           }
         }
