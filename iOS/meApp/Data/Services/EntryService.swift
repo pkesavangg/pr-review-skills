@@ -942,7 +942,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         guard let dashboardType = await getDashboardType() else {
             throw AccountError.noActiveAccount
         }
-        let useR4Endpoint = dashboardType == DashboardType.dashboard12.rawValue
+        let useR4Endpoint = DashboardType.from(stored: dashboardType) == .dashboard12
         let _ = try await remoteRepo.exportCsv(useR4Endpoint: useR4Endpoint)
     }
     
