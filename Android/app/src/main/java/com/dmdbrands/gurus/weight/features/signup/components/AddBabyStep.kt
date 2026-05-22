@@ -240,30 +240,16 @@ private fun UnitDecoratedInput(
     focusRequester: FocusRequester,
     nextFocusRequester: FocusRequester? = null,
 ) {
-    Box(modifier = Modifier.fillMaxWidth()) {
-        AppInput(
-            formControl = formControl,
-            type = AppInputType.NUMERIC_STRING,
-            label = label,
-            showTrailingIcon = false,
-            imeAction = imeAction,
-            nextFocusRequester = nextFocusRequester,
-            modifier = Modifier.focusRequester(focusRequester),
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(AppInputDefaults.SingleLineHeight)
-                .padding(end = MeTheme.spacing.md),
-        ) {
-            Box(modifier = Modifier.align(Alignment.CenterEnd)) {
-                AppText(
-                    text = "($trailingUnit)",
-                    textType = TextType.SubHeading,
-                )
-            }
-        }
-    }
+    AppInput(
+        formControl = formControl,
+        type = AppInputType.NUMERIC_STRING,
+        label = label,
+        trailingText = trailingUnit,
+        showTrailingIcon = false,
+        imeAction = imeAction,
+        nextFocusRequester = nextFocusRequester,
+        modifier = Modifier.focusRequester(focusRequester),
+    )
 }
 
 @PreviewTheme

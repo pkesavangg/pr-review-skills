@@ -189,6 +189,7 @@ fun <T> AppInput(
     showTrailingIcon: Boolean = true,
     showTrailingIconAlways: Boolean = false,
     trailingIconId: Int = AppIcons.Outlined.Close,
+    trailingText: String? = null,
     maxLength: Int? = null,
     onValueChange: ((T?) -> Unit)? = null,
     imeAction: ImeAction = ImeAction.Next,
@@ -222,6 +223,7 @@ fun <T> AppInput(
             showTrailingIconAlways = showTrailingIconAlways,
             onTrailingAction = onTrailingAction,
             trailingIconId = trailingIconId,
+            trailingText = trailingText,
             onImeAction = onImeAction,
             nextFocusRequester = nextFocusRequester,
         )
@@ -246,6 +248,7 @@ fun <T> InputFieldBase(
     showTrailingIcon: Boolean = true,
     showTrailingIconAlways: Boolean = false,
     trailingIconId: Int = AppIcons.Outlined.Close,
+    trailingText: String? = null,
     maxLength: Int? = null,
     singleLine: Boolean = true,
     visualTransformation: VisualTransformation = VisualTransformation.None,
@@ -327,6 +330,17 @@ fun <T> InputFieldBase(
                         contentDescription = contentDescription,
                         type = AppIconType.Primary, // Always use primary color for eye icon
                         onClick = { passwordVisible = !passwordVisible },
+                    )
+                }
+            }
+
+            trailingText != null -> {
+                @Composable {
+                    Text(
+                        text = "($trailingText)",
+                        style = typography.body3,
+                        color = colorScheme.textSubheading,
+                        modifier = Modifier.padding(end = spacing.md),
                     )
                 }
             }

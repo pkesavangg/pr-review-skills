@@ -254,20 +254,8 @@ private fun ReadOnlyUnitField(
             label = label,
             readOnly = true,
             showTrailingIcon = false,
+            trailingText = trailingUnit,
         )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(AppInputDefaults.SingleLineHeight)
-                .padding(end = MeTheme.spacing.md),
-        ) {
-            Box(modifier = Modifier.align(Alignment.CenterEnd)) {
-                AppText(
-                    text = "($trailingUnit)",
-                    textType = TextType.SubHeading,
-                )
-            }
-        }
         Box(
             modifier = Modifier
                 .matchParentSize()

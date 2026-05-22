@@ -108,42 +108,38 @@ fun GoalStep(
 
     AnimatedVisibility(visible = shouldShowCurrentWeight) {
       Column {
-        Box(modifier = Modifier.fillMaxWidth()) {
-          AppInput(
-            formControl = currentWeightControl,
-            type = AppInputType.BODY_COMP,
-            label = SignupStrings.goalStepCurrentWeightLabel,
-            imeAction = ImeAction.Next,
-            nextFocusRequester = goalWeightFocusRequester,
-            modifier = Modifier.focusRequester(currentWeightFocusRequester),
-            enabled = goalTypeControl.value != GoalType.MAINTAIN.value,
-            maxLength = 4,
-            showTrailingIcon = false,
-          )
-          TrailingUnit(weightUnit)
-        }
+        AppInput(
+          formControl = currentWeightControl,
+          type = AppInputType.BODY_COMP,
+          label = SignupStrings.goalStepCurrentWeightLabel,
+          trailingText = weightUnit,
+          showTrailingIcon = false,
+          imeAction = ImeAction.Next,
+          nextFocusRequester = goalWeightFocusRequester,
+          modifier = Modifier.focusRequester(currentWeightFocusRequester),
+          enabled = goalTypeControl.value != GoalType.MAINTAIN.value,
+          maxLength = 4,
+        )
         Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
       }
     }
 
-    Box(modifier = Modifier.fillMaxWidth()) {
-      AppInput(
-        formControl = goalWeightControl,
-        maxLength = 4,
-        type = AppInputType.BODY_COMP,
-        label = SignupStrings.goalStepGoalWeightLabel,
-        imeAction = ImeAction.Next,
-        onImeAction = onNext,
-        showTrailingIcon = false,
-        modifier =
-          if (shouldShowCurrentWeight) {
-            Modifier.focusRequester(goalWeightFocusRequester)
-          } else {
-            Modifier.focusRequester(currentWeightFocusRequester)
-          },
-      )
-      TrailingUnit(weightUnit)
-    }
+    AppInput(
+      formControl = goalWeightControl,
+      maxLength = 4,
+      type = AppInputType.BODY_COMP,
+      label = SignupStrings.goalStepGoalWeightLabel,
+      trailingText = weightUnit,
+      showTrailingIcon = false,
+      imeAction = ImeAction.Next,
+      onImeAction = onNext,
+      modifier =
+        if (shouldShowCurrentWeight) {
+          Modifier.focusRequester(goalWeightFocusRequester)
+        } else {
+          Modifier.focusRequester(currentWeightFocusRequester)
+        },
+    )
 
     val weightUnitOptions = listOf(
       SegmentButtonData(id = 0, label = SignupStrings.weightUnitLbs),
@@ -166,22 +162,6 @@ fun GoalStep(
     }
     Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.sm))
 
-  }
-}
-
-@Composable
-private fun BoxScope.TrailingUnit(unitText: String) {
-  Box(
-    modifier = Modifier
-      .matchParentSize()
-      .padding(end = MeTheme.spacing.md),
-  ) {
-    Box(modifier = Modifier.align(Alignment.CenterEnd)) {
-      AppText(
-        text = "($unitText)",
-        textType = TextType.SubHeading,
-      )
-    }
   }
 }
 
