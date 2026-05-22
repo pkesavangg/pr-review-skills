@@ -4,12 +4,20 @@ import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 
+enum class BabyWeightUnit {
+    LBS,
+    LBS_OZ,
+    KG,
+}
+
 data class BabyFormControls(
     val name: FormControl<String>,
     val birthday: FormControl<DateTimeValue>,
     val biologicalSex: FormControl<String>,
     val birthLength: FormControl<String>,
     val birthWeight: FormControl<String>,
+    val birthWeightOz: FormControl<String>,
+    val weightUnit: FormControl<BabyWeightUnit>,
 ) {
     companion object {
         fun create(): BabyFormControls = BabyFormControls(
@@ -31,6 +39,14 @@ data class BabyFormControls(
             ),
             birthWeight = FormControl.create(
                 initialValue = "",
+                validators = emptyList(),
+            ),
+            birthWeightOz = FormControl.create(
+                initialValue = "",
+                validators = emptyList(),
+            ),
+            weightUnit = FormControl.create(
+                initialValue = BabyWeightUnit.LBS,
                 validators = emptyList(),
             ),
         )
