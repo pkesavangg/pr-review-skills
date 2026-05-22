@@ -47,6 +47,13 @@ fun HeightStep(
     ) {
         AppText(SignupStrings.heightStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
         AppText(SignupStrings.heightStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.lg)
+        AppText(
+            text = SignupStrings.heightLabelDynamic.format(
+                if (useMetricControl.value) SignupStrings.heightUnitCm.lowercase() else "in",
+            ),
+            textType = TextType.Subtitle,
+            spacing = MeTheme.spacing.xs,
+        )
         AppHeightInput(
             formControl = heightControl,
             label = SignupStrings.heightLabel,

@@ -45,6 +45,7 @@ object SignupStrings {
   const val heightStepTitle = "How tall are you?"
   const val heightStepSubtitle = "Height is another factor that helps us provide you with the most accurate metrics."
   const val heightLabel = "Height"
+  const val heightLabelDynamic = "height (%s)"
 
   // EmailStep strings
   const val emailStepTitle = "What's your email?"
