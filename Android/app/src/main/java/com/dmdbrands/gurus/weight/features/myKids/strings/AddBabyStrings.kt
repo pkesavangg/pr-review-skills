@@ -6,8 +6,10 @@ object AddBabyStrings {
     const val NameLabel = "name"
     const val BirthdayLabel = "baby's birthday"
     const val BiologicalSexLabel = "Biological Sex"
-    const val BirthLengthLabel = "Birth Length"
-    const val BirthWeightLabel = "Birth Weight"
+    const val BirthLengthLabel = "birth length"
+    const val BirthWeightLabel = "birth weight"
+
+    const val UnitNote = "Note: The selected weight unit determines the length unit automatically."
 
     object BiologicalSexModal {
         const val Title = "Biological Sex"
@@ -17,17 +19,17 @@ object AddBabyStrings {
         const val Confirm = "SAVE"
     }
 
-    object BirthWeightModal {
-        const val Title = "Birth Weight"
-        const val LbSuffix = "lb"
-        const val OzSuffix = "oz"
+    object UnitSuffix {
+        const val Lbs = "lbs"
+        const val Oz = "oz"
+        const val Kg = "kg"
+        const val In = "in"
+        const val Cm = "cm"
     }
 
-    object BirthLengthModal {
-        const val Title = "Birth Length"
-        const val InchSuffix = "in"
+    object UnitSegment {
+        const val Lbs = "lbs"
+        const val LbsOz = "lbs/oz"
+        const val Kg = "kg"
     }
-
-    const val ModalConfirm = "OK"
-    const val ModalCancel = "CANCEL"
 }
