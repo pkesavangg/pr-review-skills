@@ -14,14 +14,15 @@ object BabySignupStrings {
     const val nameLabel = "name"
     const val birthdayLabel = "baby's Birthday"
     const val biologicalSexLabel = "Biological Sex"
-    const val birthLengthDynamic = "birth length (%s)"
-    const val birthWeightDynamic = "birth weight (%s)"
+    const val birthLengthLabel = "birth length"
+    const val birthWeightLabel = "birth weight"
     const val birthWeightOzLabel = "oz"
 
-    // Unit segments
+    // Unit segments and suffixes
     const val unitLbs = "lbs"
     const val unitLbsOz = "lbs/oz"
     const val unitKg = "kg"
+    const val unitOz = "oz"
     const val unitIn = "in"
     const val unitCm = "cm"
     const val unitNote = "Note: The selected weight unit determines the length unit automatically."

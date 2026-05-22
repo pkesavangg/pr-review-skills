@@ -20,6 +20,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
+import com.dmdbrands.gurus.weight.features.common.components.AppInputDefaults
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
 import com.dmdbrands.gurus.weight.features.common.components.AppRadioGroupModal
 import com.dmdbrands.gurus.weight.features.common.components.AppStyledCard
@@ -142,13 +143,13 @@ fun AddBabyStep(
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.md))
 
-        AppInput(
+        UnitDecoratedInput(
             formControl = babyForm.birthLength,
-            type = AppInputType.NUMERIC_STRING,
-            label = BabySignupStrings.birthLengthDynamic.format(weightUnit.lengthSuffix()),
+            label = BabySignupStrings.birthLengthLabel,
+            trailingUnit = weightUnit.lengthSuffix(),
             imeAction = ImeAction.Next,
             nextFocusRequester = birthWeightFocusRequester,
-            modifier = Modifier.focusRequester(birthLengthFocusRequester),
+            focusRequester = birthLengthFocusRequester,
         )
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
@@ -160,34 +161,34 @@ fun AddBabyStep(
                     horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
                 ) {
                     Box(modifier = Modifier.weight(1f)) {
-                        AppInput(
+                        UnitDecoratedInput(
                             formControl = babyForm.birthWeight,
-                            type = AppInputType.NUMERIC_STRING,
-                            label = BabySignupStrings.birthWeightDynamic.format(BabySignupStrings.unitLbs),
+                            label = BabySignupStrings.birthWeightLabel,
+                            trailingUnit = BabySignupStrings.unitLbs,
                             imeAction = ImeAction.Next,
                             nextFocusRequester = birthWeightOzFocusRequester,
-                            modifier = Modifier.focusRequester(birthWeightFocusRequester),
+                            focusRequester = birthWeightFocusRequester,
                         )
                     }
                     Box(modifier = Modifier.weight(1f)) {
-                        AppInput(
+                        UnitDecoratedInput(
                             formControl = babyForm.birthWeightOz,
-                            type = AppInputType.NUMERIC_STRING,
                             label = BabySignupStrings.birthWeightOzLabel,
+                            trailingUnit = BabySignupStrings.unitOz,
                             imeAction = ImeAction.Done,
-                            modifier = Modifier.focusRequester(birthWeightOzFocusRequester),
+                            focusRequester = birthWeightOzFocusRequester,
                         )
                     }
                 }
             }
 
             else -> {
-                AppInput(
+                UnitDecoratedInput(
                     formControl = babyForm.birthWeight,
-                    type = AppInputType.NUMERIC_STRING,
-                    label = BabySignupStrings.birthWeightDynamic.format(weightUnit.weightSuffix()),
+                    label = BabySignupStrings.birthWeightLabel,
+                    trailingUnit = weightUnit.weightSuffix(),
                     imeAction = ImeAction.Done,
-                    modifier = Modifier.focusRequester(birthWeightFocusRequester),
+                    focusRequester = birthWeightFocusRequester,
                 )
             }
         }
@@ -227,6 +228,41 @@ fun AddBabyStep(
                 .padding(horizontal = MeTheme.spacing.sm),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
+    }
+}
+
+@Composable
+private fun UnitDecoratedInput(
+    formControl: FormControl<String>,
+    label: String,
+    trailingUnit: String,
+    imeAction: ImeAction,
+    focusRequester: FocusRequester,
+    nextFocusRequester: FocusRequester? = null,
+) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        AppInput(
+            formControl = formControl,
+            type = AppInputType.NUMERIC_STRING,
+            label = label,
+            showTrailingIcon = false,
+            imeAction = imeAction,
+            nextFocusRequester = nextFocusRequester,
+            modifier = Modifier.focusRequester(focusRequester),
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(AppInputDefaults.SingleLineHeight)
+                .padding(end = MeTheme.spacing.md),
+        ) {
+            Box(modifier = Modifier.align(Alignment.CenterEnd)) {
+                AppText(
+                    text = "($trailingUnit)",
+                    textType = TextType.SubHeading,
+                )
+            }
+        }
     }
 }
 
