@@ -1,16 +1,30 @@
 package com.dmdbrands.gurus.weight.features.signup.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.dmdbrands.gurus.weight.features.common.components.AppHeightInput
+import androidx.compose.ui.draw.clip
+import com.dmdbrands.gurus.weight.features.common.components.AppHeightPickerModal
+import com.dmdbrands.gurus.weight.features.common.components.AppInputDefaults
 import com.dmdbrands.gurus.weight.features.common.components.AppStyledCard
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.HeightInput
+import com.dmdbrands.gurus.weight.features.common.components.ModalConfigs
+import com.dmdbrands.gurus.weight.features.common.components.ModalDialog
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonData
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonGroup
@@ -25,6 +39,11 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 
 private const val UNIT_FT_IN_ID = 0
 private const val UNIT_CM_ID = 1
+
+private fun HeightInput.isEmpty(): Boolean = when (this) {
+    is HeightInput.FtIn -> feet == 0 && inches == 0
+    is HeightInput.Cm -> value == 0
+}
 
 /**
  * Step for collecting user's height
@@ -41,22 +60,17 @@ fun HeightStep(
         SegmentButtonData(id = UNIT_CM_ID, label = SignupStrings.heightUnitCm),
     )
     val selectedOption = if (useMetricControl.value) unitOptions[1] else unitOptions[0]
+    val trailingUnit = if (useMetricControl.value) SignupStrings.heightUnitCm.lowercase() else "in"
 
     AppStyledCard(
         cardAlignmentType = LocalCardAlignment.current,
     ) {
         AppText(SignupStrings.heightStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
         AppText(SignupStrings.heightStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.lg)
-        AppText(
-            text = SignupStrings.heightLabelDynamic.format(
-                if (useMetricControl.value) SignupStrings.heightUnitCm.lowercase() else "in",
-            ),
-            textType = TextType.Subtitle,
-            spacing = MeTheme.spacing.xs,
-        )
-        AppHeightInput(
-            formControl = heightControl,
-            label = SignupStrings.heightLabel,
+
+        HeightField(
+            heightControl = heightControl,
+            trailingUnit = trailingUnit,
         )
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.md))
@@ -82,13 +96,61 @@ fun HeightStep(
     }
 }
 
+@Composable
+private fun HeightField(
+    heightControl: FormControl<HeightInput>,
+    trailingUnit: String,
+) {
+    var isModalTriggered by remember { mutableStateOf(false) }
+    val value = heightControl.value
+    val hasValue = !value.isEmpty()
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(AppInputDefaults.SingleLineHeight)
+            .clip(RoundedCornerShape(MeTheme.borderRadius.sm))
+            .background(MeTheme.colorScheme.primaryBackground)
+            .clickable { isModalTriggered = true }
+            .padding(horizontal = MeTheme.spacing.md),
+    ) {
+        AppText(
+            text = if (hasValue) value.getString() else SignupStrings.heightLabel.lowercase(),
+            textType = if (hasValue) TextType.Body else TextType.SubHeading,
+            modifier = Modifier.align(Alignment.CenterStart),
+        )
+        Box(modifier = Modifier.align(Alignment.CenterEnd)) {
+            AppText(
+                text = "($trailingUnit)",
+                textType = TextType.SubHeading,
+            )
+        }
+    }
+
+    if (isModalTriggered) {
+        ModalDialog(
+            onDismiss = { isModalTriggered = false },
+            config = ModalConfigs.Critical,
+        ) {
+            AppHeightPickerModal(
+                value = value,
+                onCancel = { isModalTriggered = false },
+                onOk = { data ->
+                    isModalTriggered = false
+                    heightControl.onValueChange(data)
+                },
+            )
+        }
+    }
+}
+
 @PreviewTheme
 @Composable
 fun HeightStepPreview() {
     MeAppTheme {
         HeightStep(
             heightControl = FormControl.create(
-                HeightInput.FtIn(7, 1),
+                HeightInput.FtIn(feet = 7, inches = 1),
                 emptyList(),
             ),
             useMetricControl = FormControl.create(false, emptyList()),
