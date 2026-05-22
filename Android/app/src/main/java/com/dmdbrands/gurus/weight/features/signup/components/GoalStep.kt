@@ -47,6 +47,7 @@ fun GoalStep(
   isMetric: Boolean = false,
   onGoalTypeChange: (GoalType) -> Unit = {},
   onNext: () -> Unit = {},
+  onMetricToggle: (Boolean) -> Unit = {},
   showCurrentWeightForMaintain: Boolean = true,
   initialWeightUnit: WeightUnit? = null,
 ) {
@@ -133,6 +134,26 @@ fun GoalStep(
           Modifier.focusRequester(currentWeightFocusRequester)
         },
     )
+
+    val weightUnitOptions = listOf(
+      SegmentButtonData(id = 0, label = SignupStrings.weightUnitLbs),
+      SegmentButtonData(id = 1, label = SignupStrings.weightUnitKg),
+    )
+    val selectedUnitOption = if (isMetric) weightUnitOptions[1] else weightUnitOptions[0]
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.Center,
+    ) {
+      SegmentButtonGroup(
+        data = weightUnitOptions,
+        selectedData = selectedUnitOption,
+        key = SegmentButtonData::label,
+        onSelected = { option -> onMetricToggle(option.id == 1) },
+        size = SegmentButtonSize.Small,
+        type = SegmentButtonType.Scrollable,
+        spacedBy = MeTheme.spacing.xs,
+      )
+    }
     Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.sm))
 
   }

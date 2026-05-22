@@ -164,6 +164,10 @@ fun SignupPager(
                 isMetric = formControls.useMetric.value,
                 onGoalTypeChange = {},
                 onNext = guardedOnNext,
+                onMetricToggle = { newValue ->
+                  formControls.useMetric.onValueChange(newValue)
+                  onMetricToggle(newValue)
+                },
                 showCurrentWeightForMaintain = false,
               )
 
