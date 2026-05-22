@@ -169,6 +169,7 @@ fun SignupPager(
                   onMetricToggle(newValue)
                 },
                 showCurrentWeightForMaintain = false,
+                showUnitSegment = true,
               )
 
             SignupStep.ADD_BABY ->
