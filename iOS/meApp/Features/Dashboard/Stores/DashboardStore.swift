@@ -3251,8 +3251,12 @@ class DashboardStore: ObservableObject {
             return entry
         }
 
-        // No selection: compute visible-window averages to mirror tiles and weight label
-        let ops = getVisibleOperations()
+        // No selection: compute averages over the same ops the metric tiles and weight
+        // label use (`getOperationsForLabelDateRange`). `getVisibleOperations()` follows
+        // the chart's 1-year `visibleDomainLength`, which under-counts on Total — whose
+        // label/tiles span the full timeline — so the sheet showed last-year averages
+        // under a "total average" label.
+        let ops = getOperationsForLabelDateRange()
         if ops.isEmpty {
             var storedWeightForInfo: Int? = nil
 
