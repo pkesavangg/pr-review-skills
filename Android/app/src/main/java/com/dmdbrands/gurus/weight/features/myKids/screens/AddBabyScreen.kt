@@ -20,6 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
@@ -32,6 +33,7 @@ import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTa
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
+import com.dmdbrands.gurus.weight.features.common.components.AppInputDefaults
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
 import com.dmdbrands.gurus.weight.features.common.components.AppPicker
 import com.dmdbrands.gurus.weight.features.common.components.AppRadioGroupModal
@@ -219,50 +221,61 @@ fun AddBabyScreen(viewModel: MyKidsViewModel = hiltViewModel()) {
 
             Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
 
-            Box(modifier = Modifier.fillMaxWidth()) {
-                AppInput(
-                    formControl = birthLengthControl,
-                    type = AppInputType.TEXT,
-                    label = AddBabyStrings.BirthLengthLabel,
-                    readOnly = true,
-                    showTrailingIcon = true,
-                    showTrailingIconAlways = true,
-                    trailingIconId = AppIcons.Filled.CaretDown,
-                    onTrailingAction = { showLengthModal = true },
-                )
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clickable(
-                            indication = null,
-                            interactionSource = remember { MutableInteractionSource() },
-                        ) { showLengthModal = true },
-                )
-            }
+            ReadOnlyUnitField(
+                formControl = birthLengthControl,
+                label = AddBabyStrings.BirthLengthLabel,
+                trailingUnit = AddBabyStrings.FixedLengthUnit,
+                onClick = { showLengthModal = true },
+            )
 
             Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
 
-            Box(modifier = Modifier.fillMaxWidth()) {
-                AppInput(
-                    formControl = birthWeightControl,
-                    type = AppInputType.TEXT,
-                    label = AddBabyStrings.BirthWeightLabel,
-                    readOnly = true,
-                    showTrailingIcon = true,
-                    showTrailingIconAlways = true,
-                    trailingIconId = AppIcons.Filled.CaretDown,
-                    onTrailingAction = { showWeightModal = true },
-                )
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clickable(
-                            indication = null,
-                            interactionSource = remember { MutableInteractionSource() },
-                        ) { showWeightModal = true },
+            ReadOnlyUnitField(
+                formControl = birthWeightControl,
+                label = AddBabyStrings.BirthWeightLabel,
+                trailingUnit = AddBabyStrings.FixedWeightUnit,
+                onClick = { showWeightModal = true },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReadOnlyUnitField(
+    formControl: FormControl<String>,
+    label: String,
+    trailingUnit: String,
+    onClick: () -> Unit,
+) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        AppInput(
+            formControl = formControl,
+            type = AppInputType.TEXT,
+            label = label,
+            readOnly = true,
+            showTrailingIcon = false,
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(AppInputDefaults.SingleLineHeight)
+                .padding(end = MeTheme.spacing.md),
+        ) {
+            Box(modifier = Modifier.align(Alignment.CenterEnd)) {
+                AppText(
+                    text = "($trailingUnit)",
+                    textType = TextType.SubHeading,
                 )
             }
         }
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                ) { onClick() },
+        )
     }
 }
 

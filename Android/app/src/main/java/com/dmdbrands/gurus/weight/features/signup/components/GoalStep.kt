@@ -2,6 +2,8 @@ package com.dmdbrands.gurus.weight.features.signup.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -17,6 +20,7 @@ import androidx.compose.ui.text.input.ImeAction
 import com.dmdbrands.gurus.weight.domain.enums.GoalType
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
+import com.dmdbrands.gurus.weight.features.common.components.AppInputDefaults
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
 import com.dmdbrands.gurus.weight.features.common.components.AppStyledCard
 import com.dmdbrands.gurus.weight.features.common.components.AppText
@@ -104,36 +108,42 @@ fun GoalStep(
 
     AnimatedVisibility(visible = shouldShowCurrentWeight) {
       Column {
-        AppInput(
-          formControl = currentWeightControl,
-          type = AppInputType.BODY_COMP,
-          label = SignupStrings.goalStepCurrentWeightDynamic.format(weightUnit),
-          imeAction = ImeAction.Next,
-          nextFocusRequester = goalWeightFocusRequester,
-          modifier = Modifier.focusRequester(currentWeightFocusRequester),
-          // Enable for any non-maintain variant (lose, gain, lose_gain)
-          enabled = goalTypeControl.value != GoalType.MAINTAIN.value,
-          maxLength = 4,
-        )
+        Box(modifier = Modifier.fillMaxWidth()) {
+          AppInput(
+            formControl = currentWeightControl,
+            type = AppInputType.BODY_COMP,
+            label = SignupStrings.goalStepCurrentWeightLabel,
+            imeAction = ImeAction.Next,
+            nextFocusRequester = goalWeightFocusRequester,
+            modifier = Modifier.focusRequester(currentWeightFocusRequester),
+            enabled = goalTypeControl.value != GoalType.MAINTAIN.value,
+            maxLength = 4,
+            showTrailingIcon = false,
+          )
+          TrailingUnit(weightUnit)
+        }
         Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
       }
     }
 
-    AppInput(
-      formControl = goalWeightControl,
-      maxLength = 4,
-      type = AppInputType.BODY_COMP,
-      label = SignupStrings.goalStepGoalWeightDynamic.format(weightUnit),
-      imeAction = ImeAction.Next,
-      onImeAction = onNext,
-      modifier =
-        if (shouldShowCurrentWeight) {
-          Modifier.focusRequester(goalWeightFocusRequester)
-        } else {
-          // If current weight is hidden, goal weight becomes the first input
-          Modifier.focusRequester(currentWeightFocusRequester)
-        },
-    )
+    Box(modifier = Modifier.fillMaxWidth()) {
+      AppInput(
+        formControl = goalWeightControl,
+        maxLength = 4,
+        type = AppInputType.BODY_COMP,
+        label = SignupStrings.goalStepGoalWeightLabel,
+        imeAction = ImeAction.Next,
+        onImeAction = onNext,
+        showTrailingIcon = false,
+        modifier =
+          if (shouldShowCurrentWeight) {
+            Modifier.focusRequester(goalWeightFocusRequester)
+          } else {
+            Modifier.focusRequester(currentWeightFocusRequester)
+          },
+      )
+      TrailingUnit(weightUnit)
+    }
 
     val weightUnitOptions = listOf(
       SegmentButtonData(id = 0, label = SignupStrings.weightUnitLbs),
@@ -156,6 +166,22 @@ fun GoalStep(
     }
     Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.sm))
 
+  }
+}
+
+@Composable
+private fun BoxScope.TrailingUnit(unitText: String) {
+  Box(
+    modifier = Modifier
+      .matchParentSize()
+      .padding(end = MeTheme.spacing.md),
+  ) {
+    Box(modifier = Modifier.align(Alignment.CenterEnd)) {
+      AppText(
+        text = "($unitText)",
+        textType = TextType.SubHeading,
+      )
+    }
   }
 }
 

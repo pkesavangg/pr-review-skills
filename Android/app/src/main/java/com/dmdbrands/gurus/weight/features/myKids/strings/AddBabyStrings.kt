@@ -6,8 +6,10 @@ object AddBabyStrings {
     const val NameLabel = "name"
     const val BirthdayLabel = "baby's birthday"
     const val BiologicalSexLabel = "Biological Sex"
-    const val BirthLengthLabel = "Birth Length (in)"
-    const val BirthWeightLabel = "Birth Weight (lb)"
+    const val BirthLengthLabel = "Birth Length"
+    const val BirthWeightLabel = "Birth Weight"
+    const val FixedLengthUnit = "in"
+    const val FixedWeightUnit = "lb"
 
     object BiologicalSexModal {
         const val Title = "Biological Sex"

@@ -37,9 +37,9 @@ object SignupStrings {
   const val heightUnitFtIn = "Ft / In"
   const val heightUnitCm = "CM"
 
-  // Goal step dynamic weight labels
-  const val goalStepCurrentWeightDynamic = "starting weight (%s)"
-  const val goalStepGoalWeightDynamic = "Goal weight (%s)"
+  // Goal step weight labels (unit shown as trailing overlay)
+  const val goalStepCurrentWeightLabel = "starting weight"
+  const val goalStepGoalWeightLabel = "Goal weight"
 
   // HeightStep strings
   const val heightStepTitle = "How tall are you?"
