@@ -1,3 +1,73 @@
+# 5.0.2 - 05/22/2026
+
+## Android
+
+Added
+
+- [MA-3939](https://greatergoods.atlassian.net/browse/MA-3939) Added a one-time educational modal hinting that the weight graph is scrollable.
+- [MA-3887](https://greatergoods.atlassian.net/browse/MA-3887) Synced Wi-Fi and R4 scale entries to Health Connect.
+- [MA-4003](https://greatergoods.atlassian.net/browse/MA-4003) Added a Restore Account placeholder to Scale Setup.
+
+Changed
+
+- [MA-3938](https://greatergoods.atlassian.net/browse/MA-3938) Updated dashboard graphs to use the latest daily readings and optimised Health Connect sync, with daywise-latest SQL and improved chart empty-state transitions.
+- [MA-3965](https://greatergoods.atlassian.net/browse/MA-3965) Showed daily average for non-latest day points on the Week/Month graph and routed MetricInfo label through GraphLabelHelper.
+- [MA-3930](https://greatergoods.atlassian.net/browse/MA-3930) Improved Health Connect integration state handling and stability.
+- [MA-3911](https://greatergoods.atlassian.net/browse/MA-3911) Implemented immediate theme switching and fixed system theme propagation.
+- [MA-3906](https://greatergoods.atlassian.net/browse/MA-3906) Automated native library build and enabled 16KB page alignment.
+- [MA-3900](https://greatergoods.atlassian.net/browse/MA-3900) Handled unknown device SKUs more gracefully, removing the hardcoded default SKU.
+- [MA-3885](https://greatergoods.atlassian.net/browse/MA-3885) Improved AppSync scan reliability and logging via a logger bridge and corrected frame orientation in the native detector.
+- [MA-3874](https://greatergoods.atlassian.net/browse/MA-3874) Refined Ionic-to-native migration reliability and logging.
+- [MA-3859](https://greatergoods.atlassian.net/browse/MA-3859) Capped system font scale at 1.3x to prevent UI breakage at maximum font size.
+- [MA-3365](https://greatergoods.atlassian.net/browse/MA-3365) Converted PNG drawables to WebP for APK size reduction.
+- [MA-3953](https://greatergoods.atlassian.net/browse/MA-3953) Showed the graph scroll hint after an in-session account switch.
+- [MA-3945](https://greatergoods.atlassian.net/browse/MA-3945) Improved height precision and rounding for BLE profile synchronisation and BMI calculations.
+- [MA-3975](https://greatergoods.atlassian.net/browse/MA-3975) Updated Have a Question modal spacing to align with design specifications.
+- [MA-3901](https://greatergoods.atlassian.net/browse/MA-3901) Bumped ggBluetoothAndroid library (1.6.3 → 1.6.5).
+- [MA-4003](https://greatergoods.atlassian.net/browse/MA-4003) Updated Scale Setup UI padding.
+
+Fixed
+
+- [MA-3998](https://greatergoods.atlassian.net/browse/MA-3998) Fixed visceral fat manual entry being stored as one-tenth of the entered value.
+- [MA-3936](https://greatergoods.atlassian.net/browse/MA-3936) Fixed Health Connect sync failures by batching health data inserts to stay within Health Connect limits.
+- [MA-3919](https://greatergoods.atlassian.net/browse/MA-3919) Rejected invalid weightless weight when tapping keyboard Done.
+- [MA-3909](https://greatergoods.atlassian.net/browse/MA-3909) Ignored stale Health Connect DataStore entries when checking user conflict.
+- [MA-3894](https://greatergoods.atlassian.net/browse/MA-3894) Fixed broken Texas A&M Health resource link in Body Water metric info.
+- [MA-3854](https://greatergoods.atlassian.net/browse/MA-3854) Fixed app crash on rotation or other configuration changes by upgrading Navigation3 to 1.1.1.
+- [MA-3929](https://greatergoods.atlassian.net/browse/MA-3929) Fixed delayed FINISH response on the Wi-Fi scale setup troubleshooting screen.
+
+## iOS
+
+Added
+
+- [MA-3925](https://greatergoods.atlassian.net/browse/MA-3925) Added a one-time educational modal hinting that the weight graph is scrollable.
+- [MA-3984](https://greatergoods.atlassian.net/browse/MA-3984) Replaced the graph scroll hint GIF with a native SwiftUI animated demo.
+
+Changed
+
+- [MA-3914](https://greatergoods.atlassian.net/browse/MA-3914) Renamed the "Default Graph Range" setting to "Default Graph View".
+- [MA-3937](https://greatergoods.atlassian.net/browse/MA-3937) Showed the latest entry instead of a daily average when a day has multiple weigh-ins.
+- [MA-3956](https://greatergoods.atlassian.net/browse/MA-3956) Migrated Swift package references from the dmdbrands org to gg-engineering.
+- [MA-3941](https://greatergoods.atlassian.net/browse/MA-3941) Reduced integration sync time for large accounts by chunking the HealthKit full sync and deduping leanBodyMass entries.
+- [MA-3845](https://greatergoods.atlassian.net/browse/MA-3845) Improved Week graph performance for accounts with large datasets, including split state slices, cached calendars, and refactored chart padding.
+- [MA-3886](https://greatergoods.atlassian.net/browse/MA-3886) Improved Apple Health integration to reliably sync entries from Wi-Fi and R4 scales.
+
+Fixed
+
+- [MA-4005](https://greatergoods.atlassian.net/browse/MA-4005) Fixed the metric info screen showing incorrect total averages for weight/BMI and missing values for other body metrics.
+- [MA-4004](https://greatergoods.atlassian.net/browse/MA-4004) Fixed several body metrics missing from the exported CSV data file.
+- [MA-3981](https://greatergoods.atlassian.net/browse/MA-3981) Fixed intermittent issue where the latest entry graph data point was not displayed correctly in graph views.
+- [MA-3977](https://greatergoods.atlassian.net/browse/MA-3977) Fixed the dashboard graph not reliably selecting the latest window entry on tab switch.
+- [MA-3951](https://greatergoods.atlassian.net/browse/MA-3951) Fixed the scrollable graph onboarding modal arrow icon colour to match the design mock.
+- [MA-3921](https://greatergoods.atlassian.net/browse/MA-3921) Fixed keyboard Done button cropping on smaller iPhones and grey button decoration when the Button Shapes accessibility setting was enabled.
+- [MA-3917](https://greatergoods.atlassian.net/browse/MA-3917) Fixed the exit confirmation alert appearing in Goal Settings even when no changes were made.
+- [MA-3898](https://greatergoods.atlassian.net/browse/MA-3898) Fixed app crash inside SwiftData model context save from concurrent background contexts during entry sync.
+- [MA-3897](https://greatergoods.atlassian.net/browse/MA-3897) Fixed app crash during initialisation caused by an Injector force-unwrap race in FeedService re-registration.
+- [MA-3894](https://greatergoods.atlassian.net/browse/MA-3894) Fixed broken Texas A&M Health resource link in Body Water metric info.
+- [MA-3891](https://greatergoods.atlassian.net/browse/MA-3891) Fixed the auto-selected graph data point becoming unselected when Weightless mode was toggled.
+- [MA-3882](https://greatergoods.atlassian.net/browse/MA-3882) Fixed R4 scale body metrics not updating after changing gender, age, or height, by snapshotting scales before SDK push to survive transient empty publishes.
+- [MA-3928](https://greatergoods.atlassian.net/browse/MA-3928) Fixed invalid manual entries navigating to the Dashboard when tapping keyboard Next on iPad.
+
 # 5.0.1 - 05/06/2026
 
 ## Android
