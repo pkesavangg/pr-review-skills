@@ -208,6 +208,14 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         return try await localRepo.fetchEntriesAsDTO(forUserId: accountId, operationType: OperationType.create.rawValue)
     }
 
+    /// Returns all entries as Sendable snapshots. Prefer this over
+    /// `getAllEntries()` whenever the caller will read fields across an
+    /// `await` boundary or hand the values to another actor — see MA-3898.
+    func getAllEntriesAsSnapshots() async throws -> [EntrySnapshot] {
+        let accountId = try await getAccountId()
+        return try await localRepo.fetchEntriesAsSnapshots(forUserId: accountId, operationType: OperationType.create.rawValue)
+    }
+
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool {
         let accountId = try await getAccountId()
         return try await localRepo.checkEntryTimestampExists(forUserId: accountId, entryTimestamp: entryTimestamp)
@@ -248,7 +256,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     // MARK: - Month/History
     func getMonthsAll() async throws -> [HistoryMonth] {
         let accountId = try await getAccountId()
-        let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
+        // Snapshots, not @Model, so the rest of this function never touches a
+        // dead background `ModelContext` (MA-3898).
+        let entries = try await localRepo.fetchEntriesAsSnapshots(forUserId: accountId, operationType: OperationType.create.rawValue)
         // Group by YYYY-MM prefix, converting UTC timestamps to local timezone
         let grouped = Dictionary(grouping: entries) { DateTimeTools.getLocalMonthStringFromUTCDate($0.entryTimestamp) }
         
@@ -273,7 +283,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     
     func getMonthYear() async throws -> [HistoryMonth] {
         let accountId = try await getAccountId()
-        let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
+        // Snapshots — see MA-3898.
+        let entries = try await localRepo.fetchEntriesAsSnapshots(forUserId: accountId, operationType: OperationType.create.rawValue)
         // Get entries from last 365 days (matching TypeScript: entry."entryTimestamp" >= getIntervalDatetimeIsoString(365))
         let calendar = Calendar.current
         let now = Date()
@@ -445,7 +456,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     func getStreak() async throws -> Streak {
         let accountId = try await getAccountId()
-        let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
+        // Snapshots — see MA-3898.
+        let entries = try await localRepo.fetchEntriesAsSnapshots(forUserId: accountId, operationType: OperationType.create.rawValue)
         let calendar = Calendar.current
 
         // Extract unique calendar days (start-of-day in local timezone) so comparisons are consistent.
@@ -621,8 +633,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     ///   The caller uses this to decide whether to show the goal met card: we only show it when
     ///   the user actually added new entries in this sync (not on every login or pull-to-refresh).
     private func pushUnsyncedEntriesToRemote(accountId: String) async -> Bool {
-        // 1. Get all unsynced entries (both new and delete operations)
-        let unsynced = try? await localRepo.fetchUnsyncedEntries(forUserId: accountId)
+        // 1. Get all unsynced entries as Sendable (snapshot, DTO) pairs.
+        //    The DTO is built inside the background context, so we never read
+        //    SwiftData relationships off-actor (MA-3898).
+        let unsynced = try? await localRepo.fetchUnsyncedEntriesAsSnapshots(forUserId: accountId)
 
         // Tracks whether we successfully synced at least one create to the API; drives goal met card visibility.
         var hadSuccessfulCreate = false
@@ -633,14 +647,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
         // 2. Try to sync with backend
         if let unsyncedEntries = unsynced, !unsyncedEntries.isEmpty {
-            for operation in unsyncedEntries {
-                // R7/R9: Extract all @Model data BEFORE any await calls
+            for (operation, dto) in unsyncedEntries {
                 let entryId = operation.id
                 let entryIdString = entryId.uuidString
                 let operationType = operation.operationType
                 let entryTimestamp = operation.entryTimestamp
                 let currentAttempts = operation.attempts
-                let dto = operation.toOperationDTO()
 
                 do {
                     try await remoteRepo.syncOperation(operation: dto)
@@ -694,7 +706,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     }
     /// Lightweight summary for a single month. Avoids computing all months when only one changes.
     func getMonthSummary(monthKey: String) async throws -> HistoryMonth? {
-        let monthEntries = try await getEntries(forMonth: monthKey)
+        let accountId = try await getAccountId()
+        // Snapshots — see MA-3898.
+        let monthEntries = try await localRepo.fetchEntriesAsSnapshots(forMonth: monthKey, userId: accountId)
+            .filter { $0.operationType == OperationType.create.rawValue }
         guard !monthEntries.isEmpty else { return nil }
         return Self.buildHistoryMonth(monthKey: monthKey, monthEntries: monthEntries)
     }
@@ -747,6 +762,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     private func mergeRemoteOperations(_ remoteOps: [BathScaleOperationDTO], accountId: String) async -> Bool {
         // Tracks whether we inserted at least one new entry from remote; drives goal met card visibility.
         var hadNewCreates = false
+        // Tracks the create operations we actually inserted locally so we can sync each
+        // to the active health integration (e.g., Apple Health) after the merge loop.
+        var newlyCreatedOps: [BathScaleOperationDTO] = []
         // Group operations by timestamp to determine final state for each timestamp
         let groupedOps = Dictionary(grouping: remoteOps) { op in
             op.entryTimestamp ?? ""
@@ -768,60 +786,59 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             let normalizedTimestamp = timestamp.replacingOccurrences(of: ".000Z", with: "Z")
             let tsCandidates = timestamp == normalizedTimestamp ? [timestamp] : [timestamp, normalizedTimestamp]
             
-            // Fetch ALL entries with this timestamp (including both create and delete operations)
-            var localEntry: Entry? = nil
-            var localEntries: [Entry]? = nil
+            // Fetch ALL entries with this timestamp (including both create and delete operations).
+            // Use snapshots, not @Model objects, so we can hold the values across awaits without
+            // touching a context that has gone out of scope (MA-3898).
+            var localEntry: EntrySnapshot? = nil
+            var localEntries: [EntrySnapshot]? = nil
             for ts in tsCandidates {
-                if let fetched = try? await localRepo.fetchEntriesOfTimestamp(forUserId: accountId, timestamp: ts), !fetched.isEmpty {
+                if let fetched = try? await localRepo.fetchEntriesOfTimestampAsSnapshots(forUserId: accountId, timestamp: ts), !fetched.isEmpty {
                     localEntries = fetched
                     localEntry = fetched.first { $0.operationType == OperationType.create.rawValue } ?? fetched.first
                     break
                 }
             }
-            
+
             // Additional check: Look for entries with same timestamp AND weight to prevent race condition duplicates
-            let potentialDuplicates = localEntries?.filter { entry in
-                if let entryWeight = entry.scaleEntry?.weight, let opWeight = finalOp.weight {
-                    return entryWeight == Int(opWeight) && tsCandidates.contains(entry.entryTimestamp)
+            let potentialDuplicates = localEntries?.filter { snap in
+                if let entryWeight = snap.weight, let opWeight = finalOp.weight {
+                    return entryWeight == Int(opWeight) && tsCandidates.contains(snap.entryTimestamp)
                 }
                 return false
             } ?? []
-            
+
             // If no entries found by timestamp but we have a weight, check all entries for this user to find potential duplicates
             // This handles the case where the entry was just synced but not yet visible in the timestamp query
-            var allEntriesForUser: [Entry] = []
+            var allEntriesForUser: [EntrySnapshot] = []
             if localEntries?.isEmpty == true && finalOp.weight != nil {
                 do {
-                    allEntriesForUser = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
+                    allEntriesForUser = try await localRepo.fetchEntriesAsSnapshots(forUserId: accountId, operationType: OperationType.create.rawValue)
                 } catch {
                     allEntriesForUser = []
                 }
             }
-            
+
             // Determine the entry to work with - either from timestamp search or weight-based search
-            let entryToProcess = localEntry ?? (allEntriesForUser.filter { entry in
-                if let entryWeight = entry.scaleEntry?.weight, let opWeight = finalOp.weight {
-                    return entryWeight == Int(opWeight) && entry.entryTimestamp == normalizedTimestamp
+            let entryToProcess: EntrySnapshot? = localEntry ?? allEntriesForUser.first { snap in
+                if let entryWeight = snap.weight, let opWeight = finalOp.weight {
+                    return entryWeight == Int(opWeight) && snap.entryTimestamp == normalizedTimestamp
                 }
                 return false
-            }.first)
-            
+            }
+
             if let localEntry = entryToProcess {
                 // Local entry exists - compare server timestamps
                 let localServerTS = localEntry.serverTimestamp ?? ""
                 let remoteServerTS = finalOp.serverTimestamp ?? ""
-                
+
                 let shouldApplyRemote = localServerTS.isEmpty || remoteServerTS > localServerTS
-                
+
                 if shouldApplyRemote {
                     if finalOp.operationType == OperationType.delete.rawValue {
                         let entriesToDelete = localEntries ?? [localEntry]
-                        for entry in entriesToDelete {
-                            try? await localRepo.deleteEntry(byId: entry.id.uuidString)
+                        for snap in entriesToDelete {
+                            try? await localRepo.deleteEntry(byId: snap.id.uuidString)
                         }
-                        // Use the primitive overload — localEntry is from a background
-                        // context so we avoid accessing its @Model properties after the
-                        // async boundary by passing values already in scope.
                         try? await handleEntryDeleted(
                             entryId: localEntry.id,
                             entryTimestamp: localEntry.entryTimestamp
@@ -834,14 +851,19 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                     }
                 } else if !localServerTS.isEmpty {
                     if !localEntry.isSynced {
-                        localEntry.isSynced = true
-                        try? await localRepo.updateEntry(localEntry)
+                        // Use the primitive sync-status update; mutating the @Model directly
+                        // would write through a stale background context (MA-3898).
+                        try? await localRepo.updateEntrySyncStatus(
+                            entryId: localEntry.id.uuidString,
+                            isSynced: true,
+                            isFailedToSync: localEntry.isFailedToSync,
+                            attempts: localEntry.attempts
+                        )
                     }
                     await cleanupDuplicates(localEntries: localEntries, keepId: localEntry.id)
                 }
-            } else if !potentialDuplicates.isEmpty {
+            } else if let duplicateEntry = potentialDuplicates.first {
                 // Found potential duplicate by weight - update the existing one instead of creating new
-                let duplicateEntry = potentialDuplicates.first!
                 let updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
                 updated.id = duplicateEntry.id
                 try? await localRepo.updateEntry(updated)
@@ -852,6 +874,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                     // Final state is create - add to local storage
                     let newEntry = Entry(from: finalOp, accountId: accountId, isSynced: true)
                     try? await localRepo.saveEntry(newEntry)
+                    newlyCreatedOps.append(finalOp)
                     // Notify downstream listeners/UI about the new entry so lists refresh
                 }
                 // If final operation is delete and no local entry exists, nothing to do
@@ -860,9 +883,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
 
         // Only notify UI listeners when the remote merge actually inserted new
-        // entries locally. Calling handleEntryAdded here would re-route the
-        // overall latest entry through integrationService.syncNewEntry on every
-        // sync — pushing previously-unsynced historical entries into Apple Health
+        // entries locally. We restrict downstream syncs to the entries that were
+        // freshly created in this merge — pushing the overall "latest" entry would
+        // risk re-pushing previously-unsynced historical entries into Apple Health
         // after operations like deletes.
         if hadNewCreates {
             do {
@@ -873,27 +896,40 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             } catch {
                 await logger.log(level: .error, tag: tag, message: "Failed to get latest entry: \(error.localizedDescription)")
             }
+
+            // Forward each newly-created entry to active health integrations
+            // (e.g., Apple Health). Without this, WiFi-scale entries arriving via
+            // push-triggered remote sync would never reach HealthKit.
+            for op in newlyCreatedOps {
+                let notification = EntryNotification(from: op)
+                do {
+                    try await integrationService.syncNewEntry(notification: notification)
+                } catch {
+                    await logger.log(
+                        level: .error,
+                        tag: tag,
+                        message: "Failed to sync remote-merged entry to integrations: timestamp=\(notification.entryTimestamp), error=\(error.localizedDescription)"
+                    )
+                }
+            }
         }
         return hadNewCreates
     }
 
-    private func cleanupDuplicates(localEntries: [Entry]?, keepId: UUID) async {
+    private func cleanupDuplicates(localEntries: [EntrySnapshot]?, keepId: UUID) async {
         guard let allEntries = localEntries, allEntries.count > 1 else { return }
-        for entry in allEntries where entry.id != keepId {
+        for snap in allEntries where snap.id != keepId {
             do {
-                try await localRepo.deleteEntry(byId: entry.id.uuidString)
-                // Use the primitive overload — these are background-context models
-                // whose properties are read here on the same background thread, but
-                // the primitive overload avoids triggering SwiftData fault-loads.
+                try await localRepo.deleteEntry(byId: snap.id.uuidString)
                 try await self.handleEntryDeleted(
-                    entryId: entry.id,
-                    entryTimestamp: entry.entryTimestamp
+                    entryId: snap.id,
+                    entryTimestamp: snap.entryTimestamp
                 )
             } catch {
                 await logger.log(
                     level: .error,
                     tag: tag,
-                    message: "Failed to delete duplicate entry \(entry.id): \(error.localizedDescription)"
+                    message: "Failed to delete duplicate entry \(snap.id): \(error.localizedDescription)"
                 )
             }
         }
@@ -906,7 +942,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         guard let dashboardType = await getDashboardType() else {
             throw AccountError.noActiveAccount
         }
-        let useR4Endpoint = dashboardType == DashboardType.dashboard12.rawValue
+        let useR4Endpoint = DashboardType.from(stored: dashboardType) == .dashboard12
         let _ = try await remoteRepo.exportCsv(useR4Endpoint: useR4Endpoint)
     }
     
@@ -927,14 +963,61 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         // Round average to whole tenths of lbs, then convert to Double
         return Double(Int(round(Double(filtered.reduce(0, +)) / Double(filtered.count))))
     }
+
+    // MARK: - Latest-per-Day Helpers
+    // Daily aggregation (Week & Month graph tabs) surfaces the latest entry per day so users see
+    // their actual most recent reading rather than an average across same-day weigh-ins.
+    // For each metric, we walk entries from latest timestamp backwards and take the first
+    // value that is non-nil AND > 0 (preserves the old `avgNonZero` "treat 0 as missing" rule).
+
+    private func latestPositive<T: BinaryInteger>(
+        _ entries: [Entry],
+        pick: (Entry) -> T?
+    ) -> Double? {
+        for entry in entries {
+            if let value = pick(entry), value > 0 {
+                return Double(value)
+            }
+        }
+        return nil
+    }
+
+    private func latestPositiveDTO(
+        _ dtos: [BathScaleOperationDTO],
+        pick: (BathScaleOperationDTO) -> Double?
+    ) -> Double? {
+        for dto in dtos {
+            if let value = pick(dto), value > 0 {
+                return value
+            }
+        }
+        return nil
+    }
     
-    /// Aggregate entries by day, returning BathScaleWeightSummary for each day
+    /// Aggregate entries by day, returning BathScaleWeightSummary for each day.
+    ///
+    /// Hybrid rule (per UX direction — see docs/dashboard-hybrid-latest-vs-average.md):
+    /// the **most recent day with valid entries** surfaces its latest-non-null-positive values per
+    /// metric (so the dashboard headline reflects the actual most recent weigh-in). Every other day
+    /// reverts to the 5.0.0 daily-average behaviour. Year/Total tabs route through `aggregateByMonth`
+    /// and are unaffected.
     func aggregateByDay(entries: [Entry], accountId: String) -> [BathScaleWeightSummary?] {
         // Group entries by day (YYYY-MM-DD), converting UTC to local timezone
         let grouped = Dictionary(grouping: entries) { entry -> String in
             return DateTimeTools.getLocalDateStringFromUTCDate(entry.entryTimestamp)
         }
-        
+
+        // Identify the most recent day that actually has a valid weight entry. Lexicographic max
+        // of YYYY-MM-DD strings == chronological max. Skipping days with no valid weight ensures a
+        // day made entirely of weight=0 entries doesn't "steal" the latest-day slot from the
+        // genuinely most recent day with real data.
+        let latestValidDayKey: String = grouped
+            .filter { (_, dayEntries) in
+                dayEntries.contains { ($0.scaleEntry?.weight ?? 0) > 0 }
+            }
+            .keys
+            .max() ?? ""
+
         return grouped.compactMap { (day, dayEntries) -> BathScaleWeightSummary? in
             // Filter entries that have valid weight data from scaleEntry
             let validEntries = dayEntries.filter { entry in
@@ -944,13 +1027,41 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 return true
             }
             guard !validEntries.isEmpty else { return nil }
-            
+
             // Ensure we have a valid date string before parsing
             guard !day.isEmpty else { return nil }
             let date = DateTimeTools.getDateFromDateString(day, format: "yyyy-MM-dd")
-            let latestTimestamp = validEntries.map { $0.entryTimestamp }.max() ?? ""
             let count = validEntries.count
-            
+
+            if day == latestValidDayKey {
+                // Latest-day branch: surface the latest entry's values, with per-metric fallback
+                // to the most recent non-null-positive reading across the day.
+                let sortedDesc = validEntries.sorted { $0.entryTimestamp > $1.entryTimestamp }
+                return BathScaleWeightSummary(
+                    accountId: accountId,
+                    period: day,
+                    entryTimestamp: sortedDesc.first?.entryTimestamp ?? "",
+                    date: date,
+                    count: count,
+                    weight: Double(sortedDesc.first?.scaleEntry?.weight ?? 0),
+                    bodyFat:               latestPositive(sortedDesc) { $0.scaleEntry?.bodyFat },
+                    muscleMass:            latestPositive(sortedDesc) { $0.scaleEntry?.muscleMass },
+                    water:                 latestPositive(sortedDesc) { $0.scaleEntry?.water },
+                    bmi:                   latestPositive(sortedDesc) { $0.scaleEntry?.bmi },
+                    bmr:                   latestPositive(sortedDesc) { $0.scaleEntryMetric?.bmr },
+                    metabolicAge:          latestPositive(sortedDesc) { $0.scaleEntryMetric?.metabolicAge },
+                    proteinPercent:        latestPositive(sortedDesc) { $0.scaleEntryMetric?.proteinPercent },
+                    pulse:                 latestPositive(sortedDesc) { $0.scaleEntryMetric?.pulse },
+                    skeletalMusclePercent: latestPositive(sortedDesc) { $0.scaleEntryMetric?.skeletalMusclePercent },
+                    subcutaneousFatPercent:latestPositive(sortedDesc) { $0.scaleEntryMetric?.subcutaneousFatPercent },
+                    visceralFatLevel:      latestPositive(sortedDesc) { $0.scaleEntryMetric?.visceralFatLevel },
+                    boneMass:              latestPositive(sortedDesc) { $0.scaleEntryMetric?.boneMass },
+                    impedance:             latestPositive(sortedDesc) { $0.scaleEntryMetric?.impedance }
+                )
+            }
+
+            // Daily-average branch (5.0.0 semantics) — used for every day except the most recent.
+            let latestTimestamp = validEntries.map { $0.entryTimestamp }.max() ?? ""
             return BathScaleWeightSummary(
                 accountId: accountId,
                 period: day,
@@ -1028,12 +1139,18 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     // MARK: - DTO-based Aggregation (Background Thread Safe)
 
-    /// Aggregate DTOs by day on background thread - avoids SwiftData relationship access
+    /// Aggregate DTOs by day on background thread - avoids SwiftData relationship access.
+    /// Mirrors the hybrid rule in `aggregateByDay(entries:accountId:)`.
     private func aggregateByDayFromDTOs(_ dtos: [BathScaleOperationDTO], accountId: String) -> [BathScaleWeightSummary] {
         let grouped = Dictionary(grouping: dtos) { dto -> String in
             guard let ts = dto.entryTimestamp else { return "" }
             return DateTimeTools.getLocalDateStringFromUTCDate(ts)
         }
+
+        let latestValidDayKey: String = grouped
+            .filter { (_, dayDTOs) in dayDTOs.contains { ($0.weight ?? 0) > 0 } }
+            .keys
+            .max() ?? ""
 
         return grouped.compactMap { (day, dayDTOs) -> BathScaleWeightSummary? in
             guard !day.isEmpty else { return nil }
@@ -1041,8 +1158,33 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             guard !validDTOs.isEmpty else { return nil }
 
             let date = DateTimeTools.getDateFromDateString(day, format: "yyyy-MM-dd")
-            let latestTimestamp = validDTOs.compactMap { $0.entryTimestamp }.max() ?? ""
 
+            if day == latestValidDayKey {
+                let sortedDesc = validDTOs.sorted { ($0.entryTimestamp ?? "") > ($1.entryTimestamp ?? "") }
+                return BathScaleWeightSummary(
+                    accountId: accountId,
+                    period: day,
+                    entryTimestamp: sortedDesc.first?.entryTimestamp ?? "",
+                    date: date,
+                    count: sortedDesc.count,
+                    weight: sortedDesc.first?.weight ?? 0,
+                    bodyFat:               latestPositiveDTO(sortedDesc) { $0.bodyFat },
+                    muscleMass:            latestPositiveDTO(sortedDesc) { $0.muscleMass },
+                    water:                 latestPositiveDTO(sortedDesc) { $0.water },
+                    bmi:                   latestPositiveDTO(sortedDesc) { $0.bmi },
+                    bmr:                   latestPositiveDTO(sortedDesc) { $0.bmr },
+                    metabolicAge:          latestPositiveDTO(sortedDesc) { $0.metabolicAge },
+                    proteinPercent:        latestPositiveDTO(sortedDesc) { $0.proteinPercent },
+                    pulse:                 latestPositiveDTO(sortedDesc) { $0.pulse },
+                    skeletalMusclePercent: latestPositiveDTO(sortedDesc) { $0.skeletalMusclePercent },
+                    subcutaneousFatPercent:latestPositiveDTO(sortedDesc) { $0.subcutaneousFatPercent },
+                    visceralFatLevel:      latestPositiveDTO(sortedDesc) { $0.visceralFatLevel },
+                    boneMass:              latestPositiveDTO(sortedDesc) { $0.boneMass },
+                    impedance:             latestPositiveDTO(sortedDesc) { $0.impedance }
+                )
+            }
+
+            let latestTimestamp = validDTOs.compactMap { $0.entryTimestamp }.max() ?? ""
             return BathScaleWeightSummary(
                 accountId: accountId,
                 period: day,
@@ -1128,8 +1270,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Check for goal achievements and trigger alerts if needed
     private func checkGoalAlerts() async {
         do {
-            guard let latestEntry = try await getLatestEntry(),
-                  let weight = latestEntry.scaleEntry?.weight else { return }
+            // Snapshot, not @Model — see MA-3898.
+            let accountId = try await getAccountId()
+            guard let latestEntry = try await localRepo.fetchLatestEntryAsSnapshot(forUserId: accountId),
+                  let weight = latestEntry.weight else { return }
             // Weight is stored as tenths of lbs – cast to Double for compatibility
             await goalAlertService.showGoalMetMessage(currentWeight: Double(weight))
             
@@ -1142,24 +1286,24 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
     }
     
-    private static func buildHistoryMonth(monthKey: String, monthEntries: [Entry]) -> HistoryMonth {
+    private static func buildHistoryMonth(monthKey: String, monthEntries: [EntrySnapshot]) -> HistoryMonth {
         // Build the `weights` concatenated string  "<w>|<ts>,<w>|<ts>"  like the SQL query
         let weightPairs = monthEntries.compactMap { e -> String? in
-            guard let w = e.scaleEntry?.weight else { return nil }
+            guard let w = e.weight else { return nil }
             return "\(w)|\(e.entryTimestamp)"
         }
         let weightsConcat = weightPairs.joined(separator: ",")
-        
+
         // Numeric helpers - filter out zero values for average calculation
-        let weightValues = monthEntries.compactMap { $0.scaleEntry?.weight }.filter { $0 > 0 }.map(Double.init)
+        let weightValues = monthEntries.compactMap { $0.weight }.filter { $0 > 0 }.map(Double.init)
         let avgWeight: Double? = weightValues.isEmpty ? nil : Double(Int(round(weightValues.reduce(0, +) / Double(weightValues.count))))
         let minWeight = weightValues.min()
         let maxWeight = weightValues.max()
-        
+
         // Change = last - first by timestamp order
         let sortedByTime = monthEntries.sorted { $0.entryTimestamp < $1.entryTimestamp }
-        let firstWeight = sortedByTime.first?.scaleEntry?.weight
-        let lastWeight  = sortedByTime.last?.scaleEntry?.weight
+        let firstWeight = sortedByTime.first?.weight
+        let lastWeight  = sortedByTime.last?.weight
         let change: String? = {
             guard let f = firstWeight, let l = lastWeight else { return nil }
             return String(format: "%.1f", Double(l - f))

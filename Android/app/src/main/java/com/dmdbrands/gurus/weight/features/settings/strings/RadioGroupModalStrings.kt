@@ -16,7 +16,7 @@ object RadioGroupModalStrings {
         const val Notifications = "Notifications"
         const val Weightless = "Weightless"
         const val Appearance = "Appearance"
-        const val DefaultGraphRange = "Default Graph Range"
+        const val DefaultGraphRange = "Default Graph View"
     }
 
     object Button {

@@ -45,9 +45,18 @@ class ServiceRegistry {
         DependencyContainer.shared.register(HTTPClient.shared)
     }
 
-    /// Registers services needed after login
+    /// Registers services needed after login.
+    ///
+    /// `FeedService` previously lived here AND in `registerEssentialServices`,
+    /// which left a race window during logout/re-login where `FeedService`
+    /// could be unregistered between `AccountService`'s and
+    /// `ContentViewModel`'s `activeAccount` sinks — causing the
+    /// `Injector<FeedService>` resolve to return nil and the app to crash on
+    /// `performAppInitialization`. Keeping `FeedService` only in the
+    /// essential list closes that window. See MA-3897.
     @MainActor func registerSessionServices() {
-        DependencyContainer.shared.register(FeedService.shared)
+        // No session-scoped services at the moment. Add here when a service
+        // genuinely needs to be torn down on logout.
     }
 
     /// Deregisters essential services (called during deinit or app shutdown)
@@ -71,9 +80,10 @@ class ServiceRegistry {
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: HTTPClient.self))
     }
 
-    /// Deregisters session-level services (call during logout or deinit)
+    /// Deregisters session-level services (call during logout or deinit).
+    ///
+    /// Currently a no-op — see `registerSessionServices` for context.
     nonisolated func deregisterSessionServices() {
-        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: FeedService.self))
     }
 
 

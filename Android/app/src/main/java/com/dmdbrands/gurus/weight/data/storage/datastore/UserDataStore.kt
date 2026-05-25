@@ -234,6 +234,7 @@ class UserDataStore @Inject constructor(
         accessToken = accessToken,
         expiresAt = expiresAt,
         isActive = isActive,
+        themeMode = themeMode
       )
       return
     }
@@ -480,6 +481,34 @@ class UserDataStore @Inject constructor(
     if (account != null) {
       val updatedAccount = account.toBuilder()
         .setNotificationAlertShown(hasShown)
+        .build()
+
+      val updated = current.toBuilder()
+        .putAccounts(accountId, updatedAccount)
+        .build()
+      updateData { updated }
+    }
+  }
+
+  /**
+   * Gets whether the graph-scrollable educational hint modal has been shown for the specified account.
+   * @param accountId The account ID to check.
+   * @return True if the hint has been shown for this account, false otherwise.
+   */
+  suspend fun hasShownGraphScrollHintForAccount(accountId: String): Boolean =
+    getData().accountsMap[accountId]?.graphScrollHintShown ?: false
+
+  /**
+   * Sets whether the graph-scrollable educational hint modal has been shown for the specified account.
+   * @param accountId The account ID to update.
+   * @param hasShown Whether the hint has been shown.
+   */
+  suspend fun setGraphScrollHintShownForAccount(accountId: String, hasShown: Boolean) {
+    val current = getData()
+    val account = current.accountsMap[accountId]
+    if (account != null) {
+      val updatedAccount = account.toBuilder()
+        .setGraphScrollHintShown(hasShown)
         .build()
 
       val updated = current.toBuilder()

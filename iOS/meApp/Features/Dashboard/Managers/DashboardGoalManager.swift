@@ -13,10 +13,20 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
     // MARK: - Published Properties
     @Published var state: GoalState
 
+    // MARK: - Hot-path cache
+    /// Cached resolved display unit. `convertStoredWeightToDisplay` is called
+    /// per scroll tick on the dashboard and used to read
+    /// `accountService.activeAccount?.weightSettings?.weightUnit` per call —
+    /// the optional-chain through SwiftData appeared as a non-trivial leaf in
+    /// the post-Step-8 trace (history doc §3.14 hang #7). Refreshed in
+    /// `init`, `loadGoalData()`, and `updateGoalUnit(_:)`.
+    private var cachedDisplayUnit: WeightUnit = .lb
+
     // MARK: - Initialization
     init(initialState: GoalState = GoalState()) {
         self.state = initialState
-
+        // Lazy: account may not yet be hydrated at init time; refreshed by loadGoalData().
+        self.cachedDisplayUnit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
     }
 
     // MARK: - Goal Data Loading
@@ -33,6 +43,8 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
             // Extract all relationship data BEFORE async call (R7)
             let goalType = goalSettings.goalType ?? .gain
             let goalUnit = account.weightSettings?.weightUnit ?? .lb
+            // Refresh the hot-path display-unit cache while we have the unit in hand.
+            self.cachedDisplayUnit = goalUnit
             let hasGoalSet = goalSettings.goalWeight != nil
             let initialWeightStored = Int(goalSettings.initialWeight ?? 0)
             let goalWeightStored = Int(goalSettings.goalWeight ?? 0)
@@ -328,10 +340,14 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
 
     func updateGoalUnit(_ unit: WeightUnit) {
         state.goalUnit = unit
+        // Keep the hot-path display-unit cache aligned.
+        cachedDisplayUnit = unit
     }
     func convertStoredWeightToDisplay(_ storedWeight: Int) -> Double {
-        let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
-        if unit == .kg {
+        // Read the cached unit instead of re-resolving the
+        // accountService → activeAccount → weightSettings → weightUnit chain
+        // per call. See `cachedDisplayUnit` declaration for trace evidence.
+        if cachedDisplayUnit == .kg {
             return ConversionTools.convertStoredToKg(storedWeight)
         } else {
             return ConversionTools.convertStoredToLbs(storedWeight)

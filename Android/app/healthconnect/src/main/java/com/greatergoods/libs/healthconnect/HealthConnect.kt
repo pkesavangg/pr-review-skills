@@ -58,6 +58,10 @@ class HealthConnect(
         // Intent actions for privacy policy handling
         const val ACTION_SHOW_PERMISSIONS_RATIONALE = "androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"
         const val ACTION_VIEW_PERMISSION_USAGE = "android.intent.action.VIEW_PERMISSION_USAGE"
+
+        // Health Connect max chunk size is 5MB. 500 records per batch is a safe limit
+        // to stay well within the threshold even with all metrics populated.
+        private const val HEALTH_CONNECT_CHUNK_SIZE = 500
     }
 
     private val healthConnectClient: HealthConnectClient by lazy {
@@ -338,11 +342,14 @@ class HealthConnect(
 
     /**
      * Saves a list of health data entries.
+     * Records are inserted in chunks to stay within Health Connect's 5MB per-chunk limit.
      */
     override suspend fun saveData(data: List<HealthConnectData>): HealthConnectResult<Unit> =
         try {
             val records = data.mapNotNull { mapToRecord(it) }
-            healthConnectClient.insertRecords(records)
+            records.chunked(HEALTH_CONNECT_CHUNK_SIZE).forEach { chunk ->
+                healthConnectClient.insertRecords(chunk)
+            }
             HealthConnectResult.Success(Unit)
         } catch (e: Exception) {
             HealthConnectResult.Error(e)

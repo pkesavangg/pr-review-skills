@@ -167,9 +167,9 @@ fun ScaleSetupLoader(
       Spacer(modifier = Modifier.height(spacing.lg))
 
       // Scale Image - map SKU for display (e.g., 0022 -> 0383)
-      scaleImageSku?.let {
+      scaleImageSku?.let { rawSku ->
         AppScaleImage(
-          sku = DeviceHelper.mapSkuForDisplay(scaleImageSku),
+          sku = DeviceHelper.mapSkuForDisplay(rawSku) ?: rawSku,
           scaleImageSize = ScaleImageSize.Large,
         )
         Spacer(modifier = Modifier.height(spacing.lg))
@@ -198,6 +198,7 @@ fun ScaleSetupLoader(
               label = contentButtonText,
               type = ButtonType.InlineTextPrimary,
               onClick = contentButtonClick,
+              modifier = Modifier.padding(top = spacing.xs)
             )
           }
         }

@@ -413,7 +413,7 @@ class SettingsStore: ObservableObject {
         }
     }
 
-    /// Trailing detail text for the Default Graph Range row.
+    /// Trailing detail text for the Default Graph View row.
     var defaultGraphPeriodText: String { defaultGraphPeriod.title }
     
     var isGoalFormValid: Bool {
@@ -1446,27 +1446,28 @@ class SettingsStore: ObservableObject {
     
     /// Handles goal type segment changes and ensures proper form state
     func handleGoalTypeChange(_ newSegment: GoalTypeSegment) {
-        selectedSegment = newSegment
         let newGoalTypeValue = newSegment.goalTypeValue
-        
-        // Only update if the value is actually different
-        if goalForm.goalType.value != newGoalTypeValue {
-            goalForm.goalType.value = newGoalTypeValue
-            // Explicitly mark as dirty to ensure the form recognizes the change
-            goalForm.goalType.markAsDirty()
-            // Mark as touched so form is considered interacted with
-            goalForm.goalType.markAsTouched()
-        }
+
+        // No-op when the goal type hasn't actually changed. Compare by segment
+        // (not raw string) because the form's goalType may hold "lose"/"gain"
+        // (the GoalForm default and legacy stored values) while the segment
+        // value is "losegain" — semantically equal but unequal as strings.
+        // Otherwise an external sync of `selectedSegment` (e.g. onAppear) would
+        // falsely dirty the form and trigger the exit-confirmation alert.
+        guard GoalTypeSegment.fromGoalType(goalForm.goalType.value) != newSegment else { return }
+
+        selectedSegment = newSegment
+        goalForm.goalType.value = newGoalTypeValue
+        goalForm.goalType.markAsDirty()
+        goalForm.goalType.markAsTouched()
+
         if newSegment == .loseGain {
             [goalForm.goalWeight, goalForm.currentWeight]
                 .filter { !$0.value.isEmpty }
                 .forEach { $0.markAsDirty() }
         }
-        
-        // Force form validation to update computed properties
+
         goalForm.validate()
-        
-        // Trigger UI update by sending objectWillChange
         objectWillChange.send()
     }
     
@@ -1709,7 +1710,7 @@ class SettingsStore: ObservableObject {
                 selectedValues: [defaultGraphPeriod],
                 options: [TimePeriod.allCases],
                 displayValue: { $0.title },
-                title: SettingsStrings.defaultGraphRange,
+                title: SettingsStrings.defaultGraphView,
                 showCancel: false,
                 updateValues: { vals in
                     self.notificationService.dismissModal()

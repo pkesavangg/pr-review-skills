@@ -1010,8 +1010,10 @@ constructor(
       AppLog.e(TAG, "Error stopping WiFi service", e)
     }
     if (currentState.saved || canExit) {
-      // Wait for scale to appear in list before navigating so "My Scales" is not empty
-      navigateBack(waitForScaleInList = true)
+      // Only wait for scale to appear in paired list when the scale was actually saved.
+      // Exit paths like troubleshooting / error-code / MAC-only never save a scale,
+      // so waiting would block on the full timeout and delay the FINISH response.
+      navigateBack(waitForScaleInList = currentState.saved)
       return
     }
 

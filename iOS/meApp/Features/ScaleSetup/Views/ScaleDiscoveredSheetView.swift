@@ -85,6 +85,11 @@ struct ScaleDiscoveredSheetView: View {
         .padding([.horizontal, .top], .spacingMD)
         .frame(maxWidth: .infinity)
         .background(theme.backgroundPrimary)
+        // The SceneDelegate-level `AppDefaultButtonStyle` (PR #1936) can drop
+        // through `.sheet` presentations, letting iOS paint its Show Borders
+        // grey rounded-rectangle on the close-X icon. Re-applying it here
+        // keeps the close button clean when the accessibility setting is on.
+        .buttonStyle(AppDefaultButtonStyle())
         .onDisappear(){
             viewModel.clearTimer()
         }

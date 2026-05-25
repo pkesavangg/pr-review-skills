@@ -112,17 +112,20 @@ public final class HealthKitService: HealthKitServiceProtocol {
     }
     
     /// Pushes the entire local entry history into Apple Health.
+    ///
+    /// The work is processed in fixed-size chunks of entries so the in-flight
+    /// HealthKit payload stays bounded regardless of how many entries the
+    /// account has. With a single 9k-entry payload (~45k HK samples), trying to
+    /// commit everything at once previously exhausted memory and tripped the
+    /// main-thread watchdog before completion.
     public func syncAllData() async throws {
-        // Get accountId on main actor first
         let accountId = await getActiveAccountId()
         guard let accountId else { return }
         logger.log(level: .info, tag: tag, message: "HealthKit full sync started. accountId=\(accountId)")
 
-        // Materialize simple export values off the main actor to avoid cross-context @Model access
         let exports: [HealthKitExport] = try await Task.detached(priority: .userInitiated) {
             let container = await PersistenceController.shared.container
             let bgContext = ModelContext(container)
-            // Avoid referencing enum cases inside #Predicate; compare to a captured String constant instead.
             let opCreate = OperationType.create.rawValue
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
                 $0.accountId == accountId && $0.operationType == opCreate
@@ -142,10 +145,21 @@ public final class HealthKitService: HealthKitServiceProtocol {
             return items
         }.value
 
-        let healthKitData = buildHealthKitData(from: exports)
-        logger.log(level: .info, tag: tag, message: "HealthKit full sync prepared payload. accountId=\(accountId), entriesCount=\(exports.count), payloadCount=\(healthKitData.count)")
-        try await saveHealthKitData(finalData: healthKitData)
-        logger.log(level: .success, tag: tag, message: "HealthKit full sync completed. accountId=\(accountId), payloadCount=\(healthKitData.count)")
+        let total = exports.count
+        logger.log(level: .info, tag: tag, message: "HealthKit full sync fetched entries. accountId=\(accountId), entriesCount=\(total)")
+
+        let entryChunkSize = 1000
+        var processed = 0
+        while processed < total {
+            let end = min(processed + entryChunkSize, total)
+            let chunk = Array(exports[processed..<end])
+            let healthKitData = buildHealthKitData(from: chunk)
+            try await saveHealthKitData(finalData: healthKitData)
+            processed = end
+            logger.log(level: .info, tag: tag, message: "HealthKit full sync progress. accountId=\(accountId), processed=\(processed)/\(total)")
+        }
+
+        logger.log(level: .success, tag: tag, message: "HealthKit full sync completed. accountId=\(accountId), entriesCount=\(total)")
     }
     
     /// Opens the Apple Health app so the user can review permissions.
@@ -158,8 +172,11 @@ public final class HealthKitService: HealthKitServiceProtocol {
     
     /// Writes a single `Entry` into Apple Health.
     /// - Note: Prefer `syncNewData(notification:)` when crossing actor boundaries.
+    ///   Caller must own `entry`'s `ModelContext` — we snapshot it immediately
+    ///   so downstream code never reads SwiftData properties off-actor (MA-3898).
     func syncNewData(entry: Entry) async throws {
-        let healthKitData = buildHealthKitData(from: [entry])
+        let snapshot = EntrySnapshot(from: entry)
+        let healthKitData = buildHealthKitData(from: [snapshot])
         try await hkPackage.saveData(healthKitData)
     }
 
@@ -182,8 +199,11 @@ public final class HealthKitService: HealthKitServiceProtocol {
 
     /// Deletes a single `Entry` previously written to Apple Health.
     /// - Note: Prefer `deleteEntry(notification:)` when crossing actor boundaries.
+    ///   Caller must own `entry`'s `ModelContext` — we snapshot it immediately
+    ///   so downstream code never reads SwiftData properties off-actor (MA-3898).
     func deleteEntry(entry: Entry) async throws -> Bool {
-        let healthKitData = buildHealthKitData(from: [entry])
+        let snapshot = EntrySnapshot(from: entry)
+        let healthKitData = buildHealthKitData(from: [snapshot])
         try await hkPackage.deleteEntry(healthKitData)
         return true
     }
@@ -237,10 +257,12 @@ public final class HealthKitService: HealthKitServiceProtocol {
     
     // MARK: - Private Helpers ------------------------------------------------
     
-    /// Fetches all entries from the local database.
-    private func fetchAllEntries() async throws -> [Entry] {
+    /// Fetches all entries from the local database as Sendable snapshots so
+    /// downstream code never reads SwiftData properties off a dead background
+    /// `ModelContext` (MA-3898).
+    private func fetchAllEntries() async throws -> [EntrySnapshot] {
         do {
-           let entries = try await entryService.getAllEntries()
+           let entries = try await entryService.getAllEntriesAsSnapshots()
            return entries
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to fetch entries", data: error.localizedDescription)
@@ -257,45 +279,48 @@ public final class HealthKitService: HealthKitServiceProtocol {
         return timestamp
     }
     
-    /// Converts entries into `HealthKitData` payloads ready for saving.
-    private func buildHealthKitData(from entries: [Entry]) -> [HealthKitData] {
+    /// Converts snapshots into `HealthKitData` payloads ready for saving.
+    /// Takes `EntrySnapshot` instead of `Entry` so we never read SwiftData
+    /// relationships across actor boundaries — see MA-3898.
+    private func buildHealthKitData(from entries: [EntrySnapshot]) -> [HealthKitData] {
         var healthKitData: [HealthKitData] = []
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         for entry in entries {
-          guard let scaleEntry = entry.scaleEntry else { continue }
-           
           // Normalize timestamp to include fractional seconds if missing
           let normalizedTimestamp = normalizeTimestamp(entry.entryTimestamp)
           guard let timestamp = formatter.date(from: normalizedTimestamp) else {
             continue
           }
-           
-          if let weight = scaleEntry.weight {
+
+          // A stored `0` for any metric means the scale could not measure it — treat as
+          // missing so we don't push bogus samples or compute derived values from them.
+          if let weight = entry.weight, weight > 0 {
             healthKitData.append(HealthKitData(
               type: .weight,
               value: ConversionTools.convertStoredToLbs(weight),
               timestamp: timestamp
             ))
           }
-           
-          if let bodyFat = scaleEntry.bodyFat {
+
+          if let bodyFat = entry.bodyFat, bodyFat > 0 {
             healthKitData.append(HealthKitData(
               type: .bodyFat,
               value: ConversionTools.convertStoredToLbs(bodyFat),
               timestamp: timestamp
             ))
           }
-           
-          if let pulse = entry.scaleEntryMetric?.pulse {
+
+          if let pulse = entry.pulse, pulse > 0 {
             healthKitData.append(HealthKitData(
               type: .heartRate,
               value: Double(pulse),
               timestamp: timestamp
             ))
           }
-           
-          if let weight = scaleEntry.weight, let bodyFat = scaleEntry.bodyFat {
+
+          if let weight = entry.weight, weight > 0,
+             let bodyFat = entry.bodyFat, bodyFat > 0 {
             let convertedWeight = ConversionTools.convertStoredToLbs(weight)
             let convertedBodyFat = ConversionTools.convertStoredToLbs(bodyFat)
             let leanBodyMass = convertedWeight - (convertedWeight * (convertedBodyFat / 100))
@@ -305,17 +330,17 @@ public final class HealthKitService: HealthKitServiceProtocol {
               timestamp: timestamp
             ))
           }
-           
-          if let bmi = scaleEntry.bmi {
+
+          if let bmi = entry.bmi, bmi > 0 {
             healthKitData.append(HealthKitData(
               type: .bmi,
               value: ConversionTools.convertStoredToLbs(bmi),
               timestamp: timestamp
             ))
           }
-           
+
         }
-         
+
         return healthKitData
       }
 
@@ -327,7 +352,9 @@ public final class HealthKitService: HealthKitServiceProtocol {
         for item in exports {
             guard let timestamp = formatter.date(from: item.timestamp) else { continue }
 
-            if let weight = item.weight {
+            // A stored `0` for any metric means the scale could not measure it — treat
+            // as missing so we don't push bogus samples or compute derived values from them.
+            if let weight = item.weight, weight > 0 {
                 healthKitData.append(HealthKitData(
                     type: .weight,
                     value: ConversionTools.convertStoredToLbs(weight),
@@ -335,7 +362,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
                 ))
             }
 
-            if let bodyFat = item.bodyFat {
+            if let bodyFat = item.bodyFat, bodyFat > 0 {
                 healthKitData.append(HealthKitData(
                     type: .bodyFat,
                     value: ConversionTools.convertStoredToLbs(bodyFat),
@@ -343,15 +370,18 @@ public final class HealthKitService: HealthKitServiceProtocol {
                 ))
             }
 
-            if let muscleMass = item.muscleMass {
+            // Prefer the scale's measured muscleMass; only fall back to the
+            // weight×bodyFat derivation when measured value is unavailable.
+            // Emitting both produces duplicate HealthKit samples at the same
+            // timestamp and roughly doubles the leanBodyMass payload.
+            if let muscleMass = item.muscleMass, muscleMass > 0 {
                 healthKitData.append(HealthKitData(
                     type: .leanBodyMass,
                     value: ConversionTools.convertStoredToLbs(muscleMass),
                     timestamp: timestamp
                 ))
-            }
-
-            if let weight = item.weight, let bodyFat = item.bodyFat {
+            } else if let weight = item.weight, weight > 0,
+                      let bodyFat = item.bodyFat, bodyFat > 0 {
                 let convertedWeight = ConversionTools.convertStoredToLbs(weight)
                 let convertedBodyFat = ConversionTools.convertStoredToLbs(bodyFat)
                 let leanBodyMass = convertedWeight - (convertedWeight * (convertedBodyFat / 100))
@@ -362,7 +392,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
                 ))
             }
 
-            if let bmi = item.bmi {
+            if let bmi = item.bmi, bmi > 0 {
                 healthKitData.append(HealthKitData(
                     type: .bmi,
                     value: ConversionTools.convertStoredToLbs(bmi),
@@ -403,7 +433,9 @@ public final class HealthKitService: HealthKitServiceProtocol {
             return healthKitData
         }
 
-        if let weight = export.weight {
+        // A stored `0` for any metric means the scale could not measure it — treat as
+        // missing so we don't push bogus samples or compute derived values from them.
+        if let weight = export.weight, weight > 0 {
             healthKitData.append(HealthKitData(
                 type: .weight,
                 value: ConversionTools.convertStoredToLbs(weight),
@@ -411,7 +443,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
             ))
         }
 
-        if let bodyFat = export.bodyFat {
+        if let bodyFat = export.bodyFat, bodyFat > 0 {
             healthKitData.append(HealthKitData(
                 type: .bodyFat,
                 value: ConversionTools.convertStoredToLbs(bodyFat),
@@ -419,7 +451,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
             ))
         }
 
-        if let pulse = export.pulse {
+        if let pulse = export.pulse, pulse > 0 {
             healthKitData.append(HealthKitData(
                 type: .heartRate,
                 value: Double(pulse),
@@ -427,7 +459,8 @@ public final class HealthKitService: HealthKitServiceProtocol {
             ))
         }
 
-        if let weight = export.weight, let bodyFat = export.bodyFat {
+        if let weight = export.weight, weight > 0,
+           let bodyFat = export.bodyFat, bodyFat > 0 {
             let convertedWeight = ConversionTools.convertStoredToLbs(weight)
             let convertedBodyFat = ConversionTools.convertStoredToLbs(bodyFat)
             let leanBodyMass = convertedWeight - (convertedWeight * (convertedBodyFat / 100))
@@ -438,7 +471,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
             ))
         }
 
-        if let bmi = export.bmi {
+        if let bmi = export.bmi, bmi > 0 {
             healthKitData.append(HealthKitData(
                 type: .bmi,
                 value: ConversionTools.convertStoredToLbs(bmi),

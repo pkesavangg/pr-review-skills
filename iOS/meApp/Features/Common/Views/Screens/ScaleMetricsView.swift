@@ -33,7 +33,7 @@ struct ScaleMetricsView: View {
     ]
 
     private var metricOrder: [BodyMetric] {
-        switch dashboardStore.state.metrics.dashboardType {
+        switch dashboardStore.metrics.dashboardType {
         case .dashboard4:
             return [.weight, .bmi, .bodyFat, .muscleMass, .water]
         case .dashboard12:
@@ -100,11 +100,17 @@ struct ScaleMetricsView: View {
             .onAppear {
                 selectedMetricState = dashboardStore.validateMetricInfoSelection(selectedMetricState)
             }
-            .onChange(of: dashboardStore.state.metrics.dashboardType) { _, _ in
+            .onChange(of: dashboardStore.metrics.dashboardType) { _, _ in
                 selectedMetricState = dashboardStore.validateMetricInfoSelection(selectedMetricState)
             }
         }
         .background(theme.backgroundSecondary)
+        // The SceneDelegate-level `AppDefaultButtonStyle` (PR #1936) can drop
+        // through `.sheet` presentations, letting iOS paint its Show Borders
+        // grey rounded-rectangle on the close-X and each segment. Re-applying
+        // it here keeps the close-X icon and the SegmentedButtonView segments
+        // from colliding when the accessibility setting is on.
+        .buttonStyle(AppDefaultButtonStyle())
     }
 }
 

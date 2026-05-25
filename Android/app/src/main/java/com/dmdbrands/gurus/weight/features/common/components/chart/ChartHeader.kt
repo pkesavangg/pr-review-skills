@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphLabelHelper
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
 /**
@@ -52,14 +53,11 @@ fun ChartHeader(
     getDisplayUnit(weightUnit, weightValue)
   }
   
-  val headerText =
-    if (state.markerIndex != null) {
-      when (segment) {
-        GraphSegment.WEEK, GraphSegment.MONTH -> "day"
-        else -> "month"
-      }
-    } else
-      segment.name.lowercase()
+  val hasSelection = state.markerIndex != null
+  val labelText = when {
+    state.isEmptyGraph -> "no entries"
+    else -> GraphLabelHelper.selectionLabel(segment, hasSelection, state.isLatestDaySelected)
+  }
 
   Column(
     modifier = Modifier.padding(
@@ -68,7 +66,7 @@ fun ChartHeader(
     ),
   ) {
     Text(
-      text = if (state.isEmptyGraph) "no entries" else "$headerText average",
+      text = labelText,
       style = MeTheme.typography.subHeading1,
       color = MeTheme.colorScheme.textSubheading,
     )

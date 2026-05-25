@@ -122,6 +122,9 @@ constructor(
   private val _daywiseBodyScaleLatest = MutableStateFlow<List<PeriodBodyScaleSummary>>(listOf())
   override val daywiseBodyScaleLatest: StateFlow<List<PeriodBodyScaleSummary>> = _daywiseBodyScaleLatest.asStateFlow()
 
+  private val _daywiseBodyScaleHybrid = MutableStateFlow<List<PeriodBodyScaleSummary>>(listOf())
+  override val daywiseBodyScaleHybrid: StateFlow<List<PeriodBodyScaleSummary>> = _daywiseBodyScaleHybrid.asStateFlow()
+
   private val _monthlyAverage = MutableStateFlow<List<HistoryMonth>>(listOf())
   override val monthlyAverage: StateFlow<List<HistoryMonth>> = _monthlyAverage.asStateFlow()
 
@@ -406,23 +409,35 @@ constructor(
     repositoryScope.launch {
       updateProgressCache(accountId)
     }
-
-    // Add new body scale data updates
+    // Per MA-3965: Week/Month tabs use the hybrid per-day rule — most-recent day uses
+    // latest-non-null-positive per metric; earlier days use the daily average. The
+    // hybrid is materialised by a single SQL query (one Room invalidation per write,
+    // one atomic emission). The standalone latest-per-day and averages-per-day
+    // writers (and their public StateFlows) are retained for safe rollback.
     repositoryScope.launch {
-      updateMonthlyBodyScaleAveragesWithJoin()
+      try {
+        updateDaywiseBodyScaleHybrid()
+      } catch (e: Exception) {
+        if (e is CancellationException) throw e
+        AppLog.e("EntryService", "Error updating daywise hybrid entries", e)
+      }
     }
-
-    // Add new body scale data updates
+    // Year/Total tabs read [_monthlyBodyScaleAverages]. MA-3938 dropped this
+    // subscription when it replaced the per-day flow on Week/Month, leaving
+    // Year/Total empty. Re-subscribed here as part of the MA-3965 hybrid wiring.
     repositoryScope.launch {
-      updateDaywiseBodyScaleAveragesWithJoin()
+      try {
+        updateMonthlyBodyScaleAveragesWithJoin()
+      } catch (e: Exception) {
+        if (e is CancellationException) throw e
+        AppLog.e("EntryService", "Error updating monthly average entries", e)
+      }
     }
 
     // Add monthly average subscription
     repositoryScope.launch {
       updateMonthlyAverage(accountId)
     }
-
-
 
     // Check for goal card after account data is updated
     repositoryScope.launch {
@@ -448,6 +463,7 @@ constructor(
     _monthlyBodyScaleLatest.value = emptyList()
     _daywiseBodyScaleAverages.value = emptyList()
     _daywiseBodyScaleLatest.value = emptyList()
+    _daywiseBodyScaleHybrid.value = emptyList()
     _isUpdating.value = false
     _lastUpdated.value = null
     _currentStreak.value = 0
@@ -694,6 +710,29 @@ constructor(
           entryRepository,
           operationsFromApi,
         )
+        // Mirrors operation.service.ts#executeOperations (Ionic app): forward
+        // every server-side CREATE to Health Connect. Covers Wi-Fi and R4
+        // scales whose readings reach the app only via the server, not
+        // through addEntry()/syncOperations(newEntries=...).
+        // Server responses use lowercase operationType ("create"), while
+        // locally-built entries use OperationType.CREATE.name ("CREATE"),
+        // so compare ignoring case.
+        //
+        // Batch all CREATE entries into a single Health Connect sync call
+        // instead of calling tryLocalIntegration per entry. On first sync
+        // operationsFromApi can contain thousands of historical records;
+        // calling checkIntegrated() + syncData() once per entry caused
+        // thousands of sequential coroutine calls and a very long load time.
+        val createOps = operationsFromApi
+          .filter { it.entry.operationType.equals(OperationType.CREATE.name, ignoreCase = true) }
+        if (createOps.isNotEmpty()) {
+          // Run Health Connect sync in the background so it does not block
+          // navigation. syncOperations() is called from loadData() inside
+          // LoadingScreenViewModel; if we await here the dashboard never
+          // appears until all HC IPC batches finish (could be 100+ chunks on
+          // a first login with a large history).
+          repositoryScope.launch { tryLocalIntegrationBatch(createOps) }
+        }
       }
 
       // 7. API sync is done: clear loader now and refresh the progress cache in the background
@@ -759,6 +798,53 @@ constructor(
       AppLog.e("EntryService", "Error updating day wise entry averages", e)
     }
   }
+
+  private suspend fun updateDaywiseBodyScaleLatestWithJoin() {
+    try {
+      getDaywiseBodyScaleLatestWithJoin()
+        .collect { list ->
+          _daywiseBodyScaleLatest.value = list
+        }
+    } catch (e: Exception) {
+      if (e is CancellationException) throw e
+      AppLog.e("EntryService", "Error updating day wise latest entries", e)
+    }
+  }
+
+  /**
+   * Per MA-3965: subscribes to the single-pass hybrid SQL query — most recent day
+   * with a valid entry surfaces the latest non-null positive value per metric;
+   * every earlier day surfaces the daily-average per metric. One Room invalidation
+   * per write, one emission, no intermediate "average-on-latest-day" frame.
+   */
+  private suspend fun updateDaywiseBodyScaleHybrid() {
+    try {
+      getDaywiseBodyScaleHybridWithJoin().collect { list ->
+        _daywiseBodyScaleHybrid.value = list
+      }
+    } catch (e: Exception) {
+      if (e is CancellationException) throw e
+      AppLog.e("EntryService", "Error updating daywise hybrid entries", e)
+    }
+  }
+
+  /**
+   * Gets the hybrid daywise body-scale series for the active account using JOINs.
+   * Backs [_daywiseBodyScaleHybrid] (see MA-3965 for the hybrid rule).
+   */
+  private fun getDaywiseBodyScaleHybridWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
+    combine(
+      entryRepository.getDaywiseBodyScaleHybridWithJoin(this.accountId ?: ""),
+      weightSettingsFlow,
+    ) { summaries, weightSettings ->
+      try {
+        summaries.map { it.process(weightSettings.weightUnit, weightSettings.weightless) }
+      } catch (e: Exception) {
+        if (e is CancellationException) throw e
+        AppLog.e("EntryService", "Error processing daywise hybrid entries", e)
+        emptyList()
+      }
+    }
 
   private suspend fun updateMonthlyAverage(accountId: String) {
     try {
@@ -895,13 +981,21 @@ constructor(
 
   /**
    * Gets the latest body scale entry for each day for an account using JOINs.
+   * Per MA-3938: backs the dashboard graph for Week/Month tabs so days with multiple
+   * entries surface the latest non-null positive value per metric (not the daily average).
    */
   private fun getDaywiseBodyScaleLatestWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
     combine(
       entryRepository.getDaywiseBodyScaleLatestWithJoin(this.accountId ?: ""),
       weightSettingsFlow,
     ) { summaries, weightSettings ->
-      summaries.map { it.process(weightSettings.weightUnit, weightSettings.weightless) }
+      try {
+        summaries.map { it.process(weightSettings.weightUnit, weightSettings.weightless) }
+      } catch (e: Exception) {
+        if (e is CancellationException) throw e
+        AppLog.e("EntryService", "Error processing daywise latest entries", e)
+        emptyList()
+      }
     }
 
   /**
@@ -939,6 +1033,54 @@ constructor(
       }
     } catch (err: Exception) {
       AppLog.e("EntryService", "Error syncing to Health Connect", err)
+      // Don't throw - this is a non-critical operation
+    }
+  }
+
+  /**
+   * Batch version of tryLocalIntegration for server-pull entries (operationsFromApi).
+   *
+   * On first sync, the API returns the full entry history (potentially thousands
+   * of records). Calling tryLocalIntegration per entry would invoke checkIntegrated()
+   * and syncData() once per record — causing thousands of sequential coroutine calls
+   * and a very long initial load time.
+   *
+   * This function checks integration status once, converts all entries to summaries
+   * in memory, then issues a single healthConnectService.syncData() call for the
+   * entire batch and a single healthConnectRepository.syncEntry() for the last entry.
+   *
+   * @param entries The CREATE entries received from the API in this sync cycle.
+   */
+  private suspend fun tryLocalIntegrationBatch(entries: List<Entry>) {
+    try {
+      val isIntegrated = healthConnectService.checkIntegrated()
+      if (!isIntegrated) return
+
+      val summaries = entries.filterIsInstance<ScaleEntry>()
+        .mapNotNull { it.toPeriodBodyScaleSummary() }
+
+      if (summaries.isEmpty()) return
+
+      healthConnectService.syncData(summaries)
+      AppLog.d("EntryService", "Batch synced ${summaries.size} entries to Health Connect")
+
+      // Record the most-recent entry in the HC sync table so the integration
+      // service knows up to which timestamp it has synced.
+      val latest = summaries.maxByOrNull { it.entryTimestamp } ?: return
+      val latestEntry = HealthConnectSyncEntry(
+        weight = latest.weight,
+        timestamp = ConversionTools.convertToUTC(latest.entryTimestamp),
+        type = IntegrationType.HEALTH_CONNECT.value,
+        sentAt = DateTimeFormatter.ISO_INSTANT.format(Instant.now()),
+        bodyFat = latest.bodyFat,
+        muscleMass = latest.muscleMass,
+        water = latest.water,
+        bmi = latest.bmi,
+        data = mapOf(),
+      )
+      healthConnectRepository.syncEntry(latestEntry)
+    } catch (err: Exception) {
+      AppLog.e("EntryService", "Error in batch Health Connect sync", err)
       // Don't throw - this is a non-critical operation
     }
   }

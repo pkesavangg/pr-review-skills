@@ -72,8 +72,11 @@ class GraphViewModel @AssistedInject constructor(
     fun create(segment: GraphSegment): GraphViewModel
   }
 
+  // Per MA-3965: Week/Month tabs use the hybrid flow — the most recent day in the data set
+  // uses latest-non-null-positive values per metric; every earlier day uses daily averages.
+  // Year/Total still read monthly averages.
   private val dataFlow = if (segment == GraphSegment.WEEK || segment == GraphSegment.MONTH) {
-    entryService.daywiseBodyScaleAverages
+    entryService.daywiseBodyScaleHybrid
   } else {
     entryService.monthlyBodyScaleAverages
   }
@@ -335,11 +338,19 @@ class GraphViewModel @AssistedInject constructor(
       )
       super.handleIntent(GraphIntent.UpdateSeedYRange(seedMinY = nice.min, seedMaxY = nice.max))
     }
-    // Skip target updates when a marker is selected — the selected entry should stay reflected
-    // in the header even as data re-emits; otherwise the header flashes back to visible-range avg.
-    // Exception: if the marked entry has been deleted (no longer present in the new data set),
-    // clear the marker and fall through to the normal target refresh — leaving it pinned would
-    // strand the chart on the deleted entry's stale weight in the header.
+    // Skip wholesale target updates when a marker is selected — the selected entry should stay
+    // reflected in the header even as data re-emits; otherwise the header flashes back to
+    // visible-range avg.
+    //
+    // Two exceptions where the target MUST be refreshed:
+    //  1. The marked entry has been deleted (no longer present in the new data set) — clear the
+    //     marker and fall through to the normal target refresh; leaving it pinned would strand
+    //     the chart on the deleted entry's stale weight in the header.
+    //  2. The marked entry still exists but its values changed (e.g. another reading on the
+    //     same day was deleted, so the day's "latest non-null positive" now reflects an
+    //     earlier reading). Without this, graphState.target keeps the pre-delete snapshot and
+    //     the header/tiles show stale numbers indefinitely. Refresh the target to ONLY the
+    //     marked day's new summary so the selection semantics are preserved.
     val markerEntryStillExists = currentState.markerIndex?.toLong()?.let { markerTs ->
       data.any { it.getTimeStamp() == markerTs }
     } ?: false
@@ -352,7 +363,16 @@ class GraphViewModel @AssistedInject constructor(
       }
       if (filteredData.isNotEmpty())
         super.handleIntent(GraphIntent.UpdateTarget(filteredData))
+    } else {
+      // Marker preserved across data re-emit — refresh the target to the marked day's new
+      // summary so the header weight and dashboard tiles reflect the post-delete values.
+      val markedData = currentState.markerIndex?.toLong()?.let { markerTs ->
+        data.filter { it.getTimeStamp() == markerTs }
+      } ?: emptyList()
+      if (markedData.isNotEmpty())
+        super.handleIntent(GraphIntent.UpdateTarget(markedData))
     }
+
 
     currentModelProducerJob = viewModelScope.launch(Dispatchers.IO) {
       try {
@@ -393,6 +413,11 @@ class GraphViewModel @AssistedInject constructor(
               series(
                 x = primaryXDataFiltered,
                 y = primaryYDataFiltered,
+                // Pass ranges explicitly so an empty→first-entry transition overwrites
+                // the CartesianRangeValues baked in by setupEmptyModelProducer; otherwise
+                // the chart keeps the empty-state X domain and the first point doesn't
+                // center on TOTAL until the VM is recreated.
+                ranges = primaryYAxisRange,
               )
             }
             // Secondary metric — RAW values; yTransform projects at draw time.

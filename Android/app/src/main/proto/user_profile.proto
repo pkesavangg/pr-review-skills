@@ -23,6 +23,7 @@ message UserAccount {
     bool notification_alert_shown = 7;
     int32 last_appsync_zoom_level = 8;
     DefaultGraphSegment default_graph_segment = 9;
+    bool graph_scroll_hint_shown = 10;
 }
 
 // Default graph range preference

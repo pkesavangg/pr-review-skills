@@ -95,6 +95,12 @@ private fun DashboardScreenContent(
     mutableStateOf(false)
   }
 
+  // Per MA-3965: routes the metric-info sheet label between "latest entry" (most
+  // recent day in the data set) and "day average" (any other day) on Week/Month.
+  var isLatestDaySelected by remember {
+    mutableStateOf(false)
+  }
+
   var rangeText: String? by remember {
     mutableStateOf(null)
   }
@@ -161,6 +167,9 @@ private fun DashboardScreenContent(
         },
         onMarkerIndexChange = {
           isSingleEntry = it != null
+        },
+        onLatestDaySelectedChange = {
+          isLatestDaySelected = it
         },
       )
 
@@ -282,7 +291,12 @@ private fun DashboardScreenContent(
               scope.launch {
                 navBackStack.addRoute(
                   route = AppRoute.Dashboard.MetricInfo(
-                    info = fromPeriodSummaries(state.data, isSingleEntry = isSingleEntry, rangeText = rangeText),
+                    info = fromPeriodSummaries(
+                      state.data,
+                      isSingleEntry = isSingleEntry,
+                      rangeText = rangeText,
+                      isLatestDaySelected = isLatestDaySelected,
+                    ),
                     key = (state.selectedStat?.key as DashboardKey.Metric?)?.key ?: MetricKey.WEIGHT,
                     source = getSourceFromSegment(state.selectedSegment),
                   ),

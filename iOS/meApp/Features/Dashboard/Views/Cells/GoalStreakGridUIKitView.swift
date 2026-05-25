@@ -38,24 +38,24 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
 
         // Avoid reloading/invalidating layout while a drag operation is active to prevent mid-drag resizing
         if coordinator.interactiveMovingIndexPath != nil {
-            coordinator.lastIsEditMode = store.state.ui.isEditMode
+            coordinator.lastIsEditMode = store.ui.isEditMode
             // Keep system drag disabled; we use interactive movement with strict clamping
             collectionView.dragInteractionEnabled = false
             return
         }
 
         // Suppress reloads during reset to prevent flickering
-        if store.state.ui.isResettingDashboard {
+        if store.ui.isResettingDashboard {
             return
         }
 
         // Rebuild model and compare to previous for minimal updates
         let newModel = buildGridModelFromStoreState()
-        let newIsEditMode = store.state.ui.isEditMode
-        let newRemovedStreaks = store.state.ui.removedStreaks
-        let newGoalCardRemoved = store.state.ui.isGoalCardRemoved
-        let newGoalCardPosition = store.state.ui.goalCardPosition
-        let newStreakGridOrder = store.state.ui.streakGridOrder
+        let newIsEditMode = store.ui.isEditMode
+        let newRemovedStreaks = store.ui.removedStreaks
+        let newGoalCardRemoved = store.ui.isGoalCardRemoved
+        let newGoalCardPosition = store.ui.goalCardPosition
+        let newStreakGridOrder = store.ui.streakGridOrder
 
         let oldIds = coordinator.gridModel.mileStones.map { widget -> String in
             switch widget {
@@ -170,7 +170,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         // Add long-press gesture for interactive movement
         let longPress = UILongPressGestureRecognizer(target: context.coordinator, action: #selector(context.coordinator.handleLongPress(_:)))
         // Use longer duration when not in edit mode (to enter edit mode), shorter when in edit mode (for dragging)
-        longPress.minimumPressDuration = context.coordinator.store.state.ui.isEditMode ? 0.15 : 0.5
+        longPress.minimumPressDuration = context.coordinator.store.ui.isEditMode ? 0.15 : 0.5
         longPress.cancelsTouchesInView = false
         longPress.delaysTouchesBegan = false
         longPress.delaysTouchesEnded = false
@@ -195,8 +195,8 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     
     /// Builds the grid model using the saved order from DashboardStore UI state
     private func buildGridModelFromStoreState() -> MileStoneGridModel {
-        let isEditMode = store.state.ui.isEditMode
-        let hasLoadedProgressMetrics = store.state.ui.hasLoadedProgressMetrics
+        let isEditMode = store.ui.isEditMode
+        let hasLoadedProgressMetrics = store.ui.hasLoadedProgressMetrics
         
         // Use manager streaks directly before API loads to avoid premature filtering
         let managerStreaks = store.streakManager.state.streakItems
@@ -208,9 +208,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             allStreaks = store.streakItemsToShow
         }
         
-        let goalCardPos = store.state.ui.goalCardPosition
-        let streakOrder = store.state.ui.streakGridOrder
-        let isGoalCardRemoved = store.state.ui.isGoalCardRemoved
+        let goalCardPos = store.ui.goalCardPosition
+        let streakOrder = store.ui.streakGridOrder
+        let isGoalCardRemoved = store.ui.isGoalCardRemoved
         let hasStreaks = !allStreaks.isEmpty
         let hasValidGoal = !isGoalCardRemoved
         let hasStreakItemsInManager = !managerStreaks.isEmpty
@@ -421,7 +421,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             let activeStreaks = gridModel.mileStones.filter { widget in
                 switch widget {
                 case .goalCard:
-                    return !store.state.ui.isGoalCardRemoved
+                    return !store.ui.isGoalCardRemoved
                 case .streak(let item):
                     return !store.isStreakRemoved(item.label)
                 }
@@ -440,7 +440,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             let widget = gridModel.mileStones[index]
             switch widget {
             case .goalCard:
-                return store.state.ui.isGoalCardRemoved
+                return store.ui.isGoalCardRemoved
             case .streak(let item):
                 return store.isStreakRemoved(item.label)
             }
@@ -472,7 +472,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
 
         // MARK: - Gesture Sink
         @objc func consumeTap(_ sender: UITapGestureRecognizer) {
-            guard store.state.ui.isEditMode,
+            guard store.ui.isEditMode,
                   let collectionView = sender.view as? UICollectionView else {
                 return
             }
@@ -564,7 +564,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 
                 // If not in edit mode, enter edit mode on long press of a goal card or streak item,
                 // then immediately proceed to start the drag for the same item.
-                if !store.state.ui.isEditMode {
+                if !store.ui.isEditMode {
                     store.toggleEditMode()
                 }
                 
@@ -712,9 +712,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             case .goalCard:
                 let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "GoalCardCell", for: indexPath) as! GoalCardCell
                 cell.configure(with: store)
-                cell.isWiggling = store.state.ui.isEditMode
+                cell.isWiggling = store.ui.isEditMode
                 cell.rowIndex = indexPath.item
-                cell.isRemoved = store.state.ui.isGoalCardRemoved
+                cell.isRemoved = store.ui.isGoalCardRemoved
                 return cell
             case .streak(let item):
                 let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "StreakCardCell", for: indexPath) as! StreakCardCell
@@ -723,7 +723,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     with: item, 
                     store: store
                 )
-                cell.isWiggling = store.state.ui.isEditMode
+                cell.isWiggling = store.ui.isEditMode
                 cell.rowIndex = indexPath.item
                 cell.isRemoved = store.isStreakRemoved(item.label)
                 return cell
@@ -815,7 +815,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         }
         
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, insetForSectionAt section: Int) -> UIEdgeInsets {
-            let topInset: CGFloat = store.state.ui.isGoalCardRemoved ? 32.0 : 16.0
+            let topInset: CGFloat = store.ui.isGoalCardRemoved ? 32.0 : 16.0
             return UIEdgeInsets(top: topInset, left: 16.0, bottom: 32.0, right: 16.0)
         }
 
@@ -834,7 +834,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         
         func collectionView(_ collectionView: UICollectionView, canMoveItemAt indexPath: IndexPath) -> Bool {
             // Only allow moving items that are non-removed (active) items
-            return store.state.ui.isEditMode && indexPath.item < firstRemovedIndex
+            return store.ui.isEditMode && indexPath.item < firstRemovedIndex
         }
         
         func collectionView(_ collectionView: UICollectionView, targetIndexPathForMoveFromItemAt originalIndexPath: IndexPath, toProposedIndexPath proposedIndexPath: IndexPath) -> IndexPath {
@@ -852,7 +852,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             switch widget {
             case .goalCard:
                 // Goal card positioning logic based on streak removal state
-                let hasRemovedStreaks = !store.state.ui.removedStreaks.isEmpty
+                let hasRemovedStreaks = !store.ui.removedStreaks.isEmpty
                 let allStreaksPresent = isAllStreaksPresent()
                           
                 if hasRemovedStreaks {
@@ -994,7 +994,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             // Check for special case
             if case .goalCard = movedWidget {
                 let allStreaksPresent = isAllStreaksPresent()
-                let hasRemovedStreaks = !store.state.ui.removedStreaks.isEmpty
+                let hasRemovedStreaks = !store.ui.removedStreaks.isEmpty
                 
                 
                 
@@ -1084,10 +1084,10 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             }
 
             // Save streak order as array of IDs
-            store.state.ui.streakGridOrder = newStreakOrder.map { $0.id.uuidString }
+            store.ui.streakGridOrder = newStreakOrder.map { $0.id.uuidString }
             
             // Save goal card position
-            store.state.ui.goalCardPosition = goalCardPosition ?? 0
+            store.ui.goalCardPosition = goalCardPosition ?? 0
             
             
             

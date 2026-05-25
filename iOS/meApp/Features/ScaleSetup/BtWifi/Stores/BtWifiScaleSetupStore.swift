@@ -1380,7 +1380,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 self.dashboardStore.updateSnapshot()
                 
                 // Refresh UI to show changes
-                self.dashboardStore.state.ui.gridLayoutId = UUID()
+                self.dashboardStore.ui.gridLayoutId = UUID()
                 self.dashboardStore.objectWillChange.send()
             }
             break
@@ -2815,21 +2815,21 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Snapshots the current dashboard state for change detection
     private func snapshotDashboardState() {
         initialDashboardMetricLabelsSnapshot = dashboardStore.metricsManager.state.metrics.map { $0.label }
-        initialDashboardRemovedMetricsSnapshot = dashboardStore.state.ui.removedMetrics
-        initialDashboardRemovedStreaksSnapshot = dashboardStore.state.ui.removedStreaks
-        initialDashboardStreakOrderSnapshot = dashboardStore.state.ui.streakGridOrder
-        initialDashboardGoalCardRemovedSnapshot = dashboardStore.state.ui.isGoalCardRemoved
-        initialDashboardGoalCardPositionSnapshot = dashboardStore.state.ui.goalCardPosition
+        initialDashboardRemovedMetricsSnapshot = dashboardStore.ui.removedMetrics
+        initialDashboardRemovedStreaksSnapshot = dashboardStore.ui.removedStreaks
+        initialDashboardStreakOrderSnapshot = dashboardStore.ui.streakGridOrder
+        initialDashboardGoalCardRemovedSnapshot = dashboardStore.ui.isGoalCardRemoved
+        initialDashboardGoalCardPositionSnapshot = dashboardStore.ui.goalCardPosition
     }
     
     /// Returns true if dashboard customization has changed compared to initial snapshot
     private func hasDashboardCustomizationChanged() -> Bool {
         let state = dashboardStore.metricsManager.state.metrics.map { $0.label }
-        let removed = dashboardStore.state.ui.removedMetrics
-        let removedStreaks = dashboardStore.state.ui.removedStreaks
-        let order = dashboardStore.state.ui.streakGridOrder
-        let goalRemoved = dashboardStore.state.ui.isGoalCardRemoved
-        let goalPos = dashboardStore.state.ui.goalCardPosition
+        let removed = dashboardStore.ui.removedMetrics
+        let removedStreaks = dashboardStore.ui.removedStreaks
+        let order = dashboardStore.ui.streakGridOrder
+        let goalRemoved = dashboardStore.ui.isGoalCardRemoved
+        let goalPos = dashboardStore.ui.goalCardPosition
         
         return (initialDashboardMetricLabelsSnapshot != nil && initialDashboardMetricLabelsSnapshot != state) ||
                (initialDashboardRemovedMetricsSnapshot != nil && initialDashboardRemovedMetricsSnapshot != removed) ||
@@ -2887,7 +2887,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         await MainActor.run {
             dashboardStore.metricsManager.updateDashboardType(.dashboard12)
-            dashboardStore.state.metrics.dashboardType = .dashboard12
+            dashboardStore.metrics.dashboardType = .dashboard12
             
             // True 4 → 12 upgrade; preserve existing metric order
             dashboardStore.metricsManager.setupInitialMetrics(forceShowAll: true)
@@ -2926,12 +2926,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
             dashboardStore.initializationTask = nil
 
             await MainActor.run {
-                dashboardStore.state.ui.hasLoadedDashboardConfig = false
-                dashboardStore.state.ui.hasLoadedProgressMetrics = false
-                dashboardStore.state.ui.hasLoadedMetricValues = false
-                dashboardStore.state.ui.streakGridOrder = []
-                dashboardStore.state.ui.removedMetrics = []
-                dashboardStore.state.ui.isEditMode = true
+                dashboardStore.ui.hasLoadedDashboardConfig = false
+                dashboardStore.ui.hasLoadedProgressMetrics = false
+                dashboardStore.ui.hasLoadedMetricValues = false
+                dashboardStore.ui.streakGridOrder = []
+                dashboardStore.ui.removedMetrics = []
+                dashboardStore.ui.isEditMode = true
             }
             setupDashboardMetricsSubscriptions()
 
@@ -2955,7 +2955,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
 
             await MainActor.run {
                 dashboardStore.syncRemovalStateFromMetricsManager()
-                dashboardStore.state.ui.hasLoadedDashboardConfig = true
+                dashboardStore.ui.hasLoadedDashboardConfig = true
                 dashboardStore.scheduleUIUpdate()
             }
 
@@ -2971,15 +2971,15 @@ final class BtWifiScaleSetupStore: ObservableObject {
             await dashboardStore.loadProgressMetricsFromAccount()
 
             await MainActor.run {
-                dashboardStore.state.ui.hasLoadedProgressMetrics = true
+                dashboardStore.ui.hasLoadedProgressMetrics = true
                 dashboardStore.scheduleUIUpdate()
             }
         } else {
             await MainActor.run {
                 dashboardStore.syncRemovalStateFromMetricsManager()
-                dashboardStore.state.ui.hasLoadedDashboardConfig = true
-                dashboardStore.state.ui.hasLoadedMetricValues = true
-                dashboardStore.state.ui.isEditMode = true
+                dashboardStore.ui.hasLoadedDashboardConfig = true
+                dashboardStore.ui.hasLoadedMetricValues = true
+                dashboardStore.ui.isEditMode = true
                 dashboardStore.scheduleUIUpdate()
             }
             setupDashboardMetricsSubscriptions()

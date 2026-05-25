@@ -1,6 +1,35 @@
 import Foundation
 import SwiftData
 
+/// Serialises every background-context operation against the shared
+/// `ModelContainer`. Two `ModelContext` instances churning concurrently against
+/// the same container corrupt SwiftData's container-internal tracking
+/// dictionary and trap inside `__RawDictionaryStorage.find` (MA-3898).
+///
+/// Each enqueued work item awaits the previously-enqueued one before creating
+/// its own `ModelContext`, so at most one background context is live at any
+/// time across the whole app — independent of how many `EntryRepository`
+/// instances exist.
+private actor EntryRepositoryBackgroundQueue {
+    static let shared = EntryRepositoryBackgroundQueue()
+
+    private var lastTask: Task<Void, Never>?
+
+    func run<T: Sendable>(
+        container: ModelContainer,
+        _ work: @escaping @Sendable (ModelContext) throws -> T
+    ) async throws -> T {
+        let previous = lastTask
+        let task = Task.detached(priority: .userInitiated) { () throws -> T in
+            await previous?.value
+            let ctx = ModelContext(container)
+            return try work(ctx)
+        }
+        lastTask = Task { _ = try? await task.value }
+        return try await task.value
+    }
+}
+
 /// Concrete implementation of EntryRepositoryProtocol for local storage using SwiftData.
 /// Handles CRUD operations for Entry entities in a thread-safe manner.
 ///
@@ -10,16 +39,12 @@ final class EntryRepository: EntryRepositoryProtocol {
 
     // MARK: - Properties
     private let container: ModelContainer = PersistenceController.shared.container
-    
-    /// Executes work on a background ModelContext to avoid blocking the main actor.
-    /// - Parameter work: Closure that performs the work using the provided background context.
-    /// - Returns: The result of the work.
+
+    /// Executes work on a background `ModelContext` serialized through the
+    /// app-wide queue (`EntryRepositoryBackgroundQueue`). Only one background
+    /// context is alive at a time — see MA-3898.
     private func performBackgroundTask<T: Sendable>(_ work: @escaping @Sendable (ModelContext) throws -> T) async throws -> T {
-        let container = self.container
-        return try await Task.detached(priority: .userInitiated) {
-            let backgroundContext = ModelContext(container)
-            return try work(backgroundContext)
-        }.value
+        return try await EntryRepositoryBackgroundQueue.shared.run(container: container, work)
     }
 
     // MARK: - CRUD
@@ -303,6 +328,17 @@ final class EntryRepository: EntryRepositoryProtocol {
         }
     }
 
+    /// Fetches all unsynced entries as Sendable `(EntrySnapshot, DTO)` pairs.
+    /// Both the snapshot and the DTO are built inside the background context,
+    /// so the caller never reads SwiftData relationships off-actor — see MA-3898.
+    /// Use this in the unsynced-push loop instead of `fetchUnsyncedEntries`.
+    func fetchUnsyncedEntriesAsSnapshots(forUserId userId: String) async throws -> [(EntrySnapshot, BathScaleOperationDTO)] {
+        return try await performBackgroundTask { ctx in
+            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.isSynced == false })
+            return try ctx.fetch(descriptor).map { (EntrySnapshot(from: $0), $0.toOperationDTO()) }
+        }
+    }
+
     /// Fetches the latest entry for a specific user.
     /// - Parameter userId: The user ID to filter entries by.
     /// - Returns: The latest Entry object, or nil if none exist.
@@ -368,7 +404,7 @@ final class EntryRepository: EntryRepositoryProtocol {
         }
     }
 
-    // MARK: - Thread-Safe Fetch Methods (Return DTOs or Identifiers)
+    // MARK: - Thread-Safe Fetch Methods (Return DTOs, Snapshots, or Identifiers)
 
     /// Fetches entries and returns DTOs with all relationship data extracted.
     /// This is the preferred method for background fetches where you need relationship data.
@@ -377,9 +413,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     ///   - operationType: Optional operation type filter.
     /// - Returns: Array of BathScaleOperationDTO with all data extracted.
     func fetchEntriesAsDTO(forUserId userId: String, operationType: String? = nil) async throws -> [BathScaleOperationDTO] {
-        let container = PersistenceController.shared.container
-        return try await Task.detached(priority: .userInitiated) {
-            let backgroundContext = ModelContext(container)
+        return try await performBackgroundTask { ctx in
             let descriptor: FetchDescriptor<Entry>
             if let opType = operationType {
                 descriptor = FetchDescriptor<Entry>(
@@ -392,10 +426,10 @@ final class EntryRepository: EntryRepositoryProtocol {
                     sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
                 )
             }
-            let entries = try backgroundContext.fetch(descriptor)
+            let entries = try ctx.fetch(descriptor)
             // Extract ALL data including relationships INSIDE the background context
             return entries.map { $0.toOperationDTO() }
-        }.value
+        }
     }
 
     /// Fetches entry identifiers only for later MainActor refetch.
@@ -405,9 +439,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     ///   - operationType: Optional operation type filter.
     /// - Returns: Array of PersistentIdentifier for later refetch on MainActor.
     func fetchEntryIdentifiers(forUserId userId: String, operationType: String? = nil) async throws -> [PersistentIdentifier] {
-        let container = PersistenceController.shared.container
-        return try await Task.detached(priority: .userInitiated) {
-            let backgroundContext = ModelContext(container)
+        return try await performBackgroundTask { ctx in
             let descriptor: FetchDescriptor<Entry>
             if let opType = operationType {
                 descriptor = FetchDescriptor<Entry>(
@@ -420,9 +452,9 @@ final class EntryRepository: EntryRepositoryProtocol {
                     sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
                 )
             }
-            let entries = try backgroundContext.fetch(descriptor)
+            let entries = try ctx.fetch(descriptor)
             return entries.map { $0.persistentModelID }
-        }.value
+        }
     }
 
     /// Fetches a single entry and returns its DTO with all relationship data.
@@ -430,23 +462,19 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// - Returns: BathScaleOperationDTO or nil if not found.
     func fetchEntryAsDTO(byId id: String) async throws -> BathScaleOperationDTO? {
         guard let uuid = UUID(uuidString: id) else { return nil }
-        let container = PersistenceController.shared.container
-        return try await Task.detached(priority: .userInitiated) {
-            let backgroundContext = ModelContext(container)
+        return try await performBackgroundTask { ctx in
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == uuid })
-            guard let entry = try backgroundContext.fetch(descriptor).first else { return nil }
+            guard let entry = try ctx.fetch(descriptor).first else { return nil }
             // Extract ALL data inside the background context
             return entry.toOperationDTO()
-        }.value
+        }
     }
 
     /// Fetches the latest entry as DTO for a user.
     /// - Parameter userId: The user ID to filter entries by.
     /// - Returns: BathScaleOperationDTO or nil if none exist.
     func fetchLatestEntryAsDTO(forUserId userId: String, operationType: String? = nil) async throws -> BathScaleOperationDTO? {
-        let container = PersistenceController.shared.container
-        return try await Task.detached(priority: .userInitiated) {
-            let backgroundContext = ModelContext(container)
+        return try await performBackgroundTask { ctx in
             let descriptor: FetchDescriptor<Entry>
             if let opType = operationType {
                 descriptor = FetchDescriptor<Entry>(
@@ -459,9 +487,67 @@ final class EntryRepository: EntryRepositoryProtocol {
                     sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
                 )
             }
-            guard let entry = try backgroundContext.fetch(descriptor).first else { return nil }
+            guard let entry = try ctx.fetch(descriptor).first else { return nil }
             return entry.toOperationDTO()
-        }.value
+        }
+    }
+
+    /// Fetches entries for a given month as Sendable snapshots.
+    /// Mirrors `fetchEntries(forMonth:userId:)` but extracts every needed field
+    /// inside the background context so callers never touch a dead `Entry`
+    /// across an `await`.  See MA-3898.
+    func fetchEntriesAsSnapshots(forMonth month: String, userId: String) async throws -> [EntrySnapshot] {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM"
+        guard let startDate = dateFormatter.date(from: month) else { return [] }
+        var comps = DateComponents()
+        comps.month = 1
+        guard let endDate = Calendar.current.date(byAdding: comps, to: startDate) else { return [] }
+        let isoFormatter = ISO8601DateFormatter()
+        let startString = isoFormatter.string(from: startDate)
+        let endString = isoFormatter.string(from: endDate)
+        return try await performBackgroundTask { ctx in
+            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
+                $0.accountId == userId &&
+                $0.entryTimestamp >= startString &&
+                $0.entryTimestamp < endString
+            })
+            return try ctx.fetch(descriptor).map { EntrySnapshot(from: $0) }
+        }
+    }
+
+    /// Fetches the latest entry for a user as a Sendable snapshot.
+    /// Prefer this over `fetchLatestEntry` whenever the caller will read fields
+    /// after an `await` boundary — see MA-3898.
+    func fetchLatestEntryAsSnapshot(forUserId userId: String) async throws -> EntrySnapshot? {
+        return try await performBackgroundTask { ctx in
+            let descriptor = FetchDescriptor<Entry>(
+                predicate: #Predicate { $0.accountId == userId },
+                sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
+            )
+            return try ctx.fetch(descriptor).first.map { EntrySnapshot(from: $0) }
+        }
+    }
+
+    func fetchEntriesOfTimestampAsSnapshots(forUserId userId: String, timestamp: String) async throws -> [EntrySnapshot] {
+        return try await performBackgroundTask { ctx in
+            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.entryTimestamp == timestamp })
+            return try ctx.fetch(descriptor).map { EntrySnapshot(from: $0) }
+        }
+    }
+
+    func fetchEntriesAsSnapshots(forUserId userId: String, operationType: String? = nil) async throws -> [EntrySnapshot] {
+        return try await performBackgroundTask { ctx in
+            let descriptor: FetchDescriptor<Entry>
+            if let opType = operationType {
+                descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
+                    $0.accountId == userId && $0.operationType == opType
+                })
+            } else {
+                descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId })
+            }
+            return try ctx.fetch(descriptor).map { EntrySnapshot(from: $0) }
+        }
     }
 
     /// Fetches an entry by PersistentIdentifier on the MainActor context.

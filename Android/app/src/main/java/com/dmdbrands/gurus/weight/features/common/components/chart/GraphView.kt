@@ -14,6 +14,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
@@ -170,7 +171,10 @@ fun GraphView(
   // see live composition values rather than launch-time snapshots.
   suspend fun performInitialReset() {
     val s = currentState
-    if (!currentIsCurrentPage || s.isEmptyGraph || s.data.isEmpty()) return
+    if (!currentIsCurrentPage || s.isEmptyGraph || s.data.isEmpty()) {
+      AppLog.d("GraphView", "performInitialReset early-return: segment=$segment")
+      return
+    }
     val latestEntry = s.data.maxByOrNull { it.getTimeStamp() } ?: return
     val latestTimeStamp = latestEntry.getTimeStamp()
     if (segment != GraphSegment.TOTAL) {
@@ -192,7 +196,13 @@ fun GraphView(
   // `snapshotFlow` also emits the current value on subscription, so cold-start composition
   // immediately runs through `performInitialReset()` (which is a no-op when data is empty
   // or the page is not current).
-  LaunchedEffect(scrollState, segment) {
+  // Re-key on `data.isEmpty()` so the empty→first-entry transition forces a relaunch and
+  // re-triggers performInitialReset. Without this, TOTAL never fires the reset on first
+  // entry: `initialStartX` uses `yearStart(endTs)` which collapses to the same value for
+  // the empty state (endTs=now) and the first-entry state (endTs≈now in same year), so
+  // `snapshotFlow { initialStartX }` doesn't emit. Other segments use rolling windows that
+  // differ by milliseconds, so they emit naturally.
+  LaunchedEffect(scrollState, segment, state.data.isEmpty()) {
     merge(
       snapshotFlow { initialStartX },
       segmentResetSignal.filter { it == segment },

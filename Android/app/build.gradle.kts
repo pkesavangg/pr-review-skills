@@ -23,8 +23,8 @@ android {
     applicationId = "com.dmdbrands.gurus.weight"
     minSdk = 26
     targetSdk = 36
-    versionCode = 800001
-    versionName = "5.0.1"
+    versionCode = 800002
+    versionName = "5.0.2"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     // 16KB page alignment for Android 15 compliance
@@ -32,12 +32,8 @@ android {
       abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
     }
 
-    // Enable 16KB page alignment for Android 15 compliance
-    externalNativeBuild {
-      cmake {
-        arguments += listOf("-DANDROID_PAGE_SIZE_AGNOSTIC=ON")
-      }
-    }
+    // 16KB page alignment is handled by linker flags in appsync/scripts/build-android-libs.sh
+    // No CMakeLists.txt exists — externalNativeBuild is not needed
   }
 
   buildTypes {
@@ -139,6 +135,7 @@ dependencies {
   // Room dependencies
   implementation(libs.androidx.room.runtime)
   implementation(libs.androidx.room.ktx)
+  implementation(libs.androidx.sqlite.bundled)
   ksp(libs.androidx.room.compiler)
 
   // Datastore

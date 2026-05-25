@@ -4,7 +4,9 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
-import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.dmdbrands.gurus.weight.data.storage.db.converter.DateConverter
@@ -34,6 +36,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.log.LogEntity
 import com.dmdbrands.gurus.weight.migration.service.IonicMigrationWorker
+import kotlinx.coroutines.Dispatchers
 import android.content.Context
 
 /**
@@ -90,18 +93,31 @@ abstract class AppDatabase : RoomDatabase() {
               AppDatabase::class.java,
               "MeApp",
             )
+            // Bundled SQLite (currently 3.46+) instead of the device's system SQLite.
+            // Required for window functions (need SQLite 3.25+); the device's SQLite is
+            // tied to API level — minSdk 26 ships 3.18, which lacks them. Bundled gives
+            // us a single version across all supported API levels.
+            .setDriver(BundledSQLiteDriver())
+            .setQueryCoroutineContext(Dispatchers.IO)
             .addCallback(
               object : Callback() {
-                override fun onCreate(db: SupportSQLiteDatabase) {
-                  super.onCreate(db)
+                // When `.setDriver(BundledSQLiteDriver())` is used, Room invokes the
+                // SQLiteConnection-based callback overloads. The legacy
+                // `onCreate(SupportSQLiteDatabase)` is NOT called on the new driver path,
+                // which is why the Ionic migration worker was never enqueued.
+                override fun onCreate(connection: SQLiteConnection) {
+                  super.onCreate(connection)
 
-                  // Start Ionic migration worker when database is first created
+                  // Start Ionic migration worker when database is first created.
+                  // Unique-work + KEEP policy ensures that if Room is recreated mid-retry
+                  // (e.g. after performEmergencyCleanup), we don't stack duplicate workers
+                  // on top of one that's already retrying.
                   val migrationWork = OneTimeWorkRequestBuilder<IonicMigrationWorker>()
                     .addTag("ionic_migration")
                     .build()
 
                   WorkManager.getInstance(context.applicationContext)
-                    .enqueue(migrationWork)
+                    .enqueueUniqueWork("ionic_migration", ExistingWorkPolicy.KEEP, migrationWork)
                 }
               },
             )

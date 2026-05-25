@@ -32,9 +32,9 @@ struct WeightTrendView: View {
         }
         .onAppear {
             // Ensure local pill state matches current store on first appear
-            localSelectedPeriod = dashboardStore.state.graph.selectedPeriod
+            localSelectedPeriod = dashboardStore.graph.selectedPeriod
         }
-        .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, newValue in
+        .onChange(of: dashboardStore.graph.selectedPeriod) { _, newValue in
             if localSelectedPeriod != newValue {
                 localSelectedPeriod = newValue
             }
@@ -51,7 +51,7 @@ struct WeightTrendView: View {
         dashboardStore: DashboardStore
     ) -> some View {
         VStack(alignment: .leading, spacing: .zero) {
-            // Show label based on selection state
+            // Show label based on selection state.
             Text(dashboardStore.weightDisplayLabel)
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)

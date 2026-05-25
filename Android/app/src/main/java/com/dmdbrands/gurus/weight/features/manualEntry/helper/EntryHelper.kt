@@ -84,7 +84,7 @@ object EntryHelper {
           pulse = it.controls.heartRate.toIntSafe(),
           skeletalMusclePercent = it.controls.skeletalMuscles.toDoubleSafe() / 10,
           subcutaneousFatPercent = it.controls.subcutaneousFat.toDoubleSafe() / 10,
-          visceralFatLevel = it.controls.visceralFat.toDoubleSafe() / 10,
+          visceralFatLevel = it.controls.visceralFat.toDoubleSafe(),
           boneMass = it.controls.boneMass.toDoubleSafe() / 10,
           impedance = 0, // You didn’t provide this in form controls – use 0 or calculate if needed
         )
@@ -337,7 +337,7 @@ object EntryHelper {
       else -> weight.toDoublePreserve() * 0.453592 // Convert lbs to kg
     }
     val heightCm = ConversionTools.convertStoredHeightToCm(height)
-    return ConversionTools.calculateBMIFromMetric(weightKg, heightCm)
+    return ConversionTools.calculateBMIFromMetric(weightKg, round(heightCm).toInt())
   }
 
   /**
@@ -371,7 +371,7 @@ object EntryHelper {
         else -> ConversionTools.convertStoredToKg(weight!!.toDoublePreserve() * 10) // Convert lbs to kg
       }
       val heightCm = ConversionTools.convertStoredHeightToCm(userHeight)
-      ConversionTools.calculateBMIFromMetric(weightKg, heightCm)
+      ConversionTools.calculateBMIFromMetric(weightKg, round(heightCm).toInt())
     } else {
       null
     }

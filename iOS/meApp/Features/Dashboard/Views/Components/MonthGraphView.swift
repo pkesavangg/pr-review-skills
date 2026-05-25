@@ -21,6 +21,7 @@ struct MonthGraphView: View {
             viewModel: viewModel,
             dashboardStore: dashboardStore
         )
+        .equatable()
     }
 }
 

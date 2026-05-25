@@ -133,6 +133,17 @@ struct GraphState {
             clearSelection()
         }
     }
+
+    /// Currently active store-side selection, validated for direct application
+    /// to a section view model. Returns `nil` when no selection should be
+    /// rendered. Single source of truth for the post-tab-switch /
+    /// cold-start sync paths so the read shape can't drift between call sites.
+    var validatedSelection: (date: Date, point: BathScaleWeightSummary?)? {
+        guard showCrosshair, let date = selectedXValue ?? selectedPoint?.date else {
+            return nil
+        }
+        return (date, selectedPoint)
+    }
 }
 
 // MARK: - Goal State

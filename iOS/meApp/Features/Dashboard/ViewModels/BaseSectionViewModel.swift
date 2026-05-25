@@ -17,6 +17,20 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     @Published var selectedPoint: BathScaleWeightSummary?
     @Published var selectedDate: Date?
     @Published var showCrosshair: Bool = false
+    /// Per-tick scroll position. Must be `@Published` so `BaseGraphView.body`
+    /// re-evaluates as the user pans — SwiftUI Charts re-issues its content
+    /// closure against the new viewport from this body recompute, which is
+    /// what keeps `PointMark`s rendered for dates that scroll INTO view
+    /// during a gesture. Suppressing the publish (MA-3845, "Fix 1a" in
+    /// `docs/tasks/ios-graph-hang-investigation.md`) was originally intended
+    /// to avoid per-tick body invalidations, but in practice it left dots
+    /// missing during scroll until the gesture ended and the Y-axis snapped
+    /// the points back into view — the 5.0.0 vs current regression users
+    /// describe as "no points while scrolling, only appears after stop".
+    /// The original hang concern is now mitigated by other optimizations
+    /// that have since landed: cached chart data in BaseGraphView and the
+    /// VM, `.equatable()` on the period wrapper views, cached calendars,
+    /// and cached axis labels — body recompute is cheap.
     @Published var scrollPosition: Date = Date()
     @Published var isScrolling: Bool = false
     
@@ -133,7 +147,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     var chartSeriesData: [GraphSeries] {
         guard let store = dashboardStore else { return [] }
         
-        let currentMetric = store.state.ui.selectedMetricLabel
+        let currentMetric = store.ui.selectedMetricLabel
         
         // During scrolling, use cached data ONLY if the metric selection hasn't changed
         // If metric changed (selection or deselection), get fresh data from store
@@ -281,13 +295,13 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         // We should NOT recalculate here as it would overwrite anchor-based positioning
         if hasXAxis {
             // Use the store's already-calculated scroll position
-            self.scrollPosition = store.state.graph.xScrollPosition
+            self.scrollPosition = store.graph.xScrollPosition
         } else {
             // Non-scrollable periods (Total) don't need scroll positioning
-            self.scrollPosition = store.state.graph.xScrollPosition
+            self.scrollPosition = store.graph.xScrollPosition
         }
         
-        self.isScrolling = store.state.graph.isScrolling
+        self.isScrolling = store.graph.isScrolling
         updateYAxisConfiguration()
         // Sync with any existing cached Y-axis values from the store
         syncYAxisFromStore()
@@ -370,17 +384,14 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     // MARK: - Scroll Management
 
-    /// Handles scroll position changes with throttling to prevent multiple updates per frame
+    /// Handles scroll position changes. Originally throttled at 16ms to defend
+    /// against `@Published` invalidation cascades — that defense is no longer
+    /// needed since `scrollPosition` is a plain `var` (April 2026 Fix 1a) and
+    /// the chart binding's setter is cheap. We keep the 0.1s dedup guard so
+    /// identical writes still short-circuit, but no longer drop ~half the
+    /// drag ticks under a fast flick.
     func handleScrollPositionChange(_ newPosition: Date?) {
         guard let newPosition = newPosition else {
-            return
-        }
-
-        let now = Date()
-        let timeSinceLastUpdate = now.timeIntervalSince(lastScrollUpdateTime)
-
-        // Throttle updates to prevent multiple updates per frame (SwiftUI warning fix)
-        guard timeSinceLastUpdate >= scrollUpdateThrottleInterval else {
             return
         }
 
@@ -391,7 +402,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             return
         }
 
-        lastScrollUpdateTime = now
+        lastScrollUpdateTime = Date()
         self.scrollPosition = newPosition
 
         // Update dashboard store scroll position
@@ -406,7 +417,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         // Cache current data and metric for use during scrolling
         if let store = dashboardStore {
             cachedChartSeriesData = store.chartSeriesData
-            cachedChartSeriesMetric = store.state.ui.selectedMetricLabel
+            cachedChartSeriesMetric = store.ui.selectedMetricLabel
         } else {
             cachedChartSeriesData = []
             cachedChartSeriesMetric = nil
@@ -421,11 +432,13 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         cachedChartSeriesData = []
         cachedChartSeriesMetric = nil
         dashboardStore?.handleScrollEndOptimized()
-        
-        // Sync Y-axis values from store cache after scroll end (with delay to allow store to update)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-            self.syncYAxisFromStore()
-        }
+
+        // P1-6 / P2-3: The previous +0.7s `syncYAxisFromStore` here duplicated
+        // the path already triggered by `BaseGraphView.onChange(of: YAxisCacheSignature)`,
+        // which fires `syncYAxisFromStore` as soon as `handleScrollEndOptimized`'s
+        // staggered `updateYAxisCache()` publishes the new domain/ticks at +300ms.
+        // Removing this extra timer eliminates one source of the post-scroll
+        // "double-update" Y-axis stutter.
     }
     
     // MARK: - Selection Management
@@ -454,7 +467,25 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
 
         handleChartSelection(at: plotXDate(for: date))
     }
-    
+
+    /// Applies a selection that has already been validated against the store's
+    /// operations (e.g. by `DashboardStore.updateSelectedPeriod`'s
+    /// `applyChartSelectionSync`). Deliberately bypasses the section-specific
+    /// `handleChartSelection` snap/range guards: those guards are designed for
+    /// user input and can silently clear a perfectly valid programmatic
+    /// selection on the first frame after a tab switch (xAxisValues empty,
+    /// chartOperations not yet bracketed, etc.) — see MA-3977.
+    ///
+    /// `showCrosshair = true` is intentional even when `point == nil` to match
+    /// the established contract in `DashboardGraphManager.handleCompleteChartSelection`,
+    /// which shows the crosshair at the selected X position even when the
+    /// chart is interpolating between data points.
+    func applyStoreValidatedSelection(date: Date, point: BathScaleWeightSummary?) {
+        selectedDate = date
+        selectedPoint = point
+        showCrosshair = true
+    }
+
     /// Clears all selection state
     func clearSelection() {
         selectedPoint = nil
@@ -563,8 +594,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         // Calculate position within the available chart area (excluding X-axis)
         let yPosition = (availableChartHeight * (1 - yRatio)) // Invert because chart y grows downward
         
-        // Add padding offsets for left boundary
-        let adjustedX = xPosition + (isAtLeftBoundary ? 4 : 0) // spacingXS approximation
+        // Compensate for the leading .spacingXS padding applied unconditionally
+        // by `chartPlotStyle` in BaseGraphView (half of 8 ≈ visual centerline).
+        let adjustedX = xPosition + 4
         let adjustedY = yPosition
         
         return CGPoint(x: adjustedX, y: adjustedY)
@@ -608,9 +640,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     func formatSelectedXAxisLabel() -> String? {
         guard let store = dashboardStore else { return nil }
         // Prefer the view model's snapped selection first for immediate UI sync
-        let date: Date? = self.selectedDate ?? store.state.graph.selectedXValue ?? store.state.graph.selectedPoint?.date
+        let date: Date? = self.selectedDate ?? store.graph.selectedXValue ?? store.graph.selectedPoint?.date
         guard let date else { return nil }
-        return store.graphManager.formatSelectedDate(date, for: store.state.graph.selectedPeriod)
+        return store.graphManager.formatSelectedDate(date, for: store.graph.selectedPeriod)
     }
     
     // MARK: - Chart Content Helpers
@@ -637,11 +669,20 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     func handleSettingsChange() {
         // Update store's Y-axis cache FIRST before invalidating local cache
         dashboardStore?.updateYAxisCache(force: true)
-        
+
         invalidateCache()
         updateYAxisConfiguration()
         syncYAxisFromStore()
-        clearSelection() // Clear selection as values may have changed
+
+        // Preserve selection: unit / weightless toggles change displayed values
+        // but not which date is selected. Fall back to the store's preserved
+        // selection in case the VM-side selection was cleared elsewhere.
+        let preservedDate = selectedDate
+            ?? dashboardStore?.graph.selectedXValue
+            ?? dashboardStore?.graph.selectedPoint?.date
+        if let preservedDate {
+            handleChartSelection(at: preservedDate)
+        }
     }
     
     /// Called when scroll position is updated programmatically
@@ -670,14 +711,14 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         guard let store = dashboardStore else { return }
 
         // Read cached values from dashboard store
-        if let cachedDomain = store.state.graph.cachedYAxisDomain {
+        if let cachedDomain = store.graph.cachedYAxisDomain {
             // Animate domain changes smoothly
             withAnimation(.easeInOut(duration: 0.15)) {
                 self.yAxisDomain = cachedDomain
             }
         }
 
-        if let cachedTicks = store.state.graph.cachedYAxisTicks {
+        if let cachedTicks = store.graph.cachedYAxisTicks {
             // Suppress animation for tick changes
             withTransaction(Transaction(animation: nil)) {
                 self.yAxisTicks = cachedTicks

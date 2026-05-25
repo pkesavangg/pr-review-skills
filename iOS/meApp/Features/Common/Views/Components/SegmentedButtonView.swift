@@ -18,6 +18,12 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
     @Environment(\.appTheme) private var theme
     /// Stores the width of each segment (indexed by its position in the `segments` array).
     @State private var segmentWidths: [Int: CGFloat] = [:]
+    /// Cached natural (unscaled) width of the widest label.
+    /// Depends only on `segments` + base font (both static for the lifetime of this view), so
+    /// computed once on appear instead of on every body access. `0` means "not yet measured" —
+    /// the `uniformFontSize` getter handles that case the same way it always did via the
+    /// existing `widestLabelWidth > 0` guard.
+    @State private var cachedWidestLabelWidth: CGFloat = 0
 
     /// heading5 size — used only when `useUniformFontScaling` is on.
     private static var baseFontSize: CGFloat { 16 }
@@ -53,7 +59,22 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
             }
         }
         .onPreferenceChange(SegmentWidthPreferenceKey.self) { newWidths in
+            // Short-circuit when widths haven't changed. Without this guard,
+            // `onPreferenceChange` fires on every dashboard body recompute, mutates
+            // `segmentWidths`, and re-invalidates the body — a feedback loop that
+            // produced 4 severe (≥500 ms) hangs at Thermal Nominal during tab
+            // switches and scroll. See `iOS/docs/dashboard-graph-hang-fix-plan.md`
+            // §Step 6 / history doc §3.10.
+            guard newWidths != segmentWidths else { return }
             segmentWidths.merge(newWidths) { _, new in new }
+        }
+        .onAppear {
+            // Compute the widest-label width once per session (depends only on
+            // `segments` + a static font), instead of on every `uniformFontSize`
+            // read. See history doc §3.10.3 for trace evidence.
+            if cachedWidestLabelWidth == 0 {
+                cachedWidestLabelWidth = computeWidestLabelWidth()
+            }
         }
         .background(
             // Animated background
@@ -93,7 +114,9 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
     }
 
     /// Natural (unscaled) width of the widest label at the base font size.
-    private var widestLabelWidth: CGFloat {
+    /// Called from `.onAppear` to populate `cachedWidestLabelWidth`. Don't read
+    /// directly on the hot path — read `cachedWidestLabelWidth` instead.
+    private func computeWidestLabelWidth() -> CGFloat {
         let font = UIFont(name: "OpenSans-Bold", size: Self.baseFontSize)
             ?? .systemFont(ofSize: Self.baseFontSize, weight: .bold)
         return segments
@@ -106,10 +129,10 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
     private var uniformFontSize: CGFloat {
         guard let minSegmentWidth = segmentWidths.values.min(),
               minSegmentWidth > 0,
-              widestLabelWidth > 0 else { return Self.baseFontSize }
+              cachedWidestLabelWidth > 0 else { return Self.baseFontSize }
         let contentWidth = minSegmentWidth - Self.buttonHorizontalPadding
         guard contentWidth > 0 else { return Self.baseFontSize }
-        let ratio = contentWidth / widestLabelWidth
+        let ratio = contentWidth / cachedWidestLabelWidth
         if ratio >= 1.0 { return Self.baseFontSize }
         return max(Self.baseFontSize * 0.7, Self.baseFontSize * ratio)
     }

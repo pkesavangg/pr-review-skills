@@ -1,3 +1,16 @@
+import java.util.Properties
+
+val localProperties = Properties().apply {
+  val f = file("local.properties")
+  if (f.exists()) f.inputStream().use { load(it) }
+}
+val gprUser: String = System.getenv("GITHUB_USERNAME")
+  ?: localProperties.getProperty("gpr.user")
+  ?: ""
+val gprKey: String = System.getenv("GITHUB_TOKEN")
+  ?: localProperties.getProperty("gpr.key")
+  ?: ""
+
 pluginManagement {
   repositories {
     google {
@@ -18,18 +31,18 @@ dependencyResolutionManagement {
     mavenCentral()
     maven {
       url =
-        uri("https://maven.pkg.github.com/dmdbrands/ggBluetoothNativeLibrary")
+        uri("https://maven.pkg.github.com/gg-engineering/ggBluetoothNativeLibrary")
       credentials {
-        username = "Selva-GG"
-        password = "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"
+        username = gprUser
+        password = gprKey
       }
     }
     maven {
       url =
-        uri("https://maven.pkg.github.com/dmdbrands/vico")
+        uri("https://maven.pkg.github.com/gg-engineering/vico")
       credentials {
-        username = "Selva-GG"
-        password = "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"
+        username = gprUser
+        password = gprKey
       }
     }
   }

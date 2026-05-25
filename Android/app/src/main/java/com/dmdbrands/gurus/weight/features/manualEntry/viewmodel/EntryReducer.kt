@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.helper.form.MultiFormGroup
 import java.util.Calendar
+import kotlin.math.round
 
 /**
  * Form controls for weight and date/time (always present)
@@ -122,7 +123,7 @@ data class EntryForm(
                   else -> new.toDouble() / 10
                 }
                 val storedHeight = ConversionTools.convertStoredHeightToCm(height)
-                val bmi = ConversionTools.calculateBMI(weight, storedHeight)
+                val bmi = ConversionTools.calculateBMI(weight, round(storedHeight).toInt())
                 val bmiValue = when {
                   bmi <= 0.0 -> ""
                   bmi >= AppValidatorConfig.BMI.MAX_VALUE -> AppValidatorConfig.BMI.MAX_VALUE.toString()
