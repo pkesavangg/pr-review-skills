@@ -182,7 +182,6 @@ dependencies {
   // Room dependencies
   implementation(libs.androidx.room.runtime)
   implementation(libs.androidx.room.ktx)
-  implementation(libs.androidx.sqlite.bundled)
   ksp(libs.androidx.room.compiler)
 
   // Datastore
