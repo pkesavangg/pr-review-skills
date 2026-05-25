@@ -38,7 +38,8 @@ fun ScaleInfo(
 ) {
   // Map SKU for display (e.g., 0022 -> 0383)
   val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku)
-  val displaySku = scaleInfo?.sku ?: DeviceHelper.mapSkuForDisplay(sku)
+  // mapSkuForDisplay is null-safe; for display fall back to the original sku, then to empty.
+  val displaySku = scaleInfo?.sku ?: DeviceHelper.mapSkuForDisplay(sku) ?: sku
   Column(
     modifier = Modifier
       .fillMaxSize()

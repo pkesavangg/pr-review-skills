@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.migration.service
 
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.storage.datastore.HealthConnectDataStore
 import com.dmdbrands.gurus.weight.data.storage.db.AppDatabase
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntity
@@ -16,7 +17,6 @@ import com.dmdbrands.gurus.weight.migration.model.IonicHealthConnectData
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.content.Context
-import android.util.Log
 
 /**
  * Repository responsible for handling data access operations for migration.
@@ -68,30 +68,26 @@ class MigrationRepository @Inject constructor(
       appDatabase.accountDao().insertNotificationSettings(notificationSettings)
       appDatabase.accountDao().insertDashboardSettings(dashboardSettings)
 
-      Log.d(TAG, "Account and settings inserted successfully for ${accountEntity.email}")
+      AppLog.d(TAG, "Account and settings inserted successfully for ${accountEntity.email}")
     } catch (e: Exception) {
-      Log.e(TAG, "Failed to insert account and settings: ${e.message}")
+      AppLog.e(TAG, "Failed to insert account and settings: ${e.message}")
       throw e
     }
   }
 
   /**
-   * Inserts a batch of ScaleEntry objects.
+   * Inserts a batch of ScaleEntry objects. Any per-row failure (FK violation, conversion
+   * mismatch, etc.) propagates up so the caller fails the whole migration. The rationale:
+   * blank lastSyncTimestamp on failure forces a full server sync via getAllOperations()
+   * on the next launch, which is the simpler recovery path than tracking partial state.
    */
   suspend fun insertScaleEntries(scaleEntries: List<ScaleEntry>): Int {
-    var successCount = 0
+    AppLog.d(TAG, "Starting insert of ${scaleEntries.size} scale entries")
     val appDatabase = AppDatabase.getInstance(context)
-
     scaleEntries.forEach { scaleEntry ->
-      try {
-        appDatabase.entryDao().insert(scaleEntry)
-        successCount++
-      } catch (e: Exception) {
-        Log.w(TAG, "Failed to insert scale entry: ${e.message}")
-      }
+      appDatabase.entryDao().insert(scaleEntry)
     }
-
-    Log.d(TAG, "Successfully inserted $successCount out of ${scaleEntries.size} scale entries")
-    return successCount
+    AppLog.d(TAG, "Inserted ${scaleEntries.size} scale entries")
+    return scaleEntries.size
   }
 }

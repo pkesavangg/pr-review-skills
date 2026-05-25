@@ -7,6 +7,9 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
+import androidx.camera.core.resolutionselector.AspectRatioStrategy
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Box
@@ -18,6 +21,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.dmdbrands.appsync.CameraHandlerCallback
+import com.greatergoods.libs.appsync.AppSyncLogger
 import com.greatergoods.libs.appsync.model.AppSyncResult
 import com.greatergoods.libs.appsync.strings.AppSyncStrings
 import com.greatergoods.libs.appsync.utility.AppSyncFs003Interpreter
@@ -25,9 +29,10 @@ import com.greatergoods.libs.appsync.utility.AppSyncLowLightDetector
 import com.greatergoods.libs.appsync.utility.YUV420888ToGrayscaleConverter
 import java.util.concurrent.ExecutorService
 import android.graphics.ImageFormat
-import android.util.Log
 import android.view.ViewGroup
 import android.widget.FrameLayout
+
+private const val TAG = "AppSyncScan"
 
 /**
  * Camera preview component that provides real-time camera feed and image analysis.
@@ -66,6 +71,7 @@ fun CameraPreview(
   onCameraReady: (Camera, CameraControl, CameraInfo) -> Unit,
   cameraExecutor: ExecutorService,
   onScanResult: (AppSyncResult) -> Unit,
+  currentZoom: () -> Int,
   onError: (String) -> Unit = {},
   onLowLightDetected: (Boolean) -> Unit = {},
 ) {
@@ -99,19 +105,32 @@ fun CameraPreview(
                     it.surfaceProvider = previewView.surfaceProvider
                   }
 
-              // Set up image analysis use case for frame processing
-              // Use a good target resolution that works well for detection at all zoom levels
-              // 1280x720 is a good balance - high enough for detection, works with zoom
+              // Set up image analysis use case for frame processing.
+              // 1280x720 is a good balance — high enough for FS003 detection, works with zoom.
+              // ResolutionSelector replaces the deprecated setTargetResolution: it makes the
+              // fallback rule explicit (closest higher, then lower) and pins the 16:9 aspect
+              // ratio so frames don't get reshaped to the sensor's default 4:3.
+              val resolutionSelector =
+                ResolutionSelector.Builder()
+                  .setResolutionStrategy(
+                    ResolutionStrategy(
+                      android.util.Size(1280, 720),
+                      ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER,
+                    ),
+                  )
+                  .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
+                  .build()
               val imageAnalyzer =
                 ImageAnalysis
                   .Builder()
-                  .setTargetResolution(android.util.Size(1280, 720))
+                  .setResolutionSelector(resolutionSelector)
                   .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                  .setTargetRotation(previewView.display.rotation)
                   .build()
               imageAnalyzer.setAnalyzer(
                 cameraExecutor,
                 { imageProxy ->
-                  processFrameWithJNI(imageProxy, onScanResult, onLowLightDetected)
+                  processFrameWithJNI(imageProxy, onScanResult, onLowLightDetected, currentZoom)
                 },
               )
 
@@ -128,7 +147,7 @@ fun CameraPreview(
               // Notify that camera is ready
               onCameraReady(camera, camera.cameraControl, camera.cameraInfo)
             } catch (exc: Exception) {
-              Log.e("AppSyncScan", AppSyncStrings.CameraBindingFailed, exc)
+              AppSyncLogger.e(TAG, AppSyncStrings.CameraBindingFailed, exc)
               onError(AppSyncStrings.CameraInitializationFailed)
             }
           },
@@ -173,6 +192,7 @@ private fun processFrameWithJNI(
   imageProxy: ImageProxy,
   onScanResult: (AppSyncResult) -> Unit,
   onLowLightDetected: (Boolean) -> Unit,
+  currentZoom: () -> Int,
 ) {
   try {
     // Only process YUV_420_888 format images
@@ -184,7 +204,7 @@ private fun processFrameWithJNI(
       // Minimum resolution for FS003 protocol detection
       // Target is 1280x720, but accept reasonable variations for zoom levels
       if (width < 480 || height < 360) {
-        Log.d("AppSyncScan", "Skipping frame: resolution too low (${width}x${height})")
+        AppSyncLogger.d(TAG, "Skipping frame: resolution too low (${width}x${height})")
         return
       }
 
@@ -194,47 +214,75 @@ private fun processFrameWithJNI(
 
       if (conversionResult != null) {
         val (grayscaleData, convertedWidth) = conversionResult
-        val convertedHeight = height
 
         // Validate data before processing
-        if (grayscaleData.isEmpty() || convertedWidth <= 0 || convertedHeight <= 0) {
-          Log.w("AppSyncScan", "Invalid converted data: size=${grayscaleData.size}, dimensions=${convertedWidth}x${convertedHeight}")
+        if (grayscaleData.isEmpty() || convertedWidth <= 0 || height <= 0) {
+          AppSyncLogger.w(TAG, "Invalid converted data: size=${grayscaleData.size}, dimensions=${convertedWidth}x$height")
           return
         }
 
         // Check for low light conditions using the converted luminance data
-        val isLowLight = AppSyncLowLightDetector.isLowLight(grayscaleData, convertedWidth, convertedHeight)
+        val isLowLight = AppSyncLowLightDetector.isLowLight(grayscaleData, convertedWidth, height)
         onLowLightDetected(isLowLight)
+
+        // Rotate the frame so the FS003 pattern is upright before handing it to the
+        // native detector. Without this the decoder receives a sideways buffer on
+        // tablets / portrait-held phones / OEMs that ignore the landscape lock, and
+        // the scan callback never fires. Dimensions swap for 90/270.
+        val rotationDegrees = imageProxy.imageInfo.rotationDegrees
+        val (rotatedData, rotatedWidth, rotatedHeight) = when (rotationDegrees) {
+          90, 270 -> Triple(
+            YUV420888ToGrayscaleConverter.applyRotationAndMirror(
+              grayscaleData, convertedWidth, height, rotationDegrees, mirror = false,
+            ),
+            height,
+            convertedWidth,
+          )
+          180 -> Triple(
+            YUV420888ToGrayscaleConverter.applyRotationAndMirror(
+              grayscaleData, convertedWidth, height, 180, mirror = false,
+            ),
+            convertedWidth,
+            height,
+          )
+          else -> Triple(grayscaleData, convertedWidth, height)
+        }
 
         // Call native detector to look for FS003 protocol patterns
         // Target resolution is 1280x720, works well at all zoom levels
         try {
-          val bits = CameraHandlerCallback.nativeDetector(grayscaleData, convertedWidth, convertedHeight)
+          val bits = CameraHandlerCallback.nativeDetector(rotatedData, rotatedWidth, rotatedHeight)
           if (bits != null && bits.isNotEmpty()) {
-            Log.d("AppSyncScan", "✅ Pattern detected! Bits count: ${bits.size}, resolution: ${convertedWidth}x${convertedHeight}")
+            AppSyncLogger.d(
+              TAG,
+              "Pattern detected: bits=${bits.size}, resolution=${rotatedWidth}x${rotatedHeight}, rotation=$rotationDegrees",
+            )
             // Interpret the detected bits using FS003 protocol
-            val result = AppSyncFs003Interpreter.interpret(bits)
+            val result = AppSyncFs003Interpreter.interpret(bits, currentZoom())
             if (result != null) {
-              Log.i("AppSyncScan", "✅ Scan successful! Weight: ${result.weight}, Fat: ${result.fat}, Muscle: ${result.muscle}")
+              AppSyncLogger.i(
+                TAG,
+                "Scan successful: weight=${result.weight}, fat=${result.fat}, muscle=${result.muscle}",
+              )
               // Deliver the successful scan result
               onScanResult(result)
             } else {
               // Interpreter failed to process the detected bits
-              Log.w("AppSyncScan", "⚠️ Pattern detected but interpreter returned null")
+              AppSyncLogger.w(TAG, "Pattern detected but interpreter returned null")
             }
           }
           // Don't log null results - it's normal for most frames
         } catch (e: Exception) {
           // Prevent crashes from native detector
-          Log.e("AppSyncScan", "Error calling native detector: ${e.message}", e)
+          AppSyncLogger.e(TAG, "Error calling native detector: ${e.message}", e)
         }
       } else {
-        Log.w("AppSyncScan", "Failed to convert YUV_420_888 to grayscale")
+        AppSyncLogger.w(TAG, "Failed to convert YUV_420_888 to grayscale")
       }
     }
   } catch (e: Exception) {
     // Log any errors that occur during frame processing
-    Log.e("AppSyncScan", AppSyncStrings.JniFrameProcessingFailed, e)
+    AppSyncLogger.e(TAG, AppSyncStrings.JniFrameProcessingFailed, e)
   } finally {
     // Always close the image proxy to release resources
     imageProxy.close()

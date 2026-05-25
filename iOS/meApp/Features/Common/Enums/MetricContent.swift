@@ -67,7 +67,7 @@ enum MetricContentRepository {
                 ],
                 resources: [
                     MetricResource(title: "Merck Manual", link: "https://www.merckmanuals.com/home/hormonal-and-metabolic-disorders/water-balance/about-body-water"),
-                    MetricResource(title: "Texas A&M Health", link: "https://vitalrecord.tamhsc.edu/you-asked-what-is-water-weight/")
+                    MetricResource(title: "Texas A&M Health", link: "https://vitalrecord.tamu.edu/you-asked-what-is-water-weight/")
                 ])
         case .pulse:
             return MetricDetailContent(

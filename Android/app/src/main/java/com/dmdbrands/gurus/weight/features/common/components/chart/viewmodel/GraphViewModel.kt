@@ -31,7 +31,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -47,7 +46,6 @@ import android.icu.util.Calendar
 )
 class GraphViewModel @AssistedInject constructor(
   @Assisted val segment: GraphSegment,
-  @Assisted val anchoredScrollTarget: Double?,
   private val dashboardService: IDashboardService,
   private val goalService: IGoalService,
   private val entryService: IEntryService,
@@ -58,6 +56,7 @@ class GraphViewModel @AssistedInject constructor(
 
   companion object {
     private const val TAG = "GraphViewModel"
+    private const val SCROLL_DEBOUNCE_MS = 150L
   }
 
   override fun handleIntent(intent: GraphIntent) {
@@ -70,19 +69,20 @@ class GraphViewModel @AssistedInject constructor(
 
   @AssistedFactory
   interface Factory {
-    fun create(segment: GraphSegment, anchoredScrollTarget: Double?): GraphViewModel
+    fun create(segment: GraphSegment): GraphViewModel
   }
 
+  // Per MA-3965: Week/Month tabs use the hybrid flow — the most recent day in the data set
+  // uses latest-non-null-positive values per metric; every earlier day uses daily averages.
+  // Year/Total still read monthly averages.
   private val dataFlow = if (segment == GraphSegment.WEEK || segment == GraphSegment.MONTH) {
-    entryService.daywiseBodyScaleAverages
+    entryService.daywiseBodyScaleHybrid
   } else {
     entryService.monthlyBodyScaleAverages
   }
 
   private var currentModelProducerJob: Job? = null
   private var scrollDebounceJob: Job? = null
-  private var renormalizationJob: Job? = null
-  private var isInitialized: Boolean = false
 
   init {
     // Set loading state immediately to prevent blank screen
@@ -114,7 +114,9 @@ class GraphViewModel @AssistedInject constructor(
       super.handleIntent(GraphIntent.SetSecondaryKey(immediateSecondaryKey))
       initializeGraph(immediateData, immediateGoal, immediateSecondaryKey)
     } catch (e: Exception) {
-      AppLog.w(TAG, "Failed to initialize immediate data, falling back to async")
+      // AppLog.w has no Throwable overload; use .e so the exception object reaches crash
+      // reporting. Recovery still falls through to observeDataChanges' async path.
+      AppLog.e(TAG, "Failed to initialize immediate data, falling back to async", e)
     }
   }
 
@@ -141,7 +143,7 @@ class GraphViewModel @AssistedInject constructor(
         handleIntent(GraphIntent.UpdateWeightUnit(weightUnit))
       }
     } catch (e: Exception) {
-      AppLog.w(TAG, "Failed to initialize weight unit, using default KG")
+      AppLog.e(TAG, "Failed to initialize weight unit, using default KG", e)
     }
   }
 
@@ -208,11 +210,11 @@ class GraphViewModel @AssistedInject constructor(
     handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = true))
     val startx = GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis)
     val endx = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)
-    val isSingleWindow = GraphUtil.isSingleWindow(segment, startx, endx)
-    super.handleIntent(GraphIntent.UpdateIsSingleWindow(isSingleWindow))
+    super.handleIntent(GraphIntent.UpdateIsSingleWindow(true))
     if (startx != null && endx != null) {
       super.handleIntent(GraphIntent.SetScrollRange(startx, endx))
     }
+    super.handleIntent(GraphIntent.UpdateMarkerIndex(null))
     super.handleIntent(GraphIntent.UpdateTarget(emptyList()))
 
     // Set empty model producer asynchronously
@@ -220,7 +222,10 @@ class GraphViewModel @AssistedInject constructor(
       try {
         // Check if job is still active before running transaction
         if (isActive) {
-          val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
+          // Use the synchronous StateFlow value (already used elsewhere) so the producer
+          // doesn't suspend on `accountService.activeAccountFlow.first()` if the upstream
+          // Room query stalls (lock contention, migration, no row).
+          val isWeightlessMode = accountService.activeAccount.value?.isWeightlessOn == true
 
           val graphMeta = if (goal != null) generateNiceScale(
             goal.goalWeight.div(10.0) - 10.0,
@@ -274,48 +279,107 @@ class GraphViewModel @AssistedInject constructor(
     val ySeries = graphLines.points.map { it.y }
     val initialTimeStamp = graphLines.points.minOfOrNull { it.x.value.toLong() }
     val endTimeStamp = graphLines.points.maxOfOrNull { it.x.value.toLong() }
-    val isSingleWindow = GraphUtil.isSingleWindow(segment, initialTimeStamp, endTimeStamp)
-    super.handleIntent(GraphIntent.UpdateIsSingleWindow(isSingleWindow))
+
     val calendar = Calendar.getInstance()
 
     val (startX, endX) = if (segment == GraphSegment.TOTAL) {
-      val start = (initialTimeStamp ?: calendar.timeInMillis).let {
-        Calendar.getInstance().apply { timeInMillis = it; add(Calendar.MONTH, -6) }.timeInMillis
-      }
-      val end = (endTimeStamp ?: calendar.timeInMillis).let {
-        Calendar.getInstance().apply { timeInMillis = it; add(Calendar.MONTH, +6) }.timeInMillis
-      }
-      start to end
+      // TOTAL uses ±6 months padding around data extents — same rule as
+      // GraphUtil.computeChartXBounds, but bounded by the data instead of `now` so the
+      // scroll position lines up with the chart's natural data span.
+      val (totalMin, totalMax) = GraphUtil.computeChartXBounds(
+        segment = GraphSegment.TOTAL,
+        firstTs = initialTimeStamp,
+        lastTs = endTimeStamp,
+        now = calendar.timeInMillis,
+      )
+      (totalMin ?: calendar.timeInMillis) to (totalMax ?: calendar.timeInMillis)
     } else {
-      val anchoredScrollTargetConsideration = anchoredScrollTarget != null && !isInitialized
-      val start: Long =
-        anchoredScrollTarget?.toLong()
-          ?.takeIf { anchoredScrollTargetConsideration }
-          ?: _state.value.minTarget ?: GraphUtil.getRollingWindowStart(segment, endTimeStamp)
-          ?: GraphUtil.getStartRange(segment, endTimeStamp)
-          ?: calendar.timeInMillis
+      val start: Long = _state.value.minTarget
+        ?: GraphUtil.getRollingWindowStart(segment, endTimeStamp)
+        ?: GraphUtil.getStartRange(segment, endTimeStamp)
+        ?: calendar.timeInMillis
 
-      val end =
-        GraphUtil.getRollingWindowEnd(segment, anchoredScrollTarget?.toLong())
-          ?.takeIf { anchoredScrollTargetConsideration }
-          ?: _state.value.maxTarget ?: endTimeStamp ?: calendar.timeInMillis
+      val end: Long = _state.value.maxTarget ?: endTimeStamp ?: calendar.timeInMillis
 
       start to end
     }
+
+    // `isSingleWindow` represents whether all the data falls inside a single segment window
+    // (same week for WEEK, same month for MONTH, same year for YEAR/TOTAL) — i.e. whether
+    // scrolling is meaningful at all. Compute it from the data extents directly so a single
+    // entry on March 15 still reads as "single MONTH window" — using rolling-window-start
+    // would span Feb 13 → Mar 15 (two months) and incorrectly enable scrolling for
+    // legitimate single-window data, flipping startAxis from fixed to scrollable.
+    //
+    // Reusing the (startX, endX) pair above is also wrong because it may reflect cached
+    // scroll bounds rather than the data extents.
+    val naturalWindowStart = initialTimeStamp ?: calendar.timeInMillis
+    val naturalWindowEnd = endTimeStamp ?: calendar.timeInMillis
+    val isSingleWindow = GraphUtil.isSingleWindow(segment, naturalWindowStart, naturalWindowEnd)
+    super.handleIntent(GraphIntent.UpdateIsSingleWindow(isSingleWindow))
 
 
     handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = false))
     super.handleIntent(GraphIntent.SetScrollRange(startX, endX))
-    val filteredData = data.filter {
-      it.getTimeStamp() in startX..endX
+
+    // Synchronous seed for ScrollAwareRangeProvider — uses the SAME bracketing window the
+    // provider's `onVisibleEntries` callback uses (visible + 1 entry each side, matching
+    // `paddingEntries = 1`). Frame-0 seed and frame-1 callback produce identical Y bounds, so
+    // the chart no longer snaps when transitioning from seed to live range.
+    val isWeightlessSync = accountService.activeAccount.value?.isWeightlessOn == true
+    val seedYValues = computeSeedVisibleYWithBracketing(graphLines, startX, endX)
+    if (seedYValues.isNotEmpty()) {
+      val nice = generateNiceScale(
+        minValue = seedYValues.min(),
+        maxValue = seedYValues.max(),
+        goalWeight = goal?.goalWeight ?: 0.0,
+        isWeightLessMode = isWeightlessSync,
+        targetTickCount = 4,
+      )
+      super.handleIntent(GraphIntent.UpdateSeedYRange(seedMinY = nice.min, seedMaxY = nice.max))
     }
-    if (filteredData.isNotEmpty())
-      super.handleIntent(GraphIntent.UpdateTarget(filteredData))
+    // Skip wholesale target updates when a marker is selected — the selected entry should stay
+    // reflected in the header even as data re-emits; otherwise the header flashes back to
+    // visible-range avg.
+    //
+    // Two exceptions where the target MUST be refreshed:
+    //  1. The marked entry has been deleted (no longer present in the new data set) — clear the
+    //     marker and fall through to the normal target refresh; leaving it pinned would strand
+    //     the chart on the deleted entry's stale weight in the header.
+    //  2. The marked entry still exists but its values changed (e.g. another reading on the
+    //     same day was deleted, so the day's "latest non-null positive" now reflects an
+    //     earlier reading). Without this, graphState.target keeps the pre-delete snapshot and
+    //     the header/tiles show stale numbers indefinitely. Refresh the target to ONLY the
+    //     marked day's new summary so the selection semantics are preserved.
+    val markerEntryStillExists = currentState.markerIndex?.toLong()?.let { markerTs ->
+      data.any { it.getTimeStamp() == markerTs }
+    } ?: false
+    if (currentState.markerIndex != null && !markerEntryStillExists) {
+      super.handleIntent(GraphIntent.UpdateMarkerIndex(null))
+    }
+    if (currentState.markerIndex == null || !markerEntryStillExists) {
+      val filteredData = data.filter {
+        it.getTimeStamp() in startX..endX
+      }
+      if (filteredData.isNotEmpty())
+        super.handleIntent(GraphIntent.UpdateTarget(filteredData))
+    } else {
+      // Marker preserved across data re-emit — refresh the target to the marked day's new
+      // summary so the header weight and dashboard tiles reflect the post-delete values.
+      val markedData = currentState.markerIndex?.toLong()?.let { markerTs ->
+        data.filter { it.getTimeStamp() == markerTs }
+      } ?: emptyList()
+      if (markedData.isNotEmpty())
+        super.handleIntent(GraphIntent.UpdateTarget(markedData))
+    }
+
 
     currentModelProducerJob = viewModelScope.launch(Dispatchers.IO) {
       try {
-        // Get weightless mode before entering transaction
-        val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
+        // Use synchronous StateFlow value so we don't block the producer on the upstream
+        // Room flow's first emission. Same value the synchronous seed dispatch above used
+        // (line 319), keeping seed and async transaction in agreement.
+        val isWeightlessMode = accountService.activeAccount.value?.isWeightlessOn == true
 
         // Pre-calculate Y-axis range for weight (primary) only
         val axisMeta =
@@ -363,13 +427,16 @@ class GraphViewModel @AssistedInject constructor(
               series(
                 x = primaryXDataFiltered,
                 y = primaryYDataFiltered,
+                // Pass ranges explicitly so an empty→first-entry transition overwrites
+                // the CartesianRangeValues baked in by setupEmptyModelProducer; otherwise
+                // the chart keeps the empty-state X domain and the first point doesn't
+                // center on TOTAL until the VM is recreated.
                 ranges = primaryYAxisRange,
               )
             }
-            // Secondary metrics now use the same Y-axis range as primary (normalized values)
-            if (normalizedSecondaryGraphLines != null && normalizedSecondaryGraphLines.points.isNotEmpty()) {
-              // Filter out NaN/Infinity values from secondary Y data (matching iOS defensive checks)
-              val secondaryDataPairs = normalizedSecondaryGraphLines.points.mapNotNull { point ->
+            // Secondary metric — RAW values; yTransform projects at draw time.
+            if (secondaryGraphLines != null && secondaryGraphLines.points.isNotEmpty()) {
+              val secondaryDataPairs = secondaryGraphLines.points.mapNotNull { point ->
                 val xValue = point.x.value as? Long
                 val yValue = (point.y.value as? Number)?.toDouble()
                 if (xValue != null && yValue != null && yValue.isFinite()) {
@@ -386,20 +453,57 @@ class GraphViewModel @AssistedInject constructor(
                   series(
                     x = secondaryXDataFiltered,
                     y = secondaryYDataFiltered,
-                    ranges = primaryYAxisRange, // Use same range as primary (weight)
                   )
                 }
               }
             }
           }
-          // Clear loading state after successful update
-          super.handleIntent(GraphIntent.UpdateIsLoading(false))
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Error setting up chart model producer", e)
       }
     }
-    this.isInitialized = true
+  }
+
+  /**
+   * Returns the finite Y values within `[startX, endX]` plus one bracketing entry on each
+   * side, sorted by X. Mirrors `ScrollAwareRangeProvider.computeVisibleEntries`'s window with
+   * `paddingEntries = 1`, so the seed range computed from these values exactly matches the
+   * range the provider's callback will produce on the first scroll emission.
+   *
+   * Uses `binarySearchInsertionPoint` semantics on both edges (matching the provider): for
+   * `endX` strictly between two data points, the right-bracketing entry is one position
+   * past the largest entry whose X is `<= endX`. The previous `indexOfFirst/Last in range`
+   * approach was off-by-one on the right edge whenever `endX` did not coincide with a data
+   * point — e.g. after scroll-driven `state.maxTarget` updates — which defeated the seed/live
+   * convergence guarantee.
+   */
+  private fun computeSeedVisibleYWithBracketing(
+    graphLines: GraphLine,
+    startX: Long,
+    endX: Long,
+  ): List<Double> {
+    val sorted = graphLines.points.sortedBy { it.x.value.toLong() }
+    if (sorted.isEmpty()) return emptyList()
+    val xs = LongArray(sorted.size) { sorted[it].x.value.toLong() }
+    // Insertion point: smallest index where xs[i] >= value (binary search, O(log n)).
+    fun insertionPoint(value: Long): Int {
+      var low = 0
+      var high = xs.size
+      while (low < high) {
+        val mid = (low + high) ushr 1
+        if (xs[mid] < value) low = mid + 1 else high = mid
+      }
+      return low
+    }
+    val startIndex = insertionPoint(startX).coerceIn(0, sorted.lastIndex)
+    val endIndex = insertionPoint(endX).coerceIn(0, sorted.lastIndex)
+    val paddedStart = (startIndex - 1).coerceAtLeast(0)
+    val paddedEnd = (endIndex + 1).coerceAtMost(sorted.lastIndex)
+    if (paddedStart > paddedEnd) return emptyList()
+    return sorted
+      .subList(paddedStart, paddedEnd + 1)
+      .mapNotNull { (it.y.value as? Number)?.toDouble()?.takeIf { v -> v.isFinite() } }
   }
 
   private fun calculateYAxisRange(
@@ -437,28 +541,39 @@ class GraphViewModel @AssistedInject constructor(
       goalWeight = goalWeight,
       isWeightLessMode = isWeightlessMode,
       targetTickCount = 4,
-    ) else generateNiceScale(
-      minValue = goalWeight.div(10) - 10,
-      maxValue = goalWeight.div(10) + 10,
-      goalWeight = goalWeight,
-      isWeightLessMode = isWeightlessMode,
-      targetTickCount = 3,
-    )
+    ) else {
+      // No data in visible range — use previous Y axis to avoid blank axis
+      // when scrolling beyond data (especially for accounts without a goal).
+      val prevYAxis = _state.value.primaryYAxis
+      if (prevYAxis?.minY != null && prevYAxis.maxY != null) {
+        return AxisMeta(axisRange = prevYAxis, axisStep = _state.value.primaryYStep)
+      }
+      generateNiceScale(
+        minValue = goalWeight.div(10) - 10,
+        maxValue = goalWeight.div(10) + 10,
+        goalWeight = goalWeight,
+        isWeightLessMode = isWeightlessMode,
+        targetTickCount = 3,
+      )
+    }
+
+    // Use the shared chart X-bounds rule. For TOTAL, fall back to the (min, max) range
+    // computed from the visible scroll window so the axis stays anchored to the visible
+    // data, not the entire data set's ±6 months padding.
+    val now = Calendar.getInstance().timeInMillis
+    val (sharedMinX, sharedMaxX) = GraphUtil.computeChartXBounds(segment, initialTimestamp, max, now)
+    val rangeMinX: Double? =
+      if (segment == GraphSegment.TOTAL) min.toDouble() else sharedMinX?.toDouble()
+    val rangeMaxX: Double? =
+      if (segment == GraphSegment.TOTAL) max.toDouble() else sharedMaxX?.toDouble()
 
     // Validate graphMeta values are finite
     if (!graphMeta.min.isFinite() || !graphMeta.max.isFinite()) {
       // Return default range if graphMeta is invalid
       return AxisMeta(
         axisRange = CartesianRangeValues(
-          maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else GraphUtil.getEndRange(
-            segment,
-            Calendar.getInstance().timeInMillis,
-          )?.toDouble(),
-          minX = if (segment == GraphSegment.TOTAL) min.toDouble() else GraphUtil.getStartRange(
-            segment,
-            initialTimestamp,
-          )
-            ?.toDouble(),
+          maxX = rangeMaxX,
+          minX = rangeMinX,
         ),
       )
     }
@@ -467,76 +582,39 @@ class GraphViewModel @AssistedInject constructor(
       axisRange = CartesianRangeValues(
         minY = graphMeta.min,
         maxY = graphMeta.max,
-        maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else if (segment == GraphSegment.MONTH) {
-          val paddedEnd_StartRange = GraphUtil.getStartRange(segment, java.util.Calendar.getInstance().timeInMillis)
-            ?: Calendar.getInstance().timeInMillis
-          val paddedEndX = Calendar.getInstance().apply {
-            timeInMillis = paddedEnd_StartRange
-            add(Calendar.DAY_OF_YEAR, 30)
-          }.timeInMillis
-          paddedEndX.toDouble()
-        } else GraphUtil.getEndRange(
-          segment,
-          Calendar.getInstance().timeInMillis,
-        )?.toDouble(),
-        minX = if (segment == GraphSegment.TOTAL) min.toDouble() else GraphUtil.getStartRange(
-          segment,
-          initialTimestamp,
-        )
-          ?.toDouble(),
+        maxX = rangeMaxX,
+        minX = rangeMinX,
       ),
       axisStep = graphMeta.step,
     )
   }
 
   /**
-   * Handles scroll events and updates the visible range.
-   * Optimized with debouncing and background processing.
-   * iOS-style: Caches Y-axis on scroll end to trigger renormalization.
+   * Handles scroll events and updates the visible range. Debounces with a 150ms delay so
+   * rapid scroll emissions only run the filter+dispatch once after the user settles —
+   * cancel-then-launch alone (no delay) ran reducer + recompose on every micro-tick.
    */
   private fun handleScroll(min: Long, max: Long, fallback: () -> Unit = {}) {
     val min = GraphUtil.getRelativeStart(segment, min)
     val max = GraphUtil.getRelativeEnd(segment, max)
-    val currentState = _state.value
-    // Cancel any existing debounce job
     scrollDebounceJob?.cancel()
-    // Debounce heavy computations
     scrollDebounceJob = viewModelScope.launch(Dispatchers.IO) {
       try {
-        // Get weightless mode for Y-axis calculations
-        val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
-
-        val filteredData = currentState.data.filter {
-          it.getTimeStamp() in min..max
-        }
-        if (filteredData.isEmpty()) {
-          fallback()
-        } else {
-          super.handleIntent(GraphIntent.UpdateTarget(filteredData))
-        }
-        if (isActive) {
-          // Pre-calculate all data on background thread
-          val primaryYAxis = calculateYAxisRange(
-            currentState.graphLines.first(),
-            goal = currentState.goal,
-            min = min,
-            max = max,
-            isWeightlessMode = isWeightlessMode,
-          )
-
-          // This triggers renormalization when Y-axis domain changes
-          withContext(Dispatchers.Main) {
-            // Directly call renormalization with current scroll range to avoid reading stale state values
-            handleRenormalizationOnYAxisChange(newYAxisRange = primaryYAxis.axisRange, min = min, max = max)
-            super.handleIntent(
-              GraphIntent.UpdatePrimaryYAxis(
-                yRangeValues = primaryYAxis.axisRange,
-                yStep = primaryYAxis.axisStep,
-              ),
-            )
+        kotlinx.coroutines.delay(SCROLL_DEBOUNCE_MS)
+        // Re-read state AFTER the debounce. If the user clicked a marker during the
+        // 150ms window, the prior `_state.value` snapshot would still report
+        // markerIndex=null and we'd overwrite the marker-owned target with the
+        // visible-range filter — defeating the marker preservation guarantee.
+        val currentState = _state.value
+        if (currentState.markerIndex == null) {
+          val filteredData = currentState.data.filter {
+            it.getTimeStamp() in min..max
           }
-
-          // Update UI on main thread
+          if (filteredData.isEmpty()) {
+            fallback()
+          } else {
+            super.handleIntent(GraphIntent.UpdateTarget(filteredData))
+          }
         }
       } catch (e: CancellationException) {
         throw e
@@ -673,9 +751,7 @@ class GraphViewModel @AssistedInject constructor(
 
   override fun onCleared() {
     super.onCleared()
-    // Cancel any running jobs
     currentModelProducerJob?.cancel()
     scrollDebounceJob?.cancel()
-    renormalizationJob?.cancel()
   }
 }

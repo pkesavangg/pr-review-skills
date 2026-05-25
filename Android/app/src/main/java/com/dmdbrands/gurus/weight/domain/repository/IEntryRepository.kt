@@ -211,6 +211,12 @@ interface IEntryRepository {
   fun getDaywiseBodyScaleLatestWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>>
 
   /**
+   * Per MA-3965: single-pass hybrid — latest-non-null positive per metric on the
+   * most recent day with a valid entry; daily average per metric on every earlier day.
+   */
+  fun getDaywiseBodyScaleHybridWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>>
+
+  /**
    * Get the oldest entry for an account.
    * @param accountId The account ID
    * @return The oldest entry if found, null otherwise

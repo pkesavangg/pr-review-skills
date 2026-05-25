@@ -23,8 +23,9 @@ fun ScaleSetupHeader(
   onHelp: () -> Unit,
   content: @Composable () -> Unit,
 ) {
-  // Map SKU for display (e.g., 0022 -> 0383)
-  val displaySku = DeviceHelper.mapSkuForDisplay(sku)
+  // Map SKU for display (e.g., 0022 -> 0383). mapSkuForDisplay returns null only when
+  // the input is null; the parameter here is non-null so we keep the value as-is on miss.
+  val displaySku = DeviceHelper.mapSkuForDisplay(sku) ?: sku
   BackHandler {
     onBack()
   }

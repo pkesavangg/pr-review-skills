@@ -567,6 +567,49 @@ object GraphUtil {
   }
 
   /**
+   * The chart-wide X bounds for [segment] given the data extents [firstTs]/[lastTs] and the
+   * current wall-clock [now]. Single source of truth for the X-bounds rule, used by
+   * `GraphChart.chartXBounds`, `GraphViewModel.setupChartModelProducer`, and
+   * `GraphViewModel.calculateYAxisRange` so the three call sites cannot drift.
+   *
+   * Rules:
+   * - **TOTAL**: data extents padded by ±6 months so the chart visibly extends past the
+   *   first/last entries.
+   * - **MONTH**: minX = month-start of the oldest entry; maxX = `now`'s month-start + 30 days
+   *   so the chart's right-edge reaches into the current month even when the latest entry is
+   *   earlier in the month.
+   * - **WEEK / YEAR**: minX = segment-start of the oldest entry; maxX = segment-end of `now`.
+   *
+   * Returns `(null, null)` when both timestamps are null (empty data set).
+   */
+  fun computeChartXBounds(
+    segment: GraphSegment,
+    firstTs: Long?,
+    lastTs: Long?,
+    now: Long,
+  ): Pair<Long?, Long?> {
+    val minX: Long? = when (segment) {
+      GraphSegment.TOTAL -> firstTs?.let { ts ->
+        Calendar.getInstance().apply { timeInMillis = ts; add(Calendar.MONTH, -6) }.timeInMillis
+      }
+      else -> getStartRange(segment, firstTs)
+    }
+    val maxX: Long? = when (segment) {
+      GraphSegment.TOTAL -> lastTs?.let { ts ->
+        Calendar.getInstance().apply { timeInMillis = ts; add(Calendar.MONTH, +6) }.timeInMillis
+      }
+      GraphSegment.MONTH -> {
+        val paddedStart = getStartRange(segment, now) ?: now
+        Calendar.getInstance().apply {
+          timeInMillis = paddedStart; add(Calendar.DAY_OF_YEAR, 30)
+        }.timeInMillis
+      }
+      else -> getEndRange(segment, now)
+    }
+    return minX to maxX
+  }
+
+  /**
    * Returns whether the range from [initialTimestamp] to [endTimestamp] lies entirely within
    * a single segment window (e.g. same week for WEEK, same month for MONTH, same year for YEAR/TOTAL).
    *
@@ -714,39 +757,6 @@ object GraphUtil {
 
     // Calculate total months between years
     return ((endYear - startYear + 1) * 12)
-  }
-
-  fun getStartOnAnchored(segment: GraphSegment, anchoredTimeStamp: Long): Long {
-    return when (segment) {
-      GraphSegment.WEEK -> {
-        // Show 7 days total: latest - 6 days to latest (inclusive)
-        Calendar.getInstance().apply {
-          timeInMillis = anchoredTimeStamp
-          add(Calendar.DAY_OF_YEAR, (-3))
-        }.timeInMillis
-      }
-
-      GraphSegment.MONTH -> {
-        // Show 31 days total: latest - 30 days to latest (inclusive)
-        // This ensures day 1 of 31-day months is always included in the window
-        Calendar.getInstance().apply {
-          timeInMillis = anchoredTimeStamp
-          add(Calendar.DAY_OF_YEAR, (-15))
-        }.timeInMillis
-      }
-
-      GraphSegment.YEAR -> {
-        // Show 12 months total: latest - 11 months to latest (inclusive)
-        // This includes the latest entry month as the 12th month
-        // (e.g., Dec 20, 2024 -> Jan 20, 2024 = 12 months: Jan, Feb, ..., Dec)
-        Calendar.getInstance().apply {
-          timeInMillis = anchoredTimeStamp
-          add(Calendar.MONTH, -5)
-        }.timeInMillis
-      }
-
-      GraphSegment.TOTAL -> Calendar.getInstance().timeInMillis // Keep existing ±6 months logic
-    }
   }
 
   // endregion

@@ -54,6 +54,10 @@ public enum KvStorageKeys: String {
     // MARK: - FCM Token Key
     /// FCM token storage key (device-scoped, not account-scoped)
     case fcmToken = "fcmToken"
+
+    // MARK: - AppSync Camera Keys
+    /// Single key storing a dictionary of accountId → last-used zoom level
+    case appSyncCameraZoomMap = "appSyncCameraZoomMap"
     
     // MARK: - Helper Methods
     
@@ -62,6 +66,13 @@ public enum KvStorageKeys: String {
     /// - Returns: The full key for appearance mode storage
     public static func appearanceModeKey(for accountId: String) -> String {
         return "appearanceMode_\(accountId)"
+    }
+
+    /// Creates an account-scoped key for the default graph period preference
+    /// - Parameter accountId: The account identifier
+    /// - Returns: The full key for the per-account default graph period
+    public static func defaultGraphPeriodKey(for accountId: String) -> String {
+        return "\(Self.defaultGraphPeriod.rawValue)_\(accountId)"
     }
     
     /// Creates an account-scoped key for integration data
@@ -122,6 +133,13 @@ public enum KvStorageKeys: String {
     public static func setAGoalModalFlagKey(for accountId: String) -> String {
         return "\(accountId)_\(Self.setAGoalCardViewed.rawValue)"
     }
+
+    /// Creates an account-scoped key for the "Scrollable graph" first-time hint flag
+    /// - Parameter accountId: The account identifier
+    /// - Returns: The full key for graph scroll hint viewed flag storage
+    public static func graphScrollHintViewedKey(for accountId: String) -> String {
+        return "\(accountId)_\(Self.graphScrollHintViewed.rawValue)"
+    }
     
     /// Creates an account-scoped key for selected product type
     /// - Parameter accountId: The account identifier
@@ -136,4 +154,5 @@ public enum KvStorageKeys: String {
     public static func fcmTokenKey(for accountId: String) -> String {
         return "\(Self.fcmToken.rawValue)_\(accountId)"
     }
+
 }

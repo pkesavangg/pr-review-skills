@@ -1,8 +1,10 @@
 package com.dmdbrands.gurus.weight.domain.services
 
+import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+
 /**
  * Service interface for user settings operations.
- * Handles business logic for streak and weightless mode settings.
+ * Handles business logic for streak, weightless mode, and display preference settings.
  */
 interface IUserSettingsService {
 
@@ -23,4 +25,10 @@ interface IUserSettingsService {
         isWeightlessOn: Boolean,
         weightlessWeight: Double? = null
     )
+
+    /**
+     * Persists the user's preferred default graph segment (device-local, no backend sync).
+     * Read the current value from `accountService.activeAccount.value?.defaultGraphSegment`.
+     */
+    suspend fun setDefaultGraphSegment(segment: GraphSegment)
 }

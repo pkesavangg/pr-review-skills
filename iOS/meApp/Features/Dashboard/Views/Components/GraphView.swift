@@ -45,7 +45,7 @@ struct GraphView: View {
 
     // Whether the selection callout is currently visible for the active period
     private var isShowingSelectionCallout: Bool {
-        switch dashboardStore.state.graph.selectedPeriod {
+        switch dashboardStore.graph.selectedPeriod {
         case .week:
             return weekSectionViewModel.showCrosshair
         case .month:
@@ -59,7 +59,7 @@ struct GraphView: View {
 
     // Show skeleton until graph is ready (set after settling delay)
     private var shouldShowSkeleton: Bool {
-        !dashboardStore.state.graph.isGraphReady
+        !dashboardStore.graph.isGraphReady
     }
 
     var body: some View {
@@ -85,8 +85,8 @@ struct GraphView: View {
             }
             .opacity(shouldShowSkeleton ? 0 : 1)
         }
-        .animation(.easeInOut(duration: 0.3), value: dashboardStore.state.graph.isGraphReady)
-        .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, newValue in
+        .animation(.easeInOut(duration: 0.3), value: dashboardStore.graph.isGraphReady)
+        .onChange(of: dashboardStore.graph.selectedPeriod) { _, newValue in
             // PERFORMANCE: Cancel any pending period change configuration
             periodChangeTask?.cancel()
 
@@ -101,24 +101,34 @@ struct GraphView: View {
             monthSectionViewModel.clearSelection()
             weekSectionViewModel.clearSelection()
 
-            // PERFORMANCE: Defer heavy configuration to prevent CPU spike
-            // Only configure the active ViewModel after a brief delay
-            periodChangeTask = Task { @MainActor in
-                // Brief delay to let the UI settle
-                try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
-                guard !Task.isCancelled else { return }
+            // Force a fresh BaseGraphView mount for the new period. Without
+            // this the old chart's last frame stays on-screen while the new
+            // one is configuring (this is what users describe as "graphs
+            // overlap each other" / "graph display changed").
+            chartIdentity = UUID()
 
-                // Configure only the active view model (not all 4)
+            // Configure the active view model synchronously. The prior code
+            // deferred this behind a 50ms `Task.sleep` to "let the UI settle";
+            // with the chartIdentity-driven remount above, the new view mounts
+            // pre-configured and we no longer need the deferral.
+            //
+            // The previous `forceScrollPositionUpdate` "nudge" (temp + main.async
+            // re-assign of `scrollPosition`) was removed: combined with
+            // `PagedChartScrollBehavior`, the +0.001s nudge could snap to an
+            // adjacent page on fresh mount, manifesting as "a random window"
+            // appearing instead of the latest window after a tab switch.
+            // `configure(with:)` already sets `scrollPosition` from
+            // `store.graph.xScrollPosition`, and the chartIdentity-driven
+            // remount makes the chart read this value on first mount.
+            let activeViewModel: BaseSectionViewModel = {
                 switch newValue {
-                case .week:
-                    weekSectionViewModel.configure(with: dashboardStore)
-                case .month:
-                    monthSectionViewModel.configure(with: dashboardStore)
-                case .year:
-                    yearSectionViewModel.configure(with: dashboardStore)
-                case .total:
-                    totalSectionViewModel.configure(with: dashboardStore)
+                case .week:  return weekSectionViewModel
+                case .month: return monthSectionViewModel
+                case .year:  return yearSectionViewModel
+                case .total: return totalSectionViewModel
                 }
+            }()
+            activeViewModel.configure(with: dashboardStore)
 
                 // Force the active view model to sync with the scroll position set by WeightTrendView
                 guard !Task.isCancelled else { return }
@@ -138,6 +148,9 @@ struct GraphView: View {
                 // Recalculate and cache Y-axis based on the new visible region
                 dashboardStore.chartManager.updateYAxisCache()
             }
+
+            // Recalculate and cache Y-axis based on the new visible region.
+            dashboardStore.updateYAxisCache()
         }
         // Immediately react to active account goal updates like GoalProgressView
         .onReceive(accountService.$activeAccount) { _ in
@@ -149,7 +162,7 @@ struct GraphView: View {
     private var chartView: some View {
         return HStack(spacing: 0) {
             // Use switch case for different time periods (total, year, month, week)
-            switch dashboardStore.state.graph.selectedPeriod {
+            switch dashboardStore.graph.selectedPeriod {
             case .week:
                 WeekGraphView(
                     viewModel: weekSectionViewModel,

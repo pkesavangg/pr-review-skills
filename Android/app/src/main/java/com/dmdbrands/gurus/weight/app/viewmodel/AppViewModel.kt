@@ -120,6 +120,18 @@ constructor(
 
   init {
 
+    // Drive Compose theme directly from the persisted preference so toggling
+    // appearance repaints surfaces immediately, without relying on
+    // setDefaultNightMode/UiModeManager to round-trip through Configuration
+    // (which is unreliable on API < 31).
+    viewModelScope.launch {
+      appRepository.themeModeFlow
+        .distinctUntilChanged()
+        .collect { mode ->
+          handleIntent(AppIntent.SetThemeMode(mode))
+        }
+    }
+
     // Initialize and maintain currentAccountId globally
     viewModelScope.launch {
       accountService.activeAccountFlow.collect {
@@ -403,6 +415,7 @@ constructor(
         subscribeDeviceCallback()
         subscribePairedScales()
         syncScales()
+        accountService.checkAndTriggerGraphScrollHint()
         entryService.initializeGoalCardMonitoring(account.id)
         feedService.fetchFeedItems()
         initialiseIAMDialogListener()
@@ -558,14 +571,14 @@ constructor(
               AppLog.d(TAG, "isSkipped: $isSkipped, isIgnored: $isIgnored")
 
               // Apply MAC address filtering for 0412 scales (similar to Angular's onfoundnewsmartwifiscale)
-              val deviceSku = data.getSKU()
+              val deviceSku = data.getSKU() ?: return@launch
               val shouldShow = if (deviceSku == "0412") {
                 val isAllow = bluetoothPreferencesService.shouldShowDevice(data.macAddress)
                 isAllow
               } else {
                 true // Don't filter non-0412 scales
               }
-
+              AppLog.d(TAG, "devicesku: $deviceSku")
               // Only show if not skipped, not ignored, not known, and shouldShow is true
               if (!isSkipped && !isIgnored && !isKnownScale && shouldShow) {
                 handleIntent(AppIntent.SetScaleDiscovered(true))
@@ -717,7 +730,7 @@ constructor(
                             ggDeviceService.addCacheDevice(data.broadcastId, device)
                             navigationService.navigateTo(
                               AppRoute.ScaleSetup.BtWifiScaleSetup(
-                                data.getSKU(),
+                                deviceSku,
                                 BtWifiSetupStep.CONNECTING_BLUETOOTH,
                                 data.broadcastId,
                               ),

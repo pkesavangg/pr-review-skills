@@ -10,7 +10,7 @@ import SwiftUI
 struct WeightTrendView: View {
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
-    @State private var localSelectedPeriod: TimePeriod = .week
+    @State private var localSelectedPeriod: TimePeriod = DefaultGraphPeriodPreference.fallback
 
     var body: some View {
         ZStack {
@@ -19,7 +19,8 @@ struct WeightTrendView: View {
                 GraphView(dashboardStore: dashboardStore)
                 SegmentedButtonView(
                     segments: TimePeriod.allCases,
-                    selectedSegment: $localSelectedPeriod
+                    selectedSegment: $localSelectedPeriod,
+                    useUniformFontScaling: true
                 )
                 .padding(.vertical, .spacingSM)
                 .padding(.horizontal, 15)
@@ -31,9 +32,9 @@ struct WeightTrendView: View {
         }
         .onAppear {
             // Ensure local pill state matches current store on first appear
-            localSelectedPeriod = dashboardStore.state.graph.selectedPeriod
+            localSelectedPeriod = dashboardStore.graph.selectedPeriod
         }
-        .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, newValue in
+        .onChange(of: dashboardStore.graph.selectedPeriod) { _, newValue in
             if localSelectedPeriod != newValue {
                 localSelectedPeriod = newValue
             }

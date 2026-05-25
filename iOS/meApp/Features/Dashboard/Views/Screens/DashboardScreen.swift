@@ -27,7 +27,7 @@ struct DashboardScreen: View {
             navbarHeader()
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    if store.state.ui.isEditMode {
+                    if store.ui.isEditMode {
                         store.cancelEdit()
                     }
                 }
@@ -62,13 +62,13 @@ struct DashboardScreen: View {
             store.lifecycleManager.handleMetricInfoSheetDismiss(openMetricInfoWithoutSelection)
         }
         // Keep the metric info entry in sync with metric tile values while the sheet is open
-        .task(id: store.state.metrics.metrics) {
+        .task(id: store.metrics.metrics) {
             if let wrapper = openMetricInfoWithoutSelection {
                 metricInfoEntry = store.displayManager.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
             }
         }
         // Update metric info entry when time period changes
-        .task(id: store.state.graph.selectedPeriod) {
+        .task(id: store.graph.selectedPeriod) {
             if let wrapper = openMetricInfoWithoutSelection {
                 metricInfoEntry = store.displayManager.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
             }
@@ -104,15 +104,15 @@ struct DashboardScreen: View {
                 NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
             ])
         ) { _ in
-            if store.state.ui.isEditMode { store.cancelEdit() }
+            if store.ui.isEditMode { store.cancelEdit() }
         }
         .onChange(of: scenePhase) { _, newPhase in
-            if store.state.ui.isEditMode && (newPhase == .background || newPhase == .inactive) {
+            if store.ui.isEditMode && (newPhase == .background || newPhase == .inactive) {
                 store.cancelEdit()
             }
         }
         .onChange(of: tabViewModel.selectedTab) { _, newTab in
-            if store.state.ui.isEditMode && newTab != .dash {
+            if store.ui.isEditMode && newTab != .dash {
                 store.cancelEdit()
             }
 
@@ -129,21 +129,21 @@ struct DashboardScreen: View {
                 WeightTrendView(dashboardStore: store)
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        if store.state.ui.isEditMode && store.state.ui.alertData == nil {
+                        if store.ui.isEditMode && store.ui.alertData == nil {
                             store.cancelEdit()
                         }
                     }
-                if store.state.ui.isEditMode || (!store.allContentRemoved && store.state.data.hasAnyEntries) {
+                if store.ui.isEditMode || (!store.allContentRemoved && store.data.hasAnyEntries) {
                     DashboardMetricsSection(store: store, parentView: .dashboard, openMetricInfoWithoutSelection: $openMetricInfoWithoutSelection)
                 }
 
-                if store.state.data.hasAnyEntries {
+                if store.data.hasAnyEntries {
                     let hasNoContentToShow = store.metricsToShow.isEmpty && 
-                                           (!store.streakManager.shouldShowStreakGrid() || store.state.ui.isGoalCardRemoved)
+                                           (!store.streakManager.shouldShowStreakGrid() || store.ui.isGoalCardRemoved)
                     actionButtons()
                         .padding(.top, (store.allContentRemoved || hasNoContentToShow) ? .spacingLG : .spacingSM)
                 }
-                if !store.state.data.hasAnyEntries {
+                if !store.data.hasAnyEntries {
                     VStack {
                         Spacer(minLength: 0)
                         noEntrySection()
@@ -157,7 +157,7 @@ struct DashboardScreen: View {
         .background(
             Color.clear.contentShape(Rectangle())
                 .onTapGesture {
-                    if store.state.ui.isEditMode && store.state.ui.alertData == nil && !suppressOutsideCancel {
+                    if store.ui.isEditMode && store.ui.alertData == nil && !suppressOutsideCancel {
                         store.cancelEdit()
                     }
                 }
@@ -197,7 +197,7 @@ struct DashboardScreen: View {
                 .contentShape(Rectangle())
                 .onTapGesture {
                     // Dismiss edit mode when tapping on horizontal spaces around action buttons
-                    if store.state.ui.isEditMode && store.state.ui.alertData == nil {
+                    if store.ui.isEditMode && store.ui.alertData == nil {
                         store.cancelEdit()
                     }
                 }

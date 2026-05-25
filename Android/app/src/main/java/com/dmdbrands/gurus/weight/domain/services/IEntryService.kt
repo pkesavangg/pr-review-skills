@@ -20,6 +20,14 @@ interface IEntryService {
   val monthlyBodyScaleLatest: StateFlow<List<PeriodBodyScaleSummary>>
   val daywiseBodyScaleAverages: StateFlow<List<PeriodBodyScaleSummary>>
   val daywiseBodyScaleLatest: StateFlow<List<PeriodBodyScaleSummary>>
+
+  /**
+   * Per MA-3965: Week/Month graph hybrid — most recent day with entries surfaces the
+   * latest non-null positive value per metric (same as [daywiseBodyScaleLatest]); every
+   * earlier day surfaces the daily-average values (same as [daywiseBodyScaleAverages]).
+   * Year / Total remain monthly averages via [monthlyBodyScaleAverages].
+   */
+  val daywiseBodyScaleHybrid: StateFlow<List<PeriodBodyScaleSummary>>
   val monthlyAverage: StateFlow<List<HistoryMonth>>
   suspend fun getMonthlyAverage(accountId: String): Flow<List<HistoryMonth>>
 

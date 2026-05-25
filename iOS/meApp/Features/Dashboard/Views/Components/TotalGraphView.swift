@@ -21,6 +21,7 @@ struct TotalGraphView: View {
             viewModel: viewModel,
             dashboardStore: dashboardStore
         )
+        .equatable()
     }
 }
 

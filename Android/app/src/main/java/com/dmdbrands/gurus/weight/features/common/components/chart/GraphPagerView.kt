@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.flow.MutableSharedFlow
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
@@ -36,8 +37,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
  * @param state The dashboard state containing data and configuration.
  * @param onSelected Callback when entries are selected from the graph.
  * @param onPagerStateChange Callback when pager state changes.
- * @param onSegmentChange Callback when segment is selected; receives new segment and anchor timestamp (current visible center from previous segment), or null if none.
- * @param onScrollTargetConsumed Callback when the chart has scrolled to [state.scrollTarget] once.
+ * @param onSegmentChange Callback when segment is selected.
  * @param onRangeChange Callback for date range label updates.
  * @param onMarkerIndexChange Callback when marker selection changes.
  * @param entries List of entries to be used by the graph viewmodels.
@@ -47,11 +47,11 @@ fun GraphPagerView(
   state: DashboardState,
   onSelected: (List<PeriodBodyScaleSummary>) -> Unit,
   onPagerStateChange: (Int) -> Unit,
-  onSegmentChange: (GraphSegment, Long?) -> Unit = { _, _ -> },
+  onSegmentChange: (GraphSegment) -> Unit = {},
   onChartConsuming: (Boolean) -> Unit = {},
   onRangeChange: (String) -> Unit = { },
   onMarkerIndexChange: (Double?) -> Unit = {},
-  onScrollTargetConsumed: (Boolean) -> Unit = {},
+  onLatestDaySelectedChange: (Boolean) -> Unit = {},
   entries: List<PeriodBodyScaleSummary> = emptyList()
 ) {
   val pagerState = rememberPagerState(
@@ -59,11 +59,21 @@ fun GraphPagerView(
     pageCount = { GraphSegment.entries.size },
   )
 
-  /** Visible center (midpoint) of the *currently displayed* segment only; used as anchor when user taps another segment. */
-  var currentVisibleCenter by remember { mutableStateOf<Long?>(null) }
   var subText: String by remember { mutableStateOf("") }
   var labelData by remember { mutableStateOf("") }
   var weightValue by remember { mutableStateOf(0.0) }
+
+  // One-shot signal emitted on every segment-button tap. Each GraphView page subscribes
+  // and the page whose segment matches the emitted value re-arms its scroll-to-initial.
+  // Using an explicit user-action signal (rather than inferring from `isCurrentPage`
+  // transitions) avoids both rotation/resume false-positives and pager-timing false-
+  // negatives where `pagerState.currentPage` updates before a freshly composed page
+  // observes the transition.
+  // replay = 1: new subscribers (freshly composed pages) immediately receive the last-emitted
+  // segment even if they subscribed after the emission. `remember { }` recreates this flow on
+  // rotation / navigation-stack push, so the replay cache is always session-scoped — no
+  // spurious resets after a config change.
+  val segmentResetSignal = remember { MutableSharedFlow<GraphSegment>(replay = 1, extraBufferCapacity = 4) }
 
   LaunchedEffect(state.selectedSegment) {
     val targetPage = GraphSegment.entries.indexOf(state.selectedSegment)
@@ -88,10 +98,7 @@ fun GraphPagerView(
     ) { page ->
       val currentSegment = GraphSegment.entries.getOrNull(page) ?: GraphSegment.WEEK
       val viewmodel = hiltViewModel<GraphViewModel, GraphViewModel.Factory>(key = "GraphViewModel-$page") { factory ->
-        val anchoredTarget = state.scrollTarget?.let {
-          GraphUtil.getStartOnAnchored(currentSegment, it.toLong())
-        }
-        factory.create(currentSegment, anchoredTarget?.toDouble())
+        factory.create(currentSegment)
       }
       val graphState by viewmodel.state.collectAsState()
 
@@ -107,6 +114,15 @@ fun GraphPagerView(
 
       LaunchedEffect(graphState.markerIndex) {
         onMarkerIndexChange(graphState.markerIndex)
+      }
+
+      // Per MA-3965: report whether the currently selected graph point lands on the
+      // most recent day in the data set so the dashboard can route the metric-info
+      // sheet's label. Single source of truth lives on [GraphState.isLatestDaySelected]
+      // — the trend-view header reads from the same property, so the two surfaces
+      // cannot drift.
+      LaunchedEffect(graphState.isLatestDaySelected) {
+        onLatestDaySelectedChange(graphState.isLatestDaySelected)
       }
 
       LaunchedEffect(graphState.minTarget, graphState.maxTarget, pagerState.currentPage, state.isConsuming) {
@@ -134,9 +150,6 @@ fun GraphPagerView(
           )
           subText = formattedRange
           onRangeChange(formattedRange)
-          if (currentSegment != GraphSegment.TOTAL && page == pagerState.currentPage) {
-            currentVisibleCenter = (minTarget + maxTarget).div(2)
-          }
         }
       }
       Column {
@@ -150,13 +163,12 @@ fun GraphPagerView(
 
         GraphView(
           modifier = Modifier.fillMaxWidth(),
-          scrollTarget = state.scrollTarget,
           segment = currentSegment,
-          canScrollToAnchor = state.selectedSegment == currentSegment && !state.isScrollTargetConsumed,
+          isCurrentPage = pagerState.currentPage == page,
           state = graphState,
           viewModel = viewmodel,
           onChartConsuming = onChartConsuming,
-          onScrollTargetConsumed = onScrollTargetConsumed,
+          segmentResetSignal = segmentResetSignal,
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
       }
@@ -168,8 +180,13 @@ fun GraphPagerView(
       key = GraphSegment::name,
       onSelected = { segment ->
         onChartConsuming(true)
-        onScrollTargetConsumed(false)
-        onSegmentChange(segment, currentVisibleCenter)
+        onSegmentChange(segment)
+        // Explicit reset-to-initial signal — only the page whose segment matches consumes
+        // it. Fires on every tap (including same-segment taps), which matches the user
+        // expectation that pressing a segment button shows that segment from its initial
+        // window. Rotation, history-screen return, and app resume do NOT emit, so scroll
+        // is preserved across non-tap recompositions.
+        segmentResetSignal.tryEmit(segment)
       },
       modifier = Modifier.padding(horizontal = MeTheme.spacing.xs),
     )

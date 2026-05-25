@@ -98,6 +98,9 @@ struct ScaleNameScreen: View {
                 await viewModel.allowExit(isFormDirty: scaleNameForm.isDirty, editedName: editedName)
             }
         }
+        .onDisappear {
+            registerDeactivation { true }
+        }
     }
 }
 

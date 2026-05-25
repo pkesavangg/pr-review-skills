@@ -253,6 +253,13 @@ class EntryRepository @Inject constructor(
     entryDao.getDaywiseBodyScaleLatestWithJoin(accountId).map { list -> list.map { it.convertToDisplay() } }
 
   /**
+   * Per MA-3965: single-pass hybrid daywise — latest-per-metric on the most recent
+   * day with a valid entry; daily-average per metric on every earlier day.
+   */
+  override fun getDaywiseBodyScaleHybridWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
+    entryDao.getDaywiseBodyScaleHybridWithJoin(accountId).map { list -> list.map { it.convertToDisplay() } }
+
+  /**
    * Get the oldest entry for an account.
    * @param accountId The account ID
    * @return The oldest entry if found, null otherwise

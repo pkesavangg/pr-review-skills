@@ -27,6 +27,7 @@ import com.dmdbrands.gurus.weight.features.common.model.SettingsItemType
 import com.dmdbrands.gurus.weight.features.settings.components.UserProfileSection
 import com.dmdbrands.gurus.weight.BuildConfig
 import com.dmdbrands.gurus.weight.features.settings.strings.SettingsScreenStrings
+import com.dmdbrands.gurus.weight.features.settings.strings.toDisplayString
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsIntent
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsState
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsViewModel
@@ -107,6 +108,13 @@ fun SettingsScreenContent(
                 coroutineScope.launch {
                   backStack.addRoute(AppRoute.AccountSettings.Profile)
                 }
+              },
+            ),
+            SettingsItem(
+              title = SettingsScreenStrings.DefaultGraphRange,
+              type = SettingsItemType.Dropdown(state.currentDefaultGraphRange.toDisplayString()),
+              onClick = {
+                handleIntent.invoke(SettingsIntent.ShowDefaultGraphRangeModal)
               },
             ),
           ),

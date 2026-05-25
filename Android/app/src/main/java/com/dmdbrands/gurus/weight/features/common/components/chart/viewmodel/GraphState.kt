@@ -6,7 +6,6 @@ import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toGraphPoints
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toWeightGraphPoints
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
@@ -23,34 +22,6 @@ import kotlinx.collections.immutable.toImmutableList
 
 /**
  * UI state for the graph component, holding all chart-related state variables.
- *
- * @property point Current pointer point for marker interaction.
- * @property timeStamp List of timestamps for the graph.
- * @property minTarget Minimum target timestamp for the visible range.
- * @property maxTarget Maximum target timestamp for the visible range.
- * @property minYTarget Minimum Y-axis target value.
- * @property secondaryMinYTarget Secondary Y-axis minimum target value.
- * @property maxYTarget Maximum Y-axis target value.
- * @property secondaryMaxYTarget Secondary Y-axis maximum target value.
- * @property selectedTarget Selected target timestamp.
- * @property markerIndex Index of the current marker.
- * @property isUpdating Whether the graph is currently updating.
- * @property modelProducer Chart model producer for Vico library.
- * @property graphKey Hash code of the graph lines for change detection.
- * @property computationJob Current computation job for async operations.
- * @property stepSize Step size for Y-axis scaling.
- * @property scrollState Current scroll state of the chart.
- * @property initialTimeStamp Initial timestamp for the graph.
- * @property todayMills Current timestamp in milliseconds.
- * @property startRangeX Start range for X-axis.
- * @property endRangeX End range for X-axis.
- * @property separators Period separators for the graph.
- * @property isEmpty Whether the graph has no data.
- * @property isSingleWindow Whether the current visible range lies within a single segment window.
- * @property segment Current graph segment (WEEK, MONTH, etc.).
- * @property goal Current goal for reference.
- * @property graphLines Primary graph lines data.
- * @property secondaryGraphLines Secondary graph lines data.
  */
 @Stable
 data class GraphState(
@@ -59,21 +30,23 @@ data class GraphState(
   val target: ImmutableList<PeriodBodyScaleSummary> = persistentListOf(),
   val secondaryKey: DashboardKey? = null,
   val primaryYAxis: CartesianRangeValues? = null,
-  val secondaryYAxis: CartesianRangeValues? = null,
   val primaryYStep: Double? = null,
+  /**
+   * Seed Y range for `ScrollAwareRangeProvider`'s frame-0 render. Computed in the VM using
+   * the same bracketing window the provider's `onVisibleEntries` callback uses (visible
+   * window plus one entry on each side). Frame 0 and frame 1+ produce identical Y bounds
+   * so the chart does not snap when transitioning from seed to live range.
+   */
+  val seedMinY: Double? = null,
+  val seedMaxY: Double? = null,
   val goal: Goal? = null,
   val isEmptyGraph: Boolean = false,
   val modelProducer: CartesianChartModelProducer = CartesianChartModelProducer(),
   val minTarget: Long? = null,
   val maxTarget: Long? = null,
   val markerIndex: Double? = null,
-  val isUpdating: Boolean = false,
-  val isLoading: Boolean = false,
   val isSingleWindow: Boolean = false,
 ) : IReducer.State {
-  val graphKey: Int = data.hashCode()
-  val graphLines: List<GraphLine> = listOf(this.data.getWeightGraphPoints())
-  val secondaryGraphLines: GraphLine? = secondaryKey?.let { data.toGraphPoints((it as DashboardKey.Metric).key) }
 
   fun getStartTimestamp(): Long {
     return this.data.minByOrNull { it.getTimeStamp() }?.getTimeStamp() ?: Calendar.getInstance().timeInMillis
@@ -82,6 +55,20 @@ data class GraphState(
   fun getEndTimestamp(): Long {
     return this.data.maxByOrNull { it.getTimeStamp() }?.getTimeStamp() ?: Calendar.getInstance().timeInMillis
   }
+
+  /**
+   * Per MA-3965: true when a graph point is selected and that point lands on the
+   * most recent day present in the data set. "Latest day" is data-driven (the
+   * highest entry timestamp in [data]), not the calendar's today. Both the
+   * trend-view header label and the metric-info routing read from this single
+   * derivation, so the two surfaces cannot drift.
+   */
+  val isLatestDaySelected: Boolean
+    get() {
+      val marker = markerIndex?.toLong() ?: return false
+      val latestDay = data.maxOfOrNull { it.getTimeStamp() } ?: return false
+      return marker == latestDay
+    }
 
   fun createFallBackData(
     segment: GraphSegment,
