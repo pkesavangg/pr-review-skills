@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -56,6 +57,23 @@ enum class ButtonType {
   ErrorText,
   SuccessFilled
 }
+
+internal val ButtonType.isInlineText: Boolean
+  get() = when (this) {
+    ButtonType.InlineTextPrimary,
+    ButtonType.InlineTextSecondary,
+    ButtonType.ErrorText,
+    ButtonType.InlineTextTertiary,  -> true
+
+    ButtonType.PrimaryFilled,
+    ButtonType.SecondaryFilled,
+    ButtonType.PrimaryOutlined,
+    ButtonType.SecondaryOutlined,
+    ButtonType.TextPrimary,
+    ButtonType.TextSecondary,
+    ButtonType.TextTertiary,
+    ButtonType.SuccessFilled -> false
+  }
 
 // Color
 // Type - outline/filled/text
@@ -209,7 +227,7 @@ object AppButtonDefaults {
     size: ButtonSize,
     type: ButtonType,
   ): Dp {
-    if (type == ButtonType.InlineTextPrimary || type == ButtonType.InlineTextSecondary) {
+    if (type.isInlineText) {
       return 0.dp
     }
     return when (size) {
@@ -313,8 +331,8 @@ fun AppButton(
   val maxLines = 1
   val buttonModifier = modifier
     .then(
-      if (type != ButtonType.InlineTextPrimary || type != ButtonType.InlineTextSecondary) {
-        Modifier.height(height)
+      if (!type.isInlineText) {
+        Modifier.heightIn(min = height)
       } else {
         Modifier
       },

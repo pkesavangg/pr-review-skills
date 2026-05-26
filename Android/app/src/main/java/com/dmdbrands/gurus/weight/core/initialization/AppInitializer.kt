@@ -49,6 +49,19 @@ class AppInitializer
                 // Initialize LogRepository
                 logger.initialize()
 
+                // Bridge AppSync library logs into AppLog so scan diagnostics show up
+                // in user-submitted debug bundles (MA-AppSync scan-hang investigation).
+                AppSyncLogger.install(
+                    object : AppSyncLogger.Sink {
+                        override fun d(tag: String, message: String, data: String?) = AppLog.d(tag, message, data)
+                        override fun i(tag: String, message: String, data: String?) = AppLog.i(tag, message, data)
+                        override fun w(tag: String, message: String, data: String?) = AppLog.w(tag, message, data)
+                        override fun e(tag: String, message: String, throwable: Throwable?) {
+                            if (throwable != null) AppLog.e(tag, message, throwable) else AppLog.e(tag, message)
+                        }
+                    },
+                )
+
                 AppLog.d("AppInitializer", "Logging system initialized successfully")
             } catch (e: Exception) {
                 AppLog.e("AppInitializer", "Failed to initialize logging system", e)

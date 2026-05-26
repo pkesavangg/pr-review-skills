@@ -4,7 +4,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_UNSPECIFIED
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -171,7 +170,7 @@ class MainActivity : AppCompatActivity() {
     when (this) {
       ThemeMode.LIGHT -> AppCompatDelegate.MODE_NIGHT_NO
       ThemeMode.DARK -> AppCompatDelegate.MODE_NIGHT_YES
-      else -> MODE_NIGHT_UNSPECIFIED
+      else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
     }
 
   private fun ThemeMode.toUiMode(): Int =

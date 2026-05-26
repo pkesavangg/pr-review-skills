@@ -41,7 +41,13 @@ protocol IntegrationServiceProtocol {
     /// Syncs a new entry to the integrated health service (e.g., HealthKit) if integration is active.
     /// - Parameter entry: The entry to sync to the health service.
     func syncNewEntry(_ entry: Entry) async throws
-    
+
+    /// Syncs a new entry to the integrated health service using an EntryNotification.
+    /// Use this overload when the source data is not a MainActor-bound `Entry` — e.g.,
+    /// the remote-sync merge path that creates entries off the main actor.
+    /// - Parameter notification: The Sendable notification carrying the entry data.
+    func syncNewEntry(notification: EntryNotification) async throws
+
     /// Deletes an entry from the integrated health service (e.g., HealthKit) if integration is active.
     /// - Parameter entry: The entry to delete from the health service.
     func deleteEntry(_ entry: Entry) async throws

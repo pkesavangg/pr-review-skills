@@ -29,6 +29,7 @@ sealed interface AppIntent : IReducer.Intent {
   data class SetScaleDiscovered(val isScaleDiscovered: Boolean) : AppIntent
   data class SetSku(val sku: String) : AppIntent
   data class SetScanStatus(val hasScanStarted: Boolean) : AppIntent
+  data class SetThemeMode(val themeMode: ThemeMode) : AppIntent
 
   data object OnPopUpConnect : AppIntent
   data object OnPopUpDismiss : AppIntent
@@ -54,6 +55,7 @@ class AppReducer() : IReducer<AppState, AppIntent> {
         scaleDiscoveredTimestamp = if (intent.isScaleDiscovered) System.currentTimeMillis() else null,
       )
       is AppIntent.SetScanStatus -> state.copy(hasScanStarted = intent.hasScanStarted)
+      is AppIntent.SetThemeMode -> state.copy(themeMode = intent.themeMode)
       is AppIntent.SetUnreadFeedCount -> state.copy(unreadFeedCount = intent.count)
       is AppIntent.SetShowUnreadFeedIndication -> state.copy(showUnreadFeedIndication = intent.show)
       else -> state

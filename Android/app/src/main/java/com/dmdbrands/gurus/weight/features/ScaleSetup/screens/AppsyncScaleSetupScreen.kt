@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleInfo
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScalePermissions
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleSetupHeader
@@ -80,18 +81,22 @@ fun AppsyncScaleSetupScreenContent(
         try {
           val result = startAppSyncScan(
             context = context,
-            zoom = 4,
+            zoom = state.appSyncZoomLevel,
             showManualEntryButton = false,
             onBack = {
               // Create cancelled result and call intent handler immediately
-              val cancelResult = AppSyncResultFactory.createCancelResult(4)
+              val cancelResult = AppSyncResultFactory.createCancelResult(state.appSyncZoomLevel)
               com.greatergoods.libs.appsync.AppSyncResultHolder.result = cancelResult
               onIntent(AppsyncScaleSetupIntent.HandleAppSyncResult(cancelResult))
             },
           )
+          AppLog.w(
+            "AppSyncScan",
+            "Scale display detected results on appsync setup flow (device=${android.os.Build.MODEL}, weight=${result.weight} errors=${result.errors})",
+          )
           onIntent(AppsyncScaleSetupIntent.HandleAppSyncResult(result))
         } catch (e: Exception) {
-          // Handle error
+          AppLog.e("AppSyncScan", "AppSync scan failed on setup flow: ${e.message}", e)
         } finally {
           isScanning = false
         }

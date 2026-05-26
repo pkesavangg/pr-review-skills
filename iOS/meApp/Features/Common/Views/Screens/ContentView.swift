@@ -12,7 +12,7 @@ struct ContentView: View {
     @Environment(\.appTheme) private var theme
     @Environment(\.colorScheme) private var colorScheme
     @StateObject private var viewModel = ContentViewModel()
-    
+
     var body: some View {
         VStack {
             switch viewModel.contentViewState {

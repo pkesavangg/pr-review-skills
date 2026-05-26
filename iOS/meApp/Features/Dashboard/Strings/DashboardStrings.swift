@@ -80,4 +80,9 @@ struct DashboardStrings {
     static func noEntriesInPeriodMessage(_ timePeriod: String) -> String {
         return "You haven't added any entries this \(timePeriod)."
     }
+
+    // Graph scroll hint modal
+    static let graphScrollHintTitle = "NEW: Scrollable Graph"
+    static let graphScrollHintMessage = "Swipe left or right on the graph to view more growth data over time."
+    static let graphScrollHintConfirm = "Got it"
 }

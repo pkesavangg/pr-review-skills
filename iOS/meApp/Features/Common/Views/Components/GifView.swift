@@ -27,7 +27,7 @@ struct GifView: UIViewRepresentable {
     func updateUIView(_ uiView: WKWebView, context: Context) {
         loadGif(in: uiView)
     }
-    
+
     private func loadGif(in webView: WKWebView) {
         if let gifPath = Bundle.main.path(forResource: gifName, ofType: "gif") {
             let url = URL(fileURLWithPath: gifPath)

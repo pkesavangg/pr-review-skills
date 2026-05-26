@@ -22,6 +22,7 @@ struct WeekGraphView: View {
 // swiftlint:disable:next vertical_parameter_alignment_on_call
                     dashboardStore: dashboardStore
         )
+        .equatable()
     }
 }
 

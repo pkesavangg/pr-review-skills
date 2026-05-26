@@ -43,6 +43,10 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MeApp">
+
+        <property
+            android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY"
+            android:value="true" />
 <!--   Adding font scale aligns the app’s font with the device font settings -->
         <activity
             android:name=".MainActivity"

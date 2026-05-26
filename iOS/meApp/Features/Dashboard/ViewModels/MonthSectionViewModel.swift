@@ -9,6 +9,18 @@ import Charts
 import Foundation
 import SwiftUI
 
+/// Cached gregorian calendar configured with the current locale/timezone.
+/// `plotXDate(for:)` is invoked once per cached point on every chart cache
+/// refresh; allocating a fresh `Calendar(identifier:)` per call showed up
+/// in the same `_LocaleICU.minimumDaysInFirstWeek` lookup pattern the April
+/// investigation patched on the chart render path.
+private let monthPlotCalendar: Calendar = {
+    var cal = Calendar(identifier: .gregorian)
+    cal.timeZone = Calendar.current.timeZone
+    cal.locale = Calendar.current.locale
+    return cal
+}()
+
 /// ViewModel specifically for the Month time period chart view
 /// Handles all month-specific chart logic, scrolling, and day-based data processing
 @MainActor
@@ -22,10 +34,7 @@ final class MonthSectionViewModel: BaseSectionViewModel {
     /// Align plotted daily points to local noon so they overlap month X-axis Sunday ticks,
     /// which are generated at local noon.
     override func plotXDate(for original: Date) -> Date {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = Calendar.current.timeZone
-        cal.locale = Calendar.current.locale
-
+        let cal = monthPlotCalendar
         let dayStart = cal.startOfDay(for: original)
         guard let noon = cal.date(byAdding: .hour, value: 12, to: dayStart) else {
             return super.plotXDate(for: original)
@@ -50,8 +59,7 @@ final class MonthSectionViewModel: BaseSectionViewModel {
 
         guard let first = effectiveDates.first, let last = effectiveDates.last else {
             // No data → hide selection
-            selectedDate = nil
-            showCrosshair = false
+            clearSelection()
             return
         }
         // Only allow selection near the plotted data range. Permit a small right-side slack
@@ -67,8 +75,7 @@ final class MonthSectionViewModel: BaseSectionViewModel {
         }()
         let rightSlack = lastSectionLen * 0.5
         guard date >= first && date <= last.addingTimeInterval(rightSlack) else {
-            selectedDate = nil
-            showCrosshair = false
+            clearSelection()
             return
         }
 
@@ -83,16 +90,15 @@ final class MonthSectionViewModel: BaseSectionViewModel {
             if let fallback = effectiveDates.last(where: { $0 <= clampedDate }) ?? effectiveDates.last ?? effectiveDates.first {
                 selectedDate = fallback
                 showCrosshair = true
+                selectedPoint = closestOperation(to: fallback)
             } else {
-                selectedDate = nil
-                showCrosshair = false
+                clearSelection()
             }
             return
         }
         // If the chosen section starts strictly after the last data point, suppress selection
         if startTick > last {
-            selectedDate = nil
-            showCrosshair = false
+            clearSelection()
             return
         }
         let startIndex = allTicks.lastIndex(of: startTick) ?? 0
@@ -116,6 +122,7 @@ final class MonthSectionViewModel: BaseSectionViewModel {
             // No data in section → select the start tick
             selectedDate = startTick
             showCrosshair = true
+            selectedPoint = nil
         } else {
             // Pick the nearest candidate inside the section with deterministic tie-break (earlier first)
             if let chosen = candidates.min(by: { first, second in
@@ -126,6 +133,7 @@ final class MonthSectionViewModel: BaseSectionViewModel {
             }) {
                 selectedDate = chosen
                 showCrosshair = true
+                selectedPoint = closestOperation(to: chosen)
             }
         }
     }

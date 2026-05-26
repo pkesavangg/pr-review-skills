@@ -67,12 +67,60 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     ///   - oldId: The current ID of the device in the database.
     ///   - updatedDevice: The device object with updated properties including the new ID.
     func updateDeviceWithNewId(oldId: String, updatedDevice: Device) async throws {
-        let managedDevice = try fetchDeviceOrThrow(oldId)
+        let oldDevice = try fetchDeviceOrThrow(oldId)
+        guard oldDevice.modelContext === context else {
+            logger.log(level: .error, tag: "ScaleRepository", message: "updateDeviceWithNewId: device \(oldId) belongs to a different context — aborting")
+            throw NSError(domain: "ScaleService", code: 500, userInfo: [NSLocalizedDescriptionKey: "Device context mismatch"])
+        }
         logger.log(level: .debug, tag: "ScaleRepository", message: "Updating device ID from \(oldId) to \(updatedDevice.id)")
-        copyDeviceFields(from: updatedDevice, to: managedDevice, includeId: true)
-        managedDevice.metaData = updatedDevice.metaData
-        managedDevice.r4ScalePreference = updatedDevice.r4ScalePreference
-        managedDevice.bathScale = updatedDevice.bathScale
+
+        // SwiftData does not allow mutating the persistent identifier in-place.
+        // Insert a new Device with the server-assigned ID, transfer all state,
+        // then delete the old device in the same save — one round-trip, no torn state.
+        let newDevice = Device(
+            id: updatedDevice.id,
+            accountId: updatedDevice.accountId,
+            peripheralIdentifier: updatedDevice.peripheralIdentifier,
+            nickname: updatedDevice.nickname,
+            sku: updatedDevice.sku,
+            mac: updatedDevice.mac,
+            password: updatedDevice.password,
+            isSoftDeleted: updatedDevice.isSoftDeleted,
+            deviceName: updatedDevice.deviceName,
+            deviceType: updatedDevice.deviceType,
+            broadcastId: updatedDevice.broadcastId,
+            broadcastIdString: updatedDevice.broadcastIdString,
+            userNumber: updatedDevice.userNumber,
+            protocolType: updatedDevice.protocolType,
+            createdAt: updatedDevice.createdAt,
+            lastModified: updatedDevice.lastModified,
+            isSynced: updatedDevice.isSynced,
+            hasServerID: updatedDevice.hasServerID,
+            isConnected: updatedDevice.isConnected,
+            wifiMac: updatedDevice.wifiMac,
+            isWifiConfigured: updatedDevice.isWifiConfigured,
+            token: updatedDevice.token,
+            isWeighOnlyModeEnabledByOthers: updatedDevice.isWeighOnlyModeEnabledByOthers
+        )
+        context.insert(newDevice)
+
+        // Transfer relationships to the new device; nil them on the old one first
+        // so cascade rules do not delete children that the new device still needs.
+        if let meta = oldDevice.metaData {
+            oldDevice.metaData = nil
+            newDevice.metaData = meta
+        }
+        if let pref = oldDevice.r4ScalePreference {
+            oldDevice.r4ScalePreference = nil
+            newDevice.r4ScalePreference = pref
+            pref.id = newDevice.id
+        }
+        if let bath = oldDevice.bathScale {
+            oldDevice.bathScale = nil
+            newDevice.bathScale = bath
+        }
+
+        context.delete(oldDevice)
         try context.save()
         logger.log(level: .debug, tag: "ScaleRepository", message: "Successfully updated device with new ID: \(updatedDevice.id)")
     }
@@ -248,14 +296,22 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         logger.log(level: .debug, tag: "ScaleRepository", message: "Deleting \(syncedDevices.count) synced devices for account \(accountId)")
         for device in syncedDevices {
             logger.log(level: .debug, tag: "ScaleRepository", message: "Deleting synced device: \(device.id), sku: \(device.sku ?? "nil")")
+            // Break child relationships before deletion so cascade-deleted children
+            // cannot be reached by unsynced devices that may still hold a reference.
+            device.r4ScalePreference = nil
+            device.bathScale = nil
+            device.metaData = nil
             context.delete(device)
         }
         try context.save()
 
-        // Insert server devices, but handle conflicts with unsynced local devices by updating them
-        // IMPORTANT: Only match unsynced devices that belong to the current accountId
-        // This allows multiple accounts to have devices with the same MAC/SKU
-        let unsyncedDevicesForAccount = unsyncedDevices.filter { $0.accountId == accountId }
+        // Re-fetch unsynced devices from context after the delete-and-save above.
+        // The instances passed in via `unsyncedDevices` may have been materialised
+        // before the save and could be stale or point at now-deleted relationship objects.
+        let unsyncedDescriptor = FetchDescriptor<Device>(predicate: #Predicate {
+            $0.accountId == accountId && ($0.isSynced ?? false) == false
+        })
+        let unsyncedDevicesForAccount = (try? context.fetch(unsyncedDescriptor)) ?? []
         
         var insertedCount = 0
         var updatedCount = 0
@@ -272,8 +328,10 @@ final class ScaleRepository: ScaleRepositoryProtocol {
             if let matchingDevice = matchingUnsyncedDevice {
                 // Handle conflict: update unsynced device with server data
                 if let serverId = serverDevice.id, matchingDevice.id != serverId {
+                    // Capture the local ID before updateDeviceFromDTO overwrites it with the server ID.
+                    let localId = matchingDevice.id
                     updateDeviceFromDTO(matchingDevice, from: serverDevice, accountId: accountId, connectionStatusMap: connectionStatusMap)
-                    try await updateDeviceWithNewId(oldId: matchingDevice.id, updatedDevice: matchingDevice)
+                    try await updateDeviceWithNewId(oldId: localId, updatedDevice: matchingDevice)
                 } else {
                     updateDeviceFromDTO(matchingDevice, from: serverDevice, accountId: accountId, connectionStatusMap: connectionStatusMap)
                     try await updateDevice(matchingDevice)

@@ -15,7 +15,8 @@ struct ScaleModesScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.dismiss) private var dismiss
     @Environment(\.appTheme) private var theme
-    
+    @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
+
     // MARK: - Observed Objects
     @StateObject private var viewModel: ScaleModesViewModel
     
@@ -74,7 +75,15 @@ struct ScaleModesScreen: View {
                         }
                     }
                 },
-                onLeadingTap: { if isPresentedAsSheet { dismiss() } else { router.navigateBack() } },
+                onLeadingTap: {
+                    Task {
+                        // R4 setup flow has no Save button; skip exit confirmation there.
+                        let allow = isR4ScaleSetup ? true : await viewModel.allowExit()
+                        if allow {
+                            if isPresentedAsSheet { dismiss() } else { router.navigateBack() }
+                        }
+                    }
+                },
                 onTrailingTap: {},
                 canShowBorder: true
             )
@@ -103,6 +112,17 @@ struct ScaleModesScreen: View {
         .task {
             // Load scale mode data when the screen appears
             await viewModel.loadScaleModeData()
+        }
+        .onAppear {
+            // Skip handler in R4 setup since changes are committed via the setup flow, not this screen.
+            guard !isR4ScaleSetup else { return }
+            registerDeactivation {
+                await viewModel.allowExit()
+            }
+        }
+        .onDisappear {
+            guard !isR4ScaleSetup else { return }
+            registerDeactivation { true }
         }
     }
     
@@ -441,6 +461,32 @@ final class ScaleModesViewModel: ObservableObject {
         notificationService.showAlert(alert)
     }
     
+    /// Presents a confirm-discard alert; returns true if the user confirms exit.
+    func confirmDiscardChanges() async -> Bool {
+        let alertLang = AlertStrings.EditProfileExitAlert.self
+        return await withCheckedContinuation { continuation in
+            let alert = AlertModel(
+                title: alertLang.title,
+                message: alertLang.message,
+                buttons: [
+                    AlertButtonModel(title: alertLang.exitButton, type: .primary) { _ in
+                        continuation.resume(returning: true)
+                    },
+                    AlertButtonModel(title: alertLang.returnButton, type: .secondary) { _ in
+                        continuation.resume(returning: false)
+                    }
+                ]
+            )
+            notificationService.showAlert(alert)
+        }
+    }
+
+    /// Allows exit when no mode changes are pending; otherwise prompts for confirmation.
+    func allowExit() async -> Bool {
+        if !hasModeChanges { return true }
+        return await confirmDiscardChanges()
+    }
+
     func openHelp() {
          notificationService.showModal(ModalData(
             presentedView: AnyView(ModelNumberHelpModalView {

@@ -317,8 +317,9 @@ struct ManualEntryScreen: View {
                                         focusedField = nil
                                         Task {
                                             guard !entryStore.isSaving else { return }
-                                            await entryStore.saveEntry()
-                                            performTabSwitchAndHideKeyboard()
+                                            if await entryStore.saveEntry() {
+                                                performTabSwitchAndHideKeyboard()
+                                            }
                                         }
                                     }
                                 }
@@ -336,8 +337,9 @@ struct ManualEntryScreen: View {
                     ) {
                         Task {
                             focusedField = nil
-                            await entryStore.saveEntry()
-                            performTabSwitchAndHideKeyboard()
+                            if await entryStore.saveEntry() {
+                                performTabSwitchAndHideKeyboard()
+                            }
                         }
                     }
                     
@@ -389,14 +391,9 @@ struct ManualEntryScreen: View {
         }
         .background(theme.backgroundSecondary)
         .animation(.easeOut(duration: 0.25), value: keyboard.currentHeight)
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button(commonLang.done) {
-                    withAnimation {
-                        focusedField = nil
-                    }
-                }
+        .keyboardDoneToolbar {
+            withAnimation {
+                focusedField = nil
             }
         }
     }

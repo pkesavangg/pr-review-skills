@@ -45,7 +45,7 @@ constructor(
   private val appNavigationService: IAppNavigationService,
   private val dashboardService: IDashboardService,
   private val healthConnectService: IHealthConnectService,
-  private val goalService: IGoalService
+  private val goalService: IGoalService,
 ) : BaseIntentViewModel<DashboardState, DashboardIntent>(
   reducer = DashboardReducer(),
 ), DefaultLifecycleObserver {
@@ -74,9 +74,11 @@ constructor(
       DashboardType.DASHBOARD_12_METRICS else DashboardType.DASHBOARD_4_METRICS
     val weightLess = activeAccount.toWeightless()
     val metrics = dashboardService.visibleKeys.value
+    val defaultSegment = activeAccount?.defaultGraphSegment ?: GraphSegment.DEFAULT
     super.handleIntent(DashboardIntent.SetDashboardType(dashboardType))
     super.handleIntent(DashboardIntent.SetVisibleKeys(metrics))
     super.handleIntent(DashboardIntent.UpdateWeightLess(weightLess))
+    super.handleIntent(DashboardIntent.SetSelectedSegment(defaultSegment))
   }
 
   private fun subscribeWeightLess() {

@@ -6,10 +6,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.core.view.WindowCompat
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.proto.ThemeMode
@@ -36,6 +39,8 @@ val LocalAppTheme =
   staticCompositionLocalOf<ThemeMode> {
     ThemeMode.SYSTEM
   }
+
+private const val MAX_FONT_SCALE = 1.3f
 
 /**
  * Composable that automatically sets the status bar colors based on the current theme.
@@ -77,6 +82,27 @@ private fun StatusBarTheme(colorScheme: ColorScheme) {
 }
 
 /**
+ * Resolves whether the dark color scheme should be used.
+ *
+ * For LIGHT/DARK the user's explicit choice short-circuits any Configuration
+ * read, so Compose surfaces flip immediately on toggle regardless of whether
+ * AppCompat / UiModeManager has propagated the change to Configuration yet.
+ *
+ * For SYSTEM, we read isSystemInDarkTheme() — which observes LocalConfiguration
+ * and recomposes when the OS theme changes. This is reliable across API
+ * levels because OS-driven Configuration updates (the user changing the
+ * system theme) are broadcast normally; the runtime unreliability we hit on
+ * API < 31 is specifically with app-driven setDefaultNightMode overrides,
+ * which only matter when the user picks LIGHT or DARK.
+ */
+@Composable
+private fun resolveDarkTheme(themeMode: ThemeMode): Boolean = when (themeMode) {
+  ThemeMode.DARK -> true
+  ThemeMode.LIGHT -> false
+  ThemeMode.SYSTEM, ThemeMode.UNRECOGNIZED -> isSystemInDarkTheme()
+}
+
+/**
  * Main theme composable that sets up the app's theme.
  * This combines all theme components (colors, typography, spacing, animations) into a single theme.
  * It also provides IAM colors via LocalComposition for IAM components to access.
@@ -86,13 +112,7 @@ fun MeAppTheme(
   themeMode: ThemeMode = ThemeMode.SYSTEM,
   content: @Composable (() -> Unit),
 ) {
-  val darkTheme =
-    when (themeMode) {
-      ThemeMode.DARK -> true
-      ThemeMode.LIGHT -> false
-      ThemeMode.SYSTEM -> isSystemInDarkTheme()
-      ThemeMode.UNRECOGNIZED -> isSystemInDarkTheme()
-    }
+  val darkTheme = resolveDarkTheme(themeMode)
 
   val meAppColorScheme =
     if (darkTheme) {
@@ -104,9 +124,20 @@ fun MeAppTheme(
   // Apply status bar theming
   StatusBarTheme(meAppColorScheme)
 
+  val systemDensity = LocalDensity.current
+  val cappedDensity =
+    remember(systemDensity) {
+      if (systemDensity.fontScale > MAX_FONT_SCALE) {
+        Density(density = systemDensity.density, fontScale = MAX_FONT_SCALE)
+      } else {
+        systemDensity
+      }
+    }
+
   CompositionLocalProvider(
     LocalAppTheme provides themeMode,
     LocalColorScheme provides meAppColorScheme,
+    LocalDensity provides cappedDensity,
     LocalTypography provides AppTypography,
     LocalSpacing provides SpacingToken,
     LocalAnimation provides AnimationToken,

@@ -109,7 +109,7 @@ final class EntryStore: ObservableObject {
         // Ensure valid time relative to selected date
         clampTimeForSelectedDate()
 
-        guard manualEntryForm.isValid else { return }
+        guard manualEntryForm.isValid else { return false }
 
         let entryTimestamp = DateTimeTools.isoString(
             date: manualEntryForm.date.value,
@@ -138,7 +138,7 @@ final class EntryStore: ObservableObject {
         let visceralFat     = toTenths(manualEntryForm.visceralFat.value)
         let unit            = weightUnit == .kg ? WeightUnit.kg.rawValue : WeightUnit.lb.rawValue
 
-        guard let accountId = accountService.activeAccount?.accountId else { return }
+        guard let accountId = accountService.activeAccount?.accountId else { return false }
 
         let scaleEntry = BathScaleEntry(
             weight: weightStored,
@@ -180,6 +180,7 @@ final class EntryStore: ObservableObject {
             resetForm()
             logger.log(level: .success, tag: self.tag, message: "Manual entry save succeeded. accountId=\(accountId), timestamp=\(entryTimestamp)")
             notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
+            return true
         } catch {
             logger.log(
                 level: .error,
@@ -187,6 +188,7 @@ final class EntryStore: ObservableObject {
                 message: "Failed to save manual entry. accountId=\(accountId), timestamp=\(entryTimestamp), error=\(error.localizedDescription)"
             )
             notificationService.showToast(ToastModel(title: toastLang.errorSavingEntry, message: toastLang.pleaseTryAgain))
+            return false
         }
     }
 

@@ -15,6 +15,7 @@ struct DashboardState {
 struct UIState {
     var isLoading: Bool = false
     var hasInitializedChart: Bool = false
+    var hasLandedInitialSelection: Bool = false // True once the first auto-select on the latest entry has been applied
     var hasLoadedDashboardConfig: Bool = false // Flag to track when body metrics config is loaded from API
     var hasLoadedProgressMetrics: Bool = false // Flag to track when progress metrics (goal card + streaks) are loaded
     var hasLoadedMetricValues: Bool = false // Flag to track when actual metric values are loaded (not placeholders)
@@ -151,6 +152,17 @@ struct GraphState {
         if isScrolling {
             clearSelection()
         }
+    }
+
+    /// Currently active store-side selection, validated for direct application
+    /// to a section view model. Returns `nil` when no selection should be
+    /// rendered. Single source of truth for the post-tab-switch /
+    /// cold-start sync paths so the read shape can't drift between call sites.
+    var validatedSelection: (date: Date, point: BathScaleWeightSummary?)? {
+        guard showCrosshair, let date = selectedXValue ?? selectedPoint?.date else {
+            return nil
+        }
+        return (date, selectedPoint)
     }
 }
 
