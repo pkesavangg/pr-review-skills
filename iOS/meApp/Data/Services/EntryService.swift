@@ -304,6 +304,14 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         return try await localRepo.fetchEntriesAsDTO(forUserId: accountId, operationType: OperationType.create.rawValue)
     }
 
+    /// Returns all entries as Sendable snapshots. Prefer this over
+    /// `getAllEntries()` whenever the caller will read fields across an
+    /// `await` boundary or hand the values to another actor — see MA-3898.
+    func getAllEntriesAsSnapshots() async throws -> [EntrySnapshot] {
+        let accountId = try await getAccountId()
+        return try await localRepo.fetchEntriesAsSnapshots(forUserId: accountId, operationType: OperationType.create.rawValue)
+    }
+
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool {
         let accountId = try getAccountId()
         return try await localRepo.checkEntryTimestampExists(forUserId: accountId, entryTimestamp: entryTimestamp)
@@ -1050,14 +1058,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
         // 2. Try to sync with backend
         if let unsyncedEntries = unsynced, !unsyncedEntries.isEmpty {
-            for operation in unsyncedEntries {
-                // R7/R9: Extract all @Model data BEFORE any await calls
+            for (operation, dto) in unsyncedEntries {
                 let entryId = operation.id
                 let entryIdString = entryId.uuidString
                 let operationType = operation.operationType
                 let entryTimestamp = operation.entryTimestamp
                 let currentAttempts = operation.attempts
-                let dto = operation.toOperationDTO()
 
                 do {
                     try await remoteRepo.syncOperation(operation: dto)
@@ -1114,7 +1120,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     /// Lightweight summary for a single month. Avoids computing all months when only one changes.
     func getMonthSummary(monthKey: String) async throws -> HistoryMonth? {
-        let monthEntries = try await getEntries(forMonth: monthKey)
+        let accountId = try await getAccountId()
+        // Snapshots — see MA-3898.
+        let monthEntries = try await localRepo.fetchEntriesAsSnapshots(forMonth: monthKey, userId: accountId)
+            .filter { $0.operationType == OperationType.create.rawValue }
         guard !monthEntries.isEmpty else { return nil }
         return Self.buildHistoryMonth(monthKey: monthKey, monthEntries: monthEntries)
     }
@@ -1173,6 +1182,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         accountId: String
     ) async -> Bool {
         var hadNewCreates = false
+        // Tracks the create operations we actually inserted locally so we can sync each
+        // to the active health integration (e.g., Apple Health) after the merge loop.
+        var newlyCreatedOps: [BathScaleOperationDTO] = []
         // Group operations by timestamp to determine final state for each timestamp
         let groupedOps = Dictionary(grouping: remoteOps) { op in
             op.entryTimestamp ?? ""
@@ -1198,7 +1210,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             var localEntry: Entry?
             var localEntries: [Entry]?
             for ts in tsCandidates {
-                if let fetched = try? await localRepo.fetchEntriesOfTimestamp(forUserId: accountId, timestamp: ts), !fetched.isEmpty {
+                if let fetched = try? await localRepo.fetchEntriesOfTimestampAsSnapshots(forUserId: accountId, timestamp: ts), !fetched.isEmpty {
                     localEntries = fetched
                     localEntry = fetched.first { $0.operationType == OperationType.create.rawValue } ?? fetched.first
                     break
@@ -1206,19 +1218,19 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
 
             // Additional check: Look for entries with same timestamp AND weight to prevent race condition duplicates
-            let potentialDuplicates = localEntries?.filter { entry in
-                if let entryWeight = entry.scaleEntry?.weight, let opWeight = finalOp.weight {
-                    return entryWeight == Int(opWeight) && tsCandidates.contains(entry.entryTimestamp)
+            let potentialDuplicates = localEntries?.filter { snap in
+                if let entryWeight = snap.weight, let opWeight = finalOp.weight {
+                    return entryWeight == Int(opWeight) && tsCandidates.contains(snap.entryTimestamp)
                 }
                 return false
             } ?? []
 
             // If no entries found by timestamp but we have a weight, check all entries for this user to find potential duplicates
             // This handles the case where the entry was just synced but not yet visible in the timestamp query
-            var allEntriesForUser: [Entry] = []
+            var allEntriesForUser: [EntrySnapshot] = []
             if localEntries?.isEmpty == true && finalOp.weight != nil {
                 do {
-                    allEntriesForUser = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
+                    allEntriesForUser = try await localRepo.fetchEntriesAsSnapshots(forUserId: accountId, operationType: OperationType.create.rawValue)
                 } catch {
                     allEntriesForUser = []
                 }
@@ -1242,8 +1254,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 if shouldApplyRemote {
                     if finalOp.operationType == OperationType.delete.rawValue {
                         let entriesToDelete = localEntries ?? [localEntry]
-                        for entry in entriesToDelete {
-                            try? await localRepo.deleteEntry(byId: entry.id.uuidString)
+                        for snap in entriesToDelete {
+                            try? await localRepo.deleteEntry(byId: snap.id.uuidString)
                         }
                         try? await handleEntryDeleted(localEntry)
                     } else {
@@ -1254,12 +1266,18 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                     }
                 } else if !localServerTS.isEmpty {
                     if !localEntry.isSynced {
-                        localEntry.isSynced = true
-                        try? await localRepo.updateEntry(localEntry)
+                        // Use the primitive sync-status update; mutating the @Model directly
+                        // would write through a stale background context (MA-3898).
+                        try? await localRepo.updateEntrySyncStatus(
+                            entryId: localEntry.id.uuidString,
+                            isSynced: true,
+                            isFailedToSync: localEntry.isFailedToSync,
+                            attempts: localEntry.attempts
+                        )
                     }
                     await cleanupDuplicates(localEntries: localEntries, keepId: localEntry.id)
                 }
-            } else if !potentialDuplicates.isEmpty {
+            } else if let duplicateEntry = potentialDuplicates.first {
                 // Found potential duplicate by weight - update the existing one instead of creating new
                 guard let duplicateEntry = potentialDuplicates.first else {
                     continue
@@ -1274,6 +1292,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                     // Final state is create - add to local storage
                     let newEntry = Entry(from: finalOp, accountId: accountId, isSynced: true)
                     try? await localRepo.saveEntry(newEntry)
+                    newlyCreatedOps.append(finalOp)
                     // Notify downstream listeners/UI about the new entry so lists refresh
                 }
                 // If final operation is delete and no local entry exists, nothing to do
@@ -1295,9 +1314,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         return hadNewCreates
     }
 
-    private func cleanupDuplicates(localEntries: [Entry]?, keepId: UUID) async {
+    private func cleanupDuplicates(localEntries: [EntrySnapshot]?, keepId: UUID) async {
         guard let allEntries = localEntries, allEntries.count > 1 else { return }
-        for entry in allEntries where entry.id != keepId {
+        for snap in allEntries where snap.id != keepId {
             do {
                 try await localRepo.deleteEntry(byId: entry.id.uuidString)
                 try await self.handleEntryDeleted(entry)
@@ -1305,7 +1324,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 logger.log(
                     level: .error,
                     tag: tag,
-                    message: "Failed to delete duplicate entry \(entry.id): \(error.localizedDescription)"
+                    message: "Failed to delete duplicate entry \(snap.id): \(error.localizedDescription)"
                 )
             }
         }
@@ -1374,7 +1393,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             // Ensure we have a valid date string before parsing
             guard !day.isEmpty else { return nil }
             let date = DateTimeTools.getDateFromDateString(day, format: "yyyy-MM-dd")
-            let latestTimestamp = validEntries.map { $0.entryTimestamp }.max() ?? ""
             let count = validEntries.count
 
             return BathScaleWeightSummary(
@@ -1804,8 +1822,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Check for goal achievements and trigger alerts if needed
     private func checkGoalAlerts() async {
         do {
-            guard let latestEntry = try await getLatestEntry(),
-                  let weight = latestEntry.scaleEntry?.weight else { return }
+            // Snapshot, not @Model — see MA-3898.
+            let accountId = try await getAccountId()
+            guard let latestEntry = try await localRepo.fetchLatestEntryAsSnapshot(forUserId: accountId),
+                  let weight = latestEntry.weight else { return }
             // Weight is stored as tenths of lbs – cast to Double for compatibility
             await goalAlertService.showGoalMetMessage(currentWeight: Double(weight))
 

@@ -26,7 +26,7 @@ struct BottomTabBarView: View {
     /// A dictionary to hold deactivation handlers for each tab.
     @State private var deactivationHandlers: [BottomTab: () async -> Bool] = [:]
     @Environment(\.appTheme) private var theme
-    
+
     var body: some View {
         VStack(spacing: 0) {
             ZStack {
@@ -45,7 +45,7 @@ struct BottomTabBarView: View {
                         .onDisappear { viewModel.removeDeactivationHandler(for: tab) }
                 }
             }
-            
+
             if viewModel.showTabBar {
                 HStack {
                     ForEach(Array(viewModel.visibleTabs.enumerated()), id: \.element) { index, tab in
@@ -112,7 +112,7 @@ struct BottomTabBarView: View {
                             }
                         )
                         .cornerRadius(.radiusSM)
-                        
+
                         viewModel.notificationService.showModal(
                             ModalData(
                                 presentedView: AnyView(sheetView),
@@ -180,18 +180,18 @@ struct BottomTabBarView: View {
             }
         )
     }
-    
+
     // MARK: - Helpers
     private func handleTabSelection(_ tab: BottomTab) {
         guard viewModel.selectedTab != tab else { return }
-        
+
         Task {
             // Check camera permission for AppSync tab
             if tab == .appsync {
                 let permissionState = await viewModel.handleCameraPermission()
                 guard permissionState == .ENABLED else { return }
             }
-            
+
             // Check if there is a deactivation handler for the selected tab
             // If there is, call it and await the result
             // If it returns true, switch to the new tab

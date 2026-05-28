@@ -27,12 +27,12 @@ struct UIState {
     var isGoalCardRemoved: Bool = false
     var isResettingDashboard: Bool = false // Flag to suppress UI updates during reset
 
-    var removedMetrics: Set<String> = [] 
-    var removedStreaks: Set<String> = [] 
-    
+    var removedMetrics: Set<String> = []
+    var removedStreaks: Set<String> = []
+
     // Goal card position management (like large widget)
     var goalCardPosition: Int = 0 // Position after divider (0 = first position)
-    
+
     // Streak grid order management - saves the order of streak items as array of IDs
     var streakGridOrder: [String] = [] // Array of MetricItem.id.uuidString to preserve order
 

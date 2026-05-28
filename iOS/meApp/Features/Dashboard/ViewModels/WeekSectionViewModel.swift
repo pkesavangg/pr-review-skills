@@ -25,7 +25,7 @@ private let weekPlotCalendar: Calendar = {
 /// Handles all week-specific chart logic, scrolling, and day-based data processing
 @MainActor
 final class WeekSectionViewModel: BaseSectionViewModel {
-    
+
     // MARK: - Period-specific properties
     override var timePeriod: TimePeriod {
         return .week
@@ -38,7 +38,7 @@ final class WeekSectionViewModel: BaseSectionViewModel {
         let snapped = dashboardStore?.graphManager.snapScrollPosition(newPosition, for: .week) ?? newPosition
         super.handleScrollPositionChange(snapped)
     }
-    
+
     /// Returns the X-axis date used to plot a single-day aggregate in Week view.
     /// We place each day's value at that day's local noon:
     /// - Visually centers the point within the day's time span on the timeline.

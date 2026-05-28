@@ -17,7 +17,7 @@ struct SettingsScreen: View {
     @StateObject private var router = Router<SettingsRoute>()
     // Dialog state controls
     // App-wide appearance picker state now in store
-    
+
     let settingsLang = SettingsStrings.self
     let commonLang = CommonStrings.self
     let labels = InputFieldLabels.self
@@ -55,7 +55,7 @@ struct SettingsScreen: View {
                     settingsStore.presentAddAccountModalIfNeeded(router: router, tabViewModel: tabViewModel)
                     handlePendingSettingsNavigation()
                 }
-                
+
                 tabViewModel.registerReselectHandler(for: .settings) {
                     tabViewModel.clearSettingsNavigationSource()
                     router.navigateToRoot()
@@ -133,7 +133,7 @@ struct SettingsScreen: View {
             }
         }
     }
-    
+
     private func profileHeader() -> some View {
         VStack(spacing: .spacingXS) {
             InitialIconView(
@@ -156,7 +156,7 @@ struct SettingsScreen: View {
         .frame(maxWidth: .infinity)
         .listRowBackground(Color.clear)
     }
-    
+
     private func accountSettingsSection() -> some View {
         Section(header: sectionHeader(title: settingsLang.accountSettings)) {
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.userProfile) {
@@ -185,7 +185,7 @@ struct SettingsScreen: View {
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
-    
+
     private func appSettingsSection() -> some View {
         Section(header: sectionHeader(title: settingsLang.appSettings)) {
             if settingsStore.shouldShowUnitType {
@@ -246,7 +246,7 @@ struct SettingsScreen: View {
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
-    
+
     private func supportSection() -> some View {
         Section(header:
                     SectionHeader(title: settingsLang.supportSettings)
@@ -257,21 +257,21 @@ struct SettingsScreen: View {
                     router.navigate(to: .help)
                 })
             .listRowInsets()
-            
+
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.privacyPolicy
             ) {
                     settingsStore.openPrivacy()
                 })
             .listRowInsets()
-            
+
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.termsOfService
             ) {
                     settingsStore.openTerms()
                 })
             .listRowInsets()
-            
+
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.greaterGoodsWebsite
             ) {
@@ -282,7 +282,7 @@ struct SettingsScreen: View {
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
-    
+
     private func accountActionSection() -> some View {
         Section {
             ActionListItemView(config: ActionListItemConfig(
@@ -291,7 +291,7 @@ struct SettingsScreen: View {
                     router.navigate(to: .myAccounts)
                 })
             .listRowInsets()
-            
+
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.logOut,
                 chevronType: .none
@@ -299,7 +299,7 @@ struct SettingsScreen: View {
                     settingsStore.handleLogout()
                 })
             .listRowInsets()
-            
+
             if settingsStore.canShowLogOutAllItems {
                 ActionListItemView(config: ActionListItemConfig(
                     title: settingsLang.logOutAllAccount,
@@ -309,7 +309,7 @@ struct SettingsScreen: View {
                     })
                 .listRowInsets()
             }
-            
+
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.deleteAccount,
                 chevronType: .none,
@@ -322,7 +322,7 @@ struct SettingsScreen: View {
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
-    
+
     private func sectionHeader(title: String) -> some View {
         Text(title)
             .fontOpenSans(.heading4)
@@ -331,7 +331,7 @@ struct SettingsScreen: View {
             .padding(.bottom, .spacingXS)
             .padding(.leading, -16)
     }
-    
+
     // MARK: - Private Helpers
     /// Handles pending settings navigation by clearing the stack and navigating to the route
     private func handlePendingSettingsNavigation() {
@@ -342,7 +342,7 @@ struct SettingsScreen: View {
             router.navigate(to: route)
         }
     }
-    
+
 }
 
 #Preview {

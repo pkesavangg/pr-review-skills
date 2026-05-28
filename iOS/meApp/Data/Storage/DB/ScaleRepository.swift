@@ -35,7 +35,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.accountId == accountId })
         return try context.fetch(descriptor)
     }
-    
+
     /// Fetches all scales stored locally (legacy method).
     /// - Returns: An array of all Device objects.
     func listScales() async throws -> [Device] {
@@ -145,7 +145,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
                 userInfo: [NSLocalizedDescriptionKey: "Device with ID '\(scale.id)' already exists"]
             )
         }
-        
+
         scale.isSynced = false
         context.insert(scale)
         insertDeviceRelationships(scale)
@@ -277,7 +277,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
             tag: "ScaleRepository",
             message: "Starting replaceAllDevicesForAccount with \(serverDevices.count) server devices, \(unsyncedDevices.count) unsynced devices"
         )
-        
+
         // Delete only synced devices for this account (preserve unsynced ones)
         let syncedDescriptor = FetchDescriptor<Device>(predicate: #Predicate {
             $0.accountId == accountId && ($0.isSynced ?? false) == true
@@ -285,7 +285,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         let syncedDevices = try context.fetch(syncedDescriptor)
         // Connection status is no longer persisted in SwiftData — it is managed via
         // ScaleService.ephemeralState and merged into DeviceSnapshot during refresh.
-        
+
         // Flush any pending inserts/updates so the context is stable before deleting.
         // Without this, SwiftData can crash with "This store went missing?" when a
         // recently-inserted BathScale is still tracked with a temporary identifier
@@ -314,7 +314,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         
         var insertedCount = 0
         var updatedCount = 0
-        
+
         for serverDevice in serverDevices {
             // Find matching unsynced device by ID, MAC, or broadcastId
             // CRITICAL: Only match devices that belong to the current accountId
@@ -342,12 +342,12 @@ final class ScaleRepository: ScaleRepositoryProtocol {
             let device = Device(from: serverDevice, accountId: accountId)
             device.isSynced = true
             device.hasServerID = true
-            
+
             context.insert(device)
             insertDeviceRelationships(device, markSynced: true)
             insertedCount += 1
         }
-        
+
         try context.save()
         logger.log(
             level: .debug,
@@ -543,7 +543,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     private func findMatchingUnsyncedDevice(for serverDevice: ScaleDTO, in unsyncedDevices: [Device], accountId: String) -> Device? {
         for unsyncedDevice in unsyncedDevices {
             guard unsyncedDevice.accountId == accountId else { continue }
-            
+
             // Check for conflicts by ID or other identifiers (within same account)
             if unsyncedDevice.id == serverDevice.id {
                 return unsyncedDevice
@@ -568,17 +568,17 @@ final class ScaleRepository: ScaleRepositoryProtocol {
             device.id = serverId
         }
         copyDeviceFields(from: dto, to: device, accountId: accountId)
-        
+
         // Update R4 preference if server has one
         if let preferenceDTO = dto.preference {
             updateR4Preference(for: device, from: preferenceDTO, scaleId: device.id)
         }
-        
+
         // Update metadata if server has one
         if let metaDataDTO = dto.metaData {
             updateMetaData(for: device, from: metaDataDTO)
         }
-        
+
         // Update latestVersion from root level if present
         if let latestVersion = dto.latestVersion {
             if let existingMeta = device.metaData {
@@ -590,7 +590,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
                 context.insert(newMeta)
             }
         }
-        
+
         // Update bath scale type if needed
         updateBathScaleType(for: device, scaleType: dto.type)
     }

@@ -7,6 +7,12 @@ import Combine
 import Foundation
 import SwiftUI
 
+private struct LatestSelectionSignature: Equatable {
+    let latestDate: Date?
+    let latestEntryTimestamp: String?
+    let summaryCount: Int
+}
+
 /// Simplified DashboardStore focused on coordination between managers
 /// Uses specialized managers for business logic while exposing centralized state for UI
 @MainActor
@@ -165,16 +171,16 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         selectedProductItem = productTypeStore.selectedItem
 
         if !streakManager.state.streakItems.isEmpty {
-            state.ui.hasLoadedProgressMetrics = true
-            if state.ui.streakGridOrder.isEmpty {
-                state.ui.streakGridOrder = streakManager.state.streakItems.map { $0.id.uuidString }
+            ui.hasLoadedProgressMetrics = true
+            if ui.streakGridOrder.isEmpty {
+                ui.streakGridOrder = streakManager.state.streakItems.map { $0.id.uuidString }
             }
         } else {
             streakManager.setupInitialStreakItems()
             if !streakManager.state.streakItems.isEmpty {
-                state.ui.hasLoadedProgressMetrics = true
-                state.ui.streakGridOrder = streakManager.state.streakItems.map { $0.id.uuidString }
-                state.ui.removedStreaks = []
+                ui.hasLoadedProgressMetrics = true
+                ui.streakGridOrder = streakManager.state.streakItems.map { $0.id.uuidString }
+                ui.removedStreaks = []
             }
         }
 
@@ -209,6 +215,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         initializeCoordinatingManagers()
 
         setupBindings()
+        lastObservedLatestSelectionSignature = latestSelectionSignature(for: graph.selectedPeriod)
 
         if !lightweight {
             setupSubscriptions()
@@ -407,6 +414,23 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
                 self?.lifecycleManager.handleDashboardTypeChange()
             }
             .store(in: &cancellables)
+
+        // Apply the per-account default graph range exactly once when the active
+        // account first becomes known. The selection is intentionally not retargeted
+        // for later changes from Settings — the new default takes effect on the
+        // next app launch, not while the graph is on screen.
+        accountService.$activeAccount
+            .compactMap { $0?.accountId }
+            .first()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] accountId in
+                guard let self else { return }
+                let stored = DefaultGraphPeriodPreference.current(for: accountId)
+                if self.graph.selectedPeriod != stored {
+                    self.updateSelectedPeriod(stored)
+                }
+            }
+            .store(in: &cancellables)
     }
 
     private func setupProductTypeStoreSubscriptions() {
@@ -601,7 +625,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     var loaderData: Binding<LoaderModel?> {
         Binding(
-            get: { self.state.ui.loaderOverride ?? (self.state.ui.isLoading ? LoaderModel(text: self.lang.saving) : nil) },
+            get: { self.ui.loaderOverride ?? (self.ui.isLoading ? LoaderModel(text: self.lang.saving) : nil) },
             set: { _ in }
         )
     }
@@ -615,7 +639,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         return metricsManager.getMetricsToShow(
             isEditMode: state.ui.isEditMode,
             dashboardType: effectiveDashboardType,
-            removedMetrics: state.ui.removedMetrics
+            removedMetrics: ui.removedMetrics
         )
     }
 
@@ -839,7 +863,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     }
 
     var selectedBodyMetric: BodyMetric {
-        guard let selectedLabel = state.ui.selectedMetricLabel else { return .weight }
+        guard let selectedLabel = ui.selectedMetricLabel else { return .weight }
         return metricsManager.getBodyMetric(for: selectedLabel)
     }
 
@@ -912,7 +936,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         state.ui.draggingStreak = nil
         state.ui.dropHoverId = nil
         withAnimation(.easeInOut(duration: 0.2)) {
-            state.ui.isEditMode = false
+            ui.isEditMode = false
         }
         editSessionManager.clearSnapshot()
         forceImmediateUIUpdate()
@@ -923,7 +947,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             restoreFromSnapshot(snapshot)
         }
         metricsManager.resetOrderToDefault()
-        if state.metrics.dashboardType == .dashboard12 {
+        if metrics.dashboardType == .dashboard12 {
             metricsManager.resetActiveMetricsCountToShowAll()
         }
         gridEditingManager.syncRemovalStateFromMetricsManager()

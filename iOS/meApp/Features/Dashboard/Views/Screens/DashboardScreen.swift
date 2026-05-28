@@ -88,13 +88,13 @@ struct DashboardScreen: View {
             }
         }
         // Keep the metric info entry in sync with metric tile values while the sheet is open
-        .task(id: store.state.metrics.metrics) {
+        .task(id: store.metrics.metrics) {
             if let wrapper = openMetricInfoWithoutSelection {
                 metricInfoEntry = store.displayManager.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
             }
         }
         // Update metric info entry when time period changes
-        .task(id: store.state.graph.selectedPeriod) {
+        .task(id: store.graph.selectedPeriod) {
             if let wrapper = openMetricInfoWithoutSelection {
                 metricInfoEntry = store.displayManager.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
             }
@@ -124,21 +124,21 @@ struct DashboardScreen: View {
                 NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
             ])
         ) { _ in
-            if store.state.ui.isEditMode { store.cancelEdit() }
+            if store.ui.isEditMode { store.cancelEdit() }
         }
         .onChange(of: scenePhase) { _, newPhase in
-            if store.state.ui.isEditMode && (newPhase == .background || newPhase == .inactive) {
+            if store.ui.isEditMode && (newPhase == .background || newPhase == .inactive) {
                 store.cancelEdit()
             }
         }
         .onChange(of: tabViewModel.selectedTab) { _, newTab in
-            if store.state.ui.isEditMode && newTab != .dash {
+            if store.ui.isEditMode && newTab != .dash {
                 store.cancelEdit()
             }
 
         }
     }
-    
+
     private func snapshotLogo() -> some View {
         AppIconView(icon: AppAssets.wgLogo, size: IconSize(width: 45, height: 45))
             .foregroundColor(theme.textSubheading)
@@ -169,7 +169,7 @@ struct DashboardScreen: View {
         }
         .zIndex(100)
     }
-    
+
     private func dashboardScroll(availableHeight: CGFloat) -> some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 0) {
@@ -185,7 +185,7 @@ struct DashboardScreen: View {
         .background(
             Color.clear.contentShape(Rectangle())
                 .onTapGesture {
-                    if store.state.ui.isEditMode && store.state.ui.alertData == nil && !suppressOutsideCancel {
+                    if store.ui.isEditMode && store.ui.alertData == nil && !suppressOutsideCancel {
                         store.cancelEdit()
                     }
                 }
@@ -295,13 +295,13 @@ struct DashboardScreen: View {
                 .contentShape(Rectangle())
                 .onTapGesture {
                     // Dismiss edit mode when tapping on horizontal spaces around action buttons
-                    if store.state.ui.isEditMode && store.state.ui.alertData == nil {
+                    if store.ui.isEditMode && store.ui.alertData == nil {
                         store.cancelEdit()
                     }
                 }
         )
     }
-    
+
     private func noEntrySection() -> some View {
         NoEntryView(
             title: nil,

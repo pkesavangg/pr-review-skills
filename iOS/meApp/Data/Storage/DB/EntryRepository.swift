@@ -6,6 +6,35 @@
 import Foundation
 import SwiftData
 
+/// Serialises every background-context operation against the shared
+/// `ModelContainer`. Two `ModelContext` instances churning concurrently against
+/// the same container corrupt SwiftData's container-internal tracking
+/// dictionary and trap inside `__RawDictionaryStorage.find` (MA-3898).
+///
+/// Each enqueued work item awaits the previously-enqueued one before creating
+/// its own `ModelContext`, so at most one background context is live at any
+/// time across the whole app — independent of how many `EntryRepository`
+/// instances exist.
+private actor EntryRepositoryBackgroundQueue {
+    static let shared = EntryRepositoryBackgroundQueue()
+
+    private var lastTask: Task<Void, Never>?
+
+    func run<T: Sendable>(
+        container: ModelContainer,
+        _ work: @escaping @Sendable (ModelContext) throws -> T
+    ) async throws -> T {
+        let previous = lastTask
+        let task = Task.detached(priority: .userInitiated) { () throws -> T in
+            await previous?.value
+            let ctx = ModelContext(container)
+            return try work(ctx)
+        }
+        lastTask = Task { _ = try? await task.value }
+        return try await task.value
+    }
+}
+
 /// Concrete implementation of EntryRepositoryProtocol for local storage using SwiftData.
 /// Handles CRUD operations for Entry entities in a thread-safe manner.
 ///
@@ -223,6 +252,29 @@ final class EntryRepository: EntryRepositoryProtocol {
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == uuid })
             if let entry = try ctx.fetch(descriptor).first {
                 ctx.delete(entry)
+                do {
+                    try ctx.save()
+                } catch {
+                    ctx.rollback()
+                    throw error
+                }
+            }
+            return ()
+        }
+    }
+
+    /// Marks an entry as deleted in the background context without mutating the
+    /// @Model object on the main actor.  Use this instead of setting
+    /// `entry.operationType` and `entry.isSynced` directly when the call-site is
+    /// not on the @MainActor.
+    /// - Parameter id: The UUID string of the entry to mark as deleted.
+    func markEntryAsDeleted(byId id: String) async throws {
+        try await performBackgroundTask { ctx in
+            guard let uuid = UUID(uuidString: id) else { return () }
+            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == uuid })
+            if let existing = try ctx.fetch(descriptor).first {
+                existing.operationType = OperationType.delete.rawValue
+                existing.isSynced = false
                 try ctx.save()
             }
             return ()
@@ -335,6 +387,17 @@ final class EntryRepository: EntryRepositoryProtocol {
         }
     }
 
+    /// Fetches all unsynced entries as Sendable `(EntrySnapshot, DTO)` pairs.
+    /// Both the snapshot and the DTO are built inside the background context,
+    /// so the caller never reads SwiftData relationships off-actor — see MA-3898.
+    /// Use this in the unsynced-push loop instead of `fetchUnsyncedEntries`.
+    func fetchUnsyncedEntriesAsSnapshots(forUserId userId: String) async throws -> [(EntrySnapshot, BathScaleOperationDTO)] {
+        return try await performBackgroundTask { ctx in
+            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.isSynced == false })
+            return try ctx.fetch(descriptor).map { (EntrySnapshot(from: $0), $0.toOperationDTO()) }
+        }
+    }
+
     /// Fetches the latest entry for a specific user.
     /// - Parameter userId: The user ID to filter entries by.
     /// - Returns: The latest Entry object, or nil if none exist.
@@ -400,7 +463,7 @@ final class EntryRepository: EntryRepositoryProtocol {
         }
     }
 
-    // MARK: - Thread-Safe Fetch Methods (Return DTOs or Identifiers)
+    // MARK: - Thread-Safe Fetch Methods (Return DTOs, Snapshots, or Identifiers)
 
     /// Fetches entries and returns DTOs with all relationship data extracted.
     /// This is the preferred method for background fetches where you need relationship data.
@@ -422,7 +485,7 @@ final class EntryRepository: EntryRepositoryProtocol {
                     sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
                 )
             }
-            let entries = try backgroundContext.fetch(descriptor)
+            let entries = try ctx.fetch(descriptor)
             // Extract ALL data including relationships INSIDE the background context
             return entries.map { $0.toOperationDTO() }
         }
@@ -476,7 +539,7 @@ final class EntryRepository: EntryRepositoryProtocol {
                     sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
                 )
             }
-            let entries = try backgroundContext.fetch(descriptor)
+            let entries = try ctx.fetch(descriptor)
             return entries.map { $0.persistentModelID }
         }
     }
@@ -488,7 +551,7 @@ final class EntryRepository: EntryRepositoryProtocol {
         guard let uuid = UUID(uuidString: id) else { return nil }
         return try await performBackgroundTask { backgroundContext in
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == uuid })
-            guard let entry = try backgroundContext.fetch(descriptor).first else { return nil }
+            guard let entry = try ctx.fetch(descriptor).first else { return nil }
             // Extract ALL data inside the background context
             return entry.toOperationDTO()
         }
@@ -511,7 +574,7 @@ final class EntryRepository: EntryRepositoryProtocol {
                     sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
                 )
             }
-            guard let entry = try backgroundContext.fetch(descriptor).first else { return nil }
+            guard let entry = try ctx.fetch(descriptor).first else { return nil }
             return entry.toOperationDTO()
         }
     }

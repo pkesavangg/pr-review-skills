@@ -21,12 +21,12 @@ struct ManualEntryScreen: View {
     @State private var isProductTypeSelectorPresented = false
     // Keyboard observer to adjust bottom padding when the keyboard is visible
     @StateObject private var keyboard = KeyboardResponder()
-    
+
     let manualEntryLang = ManualEntryStrings.self
     let commonLang = CommonStrings.self
     let labels = InputFieldLabels.self
     let appAssets = AppAssets.self
-    
+
     // Computed property for weight input config to ensure it updates when weightUnit changes
     private var weightInputConfig: TextInputConfig {
         let weightLabel = labels.weightLabel(entryStore.weightUnit == .kg)
@@ -39,7 +39,7 @@ struct ManualEntryScreen: View {
             maxValue: 999.9
         )
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             NavbarHeaderView<EmptyView, EmptyView>(
@@ -59,7 +59,7 @@ struct ManualEntryScreen: View {
                     title: ProductTypeStrings.manualEntry
                 )
             }
-            
+
             ScrollView(.vertical) {
                 // Body: switch between entry types based on product selection
                 switch productTypeStore.selectedItem {
@@ -388,8 +388,9 @@ struct ManualEntryScreen: View {
                                         focusedField = nil
                                         Task {
                                             guard !entryStore.isSaving else { return }
-                                            await entryStore.saveEntry()
-                                            performTabSwitchAndHideKeyboard()
+                                            if await entryStore.saveEntry() {
+                                                performTabSwitchAndHideKeyboard()
+                                            }
                                         }
                                     }
                                 }
@@ -407,8 +408,9 @@ struct ManualEntryScreen: View {
                     ) {
                         Task {
                             focusedField = nil
-                            await entryStore.saveEntry()
-                            performTabSwitchAndHideKeyboard()
+                            if await entryStore.saveEntry() {
+                                performTabSwitchAndHideKeyboard()
+                            }
                         }
                     }
 
@@ -466,7 +468,7 @@ struct ManualEntryScreen: View {
             tabViewModel.selectTab(.dash)
         }
     }
-    
+
 }
 
 #Preview {

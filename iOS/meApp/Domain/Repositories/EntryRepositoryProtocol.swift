@@ -33,6 +33,12 @@ protocol EntryRepositoryProtocol {
     /// - Parameter id: The ID of the entry to delete.
     func deleteEntry(byId id: String) async throws
 
+    /// Marks an entry as deleted (operationType = "delete", isSynced = false) by ID
+    /// using a background ModelContext.  Use this instead of mutating a @Model object
+    /// off-actor before calling updateEntry.
+    /// - Parameter id: The UUID string of the entry to mark as deleted.
+    func markEntryAsDeleted(byId id: String) async throws
+
     /// Deletes all entries from the local data store.
     func deleteAllEntries() async throws
 
@@ -67,6 +73,12 @@ protocol EntryRepositoryProtocol {
     /// Fetches all unsynced entries from the local data store.
     /// - Returns: An array of Entry objects that are not synced.
     func fetchUnsyncedEntries(forUserId userId: String) async throws -> [Entry]
+
+    /// Fetches all unsynced entries as Sendable `(EntrySnapshot, DTO)` pairs.
+    /// Prefer this in the unsynced-push loop — `fetchUnsyncedEntries` returns
+    /// `[Entry]` bound to a background `ModelContext`; reading relationships
+    /// off those after the closure returns is the MA-3898 crash class.
+    func fetchUnsyncedEntriesAsSnapshots(forUserId userId: String) async throws -> [(EntrySnapshot, BathScaleOperationDTO)]
 
     /// Fetches the latest entry for a specific user.
     /// - Parameter userId: The user ID to filter entries by.
