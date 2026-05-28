@@ -127,8 +127,8 @@ final class TotalSectionViewModel: BaseSectionViewModel {
     override func configure(with store: DashboardStore) {
         self.dashboardStore = store
         // No scroll positioning for total view - use store's current position
-        self.scrollPosition = store.graph.xScrollPosition
-        self.isScrolling = store.graph.isScrolling
+        self.scrollPosition = store.state.graph.xScrollPosition
+        self.isScrolling = store.state.graph.isScrolling
         updateYAxisConfiguration()
         // Sync with any existing cached Y-axis values from the store
         syncYAxisFromStore()

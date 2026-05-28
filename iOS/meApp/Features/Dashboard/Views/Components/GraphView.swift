@@ -23,7 +23,7 @@ struct GraphView: View {
 
     // Whether the selection callout is currently visible for the active period
     private var isShowingSelectionCallout: Bool {
-        switch dashboardStore.graph.selectedPeriod {
+        switch dashboardStore.state.graph.selectedPeriod {
         case .week:
             return weekSectionViewModel.showCrosshair
         case .month:
@@ -37,7 +37,7 @@ struct GraphView: View {
 
     // Show skeleton until graph is ready (set after settling delay)
     private var shouldShowSkeleton: Bool {
-        !dashboardStore.graph.isGraphReady
+        !dashboardStore.state.graph.isGraphReady
     }
 
     // Match skeleton frame to the actual chart container height (baby charts are taller)
@@ -70,8 +70,8 @@ struct GraphView: View {
             }
             .opacity(shouldShowSkeleton ? 0 : 1)
         }
-        .animation(.easeInOut(duration: 0.3), value: dashboardStore.graph.isGraphReady)
-        .onChange(of: dashboardStore.graph.selectedPeriod) { _, newValue in
+        .animation(.easeInOut(duration: 0.3), value: dashboardStore.state.graph.isGraphReady)
+        .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, newValue in
             // PERFORMANCE: Cancel any pending period change configuration
             periodChangeTask?.cancel()
 
@@ -127,9 +127,6 @@ struct GraphView: View {
 
                 dashboardStore.chartManager.updateYAxisCache()
             }
-
-            // Recalculate and cache Y-axis based on the new visible region.
-            dashboardStore.updateYAxisCache()
         }
         // Tear down all section VM caches when product type or baby profile changes
         // to prevent stale data from the previous product appearing in the chart.

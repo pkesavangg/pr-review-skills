@@ -49,58 +49,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         state.clearSelection()
     }
 
-    /// Synchronous selection apply used by `DashboardStore.updateSelectedPeriod` to seed
-    /// the initial auto-selection BEFORE `state.selectedPeriod` publishes. Doing this
-    /// inline (rather than via the previous `Task { await ... }` deferral) ensures the
-    /// new BaseGraphView mounts with the store already holding the latest selection,
-    /// so the on-mount `syncViewModelSelectionFromStore` lands the crosshair on first
-    /// render instead of racing against the chartIdentity remount and section-VM
-    /// geometry guards.
-    func applyChartSelectionSync(at selectedDate: Date, operations: [BathScaleWeightSummary]) {
-        guard !operations.isEmpty else {
-            state.selectedXValue = selectedDate
-            state.selectedPoint = nil
-            state.showCrosshair = false
-            return
-        }
-
-        let exactPoint: BathScaleWeightSummary? = {
-            switch state.selectedPeriod {
-            case .week, .month:
-                return operations.first { calendar.isDate($0.date, inSameDayAs: selectedDate) }
-            case .year, .total:
-                return operations.first { calendar.isDate($0.date, equalTo: selectedDate, toGranularity: .month) }
-            }
-        }()
-
-        // Use the section's plot-X (local noon for Week/Month, first-of-month-noon
-        // for Year, raw date for Total) so `selectedXValue` matches the X position
-        // the chart actually plots the point at. BaseGraphView's `isThisPointSelected`
-        // check compares `xDate == viewModel.selectedDate` exactly, and the chart's
-        // `chartXSelection` snap is symmetric — passing the raw entry date (often
-        // midnight) put us 12h equidistant from two neighbouring plotted noon
-        // positions, so the highlight landed on the wrong dot.
-        let plotAlignedDate = plottedXDate(for: selectedDate, period: state.selectedPeriod)
-        state.selectedXValue = plotAlignedDate
-        state.selectedPoint = exactPoint
-        state.showCrosshair = true
-    }
-
-    /// Returns the X position the chart plots a data point at, for a given period.
-    /// Mirrors `WeekSectionViewModel.plotXDate` / `MonthSectionViewModel.plotXDate`
-    /// (local noon) and `YearSectionViewModel`'s base behaviour (raw date — monthly
-    /// summaries are already stored at the month boundary). Total is non-scrollable
-    /// and uses the raw date.
-    private func plottedXDate(for original: Date, period: TimePeriod) -> Date {
-        switch period {
-        case .week, .month:
-            let dayStart = calendar.startOfDay(for: original)
-            return calendar.date(byAdding: .hour, value: 12, to: dayStart) ?? original
-        case .year, .total:
-            return original
-        }
-    }
-
     @available(iOS 18.0, *)
     func handleScrollPhaseChange(_ phase: ScrollPhase) async {
         switch phase {

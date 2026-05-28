@@ -28,7 +28,6 @@ struct AppSyncTabScreen: View {
             if isScannerReady {
                 // Full-screen camera/scanner view
                 AppSyncScannerView(
-                    initialZoom: scanStore.initialZoom,
                     onClose: {
                         isScannerReady = false
                         tabViewModel.restorePreviousTab()

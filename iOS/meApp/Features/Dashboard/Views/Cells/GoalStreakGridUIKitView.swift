@@ -22,14 +22,14 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         static let goalCardRemovedTopInset: CGFloat = 32
         static let goalCardPresentTopInset: CGFloat = 16
     }
-
+    
     func makeUIView(context: Context) -> UICollectionView {
         let layout = createLayout()
         let collectionView = createCollectionView(with: layout)
         setupCollectionView(collectionView, context: context)
         return collectionView
     }
-
+    
     func updateUIView(_ collectionView: UICollectionView, context: Context) {
         let coordinator = context.coordinator
         coordinator.store = store
@@ -38,24 +38,24 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
 
         // Avoid reloading/invalidating layout while a drag operation is active to prevent mid-drag resizing
         if coordinator.interactiveMovingIndexPath != nil {
-            coordinator.lastIsEditMode = store.ui.isEditMode
+            coordinator.lastIsEditMode = store.state.ui.isEditMode
             // Keep system drag disabled; we use interactive movement with strict clamping
             collectionView.dragInteractionEnabled = false
             return
         }
 
         // Suppress reloads during reset to prevent flickering
-        if store.ui.isResettingDashboard {
+        if store.state.ui.isResettingDashboard {
             return
         }
 
         // Rebuild model and compare to previous for minimal updates
         let newModel = buildGridModelFromStoreState()
-        let newIsEditMode = store.ui.isEditMode
-        let newRemovedStreaks = store.ui.removedStreaks
-        let newGoalCardRemoved = store.ui.isGoalCardRemoved
-        let newGoalCardPosition = store.ui.goalCardPosition
-        let newStreakGridOrder = store.ui.streakGridOrder
+        let newIsEditMode = store.state.ui.isEditMode
+        let newRemovedStreaks = store.state.ui.removedStreaks
+        let newGoalCardRemoved = store.state.ui.isGoalCardRemoved
+        let newGoalCardPosition = store.state.ui.goalCardPosition
+        let newStreakGridOrder = store.state.ui.streakGridOrder
 
         let oldIds = coordinator.gridModel.mileStones.map { widget -> String in
             switch widget {
@@ -90,7 +90,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             coordinator.lastGoalCardRemoved = newGoalCardRemoved
             coordinator.lastGoalCardPosition = newGoalCardPosition
             coordinator.lastStreakGridOrder = newStreakGridOrder
-
+            
             // Force collection view to recalculate its intrinsic content size
             collectionView.layoutIfNeeded()
             if let customCollectionView = collectionView as? CustomCollectionView {
@@ -106,7 +106,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     longPress.minimumPressDuration = newIsEditMode ? 0.15 : 0.5
                     longPress.isEnabled = true
                 }
-
+                
                 coordinator.isUpdating = true
                 UIView.performWithoutAnimation {
                     collectionView.reloadData()
@@ -116,19 +116,19 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         }
 
         coordinator.lastIsEditMode = newIsEditMode
-
+        
         // Keep system drag disabled; we use interactive movement with strict clamping
         collectionView.dragInteractionEnabled = false
     }
-
+    
     func makeCoordinator() -> Coordinator {
         let coordinator = Coordinator(store: store, gridModel: buildGridModelFromStoreState())
         coordinator.parentView = parentView
         return coordinator
     }
-
+    
     // MARK: - Private Methods
-
+    
     /// Creates the collection view layout with proper spacing and insets
     private func createLayout() -> UICollectionViewFlowLayout {
         let layout = LeadingAlignedFlowLayout()
@@ -138,21 +138,21 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         layout.estimatedItemSize = .zero            // ensure fixed, non-estimated sizing
         return layout
     }
-
+    
     // Note: System drag/drop support is intentionally disabled for this grid.
     // We use interactive movement via long-press + beginInteractiveMovementForItem,
     // with strict clamping and explicit persistence logic.
-
+    
     /// Creates and configures the collection view with drag-and-drop support
     private func createCollectionView(with layout: UICollectionViewFlowLayout) -> UICollectionView {
         let collectionView = CustomCollectionView(frame: .zero, collectionViewLayout: layout)
         GridUIKitInteractionManager.applyCommonCollectionViewConfiguration(collectionView)
         collectionView.register(GoalCardCell.self, forCellWithReuseIdentifier: "GoalCardCell")
         collectionView.register(StreakCardCell.self, forCellWithReuseIdentifier: "StreakCardCell")
-
+        
         return collectionView
     }
-
+    
     /// Sets up the collection view with delegates and gesture recognizers
     private func setupCollectionView(_ collectionView: UICollectionView, context: Context) {
         collectionView.dataSource = context.coordinator
@@ -161,7 +161,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         collectionView.dragDelegate = nil
         collectionView.dropDelegate = nil
         collectionView.dragInteractionEnabled = false
-
+        
         // Set up boundary detection for custom collection view
         if let customCollectionView = collectionView as? CustomCollectionView {
             customCollectionView.boundaryDetector = context.coordinator.boundaryDetector
@@ -170,7 +170,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         // Add long-press gesture for interactive movement
         let longPress = UILongPressGestureRecognizer(target: context.coordinator, action: #selector(context.coordinator.handleLongPress(_:)))
         // Use longer duration when not in edit mode (to enter edit mode), shorter when in edit mode (for dragging)
-        longPress.minimumPressDuration = context.coordinator.store.ui.isEditMode ? 0.15 : 0.5
+        longPress.minimumPressDuration = context.coordinator.store.state.ui.isEditMode ? 0.15 : 0.5
         longPress.cancelsTouchesInView = false
         longPress.delaysTouchesBegan = false
         longPress.delaysTouchesEnded = false
@@ -182,17 +182,8 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             target: context.coordinator,
             action: #selector(Coordinator.consumeTap)
         )
-
-        // Re-evaluate row spacing/insets when the user changes Dynamic Type at runtime
-        NotificationCenter.default.addObserver(
-            context.coordinator,
-            selector: #selector(Coordinator.contentSizeCategoryDidChange),
-            name: UIContentSizeCategory.didChangeNotification,
-            object: nil
-        )
-        context.coordinator.observedCollectionView = collectionView
     }
-
+    
     /// Builds the grid model using the saved order from DashboardStore UI state.
     /// Adapts main-actor-isolated store values into a pure `Inputs` snapshot and
     /// delegates the mapping to `GoalStreakGridBuilder` (which is unit-testable).
@@ -212,7 +203,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         )
         return GoalStreakGridBuilder.build(inputs: inputs)
     }
-
+    
     // MARK: - Coordinator
 
     class Coordinator: NSObject, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
@@ -248,29 +239,17 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         private weak var crossSwapOppositeCell: UICollectionViewCell?
         private var crossSwapSourceSlotCenter: CGPoint = .zero
         private var crossSwapOppositeSlotCenter: CGPoint = .zero
-
+        
         // MARK: - Boundary Detection Properties
         public var boundaryDetector: GridBoundaryDetector
-
+        
         // MARK: - Gesture Recognizer
         var longPressGestureRecognizer: UILongPressGestureRecognizer?
-
-        // Held weakly so the Dynamic-Type notification handler can invalidate the layout
-        weak var observedCollectionView: UICollectionView?
-
-        deinit {
-            NotificationCenter.default.removeObserver(self)
-        }
-
-        @objc func contentSizeCategoryDidChange() {
-            guard let collectionView = observedCollectionView else { return }
-            collectionView.collectionViewLayout.invalidateLayout()
-        }
 
         // MARK: - Haptics (system-like: prepared + throttled)
         private let boundaryFeedback = UIImpactFeedbackGenerator(style: .light)
         private let dropFeedback = UIImpactFeedbackGenerator(style: .medium)
-
+        
         // MARK: - Active vs Removed items
 
         /// Count of non-removed items; also the first index that is removed (drop-forbidden).
@@ -341,9 +320,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             dropFeedback.prepare()
             dropFeedback.impactOccurred(intensity: 0.5)
         }
-
+        
         // MARK: - Boundary Detection Methods
-
+        
         /// Configures boundary constraints based on current grid layout
         /// Creates STRICT boundaries to prevent items from even touching the divider
         private func configureBoundaryConstraints(for collectionView: UICollectionView) {
@@ -351,11 +330,11 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             let contentSize = collectionView.collectionViewLayout.collectionViewContentSize
             let contentInsets = collectionView.contentInset
             let actualGridHeight = contentSize.height + contentInsets.top + contentInsets.bottom
-
+            
             // Add optimal bottom slack during interactive movement so last row has sufficient space to move
             // Use balanced slack: 1.3x item height + row spacing + bottom padding
             let extraBottomSlack: CGFloat = {
-                guard interactiveMovingItemSize != .zero else {
+                guard interactiveMovingItemSize != .zero else { 
                     // Fallback calculation when item size is not available
                     let rowSpacing: CGFloat = 32
                     let bottomInset: CGFloat = 32 // Use the fine-tuned bottom inset
@@ -366,7 +345,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 let bottomInset: CGFloat = 32 // Use the fine-tuned bottom inset
                 return interactiveMovingItemSize.height * 1.3 + rowSpacing + bottomInset
             }()
-
+            
             // Use full grid height with generous bottom slack; block only a compact strip above the divider via exclude zone
             let dividerY = actualGridHeight
             boundaryDetector.updateGoalStreakConstraints(gridHeight: actualGridHeight + extraBottomSlack, dividerY: dividerY)
@@ -620,13 +599,13 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 }
             }
         }
-
+        
         // MARK: - UICollectionViewDataSource
-
+        
         func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
             gridModel.mileStones.count
         }
-
+        
         func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
             let widget = gridModel.mileStones[indexPath.item]
 
@@ -639,9 +618,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     return UICollectionViewCell()
                 }
                 cell.configure(with: store)
-                cell.isWiggling = store.ui.isEditMode
+                cell.isWiggling = store.state.ui.isEditMode
                 cell.rowIndex = indexPath.item
-                cell.isRemoved = store.ui.isGoalCardRemoved
+                cell.isRemoved = store.state.ui.isGoalCardRemoved
                 return cell
             case .streak(let item):
                 guard let cell = collectionView.dequeueReusableCell(
@@ -652,18 +631,18 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 }
                 cell.parentView = parentView
                 cell.configure(
-                    with: item,
+                    with: item, 
                     store: store
                 )
-                cell.isWiggling = store.ui.isEditMode
+                cell.isWiggling = store.state.ui.isEditMode
                 cell.rowIndex = indexPath.item
                 cell.isRemoved = store.gridEditingManager.isStreakRemoved(item.label)
                 return cell
             }
         }
-
+        
         // MARK: - UICollectionViewDelegateFlowLayout
-
+        
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
             if let size = sizeForMovingItem(at: indexPath, in: collectionView) {
                 return size
@@ -712,30 +691,24 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             let itemWidth = (collectionView.bounds.width - 32 - 16 * (columns - 1)) / columns
             return CGSize(width: itemWidth, height: 70)
         }
-
+        
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, insetForSectionAt section: Int) -> UIEdgeInsets {
-            let topInset: CGFloat = store.ui.isGoalCardRemoved ? 32.0 : 16.0
-            return UIEdgeInsets(top: topInset, left: 16.0, bottom: 32.0, right: 16.0)
+            let topInset: CGFloat = store.state.ui.isGoalCardRemoved ? 32.0 : 16.0
+            return UIEdgeInsets(top: topInset, left: 16.0, bottom: 32.0, right: 16.0) // fine-tuned bottom inset for last row
         }
-
+        
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumLineSpacingForSectionAt section: Int) -> CGFloat {
-            // Wider row gap on iPhone XS / SE / mini to keep streak rows from feeling cramped.
-            if DevicePlatform.isSmallPhone || DevicePlatform.isMiniPhone { return 40 }
+            // Vertical gap between rows, including streak rows and goal card rows
             return 32
         }
-
-        func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumInteritemSpacingForSectionAt section: Int) -> CGFloat {
-            // Constant column gap — preserves column separation under Dynamic Type.
-            return 16
-        }
-
+        
         // MARK: - Interactive Movement (Reordering)
-
+        
         func collectionView(_ collectionView: UICollectionView, canMoveItemAt indexPath: IndexPath) -> Bool {
             // Only allow moving items that are non-removed (active) items
-            return store.ui.isEditMode && indexPath.item < firstRemovedIndex
+            return store.state.ui.isEditMode && indexPath.item < firstRemovedIndex
         }
-
+        
         func collectionView(_ collectionView: UICollectionView, targetIndexPathForMoveFromItemAt originalIndexPath: IndexPath, toProposedIndexPath proposedIndexPath: IndexPath) -> IndexPath {
             let maxValidIndex = firstRemovedIndex - 1
 
@@ -856,7 +829,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             }
             return nil
         }
-
+        
         func collectionView(_ collectionView: UICollectionView, moveItemAt sourceIndexPath: IndexPath, to destinationIndexPath: IndexPath) {
             guard sourceIndexPath.item < firstRemovedIndex,
                   destinationIndexPath.item < firstRemovedIndex else { return }
@@ -959,7 +932,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             }
             gridModel.moveWidget(from: sourceIndex, to: destination)
         }
-
+        
         /// Saves the current grid order to DashboardStore UI state
         private func persistGridOrderToStore() {
             // Preserve user's exact positioning - no reordering
@@ -1001,7 +974,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             }
             let streakCount = allStreakLabels.count
             let result = streakCount == 6
-
+            
             // All streaks present means we have exactly 6 streak items
             return result
         }

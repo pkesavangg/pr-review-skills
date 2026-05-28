@@ -97,9 +97,9 @@ class StreakCardCell: UICollectionViewCell {
             value: streakValue,
             label: item.label,
             icon: item.icon,
-            isEditMode: store.ui.isEditMode,
+            isEditMode: store.state.ui.isEditMode,
             isRemoved: isRemoved,
-            isDropTarget: store.ui.dropHoverId == item.id.uuidString,
+            isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
             onToggleRemoval: {
                 store.gridEditingManager.toggleStreakRemoval(item.label)
             },
@@ -168,7 +168,7 @@ class StreakCardCell: UICollectionViewCell {
     private func setupGestureRecognizers(store: DashboardStore, item: MetricItem, onMetricLongPress: ((String) -> Void)?, onSelectMetric: ((String) -> Void)?) {
         gestureRecognizers?.forEach { self.removeGestureRecognizer($0) }
         
-        if store.ui.isEditMode {
+        if store.state.ui.isEditMode {
             // In edit mode, rely on SwiftUI overlay buttons for add/remove
             return
         }
@@ -391,7 +391,7 @@ class StreakCardCell: UICollectionViewCell {
     override func layoutSubviews() {
         super.layoutSubviews()
         // Wiggle only in edit mode and only if not removed
-        if let store = currentStore, store.ui.isEditMode, isWiggling && !isRemoved {
+        if let store = currentStore, store.state.ui.isEditMode, isWiggling && !isRemoved {
             contentView.startWiggleWithRowIndex(rowIndex)
         } else {
             contentView.stopWiggle()
@@ -469,7 +469,7 @@ class StreakCardCell: UICollectionViewCell {
     @objc private func handleNonEditSelectTap(_ gesture: UITapGestureRecognizer) {
         guard gesture.state == .ended, let item = representedItem else { return }
         // Toggle selection: deselect if same, otherwise select tapped
-        if currentStore?.ui.selectedMetricLabel == item.label {
+        if currentStore?.state.ui.selectedMetricLabel == item.label {
             onSelectMetricCallback?("")
         } else {
             onSelectMetricCallback?(item.label)

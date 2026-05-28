@@ -394,7 +394,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     func fetchUnsyncedEntriesAsSnapshots(forUserId userId: String) async throws -> [(EntrySnapshot, BathScaleOperationDTO)] {
         return try await performBackgroundTask { ctx in
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.isSynced == false })
-            return try ctx.fetch(descriptor).map { (EntrySnapshot(from: $0), $0.toOperationDTO()) }
+            return try ctx.fetch(descriptor).map { ($0.toSnapshot(), $0.toOperationDTO()) }
         }
     }
 
@@ -472,7 +472,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     ///   - operationType: Optional operation type filter.
     /// - Returns: Array of BathScaleOperationDTO with all data extracted.
     func fetchEntriesAsDTO(forUserId userId: String, operationType: String? = nil) async throws -> [BathScaleOperationDTO] {
-        return try await performBackgroundTask { backgroundContext in
+        return try await performBackgroundTask { ctx in
             let descriptor: FetchDescriptor<Entry>
             if let opType = operationType {
                 descriptor = FetchDescriptor<Entry>(
@@ -526,7 +526,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     ///   - operationType: Optional operation type filter.
     /// - Returns: Array of PersistentIdentifier for later refetch on MainActor.
     func fetchEntryIdentifiers(forUserId userId: String, operationType: String? = nil) async throws -> [PersistentIdentifier] {
-        return try await performBackgroundTask { backgroundContext in
+        return try await performBackgroundTask { ctx in
             let descriptor: FetchDescriptor<Entry>
             if let opType = operationType {
                 descriptor = FetchDescriptor<Entry>(
@@ -549,7 +549,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// - Returns: BathScaleOperationDTO or nil if not found.
     func fetchEntryAsDTO(byId id: String) async throws -> BathScaleOperationDTO? {
         guard let uuid = UUID(uuidString: id) else { return nil }
-        return try await performBackgroundTask { backgroundContext in
+        return try await performBackgroundTask { ctx in
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == uuid })
             guard let entry = try ctx.fetch(descriptor).first else { return nil }
             // Extract ALL data inside the background context
@@ -561,7 +561,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// - Parameter userId: The user ID to filter entries by.
     /// - Returns: BathScaleOperationDTO or nil if none exist.
     func fetchLatestEntryAsDTO(forUserId userId: String, operationType: String? = nil) async throws -> BathScaleOperationDTO? {
-        return try await performBackgroundTask { backgroundContext in
+        return try await performBackgroundTask { ctx in
             let descriptor: FetchDescriptor<Entry>
             if let opType = operationType {
                 descriptor = FetchDescriptor<Entry>(

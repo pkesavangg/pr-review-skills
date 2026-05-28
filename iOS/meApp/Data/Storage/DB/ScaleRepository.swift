@@ -311,7 +311,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
             $0.accountId == accountId && ($0.isSynced ?? false) == false
         })
         let unsyncedDevicesForAccount = (try? context.fetch(unsyncedDescriptor)) ?? []
-
+        
         var insertedCount = 0
         var updatedCount = 0
 
