@@ -194,6 +194,7 @@ fun <T> SetupForm(
           label = supportingButtonLabel,
           type = ButtonType.InlineTextPrimary,
           onClick = onSupportingButtonClick,
+          modifier = Modifier.padding(vertical = spacing.xs)
         )
         supportText?.let {
           AppText(
@@ -263,6 +264,9 @@ fun SetupFormPreview() {
         subtitle = ScaleFormStrings.UserNameSubtitle,
         label = ScaleFormStrings.UserNameLabel,
         inputType = AppInputType.TEXT,
+        supportingButtonLabel = "Restore Account",
+        supportText = "Last active June 10, 2019",
+        onSupportingButtonClick = {},
       )
 
       // Duplicate check state

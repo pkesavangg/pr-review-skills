@@ -17,6 +17,20 @@ data class DashboardMetric(
   val isSingleEntry: Boolean = true,
   val rangeText: String? = null,
   val entryTimeStamp: List<String>? = null,
+  /**
+   * Per MA-3965: when [isSingleEntry] is true (a graph point is selected on Week/Month),
+   * true iff the selected day is the most recent day in the data set. Drives the
+   * metric-info label between "latest entry" and "day average". Ignored for Year/Total
+   * (always "month average") and for history-list openings.
+   */
+  val isLatestDaySelected: Boolean = false,
+  /**
+   * True when the metric-info sheet is opened from the History list (a single concrete
+   * scale reading) rather than from the dashboard graph (a day-level aggregate).
+   * History entries read "Measurement taken on <date>" regardless of segment;
+   * dashboard openings honour the Week/Month/Year/Total label rules.
+   */
+  val isHistoryEntry: Boolean = false,
   val weight: Double?,
   val bmi: Double?,
   val bodyFat: Double?,
@@ -42,7 +56,8 @@ data class DashboardMetric(
     fun fromPeriodSummaries(
       periodBodyScaleSummaries: List<PeriodBodyScaleSummary>,
       isSingleEntry: Boolean = true,
-      rangeText: String? = null
+      rangeText: String? = null,
+      isLatestDaySelected: Boolean = false,
     ): DashboardMetric =
       if (periodBodyScaleSummaries.isEmpty())
         this.empty(rangeText = rangeText?.lowercase())
@@ -50,6 +65,7 @@ data class DashboardMetric(
         DashboardMetric(
           rangeText = rangeText?.lowercase(),
           isSingleEntry = isSingleEntry,
+          isLatestDaySelected = isLatestDaySelected,
           entryTimeStamp = periodBodyScaleSummaries.map { it.entryTimestamp },
           weight = periodBodyScaleSummaries.map { it.weight }.averageOrNull(),
           bmi = periodBodyScaleSummaries.mapNotNull { it.bmi }.averageOrNull(),
@@ -71,6 +87,7 @@ data class DashboardMetric(
     fun fromScaleEntry(scaleEntry: ScaleEntry): DashboardMetric =
       DashboardMetric(
         isSingleEntry = true,
+        isHistoryEntry = true,
         entryTimeStamp = listOf(scaleEntry.entry.entryTimestamp),
         weight = scaleEntry.scale.scaleEntry.weight,
         bmi = scaleEntry.scale.scaleEntry.bmi,

@@ -102,8 +102,8 @@ object ConversionTools {
    * @param stored Height in stored format (tenths of inches)
    * @return Height in centimeters
    */
-  fun convertStoredHeightToCm(stored: Int): Int {
-    return (stored * CM_TO_INCH_FACTOR).toInt()
+  fun convertStoredHeightToCm(stored: Int): Double {
+    return (stored * CM_TO_INCH_FACTOR)
   }
 
   /**

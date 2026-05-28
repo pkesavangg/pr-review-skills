@@ -10,21 +10,24 @@ import SwiftUI
 struct NoteBox<Content: View>: View {
     let content: Content
     var alignCenter: Bool
+    var padding: CGFloat
     @Environment(\.appTheme) private var theme
-    
+
     init(
         alignCenter: Bool = false,
+        padding: CGFloat = .spacingSM,
         @ViewBuilder content: () -> Content
     ) {
         self.alignCenter = alignCenter
+        self.padding = padding
         self.content = content()
     }
-    
+
     var body: some View {
         HStack(alignment: .top, spacing: .spacingSM) {
             content
         }
-        .padding(.spacingSM)
+        .padding(padding)
         .frame(maxWidth: .infinity, alignment: alignCenter ? .center : .leading)
         .background(theme.backgroundPrimary)
         .cornerRadius(.radiusSM)

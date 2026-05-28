@@ -16,8 +16,12 @@ struct ScaleManualListView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: .spacingSM) {
             ScrollView(.horizontal, showsIndicators: false) {
-                SegmentedButtonView(segments: ScaleSegment.allCases, selectedSegment: $selectedSegment)
-                    .padding(.horizontal, .spacingSM)
+                SegmentedButtonView(
+                    segments: ScaleSegment.allCases,
+                    selectedSegment: $selectedSegment,
+                    usesIntrinsicWidth: true
+                )
+                .padding(.horizontal, .spacingSM)
             }
 
             // IMPORTANT: Avoid nested vertical ScrollViews. Let parent handle vertical scrolling.

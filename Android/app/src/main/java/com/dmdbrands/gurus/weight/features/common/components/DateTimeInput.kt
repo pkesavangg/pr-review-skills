@@ -29,6 +29,7 @@ import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Locale
@@ -201,13 +202,25 @@ sealed class DateTimeValue() {
       }
 
     /**
-     * Converts an ISO 8601 date-time string to epoch milliseconds.
-     * @param isoString The date-time string in "YYYY-MM-DDTHH:mm:ss.SSSZ" format.
+     * Converts a stored date string to epoch milliseconds at local midnight for the calendar
+     * date in the string. Accepts either a bare `"yyyy-MM-dd"` date (e.g. the offline-save payload
+     * persisted on network failure) or a UTC-midnight ISO instant (e.g. the server response for
+     * `dob`). In both cases the returned millis represents local midnight of the same calendar
+     * date, so the round-trip with [getDateFormatFromMilliseconds] is stable across timezones.
+     *
+     * @param isoString `"yyyy-MM-dd"` or `"YYYY-MM-DDTHH:mm:ss.SSSZ"`.
      * @return The epoch milliseconds, or current time if parsing fails.
      */
     fun getEpochMillisFromIsoString(isoString: String): Long =
       try {
-        Instant.parse(isoString).toEpochMilli()
+        val localDate = runCatching { LocalDate.parse(isoString) }
+          .getOrElse {
+            Instant.parse(isoString).atZone(ZoneOffset.UTC).toLocalDate()
+          }
+        localDate
+          .atStartOfDay(ZoneId.systemDefault())
+          .toInstant()
+          .toEpochMilli()
       } catch (e: Exception) {
         System.currentTimeMillis()
       }

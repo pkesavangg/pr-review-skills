@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.home.reducer
 
+import com.dmdbrands.gurus.weight.core.config.AppSyncConfig
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.greatergoods.libs.appsync.model.AppSyncResult
 import android.app.Activity
@@ -17,7 +18,8 @@ data class HomeState(
   val isWeightOnlyModeDismissed: Boolean = false,
   val isBodyMetricsEnabled: Boolean = false,
   val showUnreadFeedIndicator: Boolean = false,
-  val shouldAskForReview: Boolean = false
+  val shouldAskForReview: Boolean = false,
+  val appSyncZoomLevel: Int = AppSyncConfig.DEFAULT_ZOOM,
 ) : IReducer.State
 
 /**
@@ -65,6 +67,8 @@ sealed interface HomeIntent : IReducer.Intent {
   ): HomeIntent
 
   data class LaunchAppReview(val activity: Activity) : HomeIntent
+
+  data class SetAppSyncZoomLevel(val zoom: Int) : HomeIntent
 }
 
 /**
@@ -91,6 +95,7 @@ class HomeReducer : IReducer<HomeState, HomeIntent> {
       is HomeIntent.SetShowUnreadFeedIndicator ->
         state.copy(showUnreadFeedIndicator = intent.show)
       is HomeIntent.SetShouldAskForReview -> state.copy(shouldAskForReview = intent.shouldAsk)
+      is HomeIntent.SetAppSyncZoomLevel -> state.copy(appSyncZoomLevel = intent.zoom)
 
       else -> state.copy()
     }

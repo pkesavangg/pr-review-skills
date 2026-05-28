@@ -2,6 +2,8 @@
 .DS_Store
 build/
 DerivedData/
+.derived-data-log-*
+.derived-data-*/
 
 # Xcode project files
 *.pbxuser

@@ -15,6 +15,7 @@ struct DashboardState {
 struct UIState {
     var isLoading: Bool = false
     var hasInitializedChart: Bool = false
+    var hasLandedInitialSelection: Bool = false // True once the first auto-select on the latest entry has been applied
     var hasLoadedDashboardConfig: Bool = false // Flag to track when body metrics config is loaded from API
     var hasLoadedProgressMetrics: Bool = false // Flag to track when progress metrics (goal card + streaks) are loaded
     var hasLoadedMetricValues: Bool = false // Flag to track when actual metric values are loaded (not placeholders)

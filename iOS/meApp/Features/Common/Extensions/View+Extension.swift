@@ -348,4 +348,37 @@ extension View {
             onLongPress()
         }
     }
+
+    /// Adds a keyboard toolbar with a trailing "Done" button styled with the project's
+    /// primary action color and OpenSans button font. Centralizes the SE/8 cropping fix
+    /// (MA-3921) so future screens with numeric input inherit the same layout.
+    /// - Parameters:
+    ///   - isVisible: When false, the Done button is hidden but the toolbar slot remains.
+    ///   - action: The closure invoked when Done is tapped.
+    func keyboardDoneToolbar(isVisible: Bool = true, action: @escaping () -> Void) -> some View {
+        modifier(KeyboardDoneToolbarModifier(isVisible: isVisible, action: action))
+    }
+}
+
+private struct KeyboardDoneToolbarModifier: ViewModifier {
+    @Environment(\.appTheme) private var theme
+    let isVisible: Bool
+    let action: () -> Void
+
+    func body(content: Content) -> some View {
+        content.toolbar {
+            ToolbarItem(placement: .keyboard) {
+                if isVisible {
+                    HStack {
+                        Spacer()
+                        Button(action: action) {
+                            Text(CommonStrings.done)
+                                .fontOpenSans(.button1)
+                                .foregroundColor(theme.actionPrimary)
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

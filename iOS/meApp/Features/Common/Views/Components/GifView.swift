@@ -50,7 +50,7 @@ struct GifView: UIViewRepresentable {
     func updateUIView(_ uiView: WKWebView, context: Context) {
         loadGif(in: uiView)
     }
-    
+
     private func loadGif(in webView: WKWebView) {
         let gifPath = resolvedGifPath()
         if let gifPath {

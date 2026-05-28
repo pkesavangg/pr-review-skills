@@ -19,7 +19,8 @@ object ScaleDataHelper {
    * @param sku original or variant SKU; `null` short-circuits to `null`.
    * @return matching [ScaleInfo], or `null` when [sku] is null or unknown.
    */
-  fun findScaleInfoBySku(sku: String): ScaleInfo? {
+  fun findScaleInfoBySku(sku: String?): ScaleInfo? {
+    if (sku == null) return null
     val lookupSku = DeviceHelper.mapSkuForDisplay(sku)
     val found = DEVICES.find { it.sku == lookupSku } ?: return null
     return if (sku != lookupSku) found.copy(sku = sku) else found
@@ -41,7 +42,10 @@ object ScaleDataHelper {
         else -> ScaleSetupType.Bluetooth // Default fallback
       }
 
-    // Get stored SKU and find scale info (maps 0022 -> 0383 internally)
+    // Get stored SKU and find scale info (maps 0022 -> 0383 internally).
+    // storedSku may be null when the device's name is unrecognized; we fall back to
+    // the original (possibly null) value for displaySku and let UI components decide
+    // how to render an unknown-SKU scale.
     val storedSku = this.getSKU()
     val scaleInfoFromScales = findScaleInfoBySku(storedSku)
     val displaySku = if (scaleInfoFromScales != null) storedSku else DeviceHelper.mapSkuForDisplay(storedSku)
@@ -49,7 +53,7 @@ object ScaleDataHelper {
     val bodyComp = scaleInfoFromScales?.bodyComp ?: false
 
     return ScaleInfo(
-      productName = if (this.nickname.isNotBlank()) this.nickname else productName,
+      productName = this.nickname.ifBlank { productName },
       sku = displaySku,
       setupType = setupType,
       bodyComp = bodyComp,

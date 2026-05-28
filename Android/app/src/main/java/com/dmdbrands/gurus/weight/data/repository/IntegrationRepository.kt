@@ -15,8 +15,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.launchIn
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -39,18 +41,30 @@ class IntegrationRepository @Inject constructor(
           val healthConnectData = healthConnectRepository.getAccountByID(account.id)
           val isHealthConnectOn = healthConnectData?.integrated ?: false
 
-          val integration = Integrations(
-            isFitbitOn = account.isFitbitOn,
-            isFitbitValid = account.isFitbitValid,
-            isHealthConnectOn = isHealthConnectOn,
-            healthkit = account.isHealthKitOn,
-            isMFPOn = account.isMFPOn,
-            isMFPValid = account.isMFPValid,
-          )
-          _integrations.value = integration
-        }
+  init {
+    accountRepository.getActiveAccount()
+      .distinctUntilChanged { old, new ->
+        old?.id == new?.id &&
+          old?.isFitbitOn == new?.isFitbitOn &&
+          old?.isFitbitValid == new?.isFitbitValid &&
+          old?.isHealthKitOn == new?.isHealthKitOn &&
+          old?.isMFPOn == new?.isMFPOn &&
+          old?.isMFPValid == new?.isMFPValid
       }
-    }
+      .onEach { account ->
+        if (account == null) return@onEach
+        val healthConnectData = healthConnectRepository.getAccountByID(account.id)
+        val isHealthConnectOn = healthConnectData?.integrated ?: false
+        _integrations.value = (_integrations.value ?: defaultIntegrations).copy(
+          isFitbitOn = account.isFitbitOn,
+          isFitbitValid = account.isFitbitValid,
+          isHealthConnectOn = isHealthConnectOn,
+          healthkit = account.isHealthKitOn,
+          isMFPOn = account.isMFPOn,
+          isMFPValid = account.isMFPValid,
+        )
+      }
+      .launchIn(repositoryScope)
   }
 
   // Default integrations (match your Angular default)

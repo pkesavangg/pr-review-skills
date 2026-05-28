@@ -70,7 +70,7 @@ object DeviceHelper {
     else -> primarySku
   }
 
-  fun GGDeviceDetail.getSKU() = SKU_MAP[deviceName] ?: DEFAULT_SKU
+  fun GGDeviceDetail.getSKU(): String? = SKU_MAP[deviceName]
 
   /**
    * Maps a SKU to its display SKU for UI purposes only.

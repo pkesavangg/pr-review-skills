@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.data.storage.datastore
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.Serializer
 import androidx.datastore.dataStore
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.io.InputStream
@@ -215,31 +216,47 @@ class HealthConnectDataStore(context: Context) : BaseProtoDataStore<HealthConnec
      * Converts domain IntegratedDeviceInfo to proto ProtoIntegratedDeviceInfo.
      */
     suspend fun setIntegrationInfo(accountId: String, integrationInfo: com.dmdbrands.gurus.weight.domain.model.integrations.IntegratedDeviceInfo?) {
+        if (integrationInfo == null) {
+            updateData { current ->
+                val currentDataBuilder = current.dataMap[accountId]?.toBuilder()
+                    ?: HealthConnectData.newBuilder()
+                currentDataBuilder.clearIntegrationInfo()
+                current.toBuilder().putData(accountId, currentDataBuilder.build()).build()
+            }
+            return
+        }
+        val protoInfo = integrationInfo.toProtoOrNull(accountId)
+        if (protoInfo == null) {
+            AppLog.w(
+                "HealthConnectDataStore",
+                "Skipping integration DataStore write for account=$accountId — unknown operationType='${integrationInfo.operationType}'"
+            )
+            return
+        }
         updateData { current ->
             val currentDataBuilder = current.dataMap[accountId]?.toBuilder()
                 ?: HealthConnectData.newBuilder()
-
-            if (integrationInfo != null) {
-                currentDataBuilder.setIntegrationInfo(integrationInfo.toProto(accountId))
-            } else {
-                currentDataBuilder.clearIntegrationInfo()
-            }
+            currentDataBuilder.setIntegrationInfo(protoInfo)
             current.toBuilder().putData(accountId, currentDataBuilder.build()).build()
         }
     }
 
     /**
      * Extension function to convert domain IntegratedDeviceInfo to proto ProtoIntegratedDeviceInfo.
+     * Returns null when [operationType] does not map to a known proto value, so callers can
+     * skip the write instead of corrupting the DataStore with a null enum (which crashes at
+     * serialization time with `ProtoIntegrationOperationType.getNumber()` NPE).
      */
-    private fun com.dmdbrands.gurus.weight.domain.model.integrations.IntegratedDeviceInfo.toProto(accountId: String): ProtoIntegratedDeviceInfo {
+    private fun com.dmdbrands.gurus.weight.domain.model.integrations.IntegratedDeviceInfo.toProtoOrNull(accountId: String): ProtoIntegratedDeviceInfo? {
+        val protoOp = when {
+            operationType.equals(com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationOperationType.SAVE.value, ignoreCase = true) ->
+                ProtoIntegrationOperationType.PROTO_SAVE
+            operationType.equals(com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationOperationType.REMOVE.value, ignoreCase = true) ->
+                ProtoIntegrationOperationType.PROTO_REMOVE
+            else -> return null
+        }
         return ProtoIntegratedDeviceInfo.newBuilder()
-            .setOperationType(
-                when (operationType) {
-                    com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationOperationType.SAVE.value -> ProtoIntegrationOperationType.PROTO_SAVE
-                    com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationOperationType.REMOVE.value -> ProtoIntegrationOperationType.PROTO_REMOVE
-                  else -> null
-                }
-            )
+            .setOperationType(protoOp)
             .setScopes(
                 ProtoIntegrationData.newBuilder()
                     .setAccountId(accountId)

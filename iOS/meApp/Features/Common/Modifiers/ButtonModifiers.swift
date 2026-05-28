@@ -7,6 +7,29 @@
 
 import SwiftUI
 
+// MARK: - App-wide default ButtonStyle
+/// Project-wide default applied at the root of every window in `SceneDelegate`.
+/// Opts every `Button` out of `DefaultButtonStyle`'s system decoration — most
+/// importantly, the grey rounded-rectangle iOS adds when the *Button Shapes*
+/// accessibility setting is enabled — while preserving press feedback.
+///
+/// `.contentShape(Rectangle())` claims the full label frame as hit-testable so
+/// row-style buttons (settings rows, list items) accept taps anywhere on the
+/// row, not just on the rendered icons / text. `DefaultButtonStyle` does this
+/// automatically inside a `List`; our custom style has to opt in explicitly.
+///
+/// Override at the call site only when the system styling is desired
+/// (e.g. `.buttonStyle(.borderless)` for keyboard-toolbar Done buttons that
+/// need the system tint).
+struct AppDefaultButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .contentShape(Rectangle())
+            .opacity(configuration.isPressed ? 0.5 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+    }
+}
+
 struct BasicButtonStyle: ViewModifier {
     var foreGroundColor: Color
     var buttonSize: ButtonSize?

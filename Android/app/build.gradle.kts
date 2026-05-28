@@ -356,3 +356,105 @@ tasks.register<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
     }
   }
 }
+
+/**
+ * Convert SVG files to Android Vector Drawables using Google's Svg2Vector
+ * (the same converter Android Studio's "Vector Asset" tool uses).
+ *
+ * Usage:
+ *   ./gradlew :app:convertSvg -PsvgInput="/path/to/folder_or_file.svg"
+ *   ./gradlew :app:convertSvg -PsvgInput="/path/to/folder" -PsvgPrefix="scale_"
+ *
+ * Options (passed via -P flags):
+ *   svgInput   — (required) path to a single SVG file or a folder of SVGs
+ *   svgOutput  — (optional) output folder, defaults to res/drawable/
+ *   svgPrefix  — (optional) prefix to add to output filenames (e.g. "scale_", "ic_")
+ *   svgReplace — (optional) "true" to delete existing .png with the same name
+ */
+tasks.register("convertSvg") {
+  group = "assets"
+  description = "Convert SVG → Android Vector Drawable XML using Google's Svg2Vector"
+
+  doLast {
+    val inputPath = project.findProperty("svgInput")?.toString()
+      ?: error("Missing -PsvgInput. Usage: ./gradlew :app:convertSvg -PsvgInput=\"/path/to/svgs\"")
+
+    val defaultOutput = file("src/main/res/drawable")
+    val outputDir = file(project.findProperty("svgOutput")?.toString() ?: defaultOutput.absolutePath)
+    val prefix = project.findProperty("svgPrefix")?.toString() ?: ""
+    val replacePng = project.findProperty("svgReplace")?.toString()?.toBoolean() ?: true
+
+    val inputFile = file(inputPath)
+    if (!inputFile.exists()) error("Input not found: $inputPath")
+
+    val svgFiles = if (inputFile.isDirectory) {
+      inputFile.walkTopDown().filter { it.extension.equals("svg", ignoreCase = true) }.toList()
+    } else {
+      listOf(inputFile)
+    }
+
+    if (svgFiles.isEmpty()) error("No SVG files found in: $inputPath")
+
+    outputDir.mkdirs()
+    var success = 0
+    var failed = 0
+
+    svgFiles.forEach { svg ->
+      val baseName = svg.nameWithoutExtension
+        .replace(Regex("([a-z])([A-Z])"), "$1_$2")
+        .replace(Regex("([A-Z]+)([A-Z][a-z])"), "$1_$2")
+        .replace(" ", "_")
+        .replace("(", "").replace(")", "")
+        .replace("-", "_")
+        .lowercase()
+        .replace(Regex("_+"), "_")
+        .trimEnd('_')
+
+      val outputName = if (prefix.isNotEmpty() && !baseName.startsWith(prefix)) {
+        "${prefix}$baseName"
+      } else {
+        baseName
+      }
+
+      val outputFile = File(outputDir, "${outputName}.xml")
+      val pngFile = File(outputDir, "${outputName}.png")
+
+      try {
+        val bos = ByteArrayOutputStream()
+        val conversionLog = Svg2Vector.parseSvgToXml(svg.toPath(), bos)
+        val xmlContent = bos.toString(Charsets.UTF_8.name())
+
+        if (xmlContent.isBlank()) {
+          println("FAIL: ${svg.name} → empty output")
+          if (conversionLog.isNotEmpty()) println("  Errors: $conversionLog")
+          failed++
+          return@forEach
+        }
+
+        outputFile.writeText(xmlContent)
+
+        if (replacePng && pngFile.exists()) {
+          pngFile.delete()
+          println("  OK: ${svg.name} → ${outputName}.xml (replaced ${outputName}.png)")
+        } else {
+          println("  OK: ${svg.name} → ${outputName}.xml")
+        }
+
+        if (conversionLog.isNotEmpty()) {
+          conversionLog.lines().forEach { line ->
+            println(line)
+          }
+        }
+        success++
+      } catch (e: Exception) {
+        println("FAIL: ${svg.name} → ${e.message}")
+        failed++
+      }
+    }
+
+    println("\nDone: $success succeeded, $failed failed out of ${svgFiles.size} total")
+    if (failed > 0) {
+      error("$failed of ${svgFiles.size} SVGs failed to convert")
+    }
+  }
+}

@@ -472,7 +472,10 @@ final class DateTimeTools {
         }
     }
 
-    /// Formats X-axis labels for different time periods
+    /// Formats X-axis labels for different time periods.
+    /// Called per Mark per chart body recompute on the dashboard hot path —
+    /// see `BaseSectionViewModel.formatXAxisLabel` and history doc §3.11.
+    /// Reuse `Calendar.current` to avoid `_LocaleICU` reads per call.
     static func formatXAxisLabel(for date: Date, period: TimePeriod, operations: [BathScaleWeightSummary]) -> String? {
         let calendar = Calendar.current
 

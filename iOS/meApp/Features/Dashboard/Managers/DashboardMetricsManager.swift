@@ -935,14 +935,17 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     /// Falls back to latest historical values per metric when the visible window has no data for that metric.
     /// Shows placeholders ("--") when no visible operations are available.
     func updateMetricsForVisibleAverage(visibleOperations: [BathScaleWeightSummary]) async {
+        guard !Task.isCancelled else { return }
+
         guard !visibleOperations.isEmpty else {
             // No visible operations - show placeholders for all metrics
             setPlaceholdersForAllMetrics()
-            return 
+            return
         }
 
         clearFallbackCache()
         let fallbackValues = await getHistoricalFallbackValues()
+        guard !Task.isCancelled else { return }
 
         // Helper to compute average for a metric label from summaries
         func averageForMetric(_ label: String) -> Double? {

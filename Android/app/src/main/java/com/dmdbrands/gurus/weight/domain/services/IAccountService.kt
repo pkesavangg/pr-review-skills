@@ -211,6 +211,13 @@ interface IAccountService {
   suspend fun setNotificationAlertShownForAccount(accountId: String, hasShown: Boolean)
 
   /**
+   * Shows the one-time educational "graph is scrollable" modal for the active account
+   * if it has not been shown before. No-op otherwise. Persists the per-account flag
+   * once the user dismisses the modal.
+   */
+  suspend fun checkAndTriggerGraphScrollHint()
+
+  /**
    * Emits navigation to MyAccounts event to stop scanning.
    */
   suspend fun emitNavigateToMyAccounts()

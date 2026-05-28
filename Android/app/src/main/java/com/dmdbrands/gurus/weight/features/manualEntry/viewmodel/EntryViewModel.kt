@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
@@ -155,9 +156,11 @@ constructor(
       }
 
       is EntryIntent.UpdateOnRelaunch -> {
+        val account = accountService.activeAccount.value
+        val weightUnit = account?.weightUnit ?: state.value.weightMode
+        handleIntent(EntryIntent.UpdateWeightUnit(weightUnit))
         viewModelScope.launch {
           val hasAppSyncData = appSyncService.appSyncDataForEditing.first() != null
-
           if (!hasAppSyncData) {
             val activeAccount = accountService.activeAccountFlow.first()
             val entryForm = EntryForm.create(
@@ -168,13 +171,8 @@ constructor(
                 !_state.value.form.forms.generalMetrics.controls.bodyMassIndex.touched
               },
             )
-            handleIntent(
-              EntryIntent.UpdateForm(
-                form = MultiFormGroup.create(forms = entryForm),
-              ),
-            )
+            handleIntent(EntryIntent.UpdateForm(form = MultiFormGroup.create(forms = entryForm)))
           }
-          // If AppSync data exists, leave the form alone - it's already properly set up
         }
       }
 
