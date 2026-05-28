@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.app.components.HomeNavHost
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.features.common.components.AppFab
 import com.dmdbrands.gurus.weight.features.common.components.MainBottomNav
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
@@ -93,18 +94,22 @@ fun HomeScreenContent(
                     try {
                       val result = startAppSyncScan(
                         context = context,
-                        zoom = 2,
+                        zoom = state.appSyncZoomLevel,
                         showManualEntryButton = true,
                         onBack = {
                           // Create cancelled result and call intent handler immediately
-                          val cancelResult = AppSyncResultFactory.createCancelResult(2)
+                          val cancelResult = AppSyncResultFactory.createCancelResult(state.appSyncZoomLevel)
                           AppSyncResultHolder.result = cancelResult
                           handleIntent(HomeIntent.HandleAppSyncResult(cancelResult))
                         },
                       )
+                        AppLog.w(
+                          "AppSyncScan",
+                          "Scale display detected results on home flow (device=${android.os.Build.MODEL}, result=${result} errors=${result.errors})",
+                        )
                       handleIntent(HomeIntent.HandleAppSyncResult(result))
                     } catch (e: Exception) {
-                      // Handle error
+                      AppLog.e("AppSyncScan", "AppSync scan failed on home flow: ${e.message}", e)
                     } finally {
                       isScanning = false
                     }

@@ -15,11 +15,14 @@ All contributions must follow the [SDLC Policy](https://greatergoods.atlassian.n
 | Android Studio | [developer.android.com](https://developer.android.com/studio) | Android build and test |
 | SwiftLint      | `brew install swiftlint`                                      | iOS static analysis    |
 | Gitleaks       | `brew install gitleaks`                                       | Secrets detection      |
+| Lefthook       | `brew install lefthook`                                       | Git hook manager (pre-commit) |
+| Detekt CLI     | `brew install detekt`                                         | Android static analysis (pre-commit hook) |
 
 
-1. **iOS:** Open `iOS/meApp.xcodeproj` in Xcode. Resolve Swift Package dependencies when prompted.
-2. **Android:** Open the `Android/` directory in Android Studio. Gradle sync will run automatically.
-3. Run tests:
+4. **iOS:** Open `iOS/meApp.xcodeproj` in Xcode. Resolve Swift Package dependencies when prompted.
+5. **Android:** Open the `Android/` directory in Android Studio. Gradle sync will run automatically.
+6. **Android:** Run `lefthook install` from the repo root to activate pre-commit hooks (Detekt CLI, Gitleaks, JIRA ticket validation). This is also done automatically on every Gradle build.
+7. Run tests:
   - **iOS:** `cd iOS && xcodebuild test -project meApp.xcodeproj -scheme meApp -destination 'id={DEVICE_ID}' -only-testing:meAppTests`
   - **Android:** `cd Android && ./gradlew test`
 
@@ -133,6 +136,8 @@ The `.githooks/` directory contains hooks that run automatically after setup:
 
 
 If you need to bypass hooks in an emergency: `git commit --no-verify`. Use sparingly — CI will still enforce these checks.
+
+Android pre-commit hooks (Detekt, Gitleaks, and JIRA ticket validation) are managed by **Lefthook** via `.lefthook.yml` — separate from the `.githooks/` directory above. They activate automatically after running `lefthook install` or on your first Gradle build.
 
 ## Testing
 

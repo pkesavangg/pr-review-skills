@@ -9,11 +9,23 @@ import Charts
 import Foundation
 import SwiftUI
 
+/// Cached gregorian calendar configured with the current locale/timezone.
+/// `plotXDate(for:)` is called once per cached point on every chart cache
+/// refresh — building a fresh `Calendar(identifier:)` per call was a
+/// per-point allocation hot enough to show in the scroll-hang stack traces
+/// the April investigation only patched on the chart render path (not here).
+private let weekPlotCalendar: Calendar = {
+    var cal = Calendar(identifier: .gregorian)
+    cal.timeZone = Calendar.current.timeZone
+    cal.locale = Calendar.current.locale
+    return cal
+}()
+
 /// ViewModel specifically for the Week time period chart view
 /// Handles all week-specific chart logic, scrolling, and day-based data processing
 @MainActor
 final class WeekSectionViewModel: BaseSectionViewModel {
-    
+
     // MARK: - Period-specific properties
     override var timePeriod: TimePeriod {
         return .week
@@ -26,7 +38,7 @@ final class WeekSectionViewModel: BaseSectionViewModel {
         let snapped = dashboardStore?.graphManager.snapScrollPosition(newPosition, for: .week) ?? newPosition
         super.handleScrollPositionChange(snapped)
     }
-    
+
     /// Returns the X-axis date used to plot a single-day aggregate in Week view.
     /// We place each day's value at that day's local noon:
     /// - Visually centers the point within the day's time span on the timeline.

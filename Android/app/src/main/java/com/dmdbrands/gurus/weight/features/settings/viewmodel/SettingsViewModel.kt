@@ -111,6 +111,10 @@ constructor(
         dataSettingsManager.onAppearanceClick(viewModelScope, ::currentState, ::dispatchIntent)
       }
 
+      is SettingsIntent.ShowDefaultGraphRangeModal -> {
+        showDefaultGraphRangeModal()
+      }
+
       is SettingsIntent.ToggleStreak -> {
         profileSettingsManager.onStreakUpdate(viewModelScope, ::currentState, intent.checked)
       }

@@ -38,6 +38,8 @@ secrets.json
 GoogleService-Info.plist
 **/GoogleService-Info.plist
 
+# Claude skill transient state
+Android/.claude/*.json
 # Lefthook local overrides (developer-specific)
 lefthook-local.yml
 

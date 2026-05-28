@@ -3,6 +3,8 @@ package com.dmdbrands.gurus.weight.data.storage.datastore
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.Serializer
 import androidx.datastore.dataStore
+import com.dmdbrands.gurus.weight.core.config.AppSyncConfig
+import com.dmdbrands.gurus.weight.proto.DefaultGraphSegment
 import com.dmdbrands.gurus.weight.proto.ThemeMode
 import com.dmdbrands.gurus.weight.proto.UserAccount
 import com.dmdbrands.gurus.weight.proto.UserPreferences
@@ -30,6 +32,7 @@ class UserDataStore @Inject constructor(
 ) : BaseProtoDataStore<UserPreferences>(
   dataStore = context.userDataStore,
 ) {
+
   /**
    * Emits a Flow of all user accounts, keyed by account ID.
    */
@@ -58,6 +61,45 @@ class UserDataStore @Inject constructor(
   val currentAccountFlow: Flow<UserAccount?> = dataFlow.map {
     it.accountsMap.values.firstOrNull { account -> account.isActive }
   }
+
+  /**
+   * Emits a Flow of the raw [DefaultGraphSegment] proto enum for the currently active account.
+   * Returns [DefaultGraphSegment.DEFAULT_GRAPH_SEGMENT_UNSPECIFIED] when no account is active or
+   * the field has never been set. UNSPECIFIED → MONTH mapping is performed by
+   * [com.dmdbrands.gurus.weight.features.common.enums.toGraphSegment] in the repository layer.
+   */
+  val defaultGraphSegmentFlow: Flow<DefaultGraphSegment> = dataFlow.map {
+    it.accountsMap.values.firstOrNull { account -> account.isActive }?.defaultGraphSegment
+      ?: DefaultGraphSegment.DEFAULT_GRAPH_SEGMENT_UNSPECIFIED
+  }
+
+  /**
+   * Emits a Flow of the last AppSync zoom level for the active account.
+   * Falls back to DEFAULT_APPSYNC_ZOOM if not set or out of range.
+   */
+  val lastAppSyncZoomLevelFlow: Flow<Int> = currentAccountFlow.map { account ->
+    val stored = account?.lastAppsyncZoomLevel ?: 0
+    if (stored in AppSyncConfig.MIN_ZOOM..AppSyncConfig.MAX_ZOOM) stored else AppSyncConfig.DEFAULT_ZOOM
+  }
+
+  /**
+   * Saves the last AppSync zoom level for the active account.
+   * @param zoom The zoom level to save (clamped to 1-5).
+   */
+  suspend fun setLastAppSyncZoomLevel(zoom: Int) {
+    val current = getData()
+    val activeEntry = current.accountsMap.entries.firstOrNull { it.value.isActive } ?: return
+    val updated = current.toBuilder().apply {
+      putAccounts(
+        activeEntry.key,
+        activeEntry.value.toBuilder()
+          .setLastAppsyncZoomLevel(zoom.coerceIn(AppSyncConfig.MIN_ZOOM, AppSyncConfig.MAX_ZOOM))
+          .build(),
+      )
+    }.build()
+    updateData { updated }
+  }
+
   /**
    * Gets the theme mode for the currently active account, or SYSTEM if none is active.
    */
@@ -196,6 +238,7 @@ class UserDataStore @Inject constructor(
         accessToken = accessToken,
         expiresAt = expiresAt,
         isActive = isActive,
+        themeMode = themeMode
       )
       return
     }
@@ -417,6 +460,26 @@ class UserDataStore @Inject constructor(
   }
 
   /**
+   * Sets the default graph segment for the currently active account.
+   * Both the active-account lookup and the write occur inside the [updateData] lambda so
+   * they are atomic against concurrent account-switch writers.
+   * @throws IllegalStateException when no account is active at write time.
+   */
+  suspend fun setDefaultGraphSegment(segment: DefaultGraphSegment) {
+    updateData { current ->
+      val activeEntry = current.accountsMap.entries
+        .firstOrNull { it.value.isActive }
+        ?: error("No active account when persisting default graph segment")
+      current.toBuilder()
+        .putAccounts(
+          activeEntry.key,
+          activeEntry.value.toBuilder().setDefaultGraphSegment(segment).build(),
+        )
+        .build()
+    }
+  }
+
+  /**
    * Gets whether the notification alert has been shown for the specified account.
    * @param accountId The account ID to check.
    * @return True if the notification alert has been shown for this account, false otherwise.
@@ -435,6 +498,34 @@ class UserDataStore @Inject constructor(
     if (account != null) {
       val updatedAccount = account.toBuilder()
         .setNotificationAlertShown(hasShown)
+        .build()
+
+      val updated = current.toBuilder()
+        .putAccounts(accountId, updatedAccount)
+        .build()
+      updateData { updated }
+    }
+  }
+
+  /**
+   * Gets whether the graph-scrollable educational hint modal has been shown for the specified account.
+   * @param accountId The account ID to check.
+   * @return True if the hint has been shown for this account, false otherwise.
+   */
+  suspend fun hasShownGraphScrollHintForAccount(accountId: String): Boolean =
+    getData().accountsMap[accountId]?.graphScrollHintShown ?: false
+
+  /**
+   * Sets whether the graph-scrollable educational hint modal has been shown for the specified account.
+   * @param accountId The account ID to update.
+   * @param hasShown Whether the hint has been shown.
+   */
+  suspend fun setGraphScrollHintShownForAccount(accountId: String, hasShown: Boolean) {
+    val current = getData()
+    val account = current.accountsMap[accountId]
+    if (account != null) {
+      val updatedAccount = account.toBuilder()
+        .setGraphScrollHintShown(hasShown)
         .build()
 
       val updated = current.toBuilder()

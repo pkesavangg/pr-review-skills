@@ -35,7 +35,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.accountId == accountId })
         return try context.fetch(descriptor)
     }
-    
+
     /// Fetches all scales stored locally (legacy method).
     /// - Returns: An array of all Device objects.
     func listScales() async throws -> [Device] {
@@ -67,12 +67,60 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     ///   - oldId: The current ID of the device in the database.
     ///   - updatedDevice: The device object with updated properties including the new ID.
     func updateDeviceWithNewId(oldId: String, updatedDevice: Device) async throws {
-        let managedDevice = try fetchDeviceOrThrow(oldId)
+        let oldDevice = try fetchDeviceOrThrow(oldId)
+        guard oldDevice.modelContext === context else {
+            logger.log(level: .error, tag: "ScaleRepository", message: "updateDeviceWithNewId: device \(oldId) belongs to a different context — aborting")
+            throw NSError(domain: "ScaleService", code: 500, userInfo: [NSLocalizedDescriptionKey: "Device context mismatch"])
+        }
         logger.log(level: .debug, tag: "ScaleRepository", message: "Updating device ID from \(oldId) to \(updatedDevice.id)")
-        copyDeviceFields(from: updatedDevice, to: managedDevice, includeId: true)
-        managedDevice.metaData = updatedDevice.metaData
-        managedDevice.r4ScalePreference = updatedDevice.r4ScalePreference
-        managedDevice.bathScale = updatedDevice.bathScale
+
+        // SwiftData does not allow mutating the persistent identifier in-place.
+        // Insert a new Device with the server-assigned ID, transfer all state,
+        // then delete the old device in the same save — one round-trip, no torn state.
+        let newDevice = Device(
+            id: updatedDevice.id,
+            accountId: updatedDevice.accountId,
+            peripheralIdentifier: updatedDevice.peripheralIdentifier,
+            nickname: updatedDevice.nickname,
+            sku: updatedDevice.sku,
+            mac: updatedDevice.mac,
+            password: updatedDevice.password,
+            isSoftDeleted: updatedDevice.isSoftDeleted,
+            deviceName: updatedDevice.deviceName,
+            deviceType: updatedDevice.deviceType,
+            broadcastId: updatedDevice.broadcastId,
+            broadcastIdString: updatedDevice.broadcastIdString,
+            userNumber: updatedDevice.userNumber,
+            protocolType: updatedDevice.protocolType,
+            createdAt: updatedDevice.createdAt,
+            lastModified: updatedDevice.lastModified,
+            isSynced: updatedDevice.isSynced,
+            hasServerID: updatedDevice.hasServerID,
+            isConnected: updatedDevice.isConnected,
+            wifiMac: updatedDevice.wifiMac,
+            isWifiConfigured: updatedDevice.isWifiConfigured,
+            token: updatedDevice.token,
+            isWeighOnlyModeEnabledByOthers: updatedDevice.isWeighOnlyModeEnabledByOthers
+        )
+        context.insert(newDevice)
+
+        // Transfer relationships to the new device; nil them on the old one first
+        // so cascade rules do not delete children that the new device still needs.
+        if let meta = oldDevice.metaData {
+            oldDevice.metaData = nil
+            newDevice.metaData = meta
+        }
+        if let pref = oldDevice.r4ScalePreference {
+            oldDevice.r4ScalePreference = nil
+            newDevice.r4ScalePreference = pref
+            pref.id = newDevice.id
+        }
+        if let bath = oldDevice.bathScale {
+            oldDevice.bathScale = nil
+            newDevice.bathScale = bath
+        }
+
+        context.delete(oldDevice)
         try context.save()
         logger.log(level: .debug, tag: "ScaleRepository", message: "Successfully updated device with new ID: \(updatedDevice.id)")
     }
@@ -97,7 +145,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
                 userInfo: [NSLocalizedDescriptionKey: "Device with ID '\(scale.id)' already exists"]
             )
         }
-        
+
         scale.isSynced = false
         context.insert(scale)
         insertDeviceRelationships(scale)
@@ -229,7 +277,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
             tag: "ScaleRepository",
             message: "Starting replaceAllDevicesForAccount with \(serverDevices.count) server devices, \(unsyncedDevices.count) unsynced devices"
         )
-        
+
         // Delete only synced devices for this account (preserve unsynced ones)
         let syncedDescriptor = FetchDescriptor<Device>(predicate: #Predicate {
             $0.accountId == accountId && ($0.isSynced ?? false) == true
@@ -237,7 +285,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         let syncedDevices = try context.fetch(syncedDescriptor)
         // Connection status is no longer persisted in SwiftData — it is managed via
         // ScaleService.ephemeralState and merged into DeviceSnapshot during refresh.
-        
+
         // Flush any pending inserts/updates so the context is stable before deleting.
         // Without this, SwiftData can crash with "This store went missing?" when a
         // recently-inserted BathScale is still tracked with a temporary identifier
@@ -256,14 +304,17 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         }
         try context.save()
 
-        // Insert server devices, but handle conflicts with unsynced local devices by updating them
-        // IMPORTANT: Only match unsynced devices that belong to the current accountId
-        // This allows multiple accounts to have devices with the same MAC/SKU
-        let unsyncedDevicesForAccount = unsyncedDevices.filter { $0.accountId == accountId }
-        
+        // Re-fetch unsynced devices from context after the delete-and-save above.
+        // The instances passed in via `unsyncedDevices` may have been materialised
+        // before the save and could be stale or point at now-deleted relationship objects.
+        let unsyncedDescriptor = FetchDescriptor<Device>(predicate: #Predicate {
+            $0.accountId == accountId && ($0.isSynced ?? false) == false
+        })
+        let unsyncedDevicesForAccount = (try? context.fetch(unsyncedDescriptor)) ?? []
+
         var insertedCount = 0
         var updatedCount = 0
-        
+
         for serverDevice in serverDevices {
             // Find matching unsynced device by ID, MAC, or broadcastId
             // CRITICAL: Only match devices that belong to the current accountId
@@ -291,12 +342,12 @@ final class ScaleRepository: ScaleRepositoryProtocol {
             let device = Device(from: serverDevice, accountId: accountId)
             device.isSynced = true
             device.hasServerID = true
-            
+
             context.insert(device)
             insertDeviceRelationships(device, markSynced: true)
             insertedCount += 1
         }
-        
+
         try context.save()
         logger.log(
             level: .debug,
@@ -492,7 +543,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     private func findMatchingUnsyncedDevice(for serverDevice: ScaleDTO, in unsyncedDevices: [Device], accountId: String) -> Device? {
         for unsyncedDevice in unsyncedDevices {
             guard unsyncedDevice.accountId == accountId else { continue }
-            
+
             // Check for conflicts by ID or other identifiers (within same account)
             if unsyncedDevice.id == serverDevice.id {
                 return unsyncedDevice
@@ -517,17 +568,17 @@ final class ScaleRepository: ScaleRepositoryProtocol {
             device.id = serverId
         }
         copyDeviceFields(from: dto, to: device, accountId: accountId)
-        
+
         // Update R4 preference if server has one
         if let preferenceDTO = dto.preference {
             updateR4Preference(for: device, from: preferenceDTO, scaleId: device.id)
         }
-        
+
         // Update metadata if server has one
         if let metaDataDTO = dto.metaData {
             updateMetaData(for: device, from: metaDataDTO)
         }
-        
+
         // Update latestVersion from root level if present
         if let latestVersion = dto.latestVersion {
             if let existingMeta = device.metaData {
@@ -539,7 +590,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
                 context.insert(newMeta)
             }
         }
-        
+
         // Update bath scale type if needed
         updateBathScaleType(for: device, scaleType: dto.type)
     }

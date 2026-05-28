@@ -1,6 +1,5 @@
 package com.dmdbrands.gurus.weight.domain.model.storage
 
-import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.DEFAULT_SKU
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0412
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
 import com.dmdbrands.library.ggbluetooth.enums.GGAppType
@@ -40,8 +39,14 @@ data class Device(
     return GGAppType.ME_HEALTH
   }
 
-  fun getSKU(): String {
-    return sku ?: device?.getSKU() ?: DEFAULT_SKU
+  /**
+   * Returns the SKU for this device, or null if neither the persisted [sku] nor the
+   * GGDeviceDetail SKU lookup yields a recognized value. Callers should handle null
+   * (e.g. show "Unknown" in UI, skip the SKU-keyed code path) rather than substituting
+   * a default SKU that misrepresents the hardware.
+   */
+  fun getSKU(): String? {
+    return sku ?: device?.getSKU()
   }
 
   /** Bluetooth broadcast ID string for scale log / support; e.g. "00:00:00:00:00:00". */

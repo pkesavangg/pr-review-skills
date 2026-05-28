@@ -15,6 +15,7 @@ struct DashboardState {
 struct UIState {
     var isLoading: Bool = false
     var hasInitializedChart: Bool = false
+    var hasLandedInitialSelection: Bool = false // True once the first auto-select on the latest entry has been applied
     var hasLoadedDashboardConfig: Bool = false // Flag to track when body metrics config is loaded from API
     var hasLoadedProgressMetrics: Bool = false // Flag to track when progress metrics (goal card + streaks) are loaded
     var hasLoadedMetricValues: Bool = false // Flag to track when actual metric values are loaded (not placeholders)
@@ -26,12 +27,12 @@ struct UIState {
     var isGoalCardRemoved: Bool = false
     var isResettingDashboard: Bool = false // Flag to suppress UI updates during reset
 
-    var removedMetrics: Set<String> = [] 
-    var removedStreaks: Set<String> = [] 
-    
+    var removedMetrics: Set<String> = []
+    var removedStreaks: Set<String> = []
+
     // Goal card position management (like large widget)
     var goalCardPosition: Int = 0 // Position after divider (0 = first position)
-    
+
     // Streak grid order management - saves the order of streak items as array of IDs
     var streakGridOrder: [String] = [] // Array of MetricItem.id.uuidString to preserve order
 

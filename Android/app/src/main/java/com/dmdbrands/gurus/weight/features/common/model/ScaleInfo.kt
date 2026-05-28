@@ -33,6 +33,7 @@ data class ScaleInfo(
 
 val DEVICES =
   listOf(
+    ScaleInfo("AppSync Body Fat Scale", "0340", ScaleSetupType.AppSync, true, createdAt = null),
     ScaleInfo("AppSync Body Fat Scale", "0341", ScaleSetupType.AppSync, true, createdAt = null),
     ScaleInfo("AppSync Bathroom Scale", "0342", ScaleSetupType.AppSync, false, createdAt = null),
     ScaleInfo("AppSync Body Fat Scale", "0343", ScaleSetupType.AppSync, true, createdAt = null),

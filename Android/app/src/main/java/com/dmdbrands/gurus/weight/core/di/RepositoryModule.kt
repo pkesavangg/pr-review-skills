@@ -157,7 +157,8 @@ object RepositoryModule {
     fun provideUserSettingsRepository(
       userSettingsAPI: IUserSettingsAPI,
       accountDao: AccountDao,
-    ): IUserSettingsRepository = UserSettingsRepository(userSettingsAPI, accountDao)
+      userDataStore: UserDataStore,
+    ): IUserSettingsRepository = UserSettingsRepository(userSettingsAPI, accountDao, userDataStore)
 
     @Provides
     @Singleton

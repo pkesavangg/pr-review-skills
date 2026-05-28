@@ -470,6 +470,12 @@ For scrollable charts:
 - Listens to `dashboardStore.state.graph.cachedYAxisDomain/Ticks` → syncs VM Y-axis from store cache
 - Selection forwarding: when `localSelectedXValue` changes and not scrolling → delegates to VM's `handleChartSelection(at:)` → if `showCrosshair`, forwards to `dashboardStore.chartManager.handleChartSelection(at:)`
 
+Equatable short-circuit:
+
+- `BaseGraphView` conforms to `Equatable` via `createViewModelHash()`, which combines `yAxisTicks`, `yAxisDomain`, `timePeriod`, `goalWeight`, `showCrosshair`, `selectedDate`, and `selectedMetricLabel`. Notably **excluded**: `scrollPosition`, `isScrolling`, `selectedPoint` — these are the per-tick or low-signal fields that should not drive a body recompute.
+- The `.equatable()` modifier is applied at all four period wrapper sites (`Week/Month/Year/TotalGraphView`) so SwiftUI uses `==` to skip recomputation when the hash is unchanged.
+- Note: `EquatableView` only short-circuits *parent-driven* re-renders. When `@ObservedObject` publishers fire, the view is invalidated regardless. The combination with the "scrollPosition not `@Published`" invariant above is what produces the smooth scroll behaviour — neither alone is sufficient.
+
 ---
 
 ## Section ViewModels — Deep Dive

@@ -33,6 +33,8 @@ import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonGroup
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonType
 import com.dmdbrands.gurus.weight.features.common.helper.StatHelper
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphLabelHelper
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toSegment
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.metricinfo.components.MetricInfoInfoSection
@@ -216,26 +218,41 @@ fun MetricInfoScreenContent(
         val currentStat = StatHelper.getMetricValue(info, currentMetricKey)
         val pageScrollState = rememberScrollState()
 
-        val date = when {
-          info.isSingleEntry -> getFormattedDate(
-            DateTimeConverter.isoToTimestamp(info.entryTimeStamp?.lastOrNull()), source = source,
-          )
+        // Per MA-3938: the label must follow graph selection state, NOT the entry DTO's
+        // timestamp. Driving it off `info.entryTimeStamp` for the no-selection case is the
+        // iOS bug we mirrored — it stamped the latest entry's day even though the displayed
+        // value was the period average. The no-selection branch must use `info.rangeText`.
+        val singleEntryDate = getFormattedDate(
+          DateTimeConverter.isoToTimestamp(info.entryTimeStamp?.lastOrNull()),
+          source = source,
+        )
 
-          info.rangeText != null -> info.rangeText
-          else -> ""
+        // Per MA-3965: dashboard openings route through [GraphLabelHelper.selectionLabel]
+        // — the same helper the trend-view header reads from — so the two surfaces stay
+        // in lockstep. Empty-state, history-list, and missing-metric branches fall
+        // outside the dashboard's selection grammar and keep their own phrasings.
+        val segmentForLabel = source.toSegment()
+        val measurementTakenString = when {
+          info.isEmpty -> "no entries ${info.rangeText ?: singleEntryDate}"
+          currentStat.getDisplayValue() == null -> MetricInfoStrings.MeasurementNotTaken
+          // History list → a single concrete reading on a specific day. Phrase the
+          // label that way regardless of segment; "day average" / "latest entry"
+          // wording only makes sense for dashboard graph aggregates.
+          info.isHistoryEntry ->
+            "Measurement taken $singleEntryDate"
+          info.isSingleEntry ->
+            "${GraphLabelHelper.selectionLabel(
+              segment = segmentForLabel,
+              hasSelection = true,
+              isLatestDaySelected = info.isLatestDaySelected,
+            )} $singleEntryDate"
+          else ->
+            "${GraphLabelHelper.selectionLabel(
+              segment = segmentForLabel,
+              hasSelection = false,
+              isLatestDaySelected = false,
+            )} ${info.rangeText ?: ""}".trim()
         }
-
-        val sourceName = when {
-          info.isSingleEntry -> if (source == MetricInfoSource.WEEK || source == MetricInfoSource.MONTH) "day" else "month"
-          else -> source.name.lowercase()
-        }
-
-        val measurementTakenString = if (info.isEmpty)
-          "no entries".plus(" $date")
-        else if (currentStat.getDisplayValue() != null)
-          sourceName.plus(" average $date").lowercase()
-        else
-          MetricInfoStrings.MeasurementNotTaken
 
         Column(
           modifier = modifier

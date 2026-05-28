@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.settings.strings
 
 object SettingsScreenStrings {
     const val Title = "Settings"
+    const val Loading = "Loading"
 
     // Account Settings
     const val Account = "Account"
@@ -11,6 +12,7 @@ object SettingsScreenStrings {
     const val ExportData = "Export Data"
     const val ChangePassword = "Change Password"
     const val UserProfile = "User Profile"
+    const val DefaultGraphRange = "Default Graph View"
     const val NotSet = "Not Set"
 
     // Weight Scale Settings

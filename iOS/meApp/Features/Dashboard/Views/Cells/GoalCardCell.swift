@@ -143,26 +143,26 @@ class GoalCardCell: UICollectionViewCell {
         currentStore = store
         
         // Set the removal state
-        isRemoved = store.state.ui.isGoalCardRemoved
+        isRemoved = store.ui.isGoalCardRemoved
         
-        let goalCardView = GoalProgressView(viewModel: goalProgressViewModel, isSetGoalButtonDisabled: store.state.ui.isEditMode)
+        let goalCardView = GoalProgressView(viewModel: goalProgressViewModel, isSetGoalButtonDisabled: store.ui.isEditMode)
 
         let viewWithOverlay: AnyView
-        if store.state.ui.isEditMode {
-            let isDragging = store.state.ui.isGoalCardBeingDragged || isLongPressed || currentIsBeingDragged || suppressOverlay
+        if store.ui.isEditMode {
+            let isDragging = store.ui.isGoalCardBeingDragged || isLongPressed || currentIsBeingDragged || suppressOverlay
             
             viewWithOverlay = AnyView(
                 goalCardView
                     .editModeOverlay(
                         isEditMode: true,
-                        isRemoved: store.state.ui.isGoalCardRemoved,
+                        isRemoved: store.ui.isGoalCardRemoved,
                         onToggleRemoval: {
                             store.gridEditingManager.toggleGoalCardRemoval()
                         },
                         isBeingDragged: isDragging, // Let overlay handle icon visibility during drag
-                        isDropTarget: store.state.ui.dropHoverId == "goalCard",
+                        isDropTarget: store.ui.dropHoverId == "goalCard",
                         rowIndex: rowIndex,
-                        disableWiggle: store.state.ui.isGoalCardRemoved,
+                        disableWiggle: store.ui.isGoalCardRemoved,
                         iconOffset: CGSize(width: 20, height: -28),
                         dimWhenRemoved: true
                     )
@@ -178,7 +178,7 @@ class GoalCardCell: UICollectionViewCell {
         hostingController?.rootView = viewWithOverlay
         
         // Set up gesture recognizers based on edit mode
-        setupGestureRecognizersForEditMode(store.state.ui.isEditMode)
+        setupGestureRecognizersForEditMode(store.ui.isEditMode)
         setNeedsLayout()
     }
     

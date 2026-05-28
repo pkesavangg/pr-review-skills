@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountInfo
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
+import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
 import com.dmdbrands.library.ggbluetooth.model.GGBTMetricConfig
 import com.dmdbrands.library.ggbluetooth.model.GGBTUserProfile
@@ -45,6 +46,7 @@ data class Account(
   val dashboardType: String? = DashboardType.DASHBOARD_4_METRICS.value,
   val dashboardMetrics: List<String>? = emptyList(),
   val progressMetrics: List<String>? = emptyList(),
+  val defaultGraphSegment: GraphSegment = GraphSegment.DEFAULT,
   // Notification settings
   val shouldSendEntryNotifications: Boolean? = false,
   val shouldSendWeightInEntryNotifications: Boolean? = false,
@@ -90,7 +92,12 @@ data class Account(
       )
     }
     val heightCm: Double? =
-      height?.let { ConversionTools.convertStoredHeightToCm(it).toDouble() }
+      height?.let {  val cmPrecise = ConversionTools.convertStoredHeightToCm(it)
+        // BT SDK truncates Double cm with toInt() before BLE write. Pre-round here so
+        // 182.88cm (6'0") becomes 183 instead of being truncated to 182 on the wire.
+        val cmRounded = kotlin.math.round(cmPrecise)
+        cmRounded
+      }
     return GGBTUserProfile(
       name = firstName,
       age = calculateAge(dob),

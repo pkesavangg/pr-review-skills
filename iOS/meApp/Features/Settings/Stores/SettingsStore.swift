@@ -188,6 +188,7 @@ class SettingsStore: ObservableObject {
                 self?.populateEditFormIfNeeded()
                 self?.populateWeightlessFormIfNeeded()
                 self?.syncHeightPickers()
+                self?.loadDefaultGraphPeriod()
             }
             .store(in: &cancellables)
 
@@ -1466,7 +1467,6 @@ class SettingsStore: ObservableObject {
 
     /// Handles goal type segment changes and ensures proper form state
     func handleGoalTypeChange(_ newSegment: GoalTypeSegment) {
-        selectedSegment = newSegment
         let newGoalTypeValue = newSegment.goalTypeValue
 
         // Only update if the value is actually different

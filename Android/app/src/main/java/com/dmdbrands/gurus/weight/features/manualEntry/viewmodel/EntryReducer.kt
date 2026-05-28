@@ -122,7 +122,7 @@ data class EntryForm(
                   else -> new.toDouble() / 10
                 }
                 val storedHeight = ConversionTools.convertStoredHeightToCm(height)
-                val bmi = ConversionTools.calculateBMI(weight, storedHeight)
+                val bmi = ConversionTools.calculateBMI(weight, round(storedHeight).toInt())
                 val bmiValue = when {
                   bmi <= 0.0 -> ""
                   bmi >= AppValidatorConfig.BMI.MAX_VALUE -> AppValidatorConfig.BMI.MAX_VALUE.toString()

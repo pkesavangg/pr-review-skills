@@ -70,14 +70,21 @@ struct HistoryEntryItem: View {
                     ))
                         .fontOpenSans(.heading3)
                         .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
-                    
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .allowsTightening(true)
+
                     Text(WeightValueConvertor.unitForDisplay(
                         value: ConversionTools.convertStoredToDisplay(Int(entry.scaleEntry?.weight ?? 0), isMetric: weightUnit == .kg),
                         unit: weightUnit
                     ))
                         .fontOpenSans(.body2)
                         .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
+                .layoutPriority(1)
+                .fixedSize(horizontal: true, vertical: false)
                 
                 // Expansion chevron (only if metrics exist); placeholder preserves alignment otherwise
                 if !entry.metricItems.isEmpty {

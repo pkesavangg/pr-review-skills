@@ -121,6 +121,12 @@ final class AppSyncTabStore: ObservableObject {
             rawDisplayWeightKg: Double(weightKg)
         )
 
+        // Persist zoom level so the camera reopens at the same zoom next time
+        if let accountId = accountService.activeAccount?.accountId, data.zoomLevel > 0 {
+            saveZoom(data.zoomLevel, for: accountId)
+            initialZoom = CGFloat(data.zoomLevel)
+        }
+
         // Persist for Save/Edit actions
         lastScannedData = metrics
         logger.log(

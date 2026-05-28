@@ -1,9 +1,9 @@
 package com.greatergoods.libs.appsync.utility
 
+import com.greatergoods.libs.appsync.AppSyncLogger
 import com.greatergoods.libs.appsync.config.AppSyncConstants
 import com.greatergoods.libs.appsync.model.AppSyncResult
 import com.greatergoods.libs.appsync.strings.AppSyncStrings
-import android.util.Log
 
 /**
  * Interpreter for FS003 protocol data from smart scales.
@@ -39,13 +39,16 @@ object AppSyncFs003Interpreter {
    *
    * @param bits Array of bits (0s and 1s) from the native detector representing
    *             the FS003 protocol data pattern
+   * @param currentZoom The zoom level the camera was at when this frame was captured.
+   *                    Reported back on the result so callers can persist the user's
+   *                    last-used zoom (MA-1178). Clamped to [AppSyncConstants.MIN_ZOOM]..[AppSyncConstants.MAX_ZOOM].
    * @return [AppSyncResult] with decoded measurement values, or null if the
    *         bit array is empty or contains invalid data
    */
-  fun interpret(bits: IntArray): AppSyncResult? {
+  fun interpret(bits: IntArray, currentZoom: Int = AppSyncConstants.DEFAULT_ZOOM): AppSyncResult? {
     // Validate input
     if (bits.isEmpty()) {
-      Log.w(TAG, AppSyncStrings.EmptyBitArrayReceived)
+      AppSyncLogger.w(TAG, AppSyncStrings.EmptyBitArrayReceived)
       return null
     }
 
@@ -55,12 +58,12 @@ object AppSyncFs003Interpreter {
 
     // Validate the extracted measurements
     if (isInvalidScan(measurements)) {
-      Log.w(TAG, AppSyncStrings.InvalidScanDetected)
+      AppSyncLogger.w(TAG, AppSyncStrings.InvalidScanDetected)
       return null
     }
 
     // Create and return the final result using the factory pattern
-    return createResult(measurements, errorsFound)
+    return createResult(measurements, errorsFound, currentZoom)
   }
 
   /**
@@ -315,11 +318,13 @@ object AppSyncFs003Interpreter {
    *
    * @param measurements The extracted measurement data
    * @param errorsFound Array indicating transmission errors
+   * @param currentZoom The zoom level used during the scan (reported back on the result).
    * @return Complete [AppSyncResult] object ready for delivery
    */
   private fun createResult(
     measurements: MeasurementData,
     errorsFound: IntArray,
+    currentZoom: Int,
   ): AppSyncResult {
     var totalErrors = errorsFound.sum()
 
@@ -344,7 +349,7 @@ object AppSyncFs003Interpreter {
       waterErrors = measurements.water.errors,
       modeErrors = measurements.mode.errors,
       errors = totalErrors,
-      zoom = AppSyncConstants.DEFAULT_ZOOM,
+      zoom = currentZoom.coerceIn(AppSyncConstants.MIN_ZOOM.toInt(), AppSyncConstants.MAX_ZOOM.toInt()),
     )
   }
 

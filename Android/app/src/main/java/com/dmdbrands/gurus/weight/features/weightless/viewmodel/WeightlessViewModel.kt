@@ -131,12 +131,20 @@ constructor(
    * Handles the weightless form submission. Validates the form, shows loading, and attempts to save.
    */
   private fun onSubmit() {
+    val currentState = state.value
+    // Guard against any caller dispatching Submit with an invalid form (MA-3919:
+    // the keyboard Done action previously bypassed the disabled Save button).
+    if (currentState.isWeightlessOn && !currentState.form.isValid) {
+      AppLog.w(tag, "Weightless Submit rejected: form is invalid")
+      return
+    }
+
     dialogQueueService.showLoader(
       message = WeightlessStrings.LoaderMessage,
     )
 
-    val account = state.value.account ?: return
-    val isWeightlessOn = state.value.isWeightlessOn
+    val account = currentState.account ?: return
+    val isWeightlessOn = currentState.isWeightlessOn
 
     AppLog.d(tag, "Weightless settings: enabled=$isWeightlessOn")
     viewModelScope.launch {

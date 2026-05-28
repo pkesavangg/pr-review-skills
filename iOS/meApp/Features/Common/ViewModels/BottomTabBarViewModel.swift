@@ -71,6 +71,10 @@ class BottomTabBarViewModel: ObservableObject {
     private var hasShownSetGoalCardThisSession: Bool = false
     /// Prevents concurrent execution of checkSetGoalCardPrompt
     private var isCheckingSetGoalCard: Bool = false
+    // MARK: - Graph Scroll Hint Tracking
+    /// Keeps track if the *Scrollable Graph* discoverability hint has been shown
+    /// in this app session, so a single launch can't fire it twice.
+    private var hasShownGraphScrollHintThisSession: Bool = false
     private var notificationOnlyAlertShown: Bool {
         get {
             guard let accountId = accountService.activeAccount?.accountId else { return false }
@@ -181,6 +185,7 @@ class BottomTabBarViewModel: ObservableObject {
                 if tab == .dash {
                     Task { [weak self] in
                         await self?.checkSetGoalCardPrompt()
+                        self?.checkGraphScrollHintPrompt()
                     }
                 }
             }
