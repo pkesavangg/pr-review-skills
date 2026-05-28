@@ -185,7 +185,6 @@ class BottomTabBarViewModel: ObservableObject {
                 if tab == .dash {
                     Task { [weak self] in
                         await self?.checkSetGoalCardPrompt()
-                        self?.checkGraphScrollHintPrompt()
                     }
                 }
             }

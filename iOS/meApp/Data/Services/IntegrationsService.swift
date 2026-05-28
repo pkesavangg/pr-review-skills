@@ -203,7 +203,7 @@ final class IntegrationsService: IntegrationServiceProtocol {
         try await syncNewEntry(notification: EntryNotification(from: entry))
     }
 
-    /// Syncs a new entry to the integrated health service using an EntryNotification.
+    /// Syncs a new entry to the integrated health service using an `EntryNotification`.
     /// Used by paths where the source is not a MainActor-bound `Entry` (e.g., remote merge).
     func syncNewEntry(notification: EntryNotification) async throws {
         guard let integrationInfo = try await getStoredIntegrationData(),
@@ -215,15 +215,13 @@ final class IntegrationsService: IntegrationServiceProtocol {
 
         switch integrationInfo.type {
         case .healthKit:
-            // Delegate to HealthKit service for syncing using notification (safe cross-actor)
             try await (healthKitService ?? HealthKitService.shared).syncNewData(notification: notification)
             logger.log(
                 level: .info,
                 tag: "IntegrationService",
-                message: "Successfully synced new entry to HealthKit: \(entry.id)"
+                message: "Successfully synced new entry to HealthKit"
             )
         default:
-            // Other integrations not implemented for entry sync yet
             logger.log(
                 level: .debug,
                 tag: "IntegrationService",

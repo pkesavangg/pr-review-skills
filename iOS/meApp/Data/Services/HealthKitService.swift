@@ -649,7 +649,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
     ///   Caller must own `entry`'s `ModelContext` — we snapshot it immediately
     ///   so downstream code never reads SwiftData properties off-actor (MA-3898).
     func syncNewData(entry: Entry) async throws {
-        let snapshot = EntrySnapshot(from: entry)
+        let snapshot = entry.toSnapshot()
         let healthKitData = buildHealthKitData(from: [snapshot])
         try await hkPackage.saveData(healthKitData)
     }
@@ -683,7 +683,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
     ///   Caller must own `entry`'s `ModelContext` — we snapshot it immediately
     ///   so downstream code never reads SwiftData properties off-actor (MA-3898).
     func deleteEntry(entry: Entry) async throws -> Bool {
-        let snapshot = EntrySnapshot(from: entry)
+        let snapshot = entry.toSnapshot()
         let healthKitData = buildHealthKitData(from: [snapshot])
         try await hkPackage.deleteEntry(healthKitData)
         return true
@@ -774,7 +774,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
     // MARK: - Private Helpers ------------------------------------------------
 
     /// Fetches all entries from the local database.
-    private func fetchAllEntries() async throws -> [Entry] {
+    private func fetchAllEntries() async throws -> [EntrySnapshot] {
         do {
            let entries = try await entryService.getAllEntriesAsSnapshots()
            return entries
@@ -794,7 +794,9 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
     }
 
     /// Converts entries into `HealthKitData` payloads ready for saving.
-    private func buildHealthKitData(from entries: [Entry]) -> [HealthKitData] {
+    /// Takes `EntrySnapshot` (value type) so we never read SwiftData @Model
+    /// properties across actor boundaries — see MA-3898.
+    private func buildHealthKitData(from entries: [EntrySnapshot]) -> [HealthKitData] {
         var healthKitData: [HealthKitData] = []
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

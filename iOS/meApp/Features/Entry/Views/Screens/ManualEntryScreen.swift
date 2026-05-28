@@ -388,9 +388,8 @@ struct ManualEntryScreen: View {
                                         focusedField = nil
                                         Task {
                                             guard !entryStore.isSaving else { return }
-                                            if await entryStore.saveEntry() {
-                                                performTabSwitchAndHideKeyboard()
-                                            }
+                                            await entryStore.saveEntry()
+                                            performTabSwitchAndHideKeyboard()
                                         }
                                     }
                                 }
@@ -408,9 +407,8 @@ struct ManualEntryScreen: View {
                     ) {
                         Task {
                             focusedField = nil
-                            if await entryStore.saveEntry() {
-                                performTabSwitchAndHideKeyboard()
-                            }
+                            await entryStore.saveEntry()
+                            performTabSwitchAndHideKeyboard()
                         }
                     }
 

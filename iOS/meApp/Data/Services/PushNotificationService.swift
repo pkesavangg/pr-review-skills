@@ -179,7 +179,11 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
         do {
             try await apiRepo.updateDeviceInfo(payload)
             let modelId = deviceInfo["modelIdentifier"] ?? "unknown"
-            logger.log(level: .success, tag: tag, message: "Device info updated: model=\(payload.deviceModel) (\(modelId)), manufacturer=\(payload.deviceManufacturer), os=\(payload.deviceOSName) \(payload.deviceOSVersion), appVersion=\(payload.appVersion)")
+            let message = "Device info updated: model=\(payload.deviceModel) (\(modelId)), "
+                + "manufacturer=\(payload.deviceManufacturer), "
+                + "os=\(payload.deviceOSName) \(payload.deviceOSVersion), "
+                + "appVersion=\(payload.appVersion)"
+            logger.log(level: .success, tag: tag, message: message)
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to update device info: \(error.localizedDescription)")
             // Silently ignore network errors – will retry on next connectivity change
@@ -268,7 +272,6 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
             "deviceUuid": device.identifierForVendor?.uuidString ?? "",
             "manufacturer": "Apple",
             "model": device.model,
-            "modelIdentifier": Self.hardwareModelIdentifier(),
             "deviceOSName": device.systemName
         ]
     }

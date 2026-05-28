@@ -13,20 +13,10 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
     // MARK: - Published Properties
     @Published var state: GoalState
 
-    // MARK: - Hot-path cache
-    /// Cached resolved display unit. `convertStoredWeightToDisplay` is called
-    /// per scroll tick on the dashboard and used to read
-    /// `accountService.activeAccount?.weightSettings?.weightUnit` per call —
-    /// the optional-chain through SwiftData appeared as a non-trivial leaf in
-    /// the post-Step-8 trace (history doc §3.14 hang #7). Refreshed in
-    /// `init`, `loadGoalData()`, and `updateGoalUnit(_:)`.
-    private var cachedDisplayUnit: WeightUnit = .lb
-
     // MARK: - Initialization
     init(initialState: GoalState = GoalState()) {
         self.state = initialState
-        // Lazy: account may not yet be hydrated at init time; refreshed by loadGoalData().
-        self.cachedDisplayUnit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
+
     }
 
     // MARK: - Goal Data Loading
@@ -129,7 +119,7 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
             throw DashboardError.goalCalculationFailed("Failed to update goal progress: \(error.localizedDescription)")
         }
     }
-
+    
     /// Refreshes goal data when unit changes
     func refreshGoalDataForUnitChange() async throws {
         // Re-load goal data with new unit
@@ -293,7 +283,7 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
                 raiseOnDivideByZero: false
             ))
         let roundedWeight = roundedDecimal.doubleValue
-
+        
         // Drop trailing .0 for integers; keep one decimal otherwise
         let isInteger = abs(roundedWeight - roundedWeight.rounded()) < AppConstants.Precision.doubleEqualityEpsilon
         if isWeightlessMode {
@@ -323,8 +313,6 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
 
     func updateGoalUnit(_ unit: WeightUnit) {
         state.goalUnit = unit
-        // Keep the hot-path display-unit cache aligned.
-        cachedDisplayUnit = unit
     }
 
     func convertStoredWeightToDisplay(_ storedWeight: Int) -> Double {
@@ -341,7 +329,7 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
     }
 
     // MARK: - Weight Formatting Methods (moved from DashboardStore)
-
+    
     /// Returns the current weight unit as a string (e.g., "lbs" or "kg")
     func getUnitText() -> String {
         return accountService.activeAccount?.weightUnit.rawValue ?? "lbs"

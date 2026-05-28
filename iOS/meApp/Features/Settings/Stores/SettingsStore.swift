@@ -180,6 +180,8 @@ class SettingsStore: ObservableObject {
     @Published var showUnitPicker: Bool = false
     /// Controls the presentation of the activity level picker (sheet fallback or centered modal).
     @Published var showActivityPicker: Bool = false
+    /// Currently selected default graph range for the active account.
+    @Published var defaultGraphPeriod: TimePeriod = DefaultGraphPeriodPreference.fallback
 
     init() {
         accountService.activeAccountPublisher
@@ -1771,6 +1773,11 @@ class SettingsStore: ObservableObject {
         } else {
             showHeightPicker()
         }
+    }
+
+    /// Reloads the default graph range row to reflect the active account's stored value.
+    private func loadDefaultGraphPeriod() {
+        defaultGraphPeriod = DefaultGraphPeriodPreference.current(for: activeAccount?.accountId)
     }
 }
 

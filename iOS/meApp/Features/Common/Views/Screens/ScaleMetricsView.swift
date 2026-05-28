@@ -33,7 +33,7 @@ struct ScaleMetricsView: View {
     ]
 
     private var metricOrder: [BodyMetric] {
-        switch dashboardStore.metrics.dashboardType {
+        switch dashboardStore.state.metrics.dashboardType {
         case .dashboard4:
             return [.weight, .bmi, .bodyFat, .muscleMass, .water]
         case .dashboard12:
