@@ -13,6 +13,40 @@ final class DateTimeTools {
     static let invalidString: String = "---"
     static let invalidInt: Int? = nil
 
+    // MARK: - Cached Calendars (MA-3845 hot-path reuse)
+    /// User's current calendar, cached once. Reading `Calendar.current` per call
+    /// triggers `_LocaleICU.minimumDaysInFirstWeek.getter` — a leaf that surfaced in
+    /// the dashboard scroll-hang traces. Reuse this instance for any read-only
+    /// Calendar operation that doesn't need a custom timezone / locale / firstWeekday.
+    static let currentCalendar: Calendar = Calendar.current
+
+    /// Gregorian calendar aligned with the user's current timezone and locale.
+    /// Used instead of constructing a fresh `Calendar(identifier: .gregorian)` per call.
+    static let gregorianCalendar: Calendar = {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = .current
+        cal.locale = .current
+        return cal
+    }()
+
+    /// UTC Gregorian calendar — used for UTC date-component extraction.
+    static let gregorianUTCCalendar: Calendar = {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC") ?? .current
+        cal.locale = .current
+        return cal
+    }()
+
+    /// Sunday-start Gregorian calendar aligned with the user's current locale and
+    /// timezone. Used by Sunday-tick computations instead of constructing per call.
+    static let sundayStartCalendar: Calendar = {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = .current
+        cal.locale = .current
+        cal.firstWeekday = 1 // Sunday
+        return cal
+    }()
+
     private static let parsedDateCache: NSCache<NSString, NSDate> = {
         let cache = NSCache<NSString, NSDate>()
         cache.countLimit = 20_000

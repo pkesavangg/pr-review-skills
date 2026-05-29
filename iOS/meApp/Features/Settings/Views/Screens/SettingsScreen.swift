@@ -132,6 +132,17 @@ struct SettingsScreen: View {
                 settingsStore.updateActivityLevel(level)
             }
         }
+        .pickerSheet(
+            isPresented: $settingsStore.showDefaultGraphPeriodPicker,
+            selectedValues: [settingsStore.defaultGraphPeriod],
+            options: [TimePeriod.allCases],
+            displayValue: { $0.title },
+            title: settingsLang.defaultGraphView
+        ) { vals in
+            if let period = vals.first {
+                settingsStore.updateDefaultGraphPeriod(period)
+            }
+        }
     }
 
     private func profileHeader() -> some View {
@@ -218,6 +229,11 @@ struct SettingsScreen: View {
                 title: settingsLang.appearance,
                 value: settingsStore.appearanceModeText,
                 chevronType: .upDown) { settingsStore.presentAppearancePicker() })
+            .listRowInsets()
+            ActionListItemView(config: ActionListItemConfig(
+                title: settingsLang.defaultGraphView,
+                value: settingsStore.defaultGraphPeriodText,
+                chevronType: .upDown) { settingsStore.presentDefaultGraphPeriodPicker() })
             .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)

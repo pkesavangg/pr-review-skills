@@ -110,7 +110,7 @@ struct StreakState: Equatable {
 // MARK: - Graph State
 struct GraphState: Equatable {
     var selectedEntry: BathScaleOperationDTO?
-    var selectedPeriod: TimePeriod = .week
+    var selectedPeriod: TimePeriod = DefaultGraphPeriodPreference.fallback
     var xScrollPosition = Date()
     var selectedWeight: Double?
     var selectedPoint: BathScaleWeightSummary?

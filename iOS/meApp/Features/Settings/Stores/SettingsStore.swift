@@ -182,6 +182,11 @@ class SettingsStore: ObservableObject {
     @Published var showActivityPicker: Bool = false
     /// Currently selected default graph range for the active account.
     @Published var defaultGraphPeriod: TimePeriod = DefaultGraphPeriodPreference.fallback
+    /// Controls the presentation of the default graph view picker (sheet fallback or centered modal).
+    @Published var showDefaultGraphPeriodPicker: Bool = false
+
+    /// Trailing detail text for the Default Graph View row.
+    var defaultGraphPeriodText: String { defaultGraphPeriod.title }
 
     init() {
         accountService.activeAccountPublisher
@@ -1778,6 +1783,33 @@ class SettingsStore: ObservableObject {
     /// Reloads the default graph range row to reflect the active account's stored value.
     private func loadDefaultGraphPeriod() {
         defaultGraphPeriod = DefaultGraphPeriodPreference.current(for: activeAccount?.accountId)
+    }
+
+    /// Presents the default graph view picker (modal on iPad < iOS18, sheet otherwise).
+    func presentDefaultGraphPeriodPicker() {
+        if useModalPicker {
+            let picker = PickerView(
+                selectedValues: [defaultGraphPeriod],
+                options: [TimePeriod.allCases],
+                displayValue: { $0.title },
+                title: SettingsStrings.defaultGraphView,
+                showCancel: false,
+                updateValues: { vals in
+                    self.notificationService.dismissModal()
+                    if let period = vals.first { self.updateDefaultGraphPeriod(period) }
+                }
+            )
+            notificationService.showModal(ModalData(presentedView: AnyView(picker)))
+        } else {
+            showDefaultGraphPeriodPicker = true
+        }
+    }
+
+    /// Persists the new default graph view for the active account.
+    /// Takes effect on the next app launch — the live dashboard tab is intentionally not retargeted here.
+    func updateDefaultGraphPeriod(_ period: TimePeriod) {
+        defaultGraphPeriod = period
+        DefaultGraphPeriodPreference.set(period, for: activeAccount?.accountId)
     }
 }
 

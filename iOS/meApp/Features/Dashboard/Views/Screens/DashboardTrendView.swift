@@ -8,7 +8,7 @@ import SwiftUI
 struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
-    @State private var localSelectedPeriod: TimePeriod = .week
+    @State private var localSelectedPeriod: TimePeriod = DefaultGraphPeriodPreference.fallback
 
     private let topContent: () -> TopContent
     private let chartFooter: () -> ChartFooter
