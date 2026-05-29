@@ -163,6 +163,7 @@ struct SettingsScreen: View {
                 router.navigate(to: .editProfile)
             })
             .listRowInsets()
+            .accessibilityIdentifier(AccessibilityID.settingsRowUserProfile)
             if settingsStore.shouldShowMyKids {
                 ActionListItemView(config: ActionListItemConfig(title: settingsLang.myKids) {
                     router.navigate(to: .myKids)
@@ -171,16 +172,19 @@ struct SettingsScreen: View {
             }
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.addEditScales) { router.navigate(to: .addEditScales) })
             .listRowInsets()
+            .accessibilityIdentifier(AccessibilityID.accountSettingsAddScalesRow)
             if settingsStore.shouldShowIntegrations {
                 ActionListItemView(config: ActionListItemConfig(title: settingsLang.integrations) {
                     router.navigate(to: .integrations)
                 })
                 .listRowInsets()
+                .accessibilityIdentifier(AccessibilityID.accountSettingsIntegrationsRow)
             }
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.changePassword) {
                 router.navigate(to: .changePassword)
             })
             .listRowInsets()
+            .accessibilityIdentifier(AccessibilityID.accountSettingsChangePasswordRow)
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
@@ -194,6 +198,7 @@ struct SettingsScreen: View {
                     value: settingsStore.unitTypeText,
                     chevronType: .upDown) { settingsStore.presentUnitPicker() })
                 .listRowInsets()
+                .accessibilityIdentifier(AccessibilityID.settingsRowUnitType)
             }
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.appPermissions) {
                 router.navigate(to: .appPermissions)
@@ -231,17 +236,20 @@ struct SettingsScreen: View {
                     router.navigate(to: .goal)
                 })
             .listRowInsets()
+            .accessibilityIdentifier(AccessibilityID.settingsRowGoalSetting)
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.activityLevel,
                 value: settingsStore.activityLevelText,
                 chevronType: .upDown) { settingsStore.presentActivityPicker() })
             .listRowInsets()
+            .accessibilityIdentifier(AccessibilityID.settingsRowActivityLevel)
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.weightless,
                 value: settingsStore.weightlessText) {
                     router.navigate(to: .weightless)
                 })
             .listRowInsets()
+            .accessibilityIdentifier(AccessibilityID.settingsRowWeightless)
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
@@ -299,6 +307,7 @@ struct SettingsScreen: View {
                     settingsStore.handleLogout()
                 })
             .listRowInsets()
+            .accessibilityIdentifier(AccessibilityID.settingsRowLogOut)
 
             if settingsStore.canShowLogOutAllItems {
                 ActionListItemView(config: ActionListItemConfig(
