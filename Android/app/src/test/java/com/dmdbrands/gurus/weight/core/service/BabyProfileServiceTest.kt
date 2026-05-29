@@ -4,6 +4,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IBabyProfileRepository
+import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.google.common.truth.Truth.assertThat
 import io.mockk.MockKAnnotations
 import io.mockk.coVerify
@@ -30,6 +31,9 @@ class BabyProfileServiceTest {
     @MockK
     private lateinit var accountRepository: IAccountRepository
 
+    @MockK(relaxUnitFun = true)
+    private lateinit var analyticsService: IAnalyticsService
+
     private lateinit var service: BabyProfileService
 
     @Before
@@ -39,7 +43,7 @@ class BabyProfileServiceTest {
             every { id } returns ACCOUNT_ID
         }
         every { accountRepository.getActiveAccount() } returns flowOf(account)
-        service = BabyProfileService(babyProfileRepository, accountRepository)
+        service = BabyProfileService(babyProfileRepository, accountRepository, analyticsService)
     }
 
     // ── observeAll ──────────────────────────────────────────────────────────────
@@ -60,7 +64,7 @@ class BabyProfileServiceTest {
     @Test
     fun `observeAll returns empty when no active account`() = runTest {
         every { accountRepository.getActiveAccount() } returns flowOf(null)
-        service = BabyProfileService(babyProfileRepository, accountRepository)
+        service = BabyProfileService(babyProfileRepository, accountRepository, analyticsService)
 
         val result = service.observeAll().first()
 
@@ -70,12 +74,13 @@ class BabyProfileServiceTest {
     // ── save ────────────────────────────────────────────────────────────────────
 
     @Test
-    fun `save delegates to repository`() = runTest {
+    fun `save delegates to repository and logs analytics`() = runTest {
         val profile = BabyProfile(id = PROFILE_ID, name = PROFILE_NAME, birthdate = null, accountId = ACCOUNT_ID)
 
         service.save(profile)
 
         coVerify { babyProfileRepository.save(profile) }
+        coVerify { analyticsService.logEvent(IAnalyticsService.Events.BABY_PROFILE_CREATED) }
     }
 
     // ── update ──────────────────────────────────────────────────────────────────
@@ -96,5 +101,24 @@ class BabyProfileServiceTest {
         service.delete(PROFILE_ID)
 
         coVerify { babyProfileRepository.delete(PROFILE_ID) }
+    }
+
+    // ── refresh ───────────────────────────────────────────────────────────────────
+
+    @Test
+    fun `refresh resolves active account and delegates to repository`() = runTest {
+        service.refresh()
+
+        coVerify { babyProfileRepository.refresh(ACCOUNT_ID) }
+    }
+
+    @Test
+    fun `refresh is a no-op when no active account`() = runTest {
+        every { accountRepository.getActiveAccount() } returns flowOf(null)
+        service = BabyProfileService(babyProfileRepository, accountRepository, analyticsService)
+
+        service.refresh()
+
+        coVerify(exactly = 0) { babyProfileRepository.refresh(any()) }
     }
 }

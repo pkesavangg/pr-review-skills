@@ -27,6 +27,7 @@ class MyKidsViewModel @Inject constructor(
     override fun onDependenciesReady() {
         observeBabies()
         loadActiveBabyId()
+        refreshBabies()
     }
 
     override fun handleIntent(intent: MyKidsIntent) {
@@ -50,6 +51,16 @@ class MyKidsViewModel @Inject constructor(
         viewModelScope.launch {
             val babyId = accountRepository.getActiveBabyId()
             handleIntent(MyKidsIntent.SetActiveBabyId(babyId))
+        }
+    }
+
+    private fun refreshBabies() {
+        viewModelScope.launch {
+            try {
+                babyProfileService.refresh()
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Failed to refresh baby profiles", e)
+            }
         }
     }
 
