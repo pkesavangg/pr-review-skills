@@ -488,6 +488,41 @@ class UserDataStore @Inject constructor(
     getData().accountsMap[accountId]?.notificationAlertShown ?: false
 
   /**
+   * Emits the saved selected product type (raw string) for the active account.
+   * Empty string means the user has never explicitly picked.
+   */
+  val selectedProductTypeForCurrentAccountFlow: Flow<String> = dataFlow.map { prefs ->
+    prefs.accountsMap.values.firstOrNull { it.isActive }?.selectedProductType.orEmpty()
+  }
+
+  /** Emits the saved baby profile id for the active account, or null if blank. */
+  val selectedBabyProfileIdForCurrentAccountFlow: Flow<String?> = dataFlow.map { prefs ->
+    prefs.accountsMap.values.firstOrNull { it.isActive }
+      ?.selectedBabyProfileId
+      ?.ifBlank { null }
+  }
+
+  /** Persist the picked product type against [accountId]. */
+  suspend fun setSelectedProductType(accountId: String, productType: String) {
+    val current = getData()
+    val account = current.accountsMap[accountId] ?: return
+    val updated = current.toBuilder()
+      .putAccounts(accountId, account.toBuilder().setSelectedProductType(productType).build())
+      .build()
+    updateData { updated }
+  }
+
+  /** Persist the baby profile id against [accountId]. Pass empty string to clear. */
+  suspend fun setSelectedBabyProfileId(accountId: String, profileId: String) {
+    val current = getData()
+    val account = current.accountsMap[accountId] ?: return
+    val updated = current.toBuilder()
+      .putAccounts(accountId, account.toBuilder().setSelectedBabyProfileId(profileId).build())
+      .build()
+    updateData { updated }
+  }
+
+  /**
    * Sets whether the notification alert has been shown for the specified account.
    * @param accountId The account ID to update.
    * @param hasShown Whether the notification alert has been shown.

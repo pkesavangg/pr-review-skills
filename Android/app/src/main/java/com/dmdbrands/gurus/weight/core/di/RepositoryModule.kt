@@ -23,7 +23,6 @@ import com.dmdbrands.gurus.weight.data.repository.AccountFlagRepository
 import com.dmdbrands.gurus.weight.data.repository.AccountRepository
 import com.dmdbrands.gurus.weight.data.repository.BabyProfileRepository
 import com.dmdbrands.gurus.weight.data.repository.ProductSelectionRepository
-import com.dmdbrands.gurus.weight.data.storage.datastore.ProductSelectionDataStore
 import com.dmdbrands.gurus.weight.data.storage.db.dao.BabyProfileDao
 import com.dmdbrands.gurus.weight.domain.repository.IBabyProfileRepository
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
@@ -205,10 +204,10 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideProductSelectionRepository(
-        productSelectionDataStore: ProductSelectionDataStore,
+        userDataStore: com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore,
         babyProfileDao: BabyProfileDao,
         deviceDao: DeviceDao,
-    ): IProductSelectionRepository = ProductSelectionRepository(productSelectionDataStore, babyProfileDao, deviceDao)
+    ): IProductSelectionRepository = ProductSelectionRepository(userDataStore, babyProfileDao, deviceDao)
 
     @Provides
     @Singleton

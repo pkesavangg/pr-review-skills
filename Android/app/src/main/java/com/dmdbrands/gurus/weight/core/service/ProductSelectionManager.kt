@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.core.service
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
@@ -8,6 +9,7 @@ import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 class ProductSelectionManager @Inject constructor(
@@ -29,12 +31,15 @@ class ProductSelectionManager @Inject constructor(
 
   override suspend fun loadAvailableProducts(accountId: String) {
     if (USE_SAMPLE_PRODUCTS) {
-      _availableProducts.value = listOf(
+      val sample = listOf(
         ProductSelection.MyWeight,
         ProductSelection.BloodPressure,
         ProductSelection.Baby(BabyProfile(id = "sample-1", name = "Timmy", birthdate = "2026-01-10", sex = "male", accountId = accountId)),
       )
-      AppLog.d(TAG, "Available (sample): ${_availableProducts.value}")
+      _availableProducts.value = sample
+      AppLog.d(TAG, "Available (sample): $sample")
+      _selectedProduct.value = restoreSavedSelection(sample)
+      _isSnapshotMode.value = !productSelectionRepository.observeHasUserSelected().first()
       return
     }
 
@@ -53,6 +58,27 @@ class ProductSelectionManager @Inject constructor(
 
     _availableProducts.value = products
     AppLog.d(TAG, "Available: $products")
+
+    _selectedProduct.value = restoreSavedSelection(products)
+    _isSnapshotMode.value = !productSelectionRepository.observeHasUserSelected().first()
+  }
+
+  /**
+   * Restore the user's last saved product (default MY_WEIGHT for legacy/upgraded users
+   * who never explicitly chose). Falls back to MY_WEIGHT if the saved entry no longer
+   * matches anything available. Does not write to storage — persistence happens on
+   * signup pick and on detail-dashboard card tap via [selectProduct].
+   */
+  private suspend fun restoreSavedSelection(available: List<ProductSelection>): ProductSelection {
+    val savedType = productSelectionRepository.observeSelectedProductType().first()
+    val savedBabyId = productSelectionRepository.observeSelectedBabyProfileId().first()
+    return when (savedType) {
+      ProductType.MY_WEIGHT -> available.firstOrNull { it is ProductSelection.MyWeight }
+      ProductType.BLOOD_PRESSURE -> available.firstOrNull { it is ProductSelection.BloodPressure }
+      ProductType.BABY -> available.filterIsInstance<ProductSelection.Baby>()
+        .firstOrNull { it.profile.id == savedBabyId }
+        ?: available.firstOrNull { it is ProductSelection.Baby }
+    } ?: ProductSelection.MyWeight
   }
 
   override suspend fun selectProduct(selection: ProductSelection) {

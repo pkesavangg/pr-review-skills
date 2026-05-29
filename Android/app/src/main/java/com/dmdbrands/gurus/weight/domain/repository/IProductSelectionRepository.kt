@@ -10,6 +10,8 @@ interface IProductSelectionRepository {
 
     fun observeSelectedBabyProfileId(): Flow<String?>
 
+    fun observeHasUserSelected(): Flow<Boolean>
+
     suspend fun saveSelectedProductType(productType: ProductType)
 
     suspend fun saveSelectedBabyProfileId(profileId: String?)

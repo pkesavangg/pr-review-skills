@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.data.repository
 
-import com.dmdbrands.gurus.weight.data.storage.datastore.ProductSelectionDataStore
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.data.storage.db.dao.BabyProfileDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.DeviceDao
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
@@ -8,26 +9,51 @@ import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
+/**
+ * Per-account product-selection state stored alongside the user's other account
+ * preferences in [UserDataStore]. Switching accounts naturally surfaces the
+ * other account's saved pick; signing out removes the account and its pick with it.
+ */
 class ProductSelectionRepository @Inject constructor(
-    private val productSelectionDataStore: ProductSelectionDataStore,
+    private val userDataStore: UserDataStore,
     private val babyProfileDao: BabyProfileDao,
     private val deviceDao: DeviceDao,
 ) : IProductSelectionRepository {
 
     override fun observeSelectedProductType(): Flow<ProductType> =
-        productSelectionDataStore.observeSelectedProductType()
+        userDataStore.selectedProductTypeForCurrentAccountFlow.map { raw ->
+            if (raw.isBlank()) {
+                ProductType.MY_WEIGHT
+            } else {
+                runCatching { ProductType.valueOf(raw) }.getOrDefault(ProductType.MY_WEIGHT)
+            }
+        }
 
     override fun observeSelectedBabyProfileId(): Flow<String?> =
-        productSelectionDataStore.observeSelectedBabyProfileId()
+        userDataStore.selectedBabyProfileIdForCurrentAccountFlow
+
+    override fun observeHasUserSelected(): Flow<Boolean> =
+        userDataStore.selectedProductTypeForCurrentAccountFlow.map { it.isNotBlank() }
 
     override suspend fun saveSelectedProductType(productType: ProductType) {
-        productSelectionDataStore.saveSelectedProductType(productType)
+        val accountId = userDataStore.currentAccountIdFlow.first()
+        if (accountId == null) {
+            AppLog.w(TAG, "No active account; skipping saveSelectedProductType")
+            return
+        }
+        userDataStore.setSelectedProductType(accountId, productType.name)
     }
 
     override suspend fun saveSelectedBabyProfileId(profileId: String?) {
-        productSelectionDataStore.saveSelectedBabyProfileId(profileId)
+        val accountId = userDataStore.currentAccountIdFlow.first()
+        if (accountId == null) {
+            AppLog.w(TAG, "No active account; skipping saveSelectedBabyProfileId")
+            return
+        }
+        userDataStore.setSelectedBabyProfileId(accountId, profileId.orEmpty())
     }
 
     override suspend fun getBabyProfiles(accountId: String): List<BabyProfile> =
@@ -42,4 +68,8 @@ class ProductSelectionRepository @Inject constructor(
 
     override suspend fun hasBpmDevice(accountId: String): Boolean =
         deviceDao.getDevicesByTypeWithAccount("BPM", accountId).first().isNotEmpty()
+
+    private companion object {
+        const val TAG = "ProductSelectionRepo"
+    }
 }

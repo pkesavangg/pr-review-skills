@@ -8,10 +8,12 @@ import com.google.common.truth.Truth.assertThat
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
@@ -39,7 +41,13 @@ class ProductSelectionManagerTest {
     fun setUp() {
         MockKAnnotations.init(this)
         mockkObject(AppLog)
-        io.mockk.every { AppLog.d(any(), any()) } returns Unit
+        every { AppLog.d(any(), any()) } returns Unit
+
+        // Default: no prior selection → DataStore returns MY_WEIGHT default.
+        every { productSelectionRepository.observeSelectedProductType() } returns flowOf(ProductType.MY_WEIGHT)
+        every { productSelectionRepository.observeSelectedBabyProfileId() } returns flowOf(null)
+
+        ProductSelectionManager.USE_SAMPLE_PRODUCTS = false
 
         manager = ProductSelectionManager(
             productSelectionRepository = productSelectionRepository,
@@ -108,6 +116,52 @@ class ProductSelectionManagerTest {
         manager.loadAvailableProducts(ACCOUNT_ID)
 
         assertThat(manager.availableProducts.value).doesNotContain(ProductSelection.BloodPressure)
+    }
+
+    // ── initial selection: restore from storage ──────────────────────────────
+
+    @Test
+    fun `initial selection defaults to MyWeight for legacy users with no saved choice`() = runTest {
+        coEvery { productSelectionRepository.getBabyProfiles(ACCOUNT_ID) } returns listOf(baby1)
+        coEvery { productSelectionRepository.hasBpmDevice(ACCOUNT_ID) } returns true
+
+        manager.loadAvailableProducts(ACCOUNT_ID)
+
+        assertThat(manager.selectedProduct.value).isEqualTo(ProductSelection.MyWeight)
+    }
+
+    @Test
+    fun `initial selection restores saved BloodPressure pick`() = runTest {
+        every { productSelectionRepository.observeSelectedProductType() } returns flowOf(ProductType.BLOOD_PRESSURE)
+        coEvery { productSelectionRepository.getBabyProfiles(ACCOUNT_ID) } returns emptyList()
+        coEvery { productSelectionRepository.hasBpmDevice(ACCOUNT_ID) } returns true
+
+        manager.loadAvailableProducts(ACCOUNT_ID)
+
+        assertThat(manager.selectedProduct.value).isEqualTo(ProductSelection.BloodPressure)
+    }
+
+    @Test
+    fun `initial selection restores saved Baby with matching profile id`() = runTest {
+        every { productSelectionRepository.observeSelectedProductType() } returns flowOf(ProductType.BABY)
+        every { productSelectionRepository.observeSelectedBabyProfileId() } returns flowOf(BABY_ID_2)
+        coEvery { productSelectionRepository.getBabyProfiles(ACCOUNT_ID) } returns listOf(baby1, baby2)
+        coEvery { productSelectionRepository.hasBpmDevice(ACCOUNT_ID) } returns false
+
+        manager.loadAvailableProducts(ACCOUNT_ID)
+
+        assertThat(manager.selectedProduct.value).isEqualTo(ProductSelection.Baby(baby2))
+    }
+
+    @Test
+    fun `initial selection falls back to MyWeight when saved type no longer registered`() = runTest {
+        every { productSelectionRepository.observeSelectedProductType() } returns flowOf(ProductType.BLOOD_PRESSURE)
+        coEvery { productSelectionRepository.getBabyProfiles(ACCOUNT_ID) } returns emptyList()
+        coEvery { productSelectionRepository.hasBpmDevice(ACCOUNT_ID) } returns false // BPM unregistered now
+
+        manager.loadAvailableProducts(ACCOUNT_ID)
+
+        assertThat(manager.selectedProduct.value).isEqualTo(ProductSelection.MyWeight)
     }
 
     // ── selectProduct ─────────────────────────────────────────────────────────

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -35,8 +36,19 @@ fun DashboardSnapshotScreen(
   viewModel: DashboardSnapshotViewModel = hiltViewModel(),
 ) {
   val products by viewModel.productSelectionManager.availableProducts.collectAsStateWithLifecycle()
+  val isSnapshotMode by viewModel.productSelectionManager.isSnapshotMode.collectAsStateWithLifecycle()
   val navBackStack = LocalNavBackStack.current
   val scope = rememberCoroutineScope()
+
+  // Returning user with a saved pick: skip the snapshot screen and jump straight to detail dashboard.
+  LaunchedEffect(isSnapshotMode) {
+    if (!isSnapshotMode) {
+      navBackStack.addRoute(AppRoute.Main.Dashboard, AppRoute.Home, popUpTo = AppRoute.Main.DashboardSnapshot)
+    }
+  }
+
+  // Suppress the snapshot UI when we're about to redirect — avoids a one-frame flash.
+  if (!isSnapshotMode) return
 
   AppScaffold(
     title = null,

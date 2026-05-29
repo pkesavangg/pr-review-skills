@@ -7,6 +7,7 @@ import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
@@ -50,6 +51,7 @@ constructor(
   private val accountService: IAccountService,
   private val goalService: IGoalService,
   private val analyticsService: IAnalyticsService,
+  private val productSelectionRepository: IProductSelectionRepository,
 ) : BaseIntentViewModel<SignupState, SignupIntent>(
   reducer = SignupReducer(),
 ) {
@@ -75,6 +77,7 @@ constructor(
     }
     super.handleIntent(intent)
   }
+
 
   /**
    * Triggered on every Next dispatch. When the user is on the final data
@@ -130,6 +133,9 @@ constructor(
           }
           AppLog.i(TAG, "Account created successfully")
           analyticsService.logEvent(IAnalyticsService.Events.SIGNUP_COMPLETED)
+          // Remember the first device the user picked so Entry/History and the
+          // initial dashboard land on it after FinishSignup (skipping the snapshot).
+          productSelectionRepository.saveSelectedProductType(productType)
           created
         } else {
           accountService.activeAccount.value ?: run {
