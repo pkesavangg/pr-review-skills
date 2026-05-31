@@ -7,6 +7,8 @@ import com.dmdbrands.gurus.weight.data.api.EntryApi
 import com.dmdbrands.gurus.weight.data.api.OperationsResponse
 import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryDao
 import com.dmdbrands.gurus.weight.domain.model.api.entry.ScaleApiEntry
+import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryRequest
+import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryResponse
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.repository.IEntryRepository
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertToStored
@@ -112,6 +114,18 @@ class EntryRepository @Inject constructor(
       AppLog.i("EntryRepository", "Operation sent successfully: ${operation}")
     } catch (e: Exception) {
       AppLog.e("EntryRepository", "Failed to send operation to API: ${operation}", e)
+      throw e
+    }
+  }
+
+  override suspend fun sendBatchToAPI(entries: List<UnifiedEntryRequest>): UnifiedEntryResponse {
+    try {
+      AppLog.d("EntryRepository", "Sending batch of ${entries.size} entries to /v3/entries/")
+      val response = entryApi.postEntries(entries)
+      AppLog.i("EntryRepository", "Batch sent successfully: ${response.entries.size} entries persisted")
+      return response
+    } catch (e: Exception) {
+      AppLog.e("EntryRepository", "Failed to send batch to API (size=${entries.size})", e)
       throw e
     }
   }

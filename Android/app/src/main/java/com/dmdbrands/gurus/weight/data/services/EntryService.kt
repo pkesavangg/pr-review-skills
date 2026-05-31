@@ -6,6 +6,8 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.api.HealthConnectSyncEntry
 import com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationType
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.model.api.entry.toDomainEntry
+import com.dmdbrands.gurus.weight.domain.model.api.entry.toUnifiedRequestOrNull
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry.Companion.fromScaleApiEntry
@@ -183,20 +185,39 @@ class EntryService(
             val successfulOperations = mutableListOf<Entry>()
             val failedOperations = mutableListOf<Entry>()
 
-            for (operation in unSyncedEntries) {
+            // Build a single atomic batch for POST /v3/entries/. Baby entries map to
+            // null and are skipped until Android 3 / MOB-381 wires the baby write.
+            val sendable = unSyncedEntries.mapNotNull { op ->
+                op.toUnifiedRequestOrNull()?.let { request -> op to request }
+            }
+            if (sendable.isNotEmpty()) {
                 try {
-                    entryRepository.sendOperationToAPI((operation as ScaleEntry).toScaleApiEntry())
-                    val syncedOperation = operation.updateEntry(entry = operation.entry.copy(isSynced = true))
-                    successfulOperations.add(syncedOperation)
+                    val response = entryRepository.sendBatchToAPI(sendable.map { it.second })
+                    // Whole batch succeeded — mark every sent op synced.
+                    sendable.forEach { (op, _) ->
+                        successfulOperations.add(op.updateEntry(entry = op.entry.copy(isSynced = true)))
+                    }
+                    // Persist the server-confirmed entries (with serverTimestamp) and advance the cursor.
+                    // TODO(MOB-380): the legacy GET refetch below also advances the sync cursor. When the
+                    // unified GET replaces operation/r4, drive a single sync-cursor source to avoid
+                    // skipping cross-device entries between the two timestamp values.
+                    val confirmed = response.entries.mapNotNull { it.toDomainEntry(accountId) }
+                    EntryServiceHelper.executeOperations(entryRepository, confirmed)
+                    accountRepository.updateSyncTimeStamp(response.timestamp)
                 } catch (e: Exception) {
-                    val failedOperation = operation.updateEntry(
-                        entry = operation.entry.copy(
-                            isSynced = false,
-                            attempts = operation.entry.attempts.plus(1),
-                        ),
-                    )
-                    failedOperations.add(failedOperation)
-                    AppLog.e(TAG, "Error sending operation to API", e)
+                    // Atomic failure — the whole batch is rolled back server-side; leave every
+                    // op unsynced (attempts++) so the entire batch is retried on the next sync.
+                    sendable.forEach { (op, _) ->
+                        failedOperations.add(
+                            op.updateEntry(
+                                entry = op.entry.copy(
+                                    isSynced = false,
+                                    attempts = op.entry.attempts.plus(1),
+                                ),
+                            ),
+                        )
+                    }
+                    AppLog.e(TAG, "Atomic batch send failed; whole batch left unsynced for retry", e)
                 }
             }
 

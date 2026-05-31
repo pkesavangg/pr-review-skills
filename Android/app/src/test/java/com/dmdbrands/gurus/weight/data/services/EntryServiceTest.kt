@@ -1,6 +1,8 @@
 package com.dmdbrands.gurus.weight.data.services
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryRequest
+import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryResponse
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
@@ -150,6 +152,73 @@ class EntryServiceTest {
         // Should not call entryRepository since accountId is null
         coVerify(exactly = 0) { entryRepository.getUnSynced(any()) }
     }
+
+    // -------------------------------------------------------------------------
+    // Unified atomic batch send (MOB-379)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `addEntry sends a single mixed weight+bp batch to entries endpoint`() = runTest {
+        coEvery { entryRepository.getUnSynced(testAccountId) } returns emptyList()
+        coEvery { entryRepository.getOperationCount(testAccountId) } returns 0
+        coEvery { entryRepository.getOperationsFromAPI(any()) } returns null
+        every { accountRepository.getSyncTimeStamp() } returns flowOf("")
+        val captured = mutableListOf<List<UnifiedEntryRequest>>()
+        coEvery { entryRepository.sendBatchToAPI(capture(captured)) } returns
+            UnifiedEntryResponse(entries = emptyList(), timestamp = "2024-01-01T00:00:00.000Z")
+
+        service.updateAllData(testAccountId)
+        service.addEntry(listOf(realScaleEntry(), realBpmEntry()))
+
+        val batch = captured.last()
+        assertThat(batch).hasSize(2)
+        assertThat(batch.map { it.category }).containsExactly("weight", "bp")
+        coVerify { entryRepository.sendBatchToAPI(any()) }
+    }
+
+    @Test
+    fun `atomic batch failure does not crash and is swallowed for retry`() = runTest {
+        coEvery { entryRepository.getUnSynced(testAccountId) } returns emptyList()
+        coEvery { entryRepository.getOperationCount(testAccountId) } returns 0
+        coEvery { entryRepository.getOperationsFromAPI(any()) } returns null
+        every { accountRepository.getSyncTimeStamp() } returns flowOf("")
+        coEvery { entryRepository.sendBatchToAPI(any()) } throws RuntimeException("batch failed")
+
+        // Should not throw — the whole batch is left unsynced for the next retry.
+        service.updateAllData(testAccountId)
+        service.addEntry(realScaleEntry())
+
+        coVerify { entryRepository.sendBatchToAPI(any()) }
+    }
+
+    private fun realScaleEntry() = com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry(
+        entry = com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity(
+            accountId = testAccountId,
+            entryTimestamp = "2024-01-01T10:00:00.000Z",
+            operationType = "create",
+            deviceType = "scale",
+            deviceId = "d1",
+        ),
+        scale = com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntryWithMetrics(
+            scaleEntry = com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEntity(
+                id = 0L, weight = 750.0, bodyFat = null, muscleMass = null, water = null, bmi = null, source = "manual",
+            ),
+            scaleEntryMetric = null,
+        ),
+    )
+
+    private fun realBpmEntry() = com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry(
+        entry = com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity(
+            accountId = testAccountId,
+            entryTimestamp = "2024-01-01T11:00:00.000Z",
+            operationType = "create",
+            deviceType = "bpm",
+            deviceId = "d2",
+        ),
+        bpmEntry = com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity(
+            id = 0L, systolic = 120, diastolic = 80, pulse = 72, meanArterial = "93", note = null,
+        ),
+    )
 
     // -------------------------------------------------------------------------
     // initializeGoalCardMonitoring — entry count >= 3
