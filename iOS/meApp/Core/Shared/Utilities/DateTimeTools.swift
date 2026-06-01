@@ -346,6 +346,27 @@ final class DateTimeTools {
 
     // MARK: - Helpers
 
+    /// Parses a stored date-of-birth (or similar calendar-only) string into a local-midnight `Date`
+    /// representing the same Y-M-D the server stored.
+    ///
+    /// The backend stores dob as UTC midnight ISO (e.g. `"1999-09-09T00:00:00.000Z"`) regardless of
+    /// what timezone the client sends from — it strips the time and keeps the UTC date portion.
+    /// Parsed as an instant and rendered in local time, that shifts one day earlier in any timezone
+    /// west of UTC. This helper reads the Y-M-D in UTC and rebuilds at local midnight so the
+    /// calendar day is preserved in any timezone.
+    static func parseCalendarDate(_ dateString: String) -> Date? {
+        if let date = formatter("yyyy-MM-dd").date(from: dateString) {
+            return date
+        }
+        guard let instant = parse(dateString) else { return nil }
+        var utcCal = Calendar(identifier: .gregorian)
+        utcCal.timeZone = TimeZone(secondsFromGMT: 0) ?? .current
+        let comps = utcCal.dateComponents([.year, .month, .day], from: instant)
+        var localCal = Calendar(identifier: .gregorian)
+        localCal.timeZone = .current
+        return localCal.date(from: DateComponents(year: comps.year, month: comps.month, day: comps.day))
+    }
+
     /// Attempts to parse a date string using ISO8601 and several common formats.
     /// Returns a Date if successful, or nil if parsing fails.
     static func parse(_ dateString: String) -> Date? {

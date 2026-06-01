@@ -74,6 +74,10 @@ protocol SectionViewModelProtocol: ObservableObject {
     
     // MARK: - Selection Management
     func handleChartSelection(at date: Date?)
+    /// MA-3837: applies a programmatic selection through the normal snap pipeline.
+    func applyProgrammaticSelection(at date: Date?)
+    /// MA-3977: applies a store-validated selection directly, bypassing user-input snap/range guards.
+    func applyStoreValidatedSelection(date: Date, point: BathScaleWeightSummary?)
     func clearSelection()
     
     // MARK: - Goal Chip Positioning

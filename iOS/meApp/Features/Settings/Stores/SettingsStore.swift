@@ -566,7 +566,7 @@ class SettingsStore: ObservableObject {
             editProfileForm.zipcode.value = account.zipcode ?? ""
             editProfileForm.gender.value = account.gender ?? .male
 
-            if let dobString = account.dob, let dob = DateTimeTools.parse(dobString) {
+            if let dobString = account.dob, let dob = DateTimeTools.parseCalendarDate(dobString) {
                 editProfileForm.birthday.value = dob
             }
 
@@ -1476,24 +1476,24 @@ class SettingsStore: ObservableObject {
     func handleGoalTypeChange(_ newSegment: GoalTypeSegment) {
         let newGoalTypeValue = newSegment.goalTypeValue
 
-        // Only update if the value is actually different
-        if goalForm.goalType.value != newGoalTypeValue {
-            goalForm.goalType.value = newGoalTypeValue
-            // Explicitly mark as dirty to ensure the form recognizes the change
-            goalForm.goalType.markAsDirty()
-            // Mark as touched so form is considered interacted with
-            goalForm.goalType.markAsTouched()
-        }
+        // No-op when the goal type hasn't actually changed. Otherwise an
+        // external sync of `selectedSegment` (e.g. onAppear) would falsely
+        // dirty the form and trigger the exit-confirmation alert.
+        guard goalForm.goalType.value != newGoalTypeValue else { return }
+
+        selectedSegment = newSegment
+        goalForm.goalType.value = newGoalTypeValue
+        goalForm.goalType.markAsDirty()
+        goalForm.goalType.markAsTouched()
+
         if newSegment == .loseGain {
             [goalForm.goalWeight, goalForm.currentWeight]
                 .filter { !$0.value.isEmpty }
                 .forEach { $0.markAsDirty() }
         }
 
-        // Force form validation to update computed properties
         goalForm.validate()
 
-        // Trigger UI update by sending objectWillChange
         objectWillChange.send()
     }
 

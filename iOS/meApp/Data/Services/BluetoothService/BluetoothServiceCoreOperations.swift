@@ -370,13 +370,45 @@ extension BluetoothService {
         defer { isUpdatingR4Profile = false }
 
         do {
+            // MA-3882: fast-fail when there is no active account at all, but do NOT bind it
+            // yet — the value can be replaced during the up-to-5s wait below (e.g. a rapid
+            // second settings change), so the authoritative read happens after the wait.
+            guard activeAccount != nil else {
+                throw BluetoothServiceError.noActiveAccount
+            }
+
+            // MA-3882: wait until at least one R4 scale is present in our list before pushing.
+            // Without this the SDK has an empty device list at call time and returns "false"
+            // for every scale, silently dropping the update.
+            guard await waitForR4ScaleReady(timeout: 5.0) else {
+                throw BluetoothServiceError.deviceNotConnected
+            }
+
+            // MA-3882: snapshot the scale list immediately. A concurrent scalesPublisher event
+            // can fire handleScalesUpdate with a transient empty list mid-flight, clearing
+            // bluetoothScales and making the defensive syncDevices below push an empty list —
+            // which makes updateProfile silently return "false" for every scale.
+            let scalesSnapshot = bluetoothScales
+
+            // MA-3882: re-read the account *after* the wait — a rapid second settings change
+            // may have replaced it during the poll, and pushing the pre-wait value would
+            // silently revert that newer change.
             guard let account = activeAccount else {
                 throw BluetoothServiceError.noActiveAccount
             }
             guard let userProfile = await getProfileInfo(from: account) else {
                 throw BluetoothServiceError.noProfileInfo
             }
+
+            // MA-3882: defensive re-sync from the snapshot, not the live field — see above.
+            syncDevices(scalesSnapshot)
+
             let success = try await ggBleSDK.updateProfile(profile: userProfile)
+            // MA-3882: treat an all-"false" SDK response as a failure rather than success.
+            let allFailed = !success.isEmpty && success.allSatisfy { $0.caseInsensitiveCompare("false") == .orderedSame }
+            if allFailed {
+                throw BluetoothServiceError.updateProfileFailed(BluetoothServiceError.deviceNotConnected)
+            }
             logger.log(level: .debug, tag: tag, message: "updateUserProfileForR4Scales completed: \(success)")
             return .success(success)
         } catch let error as BluetoothServiceError {
@@ -384,6 +416,29 @@ extension BluetoothService {
         } catch {
             return .failure(.updateProfileFailed(error))
         }
+    }
+
+    /// MA-3882: polls `bluetoothScales` until at least one R4 scale is present, up to `timeout`
+    /// seconds. The device list is populated asynchronously by `handleScalesUpdate`, so an explicit
+    /// profile push triggered by a settings change can race ahead of the BLE plugin's initial publish.
+    private func waitForR4ScaleReady(timeout: TimeInterval) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        let pollInterval: UInt64 = 100_000_000 // 100ms
+        while Date() < deadline {
+            if Task.isCancelled { return false }
+            let hasR4 = bluetoothScales.contains { scale in
+                if let raw = getSafeScaleType(for: scale) { return ScaleSourceType(rawValue: raw) == .btWifiR4 }
+                return false
+            }
+            if hasR4 { return true }
+            do {
+                try await Task.sleep(nanoseconds: pollInterval)
+            } catch {
+                // Cancellation: exit promptly instead of spinning until the wall-clock deadline.
+                return false
+            }
+        }
+        return false
     }
 
     func updateAccount(broadcastId: String) async -> Result<UserCreationResponse, BluetoothServiceError> {

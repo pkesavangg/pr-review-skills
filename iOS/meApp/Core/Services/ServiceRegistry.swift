@@ -118,9 +118,10 @@ class ServiceRegistry {
     /// `performAppInitialization`. Keeping `FeedService` only in the
     /// essential list closes that window. See MA-3897.
     @MainActor func registerSessionServices() {
-        DependencyContainer.shared.register(FeedService.shared)
-        DependencyContainer.shared.register(FeedService.shared as FeedServiceProtocol)
-
+        // MA-3897: FeedService is registered only in registerEssentialServices.
+        // Do NOT re-register it here — doing so reopens the logout/re-login race
+        // window where Injector<FeedService> resolves to nil and the app crashes
+        // in performAppInitialization.
         let productTypeStore = ProductTypeStore.shared
         DependencyContainer.shared.register(productTypeStore)
         DependencyContainer.shared.register(productTypeStore as ProductTypeStoreProtocol)
@@ -169,8 +170,8 @@ class ServiceRegistry {
     ///
     /// Currently a no-op — see `registerSessionServices` for context.
     nonisolated func deregisterSessionServices() {
-        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: FeedService.self))
-        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: FeedServiceProtocol.self))
+        // MA-3897: do NOT deregister FeedService here — it is an essential-tier
+        // service and tearing it down on logout caused the init crash.
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: ProductTypeStore.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: ProductTypeStoreProtocol.self))
     }
