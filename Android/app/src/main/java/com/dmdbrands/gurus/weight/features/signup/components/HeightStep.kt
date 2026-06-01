@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -18,6 +19,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppHeightPickerModal
 import com.dmdbrands.gurus.weight.features.common.components.AppInputDefaults
 import com.dmdbrands.gurus.weight.features.common.components.AppStyledCard
@@ -34,6 +37,8 @@ import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.common.composition.LocalCardAlignment
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
+import com.dmdbrands.gurus.weight.resources.AppIcons
+import androidx.compose.material3.Icon
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
@@ -60,18 +65,13 @@ fun HeightStep(
         SegmentButtonData(id = UNIT_CM_ID, label = SignupStrings.heightUnitCm),
     )
     val selectedOption = if (useMetricControl.value) unitOptions[1] else unitOptions[0]
-    val trailingUnit = if (useMetricControl.value) SignupStrings.heightUnitCm.lowercase() else "in"
-
     AppStyledCard(
         cardAlignmentType = LocalCardAlignment.current,
     ) {
         AppText(SignupStrings.heightStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
         AppText(SignupStrings.heightStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.lg)
 
-        HeightField(
-            heightControl = heightControl,
-            trailingUnit = trailingUnit,
-        )
+        HeightField(heightControl = heightControl)
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.md))
 
@@ -99,12 +99,13 @@ fun HeightStep(
 @Composable
 private fun HeightField(
     heightControl: FormControl<HeightInput>,
-    trailingUnit: String,
 ) {
     var isModalTriggered by remember { mutableStateOf(false) }
     val value = heightControl.value
     val hasValue = !value.isEmpty()
 
+    // Updated layout per MOB-258 / MA-4006 UX resolution:
+    // Placeholder label stays on the LEFT; selected value + chevron appear on the RIGHT.
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -114,15 +115,30 @@ private fun HeightField(
             .clickable { isModalTriggered = true }
             .padding(horizontal = MeTheme.spacing.md),
     ) {
+        // Left: static placeholder label — always visible
         AppText(
-            text = if (hasValue) value.getString() else SignupStrings.heightLabel.lowercase(),
-            textType = if (hasValue) TextType.Body else TextType.SubHeading,
+            text = SignupStrings.heightLabel.lowercase(),
+            textType = TextType.SubHeading,
             modifier = Modifier.align(Alignment.CenterStart),
         )
-        Box(modifier = Modifier.align(Alignment.CenterEnd)) {
-            AppText(
-                text = "($trailingUnit)",
-                textType = TextType.SubHeading,
+
+        // Right: selected value (value string already contains the unit) + dropdown chevron
+        Row(
+            modifier = Modifier.align(Alignment.CenterEnd),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
+        ) {
+            if (hasValue) {
+                AppText(
+                    text = value.getString(),
+                    textType = TextType.Body,
+                )
+            }
+            Icon(
+                painter = painterResource(AppIcons.Default.ChevronDown),
+                contentDescription = null,
+                tint = MeTheme.colorScheme.textSubheading,
+                modifier = Modifier.size(20.dp),
             )
         }
     }
