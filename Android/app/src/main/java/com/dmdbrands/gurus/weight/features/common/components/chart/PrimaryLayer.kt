@@ -17,14 +17,12 @@ import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
 import android.annotation.SuppressLint
 
 /**
- * Builds a line layer driven by [rangeProvider]. When paired with [yTransform] +
- * [alwaysUseLiveRange] = true, vico invokes the transform on series-change / animation-target
- * change and projects cached output against the live yRange — used for a secondary line that
- * shares the primary's animated Y range without per-frame recomputation.
+ * Common composable for creating line layers with connection condition.
+ * Used for both primary and secondary layers with configurable color and axis position.
  */
 @SuppressLint("RestrictedApi")
 @Composable
-private fun lineLayer(
+internal fun rememberLineLayerWithConnection(
   segment: GraphSegment,
   lineColor: Color,
   verticalAxisPosition: Axis.Position.Vertical,
@@ -64,13 +62,16 @@ private fun lineLayer(
 
   return rememberLineCartesianLayer(
     lineProvider = lineProvider,
-    verticalAxisPosition = Axis.Position.Vertical.End,
+    verticalAxisPosition = verticalAxisPosition,
     rangeProvider = rangeProvider,
     yTransform = yTransform,
     alwaysUseLiveRange = alwaysUseLiveRange,
   )
 }
 
+/**
+ * Convenience function for creating primary layer.
+ */
 @Composable
 internal fun primaryLayer(
   segment: GraphSegment,
