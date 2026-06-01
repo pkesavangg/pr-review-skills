@@ -7,6 +7,9 @@ import com.dmdbrands.gurus.weight.data.repository.EntryReadRepository
 import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryReadDao
 import com.dmdbrands.gurus.weight.domain.repository.IEntryReadRepository
 import com.dmdbrands.gurus.weight.data.api.IAccountFlagAPI
+import com.dmdbrands.gurus.weight.data.api.IReviewAPI
+import com.dmdbrands.gurus.weight.data.repository.ReviewRepository
+import com.dmdbrands.gurus.weight.domain.repository.IReviewRepository
 import com.dmdbrands.gurus.weight.data.api.IAuthAPI
 import com.dmdbrands.gurus.weight.data.api.IBodyCompAPI
 import com.dmdbrands.gurus.weight.data.api.IDeviceAPI
@@ -194,6 +197,13 @@ object RepositoryModule {
     fun provideAccountFlagRepository(
         accountFlagAPI: IAccountFlagAPI,
     ): IAccountFlagRepository = AccountFlagRepository(accountFlagAPI)
+
+    /** Provides the [IReviewRepository] for the unified review endpoint (MOB-378). */
+    @Provides
+    @Singleton
+    fun provideReviewRepository(
+        reviewAPI: IReviewAPI,
+    ): IReviewRepository = ReviewRepository(reviewAPI)
 
     @Provides
     @Singleton

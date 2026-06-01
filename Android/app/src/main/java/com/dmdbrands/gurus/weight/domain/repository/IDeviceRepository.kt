@@ -73,6 +73,20 @@ interface IDeviceRepository {
 
   suspend fun deleteDeviceFromApi(deviceId: String): Boolean
 
+  // ── Unified /v3/paired-device/ (MOB-378) ─────────────────────────────────
+
+  /** Creates a device via the unified paired-device endpoint. */
+  suspend fun createPairedDevice(device: Device, accountId: String): Device
+
+  /** Lists all paired devices from the unified endpoint, optionally filtered. */
+  suspend fun getPairedDevices(deviceType: String? = null): List<Device>
+
+  /** Updates a device via the unified paired-device endpoint. */
+  suspend fun updatePairedDevice(deviceId: String, device: Device, accountId: String): Device
+
+  /** Deletes a device via the unified paired-device endpoint (returns true on 204). */
+  suspend fun deletePairedDevice(deviceId: String): Boolean
+
   /**
    * Save scale preferences to the API.
    */
