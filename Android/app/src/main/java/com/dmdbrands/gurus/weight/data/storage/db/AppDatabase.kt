@@ -22,6 +22,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.DashboardSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.GoalSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.IntegrationsSettingsEntity
+import com.dmdbrands.gurus.weight.data.storage.db.entity.account.ProductSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.NotificationSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.StreaksSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.WeightCompSettingsEntity
@@ -66,11 +67,12 @@ import android.content.Context
     NotificationSettingsEntity::class,
     DashboardSettingsEntity::class,
     IntegrationsSettingsEntity::class,
+    ProductSettingsEntity::class,
     BabyProfileEntity::class,
     BabyEntryEntity::class,
   ],
   views = [ActiveEntryEntity::class],
-  version = 6,
+  version = 7,
   exportSchema = true,
 )
 @TypeConverters(DateConverter::class, JsonConverter::class, WeightUnitConverter::class)
@@ -253,6 +255,29 @@ abstract class AppDatabase : RoomDatabase() {
       }
     }
 
+    // Phase 2 (MOB-377): per-account product settings (productTypes + measurementUnits).
+    private val MIGRATION_6_7 = object : Migration(6, 7) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+          """
+          CREATE TABLE IF NOT EXISTS `product_settings` (
+            `accountId` TEXT NOT NULL,
+            `productTypes` TEXT NOT NULL,
+            `measurementUnits` TEXT NOT NULL,
+            `isSynced` INTEGER NOT NULL,
+            PRIMARY KEY(`accountId`),
+            FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON DELETE CASCADE
+          )
+          """.trimIndent(),
+        )
+        // Backfill existing accounts with the weight-only default so the relation is populated.
+        db.execSQL(
+          "INSERT OR IGNORE INTO `product_settings` (`accountId`, `productTypes`, `measurementUnits`, `isSynced`) " +
+            "SELECT `accountId`, '[\"weight\"]', 'metric', 0 FROM `account`",
+        )
+      }
+    }
+
     @Volatile
     private var instance: AppDatabase? = null
 
@@ -293,7 +318,7 @@ abstract class AppDatabase : RoomDatabase() {
                 }
               },
             )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
             .fallbackToDestructiveMigration(false)
             .build()
         Companion.instance = instance

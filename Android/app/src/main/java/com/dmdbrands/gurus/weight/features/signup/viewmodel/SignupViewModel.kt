@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
+import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
@@ -126,7 +127,7 @@ constructor(
     viewModelScope.launch {
       try {
         val account: Account = if (isFirstPass) {
-          val created = accountService.signup(buildSignupRequest(stateValue))
+          val created = accountService.signup(buildSignupRequest(stateValue, productType))
           if (created == null) {
             handleIntent(SignupIntent.Error("Something went wrong"))
             return@launch
@@ -191,20 +192,25 @@ constructor(
     return commonValid && deviceFieldsValid
   }
 
-  private fun buildSignupRequest(stateValue: SignupState): SignupRequest {
+  private fun buildSignupRequest(stateValue: SignupState, productType: ProductType): SignupRequest {
     val signupData: SignupData = stateValue.form.getValuesAsType()
     val controls = stateValue.form.controls
     val isMetric = signupData.useMetric
+    val weightUnit = if (isMetric) WeightUnit.KG else WeightUnit.LB
     return SignupRequest(
-      signupData.email.trim(),
-      signupData.firstName.trim(),
-      signupData.lastName.trim(),
-      signupData.sex,
-      signupData.zipcode.trim(),
-      signupData.password,
-      DateTimeValue.getDateFormatFromMilliseconds(controls.birthday.value.getTimestamp()),
-      controls.height.value.toStoredHeight(),
-      if (isMetric) WeightUnit.KG.value else WeightUnit.LB.value,
+      email = signupData.email.trim(),
+      firstName = signupData.firstName.trim(),
+      lastName = signupData.lastName.trim(),
+      gender = signupData.sex,
+      zipcode = signupData.zipcode.trim(),
+      password = signupData.password,
+      dob = DateTimeValue.getDateFormatFromMilliseconds(controls.birthday.value.getTimestamp()),
+      height = controls.height.value.toStoredHeight(),
+      weightUnit = weightUnit.value,
+      // Phase 2 (MOB-377): the account owns the first device picked; additional devices in the
+      // multi-device loop are added via account update. measurementUnits derives from the unit choice.
+      productTypes = listOf(productType.apiValue),
+      measurementUnits = MeasurementUnits.fromWeightUnit(weightUnit).value,
     )
   }
 
