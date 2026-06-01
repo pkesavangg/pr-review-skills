@@ -129,9 +129,10 @@ private fun HeightField(
             horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
         ) {
             if (hasValue) {
+                // Figma: Mobile/Heading 5 — Bold, 16px, dark (#2c2827)
                 AppText(
                     text = value.getString(),
-                    textType = TextType.Body,
+                    textType = TextType.ListTitle1,
                 )
             }
             Icon(
