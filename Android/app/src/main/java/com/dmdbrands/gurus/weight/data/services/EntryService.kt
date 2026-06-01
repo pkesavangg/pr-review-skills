@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.api.HealthConnectSyncEntry
 import com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationType
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.model.api.entry.toDomainEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry.Companion.fromScaleApiEntry
@@ -221,33 +222,26 @@ class EntryService(
                     .filter { it.entry.operationType == OperationType.CREATE.name }
                     .maxByOrNull { it.entry.entryTimestamp }
 
-            // 5. Get operations from API
+            // 5. Pull delta from unified /v3/entries/ (sync mode) — MOB-380.
+            // Falls back to legacy operation/r4 GET if the unified endpoint is unavailable.
             val operationCount = entryRepository.getOperationCount(accountId)
-            val operationsFromApi = mutableListOf<ScaleEntry>()
             try {
                 val syncTimeStamp = accountRepository.getSyncTimeStamp().first()
-                val response = entryRepository.getOperationsFromAPI(syncTimeStamp)
-                if (response == null) {
-                    AppLog.w(TAG, "No operations received from API")
-                    _isUpdating.value = false
-                    return
+                val response = entryRepository.getEntriesSync(start = syncTimeStamp)
+                val domainEntries = response.entries.mapNotNull { it.toDomainEntry(accountId) }
+                if (domainEntries.isNotEmpty()) {
+                    EntryServiceHelper.executeOperations(entryRepository, domainEntries)
                 }
-                val scaleEntries = response.operations.map { fromScaleApiEntry(it, accountId = accountId) }
-                operationsFromApi.addAll(scaleEntries)
                 accountRepository.updateSyncTimeStamp(response.timestamp)
+                AppLog.d(TAG, "Unified sync: ${domainEntries.size} entries applied, cursor=${response.timestamp}")
             } catch (e: Exception) {
-                AppLog.e(TAG, "Error getting operations from API", e)
+                AppLog.e(TAG, "Unified sync GET failed, persisting placeholders for retry", e)
                 EntryServiceHelper.executeOperations(
                     entryRepository,
                     successfulOperations,
                     userHasOperations = operationCount > 0,
                     arePlaceholders = true,
                 )
-            }
-
-            // 6. Execute operations from API
-            if (operationsFromApi.isNotEmpty()) {
-                EntryServiceHelper.executeOperations(entryRepository, operationsFromApi)
             }
 
             // 7. API sync done: update timestamp, clear loader

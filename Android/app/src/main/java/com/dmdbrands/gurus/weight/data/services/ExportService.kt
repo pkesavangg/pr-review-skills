@@ -38,6 +38,8 @@ constructor(
   private val dialogQueueService: IDialogQueueService,
   private val deviceService: GGDeviceService,
   private val logRepository: ILogRepository,
+  private val entryRepository: com.dmdbrands.gurus.weight.domain.repository.IEntryRepository,
+  @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
 ) : IExportService {
   companion object {
     private const val TAG = "ExportService"
@@ -135,6 +137,52 @@ constructor(
     } catch (e: Exception) {
       AppLog.e(TAG, "Error sending CSV to email", e)
       throw e
+    }
+  }
+
+  /**
+   * Exports entries via the unified `GET /v3/entries/csv` endpoint (MOB-380).
+   * Email mode (download=false): server sends CSV to the account's email.
+   * Download mode (download=true): streams file body and saves to MediaStore Downloads.
+   */
+  override suspend fun exportEntriesCsv(category: String?, download: Boolean) {
+    val utcOffset = getUtcOffset()
+    try {
+      val body = entryRepository.exportEntriesCsv(category = category, download = download, utcOffset = utcOffset)
+      if (download && body != null) {
+        saveCsvToDownloads(body, category)
+        AppLog.i(TAG, "exportEntriesCsv: file saved to Downloads (category=$category)")
+      } else {
+        // Email mode: server sends email; body is empty or {sent:true}
+        AppLog.i(TAG, "exportEntriesCsv: email triggered (category=$category)")
+        showExportSuccessToast()
+      }
+    } catch (e: Exception) {
+      AppLog.e(TAG, "exportEntriesCsv failed (category=$category download=$download)", e)
+      throw e
+    }
+  }
+
+  private fun saveCsvToDownloads(body: okhttp3.ResponseBody, category: String?) {
+    try {
+      val fileName = "entries${if (category != null) "_$category" else ""}.csv"
+      val contentValues = android.content.ContentValues().apply {
+        put(android.provider.MediaStore.Downloads.DISPLAY_NAME, fileName)
+        put(android.provider.MediaStore.Downloads.MIME_TYPE, "text/csv")
+        put(android.provider.MediaStore.Downloads.IS_PENDING, 1)
+      }
+      val resolver = context.contentResolver
+      val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+      if (uri != null) {
+        resolver.openOutputStream(uri)?.use { out -> body.byteStream().copyTo(out) }
+        contentValues.clear()
+        contentValues.put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
+        resolver.update(uri, contentValues, null, null)
+      }
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Failed to save CSV to Downloads", e)
+    } finally {
+      body.close()
     }
   }
 
