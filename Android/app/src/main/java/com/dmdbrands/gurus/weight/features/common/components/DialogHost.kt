@@ -31,7 +31,8 @@ enum class DialogType {
   ScaleName,
   AppsyncEntryPopup,
   SetGoalPopup,
-  IAMFeedModal
+  IAMFeedModal,
+  GraphScrollHintModal,
 }
 
 @Composable
@@ -270,6 +271,15 @@ fun DialogHost() {
             dialog.onConfirm?.invoke(babyId)
             dialogQueueViewModel.dismissCurrent()
           },
+          onDismiss = {
+            dialog.onDismiss?.invoke()
+            dialogQueueViewModel.dismissCurrent()
+          },
+        )
+      }
+
+      DialogType.GraphScrollHintModal -> {
+        com.dmdbrands.gurus.weight.features.dashboard.components.GraphScrollHintModal(
           onDismiss = {
             dialog.onDismiss?.invoke()
             dialogQueueViewModel.dismissCurrent()

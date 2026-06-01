@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.core.service
 import com.dmdbrands.gurus.weight.core.config.HttpErrorConfig
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
@@ -15,6 +16,8 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IOfflineHandlerService
 import com.dmdbrands.gurus.weight.domain.services.MaxAccountsReachedException
+import com.dmdbrands.gurus.weight.features.common.components.DialogType
+import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings.Error.LoginError
@@ -51,12 +54,15 @@ class AccountService(
   appNavigationService: IAppNavigationService,
   private val storageClearService: StorageClearService,
   private val analyticsService: IAnalyticsService,
+  private val userDataStore: UserDataStore,
   @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService),
   IAccountService {
   companion object {
     private const val MAX_ACCOUNTS = 10
     private const val TAG = "AccountService"
+    private const val GRAPH_SCROLL_HINT_PRIORITY = 1
+    private const val GRAPH_SCROLL_HINT_DELAY_MS = 1_500L
   }
 
   private var repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -841,6 +847,30 @@ class AccountService(
     }
   }
 
+  override suspend fun checkAndTriggerGraphScrollHint() {
+    try {
+      val accountId = getCurrentAccount()?.id ?: return
+      if (userDataStore.hasShownGraphScrollHintForAccount(accountId)) return
+      userDataStore.setGraphScrollHintShownForAccount(accountId, true)
+      val dialog = DialogModel.Custom(
+        contentKey = DialogType.GraphScrollHintModal,
+        params = emptyMap(),
+        customPriority = GRAPH_SCROLL_HINT_PRIORITY,
+        // Small gap after any preceding login-time modal settles before this one appears.
+        customDelayMillis = GRAPH_SCROLL_HINT_DELAY_MS,
+        dismissOnBackPress = true,
+        dismissOnClickOutside = true,
+        onDismiss = {
+          dialogQueueService.dismissCurrent()
+        },
+      )
+      dialogQueueService.showDialog(dialog)
+      AppLog.d(TAG, "Queued graph scroll hint modal for account $accountId")
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Failed to check graph scroll hint trigger", e.toString())
+    }
+  }
+
   /**
    * Extension function to sort accounts: active account first, then others by lastActiveTime descending.
    */
@@ -868,10 +898,6 @@ class AccountService(
   override suspend fun emitNavigateBackFromMyAccounts() {
     appNavigationService.emitAuthEvent(AuthState.NavigateBackFromMyAccounts)
     AppLog.d(TAG, "Emitted NavigateBackFromMyAccounts event")
-  }
-
-  override suspend fun checkAndTriggerGraphScrollHint() {
-    // Stub: graph scroll hint feature (MA-3850) — implemented post-merge.
   }
 
   private fun showNoNetworkErrorToast() {
