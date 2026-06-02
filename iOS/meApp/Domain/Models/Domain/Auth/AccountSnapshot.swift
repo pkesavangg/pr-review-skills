@@ -21,6 +21,9 @@ struct AccountSnapshot: Equatable, Sendable {
     let lastActiveTime: String?
     let isSynced: Bool
     let productTypes: [String]
+    /// Preferred measurement units ("metric", "imperialLbOz", "imperialLbDecimal").
+    /// Defaulted so existing call sites that predate the multi-product API stay source-compatible.
+    var measurementUnits: String?
 
     // MARK: - Flattened from WeightCompSettings
     let weightUnit: WeightUnit

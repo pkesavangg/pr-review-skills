@@ -684,7 +684,8 @@ final class SignupStore: ObservableObject {
             dob: formattedDOB,
             weightUnit: signupForm.useMetric.value ? .kg : .lb,
             height: signupForm.height.value,
-            activityLevel: .normal
+            activityLevel: .normal,
+            productTypes: signupForm.productTypes
         )
     }
     

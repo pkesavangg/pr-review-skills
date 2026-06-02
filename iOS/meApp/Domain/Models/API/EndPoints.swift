@@ -31,6 +31,8 @@ enum Endpoint {
     case updateDashboardMetrics
     case updateProgressMetrics
     case updateNotifications
+    case updateMeasurementUnits
+    case emailCheck
     case updateDeviceInfo
     case operations(startTimestamp: String?)
     case operationsR4(startTimestamp: String?)
@@ -90,6 +92,10 @@ enum Endpoint {
             return request(path: "/account/progress-metrics")
         case .updateNotifications:
             return request(path: "/account/notification")
+        case .updateMeasurementUnits:
+            return request(path: "/account/measurement-units")
+        case .emailCheck:
+            return request(path: "/account/email-check")
         case .updateDeviceInfo:
             return request(path: "/account/device/")
         case .operations(let startTimestamp):

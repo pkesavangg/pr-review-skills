@@ -1005,7 +1005,9 @@ final class AccountMigrationService { // swiftlint:disable:this type_body_length
             isMFPOn: ionicData.isMFPOn,
             isMFPValid: ionicData.isMFPValid,
             isHealthKitOn: ionicData.isHealthKitOn,
-            isHealthConnectOn: ionicData.isHealthConnectOn
+            isHealthConnectOn: ionicData.isHealthConnectOn,
+            productTypes: nil,
+            measurementUnits: nil
         )
 
         // Create Account from DTO

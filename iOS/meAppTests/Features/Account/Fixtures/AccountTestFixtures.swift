@@ -57,7 +57,9 @@ enum AccountTestFixtures {
     static func makeAccountDTO(
         id: String = "100",
         email: String = "user@example.com",
-        firstName: String = "First"
+        firstName: String = "First",
+        productTypes: [String]? = nil,
+        measurementUnits: String? = nil
     ) -> AccountDTO {
         AccountDTO(
             id: id,
@@ -89,7 +91,9 @@ enum AccountTestFixtures {
             isMFPOn: false,
             isMFPValid: false,
             isHealthKitOn: false,
-            isHealthConnectOn: false
+            isHealthConnectOn: false,
+            productTypes: productTypes,
+            measurementUnits: measurementUnits
         )
     }
 
@@ -127,6 +131,7 @@ enum AccountTestFixtures {
         lastActiveTime: String? = nil,
         isSynced: Bool = true,
         productTypes: [String] = [],
+        measurementUnits: String? = nil,
         weightUnit: WeightUnit = .kg,
         weightHeight: String = "170",
         activityLevel: ActivityLevel? = .normal,
@@ -171,6 +176,7 @@ enum AccountTestFixtures {
             lastActiveTime: lastActiveTime,
             isSynced: isSynced,
             productTypes: productTypes,
+            measurementUnits: measurementUnits,
             weightUnit: weightUnit,
             weightHeight: weightHeight,
             activityLevel: activityLevel,
