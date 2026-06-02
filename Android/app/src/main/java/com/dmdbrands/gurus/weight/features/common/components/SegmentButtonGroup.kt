@@ -34,6 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -259,6 +261,8 @@ private fun <T> SegmentButtonItem(
   Box(
     modifier = modifier
       .height(intrinsicSize = IntrinsicSize.Max)
+      // Exposes active segment as `selected` for E2E (MOB-399). Metadata-only.
+      .semantics { selected = isSelected }
       .clickable(
         indication = null,
         interactionSource = remember { MutableInteractionSource() },

@@ -62,6 +62,8 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
                 .zIndex(1)
                 .id(segment)
                 .accessibilityIdentifier(accessibilityIdentifierProvider?(segment) ?? "")
+                // Exposes active segment as `selected` for E2E (MOB-399). Metadata-only.
+                .accessibilityAddTraits(selectedSegment == segment ? .isSelected : [])
             }
         }
         .onPreferenceChange(SegmentWidthPreferenceKey.self) { newWidths in
@@ -92,7 +94,7 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
         )
         .clipShape(RoundedRectangle(cornerRadius: .radiusMD))
     }
-    
+
     /// Renders the label with the uniform-scaling font when opted in, otherwise the default heading5.
     @ViewBuilder
     private func labelText(for segment: T) -> some View {
