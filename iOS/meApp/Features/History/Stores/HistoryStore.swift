@@ -57,6 +57,13 @@ final class HistoryStore: ObservableObject {
         return false
     }
 
+    /// The baby id of the current selection, or `nil` when a non-baby product is selected.
+    /// Used to scope unified `/v3/entries/` reads and CSV export to a single baby.
+    private var selectedBabyId: String? {
+        if case .baby(let profile) = productTypeStore.selectedItem { return profile.id }
+        return nil
+    }
+
     // MARK: - UI Flags
     @Published var isEmptyState: Bool = false
 
@@ -464,7 +471,8 @@ final class HistoryStore: ObservableObject {
             let page = try await entryService.fetchEntriesPage(
                 cursor: nextCursor,
                 limit: EntriesPagination.defaultLimit,
-                category: category
+                category: category,
+                babyId: selectedBabyId
             )
             pagedEntries.append(contentsOf: page.entries)
             nextCursor = page.nextCursor
@@ -480,7 +488,7 @@ final class HistoryStore: ObservableObject {
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.sendingCsv))
             do {
-                try await entryService.exportCSV(category: productTypeStore.selectedItem.entriesCategory)
+                try await entryService.exportCSV(category: productTypeStore.selectedItem.entriesCategory, babyId: selectedBabyId)
                 notificationService.showToast(ToastModel(message: toastLang.csvExported))
             } catch {
                 logger.log(level: .error, tag: tag, message: "CSV export failed:", data: error.localizedDescription)

@@ -45,6 +45,66 @@ struct UnifiedEntryResult: Codable, Equatable {
     let diastolic: Int?
     let pulse: Int?
     let note: String?
+
+    // MARK: - Baby fields (MOB-386)
+    let babyId: String?
+    /// Baby entry sub-type (`weight`, `measureLength`).
+    let entryType: String?
+    let babyWeightDecigrams: Int?
+    let babyLengthMillimeters: Int?
+    let entryNote: String?
+
+    /// Explicit member-wise initializer. Baby fields default to `nil` so the many existing
+    /// weight/BP call sites (and decoders) need not supply them.
+    init(
+        category: String?,
+        entryId: String?,
+        operationType: String?,
+        entryTimestamp: String?,
+        serverTimestamp: String?,
+        source: String?,
+        weight: Int?,
+        bodyFat: Int?,
+        muscleMass: Int?,
+        water: Int?,
+        bmi: Int?,
+        boneMass: Int?,
+        impedance: Int?,
+        unit: String?,
+        systolic: Int?,
+        diastolic: Int?,
+        pulse: Int?,
+        note: String?,
+        babyId: String? = nil,
+        entryType: String? = nil,
+        babyWeightDecigrams: Int? = nil,
+        babyLengthMillimeters: Int? = nil,
+        entryNote: String? = nil
+    ) {
+        self.category = category
+        self.entryId = entryId
+        self.operationType = operationType
+        self.entryTimestamp = entryTimestamp
+        self.serverTimestamp = serverTimestamp
+        self.source = source
+        self.weight = weight
+        self.bodyFat = bodyFat
+        self.muscleMass = muscleMass
+        self.water = water
+        self.bmi = bmi
+        self.boneMass = boneMass
+        self.impedance = impedance
+        self.unit = unit
+        self.systolic = systolic
+        self.diastolic = diastolic
+        self.pulse = pulse
+        self.note = note
+        self.babyId = babyId
+        self.entryType = entryType
+        self.babyWeightDecigrams = babyWeightDecigrams
+        self.babyLengthMillimeters = babyLengthMillimeters
+        self.entryNote = entryNote
+    }
 }
 
 // MARK: - Legacy DTO Bridging (MOB-385)
@@ -82,7 +142,11 @@ extension UnifiedEntryResult {
             visceralFatLevel: nil,
             water: water.map(Double.init),
             weight: weight.map(Double.init),
-            note: note
+            // Baby read entries arrive per sub-type; carry whichever measurement is present.
+            babyId: babyId,
+            babyWeight: babyWeightDecigrams.map(Double.init),
+            babyLength: babyLengthMillimeters.map(Double.init),
+            note: entryNote ?? note
         )
     }
 
@@ -106,7 +170,10 @@ extension UnifiedEntryResult {
             systolic: dto.systolic.map { Int($0) },
             diastolic: dto.diastolic.map { Int($0) },
             pulse: dto.pulse.map { Int($0) },
-            note: dto.note
+            note: dto.note,
+            babyId: dto.babyId,
+            babyWeightDecigrams: dto.babyWeight.map { Int($0) },
+            babyLengthMillimeters: dto.babyLength.map { Int($0) }
         )
     }
 

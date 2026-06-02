@@ -134,9 +134,10 @@ final class MockEntryService: EntryServiceProtocol {
         )
     }
     func getStreak(entryType: EntryType) async throws -> Streak { Streak(current: 0, max: 0) }
-    func exportCSV(category: String?) async throws {
+    func exportCSV(category: String?, babyId: String?) async throws {
         exportCSVCalls += 1
         lastExportCSVCategory = category
+        lastExportCSVBabyId = babyId
         _ = try exportCSVResult.get()
     }
 
@@ -147,13 +148,16 @@ final class MockEntryService: EntryServiceProtocol {
     private(set) var lastFetchEntriesPageCursor: String?
     private(set) var lastFetchEntriesPageLimit: Int?
     private(set) var lastFetchEntriesPageCategory: String?
+    private(set) var lastFetchEntriesPageBabyId: String?
     private(set) var lastExportCSVCategory: String?
+    private(set) var lastExportCSVBabyId: String?
 
-    func fetchEntriesPage(cursor: String?, limit: Int, category: String?) async throws -> EntriesPage {
+    func fetchEntriesPage(cursor: String?, limit: Int, category: String?, babyId: String?) async throws -> EntriesPage {
         fetchEntriesPageCalls += 1
         lastFetchEntriesPageCursor = cursor
         lastFetchEntriesPageLimit = limit
         lastFetchEntriesPageCategory = category
+        lastFetchEntriesPageBabyId = babyId
         if let fetchEntriesPageError { throw fetchEntriesPageError }
         guard !fetchEntriesPageResults.isEmpty else { return .empty }
         return fetchEntriesPageResults.removeFirst()

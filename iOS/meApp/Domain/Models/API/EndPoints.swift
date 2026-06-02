@@ -38,7 +38,7 @@ enum Endpoint {
     case operationsR4(startTimestamp: String?)
     case submitOperation
     case submitEntries
-    case entries(start: String?, cursor: String?, limit: Int?, category: String?)
+    case entries(start: String?, cursor: String?, limit: Int?, category: String?, babyId: String?)
     case entriesCSV(category: String?, babyId: String?, download: Bool?, utcOffset: Int?, entryType: String?)
     case operationsCSV(utcOffset: Int?, download: Bool?)
     case operationsR4CSV(utcOffset: Int?, download: Bool?)
@@ -52,6 +52,8 @@ enum Endpoint {
     case pairedScaleInfo(String)
     case pairedDevice(deviceType: String?)
     case pairedDeviceId(String)
+    case baby
+    case babyId(String)
     case review
     case scaleR4Preference
     case integrationProvider(String) 
@@ -122,10 +124,10 @@ enum Endpoint {
             return request(path: "/operation")
         case .submitEntries:
             return request(path: "/entries/")
-        case .entries(let start, let cursor, let limit, let category):
+        case .entries(let start, let cursor, let limit, let category, let babyId):
             // GET /v3/entries/ — sync mode (?start=) or cursor pagination (?cursor=&limit=),
-            // optionally scoped to a single product via ?category=. Omitted params fall back
-            // to server defaults (limit 20, all categories).
+            // optionally scoped to a single product via ?category= and a single baby via
+            // ?babyId=. Omitted params fall back to server defaults (limit 20, all categories).
             var components = URLComponents(string: "\(API.baseURL)/entries/")
             var queryItems: [URLQueryItem] = []
             if let start, !start.isEmpty {
@@ -139,6 +141,9 @@ enum Endpoint {
             }
             if let category, !category.isEmpty {
                 queryItems.append(URLQueryItem(name: "category", value: category))
+            }
+            if let babyId, !babyId.isEmpty {
+                queryItems.append(URLQueryItem(name: "babyId", value: babyId))
             }
             components?.queryItems = queryItems.isEmpty ? nil : queryItems
             guard let url = components?.url else { return nil }
@@ -196,6 +201,10 @@ enum Endpoint {
             return URLRequest(url: url)
         case .pairedDeviceId(let id):
             return request(path: "/paired-device/\(id)")
+        case .baby:
+            return request(path: "/baby/")
+        case .babyId(let id):
+            return request(path: "/baby/\(id)")
         case .review:
             return request(path: "/review/")
         case .scaleR4Preference:

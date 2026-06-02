@@ -106,7 +106,7 @@ struct EntryRepositoryAPITests {
 
         #expect(http.getCalls == 1)
         #expect(http.lastGetNeedsAuth == true)
-        guard case .entries(let start, let cursor, let limit, let category) = http.lastGetEndpoint else {
+        guard case .entries(let start, let cursor, let limit, let category, _) = http.lastGetEndpoint else {
             Issue.record("Expected .entries endpoint"); return
         }
         #expect(start == "2026-01-01T00:00:00Z")
@@ -129,7 +129,7 @@ struct EntryRepositoryAPITests {
             start: nil, cursor: "2026-03-01T08:00:00Z", limit: 20, category: EntryCategory.bp.rawValue
         )
 
-        guard case .entries(let start, let cursor, let limit, let category) = http.lastGetEndpoint else {
+        guard case .entries(let start, let cursor, let limit, let category, _) = http.lastGetEndpoint else {
             Issue.record("Expected .entries endpoint"); return
         }
         #expect(start == nil)

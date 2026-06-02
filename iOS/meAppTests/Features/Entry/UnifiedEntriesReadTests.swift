@@ -110,8 +110,8 @@ struct UnifiedEntriesReadTests {
         #expect(response.hasMore == nil)
     }
 
-    @Test("operations accessor: maps weight + bp but filters out baby (out of scope)")
-    func operationsFiltersBaby() {
+    @Test("operations accessor: maps weight + bp + baby categories (baby wired in MOB-386)")
+    func operationsMapsAllCategories() {
         let response = BathScaleOperationListResponse(entries: [
             UnifiedEntryResult(
                 category: EntryCategory.weight.rawValue, entryId: "1", operationType: "create",
@@ -134,10 +134,10 @@ struct UnifiedEntriesReadTests {
         ])
 
         let ops = response.operations
-        #expect(ops.count == 2)
+        #expect(ops.count == 3)
         #expect(ops.contains { $0.entryType == EntryType.scale.rawValue })
         #expect(ops.contains { $0.entryType == EntryType.bpm.rawValue })
-        #expect(!ops.contains { $0.entryType == EntryType.baby.rawValue })
+        #expect(ops.contains { $0.entryType == EntryType.baby.rawValue })
     }
 
     // MARK: - EntriesCSVRequest
