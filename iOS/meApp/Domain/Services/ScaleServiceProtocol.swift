@@ -107,4 +107,37 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
     /// Synchronous variant to fetch an attached R4 scale preference by its scale ID.
     /// Must be called on main actor. Intended for synchronous call sites.
     func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference?
+
+    /// Pairs a device through the unified `/paired-device/` endpoint by mapping a `Device` model
+    /// into a `PairedDeviceRequest`. Convenience for pairing flows migrating off `/paired-scale/`.
+    /// - Parameters:
+    ///   - device: The device to pair (its connection `type` is derived from its bath-scale source type).
+    ///   - deviceType: The product hardware type (`weight_scale`/`baby_scale`/`bpm`).
+    /// - Returns: The created `PairedDeviceResponse`.
+    func pairDevice(_ device: Device, deviceType: DeviceType) async throws -> PairedDeviceResponse
+}
+
+extension ScaleServiceProtocol {
+    /// Default implementation: maps the `Device` into a `PairedDeviceRequest` and submits it via
+    /// `createPairedDevice(_:)`. The connection `type` falls back to the bath-scale source type, then
+    /// the device's stored `protocolType`, and finally `bluetooth`.
+    func pairDevice(_ device: Device, deviceType: DeviceType) async throws -> PairedDeviceResponse {
+        let connectionType = device.bathScale?.scaleType
+            ?? device.protocolType
+            ?? ScaleSourceType.bluetooth.rawValue
+        let request = PairedDeviceRequest(
+            deviceType: deviceType.serverValue,
+            type: connectionType,
+            nickname: device.nickname ?? "",
+            sku: device.sku ?? "",
+            mac: device.mac,
+            broadcastId: device.broadcastId.map { Int($0) },
+            password: device.password.map { Int($0) },
+            userNumber: device.userNumber.flatMap { Int($0) },
+            name: device.deviceName,
+            peripheralIdentifier: device.peripheralIdentifier,
+            scaleToken: device.token
+        )
+        return try await createPairedDevice(request)
+    }
 }

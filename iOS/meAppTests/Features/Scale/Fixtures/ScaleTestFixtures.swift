@@ -88,12 +88,14 @@ enum ScaleTestFixtures {
         sku: String = "R4-001",
         deviceName: String = "AccuCheck Verve Smart Scale",
         token: String = "token-1",
-        type: String = ScaleSourceType.btWifiR4.rawValue
+        type: String = ScaleSourceType.btWifiR4.rawValue,
+        deviceType: String? = nil
     ) -> ScaleDTO {
         ScaleDTO(
             broadcastId: broadcastId,
             broadcastIdString: broadcastIdString,
             createdAt: "2026-03-03T00:00:00Z",
+            deviceType: deviceType,
             id: id,
             isConnected: false,
             isDeleted: false,
@@ -113,6 +115,64 @@ enum ScaleTestFixtures {
             type: type,
             userId: accountId,
             userNumber: 0
+        )
+    }
+
+    static func makePairedDeviceRequest(
+        deviceType: String = "weight_scale",
+        type: String = "btWifiR4",
+        nickname: String = "Bathroom Scale",
+        sku: String = "0375",
+        mac: String? = "AA:BB:CC:DD:EE:FF",
+        broadcastId: Int? = 12345,
+        password: Int? = 9876,
+        userNumber: Int? = 1,
+        name: String? = "Smart Scale",
+        peripheralIdentifier: String? = "uuid-string",
+        scaleToken: String? = "wifi-token"
+    ) -> PairedDeviceRequest {
+        PairedDeviceRequest(
+            deviceType: deviceType,
+            type: type,
+            nickname: nickname,
+            sku: sku,
+            mac: mac,
+            broadcastId: broadcastId,
+            password: password,
+            userNumber: userNumber,
+            name: name,
+            peripheralIdentifier: peripheralIdentifier,
+            scaleToken: scaleToken
+        )
+    }
+
+    static func makePairedDeviceResponse(
+        id: String = "paired-1",
+        deviceType: String? = "weight_scale",
+        type: String? = "btWifiR4",
+        nickname: String? = "Bathroom Scale",
+        sku: String? = "0375",
+        mac: String? = "AA:BB:CC:DD:EE:FF",
+        broadcastId: Int? = 12345,
+        password: Int? = 9876,
+        userNumber: Int? = 1,
+        name: String? = "Smart Scale",
+        peripheralIdentifier: String? = "uuid-string",
+        createdAt: String? = "2026-05-06T10:00:00.000Z"
+    ) -> PairedDeviceResponse {
+        PairedDeviceResponse(
+            id: id,
+            deviceType: deviceType,
+            type: type,
+            nickname: nickname,
+            sku: sku,
+            mac: mac,
+            broadcastId: broadcastId,
+            password: password,
+            userNumber: userNumber,
+            name: name,
+            peripheralIdentifier: peripheralIdentifier,
+            createdAt: createdAt
         )
     }
 

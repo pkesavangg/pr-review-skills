@@ -11,11 +11,12 @@ import StoreKit
 
 /// Service responsible for handling app review prompts using StoreKit
 @MainActor
-final class AppReviewService: AppReviewHandlerProtocol, ObservableObject {
+final class AppReviewService: AppReviewHandlerProtocol, ReviewReportHandlerProtocol, ObservableObject {
     static let shared = AppReviewService()
 
     private let logger: LoggerServiceProtocol
     private let notificationHelper: NotificationHelperServiceProtocol
+    private let reviewRepository: ScaleRepositoryAPIProtocol
     private let sleepHandler: @Sendable (UInt64) async -> Void
     private let hasActiveWindowScene: @MainActor () -> Bool
     private let nativeReviewRequest: @MainActor () -> Void
@@ -27,6 +28,7 @@ final class AppReviewService: AppReviewHandlerProtocol, ObservableObject {
     init(
         logger: LoggerServiceProtocol? = nil,
         notificationHelper: NotificationHelperServiceProtocol? = nil,
+        reviewRepository: ScaleRepositoryAPIProtocol? = nil,
         reviewPromptDelay: UInt64 = UInt64(AppConstants.TimeoutsAndRetention.appReviewTriggerTimeout),
         sleepHandler: @escaping @Sendable (UInt64) async -> Void = { delayNanoseconds in
             try? await Task.sleep(nanoseconds: delayNanoseconds)
@@ -52,6 +54,7 @@ final class AppReviewService: AppReviewHandlerProtocol, ObservableObject {
     ) {
         self.logger = logger ?? LoggerService.shared
         self.notificationHelper = notificationHelper ?? NotificationHelperService.shared
+        self.reviewRepository = reviewRepository ?? ScaleAPIRepository()
         self.reviewPromptDelay = reviewPromptDelay
         self.sleepHandler = sleepHandler
         self.hasActiveWindowScene = hasActiveWindowScene
@@ -80,6 +83,41 @@ final class AppReviewService: AppReviewHandlerProtocol, ObservableObject {
         )
     }
     
+    /// Submits a review report to the unified `POST /v3/review/` endpoint.
+    /// Replaces the legacy `POST /v3/review/app` and `POST /v3/review/scale` endpoints.
+    func submitReview(
+        reviewType: ReviewType,
+        status: ReviewStatus,
+        rating: Int? = nil,
+        sku: String? = nil,
+        feedback: String? = nil,
+        flagId: String? = nil
+    ) async throws {
+        let request = ReviewRequest(
+            reviewType: reviewType,
+            status: status,
+            rating: rating,
+            sku: sku,
+            feedback: feedback,
+            flagId: flagId
+        )
+        do {
+            try await reviewRepository.submitReview(request)
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Submitted \(reviewType.rawValue) review (status=\(status.rawValue)) to /v3/review/"
+            )
+        } catch {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Failed to submit review to /v3/review/: \(error.localizedDescription)"
+            )
+            throw error
+        }
+    }
+
     /// Requests the review using StoreKit's requestReview method
     @MainActor
     private func requestReview() {

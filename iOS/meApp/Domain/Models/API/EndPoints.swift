@@ -47,6 +47,9 @@ enum Endpoint {
     case pairedScale
     case pairedScaleId(String)
     case pairedScaleInfo(String)
+    case pairedDevice(deviceType: String?)
+    case pairedDeviceId(String)
+    case review
     case scaleR4Preference
     case integrationProvider(String) 
     case integrationHealthDevice(String) 
@@ -137,6 +140,17 @@ enum Endpoint {
             return request(path: "/paired-scale/\(id)")
         case .pairedScaleInfo(let id):
             return request(path: "/paired-scale/\(id)/info")
+        case .pairedDevice(let deviceType):
+            var components = URLComponents(string: "\(API.baseURL)/paired-device/")
+            if let deviceType, !deviceType.isEmpty {
+                components?.queryItems = [URLQueryItem(name: "deviceType", value: deviceType)]
+            }
+            guard let url = components?.url else { return nil }
+            return URLRequest(url: url)
+        case .pairedDeviceId(let id):
+            return request(path: "/paired-device/\(id)")
+        case .review:
+            return request(path: "/review/")
         case .scaleR4Preference:
             return request(path: "/scale-r4/preference")
         case .integrationProvider(let provider):

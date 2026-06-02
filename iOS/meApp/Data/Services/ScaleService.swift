@@ -620,6 +620,34 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         await refreshScalesFromLocal()
     }
 
+    // MARK: - Unified Device API (Me App 2.0 — /v3/paired-device/)
+
+    func listPairedDevices(deviceType: DeviceType?) async throws -> [PairedDeviceResponse] {
+        let devices = try await remoteRepo.listPairedDevices(deviceType: deviceType?.serverValue)
+        logger.log(
+            level: .info, tag: tag,
+            message: "Fetched \(devices.count) paired device(s) from unified endpoint, filter=\(deviceType?.serverValue ?? "all")"
+        )
+        return devices
+    }
+
+    func createPairedDevice(_ request: PairedDeviceRequest) async throws -> PairedDeviceResponse {
+        let response = try await remoteRepo.createPairedDevice(request)
+        logger.log(level: .info, tag: tag, message: "Paired device \(response.id) via unified endpoint (deviceType=\(request.deviceType))")
+        return response
+    }
+
+    func updatePairedDevice(_ deviceId: String, nickname: String) async throws -> PairedDeviceResponse {
+        let response = try await remoteRepo.updatePairedDevice(deviceId, PairedDeviceUpdateRequest(nickname: nickname))
+        logger.log(level: .info, tag: tag, message: "Updated paired device \(deviceId) nickname via unified endpoint")
+        return response
+    }
+
+    func deletePairedDevice(_ deviceId: String) async throws {
+        try await remoteRepo.deletePairedDevice(deviceId)
+        logger.log(level: .info, tag: tag, message: "Deleted paired device \(deviceId) via unified endpoint")
+    }
+
     // MARK: - Internal Helpers
 
     /// Fetches all active devices from SwiftData, merges ephemeral connection state,

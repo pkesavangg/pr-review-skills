@@ -12,6 +12,24 @@ final class MockScaleRepositoryAPI: ScaleRepositoryAPIProtocol {
     var patchScaleMetaError: Error?
     var patchScalePreferenceError: Error?
 
+    // Unified Device + Review API (Me App 2.0)
+    var listPairedDevicesResult: [PairedDeviceResponse] = []
+    var createPairedDeviceResult = PairedDeviceResponse(
+        id: "paired-1", deviceType: "weight_scale", type: "btWifiR4", nickname: nil, sku: nil,
+        mac: nil, broadcastId: nil, password: nil, userNumber: nil, name: nil,
+        peripheralIdentifier: nil, createdAt: nil
+    )
+    var updatePairedDeviceResult = PairedDeviceResponse(
+        id: "paired-1", deviceType: "weight_scale", type: "btWifiR4", nickname: nil, sku: nil,
+        mac: nil, broadcastId: nil, password: nil, userNumber: nil, name: nil,
+        peripheralIdentifier: nil, createdAt: nil
+    )
+    var listPairedDevicesError: Error?
+    var createPairedDeviceError: Error?
+    var updatePairedDeviceError: Error?
+    var deletePairedDeviceError: Error?
+    var submitReviewError: Error?
+
     private(set) var listScalesCalls = 0
     private(set) var createScaleCalls = 0
     private(set) var editScaleCalls = 0
@@ -25,6 +43,18 @@ final class MockScaleRepositoryAPI: ScaleRepositoryAPIProtocol {
     private(set) var lastPatchedMetaData: ScaleMetaDataDTO?
     private(set) var lastCreatedScale: ScaleDTO?
     private(set) var lastPatchedPreference: R4ScalePreferenceDTO?
+
+    private(set) var listPairedDevicesCalls = 0
+    private(set) var createPairedDeviceCalls = 0
+    private(set) var updatePairedDeviceCalls = 0
+    private(set) var deletePairedDeviceCalls = 0
+    private(set) var submitReviewCalls = 0
+    private(set) var lastListedDeviceTypeFilter: String?
+    private(set) var lastCreatedPairedDevice: PairedDeviceRequest?
+    private(set) var lastUpdatedPairedDeviceId: String?
+    private(set) var lastUpdatedPairedDevice: PairedDeviceUpdateRequest?
+    private(set) var lastDeletedPairedDeviceId: String?
+    private(set) var lastSubmittedReview: ReviewRequest?
 
     func listScales() async throws -> [ScaleDTO] {
         listScalesCalls += 1
@@ -64,5 +94,43 @@ final class MockScaleRepositoryAPI: ScaleRepositoryAPIProtocol {
         patchScalePreferenceCalls += 1
         lastPatchedPreference = preference
         if let patchScalePreferenceError { throw patchScalePreferenceError }
+    }
+
+    // MARK: - Unified Device API (Me App 2.0)
+
+    func listPairedDevices(deviceType: String?) async throws -> [PairedDeviceResponse] {
+        listPairedDevicesCalls += 1
+        lastListedDeviceTypeFilter = deviceType
+        if let listPairedDevicesError { throw listPairedDevicesError }
+        return listPairedDevicesResult
+    }
+
+    func createPairedDevice(_ request: PairedDeviceRequest) async throws -> PairedDeviceResponse {
+        createPairedDeviceCalls += 1
+        lastCreatedPairedDevice = request
+        if let createPairedDeviceError { throw createPairedDeviceError }
+        return createPairedDeviceResult
+    }
+
+    func updatePairedDevice(_ deviceId: String, _ request: PairedDeviceUpdateRequest) async throws -> PairedDeviceResponse {
+        updatePairedDeviceCalls += 1
+        lastUpdatedPairedDeviceId = deviceId
+        lastUpdatedPairedDevice = request
+        if let updatePairedDeviceError { throw updatePairedDeviceError }
+        return updatePairedDeviceResult
+    }
+
+    func deletePairedDevice(_ deviceId: String) async throws {
+        deletePairedDeviceCalls += 1
+        lastDeletedPairedDeviceId = deviceId
+        if let deletePairedDeviceError { throw deletePairedDeviceError }
+    }
+
+    // MARK: - Unified Review API (Me App 2.0)
+
+    func submitReview(_ request: ReviewRequest) async throws {
+        submitReviewCalls += 1
+        lastSubmittedReview = request
+        if let submitReviewError { throw submitReviewError }
     }
 }
