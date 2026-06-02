@@ -394,7 +394,7 @@ struct EntryServiceExtendedTests {
         let sut = makeSUT(repo: repo, remote: remote, syncStore: syncStore)
 
         await sut.syncAllEntriesWithRemote()
-        #expect(remote.syncOperationCalls >= 1)
+        #expect(remote.submitEntriesCalls >= 1)
     }
 
     @Test("syncAllEntriesWithRemote remote fetch failure: logs error")
@@ -583,7 +583,7 @@ struct EntryServiceExtendedTests {
         let entry = EntryTestFixtures.makeEntry(timestamp: "2026-03-01T08:00:00Z", isSynced: false)
         repo.entries = [entry]
         let remote = MockEntryRepositoryAPI()
-        remote.syncOperationError = EntryTestError.remoteFailure
+        remote.submitEntriesError = EntryTestError.remoteFailure
         let syncStore = MockEntrySyncStore()
         let sut = makeSUT(repo: repo, remote: remote, syncStore: syncStore)
 

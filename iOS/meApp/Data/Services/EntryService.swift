@@ -1062,10 +1062,18 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 let operationType = operation.operationType
                 let entryTimestamp = operation.entryTimestamp
                 let currentAttempts = operation.attempts
+                let note = operation.note
                 let dto = operation.toOperationDTO()
 
+                // Map to the unified request. Baby entries are out of scope (iOS 3),
+                // so skip them without touching their sync state.
+                guard let request = UnifiedEntryRequest(from: dto, note: note) else {
+                    continue
+                }
+
                 do {
-                    try await remoteRepo.syncOperation(operation: dto)
+                    // POST /v3/entries/ — one entry per atomic batch preserves per-entry retry semantics.
+                    try await remoteRepo.submitEntries([request])
 
                     if operationType == "create" {
                         hadSuccessfulCreate = true

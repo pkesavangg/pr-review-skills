@@ -386,6 +386,34 @@ struct IntegrationsServiceTests {
         #expect(api.logHealthIntegrationCalls == 0)
     }
 
+    @Test("logHealthEntry skips non-weight (BP) entries — health log contract carries only weight")
+    func logHealthEntrySkipsNonWeightCategory() async {
+        let account = MockAccountService()
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "u@ex.com", isLoggedIn: true, isActiveAccount: true)
+        let api = MockIntegrationsAPIRepository()
+        let local = MockIntegrationRepository()
+        local.getIntegrationDataResult = IntegrationTestFixtures.makeIntegrationInfo(type: .healthKit, isIntegrated: true, assignedTo: "101")
+        let healthKit = MockHealthKitServiceForIntegrations()
+        healthKit.permissions = ["HKQuantityTypeIdentifierBodyMass"]
+
+        // A BP entry routed through the unified write path fires `entrySaved` like any other.
+        let bpDTO = BathScaleOperationDTO(
+            accountId: "101", bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
+            entryTimestamp: "2026-05-06T09:30:00Z", entryType: EntryType.bpm.rawValue, impedance: nil,
+            metabolicAge: nil, muscleMass: nil, operationType: OperationType.create.rawValue,
+            proteinPercent: nil, pulse: 72, serverTimestamp: nil, skeletalMusclePercent: nil,
+            source: "manual", subcutaneousFatPercent: nil, systolic: 120, diastolic: 80,
+            meanArterial: nil, unit: nil, visceralFatLevel: nil, water: nil, weight: nil
+        )
+        let bpNotification = EntryNotification(from: bpDTO)
+        #expect(bpNotification.entryType == EntryType.bpm.rawValue)
+
+        let sut = makeSUT(account: account, api: api, local: local, healthKit: healthKit)
+        await sut.logHealthEntry(notification: bpNotification)
+
+        #expect(api.logHealthIntegrationCalls == 0)
+    }
+
     // MARK: - Helpers
 
     private func makeSUT(

@@ -8,13 +8,16 @@ final class EntryRepositoryAPI: EntryRepositoryAPIProtocol {
         self.httpClient = httpClient ?? HTTPClient.shared
     }
 
-    func syncOperation(operation: BathScaleOperationDTO) async throws {
-        _ = try await httpClient.send(
-            .operationsR4(startTimestamp: nil),
+    @discardableResult
+    func submitEntries(_ entries: [UnifiedEntryRequest]) async throws -> UnifiedEntryResponse {
+        // POST /v3/entries/ — raw array body, mixed categories, atomic batch.
+        let response: UnifiedEntryResponse = try await httpClient.send(
+            .submitEntries,
             method: .post,
-            body: operation,
+            body: entries,
             needsAuth: true
-        ) as EmptyResponse
+        )
+        return response
     }
 
     func fetchOperations(startTimestamp: String?) async throws -> BathScaleOperationListResponse {

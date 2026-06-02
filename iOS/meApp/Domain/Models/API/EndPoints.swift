@@ -37,6 +37,7 @@ enum Endpoint {
     case operations(startTimestamp: String?)
     case operationsR4(startTimestamp: String?)
     case submitOperation
+    case submitEntries
     case operationsCSV(utcOffset: Int?, download: Bool?)
     case operationsR4CSV(utcOffset: Int?, download: Bool?)
     case flags
@@ -117,6 +118,8 @@ enum Endpoint {
             return URLRequest(url: url)
         case .submitOperation:
             return request(path: "/operation")
+        case .submitEntries:
+            return request(path: "/entries/")
         case .operationsCSV(let utcOffset, let download):
                 return csvRequest(path: "/operation/csv/", utcOffset: utcOffset, download: download)
         case .operationsR4CSV(let utcOffset, let download):

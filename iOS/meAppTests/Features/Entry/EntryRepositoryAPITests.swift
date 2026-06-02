@@ -14,47 +14,73 @@ struct EntryRepositoryAPITests {
         return (sut, http)
     }
 
-    // MARK: - syncOperation
+    // MARK: - submitEntries
 
-    @Test("syncOperation success: calls send with operationsR4(nil) endpoint POST with auth")
-    func syncOperationSuccess() async throws {
+    @Test("submitEntries success: POSTs to submitEntries endpoint with auth and returns response")
+    func submitEntriesSuccess() async throws {
         let (sut, http) = makeSUT()
-        http.sendResult = EmptyResponse()
-
-        let operation = BathScaleOperationDTO(
-            accountId: "acct-1", bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
-            entryTimestamp: "2026-03-01T08:00:00Z", entryType: nil, impedance: nil, metabolicAge: nil,
-            muscleMass: nil, operationType: "create", proteinPercent: nil, pulse: nil,
-            serverTimestamp: nil, skeletalMusclePercent: nil, source: nil,
-            subcutaneousFatPercent: nil, systolic: nil, diastolic: nil, meanArterial: nil,
-            unit: "lb", visceralFatLevel: nil, water: nil, weight: 75.0
+        http.sendResult = UnifiedEntryResponse(
+            entries: [],
+            timestamp: "2026-03-01T08:00:05Z"
         )
-        try await sut.syncOperation(operation: operation)
+
+        let request = UnifiedEntryRequest(
+            category: EntryCategory.weight.rawValue,
+            operationType: OperationType.create.rawValue,
+            entryTimestamp: "2026-03-01T08:00:00Z",
+            weight: 1723,
+            unit: "lb",
+            source: "btWifiR4"
+        )
+        let response = try await sut.submitEntries([request])
 
         #expect(http.sendCalls == 1)
         #expect(http.lastSendMethod == .post)
         #expect(http.lastSendNeedsAuth == true)
-        guard case .operationsR4(let ts) = http.lastSendEndpoint else {
-            Issue.record("Expected .operationsR4 endpoint"); return
+        guard case .submitEntries = http.lastSendEndpoint else {
+            Issue.record("Expected .submitEntries endpoint"); return
         }
-        #expect(ts == nil)
+        #expect(response.timestamp == "2026-03-01T08:00:05Z")
     }
 
-    @Test("syncOperation failure: propagates error from http client")
-    func syncOperationFailure() async throws {
+    @Test("submitEntries mixed batch: sends weight + BP entries in one atomic array body")
+    func submitEntriesMixedBatch() async throws {
+        let (sut, http) = makeSUT()
+        http.sendResult = UnifiedEntryResponse(entries: [], timestamp: "2026-03-01T08:00:05Z")
+
+        let weight = UnifiedEntryRequest(
+            category: EntryCategory.weight.rawValue,
+            operationType: OperationType.create.rawValue,
+            entryTimestamp: "2026-03-01T08:00:00Z",
+            weight: 1723
+        )
+        let bp = UnifiedEntryRequest(
+            category: EntryCategory.bp.rawValue,
+            operationType: OperationType.create.rawValue,
+            entryTimestamp: "2026-03-01T07:30:00Z",
+            systolic: 120, diastolic: 80, pulse: 72, source: "manual"
+        )
+        _ = try await sut.submitEntries([weight, bp])
+
+        let body = http.lastSendBody as? [UnifiedEntryRequest]
+        #expect(body?.count == 2)
+        #expect(body?.first?.category == EntryCategory.weight.rawValue)
+        #expect(body?.last?.category == EntryCategory.bp.rawValue)
+    }
+
+    @Test("submitEntries failure: propagates error from http client")
+    func submitEntriesFailure() async throws {
         let (sut, http) = makeSUT()
         http.sendError = HTTPError.serverError
 
-        let operation = BathScaleOperationDTO(
-            accountId: nil, bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
-            entryTimestamp: nil, entryType: nil, impedance: nil, metabolicAge: nil, muscleMass: nil,
-            operationType: nil, proteinPercent: nil, pulse: nil, serverTimestamp: nil,
-            skeletalMusclePercent: nil, source: nil, subcutaneousFatPercent: nil,
-            systolic: nil, diastolic: nil, meanArterial: nil,
-            unit: nil, visceralFatLevel: nil, water: nil, weight: nil
+        let request = UnifiedEntryRequest(
+            category: EntryCategory.weight.rawValue,
+            operationType: OperationType.create.rawValue,
+            entryTimestamp: "2026-03-01T08:00:00Z",
+            weight: 1723
         )
         await #expect(throws: HTTPError.serverError) {
-            try await sut.syncOperation(operation: operation)
+            _ = try await sut.submitEntries([request])
         }
         #expect(http.sendCalls == 1)
     }
@@ -170,16 +196,14 @@ struct EntryRepositoryAPITests {
         let (sut, http) = makeSUT()
         http.sendError = HTTPError.noInternet
 
-        let operation = BathScaleOperationDTO(
-            accountId: nil, bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
-            entryTimestamp: nil, entryType: nil, impedance: nil, metabolicAge: nil, muscleMass: nil,
-            operationType: nil, proteinPercent: nil, pulse: nil, serverTimestamp: nil,
-            skeletalMusclePercent: nil, source: nil, subcutaneousFatPercent: nil,
-            systolic: nil, diastolic: nil, meanArterial: nil,
-            unit: nil, visceralFatLevel: nil, water: nil, weight: nil
+        let request = UnifiedEntryRequest(
+            category: EntryCategory.weight.rawValue,
+            operationType: OperationType.create.rawValue,
+            entryTimestamp: "2026-03-01T08:00:00Z",
+            weight: 1723
         )
         await #expect(throws: HTTPError.noInternet) {
-            try await sut.syncOperation(operation: operation)
+            _ = try await sut.submitEntries([request])
         }
     }
 

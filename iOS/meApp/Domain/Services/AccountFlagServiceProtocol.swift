@@ -42,6 +42,7 @@ public protocol AppReviewHandlerProtocol {
 /// (Me App 2.0 — replaces `POST /v3/review/app` and `POST /v3/review/scale`).
 @MainActor
 public protocol ReviewReportHandlerProtocol {
+    // swiftlint:disable function_parameter_count
     /// Submits an app/scale/monitor review report.
     /// - Parameters:
     ///   - reviewType: `app`, `scale`, or `monitor`.
@@ -58,6 +59,7 @@ public protocol ReviewReportHandlerProtocol {
         feedback: String?,
         flagId: String?
     ) async throws
+    // swiftlint:enable function_parameter_count
 }
 
 /// Protocol for handling scale review actions triggered by account flags

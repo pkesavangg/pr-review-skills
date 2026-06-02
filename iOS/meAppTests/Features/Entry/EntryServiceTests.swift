@@ -34,10 +34,10 @@ struct EntryServiceTests {
         try await sut.saveNewEntry(entry)
 
         #expect(repo.saveEntryCalls == 1)
-        #expect(remote.syncOperationCalls == 1)
-        #expect(remote.lastSyncedOperation?.accountId == "acct-1")
-        #expect(remote.lastSyncedOperation?.weight == 1800)
-        #expect(remote.lastSyncedOperation?.source == "scale")
+        #expect(remote.submitEntriesCalls == 1)
+        #expect(remote.lastSubmittedEntry?.category == EntryCategory.weight.rawValue)
+        #expect(remote.lastSubmittedEntry?.weight == 1800)
+        #expect(remote.lastSubmittedEntry?.source == "scale")
         #expect(repo.updateEntrySyncStatusCalls == 1)
         #expect(repo.entries.count == 1)
         #expect(repo.entries.first?.isSynced == true)
@@ -64,7 +64,7 @@ struct EntryServiceTests {
             #expect(error as? EntryTestError == .localFailure)
         }
 
-        #expect(remote.syncOperationCalls == 0)
+        #expect(remote.submitEntriesCalls == 0)
         #expect(repo.entries.isEmpty)
     }
 
@@ -121,8 +121,8 @@ struct EntryServiceTests {
 
         try await sut.deleteEntry(entry)
 
-        #expect(remote.syncOperationCalls == 1)
-        #expect(remote.lastSyncedOperation?.operationType == OperationType.delete.rawValue)
+        #expect(remote.submitEntriesCalls == 1)
+        #expect(remote.lastSubmittedEntry?.operationType == OperationType.delete.rawValue)
         #expect(repo.entries.isEmpty)
         #expect(sut.dailySummaries.isEmpty)
         #expect(sut.monthlySummaries.isEmpty)
@@ -299,7 +299,7 @@ struct EntryServiceTests {
         try await sut.saveNewEntry(EntryTestFixtures.makeEntry())
 
         #expect(repo.entries.count == 1)
-        #expect(remote.syncOperationCalls == 1)
+        #expect(remote.submitEntriesCalls == 1)
         #expect(logger.messages.contains(where: { $0.contains("Failed to sync new entry to integrations") }))
     }
 
