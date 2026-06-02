@@ -181,7 +181,8 @@ final class MockHealthKitStoreEntryService: EntryServiceProtocol {
     }
 
     func getStreak(entryType: EntryType) async throws -> Streak { Streak(current: 0, max: 0) }
-    func exportCSV() async throws {}
+    func exportCSV(category: String?) async throws {}
+    func fetchEntriesPage(cursor: String?, limit: Int, category: String?) async throws -> EntriesPage { .empty }
     func createBpmEntry(_ dto: BpmOperationDTO) async throws {}
     func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {}
     func fetchBpmEntries() async throws -> [BpmOperationDTO] { [] }

@@ -60,6 +60,17 @@ final class HistoryStore: ObservableObject {
     // MARK: - UI Flags
     @Published var isEmptyState: Bool = false
 
+    // MARK: - Cursor Pagination State (Remote Read)
+    /// Accumulated entries pulled from the unified `GET /v3/entries/` cursor endpoint.
+    @Published private(set) var pagedEntries: [BathScaleOperationDTO] = []
+    /// Whether the server reported more pages beyond what has been loaded.
+    @Published private(set) var hasMorePages: Bool = false
+    /// Whether a page request is currently in flight (drives the list footer spinner).
+    @Published private(set) var isLoadingPage: Bool = false
+
+    /// The cursor for the next page request — the `entryTimestamp` of the last loaded row.
+    private var nextCursor: String?
+
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Language Strings
@@ -425,12 +436,51 @@ final class HistoryStore: ObservableObject {
         notificationService.dismissLoader()
     }
 
+    // MARK: - Cursor Pagination (Remote Read)
+
+    /// Loads the first page of remote entries for the current product selection,
+    /// resetting any previously accumulated pages.
+    func loadFirstPage() async {
+        nextCursor = nil
+        pagedEntries = []
+        hasMorePages = false
+        await loadNextPage()
+    }
+
+    /// Loads the next page of remote entries and appends it to `pagedEntries`.
+    ///
+    /// No-ops while a request is already in flight, or once the server has reported there
+    /// are no more pages (after at least one page has been fetched).
+    func loadNextPage() async {
+        guard !isLoadingPage else { return }
+        // Stop paging only after the first page; the initial call has no cursor yet.
+        guard hasMorePages || pagedEntries.isEmpty else { return }
+
+        isLoadingPage = true
+        defer { isLoadingPage = false }
+
+        do {
+            let category = productTypeStore.selectedItem.entriesCategory
+            let page = try await entryService.fetchEntriesPage(
+                cursor: nextCursor,
+                limit: EntriesPagination.defaultLimit,
+                category: category
+            )
+            pagedEntries.append(contentsOf: page.entries)
+            nextCursor = page.nextCursor
+            hasMorePages = page.hasMore
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to load entries page: \(error.localizedDescription)")
+            hasMorePages = false
+        }
+    }
+
     // MARK: - Export Data
     private func exportData() {
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.sendingCsv))
             do {
-                try await entryService.exportCSV()
+                try await entryService.exportCSV(category: productTypeStore.selectedItem.entriesCategory)
                 notificationService.showToast(ToastModel(message: toastLang.csvExported))
             } catch {
                 logger.log(level: .error, tag: tag, message: "CSV export failed:", data: error.localizedDescription)

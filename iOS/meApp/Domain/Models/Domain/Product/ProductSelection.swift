@@ -98,4 +98,10 @@ enum ProductSelection: Equatable, Hashable, Identifiable {
         case .baby: return .baby
         }
     }
+
+    /// The unified entries API `category` this selection maps to (`weight`/`bp`/`baby`).
+    /// Used to scope reads, cursor pagination, and CSV export to the active product.
+    var entriesCategory: String? {
+        EntryCategory(entryType: entryType)?.rawValue
+    }
 }

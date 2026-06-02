@@ -275,16 +275,17 @@ struct EntryServiceTests {
         #expect(logger.messages.contains(where: { $0.contains("loadDashboardData failed") }))
     }
 
-    @Test("exportCSV: uses R4 endpoint for dashboard 12 accounts")
-    func exportCSVUsesDashboardType() async throws {
+    @Test("exportCSV: calls unified CSV endpoint in email mode for the given category")
+    func exportCSVUsesUnifiedEndpoint() async throws {
         let remote = MockEntryRepositoryAPI()
         let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "entry@example.com", isActiveAccount: true, dashboardType: DashboardType.dashboard12.rawValue)
         let sut = makeSUT(remote: remote, activeAccount: account)
 
-        try await sut.exportCSV()
+        try await sut.exportCSV(category: EntryCategory.weight.rawValue)
 
         #expect(remote.exportCsvCalls == 1)
-        #expect(remote.lastExportCsvUseR4Endpoint == true)
+        #expect(remote.lastExportCsvRequest?.category == EntryCategory.weight.rawValue)
+        #expect(remote.lastExportCsvRequest?.download == false)
     }
 
     @Test("saveNewEntry integration failure: logs but still succeeds")

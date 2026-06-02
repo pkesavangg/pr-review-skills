@@ -134,9 +134,29 @@ final class MockEntryService: EntryServiceProtocol {
         )
     }
     func getStreak(entryType: EntryType) async throws -> Streak { Streak(current: 0, max: 0) }
-    func exportCSV() async throws {
+    func exportCSV(category: String?) async throws {
         exportCSVCalls += 1
+        lastExportCSVCategory = category
         _ = try exportCSVResult.get()
+    }
+
+    /// Pages returned by successive `fetchEntriesPage` calls. When exhausted, falls back to `.empty`.
+    var fetchEntriesPageResults: [EntriesPage] = []
+    var fetchEntriesPageError: Error?
+    private(set) var fetchEntriesPageCalls = 0
+    private(set) var lastFetchEntriesPageCursor: String?
+    private(set) var lastFetchEntriesPageLimit: Int?
+    private(set) var lastFetchEntriesPageCategory: String?
+    private(set) var lastExportCSVCategory: String?
+
+    func fetchEntriesPage(cursor: String?, limit: Int, category: String?) async throws -> EntriesPage {
+        fetchEntriesPageCalls += 1
+        lastFetchEntriesPageCursor = cursor
+        lastFetchEntriesPageLimit = limit
+        lastFetchEntriesPageCategory = category
+        if let fetchEntriesPageError { throw fetchEntriesPageError }
+        guard !fetchEntriesPageResults.isEmpty else { return .empty }
+        return fetchEntriesPageResults.removeFirst()
     }
 
     func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {}

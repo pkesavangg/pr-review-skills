@@ -79,6 +79,7 @@ final class Entry {
             let resolvedEntryType = dto.entryType ?? EntryType.scale.rawValue
             self.entryType = resolvedEntryType
             self.isSynced = isSynced
+            self.note = dto.note
             self.scaleEntry = BathScaleEntry(from: dto)
             self.scaleEntryMetric = BathScaleMetric(from: dto)
 

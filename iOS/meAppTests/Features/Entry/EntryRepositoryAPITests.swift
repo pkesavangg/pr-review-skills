@@ -85,106 +85,129 @@ struct EntryRepositoryAPITests {
         #expect(http.sendCalls == 1)
     }
 
-    // MARK: - fetchOperations
+    // MARK: - fetchEntries
 
-    @Test("fetchOperations success: calls get with operationsR4(nil) endpoint with auth, returns response")
-    func fetchOperationsSuccess() async throws {
+    @Test("fetchEntries sync mode: calls get with entries endpoint (start set), returns flat response")
+    func fetchEntriesSyncMode() async throws {
         let (sut, http) = makeSUT()
-        let operation = BathScaleOperationDTO(
-            accountId: "acct-1", bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
-            entryTimestamp: "2026-03-01T08:00:00Z", entryType: nil, impedance: nil, metabolicAge: nil,
-            muscleMass: nil, operationType: "create", proteinPercent: nil, pulse: nil,
-            serverTimestamp: nil, skeletalMusclePercent: nil, source: nil,
-            subcutaneousFatPercent: nil, systolic: nil, diastolic: nil, meanArterial: nil,
-            unit: "lb", visceralFatLevel: nil, water: nil, weight: 75.0
+        let entry = UnifiedEntryResult(
+            category: EntryCategory.weight.rawValue, entryId: "12345",
+            operationType: "create", entryTimestamp: "2026-03-01T08:00:00Z",
+            serverTimestamp: "2026-03-01T08:00:05Z", source: "btWifiR4",
+            weight: 1723, bodyFat: nil, muscleMass: nil, water: nil, bmi: nil,
+            boneMass: nil, impedance: nil, unit: "lb",
+            systolic: nil, diastolic: nil, pulse: nil, note: nil
         )
         http.getResult = BathScaleOperationListResponse(
-            operations: [operation],
-            timestamp: "2026-03-01T08:00:00Z"
+            entries: [entry], timestamp: "2026-03-01T08:00:10Z"
         )
 
-        let result = try await sut.fetchOperations(startTimestamp: nil)
+        let result = try await sut.fetchEntries(start: "2026-01-01T00:00:00Z", cursor: nil, limit: nil, category: nil)
 
         #expect(http.getCalls == 1)
         #expect(http.lastGetNeedsAuth == true)
-        guard case .operationsR4(let ts) = http.lastGetEndpoint else {
-            Issue.record("Expected .operationsR4 endpoint"); return
+        guard case .entries(let start, let cursor, let limit, let category) = http.lastGetEndpoint else {
+            Issue.record("Expected .entries endpoint"); return
         }
-        #expect(ts == nil)
+        #expect(start == "2026-01-01T00:00:00Z")
+        #expect(cursor == nil)
+        #expect(limit == nil)
+        #expect(category == nil)
+        #expect(result.entries.count == 1)
         #expect(result.operations.count == 1)
-        #expect(result.timestamp == "2026-03-01T08:00:00Z")
+        #expect(result.timestamp == "2026-03-01T08:00:10Z")
     }
 
-    @Test("fetchOperations with timestamp: passes startTimestamp to endpoint")
-    func fetchOperationsWithTimestamp() async throws {
+    @Test("fetchEntries cursor mode: passes cursor + limit + category and surfaces nextCursor/hasMore")
+    func fetchEntriesCursorMode() async throws {
         let (sut, http) = makeSUT()
-        http.getResult = BathScaleOperationListResponse(operations: [], timestamp: "2026-03-01T08:00:00Z")
+        http.getResult = BathScaleOperationListResponse(
+            entries: [], nextCursor: "2026-03-01T07:00:00Z", hasMore: true
+        )
 
-        _ = try await sut.fetchOperations(startTimestamp: "2026-01-01T00:00:00Z")
+        let result = try await sut.fetchEntries(
+            start: nil, cursor: "2026-03-01T08:00:00Z", limit: 20, category: EntryCategory.bp.rawValue
+        )
 
-        guard case .operationsR4(let ts) = http.lastGetEndpoint else {
-            Issue.record("Expected .operationsR4 endpoint"); return
+        guard case .entries(let start, let cursor, let limit, let category) = http.lastGetEndpoint else {
+            Issue.record("Expected .entries endpoint"); return
         }
-        #expect(ts == "2026-01-01T00:00:00Z")
+        #expect(start == nil)
+        #expect(cursor == "2026-03-01T08:00:00Z")
+        #expect(limit == 20)
+        #expect(category == EntryCategory.bp.rawValue)
+        #expect(result.nextCursor == "2026-03-01T07:00:00Z")
+        #expect(result.hasMore == true)
     }
 
-    @Test("fetchOperations empty: returns empty operations array")
-    func fetchOperationsEmpty() async throws {
+    @Test("fetchEntries empty: returns empty entries array")
+    func fetchEntriesEmpty() async throws {
         let (sut, http) = makeSUT()
-        http.getResult = BathScaleOperationListResponse(operations: [], timestamp: "2026-03-01T08:00:00Z")
+        http.getResult = BathScaleOperationListResponse(entries: [], timestamp: "2026-03-01T08:00:00Z")
 
-        let result = try await sut.fetchOperations(startTimestamp: nil)
+        let result = try await sut.fetchEntries(start: nil, cursor: nil, limit: nil, category: nil)
 
+        #expect(result.entries.isEmpty)
         #expect(result.operations.isEmpty)
     }
 
-    @Test("fetchOperations failure: propagates error from http client")
-    func fetchOperationsFailure() async throws {
+    @Test("fetchEntries failure: propagates error from http client")
+    func fetchEntriesFailure() async throws {
         let (sut, http) = makeSUT()
         http.getError = HTTPError.noInternet
 
         await #expect(throws: HTTPError.noInternet) {
-            try await sut.fetchOperations(startTimestamp: nil)
+            try await sut.fetchEntries(start: nil, cursor: nil, limit: nil, category: nil)
         }
         #expect(http.getCalls == 1)
     }
 
-    // MARK: - exportCsv
+    // MARK: - exportEntriesCSV
 
-    @Test("exportCsv R4 success: calls get with operationsR4CSV endpoint with auth")
-    func exportCsvR4Success() async throws {
+    @Test("exportEntriesCSV success: calls get with entriesCSV endpoint with auth")
+    func exportEntriesCSVSuccess() async throws {
         let (sut, http) = makeSUT()
         http.getResult = ExportResponse(sent: true)
 
-        let result = try await sut.exportCsv(useR4Endpoint: true)
+        let result = try await sut.exportEntriesCSV(
+            EntriesCSVRequest(category: EntryCategory.weight.rawValue, download: false, utcOffset: -300)
+        )
 
         #expect(http.getCalls == 1)
         #expect(http.lastGetNeedsAuth == true)
-        guard case .operationsR4CSV = http.lastGetEndpoint else {
-            Issue.record("Expected .operationsR4CSV endpoint"); return
+        guard case .entriesCSV(let category, _, let download, let utcOffset, _) = http.lastGetEndpoint else {
+            Issue.record("Expected .entriesCSV endpoint"); return
         }
+        #expect(category == EntryCategory.weight.rawValue)
+        #expect(download == false)
+        #expect(utcOffset == -300)
         #expect(result.sent == true)
     }
 
-    @Test("exportCsv legacy success: calls get with operationsCSV endpoint when useR4Endpoint is false")
-    func exportCsvLegacySuccess() async throws {
+    @Test("exportEntriesCSV download mode: forwards download flag and babyId")
+    func exportEntriesCSVDownloadMode() async throws {
         let (sut, http) = makeSUT()
         http.getResult = ExportResponse(sent: true)
 
-        _ = try await sut.exportCsv(useR4Endpoint: false)
+        _ = try await sut.exportEntriesCSV(
+            EntriesCSVRequest(category: EntryCategory.baby.rawValue, babyId: "baby-1", download: true)
+        )
 
-        guard case .operationsCSV = http.lastGetEndpoint else {
-            Issue.record("Expected .operationsCSV endpoint"); return
+        guard case .entriesCSV(let category, let babyId, let download, _, _) = http.lastGetEndpoint else {
+            Issue.record("Expected .entriesCSV endpoint"); return
         }
+        #expect(category == EntryCategory.baby.rawValue)
+        #expect(babyId == "baby-1")
+        #expect(download == true)
     }
 
-    @Test("exportCsv failure: propagates error from http client")
-    func exportCsvFailure() async throws {
+    @Test("exportEntriesCSV failure: propagates error from http client")
+    func exportEntriesCSVFailure() async throws {
         let (sut, http) = makeSUT()
         http.getError = HTTPError.serverError
 
         await #expect(throws: HTTPError.serverError) {
-            try await sut.exportCsv(useR4Endpoint: true)
+            try await sut.exportEntriesCSV(EntriesCSVRequest())
         }
         #expect(http.getCalls == 1)
     }
@@ -213,7 +236,7 @@ struct EntryRepositoryAPITests {
         http.getError = HTTPError.timeout
 
         await #expect(throws: HTTPError.timeout) {
-            try await sut.fetchOperations(startTimestamp: nil)
+            try await sut.fetchEntries(start: nil, cursor: nil, limit: nil, category: nil)
         }
     }
 
@@ -223,7 +246,7 @@ struct EntryRepositoryAPITests {
         http.getError = HTTPError.unauthorized
 
         await #expect(throws: HTTPError.unauthorized) {
-            try await sut.exportCsv(useR4Endpoint: true)
+            try await sut.exportEntriesCSV(EntriesCSVRequest())
         }
     }
 }

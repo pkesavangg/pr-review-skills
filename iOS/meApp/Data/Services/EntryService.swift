@@ -127,13 +127,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
     }
 
-    /// Reads dashboard type on MainActor to avoid crossing SwiftData model objects between executors.
-    private func getDashboardType() async -> String? {
-        await MainActor.run {
-            accountService.activeAccount?.dashboardType
-        }
-    }
-
     // MARK: - CRUD
 
     func clearAllData() async {
@@ -1008,14 +1001,18 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 lastSyncTimestamp = nil
             }
 
-            let remoteOps = try await remoteRepo.fetchOperations(startTimestamp: lastSyncTimestamp)
+            // Sync mode of the unified GET /v3/entries/ — all entries since the last sync.
+            let remoteOps = try await remoteRepo.fetchEntries(
+                start: lastSyncTimestamp, cursor: nil, limit: nil, category: nil
+            )
             let hadMergedNewCreates = await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
             let dashboardDataChanged = hadPushedCreates || hadMergedNewCreates
             if dashboardDataChanged {
                 await loadDashboardData()
             }
 
-            try await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: remoteOps.timestamp)
+            let syncTimestamp = remoteOps.timestamp ?? ISO8601DateFormatter().string(from: Date())
+            try await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: syncTimestamp)
             lastSyncTime = Date()
 
             if dashboardDataChanged {
@@ -1155,10 +1152,13 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 lastSyncTimestamp = nil
             }
 
-            let remoteOps = try await remoteRepo.fetchOperations(startTimestamp: lastSyncTimestamp)
+            let remoteOps = try await remoteRepo.fetchEntries(
+                start: lastSyncTimestamp, cursor: nil, limit: nil, category: nil
+            )
             if !remoteOps.operations.isEmpty {
                 _ = await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
-                try await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: remoteOps.timestamp)
+                let syncTimestamp = remoteOps.timestamp ?? ISO8601DateFormatter().string(from: Date())
+                try await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: syncTimestamp)
             } else {
                 try await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: ISO8601DateFormatter().string(from: Date()))
             }
@@ -1326,14 +1326,47 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     // MARK: - Export
 
-    /// Exports entries as CSV based on current dashboard type (4 or 12 metrics)
-    func exportCSV() async throws {
-        // Determine account and dashboard setting
-        guard let dashboardType = await getDashboardType() else {
+    /// Exports entries as CSV via the unified `GET /v3/entries/csv` endpoint.
+    ///
+    /// Emails the report (no `download` flag) for the given product `category`. The device's
+    /// current UTC offset is applied to the exported `Date/Time` column.
+    /// - Parameter category: The product to export (`weight`/`bp`/`baby`); `nil` exports all.
+    func exportCSV(category: String?) async throws {
+        // An active account is still required so the request is authorized.
+        guard accountService.activeAccount != nil else {
             throw AccountError.noActiveAccount
         }
-        let useR4Endpoint = dashboardType == DashboardType.dashboard12.rawValue
-        _ = try await remoteRepo.exportCsv(useR4Endpoint: useR4Endpoint)
+        let request = EntriesCSVRequest(
+            category: category,
+            download: false,
+            utcOffset: DateTimeTools.getUTCOffset()
+        )
+        _ = try await remoteRepo.exportEntriesCSV(request)
+    }
+
+    // MARK: - Cursor Pagination (Remote Read)
+
+    /// Reads a single page of entries from the unified `GET /v3/entries/` cursor mode.
+    ///
+    /// Pass `cursor = nil` for the first page; thereafter forward the returned
+    /// `EntriesPage.nextCursor`. Paging stops once `hasMore` is `false`. The `limit` is
+    /// clamped to the server-accepted range.
+    /// - Parameters:
+    ///   - cursor: The `entryTimestamp` cursor from the previous page, or `nil` for page 1.
+    ///   - limit: Requested page size (clamped to `1...100`).
+    ///   - category: Optional product filter (`weight`/`bp`); `nil` returns all products.
+    /// - Returns: The page of entries plus pagination metadata.
+    func fetchEntriesPage(cursor: String?, limit: Int, category: String?) async throws -> EntriesPage {
+        let clamped = EntriesPagination.clamp(limit: limit)
+        let response = try await remoteRepo.fetchEntries(
+            start: nil, cursor: cursor, limit: clamped, category: category
+        )
+        return EntriesPage(
+            entries: response.operations,
+            nextCursor: response.nextCursor,
+            // Fall back to inferring from page fullness when the server omits `hasMore`.
+            hasMore: response.hasMore ?? (response.entries.count >= clamped)
+        )
     }
 
     // MARK: - Entry Type Filtering

@@ -2,8 +2,9 @@ import Foundation
 
 /// Protocol for interacting with the remote Entry API.
 ///
-/// The write path uses the unified `POST /v3/entries/` endpoint (MOB-384). Read
-/// and CSV export still target the legacy `/operation/r4` endpoints until iOS 2b.
+/// As of MOB-385 the read, sync, and CSV-export paths all target the unified
+/// `/v3/entries/` endpoints. The legacy `/operation/r4` endpoints remain on the server
+/// for old apps but are no longer called from here.
 protocol EntryRepositoryAPIProtocol {
     /// Submits a batch of entries to the unified `POST /v3/entries/` endpoint.
     ///
@@ -15,15 +16,31 @@ protocol EntryRepositoryAPIProtocol {
     @discardableResult
     func submitEntries(_ entries: [UnifiedEntryRequest]) async throws -> UnifiedEntryResponse
 
-    /// Fetches all operations (entries) for the given account from the backend, optionally since a given timestamp or count.
+    /// Reads entries from the unified `GET /v3/entries/` endpoint.
+    ///
+    /// Supports both server modes from one call:
+    /// * **Sync mode** — pass `start`; the server returns every entry with
+    ///   `serverTimestamp > start` (no limit) plus a fresh `timestamp` for the next sync.
+    /// * **Cursor pagination** — pass `cursor` (and optionally `limit`); the server returns
+    ///   up to `limit` entries with `entryTimestamp < cursor` plus `nextCursor`/`hasMore`.
+    ///
+    /// If both `start` and `cursor` are supplied the server prioritizes `cursor`.
     /// - Parameters:
-    ///   - startTimestamp: The timestamp to fetch operations since (optional).
-    /// - Returns: An array of Entry objects from the backend.
-    func fetchOperations(startTimestamp: String?) async throws -> BathScaleOperationListResponse
+    ///   - start: ISO timestamp for sync mode (entries since `serverTimestamp > start`).
+    ///   - cursor: ISO timestamp for pagination (entries where `entryTimestamp < cursor`).
+    ///   - limit: Page size for cursor mode (server default 20, max 100).
+    ///   - category: Optional product filter (`weight`/`bp`/`baby`); omit for all products.
+    /// - Returns: The unified list response (flat entries + cursor/sync metadata).
+    func fetchEntries(
+        start: String?,
+        cursor: String?,
+        limit: Int?,
+        category: String?
+    ) async throws -> BathScaleOperationListResponse
 
-    /// Exports all operations as a CSV file.
-    /// - Parameters:
-    /// - useR4Endpoint: Whether to use the R4 endpoint for export.
-    /// - Returns: Data representing the CSV file.
-    func exportCsv(useR4Endpoint: Bool) async throws -> ExportResponse
+    /// Exports entries as CSV via the unified `GET /v3/entries/csv` endpoint.
+    /// - Parameter request: The export parameters (category, download vs email, utcOffset, …).
+    /// - Returns: The export response. In email mode this carries `sent: true`.
+    @discardableResult
+    func exportEntriesCSV(_ request: EntriesCSVRequest) async throws -> ExportResponse
 }
