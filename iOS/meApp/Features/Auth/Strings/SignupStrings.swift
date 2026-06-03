@@ -55,6 +55,7 @@ struct SignupStrings {
         static let bpmSubtitle = "BP trends & reminders"
         static let weightScaleSubtitle = "BMI & weight insights"
         static let alreadyAdded = "already added to your profile"
+        static let supportingNote = "Don't worry — you can always add more devices later from Settings."
     }
 
     struct AddBabyStep {

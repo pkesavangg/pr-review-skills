@@ -29,6 +29,12 @@ struct PickDeviceStepView: View {
                         }
                     }
                 }
+
+                Text(lang.supportingNote)
+                    .fontOpenSans(.body3)
+                    .foregroundColor(theme.textSubheading)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
