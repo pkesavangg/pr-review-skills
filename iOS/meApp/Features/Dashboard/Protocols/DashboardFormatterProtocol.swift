@@ -40,6 +40,8 @@ protocol DashboardFormatterProtocol {
     ///   - period: The selected time period.
     ///   - selectedPointDate: Optional selected point date.
     ///   - crosshairDate: Optional crosshair date.
+    ///   - isLatestDaySelected: Whether the selected day is the most recent day with data
+    ///     (Week/Month only) — drives the "latest entry" vs "day average" prefix.
     ///   - weightLabel: The weight label to use as fallback.
     /// - Returns: Formatted date label string.
     func formatMetricInfoDateLabel( // swiftlint:disable:this function_parameter_count
@@ -48,6 +50,7 @@ protocol DashboardFormatterProtocol {
         period: TimePeriod,
         selectedPointDate: Date?,
         crosshairDate: Date?,
+        isLatestDaySelected: Bool,
         weightLabel: String
     ) -> String
     
@@ -78,7 +81,11 @@ protocol DashboardFormatterProtocol {
     func composeMetricInfoLabel(prefix: String, dateText: String) -> String
     
     /// Gets the selection prefix for a given time period.
-    /// - Parameter period: The time period.
-    /// - Returns: The prefix string (e.g., "day average" or "month average").
-    func selectionPrefix(for period: TimePeriod) -> String
+    /// - Parameters:
+    ///   - period: The time period.
+    ///   - isLatestDaySelected: Whether the selected day is the most recent day with data
+    ///     (Week/Month only).
+    /// - Returns: The prefix string ("latest entry"/"day average" for Week/Month, "month average"
+    ///   for Year/Total).
+    func selectionPrefix(for period: TimePeriod, isLatestDaySelected: Bool) -> String
 }

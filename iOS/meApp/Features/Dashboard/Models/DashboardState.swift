@@ -110,7 +110,7 @@ struct StreakState: Equatable {
 // MARK: - Graph State
 struct GraphState: Equatable {
     var selectedEntry: BathScaleOperationDTO?
-    var selectedPeriod: TimePeriod = .week
+    var selectedPeriod: TimePeriod = DefaultGraphPeriodPreference.fallback
     var xScrollPosition = Date()
     var selectedWeight: Double?
     var selectedPoint: BathScaleWeightSummary?
@@ -145,6 +145,16 @@ struct GraphState: Equatable {
         selectedXValue = nil
         selectedWeight = nil
         showCrosshair = false
+    }
+
+    /// MA-3977: currently active store-side selection, validated for direct application to a
+    /// section view model. Returns `nil` when no selection should be rendered. Single source of
+    /// truth for the post-tab-switch / cold-start sync paths so the read shape can't drift.
+    var validatedSelection: (date: Date, point: BathScaleWeightSummary?)? {
+        guard showCrosshair, let date = selectedXValue ?? selectedPoint?.date else {
+            return nil
+        }
+        return (date, selectedPoint)
     }
 
     mutating func updateScrollState(isScrolling: Bool) {

@@ -177,6 +177,26 @@ struct DashboardDisplayManagerTests {
         #expect(store.displayManager.weightDisplayLabel == "day average")
     }
 
+    @Test("weightDisplayLabel: selecting the most recent day shows latest entry for week and month")
+    func weightDisplayLabelLatestDayUsesLatestEntry() async {
+        let (store, accountService, entryService) = makeSUT()
+        accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount()
+
+        await DashboardManagerTestSupport.loadData(
+            into: store,
+            entryService: entryService,
+            daily: DashboardTestFixtures.makeSortedDailySummaries()
+        )
+
+        // 2026-03-05 is the newest entry in the fixture — selecting it must read as "latest entry".
+        store.graphManager.state.selectedPeriod = .week
+        store.graphManager.state.selectedXValue = DateTimeTools.getDateFromDateString("2026-03-05", format: "yyyy-MM-dd")
+        DashboardManagerTestSupport.syncStoreGraphState(store)
+
+        #expect(store.displayManager.isLatestDaySelected == true)
+        #expect(store.displayManager.weightDisplayLabel == "latest entry")
+    }
+
     @Test("activeMonthInterval: month mode exposes the contained interval and other periods do not")
     func activeMonthIntervalFollowsSelectedPeriod() async throws {
         let (store, accountService, entryService) = makeSUT()

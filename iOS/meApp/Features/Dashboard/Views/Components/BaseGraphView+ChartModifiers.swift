@@ -99,10 +99,12 @@ extension BaseGraphView {
                         )
                     }
                 }
-            } else if viewModel.isAtLeftBoundary {
-                plot.padding(.leading, .spacingXS)
             } else {
-                plot
+                // MA-3845: apply leading plot padding unconditionally (not only at the
+                // left boundary). BaseSectionViewModel always offsets the marker X by +4
+                // expecting this padding; gating it caused the highlight to flicker/snap
+                // at the scroll end. Keep them consistent.
+                plot.padding(.leading, .spacingXS)
             }
         }
         .chartXSelection(value: Binding(
