@@ -30,7 +30,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import android.app.UiModeManager
+import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 
@@ -67,6 +69,29 @@ class MainActivity : AppCompatActivity() {
    * Called when the activity is starting. Sets up Compose content and handles navigation intents.
    * @param savedInstanceState The previously saved instance state, if any.
    */
+  /**
+   * Override the base context's Configuration so Android's resource resolution
+   * (drawable-night/, values-night/, raw-night/) follows the user's stored
+   * Appearance pick instead of the OS-level uiMode. Without this, MeAppTheme
+   * renders the chosen color scheme but theme-aware drawables remain stuck
+   * on the OS setting — see MA-3996.
+   */
+  override fun attachBaseContext(newBase: Context) {
+    val mode = runBlocking {
+      AppRepository(UserDataStore(newBase), FcmDataStore(newBase)).getThemeMode()
+    }
+    val baseConfig = newBase.resources.configuration
+    val nightFlag = when (mode) {
+      ThemeMode.LIGHT -> Configuration.UI_MODE_NIGHT_NO
+      ThemeMode.DARK -> Configuration.UI_MODE_NIGHT_YES
+      else -> baseConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK
+    }
+    val overridden = Configuration(baseConfig).apply {
+      uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or nightFlag
+    }
+    super.attachBaseContext(newBase.createConfigurationContext(overridden))
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     applyInitialTheme()
     initializeSplashScreen()
