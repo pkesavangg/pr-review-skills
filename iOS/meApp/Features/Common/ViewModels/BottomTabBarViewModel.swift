@@ -500,8 +500,6 @@ class BottomTabBarViewModel: ObservableObject {
                         self.presentHKIntegrationModal(for: modalState)
                     case .outOfSync:
                         self.presentHKIntegrationModal(for: .outOfSync)
-                    case .updatePermissions:
-                        break
                     }
                 }
             }
@@ -556,13 +554,6 @@ class BottomTabBarViewModel: ObservableObject {
                 }
             }
 
-        case .updatePermissions:
-            onPrimary = { [weak self] in
-                self?.notificationService.dismissModal()
-            }
-            onSecondary = { [weak self] in
-                self?.notificationService.dismissModal()
-            }
         }
 
         let modalView = HKIntegrationModalView(
