@@ -30,11 +30,15 @@ struct SignupStrings {
         static let title = "How tall are you?"
         static let subtitle = "Height is another factor that helps us provide you with the most accurate metrics."
         static let pickerHeader = "Height"
+        static let imperialUnit = "Ft / In"
+        static let metricUnit = "CM"
     }
-    
+
     struct GoalStep {
         static let title = "Set a goal!"
         static let subtitle = "This can be helpful feature to utilize on your journey. Goals can always be changed in the app settings."
+        static let imperialUnit = "lbs"
+        static let metricUnit = "kg"
     }
     
     struct EmailStep {

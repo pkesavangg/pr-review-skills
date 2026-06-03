@@ -28,9 +28,10 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
     private let remoteRepo: BabyRepositoryAPIProtocol
     private let tag = "BabyService"
 
-    init(remoteRepo: BabyRepositoryAPIProtocol = BabyRepositoryAPI()) {
-        self.remoteRepo = remoteRepo
-    }
+    init(remoteRepo: BabyRepositoryAPIProtocol? = nil) {
+          self.remoteRepo = remoteRepo ?? BabyRepositoryAPI()
+      }
+
 
     // swiftlint:disable:next function_parameter_count
     func saveBaby(

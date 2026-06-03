@@ -70,6 +70,7 @@ class IntegrationStore: ObservableObject {
         _ = notificationService
         _ = accountService
         _ = integrationsService
+        _ = productTypeStore
         // Initialize the integrations list with any pre-defined items.
         accountService.activeAccountPublisher
             .sink { [weak self] account in
@@ -80,6 +81,19 @@ class IntegrationStore: ObservableObject {
                     self.handleInvalidIntegrations(account: account)
                     self.hasCheckedInvalidIntegrations = true
                 }
+            }
+            .store(in: &cancellables)
+
+        // Re-render the device-driven sections when the set of paired devices changes
+        // (e.g. a weight scale paired while this screen is open), so the relevant
+        // integration section appears/disappears automatically without needing an
+        // account-level change to fire. The first emission is dropped because the
+        // account publisher above already seeds the initial state. (MOB-407)
+        productTypeStore.availableItemsPublisher
+            .dropFirst()
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.applyAccountState(self.accountService.activeAccount)
             }
             .store(in: &cancellables)
     }

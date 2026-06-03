@@ -303,6 +303,7 @@ struct InputFieldLabels {
     static let confirmPassword = "confirm password"
     static let confirmNewPassword = "confirm new password"
     static let currentPassword = "current password"
+    static let height = "height"
     static let startingWeight = "starting weight"
     static let startingWeightLabel: (Bool) -> String = { isKg in
         return isKg ? "starting weight (kg)" : "starting weight (lbs)"
@@ -312,6 +313,10 @@ struct InputFieldLabels {
     }
     static let goalWeight = "goal weight"
     static let useMetric = "Use Metric Units"
+    /// Unit suffix shown on the right of a unit-value input field, e.g. "(kg)" / "(lbs)".
+    static let weightUnitSuffix: (Bool) -> String = { isKg in
+        return isKg ? "(kg)" : "(lbs)"
+    }
     static let zipCode = "zipcode"
     static let birthday = "birthday"
     static let weightLabel: (Bool) -> String = { isKg in
