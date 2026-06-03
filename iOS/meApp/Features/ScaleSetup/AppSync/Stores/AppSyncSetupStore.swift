@@ -289,6 +289,7 @@ final class AppSyncSetupStore: ObservableObject {
                     tag: tag,
                     message: "AppSync scale saved successfully. scaleId=\(response.id), sku=\(scaleItem.sku), accountId=\(accountId)"
                 )
+                ProductTypeStore.shared.selectLastAdded(.myWeight)
 
                 // Post notification that scale was added
                 NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
