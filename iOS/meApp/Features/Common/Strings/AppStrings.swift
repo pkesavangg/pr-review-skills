@@ -247,14 +247,6 @@ struct HKIntegrationModalStrings {
         primaryButtonTitle: "CONNECT",
         secondaryButtonTitle: nil
     )
-
-    static let updatePermissions = HKIntegrationModalContent(
-        imageName: AppAssets.hkLogoLarge,
-        title: "Update Apple Health Permissions",
-        message: "You paired a new device that can sync additional health data. Update Apple Health permissions for Weight Gurus now?",
-        primaryButtonTitle: "UPDATE",
-        secondaryButtonTitle: "NOT NOW"
-    )
 }
 
 /// Constants for form validation error messages
