@@ -700,6 +700,13 @@ class BottomTabBarViewModel: ObservableObject {
         let message = "\(weightString) · \(relativeTime)"
         let entryId = notification.id
 
+        // No baby profile exists — surface an "ADD A BABY" CTA that deep-links to
+        // the add-a-baby flow in Settings instead of the assign flow (MOB-425).
+        guard !babyService.currentBabies.isEmpty else {
+            showBabyReadingNoProfileCard(entryId: entryId, weightString: weightString, relativeTime: relativeTime)
+            return
+        }
+
         var didUserAct = false
 
         // Extract primitives before any Task boundary — Baby is non-Sendable.
@@ -746,23 +753,7 @@ class BottomTabBarViewModel: ObservableObject {
                         didUserAct = true
                         guard let self else { return }
                         self.notificationService.dismissToast()
-                        Task { [weak self] in
-                            guard let self else { return }
-                            do {
-                                try await self.entryService.deleteEntry(entryId: entryId)
-                                self.logger.log(level: .info, tag: self.tag, message: "Baby reading discarded. entryId=\(entryId)")
-                            } catch {
-                                self.logger.log(
-                                    level: .error,
-                                    tag: self.tag,
-                                    message: "Failed to discard baby reading. entryId=\(entryId)",
-                                    data: error.localizedDescription
-                                )
-                                self.notificationService.showToast(
-                                    ToastModel(message: "Failed to remove reading. Please try again.")
-                                )
-                            }
-                        }
+                        self.discardBabyReading(entryId: entryId)
                     }
                 )
             ),
@@ -775,6 +766,78 @@ class BottomTabBarViewModel: ObservableObject {
 
         logger.log(level: .info, tag: tag, message: "Showing baby reading arrival card. weight=\(weightString)")
         notificationService.showToast(toast)
+    }
+
+    /// Shown when a baby scale reading arrives but no baby profile exists (MOB-425).
+    /// Offers an "ADD A BABY" CTA that deep-links to the add-a-baby flow in Settings,
+    /// keeping the reading so it can be saved against the new baby. If the user discards
+    /// the card — or lets it time out without adding a baby — the reading is discarded and
+    /// won't appear in History (per the MOB-425 design).
+    private func showBabyReadingNoProfileCard(entryId: UUID, weightString: String, relativeTime: String) {
+        var didUserAct = false
+
+        let toast = ToastModel(
+            title: DashboardStrings.babyReadingArrivalTitle,
+            message: "",
+            btnTextView: AnyView(
+                BabyReadingNoProfileCTAView(
+                    weightString: weightString,
+                    timestamp: relativeTime,
+                    onAddBaby: { [weak self] in
+                        didUserAct = true
+                        guard let self else { return }
+                        self.notificationService.dismissToast()
+                        self.navigateToSettings(route: .myKids)
+                        self.logger.log(
+                            level: .info,
+                            tag: self.tag,
+                            message: "Baby reading no-profile CTA tapped; routing to add-a-baby. entryId=\(entryId)"
+                        )
+                    },
+                    onDiscard: { [weak self] in
+                        didUserAct = true
+                        guard let self else { return }
+                        self.notificationService.dismissToast()
+                        self.discardBabyReading(entryId: entryId)
+                    }
+                )
+            ),
+            duration: 8.0,
+            onDismiss: { [weak self] in
+                // No baby was added — discard the reading so it doesn't linger orphaned.
+                guard !didUserAct else { return }
+                self?.discardBabyReading(entryId: entryId)
+            }
+        )
+
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Showing baby reading no-profile card. weight=\(weightString)"
+        )
+        notificationService.showToast(toast)
+    }
+
+    /// Deletes a baby scale reading entry. Used when the user discards a reading, or when
+    /// the no-profile card times out without a baby being added (MOB-425).
+    private func discardBabyReading(entryId: UUID) {
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await self.entryService.deleteEntry(entryId: entryId)
+                self.logger.log(level: .info, tag: self.tag, message: "Baby reading discarded. entryId=\(entryId)")
+            } catch {
+                self.logger.log(
+                    level: .error,
+                    tag: self.tag,
+                    message: "Failed to discard baby reading. entryId=\(entryId)",
+                    data: error.localizedDescription
+                )
+                self.notificationService.showToast(
+                    ToastModel(message: "Failed to remove reading. Please try again.")
+                )
+            }
+        }
     }
 
     /// Presents the baby-selection modal so the user can choose which baby to assign the entry to.
