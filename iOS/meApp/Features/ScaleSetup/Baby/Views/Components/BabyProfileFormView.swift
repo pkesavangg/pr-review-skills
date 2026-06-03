@@ -177,7 +177,10 @@ struct BabyProfileFormView: View {
             title: labels.biologicalSex
         ) { vals in
             if let sex = vals.first {
-                form.biologicalSex.value = sex.rawValue.capitalized
+                // Store the API-expected lowercase raw value ("male"/"female").
+                // The UI capitalizes it for display via `sexDisplayText`; sending the
+                // capitalized form makes the server reject it ("Invalid value for sex").
+                form.biologicalSex.value = sex.rawValue
                 form.biologicalSex.markAsTouched()
                 form.biologicalSex.validate()
             }
