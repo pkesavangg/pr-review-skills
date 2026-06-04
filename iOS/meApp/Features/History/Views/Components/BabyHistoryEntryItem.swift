@@ -13,6 +13,8 @@ struct BabyHistoryEntryItem: View {
     let isExpanded: Bool
     let onTap: () -> Void
     let onDelete: () -> Void
+    /// Called when the user taps the edit icon in the expanded notes section.
+    var onEditNotes: () -> Void = {}
     var openItemID: Binding<UUID?>?
 
     private var hasNotes: Bool { !(entry.notes ?? "").isEmpty }
@@ -83,11 +85,10 @@ struct BabyHistoryEntryItem: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Expansion chevron — always occupies space to keep columns aligned
+                // Expansion chevron — always visible (row is always expandable)
                 AppIconView(icon: AppAssets.chevronDown)
                     .foregroundColor(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
                     .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                    .opacity(hasNotes ? 1 : 0)
             }
             .padding(.vertical, .spacingSM)
             .padding(.horizontal, .spacingSM)
@@ -115,14 +116,27 @@ struct BabyHistoryEntryItem: View {
             Divider()
                 .foregroundColor(theme.actionPrimary)
 
-            // Expanded notes section
-            if isExpanded, let notes = entry.notes {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(notes)
-                        .fontOpenSans(.body3)
-                        .foregroundColor(theme.textBody)
-                        .padding(.spacingSM)
+            // Expanded notes section — always shown when expanded
+            if isExpanded {
+                HStack(alignment: .top, spacing: .spacingXS) {
+                    if hasNotes {
+                        Text(entry.notes ?? "")
+                            .fontOpenSans(.body3)
+                            .foregroundColor(theme.textBody)
+                    } else {
+                        Text(HistoryListStrings.noNotesPlaceholder)
+                            .fontOpenSans(.body3)
+                            .foregroundColor(theme.textSubheading)
+                    }
+                    Spacer()
+                    Button(action: onEditNotes) {
+                        Image(systemName: "square.and.pencil")
+                            .font(.system(size: 18))
+                            .foregroundColor(theme.actionPrimary)
+                    }
+                    .buttonStyle(.plain)
                 }
+                .padding(.spacingSM)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(theme.backgroundSecondary)
 
@@ -133,7 +147,7 @@ struct BabyHistoryEntryItem: View {
         .animation(.easeInOut(duration: 0.25), value: isExpanded)
         .contentShape(Rectangle())
         .onTapGesture {
-            if hasNotes { onTap() }
+            onTap()
         }
     }
 }

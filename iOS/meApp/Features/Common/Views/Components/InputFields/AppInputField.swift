@@ -53,6 +53,8 @@ struct AppInputField: View {
         }
     }
 
+    private let notesMaxCharacters = 280
+
     private var isTextareaLabelActive: Bool {
         focusedField == config.focusField || !value.isEmpty
     }
@@ -66,12 +68,30 @@ struct AppInputField: View {
                     .scrollContentBackground(.hidden)
                     .padding(.horizontal, CGFloat.spacingXS)
                     .padding(.top, isTextareaLabelActive ? CGFloat.spacingLG : CGFloat.spacingXS)
-                    .padding(.bottom, CGFloat.spacingXS)
+                    .padding(.bottom, 24) // reserve space so text doesn't hide under the counter
                     .frame(minHeight: 100)
                     .background(theme.backgroundPrimary)
                     .cornerRadius(BorderRadius.sm)
                     .onTapGesture {
                         focusedField = config.focusField
+                    }
+                    .onChange(of: value) { _, newValue in
+                        if newValue.count > notesMaxCharacters {
+                            value = String(newValue.prefix(notesMaxCharacters))
+                        }
+                    }
+                    .overlay(alignment: .bottomTrailing) {
+                        // Counter — always visible from the first character (MOB-437).
+                        // Three states: default/filled → subdued; 280/280 → error red.
+                        Text("\(value.count)/\(notesMaxCharacters)")
+                            .fontOpenSans(.body4)
+                            .foregroundColor(
+                                value.count >= notesMaxCharacters
+                                    ? theme.textError
+                                    : theme.textSubheading
+                            )
+                            .padding(.trailing, CGFloat.spacingXS + 4)
+                            .padding(.bottom, CGFloat.spacingXS + 2)
                     }
 
                 Text(config.label)

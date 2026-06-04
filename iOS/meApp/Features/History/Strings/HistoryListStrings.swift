@@ -22,6 +22,7 @@ enum HistoryListStrings {
     static let mmhg = "mmhg"
     static let pulse = "pulse"
     static let notes = "Notes"
+    static let noNotesPlaceholder = "no notes yet — tap edit icon to add one."
     static let downloadBPHistory = "Download BP History"
     static let downloadBabyHistory = "Download Baby History"
 
