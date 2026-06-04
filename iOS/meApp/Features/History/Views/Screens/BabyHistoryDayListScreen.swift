@@ -13,6 +13,7 @@ struct BabyHistoryDayListScreen: View {
 
     let day: BabyHistoryDay
     @State private var openItemID: UUID?
+    @State private var entryToEdit: BabyHistoryEntry?
 
     private var title: String {
         let formatter = DateFormatter()
@@ -49,6 +50,10 @@ struct BabyHistoryDayListScreen: View {
             historyStore.expandedBabyEntries.removeAll()
             historyStore.resetSelectedBabyDay()
         }
+        .sheet(item: $entryToEdit) { entry in
+            BabyHistoryEditSheet(entry: entry)
+                .environmentObject(historyStore)
+        }
     }
 
     @ViewBuilder
@@ -64,6 +69,9 @@ struct BabyHistoryDayListScreen: View {
                         },
                         onDelete: {
                             historyStore.showDeleteBabyEntryAlert(entry: entry)
+                        },
+                        onEditNotes: {
+                            entryToEdit = entry
                         },
                         openItemID: $openItemID
                     )

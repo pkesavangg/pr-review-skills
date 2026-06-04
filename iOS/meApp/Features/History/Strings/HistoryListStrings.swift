@@ -38,4 +38,11 @@ enum HistoryListStrings {
     static let cm = "cm"
     static let inUnit = "in"
     static let th = "th"
+
+    // Delete / Undo
+    static let undo = "UNDO"
+    static let readingDeleted = "Reading deleted."
+    static let readingRestored = "Reading restored successfully."
+    static let couldntDelete = "Couldn't delete!"
+    static let tryAgain = "TRY AGAIN"
 }

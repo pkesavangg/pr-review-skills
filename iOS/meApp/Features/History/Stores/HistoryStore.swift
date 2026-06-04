@@ -46,6 +46,10 @@ final class HistoryStore: ObservableObject {
     @Published private(set) var selectedBabyDay: BabyHistoryDay?
     @Published var expandedBabyEntries: Set<String> = []
 
+    // MARK: - Optimistic Delete / Undo State
+    private var pendingBPDelete: BPHistoryEntry?
+    private var pendingBabyDelete: BabyHistoryEntry?
+
     /// Whether the current product type selection is blood pressure.
     var isBloodPressureMode: Bool {
         productTypeStore.selectedItem == .myBloodPressure
@@ -385,7 +389,7 @@ final class HistoryStore: ObservableObject {
         notificationService.dismissLoader()
     }
 
-    // MARK: - BP Delete
+    // MARK: - BP Delete (optimistic + 3-second UNDO)
 
     func showDeleteBPEntryAlert(entry: BPHistoryEntry) {
         let alert = AlertModel(
@@ -393,7 +397,7 @@ final class HistoryStore: ObservableObject {
             message: AlertStrings.DeleteEntryAlert.message,
             buttons: [
                 AlertButtonModel(title: AlertStrings.DeleteEntryAlert.deleteButton, type: .danger) { _ in
-                    Task { await self.deleteBPEntryInternal(entry) }
+                    self.confirmBPDelete(entry)
                 },
                 AlertButtonModel(title: AlertStrings.DeleteEntryAlert.cancelButton, type: .secondary) { _ in
                     self.notificationService.dismissAlert()
@@ -403,18 +407,50 @@ final class HistoryStore: ObservableObject {
         notificationService.showAlert(alert)
     }
 
+    private func confirmBPDelete(_ entry: BPHistoryEntry) {
+        bpEntries.removeAll { $0.id == entry.id }
+        pendingBPDelete = entry
+
+        let label = DateTimeTools.getArrivalRelativeTime(fromISOString: entry.entryTimestamp)
+            ?? DateTimeTools.getFormattedDay(entry.entryTimestamp)
+
+        notificationService.showToast(ToastModel(
+            message: "\(label): \(HistoryListStrings.readingDeleted)",
+            btnTextView: AnyView(Text(HistoryListStrings.undo).fontOpenSans(.button1)),
+            onClick: { Task { @MainActor in self.undoBPDelete() } },
+            duration: 3,
+            onDismiss: { Task { @MainActor in self.commitBPDelete() } }
+        ))
+    }
+
+    func undoBPDelete() {
+        guard let entry = pendingBPDelete else { return }
+        pendingBPDelete = nil
+        bpEntries.append(entry)
+        bpEntries.sort { $0.entryTimestamp > $1.entryTimestamp }
+        notificationService.showToast(ToastModel(message: HistoryListStrings.readingRestored))
+    }
+
+    private func commitBPDelete() {
+        guard let entry = pendingBPDelete else { return }
+        pendingBPDelete = nil
+        Task { await deleteBPEntryInternal(entry) }
+    }
+
     private func deleteBPEntryInternal(_ entry: BPHistoryEntry) async {
         do {
-            notificationService.showLoader(LoaderModel(text: loaderLang.deletingEntry))
             try await entryService.deleteBpmEntry(entryTimestamp: entry.entryTimestamp)
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to delete BP entry: \(error.localizedDescription)")
-            notificationService.showToast(ToastModel(message: toastLang.errorDeletingEntry))
+            notificationService.showToast(ToastModel(
+                message: HistoryListStrings.couldntDelete,
+                btnTextView: AnyView(Text(HistoryListStrings.tryAgain).fontOpenSans(.button1)),
+                onClick: { Task { @MainActor in self.confirmBPDelete(entry) } }
+            ))
         }
-        notificationService.dismissLoader()
     }
 
-    // MARK: - Baby Delete
+    // MARK: - Baby Delete (optimistic + 3-second UNDO)
 
     func showDeleteBabyEntryAlert(entry: BabyHistoryEntry) {
         let alert = AlertModel(
@@ -422,7 +458,7 @@ final class HistoryStore: ObservableObject {
             message: AlertStrings.DeleteEntryAlert.message,
             buttons: [
                 AlertButtonModel(title: AlertStrings.DeleteEntryAlert.deleteButton, type: .danger) { _ in
-                    Task { await self.deleteBabyEntryInternal(entry) }
+                    self.confirmBabyDelete(entry)
                 },
                 AlertButtonModel(title: AlertStrings.DeleteEntryAlert.cancelButton, type: .secondary) { _ in
                     self.notificationService.dismissAlert()
@@ -432,15 +468,124 @@ final class HistoryStore: ObservableObject {
         notificationService.showAlert(alert)
     }
 
+    private func confirmBabyDelete(_ entry: BabyHistoryEntry) {
+        babyEntries.removeAll { $0.id == entry.id }
+        pendingBabyDelete = entry
+
+        let label = DateTimeTools.getArrivalRelativeTime(fromISOString: entry.entryTimestamp)
+            ?? DateTimeTools.getFormattedTime(entry.entryTimestamp)
+
+        notificationService.showToast(ToastModel(
+            message: "\(label): \(HistoryListStrings.readingDeleted)",
+            btnTextView: AnyView(Text(HistoryListStrings.undo).fontOpenSans(.button1)),
+            onClick: { Task { @MainActor in self.undoBabyDelete() } },
+            duration: 3,
+            onDismiss: { Task { @MainActor in self.commitBabyDelete() } }
+        ))
+    }
+
+    func undoBabyDelete() {
+        guard let entry = pendingBabyDelete else { return }
+        pendingBabyDelete = nil
+        babyEntries.append(entry)
+        babyEntries.sort { $0.entryTimestamp > $1.entryTimestamp }
+        notificationService.showToast(ToastModel(message: HistoryListStrings.readingRestored))
+    }
+
+    private func commitBabyDelete() {
+        guard let entry = pendingBabyDelete else { return }
+        pendingBabyDelete = nil
+        Task { await deleteBabyEntryInternal(entry) }
+    }
+
     private func deleteBabyEntryInternal(_ babyEntry: BabyHistoryEntry) async {
         do {
-            notificationService.showLoader(LoaderModel(text: loaderLang.deletingEntry))
             try await entryService.deleteEntry(entryId: babyEntry.id)
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to delete baby entry: \(error.localizedDescription)")
-            notificationService.showToast(ToastModel(message: toastLang.errorDeletingEntry))
+            notificationService.showToast(ToastModel(
+                message: HistoryListStrings.couldntDelete,
+                btnTextView: AnyView(Text(HistoryListStrings.tryAgain).fontOpenSans(.button1)),
+                onClick: { Task { @MainActor in self.confirmBabyDelete(babyEntry) } }
+            ))
         }
-        notificationService.dismissLoader()
+    }
+
+    // MARK: - BP Edit (delete-old + create-new)
+
+    func updateBPEntry(
+        old: BPHistoryEntry,
+        systolic: Int,
+        diastolic: Int,
+        pulse: Int,
+        note: String,
+        entryTimestamp: String
+    ) async {
+        notificationService.showLoader(LoaderModel(text: loaderLang.savingEntry))
+        defer { notificationService.dismissLoader() }
+        do {
+            try await entryService.deleteBpmEntry(entryTimestamp: old.entryTimestamp)
+            let meanArterial = String(Int(round(Double(diastolic) + (Double(systolic) - Double(diastolic)) / 3.0)))
+            let dto = BpmOperationDTO(
+                accountId: nil,
+                systolic: Double(systolic),
+                diastolic: Double(diastolic),
+                pulse: Double(pulse),
+                meanArterial: meanArterial,
+                note: note.isEmpty ? nil : note,
+                source: EntrySource.manual.rawValue,
+                unit: nil,
+                entryTimestamp: entryTimestamp,
+                operationType: nil,
+                serverTimestamp: nil
+            )
+            try await entryService.createBpmEntry(dto)
+            logger.log(level: .info, tag: tag, message: "BP entry updated: \(entryTimestamp)")
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to update BP entry: \(error.localizedDescription)")
+            notificationService.showToast(ToastModel(message: toastLang.errorSavingEntry))
+        }
+    }
+
+    // MARK: - Baby Edit (delete-old + create-new)
+
+    func updateBabyEntry(
+        old: BabyHistoryEntry,
+        note: String
+    ) async {
+        guard case .baby(let profile) = productTypeStore.selectedItem,
+              !profile.isPendingSelection else { return }
+
+        notificationService.showLoader(LoaderModel(text: loaderLang.savingEntry))
+        defer { notificationService.dismissLoader() }
+        do {
+            try await entryService.deleteEntry(entryId: old.id)
+            // Reconstruct original decigrams from display values
+            let weightDecigrams: Int
+            if isMetric {
+                weightDecigrams = ConversionTools.convertBabyKgToDecigrams(old.weightKg)
+            } else {
+                let lbs = Int(old.weightLbs)
+                let oz = old.weightOz
+                weightDecigrams = ConversionTools.convertBabyLbsOzToDecigrams(lbs: lbs, oz: oz)
+            }
+            let lengthMm = isMetric
+                ? ConversionTools.convertBabyCmToMm(old.lengthCm)
+                : ConversionTools.convertBabyInchesToMm(old.lengthInches)
+
+            try await entryService.createBabyEntry(
+                babyId: profile.id,
+                weight: weightDecigrams,
+                length: lengthMm,
+                note: note,
+                entryTimestamp: old.entryTimestamp,
+                source: nil
+            )
+            logger.log(level: .info, tag: tag, message: "Baby entry updated: \(old.entryTimestamp)")
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to update baby entry: \(error.localizedDescription)")
+            notificationService.showToast(ToastModel(message: toastLang.errorSavingEntry))
+        }
     }
 
     // MARK: - Cursor Pagination (Remote Read)
