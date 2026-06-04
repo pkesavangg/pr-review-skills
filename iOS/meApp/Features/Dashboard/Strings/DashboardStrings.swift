@@ -120,4 +120,15 @@ struct DashboardStrings {
     static let bpmReadingArrivalMmhg = "mmhg"
     static let bpmReadingArrivalPulse = "pulse"
     static let weightReadingArrivalJustNow = "Just now"
+
+    // Wi-Fi reading arrival (entry already saved server-side — VIEW navigates to History)
+    static let readingArrivalView = "VIEW"
+
+    // Multiple readings counter (shown when a second reading arrives while a card is active)
+    static func moreReadingsReceived(_ count: Int) -> String {
+        "\(count) more reading\(count == 1 ? "" : "s") received for this session"
+    }
+
+    // Baby reading — single baby name display
+    static let babyReadingForBaby = "For"
 }

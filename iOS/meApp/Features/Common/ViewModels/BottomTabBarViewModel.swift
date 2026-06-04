@@ -95,6 +95,16 @@ class BottomTabBarViewModel: ObservableObject {
     private var weightReadingTimeoutTask: Task<Void, Never>?
     /// Tracks the auto-save timeout task for the BPM reading arrival toast.
     private var bpmReadingTimeoutTask: Task<Void, Never>?
+    /// Counts Wi-Fi weight readings received while the arrival card is visible.
+    /// Drives the "X more readings" counter card for subsequent readings.
+    private var wifiWeightReadingCount: Int = 0
+    /// Counts Wi-Fi BPM readings received while the arrival card is visible.
+    private var wifiBpmReadingCount: Int = 0
+    /// Set to true just before replacing the Wi-Fi weight card with a counter card so
+    /// the old card's onDismiss does not prematurely reset wifiWeightReadingCount.
+    private var isReplacingWifiWeightCard: Bool = false
+    /// Set to true just before replacing the Wi-Fi BPM card with a counter card.
+    private var isReplacingWifiBpmCard: Bool = false
     private let promptDelay = 3.0 // Delay before checking Apple Health integration status and set a goal prompt
     /// Retains the Combine subscription for app-active notifications specifically used
     /// when we need to re-check HealthKit permissions after the user is redirected to
@@ -145,6 +155,25 @@ class BottomTabBarViewModel: ObservableObject {
             .sink { [weak self] notification in
                 guard let self, !self.bluetoothService.isSetupInProgress else { return }
                 self.showBpmReadingArrivalCard(notification: notification)
+            }
+            .store(in: &cancellables)
+
+        // Wi-Fi weight scale entries arrive already saved server-side via newEntryReceivedPublisher.
+        // Unlike BT entries (pendingScaleEntryPublisher), these never need SAVE/DISCARD — only VIEW.
+        bluetoothService.newEntryReceivedPublisher
+            .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
+            .filter { $0.entryType == EntryType.scale.rawValue }
+            .sink { [weak self] notification in
+                self?.showWifiWeightReadingCard(notification: notification)
+            }
+            .store(in: &cancellables)
+
+        // Wi-Fi BPM entries follow the same already-saved pattern as Wi-Fi weight entries.
+        bluetoothService.newEntryReceivedPublisher
+            .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
+            .filter { $0.entryType == EntryType.bpm.rawValue }
+            .sink { [weak self] notification in
+                self?.showWifiBpmReadingCard(notification: notification)
             }
             .store(in: &cancellables)
 
@@ -723,6 +752,10 @@ class BottomTabBarViewModel: ObservableObject {
             }
         }
 
+        // Show baby name inline when there is only one baby so the user knows
+        // exactly who will receive the reading without opening the selection modal.
+        let singleBabyName: String? = babyItems.count == 1 ? babyItems[0].name : nil
+
         let toast = ToastModel(
             title: lang.babyReadingArrivalTitle,
             message: "",
@@ -730,15 +763,37 @@ class BottomTabBarViewModel: ObservableObject {
                 BabyReadingArrivalCTAView(
                     weightString: weightString,
                     timestamp: relativeTime,
+                    babyName: singleBabyName,
                     onAssign: { [weak self] in
                         didUserAct = true
-                        self?.notificationService.dismissToast()
-                        self?.showAssignBabyModal(
-                            entryId: entryId,
-                            weightString: weightString,
-                            weightMessage: message,
-                            babyItems: babyItems
-                        )
+                        guard let self else { return }
+                        self.notificationService.dismissToast()
+                        if babyItems.count == 1, let singleBabyId = activeBabyId {
+                            // Single baby: assign directly, skip the selection modal.
+                            Task { @MainActor [weak self] in
+                                guard let self else { return }
+                                do {
+                                    try await self.entryService.assignBabyEntry(entryId: entryId, babyId: singleBabyId)
+                                    self.logger.log(level: .info, tag: self.tag, message: "Baby reading directly assigned (single baby). babyId=\(singleBabyId), entryId=\(entryId)")
+                                    self.showAssignedBabyToast(
+                                        babyName: babyItems[0].name,
+                                        entryId: entryId,
+                                        weightString: weightString,
+                                        weightMessage: message,
+                                        babyItems: babyItems
+                                    )
+                                } catch {
+                                    self.logger.log(level: .error, tag: self.tag, message: "Failed to direct-assign baby reading. entryId=\(entryId)", data: error.localizedDescription)
+                                }
+                            }
+                        } else {
+                            self.showAssignBabyModal(
+                                entryId: entryId,
+                                weightString: weightString,
+                                weightMessage: message,
+                                babyItems: babyItems
+                            )
+                        }
                     },
                     onDiscard: { [weak self] in
                         didUserAct = true
@@ -1092,6 +1147,118 @@ class BottomTabBarViewModel: ObservableObject {
         }
 
         logger.log(level: .info, tag: tag, message: "Showing BPM reading arrival card. \(systolic)/\(diastolic) pulse=\(pulse)")
+        notificationService.showToast(toast)
+    }
+
+    // MARK: - Wi-Fi Reading Arrival Cards
+
+    /// Shows a VIEW-only arrival card when a Wi-Fi weight entry is received.
+    /// Wi-Fi entries are already saved server-side so there is no SAVE/DISCARD action.
+    /// If a second reading arrives while the card is still visible, the card is replaced
+    /// with a "X more readings received" counter card that still navigates to History on VIEW.
+    private func showWifiWeightReadingCard(notification: EntryNotification) {
+        let isMetric = accountService.activeAccount?.weightUnit == .kg
+        let weightString = weightDisplayString(stored: notification.weight ?? 0, isMetric: isMetric)
+        let relativeTime = DateTimeTools.getArrivalRelativeTime(fromISOString: notification.entryTimestamp)
+            ?? DashboardStrings.justNow
+
+        wifiWeightReadingCount += 1
+        let count = wifiWeightReadingCount
+
+        let onView: () -> Void = { [weak self] in
+            guard let self else { return }
+            self.wifiWeightReadingCount = 0
+            self.notificationService.dismissToast()
+            self.selectTab(.history)
+            self.logger.log(level: .info, tag: self.tag, message: "Wi-Fi weight reading VIEW tapped; navigating to History.")
+        }
+
+        let onDismiss: () -> Void = { [weak self] in
+            guard let self, !self.isReplacingWifiWeightCard else {
+                self?.isReplacingWifiWeightCard = false
+                return
+            }
+            self.wifiWeightReadingCount = 0
+        }
+
+        let toast: ToastModel
+        if count == 1 {
+            toast = ToastModel(
+                title: DashboardStrings.weightReadingArrivalTitle,
+                message: "\(weightString) - \(relativeTime)",
+                btnTextView: AnyView(ReadingArrivalViewCTAView(onView: onView)),
+                duration: 8.0,
+                onDismiss: onDismiss
+            )
+        } else {
+            isReplacingWifiWeightCard = true
+            toast = ToastModel(
+                title: DashboardStrings.weightReadingArrivalTitle,
+                message: "",
+                btnTextView: AnyView(MultipleReadingsToastView(count: count - 1, onView: onView)),
+                duration: 8.0,
+                onDismiss: onDismiss
+            )
+        }
+
+        logger.log(level: .info, tag: tag, message: "Showing Wi-Fi weight reading card. count=\(count), weight=\(weightString)")
+        notificationService.showToast(toast)
+    }
+
+    /// Shows a VIEW-only arrival card when a Wi-Fi BPM entry is received.
+    /// Wi-Fi BPM entries are already saved server-side so there is no SAVE/DISCARD action.
+    /// Multiple rapid readings collapse into a counter card with a VIEW action.
+    private func showWifiBpmReadingCard(notification: EntryNotification) {
+        let systolic = notification.systolic ?? 0
+        let diastolic = notification.diastolic ?? 0
+        let pulse = notification.pulse ?? 0
+        let relativeTime = DateTimeTools.getArrivalRelativeTime(fromISOString: notification.entryTimestamp)
+            ?? DashboardStrings.justNow
+
+        wifiBpmReadingCount += 1
+        let count = wifiBpmReadingCount
+
+        let onView: () -> Void = { [weak self] in
+            guard let self else { return }
+            self.wifiBpmReadingCount = 0
+            self.notificationService.dismissToast()
+            self.selectTab(.history)
+            self.logger.log(level: .info, tag: self.tag, message: "Wi-Fi BPM reading VIEW tapped; navigating to History.")
+        }
+
+        let onDismiss: () -> Void = { [weak self] in
+            guard let self, !self.isReplacingWifiBpmCard else {
+                self?.isReplacingWifiBpmCard = false
+                return
+            }
+            self.wifiBpmReadingCount = 0
+        }
+
+        // Display BPM values as plain text in the message field so the toast body is
+        // informative while the btnTextView stays as a single VIEW button.
+        let bpmMessage = "\(systolic)/\(diastolic) \(DashboardStrings.bpmReadingArrivalMmhg) \(pulse) \(DashboardStrings.bpmReadingArrivalPulse) - \(relativeTime)"
+
+        let toast: ToastModel
+        if count == 1 {
+            toast = ToastModel(
+                title: DashboardStrings.bpmReadingArrivalTitle,
+                message: bpmMessage,
+                btnTextView: AnyView(ReadingArrivalViewCTAView(onView: onView)),
+                duration: 8.0,
+                onDismiss: onDismiss
+            )
+        } else {
+            isReplacingWifiBpmCard = true
+            toast = ToastModel(
+                title: DashboardStrings.bpmReadingArrivalTitle,
+                message: "",
+                btnTextView: AnyView(MultipleReadingsToastView(count: count - 1, onView: onView)),
+                duration: 8.0,
+                onDismiss: onDismiss
+            )
+        }
+
+        logger.log(level: .info, tag: tag, message: "Showing Wi-Fi BPM reading card. count=\(count), \(systolic)/\(diastolic) pulse=\(pulse)")
         notificationService.showToast(toast)
     }
 
