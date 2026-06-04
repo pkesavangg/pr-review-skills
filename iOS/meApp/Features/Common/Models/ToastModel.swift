@@ -10,6 +10,9 @@ import SwiftUI
 struct ToastModel: Equatable {
     var title: String?
     var message: String
+    /// Optional view rendered at the very top of the card, before the title.
+    /// Used for the multiple-readings counter row (e.g. "3 more readings received  VIEW").
+    var headerView: AnyView?
     var btnTextView: AnyView?
     var onClick: () -> Void = {}
     var duration: Double = 3

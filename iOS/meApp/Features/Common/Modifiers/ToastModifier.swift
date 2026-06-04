@@ -91,6 +91,10 @@ struct ToastModifier: ViewModifier {
     private func toastView(for data: ToastModel) -> some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: .spacingXS) {
+                if let headerView = data.headerView {
+                    headerView
+                }
+
                 if let title = data.title {
                     Text(title)
                         .fontOpenSans(.heading5)

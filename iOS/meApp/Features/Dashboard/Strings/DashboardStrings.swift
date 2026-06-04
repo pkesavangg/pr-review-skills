@@ -129,6 +129,8 @@ struct DashboardStrings {
         "\(count) more reading\(count == 1 ? "" : "s") received for this session"
     }
 
-    // Baby reading — single baby name display
-    static let babyReadingForBaby = "For"
+    // Baby reading — single baby: baby name embedded in the toast title
+    static func babyReadingArrivalTitleForSingleBaby(_ name: String) -> String {
+        "New Reading Received for \(name)"
+    }
 }
