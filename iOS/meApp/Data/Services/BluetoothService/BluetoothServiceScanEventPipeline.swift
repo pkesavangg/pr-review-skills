@@ -142,8 +142,10 @@ extension BluetoothService {
         let device = mapDeviceDetailsToDevice(deviceDetails, isA3Device: deviceDetails.protocolType == "A3")
         let protocolType = ProtocolType(rawValue: deviceDetails.protocolType ?? "") ?? .A6
 
+        let accountId = activeAccount?.accountId ?? ""
         let isKnown = bluetoothScales.contains { scale in
             scale.broadcastIdString == deviceDetails.broadcastId
+            && scale.accountId == accountId
         }
         let isNew = !isKnown
 

@@ -19,11 +19,11 @@ struct MultipleReadingsToastView: View {
         HStack(spacing: .spacingXS) {
             Text("•")
                 .fontOpenSans(.body2)
-                .foregroundColor(theme.textSubtle)
+                .foregroundColor(theme.textSubheading)
 
             Text(DashboardStrings.moreReadingsReceived(count))
                 .fontOpenSans(.body2)
-                .foregroundColor(theme.textSubtle)
+                .foregroundColor(theme.textSubheading)
                 .fixedSize(horizontal: false, vertical: true)
 
             Spacer()
