@@ -48,17 +48,12 @@ struct HistoryEntryItem: View {
         VStack(spacing: 0) {
             // Main entry row
             HStack {
-                // Date and time
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(DateTimeTools.getFormattedDay(entry.entryTimestamp))
-                        .fontOpenSans(.heading5)
-                        .foregroundColor( isExpanded ? theme.textInverse : theme.textHeading)
-                    
-                    Text(DateTimeTools.getFormattedTime(entry.entryTimestamp).lowercased())
-                        .fontOpenSans(.body3)
-                        .foregroundColor( isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                // Timestamp — relative when recent, absolute otherwise (MOB-458)
+                Text(DateTimeTools.getArrivalRelativeTime(fromISOString: entry.entryTimestamp)
+                    ?? DateTimeTools.getFormattedDay(entry.entryTimestamp))
+                    .fontOpenSans(.heading5)
+                    .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 
                 // Weight value
                 HStack(spacing: .spacingXS) {

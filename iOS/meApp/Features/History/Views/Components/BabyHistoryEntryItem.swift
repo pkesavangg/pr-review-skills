@@ -19,8 +19,12 @@ struct BabyHistoryEntryItem: View {
 
     private var hasNotes: Bool { !(entry.notes ?? "").isEmpty }
 
+    // MOB-458: use the shared relative → absolute formatter.
+    // Entries on this screen are always same-day, so getArrivalRelativeTime returns
+    // "Just now" / "X min ago" for recent readings or "9:52 AM" for older ones.
     private var timeText: String {
-        DateTimeTools.getFormattedTime(entry.entryTimestamp).lowercased()
+        DateTimeTools.getArrivalRelativeTime(fromISOString: entry.entryTimestamp)
+            ?? DateTimeTools.getFormattedTime(entry.entryTimestamp)
     }
 
     private var weightText: String {
