@@ -238,16 +238,34 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         restorePersistedSelection(for: accountId)
     }
 
+    /// Maps server-side raw product type strings to the app-internal values used by rebuild().
+    /// The server stores "weight" / "bpm"; the app checks for "myWeight" / "myBloodPressure".
+    private func normalizeProductTypes(_ types: [String]) -> [String] {
+        var seen = Set<String>()
+        return types.compactMap { type in
+            let normalized: String
+            switch type {
+            case "weight":          normalized = "myWeight"
+            case "bpm":             normalized = "myBloodPressure"
+            default:                normalized = type
+            }
+            return seen.insert(normalized).inserted ? normalized : nil
+        }
+    }
+
     /// Returns the authoritative product types for the current account.
     ///
-    /// Primary path: when `account.productTypes` is non-empty, use it directly.
+    /// Primary path: when `account.productTypes` is non-empty, use it directly
+    /// after mapping server-side raw values ("weight" → "myWeight", "bpm" → "myBloodPressure").
     /// Reconstruction path: when `productTypes` is empty (reinstall/new device),
     /// derive from server-synced devices, save back to the account, then return.
     private func resolveProductTypes() -> [String] {
         guard let account = accountService.activeAccount else { return ["myWeight"] }
 
         if !account.productTypes.isEmpty {
-            return account.productTypes
+            // The server stores "weight" / "bpm"; the app checks for "myWeight" / "myBloodPressure".
+            // Normalize here so rebuild()'s contains() checks always succeed.
+            return normalizeProductTypes(account.productTypes)
         }
 
         // Reconstruction: derive from server-synced devices.

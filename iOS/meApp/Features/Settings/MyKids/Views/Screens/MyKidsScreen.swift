@@ -14,6 +14,21 @@ struct MyKidsScreen: View {
     private let lang = MyKidsStrings.self
     private let swipeButtonWidth: CGFloat = 56
 
+    /// Returns a deterministic UUID for the given baby.
+    /// Baby IDs are server-assigned strings that are not in UUID format,
+    /// so `UUID(uuidString:)` returns nil. The `?? UUID()` fallback creates
+    /// a NEW random UUID on every render, which breaks the swipe-open state
+    /// machine that relies on a stable itemID across re-renders.
+    private func babyItemID(_ baby: Baby) -> UUID {
+        if let uuid = UUID(uuidString: baby.id) { return uuid }
+        var bytes = [UInt8](baby.id.utf8.prefix(16))
+        bytes.append(contentsOf: repeatElement(0, count: max(0, 16 - bytes.count)))
+        return UUID(uuid: (bytes[0], bytes[1], bytes[2], bytes[3],
+                           bytes[4], bytes[5], bytes[6], bytes[7],
+                           bytes[8], bytes[9], bytes[10], bytes[11],
+                           bytes[12], bytes[13], bytes[14], bytes[15]))
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             NavbarHeaderView(
@@ -134,8 +149,7 @@ struct MyKidsScreen: View {
             Spacer()
 
             Button {
-                let itemID = UUID(uuidString: baby.id) ?? UUID()
-                guard openItemID != itemID else { return }
+                guard openItemID != babyItemID(baby) else { return }
                 store.editBaby(baby)
             } label: {
                 Image(systemName: "square.and.pencil")
@@ -161,7 +175,7 @@ struct MyKidsScreen: View {
                     }
                 )
             ],
-            itemID: UUID(uuidString: baby.id) ?? UUID(),
+            itemID: babyItemID(baby),
             openItemID: $openItemID,
             openThresholdFraction: 0.1,
             closeWithoutAnimationOnAction: true,

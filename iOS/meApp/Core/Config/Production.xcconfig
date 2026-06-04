@@ -1,2 +1,6 @@
 APP_ENV = PRODUCTION
-API_BASE_URL = api.weightgurus.com/v3
+API_BASE_URL = 49.207.187.28:4200/wg-server-2573/v3
+// TEMPORARY (Phase 2 local testing): compile in the self-signed-cert trust delegate for
+// Production builds so they can hit the self-signed test server. REMOVE before any real
+// release — this disables TLS cert validation for the dev hosts listed in HTTPClient.swift.
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) LOCAL_DEV_TLS

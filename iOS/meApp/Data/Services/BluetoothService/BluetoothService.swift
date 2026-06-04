@@ -327,10 +327,16 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             .lcbtScale,
             .btWifiR4
         ])
+        let accountId = activeAccount?.accountId ?? ""
         let filteredScales = scales.filter { scale in
-            guard let raw = getSafeScaleType(for: scale), let type = ScaleSourceType(rawValue: raw) else {
-                return false
-            }
+            // Reject scales that belong to a different account — stale unsynced records
+            // from a previous account can otherwise bleed into the active session and
+            // cause a valid new device to be treated as already-known (MOB-427 fix).
+            guard !accountId.isEmpty,
+                  scale.accountId == accountId,
+                  let raw = getSafeScaleType(for: scale),
+                  let type = ScaleSourceType(rawValue: raw)
+            else { return false }
             return allowedTypes.contains(type)
         }
         Task {

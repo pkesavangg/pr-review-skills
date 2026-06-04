@@ -20,8 +20,15 @@ extension BabyScaleSetupStore {
         case .wakeup:
             startBluetoothScan()
         case .connectingBluetooth:
-            // Loading state — pairing is triggered directly from device discovery.
-            break
+            // Normally pairing is triggered directly from device discovery (isNew = true path).
+            // When arriving here from showKnownScaleAlert "Continue" (isNew = false path),
+            // discoveredScale/discoveryEvent are already set — start pairing now.
+            if discoveredScale != nil && discoveryEvent != nil {
+                Task {
+                    connectionState = .loading
+                    await confirmPair()
+                }
+            }
         }
     }
 
