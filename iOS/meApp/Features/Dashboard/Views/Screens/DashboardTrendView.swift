@@ -7,11 +7,36 @@ import SwiftUI
 
 struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
     @ObservedObject var dashboardStore: DashboardStore
+    @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
     @Environment(\.appTheme) private var theme
     @State private var localSelectedPeriod: TimePeriod = .week
 
     private let topContent: () -> TopContent
     private let chartFooter: () -> ChartFooter
+
+    @ViewBuilder
+    private func noEntriesFooter() -> some View {
+        VStack(spacing: .spacingMD) {
+            Text(DashboardStrings.noEntriesMessage)
+                .fontOpenSans(.body2)
+                .foregroundColor(theme.textBody)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, .spacingLG)
+            ButtonView(
+                text: DashboardStrings.connectDevice,
+                type: .filledPrimary,
+                size: .large,
+                isDisabled: false
+            ) {
+                tabViewModel.pendingSettingsNavigation = .addEditScales
+                tabViewModel.selectedTab = .settings
+                tabViewModel.settingsNavigationSourceTab = .dash
+            }
+            .padding(.horizontal, .spacingLG)
+        }
+        .padding(.vertical, .spacingMD)
+        .frame(maxWidth: .infinity)
+    }
 
     init(
         dashboardStore: DashboardStore,
@@ -35,6 +60,9 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
                 )
                 .padding(.vertical, .spacingSM)
                 .padding(.horizontal, 15)
+                if !dashboardStore.state.data.hasAnyEntries {
+                    noEntriesFooter()
+                }
             }
             .padding(.top, .spacingMD)
             .background(theme.textInverse)

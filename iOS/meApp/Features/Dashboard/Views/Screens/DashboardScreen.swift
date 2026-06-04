@@ -23,9 +23,6 @@ struct DashboardScreen: View {
     @State private var metricInfoEntry: Entry?
     @State private var isProductTypeSelectorPresented = false
     @State private var isInProductDashboard = false
-    private let weightEmptyStateOffset: CGFloat = 650
-    private let bpmEmptyStateOffset: CGFloat = 400
-
     private var canShowSnapshotOverview: Bool {
         store.availableProductItems.count > 1
     }
@@ -215,55 +212,19 @@ struct DashboardScreen: View {
             actionButtons()
                 .padding(.top, (store.allContentRemoved || hasNoContentToShow) ? .spacingLG : .spacingSM)
         }
-        if !store.state.data.hasAnyEntries {
-            VStack {
-                Spacer(minLength: 0)
-                noEntrySection()
-                Spacer(minLength: 0)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: max(0, availableHeight - weightEmptyStateOffset))
-        }
     }
 
     @ViewBuilder
     private func bpmDashboardContent(availableHeight: CGFloat) -> some View {
+        BpmTrendView(dashboardStore: store)
         if store.state.data.hasAnyEntries {
-            BpmTrendView(dashboardStore: store)
             BpmMetricsSection(store: store)
-        } else {
-            bpmEmptyState(availableHeight: availableHeight)
         }
     }
 
     @ViewBuilder
     private func babyDashboardContent(babyProfile: BabyProfile) -> some View {
         BabyTrendView(dashboardStore: store, babyProfile: babyProfile)
-    }
-
-    @ViewBuilder
-    private func bpmEmptyState(availableHeight: CGFloat) -> some View {
-        VStack(spacing: .spacingLG) {
-            Spacer(minLength: .spacingXL)
-            Image(systemName: "heart.text.square")
-                .font(.system(size: 60))
-                .foregroundColor(theme.textSubheading.opacity(0.5))
-                .accessibilityHidden(true)
-            Text(BpmDashboardStrings.noReadingsTitle)
-                .fontOpenSans(.heading4)
-                .foregroundColor(theme.textHeading)
-            Text(BpmDashboardStrings.noReadingsSubtitle)
-                .fontOpenSans(.body2)
-                .foregroundColor(theme.textBody)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, .spacingLG)
-            ButtonView(text: BpmDashboardStrings.addReading, type: .filledPrimary, size: .large, isDisabled: false) {
-                tabViewModel.selectTab(.entry)
-            }
-            Spacer(minLength: .spacingXL)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(minHeight: max(0, availableHeight - bpmEmptyStateOffset))
     }
 
     private func actionButtons() -> some View {
@@ -305,14 +266,4 @@ struct DashboardScreen: View {
         )
     }
     
-    private func noEntrySection() -> some View {
-        NoEntryView(
-            title: nil,
-            description: DashboardStrings.noEntriesMessage
-        ) {
-                tabViewModel.pendingSettingsNavigation = .addEditScales
-                tabViewModel.selectedTab = .settings
-                tabViewModel.settingsNavigationSourceTab = .dash
-            }
-    }
 }
