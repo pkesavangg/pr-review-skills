@@ -40,7 +40,10 @@ struct DashboardScreen: View {
                 if shouldShowSnapshotOverview {
                     snapshotLogo()
                     ScrollView(showsIndicators: false) {
-                        MultiDeviceSnapshotView(availableItems: store.availableProductItems) { selectedItem in
+                        MultiDeviceSnapshotView(
+                            availableItems: store.availableProductItems,
+                            selectedItem: store.selectedProductItem
+                        ) { selectedItem in
                             store.selectProductItem(selectedItem)
                             isInProductDashboard = true
                         }

@@ -10,15 +10,18 @@ import SwiftUI
 
 struct MultiDeviceSnapshotView: View {
     let availableItems: [ProductSelection]
+    /// The currently selected product — used to pick which baby to show (MOB-435).
+    let selectedItem: ProductSelection
     @StateObject private var viewModel = MultiDeviceSnapshotViewModel()
     let onSelectItem: (ProductSelection) -> Void
 
     var body: some View {
-        let snapshotItems = viewModel.snapshotItems(from: availableItems)
+        // Collapse all baby items to just the last-active one (MOB-435).
+        let snapshotItems = viewModel.snapshotItems(from: availableItems, selectedItem: selectedItem)
 
         VStack(spacing: .spacingSM) {
             ForEach(snapshotItems) { item in
-                if viewModel.isSnapshotReady(item) || viewModel.hasLoadedSnapshots(for: availableItems) {
+                if viewModel.isSnapshotReady(item) || viewModel.hasLoadedSnapshots(for: snapshotItems) {
                     snapshotCard(for: item)
                 } else {
                     skeletonCard(for: item)
@@ -27,14 +30,17 @@ struct MultiDeviceSnapshotView: View {
         }
         .padding(.spacingSM)
         .task(id: snapshotTaskID) {
-            await viewModel.loadSnapshots(availableItems: availableItems)
+            // Only load data for items that will actually be shown (one baby max).
+            await viewModel.loadSnapshots(availableItems: snapshotItems)
         }
     }
 
-    /// Stable task ID — only re-runs when the set of available items changes.
+    /// Stable task ID — re-runs when the shown snapshot set changes, including
+    /// when the user switches the active baby via the detail-dashboard dropdown.
     private var snapshotTaskID: Int {
         var hasher = Hasher()
-        for item in availableItems {
+        let snapshotItems = viewModel.snapshotItems(from: availableItems, selectedItem: selectedItem)
+        for item in snapshotItems {
             hasher.combine(item)
         }
         return hasher.finalize()
@@ -43,8 +49,9 @@ struct MultiDeviceSnapshotView: View {
     // MARK: - Skeleton Placeholder
 
     private var snapshotSkeletonCards: some View {
-        VStack(spacing: .spacingSM) {
-            ForEach(Array(availableItems.prefix(3).enumerated()), id: \.offset) { _, item in
+        let snapshotItems = viewModel.snapshotItems(from: availableItems, selectedItem: selectedItem)
+        return VStack(spacing: .spacingSM) {
+            ForEach(Array(snapshotItems.prefix(3).enumerated()), id: \.offset) { _, item in
                 skeletonCard(for: item)
             }
         }
