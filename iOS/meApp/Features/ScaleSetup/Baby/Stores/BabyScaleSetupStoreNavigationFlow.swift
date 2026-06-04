@@ -90,7 +90,7 @@ extension BabyScaleSetupStore {
 
     /// Steps where the footer buttons should be hidden.
     private var stepsToHideFooter: Set<BabyScaleSetupStep> {
-        [.wakeup, .connectingBluetooth, .connectionError]
+        [.wakeup, .connectingBluetooth, .connectionError, .done]
     }
 
     func shouldShowFooter() -> Bool {

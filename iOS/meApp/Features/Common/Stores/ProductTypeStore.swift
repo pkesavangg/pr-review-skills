@@ -128,6 +128,12 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         }
     }
 
+    var hasPersistedSelection: Bool {
+        guard let accountId = accountService.activeAccount?.accountId else { return false }
+        let key = KvStorageKeys.selectedProductTypeKey(for: accountId)
+        return kvStorage.getValue(forKey: key) != nil
+    }
+
     // MARK: - Persistence
 
     private func persistSelection(_ item: ProductSelection) {

@@ -23,6 +23,10 @@ struct DashboardScreen: View {
     @State private var metricInfoEntry: Entry?
     @State private var isProductTypeSelectorPresented = false
     @State private var isInProductDashboard = false
+    /// Tracks whether the per-session persistence redirect has already been applied,
+    /// so subsequent re-appearances (tab switch, background/foreground) don't override
+    /// the user's in-session navigation choices.
+    @State private var hasInitializedProductRedirect = false
     private var canShowSnapshotOverview: Bool {
         store.availableProductItems.count > 1
     }
@@ -61,8 +65,25 @@ struct DashboardScreen: View {
             await store.lifecycleManager.refreshAll()
         }
         .onAppear(perform: store.lifecycleManager.onAppearActions)
+        .onAppear {
+            // Handles the case where availableProductItems is already populated when the
+            // view first renders (data loaded before first appear). The onChange below
+            // covers the async case where data arrives after appear.
+            applyInitialProductRedirectIfNeeded()
+        }
         .onChange(of: canShowSnapshotOverview) { _, isAvailable in
-            if isAvailable { isInProductDashboard = false }
+            guard isAvailable else { return }
+            if !hasInitializedProductRedirect {
+                // Per-session persistence redirect: returning users on the same device go
+                // directly to their last-used product detail dashboard; new/different devices
+                // (no local storage) land on the snapshot overview.
+                isInProductDashboard = store.productTypeSelectorStore.hasPersistedSelection
+                hasInitializedProductRedirect = true
+            } else {
+                // Mid-session: a new product type became available (e.g. device added).
+                // Show the snapshot overview so the user sees the updated device list.
+                isInProductDashboard = false
+            }
         }
         .ignoresSafeArea(.all, edges: canShowSnapshotOverview ? .bottom : .all)
         .background(theme.backgroundSecondary)
@@ -265,5 +286,12 @@ struct DashboardScreen: View {
                 }
         )
     }
-    
+
+    // MARK: - Persistence Redirect
+
+    private func applyInitialProductRedirectIfNeeded() {
+        guard !hasInitializedProductRedirect, canShowSnapshotOverview else { return }
+        isInProductDashboard = store.productTypeSelectorStore.hasPersistedSelection
+        hasInitializedProductRedirect = true
+    }
 }

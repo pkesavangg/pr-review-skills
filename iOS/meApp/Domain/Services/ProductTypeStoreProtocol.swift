@@ -34,4 +34,8 @@ protocol ProductTypeStoreProtocol: AnyObject {
 
     /// Restore to the first available item (typically "My Weight").
     func resetToDefault()
+
+    /// Returns true when the current account has a persisted product selection in local storage.
+    /// Used to decide whether to redirect returning users straight to the product detail dashboard.
+    var hasPersistedSelection: Bool { get }
 }
