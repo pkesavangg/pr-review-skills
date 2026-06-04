@@ -15,7 +15,7 @@ extension BabyScaleSetupStore {
         guard !isExiting else { return }
 
         switch currentStep {
-        case .intro, .permissions, .scaleName, .paired, .babyProfile, .babyAdded, .connectionError:
+        case .intro, .permissions, .scaleName, .paired, .babyProfile, .babyAdded, .connectionError, .done:
             break
         case .wakeup:
             startBluetoothScan()

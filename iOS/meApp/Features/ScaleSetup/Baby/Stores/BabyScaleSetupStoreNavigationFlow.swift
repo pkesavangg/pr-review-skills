@@ -30,7 +30,7 @@ extension BabyScaleSetupStore {
         dismissKeyboard()
         let nextIndex = adjustedIndex(from: currentStepIndex + 1, direction: 1)
         guard nextIndex < steps.count else {
-            handleFinish()
+            navigateToDoneScreen()
             return
         }
         currentStepIndex = nextIndex

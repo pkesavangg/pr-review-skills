@@ -57,7 +57,7 @@ struct BabyHistoryEditSheet: View {
                             .fontOpenSans(.subHeading2)
                             .foregroundColor(theme.textSubheading)
                         TextEditor(text: $notesText)
-                            .fontOpenSans(.body2)
+                            .font(.body2)
                             .foregroundColor(theme.textBody)
                             .frame(minHeight: 80)
                             .padding(.spacingXS)
