@@ -25,6 +25,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonGroup
 import com.dmdbrands.gurus.weight.features.common.components.chart.config.rememberChartConfig
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphLabelHelper
 import com.dmdbrands.gurus.weight.features.common.strings.ChartHeaderStrings
 import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyDashboardGraph
 import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyGraphRange
@@ -88,6 +89,7 @@ fun GraphPagerView(
           hasData = segmentState.target.isNotEmpty() && !isEmpty,
           isLoading = !isEmpty && !isChartReady,
           markerIndex = state.markerIndex,
+          isLatestDaySelected = GraphLabelHelper.isLatestDaySelected(state.markerIndex, segmentState.data),
         )
 
         // Header: crossfade between skeleton and real content (empty state is "ready").
@@ -156,23 +158,33 @@ fun GraphPagerView(
   }
 }
 
-/** Always-visible chart label: "week average", "day average", "no entries", etc. */
+/**
+ * Always-visible chart label: "week average", "day average", "latest entry",
+ * "no entries", etc. Routes through [GraphLabelHelper] so it stays in lockstep with
+ * the metric-info sheet. Per MA-3965, selecting the most recent day on Week/Month
+ * reads "latest entry" (the plotted point shows that day's latest entry, not its
+ * average); any earlier day reads "day average".
+ */
 @Composable
 private fun ChartHeaderLabel(
   segment: GraphSegment,
   hasData: Boolean,
   isLoading: Boolean,
   markerIndex: Double? = null,
+  isLatestDaySelected: Boolean = false,
 ) {
-  val label = if (markerIndex != null) {
-    when (segment) {
-      GraphSegment.WEEK, GraphSegment.MONTH -> ChartHeaderStrings.Day
-      else -> ChartHeaderStrings.Month
-    }
-  } else segment.name.lowercase()
+  val text = if (!hasData && !isLoading) {
+    ChartHeaderStrings.NoEntries
+  } else {
+    GraphLabelHelper.selectionLabel(
+      segment = segment,
+      hasSelection = markerIndex != null,
+      isLatestDaySelected = isLatestDaySelected,
+    )
+  }
 
   Text(
-    text = if (hasData || isLoading) "$label ${ChartHeaderStrings.AverageSuffix}" else ChartHeaderStrings.NoEntries,
+    text = text,
     style = MeTheme.typography.subHeading1,
     color = MeTheme.colorScheme.textSubheading,
     modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),

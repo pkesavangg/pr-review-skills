@@ -222,6 +222,25 @@ fun GraphView(
     }
   }
 
+  // Auto-focus the latest entry when this (active) segment first has data, so the
+  // marker + "latest entry" label appear without a tap. Segment switches are focused
+  // by the SetSelectedSegment reducer; this covers the initial load and data refreshes.
+  // Released on user interaction by the scroll/scrub handlers below.
+  LaunchedEffect(segment, canScrollToAnchor, segmentState.isEmptyGraph, segmentState.data) {
+    if (!canScrollToAnchor || segmentState.isEmptyGraph || segmentState.data.isEmpty()) return@LaunchedEffect
+    if (state.markerIndex != null) return@LaunchedEffect
+    val latestTs = segmentState.data.maxOfOrNull { it.getTimeStamp() } ?: return@LaunchedEffect
+    handleGraphIntent(BaseGraphIntent.UpdateMarkerIndex(latestTs.toDouble()))
+  }
+
+  // Release the auto-focus marker the moment the user scrolls, so normal scroll-range
+  // updates resume (ScrollRange is gated on markerIndex == null in BaseDashboardViewModel).
+  LaunchedEffect(scrollState.isUserScrolling) {
+    if (scrollState.isUserScrolling && state.markerIndex != null) {
+      handleGraphIntent(BaseGraphIntent.UpdateMarkerIndex(null))
+    }
+  }
+
   val chart = rememberProductChart(
     config = chartConfig,
     graphState = state,

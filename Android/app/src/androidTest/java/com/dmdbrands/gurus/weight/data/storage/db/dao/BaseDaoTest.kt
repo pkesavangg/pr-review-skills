@@ -12,6 +12,7 @@ abstract class BaseDaoTest {
     protected lateinit var accountDao: AccountDao
     protected lateinit var deviceDao: DeviceDao
     protected lateinit var entryDao: EntryDao
+    protected lateinit var entryReadDao: EntryReadDao
     protected lateinit var logDao: LogDao
 
     @Before
@@ -24,6 +25,7 @@ abstract class BaseDaoTest {
         accountDao = db.accountDao()
         deviceDao = db.deviceDao()
         entryDao = db.entryDao()
+        entryReadDao = db.entryReadDao()
         logDao = db.logDao()
     }
 
