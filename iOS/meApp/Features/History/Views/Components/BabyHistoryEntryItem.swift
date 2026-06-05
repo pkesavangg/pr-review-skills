@@ -43,7 +43,7 @@ struct BabyHistoryEntryItem: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(timeText)
                         .fontOpenSans(.heading5)
-                        .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
+                        .foregroundStyle(isExpanded ? theme.textInverse : theme.textHeading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -51,13 +51,13 @@ struct BabyHistoryEntryItem: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(weightText)
                         .fontOpenSans(.heading5)
-                        .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
+                        .foregroundStyle(isExpanded ? theme.textInverse : theme.textHeading)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
 
                     Text(HistoryListStrings.weight)
                         .fontOpenSans(.body3)
-                        .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
+                        .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -65,11 +65,11 @@ struct BabyHistoryEntryItem: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(lengthText)
                         .fontOpenSans(.heading5)
-                        .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
+                        .foregroundStyle(isExpanded ? theme.textInverse : theme.textHeading)
 
                     Text(HistoryListStrings.length)
                         .fontOpenSans(.body3)
-                        .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
+                        .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -77,17 +77,17 @@ struct BabyHistoryEntryItem: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(percentileText)
                         .fontOpenSans(.heading5)
-                        .foregroundColor(isExpanded ? theme.textInverse : theme.actionPrimary)
+                        .foregroundStyle(isExpanded ? theme.textInverse : theme.actionPrimary)
 
                     Text(HistoryListStrings.percentile)
                         .fontOpenSans(.body3)
-                        .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
+                        .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 // Expansion chevron — always visible (row is always expandable)
                 AppIconView(icon: AppAssets.chevronDown)
-                    .foregroundColor(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
+                    .foregroundStyle(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
                     .rotationEffect(.degrees(isExpanded ? 180 : 0))
             }
             .padding(.vertical, .spacingSM)
@@ -104,7 +104,7 @@ struct BabyHistoryEntryItem: View {
                                 Text(CommonStrings.delete.uppercased())
                                     .fontOpenSans(.button1)
                                     .fontWeight(.bold)
-                                    .foregroundColor(theme.textInverse)
+                                    .foregroundStyle(theme.textInverse)
                             )
                         }
                     )
@@ -114,7 +114,7 @@ struct BabyHistoryEntryItem: View {
             )
 
             Divider()
-                .foregroundColor(theme.actionPrimary)
+                .foregroundStyle(theme.actionPrimary)
 
             // Expanded notes section — always shown when expanded
             if isExpanded {
@@ -122,26 +122,24 @@ struct BabyHistoryEntryItem: View {
                     if hasNotes {
                         Text(entry.notes ?? "")
                             .fontOpenSans(.body3)
-                            .foregroundColor(theme.textBody)
+                            .foregroundStyle(theme.textBody)
                     } else {
                         Text(HistoryListStrings.noNotesPlaceholder)
                             .fontOpenSans(.body3)
-                            .foregroundColor(theme.textSubheading)
+                            .foregroundStyle(theme.textSubheading)
                     }
                     Spacer()
-                    Button(action: onEditNotes) {
-                        Image(systemName: "square.and.pencil")
-                            .font(.system(size: 18))
-                            .foregroundColor(theme.actionPrimary)
-                    }
-                    .buttonStyle(.plain)
+                    Button("Edit notes", systemImage: "square.and.pencil", action: onEditNotes)
+                        .labelStyle(.iconOnly)
+                        .font(.system(size: 18))
+                        .foregroundStyle(theme.actionPrimary)
                 }
                 .padding(.spacingSM)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(theme.backgroundSecondary)
 
                 Divider()
-                    .foregroundColor(theme.actionPrimary)
+                    .foregroundStyle(theme.actionPrimary)
             }
         }
         .animation(.easeInOut(duration: 0.25), value: isExpanded)

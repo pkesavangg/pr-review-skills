@@ -35,11 +35,11 @@ struct BPHistoryEntryItem: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(DateTimeTools.getFormattedDay(entry.entryTimestamp))
                         .fontOpenSans(.heading5)
-                        .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
+                        .foregroundStyle(isExpanded ? theme.textInverse : theme.textHeading)
 
                     Text(DateTimeTools.getFormattedTime(entry.entryTimestamp).lowercased())
                         .fontOpenSans(.body3)
-                        .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
+                        .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -47,11 +47,11 @@ struct BPHistoryEntryItem: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(pressureText)
                         .fontOpenSans(.heading5)
-                        .foregroundColor(pressureColor)
+                        .foregroundStyle(pressureColor)
 
                     Text(HistoryListStrings.mmhg)
                         .fontOpenSans(.body3)
-                        .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
+                        .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -59,17 +59,17 @@ struct BPHistoryEntryItem: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(entry.pulse)")
                         .fontOpenSans(.heading5)
-                        .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
+                        .foregroundStyle(isExpanded ? theme.textInverse : theme.textHeading)
 
                     Text(HistoryListStrings.pulse)
                         .fontOpenSans(.body3)
-                        .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
+                        .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 // Expansion chevron — always visible (row is always expandable)
                 AppIconView(icon: AppAssets.chevronDown)
-                    .foregroundColor(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
+                    .foregroundStyle(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
                     .rotationEffect(.degrees(isExpanded ? 180 : 0))
             }
             .padding(.vertical, .spacingSM)
@@ -86,7 +86,7 @@ struct BPHistoryEntryItem: View {
                                 Text(CommonStrings.delete.uppercased())
                                     .fontOpenSans(.button1)
                                     .fontWeight(.bold)
-                                    .foregroundColor(theme.textInverse)
+                                    .foregroundStyle(theme.textInverse)
                             )
                         }
                     )
@@ -96,7 +96,7 @@ struct BPHistoryEntryItem: View {
             )
 
             Divider()
-                .foregroundColor(theme.actionPrimary)
+                .foregroundStyle(theme.actionPrimary)
 
             // Expanded notes section — always shown when expanded
             if isExpanded {
@@ -104,26 +104,24 @@ struct BPHistoryEntryItem: View {
                     if hasNotes {
                         Text(entry.notes ?? "")
                             .fontOpenSans(.body3)
-                            .foregroundColor(theme.textBody)
+                            .foregroundStyle(theme.textBody)
                     } else {
                         Text(HistoryListStrings.noNotesPlaceholder)
                             .fontOpenSans(.body3)
-                            .foregroundColor(theme.textSubheading)
+                            .foregroundStyle(theme.textSubheading)
                     }
                     Spacer()
-                    Button(action: onEditNotes) {
-                        Image(systemName: "square.and.pencil")
-                            .font(.system(size: 18))
-                            .foregroundColor(theme.actionPrimary)
-                    }
-                    .buttonStyle(.plain)
+                    Button("Edit notes", systemImage: "square.and.pencil", action: onEditNotes)
+                        .labelStyle(.iconOnly)
+                        .font(.system(size: 18))
+                        .foregroundStyle(theme.actionPrimary)
                 }
                 .padding(.spacingSM)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(theme.backgroundSecondary)
 
                 Divider()
-                    .foregroundColor(theme.actionPrimary)
+                    .foregroundStyle(theme.actionPrimary)
             }
         }
         .animation(.easeInOut(duration: 0.25), value: isExpanded)

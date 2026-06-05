@@ -43,7 +43,7 @@ struct NotesInputField: View {
                     .overlay(alignment: .bottomTrailing) {
                         Text("\(value.count)/\(maxCharacters)")
                             .fontOpenSans(.body4)
-                            .foregroundColor(
+                            .foregroundStyle(
                                 value.count >= maxCharacters
                                     ? theme.textError
                                     : theme.textSubheading

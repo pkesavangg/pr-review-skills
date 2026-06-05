@@ -85,7 +85,7 @@ struct AppInputField: View {
                         // Three states: default/filled → subdued; 280/280 → error red.
                         Text("\(value.count)/\(notesMaxCharacters)")
                             .fontOpenSans(.body4)
-                            .foregroundColor(
+                            .foregroundStyle(
                                 value.count >= notesMaxCharacters
                                     ? theme.textError
                                     : theme.textSubheading
