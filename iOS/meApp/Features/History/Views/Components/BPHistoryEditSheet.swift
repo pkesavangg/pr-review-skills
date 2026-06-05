@@ -49,7 +49,7 @@ struct BPHistoryEditSheet: View {
                     VStack(alignment: .leading, spacing: .spacingXS) {
                         Text("DATE")
                             .fontOpenSans(.subHeading2)
-                            .foregroundColor(theme.textSubheading)
+                            .foregroundStyle(theme.textSubheading)
                         DatePicker("", selection: $entryDate, displayedComponents: [.date, .hourAndMinute])
                             .datePickerStyle(.compact)
                             .labelsHidden()
@@ -58,11 +58,11 @@ struct BPHistoryEditSheet: View {
                     VStack(alignment: .leading, spacing: .spacingXS) {
                         Text("NOTES")
                             .fontOpenSans(.subHeading2)
-                            .foregroundColor(theme.textSubheading)
-                        TextEditor(text: $notesText)
+                            .foregroundStyle(theme.textSubheading)
+                        TextField("Add notes…", text: $notesText, axis: .vertical)
                             .font(.body2)
-                            .foregroundColor(theme.textBody)
-                            .frame(minHeight: 80)
+                            .foregroundStyle(theme.textBody)
+                            .lineLimit(4...)
                             .padding(.spacingXS)
                             .overlay(
                                 RoundedRectangle(cornerRadius: .radiusSM)
@@ -86,7 +86,7 @@ struct BPHistoryEditSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(CommonStrings.cancel) { dismiss() }
-                        .foregroundColor(theme.actionPrimary)
+                        .foregroundStyle(theme.actionPrimary)
                 }
             }
         }
@@ -99,10 +99,10 @@ struct BPHistoryEditSheet: View {
         VStack(alignment: .leading, spacing: .spacingXS) {
             Text(label)
                 .fontOpenSans(.subHeading2)
-                .foregroundColor(theme.textSubheading)
+                .foregroundStyle(theme.textSubheading)
             TextField("", text: text)
                 .font(.body2)
-                .foregroundColor(theme.textBody)
+                .foregroundStyle(theme.textBody)
                 .keyboardType(keyboard)
                 .padding(.spacingXS)
                 .overlay(
