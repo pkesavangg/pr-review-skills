@@ -524,7 +524,6 @@ final class HistoryStore: ObservableObject {
         notificationService.showLoader(LoaderModel(text: loaderLang.savingEntry))
         defer { notificationService.dismissLoader() }
         do {
-            try await entryService.deleteBpmEntry(entryTimestamp: old.entryTimestamp)
             let meanArterial = String(Int(round(Double(diastolic) + (Double(systolic) - Double(diastolic)) / 3.0)))
             let dto = BpmOperationDTO(
                 accountId: nil,
@@ -540,6 +539,7 @@ final class HistoryStore: ObservableObject {
                 serverTimestamp: nil
             )
             try await entryService.createBpmEntry(dto)
+            try await entryService.deleteBpmEntry(entryTimestamp: old.entryTimestamp)
             logger.log(level: .info, tag: tag, message: "BP entry updated: \(entryTimestamp)")
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to update BP entry: \(error.localizedDescription)")
@@ -559,7 +559,6 @@ final class HistoryStore: ObservableObject {
         notificationService.showLoader(LoaderModel(text: loaderLang.savingEntry))
         defer { notificationService.dismissLoader() }
         do {
-            try await entryService.deleteEntry(entryId: old.id)
             // Reconstruct original decigrams from display values
             let weightDecigrams: Int
             if isMetric {
@@ -581,6 +580,7 @@ final class HistoryStore: ObservableObject {
                 entryTimestamp: old.entryTimestamp,
                 source: nil
             )
+            try await entryService.deleteEntry(entryId: old.id)
             logger.log(level: .info, tag: tag, message: "Baby entry updated: \(old.entryTimestamp)")
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to update baby entry: \(error.localizedDescription)")
