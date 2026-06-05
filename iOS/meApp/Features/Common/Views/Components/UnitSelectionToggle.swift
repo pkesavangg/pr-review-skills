@@ -45,7 +45,7 @@ struct UnitSelectionToggle: View {
         }, label: {
             Text(title)
                 .fontOpenSans(.button2)
-                .foregroundColor(isSelected ? theme.textInverse : theme.actionSecondary)
+                .foregroundStyle(isSelected ? theme.textInverse : theme.actionSecondary)
                 .frame(minWidth: 75)
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingXS)
