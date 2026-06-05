@@ -17,14 +17,16 @@ struct BabyReadingNoProfileCTAView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: .spacingXS) {
-            (styledBabyWeightText(weightString, theme: theme)
-            + Text(" - \(timestamp)")
-                .fontOpenSans(.body2)
-                .foregroundColor(theme.textHeading))
+            VStack(alignment: .leading, spacing: 2) {
+                styledBabyWeightText(weightString, theme: theme)
+                Text(timestamp)
+                    .fontOpenSans(.body2)
+                    .foregroundStyle(theme.textHeading)
+            }
 
             Text(DashboardStrings.babyReadingNoProfileMessage)
                 .fontOpenSans(.body2)
-                .foregroundColor(theme.textBody)
+                .foregroundStyle(theme.textBody)
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: .spacingSM) {
