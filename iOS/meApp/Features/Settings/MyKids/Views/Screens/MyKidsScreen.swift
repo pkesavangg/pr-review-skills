@@ -21,12 +21,16 @@ struct MyKidsScreen: View {
     /// machine that relies on a stable itemID across re-renders.
     private func babyItemID(_ baby: Baby) -> UUID {
         if let uuid = UUID(uuidString: baby.id) { return uuid }
-        var bytes = [UInt8](baby.id.utf8.prefix(16))
-        bytes.append(contentsOf: repeatElement(0, count: max(0, 16 - bytes.count)))
-        return UUID(uuid: (bytes[0], bytes[1], bytes[2], bytes[3],
-                           bytes[4], bytes[5], bytes[6], bytes[7],
-                           bytes[8], bytes[9], bytes[10], bytes[11],
-                           bytes[12], bytes[13], bytes[14], bytes[15]))
+        // Hash the full ID to avoid prefix-collision for IDs longer than 16 bytes.
+        var hasher = Hasher()
+        hasher.combine(baby.id)
+        let h = UInt64(bitPattern: Int64(hasher.finalize()))
+        let b: [UInt8] = (0..<8).map { UInt8((h >> ($0 * 8)) & 0xFF) }
+        let salt: UInt64 = 0xDEAD_BEEF_CAFE_1234
+        let h2 = h ^ salt
+        let b2: [UInt8] = (0..<8).map { UInt8((h2 >> ($0 * 8)) & 0xFF) }
+        return UUID(uuid: (b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
+                           b2[0], b2[1], b2[2], b2[3], b2[4], b2[5], b2[6], b2[7]))
     }
 
     var body: some View {
