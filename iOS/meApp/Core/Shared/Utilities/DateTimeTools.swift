@@ -13,6 +13,40 @@ final class DateTimeTools {
     static let invalidString: String = "---"
     static let invalidInt: Int? = nil
 
+    // MARK: - Cached Calendars (MA-3845 hot-path reuse)
+    /// User's current calendar, cached once. Reading `Calendar.current` per call
+    /// triggers `_LocaleICU.minimumDaysInFirstWeek.getter` — a leaf that surfaced in
+    /// the dashboard scroll-hang traces. Reuse this instance for any read-only
+    /// Calendar operation that doesn't need a custom timezone / locale / firstWeekday.
+    static let currentCalendar: Calendar = Calendar.current
+
+    /// Gregorian calendar aligned with the user's current timezone and locale.
+    /// Used instead of constructing a fresh `Calendar(identifier: .gregorian)` per call.
+    static let gregorianCalendar: Calendar = {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = .current
+        cal.locale = .current
+        return cal
+    }()
+
+    /// UTC Gregorian calendar — used for UTC date-component extraction.
+    static let gregorianUTCCalendar: Calendar = {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC") ?? .current
+        cal.locale = .current
+        return cal
+    }()
+
+    /// Sunday-start Gregorian calendar aligned with the user's current locale and
+    /// timezone. Used by Sunday-tick computations instead of constructing per call.
+    static let sundayStartCalendar: Calendar = {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = .current
+        cal.locale = .current
+        cal.firstWeekday = 1 // Sunday
+        return cal
+    }()
+
     private static let parsedDateCache: NSCache<NSString, NSDate> = {
         let cache = NSCache<NSString, NSDate>()
         cache.countLimit = 20_000
@@ -311,6 +345,27 @@ final class DateTimeTools {
     }
 
     // MARK: - Helpers
+
+    /// Parses a stored date-of-birth (or similar calendar-only) string into a local-midnight `Date`
+    /// representing the same Y-M-D the server stored.
+    ///
+    /// The backend stores dob as UTC midnight ISO (e.g. `"1999-09-09T00:00:00.000Z"`) regardless of
+    /// what timezone the client sends from — it strips the time and keeps the UTC date portion.
+    /// Parsed as an instant and rendered in local time, that shifts one day earlier in any timezone
+    /// west of UTC. This helper reads the Y-M-D in UTC and rebuilds at local midnight so the
+    /// calendar day is preserved in any timezone.
+    static func parseCalendarDate(_ dateString: String) -> Date? {
+        if let date = formatter("yyyy-MM-dd").date(from: dateString) {
+            return date
+        }
+        guard let instant = parse(dateString) else { return nil }
+        var utcCal = Calendar(identifier: .gregorian)
+        utcCal.timeZone = TimeZone(secondsFromGMT: 0) ?? .current
+        let comps = utcCal.dateComponents([.year, .month, .day], from: instant)
+        var localCal = Calendar(identifier: .gregorian)
+        localCal.timeZone = .current
+        return localCal.date(from: DateComponents(year: comps.year, month: comps.month, day: comps.day))
+    }
 
     /// Attempts to parse a date string using ISO8601 and several common formats.
     /// Returns a Date if successful, or nil if parsing fails.

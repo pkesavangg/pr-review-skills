@@ -4,9 +4,6 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
@@ -159,29 +156,6 @@ fun GraphView(
   LaunchedEffect(segment) {
     if (scrollTarget == null || !canScrollToAnchor || segmentState.isEmptyGraph) return@LaunchedEffect
     onScrollTargetConsumed(true)
-  }
-
-  // Suppress the trailing click that vico emits when a finger-down → drift → finger-up
-  // gesture also looks like a tap. Watch for the explicit `DragEnded` event and gate
-  // clicks within a short window after it. An earlier version flipped the timestamp on
-  // any non-DragStarted event, but vico emits `Dragging` mid-drag — that fired the flag
-  // ~10ms after drag start, well before the user actually lifted their finger, so the
-  // 50ms guard expired before the trailing click arrived.
-  val lastDragEndMs = remember { mutableLongStateOf(0L) }
-  LaunchedEffect(scrollState) {
-    scrollState.interactionEvents
-      .filter { it is ChartInteractionEvent.DragStarted || it is ChartInteractionEvent.DragEnded }
-      .collect { event ->
-        when (event) {
-          is ChartInteractionEvent.DragStarted ->
-            viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
-
-          is ChartInteractionEvent.DragEnded ->
-            lastDragEndMs.longValue = System.currentTimeMillis()
-
-          else -> Unit
-        }
-      }
   }
 
   val defaultMarker = rememberDefaultMarker(
