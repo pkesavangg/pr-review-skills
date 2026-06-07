@@ -69,7 +69,7 @@ import android.content.Context
     BabyEntryEntity::class,
   ],
   views = [ActiveEntryEntity::class],
-  version = 6,
+  version = 7,
   exportSchema = true,
 )
 @TypeConverters(DateConverter::class, JsonConverter::class, WeightUnitConverter::class)
@@ -252,6 +252,14 @@ abstract class AppDatabase : RoomDatabase() {
       }
     }
 
+    // ----- Migration 6 → 7 -----
+    // body_scale_entry — add nullable note column for weight-entry notes (MOB-438).
+    private val MIGRATION_6_7 = object : Migration(6, 7) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE body_scale_entry ADD COLUMN note TEXT DEFAULT NULL")
+      }
+    }
+
     @Volatile
     private var instance: AppDatabase? = null
 
@@ -279,7 +287,7 @@ abstract class AppDatabase : RoomDatabase() {
                 }
               },
             )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
             .fallbackToDestructiveMigration(false)
             .build()
         Companion.instance = instance

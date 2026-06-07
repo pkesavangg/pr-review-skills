@@ -83,6 +83,8 @@ fun BabyEntrySection(
     AppTextArea(
         formControl = controls.notes,
         label = EntryScreenStrings.NOTES_LABEL,
+        maxLength = EntryScreenStrings.NOTES_MAX_LENGTH,
+        showCharacterCounter = true,
     )
     Spacer(modifier = Modifier.height(MeTheme.spacing.md))
     DateTimeInput(

@@ -16,6 +16,7 @@ fun BpHistoryDetailList(
     entries: List<BpmEntry>,
     expandedIds: List<Long>,
     onToggleExpand: (Long) -> Unit,
+    onEditEntry: (BpmEntry) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(modifier = modifier) {
@@ -26,6 +27,7 @@ fun BpHistoryDetailList(
                 timeDisplay = entry.getTime(),
                 isExpanded = expandedIds.contains(entry.entry.id),
                 onToggle = { onToggleExpand(entry.entry.id) },
+                onEditEntry = { onEditEntry(entry) },
             )
         }
     }

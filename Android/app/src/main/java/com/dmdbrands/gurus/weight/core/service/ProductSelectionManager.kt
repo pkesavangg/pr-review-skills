@@ -113,6 +113,6 @@ class ProductSelectionManager @Inject constructor(
     private const val TAG = "ProductSelectionManager"
 
     /** Flip to `true` to use sample products (BP + 2 babies) for testing. */
-    var USE_SAMPLE_PRODUCTS = true
+    var USE_SAMPLE_PRODUCTS = false
   }
 }

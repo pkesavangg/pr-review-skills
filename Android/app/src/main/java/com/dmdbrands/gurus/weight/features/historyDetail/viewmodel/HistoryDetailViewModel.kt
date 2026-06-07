@@ -107,7 +107,25 @@ class HistoryDetailViewModel @AssistedInject constructor(
                 showDeleteEntryDialog(intent.entry)
             }
 
+            is HistoryDetailIntent.SaveNote -> {
+                AppLog.d(TAG, "Save note for entry: ${intent.entry.entry.id}")
+                saveNote(intent.entry, intent.note)
+            }
+
             else -> Unit
+        }
+    }
+
+    private fun saveNote(entry: Entry, note: String) {
+        viewModelScope.launch {
+            try {
+                entryService.updateNote(entry, note.ifBlank { null })
+                handleIntent(HistoryDetailIntent.DismissNoteEditor)
+                loadDetail()
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error saving note for entry: ${entry.entry.id}", e)
+                handleIntent(HistoryDetailIntent.DismissNoteEditor)
+            }
         }
     }
 
