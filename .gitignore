@@ -49,3 +49,4 @@ Android/.claude/
 
 # Developer convenience scripts
 Android/run.sh
+.refact/

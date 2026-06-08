@@ -79,7 +79,7 @@ class DebugMenuViewModel @Inject constructor(
     /**
      * Get scale info by SKU, similar to Angular scaleInfoService.getScaleInfoBySku()
      */
-    private fun getScaleInfoBySku(sku: String): ScaleInfo? {
+    private fun getScaleInfoBySku(sku: String?): ScaleInfo? {
         return DEVICES.find { it.sku == sku }
     }
 

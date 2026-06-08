@@ -52,6 +52,12 @@ public enum KvStorageKeys: String {
     /// Feed last triggered at timestamp key suffix (per account)
     case feedLastTriggeredAt
     case setAGoalCardViewed
+    /// "Scrollable graph" first-time hint modal viewed flag suffix (per account)
+    case graphScrollHintViewed = "graphScrollHintViewed"
+
+    // MARK: - AppSync Camera Keys
+    /// MA-3863: single key storing a dictionary of accountId → last-used camera zoom level
+    case appSyncCameraZoomMap = "appSyncCameraZoomMap"
 
     // MARK: - Product Type Selection
     /// Selected product type key suffix (per account)
@@ -140,6 +146,13 @@ public enum KvStorageKeys: String {
     /// - Returns: The full key for goal met flag storage
     public static func setAGoalModalFlagKey(for accountId: String) -> String {
         return "\(accountId)_\(Self.setAGoalCardViewed.rawValue)"
+    }
+
+    /// Creates an account-scoped key for the graph scroll hint modal viewed flag
+    /// - Parameter accountId: The account identifier
+    /// - Returns: The full key for graph scroll hint viewed flag storage
+    public static func graphScrollHintViewedKey(for accountId: String) -> String {
+        return "\(accountId)_\(Self.graphScrollHintViewed.rawValue)"
     }
 
     /// Creates an account-scoped key for selected product type

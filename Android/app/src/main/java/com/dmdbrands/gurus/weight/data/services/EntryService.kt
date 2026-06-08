@@ -7,6 +7,8 @@ import com.dmdbrands.gurus.weight.data.api.HealthConnectSyncEntry
 import com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationType
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.api.entry.toDomainEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry.Companion.fromScaleApiEntry
@@ -186,9 +188,30 @@ class EntryService(
 
             for (operation in unSyncedEntries) {
                 try {
-                    entryRepository.sendOperationToAPI((operation as ScaleEntry).toScaleApiEntry())
-                    val syncedOperation = operation.updateEntry(entry = operation.entry.copy(isSynced = true))
-                    successfulOperations.add(syncedOperation)
+                    when (operation) {
+                        is ScaleEntry -> {
+                            entryRepository.sendOperationToAPI(operation.toScaleApiEntry())
+                            val syncedOperation =
+                                operation.updateEntry(entry = operation.entry.copy(isSynced = true))
+                            successfulOperations.add(syncedOperation)
+                        }
+
+                        is BabyEntry -> {
+                            // GATED: baby entries flow through the unified /v3/entries/ API
+                            // (category=baby) introduced by MOB-379 (write) / MOB-380 (read).
+                            // The current operation/r4 endpoint only accepts ScaleApiEntry and
+                            // cannot carry baby fields, so we do NOT send baby entries live yet.
+                            // The DTO mapping is ready via BabyEntry.toBabyEntryRequest().
+                            // The entry is left unsynced so it is not lost.
+                            // TODO(MOB-379/380): send operation.toBabyEntryRequest() once unified entries land.
+                            AppLog.w(TAG, "Baby entry sync skipped — pending unified entries API (MOB-379/380)")
+                        }
+
+                        is BpmEntry -> {
+                            // BP entries are wired by MOB-379 (unified entries write); left unsynced until then.
+                            AppLog.w(TAG, "BPM entry sync skipped — pending unified entries API (MOB-379)")
+                        }
+                    }
                 } catch (e: Exception) {
                     val failedOperation = operation.updateEntry(
                         entry = operation.entry.copy(

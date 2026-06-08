@@ -166,14 +166,36 @@ extension BtWifiScaleSetupStore {
                 }
             }
             
-            // Subscribe to new entry events (uses EntryNotification for safe cross-actor data passing)
+            // Subscribe to new entry events (uses EntryNotification for safe cross-actor data passing).
+            // Adult weight readings arrive via pendingScaleEntryPublisher (the confirm/discard toast
+            // flow); only baby readings fire newEntryReceivedPublisher. Merge both so setup completes
+            // for every scale type — otherwise an adult scale (e.g. R4 weight scale) would sit on the
+            // "Collecting Measurement" screen until the timeout fires.
             newEntrySubscription = bluetoothService.newEntryReceivedPublisher
+                .merge(with: bluetoothService.pendingScaleEntryPublisher)
                 .receive(on: DispatchQueue.main)
                 .sink { [weak self] _ in
                     guard let self else { return }
                     // Entry received - clear timeout and move to next step
                     self.cancelMeasurementSubscription()
                     self.scaleSetupError = .none
+                    // Adult readings stage as a *pending* entry; the reading-arrival toast that
+                    // would normally persist them is intentionally suppressed during setup
+                    // (BottomTabBarViewModel guards on isSetupInProgress), so persist it here or
+                    // the first weigh-in never reaches History. No-op for baby readings, which
+                    // are already saved (pendingScaleEntry is nil).
+                    Task { [weak self] in
+                        guard let self else { return }
+                        do {
+                            try await self.bluetoothService.confirmPendingScaleEntry()
+                        } catch {
+                            LoggerService.shared.log(
+                                level: .error,
+                                tag: self.tag,
+                                message: "Failed to persist setup measurement entry: \(error.localizedDescription)"
+                            )
+                        }
+                    }
                     self.moveToNextStep()
                 }
         case .scaleConnected:
@@ -446,7 +468,17 @@ extension BtWifiScaleSetupStore {
                     self.navigateToStep(.gatheringNetwork)
                 }
             case .duplicateUserError:
-                LoggerService.shared.log(level: .error, tag: tag, message: "Duplicate User Error \(response)")
+                LoggerService.shared.log(level: .info, tag: tag, message: "Duplicate user detected, routing to duplicate-resolution screen \(response)")
+                // Commit to the duplicate-resolution screen *before* fetching the user
+                // list. getUserList() disconnects the scale, and the resulting
+                // rediscovery can re-present the setup flow and run configure(), which
+                // resets scaleSetupError to .none — wiping this state before the screen
+                // lands and causing a setup loop / blank screen. Setting the error and
+                // navigating synchronously here closes that window. (Mirrors the
+                // reconnect path in configure().)
+                scaleSetupError = .duplicatesFound
+                navigateToStep(.gatheringNetwork)
+
                 // Get user list from scale and check for duplicates
                 await getUserList()
                 checkDuplicateUserList()
@@ -465,9 +497,6 @@ extension BtWifiScaleSetupStore {
                 userNameForm.updateUserList(scaleUsers)
                 userNameForm.displayName.markAsPristine()
                 userNameForm.displayName.markAsUntouched()
-                // Set error state and navigate to gathering network
-                scaleSetupError = .duplicatesFound
-                navigateToStep(.gatheringNetwork)
             case .memoryFull:
                 LoggerService.shared.log(level: .error, tag: tag, message: "Memory Full \(response)")
                 await getUserList()
