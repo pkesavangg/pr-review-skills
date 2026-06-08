@@ -115,6 +115,26 @@ class UnifiedEntryMapperTest {
         assertThat(bpmEntry().toUnifiedRequestOrNull()?.category).isEqualTo("bp")
     }
 
+    @Test
+    fun `toUnifiedRequestOrNull drops a zero-weight reading`() {
+        val zeroWeight = scaleEntry().let {
+            it.copy(scale = it.scale.copy(scaleEntry = it.scale.scaleEntry.copy(weight = 0.0)))
+        }
+        assertThat(zeroWeight.toUnifiedRequestOrNull()).isNull()
+    }
+
+    @Test
+    fun `toUnifiedRequestOrNull drops an out-of-range bp reading`() {
+        // systolic 0 / diastolic 0 — a garbage reading must not be POSTed as a real entry.
+        val garbage = bpmEntry().let {
+            it.copy(bpmEntry = it.bpmEntry.copy(systolic = 0, diastolic = 0, pulse = 0))
+        }
+        assertThat(garbage.toUnifiedRequestOrNull()).isNull()
+        // An above-range systolic is also rejected.
+        val tooHigh = bpmEntry().let { it.copy(bpmEntry = it.bpmEntry.copy(systolic = 400)) }
+        assertThat(tooHigh.toUnifiedRequestOrNull()).isNull()
+    }
+
     // ── UnifiedEntry → domain ────────────────────────────────────────────────────
 
     @Test
@@ -152,7 +172,24 @@ class UnifiedEntryMapperTest {
         assertThat(domain).isNotNull()
         assertThat(domain?.systolic).isEqualTo(120)
         assertThat(domain?.diastolic).isEqualTo(80)
-        assertThat(domain?.meanArterial).isEqualTo("93") // (120 + 160) / 3
+        assertThat(domain?.meanArterial).isEqualTo("93") // (120 + 160) / 3 = 93.33 → 93
+    }
+
+    @Test
+    fun `mean arterial rounds to nearest rather than truncating`() {
+        // (121 + 2*80) / 3 = 93.67 — integer division would truncate to 93.
+        val unified = UnifiedEntry(
+            category = "bp",
+            entryTimestamp = TIMESTAMP,
+            serverTimestamp = TIMESTAMP,
+            systolic = 121,
+            diastolic = 80,
+            pulse = 72,
+        )
+
+        val domain = unified.toDomainEntry(ACCOUNT_ID) as? BpmEntry
+
+        assertThat(domain?.meanArterial).isEqualTo("94")
     }
 
     @Test

@@ -177,6 +177,25 @@ class EntryServiceTest {
     }
 
     @Test
+    fun `successful batch persists source rows as synced even when server echo is empty`() = runTest {
+        coEvery { entryRepository.getUnSynced(testAccountId) } returns emptyList()
+        coEvery { entryRepository.getOperationCount(testAccountId) } returns 0
+        coEvery { entryRepository.getOperationsFromAPI(any()) } returns null
+        coEvery { entryRepository.getEntryById(any()) } returns null
+        every { accountRepository.getSyncTimeStamp() } returns flowOf("")
+        coEvery { accountRepository.updateSyncTimeStamp(any()) } returns Unit
+        coEvery { entryRepository.sendBatchToAPI(any()) } returns
+            UnifiedEntryResponse(entries = emptyList(), timestamp = "2024-01-01T00:00:00.000Z")
+
+        service.updateAllData(testAccountId)
+        service.addEntry(realScaleEntry())
+
+        // P1 fix: the source row is written back as isSynced = true even though the server
+        // echoed no entries, so it is not re-POSTed (and duplicated) on the next sync.
+        coVerify { entryRepository.insert(match<Entry> { it.entry.isSynced }) }
+    }
+
+    @Test
     fun `atomic batch failure does not crash and is swallowed for retry`() = runTest {
         coEvery { entryRepository.getUnSynced(testAccountId) } returns emptyList()
         coEvery { entryRepository.getOperationCount(testAccountId) } returns 0

@@ -8,11 +8,32 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import java.util.UUID
+import kotlin.math.roundToInt
 
 /**
  * Mapping between domain [Entry] types and the unified `/v3/entries/` DTOs.
  * Single source of truth for field mapping; reused by the read path (MOB-380).
  */
+
+/**
+ * Physiological sanity bounds applied before a reading is written to the server.
+ * These mirror the manual-entry form limits (`AppValidatorConfig`) but are duplicated
+ * here so the domain mapper stays independent of the features layer. A reading outside
+ * these bounds (or a 0/garbage sensor value) is dropped rather than POSTed as a real
+ * entry — in an atomic batch one bad reading would otherwise fail the whole batch.
+ */
+private const val SYSTOLIC_MIN = 60
+private const val SYSTOLIC_MAX = 250
+private const val DIASTOLIC_MIN = 40
+private const val DIASTOLIC_MAX = 150
+private const val PULSE_MIN = 30
+private const val PULSE_MAX = 250
+
+/** True when sys/dia/pulse are all within physiological range and safe to write. */
+private fun BpmEntry.hasValidReading(): Boolean =
+    systolic in SYSTOLIC_MIN..SYSTOLIC_MAX &&
+        diastolic in DIASTOLIC_MIN..DIASTOLIC_MAX &&
+        pulse in PULSE_MIN..PULSE_MAX
 
 /** Builds the unified request for a weight entry (reuses the legacy field math). */
 fun ScaleEntry.toUnifiedRequest(): UnifiedEntryRequest {
@@ -51,8 +72,10 @@ fun BpmEntry.toUnifiedRequest(): UnifiedEntryRequest = UnifiedEntryRequest(
  * wired for write yet (baby — Android 3 / MOB-381).
  */
 fun Entry.toUnifiedRequestOrNull(): UnifiedEntryRequest? = when (this) {
-    is ScaleEntry -> toUnifiedRequest()
-    is BpmEntry -> toUnifiedRequest()
+    // Drop a 0/garbage weight rather than writing it as a real reading (mirrors the
+    // read-path guard that refuses to persist a 0-weight entry).
+    is ScaleEntry -> toUnifiedRequest().takeIf { (it.weight ?: 0) > 0 }
+    is BpmEntry -> if (hasValidReading()) toUnifiedRequest() else null
     is BabyEntry -> null
 }
 
@@ -111,7 +134,7 @@ private fun UnifiedEntry.toBpmEntry(accountId: String): BpmEntry {
         systolic = sys,
         diastolic = dia,
         pulse = pulse ?: 0,
-        meanArterial = ((sys + 2 * dia) / 3).toString(),
+        meanArterial = ((sys + 2 * dia) / 3.0).roundToInt().toString(),
         note = note,
     )
     return BpmEntry(entry = entryEntity, bpmEntry = bpmEntity)
