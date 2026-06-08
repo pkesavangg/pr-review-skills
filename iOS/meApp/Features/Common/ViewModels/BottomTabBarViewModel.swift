@@ -1236,7 +1236,7 @@ class BottomTabBarViewModel: ObservableObject {
         }
 
         if count > 1 { isReplacingBtBpmCard = true }
-        logger.log(level: .info, tag: tag, message: "Showing BPM reading arrival card. count=\(count), \(systolic)/\(diastolic) pulse=\(pulse)")
+        logger.log(level: .info, tag: tag, message: "Showing BPM reading arrival card. count=\(count)")
         notificationService.showToast(toast)
     }
 
@@ -1335,7 +1335,7 @@ class BottomTabBarViewModel: ObservableObject {
         )
 
         if count > 1 { isReplacingWifiBpmCard = true }
-        logger.log(level: .info, tag: tag, message: "Showing Wi-Fi BPM reading card. count=\(count), \(systolic)/\(diastolic) pulse=\(pulse)")
+        logger.log(level: .info, tag: tag, message: "Showing Wi-Fi BPM reading card. count=\(count)")
         notificationService.showToast(toast)
     }
 
