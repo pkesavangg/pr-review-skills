@@ -162,36 +162,24 @@ struct KvStorageKeysProductTypeKeyTests {
 
 // MARK: - hasPersistedSelection via MockKvStorageService
 
-/// These tests exercise the hasPersistedSelection logic directly using
-/// MockKvStorageService and MockAccountService, bypassing the singleton
-/// ProductTypeStore (which has a private init).
+/// These tests exercise `ProductTypeStore.hasPersistedSelection(kvStorage:accountId:)` —
+/// the package-internal static entry point that contains the real production logic.
+/// Using the static helper keeps tests honest: if the implementation changes, these
+/// tests break; a duplicated copy would silently pass.
 @Suite("hasPersistedSelection via KV storage")
 @MainActor
 struct HasPersistedSelectionKvStorageTests {
 
-    // Helper that replicates the production logic:
-    //   guard let accountId = accountService.activeAccount?.accountId else { return false }
-    //   let key = KvStorageKeys.selectedProductTypeKey(for: accountId)
-    //   return kvStorage.getValue(forKey: key) != nil
-    private func hasPersistedSelection(
-        kvStorage: MockKvStorageService,
-        accountId: String?
-    ) -> Bool {
-        guard let accountId else { return false }
-        let key = KvStorageKeys.selectedProductTypeKey(for: accountId)
-        return kvStorage.getValue(forKey: key) != nil
-    }
-
     @Test("returns false when account is not active (nil accountId)")
     func returnsFalseWhenNoActiveAccount() {
         let kv = MockKvStorageService()
-        #expect(hasPersistedSelection(kvStorage: kv, accountId: nil) == false)
+        #expect(ProductTypeStore.hasPersistedSelection(kvStorage: kv, accountId: nil) == false)
     }
 
     @Test("returns false when no selection is persisted for the account")
     func returnsFalseWhenNoPersistedSelection() {
         let kv = MockKvStorageService()
-        #expect(hasPersistedSelection(kvStorage: kv, accountId: "acct-1") == false)
+        #expect(ProductTypeStore.hasPersistedSelection(kvStorage: kv, accountId: "acct-1") == false)
     }
 
     @Test("returns true when a selection key exists in KV storage for the active account")
@@ -201,7 +189,7 @@ struct HasPersistedSelectionKvStorageTests {
         let key = KvStorageKeys.selectedProductTypeKey(for: accountId)
         kv.setValue("myWeight", forKey: key)
 
-        #expect(hasPersistedSelection(kvStorage: kv, accountId: accountId) == true)
+        #expect(ProductTypeStore.hasPersistedSelection(kvStorage: kv, accountId: accountId) == true)
     }
 
     @Test("returns false when selection is persisted for a different account")
@@ -211,7 +199,7 @@ struct HasPersistedSelectionKvStorageTests {
         kv.setValue("myWeight", forKey: otherKey)
 
         // Active account is "acct-1", but only "acct-other" has a persisted key
-        #expect(hasPersistedSelection(kvStorage: kv, accountId: "acct-1") == false)
+        #expect(ProductTypeStore.hasPersistedSelection(kvStorage: kv, accountId: "acct-1") == false)
     }
 
     @Test("returns false after the persisted selection is cleared")
@@ -220,10 +208,10 @@ struct HasPersistedSelectionKvStorageTests {
         let accountId = "acct-1"
         let key = KvStorageKeys.selectedProductTypeKey(for: accountId)
         kv.setValue("myBloodPressure", forKey: key)
-        #expect(hasPersistedSelection(kvStorage: kv, accountId: accountId) == true)
+        #expect(ProductTypeStore.hasPersistedSelection(kvStorage: kv, accountId: accountId) == true)
 
         kv.clearValue(forKey: key)
-        #expect(hasPersistedSelection(kvStorage: kv, accountId: accountId) == false)
+        #expect(ProductTypeStore.hasPersistedSelection(kvStorage: kv, accountId: accountId) == false)
     }
 
     @Test("returns true regardless of the persisted product type value")
@@ -234,7 +222,7 @@ struct HasPersistedSelectionKvStorageTests {
 
         for productId in ["myWeight", "myBloodPressure", "baby_someId"] {
             kv.setValue(productId, forKey: key)
-            #expect(hasPersistedSelection(kvStorage: kv, accountId: accountId) == true)
+            #expect(ProductTypeStore.hasPersistedSelection(kvStorage: kv, accountId: accountId) == true)
         }
     }
 }
