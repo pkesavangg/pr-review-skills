@@ -26,6 +26,10 @@ interface BabyProfileDao {
     @Query("SELECT * FROM baby WHERE babyId = :profileId")
     suspend fun getById(profileId: String): BabyProfileEntity?
 
+    /** Deletes any local babies for [accountId] whose id is not in [keepIds] (refresh reconcile). */
+    @Query("DELETE FROM baby WHERE accountId = :accountId AND babyId NOT IN (:keepIds)")
+    suspend fun deleteByAccountIdNotIn(accountId: String, keepIds: List<String>)
+
     @Query("UPDATE baby SET activeBabyId = :activeBabyId WHERE accountId = :accountId")
     suspend fun setActiveBabyId(accountId: String, activeBabyId: String)
 

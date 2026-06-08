@@ -12,4 +12,7 @@ interface IBabyProfileService {
     suspend fun update(profile: BabyProfile)
 
     suspend fun delete(profileId: String)
+
+    /** Fetches the latest baby list from the server and mirrors it into the local cache. */
+    suspend fun refresh()
 }
