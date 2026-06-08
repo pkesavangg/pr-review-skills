@@ -55,7 +55,7 @@ struct WeightSnapshotCard: View {
                     .padding(.horizontal, .spacingSM)
                     .padding(.top, .spacingSM)
 
-                if !cachedRecentWeekSummaries.isEmpty {
+                if !cachedChartSummaries.isEmpty {
                     snapshotChart
                         .frame(height: 240)
                         .padding(.top, .spacingXS)
@@ -96,12 +96,15 @@ struct WeightSnapshotCard: View {
 
             let weights = recent.map(\.weight).filter { $0 > 0 }
             let avg: String
-            if weights.isEmpty {
-                avg = "--"
-            } else {
+            if !weights.isEmpty {
                 let avgStored = Int((weights.reduce(0, +) / Double(weights.count)).rounded())
                 let avgDisplay = Self.convertStoredWeightToDisplay(avgStored, unit: weightUnit)
                 avg = String(format: "%.1f", avgDisplay)
+            } else if let last = chart.last(where: { $0.weight > 0 }) {
+                let display = Self.convertStoredWeightToDisplay(Int(last.weight), unit: weightUnit)
+                avg = String(format: "%.1f", display)
+            } else {
+                avg = "--"
             }
             let goalWeightDisplay = goalWeightStored.map { Self.convertStoredWeightToDisplay(Int($0), unit: weightUnit) }
             return (window, chart, recent, avg, weightUnit, goalWeightDisplay)
@@ -120,12 +123,12 @@ struct WeightSnapshotCard: View {
 
     private var headlineSection: some View {
         VStack(alignment: .leading, spacing: Layout.headlineSpacing) {
-            Text("week average")
+            Text(cachedChartSummaries.isEmpty ? DashboardStrings.noEntries : "week average")
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
 
             HStack(alignment: .lastTextBaseline, spacing: Layout.unitSpacing) {
-                Text(cachedWeekAverage)
+                Text(cachedWeekAverage == "--" ? "000.0" : cachedWeekAverage)
                     .fontOpenSans(.heading1)
                     .fontWeight(.heavy)
                     .foregroundColor(theme.textHeading)
@@ -243,7 +246,7 @@ struct WeightSnapshotCard: View {
     private var emptyState: some View {
         VStack(spacing: .spacingXS) {
             Spacer()
-            Text(BpmDashboardStrings.noReadingsYet)
+            Text(DashboardStrings.noReadingsYet)
                 .fontOpenSans(.body2)
                 .foregroundColor(theme.textSubheading)
             Spacer()

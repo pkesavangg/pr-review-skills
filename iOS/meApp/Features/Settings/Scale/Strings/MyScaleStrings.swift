@@ -18,5 +18,5 @@ struct MyScaleStrings {
     static let unknownScale = "Unknown Device"
     static let modelNumberHelpTitle = "Check the back of your device for a sticker with your four-digit model number."
     static let modelNumberHelpExample = "For example, if you have a 0375 Bluetooth Scale, the sticker will show the URL:\ngreatergoods.com/0375"
-    static let chooseYourScale = "Choose Your Scale"
+    static let chooseYourScale = "Choose Your Device"
 }

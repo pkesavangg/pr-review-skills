@@ -14,14 +14,14 @@ struct HistoryEntryItem: View {
     @Environment(\.appTheme) private var theme
     @Environment(\.weightlessSettings) private var weightlessSettings
     @Environment(\.weightUnit) private var weightUnit
-    
+
     let entry: EntrySnapshot
     let isExpanded: Bool
     let onTap: () -> Void
     let onDelete: () -> Void
     let onMetricTap: (EntrySnapshot, BodyMetric) -> Void
     var openItemID: Binding<UUID?>? // Optional binding for swipeable open tracking
-    
+
     // MARK: - Computed Properties
 
     // Hide "bpm" on pulse for weight-scale entries so heart rate renders as a bare number.
@@ -43,18 +43,21 @@ struct HistoryEntryItem: View {
     }
 
     // MARK: - Body
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Main entry row
             HStack {
-                // Timestamp — relative when recent, absolute otherwise (MOB-458)
-                Text(DateTimeTools.getArrivalRelativeTime(fromISOString: entry.entryTimestamp)
-                    ?? DateTimeTools.getFormattedDay(entry.entryTimestamp))
-                    .fontOpenSans(.heading5)
-                    .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(DateTimeTools.getFormattedDay(entry.entryTimestamp))
+                        .fontOpenSans(.heading5)
+                        .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
+                    Text(DateTimeTools.getFormattedTime(entry.entryTimestamp))
+                        .fontOpenSans(.body3)
+                        .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
                 // Weight value
                 HStack(spacing: .spacingXS) {
                     Text(WeightValueConvertor.formatWeight(
@@ -80,7 +83,7 @@ struct HistoryEntryItem: View {
                 }
                 .layoutPriority(1)
                 .fixedSize(horizontal: true, vertical: false)
-                
+
                 // Expansion chevron (only if metrics exist); placeholder preserves alignment otherwise
                 if !entry.metricItems.isEmpty {
                     AppIconView(icon: AppAssets.chevronDown)
@@ -116,10 +119,10 @@ struct HistoryEntryItem: View {
                 itemID: entry.id,
                 openItemID: openItemID
             )
-            
+
             Divider()
                 .foregroundColor(theme.actionPrimary)
-            
+
             // Expanded metrics section with smooth animation
             if isExpanded, !entry.metricItems.isEmpty {
                 VStack(spacing: 0) {

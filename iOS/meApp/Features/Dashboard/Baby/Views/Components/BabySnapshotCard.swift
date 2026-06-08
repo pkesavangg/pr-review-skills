@@ -100,7 +100,7 @@ struct BabySnapshotCard: View {
                     .padding(.horizontal, .spacingSM)
                     .padding(.top, .spacingSM)
 
-                if !cachedRecentWeekSummaries.isEmpty {
+                if !cachedChartSummaries.isEmpty {
                     snapshotChart
                         .frame(height: 240)
                         .padding(.top, .spacingXS)
@@ -138,7 +138,8 @@ struct BabySnapshotCard: View {
             let window = DashboardSnapshotChartWindow.make(summaries: inputSummaries) { $0.weight > 0 }
             let chart = window?.chartSummaries ?? []
             let recent = window?.visibleSummaries ?? []
-            let avg = BabyDashboardChartSupport.weekAverageLbsOz(from: recent, unit: weightUnit)
+            let avgSource = recent.isEmpty ? chart.suffix(1).map { $0 } : recent
+            let avg = BabyDashboardChartSupport.weekAverageLbsOz(from: avgSource, unit: weightUnit)
 
             var groupedPercentiles: [BabyPercentileLine: [BabyPercentileChartPoint]] = [:]
             if let bounds = window?.bounds {
@@ -182,8 +183,9 @@ struct BabySnapshotCard: View {
     // MARK: - Headline
 
     private var headlineSection: some View {
-        VStack(alignment: .leading, spacing: Layout.headlineSpacing) {
-            Text(BabyDashboardStrings.babyWeightLabel(name: babyName))
+        let hasAnyData = !cachedChartSummaries.isEmpty
+        return VStack(alignment: .leading, spacing: Layout.headlineSpacing) {
+            Text(hasAnyData ? BabyDashboardStrings.babyWeightLabel(name: babyName) : BpmDashboardStrings.noEntries)
                 .fontOpenSans(.subHeading1)
                 .foregroundColor(theme.textSubheading)
 
@@ -211,10 +213,28 @@ struct BabySnapshotCard: View {
                         .padding(.leading, Layout.unitSpacing)
                 }
             } else {
-                Text("--")
-                    .fontOpenSans(.heading1)
-                    .fontWeight(.heavy)
-                    .foregroundColor(babyColor)
+                HStack(alignment: .lastTextBaseline, spacing: .zero) {
+                    Text("00")
+                        .fontOpenSans(.heading1)
+                        .fontWeight(.heavy)
+                        .foregroundColor(babyColor)
+
+                    Text(BabyDashboardStrings.lbs)
+                        .fontOpenSans(.subHeading2)
+                        .foregroundColor(theme.textSubheading)
+                        .padding(.leading, Layout.unitSpacing)
+
+                    Text("0.0")
+                        .fontOpenSans(.heading1)
+                        .fontWeight(.heavy)
+                        .foregroundColor(babyColor)
+                        .padding(.leading, .spacingMD)
+
+                    Text(BabyDashboardStrings.oz)
+                        .fontOpenSans(.subHeading2)
+                        .foregroundColor(theme.textSubheading)
+                        .padding(.leading, Layout.unitSpacing)
+                }
             }
         }
     }

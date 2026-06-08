@@ -9,8 +9,8 @@ import SwiftUI
 
 // MARK: - HeightStepView
 /// A view for selecting a user's height during the signup process.
-/// Displays the title, subtitle, a tappable field showing the selected height, and a
-/// Ft/In ↔ CM unit selector. Tapping the field opens a unit-aware picker (inches or cm).
+/// This view displays the title, subtitle, and a chip with the selected height.
+/// It also provides a picker for selecting height in either inches or centimeters.
 struct HeightStepView: View {
     @ObservedObject var signupStore: SignupStore
     @Environment(\.appTheme) private var theme
@@ -19,27 +19,22 @@ struct HeightStepView: View {
     
     var body: some View {
         SignupStepWrapper(title: heightStepLang.title, subtitle: heightStepLang.subtitle) {
-
-            VStack(spacing: .spacingSM) {
-                // Tappable height field: label on the left, selected value + chevron on the right.
+            VStack(alignment: .leading, spacing: .spacingMD) {
                 UnitValuePickerField(
-                    label: labels.height,
+                    label: heightStepLang.fieldLabel,
                     value: signupStore.getFormattedHeight(),
                     isActive: signupStore.showHeightInchesPicker || signupStore.showHeightCmPicker
                 ) {
                     signupStore.showHeightPicker()
                 }
+                .padding(.top, .spacingLG)
 
-                // Ft/In ↔ CM selector — bound to the shared `useMetric` flag so the Goal
-                // step's lbs/kg selector flips to match (Imperial ↔ Metric stay paired).
                 UnitSelectionToggle(
                     imperialTitle: heightStepLang.imperialUnit,
                     metricTitle: heightStepLang.metricUnit,
                     isMetric: $signupStore.signupForm.useMetric.value
                 )
             }
-            .frame(maxWidth: .infinity)
-            .padding(.top, .spacingLG)
         }
         .pickerSheet(
             isPresented: $signupStore.showHeightInchesPicker,

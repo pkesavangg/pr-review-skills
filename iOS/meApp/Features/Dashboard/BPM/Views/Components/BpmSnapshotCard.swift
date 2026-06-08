@@ -30,14 +30,16 @@ struct BpmSnapshotCard: View {
     @State private var hasCacheLoaded = false
 
     private var latestClassification: AhaPressureClass? {
-        guard let latest = cachedRecentWeekSummaries.last,
+        let source = cachedRecentWeekSummaries.last ?? cachedChartSummaries.last
+        guard let latest = source,
               let sys = latest.systolic,
               let dia = latest.diastolic else { return nil }
         return AhaPressureClass.classify(systolic: Int(sys), diastolic: Int(dia))
     }
 
     private var latestReading: BpmLatestReading? {
-        guard let latest = cachedRecentWeekSummaries.last,
+        let source = cachedRecentWeekSummaries.last ?? cachedChartSummaries.last
+        guard let latest = source,
               let sys = latest.systolic,
               let dia = latest.diastolic else { return nil }
         return BpmLatestReading(
@@ -66,7 +68,7 @@ struct BpmSnapshotCard: View {
                     .padding(.horizontal, .spacingSM)
                     .padding(.top, .spacingSM)
 
-                if !cachedRecentWeekSummaries.isEmpty {
+                if !cachedChartSummaries.isEmpty {
                     snapshotChart
                         .frame(height: 240)
                         .padding(.top, .spacingXS)
@@ -186,10 +188,37 @@ struct BpmSnapshotCard: View {
                     .frame(width: Layout.pulseColumnWidth, alignment: .leading)
                 }
             } else {
-                Text(BpmDashboardStrings.noReadingsYet)
-                    .fontOpenSans(.body3)
-                    .foregroundColor(theme.textSubheading)
-                    .frame(height: 80)
+                HStack(alignment: .top, spacing: .zero) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(BpmDashboardStrings.mmhg)
+                            .fontOpenSans(.subHeading2)
+                            .foregroundColor(theme.textSubheading)
+                            .padding(.bottom, Layout.labelBottomTightening)
+                        Text(BpmDashboardStrings.noEntries)
+                            .fontOpenSans(.subHeading2)
+                            .foregroundColor(theme.textSubheading)
+                        HStack(alignment: .lastTextBaseline, spacing: Layout.valueSpacing) {
+                            Text(BpmDashboardStrings.bpSystolicZeroPlaceholder)
+                                .fontOpenSans(.heading1).fontWeight(.heavy)
+                                .foregroundColor(AhaPressureClass.classify(systolic: 0, diastolic: 0).color(theme: theme))
+                            slashDivider
+                            Text(BpmDashboardStrings.bpDiastolicZeroPlaceholder)
+                                .fontOpenSans(.heading1).fontWeight(.heavy)
+                                .foregroundColor(AhaPressureClass.classify(systolic: 0, diastolic: 0).color(theme: theme))
+                        }
+                    }
+                    Spacer()
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(BpmDashboardStrings.pulse)
+                            .fontOpenSans(.subHeading2)
+                            .foregroundColor(theme.textSubheading)
+                            .padding(.bottom, Layout.labelBottomTightening)
+                        Text(BpmDashboardStrings.bpPulseZeroPlaceholder)
+                            .fontOpenSans(.heading1).fontWeight(.heavy)
+                            .foregroundColor(theme.textSubheading)
+                    }
+                    .frame(width: Layout.pulseColumnWidth, alignment: .leading)
+                }
             }
         }
     }

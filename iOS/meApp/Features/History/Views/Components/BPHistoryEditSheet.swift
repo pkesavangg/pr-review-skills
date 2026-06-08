@@ -36,40 +36,68 @@ struct BPHistoryEditSheet: View {
         (Int(pulseText) ?? 0) > 0
     }
 
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: .spacingLG) {
-                    Group {
-                        labeledField(label: HistoryListStrings.mmhg.uppercased(), text: $systolicText, keyboard: .numberPad)
-                        labeledField(label: "DIASTOLIC (mmhg)", text: $diastolicText, keyboard: .numberPad)
-                        labeledField(label: HistoryListStrings.pulse.uppercased(), text: $pulseText, keyboard: .numberPad)
-                    }
+    private let notesLimit = 280
 
-                    VStack(alignment: .leading, spacing: .spacingXS) {
-                        Text("DATE")
-                            .fontOpenSans(.subHeading2)
-                            .foregroundStyle(theme.textSubheading)
-                        DatePicker("", selection: $entryDate, displayedComponents: [.date, .hourAndMinute])
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: .spacingLG) {
+                HStack {
+                    Spacer()
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark")
+                            .fontWeight(.semibold)
+                            .foregroundStyle(theme.textBody)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Group {
+                    labeledField(label: HistoryListStrings.systolic, text: $systolicText, keyboard: .numberPad)
+                    labeledField(label: HistoryListStrings.diastolic, text: $diastolicText, keyboard: .numberPad)
+                    labeledField(label: HistoryListStrings.pulse, text: $pulseText, keyboard: .numberPad)
+                }
+
+                VStack(alignment: .leading, spacing: .spacingXS) {
+                    Text("Date")
+                        .fontOpenSans(.subHeading2)
+                        .foregroundStyle(theme.textSubheading)
+                    HStack(spacing: .spacingSM) {
+                        DatePicker("", selection: $entryDate, displayedComponents: .date)
+                            .datePickerStyle(.compact)
+                            .labelsHidden()
+                        DatePicker("", selection: $entryDate, displayedComponents: .hourAndMinute)
                             .datePickerStyle(.compact)
                             .labelsHidden()
                     }
+                }
 
-                    VStack(alignment: .leading, spacing: .spacingXS) {
-                        Text("NOTES")
-                            .fontOpenSans(.subHeading2)
-                            .foregroundStyle(theme.textSubheading)
+                VStack(alignment: .leading, spacing: .spacingXS) {
+                    Text("Notes")
+                        .fontOpenSans(.subHeading2)
+                        .foregroundStyle(theme.textSubheading)
+                    ZStack(alignment: .bottomTrailing) {
                         TextField("Add notes…", text: $notesText, axis: .vertical)
                             .font(.body2)
                             .foregroundStyle(theme.textBody)
                             .lineLimit(4...)
                             .padding(.spacingXS)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: .radiusSM)
-                                    .stroke(theme.glow, lineWidth: 1)
-                            )
+                            .padding(.bottom, .spacingLG)
+                            .onChange(of: notesText) { _, newValue in
+                                if newValue.count > notesLimit {
+                                    notesText = String(newValue.prefix(notesLimit))
+                                }
+                            }
+                        Text("\(notesText.count)/\(notesLimit)")
+                            .fontOpenSans(.body3)
+                            .foregroundStyle(notesText.count >= notesLimit ? theme.textError : theme.textSubheading)
+                            .padding(.spacingXS)
                     }
+                    .background(theme.backgroundSecondary)
+                    .clipShape(RoundedRectangle(cornerRadius: .radiusSM))
+                }
 
+                HStack {
+                    Spacer()
                     ButtonView(
                         text: CommonStrings.save,
                         type: .filledPrimary,
@@ -78,17 +106,10 @@ struct BPHistoryEditSheet: View {
                     ) {
                         saveEntry()
                     }
-                }
-                .padding(.spacingMD)
-            }
-            .navigationTitle("Edit Reading")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(CommonStrings.cancel) { dismiss() }
-                        .foregroundStyle(theme.actionPrimary)
+                    Spacer()
                 }
             }
+            .padding(.spacingMD)
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
@@ -100,15 +121,24 @@ struct BPHistoryEditSheet: View {
             Text(label)
                 .fontOpenSans(.subHeading2)
                 .foregroundStyle(theme.textSubheading)
-            TextField("", text: text)
-                .font(.body2)
-                .foregroundStyle(theme.textBody)
-                .keyboardType(keyboard)
-                .padding(.spacingXS)
-                .overlay(
-                    RoundedRectangle(cornerRadius: .radiusSM)
-                        .stroke(theme.glow, lineWidth: 1)
-                )
+            HStack {
+                TextField("", text: text)
+                    .font(.body2)
+                    .foregroundStyle(theme.textBody)
+                    .keyboardType(keyboard)
+                if !text.wrappedValue.isEmpty {
+                    Button {
+                        text.wrappedValue = ""
+                    } label: {
+                        Image(systemName: "xmark.circle")
+                            .foregroundStyle(theme.textSubheading)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.spacingXS)
+            .background(theme.backgroundSecondary)
+            .clipShape(RoundedRectangle(cornerRadius: .radiusSM))
         }
     }
 

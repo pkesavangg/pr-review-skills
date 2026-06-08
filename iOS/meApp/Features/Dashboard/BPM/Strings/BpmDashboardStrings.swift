@@ -35,6 +35,11 @@ enum BpmDashboardStrings {
     static let colorChartDescription =
         "Colors show where a reading falls — from Normal to Hypertensive Crisis — based on American Heart Association guidelines."
 
+    // MARK: - Zero-value placeholders (shown when no entries exist)
+    static let bpSystolicZeroPlaceholder = "000"
+    static let bpDiastolicZeroPlaceholder = "00"
+    static let bpPulseZeroPlaceholder = "00"
+
     // MARK: - Accessibility
     static let openAhaRatings = "Open AHA ratings"
     static let noBloodPressureData = "No blood pressure data"
