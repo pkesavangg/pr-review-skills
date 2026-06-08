@@ -61,16 +61,40 @@ class EntryRepository @Inject constructor(
    * Inserts a list of entries.
    */
   override suspend fun insert(entries: List<Entry>) {
-    val validEntries = entries
-      .filter { isValidIsoTimestamp(it.entry.entryTimestamp) }
-      .map { preserveLocalScaleNote(it).convertToStored() }
-    entryDao.insert(validEntries)
+    val valid = entries.filter { isValidIsoTimestamp(it.entry.entryTimestamp) }
+
+    // Batch-fetch existing local notes once per account, then merge in memory — avoids a
+    // per-entry SELECT during a full sync (MOB-438 PR review).
+    val accountIds = valid
+      .filterIsInstance<ScaleEntry>()
+      .filter { it.scale.scaleEntry.note.isNullOrBlank() }
+      .map { it.entry.accountId }
+      .toSet()
+    val noteByKey = HashMap<String, String>()
+    accountIds.forEach { accountId ->
+      entryDao.getStoredScaleNotes(accountId).forEach { row ->
+        row.note?.takeIf { it.isNotBlank() }?.let { noteByKey[noteKey(accountId, row.entryTimestamp)] = it }
+      }
+    }
+
+    val merged = valid.map { entry ->
+      if (entry is ScaleEntry && entry.scale.scaleEntry.note.isNullOrBlank()) {
+        noteByKey[noteKey(entry.entry.accountId, entry.entry.entryTimestamp)]?.let { existing ->
+          entry.copy(scale = entry.scale.copy(scaleEntry = entry.scale.scaleEntry.copy(note = existing)))
+        } ?: entry
+      } else {
+        entry
+      }
+    }.map { it.convertToStored() }
+
+    entryDao.insert(merged)
   }
 
   /**
    * Keeps a locally-entered weight note when an incoming (server-sourced) scale entry has
    * none. The server contract (ScaleApiEntry) carries no note field, so a synced entry would
-   * otherwise overwrite the local note with null. Device-local only (MOB-438).
+   * otherwise overwrite the local note with null. Device-local only (MOB-438). Used for the
+   * single-entry insert/update path; the bulk [insert] path batches the lookup instead.
    */
   private suspend fun preserveLocalScaleNote(entry: Entry): Entry {
     if (entry !is ScaleEntry || !entry.scale.scaleEntry.note.isNullOrBlank()) return entry
@@ -81,6 +105,8 @@ class EntryRepository @Inject constructor(
       entry.copy(scale = entry.scale.copy(scaleEntry = entry.scale.scaleEntry.copy(note = existingNote)))
     }
   }
+
+  private fun noteKey(accountId: String, timestamp: String): String = "$accountId$timestamp"
 
   /**
    * Marks an entry as deleted.

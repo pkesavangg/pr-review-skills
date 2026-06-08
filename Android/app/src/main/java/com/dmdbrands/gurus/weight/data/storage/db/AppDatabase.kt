@@ -89,19 +89,19 @@ abstract class AppDatabase : RoomDatabase() {
   abstract fun entryReadDao(): EntryReadDao
 
   companion object {
-    private val MIGRATION_1_2 = object : Migration(1, 2) {
+    internal val MIGRATION_1_2 = object : Migration(1, 2) {
       override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE device ADD COLUMN productType TEXT DEFAULT NULL")
       }
     }
 
-    private val MIGRATION_2_3 = object : Migration(2, 3) {
+    internal val MIGRATION_2_3 = object : Migration(2, 3) {
       override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE device ADD COLUMN lastModified INTEGER DEFAULT NULL")
       }
     }
 
-    private val MIGRATION_3_4 = object : Migration(3, 4) {
+    internal val MIGRATION_3_4 = object : Migration(3, 4) {
       override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE account ADD COLUMN activeBabyId TEXT DEFAULT NULL")
       }
@@ -114,7 +114,7 @@ abstract class AppDatabase : RoomDatabase() {
     // Task 4: bpm_entry — rename PK id→entryId (table recreation)
     // Task 5: baby_profiles → baby table, rename PK + columns, add new fields (table recreation)
     @Suppress("LongMethod")
-    private val MIGRATION_4_5 = object : Migration(4, 5) {
+    internal val MIGRATION_4_5 = object : Migration(4, 5) {
       override fun migrate(db: SupportSQLiteDatabase) {
 
         // ── Task 1: account — add 3 columns ────────────────────────────────────
@@ -246,7 +246,7 @@ abstract class AppDatabase : RoomDatabase() {
 
     // ----- Migration 5 → 6 -----
     // Add composite index on (accountId, operationType) to speed up entry_view's NOT EXISTS subquery.
-    private val MIGRATION_5_6 = object : Migration(5, 6) {
+    internal val MIGRATION_5_6 = object : Migration(5, 6) {
       override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_entry_accountId_operationType` ON `entry` (`accountId`, `operationType`)")
       }
@@ -254,7 +254,7 @@ abstract class AppDatabase : RoomDatabase() {
 
     // ----- Migration 6 → 7 -----
     // body_scale_entry — add nullable note column for weight-entry notes (MOB-438).
-    private val MIGRATION_6_7 = object : Migration(6, 7) {
+    internal val MIGRATION_6_7 = object : Migration(6, 7) {
       override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE body_scale_entry ADD COLUMN note TEXT DEFAULT NULL")
       }

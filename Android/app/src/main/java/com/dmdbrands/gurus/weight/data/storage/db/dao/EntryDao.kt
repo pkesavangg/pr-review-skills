@@ -18,6 +18,9 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.PopulatedActiveEntr
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PopulatedEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 
+/** Projection of a weight entry's timestamp + stored note for batch note merging (MOB-438). */
+data class ScaleNoteRow(val entryTimestamp: String, val note: String?)
+
 /**
  * Data Access Object (DAO) for the entry table.
  * Provides methods to interact with the entry data in the database.
@@ -214,6 +217,18 @@ interface EntryDao {
       "WHERE e.accountId = :accountId AND e.entryTimestamp = :timestamp ORDER BY e.id DESC LIMIT 1",
   )
   suspend fun getStoredScaleNote(accountId: String, timestamp: String): String?
+
+  /**
+   * Batch variant of [getStoredScaleNote]: all non-blank weight notes for an account in a
+   * single query, used to merge local notes during a bulk sync insert without issuing one
+   * query per entry (MOB-438 PR review).
+   */
+  @Query(
+    "SELECT e.entryTimestamp AS entryTimestamp, bse.note AS note " +
+      "FROM entry e INNER JOIN body_scale_entry bse ON e.id = bse.id " +
+      "WHERE e.accountId = :accountId AND bse.note IS NOT NULL AND bse.note != ''",
+  )
+  suspend fun getStoredScaleNotes(accountId: String): List<ScaleNoteRow>
 
   /**
    * Note-only updates (MOB-438). These touch just the note column so editing a note never

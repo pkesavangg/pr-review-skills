@@ -6,6 +6,7 @@ object HistoryDetailScreenStrings {
     const val MoreDetailsButton = "More Details"
     const val DeleteButton = "Delete"
     const val SaveButton = "Save"
+    const val NoteSaveError = "Couldn't save note. Please try again."
     const val DeleteEntryContentDescription = "Delete entry"
     const val DeleteEntryDialogMessage = "Are you sure you want to delete your entry?"
     const val CancelButton = "Cancel"

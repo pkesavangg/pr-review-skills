@@ -19,4 +19,6 @@ object HistoryItemStrings {
     /** Helper text shown in the expanded note area when an entry has no note yet (MOB-438). */
     const val NoNoteYet = "no notes yet — tap edit icon to add one."
     const val EditNoteContentDescription = "edit entry"
+    const val ExpandNote = "expand note"
+    const val CollapseNote = "collapse note"
 }

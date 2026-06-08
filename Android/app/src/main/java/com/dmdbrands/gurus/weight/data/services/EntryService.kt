@@ -139,11 +139,9 @@ class EntryService(
      * preserved across sync by [IEntryRepository]. See MOB-438.
      */
     override suspend fun updateNote(entry: Entry, note: String?) {
-        try {
-            entryRepository.updateNote(entry, note)
-        } catch (e: Exception) {
-            AppLog.e(TAG, "Error updating note: ${e.message}", e)
-        }
+        // Propagate failures so the caller can surface an error instead of silently
+        // treating a failed write as success (MOB-438 PR review).
+        entryRepository.updateNote(entry, note)
     }
 
     /** Deletes an entry both locally and remotely. */

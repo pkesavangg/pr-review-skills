@@ -13,6 +13,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.AccountHelper.isMetricU
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
+import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.historyDetail.strings.HistoryDetailScreenStrings
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -123,8 +124,12 @@ class HistoryDetailViewModel @AssistedInject constructor(
                 handleIntent(HistoryDetailIntent.DismissNoteEditor)
                 loadDetail()
             } catch (e: Exception) {
+                // Keep the editor open and surface the failure instead of closing it as if
+                // the save succeeded (MOB-438 PR review).
                 AppLog.e(TAG, "Error saving note for entry: ${entry.entry.id}", e)
-                handleIntent(HistoryDetailIntent.DismissNoteEditor)
+                dialogQueueService.showToast(
+                    Toast.Simple(title = null, message = HistoryDetailScreenStrings.NoteSaveError),
+                )
             }
         }
     }

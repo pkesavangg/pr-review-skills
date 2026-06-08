@@ -149,7 +149,11 @@ fun BabyDayHistoryItem(
             // without a note can still expand to reveal the add-note affordance (MOB-438).
             AppIcon(
                 id = AppIcons.Default.RightCaret,
-                contentDescription = "",
+                contentDescription = if (isExpanded) {
+                    HistoryItemStrings.CollapseNote
+                } else {
+                    HistoryItemStrings.ExpandNote
+                },
                 onClick = { onToggleExpand() },
                 modifier = Modifier.rotate(rotation),
             )
