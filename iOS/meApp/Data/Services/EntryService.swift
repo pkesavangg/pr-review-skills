@@ -1344,6 +1344,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         guard accountService.activeAccount != nil else {
             throw AccountError.noActiveAccount
         }
+        if category == EntryCategory.baby.rawValue && babyId == nil {
+            throw NSError(domain: "EntryService", code: 400,
+                          userInfo: [NSLocalizedDescriptionKey: "babyId is required for baby CSV export"])
+        }
         let request = EntriesCSVRequest(
             category: category,
             babyId: babyId,
