@@ -26,6 +26,10 @@ message UserAccount {
     int32 last_appsync_zoom_level = 11;
     DefaultGraphSegment default_graph_segment = 12;
     bool graph_scroll_hint_shown = 10;
+    // Renumbered to 11/12 to resolve a field-number collision introduced by the
+    // dev → phase2-dev merge (these baby/product fields originally reused 8/9).
+    string selected_product_type = 11;
+    string selected_baby_profile_id = 12;
 }
 
 // Default graph range preference
