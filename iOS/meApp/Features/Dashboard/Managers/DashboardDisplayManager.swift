@@ -224,15 +224,27 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
             return "no entries"
         }
 
-        if stateProvider.state.graph.selectedXValue != nil {
-            switch stateProvider.state.graph.selectedPeriod {
-            case .week, .month:
-                return "day average"
-            case .year, .total:
-                return "month average"
-            }
+        // A tapped point or crosshair selection: the hybrid "latest entry" vs "day average"
+        // (Week/Month) or "month average" (Year/Total) rule decided by the formatter.
+        if !hasNoSelection {
+            return formatter.selectionPrefix(
+                for: stateProvider.state.graph.selectedPeriod,
+                isLatestDaySelected: isLatestDaySelected
+            )
         }
         return goalManager.getWeightDisplayLabel(for: stateProvider.state.graph.selectedPeriod)
+    }
+
+    /// True only on Week/Month when the selected date (tapped point or crosshair) falls on the
+    /// same calendar day as the newest entry — drives the "latest entry" vs "day average" prefix.
+    var isLatestDaySelected: Bool {
+        guard let stateProvider else { return false }
+        let period = stateProvider.state.graph.selectedPeriod
+        guard period == .week || period == .month else { return false }
+        guard let selectedDate = stateProvider.state.graph.selectedPoint?.date
+            ?? stateProvider.state.graph.selectedXValue else { return false }
+        guard let latestDate = getContinuousOperations().map(\.date).max() else { return false }
+        return Calendar.current.isDate(selectedDate, inSameDayAs: latestDate)
     }
 
     @MainActor
@@ -447,6 +459,7 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
                 period: stateProvider.state.graph.selectedPeriod,
                 selectedPointDate: stateProvider.state.graph.selectedPoint?.date,
                 crosshairDate: stateProvider.state.graph.selectedXValue,
+                isLatestDaySelected: isLatestDaySelected,
                 weightLabel: weightLabel
             )
         }
@@ -456,6 +469,7 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
             period: stateProvider.state.graph.selectedPeriod,
             selectedPointDate: stateProvider.state.graph.selectedPoint?.date,
             crosshairDate: stateProvider.state.graph.selectedXValue,
+            isLatestDaySelected: isLatestDaySelected,
             weightLabel: weightLabel
         )
     }
@@ -507,6 +521,7 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
             selectedDate: stateProvider.state.graph.selectedXValue,
             operations: continuousOps,
             visibleOperations: visibleOps,
+            operationsForLabel: getOperationsForLabelDateRange(),
             metrics: stateProvider.state.metrics.metrics,
             isWeightlessMode: getIsWeightlessModeEnabled(),
             anchorWeight: getWeightlessAnchorWeight(),

@@ -55,6 +55,7 @@ class AccountService(
   appNavigationService: IAppNavigationService,
   private val storageClearService: StorageClearService,
   private val analyticsService: IAnalyticsService,
+  private val userDataStore: UserDataStore,
   @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService),
   IAccountService {

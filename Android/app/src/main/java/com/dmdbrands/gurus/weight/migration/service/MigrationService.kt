@@ -419,7 +419,8 @@ class MigrationService @Inject constructor(
 
     themeModeMap.forEach { (key, value) ->
       val themeMode = value.toThemeMode()
-      val syncTs = if (key == accountEntity.id && !lastSyncTimestamp.isNullOrBlank()) lastSyncTimestamp else ""
+      // Sync timestamp is deferred: written only after all entries migrate successfully (see migrateIonicDatabase Step 5).
+      val syncTs = ""
 
       AppLog.d(TAG, "Theme mode for $key: $value")
       userDataStore.addAccount(

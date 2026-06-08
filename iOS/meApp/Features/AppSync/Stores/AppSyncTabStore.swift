@@ -27,6 +27,7 @@ final class AppSyncTabStore: ObservableObject {
     @Injector var notificationHelperService: NotificationHelperServiceProtocol
     @Injector var entryService: EntryServiceProtocol
     @Injector var logger: LoggerServiceProtocol
+    @Injector var kvStorage: KvStorageServiceProtocol
     private let toastLang = ToastStrings.self
     private let loaderLang = LoaderStrings.self
     private let tag = "AppSyncTabStore"
@@ -36,6 +37,10 @@ final class AppSyncTabStore: ObservableObject {
 
     // Holds last scanned raw data so Save/Edit actions have access.
     private var lastScannedData: AppSyncEntryMetrics?
+
+    /// MA-3863: last-used camera zoom for the active account, restored from
+    /// KvStorage before each scan session so the camera reopens at the same zoom.
+    @Published var initialZoom: CGFloat?
 
     private enum ScanIgnoreReason: String {
         case invalidWeight = "invalid_weight"
@@ -52,12 +57,39 @@ final class AppSyncTabStore: ObservableObject {
         _ = notificationHelperService
         _ = entryService
         _ = logger
+        _ = kvStorage
+    }
+
+    /// MA-3863: restore the saved zoom level for the active account before a scan
+    /// session. Falls back to nil (scanner's own default) when none is stored.
+    func loadSavedZoom() {
+        guard let accountId = accountService.activeAccount?.accountId else {
+            initialZoom = nil
+            return
+        }
+        let zoomMap = kvStorage.getCodable(forKey: KvStorageKeys.appSyncCameraZoomMap.rawValue, as: [String: Double].self)
+        initialZoom = zoomMap?[accountId].map { CGFloat($0) }
+    }
+
+    /// MA-3863: persist the last-used zoom level per account.
+    private func saveZoom(_ zoom: Float, for accountId: String) {
+        var zoomMap = kvStorage.getCodable(forKey: KvStorageKeys.appSyncCameraZoomMap.rawValue, as: [String: Double].self) ?? [:]
+        let newZoom = Double(zoom)
+        guard zoomMap[accountId] != newZoom else { return }
+        zoomMap[accountId] = newZoom
+        kvStorage.setCodable(zoomMap, forKey: KvStorageKeys.appSyncCameraZoomMap.rawValue)
     }
 
     /// Converts the scanned body-composition data into the format expected by
     /// `AppSyncEntryCardView` and shows the confirmation modal.
     /// - Parameter data: The `BodyCompData` coming from `AppSyncScannerView`.
     func handleScanned(_ data: BodyCompData, tabViewModel: BottomTabBarViewModel) {
+        // MA-3863: persist the zoom level used for this scan so the camera reopens
+        // at the same zoom next time for this account.
+        if let accountId = accountService.activeAccount?.accountId, data.zoomLevel > 0 {
+            saveZoom(data.zoomLevel, for: accountId)
+            initialZoom = CGFloat(data.zoomLevel)
+        }
         handleScanned(
             weightKg: data.weight,
             fat: data.fat,

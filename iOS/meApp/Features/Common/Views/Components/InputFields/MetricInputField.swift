@@ -20,32 +20,38 @@ struct MetricInputField: View {
     // Callbacks
     var onCommit: (() -> Void)?
     var onEditingChanged: ((Bool) -> Void)?
-    
+
+    // Accessibility
+    var accessibilityIdentifier: String?
+
     // Internal state and formatter
     @State private var displayValue: String = ""
     @State private var isInitialState: Bool = true
     @StateObject private var formatter: MetricFieldFormatter
-    
+
     init(
         config: TextInputConfig,
         value: Binding<String>,
         focusedField: Binding<FocusField?>,
+        accessibilityIdentifier: String? = nil,
         onCommit: (() -> Void)? = nil,
         onEditingChanged: ((Bool) -> Void)? = nil
     ) {
         self.config = config
         self._value = value
         self._focusedField = focusedField
+        self.accessibilityIdentifier = accessibilityIdentifier
         self.onCommit = onCommit
         self.onEditingChanged = onEditingChanged
         self._formatter = StateObject(wrappedValue: MetricFieldFormatter(config: config))
     }
-    
+
     var body: some View {
         AppInputField(
             config: modifiedConfig,
             value: $displayValue,
             focusedField: $focusedField,
+            accessibilityIdentifier: accessibilityIdentifier,
             onCommit: onCommit,
             onEditingChanged: onEditingChanged
         )

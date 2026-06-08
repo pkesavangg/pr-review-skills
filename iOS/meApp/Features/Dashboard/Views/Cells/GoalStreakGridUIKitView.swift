@@ -698,7 +698,10 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         }
         
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumLineSpacingForSectionAt section: Int) -> CGFloat {
-            // Vertical gap between rows, including streak rows and goal card rows
+            // Vertical gap between rows, including streak rows and goal card rows.
+            // MA-3839: widen the gap on small/mini phones (e.g. iPhone SE/13 mini) so the
+            // streak row labels don't truncate or collide.
+            if DevicePlatform.isSmallPhone || DevicePlatform.isMiniPhone { return 40 }
             return 32
         }
         

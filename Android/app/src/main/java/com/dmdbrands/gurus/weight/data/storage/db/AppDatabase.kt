@@ -41,7 +41,6 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.baby.BabyProfileEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.log.LogEntity
 import com.dmdbrands.gurus.weight.migration.service.IonicMigrationWorker
-import kotlinx.coroutines.Dispatchers
 import android.content.Context
 
 /**
@@ -290,31 +289,18 @@ abstract class AppDatabase : RoomDatabase() {
               AppDatabase::class.java,
               "MeApp",
             )
-            // Bundled SQLite (currently 3.46+) instead of the device's system SQLite.
-            // Required for window functions (need SQLite 3.25+); the device's SQLite is
-            // tied to API level — minSdk 26 ships 3.18, which lacks them. Bundled gives
-            // us a single version across all supported API levels.
-            .setDriver(BundledSQLiteDriver())
-            .setQueryCoroutineContext(Dispatchers.IO)
             .addCallback(
               object : Callback() {
-                // When `.setDriver(BundledSQLiteDriver())` is used, Room invokes the
-                // SQLiteConnection-based callback overloads. The legacy
-                // `onCreate(SupportSQLiteDatabase)` is NOT called on the new driver path,
-                // which is why the Ionic migration worker was never enqueued.
-                override fun onCreate(connection: SQLiteConnection) {
-                  super.onCreate(connection)
+                override fun onCreate(db: SupportSQLiteDatabase) {
+                  super.onCreate(db)
 
-                  // Start Ionic migration worker when database is first created.
-                  // Unique-work + KEEP policy ensures that if Room is recreated mid-retry
-                  // (e.g. after performEmergencyCleanup), we don't stack duplicate workers
-                  // on top of one that's already retrying.
+                  // Start Ionic migration worker when database is first created
                   val migrationWork = OneTimeWorkRequestBuilder<IonicMigrationWorker>()
                     .addTag("ionic_migration")
                     .build()
 
                   WorkManager.getInstance(context.applicationContext)
-                    .enqueueUniqueWork("ionic_migration", ExistingWorkPolicy.KEEP, migrationWork)
+                    .enqueue(migrationWork)
                 }
               },
             )
