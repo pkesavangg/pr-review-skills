@@ -171,6 +171,22 @@ internal fun BabyScaleSetupScreenContent(
             enabled = !state.isFirstStep,
             onClick = { onIntent(ScaleSetupIntent.Back) },
           )
+          // SKIP — only on the baby-profile steps; triggers the "Skip Baby Profile?"
+          // confirmation dialog (MOB-440).
+          if (currentStep == BabyScaleSetupStep.PAIRED_SUCCESS ||
+            currentStep == BabyScaleSetupStep.BABY_PROFILE_FORM
+          ) {
+            AppButton(
+              type = ButtonType.TextPrimary,
+              label = ScaleSetupStrings.skipButton,
+              size = ButtonSize.Small,
+              onClick = {
+                focusManager.clearFocus()
+                keyboardController?.hide()
+                onIntent(ScaleSetupIntent.Skip)
+              },
+            )
+          }
           when (currentStep) {
             BabyScaleSetupStep.SCALE_INFO,
             BabyScaleSetupStep.PERMISSIONS ->
