@@ -29,8 +29,8 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
     private let tag = "BabyService"
 
     init(remoteRepo: BabyRepositoryAPIProtocol? = nil) {
-          self.remoteRepo = remoteRepo ?? BabyRepositoryAPI()
-      }
+        self.remoteRepo = remoteRepo ?? BabyRepositoryAPI()
+    }
 
 
     // swiftlint:disable:next function_parameter_count
