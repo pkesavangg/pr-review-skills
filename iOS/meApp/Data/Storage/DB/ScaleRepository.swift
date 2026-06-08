@@ -327,8 +327,13 @@ final class ScaleRepository: ScaleRepositoryProtocol {
             if let matchingDevice = matchingUnsyncedDevice {
                 // Handle conflict: update unsynced device with server data
                 if let serverId = serverDevice.id, matchingDevice.id != serverId {
+                    // MA-3857: capture the local id BEFORE updateDeviceFromDTO overwrites
+                    // it. Otherwise updateDeviceWithNewId receives the new server id as
+                    // oldId and cannot locate the original local record, crashing during
+                    // scale sync when the server assigns a new id.
+                    let localId = matchingDevice.id
                     updateDeviceFromDTO(matchingDevice, from: serverDevice, accountId: accountId)
-                    try await updateDeviceWithNewId(oldId: matchingDevice.id, updatedDevice: matchingDevice)
+                    try await updateDeviceWithNewId(oldId: localId, updatedDevice: matchingDevice)
                 } else {
                     updateDeviceFromDTO(matchingDevice, from: serverDevice, accountId: accountId)
                     try await updateDevice(matchingDevice)

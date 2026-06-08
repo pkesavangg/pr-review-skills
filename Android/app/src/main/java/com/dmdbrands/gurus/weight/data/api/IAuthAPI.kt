@@ -7,6 +7,8 @@ import com.dmdbrands.gurus.weight.domain.model.api.auth.LogoutRequest
 import com.dmdbrands.gurus.weight.domain.model.api.auth.PasswordResetRequest
 import com.dmdbrands.gurus.weight.domain.model.api.auth.RefreshTokenRequest
 import com.dmdbrands.gurus.weight.domain.model.api.auth.RefreshTokenResponse
+import com.dmdbrands.gurus.weight.domain.model.api.auth.EmailCheckRequest
+import com.dmdbrands.gurus.weight.domain.model.api.auth.EmailCheckResponse
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountInfo
 import retrofit2.Response
@@ -29,7 +31,14 @@ interface IAuthAPI {
         private const val PASSWORD_RESET = "password-reset/request"
         private const val REFRESH_TOKEN = "refresh-token"
         private const val PASSWORD_UPDATE = "password"
+        private const val EMAIL_CHECK = "email-check"
     }
+
+    /** Checks email availability pre-signup (no auth). MOB-377. */
+    @POST(ACCOUNT + EMAIL_CHECK)
+    suspend fun emailCheck(
+        @Body request: EmailCheckRequest,
+    ): EmailCheckResponse
 
     @POST(ACCOUNT + LOGIN)
     suspend fun login(

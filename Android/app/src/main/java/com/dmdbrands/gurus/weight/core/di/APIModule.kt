@@ -4,6 +4,7 @@ import com.dmdbrands.gurus.weight.core.network.HttpClient
 import com.dmdbrands.gurus.weight.data.api.EntryApi
 import com.dmdbrands.gurus.weight.data.api.IAccountFlagAPI
 import com.dmdbrands.gurus.weight.data.api.IAuthAPI
+import com.dmdbrands.gurus.weight.data.api.IBabyAPI
 import com.dmdbrands.gurus.weight.data.api.IBodyCompAPI
 import com.dmdbrands.gurus.weight.data.api.IDeviceAPI
 import com.dmdbrands.gurus.weight.data.api.IDeviceInfoAPI
@@ -39,6 +40,13 @@ object ApiModule {
     @Provides
     @Singleton
     fun provideAuthAPI(httpClient: HttpClient): IAuthAPI = httpClient.createService(IAuthAPI::class.java)
+
+    /**
+     * Provides a singleton instance of [IBabyAPI] for Baby Profile CRUD.
+     */
+    @Provides
+    @Singleton
+    fun provideBabyAPI(httpClient: HttpClient): IBabyAPI = httpClient.createService(IBabyAPI::class.java)
 
     /**
      * Provides a singleton instance of [IUserAPI] using the provided [HttpClient].

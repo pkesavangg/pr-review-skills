@@ -116,6 +116,7 @@ object ServiceModule {
       storageClearService: StorageClearService,
       offlineHandlerService: IOfflineHandlerService,
       analyticsService: IAnalyticsService,
+      userDataStore: UserDataStore,
       @ApplicationScope appScope: CoroutineScope,
     ): IAccountService =
       AccountService(
@@ -126,6 +127,7 @@ object ServiceModule {
         appNavigationService,
         storageClearService,
         analyticsService,
+        userDataStore,
         appScope,
       )
 

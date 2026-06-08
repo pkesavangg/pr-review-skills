@@ -53,6 +53,10 @@ struct EntryCreationContext {
     let selectedDate: Date?
     let operations: [BathScaleWeightSummary]
     let visibleOperations: [BathScaleWeightSummary]
+    /// MA-4005: ops spanning the same date range as the metric tiles / weight label
+    /// (`getOperationsForLabelDateRange`). Used for no-selection averages so Total shows
+    /// full-timeline averages instead of the chart's 1-year visible window.
+    let operationsForLabel: [BathScaleWeightSummary]
     let metrics: [MetricItem]
     let isWeightlessMode: Bool
     let anchorWeight: Double?

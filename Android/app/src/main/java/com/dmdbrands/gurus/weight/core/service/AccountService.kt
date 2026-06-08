@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
+import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
@@ -54,6 +55,7 @@ class AccountService(
   appNavigationService: IAppNavigationService,
   private val storageClearService: StorageClearService,
   private val analyticsService: IAnalyticsService,
+  private val userDataStore: UserDataStore,
   @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService),
   IAccountService {
@@ -349,6 +351,17 @@ class AccountService(
     } catch (e: Exception) {
       AppLog.d(TAG, "Error updating Dashboard Type", e.toString())
     }
+  }
+
+  override suspend fun emailCheck(email: String): Boolean {
+    AppLog.d(TAG, "emailCheck")
+    return accountRepository.emailCheck(email)
+  }
+
+  override suspend fun updateMeasurementUnits(measurementUnits: MeasurementUnits) {
+    AppLog.d(TAG, "Update Measurement Units: ${measurementUnits.value}")
+    requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
+    accountRepository.updateMeasurementUnits(measurementUnits)
   }
 
   /**

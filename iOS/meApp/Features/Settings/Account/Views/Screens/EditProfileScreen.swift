@@ -105,7 +105,8 @@ struct EditProfileScreen: View {
                 ) {
                     hideKeyboard()
                     settingsStore.saveProfile(router: router)
-                } },
+                }
+                .accessibilityIdentifier(AccessibilityID.profileSaveButton) },
             onLeadingTap: { settingsStore.handleEditProfileExit(router: router) },
             onTrailingTap: {},
             canShowBorder: true
@@ -142,7 +143,8 @@ struct EditProfileScreen: View {
                     focusField: .firstName
                 ),
                 value: $settingsStore.editProfileForm.firstName.value,
-                focusedField: $focusedField
+                focusedField: $focusedField,
+                accessibilityIdentifier: AccessibilityID.firstNameField
             ) {
                 focusedField = .lastName
             }
@@ -155,7 +157,8 @@ struct EditProfileScreen: View {
                     focusField: .lastName
                 ),
                 value: $settingsStore.editProfileForm.lastName.value,
-                focusedField: $focusedField
+                focusedField: $focusedField,
+                accessibilityIdentifier: AccessibilityID.lastNameField
             ) {
                 focusedField = .email
             }
@@ -172,7 +175,8 @@ struct EditProfileScreen: View {
                     focusField: .email
                 ),
                 value: $settingsStore.editProfileForm.email.value,
-                focusedField: $focusedField
+                focusedField: $focusedField,
+                accessibilityIdentifier: AccessibilityID.emailField
             ) {
                 focusedField = .zipCode
             }
@@ -185,7 +189,8 @@ struct EditProfileScreen: View {
                     focusField: .zipCode
                 ),
                 value: $settingsStore.editProfileForm.zipcode.value,
-                focusedField: $focusedField
+                focusedField: $focusedField,
+                accessibilityIdentifier: AccessibilityID.zipcodeField
             ) {
                 focusedField = nil
             }
@@ -226,6 +231,7 @@ struct EditProfileScreen: View {
                         .padding(.vertical, .spacingXS / 2)
                         .background(theme.backgroundPrimary)
                         .cornerRadius(8)
+                        .accessibilityIdentifier(AccessibilityID.settingsRowBiologicalSex)
 
                     Text(screenLang.biologicalSexNote)
                         .fontOpenSans(.body3)
@@ -242,6 +248,7 @@ struct EditProfileScreen: View {
                         .padding(.vertical, .spacingXS / 2)
                         .background(theme.backgroundPrimary)
                         .cornerRadius(8)
+                        .accessibilityIdentifier(AccessibilityID.settingsRowHeight)
 
                     Text(screenLang.heightNote)
                         .fontOpenSans(.body3)

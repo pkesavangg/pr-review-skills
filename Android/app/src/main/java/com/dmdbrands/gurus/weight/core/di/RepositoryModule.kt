@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.data.api.IReviewAPI
 import com.dmdbrands.gurus.weight.data.repository.ReviewRepository
 import com.dmdbrands.gurus.weight.domain.repository.IReviewRepository
 import com.dmdbrands.gurus.weight.data.api.IAuthAPI
+import com.dmdbrands.gurus.weight.data.api.IBabyAPI
 import com.dmdbrands.gurus.weight.data.api.IBodyCompAPI
 import com.dmdbrands.gurus.weight.data.api.IDeviceAPI
 import com.dmdbrands.gurus.weight.data.api.IDeviceInfoAPI
@@ -209,7 +210,8 @@ object RepositoryModule {
     @Singleton
     fun provideBabyProfileRepository(
         babyProfileDao: BabyProfileDao,
-    ): IBabyProfileRepository = BabyProfileRepository(babyProfileDao)
+        babyApi: IBabyAPI,
+    ): IBabyProfileRepository = BabyProfileRepository(babyProfileDao, babyApi)
 
     @Provides
     @Singleton

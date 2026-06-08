@@ -48,6 +48,7 @@ struct DashboardFormatterTests {
             period: .week,
             selectedPointDate: nil,
             crosshairDate: nil,
+            isLatestDaySelected: false,
             weightLabel: "ignored"
         )
 
@@ -63,6 +64,7 @@ struct DashboardFormatterTests {
             period: .year,
             selectedPointDate: makeDate("2026-03-10"),
             crosshairDate: nil,
+            isLatestDaySelected: false,
             weightLabel: "ignored"
         )
         let crosshairLabel = sut.formatMetricInfoDateLabel(
@@ -71,11 +73,22 @@ struct DashboardFormatterTests {
             period: .week,
             selectedPointDate: nil,
             crosshairDate: makeDate("2026-03-10"),
+            isLatestDaySelected: false,
+            weightLabel: "ignored"
+        )
+        let latestDayLabel = sut.formatMetricInfoDateLabel(
+            entryDate: nil,
+            isFromHistory: false,
+            period: .week,
+            selectedPointDate: makeDate("2026-03-10"),
+            crosshairDate: nil,
+            isLatestDaySelected: true,
             weightLabel: "ignored"
         )
 
         #expect(pointLabel == "month average mar 2026")
         #expect(crosshairLabel == "day average mar 10, 2026")
+        #expect(latestDayLabel == "latest entry mar 10, 2026")
     }
 
     @Test("metric info date label: fallback uses weight label when no explicit date exists")
@@ -88,6 +101,7 @@ struct DashboardFormatterTests {
             period: .total,
             selectedPointDate: nil,
             crosshairDate: nil,
+            isLatestDaySelected: false,
             weightLabel: "Jan 2026 - Mar 2026"
         )
 
@@ -142,8 +156,10 @@ struct DashboardFormatterTests {
         let sut = makeSUT()
 
         #expect(sut.composeMetricInfoLabel(prefix: "Day Average", dateText: "Mar 10, 2026") == "day average mar 10, 2026")
-        #expect(sut.selectionPrefix(for: .week) == "day average")
-        #expect(sut.selectionPrefix(for: .total) == "month average")
+        #expect(sut.selectionPrefix(for: .week, isLatestDaySelected: false) == "day average")
+        #expect(sut.selectionPrefix(for: .week, isLatestDaySelected: true) == "latest entry")
+        #expect(sut.selectionPrefix(for: .month, isLatestDaySelected: true) == "latest entry")
+        #expect(sut.selectionPrefix(for: .total, isLatestDaySelected: true) == "month average")
     }
 
     private func makeDate(_ value: String) -> Date {

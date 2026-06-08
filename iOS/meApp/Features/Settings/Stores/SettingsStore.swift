@@ -182,6 +182,11 @@ class SettingsStore: ObservableObject {
     @Published var showActivityPicker: Bool = false
     /// Currently selected default graph range for the active account.
     @Published var defaultGraphPeriod: TimePeriod = DefaultGraphPeriodPreference.fallback
+    /// Controls the presentation of the default graph view picker (sheet fallback or centered modal).
+    @Published var showDefaultGraphPeriodPicker: Bool = false
+
+    /// Trailing detail text for the Default Graph View row.
+    var defaultGraphPeriodText: String { defaultGraphPeriod.title }
 
     init() {
         accountService.activeAccountPublisher
@@ -561,7 +566,7 @@ class SettingsStore: ObservableObject {
             editProfileForm.zipcode.value = account.zipcode ?? ""
             editProfileForm.gender.value = account.gender ?? .male
 
-            if let dobString = account.dob, let dob = DateTimeTools.parse(dobString) {
+            if let dobString = account.dob, let dob = DateTimeTools.parseCalendarDate(dobString) {
                 editProfileForm.birthday.value = dob
             }
 
@@ -1471,24 +1476,24 @@ class SettingsStore: ObservableObject {
     func handleGoalTypeChange(_ newSegment: GoalTypeSegment) {
         let newGoalTypeValue = newSegment.goalTypeValue
 
-        // Only update if the value is actually different
-        if goalForm.goalType.value != newGoalTypeValue {
-            goalForm.goalType.value = newGoalTypeValue
-            // Explicitly mark as dirty to ensure the form recognizes the change
-            goalForm.goalType.markAsDirty()
-            // Mark as touched so form is considered interacted with
-            goalForm.goalType.markAsTouched()
-        }
+        // No-op when the goal type hasn't actually changed. Otherwise an
+        // external sync of `selectedSegment` (e.g. onAppear) would falsely
+        // dirty the form and trigger the exit-confirmation alert.
+        guard goalForm.goalType.value != newGoalTypeValue else { return }
+
+        selectedSegment = newSegment
+        goalForm.goalType.value = newGoalTypeValue
+        goalForm.goalType.markAsDirty()
+        goalForm.goalType.markAsTouched()
+
         if newSegment == .loseGain {
             [goalForm.goalWeight, goalForm.currentWeight]
                 .filter { !$0.value.isEmpty }
                 .forEach { $0.markAsDirty() }
         }
 
-        // Force form validation to update computed properties
         goalForm.validate()
 
-        // Trigger UI update by sending objectWillChange
         objectWillChange.send()
     }
 
@@ -1778,6 +1783,33 @@ class SettingsStore: ObservableObject {
     /// Reloads the default graph range row to reflect the active account's stored value.
     private func loadDefaultGraphPeriod() {
         defaultGraphPeriod = DefaultGraphPeriodPreference.current(for: activeAccount?.accountId)
+    }
+
+    /// Presents the default graph view picker (modal on iPad < iOS18, sheet otherwise).
+    func presentDefaultGraphPeriodPicker() {
+        if useModalPicker {
+            let picker = PickerView(
+                selectedValues: [defaultGraphPeriod],
+                options: [TimePeriod.allCases],
+                displayValue: { $0.title },
+                title: SettingsStrings.defaultGraphView,
+                showCancel: false,
+                updateValues: { vals in
+                    self.notificationService.dismissModal()
+                    if let period = vals.first { self.updateDefaultGraphPeriod(period) }
+                }
+            )
+            notificationService.showModal(ModalData(presentedView: AnyView(picker)))
+        } else {
+            showDefaultGraphPeriodPicker = true
+        }
+    }
+
+    /// Persists the new default graph view for the active account.
+    /// Takes effect on the next app launch — the live dashboard tab is intentionally not retargeted here.
+    func updateDefaultGraphPeriod(_ period: TimePeriod) {
+        defaultGraphPeriod = period
+        DefaultGraphPeriodPreference.set(period, for: activeAccount?.accountId)
     }
 }
 
