@@ -98,6 +98,10 @@ class AccountFlagService
                 sku = sku,
                 flagId = flagId,
               )
+              // submitReview already deletes the flag server-side; clear the in-memory cache
+              // too (mirrors the app-rate-ask path via deleteFlag) so a subsequent
+              // checkAccountFlag in this session does not re-process the dismissed flag.
+              firstFlag = null
               AppLog.d("AccountFlagService", "scale-review-ask dismissed sku=$sku flagId=$flagId")
               return true
             } catch (e: Exception) {

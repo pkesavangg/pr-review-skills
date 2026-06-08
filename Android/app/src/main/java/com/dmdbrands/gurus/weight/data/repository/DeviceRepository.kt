@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.data.repository
 
 import com.dmdbrands.gurus.weight.data.api.IDeviceAPI
 import com.dmdbrands.gurus.weight.data.storage.db.dao.DeviceDao
+import com.dmdbrands.gurus.weight.domain.model.api.device.DeviceApiException
 import com.dmdbrands.gurus.weight.domain.model.api.device.DeviceApiModel
 import com.dmdbrands.gurus.weight.domain.model.api.device.R4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.api.device.ScaleMetaDataApiModel
@@ -193,7 +194,7 @@ constructor(
       return body?.toDomainModel(device.connectionStatus, device.device?.wifiMacAddress, device.device?.isWifiConfigured ?: false) ?: device
     } else {
       AppLog.e(TAG, "createPairedDevice failed code=${response.code()}")
-      throw Exception("createPairedDevice failed: ${response.code()}")
+      throw DeviceApiException(response.code(), "createPairedDevice failed: ${response.code()}")
     }
   }
 
@@ -206,7 +207,7 @@ constructor(
       return models.toDomainModels()
     } else {
       AppLog.e(TAG, "getPairedDevices failed code=${response.code()}")
-      throw Exception("getPairedDevices failed: ${response.code()}")
+      throw DeviceApiException(response.code(), "getPairedDevices failed: ${response.code()}")
     }
   }
 
@@ -220,7 +221,7 @@ constructor(
       return body?.toDomainModel(device.connectionStatus, device.device?.wifiMacAddress, device.device?.isWifiConfigured ?: false) ?: device
     } else {
       AppLog.e(TAG, "updatePairedDevice failed code=${response.code()}")
-      throw Exception("updatePairedDevice failed: ${response.code()}")
+      throw DeviceApiException(response.code(), "updatePairedDevice failed: ${response.code()}")
     }
   }
 
@@ -232,7 +233,7 @@ constructor(
       return true
     } else {
       AppLog.e(TAG, "deletePairedDevice failed code=${response.code()}")
-      throw Exception("deletePairedDevice failed: ${response.code()}")
+      throw DeviceApiException(response.code(), "deletePairedDevice failed: ${response.code()}")
     }
   }
 
