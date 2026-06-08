@@ -590,4 +590,22 @@ struct HistoryStoreTests {
         #expect(store.isLoadingPage == false)
         #expect(logger.messages.contains { $0.contains("Failed to load entries page") })
     }
+
+    @Test("loadNextPage: does not re-fetch when first page is empty with hasMore=false")
+    func loadNextPageDoesNotRefetchEmptyFirstPage() async {
+        let (store, entryService, _, _, _) = makeSUT()
+        entryService.fetchEntriesPageResults = [
+            EntriesPage(entries: [], nextCursor: nil, hasMore: false)
+        ]
+
+        await store.loadFirstPage()
+        #expect(entryService.fetchEntriesPageCalls == 1)
+        #expect(store.pagedEntries.isEmpty)
+        #expect(store.hasMorePages == false)
+
+        // A subsequent scroll-triggered call must not hit the network again.
+        await store.loadNextPage()
+        await store.loadNextPage()
+        #expect(entryService.fetchEntriesPageCalls == 1)
+    }
 }
