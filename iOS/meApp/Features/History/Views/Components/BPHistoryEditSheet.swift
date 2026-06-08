@@ -42,12 +42,12 @@ struct BPHistoryEditSheet: View {
                 VStack(alignment: .leading, spacing: .spacingLG) {
                     Group {
                         labeledField(label: HistoryListStrings.mmhg.uppercased(), text: $systolicText, keyboard: .numberPad)
-                        labeledField(label: "DIASTOLIC (mmhg)", text: $diastolicText, keyboard: .numberPad)
+                        labeledField(label: HistoryListStrings.diastolicMmhg, text: $diastolicText, keyboard: .numberPad)
                         labeledField(label: HistoryListStrings.pulse.uppercased(), text: $pulseText, keyboard: .numberPad)
                     }
 
                     VStack(alignment: .leading, spacing: .spacingXS) {
-                        Text("DATE")
+                        Text(HistoryListStrings.date)
                             .fontOpenSans(.subHeading2)
                             .foregroundStyle(theme.textSubheading)
                         DatePicker("", selection: $entryDate, displayedComponents: [.date, .hourAndMinute])
@@ -56,10 +56,10 @@ struct BPHistoryEditSheet: View {
                     }
 
                     VStack(alignment: .leading, spacing: .spacingXS) {
-                        Text("NOTES")
+                        Text(HistoryListStrings.notes.uppercased())
                             .fontOpenSans(.subHeading2)
                             .foregroundStyle(theme.textSubheading)
-                        TextField("Add notes…", text: $notesText, axis: .vertical)
+                        TextField(HistoryListStrings.addNotesPlaceholder, text: $notesText, axis: .vertical)
                             .font(.body2)
                             .foregroundStyle(theme.textBody)
                             .lineLimit(4...)
@@ -81,7 +81,7 @@ struct BPHistoryEditSheet: View {
                 }
                 .padding(.spacingMD)
             }
-            .navigationTitle("Edit Reading")
+            .navigationTitle(HistoryListStrings.editReading)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

@@ -39,6 +39,13 @@ enum HistoryListStrings {
     static let inUnit = "in"
     static let th = "th"
 
+    // Edit sheet
+    static let editReading = "Edit Reading"
+    static let date = "DATE"
+    static let addNotesPlaceholder = "Add notes…"
+    static let diastolicMmhg = "DIASTOLIC (mmhg)"
+    static let measurement = "MEASUREMENT"
+
     // Delete / Undo
     static let undo = "UNDO"
     static let readingDeleted = "Reading deleted."

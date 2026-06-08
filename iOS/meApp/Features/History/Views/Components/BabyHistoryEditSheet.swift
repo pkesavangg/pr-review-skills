@@ -28,13 +28,13 @@ struct BabyHistoryEditSheet: View {
                 VStack(alignment: .leading, spacing: .spacingLG) {
                     // Read-only summary of measurement values
                     VStack(alignment: .leading, spacing: .spacingXS) {
-                        Text("MEASUREMENT")
+                        Text(HistoryListStrings.measurement)
                             .fontOpenSans(.subHeading2)
                             .foregroundStyle(theme.textSubheading)
                         HStack(spacing: .spacingLG) {
                             measurementLabel(title: HistoryListStrings.weight, value: entry.weightDisplay)
                             measurementLabel(title: HistoryListStrings.length, value: entry.lengthDisplay)
-                            measurementLabel(title: HistoryListStrings.percentile, value: entry.percentile > 0 ? "\(entry.percentile)th" : "--")
+                            measurementLabel(title: HistoryListStrings.percentile, value: entry.percentile > 0 ? "\(entry.percentile)\(HistoryListStrings.th)" : "--")
                         }
                     }
                     .padding(.spacingSM)
@@ -43,7 +43,7 @@ struct BabyHistoryEditSheet: View {
                     .cornerRadius(.radiusSM)
 
                     VStack(alignment: .leading, spacing: .spacingXS) {
-                        Text("DATE")
+                        Text(HistoryListStrings.date)
                             .fontOpenSans(.subHeading2)
                             .foregroundStyle(theme.textSubheading)
                         Text(DateTimeTools.getArrivalRelativeTime(fromISOString: entry.entryTimestamp)
@@ -53,10 +53,10 @@ struct BabyHistoryEditSheet: View {
                     }
 
                     VStack(alignment: .leading, spacing: .spacingXS) {
-                        Text("NOTES")
+                        Text(HistoryListStrings.notes.uppercased())
                             .fontOpenSans(.subHeading2)
                             .foregroundStyle(theme.textSubheading)
-                        TextField("Add notes…", text: $notesText, axis: .vertical)
+                        TextField(HistoryListStrings.addNotesPlaceholder, text: $notesText, axis: .vertical)
                             .font(.body2)
                             .foregroundStyle(theme.textBody)
                             .lineLimit(4...)
@@ -78,7 +78,7 @@ struct BabyHistoryEditSheet: View {
                 }
                 .padding(.spacingMD)
             }
-            .navigationTitle("Edit Reading")
+            .navigationTitle(HistoryListStrings.editReading)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
