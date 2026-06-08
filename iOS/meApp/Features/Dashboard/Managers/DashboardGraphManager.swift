@@ -53,6 +53,12 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     func handleScrollPhaseChange(_ phase: ScrollPhase) async {
         switch phase {
         case .idle:
+            // MA-3977: only clear the selection on `.idle` when the user actually scrolled
+            // (`hasDetectedScrollInCurrentGesture`). After a tab/period switch, SwiftUI Charts
+            // emits `.idle` as the chart re-mounts and settles into the programmatic scroll
+            // position — clearing unconditionally wiped the auto-selection just applied by
+            // updateSelectedPeriod, producing the "selection appears then disappears" symptom.
+            let didUserScroll = state.hasDetectedScrollInCurrentGesture
             if let final = interaction.consumeBufferedScrollPosition() {
                 state.xScrollPosition = state.selectedPeriod == .month
                     ? renderConfig.snapScrollPosition(final, for: .month)
@@ -60,7 +66,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             }
             state.updateScrollState(isScrolling: false)
             state.hasDetectedScrollInCurrentGesture = false
-            state.clearSelection()
+            if didUserScroll {
+                state.clearSelection()
+            }
         case .tracking:
             state.hasDetectedScrollInCurrentGesture = false
         case .interacting:
@@ -124,6 +132,34 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         guard let date = selectedDate else { state.clearSelection(); return }
         state.showCrosshair = false
         state.selectedXValue = date
+    }
+
+    /// MA-3837/MA-3977: synchronous selection apply used by `DashboardChartManager.updateSelectedPeriod`
+    /// to seed the auto-selection on the latest entry BEFORE `state.selectedPeriod` publishes. Applying
+    /// inline (rather than via an async tail) means the new BaseGraphView mounts with the store already
+    /// holding the selection, so the on-mount `syncViewModelSelectionFromStore` lands the crosshair on
+    /// first render instead of racing the chartIdentity remount and section-VM geometry guards.
+    func applyChartSelectionSync(at selectedDate: Date, operations: [BathScaleWeightSummary]) {
+        state.selectedXValue = selectedDate
+
+        guard !operations.isEmpty else {
+            state.selectedPoint = nil
+            state.showCrosshair = false
+            return
+        }
+
+        let calendar = Calendar.current
+        let exactPoint: BathScaleWeightSummary? = {
+            switch state.selectedPeriod {
+            case .week, .month:
+                return operations.first { calendar.isDate($0.date, inSameDayAs: selectedDate) }
+            case .year, .total:
+                return operations.first { calendar.isDate($0.date, equalTo: selectedDate, toGranularity: .month) }
+            }
+        }()
+
+        state.selectedPoint = exactPoint
+        state.showCrosshair = true
     }
 
     /// Refreshes the selected point in-place when its underlying entry was updated externally.

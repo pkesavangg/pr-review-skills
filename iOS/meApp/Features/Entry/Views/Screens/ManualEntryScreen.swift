@@ -138,7 +138,8 @@ struct ManualEntryScreen: View {
                         MetricInputField(
                             config: weightInputConfig,
                             value: $entryStore.manualEntryForm.weight.value,
-                            focusedField: $focusedField
+                            focusedField: $focusedField,
+                            accessibilityIdentifier: AccessibilityID.weightField
                         ) {
                             focusedField = nil
                         }
@@ -223,7 +224,8 @@ struct ManualEntryScreen: View {
                                                             maxLength: 3,
                                                             maxValue: 99.9),
                                     value: $entryStore.manualEntryForm.bmi.value,
-                                    focusedField: $focusedField
+                                    focusedField: $focusedField,
+                                    accessibilityIdentifier: AccessibilityID.bmiField
                                 ) {
                                     focusedField = .bodyFat
                                 }
@@ -242,7 +244,8 @@ struct ManualEntryScreen: View {
                                                             maxLength: 3,
                                                             maxValue: 99.9),
                                     value: $entryStore.manualEntryForm.bodyFat.value,
-                                    focusedField: $focusedField
+                                    focusedField: $focusedField,
+                                    accessibilityIdentifier: AccessibilityID.bodyFatField
                                 ) {
                                     focusedField = .muscleMass
                                 }
@@ -256,7 +259,8 @@ struct ManualEntryScreen: View {
                                                             maxLength: 3,
                                                             maxValue: 99.9),
                                     value: $entryStore.manualEntryForm.muscleMass.value,
-                                    focusedField: $focusedField
+                                    focusedField: $focusedField,
+                                    accessibilityIdentifier: AccessibilityID.muscleMassField
                                 ) {
                                     focusedField = .bodyWater
                                 }
@@ -269,7 +273,8 @@ struct ManualEntryScreen: View {
                                                             maxLength: 3,
                                                             maxValue: 99.9),
                                     value: $entryStore.manualEntryForm.bodyWater.value,
-                                    focusedField: $focusedField
+                                    focusedField: $focusedField,
+                                    accessibilityIdentifier: AccessibilityID.bodyWaterField
                                 ) {
                                     focusedField = nil
                                 }
@@ -285,7 +290,8 @@ struct ManualEntryScreen: View {
                                                                 maxLength: 3,
                                                                 allowWholeNumbers: true),
                                         value: $entryStore.manualEntryForm.heartRate.value,
-                                        focusedField: $focusedField
+                                        focusedField: $focusedField,
+                                        accessibilityIdentifier: AccessibilityID.heartRateField
                                     ) {
                                         focusedField = .boneMass
                                     }
@@ -299,7 +305,8 @@ struct ManualEntryScreen: View {
                                                                 maxLength: 3,
                                                                 maxValue: 99.9),
                                         value: $entryStore.manualEntryForm.boneMass.value,
-                                        focusedField: $focusedField
+                                        focusedField: $focusedField,
+                                        accessibilityIdentifier: AccessibilityID.boneMassField
                                     ) {
                                         focusedField = .visceralFat
                                     }
@@ -313,7 +320,8 @@ struct ManualEntryScreen: View {
                                                                 maxLength: 2,
                                                                 allowWholeNumbers: true),
                                         value: $entryStore.manualEntryForm.visceralFat.value,
-                                        focusedField: $focusedField
+                                        focusedField: $focusedField,
+                                        accessibilityIdentifier: AccessibilityID.visceralFatField
                                     ) {
                                         focusedField = .subcutaneousFat
                                     }
@@ -327,7 +335,8 @@ struct ManualEntryScreen: View {
                                                                 maxLength: 3,
                                                                 maxValue: 99.9),
                                         value: $entryStore.manualEntryForm.subcutaneousFat.value,
-                                        focusedField: $focusedField
+                                        focusedField: $focusedField,
+                                        accessibilityIdentifier: AccessibilityID.subcutaneousFatField
                                     ) {
                                         focusedField = .protein
                                     }
@@ -341,7 +350,8 @@ struct ManualEntryScreen: View {
                                                                 maxLength: 3,
                                                                 maxValue: 99.9),
                                         value: $entryStore.manualEntryForm.protein.value,
-                                        focusedField: $focusedField
+                                        focusedField: $focusedField,
+                                        accessibilityIdentifier: AccessibilityID.proteinField
                                     ) {
                                         focusedField = .skeletalMuscles
                                     }
@@ -355,7 +365,8 @@ struct ManualEntryScreen: View {
                                                                 maxLength: 3,
                                                                 maxValue: 99.9),
                                         value: $entryStore.manualEntryForm.skeletalMuscles.value,
-                                        focusedField: $focusedField
+                                        focusedField: $focusedField,
+                                        accessibilityIdentifier: AccessibilityID.skeletalMusclesField
                                     ) {
                                         focusedField = .bmr
                                     }
@@ -369,7 +380,8 @@ struct ManualEntryScreen: View {
                                                                 maxLength: 5,
                                                                 allowWholeNumbers: true),
                                         value: $entryStore.manualEntryForm.bmr.value,
-                                        focusedField: $focusedField
+                                        focusedField: $focusedField,
+                                        accessibilityIdentifier: AccessibilityID.basalMetabolicField
                                     ) {
                                         focusedField = .metabolicAge
                                     }
@@ -383,13 +395,15 @@ struct ManualEntryScreen: View {
                                                                 maxLength: 3,
                                                                 allowWholeNumbers: true),
                                         value: $entryStore.manualEntryForm.metabolicAge.value,
-                                        focusedField: $focusedField
+                                        focusedField: $focusedField,
+                                        accessibilityIdentifier: AccessibilityID.metabolicAgeField
                                     ) {
                                         focusedField = nil
                                         Task {
                                             guard !entryStore.isSaving else { return }
-                                            await entryStore.saveEntry()
-                                            performTabSwitchAndHideKeyboard()
+                                            if await entryStore.saveEntry() {
+                                                performTabSwitchAndHideKeyboard()
+                                            }
                                         }
                                     }
                                 }
@@ -407,8 +421,9 @@ struct ManualEntryScreen: View {
                     ) {
                         Task {
                             focusedField = nil
-                            await entryStore.saveEntry()
-                            performTabSwitchAndHideKeyboard()
+                            if await entryStore.saveEntry() {
+                                performTabSwitchAndHideKeyboard()
+                            }
                         }
                     }
 
