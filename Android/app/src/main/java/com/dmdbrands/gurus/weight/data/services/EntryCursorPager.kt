@@ -38,7 +38,6 @@ class EntryCursorPager @Inject constructor(
         AppLog.d(TAG, "backfill start — accountId=$accountId category=$category")
         var cursor: String? = null
         var pageIndex = 0
-        var lastCursor: String? = null
 
         while (pageIndex < MAX_PAGES) {
             val response = try {
@@ -58,13 +57,15 @@ class EntryCursorPager @Inject constructor(
 
             if (!response.hasMore || response.nextCursor == null) break
 
-            // Tie-break guard: stop if cursor didn't advance.
-            if (response.nextCursor == lastCursor) {
-                AppLog.w(TAG, "backfill: cursor did not advance ($lastCursor) — stopping to avoid infinite loop")
+            // Tie-break guard: a server that echoes back the cursor it was just given
+            // (nextCursor == the cursor used for this request) is not advancing — stop
+            // to avoid looping until MAX_PAGES. On the first page cursor is null, so a
+            // non-null nextCursor always advances past it.
+            if (response.nextCursor == cursor) {
+                AppLog.w(TAG, "backfill: cursor did not advance ($cursor) — stopping to avoid infinite loop")
                 break
             }
 
-            lastCursor = cursor
             cursor = response.nextCursor
             pageIndex++
         }

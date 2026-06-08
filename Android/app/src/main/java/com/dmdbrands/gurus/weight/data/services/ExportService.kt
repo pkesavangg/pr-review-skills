@@ -149,8 +149,11 @@ constructor(
     val utcOffset = getUtcOffset()
     try {
       val body = entryRepository.exportEntriesCsv(category = category, download = download, utcOffset = utcOffset)
-      if (download && body != null) {
-        saveCsvToDownloads(body, category)
+      if (download) {
+        // Download mode must produce a file. A null body (or a failed write below) is a
+        // real failure — never report success without a file on disk.
+        val csv = body ?: throw IllegalStateException("CSV download returned no body")
+        saveCsvToDownloads(csv, category)
         AppLog.i(TAG, "exportEntriesCsv: file saved to Downloads (category=$category)")
       } else {
         // Email mode: server sends email; body is empty or {sent:true}
@@ -163,6 +166,19 @@ constructor(
     }
   }
 
+  /**
+   * Streams the export CSV body into the device's shared Downloads collection.
+   *
+   * PHI note (MOB-380): the CSV holds the user's own health data (weight + BP). This is a
+   * user-initiated export of their own data to their own device Downloads — the same data
+   * the user can already email to themselves — written to shared `MediaStore.Downloads` so
+   * it is findable in the system Downloads UI. Email is the default path; download is opt-in.
+   * Flagged for compliance sign-off; if shared storage is not acceptable for PHI, switch to a
+   * FileProvider share-sheet backed by app-scoped storage.
+   *
+   * @throws java.io.IOException if the file could not be created or written. The caller MUST
+   *   surface this rather than reporting a successful export.
+   */
   private fun saveCsvToDownloads(body: okhttp3.ResponseBody, category: String?) {
     try {
       val fileName = "entries${if (category != null) "_$category" else ""}.csv"
@@ -173,14 +189,12 @@ constructor(
       }
       val resolver = context.contentResolver
       val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-      if (uri != null) {
-        resolver.openOutputStream(uri)?.use { out -> body.byteStream().copyTo(out) }
-        contentValues.clear()
-        contentValues.put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
-        resolver.update(uri, contentValues, null, null)
-      }
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to save CSV to Downloads", e)
+        ?: throw java.io.IOException("MediaStore returned a null URI for $fileName")
+      resolver.openOutputStream(uri)?.use { out -> body.byteStream().copyTo(out) }
+        ?: throw java.io.IOException("Could not open output stream for $uri")
+      contentValues.clear()
+      contentValues.put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
+      resolver.update(uri, contentValues, null, null)
     } finally {
       body.close()
     }
