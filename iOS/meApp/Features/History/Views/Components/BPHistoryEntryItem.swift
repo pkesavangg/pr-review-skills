@@ -113,7 +113,7 @@ struct BPHistoryEntryItem: View {
                     Spacer()
                     Button("Edit notes", systemImage: "square.and.pencil", action: onEditNotes)
                         .labelStyle(.iconOnly)
-                        .font(.system(size: 18))
+                        .font(.system(.body))
                         .foregroundStyle(theme.actionPrimary)
                 }
                 .padding(.spacingSM)

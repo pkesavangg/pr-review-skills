@@ -53,7 +53,7 @@ struct AppInputField: View {
         }
     }
 
-    private let notesMaxCharacters = 280
+    private let notesMaxCharacters = AppConstants.Input.notesMaxCharacters
 
     private var isTextareaLabelActive: Bool {
         focusedField == config.focusField || !value.isEmpty
