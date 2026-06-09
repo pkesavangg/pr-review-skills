@@ -321,7 +321,9 @@ object ServiceModule {
       dialogQueueService: IDialogQueueService,
       deviceService: com.greatergoods.blewrapper.GGDeviceService,
       logRepository: ILogRepository,
-    ): IExportService = ExportService(exportAPI, accountService, dialogQueueService, deviceService, logRepository)
+      entryRepository: IEntryRepository,
+      @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
+    ): IExportService = ExportService(exportAPI, accountService, dialogQueueService, deviceService, logRepository, entryRepository, context)
 
     /**
      * Provides the offline handler service implementation.

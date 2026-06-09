@@ -1,6 +1,8 @@
 package com.dmdbrands.gurus.weight.domain.repository
 
 import com.dmdbrands.gurus.weight.data.api.OperationsResponse
+import com.dmdbrands.gurus.weight.domain.model.api.entry.EntriesCursorResponse
+import com.dmdbrands.gurus.weight.domain.model.api.entry.EntriesSyncResponse
 import com.dmdbrands.gurus.weight.domain.model.api.entry.ScaleApiEntry
 import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryRequest
 import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryResponse
@@ -116,6 +118,17 @@ interface IEntryRepository {
    * @return List of EntryEntity objects from the API
    */
   suspend fun getOperationsFromAPI(syncTimeStamp: String): OperationsResponse?
+
+  // ── Unified /v3/entries/ read (MOB-380) ───────────────────────────────────
+
+  /** Fetches all entries since [start] (sync-mode delta). Throws on failure. */
+  suspend fun getEntriesSync(start: String, category: String? = null): EntriesSyncResponse
+
+  /** Fetches a single cursor page. Throws on failure. */
+  suspend fun getEntriesPage(cursor: String? = null, limit: Int = 20, category: String? = null): EntriesCursorResponse
+
+  /** Streams a CSV export body; null on non-2xx. Throws on network error. */
+  suspend fun exportEntriesCsv(category: String? = null, download: Boolean = false, utcOffset: Int = 0): okhttp3.ResponseBody?
 
   /**
    * Gets the operation count for an account.
