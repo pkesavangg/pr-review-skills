@@ -124,15 +124,15 @@ extension UnifiedEntryRequest {
                 category: category.rawValue,
                 operationType: operationType,
                 entryTimestamp: timestamp,
-                weight: isCreate ? dto.weight.map { Int($0) } : nil,
-                bodyFat: isCreate ? dto.bodyFat.map { Int($0) } : nil,
-                muscleMass: isCreate ? dto.muscleMass.map { Int($0) } : nil,
-                water: isCreate ? dto.water.map { Int($0) } : nil,
-                bmi: isCreate ? dto.bmi.map { Int($0) } : nil,
-                boneMass: isCreate ? dto.boneMass.map { Int($0) } : nil,
-                impedance: isCreate ? dto.impedance.map { Int($0) } : nil,
+                weight: isCreate ? dto.weight.map { Int($0.rounded()) } : nil,
+                bodyFat: isCreate ? dto.bodyFat.map { Int($0.rounded()) } : nil,
+                muscleMass: isCreate ? dto.muscleMass.map { Int($0.rounded()) } : nil,
+                water: isCreate ? dto.water.map { Int($0.rounded()) } : nil,
+                bmi: isCreate ? dto.bmi.map { Int($0.rounded()) } : nil,
+                boneMass: isCreate ? dto.boneMass.map { Int($0.rounded()) } : nil,
+                impedance: isCreate ? dto.impedance.map { Int($0.rounded()) } : nil,
                 unit: isCreate ? dto.unit : nil,
-                pulse: isCreate ? dto.pulse.map { Int($0) } : nil,
+                pulse: isCreate ? dto.pulse.map { Int($0.rounded()) } : nil,
                 source: isCreate ? dto.source : nil
             )
         case .bp:
@@ -140,9 +140,9 @@ extension UnifiedEntryRequest {
                 category: category.rawValue,
                 operationType: operationType,
                 entryTimestamp: timestamp,
-                systolic: isCreate ? dto.systolic.map { Int($0) } : nil,
-                diastolic: isCreate ? dto.diastolic.map { Int($0) } : nil,
-                pulse: isCreate ? dto.pulse.map { Int($0) } : nil,
+                systolic: isCreate ? dto.systolic.map { Int($0.rounded()) } : nil,
+                diastolic: isCreate ? dto.diastolic.map { Int($0.rounded()) } : nil,
+                pulse: isCreate ? dto.pulse.map { Int($0.rounded()) } : nil,
                 source: isCreate ? dto.source : nil,
                 note: isCreate ? note : nil
             )

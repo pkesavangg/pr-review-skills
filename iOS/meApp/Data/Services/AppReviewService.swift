@@ -109,10 +109,12 @@ final class AppReviewService: AppReviewHandlerProtocol, ReviewReportHandlerProto
                 message: "Submitted \(reviewType.rawValue) review (status=\(status.rawValue)) to /v3/review/"
             )
         } catch {
+            let ns = error as NSError
             logger.log(
                 level: .error,
                 tag: tag,
-                message: "Failed to submit review to /v3/review/: \(error.localizedDescription)"
+                message: "Failed to submit review to /v3/review/",
+                data: ["code": "\(ns.code)", "domain": ns.domain]
             )
             throw error
         }
