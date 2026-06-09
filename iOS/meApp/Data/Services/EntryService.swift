@@ -1051,7 +1051,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         var firstFailureReason: String?
 
         // 2. Try to sync with backend
-        if let unsyncedEntries = unsynced, !unsyncedEntries.isEmpty {
+        // Baby sync is out of scope until iOS 3. Exclude baby entries here so they
+        // are not re-evaluated every cycle and never accumulate as a perpetual skip.
+        if let unsyncedEntries = unsynced?.filter({ $0.entryType != EntryType.baby.rawValue }), !unsyncedEntries.isEmpty {
             for operation in unsyncedEntries {
                 // R7/R9: Extract all @Model data BEFORE any await calls
                 let entryId = operation.id
