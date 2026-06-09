@@ -20,16 +20,17 @@ struct BabySetupDoneView: View {
                     Text(lang.title)
                         .fontOpenSans(.heading4)
                         .fontWeight(.bold)
-                        .foregroundColor(theme.textHeading)
+                        .foregroundStyle(theme.textHeading)
 
                     Text(lang.subtitle)
                         .fontOpenSans(.body2)
-                        .foregroundColor(theme.textBody)
+                        .foregroundStyle(theme.textBody)
                 }
 
                 GifView(gifName: AppAssets.checkmarkSuccessGif, width: 160, height: 160)
                     .frame(width: 160, height: 160)
                     .frame(maxWidth: .infinity)
+                    .accessibilityHidden(true)
 
                 VStack(spacing: .spacingMD) {
                     ButtonView(

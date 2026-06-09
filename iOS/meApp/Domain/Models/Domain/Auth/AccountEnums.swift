@@ -57,11 +57,11 @@ enum MeasurementUnits: String, Codable, Equatable, CaseIterable {
 
 // MARK: - ProductType
 
-/// Server product-type identifiers (`account.productTypes`).
-/// These are the canonical API values used in account request/response payloads.
+/// Product-type identifiers persisted in `account.productTypes`.
+/// Raw values match the persisted vocabulary: "myWeight", "myBloodPressure", "baby".
 enum ProductType: String, Codable, Equatable, CaseIterable {
-    case weight
-    case bloodPressure = "blood_pressure"
+    case weight = "myWeight"
+    case bloodPressure = "myBloodPressure"
     case baby
 }
 

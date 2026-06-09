@@ -78,6 +78,9 @@ final class HistoryStore: ObservableObject {
     @Published private(set) var hasMorePages: Bool = false
     /// Whether a page request is currently in flight (drives the list footer spinner).
     @Published private(set) var isLoadingPage: Bool = false
+    /// True once loadFirstPage has completed at least one fetch (even if it returned empty).
+    /// Guards loadNextPage against re-fetching page 1 for accounts with no remote entries.
+    @Published private(set) var hasLoadedFirstPage: Bool = false
 
     /// The cursor for the next page request — the `entryTimestamp` of the last loaded row.
     private var nextCursor: String?
@@ -606,6 +609,7 @@ final class HistoryStore: ObservableObject {
         nextCursor = nil
         pagedEntries = []
         hasMorePages = false
+        hasLoadedFirstPage = false
         await loadNextPage()
     }
 
@@ -615,8 +619,7 @@ final class HistoryStore: ObservableObject {
     /// are no more pages (after at least one page has been fetched).
     func loadNextPage() async {
         guard !isLoadingPage else { return }
-        // Stop paging only after the first page; the initial call has no cursor yet.
-        guard hasMorePages || pagedEntries.isEmpty else { return }
+        guard hasMorePages || !hasLoadedFirstPage else { return }
 
         isLoadingPage = true
         defer { isLoadingPage = false }
@@ -632,9 +635,11 @@ final class HistoryStore: ObservableObject {
             pagedEntries.append(contentsOf: page.entries)
             nextCursor = page.nextCursor
             hasMorePages = page.hasMore
+            hasLoadedFirstPage = true
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to load entries page: \(error.localizedDescription)")
             hasMorePages = false
+            hasLoadedFirstPage = true
         }
     }
 
