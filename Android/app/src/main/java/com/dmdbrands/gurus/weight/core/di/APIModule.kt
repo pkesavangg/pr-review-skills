@@ -14,6 +14,7 @@ import com.dmdbrands.gurus.weight.data.api.IGoalAPI
 import com.dmdbrands.gurus.weight.data.api.IHealthConnectAPI
 import com.dmdbrands.gurus.weight.data.api.IIntegrationAPI
 import com.dmdbrands.gurus.weight.data.api.INotificationAPI
+import com.dmdbrands.gurus.weight.data.api.IReviewAPI
 import com.dmdbrands.gurus.weight.data.api.ISupportAPI
 import com.dmdbrands.gurus.weight.data.api.IUserAPI
 import com.dmdbrands.gurus.weight.data.api.IUserSettingsAPI
@@ -125,6 +126,11 @@ object ApiModule {
     @Provides
     @Singleton
     fun provideScaleAPI(httpClient: HttpClient): IDeviceAPI = httpClient.createService(IDeviceAPI::class.java)
+
+    /** Provides the [IReviewAPI] for `POST /v3/review/` (MOB-378). */
+    @Provides
+    @Singleton
+    fun provideReviewAPI(httpClient: HttpClient): IReviewAPI = httpClient.createService(IReviewAPI::class.java)
 
     /**
      * Provides the ISupportAPI implementation using Retrofit.

@@ -21,6 +21,12 @@ message UserAccount {
     string expires_at = 5;
     ThemeMode theme_mode = 6;
     bool notification_alert_shown = 7;
+    // selected_product_type/selected_baby_profile_id keep their original field numbers
+    // 8/9 (first persisted by MA-3989). The dev→phase2-dev merge had reassigned 8/9 to
+    // the newer last_appsync_zoom_level/default_graph_segment, which would silently
+    // corrupt/drop any already-persisted product/baby selection on upgrade. Protobuf
+    // identifies fields by number on the wire, so the safe resolution is to leave the
+    // shipped string fields on 8/9 and give the newer fields fresh numbers (11/12).
     string selected_product_type = 8;
     string selected_baby_profile_id = 9;
     bool graph_scroll_hint_shown = 10;
