@@ -7,7 +7,9 @@ import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
 import com.dmdbrands.gurus.weight.core.service.NotificationEventType
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.NotificationChannel
+import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.repository.IAppRepository
+import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import com.google.firebase.messaging.RemoteMessage
@@ -42,6 +44,7 @@ class PushNotificationServiceTest {
   private val context: Context = mockk(relaxed = true)
   private val notificationService: NotificationService = mockk(relaxed = true)
   private val appRepository: IAppRepository = mockk()
+  private val accountService: IAccountService = mockk(relaxed = true)
 
   private lateinit var service: PushNotificationService
 
@@ -63,12 +66,21 @@ class PushNotificationServiceTest {
       PendingIntent.getActivity(any(), any(), any(), any())
     } returns mockk()
 
+    coEvery { accountService.getLoggedInAccounts() } returns emptyList()
+
     service = PushNotificationService()
     service.context = context
     service.notificationService = notificationService
     service.appRepository = appRepository
+    service.accountService = accountService
     service.appScope = CoroutineScope(mainDispatcherRule.dispatcher)
   }
+
+  private fun account(id: String, firstName: String): Account =
+    mockk(relaxed = true) {
+      every { this@mockk.id } returns id
+      every { this@mockk.firstName } returns firstName
+    }
 
   @AfterEach
   fun tearDown() {
@@ -82,7 +94,7 @@ class PushNotificationServiceTest {
 
   private fun createMessage(
     msgId: String? = "msg-1",
-    destination: String? = null,
+    data: Map<String, String> = emptyMap(),
     channelId: String? = null,
     title: String? = null,
     body: String? = null,
@@ -99,7 +111,7 @@ class PushNotificationServiceTest {
     }
     return mockk {
       every { messageId } returns msgId
-      every { data } returns if (destination != null) mapOf("destination" to destination) else emptyMap()
+      every { this@mockk.data } returns data
       every { getNotification() } returns notification
       every { this@mockk.notification } returns notification
     }
@@ -204,92 +216,105 @@ class PushNotificationServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `onMessageReceived shows notification with correct title and body`() {
+  fun `onMessageReceived shows branded notification with me_App title on entry channel`() {
+    val message = createMessage(msgId = "msg-1")
+
+    service.onMessageReceived(message)
+
+    verify(exactly = 1) {
+      notificationService.showBrandedNotification(
+        channelId = NotificationChannel.ENTRY_NOTIFICATION,
+        notificationName = "msg-1",
+        textTitle = "me.App",
+        textContent = any(),
+        smallIcon = any(),
+        contentIntent = any(),
+        groupKey = any(),
+      )
+    }
+  }
+
+  @Test
+  fun `onMessageReceived builds body with measurement and resolved account name`() {
+    coEvery { accountService.getLoggedInAccounts() } returns listOf(account("acc-1", "John"))
     val message = createMessage(
-      hasNotification = true,
-      channelId = "test-channel",
-      title = "Test Title",
-      body = "Test Body",
-      destination = "dashboard",
+      data = mapOf("accountId" to "acc-1", "measurement" to "149.2 lb"),
     )
 
     service.onMessageReceived(message)
 
     verify(exactly = 1) {
-      notificationService.showTextWithTapAction(
-        "test-channel",
-        "PUSH_TEST",
-        "Test Title",
-        "Test Body",
-        any(),
+      notificationService.showBrandedNotification(
+        channelId = any(),
+        notificationName = any(),
+        textTitle = any(),
+        textContent = "New entry of 149.2 lb has been synced to John's account",
+        smallIcon = any(),
+        contentIntent = any(),
+        groupKey = any(),
       )
     }
   }
 
   @Test
-  fun `onMessageReceived uses default channel when channelId is null`() {
-    val message = createMessage(hasNotification = true, title = "Title", body = "Body")
+  fun `onMessageReceived caps long account names at 20 chars with ellipsis`() {
+    coEvery { accountService.getLoggedInAccounts() } returns
+      listOf(account("acc-1", "Maximilianabcdefghijklmnop"))
+    val message = createMessage(data = mapOf("accountId" to "acc-1", "measurement" to "10 lb"))
 
     service.onMessageReceived(message)
 
     verify(exactly = 1) {
-      notificationService.showTextWithTapAction(
-        NotificationChannel.DEFAULT,
-        "PUSH_TEST",
-        "Title",
-        "Body",
-        any(),
+      notificationService.showBrandedNotification(
+        channelId = any(),
+        notificationName = any(),
+        textTitle = any(),
+        textContent = "New entry of 10 lb has been synced to Maximilianabcdefghij…'s account",
+        smallIcon = any(),
+        contentIntent = any(),
+        groupKey = any(),
       )
     }
   }
 
   @Test
-  fun `onMessageReceived uses default title when notification title is null`() {
-    val message = createMessage(hasNotification = true, channelId = "ch-1", body = "Some Body")
+  fun `onMessageReceived falls back to your account when accountId unknown`() {
+    val message = createMessage(data = mapOf("measurement" to "55 kg"))
 
     service.onMessageReceived(message)
 
     verify(exactly = 1) {
-      notificationService.showTextWithTapAction(
-        "ch-1",
-        "PUSH_TEST",
-        "Default Title",
-        "Some Body",
-        any(),
+      notificationService.showBrandedNotification(
+        channelId = any(),
+        notificationName = any(),
+        textTitle = any(),
+        textContent = "New entry of 55 kg has been synced to your account",
+        smallIcon = any(),
+        contentIntent = any(),
+        groupKey = any(),
       )
     }
   }
 
   @Test
-  fun `onMessageReceived uses default body when notification body is null`() {
-    val message = createMessage(hasNotification = true, channelId = "ch-1", title = "Title")
+  fun `onMessageReceived uses notification body fallback when no data present`() {
+    val message = createMessage(
+      hasNotification = true,
+      title = "Weight Gurus",
+      body = "New entry of 28.6 lb has been synced to your account",
+    )
 
     service.onMessageReceived(message)
 
     verify(exactly = 1) {
-      notificationService.showTextWithTapAction(
-        "ch-1",
-        "PUSH_TEST",
-        "Title",
-        "You have a new message",
-        any(),
-      )
-    }
-  }
-
-  @Test
-  fun `onMessageReceived uses all defaults when notification is null`() {
-    val message = createMessage(msgId = "msg-5")
-
-    service.onMessageReceived(message)
-
-    verify(exactly = 1) {
-      notificationService.showTextWithTapAction(
-        NotificationChannel.DEFAULT,
-        "PUSH_TEST",
-        "Default Title",
-        "You have a new message",
-        any(),
+      notificationService.showBrandedNotification(
+        channelId = any(),
+        notificationName = any(),
+        textTitle = "me.App",
+        textContent = "New entry of 28.6 lb has been synced to your account",
+        smallIcon = any(),
+        contentIntent = any(),
+        groupKey = any(),
       )
     }
   }
@@ -299,7 +324,6 @@ class PushNotificationServiceTest {
     val message = createMessage(msgId = "msg-6")
 
     service.onMessageReceived(message)
-
 
     coVerify(exactly = 1) {
       AppNotificationEventService.emit(NotificationEventType.NOTIFICATION_RECEIVED)
@@ -316,53 +340,40 @@ class PushNotificationServiceTest {
   }
 
   @Test
-  fun `onMessageReceived with all notification fields populated`() {
-    val message = createMessage(
-      hasNotification = true,
-      channelId = "custom-channel",
-      title = "Custom Title",
-      body = "Custom Body",
-      destination = "settings",
-    )
+  fun `onMessageReceived falls back to account id as notification name when messageId null`() {
+    val message = createMessage(msgId = null, data = mapOf("accountId" to "acc-9"))
 
     service.onMessageReceived(message)
 
     verify(exactly = 1) {
-      notificationService.showTextWithTapAction(
-        "custom-channel",
-        "PUSH_TEST",
-        "Custom Title",
-        "Custom Body",
-        any(),
+      notificationService.showBrandedNotification(
+        channelId = any(),
+        notificationName = "acc-9",
+        textTitle = any(),
+        textContent = any(),
+        smallIcon = any(),
+        contentIntent = any(),
+        groupKey = any(),
       )
     }
   }
 
   @Test
-  fun `onMessageReceived with null messageId does not crash`() {
-    val message = createMessage(msgId = null)
+  fun `onMessageReceived still shows notification when account lookup throws`() {
+    coEvery { accountService.getLoggedInAccounts() } throws RuntimeException("db error")
+    val message = createMessage(data = mapOf("accountId" to "acc-1", "measurement" to "12 lb"))
 
     service.onMessageReceived(message)
 
-    verify { AppLog.d("PushNotificationService", "Received message: null") }
     verify(exactly = 1) {
-      notificationService.showTextWithTapAction(any(), any(), any(), any(), any())
-    }
-  }
-
-  @Test
-  fun `onMessageReceived always uses PUSH_TEST as notification name`() {
-    val message = createMessage()
-
-    service.onMessageReceived(message)
-
-    verify {
-      notificationService.showTextWithTapAction(
-        any(),
-        eq("PUSH_TEST"),
-        any(),
-        any(),
-        any(),
+      notificationService.showBrandedNotification(
+        channelId = any(),
+        notificationName = any(),
+        textTitle = any(),
+        textContent = "New entry of 12 lb has been synced to your account",
+        smallIcon = any(),
+        contentIntent = any(),
+        groupKey = any(),
       )
     }
   }

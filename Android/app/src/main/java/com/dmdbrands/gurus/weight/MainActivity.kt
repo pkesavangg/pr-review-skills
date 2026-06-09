@@ -12,6 +12,8 @@ import com.dmdbrands.gurus.weight.app.MeApp
 import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.service.NotificationEventType
+import com.dmdbrands.gurus.weight.core.service.NotificationTapPayload
+import com.dmdbrands.gurus.weight.core.service.pushNotification.PushNotificationService
 import com.dmdbrands.gurus.weight.core.service.WifiScaleService
 import com.dmdbrands.gurus.weight.core.shared.utilities.IAppReviewManager
 import com.dmdbrands.gurus.weight.core.shared.utilities.browser.ICustomTabManager
@@ -135,12 +137,18 @@ class MainActivity : AppCompatActivity() {
     super.onNewIntent(intent)
     setIntent(intent) // Save the new intent
     handleHealthConnectIntent(intent)
-    if (intent.action == "ACTION_HANDLE_NOTIFICATION") {
-      AppLog.d("MainActivity", "Notification tapped. Destination: ${intent.getStringExtra("destination")}")
+    if (intent.action == PushNotificationService.ACTION_HANDLE_NOTIFICATION) {
+      val tapPayload =
+        NotificationTapPayload(
+          accountId = intent.getStringExtra(PushNotificationService.EXTRA_ACCOUNT_ID),
+          destination = intent.getStringExtra(PushNotificationService.EXTRA_DESTINATION),
+          monthKey = intent.getStringExtra(PushNotificationService.EXTRA_MONTH_KEY),
+        )
+      AppLog.d("MainActivity", "Notification tapped: $tapPayload")
       lifecycleScope.launch {
         AppNotificationEventService.emit(NotificationEventType.NOTIFICATION_TAPPED)
+        AppNotificationEventService.emitTap(tapPayload)
       }
-      // Emit event to shared flow or handle navigation
     }
   }
 
