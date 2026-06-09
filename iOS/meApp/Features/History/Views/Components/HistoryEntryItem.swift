@@ -102,6 +102,7 @@ struct HistoryEntryItem: View {
             .padding(.horizontal, .spacingSM)
             .contentShape(Rectangle())
             .background(isExpanded ? theme.actionSecondary : Color.clear)
+            .accessibilityIdentifier(AccessibilityID.historyEntryRow)
             // Swipeable delete action
             .swipeableActions(
                 buttons: [
@@ -114,6 +115,7 @@ struct HistoryEntryItem: View {
                                     .fontOpenSans(.button1)
                                     .fontWeight(.bold)
                                     .foregroundColor(theme.textInverse)
+                                    .accessibilityIdentifier(AccessibilityID.historyDeleteButton)
                             )
                         }
                     )

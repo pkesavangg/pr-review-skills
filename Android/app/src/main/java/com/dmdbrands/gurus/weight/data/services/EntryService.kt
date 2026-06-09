@@ -133,6 +133,17 @@ class EntryService(
         }
     }
 
+    /**
+     * Updates only an entry's note locally (e.g. editing a note from History). The note is
+     * device-local (the server contract carries no note for weight); the local write is
+     * preserved across sync by [IEntryRepository]. See MOB-438.
+     */
+    override suspend fun updateNote(entry: Entry, note: String?) {
+        // Propagate failures so the caller can surface an error instead of silently
+        // treating a failed write as success (MOB-438 PR review).
+        entryRepository.updateNote(entry, note)
+    }
+
     /** Deletes an entry both locally and remotely. */
     override suspend fun deleteEntry(entry: Entry) {
         val currentAccountId = accountId ?: return
@@ -247,7 +258,28 @@ class EntryService(
 
             // 6. Execute operations from API
             if (operationsFromApi.isNotEmpty()) {
-                EntryServiceHelper.executeOperations(entryRepository, operationsFromApi)
+                // The server contract (ScaleApiEntry) carries no note field, so a freshly
+                // created weight entry comes back from the API without its note. Re-attach
+                // notes from the operations we just sent (matched by timestamp) so a
+                // locally-entered note survives the sync round-trip (MOB-438, device-local).
+                val localNotesByTimestamp = newEntries
+                    .filterIsInstance<ScaleEntry>()
+                    .mapNotNull { op ->
+                        op.scale.scaleEntry.note
+                            ?.takeIf { it.isNotBlank() }
+                            ?.let { op.entry.entryTimestamp to it }
+                    }
+                    .toMap()
+                val mergedApiOps = operationsFromApi.map { op ->
+                    if (op.scale.scaleEntry.note.isNullOrBlank()) {
+                        localNotesByTimestamp[op.entry.entryTimestamp]?.let { note ->
+                            op.copy(scale = op.scale.copy(scaleEntry = op.scale.scaleEntry.copy(note = note)))
+                        } ?: op
+                    } else {
+                        op
+                    }
+                }
+                EntryServiceHelper.executeOperations(entryRepository, mergedApiOps)
             }
 
             // 7. API sync done: update timestamp, clear loader

@@ -1,4 +1,6 @@
 import com.android.build.api.variant.impl.VariantOutputImpl
+import com.android.ide.common.vectordrawable.Svg2Vector
+import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 

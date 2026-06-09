@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
+import com.dmdbrands.gurus.weight.features.common.components.AppTextArea
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeInput
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeInputMode
 import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
@@ -44,6 +45,12 @@ fun WeightEntrySection(
         modifier = Modifier
             .fillMaxWidth()
             .focusRequester(weightFocusRequester),
+    )
+    AppTextArea(
+        formControl = entryForm.weightDateTime.controls.notes,
+        label = EntryScreenStrings.NOTES_LABEL,
+        maxLength = EntryScreenStrings.NOTES_MAX_LENGTH,
+        showCharacterCounter = true,
     )
     DateTimeInput(
         formControl = entryForm.weightDateTime.controls.dateTime,

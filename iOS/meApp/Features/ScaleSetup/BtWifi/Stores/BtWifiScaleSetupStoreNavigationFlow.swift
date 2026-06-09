@@ -75,6 +75,22 @@ extension BtWifiScaleSetupStore {
                    isDuplicated: Bool = false,
                    isWifiSetupOnly: Bool
     ) {
+        // Guard against a destructive re-configure while the user is mid-resolution.
+        // configure() runs from the screen's .onAppear, which can fire again (e.g. the
+        // scale disconnects during getUserList() and is rediscovered, re-presenting the
+        // flow). Re-running the reset below would clear scaleSetupError back to .none and
+        // bounce the user out of the duplicate/max-user screen, causing a setup loop.
+        if bluetoothService.isSetupInProgress,
+           currentStep == .gatheringNetwork,
+           scaleSetupError == .duplicatesFound || scaleSetupError == .maxUserReached {
+            LoggerService.shared.log(
+                level: .info,
+                tag: tag,
+                message: "configure() skipped - user is resolving \(scaleSetupError) on the gathering-network screen"
+            )
+            return
+        }
+
         // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
         // Pass original SKU to routes (not mapped), setup will save original SKU
         let lookupSku = DeviceHelper.mapSkuForDisplay(sku)

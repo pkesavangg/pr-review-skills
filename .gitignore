@@ -43,9 +43,12 @@ Android/.claude/*.json
 # Lefthook local overrides (developer-specific)
 lefthook-local.yml
 
-# Developer-local Claude Code settings
+# Developer-local Claude Code settings (user config, cache, transcripts)
 .claude/
 Android/.claude/
+# But commit shared skills so the whole team benefits from them
+!.claude/skills/
 
 # Developer convenience scripts
 Android/run.sh
+.refact/

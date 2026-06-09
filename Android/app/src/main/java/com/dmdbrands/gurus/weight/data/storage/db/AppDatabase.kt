@@ -40,7 +40,6 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.baby.BabyProfileEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.log.LogEntity
 import com.dmdbrands.gurus.weight.migration.service.IonicMigrationWorker
-import kotlinx.coroutines.Dispatchers
 import android.content.Context
 
 /**
@@ -70,7 +69,7 @@ import android.content.Context
     BabyEntryEntity::class,
   ],
   views = [ActiveEntryEntity::class],
-  version = 6,
+  version = 7,
   exportSchema = true,
 )
 @TypeConverters(DateConverter::class, JsonConverter::class, WeightUnitConverter::class)
@@ -90,19 +89,19 @@ abstract class AppDatabase : RoomDatabase() {
   abstract fun entryReadDao(): EntryReadDao
 
   companion object {
-    private val MIGRATION_1_2 = object : Migration(1, 2) {
+    internal val MIGRATION_1_2 = object : Migration(1, 2) {
       override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE device ADD COLUMN productType TEXT DEFAULT NULL")
       }
     }
 
-    private val MIGRATION_2_3 = object : Migration(2, 3) {
+    internal val MIGRATION_2_3 = object : Migration(2, 3) {
       override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE device ADD COLUMN lastModified INTEGER DEFAULT NULL")
       }
     }
 
-    private val MIGRATION_3_4 = object : Migration(3, 4) {
+    internal val MIGRATION_3_4 = object : Migration(3, 4) {
       override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE account ADD COLUMN activeBabyId TEXT DEFAULT NULL")
       }
@@ -115,7 +114,7 @@ abstract class AppDatabase : RoomDatabase() {
     // Task 4: bpm_entry — rename PK id→entryId (table recreation)
     // Task 5: baby_profiles → baby table, rename PK + columns, add new fields (table recreation)
     @Suppress("LongMethod")
-    private val MIGRATION_4_5 = object : Migration(4, 5) {
+    internal val MIGRATION_4_5 = object : Migration(4, 5) {
       override fun migrate(db: SupportSQLiteDatabase) {
 
         // ── Task 1: account — add 3 columns ────────────────────────────────────
@@ -247,9 +246,17 @@ abstract class AppDatabase : RoomDatabase() {
 
     // ----- Migration 5 → 6 -----
     // Add composite index on (accountId, operationType) to speed up entry_view's NOT EXISTS subquery.
-    private val MIGRATION_5_6 = object : Migration(5, 6) {
+    internal val MIGRATION_5_6 = object : Migration(5, 6) {
       override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_entry_accountId_operationType` ON `entry` (`accountId`, `operationType`)")
+      }
+    }
+
+    // ----- Migration 6 → 7 -----
+    // body_scale_entry — add nullable note column for weight-entry notes (MOB-438).
+    internal val MIGRATION_6_7 = object : Migration(6, 7) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE body_scale_entry ADD COLUMN note TEXT DEFAULT NULL")
       }
     }
 
@@ -265,35 +272,22 @@ abstract class AppDatabase : RoomDatabase() {
               AppDatabase::class.java,
               "MeApp",
             )
-            // Bundled SQLite (currently 3.46+) instead of the device's system SQLite.
-            // Required for window functions (need SQLite 3.25+); the device's SQLite is
-            // tied to API level — minSdk 26 ships 3.18, which lacks them. Bundled gives
-            // us a single version across all supported API levels.
-            .setDriver(BundledSQLiteDriver())
-            .setQueryCoroutineContext(Dispatchers.IO)
             .addCallback(
               object : Callback() {
-                // When `.setDriver(BundledSQLiteDriver())` is used, Room invokes the
-                // SQLiteConnection-based callback overloads. The legacy
-                // `onCreate(SupportSQLiteDatabase)` is NOT called on the new driver path,
-                // which is why the Ionic migration worker was never enqueued.
-                override fun onCreate(connection: SQLiteConnection) {
-                  super.onCreate(connection)
+                override fun onCreate(db: SupportSQLiteDatabase) {
+                  super.onCreate(db)
 
-                  // Start Ionic migration worker when database is first created.
-                  // Unique-work + KEEP policy ensures that if Room is recreated mid-retry
-                  // (e.g. after performEmergencyCleanup), we don't stack duplicate workers
-                  // on top of one that's already retrying.
+                  // Start Ionic migration worker when database is first created
                   val migrationWork = OneTimeWorkRequestBuilder<IonicMigrationWorker>()
                     .addTag("ionic_migration")
                     .build()
 
                   WorkManager.getInstance(context.applicationContext)
-                    .enqueueUniqueWork("ionic_migration", ExistingWorkPolicy.KEEP, migrationWork)
+                    .enqueue(migrationWork)
                 }
               },
             )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
             .fallbackToDestructiveMigration(false)
             .build()
         Companion.instance = instance

@@ -214,6 +214,8 @@ enum DashboardTestFixtures {
         selectedDate: Date? = nil,
         operations: [BathScaleWeightSummary] = [],
         visibleOperations: [BathScaleWeightSummary] = [],
+        // MA-4005: defaults to visibleOperations so existing tests keep their expectations.
+        operationsForLabel: [BathScaleWeightSummary]? = nil,
         metrics: [MetricItem] = [],
         isWeightlessMode: Bool = false,
         anchorWeight: Double? = nil,
@@ -229,6 +231,7 @@ enum DashboardTestFixtures {
             selectedDate: selectedDate,
             operations: operations,
             visibleOperations: visibleOperations,
+            operationsForLabel: operationsForLabel ?? visibleOperations,
             metrics: metrics,
             isWeightlessMode: isWeightlessMode,
             anchorWeight: anchorWeight,

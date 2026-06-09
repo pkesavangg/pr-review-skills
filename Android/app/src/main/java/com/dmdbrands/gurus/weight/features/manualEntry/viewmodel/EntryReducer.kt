@@ -18,6 +18,7 @@ import androidx.compose.runtime.Stable
  */
 data class WeightDateTimeFormControls(
   val weight: FormControl<String>,
+  val notes: FormControl<String>,
   val dateTime: FormControl<DateTimeValue>,
 )
 
@@ -122,7 +123,7 @@ data class EntryForm(
                   else -> new.toDouble() / 10
                 }
                 val storedHeight = ConversionTools.convertStoredHeightToCm(height)
-                val bmi = ConversionTools.calculateBMI(weight, round(storedHeight).toInt())
+                val bmi = ConversionTools.calculateBMI(weight, storedHeight.toInt())
                 val bmiValue = when {
                   bmi <= 0.0 -> ""
                   bmi >= AppValidatorConfig.BMI.MAX_VALUE -> AppValidatorConfig.BMI.MAX_VALUE.toString()
@@ -133,6 +134,7 @@ data class EntryForm(
               }
             },
           ),
+          notes = FormControl.create("", emptyList()),
           dateTime = FormControl.create(
             DateTimeValue.DateTime(millis = currentTimeMillis, hour = hour, minute = minute),
             listOf(),

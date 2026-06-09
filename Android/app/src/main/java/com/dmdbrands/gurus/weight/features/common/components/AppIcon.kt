@@ -46,7 +46,7 @@ object AppIconDefaults {
 @Composable
 fun AppIcon(
     @DrawableRes id: Int,
-    contentDescription: String,
+    contentDescription: String?,
     modifier: Modifier = Modifier,
     tintColor: Color? = null,
     type: AppIconType = AppIconType.Primary,

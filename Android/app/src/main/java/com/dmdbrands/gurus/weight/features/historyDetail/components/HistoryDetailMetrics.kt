@@ -35,6 +35,8 @@ import com.dmdbrands.gurus.weight.features.common.helper.StatHelper
 import com.dmdbrands.gurus.weight.features.common.helper.StatHelper.getMetrics
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
+import com.dmdbrands.gurus.weight.features.history.strings.HistoryItemStrings
+import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -135,6 +137,7 @@ private fun AnimatedMetricItem(
 @Composable
 fun WeightHistoryDetailItemDetails(
   item: ScaleEntry,
+  onEditEntry: () -> Unit = {},
 ) {
   val metrics = getMetrics(fromScaleEntry(item), showMetricIcon = true)
   val navBackStack = LocalNavBackStack.current
@@ -169,6 +172,33 @@ fun WeightHistoryDetailItemDetails(
       HorizontalDivider(
         thickness = 0.5.dp,
         color = MeTheme.colorScheme.utility,
+      )
+    }
+    // Note (MOB-438) — always shown when expanded: the saved note or an add-note prompt,
+    // with an edit pencil that opens the entry for editing.
+    val note = item.scale.scaleEntry.note
+    val hasNote = !note.isNullOrBlank()
+    HorizontalDivider(
+      thickness = 0.5.dp,
+      color = MeTheme.colorScheme.utility,
+    )
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(MeTheme.spacing.sm),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Text(
+        text = if (hasNote) note.orEmpty() else HistoryItemStrings.NoNoteYet,
+        style = MeTheme.typography.subHeading2,
+        color = if (hasNote) MeTheme.colorScheme.textBody else MeTheme.colorScheme.textSubheading,
+        modifier = Modifier.weight(1f),
+      )
+      AppIcon(
+        id = AppIcons.Default.EditPencil,
+        contentDescription = HistoryItemStrings.EditNoteContentDescription,
+        onClick = { onEditEntry() },
+        modifier = Modifier.padding(start = MeTheme.spacing.sm),
       )
     }
   }
