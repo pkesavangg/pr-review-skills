@@ -19,7 +19,7 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
         VStack(spacing: .spacingMD) {
             Text(DashboardStrings.noEntriesMessage)
                 .fontOpenSans(.body2)
-                .foregroundColor(theme.textBody)
+                .foregroundStyle(theme.textBody)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, .spacingLG)
             ButtonView(

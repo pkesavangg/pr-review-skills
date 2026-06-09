@@ -67,7 +67,7 @@ struct HistoryEntryItem: View {
                         weightless: weightlessSettings
                     ))
                         .fontOpenSans(.heading3)
-                        .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
+                        .foregroundStyle(isExpanded ? theme.textInverse : theme.textHeading)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                         .allowsTightening(true)
@@ -77,7 +77,7 @@ struct HistoryEntryItem: View {
                         unit: weightUnit
                     ))
                         .fontOpenSans(.body2)
-                        .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
+                        .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
@@ -87,7 +87,7 @@ struct HistoryEntryItem: View {
                 // Expansion chevron (only if metrics exist); placeholder preserves alignment otherwise
                 if !entry.metricItems.isEmpty {
                     AppIconView(icon: AppAssets.chevronDown)
-                        .foregroundColor(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
+                        .foregroundStyle(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
                         .padding(.leading, .spacingSM)
                 } else {
@@ -111,7 +111,7 @@ struct HistoryEntryItem: View {
                                 Text(CommonStrings.delete.uppercased())
                                     .fontOpenSans(.button1)
                                     .fontWeight(.bold)
-                                    .foregroundColor(theme.textInverse)
+                                    .foregroundStyle(theme.textInverse)
                             )
                         }
                     )

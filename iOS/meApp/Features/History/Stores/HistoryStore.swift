@@ -78,6 +78,9 @@ final class HistoryStore: ObservableObject {
     @Published private(set) var hasMorePages: Bool = false
     /// Whether a page request is currently in flight (drives the list footer spinner).
     @Published private(set) var isLoadingPage: Bool = false
+    /// True once loadFirstPage has completed at least one fetch (even if it returned empty).
+    /// Guards loadNextPage against re-fetching page 1 for accounts with no remote entries.
+    @Published private(set) var hasLoadedFirstPage: Bool = false
 
     /// The cursor for the next page request — the `entryTimestamp` of the last loaded row.
     private var nextCursor: String?
@@ -544,11 +547,21 @@ final class HistoryStore: ObservableObject {
                 operationType: nil,
                 serverTimestamp: nil
             )
-            try await entryService.createBpmEntry(dto)
+            // Delete first so that a shared timestamp (user kept the original)
+            // doesn't cause deleteBpmEntry to match and remove the freshly created entry.
             try await entryService.deleteBpmEntry(entryTimestamp: old.entryTimestamp)
+            do {
+                try await entryService.createBpmEntry(dto)
+            } catch {
+                // Delete succeeded but create failed — the original entry is gone.
+                // Bubble a distinct log so support can distinguish this from a plain save error.
+                logger.log(level: .error, tag: tag, message: "BP entry create failed after delete (entry lost): \(error.localizedDescription)")
+                notificationService.showToast(ToastModel(message: toastLang.errorSavingEntry))
+                return
+            }
             logger.log(level: .info, tag: tag, message: "BP entry updated: \(entryTimestamp)")
         } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to update BP entry: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "Failed to delete BP entry during update: \(error.localizedDescription)")
             notificationService.showToast(ToastModel(message: toastLang.errorSavingEntry))
         }
     }
@@ -592,6 +605,7 @@ final class HistoryStore: ObservableObject {
         nextCursor = nil
         pagedEntries = []
         hasMorePages = false
+        hasLoadedFirstPage = false
         await loadNextPage()
     }
 
@@ -601,8 +615,7 @@ final class HistoryStore: ObservableObject {
     /// are no more pages (after at least one page has been fetched).
     func loadNextPage() async {
         guard !isLoadingPage else { return }
-        // Stop paging only after the first page; the initial call has no cursor yet.
-        guard hasMorePages || pagedEntries.isEmpty else { return }
+        guard hasMorePages || !hasLoadedFirstPage else { return }
 
         isLoadingPage = true
         defer { isLoadingPage = false }
@@ -618,9 +631,11 @@ final class HistoryStore: ObservableObject {
             pagedEntries.append(contentsOf: page.entries)
             nextCursor = page.nextCursor
             hasMorePages = page.hasMore
+            hasLoadedFirstPage = true
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to load entries page: \(error.localizedDescription)")
             hasMorePages = false
+            hasLoadedFirstPage = true
         }
     }
 
