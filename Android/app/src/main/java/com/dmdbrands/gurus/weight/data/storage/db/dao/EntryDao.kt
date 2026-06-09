@@ -18,6 +18,9 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.PopulatedActiveEntr
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PopulatedEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 
+/** Projection of a weight entry's timestamp + stored note for batch note merging (MOB-438). */
+data class ScaleNoteRow(val entryTimestamp: String, val note: String?)
+
 /**
  * Data Access Object (DAO) for the entry table.
  * Provides methods to interact with the entry data in the database.
@@ -96,17 +99,20 @@ interface EntryDao {
 
   @Transaction
   suspend fun update(entry: Entry): Long {
-    val updatedId = update(entry.entry).toLong()
+    // NOTE: @Update returns the number of rows affected, NOT the row id — so the child
+    // rows must be keyed by the entry's actual id, not the update() result (MOB-438).
+    update(entry.entry)
+    val id = entry.entry.id
 
     if (entry is BpmEntry) {
-      updateBpm(entry.bpmEntry.copy(id = updatedId))
+      updateBpm(entry.bpmEntry.copy(id = id))
     } else if (entry is ScaleEntry) {
-      updateBodyScale(entry.scale.scaleEntry.copy(id = updatedId))
+      updateBodyScale(entry.scale.scaleEntry.copy(id = id))
       if (entry.scale.scaleEntryMetric != null) {
-        updateBodyScaleMetric(entry.scale.scaleEntryMetric.copy(id = updatedId))
+        updateBodyScaleMetric(entry.scale.scaleEntryMetric.copy(id = id))
       }
     }
-    return updatedId
+    return id
   }
 
   /**
@@ -200,6 +206,42 @@ interface EntryDao {
    */
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun insertEntryEntity(entry: EntryEntity): Long
+
+  /**
+   * Returns the existing stored note for a weight entry matched by account + timestamp,
+   * used to preserve a locally-entered note across a server sync that doesn't carry it
+   * (MOB-438). Returns null when no row or no note exists.
+   */
+  @Query(
+    "SELECT bse.note FROM entry e INNER JOIN body_scale_entry bse ON e.id = bse.id " +
+      "WHERE e.accountId = :accountId AND e.entryTimestamp = :timestamp ORDER BY e.id DESC LIMIT 1",
+  )
+  suspend fun getStoredScaleNote(accountId: String, timestamp: String): String?
+
+  /**
+   * Batch variant of [getStoredScaleNote]: all non-blank weight notes for an account in a
+   * single query, used to merge local notes during a bulk sync insert without issuing one
+   * query per entry (MOB-438 PR review).
+   */
+  @Query(
+    "SELECT e.entryTimestamp AS entryTimestamp, bse.note AS note " +
+      "FROM entry e INNER JOIN body_scale_entry bse ON e.id = bse.id " +
+      "WHERE e.accountId = :accountId AND bse.note IS NOT NULL AND bse.note != ''",
+  )
+  suspend fun getStoredScaleNotes(accountId: String): List<ScaleNoteRow>
+
+  /**
+   * Note-only updates (MOB-438). These touch just the note column so editing a note never
+   * round-trips weight/metrics through unit conversions (which would corrupt the value).
+   */
+  @Query("UPDATE body_scale_entry SET note = :note WHERE id = :id")
+  suspend fun updateScaleNote(id: Long, note: String?)
+
+  @Query("UPDATE bpm_entry SET note = :note WHERE id = :id")
+  suspend fun updateBpmNote(id: Long, note: String?)
+
+  @Query("UPDATE baby_entry SET entryNote = :note WHERE id = :id")
+  suspend fun updateBabyNote(id: Long, note: String?)
 
   /**
    * Insert a list of entry entities into the database (bulk).

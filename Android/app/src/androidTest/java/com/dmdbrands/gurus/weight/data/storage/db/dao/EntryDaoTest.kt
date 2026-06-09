@@ -150,6 +150,52 @@ class EntryDaoTest : BaseDaoTest() {
         assertThat(result?.bpmEntry?.diastolic).isEqualTo(90)
     }
 
+    /**
+     * Regression for the EntryDao.update id-keying bug (MOB-438): child rows were keyed by the
+     * @Update row-count (1) instead of the entry id. With two entries, updating the one whose
+     * id != 1 must modify the correct row and leave the id-1 row untouched.
+     */
+    @Test
+    fun update_scaleEntry_withIdNotOne_updatesCorrectRow() = runTest {
+        insertParentAccount()
+        // First entry occupies id 1 so the target's id is not 1.
+        entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T10:00:00.000Z", weight = 100.0))
+        val target = scaleEntry(entryTimestamp = "2025-06-15T12:00:00.000Z", weight = 180.0)
+        val targetId = entryDao.insert(target)
+        assertThat(targetId).isGreaterThan(1L)
+
+        val updated = target.copy(
+            entry = target.entry.copy(id = targetId),
+            scale = target.scale.copy(
+                scaleEntry = target.scale.scaleEntry.copy(id = targetId, weight = 175.0),
+                scaleEntryMetric = target.scale.scaleEntryMetric?.copy(id = targetId),
+            ),
+        )
+        entryDao.update(updated)
+
+        assertThat(entryDao.getEntryById(targetId)?.scaleEntry?.weight).isEqualTo(175.0)
+        // The id-1 row must be untouched (old bug would have written to it).
+        assertThat(entryDao.getEntryById(1L)?.scaleEntry?.weight).isEqualTo(100.0)
+    }
+
+    /**
+     * `updateScaleNote` sets only the note for the entry's id (id != 1), leaving weight intact (MOB-438).
+     */
+    @Test
+    fun updateScaleNote_setsNoteWithoutTouchingWeight() = runTest {
+        insertParentAccount()
+        entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T10:00:00.000Z")) // bump id past 1
+        val entry = scaleEntry(entryTimestamp = "2025-06-15T12:00:00.000Z", weight = 180.0)
+        val id = entryDao.insert(entry)
+        assertThat(id).isGreaterThan(1L)
+
+        entryDao.updateScaleNote(id, "doctor visit")
+
+        val result = entryDao.getEntryById(id)
+        assertThat(result?.scaleEntry?.note).isEqualTo("doctor visit")
+        assertThat(result?.scaleEntry?.weight).isEqualTo(180.0)
+    }
+
     // -------------------------------------------------------------------------
     // Soft delete
     // -------------------------------------------------------------------------

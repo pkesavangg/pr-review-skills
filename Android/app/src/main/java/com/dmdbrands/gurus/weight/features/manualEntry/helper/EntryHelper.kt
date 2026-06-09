@@ -75,6 +75,7 @@ object EntryHelper {
         water = generalMetrics.controls.bodyWater.toDoubleSafe() / 10,
         bmi = generalMetrics.controls.bodyMassIndex.toDoubleSafe() / 10,
         source = "manual", // or "bluetooth", "cloud", etc.
+        note = weightDateTime.controls.notes.value.ifBlank { null },
       )
 
     val metricEntity =
@@ -205,6 +206,7 @@ object EntryHelper {
       water = water?.div(10.0),
       bmi = bmi?.div(10.0),
       source = source,
+      note = note,
     )
   }
 
@@ -217,6 +219,7 @@ object EntryHelper {
       water = water?.times(10.0),
       bmi = bmi?.times(10.0),
       source = source,
+      note = note,
     )
   }
 

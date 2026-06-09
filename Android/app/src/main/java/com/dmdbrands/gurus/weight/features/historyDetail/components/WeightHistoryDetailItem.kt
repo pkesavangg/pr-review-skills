@@ -48,6 +48,7 @@ fun SwipeableListItemScope.WeightHistoryDetailItem(
     item: ScaleEntry,
     isExpanded: Boolean = false,
     onItemOpen: (Long) -> Unit = {},
+    onEditEntry: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val bodyMetric = fromScaleEntry(item)
@@ -55,7 +56,9 @@ fun SwipeableListItemScope.WeightHistoryDetailItem(
     Swipeable {
         WeightHistoryDetailItemHeader(
             item = item,
-            canExpand = getMetrics(bodyMetric).isNotEmpty(),
+            // Always expandable so note-less entries can still reveal the add-note
+            // affordance in the details section (MOB-438).
+            canExpand = true,
             isExpanded = isExpanded,
             onClick = {
                 onItemOpen(item.entry.id)
@@ -70,6 +73,7 @@ fun SwipeableListItemScope.WeightHistoryDetailItem(
         ) {
             WeightHistoryDetailItemDetails(
                 item = item,
+                onEditEntry = onEditEntry,
             )
         }
         if (!isExpanded) {

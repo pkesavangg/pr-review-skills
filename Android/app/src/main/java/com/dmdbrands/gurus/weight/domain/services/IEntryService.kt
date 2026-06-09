@@ -15,6 +15,9 @@ interface IEntryService {
   suspend fun updateAllData(accountId: String?)
   suspend fun addEntry(entry: Entry)
   suspend fun addEntry(entries: List<Entry>)
+
+  /** Updates only an entry's note locally (e.g. editing from History). Device-local; see MOB-438. */
+  suspend fun updateNote(entry: Entry, note: String?)
   suspend fun deleteEntry(entry: Entry)
   suspend fun syncOperations(
     newEntries: List<Entry> = emptyList(),
