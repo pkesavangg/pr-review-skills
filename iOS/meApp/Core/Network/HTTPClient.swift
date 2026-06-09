@@ -139,7 +139,9 @@ final class HTTPClient: HTTPClientProtocol {
     // MARK: - Request Execution
     /// Performs the actual network request and handles response decoding.
     private func performRequest<T: Decodable>(_ request: URLRequest) async throws -> T { // swiftlint:disable:this cyclomatic_complexity
+        #if DEBUG
         debugPrintRequest(request)
+        #endif
         let (data, response): (Data, URLResponse)
         do {
             (data, response) = try await requestExecutor(request)
@@ -159,7 +161,9 @@ final class HTTPClient: HTTPClientProtocol {
             throw HTTPError.invalidResponse
         }
 
+        #if DEBUG
         debugPrintResponse(request, statusCode: httpResponse.statusCode, data: data)
+        #endif
 
         // Map raw status code to enum
         guard let status = HTTPStatusCode(rawValue: httpResponse.statusCode) else {

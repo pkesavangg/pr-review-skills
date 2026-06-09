@@ -32,7 +32,7 @@ struct MultipleReadingsToastView: View {
                 Text(DashboardStrings.readingArrivalView)
                     .fontOpenSans(.body2)
                     .bold()
-                    .foregroundColor(theme.actionPrimary)
+                    .foregroundStyle(theme.actionPrimary)
             }
             .buttonStyle(.plain)
         }

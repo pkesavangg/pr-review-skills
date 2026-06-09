@@ -44,7 +44,7 @@ struct UnitTypePickerModalView: View {
         VStack(alignment: .leading, spacing: .spacingMD) {
             Text(SettingsStrings.unitType)
                 .fontOpenSans(.heading4)
-                .foregroundColor(theme.textHeading)
+                .foregroundStyle(theme.textHeading)
                 .accessibilityAddTraits(.isHeader)
 
             if showMyKids {
@@ -57,7 +57,7 @@ struct UnitTypePickerModalView: View {
         }
         .padding(.spacingMD)
         .background(theme.backgroundPrimary)
-        .cornerRadius(.radiusXL)
+        .clipShape(.rect(cornerRadius: .radiusXL))
     }
 
     // MARK: - Layouts
@@ -117,7 +117,7 @@ struct UnitTypePickerModalView: View {
         Text(title)
             .fontOpenSans(.body1)
             .bold()
-            .foregroundColor(theme.textHeading)
+            .foregroundStyle(theme.textHeading)
     }
 
     private func radioRow(title: String, isSelected: Bool, onTap: @escaping () -> Void) -> some View {
@@ -138,7 +138,7 @@ struct UnitTypePickerModalView: View {
                 }
                 Text(title)
                     .fontOpenSans(.body1)
-                    .foregroundColor(theme.textHeading)
+                    .foregroundStyle(theme.textHeading)
                 Spacer(minLength: 0)
             }
             .contentShape(Rectangle())
