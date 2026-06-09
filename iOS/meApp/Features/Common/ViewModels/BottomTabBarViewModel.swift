@@ -910,7 +910,7 @@ class BottomTabBarViewModel: ObservableObject {
         logger.log(
             level: .info,
             tag: tag,
-            message: "Showing baby reading no-profile card. weight=\(weightString)"
+            message: "Showing baby reading no-profile card. entryId=\(entryId)"
         )
         notificationService.showToast(toast)
     }

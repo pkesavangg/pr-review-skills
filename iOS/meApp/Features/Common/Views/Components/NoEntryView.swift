@@ -41,7 +41,7 @@ struct NoEntryView: View {
 
             if let iconAsset = iconAsset {
                 AppIconView(icon: iconAsset, size: IconSize(width: 56, height: 56))
-                    .foregroundColor(iconTint ?? theme.statusIconPrimary)
+                    .foregroundStyle(iconTint ?? theme.statusIconPrimary)
             }
 
             // Title and description (shown only if non-nil)
@@ -49,14 +49,14 @@ struct NoEntryView: View {
                 if let title = title {
                     Text(title)
                         .fontOpenSans(.heading4)
-                        .foregroundColor(theme.textHeading)
+                        .foregroundStyle(theme.textHeading)
                         .multilineTextAlignment(.center)
                 }
 
                 if let description = description {
                     Text(description)
                         .fontOpenSans(.body2)
-                        .foregroundColor(theme.textBody)
+                        .foregroundStyle(theme.textBody)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
                 }
