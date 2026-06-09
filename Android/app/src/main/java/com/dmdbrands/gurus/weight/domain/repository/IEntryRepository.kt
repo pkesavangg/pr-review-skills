@@ -4,6 +4,8 @@ import com.dmdbrands.gurus.weight.data.api.OperationsResponse
 import com.dmdbrands.gurus.weight.domain.model.api.entry.EntriesCursorResponse
 import com.dmdbrands.gurus.weight.domain.model.api.entry.EntriesSyncResponse
 import com.dmdbrands.gurus.weight.domain.model.api.entry.ScaleApiEntry
+import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryRequest
+import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryResponse
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import kotlinx.coroutines.flow.Flow
 
@@ -101,6 +103,14 @@ interface IEntryRepository {
    * @param operation The EntryEntity representing the operation to sync
    */
   suspend fun sendOperationToAPI(operation: ScaleApiEntry?)
+
+  /**
+   * Sends a batch of unified entries to `POST /v3/entries/` as an atomic request.
+   * Throws on any non-2xx (whole batch failed — server rolls back).
+   * @param entries The mixed-category entries to write.
+   * @return The unified response (persisted entries + sync timestamp).
+   */
+  suspend fun sendBatchToAPI(entries: List<UnifiedEntryRequest>): UnifiedEntryResponse
 
   /**
    * Gets operations from the API since a specific timestamp.
