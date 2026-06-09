@@ -20,6 +20,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppHeightPickerModal
 import com.dmdbrands.gurus.weight.features.common.components.AppInputDefaults
@@ -112,7 +116,13 @@ private fun HeightField(
             .height(AppInputDefaults.SingleLineHeight)
             .clip(RoundedCornerShape(MeTheme.borderRadius.sm))
             .background(MeTheme.colorScheme.primaryBackground)
-            .clickable { isModalTriggered = true }
+            .clickable(onClickLabel = SignupStrings.heightLabel) { isModalTriggered = true }
+            // The field is a dropdown trigger: announce its role and the currently selected
+            // value to TalkBack (the plain "height" label alone doesn't convey either).
+            .semantics {
+                role = Role.DropdownList
+                if (hasValue) stateDescription = value.getString()
+            }
             .padding(horizontal = MeTheme.spacing.md),
     ) {
         // Left: static placeholder label — always visible
