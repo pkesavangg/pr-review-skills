@@ -382,11 +382,20 @@ data class SignupState(
   val goalSkipped: Boolean = false,
   val babyState: BabyState? = null,
   val registeredDevices: Set<ProductType> = emptySet(),
+  // True once the account has been created on the password step. Tracked
+  // separately from [registeredDevices] so a Try Again after an
+  // account-created-but-device-failed error does not re-create the account.
+  val accountCreated: Boolean = false,
 ) : IReducer.State {
-  val currentStepIndex: Int get() = steps.indexOf(currentStep).coerceAtLeast(0)
+  // ERROR is a terminal screen rendered outside the pager and is not part of
+  // [steps]; pin it to the last index so progress reads full and RegisterDevice
+  // (which uses steps.last()) still lands on the real Ready terminal.
+  val currentStepIndex: Int
+    get() =
+      if (currentStep == SignupStep.ERROR) steps.lastIndex.coerceAtLeast(0)
+      else steps.indexOf(currentStep).coerceAtLeast(0)
   val isFirstStep: Boolean get() = currentStepIndex == 0
   val isLastStep: Boolean get() = currentStepIndex == steps.size - 1
-  val accountCreated: Boolean get() = registeredDevices.isNotEmpty()
 
   /**
    * True when the next step in [steps] is a Ready terminal screen — i.e.
@@ -456,7 +465,8 @@ data class SignupState(
             && form.controls.zipcode.isValueValid()
 
         SignupStep.DEVICE_READY,
-        SignupStep.ALL_DEVICES_READY -> true
+        SignupStep.ALL_DEVICES_READY,
+        SignupStep.ERROR -> true
       }
 
   companion object {
@@ -558,6 +568,18 @@ sealed class SignupIntent : IReducer.Intent {
    * the terminal Ready step.
    */
   object RegisterDevice : SignupIntent()
+
+  /**
+   * Error-screen intents (MOB-420).
+   *
+   * [AccountCreated] flips [SignupState.accountCreated] once the account exists
+   * so a subsequent retry skips account creation. [ShowDeviceError] moves to the
+   * terminal ERROR screen on a product-creation failure. [RetryDevice] is handled
+   * by SignupViewModel, which re-runs the failed device's side effects.
+   */
+  object AccountCreated : SignupIntent()
+  object ShowDeviceError : SignupIntent()
+  object RetryDevice : SignupIntent()
 }
 
 /**
@@ -772,6 +794,16 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
       }
 
       is SignupIntent.FinishSignup -> state.copy(isLoading = false, error = null)
+
+      is SignupIntent.AccountCreated -> state.copy(accountCreated = true)
+
+      // Product-creation failure — move to the terminal ERROR screen. The failed
+      // device is the current selection; registeredDevices holds the successes.
+      is SignupIntent.ShowDeviceError ->
+        state.copy(currentStep = SignupStep.ERROR, isLoading = false)
+
+      // Side effect (retry) runs in SignupViewModel; reducer only reflects loading.
+      is SignupIntent.RetryDevice -> state.copy(isLoading = true, error = null)
 
       is SignupIntent.OnRequestBack -> state.copy(isLoading = false, error = null)
       is SignupIntent.OpenHelpModal -> state.copy(isLoading = false, error = null)
