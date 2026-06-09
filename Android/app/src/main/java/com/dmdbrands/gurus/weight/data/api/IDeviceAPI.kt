@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.data.api
 
 import com.dmdbrands.gurus.weight.domain.model.api.device.DeviceApiModel
+import com.dmdbrands.gurus.weight.domain.model.api.device.PairedDeviceRequest
 import com.dmdbrands.gurus.weight.domain.model.api.device.R4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.api.device.ScaleMetaDataApiModel
 import com.dmdbrands.gurus.weight.domain.model.api.device.ScaleTokenResponse
@@ -20,9 +21,33 @@ import retrofit2.http.Query
 interface IDeviceAPI {
   companion object Companion {
     private const val SCALES = "paired-scale"
+    private const val PAIRED_DEVICE = "paired-device"
     private const val PREFERENCE = "scale-r4/preference"
     private const val ACCOUNT_SCALE = "account/scale"
   }
+
+  // ── Unified /v3/paired-device/ endpoints (MOB-378) ────────────────────────
+
+  /** Creates a paired device via the unified endpoint. Returns the created device. */
+  @POST(PAIRED_DEVICE)
+  suspend fun createPairedDevice(@Body request: PairedDeviceRequest): Response<DeviceApiModel>
+
+  /** Lists all paired devices, optionally filtered by [deviceType]. */
+  @GET(PAIRED_DEVICE)
+  suspend fun getPairedDevices(
+      @Query("deviceType") deviceType: String? = null,
+  ): Response<List<DeviceApiModel>>
+
+  /** Updates a paired device's properties (e.g. nickname). */
+  @PATCH("$PAIRED_DEVICE/{deviceId}")
+  suspend fun updatePairedDevice(
+      @Path("deviceId") deviceId: String,
+      @Body request: PairedDeviceRequest,
+  ): Response<DeviceApiModel>
+
+  /** Deletes a paired device (returns 204). */
+  @DELETE("$PAIRED_DEVICE/{deviceId}")
+  suspend fun deletePairedDevice(@Path("deviceId") deviceId: String): Response<Unit>
 
   /**
    * Get scale token for the account.

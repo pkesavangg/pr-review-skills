@@ -2,6 +2,9 @@ package com.dmdbrands.gurus.weight.core.di
 
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.service.AccountFlagService
+import com.dmdbrands.gurus.weight.core.service.ReviewService
+import com.dmdbrands.gurus.weight.domain.repository.IReviewRepository
+import com.dmdbrands.gurus.weight.domain.services.IReviewService
 import com.dmdbrands.gurus.weight.core.service.AccountService
 import com.dmdbrands.gurus.weight.core.service.BabyProfileService
 import com.dmdbrands.gurus.weight.core.service.ProductSelectionManager
@@ -528,11 +531,19 @@ object ServiceModule {
    */
   @Provides
   @Singleton
+  fun provideReviewService(
+    reviewRepository: IReviewRepository,
+    accountFlagRepository: IAccountFlagRepository,
+  ): IReviewService = ReviewService(reviewRepository, accountFlagRepository)
+
+  @Provides
+  @Singleton
   fun provideAccountFlagService(
     @ApplicationContext context: Context,
     accountFlagRepository: IAccountFlagRepository,
     appReviewManager: com.dmdbrands.gurus.weight.core.shared.utilities.IAppReviewManager,
-  ): IAccountFlagService = AccountFlagService(context, accountFlagRepository, appReviewManager)
+    reviewService: IReviewService,
+  ): IAccountFlagService = AccountFlagService(context, accountFlagRepository, appReviewManager, reviewService)
 
   @Provides
   @Singleton
