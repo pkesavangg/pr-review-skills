@@ -28,7 +28,7 @@ class ProfileReducerTest {
     fun `Submit sets isLoading true and clears error`() {
         val state = initialState.copy(error = "previous error")
 
-        val result = reducer.reduce(state, ProfileIntent.Submit)
+        val result = reducer.reduce(state, ProfileIntent.Submit)!!
 
         assertThat(result.isLoading).isTrue()
         assertThat(result.error).isNull()
@@ -40,7 +40,7 @@ class ProfileReducerTest {
 
     @Test
     fun `LoadProfile sets isLoading true and clears error`() {
-        val result = reducer.reduce(initialState, ProfileIntent.LoadProfile)
+        val result = reducer.reduce(initialState, ProfileIntent.LoadProfile)!!
 
         assertThat(result.isLoading).isTrue()
         assertThat(result.error).isNull()
@@ -63,7 +63,7 @@ class ProfileReducerTest {
             weightUnit = WeightUnit.LB,
         )
 
-        val result = reducer.reduce(initialState, intent)
+        val result = reducer.reduce(initialState, intent)!!
 
         assertThat(result.isLoading).isFalse()
         assertThat(result.error).isNull()
@@ -86,7 +86,7 @@ class ProfileReducerTest {
             birthday = DateTimeValue.Date(0L),
         )
 
-        val result = reducer.reduce(initialState, intent)
+        val result = reducer.reduce(initialState, intent)!!
 
         assertThat(result.form.controls.gender.value).isEmpty()
         assertThat(result.form.controls.height.value).isEqualTo(0)
@@ -104,7 +104,7 @@ class ProfileReducerTest {
             weightUnit = WeightUnit.KG,
         )
 
-        val result = reducer.reduce(initialState, intent)
+        val result = reducer.reduce(initialState, intent)!!
 
         assertThat(result.weightUnit).isEqualTo(WeightUnit.KG)
     }
@@ -117,7 +117,7 @@ class ProfileReducerTest {
     fun `Error sets error message and clears isLoading`() {
         val state = initialState.copy(isLoading = true)
 
-        val result = reducer.reduce(state, ProfileIntent.Error("Network failure"))
+        val result = reducer.reduce(state, ProfileIntent.Error("Network failure"))!!
 
         assertThat(result.error).isEqualTo("Network failure")
         assertThat(result.isLoading).isFalse()
@@ -133,7 +133,7 @@ class ProfileReducerTest {
             ProfileFormControls.create(firstName = "Updated"),
         )
 
-        val result = reducer.reduce(initialState, ProfileIntent.UpdateForm(newForm))
+        val result = reducer.reduce(initialState, ProfileIntent.UpdateForm(newForm))!!
 
         assertThat(result.form).isEqualTo(newForm)
     }
@@ -146,7 +146,7 @@ class ProfileReducerTest {
     fun `Success clears isLoading and error`() {
         val state = initialState.copy(isLoading = true, error = "old error")
 
-        val result = reducer.reduce(state, ProfileIntent.Success)
+        val result = reducer.reduce(state, ProfileIntent.Success)!!
 
         assertThat(result.isLoading).isFalse()
         assertThat(result.error).isNull()

@@ -13,8 +13,8 @@ import com.dmdbrands.gurus.weight.domain.services.AuthState
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
-import com.dmdbrands.gurus.weight.domain.services.IHistoryService
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
@@ -76,7 +76,7 @@ class LoadingScreenViewModelTest {
     lateinit var productSelectionManager: IProductSelectionManager
 
     @MockK(relaxed = true)
-    lateinit var historyService: IHistoryService
+    lateinit var entryReadService: IEntryReadService
 
     @MockK(relaxed = true)
     lateinit var applicationContext: Context
@@ -136,7 +136,7 @@ class LoadingScreenViewModelTest {
             deviceService = deviceService,
             deviceInfoService = deviceInfoService,
             productSelectionManager = productSelectionManager,
-            historyService = historyService,
+            entryReadService = entryReadService,
             applicationContext = applicationContext,
         )
     }

@@ -6,9 +6,9 @@ import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.common.GroupedHistory
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
-import com.dmdbrands.gurus.weight.domain.services.IHistoryService
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
@@ -23,6 +23,7 @@ import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.BeforeEach
@@ -43,7 +44,7 @@ class HistoryViewModelTest {
     lateinit var exportService: IExportService
 
     @MockK(relaxed = true)
-    lateinit var historyService: IHistoryService
+    lateinit var entryReadService: IEntryReadService
 
     private lateinit var navigationService: IAppNavigationService
     private lateinit var dialogQueueService: IDialogQueueService
@@ -59,7 +60,7 @@ class HistoryViewModelTest {
         viewModel = HistoryViewModel(
             entryService = entryService,
             exportService = exportService,
-            historyService = historyService,
+            entryReadService = entryReadService,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -67,7 +68,6 @@ class HistoryViewModelTest {
     }
 
     private fun stubDefaultFlows() {
-        every { entryService.monthlyAverage } returns MutableStateFlow(emptyList())
         every { entryService.isUpdating } returns MutableStateFlow(false)
     }
 
@@ -95,7 +95,7 @@ class HistoryViewModelTest {
         viewModel = HistoryViewModel(
             entryService = entryService,
             exportService = exportService,
-            historyService = historyService,
+            entryReadService = entryReadService,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -185,15 +185,15 @@ class HistoryViewModelTest {
     @Test
     fun `getGroupedHistory updates history items`() = runTest {
         val items = listOf(mockk<com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth>(relaxed = true))
-        every { historyService.accountId } returns "test-account"
-        every { historyService.getGroupedHistory(any()) } returns flowOf(GroupedHistory.Weight(items))
+        every { entryReadService.accountId } returns "test-account"
+        every { entryReadService.getGroupedHistory(any()) } returns flowOf(GroupedHistory.Weight(items))
         val productSelectionManager = mockk<IProductSelectionManager>(relaxed = true)
         every { productSelectionManager.availableProducts } returns MutableStateFlow(listOf(ProductSelection.MyWeight))
 
         viewModel = HistoryViewModel(
             entryService = entryService,
             exportService = exportService,
-            historyService = historyService,
+            entryReadService = entryReadService,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,

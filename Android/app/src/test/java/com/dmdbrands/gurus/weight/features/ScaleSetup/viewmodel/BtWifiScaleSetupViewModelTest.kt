@@ -9,6 +9,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.CustomizeSettings
@@ -62,6 +63,7 @@ class BtWifiScaleSetupViewModelTest {
     @MockK(relaxed = true) lateinit var ggDeviceService: GGDeviceService
     @MockK(relaxed = true) lateinit var deviceService: IDeviceService
     @MockK(relaxed = true) lateinit var entryService: IEntryService
+    @MockK(relaxed = true) lateinit var entryReadService: IEntryReadService
     @MockK(relaxed = true) lateinit var deviceRepository: IDeviceRepository
     @MockK(relaxed = true) lateinit var dashboardService: IDashboardService
     @MockK(relaxed = true) lateinit var permissionService: GGPermissionService
@@ -80,7 +82,7 @@ class BtWifiScaleSetupViewModelTest {
         every { permissionService.permissionCallBackFlow } returns MutableStateFlow(mutableMapOf<String, String>())
         every { connectivityObserver.observe() } returns MutableStateFlow(mockk(relaxed = true))
         every { ggDeviceService.deviceCache } returns MutableStateFlow(mutableMapOf())
-        every { entryService.latestEntry } returns MutableStateFlow(null)
+        every { entryReadService.latestEntry() } returns flowOf(null)
         coEvery { accountService.activeAccountFlow } returns flowOf(mockk(relaxed = true))
 
         viewModel = BtWifiScaleSetupViewModel(
@@ -91,6 +93,7 @@ class BtWifiScaleSetupViewModelTest {
             ggDeviceService = ggDeviceService,
             deviceService = deviceService,
             entryService = entryService,
+            entryReadService = entryReadService,
             deviceRepository = deviceRepository,
             dashboardService = dashboardService,
             permissionService = permissionService,

@@ -5,7 +5,9 @@ import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
+import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -57,6 +59,12 @@ class SignupViewModelTest {
     @MockK(relaxUnitFun = true)
     lateinit var goalService: IGoalService
 
+    @MockK(relaxed = true)
+    lateinit var analyticsService: IAnalyticsService
+
+    @MockK(relaxed = true)
+    lateinit var productSelectionRepository: IProductSelectionRepository
+
     private lateinit var navigationService: IAppNavigationService
     private lateinit var dialogQueueService: IDialogQueueService
     private lateinit var viewModel: SignupViewModel
@@ -69,6 +77,8 @@ class SignupViewModelTest {
         viewModel = SignupViewModel(
             accountService = accountService,
             goalService = goalService,
+            analyticsService = analyticsService,
+            productSelectionRepository = productSelectionRepository,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,

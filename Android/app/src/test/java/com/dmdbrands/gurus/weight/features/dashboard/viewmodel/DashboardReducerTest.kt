@@ -4,10 +4,16 @@ import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.common.Streak
 import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardIntent
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardReducer
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardState
 import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
 import com.google.common.truth.Truth.assertThat
 import io.mockk.mockk
@@ -16,20 +22,20 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 /**
- * Unit tests for [DashboardReducer].
+ * Unit tests for [WeightDashboardReducer].
  *
- * The reducer is a pure function — no mocking or coroutines needed.
- * Each test creates an initial state, dispatches an intent, and asserts the result.
+ * The reducer is a pure function `(WeightDashboardState, BaseGraphIntent) -> WeightDashboardState?`.
+ * Weight-specific intents ([WeightDashboardIntent]) update product fields directly; shared
+ * chart intents ([BaseGraphIntent]) delegate to the base reducer and operate on the
+ * per-segment [SegmentState] map.
  */
 class DashboardReducerTest {
 
-    private lateinit var reducer: DashboardReducer
+    private lateinit var reducer: WeightDashboardReducer
 
     companion object {
         private const val TEST_WEIGHT = 180.5
-        private const val TEST_SCROLL_TARGET = 1234.0
-        private const val TEST_PAGER_STATE = 3
-        private const val TEST_ANCHOR_TIMESTAMP = 1700000000L
+        private const val TEST_ANCHOR_TIMESTAMP = 1700000000.0
     }
 
     private val fakeProgress = WeightProgress(streak = Streak(current = 5, longest = 10), count = 42)
@@ -41,7 +47,7 @@ class DashboardReducerTest {
 
     @BeforeEach
     fun setUp() {
-        reducer = DashboardReducer()
+        reducer = WeightDashboardReducer()
     }
 
     // -------------------------------------------------------------------------
@@ -49,8 +55,8 @@ class DashboardReducerTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `default DashboardState has expected initial values`() {
-        val state = DashboardState()
+    fun `default WeightDashboardState has expected initial values`() {
+        val state = WeightDashboardState()
 
         assertThat(state.visibleKeys).isEmpty()
         assertThat(state.data).isEmpty()
@@ -59,56 +65,58 @@ class DashboardReducerTest {
         assertThat(state.isProgressUpdating).isFalse()
         assertThat(state.selectedSegment).isEqualTo(GraphSegment.WEEK)
         assertThat(state.selectedStat).isNull()
-        assertThat(state.pagerState).isEqualTo(0)
         assertThat(state.scrollTarget).isNull()
-        assertThat(state.isScrollTargetConsumed).isFalse()
+        assertThat(state.markerIndex).isNull()
         assertThat(state.isEmpty).isFalse()
         assertThat(state.isRefreshing).isFalse()
         assertThat(state.weightless).isNull()
-        assertThat(state.isConsuming).isFalse()
+        assertThat(state.goal).isNull()
+        assertThat(state.secondaryKey).isNull()
+        assertThat(state.weightUnit).isEqualTo(WeightUnit.LB)
         assertThat(state.dashboardType).isEqualTo(DashboardType.DASHBOARD_4_METRICS)
+        assertThat(state.segmentStates).isEmpty()
     }
 
     // -------------------------------------------------------------------------
-    // UpdateIsRefreshing
+    // Base intent — SetRefreshing
     // -------------------------------------------------------------------------
 
     @Test
-    fun `UpdateIsRefreshing true sets isRefreshing to true`() {
-        val state = DashboardState(isRefreshing = false)
+    fun `SetRefreshing true sets isRefreshing to true`() {
+        val state = WeightDashboardState(isRefreshing = false)
 
-        val result = reducer.reduce(state, DashboardIntent.UpdateIsRefreshing(true))
+        val result = reducer.reduce(state, BaseGraphIntent.SetRefreshing(true))
 
         assertThat(result?.isRefreshing).isTrue()
     }
 
     @Test
-    fun `UpdateIsRefreshing false sets isRefreshing to false`() {
-        val state = DashboardState(isRefreshing = true)
+    fun `SetRefreshing false sets isRefreshing to false`() {
+        val state = WeightDashboardState(isRefreshing = true)
 
-        val result = reducer.reduce(state, DashboardIntent.UpdateIsRefreshing(false))
+        val result = reducer.reduce(state, BaseGraphIntent.SetRefreshing(false))
 
         assertThat(result?.isRefreshing).isFalse()
     }
 
     // -------------------------------------------------------------------------
-    // UpdateIsEmpty
+    // SetIsEmpty
     // -------------------------------------------------------------------------
 
     @Test
-    fun `UpdateIsEmpty true sets isEmpty to true`() {
-        val state = DashboardState(isEmpty = false)
+    fun `SetIsEmpty true sets isEmpty to true`() {
+        val state = WeightDashboardState(isEmpty = false)
 
-        val result = reducer.reduce(state, DashboardIntent.UpdateIsEmpty(true))
+        val result = reducer.reduce(state, WeightDashboardIntent.SetIsEmpty(true))
 
         assertThat(result?.isEmpty).isTrue()
     }
 
     @Test
-    fun `UpdateIsEmpty false sets isEmpty to false`() {
-        val state = DashboardState(isEmpty = true)
+    fun `SetIsEmpty false sets isEmpty to false`() {
+        val state = WeightDashboardState(isEmpty = true)
 
-        val result = reducer.reduce(state, DashboardIntent.UpdateIsEmpty(false))
+        val result = reducer.reduce(state, WeightDashboardIntent.SetIsEmpty(false))
 
         assertThat(result?.isEmpty).isFalse()
     }
@@ -119,19 +127,19 @@ class DashboardReducerTest {
 
     @Test
     fun `SetVisibleKeys stores keys as immutable list`() {
-        val state = DashboardState()
+        val state = WeightDashboardState()
         val keys = listOf(fakeDashboardKey)
 
-        val result = reducer.reduce(state, DashboardIntent.SetVisibleKeys(keys))
+        val result = reducer.reduce(state, WeightDashboardIntent.SetVisibleKeys(keys))
 
         assertThat(result?.visibleKeys).containsExactly(fakeDashboardKey)
     }
 
     @Test
     fun `SetVisibleKeys with empty list clears previous keys`() {
-        val state = DashboardState(visibleKeys = persistentListOf(fakeDashboardKey))
+        val state = WeightDashboardState(visibleKeys = persistentListOf(fakeDashboardKey))
 
-        val result = reducer.reduce(state, DashboardIntent.SetVisibleKeys(emptyList()))
+        val result = reducer.reduce(state, WeightDashboardIntent.SetVisibleKeys(emptyList()))
 
         assertThat(result?.visibleKeys).isEmpty()
     }
@@ -142,9 +150,9 @@ class DashboardReducerTest {
 
     @Test
     fun `SetProgress updates progress field`() {
-        val state = DashboardState()
+        val state = WeightDashboardState()
 
-        val result = reducer.reduce(state, DashboardIntent.SetProgress(fakeProgress))
+        val result = reducer.reduce(state, WeightDashboardIntent.SetProgress(fakeProgress))
 
         assertThat(result?.progress).isEqualTo(fakeProgress)
     }
@@ -155,46 +163,46 @@ class DashboardReducerTest {
 
     @Test
     fun `SetProgressUpdating true sets isProgressUpdating to true`() {
-        val state = DashboardState(isProgressUpdating = false)
+        val state = WeightDashboardState(isProgressUpdating = false)
 
-        val result = reducer.reduce(state, DashboardIntent.SetProgressUpdating(true))
+        val result = reducer.reduce(state, WeightDashboardIntent.SetProgressUpdating(true))
 
         assertThat(result?.isProgressUpdating).isTrue()
     }
 
     @Test
     fun `SetProgressUpdating false sets isProgressUpdating to false`() {
-        val state = DashboardState(isProgressUpdating = true)
+        val state = WeightDashboardState(isProgressUpdating = true)
 
-        val result = reducer.reduce(state, DashboardIntent.SetProgressUpdating(false))
+        val result = reducer.reduce(state, WeightDashboardIntent.SetProgressUpdating(false))
 
         assertThat(result?.isProgressUpdating).isFalse()
     }
 
     // -------------------------------------------------------------------------
-    // SetSelectedSegment
+    // Base intent — SetSelectedSegment
     // -------------------------------------------------------------------------
 
     @Test
     fun `SetSelectedSegment changes segment and sets scrollTarget from anchorTimestamp`() {
-        val state = DashboardState(selectedSegment = GraphSegment.WEEK)
+        val state = WeightDashboardState(selectedSegment = GraphSegment.WEEK)
 
         val result = reducer.reduce(
             state,
-            DashboardIntent.SetSelectedSegment(GraphSegment.MONTH, TEST_ANCHOR_TIMESTAMP),
+            BaseGraphIntent.SetSelectedSegment(GraphSegment.MONTH, TEST_ANCHOR_TIMESTAMP),
         )
 
         assertThat(result?.selectedSegment).isEqualTo(GraphSegment.MONTH)
-        assertThat(result?.scrollTarget).isEqualTo(TEST_ANCHOR_TIMESTAMP.toDouble())
+        assertThat(result?.scrollTarget).isEqualTo(TEST_ANCHOR_TIMESTAMP)
     }
 
     @Test
-    fun `SetSelectedSegment with null anchorTimestamp sets scrollTarget to null`() {
-        val state = DashboardState(selectedSegment = GraphSegment.WEEK, scrollTarget = 999.0)
+    fun `SetSelectedSegment with null anchorTimestamp clears scrollTarget`() {
+        val state = WeightDashboardState(selectedSegment = GraphSegment.WEEK, scrollTarget = 999.0)
 
         val result = reducer.reduce(
             state,
-            DashboardIntent.SetSelectedSegment(GraphSegment.YEAR, anchorTimestamp = null),
+            BaseGraphIntent.SetSelectedSegment(GraphSegment.YEAR, anchorTimestamp = null),
         )
 
         assertThat(result?.selectedSegment).isEqualTo(GraphSegment.YEAR)
@@ -202,39 +210,37 @@ class DashboardReducerTest {
     }
 
     @Test
-    fun `SetSelectedSegment with same segment returns same state`() {
-        val state = DashboardState(selectedSegment = GraphSegment.MONTH, scrollTarget = 500.0)
+    fun `SetSelectedSegment clears markerIndex`() {
+        val state = WeightDashboardState(selectedSegment = GraphSegment.WEEK, markerIndex = 42.0)
 
         val result = reducer.reduce(
             state,
-            DashboardIntent.SetSelectedSegment(GraphSegment.MONTH, TEST_ANCHOR_TIMESTAMP),
+            BaseGraphIntent.SetSelectedSegment(GraphSegment.MONTH),
         )
 
-        // When same segment is selected, state is returned unchanged
-        assertThat(result).isSameInstanceAs(state)
-        assertThat(result?.scrollTarget).isEqualTo(500.0)
+        assertThat(result?.markerIndex).isNull()
     }
 
     // -------------------------------------------------------------------------
-    // SetIsChartConsuming
+    // Base intent — UpdateMarkerIndex
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetIsChartConsuming true sets isConsuming to true`() {
-        val state = DashboardState(isConsuming = false)
+    fun `UpdateMarkerIndex stores non-null marker index`() {
+        val state = WeightDashboardState(markerIndex = null)
 
-        val result = reducer.reduce(state, DashboardIntent.SetIsChartConsuming(true))
+        val result = reducer.reduce(state, BaseGraphIntent.UpdateMarkerIndex(42.0))
 
-        assertThat(result?.isConsuming).isTrue()
+        assertThat(result?.markerIndex).isEqualTo(42.0)
     }
 
     @Test
-    fun `SetIsChartConsuming false sets isConsuming to false`() {
-        val state = DashboardState(isConsuming = true)
+    fun `UpdateMarkerIndex with null clears marker index`() {
+        val state = WeightDashboardState(markerIndex = 42.0)
 
-        val result = reducer.reduce(state, DashboardIntent.SetIsChartConsuming(false))
+        val result = reducer.reduce(state, BaseGraphIntent.UpdateMarkerIndex(null))
 
-        assertThat(result?.isConsuming).isFalse()
+        assertThat(result?.markerIndex).isNull()
     }
 
     // -------------------------------------------------------------------------
@@ -243,18 +249,18 @@ class DashboardReducerTest {
 
     @Test
     fun `SetSelectedStat updates selectedStat`() {
-        val state = DashboardState(selectedStat = null)
+        val state = WeightDashboardState(selectedStat = null)
 
-        val result = reducer.reduce(state, DashboardIntent.SetSelectedStat(fakeStat))
+        val result = reducer.reduce(state, WeightDashboardIntent.SetSelectedStat(fakeStat))
 
         assertThat(result?.selectedStat).isEqualTo(fakeStat)
     }
 
     @Test
     fun `SetSelectedStat with null clears selectedStat`() {
-        val state = DashboardState(selectedStat = fakeStat)
+        val state = WeightDashboardState(selectedStat = fakeStat)
 
-        val result = reducer.reduce(state, DashboardIntent.SetSelectedStat(null))
+        val result = reducer.reduce(state, WeightDashboardIntent.SetSelectedStat(null))
 
         assertThat(result?.selectedStat).isNull()
     }
@@ -265,11 +271,11 @@ class DashboardReducerTest {
 
     @Test
     fun `SetData stores data as immutable list`() {
-        val state = DashboardState()
+        val state = WeightDashboardState()
 
         val result = reducer.reduce(
             state,
-            DashboardIntent.SetData(listOf(fakeSummaryA, fakeSummaryB)),
+            WeightDashboardIntent.SetData(listOf(fakeSummaryA, fakeSummaryB)),
         )
 
         assertThat(result?.data).containsExactly(fakeSummaryA, fakeSummaryB).inOrder()
@@ -277,46 +283,11 @@ class DashboardReducerTest {
 
     @Test
     fun `SetData with empty list clears previous data`() {
-        val state = DashboardState(data = persistentListOf(fakeSummaryA))
+        val state = WeightDashboardState(data = persistentListOf(fakeSummaryA))
 
-        val result = reducer.reduce(state, DashboardIntent.SetData(emptyList()))
+        val result = reducer.reduce(state, WeightDashboardIntent.SetData(emptyList()))
 
         assertThat(result?.data).isEmpty()
-    }
-
-    // -------------------------------------------------------------------------
-    // SetPagerState
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `SetPagerState updates pagerState`() {
-        val state = DashboardState(pagerState = 0)
-
-        val result = reducer.reduce(state, DashboardIntent.SetPagerState(TEST_PAGER_STATE))
-
-        assertThat(result?.pagerState).isEqualTo(TEST_PAGER_STATE)
-    }
-
-    // -------------------------------------------------------------------------
-    // SetScrollTarget
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `SetScrollTarget sets scrollTarget`() {
-        val state = DashboardState(scrollTarget = null)
-
-        val result = reducer.reduce(state, DashboardIntent.SetScrollTarget(TEST_SCROLL_TARGET))
-
-        assertThat(result?.scrollTarget).isEqualTo(TEST_SCROLL_TARGET)
-    }
-
-    @Test
-    fun `SetScrollTarget with null clears scrollTarget`() {
-        val state = DashboardState(scrollTarget = TEST_SCROLL_TARGET)
-
-        val result = reducer.reduce(state, DashboardIntent.SetScrollTarget(null))
-
-        assertThat(result?.scrollTarget).isNull()
     }
 
     // -------------------------------------------------------------------------
@@ -325,11 +296,11 @@ class DashboardReducerTest {
 
     @Test
     fun `SetDashboardType updates dashboardType`() {
-        val state = DashboardState(dashboardType = DashboardType.DASHBOARD_4_METRICS)
+        val state = WeightDashboardState(dashboardType = DashboardType.DASHBOARD_4_METRICS)
 
         val result = reducer.reduce(
             state,
-            DashboardIntent.SetDashboardType(DashboardType.DASHBOARD_12_METRICS),
+            WeightDashboardIntent.SetDashboardType(DashboardType.DASHBOARD_12_METRICS),
         )
 
         assertThat(result?.dashboardType).isEqualTo(DashboardType.DASHBOARD_12_METRICS)
@@ -341,104 +312,171 @@ class DashboardReducerTest {
 
     @Test
     fun `SetLatestWeight updates latestWeight`() {
-        val state = DashboardState(latestWeight = null)
+        val state = WeightDashboardState(latestWeight = null)
 
-        val result = reducer.reduce(state, DashboardIntent.SetLatestWeight(TEST_WEIGHT))
+        val result = reducer.reduce(state, WeightDashboardIntent.SetLatestWeight(TEST_WEIGHT))
 
         assertThat(result?.latestWeight).isEqualTo(TEST_WEIGHT)
     }
 
     @Test
     fun `SetLatestWeight with null clears latestWeight`() {
-        val state = DashboardState(latestWeight = TEST_WEIGHT)
+        val state = WeightDashboardState(latestWeight = TEST_WEIGHT)
 
-        val result = reducer.reduce(state, DashboardIntent.SetLatestWeight(null))
+        val result = reducer.reduce(state, WeightDashboardIntent.SetLatestWeight(null))
 
         assertThat(result?.latestWeight).isNull()
     }
 
     // -------------------------------------------------------------------------
-    // UpdateWeightLess
+    // SetWeightUnit
     // -------------------------------------------------------------------------
 
     @Test
-    fun `UpdateWeightLess updates weightless`() {
-        val state = DashboardState(weightless = null)
+    fun `SetWeightUnit updates weightUnit`() {
+        val state = WeightDashboardState(weightUnit = WeightUnit.LB)
 
-        val result = reducer.reduce(state, DashboardIntent.UpdateWeightLess(fakeWeightless))
+        val result = reducer.reduce(state, WeightDashboardIntent.SetWeightUnit(WeightUnit.KG))
+
+        assertThat(result?.weightUnit).isEqualTo(WeightUnit.KG)
+    }
+
+    // -------------------------------------------------------------------------
+    // SetGoal
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `SetGoal with null clears goal`() {
+        val state = WeightDashboardState(goal = mockk(relaxed = true))
+
+        val result = reducer.reduce(state, WeightDashboardIntent.SetGoal(null))
+
+        assertThat(result?.goal).isNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // SetSecondaryKey
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `SetSecondaryKey stores the key`() {
+        val state = WeightDashboardState(secondaryKey = null)
+
+        val result = reducer.reduce(state, WeightDashboardIntent.SetSecondaryKey(fakeDashboardKey))
+
+        assertThat(result?.secondaryKey).isEqualTo(fakeDashboardKey)
+    }
+
+    @Test
+    fun `SetSecondaryKey with null clears the key`() {
+        val state = WeightDashboardState(secondaryKey = fakeDashboardKey)
+
+        val result = reducer.reduce(state, WeightDashboardIntent.SetSecondaryKey(null))
+
+        assertThat(result?.secondaryKey).isNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // SetWeightless
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `SetWeightless updates weightless`() {
+        val state = WeightDashboardState(weightless = null)
+
+        val result = reducer.reduce(state, WeightDashboardIntent.SetWeightless(fakeWeightless))
 
         assertThat(result?.weightless).isEqualTo(fakeWeightless)
     }
 
     @Test
-    fun `UpdateWeightLess with null clears weightless`() {
-        val state = DashboardState(weightless = fakeWeightless)
+    fun `SetWeightless with null clears weightless`() {
+        val state = WeightDashboardState(weightless = fakeWeightless)
 
-        val result = reducer.reduce(state, DashboardIntent.UpdateWeightLess(null))
+        val result = reducer.reduce(state, WeightDashboardIntent.SetWeightless(null))
 
         assertThat(result?.weightless).isNull()
     }
 
     // -------------------------------------------------------------------------
-    // SetIsScrollTargetConsumed
+    // Base intent — UpdateSegment
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetIsScrollTargetConsumed true sets isScrollTargetConsumed to true`() {
-        val state = DashboardState(isScrollTargetConsumed = false)
+    fun `UpdateSegment applies update to the targeted segment state`() {
+        val state = WeightDashboardState()
 
-        val result = reducer.reduce(state, DashboardIntent.SetIsScrollTargetConsumed(true))
+        val result = reducer.reduce(
+            state,
+            BaseGraphIntent.UpdateSegment(GraphSegment.WEEK) { it.copy(isEmptyGraph = true) },
+        )
 
-        assertThat(result?.isScrollTargetConsumed).isTrue()
-    }
-
-    @Test
-    fun `SetIsScrollTargetConsumed false sets isScrollTargetConsumed to false`() {
-        val state = DashboardState(isScrollTargetConsumed = true)
-
-        val result = reducer.reduce(state, DashboardIntent.SetIsScrollTargetConsumed(false))
-
-        assertThat(result?.isScrollTargetConsumed).isFalse()
+        assertThat(result?.segmentStates?.get(GraphSegment.WEEK)?.isEmptyGraph).isTrue()
     }
 
     // -------------------------------------------------------------------------
-    // Side-effect intents fall through to else -> state
+    // Base intent — UpdateIsEmptyGraph
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `UpdateIsEmptyGraph sets isEmptyGraph on the segment`() {
+        val state = WeightDashboardState()
+
+        val result = reducer.reduce(
+            state,
+            BaseGraphIntent.UpdateIsEmptyGraph(GraphSegment.MONTH, isEmpty = true),
+        )
+
+        assertThat(result?.segmentStates?.get(GraphSegment.MONTH)?.isEmptyGraph).isTrue()
+    }
+
+    // -------------------------------------------------------------------------
+    // Side-effect intents fall through to state unchanged
     // -------------------------------------------------------------------------
 
     @Test
     fun `Refresh returns state unchanged`() {
-        val state = DashboardState(isRefreshing = true, isEmpty = false)
+        val state = WeightDashboardState(isRefreshing = true, isEmpty = false)
 
-        val result = reducer.reduce(state, DashboardIntent.Refresh)
+        val result = reducer.reduce(state, WeightDashboardIntent.Refresh)
 
         assertThat(result).isEqualTo(state)
     }
 
     @Test
     fun `ResetDashboard returns state unchanged`() {
-        val state = DashboardState()
+        val state = WeightDashboardState()
 
-        val result = reducer.reduce(state, DashboardIntent.ResetDashboard(onConfirm = {}))
+        val result = reducer.reduce(state, WeightDashboardIntent.ResetDashboard)
 
         assertThat(result).isEqualTo(state)
     }
 
     @Test
     fun `OnConnectScale returns state unchanged`() {
-        val state = DashboardState()
+        val state = WeightDashboardState()
 
-        val result = reducer.reduce(state, DashboardIntent.OnConnectScale)
+        val result = reducer.reduce(state, WeightDashboardIntent.OnConnectScale)
+
+        assertThat(result).isEqualTo(state)
+    }
+
+    @Test
+    fun `NavigateToGoal returns state unchanged`() {
+        val state = WeightDashboardState()
+
+        val result = reducer.reduce(state, WeightDashboardIntent.NavigateToGoal)
 
         assertThat(result).isEqualTo(state)
     }
 
     @Test
     fun `UpdateVisibleKeys returns state unchanged by reducer`() {
-        val state = DashboardState()
+        val state = WeightDashboardState()
 
         val result = reducer.reduce(
             state,
-            DashboardIntent.UpdateVisibleKeys(
+            WeightDashboardIntent.UpdateVisibleKeys(
                 keys = listOf(fakeDashboardKey),
                 dashboardType = DashboardType.DASHBOARD_12_METRICS,
             ),

@@ -131,7 +131,7 @@ class BaseServiceTest {
 
     @Test
     fun `showNetworkErrorAndThrow shows toast with network error message`() {
-        val toastSlot = slot<Toast>()
+        val toastSlot = slot<Toast.Simple>()
         every { dialogQueueService.showToast(capture(toastSlot)) } returns Unit
 
         try {
@@ -159,7 +159,7 @@ class BaseServiceTest {
 
     @Test
     fun `showNetworkError shows toast with network error message`() {
-        val toastSlot = slot<Toast>()
+        val toastSlot = slot<Toast.Simple>()
         every { dialogQueueService.showToast(capture(toastSlot)) } returns Unit
 
         service.exposedShowNetworkError()
@@ -175,7 +175,7 @@ class BaseServiceTest {
 
     @Test
     fun `showSuccessToast creates toast with provided title and message`() {
-        val toastSlot = slot<Toast>()
+        val toastSlot = slot<Toast.Simple>()
         every { dialogQueueService.showToast(capture(toastSlot)) } returns Unit
 
         service.exposedShowSuccessToast("Done!", "Entry saved.")
@@ -191,7 +191,7 @@ class BaseServiceTest {
 
     @Test
     fun `showErrorToast creates toast with title and message`() {
-        val toastSlot = slot<Toast>()
+        val toastSlot = slot<Toast.Simple>()
         every { dialogQueueService.showToast(capture(toastSlot)) } returns Unit
 
         service.exposedShowErrorToast("Error!", "Something failed.")
@@ -203,7 +203,7 @@ class BaseServiceTest {
 
     @Test
     fun `showErrorToast creates toast with null title when title is null`() {
-        val toastSlot = slot<Toast>()
+        val toastSlot = slot<Toast.Simple>()
         every { dialogQueueService.showToast(capture(toastSlot)) } returns Unit
 
         service.exposedShowErrorToast(null, "Something failed.")
@@ -214,7 +214,7 @@ class BaseServiceTest {
 
     @Test
     fun `showErrorToast uses null title by default when title not provided`() {
-        val toastSlot = slot<Toast>()
+        val toastSlot = slot<Toast.Simple>()
         every { dialogQueueService.showToast(capture(toastSlot)) } returns Unit
 
         service.exposedShowErrorToastDefaultTitle("Something broke")
