@@ -54,6 +54,7 @@ final class SignupStore: ObservableObject {
     // device loops (which skip the password step) and the final FINISH submission
     // never create it again.
     @Published private(set) var isAccountCreated = false
+    @Published private(set) var isCreatingAccount = false
 
     // Baby management
     @Published var babies: [SignupBaby] = []
@@ -251,7 +252,12 @@ final class SignupStore: ObservableObject {
         // succeeds; on failure the user stays on the password step (toast shown).
         // Product/device saves remain deferred to FINISH.
         if currentStep == .password {
-            Task { await createAccountAtPassword() }
+            guard !isCreatingAccount && !isAccountCreated else { return }
+            isCreatingAccount = true
+            Task {
+                await createAccountAtPassword()
+                isCreatingAccount = false
+            }
             return
         }
         guard currentStepIndex < steps.count - 1 else { return }

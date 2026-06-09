@@ -17,6 +17,7 @@ import SwiftUI
 /// other to its metric counterpart automatically (Imperial ↔ Metric stay paired).
 struct UnitSelectionToggle: View {
     @Environment(\.appTheme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let imperialTitle: String
     let metricTitle: String
     @Binding var isMetric: Bool
@@ -30,7 +31,7 @@ struct UnitSelectionToggle: View {
         .background(theme.backgroundPrimary)
         .clipShape(Capsule())
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(accessibilityIdentifier ?? "")
+        .accessibilityIdentifierIfPresent(accessibilityIdentifier)
     }
 
     private func segment(
@@ -39,13 +40,17 @@ struct UnitSelectionToggle: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: {
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.85, blendDuration: 0)) {
+            if reduceMotion {
                 action()
+            } else {
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.85, blendDuration: 0)) {
+                    action()
+                }
             }
         }, label: {
             Text(title)
                 .fontOpenSans(.button2)
-                .foregroundColor(isSelected ? theme.textInverse : theme.actionSecondary)
+                .foregroundStyle(isSelected ? theme.textInverse : theme.actionSecondary)
                 .frame(minWidth: 75)
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingXS)
@@ -56,6 +61,15 @@ struct UnitSelectionToggle: View {
         .buttonStyle(.plain)
         .accessibilityIdentifier(title)
         .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : .isButton)
+    }
+}
+
+// MARK: - View helpers
+
+private extension View {
+    @ViewBuilder
+    func accessibilityIdentifierIfPresent(_ id: String?) -> some View {
+        if let id { accessibilityIdentifier(id) } else { self }
     }
 }
 
