@@ -24,6 +24,20 @@ sealed class Entry : IUnitProcessable<Entry> {
         }
     }
 
+    /** The note text for this entry, regardless of type (MOB-438). */
+    fun noteText(): String? = when (this) {
+        is ScaleEntry -> scale.scaleEntry.note
+        is BpmEntry -> bpmEntry.note
+        is BabyEntry -> babyEntry.entryNote
+    }
+
+    /** Returns a copy of this entry with its note replaced (MOB-438). */
+    fun withNote(note: String?): Entry = when (this) {
+        is ScaleEntry -> copy(scale = scale.copy(scaleEntry = scale.scaleEntry.copy(note = note)))
+        is BpmEntry -> copy(bpmEntry = bpmEntry.copy(note = note))
+        is BabyEntry -> copy(babyEntry = babyEntry.copy(entryNote = note))
+    }
+
     override fun process(unit: WeightUnit?, weightLess: Weightless?): Entry {
         return when (this) {
             is ScaleEntry -> {

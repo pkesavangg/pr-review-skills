@@ -4,6 +4,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -191,6 +193,7 @@ fun <T> AppInput(
     trailingIconId: Int = AppIcons.Outlined.Close,
     trailingText: String? = null,
     maxLength: Int? = null,
+    showCharacterCounter: Boolean = false,
     onValueChange: ((T?) -> Unit)? = null,
     imeAction: ImeAction = ImeAction.Next,
     onImeAction: (() -> Unit)? = null,
@@ -217,6 +220,7 @@ fun <T> AppInput(
             supportingText = supportingText,
             inputType = type,
             maxLength = maxLength,
+            showCharacterCounter = showCharacterCounter,
             visualTransformation = visualTransformation,
             keyboardOptions = keyboardOptions,
             showTrailingIcon = showTrailingIcon,
@@ -250,6 +254,7 @@ fun <T> InputFieldBase(
     trailingIconId: Int = AppIcons.Outlined.Close,
     trailingText: String? = null,
     maxLength: Int? = null,
+    showCharacterCounter: Boolean = false,
     singleLine: Boolean = true,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
@@ -470,28 +475,52 @@ fun <T> InputFieldBase(
                 errorCursorColor = colorScheme.textError,
             ),
     )
-    Box(modifier = Modifier.padding(top = spacing.none, start = spacing.sm)) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = spacing.none, start = spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         val errorMessage = formControl?.error?.message.orEmpty()
-        when {
-            isError ->
-                Text(
-                    text = errorMessage.lowercase(),
-                    color = colorScheme.textError,
-                    style = typography.body3,
-                )
+        Box(modifier = Modifier.weight(1f)) {
+            when {
+                isError ->
+                    Text(
+                        text = errorMessage.lowercase(),
+                        color = colorScheme.textError,
+                        style = typography.body3,
+                    )
 
-            supportingText != null ->
-                Text(
-                    text = supportingText,
-                    color = colorScheme.textSubheading,
-                    style = typography.body3,
-                )
+                supportingText != null ->
+                    Text(
+                        text = supportingText,
+                        color = colorScheme.textSubheading,
+                        style = typography.body3,
+                    )
 
-            else ->
-                Text(
-                    text = AppInputStrings.EmptySpace,
-                    style = typography.body3,
-                )
+                else ->
+                    Text(
+                        text = AppInputStrings.EmptySpace,
+                        style = typography.body3,
+                    )
+            }
+        }
+        // Live character counter (e.g. "0/280" → "117/280" → "280/280") with three
+        // states: default (empty), filled (typing), and max-limit-reached.
+        if (showCharacterCounter && maxLength != null) {
+            val charCount = value.length
+            val counterColor =
+                when {
+                    charCount >= maxLength -> colorScheme.textError
+                    charCount > 0 -> colorScheme.textBody
+                    else -> colorScheme.textSubheading
+                }
+            Text(
+                text = "$charCount/$maxLength",
+                color = counterColor,
+                style = typography.body3,
+                modifier = Modifier.padding(start = spacing.sm, end = spacing.sm),
+            )
         }
     }
     Spacer(Modifier.height(spacing.xs))

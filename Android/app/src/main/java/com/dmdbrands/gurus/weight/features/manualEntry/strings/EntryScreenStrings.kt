@@ -76,6 +76,9 @@ object EntryScreenStrings {
   const val PULSE_LABEL = "pulse"
   const val NOTES_LABEL = "notes"
 
+  /** Maximum character limit enforced on measurement note text (MOB-438). */
+  const val NOTES_MAX_LENGTH = 280
+
   // Baby
   const val POUNDS_LABEL = "pounds"
   const val OUNCES_LABEL = "ounces"

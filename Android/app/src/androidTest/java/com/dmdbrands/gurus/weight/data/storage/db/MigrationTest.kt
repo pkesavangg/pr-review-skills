@@ -202,4 +202,84 @@ class MigrationTest {
 
         db.close()
     }
+
+    /**
+     * Validates [AppDatabase.MIGRATION_6_7] (MOB-438): adds the nullable `note` column to
+     * body_scale_entry, defaults existing rows to null, and preserves existing data.
+     */
+    @Test
+    fun migrate6To7() {
+        // --- Create DB at version 6 and seed a weight entry --------------------------
+        helper.createDatabase(TEST_DB, 6).apply {
+            insert(
+                "account",
+                SQLiteDatabase.CONFLICT_REPLACE,
+                ContentValues().apply {
+                    put("accountId", "acct-1")
+                    put("firstName", "Test")
+                    put("lastName", "User")
+                    put("dob", "1990-01-01")
+                    put("email", "test@example.com")
+                    put("gender", "male")
+                    put("isActiveAccount", 1)
+                    put("isLoggedIn", 1)
+                    put("isExpired", 0)
+                    put("isSynced", 1)
+                    put("zipcode", "12345")
+                },
+            )
+            insert(
+                "entry",
+                SQLiteDatabase.CONFLICT_REPLACE,
+                ContentValues().apply {
+                    put("accountId", "acct-1")
+                    put("entryTimestamp", "2025-06-01T10:00:00.000Z")
+                    put("operationType", "create")
+                    put("deviceType", "scale")
+                    put("deviceId", "dev-1")
+                    put("attempts", 0)
+                    put("unit", "lb")
+                    put("isSynced", 1)
+                },
+            )
+            // body_scale_entry at v6 has no note column yet (FK id = entry.id = 1)
+            insert(
+                "body_scale_entry",
+                SQLiteDatabase.CONFLICT_REPLACE,
+                ContentValues().apply {
+                    put("id", 1)
+                    put("weight", 1800.0)
+                    put("source", "manual")
+                },
+            )
+            close()
+        }
+
+        // --- Run MIGRATION_6_7 -------------------------------------------------------
+        val db = helper.runMigrationsAndValidate(
+            TEST_DB,
+            7,
+            true,
+            AppDatabase.MIGRATION_6_7,
+        )
+
+        // note column was added
+        db.query("PRAGMA table_info(body_scale_entry)").use { cursor ->
+            val columns = mutableListOf<String>()
+            while (cursor.moveToNext()) {
+                columns.add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
+            }
+            assertThat(columns).contains("note")
+        }
+
+        // existing data survived; note defaults to null
+        db.query("SELECT * FROM body_scale_entry WHERE id = 1").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getDouble(cursor.getColumnIndexOrThrow("weight"))).isEqualTo(1800.0)
+            assertThat(cursor.getString(cursor.getColumnIndexOrThrow("source"))).isEqualTo("manual")
+            assertThat(cursor.isNull(cursor.getColumnIndexOrThrow("note"))).isTrue()
+        }
+
+        db.close()
+    }
 }
