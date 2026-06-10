@@ -145,11 +145,13 @@ fun MeAppTheme(
   // ic_settings_selected (selected bottom-nav tab) stay stuck on the OS theme
   // when the user switches in-app Appearance — see MA-3996.
   val baseContext = LocalContext.current
-  val themedContext = remember(baseContext, darkTheme) {
-    val baseConfig = baseContext.resources.configuration
+  val configuration = LocalConfiguration.current
+  val themedContext = remember(baseContext, configuration, darkTheme) {
     val nightFlag = if (darkTheme) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO
-    val overridden = Configuration(baseConfig).apply {
-      uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or nightFlag
+    // Rebuild from the live LocalConfiguration (not baseContext's snapshot) and flip only the
+    // night bit, so screenWidthDp/fontScale/locale/orientation still propagate on config changes.
+    val overridden = Configuration(configuration).apply {
+      uiMode = applyNightFlag(uiMode, nightFlag)
     }
     // Wrap with ContextWrapper so the Activity remains discoverable via
     // getBaseContext() — required by hiltViewModel() and other Activity-context

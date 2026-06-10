@@ -22,6 +22,9 @@ import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.repository.IAppRepository
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.proto.ThemeMode
+import com.dmdbrands.gurus.weight.theme.ThemePrefs
+import com.dmdbrands.gurus.weight.theme.applyNightFlag
+import com.dmdbrands.gurus.weight.theme.resolveNightFlag
 import com.greatergoods.blewrapper.GGBLEService
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -77,17 +80,14 @@ class MainActivity : AppCompatActivity() {
    * on the OS setting — see MA-3996.
    */
   override fun attachBaseContext(newBase: Context) {
-    val mode = runBlocking {
-      AppRepository(UserDataStore(newBase), FcmDataStore(newBase)).getThemeMode()
-    }
+    // Read the cached pick synchronously from SharedPreferences — runs before Hilt injection and
+    // before the first frame, so we must not block on a proto DataStore disk read or hand-build
+    // DataStore-backed repos here. ThemePrefs is kept current by applyNightMode(). See MA-3996.
+    val mode = ThemePrefs.read(newBase)
     val baseConfig = newBase.resources.configuration
-    val nightFlag = when (mode) {
-      ThemeMode.LIGHT -> Configuration.UI_MODE_NIGHT_NO
-      ThemeMode.DARK -> Configuration.UI_MODE_NIGHT_YES
-      else -> baseConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK
-    }
+    val nightFlag = resolveNightFlag(mode, baseConfig.uiMode)
     val overridden = Configuration(baseConfig).apply {
-      uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or nightFlag
+      uiMode = applyNightFlag(uiMode, nightFlag)
     }
     super.attachBaseContext(newBase.createConfigurationContext(overridden))
   }
@@ -187,6 +187,9 @@ class MainActivity : AppCompatActivity() {
   }
 
   private fun applyNightMode(mode: ThemeMode) {
+    // Keep the fast SharedPreferences cache in sync so the next attachBaseContext() resolves the
+    // correct night resources without a DataStore read. See ThemePrefs / MA-3996.
+    ThemePrefs.save(this, mode)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
       val ui = getSystemService(UI_MODE_SERVICE) as UiModeManager
       ui.setApplicationNightMode(mode.toUiMode())
