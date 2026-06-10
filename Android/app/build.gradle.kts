@@ -309,9 +309,12 @@ val jacocoExcludes = listOf(
   "**/*OuterClass*",
 )
 
-val kotlinClassDir = layout.buildDirectory.dir("tmp/kotlin-classes/debug").get().asFile
-
-val jacocoClassDirectories = fileTree(kotlinClassDir) { exclude(jacocoExcludes) }
+// Class files that match the on-the-fly coverage exec: AGP compiles Kotlin via the
+// built-in kotlinc and runs unit tests against the ASM-transformed output, so the
+// JaCoCo class IDs correspond to these dirs — NOT the legacy build/tmp/kotlin-classes.
+val jacocoClassDirectories = fileTree(
+  layout.buildDirectory.dir("intermediates/classes/debug/transformDebugClassesWithAsm/dirs").get().asFile,
+) { exclude(jacocoExcludes) }
 
 val jacocoExecutionData = fileTree(layout.buildDirectory.get().asFile) {
   include(

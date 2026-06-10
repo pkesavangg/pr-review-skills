@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.dashboard.snapshot.viewmodel
 
 import android.content.Context
+import android.content.res.Resources
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
@@ -13,6 +14,7 @@ import io.mockk.MockKAnnotations
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
+import java.io.ByteArrayInputStream
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
@@ -45,8 +47,24 @@ class DashboardSnapshotViewModelTest {
     fun setUp() {
         MockKAnnotations.init(this)
         productSelectionManager = mockk(relaxed = true)
+        stubRawResources()
         stubDefaultFlows()
         viewModel = createViewModel()
+    }
+
+    /**
+     * The ViewModel calls [BabyPercentileHelper.loadIfNeeded] which reads WHO percentile
+     * CSVs from res/raw via [Resources.openRawResource]. A relaxed Context mock returns a
+     * relaxed InputStream whose read() yields 0 bytes, which makes BufferedReader throw
+     * "Underlying input stream returned zero bytes". Return a real, valid CSV stream
+     * (8 columns satisfies both the percentile and measurement parsers) on each open call.
+     */
+    private fun stubRawResources() {
+        val resources = mockk<Resources>(relaxed = true)
+        every { context.resources } returns resources
+        every { resources.openRawResource(any()) } answers {
+            ByteArrayInputStream(RAW_CSV.toByteArray())
+        }
     }
 
     private fun stubDefaultFlows() {
@@ -206,5 +224,12 @@ class DashboardSnapshotViewModelTest {
 
     companion object {
         private const val TAG = "DashboardSnapshotVMTest"
+
+        /** Minimal valid CSV (header + 2 data rows); 8 columns covers both raw parsers. */
+        private val RAW_CSV = buildString {
+            appendLine("Day,5th,10th,25th,50th,75th,90th,95th")
+            appendLine("0,25427,27200,30166,33464,36762,39728,41501")
+            appendLine("8,26568,28402,31469,34879,38289,41356,43190")
+        }
     }
 }

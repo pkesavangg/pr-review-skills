@@ -22,17 +22,27 @@ class SignupReducerTest {
         isLoading: Boolean = false,
         error: String? = null,
         goalSkipped: Boolean = false,
+        steps: kotlinx.collections.immutable.ImmutableList<SignupStep> = SignupState.COMMON_STEPS,
     ): SignupState {
         val controls = SignupFormControls.create()
         val form = com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup(controls)
         return SignupState(
             form = form,
+            steps = steps,
             currentStep = step,
             isLoading = isLoading,
             error = error,
             goalSkipped = goalSkipped,
         )
     }
+
+    /**
+     * The ordered step list for a first-pass Weight Scale signup. This is the
+     * list that actually contains GENDER / HEIGHT / GOAL, so GOAL-step reducer
+     * tests must pin their state to it.
+     */
+    private val weightScaleSteps =
+        SignupState.stepsForDevice(com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT)
 
     @BeforeEach
     fun setUp() {
@@ -61,23 +71,29 @@ class SignupReducerTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Next from NAME moves to BIRTHDAY and clears error`() {
+    fun `Next from NAME moves to EMAIL and clears error`() {
+        // COMMON_STEPS order: NAME → EMAIL → BIRTHDAY → PICK_DEVICE → PASSWORD
         val state = stateAt(step = SignupStep.NAME, error = "some error")
 
         val result = reducer.reduce(state, SignupIntent.Next)
 
-        assertThat(result.currentStep).isEqualTo(SignupStep.BIRTHDAY)
+        assertThat(result.currentStep).isEqualTo(SignupStep.EMAIL)
         assertThat(result.error).isNull()
     }
 
     @Test
     fun `Next from GOAL resets goalSkipped to false before advancing`() {
-        val state = stateAt(step = SignupStep.GOAL, goalSkipped = true)
+        // GOAL lives in the Weight Scale step list, where GOAL → PASSWORD.
+        val state = stateAt(
+            step = SignupStep.GOAL,
+            goalSkipped = true,
+            steps = weightScaleSteps,
+        )
 
         val result = reducer.reduce(state, SignupIntent.Next)
 
         assertThat(result.goalSkipped).isFalse()
-        assertThat(result.currentStep).isEqualTo(SignupStep.EMAIL)
+        assertThat(result.currentStep).isEqualTo(SignupStep.PASSWORD)
     }
 
     @Test
@@ -97,12 +113,14 @@ class SignupReducerTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Back from BIRTHDAY returns to NAME and clears error`() {
+    fun `Back from BIRTHDAY returns to EMAIL and clears error`() {
+        // COMMON_STEPS order: NAME → EMAIL → BIRTHDAY → ... so Back from
+        // BIRTHDAY lands on EMAIL.
         val state = stateAt(step = SignupStep.BIRTHDAY, error = "err")
 
         val result = reducer.reduce(state, SignupIntent.Back)
 
-        assertThat(result.currentStep).isEqualTo(SignupStep.NAME)
+        assertThat(result.currentStep).isEqualTo(SignupStep.EMAIL)
         assertThat(result.error).isNull()
     }
 
@@ -116,12 +134,15 @@ class SignupReducerTest {
     }
 
     @Test
-    fun `Back from EMAIL resets goalSkipped to false`() {
+    fun `Back from EMAIL returns to NAME and leaves goalSkipped untouched`() {
+        // goalSkipped is only reset when stepping back off GOAL; stepping back
+        // off any other step preserves it. EMAIL is index 1 in COMMON_STEPS.
         val state = stateAt(step = SignupStep.EMAIL, goalSkipped = true)
 
         val result = reducer.reduce(state, SignupIntent.Back)
 
-        assertThat(result.goalSkipped).isFalse()
+        assertThat(result.currentStep).isEqualTo(SignupStep.NAME)
+        assertThat(result.goalSkipped).isTrue()
     }
 
     @Test
@@ -139,11 +160,17 @@ class SignupReducerTest {
 
     @Test
     fun `Skip from GOAL advances step and sets goalSkipped to true`() {
-        val state = stateAt(step = SignupStep.GOAL, goalSkipped = false)
+        // First pass (no registered devices): Skip on GOAL advances to the next
+        // step in the Weight Scale list, which is PASSWORD.
+        val state = stateAt(
+            step = SignupStep.GOAL,
+            goalSkipped = false,
+            steps = weightScaleSteps,
+        )
 
         val result = reducer.reduce(state, SignupIntent.Skip)
 
-        assertThat(result.currentStep).isEqualTo(SignupStep.EMAIL)
+        assertThat(result.currentStep).isEqualTo(SignupStep.PASSWORD)
         assertThat(result.goalSkipped).isTrue()
         assertThat(result.error).isNull()
     }

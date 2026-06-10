@@ -318,7 +318,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `OnPopUpConnect with BPM SKU navigates to LcbtScaleSetup`() = runTest {
+    fun `OnPopUpConnect with BPM SKU navigates to BpmSetup`() = runTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -332,8 +332,8 @@ class AppViewModelTest {
 
         coVerify {
             navigationService.navigateTo(
-                match<AppRoute.ScaleSetup.LcbtScaleSetup> {
-                    it.sku == SKU_0663 && it.initialStep == LcbtScaleSetupStep.CONNECTING_BLUETOOTH
+                match<AppRoute.ScaleSetup.BpmSetup> {
+                    it.sku == SKU_0663
                 },
             )
         }

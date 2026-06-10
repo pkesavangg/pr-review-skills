@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
@@ -102,7 +103,9 @@ class SignupViewModelTest {
 
     @Test
     fun `initial progress is 1 over total steps`() {
-        val totalSteps = SignupStep.entries.size
+        // The Phase 2 flow starts on the common step list (NAME, EMAIL,
+        // BIRTHDAY, PICK_DEVICE, PASSWORD) — progress is 1 / steps.size.
+        val totalSteps = viewModel.state.value.steps.size
         assertThat(viewModel.state.value.progress).isEqualTo(1f / totalSteps)
     }
 
@@ -111,16 +114,18 @@ class SignupViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Next advances from NAME to BIRTHDAY`() {
+    fun `Next advances from NAME to EMAIL`() {
+        // COMMON_STEPS order: NAME → EMAIL → BIRTHDAY → PICK_DEVICE → PASSWORD
         viewModel.handleIntent(SignupIntent.Next)
-        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.BIRTHDAY)
+        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.EMAIL)
     }
 
     @Test
-    fun `Next advances through all steps sequentially`() {
+    fun `Next advances through common steps sequentially`() {
+        // Before a device is picked the flow walks the common step list only.
         val expectedSteps = listOf(
-            SignupStep.BIRTHDAY, SignupStep.GENDER, SignupStep.HEIGHT,
-            SignupStep.GOAL, SignupStep.EMAIL, SignupStep.PASSWORD,
+            SignupStep.EMAIL, SignupStep.BIRTHDAY, SignupStep.PICK_DEVICE,
+            SignupStep.PASSWORD,
         )
         for (expected in expectedSteps) {
             viewModel.handleIntent(SignupIntent.Next)
@@ -130,8 +135,8 @@ class SignupViewModelTest {
 
     @Test
     fun `Next on last step does not advance`() {
-        // Navigate to PASSWORD (last step)
-        repeat(SignupStep.entries.size - 1) {
+        // Walk to PASSWORD (last step of COMMON_STEPS).
+        repeat(viewModel.state.value.steps.size - 1) {
             viewModel.handleIntent(SignupIntent.Next)
         }
         assertThat(viewModel.state.value.isLastStep).isTrue()
@@ -145,8 +150,8 @@ class SignupViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Back from BIRTHDAY returns to NAME`() {
-        viewModel.handleIntent(SignupIntent.Next) // NAME → BIRTHDAY
+    fun `Back from EMAIL returns to NAME`() {
+        viewModel.handleIntent(SignupIntent.Next) // NAME → EMAIL
         viewModel.handleIntent(SignupIntent.Back)
         assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.NAME)
     }
@@ -158,7 +163,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `isFirstStep is true at NAME and false at BIRTHDAY`() {
+    fun `isFirstStep is true at NAME and false at EMAIL`() {
         assertThat(viewModel.state.value.isFirstStep).isTrue()
         viewModel.handleIntent(SignupIntent.Next)
         assertThat(viewModel.state.value.isFirstStep).isFalse()
@@ -166,7 +171,7 @@ class SignupViewModelTest {
 
     @Test
     fun `isLastStep is true at PASSWORD`() {
-        repeat(SignupStep.entries.size - 1) {
+        repeat(viewModel.state.value.steps.size - 1) {
             viewModel.handleIntent(SignupIntent.Next)
         }
         assertThat(viewModel.state.value.isLastStep).isTrue()
@@ -179,7 +184,7 @@ class SignupViewModelTest {
 
     @Test
     fun `progress increases as steps advance`() {
-        val totalSteps = SignupStep.entries.size
+        val totalSteps = viewModel.state.value.steps.size
         assertThat(viewModel.state.value.progress).isEqualTo(1f / totalSteps)
         viewModel.handleIntent(SignupIntent.Next) // step 2
         assertThat(viewModel.state.value.progress).isEqualTo(2f / totalSteps)
@@ -190,23 +195,26 @@ class SignupViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Skip on GOAL step sets goalSkipped and advances`() {
-        // Navigate to GOAL step
-        repeat(4) { viewModel.handleIntent(SignupIntent.Next) } // NAME→BIRTHDAY→GENDER→HEIGHT→GOAL
+    fun `Skip on GOAL step sets goalSkipped and advances to PASSWORD`() {
+        navigateToGoalStep()
         assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.GOAL)
 
         viewModel.handleIntent(SignupIntent.Skip)
         assertThat(viewModel.state.value.goalSkipped).isTrue()
-        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.EMAIL)
+        // First-pass Skip on GOAL advances to PASSWORD (next in the Weight
+        // Scale step list).
+        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.PASSWORD)
     }
 
     @Test
     fun `showSkipButton is true only on GOAL step`() {
         assertThat(viewModel.state.value.showSkipButton).isFalse() // NAME
-        repeat(4) { viewModel.handleIntent(SignupIntent.Next) }
+        navigateToGoalStep()
+        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.GOAL)
         assertThat(viewModel.state.value.showSkipButton).isTrue() // GOAL
         viewModel.handleIntent(SignupIntent.Next)
-        assertThat(viewModel.state.value.showSkipButton).isFalse() // EMAIL
+        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.PASSWORD)
+        assertThat(viewModel.state.value.showSkipButton).isFalse() // PASSWORD
     }
 
     // -------------------------------------------------------------------------
@@ -335,12 +343,24 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `Submit success navigates to Loading screen`() = runTest {
+    fun `Submit success advances to a Ready terminal step without navigating`() = runTest {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
         coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
 
         navigateToLastStepWithValidForm()
-        viewModel.handleIntent(SignupIntent.Next)
+        viewModel.handleIntent(SignupIntent.Next) // triggers submit → RegisterDevice
+        advanceUntilIdle()
+
+        // Submit no longer navigates; it records the device and advances to the
+        // terminal Ready step. Navigation happens later via FinishSignup.
+        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.DEVICE_READY)
+        assertThat(viewModel.state.value.registeredDevices).contains(ProductType.MY_WEIGHT)
+        coVerify(exactly = 0) { navigationService.replaceStack(AppRoute.Init.Loading) }
+    }
+
+    @Test
+    fun `FinishSignup navigates to Loading screen`() = runTest {
+        viewModel.handleIntent(SignupIntent.FinishSignup)
         advanceUntilIdle()
 
         coVerify { navigationService.replaceStack(AppRoute.Init.Loading) }
@@ -437,9 +457,10 @@ class SignupViewModelTest {
         coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
 
         navigateToLastStepWithValidForm()
-        assertThat(viewModel.state.value.isLastStep).isTrue()
+        // PASSWORD is the final data step (next is DEVICE_READY) — onNext submits.
+        assertThat(viewModel.state.value.isFinalDataStep).isTrue()
 
-        viewModel.onNext() // should trigger onSubmit since isLastStep
+        viewModel.onNext() // should trigger onSubmit since isFinalDataStep
         advanceUntilIdle()
 
         verify { dialogQueueService.showLoader(message = any()) }
@@ -452,22 +473,26 @@ class SignupViewModelTest {
 
     @Test
     fun `Submit with invalid form sets error without calling signup`() = runTest {
-        // Navigate to last step
-        repeat(SignupStep.entries.size - 1) {
-            viewModel.handleIntent(SignupIntent.Next)
-        }
-        assertThat(viewModel.state.value.isLastStep).isTrue()
+        // Reach the final data step (PASSWORD, next is DEVICE_READY) with a
+        // device selected so submit runs first-pass validation.
+        navigateToLastStepWithValidForm()
+        assertThat(viewModel.state.value.isFinalDataStep).isTrue()
 
-        // Make form controls dirty with invalid values so validation actually fails
-        // (untouched/undirty controls skip validation by design)
-        viewModel.state.value.form.controls.email.onValueChange("not-an-email")
-        viewModel.state.value.form.controls.password.onValueChange("ab") // too short (min 6)
+        // Corrupt fields so first-pass validation fails.
+        val controls = viewModel.state.value.form.controls
+        controls.email.onValueChange("not-an-email")
+        controls.password.onValueChange("ab") // too short (min 6)
 
         viewModel.handleIntent(SignupIntent.Next) // triggers submit with invalid form
         advanceUntilIdle()
 
+        // Validation fails before the API call and before the loader is shown,
+        // so neither signup nor the loader is ever reached.
         coVerify(exactly = 0) { accountService.signup(any()) }
-        verify { dialogQueueService.dismissLoader() }
+        verify(exactly = 0) { dialogQueueService.showLoader(message = any()) }
+        // No device gets registered and the flow stays on the final data step.
+        assertThat(viewModel.state.value.registeredDevices).isEmpty()
+        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.PASSWORD)
     }
 
     @Test
@@ -488,44 +513,62 @@ class SignupViewModelTest {
     // -------------------------------------------------------------------------
 
     /**
-     * Navigates through all steps filling in valid form data,
-     * ending on PASSWORD (last step) so the next Next triggers submit.
+     * Walks the common head and selects the Weight Scale device so the step
+     * list expands to include GENDER / HEIGHT / GOAL, landing on the GOAL step.
+     *
+     * Resulting Weight Scale step list (first pass):
+     * NAME → EMAIL → BIRTHDAY → PICK_DEVICE → GENDER → HEIGHT → GOAL →
+     * PASSWORD → DEVICE_READY.
      */
-    private fun navigateToLastStepWithValidForm(skipGoal: Boolean = false) {
+    private fun navigateToGoalStep() {
         val controls = viewModel.state.value.form.controls
-        // NAME step — fill first and last name
+        // NAME
         controls.firstName.onValueChange(TEST_FIRST_NAME)
         controls.lastName.onValueChange(TEST_LAST_NAME)
+        viewModel.handleIntent(SignupIntent.Next) // → EMAIL
+
+        // EMAIL
+        controls.email.onValueChange(TEST_EMAIL)
         viewModel.handleIntent(SignupIntent.Next) // → BIRTHDAY
 
-        // BIRTHDAY step — already has default value
+        // BIRTHDAY (default value valid)
+        viewModel.handleIntent(SignupIntent.Next) // → PICK_DEVICE
+
+        // PICK_DEVICE — pick the Weight Scale, expanding the step list.
+        viewModel.handleIntent(SignupIntent.SelectDevice(ProductType.MY_WEIGHT.id))
         viewModel.handleIntent(SignupIntent.Next) // → GENDER
 
-        // GENDER step
+        // GENDER
         controls.sex.onValueChange(TEST_SEX)
         viewModel.handleIntent(SignupIntent.Next) // → HEIGHT
 
-        // HEIGHT step — always valid
+        // HEIGHT — always valid
         viewModel.handleIntent(SignupIntent.Next) // → GOAL
+    }
+
+    /**
+     * Navigates through the Weight Scale flow filling in valid form data,
+     * ending on PASSWORD — the final data step before DEVICE_READY — so the
+     * next Next triggers submit.
+     */
+    private fun navigateToLastStepWithValidForm(skipGoal: Boolean = false) {
+        val controls = viewModel.state.value.form.controls
+        navigateToGoalStep()
 
         if (skipGoal) {
-            viewModel.handleIntent(SignupIntent.Skip) // → EMAIL, sets goalSkipped
+            viewModel.handleIntent(SignupIntent.Skip) // → PASSWORD, sets goalSkipped
         } else {
             // GOAL step
             controls.goalType.onValueChange(TEST_GOAL_TYPE)
             controls.currentWeight.onValueChange(TEST_CURRENT_WEIGHT) // 180.0 lbs
             controls.goalWeight.onValueChange(TEST_GOAL_WEIGHT) // 160.0 lbs
-            viewModel.handleIntent(SignupIntent.Next) // → EMAIL
+            viewModel.handleIntent(SignupIntent.Next) // → PASSWORD
         }
 
-        // EMAIL step
-        controls.email.onValueChange(TEST_EMAIL)
-        viewModel.handleIntent(SignupIntent.Next) // → PASSWORD
-
-        // PASSWORD step
+        // PASSWORD step (final data step — next is DEVICE_READY)
         controls.password.onValueChange(TEST_PASSWORD)
         controls.confirmPassword.onValueChange(TEST_PASSWORD)
         controls.zipcode.onValueChange(TEST_ZIPCODE)
-        // Now on PASSWORD (last step) — next Next triggers submit
+        // Now on PASSWORD — next Next triggers submit
     }
 }
