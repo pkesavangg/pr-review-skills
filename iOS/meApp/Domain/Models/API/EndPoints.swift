@@ -67,7 +67,7 @@ enum Endpoint {
         case .signup:
             return request(path: "/account/")
         case .login:
-            return request(path: "/account/login/")
+            return request(path: "/account/login")
         case .logout:
             return request(path: "/account/logout")
         case .refreshToken:

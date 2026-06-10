@@ -40,9 +40,14 @@ struct BPMonthSummaryItem: View {
 
                 // Average pressure
                 VStack(alignment: .leading) {
-                    Text(month.pressureText)
-                        .fontOpenSans(.body2)
-                        .foregroundColor(pressureColor)
+                    HStack(alignment: .lastTextBaseline, spacing: 2) {
+                        Text(month.pressureText)
+                            .fontOpenSans(.body2)
+                            .foregroundColor(pressureColor)
+                        Text(EntryUnit.mmhg.displayString)
+                            .fontOpenSans(.body3)
+                            .foregroundColor(theme.textSubheading)
+                    }
 
                     Text(HistoryListStrings.avgPressure)
                         .fontOpenSans(.subHeading2)

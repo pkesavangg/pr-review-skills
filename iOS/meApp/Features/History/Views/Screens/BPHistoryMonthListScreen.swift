@@ -13,6 +13,7 @@ struct BPHistoryMonthListScreen: View {
 
     let month: BPHistoryMonth
     @State private var openItemID: UUID?
+    @State private var entryToEdit: BPHistoryEntry?
 
     private var title: String {
         guard let firstEntry = historyStore.bpEntries.first else { return month.id }
@@ -46,6 +47,10 @@ struct BPHistoryMonthListScreen: View {
             historyStore.expandedBPEntries.removeAll()
             historyStore.resetSelectedBPMonth()
         }
+        .sheet(item: $entryToEdit) { entry in
+            BPHistoryEditSheet(entry: entry)
+                .environmentObject(historyStore)
+        }
     }
 
     @ViewBuilder
@@ -61,6 +66,9 @@ struct BPHistoryMonthListScreen: View {
                         },
                         onDelete: {
                             historyStore.showDeleteBPEntryAlert(entry: entry)
+                        },
+                        onEditNotes: {
+                            entryToEdit = entry
                         },
                         openItemID: $openItemID
                     )

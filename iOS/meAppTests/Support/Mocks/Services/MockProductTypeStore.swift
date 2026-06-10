@@ -15,6 +15,9 @@ final class MockProductTypeStore: ProductTypeStoreProtocol {
     var selectedItemPublisher: Published<ProductSelection>.Publisher { $selectedItem }
     var availableItemsPublisher: Published<[ProductSelection]>.Publisher { $availableItems }
 
+    var hasPersistedSelectionResult: Bool = false
+    var hasPersistedSelection: Bool { hasPersistedSelectionResult }
+
     private(set) var selectCalls = 0
     private(set) var autoSelectBabyCalls = 0
     private(set) var selectLastAddedCalls = 0

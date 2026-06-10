@@ -3,6 +3,10 @@ import Foundation
 /// Application-wide constants
 struct AppConstants {
     static let canEnableTestingFeatures = false // It should be false in the production build
+
+    struct Input {
+        static let notesMaxCharacters = 280
+    }
     struct TimeoutsAndRetention {
         static let logRetentionDays = 5 // Number of days to retain logs
         static let bluetoothTimeoutNs = 5 * 60 * 1_000_000_000 // Timeout for Bluetooth operations in seconds 5 minutes

@@ -128,7 +128,7 @@ struct ToastModifier: ViewModifier {
         .padding(.spacingSM)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(width: min(UIScreen.main.bounds.width * 0.9, 550))
-        .background(theme.supportToastBackground)
+        .background(data.isError ? theme.textError.opacity(0.12) : theme.supportToastBackground)
         .cornerRadius(.radiusSM)
         .padding()
         .offset(x: offset.width, y: offset.height)

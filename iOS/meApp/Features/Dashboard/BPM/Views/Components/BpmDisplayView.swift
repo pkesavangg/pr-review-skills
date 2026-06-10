@@ -119,14 +119,62 @@ struct BpmDisplayView: View {
                 }
                 .padding(.horizontal, Layout.horizontalPadding)
             } else {
-                HStack(alignment: .lastTextBaseline, spacing: Layout.unitSpacing) {
-                    Text(BpmDashboardStrings.bpPlaceholder)
-                        .fontWeight(.heavy)
-                        .fontOpenSans(.heading1)
-                        .foregroundColor(theme.textSubheading)
+                VStack(alignment: .leading, spacing: Layout.contentSpacing) {
+                    HStack(alignment: .top, spacing: Layout.valueSpacing) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(BpmDashboardStrings.mmhg)
+                                .fontOpenSans(.subHeading2)
+                                .foregroundColor(theme.textSubheading)
+
+                            HStack(alignment: .lastTextBaseline, spacing: Layout.slashSpacing) {
+                                Text(BpmDashboardStrings.bpSystolicZeroPlaceholder)
+                                    .fontWeight(.heavy)
+                                    .fontOpenSans(.heading1)
+                                    .foregroundColor(AhaPressureClass.classify(systolic: 0, diastolic: 0).color(theme: theme))
+                                    .lineLimit(1)
+                                    .fixedSize()
+
+                                SlashDividerView(color: theme.textSubheading.opacity(0.45))
+
+                                Text(BpmDashboardStrings.bpDiastolicZeroPlaceholder)
+                                    .fontWeight(.heavy)
+                                    .fontOpenSans(.heading1)
+                                    .foregroundColor(AhaPressureClass.classify(systolic: 0, diastolic: 0).color(theme: theme))
+                                    .lineLimit(1)
+                                    .fixedSize()
+                            }
+                            .overlay(alignment: .topTrailing) {
+                                Button {
+                                    showAhaRatingSheet = true
+                                } label: {
+                                    AppIconView(icon: AppAssets.helpCircle, size: IconSize(width: 16, height: 16))
+                                        .foregroundColor(theme.textSubheading)
+                                        .padding(.top, -4)
+                                        .padding(.trailing, -6)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(BpmDashboardStrings.pulse)
+                                .fontOpenSans(.subHeading2)
+                                .foregroundColor(theme.textSubheading)
+
+                            Text(BpmDashboardStrings.bpPulseZeroPlaceholder)
+                                .fontWeight(.heavy)
+                                .fontOpenSans(.heading1)
+                                .foregroundColor(theme.textSubheading)
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                        }
+                        .frame(width: Layout.pulseColumnWidth, alignment: .leading)
+                    }
                 }
                 .padding(.horizontal, Layout.horizontalPadding)
             }
+
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel({
