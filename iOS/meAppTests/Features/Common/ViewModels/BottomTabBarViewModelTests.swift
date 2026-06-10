@@ -162,6 +162,51 @@ struct BottomTabBarViewModelTests {
         _ = sut
     }
 
+    // MARK: - Baby reading arrival card: no baby profile (MOB-425)
+
+    @Test("baby reading with no baby profile shows the ADD A BABY card and discards (not assigns) the reading on no-action dismiss")
+    func babyReadingNoProfileDoesNotAutoAssign() async {
+        // Default MockBabyService registered by makeSUT has no babies.
+        let (sut, bluetooth, notification, entry) = makeSUT()
+        bluetooth.isSetupInProgress = false
+
+        bluetooth.newEntryReceivedSubject.send(BottomTabBarViewModelTestFixtures.babyNotification())
+        let shown = await waitUntil { notification.showToastCalls >= 1 }
+        #expect(shown)
+        #expect(notification.toastData?.title == DashboardStrings.babyReadingArrivalTitle)
+
+        // No baby was added before the card timed out (or was swiped away). Per the MOB-425
+        // design the reading must be discarded — never auto-assigned (there is no baby to assign to).
+        notification.toastData?.onDismiss?()
+        let discarded = await waitUntil { entry.deleteEntryByIdCalls >= 1 }
+        #expect(discarded, "No baby profile exists — the reading should be discarded on no-action dismiss")
+        #expect(entry.assignBabyEntryCalls == 0, "No baby profile exists — the reading must not be auto-assigned")
+        _ = sut
+    }
+
+    @Test("baby reading with an existing profile auto-assigns on dismiss (assign flow, not the ADD A BABY card)")
+    func babyReadingWithProfileAutoAssignsOnDismiss() async {
+        let (sut, bluetooth, notification, entry) = makeSUT()
+        bluetooth.isSetupInProgress = false
+
+        // Override the default empty baby service with one that has a profile.
+        let babyMock = MockBabyService()
+        babyMock.babies = [Baby(accountId: "test-account", name: "Baby A", deviceId: nil,
+                                birthday: nil, biologicalSex: nil, birthLengthInches: nil,
+                                birthWeightLbs: nil, birthWeightOz: nil)]
+        DependencyContainer.shared.register(babyMock as BabyServiceProtocol)
+
+        bluetooth.newEntryReceivedSubject.send(BottomTabBarViewModelTestFixtures.babyNotification())
+        let shown = await waitUntil { notification.showToastCalls >= 1 }
+        #expect(shown)
+
+        // No user action → auto-assign to the existing baby on dismiss.
+        notification.toastData?.onDismiss?()
+        let assigned = await waitUntil { entry.assignBabyEntryCalls >= 1 }
+        #expect(assigned, "A baby profile exists — the reading should auto-assign on dismiss")
+        _ = sut
+    }
+
     // MARK: - Scale-type routing (weight vs baby)
 
     @Test("weight-type notification does not fire baby card")

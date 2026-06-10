@@ -41,6 +41,8 @@ final class MockEntryService: EntryServiceProtocol {
     private(set) var getEntryCountCalls = 0
     private(set) var loadBabyDashboardDataCalls = 0
     private(set) var lastLoadedBabyDashboardId: String?
+    private(set) var assignBabyEntryCalls = 0
+    private(set) var lastAssignedBabyId: String?
 
     func syncAllEntriesWithRemote() async { syncAllEntriesWithRemoteCalls += 1 }
     func migrateFromSQLiteIfNeeded() async {}
@@ -75,7 +77,10 @@ final class MockEntryService: EntryServiceProtocol {
         deletedEntryIds.append(entryId)
         if let error = deleteEntryByIdError { throw error }
     }
-    func assignBabyEntry(entryId: UUID, babyId: String) async throws {}
+    func assignBabyEntry(entryId: UUID, babyId: String) async throws {
+        assignBabyEntryCalls += 1
+        lastAssignedBabyId = babyId
+    }
     func fetchEntrySnapshot(byId id: UUID) async throws -> EntrySnapshot? {
         fetchEntrySnapshotByIdCalls += 1
         return try fetchEntrySnapshotByIdResult.get()

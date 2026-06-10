@@ -18,6 +18,7 @@ struct CommonStrings {
     static let save = "Save"
     static let skip = "Skip"
     static let logIn = "Log in"
+    static let loggedOut = "Logged out"
     static let signUp = "Sign up"
     static let complete = "Complete"
     static let edit = "Edit"
