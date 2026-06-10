@@ -125,6 +125,11 @@ struct DashboardStrings {
     static let bpmReadingArrivalPulse = "pulse"
     static let weightReadingArrivalJustNow = "Just now"
 
+    // Graph scroll hint modal
+    static let graphScrollHintTitle = "NEW: Scrollable Graph"
+    static let graphScrollHintMessage = "Swipe left or right on the graph to view more growth data over time."
+    static let graphScrollHintConfirm = "GOT IT"
+
     // Wi-Fi reading arrival (entry already saved server-side — VIEW navigates to History)
     static let readingArrivalView = "VIEW"
     static let wifiReadingArrivalTitle = "New Reading saved to your log"
