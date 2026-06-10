@@ -1285,7 +1285,7 @@ class BottomTabBarViewModel: ObservableObject {
         )
 
         if count > 1 { isReplacingWifiWeightCard = true }
-        logger.log(level: .info, tag: tag, message: "Showing Wi-Fi weight reading card. count=\(count), weight=\(weightString)")
+        logger.log(level: .info, tag: tag, message: "Showing Wi-Fi weight reading card. count=\(count)")
         notificationService.showToast(toast)
     }
 
