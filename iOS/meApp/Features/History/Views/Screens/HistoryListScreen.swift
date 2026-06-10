@@ -197,10 +197,23 @@ struct HistoryListScreen: View {
                 ZStack {
                     Spacer().containerRelativeFrame([.horizontal, .vertical])
                     VStack {
-                        NoEntryView {
-                            tabViewModel.pendingSettingsNavigation = .addEditScales
-                            tabViewModel.selectedTab = .settings
-                            tabViewModel.settingsNavigationSourceTab = .history
+                        if productTypeStore.selectedItem.isPendingBaby {
+                            // No baby profile yet — prompt the user to add one.
+                            NoEntryView(
+                                title: ProductTypeStrings.BabyEmptyState.title,
+                                description: ProductTypeStrings.BabyEmptyState.historyDescription,
+                                buttonTitle: ProductTypeStrings.BabyEmptyState.addABaby,
+                                iconAsset: AppAssets.babyAppIcon,
+                                iconTint: theme.babyPrimary
+                            ) {
+                                tabViewModel.navigateToSettings(route: .myKids, sourceTab: .history)
+                            }
+                        } else {
+                            NoEntryView {
+                                tabViewModel.pendingSettingsNavigation = .addEditScales
+                                tabViewModel.selectedTab = .settings
+                                tabViewModel.settingsNavigationSourceTab = .history
+                            }
                         }
                     }
                 }

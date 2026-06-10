@@ -18,6 +18,7 @@ final class MockEntryRepositoryAPI: EntryRepositoryAPIProtocol {
     private(set) var lastFetchCursor: String?
     private(set) var lastFetchLimit: Int?
     private(set) var lastFetchCategory: String?
+    private(set) var lastFetchBabyId: String?
     private(set) var lastExportCsvRequest: EntriesCSVRequest?
 
     /// Convenience accessor for tests asserting on the single entry submitted in a batch-of-one push.
@@ -35,13 +36,15 @@ final class MockEntryRepositoryAPI: EntryRepositoryAPIProtocol {
         start: String?,
         cursor: String?,
         limit: Int?,
-        category: String?
+        category: String?,
+        babyId: String?
     ) async throws -> BathScaleOperationListResponse {
         fetchEntriesCalls += 1
         lastFetchStart = start
         lastFetchCursor = cursor
         lastFetchLimit = limit
         lastFetchCategory = category
+        lastFetchBabyId = babyId
         if let fetchEntriesError { throw fetchEntriesError }
         return fetchEntriesResult
     }

@@ -1064,13 +1064,21 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 let note = operation.note
                 let dto = operation.toOperationDTO()
 
-                guard let request = UnifiedEntryRequest(from: dto, note: note) else {
-                    continue
+                // Map to the unified request(s). Weight/BP produce one request; a baby entry
+                // can expand into a `weight` and a `measureLength` request (MOB-386).
+                let requests: [UnifiedEntryRequest]
+                if dto.entryType == EntryType.baby.rawValue {
+                    requests = BabyEntryRequest.makeRequests(from: dto, entryId: entryIdString, note: note)
+                } else if let request = UnifiedEntryRequest(from: dto, note: note) {
+                    requests = [request]
+                } else {
+                    requests = []
                 }
+                guard !requests.isEmpty else { continue }
 
                 do {
-                    // POST /v3/entries/ — one entry per atomic batch preserves per-entry retry semantics.
-                    try await remoteRepo.submitEntries([request])
+                    // POST /v3/entries/ — atomic batch; baby entries submit their sub-type rows together.
+                    try await remoteRepo.submitEntries(requests)
 
                     if operationType == "create" {
                         hadSuccessfulCreate = true
@@ -1330,14 +1338,21 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     ///
     /// Emails the report (no `download` flag) for the given product `category`. The device's
     /// current UTC offset is applied to the exported `Date/Time` column.
-    /// - Parameter category: The product to export (`weight`/`bp`/`baby`); `nil` exports all.
-    func exportCSV(category: String?) async throws {
+    /// - Parameters:
+    ///   - category: The product to export (`weight`/`bp`/`baby`); `nil` exports all.
+    ///   - babyId: Required when `category == "baby"` — scopes the export to one baby.
+    func exportCSV(category: String?, babyId: String?) async throws {
         // An active account is still required so the request is authorized.
         guard accountService.activeAccount != nil else {
             throw AccountError.noActiveAccount
         }
+        if category == EntryCategory.baby.rawValue && babyId == nil {
+            throw NSError(domain: "EntryService", code: 400,
+                          userInfo: [NSLocalizedDescriptionKey: "babyId is required for baby CSV export"])
+        }
         let request = EntriesCSVRequest(
             category: category,
+            babyId: babyId,
             download: false,
             utcOffset: DateTimeTools.getUTCOffset()
         )
@@ -1354,12 +1369,13 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// - Parameters:
     ///   - cursor: The `entryTimestamp` cursor from the previous page, or `nil` for page 1.
     ///   - limit: Requested page size (clamped to `1...100`).
-    ///   - category: Optional product filter (`weight`/`bp`); `nil` returns all products.
+    ///   - category: Optional product filter (`weight`/`bp`/`baby`); `nil` returns all products.
+    ///   - babyId: Optional baby filter (only meaningful with `category == "baby"`).
     /// - Returns: The page of entries plus pagination metadata.
-    func fetchEntriesPage(cursor: String?, limit: Int, category: String?) async throws -> EntriesPage {
+    func fetchEntriesPage(cursor: String?, limit: Int, category: String?, babyId: String?) async throws -> EntriesPage {
         let clamped = EntriesPagination.clamp(limit: limit)
         let response = try await remoteRepo.fetchEntries(
-            start: nil, cursor: cursor, limit: clamped, category: category
+            start: nil, cursor: cursor, limit: clamped, category: category, babyId: babyId
         )
         return EntriesPage(
             entries: response.operations,

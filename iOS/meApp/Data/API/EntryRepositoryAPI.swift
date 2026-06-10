@@ -24,11 +24,12 @@ final class EntryRepositoryAPI: EntryRepositoryAPIProtocol {
         start: String?,
         cursor: String?,
         limit: Int?,
-        category: String?
+        category: String?,
+        babyId: String?
     ) async throws -> BathScaleOperationListResponse {
         // GET /v3/entries/ — sync mode (?start=) or cursor pagination (?cursor=&limit=).
         let response: BathScaleOperationListResponse = try await httpClient.get(
-            .entries(start: start, cursor: cursor, limit: limit, category: category),
+            .entries(start: start, cursor: cursor, limit: limit, category: category, babyId: babyId),
             needsAuth: true
         )
         return response

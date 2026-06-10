@@ -80,6 +80,5 @@ final class MockHealthKitServiceForIntegrations: HealthKitServiceProtocol {
     }
 
     var expectedPermissionCountResult = 5
-    func requestAdditionalPermissionsIfNeeded() async {}
     func expectedPermissionCount() async -> Int { expectedPermissionCountResult }
 }

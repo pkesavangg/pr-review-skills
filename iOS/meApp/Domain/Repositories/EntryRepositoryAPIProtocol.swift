@@ -30,12 +30,14 @@ protocol EntryRepositoryAPIProtocol {
     ///   - cursor: ISO timestamp for pagination (entries where `entryTimestamp < cursor`).
     ///   - limit: Page size for cursor mode (server default 20, max 100).
     ///   - category: Optional product filter (`weight`/`bp`/`baby`); omit for all products.
+    ///   - babyId: Optional baby filter (only meaningful with `category == "baby"`).
     /// - Returns: The unified list response (flat entries + cursor/sync metadata).
     func fetchEntries(
         start: String?,
         cursor: String?,
         limit: Int?,
-        category: String?
+        category: String?,
+        babyId: String?
     ) async throws -> BathScaleOperationListResponse
 
     /// Exports entries as CSV via the unified `GET /v3/entries/csv` endpoint.
@@ -43,4 +45,16 @@ protocol EntryRepositoryAPIProtocol {
     /// - Returns: The export response. In email mode this carries `sent: true`.
     @discardableResult
     func exportEntriesCSV(_ request: EntriesCSVRequest) async throws -> ExportResponse
+}
+
+extension EntryRepositoryAPIProtocol {
+    /// Convenience overload for callers that don't need a baby filter (weight/BP/sync paths).
+    func fetchEntries(
+        start: String?,
+        cursor: String?,
+        limit: Int?,
+        category: String?
+    ) async throws -> BathScaleOperationListResponse {
+        try await fetchEntries(start: start, cursor: cursor, limit: limit, category: category, babyId: nil)
+    }
 }

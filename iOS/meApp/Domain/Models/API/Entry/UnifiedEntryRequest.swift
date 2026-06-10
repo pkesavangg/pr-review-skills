@@ -58,6 +58,20 @@ struct UnifiedEntryRequest: Codable, Equatable {
     let source: String?
     let note: String?
 
+    // MARK: - Baby fields (MOB-386)
+    /// Baby profile this entry belongs to.
+    let babyId: String?
+    /// Client-generated entry id (baby entries are keyed by this).
+    let entryId: String?
+    /// Baby entry sub-type — in scope: `weight`, `measureLength`.
+    let entryType: String?
+    /// Baby weight in decigrams (for `entryType == "weight"`).
+    let babyWeightDecigrams: Int?
+    /// Baby length in millimeters (for `entryType == "measureLength"`).
+    let babyLengthMillimeters: Int?
+    /// Baby entry free-text note (separate wire key from the weight/BP `note`).
+    let entryNote: String?
+
     init(
         category: String,
         operationType: String,
@@ -74,7 +88,13 @@ struct UnifiedEntryRequest: Codable, Equatable {
         diastolic: Int? = nil,
         pulse: Int? = nil,
         source: String? = nil,
-        note: String? = nil
+        note: String? = nil,
+        babyId: String? = nil,
+        entryId: String? = nil,
+        entryType: String? = nil,
+        babyWeightDecigrams: Int? = nil,
+        babyLengthMillimeters: Int? = nil,
+        entryNote: String? = nil
     ) {
         self.category = category
         self.operationType = operationType
@@ -92,6 +112,12 @@ struct UnifiedEntryRequest: Codable, Equatable {
         self.pulse = pulse
         self.source = source
         self.note = note
+        self.babyId = babyId
+        self.entryId = entryId
+        self.entryType = entryType
+        self.babyWeightDecigrams = babyWeightDecigrams
+        self.babyLengthMillimeters = babyLengthMillimeters
+        self.entryNote = entryNote
     }
 }
 

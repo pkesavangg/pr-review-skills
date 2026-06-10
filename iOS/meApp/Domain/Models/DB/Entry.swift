@@ -159,7 +159,7 @@ final class Entry {
             pulse: dtoPulse,
             serverTimestamp: self.serverTimestamp,
             skeletalMusclePercent: self.scaleEntryMetric?.skeletalMusclePercent.map { Double($0) },
-            source: self.scaleEntry?.source,
+            source: self.babyEntry?.source ?? self.scaleEntry?.source,
             subcutaneousFatPercent: self.scaleEntryMetric?.subcutaneousFatPercent.map { Double($0) },
             systolic: dtoSystolic,
             diastolic: dtoDiastolic,

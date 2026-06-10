@@ -32,12 +32,9 @@ struct BathScaleOperationListResponse: Codable {
 
 extension BathScaleOperationListResponse {
     /// Legacy DTO projection consumed by the sync/merge engine, which predates the flat
-    /// unified shape. Baby entries are excluded — baby read is out of scope for MOB-385
-    /// (iOS 3) and the flat shape carries no baby measurement fields to round-trip.
+    /// unified shape. Covers weight, BP, and baby (baby read wired in MOB-386).
     var operations: [BathScaleOperationDTO] {
-        entries
-            .filter { $0.category != EntryCategory.baby.rawValue }
-            .map { $0.toOperationDTO() }
+        entries.map { $0.toOperationDTO() }
     }
 
     /// Convenience initializer for callers/tests that build the response from DTOs.

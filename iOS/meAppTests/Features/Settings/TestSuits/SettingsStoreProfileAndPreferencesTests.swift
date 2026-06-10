@@ -511,6 +511,93 @@ extension SettingsStoreTests {
             #expect(notification.toastData?.message == ToastStrings.unableToUpdateAccountSettings)
         }
 
+        // MARK: - Unit Type dialog (My Weight + My Kids)
+
+        @Test("selectedMeasurementUnits defaults to imperialLbOz when account value is unset")
+        func selectedMeasurementUnitsDefaultsToImperialLbOz() async {
+            let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", isActiveAccount: true, measurementUnits: nil, weightUnit: .lb)
+            let accountService = MockAccountService()
+            accountService.seedAccounts([account], active: account)
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService, seedDefaultAccount: false)
+            await SettingsStoreTestFixtures.waitUntil { store.activeAccount?.accountId == account.accountId }
+
+            #expect(store.selectedMeasurementUnits == .imperialLbOz)
+        }
+
+        @Test("selectedMeasurementUnits reflects the active account value")
+        func selectedMeasurementUnitsReflectsAccountValue() async {
+            let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", isActiveAccount: true, measurementUnits: "metric", weightUnit: .lb)
+            let accountService = MockAccountService()
+            accountService.seedAccounts([account], active: account)
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService, seedDefaultAccount: false)
+            await SettingsStoreTestFixtures.waitUntil { store.activeAccount?.accountId == account.accountId }
+
+            #expect(store.selectedMeasurementUnits == .metric)
+        }
+
+        @Test("saveUnitSelections with no changes does nothing")
+        func saveUnitSelectionsNoChangeDoesNothing() async {
+            let notification = TestNotificationHelperService()
+            let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", isActiveAccount: true, measurementUnits: "imperialLbOz", weightUnit: .lb)
+            let accountService = MockAccountService()
+            accountService.seedAccounts([account], active: account)
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService, seedDefaultAccount: false)
+            await SettingsStoreTestFixtures.waitUntil { store.activeAccount?.accountId == account.accountId }
+
+            store.saveUnitSelections(weightUnit: .lb, measurementUnits: .imperialLbOz)
+            // Give any erroneously-spawned task a chance to run.
+            try? await Task.sleep(nanoseconds: 200_000_000)
+
+            #expect(accountService.updateBodyCompCalls == 0)
+            #expect(accountService.updateMeasurementUnitsCalls == 0)
+            #expect(notification.showLoaderCalls == 0)
+        }
+
+        @Test("saveUnitSelections updates only measurement units when weight unit is unchanged")
+        func saveUnitSelectionsUpdatesOnlyMeasurementUnits() async {
+            let notification = TestNotificationHelperService()
+            let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", isActiveAccount: true, measurementUnits: "imperialLbOz", weightUnit: .lb)
+            let accountService = MockAccountService()
+            accountService.seedAccounts([account], active: account)
+            accountService.updateMeasurementUnitsResult = .success(())
+            let bluetooth = MockBluetoothService()
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService, bluetoothService: bluetooth, seedDefaultAccount: false)
+            await SettingsStoreTestFixtures.waitUntil { store.activeAccount?.accountId == account.accountId }
+
+            store.saveUnitSelections(weightUnit: .lb, measurementUnits: .metric)
+            await SettingsStoreTestFixtures.waitUntil { accountService.updateMeasurementUnitsCalls == 1 && notification.dismissLoaderCalls == 1 }
+
+            #expect(accountService.updateBodyCompCalls == 0)
+            #expect(accountService.lastUpdatedMeasurementUnits == .metric)
+            #expect(bluetooth.updateUserProfileForR4ScalesCalls == 0)
+            #expect(notification.toastData?.message == ToastStrings.unitSettingUpdated)
+        }
+
+        @Test("saveUnitSelections updates both weight unit and measurement units")
+        func saveUnitSelectionsUpdatesBoth() async {
+            let notification = TestNotificationHelperService()
+            let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", isActiveAccount: true, measurementUnits: "imperialLbOz", weightUnit: .lb)
+            let accountService = MockAccountService()
+            accountService.seedAccounts([account], active: account)
+            accountService.updateBodyCompResult = .success(())
+            accountService.updateMeasurementUnitsResult = .success(())
+            let bluetooth = MockBluetoothService()
+            bluetooth.updateUserProfileForR4ScalesResult = .failure(.notImplemented)
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService, bluetoothService: bluetooth, seedDefaultAccount: false)
+            await SettingsStoreTestFixtures.waitUntil { store.activeAccount?.accountId == account.accountId }
+
+            store.saveUnitSelections(weightUnit: .kg, measurementUnits: .metric)
+            await SettingsStoreTestFixtures.waitUntil {
+                accountService.updateBodyCompCalls == 1 &&
+                accountService.updateMeasurementUnitsCalls == 1 &&
+                notification.dismissLoaderCalls == 1
+            }
+
+            #expect(accountService.lastUpdatedBodyComp?.weightUnit == .kg)
+            #expect(accountService.lastUpdatedMeasurementUnits == .metric)
+            #expect(notification.showToastCalls == 1)
+        }
+
         @Test("updateActivityLevel success persists body comp")
         func updateActivityLevelSuccessPersistsBodyComp() async {
             let notification = TestNotificationHelperService()

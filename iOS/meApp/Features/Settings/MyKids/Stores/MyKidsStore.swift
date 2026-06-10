@@ -95,6 +95,7 @@ final class MyKidsStore: ObservableObject {
         let weightLbs = babyProfileForm.parsedBirthWeightLbs
         let weightOz = babyProfileForm.parsedBirthWeightOz
 
+        notificationService.showLoader(LoaderModel(text: LoaderStrings.saving))
         do {
             if let existing = editingBaby {
                 try await babyService.updateBabyProfile(
@@ -119,9 +120,13 @@ final class MyKidsStore: ObservableObject {
                     birthWeightOz: weightOz
                 )
             }
+            notificationService.dismissLoader()
             isShowingAddBaby = false
             editingBaby = nil
         } catch {
+            // Surface the failure instead of silently swallowing it — otherwise SAVE looks unresponsive.
+            notificationService.dismissLoader()
+            notificationService.showToast(ToastModel(title: ToastStrings.somethingWentWrongTitle, message: lang.saveFailed))
             LoggerService.shared.log(level: .error, tag: "MyKidsStore", message: "Failed to save baby: \(error)")
         }
     }
