@@ -59,6 +59,7 @@ struct ChangePasswordScreen: View {
                         ),
                         value: $settingsStore.changePasswordForm.currentPassword.value,
                         focusedField: $focusedField,
+                        accessibilityIdentifier: AccessibilityID.currentPasswordField,
                         onCommit: {
                             settingsStore.touchAndValidate(field: .currentPassword)
                             focusedField = .newPassword
@@ -83,6 +84,7 @@ struct ChangePasswordScreen: View {
                         ),
                         value: $settingsStore.changePasswordForm.newPassword.value,
                         focusedField: $focusedField,
+                        accessibilityIdentifier: AccessibilityID.newPasswordField,
                         onCommit: {
                             settingsStore.touchAndValidate(field: .newPassword)
                             focusedField = .confirmNewPassword
@@ -107,6 +109,7 @@ struct ChangePasswordScreen: View {
                         ),
                         value: $settingsStore.changePasswordForm.confirmNewPassword.value,
                         focusedField: $focusedField,
+                        accessibilityIdentifier: AccessibilityID.confirmPasswordField,
                         onCommit: {
                             settingsStore.touchAndValidate(field: .confirmNewPassword)
                             focusedField = nil

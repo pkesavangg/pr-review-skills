@@ -156,8 +156,11 @@ class DashboardMetricsCalculator: DashboardMetricsCalculatorProtocol {
             )
         }
 
-        // No selection: compute visible-window averages to mirror tiles and weight label
-        let ops = context.visibleOperations
+        // MA-4005: no selection — compute averages over the same ops the metric tiles and
+        // weight label use (operationsForLabel). visibleOperations follows the chart's 1-year
+        // window, which under-counts on Total (whose label/tiles span the full timeline), so
+        // the sheet showed last-year averages under a "total average" label.
+        let ops = context.operationsForLabel
         if ops.isEmpty {
             return createEntryFromInterpolatedAverage(
                 entry: entry,

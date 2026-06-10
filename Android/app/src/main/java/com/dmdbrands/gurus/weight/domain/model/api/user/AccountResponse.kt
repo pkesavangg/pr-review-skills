@@ -38,4 +38,8 @@ data class AccountInfo(
   val isHealthKitOn: Boolean = false,
   val isMFPOn: Boolean = false,
   val isMFPValid: Boolean = false,
+  // Phase 2 (MOB-377): account-level product list + measurement system. Nullable for
+  // backward compatibility with pre-Phase-2 responses (default applied on mapping).
+  val productTypes: List<String>? = null,
+  val measurementUnits: String? = null,
 )

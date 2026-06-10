@@ -1194,6 +1194,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         accountId: String
     ) async -> Bool {
         var hadNewCreates = false
+        // MA-3886: collect each newly-created remote op so we can forward only those entries
+        // to health integrations after the merge. Pushing the overall "latest" entry alone is
+        // insufficient when multiple Wi-Fi/R4 entries arrive in a single sync.
+        var newlyCreatedOps: [BathScaleOperationDTO] = []
         // Group operations by timestamp to determine final state for each timestamp
         let groupedOps = Dictionary(grouping: remoteOps) { op in
             op.entryTimestamp ?? ""
@@ -1292,6 +1296,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 // No local entry - only create if final operation is create
                 if finalOp.operationType == OperationType.create.rawValue {
                     hadNewCreates = true
+                    newlyCreatedOps.append(finalOp)
                     // Final state is create - add to local storage
                     let newEntry = Entry(from: finalOp, accountId: accountId, isSynced: true)
                     try? await localRepo.saveEntry(newEntry)
@@ -1302,16 +1307,36 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
         }
 
-        do {
-            let latestEntry = try await getLatestEntry()
-            if let entry = latestEntry {
-                // Create notification on MainActor to safely extract relationship data
-                let notification = EntryNotification(from: entry)
-                entrySaved.send(notification)
-                try await handleEntryAdded(entry)
+        // MA-3851: only notify UI listeners when the remote merge actually inserted
+        // new entries locally. Calling handleEntryAdded here would re-route the overall
+        // latest entry through integrationService.syncNewEntry on every sync — pushing
+        // previously-unsynced historical entries into Apple Health after operations like
+        // deletes. New creates are synced to integrations by the MA-3886 loop below.
+        if hadNewCreates {
+            do {
+                if let entry = try await getLatestEntry() {
+                    let notification = EntryNotification(from: entry)
+                    entrySaved.send(notification)
+                }
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to get latest entry: \(error.localizedDescription)")
             }
-        } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to get latest entry: \(error.localizedDescription)")
+        }
+
+        // MA-3886: forward each newly-created entry to active health integrations
+        // (e.g., Apple Health). Without this, Wi-Fi/R4 entries arriving via push-triggered
+        // remote sync never reach HealthKit because the scale uploads to the server, not the phone.
+        for op in newlyCreatedOps {
+            let notification = EntryNotification(from: op)
+            do {
+                try await integrationService.syncNewEntry(notification: notification)
+            } catch {
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Failed to sync remote-merged entry to integrations: timestamp=\(notification.entryTimestamp), error=\(error.localizedDescription)"
+                )
+            }
         }
         return hadNewCreates
     }
@@ -1408,6 +1433,33 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         return vals.isEmpty ? nil : vals.reduce(0, +) / Double(vals.count)
     }
 
+    /// MA-3937 helper: walks `entries` (already sorted latest-first) and returns the first
+    /// non-nil, > 0 value picked from each entry. Preserves the prior "treat 0 as missing" rule.
+    private nonisolated func latestPositive<T: BinaryInteger>(
+        _ entries: [Entry],
+        pick: (Entry) -> T?
+    ) -> Double? {
+        for entry in entries {
+            if let value = pick(entry), value > 0 {
+                return Double(value)
+            }
+        }
+        return nil
+    }
+
+    /// MA-3937 helper: DTO variant of `latestPositive` used by background aggregation.
+    private nonisolated func latestPositiveDTO(
+        _ dtos: [BathScaleOperationDTO],
+        pick: (BathScaleOperationDTO) -> Double?
+    ) -> Double? {
+        for dto in dtos {
+            if let value = pick(dto), value > 0 {
+                return value
+            }
+        }
+        return nil
+    }
+
     /// Helper function for weight: average stored values (tenths of lbs) without rounding early.
     private nonisolated func avgWeight(_ values: [Int]) -> Double {
         guard !values.isEmpty else { return 0 }
@@ -1416,12 +1468,28 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         return Double(filtered.reduce(0, +)) / Double(filtered.count)
     }
 
-    /// Aggregate entries by day, returning BathScaleWeightSummary for each day
+    /// Aggregate entries by day, returning BathScaleWeightSummary for each day.
+    ///
+    /// MA-3937: hybrid rule — the *most recent day with valid entries* surfaces its latest
+    /// non-null-positive values per metric (so the dashboard headline reflects the actual most
+    /// recent weigh-in). Every other day reverts to the prior daily-average behaviour.
+    // swiftlint:disable:next function_body_length
     func aggregateByDay(entries: [Entry], accountId: String) -> [BathScaleWeightSummary?] {
         // Group entries by day (YYYY-MM-DD), converting UTC to local timezone
         let grouped = Dictionary(grouping: entries) { entry -> String in
             return DateTimeTools.getLocalDateStringFromUTCDate(entry.entryTimestamp)
         }
+
+        // Identify the most recent day that actually has a valid weight entry. Lexicographic max
+        // of YYYY-MM-DD strings == chronological max. Skipping days with no valid weight ensures a
+        // day made entirely of weight=0 entries doesn't "steal" the latest-day slot from the
+        // genuinely most recent day with real data.
+        let latestValidDayKey: String = grouped
+            .filter { _, dayEntries in
+                dayEntries.contains { ($0.scaleEntry?.weight ?? 0) > 0 }
+            }
+            .keys
+            .max() ?? ""
 
         return grouped.compactMap { day, dayEntries -> BathScaleWeightSummary? in
             // Filter entries that have valid weight data from scaleEntry
@@ -1436,9 +1504,37 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             // Ensure we have a valid date string before parsing
             guard !day.isEmpty else { return nil }
             let date = DateTimeTools.getDateFromDateString(day, format: "yyyy-MM-dd")
-            let latestTimestamp = validEntries.map { $0.entryTimestamp }.max() ?? ""
             let count = validEntries.count
 
+            if day == latestValidDayKey {
+                // MA-3937 latest-day branch: surface the latest entry's values, with per-metric
+                // fallback to the most recent non-null-positive reading across the day.
+                let sortedDesc = validEntries.sorted { $0.entryTimestamp > $1.entryTimestamp }
+                return BathScaleWeightSummary(
+                    accountId: accountId,
+                    period: day,
+                    entryTimestamp: sortedDesc.first?.entryTimestamp ?? "",
+                    date: date,
+                    count: count,
+                    weight: Double(sortedDesc.first?.scaleEntry?.weight ?? 0),
+                    bodyFat: latestPositive(sortedDesc) { $0.scaleEntry?.bodyFat },
+                    muscleMass: latestPositive(sortedDesc) { $0.scaleEntry?.muscleMass },
+                    water: latestPositive(sortedDesc) { $0.scaleEntry?.water },
+                    bmi: latestPositive(sortedDesc) { $0.scaleEntry?.bmi },
+                    bmr: latestPositive(sortedDesc) { $0.scaleEntryMetric?.bmr },
+                    metabolicAge: latestPositive(sortedDesc) { $0.scaleEntryMetric?.metabolicAge },
+                    proteinPercent: latestPositive(sortedDesc) { $0.scaleEntryMetric?.proteinPercent },
+                    pulse: latestPositive(sortedDesc) { $0.scaleEntryMetric?.pulse },
+                    skeletalMusclePercent: latestPositive(sortedDesc) { $0.scaleEntryMetric?.skeletalMusclePercent },
+                    subcutaneousFatPercent: latestPositive(sortedDesc) { $0.scaleEntryMetric?.subcutaneousFatPercent },
+                    visceralFatLevel: latestPositive(sortedDesc) { $0.scaleEntryMetric?.visceralFatLevel },
+                    boneMass: latestPositive(sortedDesc) { $0.scaleEntryMetric?.boneMass },
+                    impedance: latestPositive(sortedDesc) { $0.scaleEntryMetric?.impedance }
+                )
+            }
+
+            // Daily-average branch — used for every day except the most recent.
+            let latestTimestamp = validEntries.map { $0.entryTimestamp }.max() ?? ""
             return BathScaleWeightSummary(
                 accountId: accountId,
                 period: day,
@@ -1515,24 +1611,56 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     // MARK: - DTO-based Aggregation (Background Thread Safe)
 
-    /// Aggregate DTOs by day on background thread - avoids SwiftData relationship access
+    /// Aggregate DTOs by day on background thread - avoids SwiftData relationship access.
+    ///
+    /// MA-3937 hybrid rule: the most recent day with valid weight surfaces its latest-non-null-positive
+    /// metrics (latest weigh-in), while every other day keeps the daily-average behaviour via the
+    /// `EntrySummaryBucket` accumulator.
+    // swiftlint:disable:next function_body_length
     private nonisolated func aggregateByDayFromDTOs(_ dtos: [BathScaleOperationDTO], accountId: String) -> [BathScaleWeightSummary] {
-        var grouped: [String: EntrySummaryBucket] = [:]
-        grouped.reserveCapacity(dtos.count)
+        var groupedDTOs: [String: [BathScaleOperationDTO]] = [:]
+        groupedDTOs.reserveCapacity(dtos.count)
 
         for dto in dtos {
             guard let ts = dto.entryTimestamp else { continue }
             let day = DateTimeTools.getLocalDateStringFromUTCDate(ts)
             guard !day.isEmpty else { continue }
             guard (dto.weight ?? 0) > 0 else { continue }
-
-            var bucket = grouped[day] ?? EntrySummaryBucket(accountId: accountId, period: day)
-            bucket.add(dto: dto)
-            grouped[day] = bucket
+            groupedDTOs[day, default: []].append(dto)
         }
 
-        return grouped.values.compactMap { bucket in
-            let date = DateTimeTools.getDateFromDateString(bucket.period, format: "yyyy-MM-dd")
+        let latestValidDayKey: String = groupedDTOs.keys.max() ?? ""
+
+        return groupedDTOs.compactMap { day, dayDTOs -> BathScaleWeightSummary? in
+            let date = DateTimeTools.getDateFromDateString(day, format: "yyyy-MM-dd")
+
+            if day == latestValidDayKey {
+                let sortedDesc = dayDTOs.sorted { ($0.entryTimestamp ?? "") > ($1.entryTimestamp ?? "") }
+                return BathScaleWeightSummary(
+                    accountId: accountId,
+                    period: day,
+                    entryTimestamp: sortedDesc.first?.entryTimestamp ?? "",
+                    date: date,
+                    count: sortedDesc.count,
+                    weight: sortedDesc.first?.weight ?? 0,
+                    bodyFat: latestPositiveDTO(sortedDesc) { $0.bodyFat },
+                    muscleMass: latestPositiveDTO(sortedDesc) { $0.muscleMass },
+                    water: latestPositiveDTO(sortedDesc) { $0.water },
+                    bmi: latestPositiveDTO(sortedDesc) { $0.bmi },
+                    bmr: latestPositiveDTO(sortedDesc) { $0.bmr },
+                    metabolicAge: latestPositiveDTO(sortedDesc) { $0.metabolicAge },
+                    proteinPercent: latestPositiveDTO(sortedDesc) { $0.proteinPercent },
+                    pulse: latestPositiveDTO(sortedDesc) { $0.pulse },
+                    skeletalMusclePercent: latestPositiveDTO(sortedDesc) { $0.skeletalMusclePercent },
+                    subcutaneousFatPercent: latestPositiveDTO(sortedDesc) { $0.subcutaneousFatPercent },
+                    visceralFatLevel: latestPositiveDTO(sortedDesc) { $0.visceralFatLevel },
+                    boneMass: latestPositiveDTO(sortedDesc) { $0.boneMass },
+                    impedance: latestPositiveDTO(sortedDesc) { $0.impedance }
+                )
+            }
+
+            var bucket = EntrySummaryBucket(accountId: accountId, period: day)
+            for dto in dayDTOs { bucket.add(dto: dto) }
             return BathScaleWeightSummary(
                 accountId: accountId,
                 period: bucket.period,

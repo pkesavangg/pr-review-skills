@@ -118,6 +118,17 @@ struct SettingsScreen: View {
                 settingsStore.updateActivityLevel(level)
             }
         }
+        .pickerSheet(
+            isPresented: $settingsStore.showDefaultGraphPeriodPicker,
+            selectedValues: [settingsStore.defaultGraphPeriod],
+            options: [TimePeriod.allCases],
+            displayValue: { $0.title },
+            title: settingsLang.defaultGraphView
+        ) { vals in
+            if let period = vals.first {
+                settingsStore.updateDefaultGraphPeriod(period)
+            }
+        }
     }
 
     private func profileHeader() -> some View {
@@ -149,6 +160,7 @@ struct SettingsScreen: View {
                 router.navigate(to: .editProfile)
             })
             .listRowInsets()
+            .accessibilityIdentifier(AccessibilityID.settingsRowUserProfile)
             if settingsStore.shouldShowMyKids {
                 ActionListItemView(config: ActionListItemConfig(title: settingsLang.myKids) {
                     router.navigate(to: .myKids)
@@ -157,16 +169,19 @@ struct SettingsScreen: View {
             }
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.addEditScales) { router.navigate(to: .addEditScales) })
             .listRowInsets()
+            .accessibilityIdentifier(AccessibilityID.accountSettingsAddScalesRow)
             if settingsStore.shouldShowIntegrations {
                 ActionListItemView(config: ActionListItemConfig(title: settingsLang.integrations) {
                     router.navigate(to: .integrations)
                 })
                 .listRowInsets()
+                .accessibilityIdentifier(AccessibilityID.accountSettingsIntegrationsRow)
             }
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.changePassword) {
                 router.navigate(to: .changePassword)
             })
             .listRowInsets()
+            .accessibilityIdentifier(AccessibilityID.accountSettingsChangePasswordRow)
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
@@ -198,6 +213,11 @@ struct SettingsScreen: View {
                 value: settingsStore.appearanceModeText,
                 chevronType: .upDown) { settingsStore.presentAppearancePicker() })
             .listRowInsets()
+            ActionListItemView(config: ActionListItemConfig(
+                title: settingsLang.defaultGraphView,
+                value: settingsStore.defaultGraphPeriodText,
+                chevronType: .upDown) { settingsStore.presentDefaultGraphPeriodPicker() })
+            .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
@@ -215,17 +235,20 @@ struct SettingsScreen: View {
                     router.navigate(to: .goal)
                 })
             .listRowInsets()
+            .accessibilityIdentifier(AccessibilityID.settingsRowGoalSetting)
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.activityLevel,
                 value: settingsStore.activityLevelText,
                 chevronType: .upDown) { settingsStore.presentActivityPicker() })
             .listRowInsets()
+            .accessibilityIdentifier(AccessibilityID.settingsRowActivityLevel)
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.weightless,
                 value: settingsStore.weightlessText) {
                     router.navigate(to: .weightless)
                 })
             .listRowInsets()
+            .accessibilityIdentifier(AccessibilityID.settingsRowWeightless)
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
@@ -283,6 +306,7 @@ struct SettingsScreen: View {
                     settingsStore.handleLogout()
                 })
             .listRowInsets()
+            .accessibilityIdentifier(AccessibilityID.settingsRowLogOut)
 
             if settingsStore.canShowLogOutAllItems {
                 ActionListItemView(config: ActionListItemConfig(

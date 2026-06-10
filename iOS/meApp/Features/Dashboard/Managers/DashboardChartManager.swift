@@ -332,6 +332,23 @@ final class DashboardChartManager: DashboardChartManaging {
         }
     }
 
+    /// MA-3837: cold-start / first-appear auto-selection of the latest entry for the current
+    /// period, without the full period-switch reset. No-op if a selection already exists, so it
+    /// won't override a user's manual selection. The freshly-mounted BaseGraphView syncs the
+    /// resulting store selection onto the active section view model.
+    @MainActor
+    func selectLatestEntryIfNeeded() {
+        guard let stateProvider else { return }
+        guard stateProvider.state.graph.validatedSelection == nil else { return }
+        let period = stateProvider.state.graph.selectedPeriod
+        let operations = dataManager.getContinuousOperations(for: period)
+        guard let latestDate = operations.max(by: { $0.date < $1.date })?.date else { return }
+        graphManager.applyChartSelectionSync(at: latestDate, operations: operations)
+        stateProvider.state.ui.hasLandedInitialSelection = true
+        displayManager?.updateMetricsForCurrentView()
+        stateProvider.scheduleUIUpdate()
+    }
+
     func updateSelectedPeriod(_ period: TimePeriod, anchorDate: Date? = nil) {
         guard let stateProvider else { return }
 
@@ -377,9 +394,17 @@ final class DashboardChartManager: DashboardChartManaging {
             }
         }
 
-        if period == .total {
-            displayManager?.updateMetricsForCurrentView()
+        // MA-3837: reset the chart to the latest entry on a period/tab switch and auto-select
+        // it so the header tile shows its value/date immediately. Apply synchronously so the
+        // store carries the new selection (selectedXValue, selectedPoint, showCrosshair) BEFORE
+        // selectedPeriod is observed by the view layer — the new BaseGraphView mount's
+        // sync-from-store path then lands the crosshair on first render rather than fighting the
+        // chartIdentity remount + section-VM geometry guards from an async tail.
+        if let latestDateForNewPeriod = operationsForNewPeriod.max(by: { $0.date < $1.date })?.date {
+            graphManager.applyChartSelectionSync(at: latestDateForNewPeriod, operations: operationsForNewPeriod)
+            stateProvider.state.ui.hasLandedInitialSelection = true
         }
+        displayManager?.updateMetricsForCurrentView()
     }
 
     // MARK: - View Updates

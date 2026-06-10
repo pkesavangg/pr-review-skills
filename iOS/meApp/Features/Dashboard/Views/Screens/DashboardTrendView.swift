@@ -9,7 +9,7 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
     @ObservedObject var dashboardStore: DashboardStore
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
     @Environment(\.appTheme) private var theme
-    @State private var localSelectedPeriod: TimePeriod = .week
+    @State private var localSelectedPeriod: TimePeriod = DefaultGraphPeriodPreference.fallback
 
     private let topContent: () -> TopContent
     private let chartFooter: () -> ChartFooter
@@ -56,7 +56,10 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
                 chartFooter()
                 SegmentedButtonView(
                     segments: TimePeriod.allCases,
-                    selectedSegment: $localSelectedPeriod
+                    // MA-3839: scale all period tabs (Week/Month/Year/Total) to one shared
+                    // font size so they stay uniform and don't truncate under Dynamic Type.
+                    selectedSegment: $localSelectedPeriod,
+                    useUniformFontScaling: true
                 )
                 .padding(.vertical, .spacingSM)
                 .padding(.horizontal, 15)
@@ -77,18 +80,15 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
                 localSelectedPeriod = newValue
             }
         }
-        .onChange(of: localSelectedPeriod) { oldValue, newValue in
+        .onChange(of: localSelectedPeriod) { _, newValue in
             guard newValue != dashboardStore.state.graph.selectedPeriod else { return }
-            let anchorDate: Date?
-            if oldValue == .total {
-                anchorDate = nil
-            } else {
-                anchorDate = dashboardStore.graphManager.visibleMidpoint(for: oldValue)
-            }
-            // Dispatch outside the current animation transaction so the segment
-            // button highlight animates without being blocked by chart recalculation.
+            // MA-3837: reset to the latest entry on a period switch (anchorDate = nil →
+            // showingLatest) instead of anchoring to the previous view's visible midpoint,
+            // so the chart and selection land on the most recent reading.
+            // Dispatch outside the current animation transaction so the segment button
+            // highlight animates without being blocked by chart recalculation.
             Task { @MainActor in
-                dashboardStore.chartManager.updateSelectedPeriod(newValue, anchorDate: anchorDate)
+                dashboardStore.chartManager.updateSelectedPeriod(newValue)
             }
         }
     }

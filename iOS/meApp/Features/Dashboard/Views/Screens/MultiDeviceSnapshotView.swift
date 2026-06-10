@@ -64,10 +64,12 @@ struct MultiDeviceSnapshotView: View {
             WeightSnapshotCard(summaries: viewModel.dailySummaries) {
                 onSelectItem(item)
             }
+            .accessibilityIdentifier(AccessibilityID.weightCard)
         case .myBloodPressure:
             BpmSnapshotCard(summaries: viewModel.bpmDailySummaries) {
                 onSelectItem(item)
             }
+            .accessibilityIdentifier(AccessibilityID.bpCard)
         case .baby(let profile):
             BabySnapshotCard(
                 babyProfile: profile,

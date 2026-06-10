@@ -114,9 +114,12 @@ final class EntryStore: ObservableObject {
         isBmiAutoCalculationEnabled = true
     }
 
-    // Save entry with gating, no artificial sleeps, and minimal main-thread churn.
-    func saveEntry() async { // swiftlint:disable:this function_body_length
-        guard !isSaving else { return }
+    /// Save entry with gating, no artificial sleeps, and minimal main-thread churn.
+    /// Returns `true` only when the entry was persisted successfully; callers should
+    /// gate post-save navigation on this result.
+    @discardableResult
+    func saveEntry() async -> Bool { // swiftlint:disable:this function_body_length
+        guard !isSaving else { return false }
         isSaving = true
         notificationService.showLoader(LoaderModel(text: loaderLang.savingEntry))
         defer {
@@ -127,7 +130,7 @@ final class EntryStore: ObservableObject {
         // Ensure valid time relative to selected date
         clampTimeForSelectedDate()
 
-        guard manualEntryForm.isValid else { return }
+        guard manualEntryForm.isValid else { return false }
 
         let entryTimestamp = DateTimeTools.isoString(
             date: manualEntryForm.date.value,
@@ -156,7 +159,7 @@ final class EntryStore: ObservableObject {
         let visceralFat     = toTenths(manualEntryForm.visceralFat.value)
         let unit            = weightUnit == .kg ? WeightUnit.kg.rawValue : WeightUnit.lb.rawValue
 
-        guard let accountId = accountService.activeAccount?.accountId else { return }
+        guard let accountId = accountService.activeAccount?.accountId else { return false }
 
         let scaleEntry = BathScaleEntry(
             weight: weightStored,
@@ -204,6 +207,7 @@ final class EntryStore: ObservableObject {
                 message: "Failed to save manual entry. accountId=\(accountId), timestamp=\(entryTimestamp), error=\(error.localizedDescription)"
             )
             notificationService.showToast(ToastModel(title: toastLang.errorSavingEntry, message: toastLang.pleaseTryAgain))
+            return false
         }
     }
 

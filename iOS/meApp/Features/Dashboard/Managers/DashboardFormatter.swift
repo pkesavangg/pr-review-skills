@@ -74,28 +74,30 @@ final class DashboardFormatter: DashboardFormatterProtocol {
         period: TimePeriod,
         selectedPointDate: Date?,
         crosshairDate: Date?,
+        isLatestDaySelected: Bool,
         weightLabel: String
     ) -> String {
-        if let entryDate = entryDate {
-            let prefix = isFromHistory ? "Measurement taken" : "day average"
-            // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call
-            let format = isFromHistory ? "MMMM d, yyyy" : "MMM d, yyyy"
-            let dateText = DateTimeTools.formatter(format).string(from: entryDate)
-            return isFromHistory ? "\(prefix) \(dateText)" : composeMetricInfoLabel(prefix: prefix, dateText: dateText)
+        // History entries always carry their own date with the "Measurement taken"
+        // prefix. For dashboard (non-history) entries the label must mirror the trend-view
+        // header — driven by graph selection state below, not by the DTO's entryDate (which is
+        // just the latest stored entry used to fill metric values when nothing is selected).
+        if isFromHistory, let entryDate = entryDate {
+            let dateText = DateTimeTools.formatter("MMMM d, yyyy").string(from: entryDate)
+            return "Measurement taken \(dateText)"
         }
-        
+
         if let selectedPointDate = selectedPointDate {
-            let prefix = selectionPrefix(for: period)
+            let prefix = selectionPrefix(for: period, isLatestDaySelected: isLatestDaySelected)
             let dateText = formatMetricInfoSingleDate(selectedPointDate, period: period)
             return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
         }
-        
+
         if let crosshairDate = crosshairDate {
-            let prefix = selectionPrefix(for: period)
+            let prefix = selectionPrefix(for: period, isLatestDaySelected: isLatestDaySelected)
             let dateText = formatMetricInfoSingleDate(crosshairDate, period: period)
             return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
         }
-        
+
         let prefix = "\(period.rawValue) average"
         let dateText = weightLabel // already computed from visible region
         return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
@@ -146,12 +148,19 @@ final class DashboardFormatter: DashboardFormatterProtocol {
     // MARK: - Helper Methods
     
     func composeMetricInfoLabel(prefix: String, dateText: String) -> String {
-        return "\(prefix) \(dateText)".lowercased()
+        // MA-3937: prefix may be empty (Week/Month selection) — trim so we don't render a leading space.
+        return "\(prefix) \(dateText)"
+            .trimmingCharacters(in: .whitespaces)
+            .lowercased()
     }
     
-    func selectionPrefix(for period: TimePeriod) -> String {
+    /// The hybrid "latest entry" vs "day average" rule for a selected point/crosshair.
+    /// - Week/Month: a day can hold several weigh-ins, so a past day shows "day average";
+    ///   the most recent day with data shows "latest entry" (driven by `isLatestDaySelected`).
+    /// - Year/Total: each plotted point genuinely is a monthly average, so always "month average".
+    func selectionPrefix(for period: TimePeriod, isLatestDaySelected: Bool) -> String {
         switch period {
-        case .week, .month: return "day average"
+        case .week, .month: return isLatestDaySelected ? "latest entry" : "day average"
         case .year, .total: return "month average"
         }
     }

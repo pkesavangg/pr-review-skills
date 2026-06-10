@@ -42,6 +42,25 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
     private let goalChipTrailingPadding: CGFloat = 20
     private let babyChartContainerHeight: CGFloat = 498
 
+    /// MA-3837/MA-3977: snapshot of the store's selection used to drive an `.onChange` that
+    /// re-syncs the section view model whenever the store selection changes (e.g. the
+    /// auto-selection applied on a period switch).
+    private struct StoreSelectionSyncState: Equatable {
+        let selectedPointDate: Date?
+        let selectedPointTimestamp: String?
+        let selectedXValue: Date?
+        let showCrosshair: Bool
+    }
+
+    private var storeSelectionSyncState: StoreSelectionSyncState {
+        StoreSelectionSyncState(
+            selectedPointDate: dashboardStore.state.graph.selectedPoint?.date,
+            selectedPointTimestamp: dashboardStore.state.graph.selectedPoint?.entryTimestamp,
+            selectedXValue: dashboardStore.state.graph.selectedXValue,
+            showCrosshair: dashboardStore.state.graph.showCrosshair
+        )
+    }
+
     var body: some View {
         #if DEBUG
             Self._logChanges()
@@ -89,6 +108,11 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         .onChange(of: viewModel.yAxisDomain) { oldDomain, newDomain in
             handleYAxisDomainChange(oldDomain, newDomain)
         }
+        .onChange(of: storeSelectionSyncState) { _, _ in
+            // MA-3837/MA-3977: re-apply the store's selection to the section VM whenever it
+            // changes (e.g. the auto-select on a period switch), so the crosshair tracks it.
+            syncViewModelSelectionFromStore()
+        }
         .graphViewStyle(
             canAddPadding: !viewModel.hasXAxis,
             canAddTrailingPadding: selectedBabyProfile == nil && viewModel.hasChartOperations,
@@ -102,6 +126,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         refreshCachedChartData()
         refreshLabelCache()
         Task { @MainActor in enableYAxisAnimation = true }
+        // MA-3837/MA-3977: on mount (incl. the chart remount after a tab switch), adopt the
+        // store's current selection so the auto-selected latest point renders on first frame.
+        syncViewModelSelectionFromStore()
 
         guard isScrollable else { return }
         Task { @MainActor in
@@ -116,6 +143,21 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
     private func handleOnDisappear() {
         cacheUpdateTask?.cancel()
         cacheUpdateTask = nil
+    }
+
+    /// MA-3837/MA-3977: mirror the store's validated selection into the section view model.
+    /// Routes through `GraphState.validatedSelection` + `applyStoreValidatedSelection` so the
+    /// on-mount sync and the `.onChange(storeSelectionSyncState)` path read the store-side
+    /// selection through the same shape, bypassing the user-input snap/range guards that can
+    /// otherwise clear a valid programmatic selection on the first frame after a tab switch.
+    private func syncViewModelSelectionFromStore() {
+        guard let selection = dashboardStore.state.graph.validatedSelection else {
+            localSelectedXValue = nil
+            viewModel.clearSelection()
+            return
+        }
+        localSelectedXValue = selection.date
+        viewModel.applyStoreValidatedSelection(date: selection.date, point: selection.point)
     }
 
     private func handleScrollStateChange(_ oldValue: Bool, _ newValue: Bool) {

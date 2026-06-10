@@ -218,6 +218,7 @@ class BottomTabBarViewModel: ObservableObject {
             await self.checkAppleHealthIntegrationStatus()
             if self.selectedTab == .dash {
                 await self.checkSetGoalCardPrompt()
+                self.checkGraphScrollHintPrompt()
             }
             self.evaluateAndShowPermissionAlert()
             let notificationsRequired = self.permissionsService.requiredCategories.contains(.notifications)
@@ -234,6 +235,7 @@ class BottomTabBarViewModel: ObservableObject {
                 if tab == .dash {
                     Task { [weak self] in
                         await self?.checkSetGoalCardPrompt()
+                        await MainActor.run { self?.checkGraphScrollHintPrompt() }
                     }
                 }
             }
@@ -876,7 +878,7 @@ class BottomTabBarViewModel: ObservableObject {
         }
 
         if count > 1 { isReplacingBabyCard = true }
-        logger.log(level: .info, tag: tag, message: "Showing baby reading arrival card. count=\(count), weight=\(weightString)")
+        logger.log(level: .info, tag: tag, message: "Showing baby reading arrival card. count=\(count)")
         notificationService.showToast(toast)
     }
 
@@ -1156,7 +1158,7 @@ class BottomTabBarViewModel: ObservableObject {
         }
 
         if count > 1 { isReplacingBtWeightCard = true }
-        logger.log(level: .info, tag: tag, message: "Showing weight reading arrival card. count=\(count), weight=\(weightString)")
+        logger.log(level: .info, tag: tag, message: "Showing weight reading arrival card. count=\(count)")
         notificationService.showToast(toast)
     }
 
@@ -1300,7 +1302,7 @@ class BottomTabBarViewModel: ObservableObject {
         )
 
         if count > 1 { isReplacingWifiWeightCard = true }
-        logger.log(level: .info, tag: tag, message: "Showing Wi-Fi weight reading card. count=\(count), weight=\(weightString)")
+        logger.log(level: .info, tag: tag, message: "Showing Wi-Fi weight reading card. count=\(count)")
         notificationService.showToast(toast)
     }
 
@@ -1464,6 +1466,35 @@ class BottomTabBarViewModel: ObservableObject {
             self.logger.log(level: .info, tag: self.tag, message: "Presenting Set-a-Goal modal card from bottom tabs")
             self.notificationService.showModal(modalData)
         }
+    }
+
+    // MARK: - Graph Scroll Hint Prompt (MA-3925 / MA-3984)
+
+    /// Shows the *Scrollable Graph* first-time discoverability modal once per
+    /// account. Skips when an account is missing, the user is off the Dashboard
+    /// tab, or the per-user flag is already set in local storage.
+    private func checkGraphScrollHintPrompt() {
+        guard !hasShownGraphScrollHintThisSession else { return }
+        guard selectedTab == .dash else { return }
+        guard let account = accountService.activeAccount else { return }
+
+        let key = KvStorageKeys.graphScrollHintViewedKey(for: account.accountId)
+        if (KvStorageService.shared.getValue(forKey: key) as? Bool) == true {
+            return
+        }
+
+        KvStorageService.shared.setValue(true, forKey: key)
+        hasShownGraphScrollHintThisSession = true
+
+        presentGraphScrollHintModal()
+    }
+
+    private func presentGraphScrollHintModal() {
+        let modalView = GraphScrollHintModalView { [weak notificationService] in
+            notificationService?.dismissModal()
+        }
+        logger.log(level: .info, tag: tag, message: "Presenting Scrollable-Graph hint modal")
+        notificationService.showModal(ModalData(presentedView: AnyView(modalView), backdropDismiss: true))
     }
 
     // MARK: - Apple Health Permission Observer
