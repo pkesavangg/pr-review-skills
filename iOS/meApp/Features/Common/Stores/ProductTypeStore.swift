@@ -164,11 +164,19 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
 
     private func restorePersistedSelection(for accountId: String) {
         guard restoredForAccountId != accountId else { return }
-        restoredForAccountId = accountId
 
         let key = KvStorageKeys.selectedProductTypeKey(for: accountId)
-        guard let savedId = kvStorage.getValue(forKey: key) as? String,
-            let match = availableItems.first(where: { $0.id == savedId }) else { return }
+        guard let savedId = kvStorage.getValue(forKey: key) as? String else {
+            // No persisted selection — mark done so we don't retry on every rebuild.
+            restoredForAccountId = accountId
+            return
+        }
+        // The saved item may not yet be in availableItems (e.g. babies still loading).
+        // Don't set restoredForAccountId here — leave it unset so rebuild() retries
+        // after the next Combine update populates availableItems with the missing item.
+        guard let match = availableItems.first(where: { $0.id == savedId }) else { return }
+
+        restoredForAccountId = accountId
         selectedItem = match
     }
 
@@ -371,8 +379,15 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
             restorePersistedSelection(for: accountId)
         }
 
-        // If the current selection is no longer valid, fall back to the first item
-        if !items.contains(selectedItem) {
+        // Validate the current selection against the new availableItems.
+        // Use ID-based lookup rather than full equality so that profile-data updates
+        // (e.g. a baby's name or birthday changing) don't silently drop the selection.
+        if let refreshed = items.first(where: { $0.id == selectedItem.id }) {
+            // Keep the same logical selection but use the freshest profile data.
+            if refreshed != selectedItem { selectedItem = refreshed }
+        } else {
+            // The selected product is no longer available — default to the first item,
+            // which respects the Weight → BPM → Baby hierarchy encoded in items order.
             selectedItem = items[0]
         }
     }

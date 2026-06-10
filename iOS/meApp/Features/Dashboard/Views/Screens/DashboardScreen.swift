@@ -186,7 +186,7 @@ struct DashboardScreen: View {
             ProductTypeSelectorSheet(
                 store: store.productTypeSelectorStore,
                 isPresented: $isProductTypeSelectorPresented,
-                title: ProductTypeStrings.myDashboard
+                title: DashboardStrings.selectGraph
             )
         }
         .zIndex(100)

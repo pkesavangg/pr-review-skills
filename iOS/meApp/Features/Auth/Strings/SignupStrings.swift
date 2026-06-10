@@ -30,6 +30,7 @@ struct SignupStrings {
         static let title = "How tall are you?"
         static let subtitle = "Height is another factor that helps us provide you with the most accurate metrics."
         static let pickerHeader = "Height"
+        static let fieldLabel = "Height"
         static let imperialUnit = "Ft / In"
         static let metricUnit = "CM"
     }
@@ -55,7 +56,6 @@ struct SignupStrings {
         static let bpmSubtitle = "BP trends & reminders"
         static let weightScaleSubtitle = "BMI & weight insights"
         static let alreadyAdded = "already added to your profile"
-        static let supportingNote = "Don't worry — you can always add more devices later from Settings."
     }
 
     struct AddBabyStep {

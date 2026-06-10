@@ -19,8 +19,6 @@ struct SettingsStrings {
     static let changePassword = "Change Password"
     static let userProfile = "User Profile"
 
-    // Weight Scale Settings
-    static let weightScaleSettings = "Weight Scale"
     /// Product-scoped section shown only when a Weight Scale is paired (MOB-417).
     static let myWeight = "My Weight"
 

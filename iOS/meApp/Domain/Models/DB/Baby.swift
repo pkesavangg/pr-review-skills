@@ -14,7 +14,7 @@
 /// | deviceId          | string? | FK to the linked baby scale Device (optional)  |
 /// | isSynced          | bool    | Whether this record is synced to the server    |
 /// | birthday          | date?   | Baby's date of birth                           |
-/// | biologicalSex     | string? | "male" / "female"                              |
+/// | biologicalSex     | string? | "male" / "female" / "private"                  |
 /// | birthLengthInches | double? | Birth length in inches                         |
 /// | birthWeightLbs    | double? | Birth weight pounds component                  |
 /// | birthWeightOz     | double? | Birth weight ounces component                  |
