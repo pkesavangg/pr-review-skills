@@ -16,7 +16,7 @@ Both commands:
 - Apply aldefy's [`compose-expert`](https://github.com/aldefy/compose-skill) rules (vendored under [references/vendored/compose-expert/](references/vendored/compose-expert/), MIT licensed) for Compose quality, then add project-tuned Compose rules from [references/compose/](references/compose/).
 - Tag findings `P0` / `P1` / `P2` / `Nit`.
 
-`/review-pr` adds: re-review mode (walks prior priority comments, decides resolved / accepted / partial / still open, replies on the thread; reviews any new code added since the previous pass; posts a top-level summary). Never auto-approves.
+`/review-pr` adds: re-review mode (walks prior priority comments, decides resolved / accepted / partial / still open, replies on the thread; reviews any new code added since the previous pass; posts a top-level summary). Auto-approves (`gh pr review --approve`) only when the PR is genuinely clean — zero findings on a first-review, or all prior findings resolved/accepted with verified tickets and no new findings on a re-review; otherwise posts `--comment`. Never `--request-changes`.
 
 `/review` adds: writes findings to a local Markdown report, offers an interactive "apply fixes" picker, applies fixes in-place via `Edit`. Never mutates git state — you `git add` deliberately. Has a `--staged --no-prompt` mode for opt-in pre-commit hooks.
 
