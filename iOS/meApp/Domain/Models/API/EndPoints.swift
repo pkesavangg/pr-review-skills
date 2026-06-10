@@ -37,6 +37,9 @@ enum Endpoint {
     case operations(startTimestamp: String?)
     case operationsR4(startTimestamp: String?)
     case submitOperation
+    case submitEntries
+    case entries(start: String?, cursor: String?, limit: Int?, category: String?, babyId: String?)
+    case entriesCSV(category: String?, babyId: String?, download: Bool?, utcOffset: Int?, entryType: String?)
     case operationsCSV(utcOffset: Int?, download: Bool?)
     case operationsR4CSV(utcOffset: Int?, download: Bool?)
     case flags
@@ -47,6 +50,11 @@ enum Endpoint {
     case pairedScale
     case pairedScaleId(String)
     case pairedScaleInfo(String)
+    case pairedDevice(deviceType: String?)
+    case pairedDeviceId(String)
+    case baby
+    case babyId(String)
+    case review
     case scaleR4Preference
     case integrationProvider(String) 
     case integrationHealthDevice(String) 
@@ -114,6 +122,53 @@ enum Endpoint {
             return URLRequest(url: url)
         case .submitOperation:
             return request(path: "/operation")
+        case .submitEntries:
+            return request(path: "/entries/")
+        case .entries(let start, let cursor, let limit, let category, let babyId):
+            // GET /v3/entries/ — sync mode (?start=) or cursor pagination (?cursor=&limit=),
+            // optionally scoped to a single product via ?category= and a single baby via
+            // ?babyId=. Omitted params fall back to server defaults (limit 20, all categories).
+            var components = URLComponents(string: "\(API.baseURL)/entries/")
+            var queryItems: [URLQueryItem] = []
+            if let start, !start.isEmpty {
+                queryItems.append(URLQueryItem(name: "start", value: start))
+            }
+            if let cursor, !cursor.isEmpty {
+                queryItems.append(URLQueryItem(name: "cursor", value: cursor))
+            }
+            if let limit {
+                queryItems.append(URLQueryItem(name: "limit", value: "\(limit)"))
+            }
+            if let category, !category.isEmpty {
+                queryItems.append(URLQueryItem(name: "category", value: category))
+            }
+            if let babyId, !babyId.isEmpty {
+                queryItems.append(URLQueryItem(name: "babyId", value: babyId))
+            }
+            components?.queryItems = queryItems.isEmpty ? nil : queryItems
+            guard let url = components?.url else { return nil }
+            return URLRequest(url: url)
+        case .entriesCSV(let category, let babyId, let download, let utcOffset, let entryType):
+            // GET /v3/entries/csv — unified export. download="true" streams a file,
+            // otherwise the server emails the report. utcOffset defaults to 0.
+            var components = URLComponents(string: "\(API.baseURL)/entries/csv")
+            var queryItems: [URLQueryItem] = []
+            if let category, !category.isEmpty {
+                queryItems.append(URLQueryItem(name: "category", value: category))
+            }
+            if let babyId, !babyId.isEmpty {
+                queryItems.append(URLQueryItem(name: "babyId", value: babyId))
+            }
+            if let download, download {
+                queryItems.append(URLQueryItem(name: "download", value: "true"))
+            }
+            queryItems.append(URLQueryItem(name: "utcOffset", value: "\(utcOffset ?? 0)"))
+            if let entryType, !entryType.isEmpty {
+                queryItems.append(URLQueryItem(name: "entryType", value: entryType))
+            }
+            components?.queryItems = queryItems
+            guard let url = components?.url else { return nil }
+            return URLRequest(url: url)
         case .operationsCSV(let utcOffset, let download):
                 return csvRequest(path: "/operation/csv/", utcOffset: utcOffset, download: download)
         case .operationsR4CSV(let utcOffset, let download):
@@ -137,6 +192,21 @@ enum Endpoint {
             return request(path: "/paired-scale/\(id)")
         case .pairedScaleInfo(let id):
             return request(path: "/paired-scale/\(id)/info")
+        case .pairedDevice(let deviceType):
+            var components = URLComponents(string: "\(API.baseURL)/paired-device/")
+            if let deviceType, !deviceType.isEmpty {
+                components?.queryItems = [URLQueryItem(name: "deviceType", value: deviceType)]
+            }
+            guard let url = components?.url else { return nil }
+            return URLRequest(url: url)
+        case .pairedDeviceId(let id):
+            return request(path: "/paired-device/\(id)")
+        case .baby:
+            return request(path: "/baby/")
+        case .babyId(let id):
+            return request(path: "/baby/\(id)")
+        case .review:
+            return request(path: "/review/")
         case .scaleR4Preference:
             return request(path: "/scale-r4/preference")
         case .integrationProvider(let provider):

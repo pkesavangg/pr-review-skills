@@ -105,3 +105,27 @@ enum EntrySummaryLoadResult {
     case cached(signature: Int)
     case computed(signature: Int, daily: [BathScaleWeightSummary], monthly: [BathScaleWeightSummary])
 }
+
+/// One page of remotely-read entries from the unified `GET /v3/entries/` cursor mode (MOB-385).
+///
+/// `nextCursor` is the `entryTimestamp` of the last row — pass it back as the next page's
+/// cursor. `hasMore` is `false` once the server has no further rows, so callers stop paging.
+struct EntriesPage: Equatable {
+    let entries: [BathScaleOperationDTO]
+    let nextCursor: String?
+    let hasMore: Bool
+
+    static let empty = EntriesPage(entries: [], nextCursor: nil, hasMore: false)
+}
+
+enum EntriesPagination {
+    /// Default page size for cursor pagination (matches the server default).
+    static let defaultLimit = 20
+    /// Maximum page size the server accepts.
+    static let maxLimit = 100
+
+    /// Clamps a requested page size into the server-accepted `1...maxLimit` range.
+    static func clamp(limit: Int) -> Int {
+        min(max(limit, 1), maxLimit)
+    }
+}

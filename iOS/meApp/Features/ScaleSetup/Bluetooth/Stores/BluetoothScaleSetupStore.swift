@@ -545,10 +545,13 @@ final class BluetoothScaleSetupStore: ObservableObject {
             )
             
             await self.scaleService.syncAllScalesWithRemote()
-            
+
             isScaleSaved = true
             LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully with ID: \(savedScale.id)")
-            
+
+            let newSelection: ProductSelection = scaleItem?.setupType == .bpm ? .myBloodPressure : .myWeight
+            ProductTypeStore.shared.selectLastAdded(newSelection)
+
             // Post notification that scale was added
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
         } catch {

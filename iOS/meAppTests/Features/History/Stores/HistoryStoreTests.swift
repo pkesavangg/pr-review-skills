@@ -498,4 +498,114 @@ struct HistoryStoreTests {
         _ = await waitUntil { entryService.getMonthsAllCalls == 1 }
         #expect(store.isEmptyState == true)
     }
+
+    // MARK: - Cursor Pagination (MOB-385)
+
+    private func makePageEntry(timestamp: String) -> BathScaleOperationDTO {
+        BathScaleOperationDTO(
+            accountId: "acct-1", bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
+            entryTimestamp: timestamp, entryType: EntryType.scale.rawValue, impedance: nil,
+            metabolicAge: nil, muscleMass: nil, operationType: "create", proteinPercent: nil,
+            pulse: nil, serverTimestamp: nil, skeletalMusclePercent: nil, source: nil,
+            subcutaneousFatPercent: nil, systolic: nil, diastolic: nil, meanArterial: nil,
+            unit: "lb", visceralFatLevel: nil, water: nil, weight: 1700
+        )
+    }
+
+    @Test("loadFirstPage: populates pagedEntries and hasMorePages from the first page")
+    func loadFirstPagePopulates() async {
+        let (store, entryService, _, _, _) = makeSUT()
+        entryService.fetchEntriesPageResults = [
+            EntriesPage(entries: [makePageEntry(timestamp: "2026-03-02T08:00:00Z")], nextCursor: "2026-03-01T08:00:00Z", hasMore: true)
+        ]
+
+        await store.loadFirstPage()
+
+        #expect(store.pagedEntries.count == 1)
+        #expect(store.hasMorePages == true)
+        #expect(store.isLoadingPage == false)
+        #expect(entryService.fetchEntriesPageCalls == 1)
+        #expect(entryService.lastFetchEntriesPageCursor == nil)
+    }
+
+    @Test("loadNextPage: appends the next page and forwards the cursor")
+    func loadNextPageAppends() async {
+        let (store, entryService, _, _, _) = makeSUT()
+        entryService.fetchEntriesPageResults = [
+            EntriesPage(entries: [makePageEntry(timestamp: "2026-03-02T08:00:00Z")], nextCursor: "2026-03-01T08:00:00Z", hasMore: true),
+            EntriesPage(entries: [makePageEntry(timestamp: "2026-03-01T08:00:00Z")], nextCursor: nil, hasMore: false)
+        ]
+
+        await store.loadFirstPage()
+        await store.loadNextPage()
+
+        #expect(store.pagedEntries.count == 2)
+        #expect(store.hasMorePages == false)
+        #expect(entryService.fetchEntriesPageCalls == 2)
+        #expect(entryService.lastFetchEntriesPageCursor == "2026-03-01T08:00:00Z")
+    }
+
+    @Test("loadNextPage: no-ops once the server reports no more pages")
+    func loadNextPageStopsWhenExhausted() async {
+        let (store, entryService, _, _, _) = makeSUT()
+        entryService.fetchEntriesPageResults = [
+            EntriesPage(entries: [makePageEntry(timestamp: "2026-03-02T08:00:00Z")], nextCursor: nil, hasMore: false)
+        ]
+
+        await store.loadFirstPage()
+        #expect(entryService.fetchEntriesPageCalls == 1)
+        #expect(store.hasMorePages == false)
+
+        // Further calls should not hit the service since there are no more pages.
+        await store.loadNextPage()
+        #expect(entryService.fetchEntriesPageCalls == 1)
+    }
+
+    @Test("loadFirstPage: resets accumulated state before reloading")
+    func loadFirstPageResets() async {
+        let (store, entryService, _, _, _) = makeSUT()
+        entryService.fetchEntriesPageResults = [
+            EntriesPage(entries: [makePageEntry(timestamp: "2026-03-02T08:00:00Z")], nextCursor: "c1", hasMore: true)
+        ]
+        await store.loadFirstPage()
+        #expect(store.pagedEntries.count == 1)
+
+        entryService.fetchEntriesPageResults = [
+            EntriesPage(entries: [makePageEntry(timestamp: "2026-04-01T08:00:00Z")], nextCursor: nil, hasMore: false)
+        ]
+        await store.loadFirstPage()
+        #expect(store.pagedEntries.count == 1)
+        #expect(store.hasMorePages == false)
+    }
+
+    @Test("loadNextPage: on error clears hasMorePages and logs")
+    func loadNextPageError() async {
+        let (store, entryService, _, _, logger) = makeSUT()
+        entryService.fetchEntriesPageError = HistoryStoreTestError.loadMonthsFailed
+
+        await store.loadFirstPage()
+
+        #expect(store.pagedEntries.isEmpty)
+        #expect(store.hasMorePages == false)
+        #expect(store.isLoadingPage == false)
+        #expect(logger.messages.contains { $0.contains("Failed to load entries page") })
+    }
+
+    @Test("loadNextPage: does not re-fetch when first page is empty with hasMore=false")
+    func loadNextPageDoesNotRefetchEmptyFirstPage() async {
+        let (store, entryService, _, _, _) = makeSUT()
+        entryService.fetchEntriesPageResults = [
+            EntriesPage(entries: [], nextCursor: nil, hasMore: false)
+        ]
+
+        await store.loadFirstPage()
+        #expect(entryService.fetchEntriesPageCalls == 1)
+        #expect(store.pagedEntries.isEmpty)
+        #expect(store.hasMorePages == false)
+
+        // A subsequent scroll-triggered call must not hit the network again.
+        await store.loadNextPage()
+        await store.loadNextPage()
+        #expect(entryService.fetchEntriesPageCalls == 1)
+    }
 }

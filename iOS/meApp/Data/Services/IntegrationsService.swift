@@ -301,6 +301,14 @@ final class IntegrationsService: IntegrationServiceProtocol {
     /// - Parameter notification: The EntryNotification containing extracted entry data.
     func logHealthEntry(notification: EntryNotification) async {
         do {
+            // MOB-384: the unified write path fires `entrySaved` for every category
+            // (weight, BP, baby), but the `/integrations/health/log` contract only
+            // carries weight fields. Skip non-weight entries cleanly until the contract
+            // is extended (spec open query Q5, blocked on backend).
+            guard notification.entryType == EntryType.scale.rawValue else {
+                return
+            }
+
             // Ensure the account has the HealthKit integration enabled
             guard let integrationInfo = try await getStoredIntegrationData(),
                   integrationInfo.type == .healthKit,

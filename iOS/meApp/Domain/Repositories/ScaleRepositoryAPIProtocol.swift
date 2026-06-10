@@ -34,4 +34,35 @@ protocol ScaleRepositoryAPIProtocol {
     /// Updates scale preference. (PATCH /scale-r4/preference)
     /// - Parameter preference: The R4ScalePreference to update.
     func patchScalePreference(_ preference: R4ScalePreferenceDTO) async throws
+
+    // MARK: - Unified Device API (Me App 2.0)
+
+    /// Fetches all paired devices for the current account. (GET /paired-device/)
+    /// - Parameter deviceType: Optional server `deviceType` filter (`weight_scale`/`baby_scale`/`bpm`).
+    ///   Pass `nil` to return every device type.
+    /// - Returns: An array of `PairedDeviceResponse`.
+    func listPairedDevices(deviceType: String?) async throws -> [PairedDeviceResponse]
+
+    /// Pairs a new device of any type. (POST /paired-device/)
+    /// - Parameter request: The unified device-pairing request.
+    /// - Returns: The created `PairedDeviceResponse`.
+    func createPairedDevice(_ request: PairedDeviceRequest) async throws -> PairedDeviceResponse
+
+    /// Updates a paired device (e.g. nickname). (PATCH /paired-device/:deviceId)
+    /// - Parameters:
+    ///   - deviceId: The ID of the device to update.
+    ///   - request: The fields to update.
+    /// - Returns: The updated `PairedDeviceResponse`.
+    func updatePairedDevice(_ deviceId: String, _ request: PairedDeviceUpdateRequest) async throws -> PairedDeviceResponse
+
+    /// Deletes a paired device. (DELETE /paired-device/:deviceId — 204 No Content)
+    /// - Parameter deviceId: The ID of the device to delete.
+    func deletePairedDevice(_ deviceId: String) async throws
+
+    // MARK: - Unified Review API (Me App 2.0)
+
+    /// Submits an app/scale/monitor review. (POST /review/ — 204 No Content)
+    /// Replaces the legacy `POST /review/app` and `POST /review/scale` endpoints.
+    /// - Parameter request: The unified review request.
+    func submitReview(_ request: ReviewRequest) async throws
 }

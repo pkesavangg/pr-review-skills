@@ -79,6 +79,7 @@ final class Entry {
             let resolvedEntryType = dto.entryType ?? EntryType.scale.rawValue
             self.entryType = resolvedEntryType
             self.isSynced = isSynced
+            self.note = dto.note
             self.scaleEntry = BathScaleEntry(from: dto)
             self.scaleEntryMetric = BathScaleMetric(from: dto)
 
@@ -158,7 +159,7 @@ final class Entry {
             pulse: dtoPulse,
             serverTimestamp: self.serverTimestamp,
             skeletalMusclePercent: self.scaleEntryMetric?.skeletalMusclePercent.map { Double($0) },
-            source: self.scaleEntry?.source,
+            source: self.babyEntry?.source ?? self.scaleEntry?.source,
             subcutaneousFatPercent: self.scaleEntryMetric?.subcutaneousFatPercent.map { Double($0) },
             systolic: dtoSystolic,
             diastolic: dtoDiastolic,

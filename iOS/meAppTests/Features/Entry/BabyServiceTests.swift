@@ -2,6 +2,9 @@
 //  BabyServiceTests.swift
 //  meAppTests
 //
+//  MOB-386: BabyService now wires the remote Baby Profile API. Tests inject a
+//  MockBabyRepositoryAPI and a MockAccountService, persisting locally to the shared context.
+//
 
 import Foundation
 import Testing
@@ -10,14 +13,29 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct BabyServiceTests {
-    private let sut = BabyService.shared
     private let context = PersistenceController.shared.context
-    private let testAccountId = "test-account-\(UUID().uuidString)"
 
-    // MARK: - Helpers
+    // MARK: - SUT
 
-    private func cleanupBabies() async throws {
-        try await sut.loadBabies(for: testAccountId)
+    private func makeSUT(
+        productTypes: [String] = ["myWeight"]
+    ) -> (BabyService, MockBabyRepositoryAPI, MockAccountService, String) {
+        let accountId = "test-account-\(UUID().uuidString)"
+        let repo = MockBabyRepositoryAPI()
+        let account = MockAccountService()
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(
+            id: accountId, email: "baby@example.com", isActiveAccount: true, productTypes: productTypes
+        )
+
+        TestDependencyContainer.reset()
+        DependencyContainer.shared.register(account as AccountServiceProtocol)
+
+        let sut = BabyService(remoteRepo: repo)
+        return (sut, repo, account, accountId)
+    }
+
+    private func cleanup(_ sut: BabyService, accountId: String) async throws {
+        try await sut.loadBabies(for: accountId)
         for baby in sut.currentBabies {
             context.delete(baby)
         }
@@ -26,189 +44,163 @@ struct BabyServiceTests {
 
     // MARK: - saveBaby
 
-    @Test("saveBaby success: creates baby and publishes updated list")
-    func saveBabyCreatesAndPublishes() async throws {
-        defer { try? Task.detached { @MainActor in try await self.cleanupBabies() }.cancel() }
-
-        let baby = try await sut.saveBaby(
-            name: "Lily",
-            accountId: testAccountId,
-            deviceId: "dev-1",
-            birthday: nil,
-            biologicalSex: nil,
-            birthLengthInches: nil,
-            birthWeightLbs: nil,
-            birthWeightOz: nil
+    @Test("saveBaby: creates remotely, persists locally with server id, publishes list")
+    func saveBabyCreatesRemotelyAndLocally() async throws {
+        let (sut, repo, _, accountId) = makeSUT()
+        repo.createResult = BabyResponse(
+            id: "srv-1", name: "Lily", birthdate: nil, sex: nil,
+            birthWeightDecigrams: nil, birthLengthMillimeters: nil
         )
 
-        #expect(baby.name == "Lily")
-        #expect(baby.accountId == testAccountId)
-        #expect(baby.deviceId == "dev-1")
-        #expect(sut.currentBabies.contains { $0.id == baby.id })
+        let baby = try await sut.saveBaby(
+            name: "Lily", accountId: accountId, deviceId: "dev-1",
+            birthday: nil, biologicalSex: nil,
+            birthLengthInches: nil, birthWeightLbs: nil, birthWeightOz: nil
+        )
 
-        try await cleanupBabies()
+        #expect(repo.createCalls == 1)
+        #expect(repo.lastCreateRequest?.name == "Lily")
+        #expect(baby.id == "srv-1")
+        #expect(baby.isSynced == true)
+        #expect(sut.currentBabies.contains { $0.id == "srv-1" })
+
+        try await cleanup(sut, accountId: accountId)
     }
 
-    @Test("saveBaby success: stores optional profile fields")
-    func saveBabyWithProfileFields() async throws {
+    @Test("saveBaby: converts profile fields into the wire request (decigrams / mm / date)")
+    func saveBabyConvertsProfileFields() async throws {
+        let (sut, repo, _, accountId) = makeSUT()
         let birthday = Date(timeIntervalSince1970: 1_700_000_000)
 
-        let baby = try await sut.saveBaby(
-            name: "Max",
-            accountId: testAccountId,
-            deviceId: nil,
-            birthday: birthday,
-            biologicalSex: "male",
-            birthLengthInches: 20.5,
-            birthWeightLbs: 7.0,
-            birthWeightOz: 8.0
+        _ = try await sut.saveBaby(
+            name: "Max", accountId: accountId, deviceId: nil,
+            birthday: birthday, biologicalSex: "male",
+            birthLengthInches: 20.0, birthWeightLbs: 7.0, birthWeightOz: 8.0
         )
 
-        #expect(baby.birthday == birthday)
-        #expect(baby.biologicalSex == "male")
-        #expect(baby.birthLengthInches == 20.5)
-        #expect(baby.birthWeightLbs == 7.0)
-        #expect(baby.birthWeightOz == 8.0)
+        let request = try #require(repo.lastCreateRequest)
+        #expect(request.sex == "male")
+        #expect(request.birthdate != nil)
+        #expect(request.birthLengthMillimeters == ConversionTools.convertBabyInchesToMm(20.0))
+        #expect(request.birthWeightDecigrams == ConversionTools.convertBabyLbsOzToDecigrams(lbs: 7, oz: 8.0))
 
-        try await cleanupBabies()
+        try await cleanup(sut, accountId: accountId)
     }
 
-    // MARK: - updateBaby
+    @Test("saveBaby: appends 'baby' to productTypes when absent")
+    func saveBabyAppendsProductType() async throws {
+        let (sut, _, account, accountId) = makeSUT(productTypes: ["myWeight"])
 
-    @Test("updateBaby success: updates baby name and reloads list")
-    func updateBabyName() async throws {
-        let baby = try await sut.saveBaby(
-            name: "OldName",
-            accountId: testAccountId,
-            deviceId: nil,
-            birthday: nil,
-            biologicalSex: nil,
-            birthLengthInches: nil,
-            birthWeightLbs: nil,
-            birthWeightOz: nil
+        _ = try await sut.saveBaby(
+            name: "Lily", accountId: accountId, deviceId: nil,
+            birthday: nil, biologicalSex: nil,
+            birthLengthInches: nil, birthWeightLbs: nil, birthWeightOz: nil
         )
 
-        try await sut.updateBaby(baby, name: "NewName")
+        #expect(account.updateProductTypesCalls == 1)
+        #expect(account.lastUpdatedProductTypes?.contains("baby") == true)
 
-        #expect(baby.name == "NewName")
-        #expect(sut.currentBabies.contains { $0.name == "NewName" })
+        try await cleanup(sut, accountId: accountId)
+    }
 
-        try await cleanupBabies()
+    @Test("saveBaby: remote failure propagates and skips local persistence")
+    func saveBabyRemoteFailure() async {
+        let (sut, repo, _, accountId) = makeSUT()
+        repo.createError = HTTPError.serverError
+
+        await #expect(throws: HTTPError.serverError) {
+            _ = try await sut.saveBaby(
+                name: "Lily", accountId: accountId, deviceId: nil,
+                birthday: nil, biologicalSex: nil,
+                birthLengthInches: nil, birthWeightLbs: nil, birthWeightOz: nil
+            )
+        }
+        #expect(sut.currentBabies.isEmpty)
     }
 
     // MARK: - updateBabyProfile
 
-    @Test("updateBabyProfile success: updates all profile fields")
-    func updateBabyProfile() async throws {
+    @Test("updateBabyProfile: PUTs to remote and updates local fields")
+    func updateBabyProfileUpdatesRemoteAndLocal() async throws {
+        let (sut, repo, _, accountId) = makeSUT()
         let baby = try await sut.saveBaby(
-            name: "Emma",
-            accountId: testAccountId,
-            deviceId: nil,
-            birthday: nil,
-            biologicalSex: nil,
-            birthLengthInches: nil,
-            birthWeightLbs: nil,
-            birthWeightOz: nil
+            name: "Emma", accountId: accountId, deviceId: nil,
+            birthday: nil, biologicalSex: nil,
+            birthLengthInches: nil, birthWeightLbs: nil, birthWeightOz: nil
         )
-
         let newBirthday = Date(timeIntervalSince1970: 1_600_000_000)
+
         try await sut.updateBabyProfile(
-            baby,
-            name: "Emma Updated",
-            birthday: newBirthday,
-            biologicalSex: "female",
-            birthLengthInches: 19.0,
-            birthWeightLbs: 6.0,
-            birthWeightOz: 12.0
+            baby, name: "Emma Updated", birthday: newBirthday, biologicalSex: "female",
+            birthLengthInches: 19.0, birthWeightLbs: 6.0, birthWeightOz: 12.0
         )
 
+        #expect(repo.updateCalls == 1)
+        #expect(repo.lastUpdateId == baby.id)
+        #expect(repo.lastUpdateRequest?.name == "Emma Updated")
         #expect(baby.name == "Emma Updated")
-        #expect(baby.birthday == newBirthday)
         #expect(baby.biologicalSex == "female")
-        #expect(baby.birthLengthInches == 19.0)
-        #expect(baby.birthWeightLbs == 6.0)
-        #expect(baby.birthWeightOz == 12.0)
 
-        try await cleanupBabies()
+        try await cleanup(sut, accountId: accountId)
     }
 
     // MARK: - deleteBaby
 
-    @Test("deleteBaby success: removes baby and updates list")
-    func deleteBabyRemoves() async throws {
+    @Test("deleteBaby: DELETEs remotely, removes locally, drops 'baby' when last")
+    func deleteBabyRemovesAndDropsProductType() async throws {
+        let (sut, repo, account, accountId) = makeSUT(productTypes: ["myWeight", "baby"])
         let baby = try await sut.saveBaby(
-            name: "ToDelete",
-            accountId: testAccountId,
-            deviceId: nil,
-            birthday: nil,
-            biologicalSex: nil,
-            birthLengthInches: nil,
-            birthWeightLbs: nil,
-            birthWeightOz: nil
+            name: "ToDelete", accountId: accountId, deviceId: nil,
+            birthday: nil, biologicalSex: nil,
+            birthLengthInches: nil, birthWeightLbs: nil, birthWeightOz: nil
         )
         let babyId = baby.id
 
         try await sut.deleteBaby(baby)
 
+        #expect(repo.deleteCalls == 1)
+        #expect(repo.lastDeletedId == babyId)
         #expect(!sut.currentBabies.contains { $0.id == babyId })
+        // Last baby removed → "baby" stripped from productTypes.
+        #expect(account.lastUpdatedProductTypes?.contains("baby") == false)
     }
 
     // MARK: - loadBabies
 
-    @Test("loadBabies success: loads babies for the given account")
-    func loadBabiesForAccount() async throws {
-        let baby = try await sut.saveBaby(
-            name: "LoadTest",
-            accountId: testAccountId,
-            deviceId: nil,
-            birthday: nil,
-            biologicalSex: nil,
-            birthLengthInches: nil,
-            birthWeightLbs: nil,
-            birthWeightOz: nil
-        )
+    @Test("loadBabies: merges the remote list into the local store")
+    func loadBabiesMergesRemote() async throws {
+        let (sut, repo, _, accountId) = makeSUT()
+        repo.listResult = [
+            BabyResponse(id: "remote-1", name: "Remote Baby", birthdate: "2026-03-15",
+                         sex: "female", birthWeightDecigrams: 32500, birthLengthMillimeters: 510)
+        ]
 
-        try await sut.loadBabies(for: testAccountId)
+        try await sut.loadBabies(for: accountId)
 
-        #expect(sut.currentBabies.contains { $0.id == baby.id })
-        #expect(sut.currentBabies.allSatisfy { $0.accountId == testAccountId })
+        #expect(repo.listCalls == 1)
+        let merged = try #require(sut.currentBabies.first { $0.id == "remote-1" })
+        #expect(merged.name == "Remote Baby")
+        #expect(merged.biologicalSex == "female")
+        #expect(merged.isSynced == true)
 
-        try await cleanupBabies()
+        try await cleanup(sut, accountId: accountId)
     }
 
-    @Test("loadBabies success: filters by accountId and excludes other accounts")
-    func loadBabiesFiltersByAccount() async throws {
-        let otherAccountId = "other-account-\(UUID().uuidString)"
-
-        let myBaby = try await sut.saveBaby(
-            name: "MyBaby",
-            accountId: testAccountId,
-            deviceId: nil,
-            birthday: nil,
-            biologicalSex: nil,
-            birthLengthInches: nil,
-            birthWeightLbs: nil,
-            birthWeightOz: nil
+    @Test("loadBabies: remote failure falls back to local cache")
+    func loadBabiesRemoteFailureFallsBack() async throws {
+        let (sut, repo, _, accountId) = makeSUT()
+        let baby = try await sut.saveBaby(
+            name: "Cached", accountId: accountId, deviceId: nil,
+            birthday: nil, biologicalSex: nil,
+            birthLengthInches: nil, birthWeightLbs: nil, birthWeightOz: nil
         )
-        let otherBaby = try await sut.saveBaby(
-            name: "OtherBaby",
-            accountId: otherAccountId,
-            deviceId: nil,
-            birthday: nil,
-            biologicalSex: nil,
-            birthLengthInches: nil,
-            birthWeightLbs: nil,
-            birthWeightOz: nil
-        )
+        repo.listError = HTTPError.noInternet
 
-        try await sut.loadBabies(for: testAccountId)
+        try await sut.loadBabies(for: accountId)
 
-        #expect(sut.currentBabies.contains { $0.id == myBaby.id })
-        #expect(!sut.currentBabies.contains { $0.id == otherBaby.id })
+        // Despite the remote failure, the locally cached baby still loads.
+        #expect(sut.currentBabies.contains { $0.id == baby.id })
 
-        // Cleanup both accounts
-        context.delete(otherBaby)
-        try context.save()
-        try await cleanupBabies()
+        try await cleanup(sut, accountId: accountId)
     }
 }

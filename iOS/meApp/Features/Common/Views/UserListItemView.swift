@@ -64,18 +64,29 @@ struct UserListItemView: View {
                 }
                 .opacity(user.isExpired ? 0.4 : 1)
             
-            VStack(alignment: .leading, spacing: 0) {
-                Text(user.name)
-                    .fontOpenSans(.body2)
-                    .foregroundColor(theme.textBody)
-                if !user.email.isEmpty {
-                    Text(user.email)
-                        .fontOpenSans(.subHeading2)
+            VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(user.name)
+                        .fontOpenSans(.body2)
+                        .foregroundColor(theme.textBody)
+                    if !user.email.isEmpty {
+                        Text(user.email)
+                            .fontOpenSans(.subHeading2)
+                            .foregroundColor(theme.textSubheading)
+                    }
+                }
+                .opacity(user.isExpired ? 0.4 : 1)
+
+                // Logged-out state label — kept at full opacity so the account's
+                // state stays legible even while the name/email are dimmed.
+                if user.isExpired {
+                    Text(CommonStrings.loggedOut)
+                        .fontOpenSans(.body4)
                         .foregroundColor(theme.textSubheading)
+                        .accessibilityIdentifier(AccessibilityID.accountCardLoggedOutLabel)
                 }
             }
-            .opacity(user.isExpired ? 0.4 : 1)
-            
+
             Spacer()
             if user.isExpired {
                 ButtonView(text: CommonStrings.logIn, type: .inlineTextPrimary, size: .large, isDisabled: false) {

@@ -15,7 +15,7 @@ public protocol AccountFlagServiceProtocol: AppReviewHandlerProtocol, ScaleRevie
     /// - Returns: The preferred account flag or nil if none found
     /// - Throws: AccountFlagError if the operation fails
     func getAccountFlag() async throws -> AccountFlag?
-    
+
     /// Checks if the provided trigger matches the current flag and handles it accordingly
     /// For app-rate-ask flags, triggers the native app review prompt
     /// For scale-review-ask flags, emits a scale review event
@@ -23,7 +23,7 @@ public protocol AccountFlagServiceProtocol: AppReviewHandlerProtocol, ScaleRevie
     /// - Returns: True if a flag was found and processed, false otherwise
     /// - Throws: AccountFlagError if the operation fails
     func checkAccountFlag(trigger: String) async throws -> Bool
-    
+
     /// Deletes a specific account flag by ID
     /// - Parameter flagId: The ID of the flag to delete
     /// - Returns: True if deletion was successful, false otherwise
@@ -36,6 +36,30 @@ public protocol AppReviewHandlerProtocol {
     /// Triggers the native app store review prompt
     /// - Parameter isFromDebug: Whether this is triggered from debug menu (affects timing)
     func triggerAppReview(isFromDebug: Bool) async
+}
+
+/// Protocol for submitting a review report to the unified `POST /v3/review/` endpoint
+/// (Me App 2.0 — replaces `POST /v3/review/app` and `POST /v3/review/scale`).
+@MainActor
+protocol ReviewReportHandlerProtocol {
+    // swiftlint:disable function_parameter_count
+    /// Submits an app/scale/monitor review report.
+    /// - Parameters:
+    ///   - reviewType: `app`, `scale`, or `monitor`.
+    ///   - status: The review status (see `ReviewStatus`).
+    ///   - rating: Numeric rating — required unless `status` is `exitA`.
+    ///   - sku: Device SKU — required when `reviewType` is `scale`/`monitor`.
+    ///   - feedback: Optional free-text feedback.
+    ///   - flagId: Optional account flag reference that triggered the prompt.
+    func submitReview(
+        reviewType: ReviewType,
+        status: ReviewStatus,
+        rating: Int?,
+        sku: String?,
+        feedback: String?,
+        flagId: String?
+    ) async throws
+    // swiftlint:enable function_parameter_count
 }
 
 /// Protocol for handling scale review actions triggered by account flags

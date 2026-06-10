@@ -224,4 +224,51 @@ final class MockScaleService: ScaleServiceProtocol {
     func getDevice(by deviceId: String) async throws -> DeviceSnapshot? { scales.first { $0.id == deviceId } }
     func fetchAttachedPreference(by id: String) async -> R4ScalePreference? { attachedPreferences[id] ?? fetchAttachedPreferenceResult }
     func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? { attachedPreferences[id] ?? fetchAttachedPreferenceResult }
+
+    // MARK: - Unified Device API (Me App 2.0)
+
+    var listPairedDevicesResult: [PairedDeviceResponse] = []
+    var createPairedDeviceResult = ScaleTestFixtures.makePairedDeviceResponse(id: "paired-1")
+    var updatePairedDeviceResult = ScaleTestFixtures.makePairedDeviceResponse(id: "paired-1")
+    var listPairedDevicesError: Error?
+    var createPairedDeviceError: Error?
+    var updatePairedDeviceError: Error?
+    var deletePairedDeviceError: Error?
+    private(set) var listPairedDevicesCalls = 0
+    private(set) var createPairedDeviceCalls = 0
+    private(set) var updatePairedDeviceCalls = 0
+    private(set) var deletePairedDeviceCalls = 0
+    private(set) var lastListedPairedDeviceTypeFilter: DeviceType?
+    private(set) var lastCreatedPairedDevice: PairedDeviceRequest?
+    private(set) var lastUpdatedPairedDeviceId: String?
+    private(set) var lastUpdatedPairedDeviceNickname: String?
+    private(set) var lastDeletedPairedDeviceId: String?
+
+    func listPairedDevices(deviceType: DeviceType?) async throws -> [PairedDeviceResponse] {
+        listPairedDevicesCalls += 1
+        lastListedPairedDeviceTypeFilter = deviceType
+        if let listPairedDevicesError { throw listPairedDevicesError }
+        return listPairedDevicesResult
+    }
+
+    func createPairedDevice(_ request: PairedDeviceRequest) async throws -> PairedDeviceResponse {
+        createPairedDeviceCalls += 1
+        lastCreatedPairedDevice = request
+        if let createPairedDeviceError { throw createPairedDeviceError }
+        return createPairedDeviceResult
+    }
+
+    func updatePairedDevice(_ deviceId: String, nickname: String) async throws -> PairedDeviceResponse {
+        updatePairedDeviceCalls += 1
+        lastUpdatedPairedDeviceId = deviceId
+        lastUpdatedPairedDeviceNickname = nickname
+        if let updatePairedDeviceError { throw updatePairedDeviceError }
+        return updatePairedDeviceResult
+    }
+
+    func deletePairedDevice(_ deviceId: String) async throws {
+        deletePairedDeviceCalls += 1
+        lastDeletedPairedDeviceId = deviceId
+        if let deletePairedDeviceError { throw deletePairedDeviceError }
+    }
 }
