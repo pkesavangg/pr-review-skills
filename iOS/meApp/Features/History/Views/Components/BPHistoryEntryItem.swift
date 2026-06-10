@@ -48,7 +48,7 @@ struct BPHistoryEntryItem: View {
                         .fontOpenSans(.heading5)
                         .foregroundStyle(pressureColor)
 
-                    Text(HistoryListStrings.mmhg)
+                    Text(EntryUnit.mmhg.displayString)
                         .fontOpenSans(.body3)
                         .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }

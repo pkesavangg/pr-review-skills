@@ -9,6 +9,7 @@ import Foundation
 
 struct DashboardStrings {
     // Action buttons
+    static let selectGraph = "Select Graph"
     static let editDashboard = "Edit dashboard"
     static let updateGoal = "Update Goal"
     static let metricInfo = "Metric info"
@@ -126,6 +127,7 @@ struct DashboardStrings {
 
     // Wi-Fi reading arrival (entry already saved server-side — VIEW navigates to History)
     static let readingArrivalView = "VIEW"
+    static let wifiReadingArrivalTitle = "New Reading saved to your log"
 
     // Multiple readings counter (shown when a second reading arrives while a card is active)
     static func moreReadingsReceived(_ count: Int) -> String {

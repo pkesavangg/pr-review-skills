@@ -44,7 +44,7 @@ struct BPMonthSummaryItem: View {
                         Text(month.pressureText)
                             .fontOpenSans(.body2)
                             .foregroundColor(pressureColor)
-                        Text(HistoryListStrings.mmhg)
+                        Text(EntryUnit.mmhg.displayString)
                             .fontOpenSans(.body3)
                             .foregroundColor(theme.textSubheading)
                     }

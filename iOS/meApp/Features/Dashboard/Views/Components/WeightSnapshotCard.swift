@@ -30,6 +30,7 @@ struct WeightSnapshotCard: View {
     @State private var cachedWeekAverage: String = "--"
     @State private var cachedWeightUnit: WeightUnit = .lb
     @State private var cachedGoalWeightDisplay: Double?
+    @State private var cachedDateRangeLabel: String = ""
     @State private var hasCacheLoaded = false
 
     private var unitText: String {
@@ -55,14 +56,16 @@ struct WeightSnapshotCard: View {
                     .padding(.horizontal, .spacingSM)
                     .padding(.top, .spacingSM)
 
-                if !cachedChartSummaries.isEmpty {
-                    snapshotChart
-                        .frame(height: 240)
-                        .padding(.top, .spacingXS)
-                        .padding(.bottom, .spacingSM)
-                } else {
-                    emptyState
-                }
+                Text(cachedDateRangeLabel)
+                    .fontOpenSans(.subHeading2)
+                    .foregroundColor(theme.textSubheading)
+                    .padding(.horizontal, .spacingSM)
+                    .padding(.top, .spacingXS)
+
+                snapshotChart
+                    .frame(height: 240)
+                    .padding(.top, .spacingXS)
+                    .padding(.bottom, .spacingSM)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(theme.backgroundPrimary)
@@ -116,6 +119,18 @@ struct WeightSnapshotCard: View {
         cachedWeekAverage = result.3
         cachedWeightUnit = result.4
         cachedGoalWeightDisplay = result.5
+
+        let calendar = Calendar.current
+        if let bounds = result.0?.bounds {
+            let displayEnd = calendar.date(byAdding: .day, value: -1, to: bounds.end) ?? bounds.end
+            cachedDateRangeLabel = Self.weekDateRangeLabel(start: bounds.start, displayEnd: displayEnd)
+        } else {
+            let today = Date()
+            let daysToSunday = calendar.component(.weekday, from: today) - 1
+            let start = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -daysToSunday, to: today) ?? today)
+            let displayEnd = calendar.date(byAdding: .day, value: 6, to: start) ?? today
+            cachedDateRangeLabel = Self.weekDateRangeLabel(start: start, displayEnd: displayEnd)
+        }
         hasCacheLoaded = true
     }
 
@@ -123,7 +138,7 @@ struct WeightSnapshotCard: View {
 
     private var headlineSection: some View {
         VStack(alignment: .leading, spacing: Layout.headlineSpacing) {
-            Text(cachedChartSummaries.isEmpty ? DashboardStrings.noEntries : "week average")
+            Text(cachedWeekAverage == "--" ? DashboardStrings.noEntries : "week average")
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
 
@@ -241,25 +256,18 @@ struct WeightSnapshotCard: View {
     private var goalChipTopOffset: CGFloat { 22 }
     private var goalChipBottomOffset: CGFloat { 22 }
 
-    // MARK: - Empty State
-
-    private var emptyState: some View {
-        VStack(spacing: .spacingXS) {
-            Spacer()
-            Text(DashboardStrings.noReadingsYet)
-                .fontOpenSans(.body2)
-                .foregroundColor(theme.textSubheading)
-            Spacer()
-        }
-        .frame(height: 200)
-        .frame(maxWidth: .infinity)
-    }
-
     // MARK: - Helpers
 
     private func weekXDomain() -> ClosedRange<Date> {
-        guard let bounds = cachedSnapshotWindow?.bounds else { return Date()...Date() }
-        return bounds.start...bounds.end
+        if let bounds = cachedSnapshotWindow?.bounds {
+            return bounds.start...bounds.end
+        }
+        let calendar = Calendar.current
+        let today = Date()
+        let daysToSunday = calendar.component(.weekday, from: today) - 1
+        let startOfWeek = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -daysToSunday, to: today) ?? today)
+        let endOfWeek = calendar.date(byAdding: .day, value: 7, to: startOfWeek) ?? today
+        return startOfWeek...endOfWeek
     }
 
     private func calculateYAxisScale() -> YAxisScale {
@@ -283,6 +291,26 @@ struct WeightSnapshotCard: View {
 
     private func convertStoredWeightToDisplay(_ storedWeight: Double) -> Double {
         Self.convertStoredWeightToDisplay(storedWeight, unit: cachedWeightUnit)
+    }
+
+    private static func weekDateRangeLabel(start: Date, displayEnd: Date) -> String {
+        let calendar = Calendar.current
+        let sy = calendar.component(.year, from: start)
+        let ey = calendar.component(.year, from: displayEnd)
+        let sm = calendar.component(.month, from: start)
+        let em = calendar.component(.month, from: displayEnd)
+        let startFmt = DateFormatter()
+        startFmt.dateFormat = "MMM d"
+        let endFmt = DateFormatter()
+        endFmt.dateFormat = "MMM d, yyyy"
+        if sy != ey {
+            return "\(endFmt.string(from: start)) - \(endFmt.string(from: displayEnd))".lowercased()
+        }
+        if sm != em {
+            return "\(startFmt.string(from: start)) - \(endFmt.string(from: displayEnd))".lowercased()
+        }
+        let endDay = calendar.component(.day, from: displayEnd)
+        return "\(startFmt.string(from: start)) - \(endDay), \(sy)".lowercased()
     }
 
     private static func convertStoredWeightToDisplay(_ storedWeight: Int, unit: WeightUnit) -> Double {

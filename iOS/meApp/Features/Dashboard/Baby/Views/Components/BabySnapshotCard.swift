@@ -77,6 +77,8 @@ struct BabySnapshotCard: View {
     @State private var cachedWeekAverageLbsOz: (lbs: String, oz: String)?
     @State private var cachedWeightUnit: WeightUnit = .lb
     @State private var cachedPercentilePointsByLine: [BabyPercentileLine: [BabyPercentileChartPoint]] = [:]
+    @State private var cachedEffectiveBounds: (start: Date, end: Date)?
+    @State private var cachedDateRangeLabel: String = ""
     @State private var hasCacheLoaded = false
 
     private var babyName: String { babyProfile.name }
@@ -100,14 +102,16 @@ struct BabySnapshotCard: View {
                     .padding(.horizontal, .spacingSM)
                     .padding(.top, .spacingSM)
 
-                if !cachedChartSummaries.isEmpty {
-                    snapshotChart
-                        .frame(height: 240)
-                        .padding(.top, .spacingXS)
-                        .padding(.bottom, .spacingSM)
-                } else {
-                    emptyState
-                }
+                Text(cachedDateRangeLabel)
+                    .fontOpenSans(.subHeading2)
+                    .foregroundColor(theme.textSubheading)
+                    .padding(.horizontal, .spacingSM)
+                    .padding(.top, .spacingXS)
+
+                snapshotChart
+                    .frame(height: 240)
+                    .padding(.top, .spacingXS)
+                    .padding(.bottom, .spacingSM)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(theme.backgroundPrimary)
@@ -139,36 +143,46 @@ struct BabySnapshotCard: View {
             let chart = window?.chartSummaries ?? []
             let recent = window?.visibleSummaries ?? []
             let avgSource = recent.isEmpty ? chart.suffix(1).map { $0 } : recent
-            let avg = BabyDashboardChartSupport.weekAverageLbsOz(from: avgSource, unit: weightUnit)
+            let avg = chart.isEmpty ? nil : BabyDashboardChartSupport.weekAverageLbsOz(from: avgSource, unit: weightUnit)
 
-            var groupedPercentiles: [BabyPercentileLine: [BabyPercentileChartPoint]] = [:]
-            if let bounds = window?.bounds {
-                let birthday = BabyDashboardChartSupport.resolvedBirthday(for: profile)
-                let cacheKey = BabySnapshotPercentileCache.Key(
-                    babyId: profile.id,
-                    biologicalSex: profile.biologicalSex,
-                    birthday: birthday.timeIntervalSinceReferenceDate,
-                    rangeStart: bounds.start.timeIntervalSinceReferenceDate,
-                    rangeEnd: bounds.end.timeIntervalSinceReferenceDate,
-                    weightUnit: weightUnit
-                )
-
-                groupedPercentiles = await BabySnapshotPercentileCache.shared.groupedPoints(for: cacheKey) {
-                    let allPoints = BabyPercentileGrowthReference.percentileChartPoints(
-                        biologicalSex: profile.biologicalSex,
-                        birthday: birthday,
-                        dateRange: bounds.start...bounds.end,
-                        convertDecigramsToDisplay: { BabyDashboardChartSupport.convertDecigramsToDisplay($0, unit: weightUnit) }
-                    )
-                    let byLine = Dictionary(grouping: allPoints, by: \.line)
-                    var thinnedByLine: [BabyPercentileLine: [BabyPercentileChartPoint]] = [:]
-                    for (line, points) in byLine {
-                        thinnedByLine[line] = BabyDashboardChartSupport.thinnedPercentilePoints(points, stride: 3)
-                    }
-                    return thinnedByLine
-                }
+            // Always compute effective bounds — use window bounds or current week when no entries
+            let effectiveBounds: (start: Date, end: Date)
+            if let windowBounds = window?.bounds {
+                effectiveBounds = windowBounds
+            } else {
+                let cal = Calendar.current
+                let today = Date()
+                let daysToSunday = cal.component(.weekday, from: today) - 1
+                let weekStart = cal.startOfDay(for: cal.date(byAdding: .day, value: -daysToSunday, to: today) ?? today)
+                let weekEnd = cal.date(byAdding: .day, value: 7, to: weekStart) ?? today
+                effectiveBounds = (start: weekStart, end: weekEnd)
             }
-            return (window, chart, recent, avg, weightUnit, groupedPercentiles)
+
+            let birthday = BabyDashboardChartSupport.resolvedBirthday(for: profile)
+            let cacheKey = BabySnapshotPercentileCache.Key(
+                babyId: profile.id,
+                biologicalSex: profile.biologicalSex,
+                birthday: birthday.timeIntervalSinceReferenceDate,
+                rangeStart: effectiveBounds.start.timeIntervalSinceReferenceDate,
+                rangeEnd: effectiveBounds.end.timeIntervalSinceReferenceDate,
+                weightUnit: weightUnit
+            )
+
+            let groupedPercentiles = await BabySnapshotPercentileCache.shared.groupedPoints(for: cacheKey) {
+                let allPoints = BabyPercentileGrowthReference.percentileChartPoints(
+                    biologicalSex: profile.biologicalSex,
+                    birthday: birthday,
+                    dateRange: effectiveBounds.start...effectiveBounds.end,
+                    convertDecigramsToDisplay: { BabyDashboardChartSupport.convertDecigramsToDisplay($0, unit: weightUnit) }
+                )
+                let byLine = Dictionary(grouping: allPoints, by: \.line)
+                var thinnedByLine: [BabyPercentileLine: [BabyPercentileChartPoint]] = [:]
+                for (line, points) in byLine {
+                    thinnedByLine[line] = BabyDashboardChartSupport.thinnedPercentilePoints(points, stride: 3)
+                }
+                return thinnedByLine
+            }
+            return (window, chart, recent, avg, weightUnit, groupedPercentiles, effectiveBounds)
         }.value
 
         cachedSnapshotWindow = result.0
@@ -177,19 +191,24 @@ struct BabySnapshotCard: View {
         cachedWeekAverageLbsOz = result.3
         cachedWeightUnit = result.4
         cachedPercentilePointsByLine = result.5
+        cachedEffectiveBounds = result.6
+
+        let eb = result.6
+        let calendar = Calendar.current
+        let displayEnd = calendar.date(byAdding: .day, value: -1, to: eb.end) ?? eb.end
+        cachedDateRangeLabel = Self.weekDateRangeLabel(start: eb.start, displayEnd: displayEnd)
         hasCacheLoaded = true
     }
 
     // MARK: - Headline
 
     private var headlineSection: some View {
-        let hasAnyData = !cachedChartSummaries.isEmpty
-        return VStack(alignment: .leading, spacing: Layout.headlineSpacing) {
-            Text(hasAnyData ? BabyDashboardStrings.babyWeightLabel(name: babyName) : BpmDashboardStrings.noEntries)
-                .fontOpenSans(.subHeading1)
-                .foregroundColor(theme.textSubheading)
-
+        VStack(alignment: .leading, spacing: Layout.headlineSpacing) {
             if let avg = cachedWeekAverageLbsOz {
+                Text(BabyDashboardStrings.babyWeightLabel(name: babyName))
+                    .fontOpenSans(.subHeading1)
+                    .foregroundColor(theme.textSubheading)
+
                 HStack(alignment: .lastTextBaseline, spacing: .zero) {
                     Text(avg.lbs)
                         .fontOpenSans(.heading1)
@@ -213,6 +232,10 @@ struct BabySnapshotCard: View {
                         .padding(.leading, Layout.unitSpacing)
                 }
             } else {
+                Text(BabyDashboardStrings.babyWeightLabel(name: babyName))
+                    .fontOpenSans(.subHeading1)
+                    .foregroundColor(theme.textSubheading)
+
                 HStack(alignment: .lastTextBaseline, spacing: .zero) {
                     Text("00")
                         .fontOpenSans(.heading1)
@@ -224,7 +247,7 @@ struct BabySnapshotCard: View {
                         .foregroundColor(theme.textSubheading)
                         .padding(.leading, Layout.unitSpacing)
 
-                    Text("0.0")
+                    Text("00")
                         .fontOpenSans(.heading1)
                         .fontWeight(.heavy)
                         .foregroundColor(babyColor)
@@ -327,24 +350,10 @@ struct BabySnapshotCard: View {
         .padding(.horizontal, .spacingXS)
     }
 
-    // MARK: - Empty State
-
-    private var emptyState: some View {
-        VStack(spacing: .spacingXS) {
-            Spacer()
-            Text(BabyDashboardStrings.noReadingsYet)
-                .fontOpenSans(.body2)
-                .foregroundColor(theme.textSubheading)
-            Spacer()
-        }
-        .frame(height: 200)
-        .frame(maxWidth: .infinity)
-    }
-
     // MARK: - Chart Data Helpers
 
     private func weekXDomain() -> ClosedRange<Date> {
-        guard let bounds = cachedSnapshotWindow?.bounds else { return Date()...Date() }
+        guard let bounds = cachedEffectiveBounds else { return Date()...Date() }
         let edgePadding: TimeInterval = 30 * 60
         return bounds.start.addingTimeInterval(-edgePadding)...bounds.end.addingTimeInterval(edgePadding)
     }
@@ -359,7 +368,7 @@ struct BabySnapshotCard: View {
     }
 
     private var rightClippedChartSummaries: [BathScaleWeightSummary] {
-        guard let bounds = cachedSnapshotWindow?.bounds else { return cachedChartSummaries }
+        guard let bounds = cachedEffectiveBounds else { return cachedChartSummaries }
         return cachedChartSummaries.filter { $0.date <= bounds.end }
     }
 
@@ -369,17 +378,37 @@ struct BabySnapshotCard: View {
             .map { (date: $0.date, value: BabyDashboardChartSupport.convertStoredWeightToDisplay(Int($0.weight), unit: unit)) }
             .sorted { $0.date < $1.date }
 
-        guard let bounds = cachedSnapshotWindow?.bounds else { return points }
+        guard let bounds = cachedEffectiveBounds else { return points }
         return BabyDashboardChartSupport.rightClippedPoints(points, endDate: bounds.end)
     }
 
     private var rightClippedPercentilePointsByLine: [BabyPercentileLine: [BabyPercentileChartPoint]] {
-        guard let bounds = cachedSnapshotWindow?.bounds else { return cachedPercentilePointsByLine }
+        guard let bounds = cachedEffectiveBounds else { return cachedPercentilePointsByLine }
 
         return Dictionary(uniqueKeysWithValues: BabyPercentileLine.allCases.map { line in
             let points = cachedPercentilePointsByLine[line] ?? []
             return (line, BabyDashboardChartSupport.rightClippedPercentilePoints(points, endDate: bounds.end))
         })
+    }
+
+    private static func weekDateRangeLabel(start: Date, displayEnd: Date) -> String {
+        let calendar = Calendar.current
+        let sy = calendar.component(.year, from: start)
+        let ey = calendar.component(.year, from: displayEnd)
+        let sm = calendar.component(.month, from: start)
+        let em = calendar.component(.month, from: displayEnd)
+        let startFmt = DateFormatter()
+        startFmt.dateFormat = "MMM d"
+        let endFmt = DateFormatter()
+        endFmt.dateFormat = "MMM d, yyyy"
+        if sy != ey {
+            return "\(endFmt.string(from: start)) - \(endFmt.string(from: displayEnd))".lowercased()
+        }
+        if sm != em {
+            return "\(startFmt.string(from: start)) - \(endFmt.string(from: displayEnd))".lowercased()
+        }
+        let endDay = calendar.component(.day, from: displayEnd)
+        return "\(startFmt.string(from: start)) - \(endDay), \(sy)".lowercased()
     }
 
     private var accessibilityLabel: String {

@@ -55,7 +55,6 @@ struct WeightTrendView: View {
                 .opacity(isGraphLoading ? 0 : 1)
             }
             .animation(.easeInOut(duration: 0.3), value: dashboardStore.state.graph.isGraphReady)
-
         }
     }
 

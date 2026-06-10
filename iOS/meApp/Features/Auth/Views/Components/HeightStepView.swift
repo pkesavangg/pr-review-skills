@@ -19,7 +19,7 @@ struct HeightStepView: View {
     
     var body: some View {
         SignupStepWrapper(title: heightStepLang.title, subtitle: heightStepLang.subtitle) {
-            VStack(alignment: .leading, spacing: .spacingMD) {
+            VStack(spacing: .spacingMD) {
                 UnitValuePickerField(
                     label: heightStepLang.fieldLabel,
                     value: signupStore.getFormattedHeight(),
