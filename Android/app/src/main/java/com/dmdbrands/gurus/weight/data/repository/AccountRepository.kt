@@ -13,6 +13,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntityMa
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.DashboardSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.GoalSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.IntegrationsSettingsEntity
+import com.dmdbrands.gurus.weight.data.storage.db.entity.account.ProductSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.NotificationSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.StreaksSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.WeightCompSettingsEntity
@@ -22,8 +23,11 @@ import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
 import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
 import com.dmdbrands.gurus.weight.domain.enums.ProgressKeyConstants
 import com.dmdbrands.gurus.weight.domain.model.PartialAccount
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.api.auth.ChangePasswordRequest
 import com.dmdbrands.gurus.weight.domain.model.api.auth.ChangePasswordResponse
+import com.dmdbrands.gurus.weight.domain.model.api.auth.EmailCheckRequest
+import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.model.api.auth.LoginRequest
 import com.dmdbrands.gurus.weight.domain.model.api.auth.LoginResponse
 import com.dmdbrands.gurus.weight.domain.model.api.auth.LogoutRequest
@@ -34,6 +38,7 @@ import com.dmdbrands.gurus.weight.domain.model.api.dashboard.DashboardMetricsReq
 import com.dmdbrands.gurus.weight.domain.model.api.dashboard.DashboardTypeRequest
 import com.dmdbrands.gurus.weight.domain.model.api.dashboard.ProgressMetricsRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountInfo
+import com.dmdbrands.gurus.weight.domain.model.api.user.MeasurementUnitsRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountToken
 import com.dmdbrands.gurus.weight.features.common.enums.toGraphSegment
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
@@ -212,6 +217,18 @@ constructor(
    * @param profileData The profile data to update
    * @return The updated account from the database
    */
+  override suspend fun emailCheck(email: String): Boolean {
+    val response = authAPI.emailCheck(EmailCheckRequest(email))
+    AppLog.d(TAG, "emailCheck -> isAvailable=${response.isAvailable}")
+    return response.isAvailable
+  }
+
+  override suspend fun updateMeasurementUnits(measurementUnits: MeasurementUnits) {
+    val response = userAPI.updateMeasurementUnits(MeasurementUnitsRequest(measurementUnits.value))
+    // Persist the server-confirmed account state (incl. productTypes/measurementUnits) locally.
+    syncAccountSettingsWithServer(response.account, isOnline = true)
+  }
+
   override suspend fun updateProfile(profileData: ProfileUpdateRequest) {
     try {
       // Call API to update profile
@@ -362,6 +379,19 @@ constructor(
       accountDao.updateDashboardSettings(dashboardSettings)
     }else
     accountDao.insertDashboardSettings(dashboardSettings)
+
+    // Product settings (Phase 2 / MOB-377)
+    val productSettings = ProductSettingsEntity(
+      accountId = account.id,
+      productTypes = account.productTypes,
+      measurementUnits = account.measurementUnits.value,
+      isSynced = true,
+    )
+    if (existingAccount != null) {
+      accountDao.updateProductSettings(productSettings)
+    } else {
+      accountDao.insertProductSettings(productSettings)
+    }
     AppLog.d(TAG, "Added account with all entity relations: ${account.id}")
     return account
   }
@@ -777,6 +807,9 @@ constructor(
         initialWeight = account.initialWeight?.toDouble() ?: 0.0,
         metPreviousGoal = account.metPreviousGoal,
         goalPercent = account.goalPercent.toDouble(),
+        // Phase 2 (MOB-377): account product list + measurement system (defaults if pre-Phase-2 response).
+        productTypes = account.productTypes ?: listOf(ProductType.MY_WEIGHT.apiValue),
+        measurementUnits = MeasurementUnits.fromValue(account.measurementUnits),
       )
     return addAccount(userAccount)
   }
@@ -901,6 +934,16 @@ constructor(
         isSynced = true,
       )
       accountDao.updateIntegrationsSettings(integrationsSettings)
+
+      // Update product settings (Phase 2 / MOB-377). Insert(REPLACE) upserts in case the
+      // row predates this account's product_settings backfill.
+      val productSettings = ProductSettingsEntity(
+        accountId = accountInfo.id,
+        productTypes = accountInfo.productTypes ?: listOf(ProductType.MY_WEIGHT.apiValue),
+        measurementUnits = MeasurementUnits.fromValue(accountInfo.measurementUnits).value,
+        isSynced = true,
+      )
+      accountDao.insertProductSettings(productSettings)
 
       // Mark account as synced only when online (from server)
       if (isOnline) {

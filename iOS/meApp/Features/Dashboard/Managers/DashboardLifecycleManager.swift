@@ -42,6 +42,13 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
     private var onAppearRefreshTask: Task<Void, Never>?
     private var initializationRefreshTask: Task<Void, Never>?
 
+    /// Tracks whether the per-account default graph range has already been applied
+    /// for this app session. The default is applied exactly once when the dashboard
+    /// first initializes — it is intentionally not retargeted on later account or
+    /// product switches, mirroring main: a Settings change takes effect on the next
+    /// app launch, not while the graph is on screen.
+    private var hasAppliedDefaultGraphPeriod = false
+
     let lang = LoaderStrings.self
 
     // MARK: - Initialization
@@ -87,6 +94,7 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
         guard let stateProvider else { return }
 
         await MainActor.run {
+            applyDefaultGraphPeriodIfNeeded()
             stateProvider.state.ui.isResettingDashboard = true
             if streakManager.state.streakItems.isEmpty {
                 stateProvider.state.ui.hasLoadedProgressMetrics = false
@@ -157,6 +165,20 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
             guard !Task.isCancelled else { return }
             await self.syncEntries()
         }
+    }
+
+    /// Applies the per-account default graph range exactly once per session, before
+    /// the chart is first initialized so it builds for the user's chosen period.
+    /// Falls back to `DefaultGraphPeriodPreference.fallback` when none has been set.
+    private func applyDefaultGraphPeriodIfNeeded() {
+        guard !hasAppliedDefaultGraphPeriod else { return }
+        hasAppliedDefaultGraphPeriod = true
+
+        let stored = DefaultGraphPeriodPreference.current(for: accountService.activeAccount?.accountId)
+        // Set the period directly rather than via updateSelectedPeriod(_:): the chart has
+        // not been built yet, so the live-switch cache invalidation and scroll-snap timer
+        // are unnecessary — initializeChart() builds the window for this period right after.
+        graphManager.state.selectedPeriod = stored
     }
 
     // MARK: - Dashboard Type Logic

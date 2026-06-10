@@ -4,13 +4,16 @@ import com.dmdbrands.gurus.weight.data.api.IDeviceAPI
 import com.dmdbrands.gurus.weight.data.storage.db.dao.DeviceDao
 import com.dmdbrands.gurus.weight.data.storage.db.entity.device.DeviceDetails
 import com.dmdbrands.gurus.weight.data.storage.db.entity.device.DeviceEntity
+import com.dmdbrands.gurus.weight.domain.model.api.device.DeviceApiException
 import com.dmdbrands.gurus.weight.domain.model.api.device.DeviceApiModel
+import com.dmdbrands.gurus.weight.domain.model.api.device.PairedDeviceRequest
 import com.dmdbrands.gurus.weight.domain.model.api.device.R4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.api.device.ScaleMetaDataApiModel
 import com.dmdbrands.gurus.weight.domain.model.api.device.ScaleTokenResponse
 import com.dmdbrands.gurus.weight.domain.model.api.device.toDomainModel
 import com.dmdbrands.gurus.weight.domain.model.api.device.toDomainModels
 import com.dmdbrands.gurus.weight.domain.model.api.device.toApiModel
+import com.dmdbrands.gurus.weight.domain.model.api.device.toPairedDeviceRequest
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.toDeviceDetails
@@ -400,6 +403,128 @@ class DeviceRepositoryTest {
         coEvery { deviceApi.deleteScale(DEVICE_ID) } returns response
 
         repository.deleteDeviceFromApi(DEVICE_ID)
+    }
+
+    // ── Unified /v3/paired-device/ (MOB-378) ──────────────────────────────────
+
+    @Test
+    fun `createPairedDevice returns mapped device on success`() = runTest {
+        val device = Device(id = DEVICE_ID)
+        val request = mockk<PairedDeviceRequest>()
+        val apiModel = buildDeviceApiModel()
+        val mapped = Device(id = DEVICE_ID, isSynced = true)
+        val response = mockk<Response<DeviceApiModel>>()
+        every { device.toPairedDeviceRequest() } returns request
+        every { response.isSuccessful } returns true
+        every { response.body() } returns apiModel
+        coEvery { deviceApi.createPairedDevice(request) } returns response
+        every { apiModel.toDomainModel(BLEStatus.DISCONNECTED, null, false) } returns mapped
+
+        val result = repository.createPairedDevice(device, ACCOUNT_ID)
+
+        assertThat(result).isEqualTo(mapped)
+    }
+
+    @Test
+    fun `createPairedDevice throws DeviceApiException carrying the http code on failure`() = runTest {
+        val device = Device(id = DEVICE_ID)
+        val request = mockk<PairedDeviceRequest>()
+        val response = mockk<Response<DeviceApiModel>>()
+        every { device.toPairedDeviceRequest() } returns request
+        every { response.isSuccessful } returns false
+        every { response.code() } returns 409
+        coEvery { deviceApi.createPairedDevice(request) } returns response
+
+        val error = runCatching { repository.createPairedDevice(device, ACCOUNT_ID) }.exceptionOrNull()
+
+        assertThat(error).isInstanceOf(DeviceApiException::class.java)
+        assertThat((error as DeviceApiException).code).isEqualTo(409)
+    }
+
+    @Test
+    fun `getPairedDevices returns mapped devices on success`() = runTest {
+        val apiModels = listOf(buildDeviceApiModel())
+        val devices = listOf(Device(id = DEVICE_ID))
+        val response = mockk<Response<List<DeviceApiModel>>>()
+        every { response.isSuccessful } returns true
+        every { response.body() } returns apiModels
+        coEvery { deviceApi.getPairedDevices(any()) } returns response
+        every { apiModels.toDomainModels() } returns devices
+
+        val result = repository.getPairedDevices(deviceType = null)
+
+        assertThat(result).isEqualTo(devices)
+    }
+
+    @Test
+    fun `getPairedDevices throws DeviceApiException carrying the http code on failure`() = runTest {
+        val response = mockk<Response<List<DeviceApiModel>>>()
+        every { response.isSuccessful } returns false
+        every { response.code() } returns 500
+        coEvery { deviceApi.getPairedDevices(any()) } returns response
+
+        val error = runCatching { repository.getPairedDevices(deviceType = null) }.exceptionOrNull()
+
+        assertThat(error).isInstanceOf(DeviceApiException::class.java)
+        assertThat((error as DeviceApiException).code).isEqualTo(500)
+    }
+
+    @Test
+    fun `updatePairedDevice returns mapped device on success`() = runTest {
+        val device = Device(id = DEVICE_ID)
+        val request = mockk<PairedDeviceRequest>()
+        val apiModel = buildDeviceApiModel()
+        val mapped = Device(id = DEVICE_ID, isSynced = true)
+        val response = mockk<Response<DeviceApiModel>>()
+        every { device.toPairedDeviceRequest() } returns request
+        every { response.isSuccessful } returns true
+        every { response.body() } returns apiModel
+        coEvery { deviceApi.updatePairedDevice(DEVICE_ID, request) } returns response
+        every { apiModel.toDomainModel(BLEStatus.DISCONNECTED, null, false) } returns mapped
+
+        val result = repository.updatePairedDevice(DEVICE_ID, device, ACCOUNT_ID)
+
+        assertThat(result).isEqualTo(mapped)
+    }
+
+    @Test
+    fun `updatePairedDevice throws DeviceApiException carrying the http code on failure`() = runTest {
+        val device = Device(id = DEVICE_ID)
+        val request = mockk<PairedDeviceRequest>()
+        val response = mockk<Response<DeviceApiModel>>()
+        every { device.toPairedDeviceRequest() } returns request
+        every { response.isSuccessful } returns false
+        every { response.code() } returns 401
+        coEvery { deviceApi.updatePairedDevice(DEVICE_ID, request) } returns response
+
+        val error = runCatching { repository.updatePairedDevice(DEVICE_ID, device, ACCOUNT_ID) }.exceptionOrNull()
+
+        assertThat(error).isInstanceOf(DeviceApiException::class.java)
+        assertThat((error as DeviceApiException).code).isEqualTo(401)
+    }
+
+    @Test
+    fun `deletePairedDevice returns true on success`() = runTest {
+        val response = mockk<Response<Unit>>()
+        every { response.isSuccessful } returns true
+        coEvery { deviceApi.deletePairedDevice(DEVICE_ID) } returns response
+
+        val result = repository.deletePairedDevice(DEVICE_ID)
+
+        assertThat(result).isTrue()
+    }
+
+    @Test
+    fun `deletePairedDevice throws DeviceApiException carrying the http code on failure`() = runTest {
+        val response = mockk<Response<Unit>>()
+        every { response.isSuccessful } returns false
+        every { response.code() } returns 404
+        coEvery { deviceApi.deletePairedDevice(DEVICE_ID) } returns response
+
+        val error = runCatching { repository.deletePairedDevice(DEVICE_ID) }.exceptionOrNull()
+
+        assertThat(error).isInstanceOf(DeviceApiException::class.java)
+        assertThat((error as DeviceApiException).code).isEqualTo(404)
     }
 
     // ── getScaleTokenFromApi ───────────────────────────────────────────────────

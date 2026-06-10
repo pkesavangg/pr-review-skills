@@ -38,6 +38,8 @@ constructor(
   private val dialogQueueService: IDialogQueueService,
   private val deviceService: GGDeviceService,
   private val logRepository: ILogRepository,
+  private val entryRepository: com.dmdbrands.gurus.weight.domain.repository.IEntryRepository,
+  @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
 ) : IExportService {
   companion object {
     private const val TAG = "ExportService"
@@ -135,6 +137,66 @@ constructor(
     } catch (e: Exception) {
       AppLog.e(TAG, "Error sending CSV to email", e)
       throw e
+    }
+  }
+
+  /**
+   * Exports entries via the unified `GET /v3/entries/csv` endpoint (MOB-380).
+   * Email mode (download=false): server sends CSV to the account's email.
+   * Download mode (download=true): streams file body and saves to MediaStore Downloads.
+   */
+  override suspend fun exportEntriesCsv(category: String?, download: Boolean) {
+    val utcOffset = getUtcOffset()
+    try {
+      val body = entryRepository.exportEntriesCsv(category = category, download = download, utcOffset = utcOffset)
+      if (download) {
+        // Download mode must produce a file. A null body (or a failed write below) is a
+        // real failure — never report success without a file on disk.
+        val csv = body ?: throw IllegalStateException("CSV download returned no body")
+        saveCsvToDownloads(csv, category)
+        AppLog.i(TAG, "exportEntriesCsv: file saved to Downloads (category=$category)")
+      } else {
+        // Email mode: server sends email; body is empty or {sent:true}
+        AppLog.i(TAG, "exportEntriesCsv: email triggered (category=$category)")
+        showExportSuccessToast()
+      }
+    } catch (e: Exception) {
+      AppLog.e(TAG, "exportEntriesCsv failed (category=$category download=$download)", e)
+      throw e
+    }
+  }
+
+  /**
+   * Streams the export CSV body into the device's shared Downloads collection.
+   *
+   * PHI note (MOB-380): the CSV holds the user's own health data (weight + BP). This is a
+   * user-initiated export of their own data to their own device Downloads — the same data
+   * the user can already email to themselves — written to shared `MediaStore.Downloads` so
+   * it is findable in the system Downloads UI. Email is the default path; download is opt-in.
+   * Flagged for compliance sign-off; if shared storage is not acceptable for PHI, switch to a
+   * FileProvider share-sheet backed by app-scoped storage.
+   *
+   * @throws java.io.IOException if the file could not be created or written. The caller MUST
+   *   surface this rather than reporting a successful export.
+   */
+  private fun saveCsvToDownloads(body: okhttp3.ResponseBody, category: String?) {
+    try {
+      val fileName = "entries${if (category != null) "_$category" else ""}.csv"
+      val contentValues = android.content.ContentValues().apply {
+        put(android.provider.MediaStore.Downloads.DISPLAY_NAME, fileName)
+        put(android.provider.MediaStore.Downloads.MIME_TYPE, "text/csv")
+        put(android.provider.MediaStore.Downloads.IS_PENDING, 1)
+      }
+      val resolver = context.contentResolver
+      val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+        ?: throw java.io.IOException("MediaStore returned a null URI for $fileName")
+      resolver.openOutputStream(uri)?.use { out -> body.byteStream().copyTo(out) }
+        ?: throw java.io.IOException("Could not open output stream for $uri")
+      contentValues.clear()
+      contentValues.put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
+      resolver.update(uri, contentValues, null, null)
+    } finally {
+      body.close()
     }
   }
 

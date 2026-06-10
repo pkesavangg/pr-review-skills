@@ -257,23 +257,53 @@ final class HealthKitService: HealthKitServiceProtocol {
             return (scaleItems, bpmItems)
         }.value
 
-        // Build HealthKit payloads for scale entries
-        var healthKitData = buildHealthKitData(from: scaleExports)
-
-        // Build HealthKit payloads for BPM entries
-        for bpmExport in bpmExports {
-            healthKitData.append(contentsOf: buildHealthKitData(from: bpmExport))
-        }
-
+        // MA-3941: commit the full-sync payload in fixed-size entry chunks so the in-flight
+        // HealthKit payload stays bounded regardless of how many entries the account has.
+        // A single 9k-entry payload (~45k HK samples) previously exhausted memory and tripped
+        // the main-thread watchdog before the sync completed.
+        let entryChunkSize = 1000
+        let scaleTotal = scaleExports.count
+        let bpmTotal = bpmExports.count
         logger.log(
             level: .info,
             tag: tag,
-            message: "HealthKit full sync prepared payload. accountId=\(accountId), "
-                + "scaleEntries=\(scaleExports.count), bpmEntries=\(bpmExports.count), "
-                + "payloadCount=\(healthKitData.count)"
+            message: "HealthKit full sync fetched entries. accountId=\(accountId), scaleEntries=\(scaleTotal), bpmEntries=\(bpmTotal)"
         )
-        try await saveHealthKitData(finalData: healthKitData)
-        logger.log(level: .success, tag: tag, message: "HealthKit full sync completed. accountId=\(accountId), payloadCount=\(healthKitData.count)")
+
+        var scaleProcessed = 0
+        while scaleProcessed < scaleTotal {
+            let end = min(scaleProcessed + entryChunkSize, scaleTotal)
+            let chunk = Array(scaleExports[scaleProcessed..<end])
+            try await saveHealthKitData(finalData: buildHealthKitData(from: chunk))
+            scaleProcessed = end
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "HealthKit full sync progress (scale). accountId=\(accountId), processed=\(scaleProcessed)/\(scaleTotal)"
+            )
+        }
+
+        var bpmProcessed = 0
+        while bpmProcessed < bpmTotal {
+            let end = min(bpmProcessed + entryChunkSize, bpmTotal)
+            var chunkPayload: [HealthKitData] = []
+            for bpmExport in bpmExports[bpmProcessed..<end] {
+                chunkPayload.append(contentsOf: buildHealthKitData(from: bpmExport))
+            }
+            try await saveHealthKitData(finalData: chunkPayload)
+            bpmProcessed = end
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "HealthKit full sync progress (bpm). accountId=\(accountId), processed=\(bpmProcessed)/\(bpmTotal)"
+            )
+        }
+
+        logger.log(
+            level: .success,
+            tag: tag,
+            message: "HealthKit full sync completed. accountId=\(accountId), scaleEntries=\(scaleTotal), bpmEntries=\(bpmTotal)"
+        )
     }
 
     /// Opens the Apple Health app so the user can review permissions.

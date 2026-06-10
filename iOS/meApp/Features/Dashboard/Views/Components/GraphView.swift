@@ -21,6 +21,15 @@ struct GraphView: View {
     // PERFORMANCE: Cancellable task for deferred period change configuration
     @State private var periodChangeTask: Task<Void, Never>?
 
+    // MA-3837: tracks whether the first-appear auto-selection has run, so navigating away and
+    // back doesn't override a user's intentional manual clear.
+    @State private var didInitialSelect = false
+
+    /// Latest entry date in the active period — used to drive first-appear / initial-load auto-select.
+    private var latestEntryDate: Date? {
+        dashboardStore.continuousOperations.max(by: { $0.date < $1.date })?.date
+    }
+
     // Whether the selection callout is currently visible for the active period
     private var isShowingSelectionCallout: Bool {
         switch dashboardStore.state.graph.selectedPeriod {
@@ -79,8 +88,11 @@ struct GraphView: View {
             // WeightTrendView.onChange(of: localSelectedPeriod) before this handler runs.
             // We only need to handle view model configuration and UI updates here.
 
-            // Immediate lightweight operations (cheap)
-            dashboardStore.chartManager.clearSelection()
+            // MA-3837: do NOT clear the store selection here. updateSelectedPeriod auto-selects
+            // the latest entry for the new period, and the freshly-mounted BaseGraphView syncs it
+            // from the store; clearing the store would wipe that auto-selection. The per-section
+            // VMs are still reset (inactive ones are torn down below; the active one is re-synced
+            // from the store on mount).
             totalSectionViewModel.clearSelection()
             yearSectionViewModel.clearSelection()
             monthSectionViewModel.clearSelection()
@@ -142,6 +154,29 @@ struct GraphView: View {
         .onReceive(accountService.$activeAccount) { _ in
             guard !dashboardStore.state.ui.isResettingDashboard else { return }
             dashboardStore.lifecycleManager.handleSettingsChange()
+        }
+        // MA-3837: on first appear with data already present, auto-select the latest entry so the
+        // header tile/crosshair shows the most recent point on cold start.
+        .onAppear { performInitialSelectIfNeeded() }
+        // MA-3837: handle data arriving after the view appeared (initial load was empty).
+        .onChange(of: latestEntryDate) { oldLatest, newLatest in
+            guard oldLatest == nil, newLatest != nil else { return }
+            didInitialSelect = true
+            dashboardStore.chartManager.selectLatestEntryIfNeeded()
+        }
+    }
+
+    // MARK: - First-Appear Auto Selection
+
+    private func performInitialSelectIfNeeded() {
+        guard !didInitialSelect else { return }
+        guard latestEntryDate != nil else { return } // No data yet — the onChange above handles it.
+        didInitialSelect = true
+        // Defer briefly so the section view model is wired to the store before selecting,
+        // otherwise chartOperations is empty and the selection can't resolve a point.
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
+            dashboardStore.chartManager.selectLatestEntryIfNeeded()
         }
     }
 

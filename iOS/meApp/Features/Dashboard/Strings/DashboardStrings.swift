@@ -120,4 +120,9 @@ struct DashboardStrings {
     static let bpmReadingArrivalMmhg = "mmhg"
     static let bpmReadingArrivalPulse = "pulse"
     static let weightReadingArrivalJustNow = "Just now"
+
+    // Graph scroll hint modal (MA-3925 / MA-3984)
+    static let graphScrollHintTitle = "NEW: Scrollable Graph"
+    static let graphScrollHintMessage = "Swipe left or right on the graph to view more growth data over time."
+    static let graphScrollHintConfirm = "Got it"
 }

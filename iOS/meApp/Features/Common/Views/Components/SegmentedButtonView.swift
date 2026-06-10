@@ -15,6 +15,10 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
     /// dividing the parent equally. Required when the control is hosted in a
     /// horizontal ScrollView so it can actually scroll under Dynamic Type.
     var usesIntrinsicWidth: Bool = false
+    /// Opt-in — returns a stable accessibility identifier for each segment so
+    /// UI tests can tap a specific tab by name. Pass `nil` to leave segments
+    /// untagged (the default).
+    var accessibilityIdentifierProvider: ((T) -> String)?
     @Environment(\.appTheme) private var theme
     /// Stores the width of each segment (indexed by its position in the `segments` array).
     @State private var segmentWidths: [Int: CGFloat] = [:]
@@ -57,6 +61,9 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
                 })
                 .zIndex(1)
                 .id(segment)
+                .accessibilityIdentifier(accessibilityIdentifierProvider?(segment) ?? "")
+                // Exposes active segment as `selected` for E2E (MOB-399). Metadata-only.
+                .accessibilityAddTraits(selectedSegment == segment ? .isSelected : [])
             }
         }
         .onPreferenceChange(SegmentWidthPreferenceKey.self) { newWidths in
@@ -87,7 +94,7 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
         )
         .clipShape(RoundedRectangle(cornerRadius: .radiusMD))
     }
-    
+
     /// Renders the label with the uniform-scaling font when opted in, otherwise the default heading5.
     @ViewBuilder
     private func labelText(for segment: T) -> some View {

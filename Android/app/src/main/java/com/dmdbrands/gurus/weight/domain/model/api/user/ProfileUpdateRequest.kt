@@ -13,4 +13,7 @@ ProfileUpdateRequest(
   val weight: Double? = null,
   val activityLevel: String? = null,
   val weightUnit: String? = null,
+  // Phase 2 (MOB-377): account measurement system. productTypes is managed via signup
+  // and the dedicated endpoints, so it is not part of the profile update body.
+  val measurementUnits: String? = null,
 )

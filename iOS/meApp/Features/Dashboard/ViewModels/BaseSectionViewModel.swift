@@ -497,6 +497,25 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         }
     }
     
+    /// MA-3837: applies a programmatic selection (e.g. auto-select latest) through the same
+    /// plotted-X snapping used for taps, so the crosshair lands on the chart's plotted position.
+    func applyProgrammaticSelection(at date: Date?) {
+        guard let date else { return }
+        handleChartSelection(at: plotXDate(for: date))
+    }
+
+    /// MA-3977: applies a selection already validated against the store's operations
+    /// (by `DashboardChartManager`'s `applyChartSelectionSync`). Deliberately bypasses the
+    /// section-specific `handleChartSelection` snap/range guards: those guards are designed for
+    /// user input and can silently clear a valid programmatic selection on the first frame after a
+    /// tab switch (xAxisValues empty, chartOperations not yet bracketed, etc.). `showCrosshair = true`
+    /// is intentional even when `point == nil`, matching the crosshair-at-interpolated-X contract.
+    func applyStoreValidatedSelection(date: Date, point: BathScaleWeightSummary?) {
+        selectedDate = date
+        selectedPoint = point
+        showCrosshair = true
+    }
+
     /// Clears all selection state
     func clearSelection() {
         selectedPoint = nil
@@ -672,7 +691,16 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         invalidateCache()
         updateYAxisConfiguration()
         syncYAxisFromStore()
-        clearSelection() // Clear selection as values may have changed
+
+        // MA-3891: preserve selection — unit / weightless toggles change displayed values
+        // but not which date is selected. Re-select the preserved date instead of clearing,
+        // falling back to the store's selection in case the VM-side selection was cleared.
+        let preservedDate = selectedDate
+            ?? dashboardStore?.state.graph.selectedXValue
+            ?? dashboardStore?.state.graph.selectedPoint?.date
+        if let preservedDate {
+            handleChartSelection(at: preservedDate)
+        }
     }
     
     /// Called when scroll position is updated programmatically

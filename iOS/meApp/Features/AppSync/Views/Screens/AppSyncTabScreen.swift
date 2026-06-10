@@ -28,6 +28,7 @@ struct AppSyncTabScreen: View {
             if isScannerReady {
                 // Full-screen camera/scanner view
                 AppSyncScannerView(
+                    initialZoom: scanStore.initialZoom,
                     onClose: {
                         isScannerReady = false
                         tabViewModel.restorePreviousTab()
@@ -45,6 +46,14 @@ struct AppSyncTabScreen: View {
             }
         }
         .onChange(of: tabViewModel.selectedTab) { _, newValue in
+            // MA-3863: load the saved zoom for the active account and gate scanner
+            // rendering until it's ready, so the camera reopens at the same zoom.
+            if newValue == .appsync {
+                scanStore.loadSavedZoom()
+                isScannerReady = true
+            } else {
+                isScannerReady = false
+            }
             withAnimation {
                 tabViewModel.showTabBar = newValue != .appsync
             }
