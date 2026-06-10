@@ -49,6 +49,12 @@ final class SignupStore: ObservableObject {
     // Per-device save status populated during FINISH submission.
     // Drives the allProfilesReady / signupError terminal screens.
     @Published var deviceStatuses: [(device: SignupDeviceType, status: SignupDeviceStatus)] = []
+    // True once the backend account has been created. Per UX (MOB-419) the account
+    // is created when the user taps COMPLETE on the password screen, so subsequent
+    // device loops (which skip the password step) and the final FINISH submission
+    // never create it again.
+    @Published private(set) var isAccountCreated = false
+    @Published private(set) var isCreatingAccount = false
 
     // Baby management
     @Published var babies: [SignupBaby] = []
@@ -237,10 +243,22 @@ final class SignupStore: ObservableObject {
     }
 
     func moveToNextStep() {
-        // createUser is deferred for all device types — called only when FINISH is tapped
         // When leaving addBaby, save the baby and move to babyList
         if currentStep == .addBaby {
             saveBabyFromForm()
+        }
+        // Per UX (MOB-419): the account is created when COMPLETE is tapped on the
+        // password step. Advancing to the next step is deferred until creation
+        // succeeds; on failure the user stays on the password step (toast shown).
+        // Product/device saves remain deferred to FINISH.
+        if currentStep == .password {
+            guard !isCreatingAccount && !isAccountCreated else { return }
+            isCreatingAccount = true
+            Task {
+                await createAccountAtPassword()
+                isCreatingAccount = false
+            }
+            return
         }
         guard currentStepIndex < steps.count - 1 else { return }
         currentStepIndex += 1
@@ -256,16 +274,6 @@ final class SignupStore: ObservableObject {
     func retryFailedDevices() {
         Task {
             await retryDeviceSaves()
-        }
-    }
-
-    /// Called from the error screen CANCEL button — discards the entire signup and resets.
-    func cancelSignup(router: Router<AuthRoute>? = nil) {
-        resetForm()
-        if isFromAccountSwitching {
-            dismissAction?()
-        } else {
-            router?.navigateBack()
         }
     }
 
@@ -509,29 +517,72 @@ final class SignupStore: ObservableObject {
         ))
     }
     
-    func createUser() async {
+    /// Creates the account when the user taps COMPLETE on the password step
+    /// (per UX: MOB-419). On success, advances to the per-device "profile ready"
+    /// screen; on failure, the account-creation toast is shown and the user stays
+    /// on the password step to retry.
+    func createAccountAtPassword() async {
         notificationService.showLoader(LoaderModel(text: loaderLang.creatingAccount))
+        let created = await ensureAccountCreated()
+        notificationService.dismissLoader()
+        guard created else { return }
+        advancePastPasswordStep()
+    }
+
+    /// Advances off the password step to the per-device profile-ready screen.
+    /// Guarded so it only fires while the user is actually on the password step.
+    private func advancePastPasswordStep() {
+        guard currentStep == .password, currentStepIndex < steps.count - 1 else { return }
+        currentStepIndex += 1
+    }
+
+    /// Creates the backend account exactly once. Account-creation (credential)
+    /// errors surface as a toast and leave the user on the password step — they are
+    /// NOT the per-device error screen, which is reserved for product-creation
+    /// failures. Idempotent: returns immediately if the account already exists.
+    /// - Returns: `true` if the account exists after the call.
+    @discardableResult
+    private func ensureAccountCreated() async -> Bool {
+        if isAccountCreated { return true }
 
         let email = removeWhiteSpace(signupForm.email.value)
         let password = signupForm.password.value
-        logger.log(level: .info, tag: tag, message: "Signup flow started. accountSwitching=\(isFromAccountSwitching)")
-
         let profile = generateProfile()
-        let goal = generateGoalRequest()
+        logger.log(level: .info, tag: tag,
+            message: "Creating account at password Complete. accountSwitching=\(isFromAccountSwitching)")
 
-        // Step 1: Create the account. If this fails, show the existing toast/alert —
-        // the error screen only applies to per-device profile saves.
         do {
             try await accountService.signUp(email: email, password: password, profile: profile)
         } catch {
-            notificationService.dismissLoader()
             logger.log(level: .error, tag: tag,
                 message: "Signup account creation failed. error=\(error.localizedDescription)")
             if case AccountError.maxAccountsReached = error {
                 showMaxUserAccountsAlert()
-                return
+                return false
             }
             handleSignupError(error)
+            return false
+        }
+
+        guard let account = accountService.activeAccount else {
+            handleSignupError(AccountError.noActiveAccount)
+            return false
+        }
+
+        isAccountCreated = true
+        persistSelectedSignupDeviceType(for: account.accountId)
+        return true
+    }
+
+    func createUser() async {
+        notificationService.showLoader(LoaderModel(text: loaderLang.creatingAccount))
+
+        // The account is normally created at the password Complete step. This call
+        // is idempotent and only hits the API when the account doesn't exist yet
+        // (e.g. flows that drive FINISH without going through password Complete).
+        let created = await ensureAccountCreated()
+        guard created else {
+            notificationService.dismissLoader()
             return
         }
 
@@ -541,7 +592,7 @@ final class SignupStore: ObservableObject {
             return
         }
 
-        persistSelectedSignupDeviceType(for: account.accountId)
+        let goal = generateGoalRequest()
 
         // Step 2: Build ordered list of all devices selected this session.
         var allDevices: [SignupDeviceType] = registeredDeviceTypes
@@ -923,6 +974,7 @@ final class SignupStore: ObservableObject {
         disabledDeviceTypes = []
         registeredDeviceTypes = []
         deviceStatuses = []
+        isAccountCreated = false
         babies.removeAll()
         isEditingBabyIndex = nil
         showBabySexPicker = false
