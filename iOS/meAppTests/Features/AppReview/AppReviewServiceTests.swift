@@ -213,4 +213,65 @@ struct AppReviewServiceTests {
         #expect(requestReviewCalls == 1)
         #expect(logger.messages.contains { $0.contains("App review prompt triggered successfully") })
     }
+
+    // MARK: - submitReview (unified /v3/review/ endpoint)
+
+    @Test("submitReview success: sends correct request fields to repository and logs success")
+    func submitReviewSuccess() async throws {
+        let logger = MockLoggerService()
+        let repo = MockScaleRepositoryAPI()
+        let service = AppReviewService(
+            logger: logger,
+            notificationHelper: MockNotificationHelperService(),
+            reviewRepository: repo,
+            hasActiveWindowScene: { true },
+            nativeReviewRequest: {}
+        )
+
+        try await service.submitReview(reviewType: .app, status: .ios, rating: 5, flagId: "flag-1")
+
+        #expect(repo.submitReviewCalls == 1)
+        #expect(repo.lastSubmittedReview?.reviewType == ReviewType.app.rawValue)
+        #expect(repo.lastSubmittedReview?.status == ReviewStatus.ios.rawValue)
+        #expect(repo.lastSubmittedReview?.rating == 5)
+        #expect(repo.lastSubmittedReview?.flagId == "flag-1")
+        #expect(logger.messages.contains { $0.contains("/v3/review/") })
+    }
+
+    @Test("submitReview failure: rethrows repository error and logs structured fields")
+    func submitReviewFailure() async throws {
+        let logger = MockLoggerService()
+        let repo = MockScaleRepositoryAPI()
+        repo.submitReviewError = NSError(domain: "test", code: 500)
+        let service = AppReviewService(
+            logger: logger,
+            notificationHelper: MockNotificationHelperService(),
+            reviewRepository: repo,
+            hasActiveWindowScene: { true },
+            nativeReviewRequest: {}
+        )
+
+        await #expect(throws: (any Error).self) {
+            try await service.submitReview(reviewType: .scale, status: .exitA, sku: "0375")
+        }
+        #expect(repo.submitReviewCalls == 1)
+        #expect(logger.messages.contains { $0.contains("Failed to submit review") })
+    }
+
+    @Test("submitReview scale type: passes sku field in request")
+    func submitReviewScaleTypePassesSku() async throws {
+        let repo = MockScaleRepositoryAPI()
+        let service = AppReviewService(
+            logger: MockLoggerService(),
+            notificationHelper: MockNotificationHelperService(),
+            reviewRepository: repo,
+            hasActiveWindowScene: { true },
+            nativeReviewRequest: {}
+        )
+
+        try await service.submitReview(reviewType: .scale, status: .reviewed, rating: 4, sku: "0375")
+
+        #expect(repo.lastSubmittedReview?.sku == "0375")
+        #expect(repo.lastSubmittedReview?.reviewType == ReviewType.scale.rawValue)
+    }
 }

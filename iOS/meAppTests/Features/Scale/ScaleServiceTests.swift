@@ -1411,6 +1411,143 @@ struct ScaleServiceTests {
         #expect(remote.createScaleCalls == 1)
     }
 
+    // MARK: - Unified Device API (Me App 2.0)
+
+    @Test("createPairedDevice success: delegates to remoteRepo with the provided request and returns the response")
+    func createPairedDeviceSuccess() async throws {
+        let remote = MockScaleRepositoryAPI()
+        let expected = ScaleTestFixtures.makePairedDeviceResponse(id: "pd-new")
+        remote.createPairedDeviceResult = expected
+        let sut = makeSUT(remote: remote)
+
+        let req = ScaleTestFixtures.makePairedDeviceRequest(deviceType: "weight_scale", nickname: "Kitchen Scale")
+        let result = try await sut.createPairedDevice(req)
+
+        #expect(remote.createPairedDeviceCalls == 1)
+        #expect(remote.lastCreatedPairedDevice?.deviceType == "weight_scale")
+        #expect(remote.lastCreatedPairedDevice?.nickname == "Kitchen Scale")
+        #expect(result.id == "pd-new")
+    }
+
+    @Test("createPairedDevice failure: propagates remote error")
+    func createPairedDeviceFailure() async throws {
+        let remote = MockScaleRepositoryAPI()
+        remote.createPairedDeviceError = ScaleTestError.remoteFailure
+        let sut = makeSUT(remote: remote)
+
+        await #expect(throws: (any Error).self) {
+            try await sut.createPairedDevice(ScaleTestFixtures.makePairedDeviceRequest())
+        }
+        #expect(remote.createPairedDeviceCalls == 1)
+    }
+
+    @Test("updatePairedDevice success: wraps nickname in PairedDeviceUpdateRequest and delegates to remoteRepo")
+    func updatePairedDeviceSuccess() async throws {
+        let remote = MockScaleRepositoryAPI()
+        let expected = ScaleTestFixtures.makePairedDeviceResponse(id: "pd-1", nickname: "New Name")
+        remote.updatePairedDeviceResult = expected
+        let sut = makeSUT(remote: remote)
+
+        let result = try await sut.updatePairedDevice("pd-1", nickname: "New Name")
+
+        #expect(remote.updatePairedDeviceCalls == 1)
+        #expect(remote.lastUpdatedPairedDeviceId == "pd-1")
+        #expect(remote.lastUpdatedPairedDevice?.nickname == "New Name")
+        #expect(result.id == "pd-1")
+    }
+
+    @Test("updatePairedDevice failure: propagates remote error")
+    func updatePairedDeviceFailure() async throws {
+        let remote = MockScaleRepositoryAPI()
+        remote.updatePairedDeviceError = ScaleTestError.remoteFailure
+        let sut = makeSUT(remote: remote)
+
+        await #expect(throws: (any Error).self) {
+            try await sut.updatePairedDevice("pd-1", nickname: "X")
+        }
+    }
+
+    @Test("deletePairedDevice success: delegates to remoteRepo with the provided deviceId")
+    func deletePairedDeviceSuccess() async throws {
+        let remote = MockScaleRepositoryAPI()
+        let sut = makeSUT(remote: remote)
+
+        try await sut.deletePairedDevice("pd-99")
+
+        #expect(remote.deletePairedDeviceCalls == 1)
+        #expect(remote.lastDeletedPairedDeviceId == "pd-99")
+    }
+
+    @Test("deletePairedDevice failure: propagates remote error")
+    func deletePairedDeviceFailure() async throws {
+        let remote = MockScaleRepositoryAPI()
+        remote.deletePairedDeviceError = ScaleTestError.remoteFailure
+        let sut = makeSUT(remote: remote)
+
+        await #expect(throws: (any Error).self) {
+            try await sut.deletePairedDevice("pd-99")
+        }
+    }
+
+    // MARK: - pairDevice (default protocol impl)
+
+    @Test("pairDevice uses bathScale.scaleType as connectionType when available")
+    func pairDeviceUsesBathScaleType() async throws {
+        let remote = MockScaleRepositoryAPI()
+        let expected = ScaleTestFixtures.makePairedDeviceResponse(id: "pd-bath")
+        remote.createPairedDeviceResult = expected
+        let device = ScaleTestFixtures.makeDevice()
+        // makeDevice sets bathScale.scaleType = btWifiR4
+        let sut = makeSUT(remote: remote)
+
+        let result = try await sut.pairDevice(device, deviceType: .scale)
+
+        #expect(remote.lastCreatedPairedDevice?.type == ScaleSourceType.btWifiR4.rawValue)
+        #expect(remote.lastCreatedPairedDevice?.deviceType == DeviceType.scale.serverValue)
+        #expect(result.id == "pd-bath")
+    }
+
+    @Test("pairDevice falls back to protocolType when bathScale is nil")
+    func pairDeviceFallsBackToProtocolType() async throws {
+        let remote = MockScaleRepositoryAPI()
+        remote.createPairedDeviceResult = ScaleTestFixtures.makePairedDeviceResponse(id: "pd-proto")
+        let device = ScaleTestFixtures.makeDevice()
+        device.bathScale = nil
+        device.protocolType = ScaleSourceType.bluetooth.rawValue
+        let sut = makeSUT(remote: remote)
+
+        _ = try await sut.pairDevice(device, deviceType: .scale)
+
+        #expect(remote.lastCreatedPairedDevice?.type == ScaleSourceType.bluetooth.rawValue)
+    }
+
+    @Test("pairDevice falls back to bluetooth when bathScale and protocolType are both nil")
+    func pairDeviceFallsBackToBluetooth() async throws {
+        let remote = MockScaleRepositoryAPI()
+        remote.createPairedDeviceResult = ScaleTestFixtures.makePairedDeviceResponse(id: "pd-bt")
+        let device = ScaleTestFixtures.makeDevice()
+        device.bathScale = nil
+        device.protocolType = nil
+        let sut = makeSUT(remote: remote)
+
+        _ = try await sut.pairDevice(device, deviceType: .bpm)
+
+        #expect(remote.lastCreatedPairedDevice?.type == ScaleSourceType.bluetooth.rawValue)
+        #expect(remote.lastCreatedPairedDevice?.deviceType == DeviceType.bpm.serverValue)
+    }
+
+    @Test("pairDevice propagates createPairedDevice error")
+    func pairDevicePropagatesError() async throws {
+        let remote = MockScaleRepositoryAPI()
+        remote.createPairedDeviceError = ScaleTestError.remoteFailure
+        let device = ScaleTestFixtures.makeDevice()
+        let sut = makeSUT(remote: remote)
+
+        await #expect(throws: (any Error).self) {
+            _ = try await sut.pairDevice(device, deviceType: .scale)
+        }
+    }
+
     private func makeSUT(
         account: MockAccountService? = nil,
         repo: MockScaleRepository? = nil,
