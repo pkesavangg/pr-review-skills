@@ -861,7 +861,7 @@ class BottomTabBarViewModel: ObservableObject {
         }
 
         if count > 1 { isReplacingBabyCard = true }
-        logger.log(level: .info, tag: tag, message: "Showing baby reading arrival card. count=\(count), weight=\(weightString)")
+        logger.log(level: .info, tag: tag, message: "Showing baby reading arrival card. count=\(count)")
         notificationService.showToast(toast)
     }
 
@@ -1141,7 +1141,7 @@ class BottomTabBarViewModel: ObservableObject {
         }
 
         if count > 1 { isReplacingBtWeightCard = true }
-        logger.log(level: .info, tag: tag, message: "Showing weight reading arrival card. count=\(count), weight=\(weightString)")
+        logger.log(level: .info, tag: tag, message: "Showing weight reading arrival card. count=\(count)")
         notificationService.showToast(toast)
     }
 
