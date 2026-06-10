@@ -336,4 +336,116 @@ struct ScaleAPIRepositoryAPITests {
             Issue.record("Expected .scaleR4Preference"); return
         }
     }
+
+    // MARK: - Unified Device API (Me App 2.0)
+
+    @Test("createPairedDevice success: calls send with pairedDevice POST with auth, returns decoded response")
+    func createPairedDeviceSuccess() async throws {
+        let (sut, http) = makeSUT()
+        let expected = ScaleTestFixtures.makePairedDeviceResponse(id: "pd-1")
+        http.sendResult = expected
+
+        let req = ScaleTestFixtures.makePairedDeviceRequest()
+        let result = try await sut.createPairedDevice(req)
+
+        #expect(http.sendCalls == 1)
+        #expect(http.lastSendNeedsAuth == true)
+        #expect(http.lastSendMethod == .post)
+        guard case .pairedDevice(let dt) = http.lastSendEndpoint, dt == nil else {
+            Issue.record("Expected .pairedDevice(deviceType: nil)"); return
+        }
+        #expect(result.id == "pd-1")
+    }
+
+    @Test("createPairedDevice failure: propagates server error")
+    func createPairedDeviceFailure() async throws {
+        let (sut, http) = makeSUT()
+        http.sendError = HTTPError.serverError
+
+        await #expect(throws: (any Error).self) {
+            try await sut.createPairedDevice(ScaleTestFixtures.makePairedDeviceRequest())
+        }
+    }
+
+    @Test("updatePairedDevice success: calls send with pairedDeviceId PATCH with auth, returns decoded response")
+    func updatePairedDeviceSuccess() async throws {
+        let (sut, http) = makeSUT()
+        let expected = ScaleTestFixtures.makePairedDeviceResponse(id: "pd-1", nickname: "Updated")
+        http.sendResult = expected
+
+        let result = try await sut.updatePairedDevice("pd-1", PairedDeviceUpdateRequest(nickname: "Updated"))
+
+        #expect(http.sendCalls == 1)
+        #expect(http.lastSendNeedsAuth == true)
+        #expect(http.lastSendMethod == .patch)
+        guard case .pairedDeviceId(let id) = http.lastSendEndpoint else {
+            Issue.record("Expected .pairedDeviceId"); return
+        }
+        #expect(id == "pd-1")
+        #expect(result.id == "pd-1")
+    }
+
+    @Test("updatePairedDevice failure: propagates error")
+    func updatePairedDeviceFailure() async throws {
+        let (sut, http) = makeSUT()
+        http.sendError = HTTPError.serverError
+
+        await #expect(throws: (any Error).self) {
+            try await sut.updatePairedDevice("pd-1", PairedDeviceUpdateRequest(nickname: "X"))
+        }
+    }
+
+    @Test("deletePairedDevice success: calls send with pairedDeviceId DELETE with auth")
+    func deletePairedDeviceSuccess() async throws {
+        let (sut, http) = makeSUT()
+        http.sendResult = EmptyResponse()
+
+        try await sut.deletePairedDevice("pd-99")
+
+        #expect(http.sendCalls == 1)
+        #expect(http.lastSendNeedsAuth == true)
+        #expect(http.lastSendMethod == .delete)
+        guard case .pairedDeviceId(let id) = http.lastSendEndpoint else {
+            Issue.record("Expected .pairedDeviceId"); return
+        }
+        #expect(id == "pd-99")
+    }
+
+    @Test("deletePairedDevice failure: propagates error")
+    func deletePairedDeviceFailure() async throws {
+        let (sut, http) = makeSUT()
+        http.sendError = HTTPError.serverError
+
+        await #expect(throws: (any Error).self) {
+            try await sut.deletePairedDevice("pd-99")
+        }
+    }
+
+    // MARK: - Unified Review API (Me App 2.0)
+
+    @Test("submitReview success: calls send with review POST with auth (204 no content)")
+    func submitReviewSuccess() async throws {
+        let (sut, http) = makeSUT()
+        http.sendResult = EmptyResponse()
+
+        let req = ReviewRequest(reviewType: .app, status: .ios, rating: 5)
+        try await sut.submitReview(req)
+
+        #expect(http.sendCalls == 1)
+        #expect(http.lastSendNeedsAuth == true)
+        #expect(http.lastSendMethod == .post)
+        guard case .review = http.lastSendEndpoint else {
+            Issue.record("Expected .review endpoint"); return
+        }
+    }
+
+    @Test("submitReview failure: propagates server error")
+    func submitReviewFailure() async throws {
+        let (sut, http) = makeSUT()
+        http.sendError = HTTPError.serverError
+
+        await #expect(throws: (any Error).self) {
+            try await sut.submitReview(ReviewRequest(reviewType: .scale, status: .exitA))
+        }
+    }
 }

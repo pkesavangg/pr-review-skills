@@ -609,6 +609,7 @@ extension BtWifiScaleSetupStore {
             }
             
             LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully: \(savedScale.id)")
+            ProductTypeStore.shared.selectLastAdded(.myWeight)
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
             
             if isDashboardFour {

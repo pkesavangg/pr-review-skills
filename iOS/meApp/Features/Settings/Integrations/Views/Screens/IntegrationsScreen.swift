@@ -13,6 +13,12 @@ struct IntegrationsScreen: View {
     @StateObject private var store = IntegrationStore()
     @StateObject private var oauthSession = OAuthWebSession()
 
+    /// Integration providers other than Apple Health (Fitbit, My Fitness Pal).
+    /// The store only populates these for weight-scale users.
+    private var providerIntegrations: [IntegrationItem] {
+        store.integrations.filter { $0.type != .appleHealth }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -25,21 +31,27 @@ struct IntegrationsScreen: View {
             )
 
             List {
-                Section {
-                    // Dedicated Apple Health row
-                    HealthKitIntegrationListItemView()
-                        .listRowInsets()
-
-                    // Remaining integration providers
-                    ForEach(store.integrations.filter { $0.type != .appleHealth }, id: \.id) { item in
-                        IntegrationListItemView(
-                            item: item
-                        ) { store.selectIntegration(item: item) }
-                        .listRowInsets()
+                // Weight-scale-only providers (Fitbit, My Fitness Pal).
+                // Hidden entirely when the user has no weight scale — the store
+                // gates these items, so the section disappears when the list is empty.
+                if !providerIntegrations.isEmpty {
+                    Section(header: SectionHeader(title: IntegrationsStrings.weightScalesSectionTitle)) {
+                        ForEach(providerIntegrations, id: \.id) { item in
+                            IntegrationListItemView(
+                                item: item
+                            ) { store.selectIntegration(item: item) }
+                            .listRowInsets()
+                        }
                     }
                 }
 
-                // Request new integration — sits just below the list section
+                // Apple Health — available to both weight-scale and BPM users.
+                Section(header: SectionHeader(title: IntegrationsStrings.weightScalesAndBpmSectionTitle)) {
+                    HealthKitIntegrationListItemView()
+                        .listRowInsets()
+                }
+
+                // Request new integration — sits just below the list sections
                 Section {
                     Button(action: { store.showRequestIntegrationModal() }) {
                         Text(IntegrationsStrings.requestNewIntegration)

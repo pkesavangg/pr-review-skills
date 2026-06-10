@@ -17,6 +17,16 @@ protocol AccountRepositoryAPIProtocol {
     /// - Returns: AccountResponse (account + tokens)
     func createAccount(email: String, password: String, profile: Profile) async throws -> AccountResponse
 
+    /// Checks whether an email is available for registration. (POST /account/email-check, no auth)
+    /// - Parameter email: The email address to check.
+    /// - Returns: `true` if the email is not already registered.
+    func checkEmailAvailability(email: String) async throws -> Bool
+
+    /// Updates the account's preferred measurement units. (PATCH /account/measurement-units)
+    /// - Parameter measurementUnits: One of "metric", "imperialLbOz", "imperialLbDecimal".
+    /// - Returns: AccountResponse (from { account })
+    func updateMeasurementUnits(_ measurementUnits: String) async throws -> AccountResponse
+
     /// Logs in with the given email and password. (POST /account/login)
     /// - Parameters:
     ///   - email: The user's email address.

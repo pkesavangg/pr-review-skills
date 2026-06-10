@@ -2,36 +2,57 @@ import Foundation
 @testable import meApp
 
 final class MockEntryRepositoryAPI: EntryRepositoryAPIProtocol {
-    var syncOperationError: Error?
-    var fetchOperationsResult = BathScaleOperationListResponse(operations: [], timestamp: "2026-03-03T00:00:00Z")
-    var fetchOperationsError: Error?
+    var submitEntriesError: Error?
+    var submitEntriesResult = UnifiedEntryResponse(entries: [], timestamp: "2026-03-03T00:00:00Z")
+    var fetchEntriesResult = BathScaleOperationListResponse(operations: [], timestamp: "2026-03-03T00:00:00Z")
+    var fetchEntriesError: Error?
     var exportCsvResult = ExportResponse(sent: true)
     var exportCsvError: Error?
 
-    private(set) var syncOperationCalls = 0
-    private(set) var fetchOperationsCalls = 0
+    private(set) var submitEntriesCalls = 0
+    private(set) var fetchEntriesCalls = 0
     private(set) var exportCsvCalls = 0
 
-    private(set) var lastSyncedOperation: BathScaleOperationDTO?
-    private(set) var lastFetchStartTimestamp: String?
-    private(set) var lastExportCsvUseR4Endpoint: Bool?
+    private(set) var lastSubmittedEntries: [UnifiedEntryRequest]?
+    private(set) var lastFetchStart: String?
+    private(set) var lastFetchCursor: String?
+    private(set) var lastFetchLimit: Int?
+    private(set) var lastFetchCategory: String?
+    private(set) var lastFetchBabyId: String?
+    private(set) var lastExportCsvRequest: EntriesCSVRequest?
 
-    func syncOperation(operation: BathScaleOperationDTO) async throws {
-        syncOperationCalls += 1
-        lastSyncedOperation = operation
-        if let syncOperationError { throw syncOperationError }
+    /// Convenience accessor for tests asserting on the single entry submitted in a batch-of-one push.
+    var lastSubmittedEntry: UnifiedEntryRequest? { lastSubmittedEntries?.first }
+
+    @discardableResult
+    func submitEntries(_ entries: [UnifiedEntryRequest]) async throws -> UnifiedEntryResponse {
+        submitEntriesCalls += 1
+        lastSubmittedEntries = entries
+        if let submitEntriesError { throw submitEntriesError }
+        return submitEntriesResult
     }
 
-    func fetchOperations(startTimestamp: String?) async throws -> BathScaleOperationListResponse {
-        fetchOperationsCalls += 1
-        lastFetchStartTimestamp = startTimestamp
-        if let fetchOperationsError { throw fetchOperationsError }
-        return fetchOperationsResult
+    func fetchEntries(
+        start: String?,
+        cursor: String?,
+        limit: Int?,
+        category: String?,
+        babyId: String?
+    ) async throws -> BathScaleOperationListResponse {
+        fetchEntriesCalls += 1
+        lastFetchStart = start
+        lastFetchCursor = cursor
+        lastFetchLimit = limit
+        lastFetchCategory = category
+        lastFetchBabyId = babyId
+        if let fetchEntriesError { throw fetchEntriesError }
+        return fetchEntriesResult
     }
 
-    func exportCsv(useR4Endpoint: Bool) async throws -> ExportResponse {
+    @discardableResult
+    func exportEntriesCSV(_ request: EntriesCSVRequest) async throws -> ExportResponse {
         exportCsvCalls += 1
-        lastExportCsvUseR4Endpoint = useR4Endpoint
+        lastExportCsvRequest = request
         if let exportCsvError { throw exportCsvError }
         return exportCsvResult
     }

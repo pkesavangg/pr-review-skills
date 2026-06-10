@@ -95,6 +95,14 @@ final class UITestAccountService: AccountServiceProtocol {
         throw UITestAccountServiceError.unsupported("updateProductTypes")
     }
 
+    func updateMeasurementUnits(_ measurementUnits: MeasurementUnits) async throws {
+        throw UITestAccountServiceError.unsupported("updateMeasurementUnits")
+    }
+
+    func checkEmailAvailability(email: String) async throws -> Bool {
+        throw UITestAccountServiceError.unsupported("checkEmailAvailability")
+    }
+
     func updateTokens(_ tokens: Tokens, _ accountId: String?) async throws {
         throw UITestAccountServiceError.unsupported("updateTokens")
     }

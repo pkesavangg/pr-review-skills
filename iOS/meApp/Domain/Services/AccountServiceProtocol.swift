@@ -85,6 +85,15 @@ protocol AccountServiceProtocol {
     /// Used when signup or device/baby flows establish the authoritative product list.
     func updateProductTypes(_ productTypes: [String]) async throws
 
+    /// Updates the active account's preferred measurement units (PATCH /account/measurement-units).
+    /// - Parameter measurementUnits: The new measurement units.
+    func updateMeasurementUnits(_ measurementUnits: MeasurementUnits) async throws
+
+    /// Checks whether an email is available for registration (POST /account/email-check).
+    /// - Parameter email: The email address to check.
+    /// - Returns: `true` if the email is not already registered.
+    func checkEmailAvailability(email: String) async throws -> Bool
+
     /// Updates the user's authentication tokens.
     /// - Parameter tokens: The updated Tokens object.
     /// - Parameter accountId: The ID of the account to update. If nil, updates the currently active account.

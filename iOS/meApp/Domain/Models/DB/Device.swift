@@ -162,6 +162,10 @@ final class Device {
             bathScale = BathScale(scaleType: resolvedScaleType, bodyComp: bodyComp)
         }
 
+        // Prefer the server-provided deviceType when present (Me App 2.0), mapping the server's
+        // snake-case value back to the local DeviceType raw value. Fall back to SKU derivation.
+        let resolvedDeviceType = (DeviceType.fromServerValue(dto.deviceType) ?? DeviceType.fromSku(dto.sku)).rawValue
+
         self.init(
             id: id,
             accountId: accountId ?? dto.userId ?? "",
@@ -172,7 +176,7 @@ final class Device {
             password: dto.password.map { Int64($0) },
             isSoftDeleted: dto.isDeleted,
             deviceName: dto.name,
-            deviceType: DeviceType.fromSku(dto.sku).rawValue,
+            deviceType: resolvedDeviceType,
             broadcastId: dto.broadcastId.map { Int64($0) },
             broadcastIdString: dto.broadcastIdString,
             userNumber: dto.userNumber.map { String($0) },
@@ -217,6 +221,7 @@ final class Device {
             broadcastId: self.broadcastId.map { Int($0) },
             broadcastIdString: self.broadcastIdString,
             createdAt: self.createdAt,
+            deviceType: self.deviceType.flatMap { DeviceType(rawValue: $0)?.serverValue },
             id: self.id,
             isConnected: self.isConnected,
             isDeleted: self.isSoftDeleted,

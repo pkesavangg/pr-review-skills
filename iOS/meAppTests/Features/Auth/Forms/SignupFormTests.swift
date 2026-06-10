@@ -18,6 +18,47 @@ struct SignupFormTests {
         #expect(form.isValid == false)
     }
 
+    // MARK: - Conditional gender/dob/height gating (MOB-382)
+
+    @Test("default productTypes is weight and gender is required")
+    func defaultProductTypesRequiresGender() {
+        let form = SignupForm()
+
+        #expect(form.productTypes == [ProductType.weight.rawValue])
+        #expect(form.requiresGenderAndDob == true)
+        #expect(form.requiresHeight == true)
+
+        form.gender.value = ""
+        form.validate()
+        #expect(form.gender.errors[.required] == true)
+    }
+
+    @Test("baby-only productTypes: gender no longer required")
+    func babyOnlyProductTypesDropsGenderRequirement() {
+        let form = SignupForm()
+        form.productTypes = [ProductType.baby.rawValue]
+
+        #expect(form.requiresGenderAndDob == false)
+        #expect(form.requiresHeight == false)
+
+        form.gender.value = ""
+        form.validate()
+        #expect(form.gender.errors[.required] == false)
+    }
+
+    @Test("blood_pressure productTypes: gender required but height not")
+    func bloodPressureRequiresGenderNotHeight() {
+        let form = SignupForm()
+        form.productTypes = [ProductType.bloodPressure.rawValue]
+
+        #expect(form.requiresGenderAndDob == true)
+        #expect(form.requiresHeight == false)
+
+        form.gender.value = ""
+        form.validate()
+        #expect(form.gender.errors[.required] == true)
+    }
+
     @Test("password match validation")
     func passwordMatchValidation() {
         let form = SignupForm()

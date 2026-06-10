@@ -13,17 +13,25 @@ struct NoEntryView: View {
     let title: String?
     let description: String?
     let buttonTitle: String
+    /// Optional asset name for an icon shown above the title (e.g. the baby icon on the empty baby tabs).
+    let iconAsset: String?
+    /// Tint applied to `iconAsset`. Defaults to `statusIconPrimary` when nil.
+    let iconTint: Color?
     let onButtonTap: () -> Void
 
     init(
         title: String? = EntryStrings.noEntries,
         description: String? = EntryStrings.toStart,
         buttonTitle: String = CommonStrings.connectScale,
+        iconAsset: String? = nil,
+        iconTint: Color? = nil,
         onButtonTap: @escaping () -> Void
     ) {
         self.title = title
         self.description = description
         self.buttonTitle = buttonTitle
+        self.iconAsset = iconAsset
+        self.iconTint = iconTint
         self.onButtonTap = onButtonTap
     }
 
@@ -31,19 +39,24 @@ struct NoEntryView: View {
         VStack(spacing: .spacingMD) {
             Spacer()
 
+            if let iconAsset = iconAsset {
+                AppIconView(icon: iconAsset, size: IconSize(width: 56, height: 56))
+                    .foregroundStyle(iconTint ?? theme.statusIconPrimary)
+            }
+
             // Title and description (shown only if non-nil)
             VStack(spacing: .spacingXS) {
                 if let title = title {
                     Text(title)
                         .fontOpenSans(.heading4)
-                        .foregroundColor(theme.textHeading)
+                        .foregroundStyle(theme.textHeading)
                         .multilineTextAlignment(.center)
                 }
 
                 if let description = description {
                     Text(description)
                         .fontOpenSans(.body2)
-                        .foregroundColor(theme.textBody)
+                        .foregroundStyle(theme.textBody)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
                 }

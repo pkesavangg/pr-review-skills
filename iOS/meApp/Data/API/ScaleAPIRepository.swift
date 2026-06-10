@@ -73,4 +73,56 @@ final class ScaleAPIRepository: ScaleRepositoryAPIProtocol {
             needsAuth: true
         ) as EmptyResponse
     }
+
+    // MARK: - Unified Device API (Me App 2.0)
+
+    func listPairedDevices(deviceType: String?) async throws -> [PairedDeviceResponse] {
+        // GET /paired-device/?deviceType=
+        return try await httpClient.get(
+            .pairedDevice(deviceType: deviceType),
+            needsAuth: true
+        )
+    }
+
+    func createPairedDevice(_ request: PairedDeviceRequest) async throws -> PairedDeviceResponse {
+        // POST /paired-device/
+        return try await httpClient.send(
+            .pairedDevice(deviceType: nil),
+            method: .post,
+            body: request,
+            needsAuth: true
+        )
+    }
+
+    func updatePairedDevice(_ deviceId: String, _ request: PairedDeviceUpdateRequest) async throws -> PairedDeviceResponse {
+        // PATCH /paired-device/:deviceId
+        return try await httpClient.send(
+            .pairedDeviceId(deviceId),
+            method: .patch,
+            body: request,
+            needsAuth: true
+        )
+    }
+
+    func deletePairedDevice(_ deviceId: String) async throws {
+        // DELETE /paired-device/:deviceId (204)
+        _ = try await httpClient.send(
+            .pairedDeviceId(deviceId),
+            method: .delete,
+            body: EmptyBody(),
+            needsAuth: true
+        ) as EmptyResponse
+    }
+
+    // MARK: - Unified Review API (Me App 2.0)
+
+    func submitReview(_ request: ReviewRequest) async throws {
+        // POST /review/ (204)
+        _ = try await httpClient.send(
+            .review,
+            method: .post,
+            body: request,
+            needsAuth: true
+        ) as EmptyResponse
+    }
 }

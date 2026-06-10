@@ -14,6 +14,8 @@ final class MockAccountService: AccountServiceProtocol {
     var signUpResult: Result<Void, Error> = .failure(UnexpectedCallError.methodCalled("signUp"))
     var createGoalResult: Result<Void, Error> = .failure(UnexpectedCallError.methodCalled("createGoal"))
     var updateProductTypesResult: Result<Void, Error> = .success(())
+    var updateMeasurementUnitsResult: Result<Void, Error> = .success(())
+    var checkEmailAvailabilityResult: Result<Bool, Error> = .success(true)
     var requestPasswordResetResult: Result<Void, Error> = .success(())
     var updateIntegrationsResult: Result<Void, Error> = .failure(UnexpectedCallError.methodCalled("updateIntegrations"))
     var deleteHealthIntegrationResult: Result<Void, Error> = .failure(UnexpectedCallError.methodCalled("deleteHealthIntegration"))
@@ -37,6 +39,10 @@ final class MockAccountService: AccountServiceProtocol {
     private(set) var createGoalCalls = 0
     private(set) var updateProductTypesCalls = 0
     private(set) var lastUpdatedProductTypes: [String]?
+    private(set) var updateMeasurementUnitsCalls = 0
+    private(set) var lastUpdatedMeasurementUnits: MeasurementUnits?
+    private(set) var checkEmailAvailabilityCalls = 0
+    private(set) var lastCheckEmailAvailabilityEmail: String?
     private(set) var allUpdatedProductTypes: [[String]] = []
     private(set) var requestPasswordResetCalls = 0
     private(set) var updateIntegrationsCalls = 0
@@ -262,5 +268,17 @@ final class MockAccountService: AccountServiceProtocol {
         lastUpdatedProductTypes = productTypes
         allUpdatedProductTypes.append(productTypes)
         try updateProductTypesResult.get()
+    }
+
+    func updateMeasurementUnits(_ measurementUnits: MeasurementUnits) async throws {
+        updateMeasurementUnitsCalls += 1
+        lastUpdatedMeasurementUnits = measurementUnits
+        try updateMeasurementUnitsResult.get()
+    }
+
+    func checkEmailAvailability(email: String) async throws -> Bool {
+        checkEmailAvailabilityCalls += 1
+        lastCheckEmailAvailabilityEmail = email
+        return try checkEmailAvailabilityResult.get()
     }
 }

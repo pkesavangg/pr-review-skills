@@ -27,6 +27,36 @@ class SignupForm: ObservableForm {
     var confirmPassword = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
     var zipcode = FormControl("", validators: [.required, .noWhiteSpace, .maxLength(20)])
 
+    /// Products this signup is for. Drives conditional validation of
+    /// gender/dob/height per the multi-product API spec:
+    /// - gender & dob required only if `productTypes` includes "weight" or "blood_pressure"
+    /// - height required only if `productTypes` includes "weight"
+    /// Defaults to `["weight"]`, matching the server default.
+    var productTypes: [String] = [ProductType.weight.rawValue] {
+        didSet { applyConditionalValidators() }
+    }
+
+    /// Whether gender/dob are required for the current `productTypes`.
+    var requiresGenderAndDob: Bool {
+        productTypes.contains(ProductType.weight.rawValue) || productTypes.contains(ProductType.bloodPressure.rawValue)
+    }
+
+    /// Whether height is required for the current `productTypes`.
+    var requiresHeight: Bool {
+        productTypes.contains(ProductType.weight.rawValue)
+    }
+
+    /// Recomputes validators for the fields that are conditional on `productTypes`.
+    /// gender carries a `.required` validator only when needed; dob/height are
+    /// gated at request-build time (they have no `.required` validator here).
+    func applyConditionalValidators() {
+        if requiresGenderAndDob {
+            gender.addValidator(.required)
+        } else {
+            gender.removeValidator(ofType: .required)
+        }
+    }
+
     /// Publisher that merges all value changes in the form
     var formDidChange: AnyPublisher<Void, Never> {
         let accountFields: [AnyPublisher<Void, Never>] = [

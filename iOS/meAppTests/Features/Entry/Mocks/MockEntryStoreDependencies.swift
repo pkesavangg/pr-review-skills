@@ -65,7 +65,8 @@ final class MockEntryStoreEntryService: EntryServiceProtocol {
         meApp.Progress(count: 0, currentStreak: 0, initYear: nil, initMonth: nil, initWeek: nil, initWt: 0, latest: nil, longestStreak: 0, month: 1, percent: nil, total: nil, week: 1, year: 2024)
     }
     func getStreak(entryType: EntryType) async throws -> Streak { Streak(current: 0, max: 0) }
-    func exportCSV() async throws {}
+    func exportCSV(category: String?, babyId: String?) async throws {}
+    func fetchEntriesPage(cursor: String?, limit: Int, category: String?, babyId: String?) async throws -> EntriesPage { .empty }
     func createBpmEntry(_ dto: BpmOperationDTO) async throws {}
     func fetchBpmEntries() async throws -> [BpmOperationDTO] { [] }
     func deleteBpmEntry(entryTimestamp: String) async throws {}

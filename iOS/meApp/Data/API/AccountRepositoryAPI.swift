@@ -14,25 +14,51 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
             let password: String
             let firstName: String
             let lastName: String
-            let gender: String
+            // Conditional per the multi-product spec — omitted (nil) for baby-only signups.
+            let gender: String?
             let zipcode: String
-            let dob: String
+            let dob: String?
             let weightUnit: String
-            let height: Double
+            let height: Double?
             let activityLevel: String
+            let productTypes: [String]
+            let measurementUnits: String?
         }
+        let productTypes = profile.productTypes ?? [ProductType.weight.rawValue]
+        let requiresHeight = productTypes.contains(ProductType.weight.rawValue)
+        let requiresGenderAndDob = requiresHeight || productTypes.contains(ProductType.bloodPressure.rawValue)
         let createAccountRequest = RegisterRequest(
             email: email,
             password: password,
             firstName: profile.firstName,
             lastName: profile.lastName,
-            gender: profile.gender.rawValue,
+            gender: requiresGenderAndDob ? profile.gender.rawValue : nil,
             zipcode: profile.zipcode,
-            dob: profile.dob,
+            dob: requiresGenderAndDob ? profile.dob : nil,
             weightUnit: profile.weightUnit.rawValue,
-            height: profile.height,
-            activityLevel: profile.activityLevel.rawValue)
+            height: requiresHeight ? profile.height : nil,
+            activityLevel: profile.activityLevel.rawValue,
+            productTypes: productTypes,
+            measurementUnits: profile.measurementUnits)
         return try await httpClient.send(.signup, method: .post, body: createAccountRequest)
+    }
+
+    func checkEmailAvailability(email: String) async throws -> Bool {
+        let response: EmailCheckResponse = try await httpClient.send(
+            .emailCheck,
+            method: .post,
+            body: EmailCheckRequest(email: email)
+        )
+        return response.isAvailable
+    }
+
+    func updateMeasurementUnits(_ measurementUnits: String) async throws -> AccountResponse {
+        return try await httpClient.send(
+            .updateMeasurementUnits,
+            method: .patch,
+            body: UpdateMeasurementUnitsRequest(measurementUnits: measurementUnits),
+            needsAuth: true
+        )
     }
 
     func logIn(email: String, password: String) async throws -> AccountResponse {

@@ -491,4 +491,92 @@ struct AccountRepositoryAPITests {
             try await sut.fetchAccount(accountId: nil)
         }
     }
+
+    // MARK: - productTypes / measurementUnits / email-check (MOB-382)
+
+    /// Encodes the captured request body to a JSON dictionary for field assertions.
+    private func jsonBody(_ body: (any Encodable)?) throws -> [String: Any] {
+        guard let body else { return [:] }
+        let data = try JSONEncoder().encode(body)
+        return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+    }
+
+    @Test("createAccount weight default: sends productTypes=[weight] and gender/dob/height")
+    func createAccountSendsWeightFields() async throws {
+        let (sut, http) = makeSUT()
+        http.sendResult = AccountTestFixtures.makeAccountResponse()
+
+        var profile = AccountTestFixtures.makeProfile()
+        profile.productTypes = [ProductType.weight.rawValue]
+        _ = try await sut.createAccount(email: "new@example.com", password: "secret", profile: profile)
+
+        let body = try jsonBody(http.lastSendBody)
+        #expect(body["productTypes"] as? [String] == ["myWeight"])
+        #expect(body["gender"] != nil)
+        #expect(body["dob"] != nil)
+        #expect(body["height"] != nil)
+    }
+
+    @Test("createAccount baby-only: omits gender/dob/height, includes measurementUnits")
+    func createAccountBabyOnlyOmitsConditionalFields() async throws {
+        let (sut, http) = makeSUT()
+        http.sendResult = AccountTestFixtures.makeAccountResponse()
+
+        var profile = AccountTestFixtures.makeProfile()
+        profile.productTypes = [ProductType.baby.rawValue]
+        profile.measurementUnits = MeasurementUnits.imperialLbOz.rawValue
+        _ = try await sut.createAccount(email: "baby@example.com", password: "secret", profile: profile)
+
+        let body = try jsonBody(http.lastSendBody)
+        #expect(body["productTypes"] as? [String] == ["baby"])
+        #expect(body["gender"] == nil)
+        #expect(body["dob"] == nil)
+        #expect(body["height"] == nil)
+        #expect(body["measurementUnits"] as? String == "imperialLbOz")
+    }
+
+    @Test("createAccount nil productTypes: defaults to [myWeight]")
+    func createAccountDefaultsProductTypes() async throws {
+        let (sut, http) = makeSUT()
+        http.sendResult = AccountTestFixtures.makeAccountResponse()
+
+        // makeProfile leaves productTypes nil
+        _ = try await sut.createAccount(email: "x@example.com", password: "secret", profile: AccountTestFixtures.makeProfile())
+
+        let body = try jsonBody(http.lastSendBody)
+        #expect(body["productTypes"] as? [String] == ["myWeight"])
+    }
+
+    @Test("checkEmailAvailability: POST email-check no-auth, returns isAvailable")
+    func checkEmailAvailabilitySuccess() async throws {
+        let (sut, http) = makeSUT()
+        http.sendResult = EmailCheckResponse(isAvailable: false)
+
+        let result = try await sut.checkEmailAvailability(email: "taken@example.com")
+
+        #expect(result == false)
+        #expect(http.lastSendMethod == .post)
+        #expect(http.lastSendNeedsAuth == false)
+        guard case .emailCheck = http.lastSendEndpoint else {
+            Issue.record("Expected .emailCheck endpoint"); return
+        }
+        let body = try jsonBody(http.lastSendBody)
+        #expect(body["email"] as? String == "taken@example.com")
+    }
+
+    @Test("updateMeasurementUnits: PATCH measurement-units with auth, sends units")
+    func updateMeasurementUnitsSuccess() async throws {
+        let (sut, http) = makeSUT()
+        http.sendResult = AccountTestFixtures.makeAccountResponse()
+
+        _ = try await sut.updateMeasurementUnits(MeasurementUnits.metric.rawValue)
+
+        #expect(http.lastSendMethod == .patch)
+        #expect(http.lastSendNeedsAuth == true)
+        guard case .updateMeasurementUnits = http.lastSendEndpoint else {
+            Issue.record("Expected .updateMeasurementUnits endpoint"); return
+        }
+        let body = try jsonBody(http.lastSendBody)
+        #expect(body["measurementUnits"] as? String == "metric")
+    }
 }

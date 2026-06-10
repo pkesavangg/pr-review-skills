@@ -24,6 +24,7 @@ extension Account {
             lastActiveTime: lastActiveTime,
             isSynced: isSynced ?? true,
             productTypes: productTypes,
+            measurementUnits: measurementUnits,
 
             // WeightCompSettings
             weightUnit: weightSettings?.weightUnit ?? .lb,

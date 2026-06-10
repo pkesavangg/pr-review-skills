@@ -32,7 +32,8 @@ struct HealthKitServiceTests {
         #expect(result == true)
         #expect(integration.isIntegrationAlreadyUsedCalls == 1)
         #expect(handler.availableCalls == 1)
-        #expect(handler.requestAuthorizationCalls == 1)
+        // MOB-405: full authorization requests Weight Gurus + Balance Health sets back-to-back.
+        #expect(handler.requestAuthorizationCalls == 2)
         #expect(integration.setStoredIntegrationDataCalls == 1)
         #expect(integration.lastSetStoredIntegrationDataInfo?.isIntegrated == true)
         #expect(integration.lastSetStoredIntegrationDataInfo?.assignedTo == "101")
@@ -107,7 +108,8 @@ struct HealthKitServiceTests {
         let result = try await sut.integrate(turnOn: true)
 
         #expect(result == false)
-        #expect(handler.requestAuthorizationCalls == 1)
+        // MOB-405: both Weight Gurus + Balance Health authorization requests are attempted upfront.
+        #expect(handler.requestAuthorizationCalls == 2)
     }
 
     @Test("integrate turnOn no permissions: getApprovedPermissionList empty, returns false")

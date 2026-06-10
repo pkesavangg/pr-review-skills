@@ -92,6 +92,11 @@ struct DashboardStrings {
     static let babyReadingArrivalAssign = "ASSIGN"
     static let babyReadingArrivalDontAssign = "DON'T ASSIGN"
 
+    // Baby reading arrival — no baby profile
+    static let babyReadingNoProfileMessage = "Add a baby to save this reading."
+    static let babyReadingNoProfileAddBaby = "ADD A BABY"
+    static let babyReadingNoProfileDiscard = "DISCARD"
+
     // Assign baby modal
     static let assignMeasurementTitle = "Assign Measurement"
     static let assignMeasurementSubtitle = "Which baby is this measurement for?"

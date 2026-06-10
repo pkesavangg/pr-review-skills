@@ -71,7 +71,10 @@ final class Account {
     var isSynced: Bool?
     /// Product types the user has selected (e.g. "myWeight", "myBloodPressure", "baby")
     var productTypes: [String] = []
-    
+    /// Preferred measurement units ("metric", "imperialLbOz", "imperialLbDecimal").
+    /// Sourced from the server `measurementUnits` field; nil until set.
+    var measurementUnits: String?
+
     // Relationship to WeightCompSettings
     @Relationship(deleteRule: .cascade) var weightSettings: WeightCompSettings?
     // Relationship to WeightCompSettings
@@ -104,7 +107,8 @@ final class Account {
         self.refreshToken = nil
         self.expiresAt = nil
         self.isSynced = nil
-        self.productTypes = []
+        self.productTypes = dto.productTypes ?? []
+        self.measurementUnits = dto.measurementUnits
 
         // Create associated WeightCompSettings
         let settings = WeightCompSettings(
@@ -209,7 +213,9 @@ final class Account {
             isMFPOn: self.integrationSettings?.isMfpOn,
             isMFPValid: self.integrationSettings?.isMfpValid,
             isHealthKitOn: self.integrationSettings?.isHealthKitOn,
-            isHealthConnectOn: self.integrationSettings?.isHealthConnectOn
+            isHealthConnectOn: self.integrationSettings?.isHealthConnectOn,
+            productTypes: self.productTypes,
+            measurementUnits: self.measurementUnits
         )
     }
 }
@@ -225,7 +231,16 @@ extension Account {
         self.gender = response.gender
         self.height = String(response.height)
         self.dob = response.dob
-        
+
+        // Only overwrite when the server actually returns the field, so legacy
+        // responses (which omit these) don't clobber locally-managed values.
+        if let productTypes = response.productTypes {
+            self.productTypes = productTypes
+        }
+        if let measurementUnits = response.measurementUnits {
+            self.measurementUnits = measurementUnits
+        }
+
         if let weightSettings = self.weightSettings {
             weightSettings.height = String(response.height)
             weightSettings.activityLevel = response.activityLevel
