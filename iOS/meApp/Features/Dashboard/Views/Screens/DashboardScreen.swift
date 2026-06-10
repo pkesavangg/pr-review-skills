@@ -23,9 +23,10 @@ struct DashboardScreen: View {
     @State private var metricInfoEntry: Entry?
     @State private var isProductTypeSelectorPresented = false
     @State private var isInProductDashboard = false
-    private let weightEmptyStateOffset: CGFloat = 650
-    private let bpmEmptyStateOffset: CGFloat = 400
-
+    /// Tracks whether the per-session persistence redirect has already been applied,
+    /// so subsequent re-appearances (tab switch, background/foreground) don't override
+    /// the user's in-session navigation choices.
+    @State private var hasInitializedProductRedirect = false
     private var canShowSnapshotOverview: Bool {
         store.availableProductItems.count > 1
     }
@@ -40,7 +41,10 @@ struct DashboardScreen: View {
                 if shouldShowSnapshotOverview {
                     snapshotLogo()
                     ScrollView(showsIndicators: false) {
-                        MultiDeviceSnapshotView(availableItems: store.availableProductItems) { selectedItem in
+                        MultiDeviceSnapshotView(
+                            availableItems: store.availableProductItems,
+                            selectedItem: store.selectedProductItem
+                        ) { selectedItem in
                             store.selectProductItem(selectedItem)
                             isInProductDashboard = true
                         }
@@ -61,8 +65,26 @@ struct DashboardScreen: View {
             await store.lifecycleManager.refreshAll()
         }
         .onAppear(perform: store.lifecycleManager.onAppearActions)
+        .onAppear {
+            // Handles the case where availableProductItems is already populated when the
+            // view first renders (data loaded before first appear). The onChange below
+            // covers the async case where data arrives after appear.
+            applyInitialProductRedirectIfNeeded()
+        }
         .onChange(of: canShowSnapshotOverview) { _, isAvailable in
-            if isAvailable { isInProductDashboard = false }
+            guard isAvailable else { return }
+            if let redirected = ProductTypeStore.resolveInitialProductRedirect(
+                hasInitializedProductRedirect: hasInitializedProductRedirect,
+                canShowSnapshotOverview: isAvailable,
+                productTypeStore: store.productTypeSelectorStore
+            ) {
+                isInProductDashboard = redirected
+                hasInitializedProductRedirect = true
+            } else if hasInitializedProductRedirect {
+                // Mid-session: a new product type became available (e.g. device added).
+                // Show the snapshot overview so the user sees the updated device list.
+                isInProductDashboard = false
+            }
         }
         .ignoresSafeArea(.all, edges: canShowSnapshotOverview ? .bottom : .all)
         .background(theme.backgroundSecondary)
@@ -164,7 +186,7 @@ struct DashboardScreen: View {
             ProductTypeSelectorSheet(
                 store: store.productTypeSelectorStore,
                 isPresented: $isProductTypeSelectorPresented,
-                title: ProductTypeStrings.myDashboard
+                title: DashboardStrings.selectGraph
             )
         }
         .zIndex(100)
@@ -212,55 +234,19 @@ struct DashboardScreen: View {
             actionButtons()
                 .padding(.top, (store.allContentRemoved || hasNoContentToShow) ? .spacingLG : .spacingSM)
         }
-        if !store.state.data.hasAnyEntries {
-            VStack {
-                Spacer(minLength: 0)
-                noEntrySection()
-                Spacer(minLength: 0)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: max(0, availableHeight - weightEmptyStateOffset))
-        }
     }
 
     @ViewBuilder
     private func bpmDashboardContent(availableHeight: CGFloat) -> some View {
+        BpmTrendView(dashboardStore: store)
         if store.state.data.hasAnyEntries {
-            BpmTrendView(dashboardStore: store)
             BpmMetricsSection(store: store)
-        } else {
-            bpmEmptyState(availableHeight: availableHeight)
         }
     }
 
     @ViewBuilder
     private func babyDashboardContent(babyProfile: BabyProfile) -> some View {
         BabyTrendView(dashboardStore: store, babyProfile: babyProfile)
-    }
-
-    @ViewBuilder
-    private func bpmEmptyState(availableHeight: CGFloat) -> some View {
-        VStack(spacing: .spacingLG) {
-            Spacer(minLength: .spacingXL)
-            Image(systemName: "heart.text.square")
-                .font(.system(size: 60))
-                .foregroundColor(theme.textSubheading.opacity(0.5))
-                .accessibilityHidden(true)
-            Text(BpmDashboardStrings.noReadingsTitle)
-                .fontOpenSans(.heading4)
-                .foregroundColor(theme.textHeading)
-            Text(BpmDashboardStrings.noReadingsSubtitle)
-                .fontOpenSans(.body2)
-                .foregroundColor(theme.textBody)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, .spacingLG)
-            ButtonView(text: BpmDashboardStrings.addReading, type: .filledPrimary, size: .large, isDisabled: false) {
-                tabViewModel.selectTab(.entry)
-            }
-            Spacer(minLength: .spacingXL)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(minHeight: max(0, availableHeight - bpmEmptyStateOffset))
     }
 
     private func actionButtons() -> some View {
@@ -301,15 +287,16 @@ struct DashboardScreen: View {
                 }
         )
     }
-    
-    private func noEntrySection() -> some View {
-        NoEntryView(
-            title: nil,
-            description: DashboardStrings.noEntriesMessage
-        ) {
-                tabViewModel.pendingSettingsNavigation = .addEditScales
-                tabViewModel.selectedTab = .settings
-                tabViewModel.settingsNavigationSourceTab = .dash
-            }
+
+    // MARK: - Persistence Redirect
+
+    private func applyInitialProductRedirectIfNeeded() {
+        guard let redirected = ProductTypeStore.resolveInitialProductRedirect(
+            hasInitializedProductRedirect: hasInitializedProductRedirect,
+            canShowSnapshotOverview: canShowSnapshotOverview,
+            productTypeStore: store.productTypeSelectorStore
+        ) else { return }
+        isInProductDashboard = redirected
+        hasInitializedProductRedirect = true
     }
 }

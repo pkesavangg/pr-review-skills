@@ -13,6 +13,8 @@ struct BPHistoryEntryItem: View {
     let isExpanded: Bool
     let onTap: () -> Void
     let onDelete: () -> Void
+    /// Called when the user taps the edit icon in the expanded notes section.
+    var onEditNotes: () -> Void = {}
     var openItemID: Binding<UUID?>?
 
     private var pressureText: String {
@@ -29,15 +31,14 @@ struct BPHistoryEntryItem: View {
         VStack(spacing: 0) {
             // Main entry row
             HStack {
-                // Date and time
+                // Date + time shown on two lines to match the design
                 VStack(alignment: .leading, spacing: 2) {
                     Text(DateTimeTools.getFormattedDay(entry.entryTimestamp))
                         .fontOpenSans(.heading5)
                         .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
-
-                    Text(DateTimeTools.getFormattedTime(entry.entryTimestamp).lowercased())
+                    Text(DateTimeTools.getFormattedTime(entry.entryTimestamp))
                         .fontOpenSans(.body3)
-                        .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
+                        .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -45,11 +46,11 @@ struct BPHistoryEntryItem: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(pressureText)
                         .fontOpenSans(.heading5)
-                        .foregroundColor(pressureColor)
+                        .foregroundStyle(pressureColor)
 
-                    Text(HistoryListStrings.mmhg)
+                    Text(EntryUnit.mmhg.displayString)
                         .fontOpenSans(.body3)
-                        .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
+                        .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -57,19 +58,18 @@ struct BPHistoryEntryItem: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(entry.pulse)")
                         .fontOpenSans(.heading5)
-                        .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
+                        .foregroundStyle(isExpanded ? theme.textInverse : theme.textHeading)
 
                     Text(HistoryListStrings.pulse)
                         .fontOpenSans(.body3)
-                        .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
+                        .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Expansion chevron — always occupies space to keep columns aligned
+                // Expansion chevron — always visible (row is always expandable)
                 AppIconView(icon: AppAssets.chevronDown)
-                    .foregroundColor(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
+                    .foregroundStyle(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
                     .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                    .opacity(hasNotes ? 1 : 0)
             }
             .padding(.vertical, .spacingSM)
             .padding(.horizontal, .spacingSM)
@@ -85,7 +85,7 @@ struct BPHistoryEntryItem: View {
                                 Text(CommonStrings.delete.uppercased())
                                     .fontOpenSans(.button1)
                                     .fontWeight(.bold)
-                                    .foregroundColor(theme.textInverse)
+                                    .foregroundStyle(theme.textInverse)
                             )
                         }
                     )
@@ -95,27 +95,40 @@ struct BPHistoryEntryItem: View {
             )
 
             Divider()
-                .foregroundColor(theme.actionPrimary)
+                .foregroundStyle(theme.actionPrimary)
 
-            // Expanded notes section
-            if isExpanded, let notes = entry.notes {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(notes)
-                        .fontOpenSans(.body3)
-                        .foregroundColor(theme.textBody)
-                        .padding(.spacingSM)
+            // Expanded notes section — always shown when expanded
+            if isExpanded {
+                HStack(alignment: .top, spacing: .spacingXS) {
+                    if hasNotes {
+                        Text(entry.notes ?? "")
+                            .fontOpenSans(.body3)
+                            .foregroundStyle(theme.textBody)
+                    } else {
+                        Text(HistoryListStrings.noNotesPlaceholder)
+                            .fontOpenSans(.body3)
+                            .foregroundStyle(theme.textSubheading)
+                    }
+                    Spacer()
+                    Button(action: onEditNotes) {
+                        Image(systemName: "square.and.pencil")
+                            .font(.system(size: 18))
+                            .foregroundStyle(theme.actionPrimary)
+                    }
+                    .buttonStyle(.plain)
                 }
+                .padding(.spacingSM)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(theme.backgroundSecondary)
 
                 Divider()
-                    .foregroundColor(theme.actionPrimary)
+                    .foregroundStyle(theme.actionPrimary)
             }
         }
         .animation(.easeInOut(duration: 0.25), value: isExpanded)
         .contentShape(Rectangle())
         .onTapGesture {
-            if hasNotes { onTap() }
+            onTap()
         }
     }
 }

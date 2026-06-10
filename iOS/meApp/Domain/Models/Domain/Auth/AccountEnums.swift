@@ -21,17 +21,20 @@ enum ActivityLevel: String, Codable, Equatable {
 enum Sex: String, Codable, Equatable, CaseIterable {
     case male
     case female
-    
+    case `private`
+
     init?(rawInput: String?) {
         guard let input = rawInput?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() else {
             return nil
         }
-        
+
         switch input {
         case "male":
             self = .male
         case "female":
             self = .female
+        case "private":
+            self = .private
         default:
             return nil
         }

@@ -21,16 +21,18 @@ struct MyKidsScreen: View {
     /// machine that relies on a stable itemID across re-renders.
     private func babyItemID(_ baby: Baby) -> UUID {
         if let uuid = UUID(uuidString: baby.id) { return uuid }
-        // Hash the full ID to avoid prefix-collision for IDs longer than 16 bytes.
+        // Hash the full ID string to avoid prefix-collision for long server IDs.
         var hasher = Hasher()
         hasher.combine(baby.id)
-        let h = UInt64(bitPattern: Int64(hasher.finalize()))
-        let b: [UInt8] = (0..<8).map { UInt8((h >> ($0 * 8)) & 0xFF) }
+        let hashHigh = UInt64(bitPattern: Int64(hasher.finalize()))
         let salt: UInt64 = 0xDEAD_BEEF_CAFE_1234
-        let h2 = h ^ salt
-        let b2: [UInt8] = (0..<8).map { UInt8((h2 >> ($0 * 8)) & 0xFF) }
-        return UUID(uuid: (b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
-                           b2[0], b2[1], b2[2], b2[3], b2[4], b2[5], b2[6], b2[7]))
+        let hashLow = hashHigh ^ salt
+        let highBytes: [UInt8] = (0..<8).map { UInt8((hashHigh >> ($0 * 8)) & 0xFF) }
+        let lowBytes: [UInt8] = (0..<8).map { UInt8((hashLow >> ($0 * 8)) & 0xFF) }
+        return UUID(uuid: (highBytes[0], highBytes[1], highBytes[2], highBytes[3],
+                           highBytes[4], highBytes[5], highBytes[6], highBytes[7],
+                           lowBytes[0], lowBytes[1], lowBytes[2], lowBytes[3],
+                           lowBytes[4], lowBytes[5], lowBytes[6], lowBytes[7]))
     }
 
     var body: some View {
