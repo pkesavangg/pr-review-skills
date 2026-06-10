@@ -2,7 +2,7 @@ package com.dmdbrands.gurus.weight.features.dashboard.strings
 
 object DashboardString {
   const val Title = "Dashboard Metrics"
-  const val DashboardSource = "Dashboard"
+  const val SelectGraphTitle = "Select Graph"
   const val BackContentDescription = "Back"
   const val SaveSuccessMessage = "Dashboard metrics saved successfully"
   const val SaveErrorMessage = "Failed to save dashboard metrics"
@@ -17,6 +17,22 @@ object DashboardString {
   object Bp {
     const val EntryAverageSuffix = "entry average"
     const val NoEntries = "no entries"
+
+    /**
+     * Rolling-average label for the BP dashboard, e.g. "three entry average".
+     * The count is spelled out per the Phase 2.0 mockup; this is a rolling average
+     * of up to three readings, so 1–3 are spelled out and anything else falls back
+     * to the numeral.
+     */
+    fun entryAverageLabel(entryCount: Int): String =
+      if (entryCount > 0) "${spellOutCount(entryCount)} $EntryAverageSuffix" else NoEntries
+
+    private fun spellOutCount(count: Int): String = when (count) {
+      1 -> "one"
+      2 -> "two"
+      3 -> "three"
+      else -> count.toString()
+    }
 
     object ThreeReadingAverage {
       const val Title = "Three Reading Average"

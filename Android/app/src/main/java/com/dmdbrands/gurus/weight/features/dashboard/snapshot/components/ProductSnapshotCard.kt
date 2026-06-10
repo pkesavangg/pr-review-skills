@@ -216,7 +216,7 @@ fun BabySnapshotCard(
 
     SnapshotCardContainer(modifier = modifier, onClickLabel = DashboardSnapshotStrings.OpenBabyDashboard, onTap = onTap) {
         Text(
-            text = "${product.profile.name}'s ${DashboardSnapshotStrings.Weight}",
+            text = "${product.profile.name.lowercase()}'s ${DashboardSnapshotStrings.Weight}",
             style = MeTheme.typography.subHeading1,
             color = MeTheme.colorScheme.textSubheading,
             modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),

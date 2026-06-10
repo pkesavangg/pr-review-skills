@@ -108,7 +108,7 @@ fun DashboardScreen() {
     topBarContent = {
       ProductTypeHeader(
         selectedProduct = product,
-        onClick = { psm.showProductSheet(DashboardString.DashboardSource) },
+        onClick = { psm.showProductSheet(DashboardString.SelectGraphTitle) },
       )
     },
   ) {
