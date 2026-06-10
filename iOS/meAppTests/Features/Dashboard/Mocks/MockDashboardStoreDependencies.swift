@@ -18,6 +18,7 @@ final class MockDashboardFormatter: DashboardFormatterProtocol {
         period: TimePeriod,
         selectedPointDate: Date?,
         crosshairDate: Date?,
+        isLatestDaySelected: Bool,
         weightLabel: String
     )?
     private(set) var lastChartDatePeriod: TimePeriod?
@@ -35,6 +36,7 @@ final class MockDashboardFormatter: DashboardFormatterProtocol {
         period: TimePeriod,
         selectedPointDate: Date?,
         crosshairDate: Date?,
+        isLatestDaySelected: Bool,
         weightLabel: String
     ) -> String {
         lastMetricInfoDateLabelArgs = (
@@ -43,6 +45,7 @@ final class MockDashboardFormatter: DashboardFormatterProtocol {
             period: period,
             selectedPointDate: selectedPointDate,
             crosshairDate: crosshairDate,
+            isLatestDaySelected: isLatestDaySelected,
             weightLabel: weightLabel
         )
         return metricInfoDateLabelResult
@@ -53,7 +56,7 @@ final class MockDashboardFormatter: DashboardFormatterProtocol {
         formattedMetricValueResult ?? metric.value
     }
     func composeMetricInfoLabel(prefix: String, dateText: String) -> String { "\(prefix) \(dateText)" }
-    func selectionPrefix(for period: TimePeriod) -> String { "Avg" }
+    func selectionPrefix(for period: TimePeriod, isLatestDaySelected: Bool) -> String { "Avg" }
 }
 
 @MainActor

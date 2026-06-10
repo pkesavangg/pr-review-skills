@@ -41,7 +41,16 @@ struct DisplayMetricsScreen: View {
                             }
                         }
                 },
-                onLeadingTap: { router.navigateBack() },
+                onLeadingTap: {
+                    // MA-3582: gate the back button through allowExit() so unsaved
+                    // changes (e.g. a cleared scale name) prompt for confirmation
+                    // instead of silently discarding.
+                    Task {
+                        if await viewModel.allowExit() {
+                            router.navigateBack()
+                        }
+                    }
+                },
                 canShowBorder: true
             )
             

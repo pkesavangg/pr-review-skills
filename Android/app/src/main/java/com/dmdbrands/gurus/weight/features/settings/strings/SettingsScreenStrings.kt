@@ -25,7 +25,7 @@ object SettingsScreenStrings {
     const val App = "App"
     const val Notifications = "Notifications"
     const val Messages = "Messages"
-    const val WeightScale = "Weight Scale"
+    const val WeightScale = "My Weight"
     fun MessagesWithCount(count: Int) = "Messages ($count new)"
     const val Streaks = "Streaks"
     const val Permissions = "Permissions"

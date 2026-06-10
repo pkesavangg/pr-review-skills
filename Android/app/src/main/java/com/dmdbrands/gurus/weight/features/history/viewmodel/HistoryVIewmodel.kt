@@ -24,6 +24,7 @@ constructor(
   private val entryService: IEntryService,
   private val exportService: IExportService,
   private val entryReadService: IEntryReadService,
+  private val entryCursorPager: com.dmdbrands.gurus.weight.data.services.EntryCursorPager,
 ) : BaseIntentViewModel<HistoryState, HistoryIntent>(
   HistoryReducer(),
 ) {
@@ -102,6 +103,12 @@ constructor(
       try {
         AppLog.d(TAG, "History resync started")
         entryService.syncOperations()
+        // If Room is empty after a delta sync, run a full backfill via cursor pager (MOB-380).
+        if (state.value.historyItems.isEmpty() && state.value.bpHistoryItems.isEmpty()) {
+          AppLog.d(TAG, "Room empty after sync — running cursor backfill")
+          val accountId = entryReadService.accountId ?: return@launch
+          entryCursorPager.backfill(accountId = accountId)
+        }
         AppLog.i(TAG, "History resync completed")
       } catch (e: Exception) {
         AppLog.e(TAG, "History resync failed", e)

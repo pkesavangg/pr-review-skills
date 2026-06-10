@@ -43,6 +43,7 @@ struct HistoryListScreen: View {
                                 .opacity(store.isEmptyState ? 0.5 : 1.0)
                           }
                           .disabled(store.isEmptyState)
+                          .accessibilityIdentifier(AccessibilityID.historyDownloadButton)
                       )
                   },
                   onTitleTap: productTypeStore.availableItems.count > 1 ? {

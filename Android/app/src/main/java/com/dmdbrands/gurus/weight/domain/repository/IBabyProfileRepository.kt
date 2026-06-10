@@ -14,4 +14,10 @@ interface IBabyProfileRepository {
     suspend fun delete(profileId: String)
 
     suspend fun getById(profileId: String): BabyProfile?
+
+    /**
+     * Fetches the baby list from the server for [accountId] and mirrors it into
+     * the local cache (reconcile + replace), preserving the current active baby.
+     */
+    suspend fun refresh(accountId: String)
 }

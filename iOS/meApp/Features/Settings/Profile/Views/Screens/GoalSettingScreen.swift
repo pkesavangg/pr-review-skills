@@ -38,6 +38,7 @@ struct GoalSettingScreen: View {
                         hideKeyboard()
                         settingsStore.saveGoal(router: router)
                     }
+                    .accessibilityIdentifier(AccessibilityID.goalSaveButton)
                 },
                 onLeadingTap: { settingsStore.handleGoalExit(router: router) },
                 onTrailingTap: {},
@@ -61,7 +62,13 @@ struct GoalSettingScreen: View {
                     }
                     SegmentedButtonView(
                         segments: GoalTypeSegment.allCases,
-                        selectedSegment: $settingsStore.selectedSegment
+                        selectedSegment: $settingsStore.selectedSegment,
+                        accessibilityIdentifierProvider: { segment in
+                            switch segment {
+                            case .maintain: return AccessibilityID.goalMaintainTab
+                            case .loseGain: return AccessibilityID.goalLoseGainTab
+                            }
+                        }
                     )
                     .onChange(of: settingsStore.selectedSegment) {
                         settingsStore.handleGoalTypeChange(settingsStore.selectedSegment)
@@ -85,7 +92,8 @@ struct GoalSettingScreen: View {
                                     maxValue: 999.9
                                 ),
                                 value: $settingsStore.goalForm.currentWeight.value,
-                                focusedField: $focusedField
+                                focusedField: $focusedField,
+                                accessibilityIdentifier: AccessibilityID.startingWeightInput
                             ) {
                                     focusedField = .goalWeight
                                 }
@@ -106,7 +114,8 @@ struct GoalSettingScreen: View {
                                 maxValue: 999.9
                             ),
                             value: $settingsStore.goalForm.goalWeight.value,
-                            focusedField: $focusedField
+                            focusedField: $focusedField,
+                            accessibilityIdentifier: AccessibilityID.goalWeightInput
                         ) {
                                 focusedField = nil
                             }
