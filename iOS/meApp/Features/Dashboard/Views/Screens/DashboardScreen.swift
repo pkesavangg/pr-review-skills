@@ -73,13 +73,14 @@ struct DashboardScreen: View {
         }
         .onChange(of: canShowSnapshotOverview) { _, isAvailable in
             guard isAvailable else { return }
-            if !hasInitializedProductRedirect {
-                // Per-session persistence redirect: returning users on the same device go
-                // directly to their last-used product detail dashboard; new/different devices
-                // (no local storage) land on the snapshot overview.
-                isInProductDashboard = store.productTypeSelectorStore.hasPersistedSelection
+            if let redirected = ProductTypeStore.resolveInitialProductRedirect(
+                hasInitializedProductRedirect: hasInitializedProductRedirect,
+                canShowSnapshotOverview: isAvailable,
+                productTypeStore: store.productTypeSelectorStore
+            ) {
+                isInProductDashboard = redirected
                 hasInitializedProductRedirect = true
-            } else {
+            } else if hasInitializedProductRedirect {
                 // Mid-session: a new product type became available (e.g. device added).
                 // Show the snapshot overview so the user sees the updated device list.
                 isInProductDashboard = false
@@ -290,8 +291,12 @@ struct DashboardScreen: View {
     // MARK: - Persistence Redirect
 
     private func applyInitialProductRedirectIfNeeded() {
-        guard !hasInitializedProductRedirect, canShowSnapshotOverview else { return }
-        isInProductDashboard = store.productTypeSelectorStore.hasPersistedSelection
+        guard let redirected = ProductTypeStore.resolveInitialProductRedirect(
+            hasInitializedProductRedirect: hasInitializedProductRedirect,
+            canShowSnapshotOverview: canShowSnapshotOverview,
+            productTypeStore: store.productTypeSelectorStore
+        ) else { return }
+        isInProductDashboard = redirected
         hasInitializedProductRedirect = true
     }
 }

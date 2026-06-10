@@ -62,16 +62,16 @@ struct MockProductTypeStoreHasPersistedSelectionTests {
 @MainActor
 struct ApplyInitialProductRedirectLogicTests {
 
-    // Mirrors the decision made inside applyInitialProductRedirectIfNeeded and the
-    // onChange(of: canShowSnapshotOverview) handler in DashboardScreen.
     private func resolveIsInProductDashboard(
         hasInitializedProductRedirect: Bool,
         canShowSnapshotOverview: Bool,
         productTypeStore: ProductTypeStoreProtocol
     ) -> Bool? {
-        // Guard mirrors the guard in applyInitialProductRedirectIfNeeded
-        guard !hasInitializedProductRedirect, canShowSnapshotOverview else { return nil }
-        return productTypeStore.hasPersistedSelection
+        ProductTypeStore.resolveInitialProductRedirect(
+            hasInitializedProductRedirect: hasInitializedProductRedirect,
+            canShowSnapshotOverview: canShowSnapshotOverview,
+            productTypeStore: productTypeStore
+        )
     }
 
     @Test("redirect is skipped when already initialized")

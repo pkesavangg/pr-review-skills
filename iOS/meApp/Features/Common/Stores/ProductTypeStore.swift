@@ -141,6 +141,19 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         return kvStorage.getValue(forKey: key) != nil
     }
 
+    /// Returns the resolved `isInProductDashboard` value for the initial product redirect,
+    /// or `nil` when the guard conditions are not met (no redirect should occur).
+    /// Extracted so `DashboardScreen` and unit tests both call the real decision rather than
+    /// each maintaining their own copy of the guard + assignment logic.
+    static func resolveInitialProductRedirect(
+        hasInitializedProductRedirect: Bool,
+        canShowSnapshotOverview: Bool,
+        productTypeStore: ProductTypeStoreProtocol
+    ) -> Bool? {
+        guard !hasInitializedProductRedirect, canShowSnapshotOverview else { return nil }
+        return productTypeStore.hasPersistedSelection
+    }
+
     // MARK: - Persistence
 
     private func persistSelection(_ item: ProductSelection) {
