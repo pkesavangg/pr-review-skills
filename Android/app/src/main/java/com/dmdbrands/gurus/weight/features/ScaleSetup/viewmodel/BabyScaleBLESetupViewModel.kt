@@ -11,8 +11,10 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.SetupInitData
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BabyScaleSetupReducer
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BabyScaleSetupState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.ScaleSetupIntent
+import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BabyScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import dagger.assisted.Assisted
@@ -135,7 +137,26 @@ constructor(
   }
 
   override fun onSkip() {
-    onNext()
+    // On the baby-profile steps, skipping confirms via the "Skip Baby Profile?" dialog and
+    // finishes setup (MOB-440). Other steps fall through to the normal next-step advance.
+    when (state.value.step) {
+      BabyScaleSetupStep.PAIRED_SUCCESS,
+      BabyScaleSetupStep.BABY_PROFILE_FORM -> showSkipBabyProfileDialog()
+      else -> onNext()
+    }
+  }
+
+  private fun showSkipBabyProfileDialog() {
+    dialogQueueService.enqueue(
+      DialogModel.Confirm(
+        title = BabyScaleSetupStrings.SkipDialog.Title,
+        message = BabyScaleSetupStrings.SkipDialog.Message,
+        confirmText = BabyScaleSetupStrings.SkipDialog.FinishSetup,
+        cancelText = BabyScaleSetupStrings.SkipDialog.Cancel,
+        onConfirm = { handleIntent(ScaleSetupIntent.ExitSetup(true)) },
+        onCancel = {},
+      ),
+    )
   }
 
   override fun onTryAgain() {
