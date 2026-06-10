@@ -19,8 +19,19 @@ plugins {
   id("jacoco")
 }
 
-// Apply Firebase plugins only when google-services.json is present (CI injects it via secret)
+// Apply Firebase plugins only when google-services.json is present (CI injects it via secret).
+// Fail fast if a release build is requested without the file — better to break CI loudly than
+// ship a release without Crashlytics, Firebase, or mapping-file upload.
 val googleServicesFile = file("google-services.json")
+val isReleaseBuild = gradle.startParameter.taskNames.any { task ->
+  task.contains("Release", ignoreCase = true) || task.contains("bundle", ignoreCase = true)
+}
+if (isReleaseBuild && !googleServicesFile.exists()) {
+  throw GradleException(
+    "google-services.json is required for release builds but was not found at ${googleServicesFile.absolutePath}. " +
+      "Ensure the CI secret is injected before building release.",
+  )
+}
 if (googleServicesFile.exists()) {
   apply(plugin = libs.plugins.google.service.get().pluginId)
   apply(plugin = libs.plugins.firebase.crashlytics.plugin.get().pluginId)
