@@ -755,7 +755,7 @@ class BottomTabBarViewModel: ObservableObject {
             }
         )
 
-        logger.log(level: .info, tag: tag, message: "Showing baby reading arrival card. weight=\(weightString)")
+        logger.log(level: .info, tag: tag, message: "Showing baby reading arrival card.")
         notificationService.showToast(toast)
     }
 
@@ -1016,7 +1016,7 @@ class BottomTabBarViewModel: ObservableObject {
             }
         }
 
-        logger.log(level: .info, tag: tag, message: "Showing weight reading arrival card. weight=\(weightString)")
+        logger.log(level: .info, tag: tag, message: "Showing weight reading arrival card.")
         notificationService.showToast(toast)
     }
 
@@ -1091,7 +1091,7 @@ class BottomTabBarViewModel: ObservableObject {
             }
         }
 
-        logger.log(level: .info, tag: tag, message: "Showing BPM reading arrival card. \(systolic)/\(diastolic) pulse=\(pulse)")
+        logger.log(level: .info, tag: tag, message: "Showing BPM reading arrival card.")
         notificationService.showToast(toast)
     }
 
