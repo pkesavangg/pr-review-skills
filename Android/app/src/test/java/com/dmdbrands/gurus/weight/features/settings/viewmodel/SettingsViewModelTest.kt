@@ -364,9 +364,9 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `ShowWeightlessModal delegates to profileSettingsManager`() {
-        viewModel.handleIntent(SettingsIntent.ShowWeightlessModal)
-        verify { profileSettingsManager.onShowWeightlessModal(any(), any()) }
+    fun `NavigateToWeightless navigates via profileSettingsManager`() {
+        viewModel.handleIntent(SettingsIntent.NavigateToWeightless)
+        verify { profileSettingsManager.onWeightlessClick(any()) }
     }
 
     @Test

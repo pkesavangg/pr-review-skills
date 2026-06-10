@@ -99,8 +99,8 @@ constructor(
         notificationSettingsManager.onNotificationsClick(viewModelScope, ::currentState)
       }
 
-      SettingsIntent.ShowWeightlessModal -> {
-        profileSettingsManager.onShowWeightlessModal(viewModelScope, ::currentState)
+      SettingsIntent.NavigateToWeightless -> {
+        profileSettingsManager.onWeightlessClick(viewModelScope)
       }
 
       SettingsIntent.goalSettingModal -> {

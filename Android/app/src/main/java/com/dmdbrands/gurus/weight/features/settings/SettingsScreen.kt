@@ -220,7 +220,7 @@ fun SettingsScreenContent(
               ),
               testTag = "settings_row_weightless",
               onClick = {
-                handleIntent.invoke(SettingsIntent.ShowWeightlessModal)
+                handleIntent.invoke(SettingsIntent.NavigateToWeightless)
               },
             ),
           ),
