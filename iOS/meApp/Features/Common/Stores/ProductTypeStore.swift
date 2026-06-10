@@ -128,6 +128,32 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         }
     }
 
+    var hasPersistedSelection: Bool {
+        ProductTypeStore.hasPersistedSelection(kvStorage: kvStorage,
+                                               accountId: accountService.activeAccount?.accountId)
+    }
+
+    /// Package-internal entry point so unit tests can exercise the real logic
+    /// without going through the singleton or copying the implementation.
+    static func hasPersistedSelection(kvStorage: KvStorageServiceProtocol, accountId: String?) -> Bool {
+        guard let accountId else { return false }
+        let key = KvStorageKeys.selectedProductTypeKey(for: accountId)
+        return kvStorage.getValue(forKey: key) != nil
+    }
+
+    /// Returns the resolved `isInProductDashboard` value for the initial product redirect,
+    /// or `nil` when the guard conditions are not met (no redirect should occur).
+    /// Extracted so `DashboardScreen` and unit tests both call the real decision rather than
+    /// each maintaining their own copy of the guard + assignment logic.
+    static func resolveInitialProductRedirect(
+        hasInitializedProductRedirect: Bool,
+        canShowSnapshotOverview: Bool,
+        productTypeStore: ProductTypeStoreProtocol
+    ) -> Bool? {
+        guard !hasInitializedProductRedirect, canShowSnapshotOverview else { return nil }
+        return productTypeStore.hasPersistedSelection
+    }
+
     // MARK: - Persistence
 
     private func persistSelection(_ item: ProductSelection) {
@@ -138,11 +164,19 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
 
     private func restorePersistedSelection(for accountId: String) {
         guard restoredForAccountId != accountId else { return }
-        restoredForAccountId = accountId
 
         let key = KvStorageKeys.selectedProductTypeKey(for: accountId)
-        guard let savedId = kvStorage.getValue(forKey: key) as? String,
-            let match = availableItems.first(where: { $0.id == savedId }) else { return }
+        guard let savedId = kvStorage.getValue(forKey: key) as? String else {
+            // No persisted selection — mark done so we don't retry on every rebuild.
+            restoredForAccountId = accountId
+            return
+        }
+        // The saved item may not yet be in availableItems (e.g. babies still loading).
+        // Don't set restoredForAccountId here — leave it unset so rebuild() retries
+        // after the next Combine update populates availableItems with the missing item.
+        guard let match = availableItems.first(where: { $0.id == savedId }) else { return }
+
+        restoredForAccountId = accountId
         selectedItem = match
     }
 
@@ -238,16 +272,34 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         restorePersistedSelection(for: accountId)
     }
 
+    /// Maps server-side raw product type strings to the app-internal values used by rebuild().
+    /// The server stores "weight" / "bpm"; the app checks for "myWeight" / "myBloodPressure".
+    private func normalizeProductTypes(_ types: [String]) -> [String] {
+        var seen = Set<String>()
+        return types.compactMap { type in
+            let normalized: String
+            switch type {
+            case "weight":          normalized = "myWeight"
+            case "bpm":             normalized = "myBloodPressure"
+            default:                normalized = type
+            }
+            return seen.insert(normalized).inserted ? normalized : nil
+        }
+    }
+
     /// Returns the authoritative product types for the current account.
     ///
-    /// Primary path: when `account.productTypes` is non-empty, use it directly.
+    /// Primary path: when `account.productTypes` is non-empty, use it directly
+    /// after mapping server-side raw values ("weight" → "myWeight", "bpm" → "myBloodPressure").
     /// Reconstruction path: when `productTypes` is empty (reinstall/new device),
     /// derive from server-synced devices, save back to the account, then return.
     private func resolveProductTypes() -> [String] {
         guard let account = accountService.activeAccount else { return ["myWeight"] }
 
         if !account.productTypes.isEmpty {
-            return account.productTypes
+            // The server stores "weight" / "bpm"; the app checks for "myWeight" / "myBloodPressure".
+            // Normalize here so rebuild()'s contains() checks always succeed.
+            return normalizeProductTypes(account.productTypes)
         }
 
         // Reconstruction: derive from server-synced devices.
@@ -327,8 +379,15 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
             restorePersistedSelection(for: accountId)
         }
 
-        // If the current selection is no longer valid, fall back to the first item
-        if !items.contains(selectedItem) {
+        // Validate the current selection against the new availableItems.
+        // Use ID-based lookup rather than full equality so that profile-data updates
+        // (e.g. a baby's name or birthday changing) don't silently drop the selection.
+        if let refreshed = items.first(where: { $0.id == selectedItem.id }) {
+            // Keep the same logical selection but use the freshest profile data.
+            if refreshed != selectedItem { selectedItem = refreshed }
+        } else {
+            // The selected product is no longer available — default to the first item,
+            // which respects the Weight → BPM → Baby hierarchy encoded in items order.
             selectedItem = items[0]
         }
     }

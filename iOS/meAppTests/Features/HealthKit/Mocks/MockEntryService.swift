@@ -168,7 +168,20 @@ final class MockEntryService: EntryServiceProtocol {
         return fetchEntriesPageResults.removeFirst()
     }
 
-    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {}
+    struct CreateBabyEntryCall {
+        let babyId: String
+        let weight: Int
+        let length: Int
+        let note: String
+        let entryTimestamp: String
+    }
+    private(set) var createBabyEntryCalls: [CreateBabyEntryCall] = []
+    var createBabyEntryError: Error?
+
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws {
+        createBabyEntryCalls.append(CreateBabyEntryCall(babyId: babyId, weight: weight, length: length, note: note, entryTimestamp: entryTimestamp))
+        if let createBabyEntryError { throw createBabyEntryError }
+    }
     private(set) var createBpmEntryCalls = 0
     private(set) var fetchBpmEntriesCalls = 0
     private(set) var deleteBpmEntryCalls = 0
@@ -184,5 +197,4 @@ final class MockEntryService: EntryServiceProtocol {
     func exportBpmCSV() async throws { exportBpmCSVCalls += 1 }
     func migrateBabyEntriesToDecigrams() async {}
     func getEntry(byId id: UUID) async throws -> Entry? { nil }
-    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws {}
 }

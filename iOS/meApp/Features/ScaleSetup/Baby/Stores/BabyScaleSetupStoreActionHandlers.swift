@@ -27,7 +27,7 @@ extension BabyScaleSetupStore {
                 await saveBabyProfile()
             }
         case .babyAdded:
-            handleFinish()
+            navigateToStep(.done)
         default:
             break
         }

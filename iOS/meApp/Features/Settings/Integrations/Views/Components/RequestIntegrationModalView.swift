@@ -7,7 +7,7 @@ import SwiftUI
 
 /// Custom modal presented when the user taps "REQUEST NEW INTEGRATION".
 /// Shows a title, subtitle, a free-text input field, and CANCEL / SEND actions.
-/// SEND is disabled until the user types at least one character.
+/// SEND is disabled until the user types at least one non-whitespace character.
 struct RequestIntegrationModalView: View {
     @Environment(\.appTheme) private var theme
     @FocusState private var isFieldFocused: Bool
@@ -20,20 +20,17 @@ struct RequestIntegrationModalView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: .spacingMD) {
-            // Title
             Text(strings.requestIntegrationTitle)
                 .fontOpenSans(.heading4)
-                .foregroundColor(theme.textHeading)
+                .foregroundStyle(theme.textHeading)
 
-            // Subtitle
             Text(strings.requestIntegrationMessage)
                 .fontOpenSans(.body2)
-                .foregroundColor(theme.textBody)
+                .foregroundStyle(theme.textBody)
 
-            // Text field
             TextField(strings.requestIntegrationPlaceholder, text: $text)
                 .font(.body2)
-                .foregroundColor(theme.textBody)
+                .foregroundStyle(theme.textBody)
                 .focused($isFieldFocused)
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingSM)
@@ -42,7 +39,6 @@ struct RequestIntegrationModalView: View {
                         .stroke(theme.glow, lineWidth: 1)
                 )
 
-            // Action buttons
             HStack(spacing: 0) {
                 Spacer()
                 ButtonView(
@@ -63,7 +59,7 @@ struct RequestIntegrationModalView: View {
         }
         .padding(.spacingMD)
         .background(theme.backgroundSecondary)
-        .cornerRadius(.radiusXL)
+        .clipShape(.rect(cornerRadius: .radiusXL))
         .onAppear { isFieldFocused = true }
     }
 }

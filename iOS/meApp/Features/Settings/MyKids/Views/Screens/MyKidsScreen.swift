@@ -14,6 +14,27 @@ struct MyKidsScreen: View {
     private let lang = MyKidsStrings.self
     private let swipeButtonWidth: CGFloat = 56
 
+    /// Returns a deterministic UUID for the given baby.
+    /// Baby IDs are server-assigned strings that are not in UUID format,
+    /// so `UUID(uuidString:)` returns nil. The `?? UUID()` fallback creates
+    /// a NEW random UUID on every render, which breaks the swipe-open state
+    /// machine that relies on a stable itemID across re-renders.
+    private func babyItemID(_ baby: Baby) -> UUID {
+        if let uuid = UUID(uuidString: baby.id) { return uuid }
+        // Hash the full ID string to avoid prefix-collision for long server IDs.
+        var hasher = Hasher()
+        hasher.combine(baby.id)
+        let hashHigh = UInt64(bitPattern: Int64(hasher.finalize()))
+        let salt: UInt64 = 0xDEAD_BEEF_CAFE_1234
+        let hashLow = hashHigh ^ salt
+        let highBytes: [UInt8] = (0..<8).map { UInt8((hashHigh >> ($0 * 8)) & 0xFF) }
+        let lowBytes: [UInt8] = (0..<8).map { UInt8((hashLow >> ($0 * 8)) & 0xFF) }
+        return UUID(uuid: (highBytes[0], highBytes[1], highBytes[2], highBytes[3],
+                           highBytes[4], highBytes[5], highBytes[6], highBytes[7],
+                           lowBytes[0], lowBytes[1], lowBytes[2], lowBytes[3],
+                           lowBytes[4], lowBytes[5], lowBytes[6], lowBytes[7]))
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             NavbarHeaderView(
@@ -134,8 +155,7 @@ struct MyKidsScreen: View {
             Spacer()
 
             Button {
-                let itemID = UUID(uuidString: baby.id) ?? UUID()
-                guard openItemID != itemID else { return }
+                guard openItemID != babyItemID(baby) else { return }
                 store.editBaby(baby)
             } label: {
                 Image(systemName: "square.and.pencil")
@@ -161,7 +181,7 @@ struct MyKidsScreen: View {
                     }
                 )
             ],
-            itemID: UUID(uuidString: baby.id) ?? UUID(),
+            itemID: babyItemID(baby),
             openItemID: $openItemID,
             openThresholdFraction: 0.1,
             closeWithoutAnimationOnAction: true,

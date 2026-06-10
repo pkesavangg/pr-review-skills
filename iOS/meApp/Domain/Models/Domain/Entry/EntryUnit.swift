@@ -14,4 +14,14 @@ enum EntryUnit: String, Codable, Equatable {
     case kg
     case lbOz = "lb_oz"
     case mmhg
+
+    /// Human-readable unit label for display in the UI.
+    var displayString: String {
+        switch self {
+        case .lb: return "lb"
+        case .kg: return "kg"
+        case .lbOz: return "lbs oz"
+        case .mmhg: return "mmHg"
+        }
+    }
 }

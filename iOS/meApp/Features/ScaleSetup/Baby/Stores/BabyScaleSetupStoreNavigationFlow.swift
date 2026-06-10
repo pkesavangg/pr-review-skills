@@ -30,7 +30,7 @@ extension BabyScaleSetupStore {
         dismissKeyboard()
         let nextIndex = adjustedIndex(from: currentStepIndex + 1, direction: 1)
         guard nextIndex < steps.count else {
-            handleFinish()
+            navigateToDoneScreen()
             return
         }
         currentStepIndex = nextIndex
@@ -90,7 +90,7 @@ extension BabyScaleSetupStore {
 
     /// Steps where the footer buttons should be hidden.
     private var stepsToHideFooter: Set<BabyScaleSetupStep> {
-        [.wakeup, .connectingBluetooth, .connectionError]
+        [.wakeup, .connectingBluetooth, .connectionError, .done]
     }
 
     func shouldShowFooter() -> Bool {

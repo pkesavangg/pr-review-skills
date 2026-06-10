@@ -18,15 +18,6 @@ struct BabyEntryView: View {
     var body: some View {
         VStack(spacing: .spacingLG) {
             VStack(alignment: .leading, spacing: .spacingXS) {
-                // Weight unit toggle
-                SegmentedButtonView(
-                    segments: BabyWeightUnit.allCases,
-                    selectedSegment: Binding(
-                        get: { entryStore.babyWeightUnit },
-                        set: { entryStore.updateBabyWeightUnit($0) }
-                    )
-                )
-
                 // Weight input — switches based on selected unit
                 VStack(alignment: .leading, spacing: 0) {
                     switch entryStore.babyWeightUnit {
@@ -100,15 +91,6 @@ struct BabyEntryView: View {
                             .padding(.top, -20)
                     }
                 }
-
-                // Length unit toggle
-                SegmentedButtonView(
-                    segments: BabyLengthUnit.allCases,
-                    selectedSegment: Binding(
-                        get: { entryStore.babyLengthUnit },
-                        set: { entryStore.updateBabyLengthUnit($0) }
-                    )
-                )
 
                 // Length input — switches based on selected unit
                 switch entryStore.babyLengthUnit {
@@ -210,7 +192,7 @@ struct BabyEntryView: View {
                 text: commonLang.save,
                 type: .filledPrimary,
                 size: .large,
-                isDisabled: !entryStore.babyForm.isValid || entryStore.isSaving
+                isDisabled: !entryStore.isBabyFormValid || entryStore.isSaving
             ) {
                 Task {
                     focusedField = nil
