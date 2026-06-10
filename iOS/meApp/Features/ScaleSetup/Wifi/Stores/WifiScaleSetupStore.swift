@@ -709,6 +709,7 @@ final class WifiScaleSetupStore: ObservableObject {
                 Task {
                     await self.pushNotificationService.setupPushNotifications(isFromScaleSetup: true)
                 }
+                ProductTypeStore.shared.selectLastAdded(.myWeight)
                 NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
                 logger.log(level: .info, tag: tag, message: "Scale saved successfully with ID: \(response.id) \(scaleItem.sku)")
             } catch {

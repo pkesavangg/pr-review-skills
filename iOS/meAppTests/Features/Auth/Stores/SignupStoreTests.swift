@@ -547,18 +547,77 @@ struct SignupStoreTests {
         #expect(notificationService.toastData?.message == SignupStoreTestText.somethingWentWrongMessage)
     }
 
-    @Test("moveToNextStep on password advances to profileReady (createUser deferred to FINISH)")
-    func moveToNextStepAtPasswordAdvancesToProfileReady() {
+    @Test("password Complete creates the account and advances to profileReady")
+    func passwordCompleteCreatesAccountAndAdvances() async {
         let (store, accountService, _, _) = makeSUT()
+        accountService.signUpResult = .success(())
         fillRequiredSignupFields(store)
         store.isGoalSkipped = true
+        store.selectedDeviceType = .weightScale
         store.currentStepIndex = stepIndex(.password, in: store)
 
-        store.moveToNextStep()
+        await store.createAccountAtPassword()
 
-        // createUser is deferred — triggered only when the user taps FINISH on profileReady
-        #expect(accountService.signUpCalls == 0)
+        // Per MOB-419 the account is created when COMPLETE is tapped on the password
+        // step, then the flow advances to the per-device profile-ready screen.
+        #expect(accountService.signUpCalls == 1)
+        #expect(store.isAccountCreated == true)
         #expect(store.currentStep == .profileReady)
+    }
+
+    @Test("password Complete account-creation failure keeps user on password with toast")
+    func passwordCompleteFailureStaysOnPassword() async {
+        let (store, accountService, notificationService, _) = makeSUT()
+        accountService.signUpResult = .failure(HTTPError.serverError)
+        fillRequiredSignupFields(store)
+        store.isGoalSkipped = true
+        store.selectedDeviceType = .weightScale
+        store.currentStepIndex = stepIndex(.password, in: store)
+
+        await store.createAccountAtPassword()
+
+        // Account-creation errors stay as a toast on the password step — they are
+        // NOT the per-device error screen.
+        #expect(store.isAccountCreated == false)
+        #expect(store.currentStep == .password)
+        #expect(notificationService.toastData?.message == SignupStoreTestText.serverErrorMessage)
+    }
+
+    @Test("FINISH after account already created does not call signUp again")
+    func finishAfterAccountCreatedSkipsSignUp() async {
+        let (store, accountService, _, _) = makeSUT()
+        accountService.signUpResult = .success(())
+        fillRequiredSignupFields(store)
+        store.isGoalSkipped = true
+        store.selectedDeviceType = .weightScale
+        store.currentStepIndex = stepIndex(.password, in: store)
+
+        await store.createAccountAtPassword()
+        #expect(accountService.signUpCalls == 1)
+
+        await store.createUser()
+
+        // Account was already created at password Complete; FINISH only saves products.
+        #expect(accountService.signUpCalls == 1)
+    }
+
+    @Test("CANCEL on error screen completes signup instead of discarding")
+    func cancelOnErrorScreenCompletesSignup() async {
+        let (store, accountService, _, _) = makeSUT()
+        accountService.signUpResult = .success(())
+        accountService.updateProductTypesResult = .failure(HTTPError.serverError)
+        fillRequiredSignupFields(store)
+        store.isGoalSkipped = true
+        store.selectedDeviceType = .bpm
+        var successCalled = false
+        store.onSignupSuccess = { successCalled = true }
+
+        await store.createUser()
+        #expect(store.currentStep == .signupError)
+
+        // CANCEL → FINISH: complete with whatever saved and exit to dashboard.
+        store.completeSignup()
+        #expect(successCalled == true)
     }
 
     @Test("resetForm resets key state")

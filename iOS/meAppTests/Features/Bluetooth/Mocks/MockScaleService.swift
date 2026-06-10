@@ -228,16 +228,8 @@ final class MockScaleService: ScaleServiceProtocol {
     // MARK: - Unified Device API (Me App 2.0)
 
     var listPairedDevicesResult: [PairedDeviceResponse] = []
-    var createPairedDeviceResult = PairedDeviceResponse(
-        id: "paired-1", deviceType: "weight_scale", type: "btWifiR4", nickname: nil, sku: nil,
-        mac: nil, broadcastId: nil, password: nil, userNumber: nil, name: nil,
-        peripheralIdentifier: nil, createdAt: nil
-    )
-    var updatePairedDeviceResult = PairedDeviceResponse(
-        id: "paired-1", deviceType: "weight_scale", type: "btWifiR4", nickname: nil, sku: nil,
-        mac: nil, broadcastId: nil, password: nil, userNumber: nil, name: nil,
-        peripheralIdentifier: nil, createdAt: nil
-    )
+    var createPairedDeviceResult = ScaleTestFixtures.makePairedDeviceResponse(id: "paired-1")
+    var updatePairedDeviceResult = ScaleTestFixtures.makePairedDeviceResponse(id: "paired-1")
     var listPairedDevicesError: Error?
     var createPairedDeviceError: Error?
     var updatePairedDeviceError: Error?

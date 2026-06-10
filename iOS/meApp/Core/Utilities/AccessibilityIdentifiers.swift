@@ -11,6 +11,9 @@ enum AccessibilityID {
     static let landingScreenRoot = "landing_screen_root"
     static let loginScreenRoot = "login_screen_root"
 
+    // MARK: - Account Card (shared: Landing + My Accounts)
+    static let accountCardLoggedOutLabel = "account_card_logged_out_label"
+
     // MARK: - Landing Screen
     static let landingLogInButton = "landing_log_in_button"
     static let landingSignUpButton = "landing_sign_up_button"

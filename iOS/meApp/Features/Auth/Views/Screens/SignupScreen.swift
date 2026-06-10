@@ -183,7 +183,10 @@ struct SignupScreen: View {
                         isDisabled: false,
                         padding: true
                     ) {
-                        signupStore.cancelSignup(router: isFromAccountSwitching ? nil : router)
+                        // CANCEL → FINISH (MOB-419): the account is already created, so
+                        // CANCEL completes signup with whatever products saved and exits
+                        // to the dashboard rather than discarding everything.
+                        signupStore.completeSignup()
                     }
                     Spacer()
                     ButtonView(

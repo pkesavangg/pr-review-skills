@@ -60,6 +60,10 @@ struct ManualEntryScreen: View {
                 )
             }
 
+            if productTypeStore.selectedItem.isPendingBaby {
+                // No baby profile yet — show the "No babies added yet" empty state.
+                babyEmptyState
+            } else {
             ScrollView(.vertical) {
                 // Body: switch between entry types based on product selection
                 switch productTypeStore.selectedItem {
@@ -88,6 +92,7 @@ struct ManualEntryScreen: View {
                 }
             }
             .scrollDismissesKeyboard(.interactively)
+            }
         }
         .background(theme.backgroundSecondary)
         .animation(.easeOut(duration: 0.25), value: keyboard.currentHeight)
@@ -127,6 +132,19 @@ struct ManualEntryScreen: View {
             guard let metrics = metrics, tabViewModel.selectedTab == .entry else { return }
             entryStore.populateFromAppSync(metrics: metrics)
             tabViewModel.pendingAppSyncEditMetrics = nil
+        }
+    }
+
+    // MARK: - Baby Empty State (no baby profile yet)
+    private var babyEmptyState: some View {
+        NoEntryView(
+            title: ProductTypeStrings.BabyEmptyState.title,
+            description: ProductTypeStrings.BabyEmptyState.entryDescription,
+            buttonTitle: ProductTypeStrings.BabyEmptyState.addABaby,
+            iconAsset: appAssets.babyAppIcon,
+            iconTint: theme.babyPrimary
+        ) {
+            tabViewModel.navigateToSettings(route: .myKids, sourceTab: .entry)
         }
     }
 

@@ -15,7 +15,7 @@ struct BabyProfileFormView: View {
     @FocusState private var focusedField: FocusField?
     private let lang = BabyScaleSetupStrings.BabyProfile.self
     private let labels = InputFieldLabels.self
-    private let babyWeightSegments: [BabyWeightUnit] = [.kg, .lb, .lbsOz]
+    private let babyWeightSegments: [BabyWeightUnit] = [.lb, .lbsOz, .kg]
 
     /// When `true`, the title and subtitle header is hidden (e.g. Settings -> Add Baby).
     var hideHeader: Bool = false
@@ -177,7 +177,10 @@ struct BabyProfileFormView: View {
             title: labels.biologicalSex
         ) { vals in
             if let sex = vals.first {
-                form.biologicalSex.value = sex.rawValue.capitalized
+                // Store the API-expected lowercase raw value ("male"/"female").
+                // The UI capitalizes it for display via `sexDisplayText`; sending the
+                // capitalized form makes the server reject it ("Invalid value for sex").
+                form.biologicalSex.value = sex.rawValue
                 form.biologicalSex.markAsTouched()
                 form.biologicalSex.validate()
             }
