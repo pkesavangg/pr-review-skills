@@ -142,8 +142,21 @@ protocol EntryServiceProtocol {
     func getStreak(entryType: EntryType) async throws -> Streak
 
     // MARK: - Export
-    /// Exports all entries to a CSV file.
-    func exportCSV() async throws
+    /// Exports entries to CSV via the unified endpoint (email mode).
+    /// - Parameters:
+    ///   - category: The product to export (`weight`/`bp`/`baby`); `nil` exports all.
+    ///   - babyId: Required when `category == "baby"` — scopes the export to one baby.
+    func exportCSV(category: String?, babyId: String?) async throws
+
+    // MARK: - Cursor Pagination
+    /// Reads one page of entries from the unified `GET /v3/entries/` cursor mode.
+    /// - Parameters:
+    ///   - cursor: The `entryTimestamp` cursor from the previous page, or `nil` for page 1.
+    ///   - limit: Requested page size (clamped to `1...100`).
+    ///   - category: Optional product filter; `nil` returns all products.
+    ///   - babyId: Optional baby filter (only meaningful with `category == "baby"`).
+    /// - Returns: The page of entries plus pagination metadata.
+    func fetchEntriesPage(cursor: String?, limit: Int, category: String?, babyId: String?) async throws -> EntriesPage
 
     // MARK: - BPM Entry CRUD
 
@@ -182,6 +195,14 @@ extension EntryServiceProtocol {
     }
     func getProgress() async throws -> Progress { try await getProgress(entryType: .scale) }
     func getStreak() async throws -> Streak { try await getStreak(entryType: .scale) }
+    func exportCSV() async throws { try await exportCSV(category: nil, babyId: nil) }
+    func exportCSV(category: String?) async throws { try await exportCSV(category: category, babyId: nil) }
+    func fetchEntriesPage(cursor: String?, limit: Int, category: String?) async throws -> EntriesPage {
+        try await fetchEntriesPage(cursor: cursor, limit: limit, category: category, babyId: nil)
+    }
+    func fetchEntriesPage(cursor: String?, category: String?) async throws -> EntriesPage {
+        try await fetchEntriesPage(cursor: cursor, limit: EntriesPagination.defaultLimit, category: category, babyId: nil)
+    }
     func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {
         try await createBabyEntry(babyId: babyId, weight: weight, length: length, note: note, entryTimestamp: entryTimestamp, source: nil)
     }

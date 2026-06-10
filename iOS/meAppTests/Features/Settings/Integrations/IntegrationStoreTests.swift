@@ -418,6 +418,32 @@ struct IntegrationStoreTests {
         // the function returns early and loader may not be dismissed
     }
 
+    @Test("paired-device changes re-render the device-driven provider sections")
+    func availableItemsChangeUpdatesProviderSections() async {
+        let account = MockAccountService()
+        account.activeAccount = IntegrationStoreTestFixtures.makeAccount(id: "acc-dev", fitbitOn: true, mfpOn: true)
+        let (store, _, _, _, _) = makeSUT(accountService: account)
+
+        // Default available items contain .myWeight → weight-scale providers are listed.
+        #expect(store.integrations.contains(where: { $0.type == .fitbit }))
+        #expect(store.integrations.contains(where: { $0.type == .myFitnessPal }))
+
+        let productTypeStore = DependencyContainer.shared.dependencies["ProductTypeStore"] as? MockProductTypeStore
+
+        // No weight device paired → the weight-scale provider section disappears.
+        productTypeStore?.availableItems = [.myBloodPressure]
+        let hidden = await waitUntil { store.integrations.isEmpty }
+        #expect(hidden == true)
+
+        // A weight scale is paired later → the provider section reappears automatically.
+        productTypeStore?.availableItems = [.myWeight]
+        let shown = await waitUntil {
+            store.integrations.contains(where: { $0.type == .fitbit })
+                && store.integrations.contains(where: { $0.type == .myFitnessPal })
+        }
+        #expect(shown == true)
+    }
+
     @Test("account publisher handles nil account correctly")
     func accountPublisherHandlesNilAccount() async {
         let account = MockAccountService()

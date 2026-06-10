@@ -320,10 +320,9 @@ struct EntryServiceExtendedTests {
 
     // MARK: - exportCSV
 
-    @Test("exportCSV no dashboard type: throws AccountError.noActiveAccount")
-    func exportCSVNoDashboardType() async {
-        let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "e@e.com", isActiveAccount: true, dashboardType: nil)
-        let sut = makeSUT(activeAccount: account)
+    @Test("exportCSV no active account: throws AccountError.noActiveAccount")
+    func exportCSVNoActiveAccount() async {
+        let sut = makeSUT(activeAccount: nil)
 
         do {
             try await sut.exportCSV()
@@ -333,14 +332,16 @@ struct EntryServiceExtendedTests {
         }
     }
 
-    @Test("exportCSV with dashboard4: uses non-R4 endpoint")
-    func exportCSVDashboard4() async throws {
+    @Test("exportCSV: forwards the device UTC offset to the export request")
+    func exportCSVForwardsUtcOffset() async throws {
         let remote = MockEntryRepositoryAPI()
         let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "e@e.com", isActiveAccount: true, dashboardType: DashboardType.dashboard4.rawValue)
         let sut = makeSUT(remote: remote, activeAccount: account)
 
-        try await sut.exportCSV()
-        #expect(remote.lastExportCsvUseR4Endpoint == false)
+        try await sut.exportCSV(category: EntryCategory.bp.rawValue)
+        #expect(remote.exportCsvCalls == 1)
+        #expect(remote.lastExportCsvRequest?.category == EntryCategory.bp.rawValue)
+        #expect(remote.lastExportCsvRequest?.utcOffset == DateTimeTools.getUTCOffset())
     }
 
     @Test("exportCSV remote failure: throws")
@@ -368,7 +369,7 @@ struct EntryServiceExtendedTests {
         let sut = makeSUT(repo: repo, remote: remote, syncStore: syncStore)
 
         await sut.syncAllEntriesWithRemote()
-        #expect(remote.fetchOperationsCalls == 1)
+        #expect(remote.fetchEntriesCalls == 1)
         #expect(syncStore.setCalls >= 1)
         #expect(sut.lastSyncTime != nil)
         #expect(sut.isSyncing == false)
@@ -400,7 +401,7 @@ struct EntryServiceExtendedTests {
     @Test("syncAllEntriesWithRemote remote fetch failure: logs error")
     func syncAllEntriesRemoteFetchFailure() async {
         let remote = MockEntryRepositoryAPI()
-        remote.fetchOperationsError = EntryTestError.remoteFailure
+        remote.fetchEntriesError = EntryTestError.remoteFailure
         let logger = MockLoggerService()
         let sut = makeSUT(remote: remote, logger: logger)
 
@@ -417,7 +418,7 @@ struct EntryServiceExtendedTests {
         let existing = EntryTestFixtures.makeEntry(timestamp: "2026-03-01T08:00:00Z", operationType: .create, serverTimestamp: "a", isSynced: true)
         repo.entries = [existing]
         let remote = MockEntryRepositoryAPI()
-        remote.fetchOperationsResult = BathScaleOperationListResponse(
+        remote.fetchEntriesResult = BathScaleOperationListResponse(
             operations: [
                 BathScaleOperationDTO(
                     accountId: "acct-1", bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
