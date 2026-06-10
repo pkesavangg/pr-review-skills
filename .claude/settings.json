@@ -17,8 +17,6 @@
       "Bash(find /Users/rengadevi/work/meApp/Android/app/src/test -name *Signup* -o -name *FormValidation*)",
       "Bash(./gradlew :app:testDebugUnitTest --tests \"com.dmdbrands.gurus.weight.features.common.helper.FormValidationsTest\")",
       "Bash(./gradlew :app:testDebugUnitTest --tests \"com.dmdbrands.gurus.weight.features.common.helper.FormValidationsTest\" -x :app:compileDebugUnitTestKotlin)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
       "Read(//Users/rengadevi/.claude/**)",
       "Bash(wc -l /Users/rengadevi/.claude/plugins/marketplaces/android-claude-plugin/skills/procedures/*.md)"
     ]
