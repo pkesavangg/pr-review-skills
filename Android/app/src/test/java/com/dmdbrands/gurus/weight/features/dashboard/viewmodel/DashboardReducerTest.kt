@@ -75,6 +75,29 @@ class DashboardReducerTest {
         assertThat(state.weightUnit).isEqualTo(WeightUnit.LB)
         assertThat(state.dashboardType).isEqualTo(DashboardType.DASHBOARD_4_METRICS)
         assertThat(state.segmentStates).isEmpty()
+        assertThat(state.resetSignal).isEqualTo(0)
+    }
+
+    // -------------------------------------------------------------------------
+    // ResetComplete — one-shot signal (MOB-445)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `ResetComplete increments resetSignal`() {
+        val state = WeightDashboardState(resetSignal = 0)
+
+        val result = reducer.reduce(state, WeightDashboardIntent.ResetComplete)
+
+        assertThat(result?.resetSignal).isEqualTo(1)
+    }
+
+    @Test
+    fun `ResetComplete increments resetSignal on each emission`() {
+        val state = WeightDashboardState(resetSignal = 3)
+
+        val result = reducer.reduce(state, WeightDashboardIntent.ResetComplete)
+
+        assertThat(result?.resetSignal).isEqualTo(4)
     }
 
     // -------------------------------------------------------------------------

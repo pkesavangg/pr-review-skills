@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -120,6 +121,7 @@ fun DashboardScreen() {
           vm = vm,
           product = product,
           goal = state.goal,
+          scrollToTopSignal = state.resetSignal,
           onRefresh = { vm.handleIntent(WeightDashboardIntent.Refresh) },
           createFallbackEntry = { ts, yValues, seg ->
             val y = yValues.firstOrNull() ?: return@DashboardPage null
@@ -215,6 +217,7 @@ private fun <S : BaseDashboardState> DashboardPage(
   goal: Goal? = null,
   hasPercentile: Boolean = false,
   chartFillsHeight: Boolean = false,
+  scrollToTopSignal: Int = 0,
   onRefresh: () -> Unit,
   createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   belowChart: @Composable (S) -> Unit,
@@ -232,6 +235,7 @@ private fun <S : BaseDashboardState> DashboardPage(
   }
 
   val scrollState = rememberScrollState()
+  ScrollToTopOnSignal(scrollState, scrollToTopSignal)
   val flingInterceptScope = rememberCoroutineScope()
   // Compose consumes the first Down event during a fling to stop the scroll,
   // which means a clickable child (e.g. UPDATE GOAL / METRIC INFO) misses the
@@ -272,19 +276,37 @@ private fun <S : BaseDashboardState> DashboardPage(
         handleGraphIntent = vm::handleIntent,
         createFallbackEntry = createFallbackEntry,
         header = { segment -> DashboardChartHeader(state = state, segment = segment, product = product, handleIntent = vm::handleIntent) },
-        onSegmentChange = {
-          val currentSegmentState = state.forSegment(state.selectedSegment)
-          val anchorTimeStamp = if (currentSegmentState.visibleMin != null && currentSegmentState.visibleMax != null) {
-            (currentSegmentState.visibleMin + currentSegmentState.visibleMax) / 2.0
-          } else {
-            null
-          }
-          vm.handleIntent(BaseGraphIntent.SetSelectedSegment(it, anchorTimeStamp))
-        },
+        onSegmentChange = { vm.handleIntent(BaseGraphIntent.SetSelectedSegment(it, state.segmentAnchorTimestamp())) },
       )
 
       belowChart(state)
     }
+  }
+}
+
+/**
+ * Midpoint of the currently visible chart range, used to anchor the chart when
+ * the user changes segments. Null when the visible range isn't known yet.
+ */
+private fun BaseDashboardState.segmentAnchorTimestamp(): Double? {
+  val segment = forSegment(selectedSegment)
+  return if (segment.visibleMin != null && segment.visibleMax != null) {
+    (segment.visibleMin + segment.visibleMax) / 2.0
+  } else {
+    null
+  }
+}
+
+/**
+ * Scrolls [scrollState] back to the top whenever [signal] changes to a positive
+ * value. Used after a RESET DASHBOARD restores the default tiles so the grid is
+ * in view rather than the button cluster (MOB-445). The initial composition
+ * (signal == 0) is a no-op.
+ */
+@Composable
+private fun ScrollToTopOnSignal(scrollState: ScrollState, signal: Int) {
+  LaunchedEffect(signal) {
+    if (signal > 0) scrollState.animateScrollTo(0)
   }
 }
 
