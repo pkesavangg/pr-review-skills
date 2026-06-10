@@ -5,8 +5,8 @@
 
 import SwiftUI
 
-/// Bottom-sheet form for editing notes on a baby history entry.
-/// Full value editing (weight/length) reconstructs and re-saves via delete-old + create-new.
+/// Bottom-sheet form for editing a baby history entry.
+/// Allows editing weight, length, date, and notes. Saves via delete-old + create-new.
 struct BabyHistoryEditSheet: View {
     @Environment(\.appTheme) private var theme
     @Environment(\.dismiss) private var dismiss
@@ -14,99 +14,178 @@ struct BabyHistoryEditSheet: View {
 
     let entry: BabyHistoryEntry
 
+    // Imperial fields
+    @State private var lbsText: String
+    @State private var ozText: String
+    @State private var inchesText: String
+    // Metric fields
+    @State private var kgText: String
+    @State private var cmText: String
+
     @State private var notesText: String
+    @State private var entryDate: Date
     @State private var isSaving = false
+
+    private let notesLimit = 280
 
     init(entry: BabyHistoryEntry) {
         self.entry = entry
+        _lbsText = State(initialValue: "\(entry.weightLbs)")
+        _ozText = State(initialValue: String(format: "%.1f", entry.weightOz))
+        _kgText = State(initialValue: entry.weightKg > 0 ? String(format: "%.3f", entry.weightKg) : "")
+        _inchesText = State(initialValue: entry.lengthInches > 0 ? String(format: "%.1f", entry.lengthInches) : "")
+        _cmText = State(initialValue: entry.lengthCm > 0 ? String(format: "%.1f", entry.lengthCm) : "")
         _notesText = State(initialValue: entry.notes ?? "")
+        _entryDate = State(initialValue: DateTimeTools.parse(entry.entryTimestamp) ?? Date())
+    }
+
+    private var isMetric: Bool { historyStore.isMetric }
+
+    private var isValid: Bool {
+        if isMetric {
+            return (Double(kgText) ?? 0) > 0
+        } else {
+            let lbs = Int(lbsText) ?? 0
+            let oz = Double(ozText) ?? 0
+            return lbs > 0 || oz > 0
+        }
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: .spacingLG) {
-                    // Read-only summary of measurement values
-                    VStack(alignment: .leading, spacing: .spacingXS) {
-                        Text(HistoryListStrings.measurement)
-                            .fontOpenSans(.subHeading2)
-                            .foregroundStyle(theme.textSubheading)
-                        HStack(spacing: .spacingLG) {
-                            measurementLabel(title: HistoryListStrings.weight, value: entry.weightDisplay)
-                            measurementLabel(title: HistoryListStrings.length, value: entry.lengthDisplay)
-                            measurementLabel(title: HistoryListStrings.percentile, value: entry.percentile > 0 ? "\(entry.percentile)\(HistoryListStrings.th)" : "--")
-                        }
-                    }
-                    .padding(.spacingSM)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(theme.backgroundSecondary)
-                    .cornerRadius(.radiusSM)
-
-                    VStack(alignment: .leading, spacing: .spacingXS) {
-                        Text(HistoryListStrings.date)
-                            .fontOpenSans(.subHeading2)
-                            .foregroundStyle(theme.textSubheading)
-                        Text(DateTimeTools.getArrivalRelativeTime(fromISOString: entry.entryTimestamp)
-                             ?? DateTimeTools.getFormattedDay(entry.entryTimestamp))
-                            .fontOpenSans(.body2)
+        ScrollView {
+            VStack(alignment: .leading, spacing: .spacingLG) {
+                HStack {
+                    Spacer()
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark")
+                            .fontWeight(.semibold)
                             .foregroundStyle(theme.textBody)
                     }
+                    .buttonStyle(.plain)
+                }
 
-                    VStack(alignment: .leading, spacing: .spacingXS) {
-                        Text(HistoryListStrings.notes.uppercased())
-                            .fontOpenSans(.subHeading2)
-                            .foregroundStyle(theme.textSubheading)
-                        TextField(HistoryListStrings.addNotesPlaceholder, text: $notesText, axis: .vertical)
+                if isMetric {
+                    labeledField(label: HistoryListStrings.kg, text: $kgText, keyboard: .decimalPad)
+                    labeledField(label: HistoryListStrings.cm, text: $cmText, keyboard: .decimalPad)
+                } else {
+                    labeledField(label: HistoryListStrings.pounds, text: $lbsText, keyboard: .numberPad)
+                    labeledField(label: HistoryListStrings.ounces, text: $ozText, keyboard: .decimalPad)
+                    labeledField(label: HistoryListStrings.inches, text: $inchesText, keyboard: .decimalPad)
+                }
+
+                VStack(alignment: .leading, spacing: .spacingXS) {
+                    Text("Date")
+                        .fontOpenSans(.subHeading2)
+                        .foregroundStyle(theme.textSubheading)
+                    HStack(spacing: .spacingSM) {
+                        DatePicker("", selection: $entryDate, displayedComponents: .date)
+                            .datePickerStyle(.compact)
+                            .labelsHidden()
+                        DatePicker("", selection: $entryDate, displayedComponents: .hourAndMinute)
+                            .datePickerStyle(.compact)
+                            .labelsHidden()
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: .spacingXS) {
+                    Text(HistoryListStrings.notes)
+                        .fontOpenSans(.subHeading2)
+                        .foregroundStyle(theme.textSubheading)
+                    ZStack(alignment: .bottomTrailing) {
+                        TextField("Add notes…", text: $notesText, axis: .vertical)
                             .font(.body2)
                             .foregroundStyle(theme.textBody)
                             .lineLimit(4...)
                             .padding(.spacingXS)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: .radiusSM)
-                                    .stroke(theme.glow, lineWidth: 1)
-                            )
+                            .padding(.bottom, .spacingLG)
+                            .onChange(of: notesText) { _, newValue in
+                                if newValue.count > notesLimit {
+                                    notesText = String(newValue.prefix(notesLimit))
+                                }
+                            }
+                        Text("\(notesText.count)/\(notesLimit)")
+                            .fontOpenSans(.body3)
+                            .foregroundStyle(notesText.count >= notesLimit ? theme.textError : theme.textSubheading)
+                            .padding(.spacingXS)
                     }
+                    .background(theme.backgroundSecondary)
+                    .clipShape(RoundedRectangle(cornerRadius: .radiusSM))
+                }
 
+                HStack {
+                    Spacer()
                     ButtonView(
                         text: CommonStrings.save,
                         type: .filledPrimary,
                         size: .large,
-                        isDisabled: isSaving
+                        isDisabled: !isValid || isSaving
                     ) {
                         saveEntry()
                     }
-                }
-                .padding(.spacingMD)
-            }
-            .navigationTitle(HistoryListStrings.editReading)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(CommonStrings.cancel) { dismiss() }
-                        .foregroundStyle(theme.actionPrimary)
+                    Spacer()
                 }
             }
+            .padding(.spacingMD)
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
     }
 
     @ViewBuilder
-    private func measurementLabel(title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(value)
-                .fontOpenSans(.heading5)
-                .foregroundStyle(theme.textHeading)
-            Text(title)
-                .fontOpenSans(.body3)
+    private func labeledField(label: String, text: Binding<String>, keyboard: UIKeyboardType) -> some View {
+        VStack(alignment: .leading, spacing: .spacingXS) {
+            Text(label)
+                .fontOpenSans(.subHeading2)
                 .foregroundStyle(theme.textSubheading)
+            HStack {
+                TextField("", text: text)
+                    .font(.body2)
+                    .foregroundStyle(theme.textBody)
+                    .keyboardType(keyboard)
+                if !text.wrappedValue.isEmpty {
+                    Button {
+                        text.wrappedValue = ""
+                    } label: {
+                        Image(systemName: "xmark.circle")
+                            .foregroundStyle(theme.textSubheading)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.spacingXS)
+            .background(theme.backgroundSecondary)
+            .clipShape(RoundedRectangle(cornerRadius: .radiusSM))
         }
     }
 
     private func saveEntry() {
+        let timestamp = DateTimeTools.isoString(date: entryDate, time: entryDate, useUTC: true)
+
+        let weightDecigrams: Int
+        let lengthMm: Int
+
+        if isMetric {
+            let kg = Double(kgText) ?? entry.weightKg
+            weightDecigrams = ConversionTools.convertBabyKgToDecigrams(kg)
+            let cm = Double(cmText) ?? entry.lengthCm
+            lengthMm = cm > 0 ? ConversionTools.convertBabyCmToMm(cm) : 0
+        } else {
+            let lbs = Int(lbsText) ?? entry.weightLbs
+            let oz = Double(ozText) ?? entry.weightOz
+            weightDecigrams = ConversionTools.convertBabyLbsOzToDecigrams(lbs: lbs, oz: oz)
+            let inches = Double(inchesText) ?? entry.lengthInches
+            lengthMm = inches > 0 ? ConversionTools.convertBabyInchesToMm(inches) : 0
+        }
+
         isSaving = true
         Task {
-            await historyStore.updateBabyEntry(old: entry, note: notesText)
+            await historyStore.updateBabyEntry(
+                old: entry,
+                note: notesText,
+                weightDecigrams: weightDecigrams,
+                lengthMm: lengthMm,
+                entryTimestamp: timestamp
+            )
             isSaving = false
             dismiss()
         }

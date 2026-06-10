@@ -414,11 +414,9 @@ final class HistoryStore: ObservableObject {
         bpEntries.removeAll { $0.id == entry.id }
         pendingBPDelete = entry
 
-        let label = DateTimeTools.getArrivalRelativeTime(fromISOString: entry.entryTimestamp)
-            ?? DateTimeTools.getFormattedDay(entry.entryTimestamp)
-
+        let label = bpEntryLabel(entry)
         notificationService.showToast(ToastModel(
-            message: "\(label): \(HistoryListStrings.readingDeleted)",
+            message: "\(label) \(HistoryListStrings.readingDeleted)",
             btnTextView: AnyView(Text(HistoryListStrings.undo).fontOpenSans(.button1)),
             onClick: { Task { @MainActor in self.undoBPDelete() } },
             duration: 3,
@@ -431,7 +429,8 @@ final class HistoryStore: ObservableObject {
         pendingBPDelete = nil
         bpEntries.append(entry)
         bpEntries.sort { $0.entryTimestamp > $1.entryTimestamp }
-        notificationService.showToast(ToastModel(message: HistoryListStrings.readingRestored))
+        let label = bpEntryLabel(entry)
+        notificationService.showToast(ToastModel(message: "\(label) \(HistoryListStrings.readingRestored)"))
     }
 
     private func commitBPDelete() {
@@ -448,9 +447,16 @@ final class HistoryStore: ObservableObject {
             notificationService.showToast(ToastModel(
                 message: HistoryListStrings.couldntDelete,
                 btnTextView: AnyView(Text(HistoryListStrings.tryAgain).fontOpenSans(.button1)),
-                onClick: { Task { @MainActor in self.confirmBPDelete(entry) } }
+                onClick: { Task { @MainActor in self.confirmBPDelete(entry) } },
+                isError: true
             ))
         }
+    }
+
+    private func bpEntryLabel(_ entry: BPHistoryEntry) -> String {
+        let date = DateTimeTools.getFormattedDay(entry.entryTimestamp)
+        let time = DateTimeTools.getFormattedTime(entry.entryTimestamp)
+        return "\(date) (\(time))"
     }
 
     // MARK: - Baby Delete (optimistic + 3-second UNDO)
@@ -564,7 +570,10 @@ final class HistoryStore: ObservableObject {
 
     func updateBabyEntry(
         old: BabyHistoryEntry,
-        note: String
+        note: String,
+        weightDecigrams: Int,
+        lengthMm: Int,
+        entryTimestamp: String
     ) async {
         guard case .baby(let profile) = productTypeStore.selectedItem,
               !profile.isPendingSelection else { return }
@@ -572,29 +581,16 @@ final class HistoryStore: ObservableObject {
         notificationService.showLoader(LoaderModel(text: loaderLang.savingEntry))
         defer { notificationService.dismissLoader() }
         do {
-            // Reconstruct original decigrams from display values
-            let weightDecigrams: Int
-            if isMetric {
-                weightDecigrams = ConversionTools.convertBabyKgToDecigrams(old.weightKg)
-            } else {
-                let lbs = Int(old.weightLbs)
-                let oz = old.weightOz
-                weightDecigrams = ConversionTools.convertBabyLbsOzToDecigrams(lbs: lbs, oz: oz)
-            }
-            let lengthMm = isMetric
-                ? ConversionTools.convertBabyCmToMm(old.lengthCm)
-                : ConversionTools.convertBabyInchesToMm(old.lengthInches)
-
             try await entryService.createBabyEntry(
                 babyId: profile.id,
                 weight: weightDecigrams,
                 length: lengthMm,
                 note: note,
-                entryTimestamp: old.entryTimestamp,
+                entryTimestamp: entryTimestamp,
                 source: nil
             )
             try await entryService.deleteEntry(entryId: old.id)
-            logger.log(level: .info, tag: tag, message: "Baby entry updated: \(old.entryTimestamp)")
+            logger.log(level: .info, tag: tag, message: "Baby entry updated: \(entryTimestamp)")
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to update baby entry: \(error.localizedDescription)")
             notificationService.showToast(ToastModel(message: toastLang.errorSavingEntry))

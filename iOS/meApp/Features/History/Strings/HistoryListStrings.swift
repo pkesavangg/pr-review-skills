@@ -21,6 +21,8 @@ enum HistoryListStrings {
     static let avgPulse = "avg pulse"
     static let mmhg = "mmhg"
     static let pulse = "pulse"
+    static let systolic = "systolic"
+    static let diastolic = "diastolic"
     static let notes = "Notes"
     static let noNotesPlaceholder = "no notes yet — tap edit icon to add one."
     static let downloadBPHistory = "Download BP History"
@@ -38,6 +40,9 @@ enum HistoryListStrings {
     static let cm = "cm"
     static let inUnit = "in"
     static let th = "th"
+    static let pounds = "pounds"
+    static let ounces = "ounces"
+    static let inches = "inches"
 
     // Edit sheet
     static let editReading = "Edit Reading"
@@ -49,7 +54,7 @@ enum HistoryListStrings {
     // Delete / Undo
     static let undo = "UNDO"
     static let readingDeleted = "Reading deleted."
-    static let readingRestored = "Reading restored successfully."
+    static let readingRestored = "Reading restored."
     static let couldntDelete = "Couldn't delete!"
     static let tryAgain = "TRY AGAIN"
 }

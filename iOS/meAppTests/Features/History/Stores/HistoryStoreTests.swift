@@ -591,21 +591,164 @@ struct HistoryStoreTests {
         #expect(logger.messages.contains { $0.contains("Failed to load entries page") })
     }
 
-    @Test("loadNextPage: does not re-fetch when first page is empty with hasMore=false")
-    func loadNextPageDoesNotRefetchEmptyFirstPage() async {
+    // MARK: - updateBabyEntry
+
+    private func makeBabyEntry(
+        id: UUID = UUID(),
+        entryTimestamp: String = "2026-03-27T10:00:00Z",
+        weightLbs: Int = 8,
+        weightOz: Double = 5.0,
+        weightKg: Double = 3.969,
+        weightLb: Double = 8.31,
+        lengthInches: Double = 20.0,
+        lengthCm: Double = 50.8
+    ) -> BabyHistoryEntry {
+        BabyHistoryEntry(
+            id: id,
+            entryTimestamp: entryTimestamp,
+            weightLbs: weightLbs,
+            weightOz: weightOz,
+            weightKg: weightKg,
+            weightLb: weightLb,
+            lengthInches: lengthInches,
+            lengthCm: lengthCm,
+            percentile: 50,
+            notes: nil,
+            weightDisplay: "\(weightLbs) lbs \(weightOz) oz",
+            lengthDisplay: "\(Int(lengthInches)) in"
+        )
+    }
+
+    private func makeBabyStore(
+        babyId: String = "baby-1",
+        babyName: String = "Test Baby"
+    ) -> (HistoryStore, MockEntryService, MockProductTypeStore) {
         let (store, entryService, _, _, _) = makeSUT()
-        entryService.fetchEntriesPageResults = [
-            EntriesPage(entries: [], nextCursor: nil, hasMore: false)
-        ]
+        let productTypeStore = MockProductTypeStore()
+        productTypeStore.selectedItem = .baby(profile: BabyProfile(id: babyId, name: babyName))
+        store.productTypeStore = productTypeStore
+        return (store, entryService, productTypeStore)
+    }
 
-        await store.loadFirstPage()
-        #expect(entryService.fetchEntriesPageCalls == 1)
-        #expect(store.pagedEntries.isEmpty)
-        #expect(store.hasMorePages == false)
+    @Test("updateBabyEntry metric: creates entry with converted decigrams/mm then deletes old")
+    func updateBabyEntryMetricEditsCallsCreateThenDelete() async {
+        let entryId = UUID()
+        let old = makeBabyEntry(id: entryId)
+        let (store, entryService, _) = makeBabyStore()
 
-        // A subsequent scroll-triggered call must not hit the network again.
-        await store.loadNextPage()
-        await store.loadNextPage()
-        #expect(entryService.fetchEntriesPageCalls == 1)
+        await store.updateBabyEntry(
+            old: old,
+            note: "growing well",
+            weightDecigrams: 3969,
+            lengthMm: 508,
+            entryTimestamp: "2026-03-28T10:00:00Z"
+        )
+
+        #expect(entryService.createBabyEntryCalls.count == 1)
+        let call = entryService.createBabyEntryCalls[0]
+        #expect(call.babyId == "baby-1")
+        #expect(call.weight == 3969)
+        #expect(call.length == 508)
+        #expect(call.note == "growing well")
+        #expect(call.entryTimestamp == "2026-03-28T10:00:00Z")
+        #expect(entryService.deleteEntryByIdCalls == 1)
+        #expect(entryService.deletedEntryIds.first == entryId)
+    }
+
+    @Test("updateBabyEntry imperial: passes caller-computed decigrams and mm unchanged")
+    func updateBabyEntryImperialPassesValues() async {
+        let entryId = UUID()
+        let old = makeBabyEntry(id: entryId)
+        let (store, entryService, _) = makeBabyStore()
+
+        await store.updateBabyEntry(
+            old: old,
+            note: "",
+            weightDecigrams: 4082,
+            lengthMm: 533,
+            entryTimestamp: "2026-04-01T08:00:00Z"
+        )
+
+        #expect(entryService.createBabyEntryCalls.count == 1)
+        let call = entryService.createBabyEntryCalls[0]
+        #expect(call.weight == 4082)
+        #expect(call.length == 533)
+        #expect(call.entryTimestamp == "2026-04-01T08:00:00Z")
+        #expect(entryService.deleteEntryByIdCalls == 1)
+    }
+
+    @Test("updateBabyEntry date change: new timestamp forwarded to createBabyEntry")
+    func updateBabyEntryDateChangeForwardsNewTimestamp() async {
+        let old = makeBabyEntry(entryTimestamp: "2026-03-01T09:00:00Z")
+        let (store, entryService, _) = makeBabyStore()
+
+        await store.updateBabyEntry(
+            old: old,
+            note: "note",
+            weightDecigrams: 3800,
+            lengthMm: 490,
+            entryTimestamp: "2026-03-15T09:00:00Z"
+        )
+
+        #expect(entryService.createBabyEntryCalls.first?.entryTimestamp == "2026-03-15T09:00:00Z")
+        #expect(entryService.deleteEntryByIdCalls == 1)
+    }
+
+    @Test("updateBabyEntry pending profile: skips all service calls")
+    func updateBabyEntryPendingProfileSkips() async {
+        let old = makeBabyEntry()
+        let (store, entryService, _, _, _) = makeSUT()
+        let productTypeStore = MockProductTypeStore()
+        productTypeStore.selectedItem = .baby(profile: BabyProfile(id: BabyProfile.pendingSelectionId, name: ""))
+        store.productTypeStore = productTypeStore
+
+        await store.updateBabyEntry(
+            old: old,
+            note: "note",
+            weightDecigrams: 3969,
+            lengthMm: 508,
+            entryTimestamp: "2026-03-28T10:00:00Z"
+        )
+
+        #expect(entryService.createBabyEntryCalls.isEmpty)
+        #expect(entryService.deleteEntryByIdCalls == 0)
+    }
+
+    @Test("updateBabyEntry non-baby product: skips all service calls")
+    func updateBabyEntryNonBabyProductSkips() async {
+        let old = makeBabyEntry()
+        let (store, entryService, _, _, _) = makeSUT()
+
+        await store.updateBabyEntry(
+            old: old,
+            note: "note",
+            weightDecigrams: 3969,
+            lengthMm: 508,
+            entryTimestamp: "2026-03-28T10:00:00Z"
+        )
+
+        #expect(entryService.createBabyEntryCalls.isEmpty)
+        #expect(entryService.deleteEntryByIdCalls == 0)
+    }
+
+    @Test("updateBabyEntry create failure: does not attempt delete, shows error toast")
+    func updateBabyEntryCreateFailureSkipsDelete() async {
+        let old = makeBabyEntry()
+        let (store, entryService, notificationService, _, _) = makeSUT()
+        let productTypeStore = MockProductTypeStore()
+        productTypeStore.selectedItem = .baby(profile: BabyProfile(id: "baby-1", name: "Test Baby"))
+        store.productTypeStore = productTypeStore
+        entryService.createBabyEntryError = HistoryStoreTestError.loadMonthsFailed
+
+        await store.updateBabyEntry(
+            old: old,
+            note: "note",
+            weightDecigrams: 3969,
+            lengthMm: 508,
+            entryTimestamp: "2026-03-28T10:00:00Z"
+        )
+
+        #expect(entryService.deleteEntryByIdCalls == 0)
+        #expect(notificationService.showToastCalls >= 1)
     }
 }

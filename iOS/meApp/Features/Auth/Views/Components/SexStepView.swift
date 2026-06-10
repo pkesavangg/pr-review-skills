@@ -16,7 +16,7 @@ struct SexStepView: View {
     var body: some View {
         SignupStepWrapper(title: sexStepLang.title, subtitle: sexStepLang.subtitle) {
             HStack(spacing: .spacingLG) {
-                ForEach(Sex.allCases, id: \.self) { sex in
+                ForEach(Sex.allCases.filter { $0 != .private }, id: \.self) { sex in
                     SelectableCircleButton(
                         label: sex.rawValue.uppercased(),
                         isSelected: signupStore.signupForm.gender.value == sex.rawValue
