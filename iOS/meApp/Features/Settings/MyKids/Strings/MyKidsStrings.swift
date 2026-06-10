@@ -11,6 +11,7 @@ struct MyKidsStrings {
     static let addABaby = "ADD A BABY"
     static let addBaby = "Add Baby"
     static let save = "SAVE"
+    static let saveFailed = "Unable to save baby profile. Please try again."
 
     struct RemoveBaby {
         static let title = "Remove Baby"

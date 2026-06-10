@@ -18,7 +18,6 @@ final class BpmSetupStore: ObservableObject {
     @Injector private var bluetoothService: BluetoothServiceProtocol
     @Injector private var scaleService: ScaleServiceProtocol
     @Injector private var accountService: AccountServiceProtocol
-    @Injector private var healthKitService: HealthKitServiceProtocol
 
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
@@ -935,6 +934,7 @@ final class BpmSetupStore: ObservableObject {
             // createBluetoothScale already triggers syncDevices → syncAllScalesWithRemote
             // internally, so an additional sync here is redundant and risks a SwiftData
             // "This store went missing?" crash from rapid delete-then-save cycles.
+            ProductTypeStore.shared.selectLastAdded(.myBloodPressure)
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
             LoggerService.shared.log(level: .info, tag: tag, message: "BPM device saved")
             return true
@@ -1352,7 +1352,6 @@ final class BpmSetupStore: ObservableObject {
     }
 
     func cleanUp() {
-        let shouldRecheckHealthKitPermissions = isDeviceSaved
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
         deviceDiscoveryCancellable?.cancel()
@@ -1364,11 +1363,6 @@ final class BpmSetupStore: ObservableObject {
         resetDiscoveryState()
         bluetoothService.isSetupInProgress = false
         isDeviceSaved = false
-
-        guard shouldRecheckHealthKitPermissions else { return }
-        Task { @MainActor [weak self] in
-            await self?.healthKitService.requestAdditionalPermissionsIfNeeded()
-        }
     }
 }
 

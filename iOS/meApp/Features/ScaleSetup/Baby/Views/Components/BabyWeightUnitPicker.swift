@@ -21,7 +21,7 @@ struct BabyWeightUnitPicker: View {
                         selectedSegment = segment
                     }
                 } label: {
-                    Text(segment.rawValue.lowercased())
+                    Text(segment.displayName)
                         .fontOpenSans(.button2)
                         .foregroundColor(selectedSegment == segment ? theme.textInverse : theme.actionSecondary)
                         .frame(maxWidth: .infinity)

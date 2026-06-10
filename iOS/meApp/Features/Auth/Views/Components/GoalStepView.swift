@@ -40,14 +40,15 @@ struct GoalStepView: View {
                     if signupStore.signupForm.goalType.value != GoalType.maintain.rawValue {
                         MetricInputField(
                             config: TextInputConfig(
-                                label: "\(labels.startingWeight) (\(signupStore.signupForm.useMetric.value ? "kg" : "lbs"))",
+                                label: labels.startingWeight,
                                 placeholder: "0.0",
                                 inputType: .metric,
                                 errorMessage: signupStore.getError(for: signupStore.signupForm.currentWeight),
                                 isDisabled: signupStore.signupForm.goalType.value == GoalType.maintain.rawValue,
                                 focusField: .currentWeight,
                                 maxLength: 4,
-                                maxValue: 999.9
+                                maxValue: 999.9,
+                                trailingLabel: labels.weightUnitSuffix(signupStore.signupForm.useMetric.value)
                             ),
                             value: $signupStore.signupForm.currentWeight.value,
                             focusedField: $focusedField,
@@ -70,13 +71,14 @@ struct GoalStepView: View {
                     
                     MetricInputField(
                         config: TextInputConfig(
-                            label: "\(labels.goalWeight) (\(signupStore.signupForm.useMetric.value ? "kg" : "lbs"))",
+                            label: labels.goalWeight,
                             placeholder: "0.0",
                             inputType: .metric,
                             errorMessage: signupStore.getError(for: signupStore.signupForm.goalWeight),
                             focusField: .goalWeight,
                             maxLength: 4,
-                            maxValue: 999.9
+                            maxValue: 999.9,
+                            trailingLabel: labels.weightUnitSuffix(signupStore.signupForm.useMetric.value)
                         ),
                         value: $signupStore.signupForm.goalWeight.value,
                         focusedField: $focusedField,
@@ -98,6 +100,16 @@ struct GoalStepView: View {
                     }
                 }
                 .padding(.top, .spacingMD)
+
+                // lbs ↔ kg selector — bound to the shared `useMetric` flag so the Height
+                // step's Ft/In ↔ CM selector flips to match (Imperial ↔ Metric stay paired).
+                UnitSelectionToggle(
+                    imperialTitle: goalStepLang.imperialUnit,
+                    metricTitle: goalStepLang.metricUnit,
+                    isMetric: $signupStore.signupForm.useMetric.value
+                )
+                .padding(.top, .spacingSM)
+                .frame(maxWidth: .infinity)
             }
             .padding(.top, .spacingLG)
             .onChange(of: signupStore.signupForm.goalType.value) { _, _ in

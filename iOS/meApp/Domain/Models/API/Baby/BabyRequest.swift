@@ -60,10 +60,12 @@ extension BabyRequest {
 
         let millimeters = birthLengthInches.map { ConversionTools.convertBabyInchesToMm($0) }
 
+        // The API expects lowercase `male`/`female`/`private`, but the picker stores a
+        // capitalized display value ("Male"/"Female") — normalize so the server accepts it.
         self.init(
             name: name,
             birthdate: birthdate,
-            sex: biologicalSex,
+            sex: biologicalSex?.lowercased(),
             birthWeightDecigrams: decigrams,
             birthLengthMillimeters: millimeters
         )
