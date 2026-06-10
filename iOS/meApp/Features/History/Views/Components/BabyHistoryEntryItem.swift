@@ -13,26 +13,23 @@ struct BabyHistoryEntryItem: View {
     let isExpanded: Bool
     let onTap: () -> Void
     let onDelete: () -> Void
-    /// Called when the user taps the edit icon in the expanded notes section.
+    /// Called when the user taps the edit icon or the note body in the expanded notes section.
     var onEditNotes: () -> Void = {}
     var openItemID: Binding<UUID?>?
 
+    @State private var isNoteExpanded: Bool = false
+
     private var hasNotes: Bool { !(entry.notes ?? "").isEmpty }
 
+    // Notes longer than ~2 lines (≈100 chars) get the "more" affordance.
+    private var noteIsLong: Bool { (entry.notes ?? "").count > 100 }
+
+    // MOB-458: use the shared relative → absolute formatter.
+    // Entries on this screen are always same-day, so getArrivalRelativeTime returns
+    // "Just now" / "X min ago" for recent readings or "9:52 AM" for older ones.
     private var timeText: String {
-        DateTimeTools.getFormattedTime(entry.entryTimestamp).lowercased()
-    }
-
-    private var weightText: String {
-        entry.weightDisplay
-    }
-
-    private var lengthText: String {
-        entry.lengthDisplay
-    }
-
-    private var percentileText: String {
-        BabyWeightPercentileCalculator.percentileDisplayText(entry.percentile)
+        DateTimeTools.getArrivalRelativeTime(fromISOString: entry.entryTimestamp)
+            ?? DateTimeTools.getFormattedTime(entry.entryTimestamp)
     }
 
     var body: some View {
@@ -49,7 +46,7 @@ struct BabyHistoryEntryItem: View {
 
                 // Weight
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(weightText)
+                    Text(entry.weightDisplay)
                         .fontOpenSans(.heading5)
                         .foregroundStyle(isExpanded ? theme.textInverse : theme.textHeading)
                         .lineLimit(1)
@@ -61,9 +58,9 @@ struct BabyHistoryEntryItem: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Length
+                // Length — "--" when no length recorded (handled in weightDisplay/lengthDisplay)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(lengthText)
+                    Text(entry.lengthDisplay)
                         .fontOpenSans(.heading5)
                         .foregroundStyle(isExpanded ? theme.textInverse : theme.textHeading)
 
@@ -75,7 +72,7 @@ struct BabyHistoryEntryItem: View {
 
                 // Percentile
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(percentileText)
+                    Text(BabyWeightPercentileCalculator.percentileDisplayText(entry.percentile))
                         .fontOpenSans(.heading5)
                         .foregroundStyle(isExpanded ? theme.textInverse : theme.actionPrimary)
 
@@ -85,7 +82,7 @@ struct BabyHistoryEntryItem: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Expansion chevron — always visible (row is always expandable)
+                // Expansion chevron
                 AppIconView(icon: AppAssets.chevronDown)
                     .foregroundStyle(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
                     .rotationEffect(.degrees(isExpanded ? 180 : 0))
@@ -116,23 +113,45 @@ struct BabyHistoryEntryItem: View {
             Divider()
                 .foregroundStyle(theme.actionPrimary)
 
-            // Expanded notes section — always shown when expanded
+            // Expanded notes section
             if isExpanded {
                 HStack(alignment: .top, spacing: .spacingXS) {
                     if hasNotes {
-                        Text(entry.notes ?? "")
-                            .fontOpenSans(.body3)
-                            .foregroundStyle(theme.textBody)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(entry.notes ?? "")
+                                .fontOpenSans(.body3)
+                                .foregroundColor(theme.textBody)
+                                .lineLimit(isNoteExpanded ? nil : 2)
+                                .onTapGesture { onEditNotes() }
+
+                            if !isNoteExpanded && noteIsLong {
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        isNoteExpanded = true
+                                    }
+                                } label: {
+                                    Text("more")
+                                        .fontOpenSans(.body3)
+                                        .foregroundColor(theme.actionPrimary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
                     } else {
                         Text(HistoryListStrings.noNotesPlaceholder)
                             .fontOpenSans(.body3)
-                            .foregroundStyle(theme.textSubheading)
+                            .foregroundColor(theme.textSubheading)
+                            .onTapGesture { onEditNotes() }
                     }
+
                     Spacer()
-                    Button("Edit notes", systemImage: "square.and.pencil", action: onEditNotes)
-                        .labelStyle(.iconOnly)
-                        .font(.system(size: 18))
-                        .foregroundStyle(theme.actionPrimary)
+
+                    Button(action: onEditNotes) {
+                        Image(systemName: "square.and.pencil")
+                            .font(.system(size: 18))
+                            .foregroundColor(theme.actionPrimary)
+                    }
+                    .buttonStyle(.plain)
                 }
                 .padding(.spacingSM)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -146,6 +165,9 @@ struct BabyHistoryEntryItem: View {
         .contentShape(Rectangle())
         .onTapGesture {
             onTap()
+        }
+        .onChange(of: isExpanded) { _, expanded in
+            if !expanded { isNoteExpanded = false }
         }
     }
 }

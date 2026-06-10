@@ -120,7 +120,7 @@ extension BabyScaleSetupStore {
 
     func handleSkipConfirmed() {
         showSkipDialog = false
-        handleFinish()
+        navigateToDoneScreen()
     }
 
     func handleSkipCancelled() {
@@ -169,17 +169,16 @@ extension BabyScaleSetupStore {
         }
     }
 
-    // MARK: - Finish
+    // MARK: - Navigate to Done
 
-    func handleFinish() {
+    func navigateToDoneScreen() {
         guard discoveredScale != nil, discoveryEvent != nil, !isScaleSaved else {
-            performExitCleanup()
+            navigateToStep(.done)
             return
         }
-
         Task {
             await saveScale()
-            performExitCleanup()
+            navigateToStep(.done)
         }
     }
 }

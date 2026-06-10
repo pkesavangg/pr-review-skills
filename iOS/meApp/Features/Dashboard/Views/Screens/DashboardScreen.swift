@@ -23,6 +23,10 @@ struct DashboardScreen: View {
     @State private var metricInfoEntry: Entry?
     @State private var isProductTypeSelectorPresented = false
     @State private var isInProductDashboard = false
+    /// Tracks whether the per-session persistence redirect has already been applied,
+    /// so subsequent re-appearances (tab switch, background/foreground) don't override
+    /// the user's in-session navigation choices.
+    @State private var hasInitializedProductRedirect = false
     private var canShowSnapshotOverview: Bool {
         store.availableProductItems.count > 1
     }
@@ -61,8 +65,26 @@ struct DashboardScreen: View {
             await store.lifecycleManager.refreshAll()
         }
         .onAppear(perform: store.lifecycleManager.onAppearActions)
+        .onAppear {
+            // Handles the case where availableProductItems is already populated when the
+            // view first renders (data loaded before first appear). The onChange below
+            // covers the async case where data arrives after appear.
+            applyInitialProductRedirectIfNeeded()
+        }
         .onChange(of: canShowSnapshotOverview) { _, isAvailable in
-            if isAvailable { isInProductDashboard = false }
+            guard isAvailable else { return }
+            if let redirected = ProductTypeStore.resolveInitialProductRedirect(
+                hasInitializedProductRedirect: hasInitializedProductRedirect,
+                canShowSnapshotOverview: isAvailable,
+                productTypeStore: store.productTypeSelectorStore
+            ) {
+                isInProductDashboard = redirected
+                hasInitializedProductRedirect = true
+            } else if hasInitializedProductRedirect {
+                // Mid-session: a new product type became available (e.g. device added).
+                // Show the snapshot overview so the user sees the updated device list.
+                isInProductDashboard = false
+            }
         }
         .ignoresSafeArea(.all, edges: canShowSnapshotOverview ? .bottom : .all)
         .background(theme.backgroundSecondary)
@@ -164,7 +186,7 @@ struct DashboardScreen: View {
             ProductTypeSelectorSheet(
                 store: store.productTypeSelectorStore,
                 isPresented: $isProductTypeSelectorPresented,
-                title: ProductTypeStrings.myDashboard
+                title: DashboardStrings.selectGraph
             )
         }
         .zIndex(100)
@@ -265,5 +287,16 @@ struct DashboardScreen: View {
                 }
         )
     }
-    
+
+    // MARK: - Persistence Redirect
+
+    private func applyInitialProductRedirectIfNeeded() {
+        guard let redirected = ProductTypeStore.resolveInitialProductRedirect(
+            hasInitializedProductRedirect: hasInitializedProductRedirect,
+            canShowSnapshotOverview: canShowSnapshotOverview,
+            productTypeStore: store.productTypeSelectorStore
+        ) else { return }
+        isInProductDashboard = redirected
+        hasInitializedProductRedirect = true
+    }
 }

@@ -511,7 +511,7 @@ struct AccountRepositoryAPITests {
         _ = try await sut.createAccount(email: "new@example.com", password: "secret", profile: profile)
 
         let body = try jsonBody(http.lastSendBody)
-        #expect(body["productTypes"] as? [String] == ["weight"])
+        #expect(body["productTypes"] as? [String] == ["myWeight"])
         #expect(body["gender"] != nil)
         #expect(body["dob"] != nil)
         #expect(body["height"] != nil)
@@ -535,7 +535,7 @@ struct AccountRepositoryAPITests {
         #expect(body["measurementUnits"] as? String == "imperialLbOz")
     }
 
-    @Test("createAccount nil productTypes: defaults to [weight]")
+    @Test("createAccount nil productTypes: defaults to [myWeight]")
     func createAccountDefaultsProductTypes() async throws {
         let (sut, http) = makeSUT()
         http.sendResult = AccountTestFixtures.makeAccountResponse()
@@ -544,7 +544,7 @@ struct AccountRepositoryAPITests {
         _ = try await sut.createAccount(email: "x@example.com", password: "secret", profile: AccountTestFixtures.makeProfile())
 
         let body = try jsonBody(http.lastSendBody)
-        #expect(body["productTypes"] as? [String] == ["weight"])
+        #expect(body["productTypes"] as? [String] == ["myWeight"])
     }
 
     @Test("checkEmailAvailability: POST email-check no-auth, returns isAvailable")

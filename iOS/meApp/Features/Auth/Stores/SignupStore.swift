@@ -26,7 +26,7 @@ final class SignupStore: ObservableObject {
     var alertLang = AlertStrings.self
     var loaderLang = LoaderStrings.self
     var commonLang = CommonStrings.self
-    
+
     @Published var currentStepIndex: Int = 0 {
         didSet {
             currentStep = steps[currentStepIndex]
@@ -49,11 +49,6 @@ final class SignupStore: ObservableObject {
     // Per-device save status populated during FINISH submission.
     // Drives the allProfilesReady / signupError terminal screens.
     @Published var deviceStatuses: [(device: SignupDeviceType, status: SignupDeviceStatus)] = []
-    // True once the backend account has been created. Per UX (MOB-419) the account
-    // is created when the user taps COMPLETE on the password screen, so subsequent
-    // device loops (which skip the password step) and the final FINISH submission
-    // never create it again.
-    @Published private(set) var isAccountCreated = false
 
     // Baby management
     @Published var babies: [SignupBaby] = []
@@ -69,19 +64,19 @@ final class SignupStore: ObservableObject {
     @Published var showHeightCmPicker = false
 
     @Published var isFromAccountSwitching: Bool = false
-    
+
     var onSignupSuccess: (() -> Void)?
     var dismissAction: DismissAction?
-    
+
     let heightInchesOptions = ConversionTools.heightInchesOptions
     let heightCmOptions     = ConversionTools.heightCmOptions
-    
+
     private let toastLang = ToastStrings.self
     private var cancellables = Set<AnyCancellable>()
     private var previousMetricValue: Bool = false
-    
+
     private let tag = "SignupStore"
-    
+
     init() {
         // Resolve once per store instance to avoid cross-test DI races when
         // async step actions execute after other suites reset the container.
@@ -99,7 +94,7 @@ final class SignupStore: ObservableObject {
         rebuildSteps()
         currentStep = steps[currentStepIndex]
     }
-    
+
     /// Builds the ordered steps for the current signup flow.
     /// Called only at navigation milestones (init, device pick, connect-another-device)
     /// so the published `steps` array stays stable for the duration of a single device loop.
@@ -153,7 +148,7 @@ final class SignupStore: ObservableObject {
     var canConnectAnotherDevice: Bool {
         disabledDeviceTypes.count < SignupDeviceType.allCases.count - 1
     }
-    
+
     var progressValue: Double {
         Double(currentStepIndex + 1) / Double(steps.count)
     }
@@ -168,25 +163,25 @@ final class SignupStore: ObservableObject {
     }
 
     // MARK: - Height Management
-    
+
     func updateHeightPickerValues(from storedHeight: Int) {
         let selections = ConversionTools.pickerSelections(from: storedHeight)
         selectedHeightInches = selections.inches
         selectedHeightCm     = selections.cm
     }
-    
+
     func getFormattedHeight() -> String {
         let storedHeight = Int(signupForm.height.value)
         return ConversionTools.convertToFormattedHeight(storedHeight, isMetric: signupForm.useMetric.value)
     }
-    
+
     func updateFormHeight(fromMetric: Bool, values: [String]) {
         // Validate height before updating
         guard ConversionTools.isValidHeightPickerValues(fromMetric: fromMetric, values: values) else {
             logger.log(level: .error, tag: tag, message: "Invalid height values rejected: \(values)")
             return
         }
-        
+
         if fromMetric {
             let cm = Int(values.joined()) ?? 178
             // Double-check cm is valid
@@ -209,7 +204,7 @@ final class SignupStore: ObservableObject {
         // Update both picker values to stay in sync
         updateHeightPickerValues(from: Int(signupForm.height.value))
     }
-    
+
     func showHeightPicker() {
         if signupForm.useMetric.value {
             showHeightCmPicker = true
@@ -217,7 +212,7 @@ final class SignupStore: ObservableObject {
             showHeightInchesPicker = true
         }
     }
-    
+
     // MARK: - Navigation
 
     func handleSkip() {
@@ -242,17 +237,10 @@ final class SignupStore: ObservableObject {
     }
 
     func moveToNextStep() {
+        // createUser is deferred for all device types — called only when FINISH is tapped
         // When leaving addBaby, save the baby and move to babyList
         if currentStep == .addBaby {
             saveBabyFromForm()
-        }
-        // Per UX (MOB-419): the account is created when COMPLETE is tapped on the
-        // password step. Advancing to the next step is deferred until creation
-        // succeeds; on failure the user stays on the password step (toast shown).
-        // Product/device saves remain deferred to FINISH.
-        if currentStep == .password {
-            Task { await createAccountAtPassword() }
-            return
         }
         guard currentStepIndex < steps.count - 1 else { return }
         currentStepIndex += 1
@@ -268,6 +256,16 @@ final class SignupStore: ObservableObject {
     func retryFailedDevices() {
         Task {
             await retryDeviceSaves()
+        }
+    }
+
+    /// Called from the error screen CANCEL button — discards the entire signup and resets.
+    func cancelSignup(router: Router<AuthRoute>? = nil) {
+        resetForm()
+        if isFromAccountSwitching {
+            dismissAction?()
+        } else {
+            router?.navigateBack()
         }
     }
 
@@ -369,7 +367,7 @@ final class SignupStore: ObservableObject {
         babies.remove(at: index)
         updateNextButtonState()
     }
-    
+
     func updateNextButtonState() {
         switch currentStep {
         case .name:
@@ -401,13 +399,13 @@ final class SignupStore: ObservableObject {
             isNextEnabled = true
         }
     }
-    
+
     /// Checks if the current height value is valid.
     /// For metric: height must be >= 100 cm
     /// For imperial: height must be >= 2'0" (24 inches)
     private var isHeightValid: Bool {
         let storedHeight = Int(signupForm.height.value)
-        
+
         if signupForm.useMetric.value {
             let cm = ConversionTools.convertStoredHeightToCm(storedHeight)
             return ConversionTools.isValidHeightCm(cm)
@@ -416,20 +414,20 @@ final class SignupStore: ObservableObject {
             return ConversionTools.isValidHeightInches(feet: feetInches[0], inches: feetInches[1])
         }
     }
-    
+
     func getError<T>(for control: FormControl<T>) -> String? {
         signupForm.getError(for: control)
     }
 
     // MARK: - Field Touch / Validation (Signup)
-    
+
     /// Marks a specific field as touched and triggers validation.
     /// Used by signup input views to show field errors as soon as the user leaves a field
     /// or presses the keyboard "Next/Done" button.
     /// - Parameter field: The field to touch and validate.
     func touchAndValidate(field: FocusField) {
         var didUpdate = true
-        
+
         switch field {
         case .firstName:
             signupForm.firstName.markAsTouched()
@@ -462,18 +460,18 @@ final class SignupStore: ObservableObject {
         default:
             didUpdate = false
         }
-        
+
         if didUpdate {
             objectWillChange.send()
         }
     }
-    
+
     /// Call this from `onEditingChanged` for fields where we want to validate on blur.
     func handleEditingChanged(_ isEditing: Bool, field: FocusField) {
         guard !isEditing else { return }
         touchAndValidate(field: field)
     }
-    
+
     func handleExit(router: Router<AuthRoute>? = nil) {
         // If the form is not dirty, dismiss the signup screen
         if !signupForm.isDirty {
@@ -502,7 +500,7 @@ final class SignupStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-    
+
     func showHelpModal() {
         notificationService.showModal(ModalData(
             presentedView: AnyView(HelpModalView {
@@ -510,73 +508,30 @@ final class SignupStore: ObservableObject {
             })
         ))
     }
-    
-    /// Creates the account when the user taps COMPLETE on the password step
-    /// (per UX: MOB-419). On success, advances to the per-device "profile ready"
-    /// screen; on failure, the account-creation toast is shown and the user stays
-    /// on the password step to retry.
-    func createAccountAtPassword() async {
-        notificationService.showLoader(LoaderModel(text: loaderLang.creatingAccount))
-        let created = await ensureAccountCreated()
-        notificationService.dismissLoader()
-        guard created else { return }
-        advancePastPasswordStep()
-    }
-
-    /// Advances off the password step to the per-device profile-ready screen.
-    /// Guarded so it only fires while the user is actually on the password step.
-    private func advancePastPasswordStep() {
-        guard currentStep == .password, currentStepIndex < steps.count - 1 else { return }
-        currentStepIndex += 1
-    }
-
-    /// Creates the backend account exactly once. Account-creation (credential)
-    /// errors surface as a toast and leave the user on the password step — they are
-    /// NOT the per-device error screen, which is reserved for product-creation
-    /// failures. Idempotent: returns immediately if the account already exists.
-    /// - Returns: `true` if the account exists after the call.
-    @discardableResult
-    private func ensureAccountCreated() async -> Bool {
-        if isAccountCreated { return true }
-
-        let email = removeWhiteSpace(signupForm.email.value)
-        let password = signupForm.password.value
-        let profile = generateProfile()
-        logger.log(level: .info, tag: tag,
-            message: "Creating account at password Complete. accountSwitching=\(isFromAccountSwitching)")
-
-        do {
-            try await accountService.signUp(email: email, password: password, profile: profile)
-        } catch {
-            logger.log(level: .error, tag: tag,
-                message: "Signup account creation failed. error=\(error.localizedDescription)")
-            if case AccountError.maxAccountsReached = error {
-                showMaxUserAccountsAlert()
-                return false
-            }
-            handleSignupError(error)
-            return false
-        }
-
-        guard let account = accountService.activeAccount else {
-            handleSignupError(AccountError.noActiveAccount)
-            return false
-        }
-
-        isAccountCreated = true
-        persistSelectedSignupDeviceType(for: account.accountId)
-        return true
-    }
 
     func createUser() async {
         notificationService.showLoader(LoaderModel(text: loaderLang.creatingAccount))
 
-        // The account is normally created at the password Complete step. This call
-        // is idempotent and only hits the API when the account doesn't exist yet
-        // (e.g. flows that drive FINISH without going through password Complete).
-        let created = await ensureAccountCreated()
-        guard created else {
+        let email = removeWhiteSpace(signupForm.email.value)
+        let password = signupForm.password.value
+        logger.log(level: .info, tag: tag, message: "Signup flow started. accountSwitching=\(isFromAccountSwitching)")
+
+        let profile = generateProfile()
+        let goal = generateGoalRequest()
+
+        // Step 1: Create the account. If this fails, show the existing toast/alert —
+        // the error screen only applies to per-device profile saves.
+        do {
+            try await accountService.signUp(email: email, password: password, profile: profile)
+        } catch {
             notificationService.dismissLoader()
+            logger.log(level: .error, tag: tag,
+                message: "Signup account creation failed. error=\(error.localizedDescription)")
+            if case AccountError.maxAccountsReached = error {
+                showMaxUserAccountsAlert()
+                return
+            }
+            handleSignupError(error)
             return
         }
 
@@ -586,7 +541,7 @@ final class SignupStore: ObservableObject {
             return
         }
 
-        let goal = generateGoalRequest()
+        persistSelectedSignupDeviceType(for: account.accountId)
 
         // Step 2: Build ordered list of all devices selected this session.
         var allDevices: [SignupDeviceType] = registeredDeviceTypes
@@ -711,16 +666,19 @@ final class SignupStore: ObservableObject {
             }
         }
     }
-    
+
     // MARK: - Private Methods
     private func isGoalStepValid() -> Bool {
         // Use the form's isGoalValidForSave which checks: dirty, touched, and no errors
         signupForm.isGoalValidForSave
     }
-    
+
     private func generateProfile() -> Profile {
         let formattedDOB = DateTimeTools.formatDateToYMD_Local(signupForm.birthday.value)
-        
+        let measurementUnits: String? = signupForm.useMetric.value
+            ? MeasurementUnits.metric.rawValue
+            : MeasurementUnits.imperialLbOz.rawValue
+
         return Profile(
             firstName: removeWhiteSpace(signupForm.firstName.value),
             lastName: removeWhiteSpace(signupForm.lastName.value),
@@ -730,22 +688,23 @@ final class SignupStore: ObservableObject {
             weightUnit: signupForm.useMetric.value ? .kg : .lb,
             height: signupForm.height.value,
             activityLevel: .normal,
-            productTypes: signupForm.productTypes
+            productTypes: signupForm.productTypes,
+            measurementUnits: measurementUnits
         )
     }
-    
+
     private func generateGoalRequest() -> Goal? {
         guard !isGoalSkipped else { return nil }
-        
+
         let useMetric = signupForm.useMetric.value
         let goalTypeValue = signupForm.goalType.value
         let current = Double(signupForm.currentWeight.value) ?? 0.0
         let target = Double(signupForm.goalWeight.value) ?? 0.0
-        
+
         let convert = { (weight: Double) -> Int in
             ConversionTools.convertDisplayToStored(weight, forceMetric: useMetric)
         }
-        
+
         if goalTypeValue == GoalType.maintain.rawValue {
             return Goal(
                 type: .maintain,
@@ -825,7 +784,7 @@ final class SignupStore: ObservableObject {
             message: "Persisted signup-selected device type. accountId=\(accountId), deviceType=\(primaryDevice.rawValue)"
         )
     }
-    
+
     private func handleSignupError(_ error: Error) {
         var toastMessage: String?
         let toastTitle: String = toastLang.errorCreatingAccount
@@ -872,7 +831,7 @@ final class SignupStore: ObservableObject {
                 self?.updateNextButtonState()
             }
             .store(in: &cancellables)
-        
+
         // React to password-related changes only when we're on the password step
         let passwordChanges = Publishers.CombineLatest(
             signupForm.password.$value,
@@ -883,7 +842,7 @@ final class SignupStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _, _ in
                 self?.signupForm.validate()
-                
+
                 if self?.currentStep == .password {
                     self?.updateNextButtonState()
                 }
@@ -898,17 +857,17 @@ final class SignupStore: ObservableObject {
                 self?.updateNextButtonState()
             }
             .store(in: &cancellables)
-        
+
         // Observe useMetric changes
         signupForm.useMetric.$value
             .dropFirst()
             .sink { [weak self] isMetric in
                 guard let self = self else { return }
                 let oldMetricValue = self.previousMetricValue
-                
+
                 // Update validators first to ensure validation uses correct unit constraints
                 self.updateWeightValidators(isMetric: isMetric)
-                
+
                 // Convert weight values when switching units
                 if !self.signupForm.currentWeight.value.isEmpty {
                     let convertedCurrentWeight = ConversionTools.convertDisplayWeightValue(
@@ -919,7 +878,7 @@ final class SignupStore: ObservableObject {
                     self.signupForm.currentWeight.value = convertedCurrentWeight
                     self.signupForm.currentWeight.validate()
                 }
-                
+
                 if !self.signupForm.goalWeight.value.isEmpty {
                     let convertedGoalWeight = ConversionTools.convertDisplayWeightValue(
                         self.signupForm.goalWeight.value,
@@ -929,15 +888,15 @@ final class SignupStore: ObservableObject {
                     self.signupForm.goalWeight.value = convertedGoalWeight
                     self.signupForm.goalWeight.validate()
                 }
-                
+
                 self.updateHeightPickerValues(from: Int(self.signupForm.height.value))
-                
+
                 // Update previous value for next change
                 self.previousMetricValue = isMetric
             }
             .store(in: &cancellables)
     }
-    
+
     private func updateWeightValidators(isMetric: Bool) {
         let maxWeight = isMetric ? 450.0 : 999.0
         // Remove old validator
@@ -968,7 +927,6 @@ final class SignupStore: ObservableObject {
         disabledDeviceTypes = []
         registeredDeviceTypes = []
         deviceStatuses = []
-        isAccountCreated = false
         babies.removeAll()
         isEditingBabyIndex = nil
         showBabySexPicker = false
@@ -989,7 +947,7 @@ final class SignupStore: ObservableObject {
         // Ensure the primary action button reflects the current (reset) state.
         updateNextButtonState()
     }
-    
+
     /// Presents an alert informing the user that the maximum number of accounts
     /// has been reached.
     private func showMaxUserAccountsAlert() {

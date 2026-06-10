@@ -1051,7 +1051,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         var firstFailureReason: String?
 
         // 2. Try to sync with backend
-        if let unsyncedEntries = unsynced, !unsyncedEntries.isEmpty {
+        // Baby sync is out of scope until iOS 3. Exclude baby entries here so they
+        // are not re-evaluated every cycle and never accumulate as a perpetual skip.
+        if let unsyncedEntries = unsynced?.filter({ $0.entryType != EntryType.baby.rawValue }), !unsyncedEntries.isEmpty {
             for operation in unsyncedEntries {
                 // R7/R9: Extract all @Model data BEFORE any await calls
                 let entryId = operation.id
@@ -1343,6 +1345,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         // An active account is still required so the request is authorized.
         guard accountService.activeAccount != nil else {
             throw AccountError.noActiveAccount
+        }
+        if category == EntryCategory.baby.rawValue && babyId == nil {
+            throw NSError(domain: "EntryService", code: 400,
+                          userInfo: [NSLocalizedDescriptionKey: "babyId is required for baby CSV export"])
         }
         let request = EntriesCSVRequest(
             category: category,
@@ -2154,22 +2160,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 monthlySummaries = monthly
             }
         case .bpm:
-            let resolvedDaily: [BathScaleWeightSummary]
-            let resolvedMonthly: [BathScaleWeightSummary]
-            if daily.isEmpty {
-                let dummy = Self.generateDummyBpmSummaries(accountId: accountId)
-                resolvedDaily = dummy
-                resolvedMonthly = dummy
-            } else {
-                resolvedDaily = daily
-                resolvedMonthly = monthly
+            if bpmDailySummaries != daily {
+                bpmDailySummaries = daily
             }
-
-            if bpmDailySummaries != resolvedDaily {
-                bpmDailySummaries = resolvedDaily
-            }
-            if bpmMonthlySummaries != resolvedMonthly {
-                bpmMonthlySummaries = resolvedMonthly
+            if bpmMonthlySummaries != monthly {
+                bpmMonthlySummaries = monthly
             }
         }
     }
@@ -2336,56 +2331,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     private func refreshBpmDashboardSummaries() async {
         await loadDashboardData(entryType: .bpm)
-    }
-
-    // MARK: - Dummy BPM Data (Testing Only — Remove Before Release)
-
-    /// Generates 14 days of dummy BP summaries for testing the BPM dashboard.
-    /// Readings vary realistically across AHA classifications.
-    private static func generateDummyBpmSummaries(accountId: String) -> [BathScaleWeightSummary] {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        let isoFormatter = ISO8601DateFormatter()
-
-        // Realistic BP readings across different AHA levels
-        let readings: [BpmAverage] = [
-            BpmAverage(systolic: 118, diastolic: 76, pulse: 68, classification: .normal),
-            BpmAverage(systolic: 122, diastolic: 78, pulse: 72, classification: .elevated),
-            BpmAverage(systolic: 115, diastolic: 74, pulse: 65, classification: .normal),
-            BpmAverage(systolic: 132, diastolic: 84, pulse: 75, classification: .hypertensionStage1),
-            BpmAverage(systolic: 119, diastolic: 77, pulse: 70, classification: .normal),
-            BpmAverage(systolic: 125, diastolic: 79, pulse: 73, classification: .elevated),
-            BpmAverage(systolic: 138, diastolic: 88, pulse: 78, classification: .hypertensionStage1),
-            BpmAverage(systolic: 112, diastolic: 72, pulse: 62, classification: .normal),
-            BpmAverage(systolic: 142, diastolic: 92, pulse: 82, classification: .hypertensionStage2),
-            BpmAverage(systolic: 120, diastolic: 78, pulse: 69, classification: .elevated),
-            BpmAverage(systolic: 116, diastolic: 75, pulse: 66, classification: .normal),
-            BpmAverage(systolic: 128, diastolic: 82, pulse: 74, classification: .hypertensionStage1),
-            BpmAverage(systolic: 110, diastolic: 70, pulse: 60, classification: .normal),
-            BpmAverage(systolic: 135, diastolic: 86, pulse: 76, classification: .hypertensionStage1)
-        ]
-
-        return readings.enumerated().compactMap { index, bp -> BathScaleWeightSummary? in
-            guard let date = calendar.date(byAdding: .day, value: -(readings.count - 1 - index), to: today) else { return nil }
-            let period = formatter.string(from: date)
-            let timestamp = isoFormatter.string(from: date)
-
-            return BathScaleWeightSummary(
-                accountId: accountId,
-                period: period,
-                entryTimestamp: timestamp,
-                date: date,
-                count: 1,
-                weight: 0,
-                pulse: Double(bp.pulse),
-                systolic: Double(bp.systolic),
-                diastolic: Double(bp.diastolic),
-                meanArterial: Double((bp.systolic + 2 * bp.diastolic) / 3),
-                entryType: EntryType.bpm.rawValue
-            )
-        }
     }
 
     deinit {

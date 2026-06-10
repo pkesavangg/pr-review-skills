@@ -18,11 +18,14 @@ struct ToastModel: Equatable {
     var duration: Double = 3
     var onDismiss: (() -> Void)?
     var onActiveCountChanged: ((Int) -> Void)?
-    
+    /// When true the toast renders with an error background (red tint) instead of the default.
+    var isError: Bool = false
+
     static func == (lhs: ToastModel, rhs: ToastModel) -> Bool {
         lhs.title == rhs.title &&
         lhs.message == rhs.message &&
-        lhs.duration == rhs.duration
+        lhs.duration == rhs.duration &&
+        lhs.isError == rhs.isError
         // Note: We exclude buttonView and onClick from equality check
         // as AnyView isn't Equatable and functions can't be compared
     }

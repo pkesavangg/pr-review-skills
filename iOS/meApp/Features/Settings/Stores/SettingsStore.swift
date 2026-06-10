@@ -140,7 +140,7 @@ class SettingsStore: ObservableObject {
     }
 
     var shouldShowMyKids: Bool {
-        hasBabyScale || signedUpWithBabyScale
+        hasBabyProfile
     }
 
     /// Main browser presentation binding for the view
@@ -1711,7 +1711,7 @@ class SettingsStore: ObservableObject {
     }
 
     /// Presents the Unit Type dialog: a single weight-unit list, or — when the account
-    /// has a baby scale — a "My Weight" + "My Kids" radio dialog.
+    /// has a baby scale paired — a "My Weight" + "My Kids" radio dialog.
     func presentUnitPicker() {
         let picker = UnitTypePickerModalView(
             showMyKids: hasBabyProfile,

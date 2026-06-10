@@ -21,17 +21,20 @@ enum ActivityLevel: String, Codable, Equatable {
 enum Sex: String, Codable, Equatable, CaseIterable {
     case male
     case female
-    
+    case `private`
+
     init?(rawInput: String?) {
         guard let input = rawInput?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() else {
             return nil
         }
-        
+
         switch input {
         case "male":
             self = .male
         case "female":
             self = .female
+        case "private":
+            self = .private
         default:
             return nil
         }
@@ -57,11 +60,11 @@ enum MeasurementUnits: String, Codable, Equatable, CaseIterable {
 
 // MARK: - ProductType
 
-/// Server product-type identifiers (`account.productTypes`).
-/// These are the canonical API values used in account request/response payloads.
+/// Product-type identifiers persisted in `account.productTypes`.
+/// Raw values match the persisted vocabulary: "myWeight", "myBloodPressure", "baby".
 enum ProductType: String, Codable, Equatable, CaseIterable {
-    case weight
-    case bloodPressure = "blood_pressure"
+    case weight = "myWeight"
+    case bloodPressure = "myBloodPressure"
     case baby
 }
 

@@ -29,8 +29,8 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
     private let tag = "BabyService"
 
     init(remoteRepo: BabyRepositoryAPIProtocol? = nil) {
-          self.remoteRepo = remoteRepo ?? BabyRepositoryAPI()
-      }
+        self.remoteRepo = remoteRepo ?? BabyRepositoryAPI()
+    }
 
 
     // swiftlint:disable:next function_parameter_count
@@ -159,12 +159,15 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
         babies = try context.fetch(descriptor)
     }
 
-    /// Upserts server baby profiles into the local store, keyed by id.
+    /// Upserts server baby profiles into the local store, keyed by id,
+    /// then tombstone-deletes any local babies for this account that are
+    /// no longer present on the server (e.g. removed from another device).
     private func mergeRemoteBabies(_ responses: [BabyResponse], accountId: String) throws {
+        let remoteIds = Set(responses.map { $0.id })
         for response in responses {
             let babyId = response.id
             let descriptor = FetchDescriptor<Baby>(
-                predicate: #Predicate<Baby> { $0.id == babyId }
+                predicate: #Predicate<Baby> { $0.id == babyId && $0.accountId == accountId }
             )
             if let existing = try context.fetch(descriptor).first {
                 existing.name = response.name
@@ -179,6 +182,14 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
             } else {
                 context.insert(response.toBaby(accountId: accountId))
             }
+        }
+        // Delete local babies for this account that were not in the server response.
+        let staleDescriptor = FetchDescriptor<Baby>(
+            predicate: #Predicate<Baby> { $0.accountId == accountId }
+        )
+        let localBabies = try context.fetch(staleDescriptor)
+        for baby in localBabies where !remoteIds.contains(baby.id) {
+            context.delete(baby)
         }
         try context.save()
     }

@@ -31,13 +31,12 @@ struct BPHistoryEntryItem: View {
         VStack(spacing: 0) {
             // Main entry row
             HStack {
-                // Date and time
+                // Date + time shown on two lines to match the design
                 VStack(alignment: .leading, spacing: 2) {
                     Text(DateTimeTools.getFormattedDay(entry.entryTimestamp))
                         .fontOpenSans(.heading5)
-                        .foregroundStyle(isExpanded ? theme.textInverse : theme.textHeading)
-
-                    Text(DateTimeTools.getFormattedTime(entry.entryTimestamp).lowercased())
+                        .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
+                    Text(DateTimeTools.getFormattedTime(entry.entryTimestamp))
                         .fontOpenSans(.body3)
                         .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
@@ -49,7 +48,7 @@ struct BPHistoryEntryItem: View {
                         .fontOpenSans(.heading5)
                         .foregroundStyle(pressureColor)
 
-                    Text(HistoryListStrings.mmhg)
+                    Text(EntryUnit.mmhg.displayString)
                         .fontOpenSans(.body3)
                         .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
@@ -111,10 +110,12 @@ struct BPHistoryEntryItem: View {
                             .foregroundStyle(theme.textSubheading)
                     }
                     Spacer()
-                    Button("Edit notes", systemImage: "square.and.pencil", action: onEditNotes)
-                        .labelStyle(.iconOnly)
-                        .font(.system(.body))
-                        .foregroundStyle(theme.actionPrimary)
+                    Button(action: onEditNotes) {
+                        Image(systemName: "square.and.pencil")
+                            .font(.system(size: 18))
+                            .foregroundStyle(theme.actionPrimary)
+                    }
+                    .buttonStyle(.plain)
                 }
                 .padding(.spacingSM)
                 .frame(maxWidth: .infinity, alignment: .leading)

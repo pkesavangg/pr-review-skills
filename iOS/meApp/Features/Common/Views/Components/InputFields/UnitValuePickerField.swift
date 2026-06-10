@@ -28,22 +28,22 @@ struct UnitValuePickerField: View {
             HStack(spacing: .spacingXS) {
                 Text(label)
                     .fontOpenSans(.subHeading1)
-                    .foregroundColor(theme.textSubheading)
+                    .foregroundStyle(theme.textSubheading)
 
                 Spacer(minLength: .spacingSM)
 
                 Text(value)
                     .fontOpenSans(.heading5)
-                    .foregroundColor(theme.actionSecondary)
+                    .foregroundStyle(theme.actionSecondary)
 
                 AppIconView(icon: AppAssets.chevronDown, size: IconSize(width: 16, height: 16))
-                    .foregroundColor(theme.actionSecondary)
+                    .foregroundStyle(theme.actionSecondary)
             }
             .padding(.horizontal, .spacingSM)
             .frame(height: 56)
             .frame(maxWidth: .infinity)
             .background(theme.backgroundPrimary)
-            .cornerRadius(.radiusSM)
+            .clipShape(.rect(cornerRadius: .radiusSM))
             .overlay {
                 if isActive {
                     RoundedRectangle(cornerRadius: .radiusSM)

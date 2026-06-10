@@ -165,18 +165,33 @@ class BottomTabBarViewModel: ObservableObject {
 
         // Wi-Fi weight scale entries arrive already saved server-side via newEntryReceivedPublisher.
         // Unlike BT entries (pendingScaleEntryPublisher), these never need SAVE/DISCARD — only VIEW.
+        // Guard: only show when (a) the entry did NOT come from a BT confirmation path
+        // (BT-confirmed entries carry source == bluetoothScale or btWifiR4) and (b) the account
+        // has at least one Wi-Fi-capable scale paired.
         bluetoothService.newEntryReceivedPublisher
             .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
-            .filter { $0.entryType == EntryType.scale.rawValue }
+            .filter { [weak self] notification in
+                guard notification.entryType == EntryType.scale.rawValue else { return false }
+                let btSources = [ScaleSourceType.bluetoothScale.rawValue, ScaleSourceType.btWifiR4.rawValue]
+                guard !btSources.contains(notification.source ?? "") else { return false }
+                return self?.hasWifiCapableScale ?? false
+            }
             .sink { [weak self] notification in
                 self?.showWifiWeightReadingCard(notification: notification)
             }
             .store(in: &cancellables)
 
         // Wi-Fi BPM entries follow the same already-saved pattern as Wi-Fi weight entries.
+        // Guard: BT BPM entries always have a nil source (no scaleEntry); only surface the card
+        // when the notification carries an explicit source (i.e. a future Wi-Fi BPM device) and
+        // the account has a Wi-Fi-capable scale paired.
         bluetoothService.newEntryReceivedPublisher
             .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
-            .filter { $0.entryType == EntryType.bpm.rawValue }
+            .filter { [weak self] notification in
+                guard notification.entryType == EntryType.bpm.rawValue else { return false }
+                guard notification.source != nil else { return false }
+                return self?.hasWifiCapableScale ?? false
+            }
             .sink { [weak self] notification in
                 self?.showWifiBpmReadingCard(notification: notification)
             }
@@ -910,7 +925,7 @@ class BottomTabBarViewModel: ObservableObject {
         logger.log(
             level: .info,
             tag: tag,
-            message: "Showing baby reading no-profile card. weight=\(weightString)"
+            message: "Showing baby reading no-profile card. entryId=\(entryId)"
         )
         notificationService.showToast(toast)
     }
@@ -1236,7 +1251,7 @@ class BottomTabBarViewModel: ObservableObject {
         }
 
         if count > 1 { isReplacingBtBpmCard = true }
-        logger.log(level: .info, tag: tag, message: "Showing BPM reading arrival card. count=\(count), \(systolic)/\(diastolic) pulse=\(pulse)")
+        logger.log(level: .info, tag: tag, message: "Showing BPM reading arrival card. count=\(count)")
         notificationService.showToast(toast)
     }
 
@@ -1276,7 +1291,7 @@ class BottomTabBarViewModel: ObservableObject {
             : nil
 
         let toast = ToastModel(
-            title: DashboardStrings.weightReadingArrivalTitle,
+            title: DashboardStrings.wifiReadingArrivalTitle,
             message: "\(weightString) - \(relativeTime)",
             headerView: headerView,
             btnTextView: AnyView(ReadingArrivalViewCTAView(onView: onView)),
@@ -1326,7 +1341,7 @@ class BottomTabBarViewModel: ObservableObject {
         let bpmMessage = "\(systolic)/\(diastolic) \(DashboardStrings.bpmReadingArrivalMmhg) \(pulse) \(DashboardStrings.bpmReadingArrivalPulse) - \(relativeTime)"
 
         let toast = ToastModel(
-            title: DashboardStrings.bpmReadingArrivalTitle,
+            title: DashboardStrings.wifiReadingArrivalTitle,
             message: bpmMessage,
             headerView: headerView,
             btnTextView: AnyView(ReadingArrivalViewCTAView(onView: onView)),
@@ -1335,8 +1350,20 @@ class BottomTabBarViewModel: ObservableObject {
         )
 
         if count > 1 { isReplacingWifiBpmCard = true }
-        logger.log(level: .info, tag: tag, message: "Showing Wi-Fi BPM reading card. count=\(count), \(systolic)/\(diastolic) pulse=\(pulse)")
+        logger.log(level: .info, tag: tag, message: "Showing Wi-Fi BPM reading card. count=\(count)")
         notificationService.showToast(toast)
+    }
+
+    // MARK: - Wi-Fi Capability Helpers
+
+    /// Returns true when at least one paired scale supports Wi-Fi readings
+    /// (pure Wi-Fi scales or BT+Wi-Fi R4 hybrids). Used to gate the
+    /// "New Reading saved to your log" card so it never fires for BT-only accounts.
+    private var hasWifiCapableScale: Bool {
+        scaleService.scales.contains { scale in
+            let type = scale.bathScale?.scaleType
+            return type == ScaleType.wifi.rawValue || type == ScaleType.bluetoothR4.rawValue
+        }
     }
 
     // MARK: - Scale Discovery Handling
