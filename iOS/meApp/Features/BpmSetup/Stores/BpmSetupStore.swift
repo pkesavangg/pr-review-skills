@@ -934,6 +934,7 @@ final class BpmSetupStore: ObservableObject {
             // createBluetoothScale already triggers syncDevices → syncAllScalesWithRemote
             // internally, so an additional sync here is redundant and risks a SwiftData
             // "This store went missing?" crash from rapid delete-then-save cycles.
+            ProductTypeStore.shared.selectLastAdded(.myBloodPressure)
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
             LoggerService.shared.log(level: .info, tag: tag, message: "BPM device saved")
             return true

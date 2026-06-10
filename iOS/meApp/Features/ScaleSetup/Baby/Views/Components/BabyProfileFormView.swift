@@ -15,7 +15,7 @@ struct BabyProfileFormView: View {
     @FocusState private var focusedField: FocusField?
     private let lang = BabyScaleSetupStrings.BabyProfile.self
     private let labels = InputFieldLabels.self
-    private let babyWeightSegments: [BabyWeightUnit] = [.kg, .lb, .lbsOz]
+    private let babyWeightSegments: [BabyWeightUnit] = [.lb, .lbsOz, .kg]
 
     /// When `true`, the title and subtitle header is hidden (e.g. Settings -> Add Baby).
     var hideHeader: Bool = false

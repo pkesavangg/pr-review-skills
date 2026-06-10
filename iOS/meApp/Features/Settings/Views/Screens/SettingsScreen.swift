@@ -106,20 +106,6 @@ struct SettingsScreen: View {
             }
         }
 
-        // Unit picker
-        .pickerSheet(
-            isPresented: $settingsStore.showUnitPicker,
-            selectedValues: [settingsStore.activeAccount?.weightUnit ?? .lb],
-            options: [[WeightUnit.lb, .kg]],
-            displayValue: { unit in
-                unit == .kg ? CommonStrings.unitKgCm : CommonStrings.pickerLbs
-            },
-            title: settingsLang.unitType
-        ) { vals in
-            if let unit = vals.first {
-                settingsStore.updateWeightUnit(unit)
-            }
-        }
         // Activity level picker
         .pickerSheet(
             isPresented: $settingsStore.showActivityPicker,
@@ -188,24 +174,17 @@ struct SettingsScreen: View {
 
     private func appSettingsSection() -> some View {
         Section(header: sectionHeader(title: settingsLang.appSettings)) {
-            if settingsStore.shouldShowUnitType {
-                ActionListItemView(config: ActionListItemConfig(
-                    title: settingsLang.unitType,
-                    value: settingsStore.unitTypeText,
-                    chevronType: .upDown) { settingsStore.presentUnitPicker() })
-                .listRowInsets()
-            }
+            // Unit Type is always visible regardless of paired devices (MOB-417).
+            ActionListItemView(config: ActionListItemConfig(
+                title: settingsLang.unitType,
+                value: settingsStore.unitTypeText,
+                chevronType: .upDown) { settingsStore.presentUnitPicker() })
+            .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.appPermissions) {
                 router.navigate(to: .appPermissions)
             })
             .listRowInsets()
-            if settingsStore.shouldShowNotifications {
-                ActionListItemView(config: ActionListItemConfig(
-                    title: settingsLang.notifications,
-                    value: settingsStore.notificationsOnText,
-                    chevronType: .upDown) { settingsStore.presentNotificationPicker() })
-                .listRowInsets()
-            }
+            // Notifications moved to the product-scoped "My Weight" section (MOB-417).
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsStore.messagesTitleText,
                 showDot: settingsStore.canShowFeedNotificationBadge
@@ -225,7 +204,12 @@ struct SettingsScreen: View {
     }
 
     private func weightScaleSection() -> some View {
-        Section(header: sectionHeader(title: settingsLang.weightScaleSettings)) {
+        Section(header: sectionHeader(title: settingsLang.myWeight)) {
+            ActionListItemView(config: ActionListItemConfig(
+                title: settingsLang.notifications,
+                value: settingsStore.notificationsOnText,
+                chevronType: .upDown) { settingsStore.presentNotificationPicker() })
+            .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.goalSetting) {
                     router.navigate(to: .goal)

@@ -106,6 +106,16 @@ class SettingsStore: ObservableObject {
         availableItems.contains { if case .baby = $0 { return true } else { return false } }
     }
 
+    /// True only when at least one *real* baby profile exists (excludes the "Baby Scale"
+    /// placeholder that `ProductTypeStore` injects when a baby scale is paired but no profile
+    /// has been added yet). Used to gate the Unit Type dialog's "My Kids" section.
+    var hasBabyProfile: Bool {
+        availableItems.contains {
+            if case .baby(let profile) = $0 { return !profile.isPendingSelection }
+            return false
+        }
+    }
+
     private var signedUpWithBabyScale: Bool {
         guard let accountId = activeAccount?.accountId,
               let rawValue = kvStore.getValue(forKey: KvStorageKeys.selectedSignupDeviceTypeKey(for: accountId)) as? String
@@ -176,8 +186,6 @@ class SettingsStore: ObservableObject {
     @Published var showNotificationPicker: Bool = false
     /// Controls the presentation of the gender picker (sheet fallback or centered modal).
     @Published var showGenderPicker: Bool = false
-    /// Controls the presentation of the unit picker (sheet fallback or centered modal).
-    @Published var showUnitPicker: Bool = false
     /// Controls the presentation of the activity level picker (sheet fallback or centered modal).
     @Published var showActivityPicker: Bool = false
     /// Currently selected default graph range for the active account.
@@ -426,6 +434,14 @@ class SettingsStore: ObservableObject {
         case .lb: return commonLang.unitLbsFeet
         case .none: return ""
         }
+    }
+
+    /// The active account's preferred baby-scale measurement units ("My Kids" section).
+    /// Defaults to `.imperialLbOz` (lbs & oz / in) when unset, per design.
+    var selectedMeasurementUnits: MeasurementUnits {
+        guard let raw = activeAccount?.measurementUnits,
+              let units = MeasurementUnits(rawValue: raw) else { return .imperialLbOz }
+        return units
     }
 
     // Edit profile form specific display values
@@ -1694,22 +1710,72 @@ class SettingsStore: ObservableObject {
         }
     }
 
-    /// Presents the unit picker (modal on iPad < iOS18, sheet otherwise).
+    /// Presents the Unit Type dialog: a single weight-unit list, or — when the account
+    /// has a baby scale — a "My Weight" + "My Kids" radio dialog.
     func presentUnitPicker() {
-        if useModalPicker {
-            let picker = PickerView(
-                selectedValues: [activeAccount?.weightUnit ?? .lb],
-                options: [[WeightUnit.lb, WeightUnit.kg]],
-                displayValue: { unit in unit == .kg ? CommonStrings.unitKgCm : CommonStrings.pickerLbs },
-                title: SettingsStrings.unitType,
-                showCancel: false
-            ) { vals in
-                self.notificationService.dismissModal()
-                if let unit = vals.first { self.updateWeightUnit(unit) }
+        let picker = UnitTypePickerModalView(
+            showMyKids: hasBabyProfile,
+            selectedWeightUnit: activeAccount?.weightUnit ?? .lb,
+            selectedMeasurementUnits: selectedMeasurementUnits,
+            onCancel: { [weak self] in
+                self?.notificationService.dismissModal()
+            },
+            onSave: { [weak self] weightUnit, measurementUnits in
+                self?.notificationService.dismissModal()
+                self?.saveUnitSelections(weightUnit: weightUnit, measurementUnits: measurementUnits)
             }
-            notificationService.showModal(ModalData(presentedView: AnyView(picker)))
-        } else {
-            showUnitPicker = true
+        )
+        notificationService.showModal(ModalData(presentedView: AnyView(picker)))
+    }
+
+    /// Persists the Unit Type dialog selections: the adult weight unit ("My Weight") and,
+    /// for baby-scale accounts, the kids' measurement units ("My Kids"). Both are written in a
+    /// single loader/toast cycle; only weight-unit changes trigger an R4 scale profile update.
+    func saveUnitSelections(weightUnit: WeightUnit, measurementUnits: MeasurementUnits) {
+        guard let account = activeAccount else { return }
+        let weightUnitChanged = account.weightUnit != weightUnit
+        let measurementUnitsChanged = selectedMeasurementUnits != measurementUnits
+        guard weightUnitChanged || measurementUnitsChanged else { return }
+
+        Task {
+            httpClient.skipCheckNetwork = true
+            notificationService.showLoader(LoaderModel(text: loaderLang.loading))
+            do {
+                if weightUnitChanged {
+                    let bodyComp = BodyComp(
+                        weightUnit: weightUnit,
+                        height: Double(account.weightHeight) ?? 0.0,
+                        activityLevel: account.activityLevel ?? .normal
+                    )
+                    _ = try await accountService.updateBodyComp(bodyComp)
+                }
+                if measurementUnitsChanged {
+                    try await accountService.updateMeasurementUnits(measurementUnits)
+                }
+
+                // Only a weight-unit change affects the R4 scale profile.
+                if weightUnitChanged {
+                    let profileUpdateResult = await bluetoothService.updateUserProfileForR4Scales()
+                    logger.log(level: .info, tag: tag, message: "updateUserProfileForR4Scales result saveUnitSelections: \(profileUpdateResult)")
+                    // Suppress success toast during user selection to prevent misleading feedback,
+                    // since the scale profile isn't updated at that time.
+                    if case let .success(statusArray) = profileUpdateResult,
+                       hasUserSelectionInProgress(statusArray: statusArray) {
+                        showUpdatesPendingAlert()
+                    } else {
+                        notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.unitSettingUpdated))
+                    }
+                } else {
+                    notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.unitSettingUpdated))
+                }
+
+                logger.log(level: .info, tag: tag, message: "Unit selections updated weightUnit=\(weightUnit.rawValue) measurementUnits=\(measurementUnits.rawValue)")
+            } catch {
+                notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.unableToUpdateAccountSettings))
+                logger.log(level: .error, tag: tag, message: "Unit selections update failed:", data: error.localizedDescription)
+            }
+            notificationService.dismissLoader()
+            httpClient.skipCheckNetwork = false
         }
     }
 
