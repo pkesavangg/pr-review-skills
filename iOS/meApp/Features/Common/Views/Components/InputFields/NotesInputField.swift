@@ -17,7 +17,7 @@ struct NotesInputField: View {
     @Binding var value: String
     @Binding var focusedField: FocusField?
 
-    private let maxCharacters = 280
+    private let maxCharacters = AppConstants.Input.notesMaxCharacters
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -43,7 +43,7 @@ struct NotesInputField: View {
                     .overlay(alignment: .bottomTrailing) {
                         Text("\(value.count)/\(maxCharacters)")
                             .fontOpenSans(.body4)
-                            .foregroundColor(
+                            .foregroundStyle(
                                 value.count >= maxCharacters
                                     ? theme.textError
                                     : theme.textSubheading

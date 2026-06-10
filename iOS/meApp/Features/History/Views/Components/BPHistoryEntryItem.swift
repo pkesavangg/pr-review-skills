@@ -38,7 +38,7 @@ struct BPHistoryEntryItem: View {
                         .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
                     Text(DateTimeTools.getFormattedTime(entry.entryTimestamp))
                         .fontOpenSans(.body3)
-                        .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
+                        .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 

@@ -40,7 +40,7 @@ struct BabyHistoryEntryItem: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(timeText)
                         .fontOpenSans(.heading5)
-                        .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
+                        .foregroundStyle(isExpanded ? theme.textInverse : theme.textHeading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -48,13 +48,13 @@ struct BabyHistoryEntryItem: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(entry.weightDisplay)
                         .fontOpenSans(.heading5)
-                        .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
+                        .foregroundStyle(isExpanded ? theme.textInverse : theme.textHeading)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
 
                     Text(HistoryListStrings.weight)
                         .fontOpenSans(.body3)
-                        .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
+                        .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -62,11 +62,11 @@ struct BabyHistoryEntryItem: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(entry.lengthDisplay)
                         .fontOpenSans(.heading5)
-                        .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
+                        .foregroundStyle(isExpanded ? theme.textInverse : theme.textHeading)
 
                     Text(HistoryListStrings.length)
                         .fontOpenSans(.body3)
-                        .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
+                        .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -74,17 +74,17 @@ struct BabyHistoryEntryItem: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(BabyWeightPercentileCalculator.percentileDisplayText(entry.percentile))
                         .fontOpenSans(.heading5)
-                        .foregroundColor(isExpanded ? theme.textInverse : theme.actionPrimary)
+                        .foregroundStyle(isExpanded ? theme.textInverse : theme.actionPrimary)
 
                     Text(HistoryListStrings.percentile)
                         .fontOpenSans(.body3)
-                        .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
+                        .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 // Expansion chevron
                 AppIconView(icon: AppAssets.chevronDown)
-                    .foregroundColor(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
+                    .foregroundStyle(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
                     .rotationEffect(.degrees(isExpanded ? 180 : 0))
             }
             .padding(.vertical, .spacingSM)
@@ -101,7 +101,7 @@ struct BabyHistoryEntryItem: View {
                                 Text(CommonStrings.delete.uppercased())
                                     .fontOpenSans(.button1)
                                     .fontWeight(.bold)
-                                    .foregroundColor(theme.textInverse)
+                                    .foregroundStyle(theme.textInverse)
                             )
                         }
                     )
@@ -111,7 +111,7 @@ struct BabyHistoryEntryItem: View {
             )
 
             Divider()
-                .foregroundColor(theme.actionPrimary)
+                .foregroundStyle(theme.actionPrimary)
 
             // Expanded notes section
             if isExpanded {
@@ -158,7 +158,7 @@ struct BabyHistoryEntryItem: View {
                 .background(theme.backgroundSecondary)
 
                 Divider()
-                    .foregroundColor(theme.actionPrimary)
+                    .foregroundStyle(theme.actionPrimary)
             }
         }
         .animation(.easeInOut(duration: 0.25), value: isExpanded)

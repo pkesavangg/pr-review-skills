@@ -53,7 +53,7 @@ struct AppInputField: View {
         }
     }
 
-    private let notesMaxCharacters = 280
+    private let notesMaxCharacters = AppConstants.Input.notesMaxCharacters
 
     private var isTextareaLabelActive: Bool {
         focusedField == config.focusField || !value.isEmpty
@@ -85,7 +85,7 @@ struct AppInputField: View {
                         // Three states: default/filled → subdued; 280/280 → error red.
                         Text("\(value.count)/\(notesMaxCharacters)")
                             .fontOpenSans(.body4)
-                            .foregroundColor(
+                            .foregroundStyle(
                                 value.count >= notesMaxCharacters
                                     ? theme.textError
                                     : theme.textSubheading
