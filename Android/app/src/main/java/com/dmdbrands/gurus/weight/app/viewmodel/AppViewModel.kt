@@ -417,6 +417,7 @@ constructor(
     viewModelScope.launch {
       AppNotificationEventService.tapEvents.collect { tap ->
         handleNotificationTap(tap)
+        AppNotificationEventService.consumeTap()
       }
     }
   }

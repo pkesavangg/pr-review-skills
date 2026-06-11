@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.core.service
 
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 
 enum class NotificationEventType {
@@ -25,8 +26,21 @@ object AppNotificationEventService {
     private val _events = MutableSharedFlow<NotificationEventType>() // Or any type of event
     val events = _events
 
-    private val _tapEvents = MutableSharedFlow<NotificationTapPayload>()
+    // replay = 1 so a tap emitted during a cold start (process killed, launched via
+    // MainActivity.onCreate) is retained until AppViewModel attaches its collector; otherwise
+    // the deep-link navigation would be silently dropped (MOB-434). The collector calls
+    // resetReplayCache() after consuming so the tap is never re-delivered to a later subscriber.
+    private val _tapEvents = MutableSharedFlow<NotificationTapPayload>(
+        replay = 1,
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
     val tapEvents = _tapEvents
+
+    /** Clears the retained tap so it is not replayed to a future subscriber. */
+    fun consumeTap() {
+        _tapEvents.resetReplayCache()
+    }
 
     suspend fun emit(event: NotificationEventType) {
         _events.emit(event)

@@ -105,7 +105,17 @@ class PushNotificationService : FirebaseMessagingService() {
         notificationTitle = message.notification?.title,
         notificationBody = message.notification?.body,
       )
-    val notificationName = message.messageId ?: payload.accountId ?: TAG
+    // The name becomes the notification tag + hashCode() id. Prefer the FCM messageId, but when
+    // it is absent fall back to a per-entry-unique composite (account + month/timestamp +
+    // measurement) so distinct entries get distinct ids instead of all collapsing onto accountId
+    // or the constant TAG — which would let entries silently overwrite each other and defeat the
+    // OS grouping this notification relies on (MOB-434).
+    val notificationName =
+      message.messageId
+        ?: listOfNotNull(payload.accountId, payload.monthKey, payload.measurement)
+          .takeIf { it.isNotEmpty() }
+          ?.joinToString(separator = ":")
+        ?: TAG
 
     appScope.launch {
       val firstName = resolveFirstName(payload.accountId)

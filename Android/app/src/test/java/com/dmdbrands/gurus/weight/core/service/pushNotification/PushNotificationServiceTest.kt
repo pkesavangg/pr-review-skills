@@ -359,6 +359,51 @@ class PushNotificationServiceTest {
   }
 
   @Test
+  fun `onMessageReceived builds per-entry-unique notification name from account month and measurement when messageId null`() {
+    val message = createMessage(
+      msgId = null,
+      data = mapOf(
+        "accountId" to "acc-9",
+        "monthKey" to "2026-06",
+        "measurement" to "149.2 lb",
+      ),
+    )
+
+    service.onMessageReceived(message)
+
+    verify(exactly = 1) {
+      notificationService.showBrandedNotification(
+        channelId = any(),
+        notificationName = "acc-9:2026-06:149.2 lb",
+        textTitle = any(),
+        textContent = any(),
+        smallIcon = any(),
+        contentIntent = any(),
+        groupKey = any(),
+      )
+    }
+  }
+
+  @Test
+  fun `onMessageReceived falls back to TAG notification name when messageId and data empty`() {
+    val message = createMessage(msgId = null, data = emptyMap())
+
+    service.onMessageReceived(message)
+
+    verify(exactly = 1) {
+      notificationService.showBrandedNotification(
+        channelId = any(),
+        notificationName = "PushNotificationService",
+        textTitle = any(),
+        textContent = any(),
+        smallIcon = any(),
+        contentIntent = any(),
+        groupKey = any(),
+      )
+    }
+  }
+
+  @Test
   fun `onMessageReceived still shows notification when account lookup throws`() {
     coEvery { accountService.getLoggedInAccounts() } throws RuntimeException("db error")
     val message = createMessage(data = mapOf("accountId" to "acc-1", "measurement" to "12 lb"))

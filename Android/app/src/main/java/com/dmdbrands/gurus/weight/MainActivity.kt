@@ -113,8 +113,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     observeThemeChanges()
-    // Handle initial intent
+    // Handle initial intent (includes the cold-start notification-tap deep link: when the
+    // process was killed the tap launches MainActivity through onCreate, not onNewIntent).
     handleHealthConnectIntent(intent)
+    handleNotificationIntent(intent)
 
     // Pre-warm Custom Tabs service so support links and OAuth open in browser without delay
     lifecycleScope.launch {
@@ -137,18 +139,27 @@ class MainActivity : AppCompatActivity() {
     super.onNewIntent(intent)
     setIntent(intent) // Save the new intent
     handleHealthConnectIntent(intent)
-    if (intent.action == PushNotificationService.ACTION_HANDLE_NOTIFICATION) {
-      val tapPayload =
-        NotificationTapPayload(
-          accountId = intent.getStringExtra(PushNotificationService.EXTRA_ACCOUNT_ID),
-          destination = intent.getStringExtra(PushNotificationService.EXTRA_DESTINATION),
-          monthKey = intent.getStringExtra(PushNotificationService.EXTRA_MONTH_KEY),
-        )
-      AppLog.d("MainActivity", "Notification tapped: $tapPayload")
-      lifecycleScope.launch {
-        AppNotificationEventService.emit(NotificationEventType.NOTIFICATION_TAPPED)
-        AppNotificationEventService.emitTap(tapPayload)
-      }
+    handleNotificationIntent(intent)
+  }
+
+  /**
+   * Handles a tapped entry notification, emitting the deep-link payload so [com.dmdbrands.gurus.weight.app.viewmodel.AppViewModel]
+   * can switch account and navigate to History. Called from both [onCreate] (cold start: the
+   * process was killed and the tap relaunches the Activity) and [onNewIntent] (warm start).
+   * @param intent The launch/new intent to inspect.
+   */
+  private fun handleNotificationIntent(intent: Intent?) {
+    if (intent?.action != PushNotificationService.ACTION_HANDLE_NOTIFICATION) return
+    val tapPayload =
+      NotificationTapPayload(
+        accountId = intent.getStringExtra(PushNotificationService.EXTRA_ACCOUNT_ID),
+        destination = intent.getStringExtra(PushNotificationService.EXTRA_DESTINATION),
+        monthKey = intent.getStringExtra(PushNotificationService.EXTRA_MONTH_KEY),
+      )
+    AppLog.d("MainActivity", "Notification tapped: $tapPayload")
+    lifecycleScope.launch {
+      AppNotificationEventService.emit(NotificationEventType.NOTIFICATION_TAPPED)
+      AppNotificationEventService.emitTap(tapPayload)
     }
   }
 
