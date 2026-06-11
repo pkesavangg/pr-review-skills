@@ -139,8 +139,8 @@ class SettingsStore: ObservableObject {
         hasWeightScale
     }
 
-    var shouldShowMyKids: Bool {
-        hasBabyProfile
+    var isMyKidsEnabled: Bool {
+        hasBabyScale
     }
 
     /// Main browser presentation binding for the view

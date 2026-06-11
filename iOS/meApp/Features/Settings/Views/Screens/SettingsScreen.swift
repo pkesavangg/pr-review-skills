@@ -161,12 +161,13 @@ struct SettingsScreen: View {
             })
             .listRowInsets()
             .accessibilityIdentifier(AccessibilityID.settingsRowUserProfile)
-            if settingsStore.shouldShowMyKids {
-                ActionListItemView(config: ActionListItemConfig(title: settingsLang.myKids) {
-                    router.navigate(to: .myKids)
-                })
-                .listRowInsets()
-            }
+            ActionListItemView(config: ActionListItemConfig(
+                title: settingsLang.myKids,
+                isDisabled: !settingsStore.isMyKidsEnabled
+            ) {
+                router.navigate(to: .myKids)
+            })
+            .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.addEditScales) { router.navigate(to: .addEditScales) })
             .listRowInsets()
             .accessibilityIdentifier(AccessibilityID.accountSettingsAddScalesRow)
