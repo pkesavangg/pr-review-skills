@@ -6,6 +6,8 @@ import Foundation
 final class MockTokenManagerAccountService: AccountServiceProtocol {
     @Published var activeAccount: AccountSnapshot?
     @Published private(set) var allAccounts: [AccountSnapshot] = []
+    @Published var isSignupInProgress: Bool = false
+    var isSignupInProgressPublisher: Published<Bool>.Publisher { $isSignupInProgress }
 
     var activeAccountPublisher: Published<AccountSnapshot?>.Publisher { $activeAccount }
     var allAccountsPublisher: Published<[AccountSnapshot]>.Publisher { $allAccounts }

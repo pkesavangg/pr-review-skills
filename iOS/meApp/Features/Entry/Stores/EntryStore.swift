@@ -49,7 +49,22 @@ final class EntryStore: ObservableObject {
 
     let tag = "EntryStore"
 
-    var isBabyFormValid: Bool { babyForm.isValid }
+    var isBabyFormValid: Bool {
+        let weightValid: Bool
+        switch babyWeightUnit {
+        case .kg: weightValid = !babyForm.kg.value.isEmpty && babyForm.kg.isValid
+        case .lb: weightValid = !babyForm.lb.value.isEmpty && babyForm.lb.isValid
+        case .lbsOz: weightValid = !babyForm.pounds.value.isEmpty && babyForm.pounds.isValid && babyForm.ounces.isValid
+        }
+
+        let lengthValid: Bool
+        switch babyLengthUnit {
+        case .inches: lengthValid = !babyForm.inches.value.isEmpty && babyForm.inches.isValid
+        case .cm: lengthValid = !babyForm.cm.value.isEmpty && babyForm.cm.isValid
+        }
+
+        return weightValid && lengthValid && babyForm.date.isValid
+    }
 
     var maxSelectableTime: Date {
         if Calendar.current.isDateInToday(manualEntryForm.date.value) {
@@ -200,6 +215,7 @@ final class EntryStore: ObservableObject {
             // Let event streams (entrySaved) trigger downstream reloads
             resetForm()
             logger.log(level: .success, tag: self.tag, message: "Manual entry save succeeded. accountId=\(accountId), timestamp=\(entryTimestamp)")
+            return true
         } catch {
             logger.log(
                 level: .error,

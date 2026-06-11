@@ -8,6 +8,8 @@ protocol AccountServiceProtocol {
     var allAccounts: [AccountSnapshot] { get }
     var activeAccountPublisher: Published<AccountSnapshot?>.Publisher { get }
     var allAccountsPublisher: Published<[AccountSnapshot]>.Publisher { get }
+    var isSignupInProgress: Bool { get set }
+    var isSignupInProgressPublisher: Published<Bool>.Publisher { get }
     // MARK: - Account Lifecycle
 
     /// Registers a new user account with the given email, password, and profile.
@@ -81,7 +83,7 @@ protocol AccountServiceProtocol {
     /// - Parameter bodyComp: The updated BodyComp object.
     func updateBodyComp(_ bodyComp: BodyComp) async throws
 
-    /// Updates the locally persisted productTypes for the active account.
+    /// Updates the product types for the active account via PATCH /account/products, then persists locally.
     /// Used when signup or device/baby flows establish the authoritative product list.
     func updateProductTypes(_ productTypes: [String]) async throws
 

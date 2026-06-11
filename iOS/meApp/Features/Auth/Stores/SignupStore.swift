@@ -150,7 +150,11 @@ final class SignupStore: ObservableObject {
     }
 
     var progressValue: Double {
-        Double(currentStepIndex + 1) / Double(steps.count)
+        let terminalSteps: Set<SignupStep> = [.allProfilesReady, .signupError]
+        let visibleCount = steps.filter { !terminalSteps.contains($0) }.count
+        guard visibleCount > 0 else { return 1.0 }
+        let clampedIndex = min(currentStepIndex + 1, visibleCount)
+        return Double(clampedIndex) / Double(visibleCount)
     }
 
     var profileReadyTitle: String {
@@ -246,9 +250,20 @@ final class SignupStore: ObservableObject {
         currentStepIndex += 1
     }
 
+    /// Called from the password step "Complete" button — creates the account only.
+    /// Sets isSignupInProgress so ContentViewModel does not navigate to dashboard yet.
+    /// On success advances to the profileReady slide.
+    func createAccount() {
+        Task {
+            await performCreateAccount()
+        }
+    }
+
+    /// Called from the profileReady step "FINISH" button — saves device profiles and finalizes.
+    /// Clears isSignupInProgress so ContentViewModel can navigate to dashboard.
     func finishSignup() {
         Task {
-            await createUser()
+            await performSaveDevicesAndFinalize()
         }
     }
 
@@ -296,11 +311,21 @@ final class SignupStore: ObservableObject {
         if currentStep == .goal {
             isGoalSkipped = false
         }
+        // If the user skipped addBaby (no babies saved), babyList is meaningless on back — skip over it.
+        if currentStep == .babyList && babies.isEmpty {
+            guard currentStepIndex > 0 else { return }
+            currentStepIndex -= 1
+        }
     }
 
     /// Called when user changes device type on the Pick a Device step.
     func selectDeviceType(_ type: SignupDeviceType) {
         selectedDeviceType = type
+        // Keep signupForm.productTypes in sync so generateProfile() sends the correct
+        // productType to the signup API and conditional validators (gender/dob/height)
+        // reflect the current selection. Accumulated types include all already-confirmed
+        // devices plus the new selection.
+        signupForm.productTypes = registeredDeviceTypes.map(\.productType) + [type.productType]
         rebuildSteps()
         updateNextButtonState()
     }
@@ -473,6 +498,15 @@ final class SignupStore: ObservableObject {
     }
 
     func handleExit(router: Router<AuthRoute>? = nil) {
+        // On Profile Ready the account already exists — close navigates to Dashboard
+        if currentStep == .profileReady {
+            accountService.isSignupInProgress = false
+            if isFromAccountSwitching {
+                dismissAction?()
+            }
+            resetForm()
+            return
+        }
         // If the form is not dirty, dismiss the signup screen
         if !signupForm.isDirty {
             if isFromAccountSwitching {
@@ -509,7 +543,8 @@ final class SignupStore: ObservableObject {
         ))
     }
 
-    func createUser() async {
+    private func performCreateAccount() async {
+        accountService.isSignupInProgress = true
         notificationService.showLoader(LoaderModel(text: loaderLang.creatingAccount))
 
         let email = removeWhiteSpace(signupForm.email.value)
@@ -517,13 +552,11 @@ final class SignupStore: ObservableObject {
         logger.log(level: .info, tag: tag, message: "Signup flow started. accountSwitching=\(isFromAccountSwitching)")
 
         let profile = generateProfile()
-        let goal = generateGoalRequest()
 
-        // Step 1: Create the account. If this fails, show the existing toast/alert —
-        // the error screen only applies to per-device profile saves.
         do {
             try await accountService.signUp(email: email, password: password, profile: profile)
         } catch {
+            accountService.isSignupInProgress = false
             notificationService.dismissLoader()
             logger.log(level: .error, tag: tag,
                 message: "Signup account creation failed. error=\(error.localizedDescription)")
@@ -536,14 +569,29 @@ final class SignupStore: ObservableObject {
         }
 
         guard let account = accountService.activeAccount else {
+            accountService.isSignupInProgress = false
             notificationService.dismissLoader()
             handleSignupError(AccountError.noActiveAccount)
             return
         }
 
         persistSelectedSignupDeviceType(for: account.accountId)
+        notificationService.dismissLoader()
+        moveToNextStep()
+    }
 
-        // Step 2: Build ordered list of all devices selected this session.
+    private func performSaveDevicesAndFinalize() async {
+        guard let account = accountService.activeAccount else {
+            accountService.isSignupInProgress = false
+            handleSignupError(AccountError.noActiveAccount)
+            return
+        }
+
+        notificationService.showLoader(LoaderModel(text: loaderLang.creatingAccount))
+
+        let goal = generateGoalRequest()
+
+        // Build ordered list of all devices selected this session.
         var allDevices: [SignupDeviceType] = registeredDeviceTypes
         if let current = selectedDeviceType, !allDevices.contains(current) {
             allDevices.append(current)
@@ -552,7 +600,7 @@ final class SignupStore: ObservableObject {
         // Initialize statuses as pending before any saves.
         deviceStatuses = allDevices.map { ($0, .pending) }
 
-        // Step 3: Save each device profile individually, recording per-device status.
+        // Save each device profile individually, recording per-device status.
         for (index, deviceType) in allDevices.enumerated() {
             do {
                 try await saveDeviceProfile(deviceType: deviceType, account: account, goal: goal)
@@ -573,19 +621,13 @@ final class SignupStore: ObservableObject {
 
         notificationService.dismissLoader()
 
-        // Step 4: Navigate to the appropriate terminal screen.
-        // The "all profiles ready" success screen is reserved for the case where
-        // the user added every available device type. With fewer devices, all-success
-        // dismisses straight to the dashboard.
+        // Clear the gate before navigating so ContentViewModel can transition to dashboard.
+        accountService.isSignupInProgress = false
+
         let anyFailed = deviceStatuses.contains { if case .failure = $0.status { return true }; return false }
-        let allDevicesSelected = deviceStatuses.count == SignupDeviceType.allCases.count
         if anyFailed {
             if let errorIndex = steps.firstIndex(of: .signupError) {
                 currentStepIndex = errorIndex
-            }
-        } else if allDevicesSelected {
-            if let successIndex = steps.firstIndex(of: .allProfilesReady) {
-                currentStepIndex = successIndex
             }
         } else {
             completeSignup()

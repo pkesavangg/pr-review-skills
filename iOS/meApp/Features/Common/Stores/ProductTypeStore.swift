@@ -273,15 +273,16 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
     }
 
     /// Maps server-side raw product type strings to the app-internal values used by rebuild().
-    /// The server stores "weight" / "bpm"; the app checks for "myWeight" / "myBloodPressure".
+    /// The server stores "weight" / "blood_pressure"; the app checks for "myWeight" / "myBloodPressure".
+    /// "bpm" is kept for backward compat with any legacy-stored values.
     private func normalizeProductTypes(_ types: [String]) -> [String] {
         var seen = Set<String>()
         return types.compactMap { type in
             let normalized: String
             switch type {
-            case "weight":          normalized = "myWeight"
-            case "bpm":             normalized = "myBloodPressure"
-            default:                normalized = type
+            case "weight":                      normalized = "myWeight"
+            case "blood_pressure", "bpm":       normalized = "myBloodPressure"
+            default:                            normalized = type
             }
             return seen.insert(normalized).inserted ? normalized : nil
         }
@@ -297,7 +298,7 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         guard let account = accountService.activeAccount else { return ["myWeight"] }
 
         if !account.productTypes.isEmpty {
-            // The server stores "weight" / "bpm"; the app checks for "myWeight" / "myBloodPressure".
+            // The server stores "weight" / "blood_pressure"; the app checks for "myWeight" / "myBloodPressure".
             // Normalize here so rebuild()'s contains() checks always succeed.
             return normalizeProductTypes(account.productTypes)
         }

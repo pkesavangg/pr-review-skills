@@ -32,18 +32,18 @@ class SignupForm: ObservableForm {
     /// - gender & dob required only if `productTypes` includes "weight" or "blood_pressure"
     /// - height required only if `productTypes` includes "weight"
     /// Defaults to `["weight"]`, matching the server default.
-    var productTypes: [String] = [ProductType.weight.rawValue] {
+    var productTypes: [String] = ["weight"] {
         didSet { applyConditionalValidators() }
     }
 
     /// Whether gender/dob are required for the current `productTypes`.
     var requiresGenderAndDob: Bool {
-        productTypes.contains(ProductType.weight.rawValue) || productTypes.contains(ProductType.bloodPressure.rawValue)
+        productTypes.contains("weight") || productTypes.contains("blood_pressure")
     }
 
     /// Whether height is required for the current `productTypes`.
     var requiresHeight: Bool {
-        productTypes.contains(ProductType.weight.rawValue)
+        productTypes.contains("weight")
     }
 
     /// Recomputes validators for the fields that are conditional on `productTypes`.
