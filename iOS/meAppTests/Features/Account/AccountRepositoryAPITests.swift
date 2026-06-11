@@ -507,11 +507,11 @@ struct AccountRepositoryAPITests {
         http.sendResult = AccountTestFixtures.makeAccountResponse()
 
         var profile = AccountTestFixtures.makeProfile()
-        profile.productTypes = [ProductType.weight.rawValue]
+        profile.productTypes = [ProductType.weight.apiValue]
         _ = try await sut.createAccount(email: "new@example.com", password: "secret", profile: profile)
 
         let body = try jsonBody(http.lastSendBody)
-        #expect(body["productTypes"] as? [String] == ["myWeight"])
+        #expect(body["productTypes"] as? [String] == [ProductType.weight.apiValue])
         #expect(body["gender"] != nil)
         #expect(body["dob"] != nil)
         #expect(body["height"] != nil)
@@ -523,7 +523,7 @@ struct AccountRepositoryAPITests {
         http.sendResult = AccountTestFixtures.makeAccountResponse()
 
         var profile = AccountTestFixtures.makeProfile()
-        profile.productTypes = [ProductType.baby.rawValue]
+        profile.productTypes = [ProductType.baby.apiValue]
         profile.measurementUnits = MeasurementUnits.imperialLbOz.rawValue
         _ = try await sut.createAccount(email: "baby@example.com", password: "secret", profile: profile)
 
@@ -535,7 +535,7 @@ struct AccountRepositoryAPITests {
         #expect(body["measurementUnits"] as? String == "imperialLbOz")
     }
 
-    @Test("createAccount nil productTypes: defaults to [myWeight]")
+    @Test("createAccount nil productTypes: defaults to [weight]")
     func createAccountDefaultsProductTypes() async throws {
         let (sut, http) = makeSUT()
         http.sendResult = AccountTestFixtures.makeAccountResponse()
@@ -544,7 +544,7 @@ struct AccountRepositoryAPITests {
         _ = try await sut.createAccount(email: "x@example.com", password: "secret", profile: AccountTestFixtures.makeProfile())
 
         let body = try jsonBody(http.lastSendBody)
-        #expect(body["productTypes"] as? [String] == ["myWeight"])
+        #expect(body["productTypes"] as? [String] == [ProductType.weight.apiValue])
     }
 
     @Test("checkEmailAvailability: POST email-check no-auth, returns isAvailable")

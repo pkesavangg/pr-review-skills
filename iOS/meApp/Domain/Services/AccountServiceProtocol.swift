@@ -8,8 +8,9 @@ protocol AccountServiceProtocol {
     var allAccounts: [AccountSnapshot] { get }
     var activeAccountPublisher: Published<AccountSnapshot?>.Publisher { get }
     var allAccountsPublisher: Published<[AccountSnapshot]>.Publisher { get }
-    var isSignupInProgress: Bool { get set }
+    var isSignupInProgress: Bool { get }
     var isSignupInProgressPublisher: Published<Bool>.Publisher { get }
+    func markSignupInProgress(_ inProgress: Bool)
     // MARK: - Account Lifecycle
 
     /// Registers a new user account with the given email, password, and profile.

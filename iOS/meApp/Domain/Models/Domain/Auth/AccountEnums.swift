@@ -68,6 +68,18 @@ enum ProductType: String, Codable, Equatable, CaseIterable {
     case baby
 }
 
+extension ProductType {
+    /// The API-format string sent to and received from the server.
+    /// Distinct from `rawValue`, which is the app-internal persisted vocabulary.
+    var apiValue: String {
+        switch self {
+        case .weight: return "weight"
+        case .bloodPressure: return "blood_pressure"
+        case .baby: return "baby"
+        }
+    }
+}
+
 // MARK: - DashboardType
 
 enum DashboardType: String, Codable, Equatable {

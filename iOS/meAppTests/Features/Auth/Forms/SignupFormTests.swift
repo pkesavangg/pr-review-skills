@@ -24,7 +24,7 @@ struct SignupFormTests {
     func defaultProductTypesRequiresGender() {
         let form = SignupForm()
 
-        #expect(form.productTypes == [ProductType.weight.rawValue])
+        #expect(form.productTypes == [ProductType.weight.apiValue])
         #expect(form.requiresGenderAndDob == true)
         #expect(form.requiresHeight == true)
 
@@ -36,7 +36,7 @@ struct SignupFormTests {
     @Test("baby-only productTypes: gender no longer required")
     func babyOnlyProductTypesDropsGenderRequirement() {
         let form = SignupForm()
-        form.productTypes = [ProductType.baby.rawValue]
+        form.productTypes = [ProductType.baby.apiValue]
 
         #expect(form.requiresGenderAndDob == false)
         #expect(form.requiresHeight == false)
@@ -49,7 +49,7 @@ struct SignupFormTests {
     @Test("blood_pressure productTypes: gender required but height not")
     func bloodPressureRequiresGenderNotHeight() {
         let form = SignupForm()
-        form.productTypes = [ProductType.bloodPressure.rawValue]
+        form.productTypes = [ProductType.bloodPressure.apiValue]
 
         #expect(form.requiresGenderAndDob == true)
         #expect(form.requiresHeight == false)

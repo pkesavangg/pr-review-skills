@@ -24,9 +24,9 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
             let productTypes: [String]
             let measurementUnits: String?
         }
-        let productTypes = profile.productTypes ?? ["weight"]
-        let requiresHeight = productTypes.contains("weight")
-        let requiresGenderAndDob = requiresHeight || productTypes.contains("blood_pressure")
+        let productTypes = profile.productTypes ?? [ProductType.weight.apiValue]
+        let requiresHeight = productTypes.contains(ProductType.weight.apiValue)
+        let requiresGenderAndDob = requiresHeight || productTypes.contains(ProductType.bloodPressure.apiValue)
         let createAccountRequest = RegisterRequest(
             email: email,
             password: password,

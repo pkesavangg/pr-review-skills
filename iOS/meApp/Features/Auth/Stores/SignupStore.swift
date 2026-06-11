@@ -516,7 +516,7 @@ final class SignupStore: ObservableObject {
     func handleExit(router: Router<AuthRoute>? = nil) {
         // On Profile Ready the account already exists — close navigates to Dashboard
         if currentStep == .profileReady {
-            accountService.isSignupInProgress = false
+            accountService.markSignupInProgress(false)
             if isFromAccountSwitching {
                 dismissAction?()
             }
@@ -559,8 +559,8 @@ final class SignupStore: ObservableObject {
         ))
     }
 
-    private func performCreateAccount() async {
-        accountService.isSignupInProgress = true
+    func performCreateAccount() async {
+        accountService.markSignupInProgress(true)
         notificationService.showLoader(LoaderModel(text: loaderLang.creatingAccount))
 
         let email = removeWhiteSpace(signupForm.email.value)
@@ -572,7 +572,7 @@ final class SignupStore: ObservableObject {
         do {
             try await accountService.signUp(email: email, password: password, profile: profile)
         } catch {
-            accountService.isSignupInProgress = false
+            accountService.markSignupInProgress(false)
             notificationService.dismissLoader()
             logger.log(level: .error, tag: tag,
                 message: "Signup account creation failed. error=\(error.localizedDescription)")
@@ -585,7 +585,7 @@ final class SignupStore: ObservableObject {
         }
 
         guard let account = accountService.activeAccount else {
-            accountService.isSignupInProgress = false
+            accountService.markSignupInProgress(false)
             notificationService.dismissLoader()
             handleSignupError(AccountError.noActiveAccount)
             return
@@ -596,9 +596,9 @@ final class SignupStore: ObservableObject {
         moveToNextStep()
     }
 
-    private func performSaveDevicesAndFinalize() async {
+    func performSaveDevicesAndFinalize() async {
         guard let account = accountService.activeAccount else {
-            accountService.isSignupInProgress = false
+            accountService.markSignupInProgress(false)
             handleSignupError(AccountError.noActiveAccount)
             return
         }
@@ -638,7 +638,7 @@ final class SignupStore: ObservableObject {
         notificationService.dismissLoader()
 
         // Clear the gate before navigating so ContentViewModel can transition to dashboard.
-        accountService.isSignupInProgress = false
+        accountService.markSignupInProgress(false)
 
         let anyFailed = deviceStatuses.contains { if case .failure = $0.status { return true }; return false }
         if anyFailed {
