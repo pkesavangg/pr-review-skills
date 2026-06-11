@@ -54,7 +54,11 @@ fun BabyChartHeader(
 
   var showCdcSheet by remember { mutableStateOf(false) }
 
-  Row(verticalAlignment = Alignment.CenterVertically) {
+  Row(
+    verticalAlignment = Alignment.CenterVertically,
+    // Keep the W/H toggle clear of the chart's top gridline + Y-axis label (MOB-432).
+    modifier = Modifier.padding(bottom = MeTheme.spacing.sm),
+  ) {
     Column(
       modifier = Modifier
         .weight(1f)
@@ -110,7 +114,15 @@ private fun BabyValueDisplay(
           Text(text = DashboardSnapshotStrings.Oz, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
         }
       } else {
-        Text(text = DashboardSnapshotStrings.PlaceholderDash, style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
+        Row(verticalAlignment = Alignment.Bottom) {
+          Text(text = DashboardSnapshotStrings.ZeroBabyLbs, style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
+          Spacer(modifier = Modifier.width(4.dp))
+          Text(text = DashboardSnapshotStrings.Lbs, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
+          Spacer(modifier = Modifier.width(8.dp))
+          Text(text = DashboardSnapshotStrings.ZeroBabyOz, style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
+          Spacer(modifier = Modifier.width(4.dp))
+          Text(text = DashboardSnapshotStrings.Oz, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
+        }
       }
     }
     BabyMetric.HEIGHT -> {
@@ -124,7 +136,11 @@ private fun BabyValueDisplay(
           Text(text = DashboardSnapshotStrings.Inches, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
         }
       } else {
-        Text(text = DashboardSnapshotStrings.PlaceholderDash, style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
+        Row(verticalAlignment = Alignment.Bottom) {
+          Text(text = DashboardSnapshotStrings.ZeroBabyOz, style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
+          Spacer(modifier = Modifier.width(4.dp))
+          Text(text = DashboardSnapshotStrings.Inches, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
+        }
       }
     }
   }

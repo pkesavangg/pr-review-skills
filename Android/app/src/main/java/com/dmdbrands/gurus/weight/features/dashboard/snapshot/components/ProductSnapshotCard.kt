@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
+import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyDashboardGraph
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.strings.DashboardSnapshotStrings
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.viewmodel.DashboardSnapshotViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.viewmodel.SnapshotChartData
@@ -40,6 +41,7 @@ object SnapshotColors {
     val BloodPressure = Color(0xFF458239)
     val Baby = Color(0xFF8841A4)
     val PercentileBand = Color(0xFFD0CCCA)
+    val GoalBadge = Color(0xFF4F8A3F)
 
     // BP severity colors (from ggBluetoothNativeLibrary)
     val BpNormal = Color(0xFFA9D045)
@@ -85,7 +87,7 @@ fun WeightSnapshotCard(
         val chart = state.weight
 
         Text(
-            text = DashboardSnapshotStrings.WeekAverage,
+            text = if (chart.isEmpty) DashboardSnapshotStrings.NoEntries else DashboardSnapshotStrings.WeekAverage,
             style = MeTheme.typography.subHeading1,
             color = MeTheme.colorScheme.textSubheading,
             modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
@@ -95,7 +97,7 @@ fun WeightSnapshotCard(
             modifier = Modifier.padding(horizontal = MeTheme.spacing.sm)
         ){
             Text(
-                text = chart.label.ifEmpty { DashboardSnapshotStrings.PlaceholderDash },
+                text = if (chart.isEmpty) DashboardSnapshotStrings.ZeroWeight else chart.label.ifEmpty { DashboardSnapshotStrings.PlaceholderDash },
                 color = SnapshotColors.Weight,
                 style = SnapshotValueStyle,
             )
@@ -109,7 +111,9 @@ fun WeightSnapshotCard(
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
 
-        if (chart.startTimestamp != null && chart.endTimestamp != null) {
+        if (chart.isEmpty) {
+            EmptyDashboardGraph(modifier = Modifier.fillMaxWidth())
+        } else if (chart.startTimestamp != null && chart.endTimestamp != null) {
             SnapshotLineChart(
                 modelProducer = viewModel.weightModelProducer,
                 lineColor = SnapshotColors.Weight,
@@ -160,7 +164,13 @@ fun BpSnapshotCard(
             verticalAlignment = Alignment.Bottom,
             modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
         ) {
-            if (systolic != null && diastolic != null) {
+            if (chart.isEmpty) {
+                Text(
+                    text = "${DashboardSnapshotStrings.ZeroSystolic}/${DashboardSnapshotStrings.ZeroDiastolic}",
+                    color = SnapshotColors.BloodPressure,
+                    style = SnapshotValueStyle,
+                )
+            } else if (systolic != null && diastolic != null) {
                 BpSystolicDiastolic(
                     systolic = systolic,
                     diastolic = diastolic,
@@ -175,7 +185,7 @@ fun BpSnapshotCard(
             }
             Spacer(modifier = Modifier.weight(1f))
             Text(
-                text = chart.secondaryLabel.ifEmpty { DashboardSnapshotStrings.PlaceholderDash },
+                text = if (chart.isEmpty) DashboardSnapshotStrings.ZeroPulse else chart.secondaryLabel.ifEmpty { DashboardSnapshotStrings.PlaceholderDash },
                 color = if (pulse != null) SnapshotColors.pulseColor(pulse) else MeTheme.colorScheme.textSubheading,
                 style = SnapshotValueStyle,
             )
@@ -183,7 +193,9 @@ fun BpSnapshotCard(
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
 
-        if (chart.startTimestamp != null && chart.endTimestamp != null) {
+        if (chart.isEmpty) {
+            EmptyDashboardGraph(modifier = Modifier.fillMaxWidth())
+        } else if (chart.startTimestamp != null && chart.endTimestamp != null) {
             val chartLineColors = listOfNotNull(
                 systolic?.let { SnapshotColors.systolicColor(it) },
                 diastolic?.let { SnapshotColors.diastolicColor(it) },
@@ -217,7 +229,11 @@ fun BabySnapshotCard(
 
     SnapshotCardContainer(modifier = modifier, onClickLabel = DashboardSnapshotStrings.OpenBabyDashboard, onTap = onTap) {
         Text(
-            text = "${product.profile.name.lowercase()}'s ${DashboardSnapshotStrings.Weight}",
+            text = if (chart.isEmpty) {
+                DashboardSnapshotStrings.NoEntries
+            } else {
+                "${product.profile.name.lowercase()}'s ${DashboardSnapshotStrings.Weight}"
+            },
             style = MeTheme.typography.subHeading1,
             color = MeTheme.colorScheme.textSubheading,
             modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
@@ -225,11 +241,17 @@ fun BabySnapshotCard(
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.x3s))
 
-        if (chart.label.isNotEmpty() && chart.label != DashboardSnapshotStrings.PlaceholderDash) {
+        val displayLabel = if (chart.isEmpty) {
+            "${DashboardSnapshotStrings.ZeroBabyLbs} ${DashboardSnapshotStrings.Lbs} ${DashboardSnapshotStrings.ZeroBabyOz} ${DashboardSnapshotStrings.Oz}"
+        } else {
+            chart.label
+        }
+
+        if (displayLabel.isNotEmpty() && displayLabel != DashboardSnapshotStrings.PlaceholderDash) {
             // Parse "8 lbs 14.4 oz" → numbers large, units small inline
             Text(
                 text = buildAnnotatedString {
-                    val parts = chart.label.split(" ")
+                    val parts = displayLabel.split(" ")
                     parts.forEachIndexed { i, part ->
                         if (i > 0) append(" ")
                         if (part.toDoubleOrNull() != null || part.toIntOrNull() != null) {
@@ -257,7 +279,9 @@ fun BabySnapshotCard(
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
 
-        if (chart.startTimestamp != null && chart.endTimestamp != null) {
+        if (chart.isEmpty) {
+            EmptyDashboardGraph(modifier = Modifier.fillMaxWidth())
+        } else if (chart.startTimestamp != null && chart.endTimestamp != null) {
             SnapshotLineChart(
                 modelProducer = viewModel.getBabyModelProducer(product.profile.id),
                 lineColor = SnapshotColors.Baby,

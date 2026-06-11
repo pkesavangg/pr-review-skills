@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.common.GraphData
@@ -43,6 +44,8 @@ class BpDashboardViewModel @Inject constructor(
     if (intent is BpDashboardIntent) {
       when (intent) {
         is BpDashboardIntent.Refresh -> refresh()
+        is BpDashboardIntent.OnConnectDevice ->
+          viewModelScope.launch { navigationService.navigateTo(AppRoute.AccountSettings.MyDevices) }
         else -> {}
       }
     }
@@ -56,6 +59,8 @@ class BpDashboardViewModel @Inject constructor(
       entryReadService.getDailyGraphData(ProductSelection.BloodPressure)
         .map { (it as? GraphData.BloodPressure)?.data ?: emptyList() }
         .collect { entries ->
+          // Drives the below-chart CONNECT DEVICE CTA + zeroed header (MOB-432).
+          handleIntent(BpDashboardIntent.SetIsEmpty(entries.isEmpty()))
           val series = toBpSeries(entries)
           updateSegmentRanges(entries, listOf(GraphSegment.WEEK, GraphSegment.MONTH)) { data ->
             data.filterIsInstance<PeriodBpmSummary>()

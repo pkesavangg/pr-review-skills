@@ -13,6 +13,8 @@ data class SnapshotChartData(
     val startTimestamp: Long? = null,
     val endTimestamp: Long? = null,
     val hasPercentile: Boolean = false,
+    /** True when the product has no entries yet — card shows the zeroed first-run state (MOB-432). */
+    val isEmpty: Boolean = false,
 )
 
 @Stable

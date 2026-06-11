@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
@@ -25,6 +26,8 @@ import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonGroup
 import com.dmdbrands.gurus.weight.features.common.components.chart.config.rememberChartConfig
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.strings.ChartHeaderStrings
+import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyDashboardGraph
+import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyGraphRange
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -44,6 +47,7 @@ fun GraphPagerView(
   handleGraphIntent: (BaseGraphIntent) -> Unit,
   createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   header: @Composable (GraphSegment) -> Unit,
+  emptyRange: EmptyGraphRange? = null,
   onSegmentChange: (GraphSegment) -> Unit = {},
   onScrollTargetConsumed: (Boolean) -> Unit = {},
 ) {
@@ -75,18 +79,20 @@ fun GraphPagerView(
       )
       val producer = state.producerForSegment(currentSegment)
       val isChartReady by producer.isReady.collectAsStateWithLifecycle()
+      // No entries for this product/segment → show the static first-run grid (MOB-432).
+      val isEmpty = segmentState.isEmptyGraph
 
       Column(modifier = Modifier.padding(vertical = MeTheme.spacing.x3s)) {
         ChartHeaderLabel(
           segment = currentSegment,
-          hasData = segmentState.target.isNotEmpty() && !segmentState.isEmptyGraph,
-          isLoading = !isChartReady,
+          hasData = segmentState.target.isNotEmpty() && !isEmpty,
+          isLoading = !isEmpty && !isChartReady,
           markerIndex = state.markerIndex,
         )
 
-        // Header: crossfade between skeleton and real content
+        // Header: crossfade between skeleton and real content (empty state is "ready").
         Crossfade(
-          targetState = isChartReady,
+          targetState = isEmpty || isChartReady,
           animationSpec = tween(300),
         ) { ready ->
           if (ready) header(currentSegment) else HeaderSkeletonView()
@@ -98,28 +104,36 @@ fun GraphPagerView(
             .fillMaxWidth()
             .then(if (chartFillsHeight) Modifier.weight(1f) else Modifier),
         ) {
-          GraphView(
-            modifier = Modifier.fillMaxWidth(),
-            state = state,
-            segmentState = segmentState,
-            chartConfig = chartConfig,
-            modelProducer = producer,
-            segment = currentSegment,
-            scrollTarget = state.scrollTarget,
-            canScrollToAnchor = state.selectedSegment == currentSegment,
-            handleGraphIntent = handleGraphIntent,
-            createFallbackEntry = createFallbackEntry,
-            onScrollTargetConsumed = onScrollTargetConsumed,
-            chartFillsHeight = chartFillsHeight,
-          )
+          if (isEmpty) {
+            EmptyDashboardGraph(
+              modifier = Modifier.fillMaxWidth(),
+              height = 300.dp,
+              range = emptyRange,
+            )
+          } else {
+            GraphView(
+              modifier = Modifier.fillMaxWidth(),
+              state = state,
+              segmentState = segmentState,
+              chartConfig = chartConfig,
+              modelProducer = producer,
+              segment = currentSegment,
+              scrollTarget = state.scrollTarget,
+              canScrollToAnchor = state.selectedSegment == currentSegment,
+              handleGraphIntent = handleGraphIntent,
+              createFallbackEntry = createFallbackEntry,
+              onScrollTargetConsumed = onScrollTargetConsumed,
+              chartFillsHeight = chartFillsHeight,
+            )
 
-          // Chart skeleton: crossfade overlay
-          Crossfade(
-            targetState = isChartReady,
-            animationSpec = tween(300),
-            modifier = Modifier.matchParentSize(),
-          ) { ready ->
-            if (!ready) GraphSkeletonView(modifier = Modifier.fillMaxSize())
+            // Chart skeleton: crossfade overlay
+            Crossfade(
+              targetState = isChartReady,
+              animationSpec = tween(300),
+              modifier = Modifier.matchParentSize(),
+            ) { ready ->
+              if (!ready) GraphSkeletonView(modifier = Modifier.fillMaxSize())
+            }
           }
         }
 

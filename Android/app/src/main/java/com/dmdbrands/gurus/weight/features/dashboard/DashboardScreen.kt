@@ -44,6 +44,9 @@ import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.dashboard.components.BpDashboardContent
 import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardChartHeader
+import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyGraphDefaults
+import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyGraphRange
+import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyMetric
 import com.dmdbrands.gurus.weight.features.dashboard.components.WeightDashboardContent
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
@@ -122,6 +125,10 @@ fun DashboardScreen() {
           product = product,
           goal = state.goal,
           scrollToTopSignal = state.resetSignal,
+          emptyRange = EmptyGraphDefaults.weightGoal(
+            goalDisplay = state.goal?.goalWeight,
+            isKg = state.weightUnit == WeightUnit.KG,
+          ),
           onRefresh = { vm.handleIntent(WeightDashboardIntent.Refresh) },
           createFallbackEntry = { ts, yValues, seg ->
             val y = yValues.firstOrNull() ?: return@DashboardPage null
@@ -150,6 +157,7 @@ fun DashboardScreen() {
         DashboardPage(
           vm = vm,
           product = product,
+          emptyRange = EmptyGraphDefaults.Bp,
           onRefresh = { vm.handleIntent(BpDashboardIntent.Refresh) },
           createFallbackEntry = { ts, yValues, seg ->
             if (yValues.size < 3) return@DashboardPage null
@@ -166,7 +174,10 @@ fun DashboardScreen() {
             )
           },
         ) { s ->
-          BpDashboardContent(state = s)
+          BpDashboardContent(
+            state = s,
+            onConnectDevice = { vm.handleIntent(BpDashboardIntent.OnConnectDevice) },
+          )
         }
       }
 
@@ -180,7 +191,10 @@ fun DashboardScreen() {
           vm = vm,
           product = product,
           hasPercentile = true,
-          chartFillsHeight = true,
+          // Fill height only when there's data; the empty state needs a fixed-height
+          // grid so the CONNECT DEVICE CTA stays visible below the chart (MOB-432).
+          chartFillsHeight = !state.isEmpty,
+          emptyRange = if (state.selectedMetric == BabyMetric.HEIGHT) EmptyGraphDefaults.BabyHeight else EmptyGraphDefaults.BabyWeight,
           onRefresh = { vm.handleIntent(BabyDashboardIntent.Refresh) },
           createFallbackEntry = { ts, yValues, seg ->
             val y = yValues.firstOrNull() ?: return@DashboardPage null
@@ -199,7 +213,11 @@ fun DashboardScreen() {
               avgLengthMillimeters = if (!isWeight) ConversionTools.convertInchesToMm(y) else null,
             )
           },
-        ) { _ -> }
+        ) { s ->
+          if (s.isEmpty) {
+            EmptyMetric(onConnectScaleClick = { vm.handleIntent(BabyDashboardIntent.OnConnectDevice) })
+          }
+        }
       }
     }
   }
@@ -218,6 +236,7 @@ private fun <S : BaseDashboardState> DashboardPage(
   hasPercentile: Boolean = false,
   chartFillsHeight: Boolean = false,
   scrollToTopSignal: Int = 0,
+  emptyRange: EmptyGraphRange? = null,
   onRefresh: () -> Unit,
   createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   belowChart: @Composable (S) -> Unit,
@@ -276,6 +295,7 @@ private fun <S : BaseDashboardState> DashboardPage(
         handleGraphIntent = vm::handleIntent,
         createFallbackEntry = createFallbackEntry,
         header = { segment -> DashboardChartHeader(state = state, segment = segment, product = product, handleIntent = vm::handleIntent) },
+        emptyRange = emptyRange,
         onSegmentChange = { vm.handleIntent(BaseGraphIntent.SetSelectedSegment(it, state.segmentAnchorTimestamp())) },
       )
 

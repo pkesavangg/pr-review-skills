@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
@@ -63,6 +64,8 @@ class BabyDashboardViewModel @AssistedInject constructor(
     if (intent is BabyDashboardIntent) {
       when (intent) {
         is BabyDashboardIntent.Refresh -> refresh()
+        is BabyDashboardIntent.OnConnectDevice ->
+          viewModelScope.launch { navigationService.navigateTo(AppRoute.AccountSettings.MyDevices) }
         is BabyDashboardIntent.SetSelectedMetric -> {
           super.handleIntent(intent)
           rebuildAllProducers()
@@ -90,6 +93,8 @@ class BabyDashboardViewModel @AssistedInject constructor(
     viewModelScope.launch {
       entryReadService.getBabyDailyGraphData(profileId).collect { entries ->
         latestDailyEntries = entries
+        // Drives the below-chart CONNECT DEVICE CTA + zeroed header (MOB-432).
+        handleIntent(BabyDashboardIntent.SetIsEmpty(entries.isEmpty()))
         updateBabySegmentRanges(entries, listOf(GraphSegment.WEEK, GraphSegment.MONTH))
         rebuildProducer(_state.value.dailyProducer, entries)
       }
