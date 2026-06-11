@@ -17,6 +17,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.model.ActionButton
@@ -45,6 +46,7 @@ fun BaseModal(
   error: String? = null,
   secondaryAction: ActionButton? = null,
   onDismiss: (() -> Unit)? = null,
+  testTag: String = "modal_card",
   content: @Composable (() -> Unit)? = null,
 ) {
   val cardColors =
@@ -54,7 +56,9 @@ fun BaseModal(
       )
 
   Card(
-    modifier = modifier.width(316.dp),
+    modifier = modifier
+      .testTag(testTag)
+      .width(316.dp),
     shape = RoundedCornerShape(28.dp), // Figma: radius-xl = 28dp (no token found)
     colors = cardColors,
   ) {

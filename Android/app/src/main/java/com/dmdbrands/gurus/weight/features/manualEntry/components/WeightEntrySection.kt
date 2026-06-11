@@ -42,6 +42,7 @@ fun WeightEntrySection(
             keyboardController?.hide()
         },
         maxLength = 4,
+        testTag = "weight_field",
         modifier = Modifier
             .fillMaxWidth()
             .focusRequester(weightFocusRequester),
