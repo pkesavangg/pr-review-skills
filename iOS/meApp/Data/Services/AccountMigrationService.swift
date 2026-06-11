@@ -819,10 +819,10 @@ final class AccountMigrationService { // swiftlint:disable:this type_body_length
         var types: [String] = []
 
         if devices.contains(where: { $0.deviceType == DeviceType.scale.rawValue }) {
-            types.append("myWeight")
+            types.append("weight")
         }
         if devices.contains(where: { $0.deviceType == DeviceType.bpm.rawValue }) {
-            types.append("myBloodPressure")
+            types.append("blood_pressure")
         }
         if devices.contains(where: { $0.deviceType == DeviceType.babyScale.rawValue }) {
             types.append("baby")

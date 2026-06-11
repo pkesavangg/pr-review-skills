@@ -6,10 +6,8 @@
 import SwiftUI
 
 /// "You're Done!" — final closing screen shown after both the full baby-profile
-/// path and the skip path complete. Offers GO TO DASHBOARD and ADD A DEVICE actions.
+/// path and the skip path complete. FINISH button in the shared footer handles exit.
 struct BabySetupDoneView: View {
-    @EnvironmentObject private var store: BabyScaleSetupStore
-    @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
     @Environment(\.appTheme) private var theme
     private let lang = BabyScaleSetupStrings.Done.self
 
@@ -31,32 +29,8 @@ struct BabySetupDoneView: View {
                     .frame(width: 160, height: 160)
                     .frame(maxWidth: .infinity)
                     .accessibilityHidden(true)
-
-                VStack(spacing: .spacingMD) {
-                    ButtonView(
-                        text: lang.goToDashboard,
-                        type: .filledPrimary,
-                        size: .large,
-                        isDisabled: false
-                    ) {
-                        store.performExitCleanup()
-                    }
-
-                    ButtonView(
-                        text: lang.addADevice,
-                        type: .outlinedPrimary,
-                        size: .large,
-                        isDisabled: false
-                    ) {
-                        tabViewModel.pendingSettingsNavigation = .addEditScales
-                        tabViewModel.selectedTab = .settings
-                        store.performExitCleanup()
-                    }
-                }
-                .frame(maxWidth: .infinity)
             }
             .padding(.top, .spacingLG)
-            .padding(.horizontal, .spacingSM)
         }
     }
 }

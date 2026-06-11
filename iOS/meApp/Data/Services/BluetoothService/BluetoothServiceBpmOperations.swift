@@ -36,13 +36,21 @@ extension BluetoothService {
                 try await self.ggBleSDK.confirmPair(ggDevice, replaceUser: replaceUser, pairedSKUMonitors: ggPairedMonitors)
             }
             if let snapshot = accountService.activeAccount,
-               !snapshot.productTypes.contains("myBloodPressure") {
-                try await accountService.updateProductTypes(snapshot.productTypes + ["myBloodPressure"])
-                logger.log(
-                    level: .info,
-                    tag: tag,
-                    message: "Appended myBloodPressure to productTypes for accountId=\(snapshot.accountId)"
-                )
+               !snapshot.productTypes.contains("blood_pressure") {
+                do {
+                    try await accountService.updateProductTypes(snapshot.productTypes + ["blood_pressure"])
+                    logger.log(
+                        level: .info,
+                        tag: tag,
+                        message: "Appended blood_pressure to productTypes for accountId=\(snapshot.accountId)"
+                    )
+                } catch {
+                    logger.log(
+                        level: .error,
+                        tag: tag,
+                        message: "Failed to update productTypes after BPM pair (non-fatal): \(error.localizedDescription)"
+                    )
+                }
             }
             logger.log(level: .info, tag: tag, message: "BPM device connected: \(broadcastId), result: \(sdkResult)")
             return .success(UserCreationResponse(sdkType: sdkResult))

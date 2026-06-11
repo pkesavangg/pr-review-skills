@@ -803,10 +803,12 @@ class BottomTabBarViewModel: ObservableObject {
             let singleBabyName = babyItems[0].name
             toast = ToastModel(
                 title: lang.babyReadingArrivalTitleForSingleBaby(singleBabyName),
-                message: "\(weightString) - \(relativeTime)",
+                message: "",
                 headerView: headerView,
                 btnTextView: AnyView(
                     WeightScaleReadingArrivalCTAView(
+                        weightWithUnit: weightString,
+                        timestamp: relativeTime,
                         onSave: { [weak self] in
                             didUserAct = true
                             guard let self else { return }
@@ -1109,10 +1111,12 @@ class BottomTabBarViewModel: ObservableObject {
 
         let toast = ToastModel(
             title: lang.weightReadingArrivalTitle,
-            message: message,
+            message: "",
             headerView: headerView,
             btnTextView: AnyView(
                 WeightScaleReadingArrivalCTAView(
+                    weightWithUnit: weightString,
+                    timestamp: relativeTime,
                     onSave: { [weak self] in
                         guard let self else { return }
                         self.btWeightReadingCount = 0

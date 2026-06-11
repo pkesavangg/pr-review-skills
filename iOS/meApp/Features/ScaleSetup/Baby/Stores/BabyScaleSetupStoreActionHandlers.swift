@@ -28,6 +28,8 @@ extension BabyScaleSetupStore {
             }
         case .babyAdded:
             navigateToStep(.done)
+        case .done:
+            performExitCleanup()
         default:
             break
         }

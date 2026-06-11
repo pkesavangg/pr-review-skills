@@ -212,13 +212,13 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         let hasBpm = devices.contains { $0.deviceType == DeviceType.bpm.rawValue }
         let hasBabyScale = devices.contains { $0.deviceType == DeviceType.babyScale.rawValue }
 
-        if hasWeightScale && !types.contains("myWeight") {
-            types.append("myWeight")
+        if hasWeightScale && !types.contains("weight") {
+            types.append("weight")
             changed = true
         }
 
-        if hasBpm && !types.contains("myBloodPressure") {
-            types.append("myBloodPressure")
+        if hasBpm && !types.contains("blood_pressure") {
+            types.append("blood_pressure")
             changed = true
         }
 
@@ -305,31 +305,31 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
 
         // Reconstruction: derive from server-synced devices.
         let devices = scaleService.scales
-        var reconstructed: [String] = []
+        var serverTypes: [String] = []
 
         if devices.contains(where: { $0.deviceType == DeviceType.scale.rawValue }) {
-            reconstructed.append("myWeight")
+            serverTypes.append("weight")
         }
         if devices.contains(where: { $0.deviceType == DeviceType.bpm.rawValue }) {
-            reconstructed.append("myBloodPressure")
+            serverTypes.append("blood_pressure")
         }
         if devices.contains(where: { $0.deviceType == DeviceType.babyScale.rawValue }) || !babyService.currentBabies.isEmpty {
-            reconstructed.append("baby")
+            serverTypes.append("baby")
         }
-        if reconstructed.isEmpty {
-            reconstructed = ["myWeight"]
+        if serverTypes.isEmpty {
+            serverTypes = ["weight"]
         }
 
         Task {
-            try? await accountService.updateProductTypes(reconstructed)
+            try? await accountService.updateProductTypes(serverTypes)
         }
         logger.log(
             level: .info,
             tag: tag,
-            message: "Reconstructed productTypes=\(reconstructed) for accountId=\(account.accountId)"
+            message: "Reconstructed productTypes=\(serverTypes) for accountId=\(account.accountId)"
         )
 
-        return reconstructed
+        return normalizeProductTypes(serverTypes)
     }
 
     private func rebuild() {

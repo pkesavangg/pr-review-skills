@@ -102,7 +102,7 @@ struct BabyScaleSetupStrings {
     // MARK: - Done
     struct Done {
         static let title = "You're Done!"
-        static let subtitle = "Setup complete. Your scale is ready. Start tracking on the dashboard, or add another device."
+        static let subtitle = "Setup complete. Your scale is ready. Start tracking on the dashboard."
         static let goToDashboard = "Go to Dashboard"
         static let addADevice = "Add a Scale"
     }

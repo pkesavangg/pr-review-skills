@@ -103,7 +103,7 @@ struct BabyScaleSetupScreen: View {
 
     /// Steps where the footer should show "FINISH" instead of "NEXT".
     private var finishSteps: Set<BabyScaleSetupStep> {
-        [.babyAdded]
+        [.babyAdded, .done]
     }
 
     // MARK: - Footer Buttons
@@ -125,7 +125,7 @@ struct BabyScaleSetupScreen: View {
 
             Spacer()
 
-            if setupStore.currentStep == .paired || setupStore.currentStep == .babyProfile {
+            if setupStore.currentStep == .babyProfile {
                 ButtonView(
                     text: commonLang.skip,
                     type: .inlineTextTertiary,
