@@ -18,6 +18,8 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountFlagService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
@@ -56,6 +58,7 @@ class AppViewModelTest {
 
     @MockK(relaxed = true) lateinit var appRepository: IAppRepository
     @MockK(relaxed = true) lateinit var entryService: IEntryService
+    @MockK(relaxed = true) lateinit var entryReadService: IEntryReadService
     @MockK(relaxed = true) lateinit var logManager: LogManager
     @MockK(relaxed = true) lateinit var tokenManager: ITokenManager
     @MockK(relaxed = true) lateinit var dashboardService: IDashboardService
@@ -96,13 +99,14 @@ class AppViewModelTest {
         coEvery { feedService.checkAndTriggerFeedModal() } returns false
         coEvery { accountFlagService.getAccountFlag() } returns null
         every { navigationService.authEvent } returns authEventFlow
-        coEvery { entryService.latestEntry } returns MutableStateFlow(null)
+        every { entryReadService.latestEntry() } returns flowOf<Entry?>(null)
     }
 
     private fun createViewModel(): AppViewModel =
         AppViewModel(
             appRepository = appRepository,
             entryService = entryService,
+            entryReadService = entryReadService,
             logManager = logManager,
             appNavigationService = navigationService,
             tokenManager = tokenManager,
@@ -314,7 +318,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `OnPopUpConnect with BPM SKU navigates to LcbtScaleSetup`() = runTest {
+    fun `OnPopUpConnect with BPM SKU navigates to BpmSetup`() = runTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -328,8 +332,8 @@ class AppViewModelTest {
 
         coVerify {
             navigationService.navigateTo(
-                match<AppRoute.ScaleSetup.LcbtScaleSetup> {
-                    it.sku == SKU_0663 && it.initialStep == LcbtScaleSetupStep.CONNECTING_BLUETOOTH
+                match<AppRoute.ScaleSetup.BpmSetup> {
+                    it.sku == SKU_0663
                 },
             )
         }

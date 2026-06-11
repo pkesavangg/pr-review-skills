@@ -4,7 +4,9 @@ import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
+import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.ScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
@@ -18,6 +20,7 @@ import com.google.common.truth.Truth.assertThat
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
 import io.mockk.MockKAnnotations
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
@@ -55,6 +58,7 @@ class BLESetupViewModelTest {
     @MockK(relaxed = true) lateinit var permissionService: GGPermissionService
     @MockK(relaxed = true) lateinit var connectivityObserver: IConnectivityObserver
     @MockK(relaxed = true) lateinit var dialogUtility: IDialogUtility
+    @MockK(relaxed = true) lateinit var productSelectionManager: IProductSelectionManager
 
     private lateinit var viewModel: BtScaleSetupViewModel
 
@@ -80,7 +84,7 @@ class BLESetupViewModelTest {
         viewModel = BtScaleSetupViewModel(
             scaleInit = scaleInit,
             dependencies = dependencies,
-        ).initTestDependencies()
+        ).initTestDependencies(productSelectionManager = productSelectionManager)
     }
 
     @AfterEach
@@ -195,6 +199,27 @@ class BLESetupViewModelTest {
         viewModel.handleIntent(ScaleSetupIntent.ExitSetup(isSetupFinished = false))
         advanceScheduler()
         verify { viewModel.dialogQueueService.enqueue(any<DialogModel.Confirm>()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // Auto-switch active product after setup (MOB-422)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `ExitSetup with finished true auto-switches to the added scale`() {
+        advanceScheduler()
+        viewModel.handleIntent(ScaleSetupIntent.ExitSetup(isSetupFinished = true))
+        advanceScheduler()
+        coVerify { productSelectionManager.selectProduct(ProductSelection.MyWeight) }
+        verify { productSelectionManager.setSnapshotMode(false) }
+    }
+
+    @Test
+    fun `ExitSetup with finished false does not auto-switch product`() {
+        advanceScheduler()
+        viewModel.handleIntent(ScaleSetupIntent.ExitSetup(isSetupFinished = false))
+        advanceScheduler()
+        coVerify(exactly = 0) { productSelectionManager.selectProduct(any()) }
     }
 
     // -------------------------------------------------------------------------

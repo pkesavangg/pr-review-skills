@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
@@ -39,6 +40,7 @@ fun ReadingArrivalCard(
 ) {
     Card(
         modifier = modifier
+            .testTag("reading_toast_card")
             .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 16.dp)
             .cssBoxShadow(

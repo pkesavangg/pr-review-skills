@@ -41,6 +41,12 @@ interface IEntryRepository {
   suspend fun update(entry: Entry): Long
 
   /**
+   * Updates only the note column of an existing entry, leaving weight/metrics untouched
+   * (MOB-438). Avoids the unit-conversion round-trip a full [update] would apply.
+   */
+  suspend fun updateNote(entry: Entry, note: String?)
+
+  /**
    * Gets all valid entries for an account.
    * @param accountId The account ID.
    * @return List of valid entries.

@@ -2,22 +2,25 @@ package com.dmdbrands.gurus.weight.features.dashboard.viewmodel
 
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
-import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
+import com.dmdbrands.gurus.weight.domain.model.common.GraphData
 import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
+import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Stat
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardIntent
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardViewModel
 import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
@@ -55,9 +58,6 @@ class DashboardViewModelTest {
     @MockK(relaxUnitFun = true)
     lateinit var accountService: IAccountService
 
-    @MockK(relaxed = true)
-    lateinit var appNavigationService: IAppNavigationService
-
     @MockK(relaxUnitFun = true)
     lateinit var dashboardService: IDashboardService
 
@@ -70,19 +70,16 @@ class DashboardViewModelTest {
     private lateinit var navigationService: IAppNavigationService
     private lateinit var dialogQueueService: IDialogQueueService
 
-    private lateinit var viewModel: DashboardViewModel
+    private lateinit var viewModel: WeightDashboardViewModel
 
     companion object {
         private const val LATEST_WEIGHT = 80.5
-        private const val SCROLL_TARGET = 123.45
-        private const val PAGER_INDEX = 2
-        private const val ANCHOR_TIMESTAMP = 1700000000L
         private const val PROGRESS_COUNT = 5
         private const val PROGRESS_INIT_WEIGHT = 85.0
         private const val WEIGHTLESS_WEIGHT = 150f
         private const val TEST_ACCOUNT_12_ID = "test-12"
         private val TEST_DASHBOARD_KEY = DashboardKey.Metric(
-            com.dmdbrands.gurus.weight.domain.enums.MetricKey.WEIGHT
+            com.dmdbrands.gurus.weight.domain.enums.MetricKey.WEIGHT,
         )
     }
 
@@ -92,29 +89,35 @@ class DashboardViewModelTest {
         navigationService = mockk(relaxed = true)
         dialogQueueService = mockk(relaxed = true)
         stubDefaultFlows()
-        viewModel = DashboardViewModel(
+        viewModel = createViewModel()
+    }
+
+    private fun createViewModel(): WeightDashboardViewModel =
+        WeightDashboardViewModel(
             entryService = entryService,
-            entryReadService = entryReadService,
             accountService = accountService,
-            appNavigationService = appNavigationService,
             dashboardService = dashboardService,
-            healthConnectService = healthConnectService,
             goalService = goalService,
+            healthConnectService = healthConnectService,
+            entryReadService = entryReadService,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
         )
-    }
 
     private fun stubDefaultFlows() {
         every { accountService.activeAccount } returns MutableStateFlow(TestFixtures.activeAccount)
         every { accountService.activeAccountFlow } returns flowOf(TestFixtures.activeAccount)
         every { dashboardService.visibleKeys } returns MutableStateFlow(emptyList())
+        every { dashboardService.selectedKey } returns MutableStateFlow(null)
         every { entryReadService.isWeightEmpty() } returns flowOf(false)
         every { entryReadService.weightProgress() } returns flowOf(WeightProgress())
-        every { entryService.isUpdating } returns MutableStateFlow(false)
         every { entryReadService.latestEntry() } returns flowOf(null)
+        every { entryReadService.getDailyGraphData(any()) } returns flowOf(GraphData.Weight(emptyList()))
+        every { entryReadService.getMonthlyGraphData(any()) } returns flowOf(GraphData.Weight(emptyList()))
+        every { entryService.isUpdating } returns MutableStateFlow(false)
         every { healthConnectService.outOfSyncState } returns flowOf(false)
+        coEvery { goalService.getCurrentGoal() } returns flowOf(null)
     }
 
     // -------------------------------------------------------------------------
@@ -130,182 +133,68 @@ class DashboardViewModelTest {
         assertThat(state.data).isEmpty()
         assertThat(state.latestWeight).isNull()
         assertThat(state.selectedStat).isNull()
-        assertThat(state.pagerState).isEqualTo(0)
         assertThat(state.scrollTarget).isNull()
-        assertThat(state.isScrollTargetConsumed).isFalse()
-        assertThat(state.isConsuming).isFalse()
+        assertThat(state.markerIndex).isNull()
     }
 
     @Test
-    fun `initial state sets dashboardType from active account`() {
+    fun `initLoadData sets dashboardType from active account`() {
         val state = viewModel.state.value
         assertThat(state.dashboardType).isEqualTo(DashboardType.DASHBOARD_4_METRICS)
     }
 
     // -------------------------------------------------------------------------
-    // Pure State Intents — SetData
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `SetData replaces data list and preserves ordering`() {
-        val data = listOf<PeriodBodyScaleSummary>(mockk(), mockk(), mockk())
-        viewModel.handleIntent(DashboardIntent.SetData(data))
-        assertThat(viewModel.state.value.data).isEqualTo(data)
-        assertThat(viewModel.state.value.data).hasSize(3)
-    }
-
-    // -------------------------------------------------------------------------
-    // Pure State Intents — SetSelectedSegment
+    // Pure State Intents (routed through reducer via handleIntent)
     // -------------------------------------------------------------------------
 
     @Test
     fun `SetSelectedSegment updates selectedSegment to MONTH`() {
-        viewModel.handleIntent(DashboardIntent.SetSelectedSegment(GraphSegment.MONTH))
+        viewModel.handleIntent(BaseGraphIntent.SetSelectedSegment(GraphSegment.MONTH))
         assertThat(viewModel.state.value.selectedSegment).isEqualTo(GraphSegment.MONTH)
     }
 
     @Test
-    fun `SetSelectedSegment with same segment does not change state`() {
-        assertThat(viewModel.state.value.selectedSegment).isEqualTo(GraphSegment.WEEK)
-        viewModel.handleIntent(DashboardIntent.SetSelectedSegment(GraphSegment.WEEK))
-        assertThat(viewModel.state.value.selectedSegment).isEqualTo(GraphSegment.WEEK)
-    }
-
-    @Test
-    fun `SetSelectedSegment with anchor sets scrollTarget`() {
-        viewModel.handleIntent(DashboardIntent.SetSelectedSegment(GraphSegment.YEAR, ANCHOR_TIMESTAMP))
-        assertThat(viewModel.state.value.selectedSegment).isEqualTo(GraphSegment.YEAR)
-        assertThat(viewModel.state.value.scrollTarget).isEqualTo(ANCHOR_TIMESTAMP.toDouble())
-    }
-
-    // -------------------------------------------------------------------------
-    // Pure State Intents — SetLatestWeight
-    // -------------------------------------------------------------------------
-
-    @Test
     fun `SetLatestWeight updates latestWeight`() {
-        viewModel.handleIntent(DashboardIntent.SetLatestWeight(LATEST_WEIGHT))
+        viewModel.handleIntent(WeightDashboardIntent.SetLatestWeight(LATEST_WEIGHT))
         assertThat(viewModel.state.value.latestWeight).isEqualTo(LATEST_WEIGHT)
     }
 
     @Test
-    fun `SetLatestWeight with null clears latestWeight`() {
-        viewModel.handleIntent(DashboardIntent.SetLatestWeight(LATEST_WEIGHT))
-        viewModel.handleIntent(DashboardIntent.SetLatestWeight(null))
-        assertThat(viewModel.state.value.latestWeight).isNull()
-    }
-
-    // -------------------------------------------------------------------------
-    // Pure State Intents — UpdateIsEmpty
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `UpdateIsEmpty sets isEmpty to true`() {
-        viewModel.handleIntent(DashboardIntent.UpdateIsEmpty(true))
+    fun `SetIsEmpty sets isEmpty to true`() {
+        viewModel.handleIntent(WeightDashboardIntent.SetIsEmpty(true))
         assertThat(viewModel.state.value.isEmpty).isTrue()
     }
-
-    // -------------------------------------------------------------------------
-    // Pure State Intents — SetScrollTarget / SetIsScrollTargetConsumed
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `SetScrollTarget updates scrollTarget`() {
-        viewModel.handleIntent(DashboardIntent.SetScrollTarget(SCROLL_TARGET))
-        assertThat(viewModel.state.value.scrollTarget).isEqualTo(SCROLL_TARGET)
-    }
-
-    @Test
-    fun `SetIsScrollTargetConsumed one-shot pattern`() {
-        viewModel.handleIntent(DashboardIntent.SetScrollTarget(SCROLL_TARGET))
-        viewModel.handleIntent(DashboardIntent.SetIsScrollTargetConsumed(true))
-        assertThat(viewModel.state.value.isScrollTargetConsumed).isTrue()
-    }
-
-    // -------------------------------------------------------------------------
-    // Pure State Intents — SetProgress / SetProgressUpdating
-    // -------------------------------------------------------------------------
 
     @Test
     fun `SetProgress updates progress`() {
         val progress = WeightProgress(count = PROGRESS_COUNT, initWt = PROGRESS_INIT_WEIGHT)
-        viewModel.handleIntent(DashboardIntent.SetProgress(progress))
+        viewModel.handleIntent(WeightDashboardIntent.SetProgress(progress))
         assertThat(viewModel.state.value.progress).isEqualTo(progress)
     }
 
     @Test
     fun `SetProgressUpdating updates isProgressUpdating`() {
-        viewModel.handleIntent(DashboardIntent.SetProgressUpdating(true))
+        viewModel.handleIntent(WeightDashboardIntent.SetProgressUpdating(true))
         assertThat(viewModel.state.value.isProgressUpdating).isTrue()
     }
-
-    // -------------------------------------------------------------------------
-    // Pure State Intents — SetVisibleKeys
-    // -------------------------------------------------------------------------
 
     @Test
     fun `SetVisibleKeys replaces visibleKeys`() {
         val keys = listOf(TEST_DASHBOARD_KEY)
-        viewModel.handleIntent(DashboardIntent.SetVisibleKeys(keys))
+        viewModel.handleIntent(WeightDashboardIntent.SetVisibleKeys(keys))
         assertThat(viewModel.state.value.visibleKeys).isEqualTo(keys)
     }
 
-    // -------------------------------------------------------------------------
-    // Pure State Intents — SetPagerState
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `SetPagerState updates pagerState and sets selectedSegment`() = runTest {
-        viewModel.handleIntent(DashboardIntent.SetPagerState(PAGER_INDEX))
-        advanceUntilIdle()
-        assertThat(viewModel.state.value.pagerState).isEqualTo(PAGER_INDEX)
-        assertThat(viewModel.state.value.selectedSegment).isEqualTo(GraphSegment.entries[PAGER_INDEX])
-    }
-
-    @Test
-    fun `SetPagerState with out-of-bounds index only updates pagerState`() {
-        viewModel.handleIntent(DashboardIntent.SetPagerState(99))
-        assertThat(viewModel.state.value.pagerState).isEqualTo(99)
-    }
-
-    // -------------------------------------------------------------------------
-    // Pure State Intents — SetIsChartConsuming
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `SetIsChartConsuming updates isConsuming`() {
-        viewModel.handleIntent(DashboardIntent.SetIsChartConsuming(true))
-        assertThat(viewModel.state.value.isConsuming).isTrue()
-    }
-
-    // -------------------------------------------------------------------------
-    // Pure State Intents — SetDashboardType
-    // -------------------------------------------------------------------------
-
     @Test
     fun `SetDashboardType updates dashboardType`() {
-        viewModel.handleIntent(DashboardIntent.SetDashboardType(DashboardType.DASHBOARD_12_METRICS))
+        viewModel.handleIntent(WeightDashboardIntent.SetDashboardType(DashboardType.DASHBOARD_12_METRICS))
         assertThat(viewModel.state.value.dashboardType).isEqualTo(DashboardType.DASHBOARD_12_METRICS)
     }
 
-    // -------------------------------------------------------------------------
-    // Pure State Intents — UpdateIsRefreshing
-    // -------------------------------------------------------------------------
-
     @Test
-    fun `UpdateIsRefreshing updates flag`() {
-        viewModel.handleIntent(DashboardIntent.UpdateIsRefreshing(true))
-        assertThat(viewModel.state.value.isRefreshing).isTrue()
-    }
-
-    // -------------------------------------------------------------------------
-    // Pure State Intents — UpdateWeightLess
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `UpdateWeightLess updates weightless`() {
+    fun `SetWeightless updates weightless`() {
         val weightless = Weightless(isWeightlessOn = true, weightlessWeight = WEIGHTLESS_WEIGHT)
-        viewModel.handleIntent(DashboardIntent.UpdateWeightLess(weightless))
+        viewModel.handleIntent(WeightDashboardIntent.SetWeightless(weightless))
         assertThat(viewModel.state.value.weightless).isEqualTo(weightless)
     }
 
@@ -315,7 +204,7 @@ class DashboardViewModelTest {
 
     @Test
     fun `Refresh calls entryService syncOperations and dashboardService refreshDashboard`() = runTest {
-        viewModel.handleIntent(DashboardIntent.Refresh)
+        viewModel.handleIntent(WeightDashboardIntent.Refresh)
         advanceUntilIdle()
         coVerify { entryService.syncOperations() }
         coVerify { dashboardService.refreshDashboard() }
@@ -324,7 +213,7 @@ class DashboardViewModelTest {
 
     @Test
     fun `Refresh sets isRefreshing false after completion`() = runTest {
-        viewModel.handleIntent(DashboardIntent.Refresh)
+        viewModel.handleIntent(WeightDashboardIntent.Refresh)
         advanceUntilIdle()
         assertThat(viewModel.state.value.isRefreshing).isFalse()
     }
@@ -336,7 +225,7 @@ class DashboardViewModelTest {
     @Test
     fun `UpdateVisibleKeys calls dashboardService updateVisibleKeys`() = runTest {
         val keys = listOf(TEST_DASHBOARD_KEY)
-        viewModel.handleIntent(DashboardIntent.UpdateVisibleKeys(keys, DashboardType.DASHBOARD_4_METRICS))
+        viewModel.handleIntent(WeightDashboardIntent.UpdateVisibleKeys(keys, DashboardType.DASHBOARD_4_METRICS))
         advanceUntilIdle()
         coVerify { dashboardService.updateVisibleKeys(keys = keys, dashboardType = DashboardType.DASHBOARD_4_METRICS) }
     }
@@ -344,7 +233,7 @@ class DashboardViewModelTest {
     @Test
     fun `UpdateVisibleKeys shows loader and dismisses it`() = runTest {
         val keys = listOf(TEST_DASHBOARD_KEY)
-        viewModel.handleIntent(DashboardIntent.UpdateVisibleKeys(keys, DashboardType.DASHBOARD_4_METRICS))
+        viewModel.handleIntent(WeightDashboardIntent.UpdateVisibleKeys(keys, DashboardType.DASHBOARD_4_METRICS))
         advanceUntilIdle()
         verify { dialogQueueService.showLoader(message = any()) }
         verify { dialogQueueService.dismissLoader() }
@@ -353,11 +242,11 @@ class DashboardViewModelTest {
     @Test
     fun `UpdateVisibleKeys clears selectedStat after success`() = runTest {
         val stat: Stat = mockk(relaxed = true)
-        viewModel.handleIntent(DashboardIntent.SetSelectedStat(stat))
+        viewModel.handleIntent(WeightDashboardIntent.SetSelectedStat(stat))
         advanceUntilIdle()
         assertThat(viewModel.state.value.selectedStat).isEqualTo(stat)
 
-        viewModel.handleIntent(DashboardIntent.UpdateVisibleKeys(emptyList(), DashboardType.DASHBOARD_4_METRICS))
+        viewModel.handleIntent(WeightDashboardIntent.UpdateVisibleKeys(emptyList(), DashboardType.DASHBOARD_4_METRICS))
         advanceUntilIdle()
         assertThat(viewModel.state.value.selectedStat).isNull()
     }
@@ -365,7 +254,7 @@ class DashboardViewModelTest {
     @Test
     fun `UpdateVisibleKeys dismisses loader on exception`() = runTest {
         coEvery { dashboardService.updateVisibleKeys(any(), any(), any()) } throws RuntimeException("fail")
-        viewModel.handleIntent(DashboardIntent.UpdateVisibleKeys(emptyList(), DashboardType.DASHBOARD_4_METRICS))
+        viewModel.handleIntent(WeightDashboardIntent.UpdateVisibleKeys(emptyList(), DashboardType.DASHBOARD_4_METRICS))
         advanceUntilIdle()
         verify { dialogQueueService.dismissLoader() }
     }
@@ -376,7 +265,7 @@ class DashboardViewModelTest {
 
     @Test
     fun `ResetDashboard enqueues confirm dialog`() {
-        viewModel.handleIntent(DashboardIntent.ResetDashboard { })
+        viewModel.handleIntent(WeightDashboardIntent.ResetDashboard)
         verify { dialogQueueService.showDialog(any<DialogModel.Confirm>()) }
     }
 
@@ -385,7 +274,7 @@ class DashboardViewModelTest {
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.showDialog(capture(dialogSlot)) } returns Unit
 
-        viewModel.handleIntent(DashboardIntent.ResetDashboard { })
+        viewModel.handleIntent(WeightDashboardIntent.ResetDashboard)
         dialogSlot.captured.onConfirm?.invoke()
         advanceUntilIdle()
 
@@ -393,24 +282,11 @@ class DashboardViewModelTest {
     }
 
     @Test
-    fun `ResetDashboard confirm callback invokes onConfirm lambda`() = runTest {
-        val dialogSlot = slot<DialogModel.Confirm>()
-        every { dialogQueueService.showDialog(capture(dialogSlot)) } returns Unit
-
-        var confirmCalled = false
-        viewModel.handleIntent(DashboardIntent.ResetDashboard { confirmCalled = true })
-        dialogSlot.captured.onConfirm?.invoke()
-        advanceUntilIdle()
-
-        assertThat(confirmCalled).isTrue()
-    }
-
-    @Test
     fun `ResetDashboard confirm shows loader and dismisses it`() = runTest {
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.showDialog(capture(dialogSlot)) } returns Unit
 
-        viewModel.handleIntent(DashboardIntent.ResetDashboard { })
+        viewModel.handleIntent(WeightDashboardIntent.ResetDashboard)
         dialogSlot.captured.onConfirm?.invoke()
         advanceUntilIdle()
 
@@ -424,7 +300,7 @@ class DashboardViewModelTest {
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.showDialog(capture(dialogSlot)) } returns Unit
 
-        viewModel.handleIntent(DashboardIntent.ResetDashboard { })
+        viewModel.handleIntent(WeightDashboardIntent.ResetDashboard)
         dialogSlot.captured.onConfirm?.invoke()
         advanceUntilIdle()
 
@@ -432,14 +308,21 @@ class DashboardViewModelTest {
     }
 
     // -------------------------------------------------------------------------
-    // Navigation — OnConnectScale
+    // Navigation — OnConnectScale / NavigateToGoal
     // -------------------------------------------------------------------------
 
     @Test
     fun `OnConnectScale navigates to MyDevices`() = runTest {
-        viewModel.handleIntent(DashboardIntent.OnConnectScale)
+        viewModel.handleIntent(WeightDashboardIntent.OnConnectScale)
         advanceUntilIdle()
-      coVerify { navigationService.navigateTo(AppRoute.AccountSettings.MyDevices) }
+        coVerify { navigationService.navigateTo(AppRoute.AccountSettings.MyDevices) }
+    }
+
+    @Test
+    fun `NavigateToGoal navigates to Goal`() = runTest {
+        viewModel.handleIntent(WeightDashboardIntent.NavigateToGoal)
+        advanceUntilIdle()
+        coVerify { navigationService.navigateTo(AppRoute.AccountSettings.Goal) }
     }
 
     // -------------------------------------------------------------------------
@@ -450,7 +333,7 @@ class DashboardViewModelTest {
     fun `SetSelectedStat updates selectedStat and calls dashboardService`() = runTest {
         val stat: Stat = mockk()
         every { stat.key } returns TEST_DASHBOARD_KEY
-        viewModel.handleIntent(DashboardIntent.SetSelectedStat(stat))
+        viewModel.handleIntent(WeightDashboardIntent.SetSelectedStat(stat))
         advanceUntilIdle()
         assertThat(viewModel.state.value.selectedStat).isEqualTo(stat)
         coVerify { dashboardService.setSelectedKey(TEST_DASHBOARD_KEY) }
@@ -458,7 +341,7 @@ class DashboardViewModelTest {
 
     @Test
     fun `SetSelectedStat with null clears stat and calls dashboardService`() = runTest {
-        viewModel.handleIntent(DashboardIntent.SetSelectedStat(null))
+        viewModel.handleIntent(WeightDashboardIntent.SetSelectedStat(null))
         advanceUntilIdle()
         assertThat(viewModel.state.value.selectedStat).isNull()
         coVerify { dashboardService.setSelectedKey(null) }
@@ -470,18 +353,9 @@ class DashboardViewModelTest {
 
     @Test
     fun `subscribeLatestWeight sets latestWeight from ScaleEntry`() = runTest {
-        val entry = TestFixtures.weightEntry
-        every { entryReadService.latestEntry() } returns flowOf(entry)
+        every { entryReadService.latestEntry() } returns flowOf(TestFixtures.weightEntry)
 
-        viewModel = DashboardViewModel(
-            entryService = entryService,
-            entryReadService = entryReadService,
-            accountService = accountService,
-            appNavigationService = appNavigationService,
-            dashboardService = dashboardService,
-            healthConnectService = healthConnectService,
-            goalService = goalService,
-        ).initTestDependencies(navigationService = navigationService, dialogQueueService = dialogQueueService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         assertThat(viewModel.state.value.latestWeight).isEqualTo(75.0)
@@ -491,15 +365,7 @@ class DashboardViewModelTest {
     fun `subscribeLatestWeight sets null for non-ScaleEntry`() = runTest {
         every { entryReadService.latestEntry() } returns flowOf(TestFixtures.bpmEntry)
 
-        viewModel = DashboardViewModel(
-            entryService = entryService,
-            entryReadService = entryReadService,
-            accountService = accountService,
-            appNavigationService = appNavigationService,
-            dashboardService = dashboardService,
-            healthConnectService = healthConnectService,
-            goalService = goalService,
-        ).initTestDependencies(navigationService = navigationService, dialogQueueService = dialogQueueService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         assertThat(viewModel.state.value.latestWeight).isNull()
@@ -510,18 +376,10 @@ class DashboardViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `subscribeIsEmpty updates isEmpty from entryService flow`() = runTest {
+    fun `subscribeIsEmpty updates isEmpty from entryReadService flow`() = runTest {
         every { entryReadService.isWeightEmpty() } returns flowOf(true)
 
-        viewModel = DashboardViewModel(
-            entryService = entryService,
-            entryReadService = entryReadService,
-            accountService = accountService,
-            appNavigationService = appNavigationService,
-            dashboardService = dashboardService,
-            healthConnectService = healthConnectService,
-            goalService = goalService,
-        ).initTestDependencies(navigationService = navigationService, dialogQueueService = dialogQueueService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         assertThat(viewModel.state.value.isEmpty).isTrue()
@@ -542,15 +400,7 @@ class DashboardViewModelTest {
         val accountFlow = MutableStateFlow<Account?>(TestFixtures.activeAccount)
         every { accountService.activeAccountFlow } returns accountFlow
 
-        viewModel = DashboardViewModel(
-            entryService = entryService,
-            entryReadService = entryReadService,
-            accountService = accountService,
-            appNavigationService = appNavigationService,
-            dashboardService = dashboardService,
-            healthConnectService = healthConnectService,
-            goalService = goalService,
-        ).initTestDependencies(navigationService = navigationService, dialogQueueService = dialogQueueService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         accountFlow.value = account12
@@ -564,15 +414,7 @@ class DashboardViewModelTest {
         val accountFlow = MutableStateFlow<Account?>(TestFixtures.activeAccount)
         every { accountService.activeAccountFlow } returns accountFlow
 
-        viewModel = DashboardViewModel(
-            entryService = entryService,
-            entryReadService = entryReadService,
-            accountService = accountService,
-            appNavigationService = appNavigationService,
-            dashboardService = dashboardService,
-            healthConnectService = healthConnectService,
-            goalService = goalService,
-        ).initTestDependencies(navigationService = navigationService, dialogQueueService = dialogQueueService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         accountFlow.value = null
@@ -590,15 +432,7 @@ class DashboardViewModelTest {
         val keysFlow = MutableStateFlow<List<DashboardKey>>(emptyList())
         every { dashboardService.visibleKeys } returns keysFlow
 
-        viewModel = DashboardViewModel(
-            entryService = entryService,
-            entryReadService = entryReadService,
-            accountService = accountService,
-            appNavigationService = appNavigationService,
-            dashboardService = dashboardService,
-            healthConnectService = healthConnectService,
-            goalService = goalService,
-        ).initTestDependencies(navigationService = navigationService, dialogQueueService = dialogQueueService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         val newKeys = listOf(TEST_DASHBOARD_KEY)
@@ -616,15 +450,7 @@ class DashboardViewModelTest {
     fun `onResume calls healthConnectOutOfSync when out of sync`() = runTest {
         every { healthConnectService.outOfSyncState } returns flowOf(true)
 
-        viewModel = DashboardViewModel(
-            entryService = entryService,
-            entryReadService = entryReadService,
-            accountService = accountService,
-            appNavigationService = appNavigationService,
-            dashboardService = dashboardService,
-            healthConnectService = healthConnectService,
-            goalService = goalService,
-        ).initTestDependencies(navigationService = navigationService, dialogQueueService = dialogQueueService)
+        viewModel = createViewModel()
 
         viewModel.onResume(mockk())
         advanceUntilIdle()
@@ -636,15 +462,7 @@ class DashboardViewModelTest {
     fun `onResume does not call healthConnectOutOfSync when in sync`() = runTest {
         every { healthConnectService.outOfSyncState } returns flowOf(false)
 
-        viewModel = DashboardViewModel(
-            entryService = entryService,
-            entryReadService = entryReadService,
-            accountService = accountService,
-            appNavigationService = appNavigationService,
-            dashboardService = dashboardService,
-            healthConnectService = healthConnectService,
-            goalService = goalService,
-        ).initTestDependencies(navigationService = navigationService, dialogQueueService = dialogQueueService)
+        viewModel = createViewModel()
 
         viewModel.onResume(mockk())
         advanceUntilIdle()
@@ -653,7 +471,7 @@ class DashboardViewModelTest {
     }
 
     // -------------------------------------------------------------------------
-    // initLoadData — sets initial dashboard type, visible keys, and weightless
+    // initLoadData — initial dashboard type and visible keys
     // -------------------------------------------------------------------------
 
     @Test
@@ -665,15 +483,7 @@ class DashboardViewModelTest {
         ).copy(dashboardType = DashboardType.DASHBOARD_12_METRICS.value)
         every { accountService.activeAccount } returns MutableStateFlow(account12)
 
-        viewModel = DashboardViewModel(
-            entryService = entryService,
-            entryReadService = entryReadService,
-            accountService = accountService,
-            appNavigationService = appNavigationService,
-            dashboardService = dashboardService,
-            healthConnectService = healthConnectService,
-            goalService = goalService,
-        ).initTestDependencies(navigationService = navigationService, dialogQueueService = dialogQueueService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         assertThat(viewModel.state.value.dashboardType).isEqualTo(DashboardType.DASHBOARD_12_METRICS)
@@ -684,45 +494,25 @@ class DashboardViewModelTest {
         val keys = listOf(TEST_DASHBOARD_KEY)
         every { dashboardService.visibleKeys } returns MutableStateFlow(keys)
 
-        viewModel = DashboardViewModel(
-            entryService = entryService,
-            entryReadService = entryReadService,
-            accountService = accountService,
-            appNavigationService = appNavigationService,
-            dashboardService = dashboardService,
-            healthConnectService = healthConnectService,
-            goalService = goalService,
-        ).initTestDependencies(navigationService = navigationService, dialogQueueService = dialogQueueService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         assertThat(viewModel.state.value.visibleKeys).isEqualTo(keys)
     }
 
     // -------------------------------------------------------------------------
-    // Flow Subscriptions — subscribeWeightLess
+    // Flow Subscriptions — subscribeWeightless
     // -------------------------------------------------------------------------
 
     @Test
-    fun `subscribeWeightLess updates weightless when account flow emits`() = runTest {
-        val accountFlow = MutableStateFlow<Account?>(TestFixtures.activeAccount)
-        every { accountService.activeAccountFlow } returns accountFlow
-
-        viewModel = DashboardViewModel(
-            entryService = entryService,
-            entryReadService = entryReadService,
-            accountService = accountService,
-            appNavigationService = appNavigationService,
-            dashboardService = dashboardService,
-            healthConnectService = healthConnectService,
-            goalService = goalService,
-        ).initTestDependencies(navigationService = navigationService, dialogQueueService = dialogQueueService)
-        advanceUntilIdle()
-
+    fun `subscribeWeightless updates weightless when account flow emits`() = runTest {
         val accountWithWeightless = TestFixtures.anAccount(
             isActiveAccount = true,
             isLoggedIn = true,
         ).copy(isWeightlessOn = true, weightlessWeight = WEIGHTLESS_WEIGHT)
-        accountFlow.value = accountWithWeightless
+        every { accountService.activeAccountFlow } returns flowOf(accountWithWeightless)
+
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         assertThat(viewModel.state.value.weightless).isNotNull()
@@ -733,19 +523,11 @@ class DashboardViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `subscribeProgress updates progress from entryService flow`() = runTest {
+    fun `subscribeProgress updates progress from entryReadService flow`() = runTest {
         val progress = WeightProgress(count = PROGRESS_COUNT, initWt = PROGRESS_INIT_WEIGHT)
         every { entryReadService.weightProgress() } returns flowOf(progress)
 
-        viewModel = DashboardViewModel(
-            entryService = entryService,
-            entryReadService = entryReadService,
-            accountService = accountService,
-            appNavigationService = appNavigationService,
-            dashboardService = dashboardService,
-            healthConnectService = healthConnectService,
-            goalService = goalService,
-        ).initTestDependencies(navigationService = navigationService, dialogQueueService = dialogQueueService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         assertThat(viewModel.state.value.progress).isEqualTo(progress)
@@ -759,28 +541,9 @@ class DashboardViewModelTest {
     fun `subscribeProgressUpdating updates isProgressUpdating from entryService flow`() = runTest {
         every { entryService.isUpdating } returns MutableStateFlow(true)
 
-        viewModel = DashboardViewModel(
-            entryService = entryService,
-            entryReadService = entryReadService,
-            accountService = accountService,
-            appNavigationService = appNavigationService,
-            dashboardService = dashboardService,
-            healthConnectService = healthConnectService,
-            goalService = goalService,
-        ).initTestDependencies(navigationService = navigationService, dialogQueueService = dialogQueueService)
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         assertThat(viewModel.state.value.isProgressUpdating).isTrue()
-    }
-
-    // -------------------------------------------------------------------------
-    // navigateTo
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `navigateTo calls navigationService with given route`() = runTest {
-        viewModel.navigateTo(AppRoute.AccountSettings.HelpScreen)
-        advanceUntilIdle()
-        coVerify { navigationService.navigateTo(AppRoute.AccountSettings.HelpScreen) }
     }
 }

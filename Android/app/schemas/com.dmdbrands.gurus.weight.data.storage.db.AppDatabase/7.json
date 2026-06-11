@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 7,
-    "identityHash": "f53c08bea25aa972572871c0463b8f66",
+    "identityHash": "aeb463c2a1e189a65d634076d4d79a65",
     "entities": [
       {
         "tableName": "account",
@@ -654,7 +654,7 @@
       },
       {
         "tableName": "body_scale_entry",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `weight` REAL NOT NULL, `bodyFat` REAL, `muscleMass` REAL, `water` REAL, `bmi` REAL, `source` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `entry`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `weight` REAL NOT NULL, `bodyFat` REAL, `muscleMass` REAL, `water` REAL, `bmi` REAL, `source` TEXT, `note` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `entry`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -691,6 +691,11 @@
           {
             "fieldPath": "source",
             "columnName": "source",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
             "affinity": "TEXT"
           }
         ],
@@ -1357,55 +1362,6 @@
         ]
       },
       {
-        "tableName": "product_settings",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `productTypes` TEXT NOT NULL, `measurementUnits` TEXT NOT NULL, `isSynced` INTEGER NOT NULL, PRIMARY KEY(`accountId`), FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
-        "fields": [
-          {
-            "fieldPath": "accountId",
-            "columnName": "accountId",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "productTypes",
-            "columnName": "productTypes",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "measurementUnits",
-            "columnName": "measurementUnits",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "isSynced",
-            "columnName": "isSynced",
-            "affinity": "INTEGER",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "accountId"
-          ]
-        },
-        "foreignKeys": [
-          {
-            "table": "account",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "accountId"
-            ],
-            "referencedColumns": [
-              "accountId"
-            ]
-          }
-        ]
-      },
-      {
         "tableName": "baby",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`babyId` TEXT NOT NULL, `accountId` TEXT NOT NULL, `name` TEXT NOT NULL, `birthdate` TEXT, `sex` TEXT, `birthWeightDecigrams` INTEGER, `birthLengthMillimeters` INTEGER, `isBorn` INTEGER, `isOwnedByAccount` INTEGER, `permissions` INTEGER, `createdAt` INTEGER, `dueDate` TEXT, `lastUpdated` TEXT, `isSynced` INTEGER NOT NULL, `isDeleted` INTEGER NOT NULL, `activeBabyId` TEXT, PRIMARY KEY(`babyId`), FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
@@ -1659,7 +1615,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f53c08bea25aa972572871c0463b8f66')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'aeb463c2a1e189a65d634076d4d79a65')"
     ]
   }
 }

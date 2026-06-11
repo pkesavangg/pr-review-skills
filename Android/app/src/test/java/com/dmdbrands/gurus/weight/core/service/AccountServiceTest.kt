@@ -177,6 +177,7 @@ class AccountServiceTest {
         appNavigationService,
         storageClearService,
         analyticsService = mockk(relaxed = true),
+        userDataStore = mockk(relaxed = true),
         appScope = TestScope(mainDispatcherRule.dispatcher),
     )
 
@@ -1817,7 +1818,11 @@ class AccountServiceTest {
 
         assertThat(result).isFalse()
         // Only HttpException triggers error toast display
-        verify(exactly = 0) { dialogQueueService.showToast(match { it.title != null }) }
+        verify(exactly = 0) {
+            dialogQueueService.showToast(
+                match<com.dmdbrands.gurus.weight.features.common.model.Toast.Simple> { it.title != null },
+            )
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -2067,7 +2072,7 @@ class AccountServiceTest {
         service.logout(fakeAccount.id, fcmToken = null)
 
         verify {
-            dialogQueueService.showToast(match<com.dmdbrands.gurus.weight.features.common.model.Toast> {
+            dialogQueueService.showToast(match<com.dmdbrands.gurus.weight.features.common.model.Toast.Simple> {
                 it.title == null && it.action == null
             })
         }

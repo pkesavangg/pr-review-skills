@@ -111,6 +111,7 @@ private fun ChangePasswordContent(
                         showTrailingIcon = true,
                         imeAction = ImeAction.Next,
                         nextFocusRequester = newPasswordFocusRequester,
+                        testTag = "current_password_field",
                         modifier =
                             Modifier
                                 .semantics { contentType = ContentType.Password }
@@ -123,6 +124,7 @@ private fun ChangePasswordContent(
                         showTrailingIcon = true,
                         imeAction = ImeAction.Next,
                         nextFocusRequester = confirmPasswordFocusRequester,
+                        testTag = "new_password_field",
                         modifier =
                             Modifier
                                 .semantics { contentType = ContentType.NewPassword }
@@ -139,6 +141,7 @@ private fun ChangePasswordContent(
                             focusManager.clearFocus()
                             keyboardController?.hide()
                         },
+                        testTag = "confirm_password_field",
                         modifier =
                             Modifier
                                 .semantics { contentType = ContentType.NewPassword }

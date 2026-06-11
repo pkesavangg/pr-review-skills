@@ -101,7 +101,7 @@ private fun ProductRow(
 
 @Composable
 private fun ProductSelection.displayName(): String = when (this) {
-    is ProductSelection.MyWeight -> "My Weight"
+    is ProductSelection.MyWeight -> "My Weight & Body Comp"
     is ProductSelection.BloodPressure -> "My Blood Pressure"
     is ProductSelection.Baby -> profile.name
 }
@@ -119,7 +119,7 @@ fun ProductSelectionBottomSheetPreview() {
     MeAppTheme {
         Column {
             ProductRow(
-                label = "My Weight",
+                label = "My Weight & Body Comp",
                 color = Color(0xFF1565C0),
                 isSelected = true,
                 onClick = {},

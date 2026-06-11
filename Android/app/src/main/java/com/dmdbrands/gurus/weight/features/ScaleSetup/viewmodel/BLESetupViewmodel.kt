@@ -7,11 +7,13 @@ import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.ScaleSetupStep
+import com.dmdbrands.gurus.weight.features.ScaleSetup.helper.switchActiveProductAfterSetup
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.SetupInitData
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BaseState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.ScaleSetupIntent
@@ -98,6 +100,13 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
   abstract fun onBack()
   abstract fun onSkip()
   abstract suspend fun onSetupFinished()
+
+  /**
+   * Product to surface on the dashboard once this device's setup completes, or null to
+   * leave the active product unchanged. Concrete setup view models override this to
+   * auto-switch the header to the newly added device (MOB-422).
+   */
+  protected open fun productSelectionAfterSetup(): ProductSelection? = null
 
   private var deviceObservationJob: Job? = null
   protected val bluetoothTimeout: Long = 5 * 60 * 1000L
@@ -496,6 +505,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
         if (isSetupFinished) {
           AppLog.d(TAG, "Setup finished, calling onSetupFinished")
           onSetupFinished()
+          productSelectionManager.switchActiveProductAfterSetup(productSelectionAfterSetup())
         }
         loadPluginData()
         navigateBack()

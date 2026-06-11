@@ -6,8 +6,6 @@ import java.util.Date
 
 plugins {
   alias(libs.plugins.android.application)
-  alias(libs.plugins.google.service)
-  alias(libs.plugins.firebase.crashlytics.plugin)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.hilt)
   alias(libs.plugins.kotlin.serialization)
@@ -19,6 +17,24 @@ plugins {
   // kotlin-android transitively.
   id("org.jetbrains.kotlin.plugin.parcelize")
   id("jacoco")
+}
+
+// Apply Firebase plugins only when google-services.json is present (CI injects it via secret).
+// Fail fast if a release build is requested without the file — better to break CI loudly than
+// ship a release without Crashlytics, Firebase, or mapping-file upload.
+val googleServicesFile = file("google-services.json")
+val isReleaseBuild = gradle.startParameter.taskNames.any { task ->
+  task.contains("Release", ignoreCase = true) || task.contains("bundle", ignoreCase = true)
+}
+if (isReleaseBuild && !googleServicesFile.exists()) {
+  throw GradleException(
+    "google-services.json is required for release builds but was not found at ${googleServicesFile.absolutePath}. " +
+      "Ensure the CI secret is injected before building release.",
+  )
+}
+if (googleServicesFile.exists()) {
+  apply(plugin = libs.plugins.google.service.get().pluginId)
+  apply(plugin = libs.plugins.firebase.crashlytics.plugin.get().pluginId)
 }
 
 ksp {
@@ -62,15 +78,17 @@ android {
       buildConfigField(
         "String",
         "BASE_URL",
-        "\"https://api.weightgurus.com/v3/\"",
+        "\"http://ec2-13-217-141-203.compute-1.amazonaws.com:3005/v3/\"",
       )
       buildConfigField("Boolean", "ENABLE_ANALYTICS", "false")
     }
     release {
       isMinifyEnabled = true
       isShrinkResources = true
-      configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
-        mappingFileUploadEnabled = true
+      if (googleServicesFile.exists()) {
+        configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
+          mappingFileUploadEnabled = true
+        }
       }
       proguardFiles(
         getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -309,9 +327,12 @@ val jacocoExcludes = listOf(
   "**/*OuterClass*",
 )
 
-val kotlinClassDir = layout.buildDirectory.dir("tmp/kotlin-classes/debug").get().asFile
-
-val jacocoClassDirectories = fileTree(kotlinClassDir) { exclude(jacocoExcludes) }
+// Class files that match the on-the-fly coverage exec: AGP compiles Kotlin via the
+// built-in kotlinc and runs unit tests against the ASM-transformed output, so the
+// JaCoCo class IDs correspond to these dirs — NOT the legacy build/tmp/kotlin-classes.
+val jacocoClassDirectories = fileTree(
+  layout.buildDirectory.dir("intermediates/classes/debug/transformDebugClassesWithAsm/dirs").get().asFile,
+) { exclude(jacocoExcludes) }
 
 val jacocoExecutionData = fileTree(layout.buildDirectory.get().asFile) {
   include(

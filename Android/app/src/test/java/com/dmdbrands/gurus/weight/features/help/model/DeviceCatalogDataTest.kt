@@ -2,7 +2,7 @@ package com.dmdbrands.gurus.weight.features.help.model
 
 import com.dmdbrands.gurus.weight.features.common.model.BABY_SCALES
 import com.dmdbrands.gurus.weight.features.common.model.BPM_DEVICES
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.gurus.weight.features.common.model.DEVICES
 import com.google.common.truth.Truth.assertThat
 import org.junit.jupiter.api.Test
 
@@ -33,8 +33,8 @@ class DeviceCatalogDataTest {
   }
 
   @Test
-  fun `SCALES has no duplicate SKUs`() {
-    val skus = SCALES.map { it.sku }
+  fun `DEVICES has no duplicate SKUs`() {
+    val skus = DEVICES.map { it.sku }
     assertThat(skus).containsNoDuplicates()
   }
 
@@ -42,17 +42,17 @@ class DeviceCatalogDataTest {
   fun `all device lists are non-empty`() {
     assertThat(BABY_SCALES).isNotEmpty()
     assertThat(BPM_DEVICES).isNotEmpty()
-    assertThat(SCALES).isNotEmpty()
+    assertThat(DEVICES).isNotEmpty()
   }
 
   @Test
-  fun `BABY_SCALES is a subset of SCALES`() {
-    assertThat(SCALES).containsAtLeastElementsIn(BABY_SCALES)
+  fun `BABY_SCALES is a subset of DEVICES`() {
+    assertThat(DEVICES).containsAtLeastElementsIn(BABY_SCALES)
   }
 
   @Test
-  fun `BPM_DEVICES is a subset of SCALES`() {
-    assertThat(SCALES).containsAtLeastElementsIn(BPM_DEVICES)
+  fun `BPM_DEVICES is a subset of DEVICES`() {
+    assertThat(DEVICES).containsAtLeastElementsIn(BPM_DEVICES)
   }
 
   @Test

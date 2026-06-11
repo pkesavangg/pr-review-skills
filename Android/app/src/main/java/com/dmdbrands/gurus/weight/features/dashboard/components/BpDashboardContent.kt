@@ -89,7 +89,7 @@ fun BpDashboardContent(
       }
       Spacer(modifier = Modifier.height(MeTheme.spacing.x3s))
       Text(
-        text = if (entryCount > 0) "$entryCount ${DashboardString.Bp.EntryAverageSuffix}" else DashboardString.Bp.NoEntries,
+        text = DashboardString.Bp.entryAverageLabel(entryCount),
         style = MeTheme.typography.subHeading1,
         color = MeTheme.colorScheme.textSubheading,
       )

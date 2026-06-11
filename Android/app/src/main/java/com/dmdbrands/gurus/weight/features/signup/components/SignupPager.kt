@@ -57,6 +57,15 @@ fun SignupPager(
       )
       return
     }
+    SignupStep.ERROR -> {
+      SignupErrorStep(
+        failedDeviceId = state.form.controls.device.value,
+        registeredDevices = state.registeredDevices,
+        onFinish = { onIntent(SignupIntent.FinishSignup) },
+        onTryAgain = { onIntent(SignupIntent.RetryDevice) },
+      )
+      return
+    }
     else -> Unit
   }
 
@@ -197,7 +206,8 @@ fun SignupPager(
             // Unreachable here — handled by the early-return above.
             // Branches kept so the `when` over SignupStep stays exhaustive.
             SignupStep.DEVICE_READY,
-            SignupStep.ALL_DEVICES_READY -> Unit
+            SignupStep.ALL_DEVICES_READY,
+            SignupStep.ERROR -> Unit
           }
         }
       }
@@ -217,4 +227,5 @@ fun SignupPager(
 private fun shouldBlockBack(state: SignupState): Boolean =
   state.currentStep == SignupStep.DEVICE_READY ||
     state.currentStep == SignupStep.ALL_DEVICES_READY ||
+    state.currentStep == SignupStep.ERROR ||
     (state.currentStep == SignupStep.PICK_DEVICE && state.registeredDevices.isNotEmpty())

@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
@@ -15,6 +16,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.AppsyncScaleSetupS
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
+import com.dmdbrands.gurus.weight.features.ScaleSetup.helper.switchActiveProductAfterSetup
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.DEVICES
@@ -259,6 +261,8 @@ constructor(
         AppLog.d(TAG, "Saving AppSync device: ${appSyncDevice.id}")
         val savedDevice = deviceService.saveScale(appSyncDevice)
         runAfterSaveComplete(savedDevice, currentSku)
+        // Auto-switch the dashboard header to the newly added scale (MOB-422).
+        productSelectionManager.switchActiveProductAfterSetup(ProductSelection.MyWeight)
       } catch (e: Exception) {
         AppLog.e(TAG, "Error checking and saving scale", e)
         dialogQueueService.dismissLoader()

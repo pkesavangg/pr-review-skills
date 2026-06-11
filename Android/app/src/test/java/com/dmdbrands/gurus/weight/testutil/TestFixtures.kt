@@ -143,7 +143,7 @@ object TestFixtures {
             deviceId = "device-bpm-1",
         )
         val bpmEntryEntity = BpmEntryEntity(
-            entryId = 2L,
+            id = 2L,
             systolic = systolic,
             diastolic = diastolic,
             pulse = pulse,

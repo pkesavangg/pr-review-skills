@@ -137,6 +137,17 @@ class EntryService(
         }
     }
 
+    /**
+     * Updates only an entry's note locally (e.g. editing a note from History). The note is
+     * device-local (the server contract carries no note for weight); the local write is
+     * preserved across sync by [IEntryRepository]. See MOB-438.
+     */
+    override suspend fun updateNote(entry: Entry, note: String?) {
+        // Propagate failures so the caller can surface an error instead of silently
+        // treating a failed write as success (MOB-438 PR review).
+        entryRepository.updateNote(entry, note)
+    }
+
     /** Deletes an entry both locally and remotely. */
     override suspend fun deleteEntry(entry: Entry) {
         val currentAccountId = accountId ?: return

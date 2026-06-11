@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -80,7 +81,7 @@ fun WeightSnapshotCard(
     val viewModel = hiltViewModel<DashboardSnapshotViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    SnapshotCardContainer(modifier = modifier, onClickLabel = DashboardSnapshotStrings.OpenWeightDashboard, onTap = onTap) {
+    SnapshotCardContainer(modifier = modifier.testTag("weight_card"), onClickLabel = DashboardSnapshotStrings.OpenWeightDashboard, onTap = onTap) {
         val chart = state.weight
 
         Text(
@@ -132,7 +133,7 @@ fun BpSnapshotCard(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val chart = state.bp
 
-    SnapshotCardContainer(modifier = modifier, onClickLabel = DashboardSnapshotStrings.OpenBpDashboard, onTap = onTap) {
+    SnapshotCardContainer(modifier = modifier.testTag("bp_card"), onClickLabel = DashboardSnapshotStrings.OpenBpDashboard, onTap = onTap) {
         Row(modifier = Modifier.padding(horizontal = MeTheme.spacing.sm)) {
             Text(
                 text = DashboardSnapshotStrings.Mmhg,
@@ -216,7 +217,7 @@ fun BabySnapshotCard(
 
     SnapshotCardContainer(modifier = modifier, onClickLabel = DashboardSnapshotStrings.OpenBabyDashboard, onTap = onTap) {
         Text(
-            text = "${product.profile.name}'s ${DashboardSnapshotStrings.Weight}",
+            text = "${product.profile.name.lowercase()}'s ${DashboardSnapshotStrings.Weight}",
             style = MeTheme.typography.subHeading1,
             color = MeTheme.colorScheme.textSubheading,
             modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),

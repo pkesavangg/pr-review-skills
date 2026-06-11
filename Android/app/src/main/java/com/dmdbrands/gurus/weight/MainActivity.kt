@@ -22,6 +22,9 @@ import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.repository.IAppRepository
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.proto.ThemeMode
+import com.dmdbrands.gurus.weight.theme.ThemePrefs
+import com.dmdbrands.gurus.weight.theme.applyNightFlag
+import com.dmdbrands.gurus.weight.theme.resolveNightFlag
 import com.greatergoods.blewrapper.GGBLEService
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -30,7 +33,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import android.app.UiModeManager
+import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 
@@ -67,6 +72,26 @@ class MainActivity : AppCompatActivity() {
    * Called when the activity is starting. Sets up Compose content and handles navigation intents.
    * @param savedInstanceState The previously saved instance state, if any.
    */
+  /**
+   * Override the base context's Configuration so Android's resource resolution
+   * (drawable-night/, values-night/, raw-night/) follows the user's stored
+   * Appearance pick instead of the OS-level uiMode. Without this, MeAppTheme
+   * renders the chosen color scheme but theme-aware drawables remain stuck
+   * on the OS setting — see MA-3996.
+   */
+  override fun attachBaseContext(newBase: Context) {
+    // Read the cached pick synchronously from SharedPreferences — runs before Hilt injection and
+    // before the first frame, so we must not block on a proto DataStore disk read or hand-build
+    // DataStore-backed repos here. ThemePrefs is kept current by applyNightMode(). See MA-3996.
+    val mode = ThemePrefs.read(newBase)
+    val baseConfig = newBase.resources.configuration
+    val nightFlag = resolveNightFlag(mode, baseConfig.uiMode)
+    val overridden = Configuration(baseConfig).apply {
+      uiMode = applyNightFlag(uiMode, nightFlag)
+    }
+    super.attachBaseContext(newBase.createConfigurationContext(overridden))
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     applyInitialTheme()
     initializeSplashScreen()
@@ -162,6 +187,9 @@ class MainActivity : AppCompatActivity() {
   }
 
   private fun applyNightMode(mode: ThemeMode) {
+    // Keep the fast SharedPreferences cache in sync so the next attachBaseContext() resolves the
+    // correct night resources without a DataStore read. See ThemePrefs / MA-3996.
+    ThemePrefs.save(this, mode)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
       val ui = getSystemService(UI_MODE_SERVICE) as UiModeManager
       ui.setApplicationNightMode(mode.toUiMode())

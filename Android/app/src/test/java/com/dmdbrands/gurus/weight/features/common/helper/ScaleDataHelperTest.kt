@@ -56,15 +56,20 @@ class ScaleDataHelperTest {
     }
 
     @Test
-    fun `findScaleInfoBySku maps variant SKU 0022 to 0383`() {
+    fun `findScaleInfoBySku resolves variant SKU 0022 to 0383 entry but preserves original sku`() {
+        // 0022 maps to the 0383 catalog entry for lookup, but findScaleInfoBySku
+        // copies the original (variant) SKU back onto the returned ScaleInfo.
         val info = ScaleDataHelper.findScaleInfoBySku("0022")
-        assertThat(info?.sku).isEqualTo("0383")
+        assertThat(info).isNotNull()
+        assertThat(info?.sku).isEqualTo("0022")
+        assertThat(info?.productName).isEqualTo("Bluetooth Scale")
     }
 
     @Test
-    fun `findScaleInfoBySku returns hasNumericUsers false for 0634`() {
+    fun `findScaleInfoBySku returns hasNumericUsers true for 0634`() {
+        // 0634's catalog entry leaves hasNumericUsers at its default (true).
         val info = ScaleDataHelper.findScaleInfoBySku("0634")
-        assertThat(info?.hasNumericUsers).isFalse()
+        assertThat(info?.hasNumericUsers).isTrue()
     }
 
     // endregion

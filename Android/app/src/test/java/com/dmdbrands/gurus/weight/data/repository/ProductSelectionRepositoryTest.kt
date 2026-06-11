@@ -1,6 +1,6 @@
 package com.dmdbrands.gurus.weight.data.repository
 
-import com.dmdbrands.gurus.weight.data.storage.datastore.ProductSelectionDataStore
+import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.data.storage.db.dao.BabyProfileDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.DeviceDao
 import com.dmdbrands.gurus.weight.data.storage.db.entity.baby.BabyProfileEntity
@@ -26,7 +26,7 @@ class ProductSelectionRepositoryTest {
     }
 
     @MockK(relaxUnitFun = true)
-    private lateinit var dataStore: ProductSelectionDataStore
+    private lateinit var dataStore: UserDataStore
 
     @MockK
     private lateinit var babyProfileDao: BabyProfileDao
@@ -45,8 +45,8 @@ class ProductSelectionRepositoryTest {
     // ── observeSelectedProductType ──────────────────────────────────────────────
 
     @Test
-    fun `observeSelectedProductType delegates to dataStore`() = runTest {
-        every { dataStore.observeSelectedProductType() } returns flowOf(ProductType.BABY)
+    fun `observeSelectedProductType maps stored name to enum`() = runTest {
+        every { dataStore.selectedProductTypeForCurrentAccountFlow } returns flowOf(ProductType.BABY.name)
 
         val result = repository.observeSelectedProductType().first()
 
@@ -54,8 +54,8 @@ class ProductSelectionRepositoryTest {
     }
 
     @Test
-    fun `observeSelectedProductType returns MY_WEIGHT as default`() = runTest {
-        every { dataStore.observeSelectedProductType() } returns flowOf(ProductType.MY_WEIGHT)
+    fun `observeSelectedProductType returns MY_WEIGHT as default when blank`() = runTest {
+        every { dataStore.selectedProductTypeForCurrentAccountFlow } returns flowOf("")
 
         val result = repository.observeSelectedProductType().first()
 
@@ -66,7 +66,7 @@ class ProductSelectionRepositoryTest {
 
     @Test
     fun `observeSelectedBabyProfileId returns id when set`() = runTest {
-        every { dataStore.observeSelectedBabyProfileId() } returns flowOf("baby-1")
+        every { dataStore.selectedBabyProfileIdForCurrentAccountFlow } returns flowOf("baby-1")
 
         val result = repository.observeSelectedBabyProfileId().first()
 
@@ -75,7 +75,7 @@ class ProductSelectionRepositoryTest {
 
     @Test
     fun `observeSelectedBabyProfileId returns null when not set`() = runTest {
-        every { dataStore.observeSelectedBabyProfileId() } returns flowOf(null)
+        every { dataStore.selectedBabyProfileIdForCurrentAccountFlow } returns flowOf(null)
 
         val result = repository.observeSelectedBabyProfileId().first()
 
@@ -85,26 +85,41 @@ class ProductSelectionRepositoryTest {
     // ── saveSelectedProductType ─────────────────────────────────────────────────
 
     @Test
-    fun `saveSelectedProductType delegates to dataStore`() = runTest {
+    fun `saveSelectedProductType persists name against active account`() = runTest {
+        every { dataStore.currentAccountIdFlow } returns flowOf(ACCOUNT_ID)
+
         repository.saveSelectedProductType(ProductType.BLOOD_PRESSURE)
 
-        coVerify { dataStore.saveSelectedProductType(ProductType.BLOOD_PRESSURE) }
+        coVerify { dataStore.setSelectedProductType(ACCOUNT_ID, ProductType.BLOOD_PRESSURE.name) }
+    }
+
+    @Test
+    fun `saveSelectedProductType skips when no active account`() = runTest {
+        every { dataStore.currentAccountIdFlow } returns flowOf(null)
+
+        repository.saveSelectedProductType(ProductType.BLOOD_PRESSURE)
+
+        coVerify(exactly = 0) { dataStore.setSelectedProductType(any(), any()) }
     }
 
     // ── saveSelectedBabyProfileId ───────────────────────────────────────────────
 
     @Test
-    fun `saveSelectedBabyProfileId delegates to dataStore`() = runTest {
+    fun `saveSelectedBabyProfileId persists id against active account`() = runTest {
+        every { dataStore.currentAccountIdFlow } returns flowOf(ACCOUNT_ID)
+
         repository.saveSelectedBabyProfileId("baby-1")
 
-        coVerify { dataStore.saveSelectedBabyProfileId("baby-1") }
+        coVerify { dataStore.setSelectedBabyProfileId(ACCOUNT_ID, "baby-1") }
     }
 
     @Test
-    fun `saveSelectedBabyProfileId with null clears selection`() = runTest {
+    fun `saveSelectedBabyProfileId with null clears selection with empty string`() = runTest {
+        every { dataStore.currentAccountIdFlow } returns flowOf(ACCOUNT_ID)
+
         repository.saveSelectedBabyProfileId(null)
 
-        coVerify { dataStore.saveSelectedBabyProfileId(null) }
+        coVerify { dataStore.setSelectedBabyProfileId(ACCOUNT_ID, "") }
     }
 
     // ── getBabyProfiles ─────────────────────────────────────────────────────────

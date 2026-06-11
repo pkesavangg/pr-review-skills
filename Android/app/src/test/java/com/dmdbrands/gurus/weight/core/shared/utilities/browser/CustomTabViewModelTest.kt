@@ -121,7 +121,7 @@ class CustomTabViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `onCleared calls customTabManager unbind`() = runTest {
+    fun `onCleared does not unbind the shared customTabManager`() = runTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -132,6 +132,8 @@ class CustomTabViewModelTest {
         onClearedMethod?.isAccessible = true
         onClearedMethod?.invoke(viewModel)
 
-        verify { customTabManager.unbind() }
+        // CustomTabManager is a lifecycle-owned singleton; the ViewModel must NOT
+        // unbind it on clear (unbinding is owned by the host Activity lifecycle).
+        verify(exactly = 0) { customTabManager.unbind() }
     }
 }

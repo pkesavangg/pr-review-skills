@@ -591,7 +591,7 @@ class ExportServiceTest {
         service.showErrorToast(AccountSettingsAction.EXPORT_CSV, httpException(0))
 
         verify {
-            dialogQueueService.showToast(match<Toast> {
+            dialogQueueService.showToast(match<Toast.Simple> {
                 it.message == ToastStrings.Error.LoginError.MessageNoConn &&
                     it.title == null && it.action == null
             })

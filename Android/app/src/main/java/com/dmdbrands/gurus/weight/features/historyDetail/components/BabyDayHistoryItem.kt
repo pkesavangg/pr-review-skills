@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.SpanStyle
@@ -40,6 +41,7 @@ fun BabyDayHistoryItem(
     isMetric: Boolean = false,
     isExpanded: Boolean = false,
     onToggleExpand: () -> Unit = {},
+    onEditEntry: () -> Unit = {},
 ) {
     val hasNote = !item.entryNote.isNullOrBlank()
     val rotation by animateFloatAsState(
@@ -95,11 +97,11 @@ fun BabyDayHistoryItem(
         withStyle(boldStyle) { append("--") }
     }
 
-    Column {
+    Column(modifier = Modifier.testTag("entry_row")) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(enabled = hasNote) { onToggleExpand() }
+                .clickable { onToggleExpand() }
                 .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.lg),
@@ -145,23 +147,22 @@ fun BabyDayHistoryItem(
                     )
                 }
             }
-            // Chevron — right caret rotated (up when expanded), hidden via alpha when no note
+            // Chevron — right caret rotated (up when expanded). Always present so entries
+            // without a note can still expand to reveal the add-note affordance (MOB-438).
             AppIcon(
                 id = AppIcons.Default.RightCaret,
-                contentDescription = "",
-                onClick = if (hasNote) {
-                    { onToggleExpand() }
+                contentDescription = if (isExpanded) {
+                    HistoryItemStrings.CollapseNote
                 } else {
-                    null
+                    HistoryItemStrings.ExpandNote
                 },
-                modifier = Modifier
-                    .alpha(if (hasNote) 1f else 0f)
-                    .rotate(rotation),
+                onClick = { onToggleExpand() },
+                modifier = Modifier.rotate(rotation),
             )
         }
 
-        // Expandable note
-        AnimatedVisibility(visible = isExpanded && hasNote) {
+        // Expandable note — shows the saved note or an add-note prompt, plus an edit pencil.
+        AnimatedVisibility(visible = isExpanded) {
             Column(
                 modifier = Modifier.padding(
                     start = MeTheme.spacing.sm,
@@ -174,11 +175,23 @@ fun BabyDayHistoryItem(
                     color = MeTheme.colorScheme.utility,
                     modifier = Modifier.padding(bottom = MeTheme.spacing.sm),
                 )
-                Text(
-                    text = item.entryNote.orEmpty(),
-                    style = MeTheme.typography.subHeading2,
-                    color = MeTheme.colorScheme.textBody,
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = if (hasNote) item.entryNote.orEmpty() else HistoryItemStrings.NoNoteYet,
+                        style = MeTheme.typography.subHeading2,
+                        color = if (hasNote) MeTheme.colorScheme.textBody else MeTheme.colorScheme.textSubheading,
+                        modifier = Modifier.weight(1f),
+                    )
+                    AppIcon(
+                        id = AppIcons.Default.EditPencil,
+                        contentDescription = HistoryItemStrings.EditNoteContentDescription,
+                        onClick = { onEditEntry() },
+                        modifier = Modifier.padding(start = MeTheme.spacing.sm),
+                    )
+                }
             }
         }
 

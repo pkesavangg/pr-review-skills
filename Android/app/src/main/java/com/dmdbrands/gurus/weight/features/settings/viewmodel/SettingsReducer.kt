@@ -69,7 +69,7 @@ sealed interface SettingsIntent : IReducer.Intent {
   object ShowActivityLevelModal : SettingsIntent
   object ShowUnitTypeModal : SettingsIntent
   object ShowNotificationsModal : SettingsIntent
-  object ShowWeightlessModal : SettingsIntent
+  object NavigateToWeightless : SettingsIntent
   data class ToggleStreak(val checked: Boolean) : SettingsIntent
   object goalSettingModal : SettingsIntent
   object ShowAppearanceModal : SettingsIntent

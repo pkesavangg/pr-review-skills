@@ -16,6 +16,7 @@ import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
 import com.dmdbrands.gurus.weight.features.signup.model.SignupData
@@ -23,6 +24,7 @@ import com.dmdbrands.gurus.weight.features.signup.model.SignupFormControls
 import com.dmdbrands.gurus.weight.features.signup.model.SignupIntent
 import com.dmdbrands.gurus.weight.features.signup.model.SignupReducer
 import com.dmdbrands.gurus.weight.features.signup.model.SignupState
+import com.dmdbrands.gurus.weight.features.signup.strings.SignupErrorStrings
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -68,6 +70,7 @@ constructor(
       is SignupIntent.OpenHelpModal -> openHelpModal()
       is SignupIntent.OpenURL -> openInAppBrowser(intent.url)
       is SignupIntent.Next -> onNext()
+      is SignupIntent.RetryDevice -> retryDevice()
       is SignupIntent.OnRequestBack -> onRequestBack()
       is SignupIntent.FinishSignup -> finishSignup()
       is SignupIntent.ConnectAnotherDevice -> AppLog.i(
@@ -98,41 +101,49 @@ constructor(
   /**
    * Runs the signup work for the current device pass.
    *
-   *  - **First pass** (`registeredDevices.isEmpty()`): validates all form
+   *  - **Account not yet created** (`!accountCreated`): validates all form
    *    fields, creates the account via [IAccountService.signup], then runs
    *    device-specific side effects.
-   *  - **Subsequent pass**: skips account creation, reuses the active
+   *  - **Account already created**: skips account creation, reuses the active
    *    session, and runs only device-specific side effects.
    *
+   * Error routing (MOB-420):
+   *  - **Account-creation failure** → toast on the password step; the user
+   *    stays put and can correct/retry. The error screen is never shown.
+   *  - **Product/device side-effect failure** → [SignupIntent.ShowDeviceError]
+   *    navigates to the terminal ERROR screen.
+   *
    * On success, dispatches [SignupIntent.RegisterDevice] so the reducer
-   * records the device and advances to the terminal Ready step. On
-   * failure, surfaces an error via [SignupIntent.Error].
+   * records the device and advances to the terminal Ready step.
    */
   private fun onSubmit() {
     val stateValue = state.value
     val productType = ProductType.fromId(stateValue.form.controls.device.value) ?: run {
-      handleIntent(SignupIntent.Error("Missing device"))
+      handleIntent(SignupIntent.ShowDeviceError)
       return
     }
-    val isFirstPass = stateValue.registeredDevices.isEmpty()
+    val needsAccount = !stateValue.accountCreated
 
-    if (isFirstPass && !validateAllFields(stateValue, productType)) {
-      handleIntent(SignupIntent.Error("Something went wrong"))
-      return
-    }
+    // Inline field errors are surfaced by validate(); no toast/error screen here.
+    if (needsAccount && !validateAllFields(stateValue, productType)) return
 
     dialogQueueService.showLoader(message = SignupStrings.LoaderMessage)
-    AppLog.d(TAG, "Submit pass — device=${productType.id} firstPass=$isFirstPass")
+    AppLog.d(TAG, "Submit pass — device=${productType.id} needsAccount=$needsAccount")
 
     viewModelScope.launch {
       try {
-        val account: Account = if (isFirstPass) {
-          val created = accountService.signup(buildSignupRequest(stateValue, productType))
+        val account: Account = if (needsAccount) {
+          val created = runCatching { accountService.signup(buildSignupRequest(stateValue, productType)) }
+            .onFailure { AppLog.e(TAG, "Account creation failed", it) }
+            .getOrNull()
           if (created == null) {
-            handleIntent(SignupIntent.Error("Something went wrong"))
+            // Account-creation failure stays as a toast on the password step.
+            dialogQueueService.dismissLoader()
+            dialogQueueService.showToast(Toast.Simple(message = SignupErrorStrings.accountFailedToast))
             return@launch
           }
           AppLog.i(TAG, "Account created successfully")
+          handleIntent(SignupIntent.AccountCreated)
           analyticsService.logEvent(IAnalyticsService.Events.SIGNUP_COMPLETED)
           // Remember the first device the user picked so Entry/History and the
           // initial dashboard land on it after FinishSignup (skipping the snapshot).
@@ -140,19 +151,60 @@ constructor(
           created
         } else {
           accountService.activeAccount.value ?: run {
-            handleIntent(SignupIntent.Error("Session expired"))
+            dialogQueueService.dismissLoader()
+            dialogQueueService.showToast(Toast.Simple(message = SignupErrorStrings.accountFailedToast))
             return@launch
           }
         }
 
-        runDeviceSideEffects(productType, account, stateValue)
-        handleIntent(SignupIntent.RegisterDevice)
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Signup pass failed", e)
-        handleIntent(SignupIntent.Error("Signup failed"))
+        runDeviceProfile(productType, account, stateValue)
       } finally {
         dialogQueueService.dismissLoader()
       }
+    }
+  }
+
+  /**
+   * Retries the failed device's product creation from the error screen.
+   * The account already exists, so account creation is skipped (MOB-420).
+   */
+  private fun retryDevice() {
+    val stateValue = state.value
+    val productType = ProductType.fromId(stateValue.form.controls.device.value) ?: run {
+      handleIntent(SignupIntent.ShowDeviceError)
+      return
+    }
+    val account = accountService.activeAccount.value ?: run {
+      dialogQueueService.showToast(Toast.Simple(message = SignupErrorStrings.accountFailedToast))
+      return
+    }
+    dialogQueueService.showLoader(message = SignupStrings.LoaderMessage)
+    AppLog.d(TAG, "Retrying device profile — device=${productType.id}")
+    viewModelScope.launch {
+      try {
+        runDeviceProfile(productType, account, stateValue)
+      } finally {
+        dialogQueueService.dismissLoader()
+      }
+    }
+  }
+
+  /**
+   * Runs the current device's side effects and routes the outcome: success →
+   * [SignupIntent.RegisterDevice] (advance to the Ready terminal); failure →
+   * [SignupIntent.ShowDeviceError] (the ERROR screen).
+   */
+  private suspend fun runDeviceProfile(
+    productType: ProductType,
+    account: Account,
+    stateValue: SignupState,
+  ) {
+    try {
+      runDeviceSideEffects(productType, account, stateValue)
+      handleIntent(SignupIntent.RegisterDevice)
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Device profile creation failed", e)
+      handleIntent(SignupIntent.ShowDeviceError)
     }
   }
 

@@ -56,7 +56,7 @@ class DialogQueueViewModelTest {
 
     @Test
     fun `currentToast exposes dialogQueueService currentToast flow`() {
-        val toast = Toast(message = "Toast message")
+        val toast = Toast.Simple(message = "Toast message")
         currentToastFlow.value = toast
 
         assertThat(viewModel.currentToast.value).isEqualTo(toast)
@@ -246,7 +246,8 @@ class DialogQueueViewModelTest {
         verify {
             dialogQueueService.showToast(
                 match { toast ->
-                    toast.message == "Success" &&
+                    toast is Toast.Simple &&
+                        toast.message == "Success" &&
                         toast.title == "Done" &&
                         toast.action == null
                 },
@@ -266,7 +267,8 @@ class DialogQueueViewModelTest {
         verify {
             dialogQueueService.showToast(
                 match { toast ->
-                    toast.message == "Deleted" &&
+                    toast is Toast.Simple &&
+                        toast.message == "Deleted" &&
                         toast.title == null &&
                         toast.action == action
                 },

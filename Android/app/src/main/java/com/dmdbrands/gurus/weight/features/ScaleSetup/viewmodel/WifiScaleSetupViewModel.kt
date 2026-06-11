@@ -12,6 +12,7 @@ import com.dmdbrands.gurus.weight.core.service.WifiStatus
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enum.CustomPermissionType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.ScaleSetup.ScaleSetupConstants
@@ -25,6 +26,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.WifiScaleSetupStat
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
+import com.dmdbrands.gurus.weight.features.ScaleSetup.helper.switchActiveProductAfterSetup
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
@@ -1030,6 +1032,8 @@ constructor(
     )
     val savedDevice = deviceService.saveScale(wifiDevice)
     waitForScaleInPairedList(savedDevice, currentSku)
+    // Auto-switch the dashboard header to the newly added scale (MOB-422).
+    productSelectionManager.switchActiveProductAfterSetup(ProductSelection.MyWeight)
   }
 
   /**
