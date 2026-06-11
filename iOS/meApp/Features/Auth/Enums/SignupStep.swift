@@ -70,9 +70,9 @@ enum SignupDeviceType: String, CaseIterable, Identifiable {
     /// The product-type string persisted on the account for this device.
     var productType: String {
         switch self {
-        case .weightScale: return "weight"
-        case .bpm: return "blood_pressure"
-        case .babyScale: return "baby"
+        case .weightScale: return ProductType.weight.apiValue
+        case .bpm: return ProductType.bloodPressure.apiValue
+        case .babyScale: return ProductType.baby.apiValue
         }
     }
 

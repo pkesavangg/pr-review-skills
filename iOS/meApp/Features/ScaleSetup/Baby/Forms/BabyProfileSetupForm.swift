@@ -124,7 +124,7 @@ class BabyProfileSetupForm: ObservableForm {
         return nil
     }
 
-    /// Weight (lb component in lb/oz mode): if entered, must be a whole number 1-999.
+    /// Weight (lb component in lb/oz mode): must be a whole number 1-999.
     func getBirthWeightLbsComponentError() -> String? {
         let val = birthWeightLbs.value.trimmingCharacters(in: .whitespaces)
         guard !val.isEmpty else { return nil }
@@ -135,10 +135,11 @@ class BabyProfileSetupForm: ObservableForm {
         return nil
     }
 
-    /// Weight (single lb mode): if entered, must be 0.1-999.9 with max 1 decimal place.
+    /// Weight (single lb mode): must be 0.1-999.9 with max 1 decimal place.
     func getBirthWeightLbDecimalError() -> String? {
         let val = birthWeightLbs.value.trimmingCharacters(in: .whitespaces)
-        guard !val.isEmpty else { return nil }
+        guard birthWeightLbs.isDirty || birthWeightLbs.isTouched else { return nil }
+        guard !val.isEmpty else { return BabyScaleSetupStrings.BabyProfile.required }
         guard val.range(of: weightLbDecimalPattern, options: .regularExpression) != nil,
               let num = Double(val), num >= 0.1, num <= 999.9 else {
             return BabyScaleSetupStrings.BabyProfile.invalidWeight
@@ -162,10 +163,11 @@ class BabyProfileSetupForm: ObservableForm {
         return nil
     }
 
-    /// Weight (kg) validation: if entered, must match pattern and be 0.1-999.9
+    /// Weight (kg): must match pattern and be 0.1-999.9.
     func getBirthWeightKgError() -> String? {
         let val = birthWeightKg.value.trimmingCharacters(in: .whitespaces)
-        guard !val.isEmpty else { return nil }
+        guard birthWeightKg.isDirty || birthWeightKg.isTouched else { return nil }
+        guard !val.isEmpty else { return BabyScaleSetupStrings.BabyProfile.required }
         guard val.range(of: weightKgPattern, options: .regularExpression) != nil,
               let num = Double(val), num >= 0.1, num <= 999.9 else {
             return BabyScaleSetupStrings.BabyProfile.invalidWeight
@@ -183,18 +185,23 @@ class BabyProfileSetupForm: ObservableForm {
         case .lbsOz:
             let lbsVal = birthWeightLbs.value.trimmingCharacters(in: .whitespaces)
             let ozVal = birthWeightOz.value.trimmingCharacters(in: .whitespaces)
-            if lbsVal.isEmpty && ozVal.isEmpty { return nil }
+            if lbsVal.isEmpty && ozVal.isEmpty {
+                if birthWeightLbs.isDirty || birthWeightLbs.isTouched {
+                    return BabyScaleSetupStrings.BabyProfile.required
+                }
+                return nil
+            }
             if let lbsError = getBirthWeightLbsComponentError() { return lbsError }
             if let ozError = getBirthWeightOzError() { return ozError }
             return nil
         }
     }
 
-    /// Length (inches) validation: optional; if entered, must match pattern and be >= 1
+    /// Length (inches): must match pattern and be >= 1.
     func getBirthLengthInchesError() -> String? {
         let val = birthLengthInches.value.trimmingCharacters(in: .whitespaces)
-        guard !val.isEmpty else { return nil }
-        guard birthLengthInches.isTouched else { return nil }
+        guard birthLengthInches.isDirty || birthLengthInches.isTouched else { return nil }
+        guard !val.isEmpty else { return BabyScaleSetupStrings.BabyProfile.required }
         guard val.range(of: lengthInchesPattern, options: .regularExpression) != nil,
               let num = Double(val), num >= 1 else {
             return BabyScaleSetupStrings.BabyProfile.invalidLength
@@ -202,11 +209,11 @@ class BabyProfileSetupForm: ObservableForm {
         return nil
     }
 
-    /// Length (cm) validation: optional; if entered, must match pattern and be >= 1
+    /// Length (cm): must match pattern and be >= 1.
     func getBirthLengthCmError() -> String? {
         let val = birthLengthCm.value.trimmingCharacters(in: .whitespaces)
-        guard !val.isEmpty else { return nil }
-        guard birthLengthCm.isTouched else { return nil }
+        guard birthLengthCm.isDirty || birthLengthCm.isTouched else { return nil }
+        guard !val.isEmpty else { return BabyScaleSetupStrings.BabyProfile.required }
         guard val.range(of: lengthCmPattern, options: .regularExpression) != nil,
               let num = Double(val), num >= 1, num <= 999.9 else {
             return BabyScaleSetupStrings.BabyProfile.invalidLength
@@ -226,10 +233,22 @@ class BabyProfileSetupForm: ObservableForm {
 
     // MARK: - Form Validity
 
-    /// Required: name, birthday, sex. Optional: weight, length (validated if entered).
+    /// Required: name, birthday, sex, birth length, birth weight.
     var isProfileValid: Bool {
         guard name.isValid else { return false }
         guard !biologicalSex.value.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
+        let lengthFilled: Bool
+        switch derivedLengthUnit {
+        case .inches: lengthFilled = !birthLengthInches.value.trimmingCharacters(in: .whitespaces).isEmpty
+        case .cm: lengthFilled = !birthLengthCm.value.trimmingCharacters(in: .whitespaces).isEmpty
+        }
+        guard lengthFilled else { return false }
+        let weightFilled: Bool
+        switch selectedWeightUnit {
+        case .kg: weightFilled = !birthWeightKg.value.trimmingCharacters(in: .whitespaces).isEmpty
+        case .lb, .lbsOz: weightFilled = !birthWeightLbs.value.trimmingCharacters(in: .whitespaces).isEmpty
+        }
+        guard weightFilled else { return false }
         if getBirthLengthError() != nil { return false }
         if getBirthWeightError() != nil { return false }
         return true

@@ -223,7 +223,9 @@ struct SignupScreen: View {
                                customVerticalPadding: .spacingXS / 4) {
                         hideKeyboard()
                         if signupStore.currentStep == .password {
-                            signupStore.createAccount()
+                            withAnimation {
+                                signupStore.createAccount()
+                            }
                         } else {
                             withAnimation {
                                 signupStore.moveToNextStep()

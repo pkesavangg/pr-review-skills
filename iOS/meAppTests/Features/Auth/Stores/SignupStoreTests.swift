@@ -304,17 +304,15 @@ struct SignupStoreTests {
 
         fillRequiredSignupFields(store)
         store.isGoalSkipped = true
-        // Single device → success screen is reserved for full coverage,
-        // so signup falls through to completeSignup() and dismisses.
         store.selectedDeviceType = .weightScale
 
-        await store.createUser()
+        await store.performCreateAccount()
+        await store.performSaveDevicesAndFinalize()
 
         #expect(accountService.signUpCalls == 1)
         #expect(accountService.createGoalCalls == 0)
         #expect(accountService.lastSignUpEmail == "signup@example.com")
         #expect(successCalled == true)
-        #expect(store.currentStep != .allProfilesReady)
         #expect(notificationService.isLoaderVisible == false)
     }
 
@@ -331,7 +329,7 @@ struct SignupStoreTests {
         store.signupForm.confirmPassword.value = "secret123"
         store.signupForm.zipcode.value = " 10001 "
 
-        await store.createUser()
+        await store.performCreateAccount()
 
         #expect(accountService.signUpCalls == 1)
         #expect(accountService.lastSignUpEmail == "signup@example.com")
@@ -352,7 +350,8 @@ struct SignupStoreTests {
         store.signupForm.currentWeight.value = "150"
         store.signupForm.goalWeight.value = "170"
 
-        await store.createUser()
+        await store.performCreateAccount()
+        await store.performSaveDevicesAndFinalize()
 
         #expect(accountService.signUpCalls == 1)
         #expect(accountService.createGoalCalls == 1)
@@ -371,13 +370,14 @@ struct SignupStoreTests {
         store.signupForm.goalWeight.value = "160"
         store.signupForm.currentWeight.value = "0"
 
-        await store.createUser()
+        await store.performCreateAccount()
+        await store.performSaveDevicesAndFinalize()
 
         #expect(accountService.createGoalCalls == 1)
         #expect(accountService.lastCreatedGoal?.goalType == .maintain)
     }
 
-    @Test("createUser navigates to allProfilesReady only when all device types are registered")
+    @Test("createUser with full device coverage calls completeSignup")
     func createUserNavigatesToSuccessScreen() async {
         let (store, accountService, _, _) = makeSUT()
         accountService.signUpResult = .success(())
@@ -387,9 +387,13 @@ struct SignupStoreTests {
         store.registeredDeviceTypes = [.weightScale, .bpm]
         store.selectedDeviceType = .babyScale
 
-        await store.createUser()
+        var successCalled = false
+        store.onSignupSuccess = { successCalled = true }
 
-        #expect(store.currentStep == .allProfilesReady)
+        await store.performCreateAccount()
+        await store.performSaveDevicesAndFinalize()
+
+        #expect(successCalled == true)
     }
 
     @Test("createUser with partial device coverage dismisses via completeSignup")
@@ -404,9 +408,9 @@ struct SignupStoreTests {
         store.registeredDeviceTypes = [.weightScale]
         store.selectedDeviceType = .bpm
 
-        await store.createUser()
+        await store.performCreateAccount()
+        await store.performSaveDevicesAndFinalize()
 
-        #expect(store.currentStep != .allProfilesReady)
         #expect(successCalled == true)
     }
 
@@ -419,7 +423,8 @@ struct SignupStoreTests {
         store.isGoalSkipped = true
         store.selectedDeviceType = .bpm
 
-        await store.createUser()
+        await store.performCreateAccount()
+        await store.performSaveDevicesAndFinalize()
 
         #expect(store.currentStep == .signupError)
         let failedCount = store.deviceStatuses.filter {
@@ -442,7 +447,7 @@ struct SignupStoreTests {
         #expect(store.signupForm.firstName.value == "")
     }
 
-    @Test("createUser from account switching with full device coverage shows success screen and defers callback")
+    @Test("createUser from account switching calls onSignupSuccess immediately via completeSignup")
     func createUserAccountSwitchingSkipsSuccessCallback() async {
         let (store, accountService, _, _) = makeSUT()
         accountService.signUpResult = .success(())
@@ -456,12 +461,10 @@ struct SignupStoreTests {
         var successCalled = false
         store.onSignupSuccess = { successCalled = true }
 
-        await store.createUser()
+        await store.performCreateAccount()
+        await store.performSaveDevicesAndFinalize()
 
-        // With full device coverage, the success screen is shown and onSignupSuccess
-        // is deferred until the user taps DONE (completeSignup).
-        #expect(successCalled == false)
-        #expect(store.currentStep == .allProfilesReady)
+        #expect(successCalled == true)
     }
 
     @Test("createUser max accounts reached shows alert")
@@ -470,7 +473,7 @@ struct SignupStoreTests {
         accountService.signUpResult = .failure(AccountError.maxAccountsReached)
         fillRequiredSignupFields(store)
 
-        await store.createUser()
+        await store.performCreateAccount()
 
         #expect(notificationService.isAlertVisible == true)
         #expect(notificationService.alertData?.title == SignupStoreTestText.maxUsersAlertTitle)
@@ -484,7 +487,7 @@ struct SignupStoreTests {
         store.isFromAccountSwitching = true
         fillRequiredSignupFields(store)
 
-        await store.createUser()
+        await store.performCreateAccount()
 
         #expect(notificationService.isAlertVisible == true)
         #expect(notificationService.alertData?.title == SignupStoreTestText.maxUsersAlertTitle)
@@ -497,7 +500,7 @@ struct SignupStoreTests {
         accountService.signUpResult = .failure(HTTPError.badRequest)
         fillRequiredSignupFields(store)
 
-        await store.createUser()
+        await store.performCreateAccount()
 
         #expect(notificationService.toastData?.title == SignupStoreTestText.errorCreatingAccountTitle)
         #expect(notificationService.toastData?.message == SignupStoreTestText.emailInUseMessage)
@@ -509,7 +512,7 @@ struct SignupStoreTests {
         accountService.signUpResult = .failure(HTTPError.noInternet)
         fillRequiredSignupFields(store)
 
-        await store.createUser()
+        await store.performCreateAccount()
 
         #expect(notificationService.isToastVisible == false)
     }
@@ -520,7 +523,7 @@ struct SignupStoreTests {
         accountService.signUpResult = .failure(HTTPError.apiError(message: SignupStoreTestText.emailAlreadyInUse, code: 400))
         fillRequiredSignupFields(store)
 
-        await store.createUser()
+        await store.performCreateAccount()
 
         #expect(notificationService.toastData?.message == SignupStoreTestText.emailInUseMessage)
     }
@@ -531,7 +534,7 @@ struct SignupStoreTests {
         accountService.signUpResult = .failure(HTTPError.serverError)
         fillRequiredSignupFields(store)
 
-        await store.createUser()
+        await store.performCreateAccount()
 
         #expect(notificationService.toastData?.message == SignupStoreTestText.serverErrorMessage)
     }
@@ -542,7 +545,7 @@ struct SignupStoreTests {
         accountService.signUpResult = .failure(SignupStoreTestError.generic)
         fillRequiredSignupFields(store)
 
-        await store.createUser()
+        await store.performCreateAccount()
 
         #expect(notificationService.toastData?.message == SignupStoreTestText.somethingWentWrongMessage)
     }
@@ -556,12 +559,11 @@ struct SignupStoreTests {
         store.selectedDeviceType = .weightScale
         store.currentStepIndex = stepIndex(.password, in: store)
 
-        await store.createAccountAtPassword()
+        await store.performCreateAccount()
 
         // Per MOB-419 the account is created when COMPLETE is tapped on the password
         // step, then the flow advances to the per-device profile-ready screen.
         #expect(accountService.signUpCalls == 1)
-        #expect(store.isAccountCreated == true)
         #expect(store.currentStep == .profileReady)
     }
 
@@ -574,11 +576,11 @@ struct SignupStoreTests {
         store.selectedDeviceType = .weightScale
         store.currentStepIndex = stepIndex(.password, in: store)
 
-        await store.createAccountAtPassword()
+        await store.performCreateAccount()
 
         // Account-creation errors stay as a toast on the password step — they are
         // NOT the per-device error screen.
-        #expect(store.isAccountCreated == false)
+        #expect(accountService.signUpCalls == 1)
         #expect(store.currentStep == .password)
         #expect(notificationService.toastData?.message == SignupStoreTestText.serverErrorMessage)
     }
@@ -592,12 +594,12 @@ struct SignupStoreTests {
         store.selectedDeviceType = .weightScale
         store.currentStepIndex = stepIndex(.password, in: store)
 
-        await store.createAccountAtPassword()
+        await store.performCreateAccount()
         #expect(accountService.signUpCalls == 1)
 
-        await store.createUser()
+        await store.performSaveDevicesAndFinalize()
 
-        // Account was already created at password Complete; FINISH only saves products.
+        // Account was already created at the password step; FINISH only saves products.
         #expect(accountService.signUpCalls == 1)
     }
 
@@ -612,7 +614,8 @@ struct SignupStoreTests {
         var successCalled = false
         store.onSignupSuccess = { successCalled = true }
 
-        await store.createUser()
+        await store.performCreateAccount()
+        await store.performSaveDevicesAndFinalize()
         #expect(store.currentStep == .signupError)
 
         // CANCEL → FINISH: complete with whatever saved and exit to dashboard.
@@ -767,23 +770,25 @@ struct SignupStoreTests {
         store.selectedDeviceType = .bpm
         store.disabledDeviceTypes = [.weightScale, .babyScale]
 
-        // Landing on profileReady must not trigger signup; FINISH is required.
-        if let profileReadyIndex = store.steps.firstIndex(of: .profileReady) {
-            store.currentStepIndex = profileReadyIndex
-        }
-
-        // Give any stray async work a chance to run before asserting nothing fired.
-        try? await Task.sleep(nanoseconds: 50_000_000)
-        #expect(accountService.signUpCalls == 0)
+        // Create account first (COMPLETE on password step).
+        await store.performCreateAccount()
+        #expect(accountService.signUpCalls == 1)
         #expect(store.currentStep == .profileReady)
 
-        // Explicit FINISH tap drives the success screen.
+        // Landing on profileReady must not automatically finalize — FINISH is required.
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        #expect(accountService.signUpCalls == 1)  // no extra call
+        #expect(store.currentStep == .profileReady)
+
+        // Explicit FINISH tap finalizes signup via completeSignup().
+        var successCalled = false
+        store.onSignupSuccess = { successCalled = true }
         store.finishSignup()
         await waitUntil {
-            store.currentStep == .allProfilesReady || store.currentStep == .signupError
+            successCalled || store.currentStep == .signupError
         }
-        #expect(accountService.signUpCalls == 1)
-        #expect(store.currentStep == .allProfilesReady)
+        #expect(successCalled == true)
+        #expect(accountService.signUpCalls == 1)  // FINISH does not call signUp again
     }
 
     @Test("connectAnotherDevice appends current device to registeredDeviceTypes")
@@ -806,13 +811,14 @@ struct SignupStoreTests {
         store.registeredDeviceTypes = [.weightScale]
         store.selectedDeviceType = .bpm
 
-        await store.createUser()
+        await store.performCreateAccount()
+        await store.performSaveDevicesAndFinalize()
 
         // The final accumulated write must contain every successful device's
         // product type so `updateProductTypes` (which replaces the array) doesn't
         // leave the account with only the last-written device.
         let lastSent = accountService.allUpdatedProductTypes.last ?? []
-        #expect(Set(lastSent) == Set(["myWeight", "myBloodPressure"]))
+        #expect(Set(lastSent) == Set([ProductType.weight.apiValue, ProductType.bloodPressure.apiValue]))
     }
 
     @Test("resetForm clears registeredDeviceTypes")
@@ -823,6 +829,104 @@ struct SignupStoreTests {
         store.resetForm()
 
         #expect(store.registeredDeviceTypes.isEmpty)
+    }
+
+    // MARK: - isSignupInProgress Gate
+
+    @Test("isSignupInProgress is true during account creation and false after completion")
+    func isSignupInProgressGate() async {
+        let (store, accountService, _, _) = makeSUT()
+        accountService.signUpResult = .success(())
+        fillRequiredSignupFields(store)
+        store.isGoalSkipped = true
+        store.selectedDeviceType = .weightScale
+
+        #expect(accountService.isSignupInProgress == false)
+        await store.performCreateAccount()
+        // After account creation succeeds, gate stays true until FINISH.
+        #expect(accountService.isSignupInProgress == true)
+
+        var successCalled = false
+        store.onSignupSuccess = { successCalled = true }
+        await store.performSaveDevicesAndFinalize()
+        #expect(accountService.isSignupInProgress == false)
+        #expect(successCalled == true)
+    }
+
+    @Test("isSignupInProgress is false when account creation fails")
+    func isSignupInProgressFalseOnFailure() async {
+        let (store, accountService, _, _) = makeSUT()
+        accountService.signUpResult = .failure(HTTPError.serverError)
+        fillRequiredSignupFields(store)
+        store.isGoalSkipped = true
+        store.selectedDeviceType = .weightScale
+
+        #expect(accountService.isSignupInProgress == false)
+        await store.performCreateAccount()
+        #expect(accountService.isSignupInProgress == false)
+    }
+
+    // MARK: - hasDuplicateBabyName (tested via moveToNextStep)
+
+    @Test("duplicate baby name blocks moveToNextStep and sets error")
+    func duplicateBabyNameBlocksNextStep() {
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.babyScale)
+        guard let addBabyIndex = store.steps.firstIndex(of: .addBaby) else {
+            Issue.record("expected .addBaby in steps for babyScale"); return
+        }
+        store.currentStepIndex = addBabyIndex
+
+        // Add first baby — advances to babyList.
+        store.babyProfileForm.name.value = "Alice"
+        store.moveToNextStep()
+
+        // Return to addBaby for a second baby with the same name.
+        store.addAnotherBaby()
+        store.babyProfileForm.name.value = "Alice"
+        let stepBefore = store.currentStepIndex
+        store.moveToNextStep()
+
+        #expect(store.currentStepIndex == stepBefore)
+        #expect(store.babyProfileForm.duplicateNameError != nil)
+    }
+
+    @Test("duplicate baby name check is case-insensitive and trims whitespace")
+    func duplicateBabyNameCaseInsensitive() {
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.babyScale)
+        guard let addBabyIndex = store.steps.firstIndex(of: .addBaby) else {
+            Issue.record("expected .addBaby in steps for babyScale"); return
+        }
+        store.currentStepIndex = addBabyIndex
+
+        store.babyProfileForm.name.value = "Alice"
+        store.moveToNextStep()
+
+        store.addAnotherBaby()
+        store.babyProfileForm.name.value = " ALICE "
+        let stepBefore = store.currentStepIndex
+        store.moveToNextStep()
+
+        #expect(store.currentStepIndex == stepBefore)
+        #expect(store.babyProfileForm.duplicateNameError != nil)
+    }
+
+    @Test("no duplicate error when baby list is empty")
+    func noDuplicateWhenNoBabies() {
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.babyScale)
+        guard let addBabyIndex = store.steps.firstIndex(of: .addBaby) else {
+            Issue.record("expected .addBaby in steps for babyScale"); return
+        }
+        store.currentStepIndex = addBabyIndex
+
+        store.babyProfileForm.name.value = "Alice"
+        let stepBefore = store.currentStepIndex
+        store.moveToNextStep()
+
+        #expect(store.currentStepIndex != stepBefore)
+        #expect(store.babyProfileForm.duplicateNameError == nil)
     }
 
     @Test("metric toggle converts weight values and updates validators")

@@ -24,8 +24,9 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
     private let migrationService: AccountMigrationService
     private let scaleRepo: ScaleRepositoryProtocol
     @Published private(set) var isIonicMigrationInProgress: Bool = false
-    @Published var isSignupInProgress: Bool = false
+    @Published private(set) var isSignupInProgress: Bool = false
     var isSignupInProgressPublisher: Published<Bool>.Publisher { $isSignupInProgress }
+    func markSignupInProgress(_ inProgress: Bool) { isSignupInProgress = inProgress }
     @Published var activeAccount: AccountSnapshot?
     @Published var allAccounts: [AccountSnapshot] = []
     var activeAccountPublisher: Published<AccountSnapshot?>.Publisher { $activeAccount }
