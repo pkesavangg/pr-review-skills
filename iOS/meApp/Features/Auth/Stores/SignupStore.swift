@@ -242,8 +242,9 @@ final class SignupStore: ObservableObject {
 
     func moveToNextStep() {
         // createUser is deferred for all device types — called only when FINISH is tapped
-        // When leaving addBaby, save the baby and move to babyList
+        // When leaving addBaby, validate for duplicates then save the baby and move to babyList
         if currentStep == .addBaby {
+            guard !hasDuplicateBabyName() else { return }
             saveBabyFromForm()
         }
         guard currentStepIndex < steps.count - 1 else { return }
@@ -331,6 +332,21 @@ final class SignupStore: ObservableObject {
     }
 
     // MARK: - Baby Management
+
+    /// Returns true and marks the name field with a duplicate error if another baby already has the same name.
+    private func hasDuplicateBabyName() -> Bool {
+        let trimmed = babyProfileForm.name.value.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !trimmed.isEmpty else { return false }
+        let isDuplicate = babies.enumerated().contains { index, baby in
+            index != isEditingBabyIndex &&
+            baby.name.trimmingCharacters(in: .whitespaces).lowercased() == trimmed
+        }
+        if isDuplicate {
+            babyProfileForm.name.markAsTouched()
+            babyProfileForm.duplicateNameError = SignupStrings.AddBabyStep.duplicateName
+        }
+        return isDuplicate
+    }
 
     /// Saves the current baby form fields as a new baby (or updates an existing one).
     func saveBabyFromForm() {
@@ -871,6 +887,14 @@ final class SignupStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
                 self?.updateNextButtonState()
+            }
+            .store(in: &cancellables)
+
+        babyProfileForm.name.$value
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.babyProfileForm.duplicateNameError = nil
             }
             .store(in: &cancellables)
 
