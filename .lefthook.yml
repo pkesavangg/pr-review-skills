@@ -42,7 +42,7 @@ commit-msg:
         fi
         if ! echo "$MSG" | grep -qE "[A-Z]+-[0-9]+"; then
           echo ""
-          echo "Commit message must include a JIRA ticket reference (e.g. MA-1234, MOB-1234)"
+          echo "Commit message must include a JIRA ticket reference (e.g. MA-1234, MOB-422)"
           echo "   Your message: $(head -1 {1})"
           echo "   To bypass: git commit --no-verify"
           exit 1

@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.ScaleSetupStep
@@ -110,6 +111,9 @@ constructor(
       currentState.nextStep?.let { handleIntent(ScaleSetupIntent.SetNewStep(it)) }
     }
   }
+
+  /** Surface the My Weight dashboard after adding a scale (MOB-422). */
+  override fun productSelectionAfterSetup(): ProductSelection = ProductSelection.MyWeight
 
   override suspend fun onSetupFinished() {
   }
