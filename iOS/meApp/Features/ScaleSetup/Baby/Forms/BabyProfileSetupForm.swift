@@ -99,11 +99,16 @@ class BabyProfileSetupForm: ObservableForm {
 
     // MARK: - Error Messages
 
+    /// Set externally to surface a duplicate-name validation error.
+    /// Cleared automatically when the name field value changes.
+    var duplicateNameError: String?
+
     func getNameError() -> String? {
         guard name.isDirty || name.isTouched else { return nil }
         if name.errors[.required] { return BabyScaleSetupStrings.BabyProfile.required }
         if name.errors[.noWhiteSpace] { return BabyScaleSetupStrings.BabyProfile.required }
         if name.errors[.maxLength] { return FormErrorMessages.maxLength(50) }
+        if let dupError = duplicateNameError { return dupError }
         return nil
     }
 
