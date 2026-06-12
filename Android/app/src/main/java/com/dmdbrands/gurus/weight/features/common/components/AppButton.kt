@@ -68,7 +68,8 @@ enum class ButtonType {
 val ButtonType.isInlineText: Boolean
   get() = this == ButtonType.InlineTextPrimary ||
     this == ButtonType.InlineTextSecondary ||
-    this == ButtonType.InlineTextTertiary
+    this == ButtonType.InlineTextTertiary ||
+    this == ButtonType.ErrorText
 
 // Color
 // Type - outline/filled/text
