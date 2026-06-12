@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.settings.viewmodel
 
 import androidx.compose.runtime.Stable
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 
 /**
@@ -23,6 +24,11 @@ data class SettingsState(
   val showUnreadFeedIndication: Boolean = false,
   val isExportEnabled: Boolean = false,
   val isBabyProduct: Boolean = false,
+  // Local-only My Kids unit preference. Defaults to LB_OZ — the canonical
+  // baby scale unit. Backend has no per-baby unit; this is loaded from
+  // [UserDataStore.babyWeightUnitForCurrentAccountFlow].
+  val babyWeightUnit: WeightUnit = WeightUnit.LB_OZ,
+  val hasBabyScaleDevice: Boolean = false,
 ) : IReducer.State {
 
   /**
@@ -69,7 +75,7 @@ sealed interface SettingsIntent : IReducer.Intent {
   object ShowActivityLevelModal : SettingsIntent
   object ShowUnitTypeModal : SettingsIntent
   object ShowNotificationsModal : SettingsIntent
-  object ShowWeightlessModal : SettingsIntent
+  object NavigateToWeightless : SettingsIntent
   data class ToggleStreak(val checked: Boolean) : SettingsIntent
   object goalSettingModal : SettingsIntent
   object ShowAppearanceModal : SettingsIntent
@@ -82,6 +88,8 @@ sealed interface SettingsIntent : IReducer.Intent {
   data class SetShowUnreadFeedIndication(val show: Boolean) : SettingsIntent
   data class SetExportEnabled(val enabled: Boolean) : SettingsIntent
   data class SetIsBabyProduct(val isBabyProduct: Boolean) : SettingsIntent
+  data class SetBabyWeightUnit(val unit: WeightUnit) : SettingsIntent
+  data class SetHasBabyScaleDevice(val hasBabyScaleDevice: Boolean) : SettingsIntent
   object DeleteAccount : SettingsIntent
   object ConfirmDeleteAccount : SettingsIntent
   object TriggerTestCrash : SettingsIntent
@@ -113,6 +121,8 @@ class SettingsReducer : IReducer<SettingsState, SettingsIntent> {
       is SettingsIntent.SetShowUnreadFeedIndication -> state.copy(showUnreadFeedIndication = intent.show)
       is SettingsIntent.SetExportEnabled -> state.copy(isExportEnabled = intent.enabled)
       is SettingsIntent.SetIsBabyProduct -> state.copy(isBabyProduct = intent.isBabyProduct)
+      is SettingsIntent.SetBabyWeightUnit -> state.copy(babyWeightUnit = intent.unit)
+      is SettingsIntent.SetHasBabyScaleDevice -> state.copy(hasBabyScaleDevice = intent.hasBabyScaleDevice)
       else -> null
       // Add more intent handling as needed
     }

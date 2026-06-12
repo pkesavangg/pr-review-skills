@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.helper.DateFormatHelper
@@ -110,6 +111,7 @@ private fun SettingsItemRow(
     Surface(
       modifier = Modifier
         .fillMaxWidth()
+        .then(if (item.testTag != null) Modifier.testTag(item.testTag) else Modifier)
         .debounceClick(onClick = { if (item.enabled) item.onClick.invoke() }),
       color = MeTheme.colorScheme.primaryBackground,
     ) {

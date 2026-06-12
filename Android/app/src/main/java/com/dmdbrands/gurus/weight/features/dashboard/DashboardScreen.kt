@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -37,12 +38,16 @@ import com.dmdbrands.gurus.weight.core.navigation.LocalProductSelectionManager
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
+import com.dmdbrands.gurus.weight.features.common.components.BabyEmptyState
 import com.dmdbrands.gurus.weight.features.common.components.ProductTypeHeader
 import com.dmdbrands.gurus.weight.features.common.components.chart.GraphPagerView
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.dashboard.components.BpDashboardContent
 import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardChartHeader
+import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyGraphDefaults
+import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyGraphRange
+import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyMetric
 import com.dmdbrands.gurus.weight.features.dashboard.components.WeightDashboardContent
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
@@ -108,7 +113,7 @@ fun DashboardScreen() {
     topBarContent = {
       ProductTypeHeader(
         selectedProduct = product,
-        onClick = { psm.showProductSheet(DashboardString.DashboardSource) },
+        onClick = { psm.showProductSheet(DashboardString.SelectGraphTitle) },
       )
     },
   ) {
@@ -120,6 +125,11 @@ fun DashboardScreen() {
           vm = vm,
           product = product,
           goal = state.goal,
+          scrollToTopSignal = state.resetSignal,
+          emptyRange = EmptyGraphDefaults.weightGoal(
+            goalDisplay = state.goal?.goalWeight,
+            isKg = state.weightUnit == WeightUnit.KG,
+          ),
           onRefresh = { vm.handleIntent(WeightDashboardIntent.Refresh) },
           createFallbackEntry = { ts, yValues, seg ->
             val y = yValues.firstOrNull() ?: return@DashboardPage null
@@ -148,6 +158,7 @@ fun DashboardScreen() {
         DashboardPage(
           vm = vm,
           product = product,
+          emptyRange = EmptyGraphDefaults.Bp,
           onRefresh = { vm.handleIntent(BpDashboardIntent.Refresh) },
           createFallbackEntry = { ts, yValues, seg ->
             if (yValues.size < 3) return@DashboardPage null
@@ -164,7 +175,10 @@ fun DashboardScreen() {
             )
           },
         ) { s ->
-          BpDashboardContent(state = s)
+          BpDashboardContent(
+            state = s,
+            onConnectDevice = { vm.handleIntent(BpDashboardIntent.OnConnectDevice) },
+          )
         }
       }
 
@@ -178,7 +192,10 @@ fun DashboardScreen() {
           vm = vm,
           product = product,
           hasPercentile = true,
-          chartFillsHeight = true,
+          // Fill height only when there's data; the empty state needs a fixed-height
+          // grid so the CONNECT DEVICE CTA stays visible below the chart (MOB-432).
+          chartFillsHeight = !state.isEmpty,
+          emptyRange = if (state.selectedMetric == BabyMetric.HEIGHT) EmptyGraphDefaults.BabyHeight else EmptyGraphDefaults.BabyWeight,
           onRefresh = { vm.handleIntent(BabyDashboardIntent.Refresh) },
           createFallbackEntry = { ts, yValues, seg ->
             val y = yValues.firstOrNull() ?: return@DashboardPage null
@@ -197,7 +214,21 @@ fun DashboardScreen() {
               avgLengthMillimeters = if (!isWeight) ConversionTools.convertInchesToMm(y) else null,
             )
           },
-        ) { _ -> }
+        ) { s ->
+          if (s.isEmpty) {
+            EmptyMetric(onConnectScaleClick = { vm.handleIntent(BabyDashboardIntent.OnConnectDevice) })
+          }
+        }
+      }
+
+      is ProductSelection.BabyScale -> {
+        BabyEmptyState(
+          onAddBaby = {
+            scope.launch {
+              navBackStack.addRoute(AppRoute.AccountSettings.AddBaby)
+            }
+          },
+        )
       }
     }
   }
@@ -215,6 +246,8 @@ private fun <S : BaseDashboardState> DashboardPage(
   goal: Goal? = null,
   hasPercentile: Boolean = false,
   chartFillsHeight: Boolean = false,
+  scrollToTopSignal: Int = 0,
+  emptyRange: EmptyGraphRange? = null,
   onRefresh: () -> Unit,
   createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   belowChart: @Composable (S) -> Unit,
@@ -232,6 +265,7 @@ private fun <S : BaseDashboardState> DashboardPage(
   }
 
   val scrollState = rememberScrollState()
+  ScrollToTopOnSignal(scrollState, scrollToTopSignal)
   val flingInterceptScope = rememberCoroutineScope()
   // Compose consumes the first Down event during a fling to stop the scroll,
   // which means a clickable child (e.g. UPDATE GOAL / METRIC INFO) misses the
@@ -272,19 +306,38 @@ private fun <S : BaseDashboardState> DashboardPage(
         handleGraphIntent = vm::handleIntent,
         createFallbackEntry = createFallbackEntry,
         header = { segment -> DashboardChartHeader(state = state, segment = segment, product = product, handleIntent = vm::handleIntent) },
-        onSegmentChange = {
-          val currentSegmentState = state.forSegment(state.selectedSegment)
-          val anchorTimeStamp = if (currentSegmentState.visibleMin != null && currentSegmentState.visibleMax != null) {
-            (currentSegmentState.visibleMin + currentSegmentState.visibleMax) / 2.0
-          } else {
-            null
-          }
-          vm.handleIntent(BaseGraphIntent.SetSelectedSegment(it, anchorTimeStamp))
-        },
+        emptyRange = emptyRange,
+        onSegmentChange = { vm.handleIntent(BaseGraphIntent.SetSelectedSegment(it, state.segmentAnchorTimestamp())) },
       )
 
       belowChart(state)
     }
+  }
+}
+
+/**
+ * Midpoint of the currently visible chart range, used to anchor the chart when
+ * the user changes segments. Null when the visible range isn't known yet.
+ */
+private fun BaseDashboardState.segmentAnchorTimestamp(): Double? {
+  val segment = forSegment(selectedSegment)
+  return if (segment.visibleMin != null && segment.visibleMax != null) {
+    (segment.visibleMin + segment.visibleMax) / 2.0
+  } else {
+    null
+  }
+}
+
+/**
+ * Scrolls [scrollState] back to the top whenever [signal] changes to a positive
+ * value. Used after a RESET DASHBOARD restores the default tiles so the grid is
+ * in view rather than the button cluster (MOB-445). The initial composition
+ * (signal == 0) is a no-op.
+ */
+@Composable
+private fun ScrollToTopOnSignal(scrollState: ScrollState, signal: Int) {
+  LaunchedEffect(signal) {
+    if (signal > 0) scrollState.animateScrollTo(0)
   }
 }
 

@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.helper.graph
 
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 
 /**
@@ -38,5 +39,24 @@ object GraphLabelHelper {
     segment == GraphSegment.WEEK || segment == GraphSegment.MONTH ->
       if (isLatestDaySelected) "latest entry" else "day average"
     else -> "month average"
+  }
+
+  /**
+   * Whether the currently selected marker sits on the most recent day in [data].
+   *
+   * Data-driven, not calendar-driven (mirrors the hybrid DAO query, MA-3965): the
+   * snapped marker timestamp is compared against the latest entry timestamp in the
+   * data set. The chart snaps [markerIndex] exactly onto a plotted point's x value
+   * and each day has one point, so an exact-millis match is reliable. Only
+   * meaningful for WEEK/MONTH; callers gate on segment via [selectionLabel].
+   *
+   * @param markerIndex the selected point's x (timestamp millis as Double), or null.
+   * @param data the segment's full data set (not just the visible window) so the
+   *   latest-day check stays correct when the latest entry is scrolled off-screen.
+   */
+  fun isLatestDaySelected(markerIndex: Double?, data: List<PeriodSummary>): Boolean {
+    val marker = markerIndex ?: return false
+    val latestTimestamp = data.maxOfOrNull { it.getTimeStamp() } ?: return false
+    return marker.toLong() == latestTimestamp
   }
 }

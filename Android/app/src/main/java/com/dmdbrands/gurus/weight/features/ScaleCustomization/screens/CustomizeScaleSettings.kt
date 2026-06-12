@@ -237,8 +237,16 @@ fun CustomizeScaleSettings(
                 onIntent(
                   BtWifiScaleSetupIntent.UpdateSettings(
                     dashboardKeys = combinedDashboardKeys,
+                    // Source the customizable preferences from the persisted reducer state rather than
+                    // the local `updatedPreference`, which is re-seeded to all-metrics defaults whenever
+                    // this composable is recomposed-from-scratch (e.g. across the saving-loader step).
+                    // Relying on local state silently dropped the user's metric/scale-mode selections,
+                    // so the scale displayed every metric regardless of what was toggled off (MOB-398).
                     preferences = updatedPreference.copy(
                       id = state.scaleId,
+                      displayMetrics = state.scaleMetrics,
+                      shouldMeasureImpedance = state.isAllBodyMetrics,
+                      shouldMeasurePulse = state.isHeartRateOn,
                     ),
                   ),
                 )

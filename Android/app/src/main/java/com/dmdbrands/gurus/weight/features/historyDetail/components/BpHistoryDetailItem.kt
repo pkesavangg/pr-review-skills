@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.draw.rotate
 import com.dmdbrands.gurus.weight.domain.enums.BpSeverity
@@ -47,7 +48,7 @@ fun BpHistoryDetailItem(
     label = "chevron",
   )
 
-  Column(modifier = Modifier.fillMaxWidth()) {
+  Column(modifier = Modifier.fillMaxWidth().testTag("entry_row")) {
     // Entry row
     Row(
       modifier = Modifier

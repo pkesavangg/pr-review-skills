@@ -30,6 +30,7 @@ data class BabyDashboardState(
   val weightPercentile: BabyPercentileHelper.PercentileSeries? = null,
   val heightPercentile: BabyPercentileHelper.PercentileSeries? = null,
   val babyProfile: BabyProfile? = null,
+  val isEmpty: Boolean = false,
 ) : BaseDashboardState {
   val activePercentile: BabyPercentileHelper.PercentileSeries?
     get() = when (selectedMetric) {
@@ -45,7 +46,9 @@ sealed interface BabyDashboardIntent : BaseGraphIntent {
   data class SetSelectedMetric(val metric: BabyMetric) : BabyDashboardIntent
   data class SetWeightPercentile(val series: BabyPercentileHelper.PercentileSeries?) : BabyDashboardIntent
   data class SetHeightPercentile(val series: BabyPercentileHelper.PercentileSeries?) : BabyDashboardIntent
+  data class SetIsEmpty(val isEmpty: Boolean) : BabyDashboardIntent
   data object Refresh : BabyDashboardIntent
+  data object OnConnectDevice : BabyDashboardIntent
 }
 
 // ── Reducer ──
@@ -73,7 +76,9 @@ class BabyDashboardReducer : BaseGraphReducer<BabyDashboardState>(), IReducer<Ba
       is BabyDashboardIntent.SetSelectedMetric -> state.copy(selectedMetric = intent.metric)
       is BabyDashboardIntent.SetWeightPercentile -> state.copy(weightPercentile = intent.series)
       is BabyDashboardIntent.SetHeightPercentile -> state.copy(heightPercentile = intent.series)
+      is BabyDashboardIntent.SetIsEmpty -> state.copy(isEmpty = intent.isEmpty)
       is BabyDashboardIntent.Refresh -> state
+      is BabyDashboardIntent.OnConnectDevice -> state
     }
     else -> reduceBaseIntent(state, intent)
   }

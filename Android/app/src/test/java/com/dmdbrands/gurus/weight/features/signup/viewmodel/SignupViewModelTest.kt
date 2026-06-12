@@ -60,7 +60,10 @@ class SignupViewModelTest {
     @MockK(relaxUnitFun = true)
     lateinit var goalService: IGoalService
 
-    @MockK(relaxed = true)
+    @MockK(relaxUnitFun = true)
+    lateinit var analyticsService: IAnalyticsService
+
+    @MockK(relaxUnitFun = true)
     lateinit var analyticsService: IAnalyticsService
 
     @MockK(relaxed = true)

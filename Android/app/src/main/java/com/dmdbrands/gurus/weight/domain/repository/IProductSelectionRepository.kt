@@ -19,4 +19,6 @@ interface IProductSelectionRepository {
     suspend fun getBabyProfiles(accountId: String): List<BabyProfile>
 
     suspend fun hasBpmDevice(accountId: String): Boolean
+
+    suspend fun hasBabyScaleDevice(accountId: String): Boolean
 }

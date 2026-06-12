@@ -13,6 +13,7 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.api.device.R4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.api.device.toR4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.Preferences
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
@@ -39,6 +40,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BtWifiScaleSetupSt
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
+import com.dmdbrands.gurus.weight.features.ScaleSetup.helper.switchActiveProductAfterSetup
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -529,6 +531,10 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
                     }
                 }
                 loadPluginData()
+                if (isScaleSaved) {
+                    // Auto-switch the dashboard header to the newly added scale (MOB-422).
+                    productSelectionManager.switchActiveProductAfterSetup(ProductSelection.MyWeight)
+                }
             } catch (e: Exception) {
                 AppLog.e(TAG, "Error during Bluetooth cleanup", e)
             } finally {

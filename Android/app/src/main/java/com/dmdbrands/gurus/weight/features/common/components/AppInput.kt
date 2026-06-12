@@ -35,6 +35,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -199,6 +200,7 @@ fun <T> AppInput(
     onImeAction: (() -> Unit)? = null,
     onTrailingAction: (() -> Unit)? = null,
     nextFocusRequester: FocusRequester? = null,
+    testTag: String? = null,
 ) {
     val visualTransformation = AppInputDefaults.visualTransformation(type)
     val keyboardOptions =
@@ -206,9 +208,10 @@ fun <T> AppInput(
             keyboardType = AppInputDefaults.keyboardType(type),
             imeAction = imeAction,
         )
+    val taggedModifier = if (testTag != null) modifier.testTag(testTag) else modifier
     CompositionLocalProvider(LocalAutofillHighlightColor provides Color.Transparent) {
         InputFieldBase(
-            modifier = modifier,
+            modifier = taggedModifier,
             formControl = formControl,
             label = label.toString().lowercase(),
             value = AppInputDefaults.valueToString(type, formControl?.value),

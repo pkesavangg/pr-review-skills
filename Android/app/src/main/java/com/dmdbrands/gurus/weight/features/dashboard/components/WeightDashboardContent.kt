@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +44,13 @@ fun WeightDashboardContent(
   }
   var currentVisibleMilestones by remember(state.visibleKeys) {
     mutableStateOf(state.visibleKeys.filter { it is DashboardKey.Milestone })
+  }
+
+  // After a RESET DASHBOARD completes the VM bumps resetSignal. Exit edit mode
+  // so the control panel reverts to the view-mode cluster, matching iOS
+  // (MOB-445). Guarded so the initial composition (resetSignal == 0) is a no-op.
+  LaunchedEffect(state.resetSignal) {
+    if (state.resetSignal > 0) inEditMode = false
   }
 
   if (state.isEmpty) {

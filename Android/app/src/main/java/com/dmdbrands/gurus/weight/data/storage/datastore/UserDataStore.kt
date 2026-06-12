@@ -4,6 +4,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.core.Serializer
 import androidx.datastore.dataStore
 import com.dmdbrands.gurus.weight.core.config.AppSyncConfig
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.proto.BabyWeightUnit
 import com.dmdbrands.gurus.weight.proto.DefaultGraphSegment
 import com.dmdbrands.gurus.weight.proto.ThemeMode
 import com.dmdbrands.gurus.weight.proto.UserAccount
@@ -510,6 +512,33 @@ class UserDataStore @Inject constructor(
       .putAccounts(accountId, account.toBuilder().setSelectedProductType(productType).build())
       .build()
     updateData { updated }
+  }
+
+  /**
+   * Emits the My Kids (baby) weight unit for the active account.
+   * UNSPECIFIED → LB_OZ (the canonical baby scale unit) so unmigrated
+   * accounts default to lbs & oz / in.
+   */
+  val babyWeightUnitForCurrentAccountFlow: Flow<WeightUnit> = currentAccountFlow.map { account ->
+    account?.babyWeightUnit.toWeightUnit()
+  }
+
+  /**
+   * Gets the persisted My Kids weight unit for [accountId].
+   * UNSPECIFIED / missing accounts → LB_OZ.
+   */
+  suspend fun getBabyWeightUnit(accountId: String): WeightUnit =
+    getData().accountsMap[accountId]?.babyWeightUnit.toWeightUnit()
+
+  /** Persist the My Kids weight unit for [accountId]. */
+  suspend fun setBabyWeightUnit(accountId: String, unit: WeightUnit) {
+    val protoUnit = unit.toProto()
+    updateData { current ->
+      val account = current.accountsMap[accountId] ?: return@updateData current
+      current.toBuilder()
+        .putAccounts(accountId, account.toBuilder().setBabyWeightUnit(protoUnit).build())
+        .build()
+    }
   }
 
   /** Persist the baby profile id against [accountId]. Pass empty string to clear. */

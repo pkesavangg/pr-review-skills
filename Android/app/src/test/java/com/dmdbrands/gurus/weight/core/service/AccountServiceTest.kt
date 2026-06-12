@@ -863,6 +863,54 @@ class AccountServiceTest {
     }
 
     // -------------------------------------------------------------------------
+    // removeAccountFromDevice
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `removeAccountFromDevice delegates to repository with active flag and returns true`() = runTest {
+        coEvery { accountRepository.removeAccountFromDevice(any(), any(), any()) } just Runs
+
+        val result = service.removeAccountFromDevice(fakeAccount.id, fcmToken = "token")
+
+        assertThat(result).isTrue()
+        // fakeAccount is the active account in setUp → isActiveAccount = true.
+        coVerify { accountRepository.removeAccountFromDevice(fakeAccount.id, "token", true) }
+        // Local removal must not emit a logout auth event (Multi-Landing handles navigation).
+        coVerify(exactly = 0) { appNavigationService.emitAuthEvent(any<AuthState.LoggedOut>()) }
+    }
+
+    @Test
+    fun `removeAccountFromDevice passes isActiveAccount false for a non-active account`() = runTest {
+        withAccounts(active = fakeAccount)
+        coEvery { accountRepository.removeAccountFromDevice(any(), any(), any()) } just Runs
+
+        val result = service.removeAccountFromDevice(fakeAccount2.id, fcmToken = null)
+
+        assertThat(result).isTrue()
+        coVerify { accountRepository.removeAccountFromDevice(fakeAccount2.id, null, false) }
+    }
+
+    @Test
+    fun `removeAccountFromDevice returns false on exception`() = runTest {
+        coEvery { accountRepository.removeAccountFromDevice(any(), any(), any()) } throws RuntimeException("DB error")
+
+        val result = service.removeAccountFromDevice(fakeAccount.id, fcmToken = null)
+
+        assertThat(result).isFalse()
+    }
+
+    @Test
+    fun `removeAccountFromDevice shows no-network toast when offline but proceeds`() = runTest {
+        stubNetworkUnavailable()
+        coEvery { accountRepository.removeAccountFromDevice(any(), any(), any()) } just Runs
+
+        val result = service.removeAccountFromDevice(fakeAccount.id, fcmToken = null)
+
+        assertThat(result).isTrue()
+        verify { dialogQueueService.showToast(any()) }
+    }
+
+    // -------------------------------------------------------------------------
     // deleteAccount
     // -------------------------------------------------------------------------
 

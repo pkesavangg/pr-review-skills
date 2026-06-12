@@ -20,6 +20,7 @@ enum class DialogType {
   HelpPopup,
   PasswordReset,
   RadioGroupPicker,
+  SectionedRadioGroupPicker,
   AssignMeasurement,
   AccountSwitchInfoPopup,
   ModelNumberHelp,
@@ -94,6 +95,30 @@ fun DialogHost() {
             },
             onOk = { selectedValue ->
               onConfirm?.invoke(selectedValue)
+              dialogQueueViewModel.dismissCurrent()
+            },
+          )
+        }
+      }
+
+      DialogType.SectionedRadioGroupPicker -> {
+        val config = dialog.params["config"] as? SectionedRadioGroupModalConfig<*>
+        val onConfirm = dialog.params["onConfirm"] as? (Map<String, Any?>) -> Unit
+        val onCancel = dialog.params["onCancel"] as? (() -> Unit)
+        if (config != null) {
+          @Suppress("UNCHECKED_CAST")
+          AppSectionedRadioGroupModal(
+            title = config.title,
+            subtitle = config.subtitle,
+            sections = config.sections as List<RadioGroupSection<Any?>>,
+            confirmText = config.confirmText,
+            cancelText = config.cancelText,
+            onCancel = {
+              onCancel?.invoke()
+              dialogQueueViewModel.dismissCurrent()
+            },
+            onOk = { selections ->
+              onConfirm?.invoke(selections)
               dialogQueueViewModel.dismissCurrent()
             },
           )

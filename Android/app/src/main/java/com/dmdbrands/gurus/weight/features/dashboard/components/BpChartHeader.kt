@@ -60,7 +60,7 @@ fun BpChartHeader(
           BpSystolicDiastolic(systolic = avgSys, diastolic = avgDia, style = MeTheme.typography.heading2)
         } else {
           Text(
-            text = DashboardSnapshotStrings.PlaceholderDash,
+            text = "${DashboardSnapshotStrings.ZeroSystolic}/${DashboardSnapshotStrings.ZeroDiastolic}",
             style = MeTheme.typography.heading2,
             color = SnapshotColors.BloodPressure,
           )
@@ -77,7 +77,7 @@ fun BpChartHeader(
         )
         Spacer(modifier = Modifier.weight(1f))
         Text(
-          text = avgPulse?.toString() ?: DashboardSnapshotStrings.PlaceholderDash,
+          text = avgPulse?.toString() ?: DashboardSnapshotStrings.ZeroPulse,
           style = MeTheme.typography.heading2,
           color = MeTheme.colorScheme.textSubheading,
         )

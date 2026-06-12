@@ -56,6 +56,7 @@ fun R4ScaleMetricsSection(
                 .fillMaxWidth()
                 .focusRequester(finalHeartRateFocusRequester),
             index = 0,
+            testTag = "heart_rate_field",
         )
         AnimatedAppInput(
             formControl = controls.boneMass,
@@ -69,6 +70,7 @@ fun R4ScaleMetricsSection(
                 .fillMaxWidth()
                 .focusRequester(boneMassFocusRequester),
             index = 1,
+            testTag = "bone_mass_field",
         )
         AnimatedAppInput(
             formControl = controls.visceralFat,
@@ -82,6 +84,7 @@ fun R4ScaleMetricsSection(
                 .fillMaxWidth()
                 .focusRequester(visceralFatFocusRequester),
             index = 2,
+            testTag = "visceral_fat_field",
         )
         AnimatedAppInput(
             formControl = controls.subcutaneousFat,
@@ -95,6 +98,7 @@ fun R4ScaleMetricsSection(
                 .fillMaxWidth()
                 .focusRequester(subcutaneousFatFocusRequester),
             index = 3,
+            testTag = "subcutaneous_fat_field",
         )
         AnimatedAppInput(
             formControl = controls.protein,
@@ -108,6 +112,7 @@ fun R4ScaleMetricsSection(
                 .fillMaxWidth()
                 .focusRequester(proteinFocusRequester),
             index = 4,
+            testTag = "protein_field",
         )
         AnimatedAppInput(
             formControl = controls.skeletalMuscles,
@@ -121,6 +126,7 @@ fun R4ScaleMetricsSection(
                 .fillMaxWidth()
                 .focusRequester(skeletalMusclesFocusRequester),
             index = 5,
+            testTag = "skeletal_muscles_field",
         )
         AnimatedAppInput(
             formControl = controls.bmr,
@@ -134,6 +140,7 @@ fun R4ScaleMetricsSection(
                 .fillMaxWidth()
                 .focusRequester(bmrFocusRequester),
             index = 6,
+            testTag = "basal_metabolic_field",
         )
         AnimatedAppInput(
             formControl = controls.metabolicAge,
@@ -147,6 +154,7 @@ fun R4ScaleMetricsSection(
                 .fillMaxWidth()
                 .focusRequester(metabolicAgeFocusRequester),
             index = 7,
+            testTag = "metabolic_age_field",
         )
     }
 }

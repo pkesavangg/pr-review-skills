@@ -10,7 +10,9 @@ import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.service.NotificationEventType
+import com.dmdbrands.gurus.weight.core.service.NotificationTapPayload
 import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventService
+import com.dmdbrands.gurus.weight.core.service.pushNotification.NotificationDestination
 import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventType
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
@@ -412,6 +414,26 @@ constructor(
         }
       }
     }
+    viewModelScope.launch {
+      AppNotificationEventService.tapEvents.collect { tap ->
+        handleNotificationTap(tap)
+        AppNotificationEventService.consumeTap()
+      }
+    }
+  }
+
+  /**
+   * Handles a notification deep-link: switches to the target account when it differs from
+   * the active one, then navigates to the relevant History destination (MOB-434).
+   */
+  private suspend fun handleNotificationTap(tap: NotificationTapPayload) {
+    val accountId = tap.accountId
+    if (accountId != null && accountId != accountService.activeAccount.value?.id) {
+      accountService.getLoggedInAccounts().firstOrNull { it.id == accountId }?.let { target ->
+        accountService.switchAccount(target)
+      }
+    }
+    navigationService.navigateTo(NotificationDestination.toRoute(tap.destination, tap.monthKey))
   }
 
   /**
