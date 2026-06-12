@@ -641,6 +641,32 @@ class AccountService(
     }
 
   /**
+   * Removes the specified account from this device only ("Removed = gone", MA-2672 / MOB-424).
+   * Fully deletes the local account; the server account is not deleted. Navigation away from an
+   * emptied list is handled by the (Multi-)Landing screen observing [loggedInAccountsFlow].
+   * @param accountId ID of the account to remove
+   * @param fcmToken FCM token for push notifications (optional)
+   * @return true if the account was removed successfully, false otherwise
+   */
+  override suspend fun removeAccountFromDevice(
+    accountId: String,
+    fcmToken: String?,
+  ): Boolean =
+    try {
+      if (!isNetworkAvailable()) {
+        showNoNetworkErrorToast()
+      }
+      AppLog.v(TAG, "removeAccountFromDevice() called for accountId: $accountId")
+      val isActiveAccount = getCurrentAccount()?.id == accountId
+      accountRepository.removeAccountFromDevice(accountId, fcmToken, isActiveAccount)
+      AppLog.d(TAG, "Account removed from device")
+      true
+    } catch (e: Exception) {
+      AppLog.e(TAG, "removeAccountFromDevice failed", e)
+      false
+    }
+
+  /**
    * Deletes the current user account from the server and local storage.
    */
   override suspend fun deleteAccount(

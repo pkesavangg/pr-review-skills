@@ -430,12 +430,13 @@ class AccountRepositoryTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `logoutAccount API succeeds performs local logout and returns true`() = runTest {
+    fun `logoutAccount marks account expired keeping it listed and returns true`() = runTest {
         val result = repository.logoutAccount(TEST_ACCOUNT_ID, null, isActiveAccount = true)
 
         assertThat(result).isTrue()
         coVerify { accountDao.deactivateAllAccounts() }
-        coVerify { accountDao.logoutAccount(TEST_ACCOUNT_ID) }
+        // "Logged out ≠ gone": the row stays listed (isLoggedIn untouched) — only marked expired.
+        coVerify(exactly = 0) { accountDao.logoutAccount(any()) }
         coVerify { accountDao.markAccountExpired(TEST_ACCOUNT_ID) }
         coVerify { userDataStore.clearAccountTokens(TEST_ACCOUNT_ID) }
     }
@@ -447,17 +448,18 @@ class AccountRepositoryTest {
         val result = repository.logoutAccount(TEST_ACCOUNT_ID, TEST_FCM_TOKEN, isActiveAccount = false)
 
         assertThat(result).isTrue()
-        coVerify { accountDao.logoutAccount(TEST_ACCOUNT_ID) }
+        coVerify { accountDao.markAccountExpired(TEST_ACCOUNT_ID) }
     }
 
     @Test
-    fun `logoutAllAccounts clears all accounts and returns true`() = runTest {
+    fun `logoutAllAccounts marks all accounts expired keeping them listed and returns true`() = runTest {
         every { accountDao.getAllLoggedInAccounts() } returns flowOf(listOf(entityAccountWithRelations))
 
         val result = repository.logoutAllAccounts()
 
         assertThat(result).isTrue()
-        coVerify { accountDao.logoutAllAccounts() }
+        coVerify { accountDao.markAllAccountsExpired() }
+        coVerify(exactly = 0) { accountDao.logoutAllAccounts() }
         coVerify { tokenManager.clearTokens() }
     }
 
@@ -854,7 +856,7 @@ class AccountRepositoryTest {
 
         assertThat(result).isTrue()
         coVerify(exactly = 0) { accountDao.deactivateAllAccounts() }
-        coVerify { accountDao.logoutAccount(TEST_ACCOUNT_ID) }
+        coVerify(exactly = 0) { accountDao.logoutAccount(any()) }
         coVerify { accountDao.markAccountExpired(TEST_ACCOUNT_ID) }
         coVerify { userDataStore.clearAccountTokens(TEST_ACCOUNT_ID) }
     }
@@ -866,11 +868,44 @@ class AccountRepositoryTest {
     @Test
     fun `logoutAllAccounts when DAO throws returns false`() = runTest {
         every { accountDao.getAllLoggedInAccounts() } returns flowOf(listOf(entityAccountWithRelations))
-        coEvery { accountDao.logoutAllAccounts() } throws RuntimeException("DB error")
+        coEvery { accountDao.markAllAccountsExpired() } throws RuntimeException("DB error")
 
         val result = repository.logoutAllAccounts()
 
         assertThat(result).isFalse()
+    }
+
+    // -------------------------------------------------------------------------
+    // removeAccountFromDevice
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `removeAccountFromDevice deletes local account and clears tokens`() = runTest {
+        repository.removeAccountFromDevice(TEST_ACCOUNT_ID, TEST_FCM_TOKEN, isActiveAccount = false)
+
+        coVerify { accountDao.deleteAllTables(TEST_ACCOUNT_ID) }
+        coVerify { userDataStore.clearAccountTokens(TEST_ACCOUNT_ID) }
+        // Not the active account → must not deactivate or clear the global token manager.
+        coVerify(exactly = 0) { accountDao.deactivateAllAccounts() }
+        coVerify(exactly = 0) { tokenManager.clearTokens() }
+    }
+
+    @Test
+    fun `removeAccountFromDevice active account deactivates and clears token manager`() = runTest {
+        repository.removeAccountFromDevice(TEST_ACCOUNT_ID, null, isActiveAccount = true)
+
+        coVerify { accountDao.deactivateAllAccounts() }
+        coVerify { tokenManager.clearTokens() }
+        coVerify { accountDao.deleteAllTables(TEST_ACCOUNT_ID) }
+    }
+
+    @Test
+    fun `removeAccountFromDevice continues local removal when API logout throws`() = runTest {
+        coEvery { authAPI.logoutWithToken(any(), any()) } throws RuntimeException("network")
+
+        repository.removeAccountFromDevice(TEST_ACCOUNT_ID, TEST_FCM_TOKEN, isActiveAccount = false)
+
+        coVerify { accountDao.deleteAllTables(TEST_ACCOUNT_ID) }
     }
 
     // -------------------------------------------------------------------------
@@ -1065,8 +1100,8 @@ class AccountRepositoryTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `logoutAccount when accountDao logoutAccount throws returns false`() = runTest {
-        coEvery { accountDao.logoutAccount(any()) } throws RuntimeException("DB crash")
+    fun `logoutAccount when clearing tokens throws returns false`() = runTest {
+        coEvery { userDataStore.clearAccountTokens(any()) } throws RuntimeException("DB crash")
 
         val result = repository.logoutAccount(TEST_ACCOUNT_ID, null, isActiveAccount = false)
 
@@ -1084,7 +1119,7 @@ class AccountRepositoryTest {
         val result = repository.logoutAllAccounts()
 
         assertThat(result).isTrue()
-        coVerify { accountDao.logoutAllAccounts() }
+        coVerify { accountDao.markAllAccountsExpired() }
         coVerify { tokenManager.clearTokens() }
     }
 

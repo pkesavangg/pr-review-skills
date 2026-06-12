@@ -89,6 +89,9 @@ interface AccountDao {
     @Query("UPDATE account SET isLoggedIn = 0, isActiveAccount = 0, isExpired = 0")
     suspend fun logoutAllAccounts()
 
+    @Query("UPDATE account SET isExpired = 1, isActiveAccount = 0, expiresAt = '' WHERE isLoggedIn = 1")
+    suspend fun markAllAccountsExpired()
+
     @Query("UPDATE account SET isSynced = :isSynced WHERE accountId = :accountId")
     suspend fun updateSyncStatus(accountId: String, isSynced: Boolean)
 

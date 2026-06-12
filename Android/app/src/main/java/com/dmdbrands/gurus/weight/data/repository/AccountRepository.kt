@@ -616,8 +616,10 @@ constructor(
       if (isActiveAccount) {
         accountDao.deactivateAllAccounts()
       }
-      // Update account flags in DB: set isLoggedIn, isExpired, isActive to false
-      accountDao.logoutAccount(accountId)
+      // Keep the account row listed as "Logged out" (isLoggedIn stays 1) so it still
+      // appears on the (Multi-)Landing screen — "Logged out ≠ gone" (MA-2672 / MOB-424).
+      // markAccountExpired sets isExpired = 1 and isActiveAccount = 0, matching the
+      // already-implemented auto-logout (401) state.
       markAccountExpired(accountId)
       // Clear tokens from DataStore and TokenManager
       userDataStore.clearAccountTokens(accountId)
@@ -648,8 +650,10 @@ constructor(
           // Continue with local logout even if API fails
         }
       }
-      // Clear all accounts from database
-      accountDao.logoutAllAccounts()
+      // Mark all accounts as "Logged out" but keep them listed (isLoggedIn stays 1)
+      // so they remain visible on the (Multi-)Landing screen — "Logged out ≠ gone"
+      // (MA-2672 / MOB-424).
+      accountDao.markAllAccountsExpired()
       // Clear tokens
       tokenManager.clearTokens()
       AppLog.d(TAG, "All accounts logged out successfully")
@@ -704,6 +708,36 @@ constructor(
       userDataStore.clearAccountTokens(accountId)
     } catch (e: Exception) {
       AppLog.d(TAG, "Failed to clear account tokens")
+    }
+  }
+
+  /**
+   * Removes the account from this device only ("Removed = gone", MA-2672 / MOB-424).
+   * Unlike [logoutAccount] (which keeps the account listed as "Logged out"), this fully
+   * deletes the local account row and its related settings, then clears tokens. The server
+   * account is NOT deleted — that is handled by [deleteAccount].
+   */
+  override suspend fun removeAccountFromDevice(
+    accountId: String,
+    fcmToken: String?,
+    isActiveAccount: Boolean,
+  ) {
+    try {
+      // Best-effort server-side session logout; continue with local removal regardless.
+      try {
+        authAPI.logoutWithToken(LogoutRequest(fcmToken ?: ""), accountId)
+      } catch (e: Exception) {
+        AppLog.e(TAG, "API logout during removeAccountFromDevice failed", e)
+      }
+      if (isActiveAccount) {
+        accountDao.deactivateAllAccounts()
+        tokenManager.clearTokens()
+      }
+      accountDao.deleteAllTables(accountId)
+      clearAccountTokens(accountId)
+      AppLog.d(TAG, "Account $accountId removed from this device")
+    } catch (e: Exception) {
+      AppLog.e(TAG, "removeAccountFromDevice failed", e)
     }
   }
 
