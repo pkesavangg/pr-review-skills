@@ -49,6 +49,7 @@ final class HistoryStore: ObservableObject {
     // MARK: - Optimistic Delete / Undo State
     private var pendingBPDelete: BPHistoryEntry?
     private var pendingBabyDelete: BabyHistoryEntry?
+    private var pendingWGDelete: EntrySnapshot?
 
     /// Whether the current product type selection is blood pressure.
     var isBloodPressureMode: Bool {
@@ -229,10 +230,8 @@ final class HistoryStore: ObservableObject {
             message: AlertStrings.DeleteEntryAlert.message,
             buttons: [
                 AlertButtonModel(title: AlertStrings.DeleteEntryAlert.deleteButton, type: .danger) { _ in
-                    Task {
-                        await self.deleteEntryInternal(entryId: entry.id)
-                        onCancel?()
-                    }
+                    onCancel?()
+                    self.confirmWGDelete(entry)
                 },
                 AlertButtonModel(title: AlertStrings.DeleteEntryAlert.cancelButton, type: .secondary) { _ in
                     self.notificationService.dismissAlert()
@@ -515,7 +514,52 @@ final class HistoryStore: ObservableObject {
             notificationService.showToast(ToastModel(
                 message: HistoryListStrings.couldntDelete,
                 btnTextView: AnyView(Text(HistoryListStrings.tryAgain).fontOpenSans(.button1)),
-                onClick: { Task { @MainActor in self.confirmBabyDelete(babyEntry) } }
+                onClick: { Task { @MainActor in self.confirmBabyDelete(babyEntry) } },
+                isError: true
+            ))
+        }
+    }
+
+    // MARK: - WG Delete (optimistic + 3-second UNDO)
+
+    private func confirmWGDelete(_ entry: EntrySnapshot) {
+        entries.removeAll { $0.id == entry.id }
+        pendingWGDelete = entry
+
+        let time = DateTimeTools.getFormattedTime(entry.entryTimestamp)
+        notificationService.showToast(ToastModel(
+            message: "\(time) \(HistoryListStrings.readingDeleted)",
+            btnTextView: AnyView(Text(HistoryListStrings.undo).fontOpenSans(.button1)),
+            onClick: { Task { @MainActor in self.undoWGDelete() } },
+            duration: 3,
+            onDismiss: { Task { @MainActor in self.commitWGDelete() } }
+        ))
+    }
+
+    func undoWGDelete() {
+        guard let entry = pendingWGDelete else { return }
+        pendingWGDelete = nil
+        entries.append(entry)
+        entries.sort { $0.entryTimestamp > $1.entryTimestamp }
+        notificationService.showToast(ToastModel(message: HistoryListStrings.readingRestored))
+    }
+
+    private func commitWGDelete() {
+        guard let entry = pendingWGDelete else { return }
+        pendingWGDelete = nil
+        Task { await deleteWGEntryInternal(entry) }
+    }
+
+    private func deleteWGEntryInternal(_ entry: EntrySnapshot) async {
+        do {
+            try await entryService.deleteEntry(entryId: entry.id)
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to delete WG entry: \(error.localizedDescription)")
+            notificationService.showToast(ToastModel(
+                message: HistoryListStrings.couldntDelete,
+                btnTextView: AnyView(Text(HistoryListStrings.tryAgain).fontOpenSans(.button1)),
+                onClick: { Task { @MainActor in self.confirmWGDelete(entry) } },
+                isError: true
             ))
         }
     }

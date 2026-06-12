@@ -36,19 +36,24 @@ extension BluetoothService {
                 try await self.ggBleSDK.confirmPair(ggDevice, replaceUser: replaceUser, pairedSKUMonitors: ggPairedMonitors)
             }
             if let snapshot = accountService.activeAccount,
-               !snapshot.productTypes.contains("blood_pressure") {
+               !snapshot.productTypes.contains(ProductType.bloodPressure.apiValue),
+               !snapshot.productTypes.contains(ProductType.bloodPressure.rawValue) {
                 do {
-                    try await accountService.updateProductTypes(snapshot.productTypes + ["blood_pressure"])
+                    // Convert any legacy internal rawValues to API values before patching.
+                    let currentApiTypes = snapshot.productTypes.map {
+                        ProductType(rawValue: $0)?.apiValue ?? $0
+                    }
+                    try await accountService.updateProductTypes(currentApiTypes + [ProductType.bloodPressure.apiValue])
                     logger.log(
                         level: .info,
                         tag: tag,
-                        message: "Appended blood_pressure to productTypes for accountId=\(snapshot.accountId)"
+                        message: "Appended \(ProductType.bloodPressure.apiValue) to productTypes for accountId=\(snapshot.accountId)"
                     )
                 } catch {
                     logger.log(
                         level: .error,
                         tag: tag,
-                        message: "Failed to update productTypes after BPM pair (non-fatal): \(error.localizedDescription)"
+                        message: "productTypes update non-fatal — BPM pairing succeeded. accountId=\(snapshot.accountId) error=\(error.localizedDescription)"
                     )
                 }
             }
@@ -130,8 +135,7 @@ extension BluetoothService {
     /// Stages a single live BPM measurement as a pending entry awaiting user confirmation.
     /// Fires `pendingBpmEntryPublisher`; the subscriber must call `confirmPendingBpmEntry()` or
     /// `discardPendingBpmEntry()` (or rely on the toast timeout to auto-confirm).
-    /// - Parameter batchCount: Total readings in the batch this measurement came from (1 for a single reading).
-    func stagePendingBpmEntry(_ measurement: BpmMeasurement, batchCount: Int = 1) async {
+    func stagePendingBpmEntry(_ measurement: BpmMeasurement) async {
         guard let activeAccount = activeAccount else {
             logger.log(level: .error, tag: tag, message: BluetoothServiceError.noActiveAccount.localizedDescription)
             return
@@ -139,7 +143,7 @@ extension BluetoothService {
 
         let entry = buildBpmEntry(measurement, accountId: activeAccount.accountId)
         pendingBpmEntry = entry
-        pendingBpmEntrySubject.send(EntryNotification(from: entry, batchCount: batchCount))
+        pendingBpmEntrySubject.send(EntryNotification(from: entry))
     }
 
     /// Persists a BPM measurement immediately without showing a toast.
