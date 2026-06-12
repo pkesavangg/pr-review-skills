@@ -38,6 +38,7 @@ import com.dmdbrands.gurus.weight.core.navigation.LocalProductSelectionManager
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
+import com.dmdbrands.gurus.weight.features.common.components.BabyEmptyState
 import com.dmdbrands.gurus.weight.features.common.components.ProductTypeHeader
 import com.dmdbrands.gurus.weight.features.common.components.chart.GraphPagerView
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
@@ -218,6 +219,16 @@ fun DashboardScreen() {
             EmptyMetric(onConnectScaleClick = { vm.handleIntent(BabyDashboardIntent.OnConnectDevice) })
           }
         }
+      }
+
+      is ProductSelection.BabyScale -> {
+        BabyEmptyState(
+          onAddBaby = {
+            scope.launch {
+              navBackStack.addRoute(AppRoute.AccountSettings.AddBaby)
+            }
+          },
+        )
       }
     }
   }

@@ -193,6 +193,12 @@ constructor(
         .distinctUntilChanged()
         .collect { isBaby -> dispatchIntent(SettingsIntent.SetIsBabyProduct(isBaby)) }
     }
+    // "My Kids" always shows in Settings; its enabled state is driven by baby-scale
+    // device ownership rather than an existing baby profile. (MOB-416)
+    viewModelScope.launch {
+      productSelectionManager.hasBabyScaleDevice
+        .collect { hasDevice -> dispatchIntent(SettingsIntent.SetHasBabyScaleDevice(hasDevice)) }
+    }
   }
 
   private fun navigateTo(route: AppRoute) {

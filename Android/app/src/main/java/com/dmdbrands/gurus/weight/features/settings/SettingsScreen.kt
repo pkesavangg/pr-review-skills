@@ -82,19 +82,19 @@ fun SettingsScreenContent(
               },
             ),
           )
-          if (state.isBabyProduct) {
-            add(
-              SettingsItem(
-                title = SettingsScreenStrings.MyKids,
-                testTag = "settings_row_my_kids",
-                onClick = {
-                  coroutineScope.launch {
-                    backStack.addRoute(AppRoute.AccountSettings.MyKids)
-                  }
-                },
-              ),
-            )
-          }
+          // "My Kids" always appears; enabled only when the account owns a baby
+          // scale (device-driven), not gated on an existing baby profile. (MOB-416)
+          add(
+            SettingsItem(
+              title = SettingsScreenStrings.MyKids,
+              enabled = state.hasBabyScaleDevice,
+              onClick = {
+                coroutineScope.launch {
+                  backStack.addRoute(AppRoute.AccountSettings.MyKids)
+                }
+              },
+            ),
+          )
           add(
             SettingsItem(
               title = SettingsScreenStrings.MyDevices,

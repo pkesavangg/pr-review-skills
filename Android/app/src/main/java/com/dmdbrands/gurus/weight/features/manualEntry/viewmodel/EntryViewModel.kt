@@ -141,6 +141,8 @@ constructor(
           ),
         )
       }
+      // No profile yet (MOB-416): Manual Entry shows an empty state, no form to build.
+      is ProductSelection.BabyScale -> Unit
     }
   }
 

@@ -23,6 +23,7 @@ data class SettingsState(
   val showUnreadFeedIndication: Boolean = false,
   val isExportEnabled: Boolean = false,
   val isBabyProduct: Boolean = false,
+  val hasBabyScaleDevice: Boolean = false,
 ) : IReducer.State {
 
   /**
@@ -82,6 +83,7 @@ sealed interface SettingsIntent : IReducer.Intent {
   data class SetShowUnreadFeedIndication(val show: Boolean) : SettingsIntent
   data class SetExportEnabled(val enabled: Boolean) : SettingsIntent
   data class SetIsBabyProduct(val isBabyProduct: Boolean) : SettingsIntent
+  data class SetHasBabyScaleDevice(val hasBabyScaleDevice: Boolean) : SettingsIntent
   object DeleteAccount : SettingsIntent
   object ConfirmDeleteAccount : SettingsIntent
   object TriggerTestCrash : SettingsIntent
@@ -113,6 +115,7 @@ class SettingsReducer : IReducer<SettingsState, SettingsIntent> {
       is SettingsIntent.SetShowUnreadFeedIndication -> state.copy(showUnreadFeedIndication = intent.show)
       is SettingsIntent.SetExportEnabled -> state.copy(isExportEnabled = intent.enabled)
       is SettingsIntent.SetIsBabyProduct -> state.copy(isBabyProduct = intent.isBabyProduct)
+      is SettingsIntent.SetHasBabyScaleDevice -> state.copy(hasBabyScaleDevice = intent.hasBabyScaleDevice)
       else -> null
       // Add more intent handling as needed
     }

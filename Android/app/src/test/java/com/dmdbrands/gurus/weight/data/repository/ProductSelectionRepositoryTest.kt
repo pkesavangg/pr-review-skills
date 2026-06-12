@@ -166,4 +166,25 @@ class ProductSelectionRepositoryTest {
 
         assertThat(result).isFalse()
     }
+
+    // ── hasBabyScaleDevice (MOB-416) ────────────────────────────────────────────
+
+    @Test
+    fun `hasBabyScaleDevice returns true when baby scale devices exist`() = runTest {
+        val device = mockk<DeviceDetails>()
+        every { deviceDao.getDevicesByTypeWithAccount("babyScale", ACCOUNT_ID) } returns flowOf(listOf(device))
+
+        val result = repository.hasBabyScaleDevice(ACCOUNT_ID)
+
+        assertThat(result).isTrue()
+    }
+
+    @Test
+    fun `hasBabyScaleDevice returns false when no baby scale devices`() = runTest {
+        every { deviceDao.getDevicesByTypeWithAccount("babyScale", ACCOUNT_ID) } returns flowOf(emptyList())
+
+        val result = repository.hasBabyScaleDevice(ACCOUNT_ID)
+
+        assertThat(result).isFalse()
+    }
 }

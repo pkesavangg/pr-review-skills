@@ -128,6 +128,15 @@ class SettingsReducerTest {
     }
 
     @Test
+    fun `SetHasBabyScaleDevice updates hasBabyScaleDevice`() {
+        val state = SettingsState(hasBabyScaleDevice = false)
+
+        val result = reducer.reduce(state, SettingsIntent.SetHasBabyScaleDevice(hasBabyScaleDevice = true))
+
+        assertThat(result?.hasBabyScaleDevice).isTrue()
+    }
+
+    @Test
     fun `navigation-only intents return null — state is unchanged by reducer`() {
         val state = SettingsState()
 
@@ -153,6 +162,7 @@ class SettingsReducerTest {
         assertThat(state.showUnreadFeedIndication).isFalse()
         assertThat(state.isExportEnabled).isFalse()
         assertThat(state.isBabyProduct).isFalse()
+        assertThat(state.hasBabyScaleDevice).isFalse()
     }
 
     @Test
