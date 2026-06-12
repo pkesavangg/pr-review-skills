@@ -187,6 +187,7 @@ dependencies {
   testImplementation(libs.mockk)
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(kotlin("test"))
+  testImplementation(kotlin("reflect")) // callSuspend on private suspend fns under test
   testImplementation(libs.turbine)
   testImplementation(libs.truth)
   testImplementation(libs.mockwebserver)

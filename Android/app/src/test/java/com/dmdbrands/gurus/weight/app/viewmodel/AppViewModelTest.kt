@@ -23,6 +23,10 @@ import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
+import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
+import com.dmdbrands.gurus.weight.features.common.model.Toast
+import com.dmdbrands.gurus.weight.features.common.strings.ReadingToastStrings
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
 import com.dmdbrands.library.ggbluetooth.enums.GGAppType
@@ -48,6 +52,9 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
+import kotlin.reflect.full.callSuspend
+import kotlin.reflect.full.declaredMemberFunctions
+import kotlin.reflect.jvm.isAccessible
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AppViewModelTest {
@@ -501,5 +508,68 @@ class AppViewModelTest {
         advanceUntilIdle()
 
         coVerify { logManager.cleanupOldLogs(5) }
+    }
+
+    // -------------------------------------------------------------------------
+    // Baby reading assignment — silent-failure guard (MOB-426 / MOB-428)
+    // -------------------------------------------------------------------------
+
+    private suspend fun AppViewModel.assignReadingToBaby(
+        entry: List<ScaleEntry>,
+        babyId: String,
+        babies: List<BabyProfile>,
+        previousEntryIds: List<Long>,
+    ) {
+        val fn = AppViewModel::class.declaredMemberFunctions.first { it.name == "assignReadingToBaby" }
+        fn.isAccessible = true
+        fn.callSuspend(this, "75.0 lbs", entry, babyId, babies, previousEntryIds)
+    }
+
+    private fun aBaby(id: String = "baby1") =
+        BabyProfile(id = id, accountId = "active-account-id", name = "Emma")
+
+    @Test
+    fun `assignReadingToBaby surfaces an error and skips success when the save fails`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        coEvery { entryService.addBabyEntry(any()) } returns -1L
+
+        viewModel.assignReadingToBaby(
+            entry = listOf(TestFixtures.weightEntry),
+            babyId = "baby1",
+            babies = listOf(aBaby()),
+            previousEntryIds = listOf(99L),
+        )
+        advanceUntilIdle()
+
+        val toasts = mutableListOf<Toast>()
+        verify { dialogQueueService.showToast(capture(toasts)) }
+        // The user sees the failure copy, not a false "Reading assigned" confirmation.
+        assertThat(toasts.any { it is Toast.Simple && it.message == ReadingToastStrings.SaveFailed }).isTrue()
+        assertThat(toasts.any { it is Toast.Custom }).isFalse()
+        // A failed save must not delete the previously-assigned entries.
+        coVerify(exactly = 0) { entryService.deleteBabyEntryLocally(any()) }
+    }
+
+    @Test
+    fun `assignReadingToBaby deletes previous entries and confirms when the save succeeds`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        coEvery { entryService.addBabyEntry(any()) } returns 5L
+
+        viewModel.assignReadingToBaby(
+            entry = listOf(TestFixtures.weightEntry),
+            babyId = "baby1",
+            babies = listOf(aBaby()),
+            previousEntryIds = listOf(99L),
+        )
+        advanceUntilIdle()
+
+        // Reassign only removes the old entry after the new one is safely persisted.
+        coVerify { entryService.deleteBabyEntryLocally(99L) }
+        val toasts = mutableListOf<Toast>()
+        verify { dialogQueueService.showToast(capture(toasts)) }
+        assertThat(toasts.any { it is Toast.Simple && it.message == ReadingToastStrings.SaveFailed }).isFalse()
+        assertThat(toasts.any { it is Toast.Custom }).isTrue()
     }
 }

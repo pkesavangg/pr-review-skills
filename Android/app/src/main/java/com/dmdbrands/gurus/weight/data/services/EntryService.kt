@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.api.HealthConnectSyncEntry
 import com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationType
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry.Companion.fromScaleApiEntry
@@ -157,6 +158,37 @@ class EntryService(
             syncOperationsInternal(currentAccountId, emptyList(), listOf(deleteEntry))
         } catch (e: Exception) {
             AppLog.e(TAG, "Error deleting entry", e)
+        }
+    }
+
+    /**
+     * Saves a baby reading locally under the active (parent) account. Inserted with
+     * isSynced = true so [syncOperationsInternal] — which casts every unsynced entry to
+     * ScaleEntry — never picks it up; baby entries have no server contract yet (MOB-428).
+     */
+    override suspend fun addBabyEntry(entry: BabyEntry): Long {
+        val currentAccountId = accountId ?: return -1
+        return try {
+            val localEntry = entry.updateEntry(
+                entry.entry.copy(
+                    accountId = currentAccountId,
+                    operationType = OperationType.CREATE.name,
+                    isSynced = true,
+                ),
+            )
+            entryRepository.insert(localEntry)
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Error saving baby entry", e)
+            -1
+        }
+    }
+
+    /** Hard-deletes a locally-saved baby entry (cascades to baby_entry). Local-only (MOB-428). */
+    override suspend fun deleteBabyEntryLocally(entryId: Long) {
+        try {
+            entryRepository.deleteById(entryId)
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Error deleting baby entry", e)
         }
     }
 
