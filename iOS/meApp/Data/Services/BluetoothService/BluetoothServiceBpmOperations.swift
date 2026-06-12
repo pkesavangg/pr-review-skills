@@ -36,13 +36,26 @@ extension BluetoothService {
                 try await self.ggBleSDK.confirmPair(ggDevice, replaceUser: replaceUser, pairedSKUMonitors: ggPairedMonitors)
             }
             if let snapshot = accountService.activeAccount,
-               !snapshot.productTypes.contains("myBloodPressure") {
-                try await accountService.updateProductTypes(snapshot.productTypes + ["myBloodPressure"])
-                logger.log(
-                    level: .info,
-                    tag: tag,
-                    message: "Appended myBloodPressure to productTypes for accountId=\(snapshot.accountId)"
-                )
+               !snapshot.productTypes.contains(ProductType.bloodPressure.apiValue),
+               !snapshot.productTypes.contains(ProductType.bloodPressure.rawValue) {
+                do {
+                    // Convert any legacy internal rawValues to API values before patching.
+                    let currentApiTypes = snapshot.productTypes.map {
+                        ProductType(rawValue: $0)?.apiValue ?? $0
+                    }
+                    try await accountService.updateProductTypes(currentApiTypes + [ProductType.bloodPressure.apiValue])
+                    logger.log(
+                        level: .info,
+                        tag: tag,
+                        message: "Appended \(ProductType.bloodPressure.apiValue) to productTypes for accountId=\(snapshot.accountId)"
+                    )
+                } catch {
+                    logger.log(
+                        level: .error,
+                        tag: tag,
+                        message: "productTypes update non-fatal — BPM pairing succeeded. accountId=\(snapshot.accountId) error=\(error.localizedDescription)"
+                    )
+                }
             }
             logger.log(level: .info, tag: tag, message: "BPM device connected: \(broadcastId), result: \(sdkResult)")
             return .success(UserCreationResponse(sdkType: sdkResult))
