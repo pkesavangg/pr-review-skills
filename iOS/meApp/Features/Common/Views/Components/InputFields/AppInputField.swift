@@ -105,7 +105,7 @@ struct AppInputField: View {
                                 : theme.textSubheading
                         )
                         .padding(.trailing, CGFloat.spacingXS + 4)
-                        .padding(.vertical, 6)
+                        .padding(.vertical, CGFloat.spacingXS - 2)
                 }
             }
             .background(theme.backgroundPrimary)

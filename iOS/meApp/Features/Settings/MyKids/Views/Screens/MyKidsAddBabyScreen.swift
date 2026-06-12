@@ -12,6 +12,7 @@ struct MyKidsAddBabyScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var router: Router<SettingsRoute>
     @StateObject private var store = MyKidsStore()
+    @State private var isSaving = false
 
     private let lang = MyKidsStrings.self
 
@@ -22,7 +23,12 @@ struct MyKidsAddBabyScreen: View {
                 leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
                 trailingContent: {
                     Button {
-                        Task { await store.saveBabyProfile() }
+                        guard !isSaving else { return }
+                        isSaving = true
+                        Task {
+                            await store.saveBabyProfile()
+                            isSaving = false
+                        }
                     } label: {
                         Text(lang.save)
                             .fontOpenSans(.heading5)
@@ -33,7 +39,7 @@ struct MyKidsAddBabyScreen: View {
                                     : theme.textSubheading
                             )
                     }
-                    .disabled(!store.isSaveEnabled)
+                    .disabled(!store.isSaveEnabled || isSaving)
                 },
                 onLeadingTap: { router.navigateBack() },
                 canShowBorder: true
