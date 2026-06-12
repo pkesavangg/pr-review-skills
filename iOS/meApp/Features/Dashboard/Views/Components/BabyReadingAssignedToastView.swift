@@ -9,9 +9,14 @@ import SwiftUI
 
 /// Parses a raw weight string into styled SwiftUI `Text` with numbers large+colored
 /// and unit words normal+dark. Used by the arrival toast, assigned toast, and assign modal.
-/// - Numbers: heading4 (24pt bold), first number in `babyPrimary`, second in `actionSuccess`
-/// - Units / suffix tokens: body2, `textHeading` color
-func styledBabyWeightText(_ weightString: String, theme: AppColors.Palette) -> Text {
+/// - `numberStyle`: typography style for numeric tokens (default `.heading4`, 24pt bold)
+/// - `unitStyle`: typography style for unit/text tokens (default `.body2`, 16pt regular)
+func styledBabyWeightText(
+    _ weightString: String,
+    theme: AppColors.Palette,
+    numberStyle: CustomTextStyle = .heading4,
+    unitStyle: CustomTextStyle = .body2
+) -> Text {
     let tokens = weightString.components(separatedBy: " ")
     var isFirstNumber = true
     return tokens.reduce(Text("")) { acc, token in
@@ -19,11 +24,11 @@ func styledBabyWeightText(_ weightString: String, theme: AppColors.Palette) -> T
             let color = isFirstNumber ? theme.babyPrimary : theme.actionSuccess
             isFirstNumber = false
             return acc + Text(token)
-                .fontOpenSans(.heading4)
+                .fontOpenSans(numberStyle)
                 .foregroundColor(color)
         } else {
             return acc + Text(" \(token)")
-                .fontOpenSans(.body2)
+                .fontOpenSans(unitStyle)
                 .foregroundColor(theme.textHeading)
         }
     }

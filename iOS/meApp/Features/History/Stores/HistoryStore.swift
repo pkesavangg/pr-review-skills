@@ -171,6 +171,27 @@ final class HistoryStore: ObservableObject {
                 self.loadMonths()
             }
             .store(in: &cancellables)
+
+        // Reload history when the unit type changes so pre-formatted display strings
+        // (baby weightDisplay/lengthDisplay) reflect the newly selected unit.
+        accountService.activeAccountPublisher
+            .dropFirst()
+            .compactMap { $0 }
+            .removeDuplicates {
+                $0.weightUnit == $1.weightUnit && $0.measurementUnits == $1.measurementUnits
+            }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.monthsLoadTask?.cancel()
+                self.monthsLoadTask = nil
+                self.loadedProductTypes.removeAll()
+                self.loadMonths()
+                if let selectedBabyDay = self.selectedBabyDay {
+                    self.selectBabyDay(selectedBabyDay)
+                }
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Public API --------------------------------------------------
@@ -728,9 +749,17 @@ final class HistoryStore: ObservableObject {
 
     // MARK: - Baby API
 
-    /// Whether the active account uses metric (kg) for weight.
+    /// Whether the active account uses metric units for baby entries.
+    /// Uses the baby-specific `measurementUnits` field (set via "My Kids Unit Type"),
+    /// not the adult weight unit, so baby history reflects the correct unit selection.
     var isMetric: Bool {
-        accountService.activeAccount?.weightUnit == .kg
+        accountService.activeAccount?.measurementUnits == MeasurementUnits.metric.rawValue
+    }
+
+    private var currentMeasurementUnits: MeasurementUnits {
+        guard let raw = accountService.activeAccount?.measurementUnits,
+              let units = MeasurementUnits(rawValue: raw) else { return .imperialLbOz }
+        return units
     }
 
     /// User tapped a baby day row.
@@ -750,7 +779,8 @@ final class HistoryStore: ObservableObject {
                     && $0.babyEntry?.babyId == babyId
                     && self.localDayString(from: $0.entryTimestamp) == day.id
                 }
-                let metric = self.isMetric
+                let units = self.currentMeasurementUnits
+                let metric = units == .metric
                 babyEntries = dayEntries.compactMap { entry -> BabyHistoryEntry? in
                     guard let baby = entry.babyEntry else { return nil }
                     let decigrams = baby.weight
@@ -782,7 +812,7 @@ final class HistoryStore: ObservableObject {
                         lengthCm: lengthCm,
                         percentile: pct,
                         notes: entry.note?.isEmpty == false ? entry.note : nil,
-                        weightDisplay: self.formatBabyWeightDisplay(decigrams: decigrams, source: source, isMetric: metric),
+                        weightDisplay: self.formatBabyWeightDisplay(decigrams: decigrams, source: source, units: units),
                         lengthDisplay: self.formatBabyLengthDisplay(mm: mm, isMetric: metric)
                     )
                 }.sorted { $0.entryTimestamp > $1.entryTimestamp }
@@ -800,18 +830,22 @@ final class HistoryStore: ObservableObject {
 
     // MARK: - Baby Display Formatting
 
-    /// Formats baby weight in decigrams as a display string based on unit preference.
+    /// Formats baby weight in decigrams as a display string based on the active measurement units.
     /// When source is provided (e.g. "0220", "0222"), applies graduation rounding to match scale LCD.
-    private func formatBabyWeightDisplay(decigrams: Int, source: String? = nil, isMetric: Bool) -> String {
+    private func formatBabyWeightDisplay(decigrams: Int, source: String? = nil, units: MeasurementUnits) -> String {
         guard decigrams > 0 else { return "--" }
-        let displayUnit: ConversionTools.BabyDisplayUnit = isMetric ? .kg : .lbOz
+        let displayUnit: ConversionTools.BabyDisplayUnit = units == .metric ? .kg : .lbOz
         let graduatedDecigrams = ConversionTools.convertToDisplayWeightBase(
             decigrams: decigrams, source: source, unit: displayUnit, isBabyScaleEntry: true
         )
-        if isMetric {
+        switch units {
+        case .metric:
             let kg = ConversionTools.convertBabyDecigramsToKg(graduatedDecigrams)
             return "\(String(format: "%.3f", kg)) \(HistoryListStrings.kg)"
-        } else {
+        case .imperialLbDecimal:
+            let lb = ConversionTools.convertBabyDecigramsToLb(graduatedDecigrams)
+            return "\(String(format: "%.1f", lb)) \(HistoryListStrings.lb)"
+        case .imperialLbOz:
             let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(graduatedDecigrams)
             return "\(lbsOz.lbs) \(HistoryListStrings.lbs) \(String(format: "%.1f", lbsOz.oz)) \(HistoryListStrings.oz)"
         }
@@ -891,7 +925,8 @@ final class HistoryStore: ObservableObject {
         }.filter { !$0.key.isEmpty }
 
         // Build days sorted newest first
-        let metric = self.isMetric
+        let units = self.currentMeasurementUnits
+        let metric = units == .metric
         let days: [BabyHistoryDay] = grouped.map { dayId, dayEntries in
             let count = dayEntries.count
             let weights = dayEntries.compactMap { $0.babyEntry?.weight }
@@ -924,7 +959,7 @@ final class HistoryStore: ObservableObject {
                 lengthInches: lengthInches,
                 lengthCm: lengthCm,
                 percentile: pct,
-                weightDisplay: self.formatBabyWeightDisplay(decigrams: avgWeight, isMetric: metric),
+                weightDisplay: self.formatBabyWeightDisplay(decigrams: avgWeight, units: units),
                 lengthDisplay: self.formatBabyLengthDisplay(mm: avgMm, isMetric: metric)
             )
         }.sorted { $0.id > $1.id }

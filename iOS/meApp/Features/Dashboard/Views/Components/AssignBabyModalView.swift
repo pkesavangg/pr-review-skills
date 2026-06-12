@@ -33,9 +33,9 @@ struct AssignBabyModalView: View {
         let parts = weightMessage.components(separatedBy: " · ")
         let weight = parts.first ?? weightMessage
         let timestamp = parts.count > 1 ? " - \(parts[1])" : ""
-        return (styledBabyWeightText(weight, theme: theme)
+        return (styledBabyWeightText(weight, theme: theme, numberStyle: .heading3, unitStyle: .body1)
             + Text(timestamp)
-                .fontOpenSans(.body2)
+                .fontOpenSans(.body3)
                 .foregroundColor(theme.textBody))
             .multilineTextAlignment(.center)
     }
@@ -167,11 +167,10 @@ private struct AssignToNewBabyRow: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(DashboardStrings.assignMeasurementNewBaby)
-                        .fontOpenSans(.body1)
-                        .bold()
+                        .fontOpenSans(.body2)
                         .foregroundColor(theme.textHeading)
                     Text(DashboardStrings.assignMeasurementNewBabySubtitle)
-                        .fontOpenSans(.body2)
+                        .fontOpenSans(.body3)
                         .foregroundColor(theme.textBody)
                 }
 
@@ -224,13 +223,12 @@ private struct BabySelectionRow: View {
                 // Name + age
                 VStack(alignment: .leading, spacing: 2) {
                     Text(baby.name)
-                        .fontOpenSans(.body1)
-                        .bold()
+                        .fontOpenSans(.body2)
                         .foregroundColor(theme.textHeading)
                     let age = ageLabel(for: baby.birthday)
                     if !age.isEmpty {
                         Text(age)
-                            .fontOpenSans(.body2)
+                            .fontOpenSans(.body3)
                             .foregroundColor(theme.textBody)
                     }
                 }

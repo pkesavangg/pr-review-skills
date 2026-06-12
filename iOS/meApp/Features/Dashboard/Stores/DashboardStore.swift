@@ -847,6 +847,11 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     var currentUnitString: String { currentUnit.rawValue }
     var currentUnitText: String { accountService.activeAccount?.weightUnit.rawValue ?? "lbs" }
     var currentWeightlessMode: Bool { accountService.activeAccount?.isWeightlessOn ?? false }
+    var currentMeasurementUnits: MeasurementUnits {
+        guard let raw = accountService.activeAccount?.measurementUnits,
+              let units = MeasurementUnits(rawValue: raw) else { return .imperialLbOz }
+        return units
+    }
     var unitText: String { goalManager.getUnitText() }
 
     var hasEntriesButNoneInCurrentPeriod: Bool {

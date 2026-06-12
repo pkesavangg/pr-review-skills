@@ -11,6 +11,7 @@ import SwiftUI
 struct MyKidsAddBabyScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var router: Router<SettingsRoute>
+    @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
     @StateObject private var store = MyKidsStore()
 
     private let lang = MyKidsStrings.self
@@ -53,6 +54,10 @@ struct MyKidsAddBabyScreen: View {
         .onAppear { store.addBaby() }
         .onChange(of: store.isShowingAddBaby) { _, isShowing in
             if !isShowing { router.navigateBack() }
+        }
+        .onChange(of: store.lastSavedBabyId) { _, babyId in
+            guard let babyId, tabViewModel.pendingBabyAssignmentEntryId != nil else { return }
+            Task { await tabViewModel.assignPendingEntry(to: babyId) }
         }
     }
 }

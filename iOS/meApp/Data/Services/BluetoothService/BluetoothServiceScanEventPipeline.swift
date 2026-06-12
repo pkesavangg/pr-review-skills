@@ -204,7 +204,7 @@ extension BluetoothService {
             pulse: bpmData.pulse ?? 0,
             timestamp: timestamp,
             broadcastId: bpmData.broadcastId
-        ), batchCount: 1)
+        ))
     }
 
     private func saveBpmEntryList(_ bpmEntryList: GGBPMEntryList) async {
@@ -234,7 +234,7 @@ extension BluetoothService {
             await persistBpmEntry(measurement)
         }
         if let latest = measurements.first {
-            await stagePendingBpmEntry(latest, batchCount: batchCount)
+            await stagePendingBpmEntry(latest)
         }
     }
 

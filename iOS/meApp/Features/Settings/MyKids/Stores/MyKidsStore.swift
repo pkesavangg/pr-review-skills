@@ -17,6 +17,7 @@ final class MyKidsStore: ObservableObject {
     @Published var isShowingAddBaby = false
     @Published var showBabyDatePicker = false
     @Published var showBabySexPicker = false
+    @Published var lastSavedBabyId: String?
 
     /// Form used by the add/edit baby sheet.
     @Published var babyProfileForm = BabyProfileSetupForm()
@@ -109,7 +110,7 @@ final class MyKidsStore: ObservableObject {
                 )
             } else {
                 let accountId = accountService.activeAccount?.accountId ?? ""
-                _ = try await babyService.saveBaby(
+                let newBaby = try await babyService.saveBaby(
                     name: name,
                     accountId: accountId,
                     deviceId: nil,
@@ -119,6 +120,7 @@ final class MyKidsStore: ObservableObject {
                     birthWeightLbs: weightLbs,
                     birthWeightOz: weightOz
                 )
+                lastSavedBabyId = newBaby.id
             }
             notificationService.dismissLoader()
             isShowingAddBaby = false

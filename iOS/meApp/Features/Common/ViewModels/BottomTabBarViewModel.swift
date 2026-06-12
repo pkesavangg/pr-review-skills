@@ -42,6 +42,8 @@ class BottomTabBarViewModel: ObservableObject {
     @Published var setupPayload: ScaleDiscoverSheetInfo?
     /// Remembers the last selected non-AppSync tab to restore after closing scanner
     @Published private(set) var previousNonAppSyncTab: BottomTab = .dash
+    /// Pending baby entry to assign after the user creates a new baby profile from the assign modal.
+    @Published var pendingBabyAssignmentEntryId: UUID?
 
     // MARK: - Dependencies
 
@@ -488,6 +490,28 @@ class BottomTabBarViewModel: ObservableObject {
         navigateToSettings(route: .goal)
     }
 
+    /// Assigns the pending baby entry (set via `pendingBabyAssignmentEntryId`) to the given baby.
+    /// Called by `MyKidsAddBabyScreen` after a new baby profile is saved.
+    func assignPendingEntry(to babyId: String) async {
+        guard let entryId = pendingBabyAssignmentEntryId else { return }
+        pendingBabyAssignmentEntryId = nil
+        do {
+            try await entryService.assignBabyEntry(entryId: entryId, babyId: babyId)
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Pending baby entry assigned to new baby. entryId=\(entryId), babyId=\(babyId)"
+            )
+        } catch {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Failed to assign pending baby entry. entryId=\(entryId), babyId=\(babyId)",
+                data: error.localizedDescription
+            )
+        }
+    }
+
     /// Dismisses the “Scale Discovered” sheet.
     func dismissDiscoveredScaleSheet() {
         discoveredScale = nil
@@ -876,7 +900,8 @@ class BottomTabBarViewModel: ObservableObject {
                         didUserAct = true
                         guard let self else { return }
                         self.notificationService.dismissToast()
-                        self.navigateToSettings(route: .myKids)
+                        self.pendingBabyAssignmentEntryId = entryId
+                        self.navigateToSettings(route: .addBaby)
                         self.logger.log(
                             level: .info,
                             tag: self.tag,
@@ -997,11 +1022,12 @@ class BottomTabBarViewModel: ObservableObject {
             onAddNewBaby: { [weak self] in
                 guard let self else { return }
                 self.notificationService.dismissModal()
-                self.navigateToSettings(route: .myKids)
+                self.pendingBabyAssignmentEntryId = entryId
+                self.navigateToSettings(route: .addBaby)
                 self.logger.log(
                     level: .info,
                     tag: self.tag,
-                    message: "Navigating to My Kids to add new baby profile from assign modal. entryId=\(entryId)"
+                    message: "Navigating to Add Baby to create new profile from assign modal. entryId=\(entryId)"
                 )
             }
         )
