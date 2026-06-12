@@ -45,6 +45,7 @@ constructor(
     scaleSettingsManager.loadMacAddressSettings(viewModelScope, ::dispatchIntent)
     notificationSettingsManager.initFeedNotificationListener(viewModelScope, ::dispatchIntent)
     dataSettingsManager.observeExportEnabled(viewModelScope, ::dispatchIntent)
+    unitSettingsManager.observeBabyWeightUnit(viewModelScope, ::dispatchIntent)
   }
 
   override fun onDependenciesReady() {

@@ -26,6 +26,17 @@ message UserAccount {
     int32 last_appsync_zoom_level = 11;
     DefaultGraphSegment default_graph_segment = 12;
     bool graph_scroll_hint_shown = 10;
+    BabyWeightUnit baby_weight_unit = 13;
+}
+
+// My Kids weight unit preference. Local-only; backend has no
+// per-baby unit. UNSPECIFIED is the proto default for unmigrated
+// accounts and is treated as LB_OZ at read time.
+enum BabyWeightUnit {
+    BABY_WEIGHT_UNIT_UNSPECIFIED = 0;
+    BABY_WEIGHT_UNIT_LB_OZ = 1;
+    BABY_WEIGHT_UNIT_LB = 2;
+    BABY_WEIGHT_UNIT_KG = 3;
 }
 
 // Default graph range preference
