@@ -24,6 +24,7 @@ data class SettingsState(
   val showUnreadFeedIndication: Boolean = false,
   val isExportEnabled: Boolean = false,
   val isBabyProduct: Boolean = false,
+  val hasWeightScale: Boolean = false,
   // Local-only My Kids unit preference. Defaults to LB_OZ — the canonical
   // baby scale unit. Backend has no per-baby unit; this is loaded from
   // [UserDataStore.babyWeightUnitForCurrentAccountFlow].
@@ -88,6 +89,7 @@ sealed interface SettingsIntent : IReducer.Intent {
   data class SetShowUnreadFeedIndication(val show: Boolean) : SettingsIntent
   data class SetExportEnabled(val enabled: Boolean) : SettingsIntent
   data class SetIsBabyProduct(val isBabyProduct: Boolean) : SettingsIntent
+  data class SetHasWeightScale(val hasWeightScale: Boolean) : SettingsIntent
   data class SetBabyWeightUnit(val unit: WeightUnit) : SettingsIntent
   data class SetHasBabyScaleDevice(val hasBabyScaleDevice: Boolean) : SettingsIntent
   object DeleteAccount : SettingsIntent
@@ -121,6 +123,7 @@ class SettingsReducer : IReducer<SettingsState, SettingsIntent> {
       is SettingsIntent.SetShowUnreadFeedIndication -> state.copy(showUnreadFeedIndication = intent.show)
       is SettingsIntent.SetExportEnabled -> state.copy(isExportEnabled = intent.enabled)
       is SettingsIntent.SetIsBabyProduct -> state.copy(isBabyProduct = intent.isBabyProduct)
+      is SettingsIntent.SetHasWeightScale -> state.copy(hasWeightScale = intent.hasWeightScale)
       is SettingsIntent.SetBabyWeightUnit -> state.copy(babyWeightUnit = intent.unit)
       is SettingsIntent.SetHasBabyScaleDevice -> state.copy(hasBabyScaleDevice = intent.hasBabyScaleDevice)
       else -> null

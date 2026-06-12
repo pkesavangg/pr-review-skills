@@ -298,6 +298,17 @@ class IntegrationService @Inject constructor(
     }
   }
 
+  override suspend fun submitIntegrationRequest(suggestion: String) {
+    val trimmed = suggestion.trim()
+    require(trimmed.isNotEmpty()) { "Integration suggestion cannot be blank" }
+    val response = integrationRepository.requestIntegration(mapOf("request" to trimmed))
+    if (!response.isSuccessful) {
+      AppLog.w(TAG, "submitIntegrationRequest failed: HTTP ${response.code()}")
+      error("Server returned ${response.code()}")
+    }
+    AppLog.d(TAG, "submitIntegrationRequest delivered for '$trimmed'")
+  }
+
   /**
    * Gets the display names for invalid integration providers.
    * @param providers List of integration providers

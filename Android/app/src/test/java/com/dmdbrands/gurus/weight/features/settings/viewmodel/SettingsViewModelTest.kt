@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.shared.utilities.browser.ICustomTabManager
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
+import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.settings.manager.IDataSettingsManager
 import com.dmdbrands.gurus.weight.features.settings.manager.INotificationSettingsManager
 import com.dmdbrands.gurus.weight.features.settings.manager.IProfileSettingsManager
@@ -16,9 +17,12 @@ import com.google.common.truth.Truth.assertThat
 import io.mockk.MockKAnnotations
 import io.mockk.coVerify
 import io.mockk.impl.annotations.MockK
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.BeforeEach
@@ -61,6 +65,9 @@ class SettingsViewModelTest {
     @MockK(relaxed = true)
     lateinit var dataSettingsManager: IDataSettingsManager
 
+    @MockK(relaxed = true)
+    lateinit var deviceService: IDeviceService
+
     private lateinit var navigationService: IAppNavigationService
     private lateinit var dialogQueueService: IDialogQueueService
     private lateinit var customTabManager: ICustomTabManager
@@ -72,6 +79,7 @@ class SettingsViewModelTest {
         navigationService = mockk(relaxed = true)
         dialogQueueService = mockk(relaxed = true)
         customTabManager = mockk(relaxed = true)
+        every { deviceService.hasWeightScale } returns flowOf(false)
         viewModel = SettingsViewModel(
             profileSettingsManager = profileSettingsManager,
             unitSettingsManager = unitSettingsManager,
@@ -79,6 +87,7 @@ class SettingsViewModelTest {
             scaleSettingsManager = scaleSettingsManager,
             dataSettingsManager = dataSettingsManager,
             crashReportingService = mockk(relaxed = true),
+            deviceService = deviceService,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -104,6 +113,7 @@ class SettingsViewModelTest {
         assertThat(state.showUnreadFeedIndication).isFalse()
         assertThat(state.isExportEnabled).isFalse()
         assertThat(state.isBabyProduct).isFalse()
+        assertThat(state.hasWeightScale).isFalse()
     }
 
     // -------------------------------------------------------------------------
@@ -219,6 +229,32 @@ class SettingsViewModelTest {
     @Test
     fun `SetIsBabyProduct defaults to false`() {
         assertThat(viewModel.state.value.isBabyProduct).isFalse()
+    }
+
+    @Test
+    fun `SetHasWeightScale updates hasWeightScale`() {
+        viewModel.handleIntent(SettingsIntent.SetHasWeightScale(true))
+        assertThat(viewModel.state.value.hasWeightScale).isTrue()
+    }
+
+    @Test
+    fun `observes deviceService hasWeightScale and reflects it in state`() = runTest {
+        every { deviceService.hasWeightScale } returns MutableStateFlow(true)
+        val vm = SettingsViewModel(
+            profileSettingsManager = profileSettingsManager,
+            unitSettingsManager = unitSettingsManager,
+            notificationSettingsManager = notificationSettingsManager,
+            scaleSettingsManager = scaleSettingsManager,
+            dataSettingsManager = dataSettingsManager,
+            crashReportingService = mockk(relaxed = true),
+            deviceService = deviceService,
+        ).initTestDependencies(
+            navigationService = navigationService,
+            dialogQueueService = dialogQueueService,
+            customTabManager = customTabManager,
+        )
+        advanceUntilIdle()
+        assertThat(vm.state.value.hasWeightScale).isTrue()
     }
 
     // -------------------------------------------------------------------------

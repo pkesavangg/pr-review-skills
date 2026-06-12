@@ -67,6 +67,11 @@ constructor(
       devices.any { device -> device.deviceType == ScaleSetupType.BtWifiR4.value }
     }
 
+  override val hasWeightScale: Flow<Boolean>
+    get() = _pairedScales.map { devices ->
+      devices.any { device -> ScaleSetupType.isWeightScale(device.deviceType) }
+    }
+
   override val isWeightOnlyModeAlertShown = MutableStateFlow(false)
 
   private suspend fun updateConnectedDeviceDetailMap(macAddress: String, deviceDetail: GGDeviceDetail) {

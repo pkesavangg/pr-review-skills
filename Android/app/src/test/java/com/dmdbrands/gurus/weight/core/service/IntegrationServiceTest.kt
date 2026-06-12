@@ -33,6 +33,10 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.ResponseBody
+import okhttp3.ResponseBody.Companion.toResponseBody
+import retrofit2.Response
 import org.junit.jupiter.api.AfterEach
 import kotlin.test.assertFailsWith
 import org.junit.jupiter.api.BeforeEach
@@ -742,5 +746,44 @@ class IntegrationServiceTest {
 
     coVerify { appNavigationService.navigateTo(AppRoute.Integration.IntegrationList) }
     verify { dialogQueueService.dismissCurrent() }
+  }
+
+  // -------------------------------------------------------------------------
+  // submitIntegrationRequest
+  // -------------------------------------------------------------------------
+
+  private fun successResponse(): Response<ResponseBody> =
+    Response.success("ok".toResponseBody("text/plain".toMediaTypeOrNull()))
+
+  private fun errorResponse(code: Int): Response<ResponseBody> =
+    Response.error(code, "".toResponseBody("text/plain".toMediaTypeOrNull()))
+
+  @Test
+  fun `submitIntegrationRequest routes trimmed text through repository on success`() = runTest {
+    coEvery { integrationRepository.requestIntegration(any()) } returns successResponse()
+
+    service.submitIntegrationRequest("  Garmin  ")
+
+    coVerify { integrationRepository.requestIntegration(mapOf("request" to "Garmin")) }
+  }
+
+  @Test
+  fun `submitIntegrationRequest throws when server returns non-2xx`() = runTest {
+    coEvery { integrationRepository.requestIntegration(any()) } returns errorResponse(500)
+
+    assertFailsWith<IllegalStateException> {
+      service.submitIntegrationRequest("Garmin")
+    }
+
+    coVerify { integrationRepository.requestIntegration(mapOf("request" to "Garmin")) }
+  }
+
+  @Test
+  fun `submitIntegrationRequest rejects blank input without hitting the network`() = runTest {
+    assertFailsWith<IllegalArgumentException> {
+      service.submitIntegrationRequest("   ")
+    }
+
+    coVerify(exactly = 0) { integrationRepository.requestIntegration(any()) }
   }
 }

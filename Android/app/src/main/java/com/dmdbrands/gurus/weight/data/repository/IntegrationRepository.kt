@@ -11,6 +11,8 @@ import com.dmdbrands.gurus.weight.domain.repository.IHealthConnectRepository
 import com.dmdbrands.gurus.weight.domain.repository.IIntegrationRepository
 import com.dmdbrands.gurus.weight.features.integration.model.Integrations
 import com.dmdbrands.gurus.weight.core.di.ApplicationScope
+import okhttp3.ResponseBody
+import retrofit2.Response
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -80,6 +82,10 @@ class IntegrationRepository @Inject constructor(
 
   override suspend fun removeIntegration(provider: String, suggestion: Map<String, String>) {
     return integrationAPI.removeIntegration(provider, suggestion)
+  }
+
+  override suspend fun requestIntegration(body: Map<String, String>): Response<ResponseBody> {
+    return integrationAPI.requestIntegration(body)
   }
 
   override suspend fun updateLocalAccount() {

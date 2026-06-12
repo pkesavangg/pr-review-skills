@@ -128,6 +128,14 @@ class SettingsReducerTest {
     }
 
     @Test
+    fun `SetHasWeightScale updates hasWeightScale`() {
+        val state = SettingsState(hasWeightScale = false)
+
+        val result = reducer.reduce(state, SettingsIntent.SetHasWeightScale(hasWeightScale = true))
+
+        assertThat(result?.hasWeightScale).isTrue()
+    }
+    @Test
     fun `SetBabyWeightUnit updates babyWeightUnit`() {
         val state = SettingsState(babyWeightUnit = WeightUnit.LB_OZ)
 
@@ -178,6 +186,7 @@ class SettingsReducerTest {
         assertThat(state.showUnreadFeedIndication).isFalse()
         assertThat(state.isExportEnabled).isFalse()
         assertThat(state.isBabyProduct).isFalse()
+        assertThat(state.hasWeightScale).isFalse()
         assertThat(state.hasBabyScaleDevice).isFalse()
     }
 

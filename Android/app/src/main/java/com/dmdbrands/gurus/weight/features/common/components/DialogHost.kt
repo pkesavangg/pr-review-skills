@@ -12,6 +12,7 @@ import com.dmdbrands.gurus.weight.features.forgotPasswordDialog.screen.PasswordR
 import com.dmdbrands.gurus.weight.features.integration.components.AddHealthConnect
 import com.dmdbrands.gurus.weight.features.integration.components.MultipleDeviceConnectionScreen
 import com.dmdbrands.gurus.weight.features.integration.components.OutOfSyncScreen
+import com.dmdbrands.gurus.weight.features.integration.components.RequestIntegrationModal
 import com.dmdbrands.gurus.weight.features.scaleDetails.components.ScaleNameModal
 import com.dmdbrands.gurus.weight.features.settings.components.AccountSwitchInfoModal
 
@@ -34,6 +35,7 @@ enum class DialogType {
   SetGoalPopup,
   IAMFeedModal,
   GraphScrollHintModal,
+  RequestIntegration,
 }
 
 @Composable
@@ -220,6 +222,19 @@ fun DialogHost() {
           onClose = { dialogQueueViewModel.dismissCurrent() },
           onPrimaryAction = {
             dialog.onConfirm?.invoke(Unit)
+            dialogQueueViewModel.dismissCurrent()
+          },
+        )
+      }
+
+      DialogType.RequestIntegration -> {
+        RequestIntegrationModal(
+          onSend = { request ->
+            dialog.onConfirm?.invoke(request)
+            dialogQueueViewModel.dismissCurrent()
+          },
+          onDismiss = {
+            dialog.onDismiss?.invoke()
             dialogQueueViewModel.dismissCurrent()
           },
         )

@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
+import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.ICrashReportingService
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.settings.manager.IDataSettingsManager
@@ -29,6 +30,7 @@ constructor(
   private val scaleSettingsManager: IScaleSettingsManager,
   private val dataSettingsManager: IDataSettingsManager,
   private val crashReportingService: ICrashReportingService,
+  private val deviceService: IDeviceService,
 ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
   SettingsReducer(),
 ) {
@@ -45,6 +47,7 @@ constructor(
     scaleSettingsManager.loadMacAddressSettings(viewModelScope, ::dispatchIntent)
     notificationSettingsManager.initFeedNotificationListener(viewModelScope, ::dispatchIntent)
     dataSettingsManager.observeExportEnabled(viewModelScope, ::dispatchIntent)
+    observeWeightScalePairing()
     unitSettingsManager.observeBabyWeightUnit(viewModelScope, ::dispatchIntent)
   }
 
@@ -185,6 +188,14 @@ constructor(
 
   private fun dispatchIntent(intent: SettingsIntent) {
     handleIntent(intent)
+  }
+
+  private fun observeWeightScalePairing() {
+    viewModelScope.launch {
+      deviceService.hasWeightScale
+        .distinctUntilChanged()
+        .collect { hasWeightScale -> dispatchIntent(SettingsIntent.SetHasWeightScale(hasWeightScale)) }
+    }
   }
 
   private fun observeProductSelection() {

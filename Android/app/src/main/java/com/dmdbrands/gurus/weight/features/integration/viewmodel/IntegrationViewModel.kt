@@ -12,6 +12,7 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.domain.services.IIntegrationService
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
+import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
@@ -37,7 +38,7 @@ class IntegrationViewModel @Inject constructor(
   private val integrationService: IIntegrationService,
   private val healthConnectService: IHealthConnectService,
   private val healthConnectRepository: IHealthConnectRepository, // Inject repository
-  private val integrationRepository: IIntegrationRepository
+  private val integrationRepository: IIntegrationRepository,
 ) : BaseIntentViewModel<IntegrationState, IntegrationIntent>(
   reducer = IntegrationReducer(),
 ) {
@@ -87,11 +88,15 @@ class IntegrationViewModel @Inject constructor(
       is IntegrationIntent.NavigateToHealthConnect -> connectHealthConnectIntegration()
       is IntegrationIntent.RemoveHealthConnectIntegration -> removeHealthConnectIntegration()
       is IntegrationIntent.ToggleHealthConnectIntegration -> toggleHealthConnectIntegration(intent.integration)
+      is IntegrationIntent.RequestNewIntegration -> requestNewIntegration()
       else -> {
         // Handle other intents that don't need special processing
       }
     }
   }
+
+  private fun requestNewIntegration() =
+    enqueueIntegrationRequestModal(viewModelScope, dialogQueueService, integrationService)
 
   /**
    * Connects to Health Connect integration.

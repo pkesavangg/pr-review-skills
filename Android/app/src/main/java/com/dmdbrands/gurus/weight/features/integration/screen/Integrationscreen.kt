@@ -4,14 +4,18 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
+import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.integration.model.IntegrationIntent
 import com.dmdbrands.gurus.weight.features.integration.model.IntegrationState
@@ -60,8 +64,15 @@ private fun IntegrationContent(
                 .fillMaxSize()
                 .padding(vertical = spacing.md, horizontal = spacing.sm),
             verticalArrangement = Arrangement.spacedBy(spacing.md),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             IntegrationList(state, handleIntent, onHealthConnectIconClick)
+            AppButton(
+                label = IntegrationStrings.RequestNewIntegration,
+                type = ButtonType.TextPrimary,
+                modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                onClick = { handleIntent(IntegrationIntent.RequestNewIntegration) },
+            )
         }
     }
 }

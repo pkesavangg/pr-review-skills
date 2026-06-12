@@ -155,14 +155,6 @@ fun SettingsScreenContent(
               },
             ),
             SettingsItem(
-              title = SettingsScreenStrings.Notifications,
-              type = SettingsItemType.Dropdown(state.currentNotificationStatus),
-              testTag = "settings_row_notifications",
-              onClick = {
-                handleIntent.invoke(SettingsIntent.ShowNotificationsModal)
-              },
-            ),
-            SettingsItem(
               title = if (state.unreadFeedCount > 0) {
                 SettingsScreenStrings.MessagesWithCount(state.unreadFeedCount)
               } else {
@@ -189,42 +181,52 @@ fun SettingsScreenContent(
           ),
       )
 
-      // Weight Scale Section
-      SettingsSection(
-        title = SettingsScreenStrings.WeightScale,
-        items =
-          listOf(
-            SettingsItem(
-              title = SettingsScreenStrings.GoalSetting,
-              type = SettingsItemType.Action(),
-              testTag = "settings_row_goal_setting",
-              onClick = {
-                handleIntent.invoke(SettingsIntent.goalSettingModal)
-              },
-            ),
-            SettingsItem(
-              title = SettingsScreenStrings.ActivityLevel,
-              type = SettingsItemType.Dropdown(
-                state.account?.activityLevel?.replaceFirstChar { it.uppercase() }
-                  ?: SettingsScreenStrings.NotSet,
+      // My Weight Section — only shown when a Weight Scale is paired
+      if (state.hasWeightScale) {
+        SettingsSection(
+          title = SettingsScreenStrings.WeightScale,
+          items =
+            listOf(
+              SettingsItem(
+                title = SettingsScreenStrings.Notifications,
+                type = SettingsItemType.Dropdown(state.currentNotificationStatus),
+                testTag = "settings_row_notifications",
+                onClick = {
+                  handleIntent.invoke(SettingsIntent.ShowNotificationsModal)
+                },
               ),
-              testTag = "settings_row_activity_level",
-              onClick = {
-                handleIntent.invoke(SettingsIntent.ShowActivityLevelModal)
-              },
-            ),
-            SettingsItem(
-              title = SettingsScreenStrings.Weightless,
-              type = SettingsItemType.Action(
-                viewModel?.getWeightlessDisplayText() ?: "Off",
+              SettingsItem(
+                title = SettingsScreenStrings.GoalSetting,
+                type = SettingsItemType.Action(),
+                testTag = "settings_row_goal_setting",
+                onClick = {
+                  handleIntent.invoke(SettingsIntent.goalSettingModal)
+                },
               ),
-              testTag = "settings_row_weightless",
-              onClick = {
-                handleIntent.invoke(SettingsIntent.NavigateToWeightless)
-              },
+              SettingsItem(
+                title = SettingsScreenStrings.ActivityLevel,
+                type = SettingsItemType.Dropdown(
+                  state.account?.activityLevel?.replaceFirstChar { it.uppercase() }
+                    ?: SettingsScreenStrings.NotSet,
+                ),
+                testTag = "settings_row_activity_level",
+                onClick = {
+                  handleIntent.invoke(SettingsIntent.ShowActivityLevelModal)
+                },
+              ),
+              SettingsItem(
+                title = SettingsScreenStrings.Weightless,
+                type = SettingsItemType.Action(
+                  viewModel?.getWeightlessDisplayText() ?: "Off",
+                ),
+                testTag = "settings_row_weightless",
+                onClick = {
+                  handleIntent.invoke(SettingsIntent.NavigateToWeightless)
+                },
+              ),
             ),
-          ),
-      )
+        )
+      }
 
       // Support Section
       SettingsSection(

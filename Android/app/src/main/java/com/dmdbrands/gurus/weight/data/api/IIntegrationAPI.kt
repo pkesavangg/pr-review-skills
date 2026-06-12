@@ -1,7 +1,10 @@
 package com.dmdbrands.gurus.weight.data.api
 
+import okhttp3.ResponseBody
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.HTTP
+import retrofit2.http.POST
 import retrofit2.http.Path
 
 /**
@@ -10,6 +13,7 @@ import retrofit2.http.Path
 interface IIntegrationAPI {
     companion object {
         private const val INTEGRATIONS = "integrations/"
+        private const val REQUEST = "request"
     }
 
     /**
@@ -23,4 +27,12 @@ interface IIntegrationAPI {
         @Body suggestion: Map<String, String>
     )
 
+    /**
+     * Submits a user-suggested integration. Matches the existing wgApp4 endpoint
+     * (POST /integrations/request, body { "request": "<text>" }, plain-text response).
+     */
+    @POST(INTEGRATIONS + REQUEST)
+    suspend fun requestIntegration(
+        @Body body: Map<String, String>,
+    ): Response<ResponseBody>
 }
