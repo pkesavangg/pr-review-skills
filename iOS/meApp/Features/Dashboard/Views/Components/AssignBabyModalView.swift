@@ -22,9 +22,11 @@ struct AssignBabyModalView: View {
     let onAssign: (String) -> Void
     let onDontAssign: () -> Void
     let onClose: () -> Void
+    let onAddNewBaby: () -> Void
 
     @State private var selectedBabyId: String
 
+    private static let newBabySelectionId = "__new_baby__"
     private let lang = DashboardStrings.self
 
     private var weightMessageView: some View {
@@ -43,13 +45,15 @@ struct AssignBabyModalView: View {
         weightMessage: String,
         onAssign: @escaping (String) -> Void,
         onDontAssign: @escaping () -> Void,
-        onClose: @escaping () -> Void
+        onClose: @escaping () -> Void,
+        onAddNewBaby: @escaping () -> Void = {}
     ) {
         self.babies = babies
         self.weightMessage = weightMessage
         self.onAssign = onAssign
         self.onDontAssign = onDontAssign
         self.onClose = onClose
+        self.onAddNewBaby = onAddNewBaby
         _selectedBabyId = State(initialValue: babies.first?.id ?? "")
     }
 
@@ -91,27 +95,40 @@ struct AssignBabyModalView: View {
             }
             .padding(.bottom, .spacingLG)
 
-            // Baby list
-            VStack(spacing: .spacingSM) {
-                ForEach(babies, id: \.id) { baby in
-                    BabySelectionRow(
-                        baby: baby,
-                        isSelected: selectedBabyId == baby.id
-                    ) {
-                        selectedBabyId = baby.id
+            // Baby list — scrollable when there are more profiles than fit
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: .spacingSM) {
+                    ForEach(babies, id: \.id) { baby in
+                        BabySelectionRow(
+                            baby: baby,
+                            isSelected: selectedBabyId == baby.id
+                        ) {
+                            selectedBabyId = baby.id
+                        }
+                    }
+                    AssignToNewBabyRow(isSelected: selectedBabyId == Self.newBabySelectionId) {
+                        selectedBabyId = Self.newBabySelectionId
                     }
                 }
             }
+            .frame(maxHeight: 240)
             .padding(.bottom, .spacingLG)
 
             // Action buttons
+            let isNewBabySelected = selectedBabyId == Self.newBabySelectionId
             VStack(spacing: .spacingXS) {
                 ButtonView(
-                    text: lang.assignMeasurementAssign,
+                    text: isNewBabySelected ? lang.assignMeasurementAddBaby : lang.assignMeasurementAssign,
                     type: .filledPrimary,
                     size: .large,
                     isDisabled: selectedBabyId.isEmpty,
-                    action: { onAssign(selectedBabyId) }
+                    action: {
+                        if isNewBabySelected {
+                            onAddNewBaby()
+                        } else {
+                            onAssign(selectedBabyId)
+                        }
+                    }
                 )
                 ButtonView(
                     text: lang.assignMeasurementDontAssign,
@@ -125,6 +142,59 @@ struct AssignBabyModalView: View {
         .padding(.spacingMD)
         .background(theme.backgroundSecondary)
         .cornerRadius(.radiusXL)
+    }
+}
+
+// MARK: - Assign to new baby row
+
+private struct AssignToNewBabyRow: View {
+    @Environment(\.appTheme) private var theme
+
+    let isSelected: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: .spacingSM) {
+                ZStack {
+                    Circle()
+                        .fill(theme.babyPrimary.opacity(0.2))
+                        .frame(width: 40, height: 40)
+                    Image(systemName: "plus")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(theme.babyPrimary)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(DashboardStrings.assignMeasurementNewBaby)
+                        .fontOpenSans(.body1)
+                        .bold()
+                        .foregroundColor(theme.textHeading)
+                    Text(DashboardStrings.assignMeasurementNewBabySubtitle)
+                        .fontOpenSans(.body2)
+                        .foregroundColor(theme.textBody)
+                }
+
+                Spacer()
+
+                ZStack {
+                    Circle()
+                        .strokeBorder(isSelected ? theme.babyPrimary : theme.textBody.opacity(0.4), lineWidth: 2)
+                        .frame(width: 22, height: 22)
+                    if isSelected {
+                        Circle()
+                            .fill(theme.babyPrimary)
+                            .frame(width: 12, height: 12)
+                    }
+                }
+            }
+            .padding(.spacingSM)
+            .background(
+                RoundedRectangle(cornerRadius: .radiusMD)
+                    .fill(isSelected ? theme.babyPrimary.opacity(0.1) : theme.backgroundPrimary)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 

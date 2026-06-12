@@ -96,12 +96,12 @@ class BottomTabBarViewModel: ObservableObject {
     /// Tracks the auto-save timeout task for the BPM reading arrival toast.
     private var bpmReadingTimeoutTask: Task<Void, Never>?
     // MARK: - Multiple-readings counter tracking
-    // Each reading type tracks how many readings arrived while a card is visible.
+    // Each reading type tracks the total readings received while a card is visible.
     // The count drives the header row ("X more readings received  VIEW") shown above the title.
+    // For BT batches the notification.batchCount carries the device-level total; for subsequent
+    // single emissions it increments by 1 per arrival.
     // isReplacing* is set just before notificationService.showToast() so that the outgoing
     // card's onDismiss callback does not prematurely zero the counter.
-    private var babyReadingCount: Int = 0
-    private var isReplacingBabyCard: Bool = false
     private var btWeightReadingCount: Int = 0
     private var isReplacingBtWeightCard: Bool = false
     private var wifiWeightReadingCount: Int = 0
@@ -772,28 +772,8 @@ class BottomTabBarViewModel: ObservableObject {
             }
         }
 
-        babyReadingCount += 1
-        let count = babyReadingCount
-
-        let onViewHeader: () -> Void = { [weak self] in
-            guard let self else { return }
-            self.babyReadingCount = 0
-            self.notificationService.dismissToast()
-            self.selectTab(.history)
-            autoAssign()
-        }
-
-        let headerView: AnyView? = count > 1
-            ? AnyView(MultipleReadingsToastView(count: count - 1, onView: onViewHeader))
-            : nil
-
         let onDismiss: () -> Void = { [weak self] in
-            guard let self, !self.isReplacingBabyCard else {
-                self?.isReplacingBabyCard = false
-                return
-            }
-            self.babyReadingCount = 0
-            guard !didUserAct else { return }
+            guard let self, !didUserAct else { return }
             autoAssign()
         }
 
@@ -804,7 +784,6 @@ class BottomTabBarViewModel: ObservableObject {
             toast = ToastModel(
                 title: lang.babyReadingArrivalTitleForSingleBaby(singleBabyName),
                 message: "",
-                headerView: headerView,
                 btnTextView: AnyView(
                     WeightScaleReadingArrivalCTAView(
                         weightWithUnit: weightString,
@@ -812,7 +791,6 @@ class BottomTabBarViewModel: ObservableObject {
                         onSave: { [weak self] in
                             didUserAct = true
                             guard let self else { return }
-                            self.babyReadingCount = 0
                             self.notificationService.dismissToast()
                             Task { @MainActor [weak self] in
                                 guard let self else { return }
@@ -834,7 +812,6 @@ class BottomTabBarViewModel: ObservableObject {
                         onDiscard: { [weak self] in
                             didUserAct = true
                             guard let self else { return }
-                            self.babyReadingCount = 0
                             self.notificationService.dismissToast()
                             self.discardBabyReading(entryId: entryId)
                         }
@@ -848,7 +825,6 @@ class BottomTabBarViewModel: ObservableObject {
             toast = ToastModel(
                 title: lang.babyReadingArrivalTitle,
                 message: "",
-                headerView: headerView,
                 btnTextView: AnyView(
                     BabyReadingArrivalCTAView(
                         weightString: weightString,
@@ -856,7 +832,6 @@ class BottomTabBarViewModel: ObservableObject {
                         onAssign: { [weak self] in
                             didUserAct = true
                             guard let self else { return }
-                            self.babyReadingCount = 0
                             self.notificationService.dismissToast()
                             self.showAssignBabyModal(
                                 entryId: entryId,
@@ -868,7 +843,6 @@ class BottomTabBarViewModel: ObservableObject {
                         onDiscard: { [weak self] in
                             didUserAct = true
                             guard let self else { return }
-                            self.babyReadingCount = 0
                             self.notificationService.dismissToast()
                             self.discardBabyReading(entryId: entryId)
                         }
@@ -879,8 +853,7 @@ class BottomTabBarViewModel: ObservableObject {
             )
         }
 
-        if count > 1 { isReplacingBabyCard = true }
-        logger.log(level: .info, tag: tag, message: "Showing baby reading arrival card. count=\(count)")
+        logger.log(level: .info, tag: tag, message: "Showing baby reading arrival card. entryId=\(entryId)")
         notificationService.showToast(toast)
     }
 
@@ -1020,6 +993,16 @@ class BottomTabBarViewModel: ObservableObject {
             },
             onClose: { [weak self] in
                 self?.notificationService.dismissModal()
+            },
+            onAddNewBaby: { [weak self] in
+                guard let self else { return }
+                self.notificationService.dismissModal()
+                self.navigateToSettings(route: .myKids)
+                self.logger.log(
+                    level: .info,
+                    tag: self.tag,
+                    message: "Navigating to My Kids to add new baby profile from assign modal. entryId=\(entryId)"
+                )
             }
         )
         notificationService.showModal(ModalData(presentedView: AnyView(modalView)))
@@ -1083,7 +1066,7 @@ class BottomTabBarViewModel: ObservableObject {
 
         weightReadingTimeoutTask?.cancel()
 
-        btWeightReadingCount += 1
+        btWeightReadingCount += notification.batchCount
         let count = btWeightReadingCount
 
         let onViewHeader: () -> Void = { [weak self] in
@@ -1162,7 +1145,7 @@ class BottomTabBarViewModel: ObservableObject {
         }
 
         if count > 1 { isReplacingBtWeightCard = true }
-        logger.log(level: .info, tag: tag, message: "Showing weight reading arrival card. count=\(count)")
+        logger.log(level: .info, tag: tag, message: "Showing weight reading arrival card. count=\(count), batchCount=\(notification.batchCount)")
         notificationService.showToast(toast)
     }
 
@@ -1180,7 +1163,7 @@ class BottomTabBarViewModel: ObservableObject {
 
         bpmReadingTimeoutTask?.cancel()
 
-        btBpmReadingCount += 1
+        btBpmReadingCount += notification.batchCount
         let count = btBpmReadingCount
 
         let onViewHeader: () -> Void = { [weak self] in
@@ -1257,7 +1240,7 @@ class BottomTabBarViewModel: ObservableObject {
         }
 
         if count > 1 { isReplacingBtBpmCard = true }
-        logger.log(level: .info, tag: tag, message: "Showing BPM reading arrival card. count=\(count)")
+        logger.log(level: .info, tag: tag, message: "Showing BPM reading arrival card. count=\(count), batchCount=\(notification.batchCount)")
         notificationService.showToast(toast)
     }
 

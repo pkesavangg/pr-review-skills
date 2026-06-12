@@ -44,23 +44,23 @@ struct BabyReadingAssignedToastView: View {
             styledBabyWeightText(weightString, theme: theme)
 
             (Text(DashboardStrings.babyReadingAssignedTo + " ")
-                .fontOpenSans(.body2)
+                .fontOpenSans(.body3)
                 .foregroundColor(theme.actionSuccess)
             + Text(babyName.uppercased())
-                .fontOpenSans(.body2)
+                .fontOpenSans(.body3)
                 .bold()
                 .foregroundColor(theme.actionSuccess))
 
             HStack(spacing: .spacingXS) {
                 Text(DashboardStrings.babyReadingWrongBaby)
-                    .fontOpenSans(.body2)
+                    .fontOpenSans(.body4)
                     .foregroundColor(theme.textBody)
                     .lineLimit(1)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer()
                 Button(action: onReassign) {
                     Text(DashboardStrings.babyReadingReassign)
-                        .fontOpenSans(.body1)
+                        .fontOpenSans(.body3)
                         .bold()
                         .underline()
                         .foregroundColor(theme.textHeading)

@@ -196,6 +196,7 @@ extension BluetoothService {
     private func saveSingleBpmEntry(_ bpmData: GGBPMEntry) async {
         handleBpmMeasurement(bpmData)
         let timestamp = bpmData.date.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) } ?? Date()
+        logger.log(level: .info, tag: tag, message: "BP readings received from device: count=1")
         // Live single readings stage as pending — the toast handler will confirm/discard.
         await stagePendingBpmEntry(BpmMeasurement(
             systolic: bpmData.systolic ?? 0,
@@ -203,7 +204,7 @@ extension BluetoothService {
             pulse: bpmData.pulse ?? 0,
             timestamp: timestamp,
             broadcastId: bpmData.broadcastId
-        ))
+        ), batchCount: 1)
     }
 
     private func saveBpmEntryList(_ bpmEntryList: GGBPMEntryList) async {
@@ -211,6 +212,8 @@ extension BluetoothService {
             logger.log(level: .info, tag: tag, message: "No valid BPM entries to save")
             return
         }
+        let batchCount = bpmEntryList.list.count
+        logger.log(level: .info, tag: tag, message: "BP readings received from device: count=\(batchCount)")
         // Mirror the weight-list pattern: persist historical entries silently and surface
         // only the most recent reading as a pending confirmation toast.
         let measurements = bpmEntryList.list.map { bpmData -> BpmMeasurement in
@@ -231,7 +234,7 @@ extension BluetoothService {
             await persistBpmEntry(measurement)
         }
         if let latest = measurements.first {
-            await stagePendingBpmEntry(latest)
+            await stagePendingBpmEntry(latest, batchCount: batchCount)
         }
     }
 
@@ -255,7 +258,8 @@ extension BluetoothService {
             return
         }
 
-        // Weight/BPM entries: hold pending user confirmation via the toast.
+        logger.log(level: .info, tag: tag, message: "Weight readings received from device: count=1")
+        // Weight entries: hold pending user confirmation via the toast.
         // If a previous entry is still awaiting confirmation, save it automatically
         // before overwriting — the user only sees one toast at a time.
         if let existing = pendingScaleEntry {
@@ -276,7 +280,7 @@ extension BluetoothService {
             }
         }
         pendingScaleEntry = entry
-        pendingScaleEntrySubject.send(EntryNotification(from: entry))
+        pendingScaleEntrySubject.send(EntryNotification(from: entry, batchCount: 1))
     }
 
     private func saveWeightEntryList(_ entryList: GGEntryList) async { // swiftlint:disable:this function_body_length
@@ -285,6 +289,7 @@ extension BluetoothService {
             logger.log(level: .info, tag: tag, message: "No valid entries to save")
             return
         }
+        logger.log(level: .info, tag: tag, message: "Weight readings received from device: count=\(entries.count)")
 
         // Baby-scale batches: all entries are saved immediately and the most recent fires
         // newEntryReceivedSubject for the assign/discard card. Mirror saveSingleWeightEntry logic.
@@ -352,7 +357,7 @@ extension BluetoothService {
                 }
             }
             pendingScaleEntry = latestEntry
-            let notification = EntryNotification(from: latestEntry)
+            let notification = EntryNotification(from: latestEntry, batchCount: entries.count)
             pendingScaleEntrySubject.send(notification)
         }
     }

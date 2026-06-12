@@ -132,8 +132,10 @@ extension UnifiedEntryRequest {
     /// since the server identifies the row by timestamp.
     /// - Parameters:
     ///   - dto: The stored operation, as produced by `Entry.toOperationDTO()`.
+    ///   - serverEntryId: The server-assigned entry identifier stored after the create sync.
+    ///     Required for delete operations; omitted for creates (server assigns it).
     ///   - note: The entry note (carried separately because `BathScaleOperationDTO` does not hold it).
-    init?(from dto: BathScaleOperationDTO, note: String? = nil) {
+    init?(from dto: BathScaleOperationDTO, serverEntryId: String? = nil, note: String? = nil) {
         let resolvedType = EntryType(rawValue: dto.entryType ?? EntryType.scale.rawValue) ?? .scale
         guard let category = EntryCategory(entryType: resolvedType), category != .baby else {
             // Baby write path is iOS 3 — out of scope for MOB-384.
@@ -159,7 +161,8 @@ extension UnifiedEntryRequest {
                 impedance: isCreate ? dto.impedance.map { Int($0.rounded()) } : nil,
                 unit: isCreate ? dto.unit : nil,
                 pulse: isCreate ? dto.pulse.map { Int($0.rounded()) } : nil,
-                source: isCreate ? dto.source : nil
+                source: isCreate ? dto.source : nil,
+                entryId: isCreate ? nil : serverEntryId
             )
         case .bp:
             self.init(
@@ -170,7 +173,8 @@ extension UnifiedEntryRequest {
                 diastolic: isCreate ? dto.diastolic.map { Int($0.rounded()) } : nil,
                 pulse: isCreate ? dto.pulse.map { Int($0.rounded()) } : nil,
                 source: isCreate ? dto.source : nil,
-                note: isCreate ? note : nil
+                note: isCreate ? note : nil,
+                entryId: isCreate ? nil : serverEntryId
             )
         case .baby:
             return nil

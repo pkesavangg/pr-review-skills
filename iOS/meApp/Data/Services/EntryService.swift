@@ -1062,6 +1062,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 let entryTimestamp = operation.entryTimestamp
                 let currentAttempts = operation.attempts
                 let note = operation.note
+                let serverEntryId = operation.serverEntryId
                 let dto = operation.toOperationDTO()
 
                 // Map to the unified request(s). Weight/BP produce one request; a baby entry
@@ -1069,7 +1070,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 let requests: [UnifiedEntryRequest]
                 if dto.entryType == EntryType.baby.rawValue {
                     requests = BabyEntryRequest.makeRequests(from: dto, entryId: entryIdString, note: note)
-                } else if let request = UnifiedEntryRequest(from: dto, note: note) {
+                } else if let request = UnifiedEntryRequest(from: dto, serverEntryId: serverEntryId, note: note) {
                     requests = [request]
                 } else {
                     requests = []
@@ -1078,10 +1079,22 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
                 do {
                     // POST /v3/entries/ — atomic batch; baby entries submit their sub-type rows together.
-                    try await remoteRepo.submitEntries(requests)
+                    let submitResponse = try await remoteRepo.submitEntries(requests)
+                    logger.log(
+                        level: .info,
+                        tag: tag,
+                        message: "API submitEntries response: entryId=\(entryIdString), responseEntries.count=\(submitResponse.entries.count)"
+                    )
 
                     if operationType == "create" {
                         hadSuccessfulCreate = true
+                        // Store server-assigned entryId so future delete requests can include it.
+                        if let responseEntryId = submitResponse.entries.first?.entryId {
+                            try? await localRepo.updateEntryServerEntryId(
+                                entryId: entryIdString,
+                                serverEntryId: responseEntryId
+                            )
+                        }
                         // R9: Use primitive-based update instead of mutating @Model
                         try await localRepo.updateEntrySyncStatus(
                             entryId: entryIdString,

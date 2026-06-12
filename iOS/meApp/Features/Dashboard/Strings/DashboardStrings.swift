@@ -105,7 +105,10 @@ struct DashboardStrings {
     static let assignMeasurementTitle = "Assign Measurement"
     static let assignMeasurementSubtitle = "Which baby is this measurement for?"
     static let assignMeasurementAssign = "ASSIGN"
+    static let assignMeasurementAddBaby = "ADD A BABY"
     static let assignMeasurementDontAssign = "DON'T ASSIGN"
+    static let assignMeasurementNewBaby = "Assign to new baby"
+    static let assignMeasurementNewBabySubtitle = "create new baby profile"
 
     // Assigned baby toast
     static let babyReadingAssignedTo = "Reading assigned to"

@@ -36,6 +36,10 @@ struct MultipleReadingsToastView: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(.bottom, .spacingXS)
+        .padding(.horizontal, .spacingXS)
+        .padding(.vertical, .spacingXS)
+        .frame(maxWidth: .infinity)
+        .background(theme.backgroundPrimary)
+        .cornerRadius(.radiusSM)
     }
 }
