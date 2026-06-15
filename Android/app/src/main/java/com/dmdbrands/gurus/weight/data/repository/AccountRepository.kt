@@ -39,6 +39,7 @@ import com.dmdbrands.gurus.weight.domain.model.api.dashboard.DashboardTypeReques
 import com.dmdbrands.gurus.weight.domain.model.api.dashboard.ProgressMetricsRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountInfo
 import com.dmdbrands.gurus.weight.domain.model.api.user.MeasurementUnitsRequest
+import com.dmdbrands.gurus.weight.domain.model.api.user.ProductsRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountToken
 import com.dmdbrands.gurus.weight.features.common.enums.toGraphSegment
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
@@ -226,6 +227,12 @@ constructor(
   override suspend fun updateMeasurementUnits(measurementUnits: MeasurementUnits) {
     val response = userAPI.updateMeasurementUnits(MeasurementUnitsRequest(measurementUnits.value))
     // Persist the server-confirmed account state (incl. productTypes/measurementUnits) locally.
+    syncAccountSettingsWithServer(response.account, isOnline = true)
+  }
+
+  override suspend fun updateProducts(productTypes: List<String>) {
+    val response = userAPI.updateProducts(ProductsRequest(productTypes))
+    // Persist the server-confirmed account state (incl. productTypes) locally.
     syncAccountSettingsWithServer(response.account, isOnline = true)
   }
 
@@ -935,15 +942,8 @@ constructor(
       )
       accountDao.updateIntegrationsSettings(integrationsSettings)
 
-      // Update product settings (Phase 2 / MOB-377). Insert(REPLACE) upserts in case the
-      // row predates this account's product_settings backfill.
-      val productSettings = ProductSettingsEntity(
-        accountId = accountInfo.id,
-        productTypes = accountInfo.productTypes ?: listOf(ProductType.MY_WEIGHT.apiValue),
-        measurementUnits = MeasurementUnits.fromValue(accountInfo.measurementUnits).value,
-        isSynced = true,
-      )
-      accountDao.insertProductSettings(productSettings)
+      // Update product settings (Phase 2 / MOB-377).
+      upsertProductSettings(accountInfo)
 
       // Mark account as synced only when online (from server)
       if (isOnline) {
@@ -955,6 +955,20 @@ constructor(
       AppLog.e(TAG, "Failed to sync settings for account: ${accountInfo.id}", e)
       throw e
     }
+  }
+
+  /**
+   * Upserts the account's product settings (productTypes + measurementUnits). Insert(REPLACE)
+   * upserts in case the row predates this account's product_settings backfill. MOB-377 / §2.19.
+   */
+  private suspend fun upsertProductSettings(accountInfo: AccountInfo) {
+    val productSettings = ProductSettingsEntity(
+      accountId = accountInfo.id,
+      productTypes = accountInfo.productTypes ?: listOf(ProductType.MY_WEIGHT.apiValue),
+      measurementUnits = MeasurementUnits.fromValue(accountInfo.measurementUnits).value,
+      isSynced = true,
+    )
+    accountDao.insertProductSettings(productSettings)
   }
 
   override suspend fun hasShownNotificationAlertForAccount(accountId: String): Boolean =

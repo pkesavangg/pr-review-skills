@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
@@ -362,6 +363,18 @@ class AccountService(
     AppLog.d(TAG, "Update Measurement Units: ${measurementUnits.value}")
     requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
     accountRepository.updateMeasurementUnits(measurementUnits)
+  }
+
+  override suspend fun addProduct(productType: ProductType) {
+    val apiValue = productType.apiValue
+    val current = getCurrentAccount()?.productTypes ?: listOf(ProductType.MY_WEIGHT.apiValue)
+    if (apiValue in current) {
+      AppLog.d(TAG, "addProduct: $apiValue already present, skipping")
+      return
+    }
+    AppLog.d(TAG, "addProduct: $apiValue")
+    requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
+    accountRepository.updateProducts(current + apiValue)
   }
 
   /**

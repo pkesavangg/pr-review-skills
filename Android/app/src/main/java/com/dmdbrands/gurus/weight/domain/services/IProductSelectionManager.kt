@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.domain.services
 
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import kotlinx.coroutines.flow.StateFlow
 
@@ -17,6 +18,13 @@ interface IProductSelectionManager {
     suspend fun selectProduct(selection: ProductSelection)
 
     suspend fun loadAvailableProducts(accountId: String)
+
+    /**
+     * Submits [productType] to the account's `productTypes` on the server (spec §2.19) after a
+     * device-setup flow completes, so the server reflects the newly connected product. No-op if
+     * already present; failures are swallowed so they never disrupt setup completion.
+     */
+    suspend fun persistProductForSetup(productType: ProductType)
 
     val showSheet: StateFlow<Boolean>
 
