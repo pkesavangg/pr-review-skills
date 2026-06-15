@@ -13,6 +13,12 @@ interface IProductSelectionManager {
     /** True when snapshot multi-product view should be shown instead of single-product dashboard. */
     val isSnapshotMode: StateFlow<Boolean>
 
+    /**
+     * True when the account owns a baby scale device. Drives "Baby Scale" staying in the
+     * product dropdown and "My Kids" being enabled in Settings even with zero baby profiles. (MOB-416)
+     */
+    val hasBabyScaleDevice: StateFlow<Boolean>
+
     fun setSnapshotMode(enabled: Boolean)
 
     suspend fun selectProduct(selection: ProductSelection)

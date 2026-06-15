@@ -43,7 +43,7 @@ object ScaleUtility {
     "0663" to R.drawable.monitor_0663,
   )
 
-  private val PLACEHOLDER = R.drawable.scale_0375
+  private val PLACEHOLDER = R.drawable.me_placeholder
 
   /**
    * Returns the drawable resource for a given scale/monitor SKU.

@@ -3,7 +3,10 @@ package com.dmdbrands.gurus.weight.data.services
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryRequest
 import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryResponse
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IEntryRepository
@@ -16,6 +19,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import io.mockk.verify
@@ -238,6 +242,73 @@ class EntryServiceTest {
             id = 0L, systolic = 120, diastolic = 80, pulse = 72, meanArterial = "93", note = null,
         ),
     )
+
+    // -------------------------------------------------------------------------
+    // addBabyEntry / deleteBabyEntryLocally — local-only baby persistence (MOB-428)
+    // -------------------------------------------------------------------------
+
+    private fun babyEntry(babyId: String = "baby-1") = BabyEntry(
+        entry = EntryEntity(
+            id = 0L,
+            accountId = "",
+            entryTimestamp = "2026-06-10T10:00:00.000Z",
+            operationType = "create",
+            deviceType = "baby",
+            deviceId = "dev-1",
+        ),
+        babyEntry = BabyEntryEntity(id = 0L, babyId = babyId, babyWeightDecigrams = 40_000),
+    )
+
+    @Test
+    fun `addBabyEntry returns -1 and does not insert when accountId is null`() = runTest {
+        val result = service.addBabyEntry(babyEntry())
+
+        assertThat(result).isEqualTo(-1)
+        coVerify(exactly = 0) { entryRepository.insert(any<Entry>()) }
+    }
+
+    @Test
+    fun `addBabyEntry persists under active account as synced create and returns new id`() = runTest {
+        service.updateAllData(testAccountId)
+        val captured = slot<Entry>()
+        coEvery { entryRepository.insert(capture(captured)) } returns 99L
+
+        val result = service.addBabyEntry(babyEntry())
+
+        assertThat(result).isEqualTo(99L)
+        // Stamped with the active (parent) account and kept OUT of the sync queue.
+        assertThat(captured.captured.entry.accountId).isEqualTo(testAccountId)
+        assertThat(captured.captured.entry.isSynced).isTrue()
+        assertThat(captured.captured.entry.operationType).isEqualTo(OperationType.CREATE.name)
+    }
+
+    @Test
+    fun `addBabyEntry never sends the baby entry to the server`() = runTest {
+        service.updateAllData(testAccountId)
+        coEvery { entryRepository.insert(any<Entry>()) } returns 1L
+
+        service.addBabyEntry(babyEntry())
+
+        coVerify(exactly = 0) { entryRepository.sendOperationToAPI(any()) }
+    }
+
+    @Test
+    fun `addBabyEntry returns -1 and logs when insert fails`() = runTest {
+        service.updateAllData(testAccountId)
+        coEvery { entryRepository.insert(any<Entry>()) } throws RuntimeException("DB error")
+
+        val result = service.addBabyEntry(babyEntry())
+
+        assertThat(result).isEqualTo(-1)
+        verify { AppLog.e("EntryService", match { it.contains("Error saving baby entry") }, any<Throwable>()) }
+    }
+
+    @Test
+    fun `deleteBabyEntryLocally hard-deletes by id`() = runTest {
+        service.deleteBabyEntryLocally(99L)
+
+        coVerify { entryRepository.deleteById(99L) }
+    }
 
     // -------------------------------------------------------------------------
     // initializeGoalCardMonitoring — entry count >= 3

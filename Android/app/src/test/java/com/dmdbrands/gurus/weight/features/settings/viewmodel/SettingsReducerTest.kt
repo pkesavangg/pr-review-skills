@@ -128,6 +128,39 @@ class SettingsReducerTest {
     }
 
     @Test
+    fun `SetHasWeightScale updates hasWeightScale`() {
+        val state = SettingsState(hasWeightScale = false)
+
+        val result = reducer.reduce(state, SettingsIntent.SetHasWeightScale(hasWeightScale = true))
+
+        assertThat(result?.hasWeightScale).isTrue()
+    }
+    @Test
+    fun `SetBabyWeightUnit updates babyWeightUnit`() {
+        val state = SettingsState(babyWeightUnit = WeightUnit.LB_OZ)
+
+        val result = reducer.reduce(state, SettingsIntent.SetBabyWeightUnit(WeightUnit.KG))
+
+        assertThat(result?.babyWeightUnit).isEqualTo(WeightUnit.KG)
+    }
+
+    @Test
+    fun `default babyWeightUnit is LB_OZ`() {
+        // Canonical baby scale unit. Migrated by [BabyWeightUnitMapper] when the
+        // proto field is UNSPECIFIED for legacy accounts.
+        assertThat(SettingsState().babyWeightUnit).isEqualTo(WeightUnit.LB_OZ)
+    }
+    
+    @Test
+    fun `SetHasBabyScaleDevice updates hasBabyScaleDevice`() {
+        val state = SettingsState(hasBabyScaleDevice = false)
+
+        val result = reducer.reduce(state, SettingsIntent.SetHasBabyScaleDevice(hasBabyScaleDevice = true))
+
+        assertThat(result?.hasBabyScaleDevice).isTrue()
+    }
+
+    @Test
     fun `navigation-only intents return null — state is unchanged by reducer`() {
         val state = SettingsState()
 
@@ -153,6 +186,8 @@ class SettingsReducerTest {
         assertThat(state.showUnreadFeedIndication).isFalse()
         assertThat(state.isExportEnabled).isFalse()
         assertThat(state.isBabyProduct).isFalse()
+        assertThat(state.hasWeightScale).isFalse()
+        assertThat(state.hasBabyScaleDevice).isFalse()
     }
 
     @Test

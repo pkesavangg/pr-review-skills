@@ -258,6 +258,9 @@ class EntryReadService(
 
             is ProductSelection.Baby -> entryReadRepository.getBabyWeeklyHistory(acctId, product.profile.id)
                 .map { GroupedHistory.Baby(it) }
+
+            // Baby scale owned but no profile yet: no entries to show. (MOB-416)
+            is ProductSelection.BabyScale -> flowOf(GroupedHistory.Baby(emptyList()))
         }
     }
 
@@ -277,6 +280,8 @@ class EntryReadService(
 
             is ProductSelection.Baby -> entryReadRepository.getBabyDayDetail(acctId, product.profile.id, key)
                 .map { HistoryDetail.Baby(it) }
+
+            is ProductSelection.BabyScale -> flowOf(HistoryDetail.Baby(emptyList()))
         }
     }
 
@@ -292,6 +297,8 @@ class EntryReadService(
 
             is ProductSelection.Baby -> entryReadRepository.getBabyMonthlyGraphData(acctId, product.profile.id)
                 .map { GraphData.Baby(it) }
+
+            is ProductSelection.BabyScale -> flowOf(GraphData.Baby(emptyList()))
         }
     }
 
@@ -307,6 +314,8 @@ class EntryReadService(
 
             is ProductSelection.Baby -> entryReadRepository.getBabyDailyGraphData(acctId, product.profile.id)
                 .map { GraphData.Baby(it) }
+
+            is ProductSelection.BabyScale -> flowOf(GraphData.Baby(emptyList()))
         }
     }
 

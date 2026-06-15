@@ -13,10 +13,16 @@ enum class WeightUnit(
   val value: String,
   val label: String,
   val unit: String,
+  /**
+   * My Kids (baby) variant of [unit]. Baby height is always inches, so the
+   * imperial label stays "/ in" here even though adult My Weight uses "/ ft".
+   * For metric and lbs & oz it matches [unit].
+   */
+  val babyUnit: String,
 ) {
-  KG("kg", "kg", "kg / cm"),
-  LB("lb", "lbs", "lbs / in"),
-  LB_OZ("lb_oz", "lbs & oz", "lbs & oz / in"),
+  KG("kg", "kg", "kg / cm", "kg / cm"),
+  LB("lb", "lbs", "lbs / ft", "lbs / in"),
+  LB_OZ("lb_oz", "lbs & oz", "lbs & oz / in", "lbs & oz / in"),
   ;
 
   companion object {

@@ -51,6 +51,9 @@ class ProductSelectionManagerTest {
         // Default: no prior selection → DataStore returns MY_WEIGHT default.
         every { productSelectionRepository.observeSelectedProductType() } returns flowOf(ProductType.MY_WEIGHT)
         every { productSelectionRepository.observeSelectedBabyProfileId() } returns flowOf(null)
+        every { productSelectionRepository.observeHasUserSelected() } returns flowOf(false)
+        // Default: account does not own a baby scale (overridden per-test). (MOB-416)
+        coEvery { productSelectionRepository.hasBabyScaleDevice(any()) } returns false
 
         ProductSelectionManager.USE_SAMPLE_PRODUCTS = false
 
@@ -122,6 +125,79 @@ class ProductSelectionManagerTest {
         manager.loadAvailableProducts(ACCOUNT_ID)
 
         assertThat(manager.availableProducts.value).doesNotContain(ProductSelection.BloodPressure)
+    }
+
+    // ── BabyScale: device owned but no profiles (MOB-416) ─────────────────────
+
+    @Test
+    fun `loadAvailableProducts includes BabyScale when baby scale owned and no profiles`() = runTest {
+        coEvery { productSelectionRepository.getBabyProfiles(ACCOUNT_ID) } returns emptyList()
+        coEvery { productSelectionRepository.hasBpmDevice(ACCOUNT_ID) } returns false
+        coEvery { productSelectionRepository.hasBabyScaleDevice(ACCOUNT_ID) } returns true
+
+        manager.loadAvailableProducts(ACCOUNT_ID)
+
+        assertThat(manager.availableProducts.value).containsExactly(
+            ProductSelection.MyWeight,
+            ProductSelection.BabyScale,
+        )
+    }
+
+    @Test
+    fun `loadAvailableProducts prefers Baby profiles over BabyScale when profiles exist`() = runTest {
+        coEvery { productSelectionRepository.getBabyProfiles(ACCOUNT_ID) } returns listOf(baby1)
+        coEvery { productSelectionRepository.hasBpmDevice(ACCOUNT_ID) } returns false
+        coEvery { productSelectionRepository.hasBabyScaleDevice(ACCOUNT_ID) } returns true
+
+        manager.loadAvailableProducts(ACCOUNT_ID)
+
+        val available = manager.availableProducts.value
+        assertThat(available).contains(ProductSelection.Baby(baby1))
+        assertThat(available).doesNotContain(ProductSelection.BabyScale)
+    }
+
+    @Test
+    fun `loadAvailableProducts excludes BabyScale when no device and no profiles`() = runTest {
+        coEvery { productSelectionRepository.getBabyProfiles(ACCOUNT_ID) } returns emptyList()
+        coEvery { productSelectionRepository.hasBpmDevice(ACCOUNT_ID) } returns false
+        coEvery { productSelectionRepository.hasBabyScaleDevice(ACCOUNT_ID) } returns false
+
+        manager.loadAvailableProducts(ACCOUNT_ID)
+
+        assertThat(manager.availableProducts.value).doesNotContain(ProductSelection.BabyScale)
+    }
+
+    @Test
+    fun `loadAvailableProducts sets hasBabyScaleDevice from repository`() = runTest {
+        coEvery { productSelectionRepository.getBabyProfiles(ACCOUNT_ID) } returns emptyList()
+        coEvery { productSelectionRepository.hasBpmDevice(ACCOUNT_ID) } returns false
+        coEvery { productSelectionRepository.hasBabyScaleDevice(ACCOUNT_ID) } returns true
+
+        manager.loadAvailableProducts(ACCOUNT_ID)
+
+        assertThat(manager.hasBabyScaleDevice.value).isTrue()
+    }
+
+    @Test
+    fun `initial selection restores BabyScale when saved Baby but no profiles remain`() = runTest {
+        every { productSelectionRepository.observeSelectedProductType() } returns flowOf(ProductType.BABY)
+        every { productSelectionRepository.observeSelectedBabyProfileId() } returns flowOf(BABY_ID_1)
+        coEvery { productSelectionRepository.getBabyProfiles(ACCOUNT_ID) } returns emptyList()
+        coEvery { productSelectionRepository.hasBpmDevice(ACCOUNT_ID) } returns false
+        coEvery { productSelectionRepository.hasBabyScaleDevice(ACCOUNT_ID) } returns true
+
+        manager.loadAvailableProducts(ACCOUNT_ID)
+
+        assertThat(manager.selectedProduct.value).isEqualTo(ProductSelection.BabyScale)
+    }
+
+    @Test
+    fun `selectProduct BabyScale persists BABY type with null profile id`() = runTest {
+        manager.selectProduct(ProductSelection.BabyScale)
+
+        coVerify { productSelectionRepository.saveSelectedProductType(ProductType.BABY) }
+        coVerify { productSelectionRepository.saveSelectedBabyProfileId(null) }
+        assertThat(manager.selectedProduct.value).isEqualTo(ProductSelection.BabyScale)
     }
 
     // ── initial selection: restore from storage ──────────────────────────────

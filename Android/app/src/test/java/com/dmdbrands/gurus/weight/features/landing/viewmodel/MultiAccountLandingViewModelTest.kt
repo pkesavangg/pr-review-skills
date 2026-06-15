@@ -60,6 +60,7 @@ class MultiAccountLandingViewModelTest {
     private fun stubDefaultFlows() {
         every { accountService.loggedInAccountsFlow } returns flowOf(emptyList())
         every { accountService.hasReachedMaxAccounts } returns flowOf(false)
+        coEvery { accountService.removeAccountFromDevice(any(), any()) } returns true
     }
 
     private fun createViewModel(): MultiAccountLandingViewModel =
@@ -112,7 +113,7 @@ class MultiAccountLandingViewModelTest {
     }
 
     @Test
-    fun `init with empty accounts leaves state empty`() = runTest {
+    fun `init with empty accounts navigates to fresh Landing`() = runTest {
         every { accountService.loggedInAccountsFlow } returns flowOf(emptyList())
         every { accountService.hasReachedMaxAccounts } returns flowOf(false)
 
@@ -120,6 +121,20 @@ class MultiAccountLandingViewModelTest {
         advanceUntilIdle()
 
         assertThat(viewModel.state.value.accounts).isEmpty()
+        coVerify { navigationService.replaceStack(AppRoute.Auth.Landing) }
+    }
+
+    @Test
+    fun `loggedInAccountsFlow emitting empty after removal routes to Landing`() = runTest {
+        // Last remaining account removed from this device — no accounts remain.
+        every { accountService.loggedInAccountsFlow } returns flowOf(emptyList())
+        every { accountService.hasReachedMaxAccounts } returns flowOf(false)
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        coVerify { navigationService.replaceStack(AppRoute.Auth.Landing) }
+        verify(exactly = 0) { dialogQueueService.enqueue(any<DialogModel.Confirm>()) }
     }
 
     // -------------------------------------------------------------------------
@@ -264,7 +279,7 @@ class MultiAccountLandingViewModelTest {
     }
 
     @Test
-    fun `RequestRemoveAccount confirm callback calls logout`() = runTest {
+    fun `RequestRemoveAccount confirm callback removes account from device`() = runTest {
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
 
@@ -273,11 +288,12 @@ class MultiAccountLandingViewModelTest {
         advanceUntilIdle()
 
         coVerify {
-            accountService.logout(
+            accountService.removeAccountFromDevice(
                 TestFixtures.secondaryAccount.id,
                 TestFixtures.secondaryAccount.fcmToken,
             )
         }
+        coVerify(exactly = 0) { accountService.logout(any(), any()) }
     }
 
     @Test
@@ -295,7 +311,7 @@ class MultiAccountLandingViewModelTest {
 
     @Test
     fun `RequestRemoveAccount confirm dismisses loader on exception`() = runTest {
-        coEvery { accountService.logout(any(), any()) } throws RuntimeException(ERROR_FAIL)
+        coEvery { accountService.removeAccountFromDevice(any(), any()) } throws RuntimeException(ERROR_FAIL)
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
 

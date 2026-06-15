@@ -15,6 +15,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSumm
 import com.dmdbrands.gurus.weight.features.common.components.chart.ChartHeader
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
+import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.SnapshotColors
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.strings.DashboardSnapshotStrings
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardState
@@ -46,8 +47,9 @@ fun WeightChartHeader(
   } else {
     0.0
   }
+  val isEmpty = target.isEmpty()
   val displayValue = convertWeight(avgLb - weightlessOffset, WeightUnit.LB, weightUnit)
-  val label = if (target.isEmpty()) "000.0" else formatWeightValue(displayValue)
+  val label = if (isEmpty) DashboardSnapshotStrings.ZeroWeight else formatWeightValue(displayValue)
   val displayUnit = remember(weightUnit, displayValue) { displayUnit(weightUnit, displayValue) }
 
   ChartHeader(
@@ -55,7 +57,11 @@ fun WeightChartHeader(
     markerIndex = state.markerIndex,
   ) {
     Row(verticalAlignment = Alignment.Bottom) {
-      Text(text = label, style = MeTheme.typography.heading2, color = MeTheme.colorScheme.textBody)
+      Text(
+        text = label,
+        style = MeTheme.typography.heading2,
+        color = if (isEmpty) SnapshotColors.Weight else MeTheme.colorScheme.textBody,
+      )
       Spacer(modifier = Modifier.width(4.dp))
       Text(
         text = displayUnit,

@@ -10,7 +10,9 @@ import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.service.NotificationEventType
+import com.dmdbrands.gurus.weight.core.service.NotificationTapPayload
 import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventService
+import com.dmdbrands.gurus.weight.core.service.pushNotification.NotificationDestination
 import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventType
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
@@ -19,6 +21,11 @@ import com.dmdbrands.gurus.weight.domain.model.permission.PermissionState
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
+import com.dmdbrands.gurus.weight.data.services.OperationType
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
+import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
@@ -49,6 +56,7 @@ import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.ReadingToast
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
+import com.dmdbrands.gurus.weight.features.common.strings.ReadingToastStrings
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
@@ -412,6 +420,26 @@ constructor(
         }
       }
     }
+    viewModelScope.launch {
+      AppNotificationEventService.tapEvents.collect { tap ->
+        handleNotificationTap(tap)
+        AppNotificationEventService.consumeTap()
+      }
+    }
+  }
+
+  /**
+   * Handles a notification deep-link: switches to the target account when it differs from
+   * the active one, then navigates to the relevant History destination (MOB-434).
+   */
+  private suspend fun handleNotificationTap(tap: NotificationTapPayload) {
+    val accountId = tap.accountId
+    if (accountId != null && accountId != accountService.activeAccount.value?.id) {
+      accountService.getLoggedInAccounts().firstOrNull { it.id == accountId }?.let { target ->
+        accountService.switchAccount(target)
+      }
+    }
+    navigationService.navigateTo(NotificationDestination.toRoute(tap.destination, tap.monthKey))
   }
 
   /**
@@ -924,15 +952,35 @@ constructor(
         val firstEntry = entry.firstOrNull() ?: return@launch
         val reading = formatReadingForDisplay(firstEntry, readingType)
 
+        // A baby scale reading with no baby profile has nowhere to be saved —
+        // surface an "ADD A BABY" CTA instead of the assign flow (MOB-426).
+        val hasNoBabyProfile = readingType == ProductType.BABY &&
+          productSelectionManager.availableProducts.value
+            .filterIsInstance<ProductSelection.Baby>()
+            .isEmpty()
+
         dialogQueueService.showToast(
           Toast.Custom(
             ReadingToast(
               reading = reading,
               type = readingType,
               timestamp = "Just now",
+              noBabyProfile = hasNoBabyProfile,
               primaryAction = {
-                if (readingType == ProductType.BABY) {
-                  showAssignMeasurementDialog(reading, entry)
+                if (hasNoBabyProfile) {
+                  viewModelScope.launch {
+                    navigationService.navigateTo(AppRoute.AccountSettings.AddBaby)
+                  }
+                } else if (readingType == ProductType.BABY) {
+                  val babies = availableBabyProfiles()
+                  if (babies.size == 1) {
+                    // Single baby — skip the picker and assign straight to that baby (MOB-428).
+                    viewModelScope.launch {
+                      assignReadingToBaby(reading, entry, babies.first().id, babies, emptyList())
+                    }
+                  } else {
+                    showAssignMeasurementDialog(reading, entry)
+                  }
                 } else {
                   viewModelScope.launch {
                     try {
@@ -946,6 +994,9 @@ constructor(
                 }
               },
               secondaryAction = {
+                // The reading is only persisted on Save/Assign, so discarding an unsynced
+                // reading just dismisses the card — nothing was written (MOB-428).
+                dialogQueueService.dismissToast()
                 AppLog.i(TAG, "Entry discarded via reading toast")
               },
             ),
@@ -955,33 +1006,128 @@ constructor(
     }
   }
 
-  private fun showAssignMeasurementDialog(reading: String, entry: List<ScaleEntry>) {
-    val babies = productSelectionManager.availableProducts.value
+  private fun availableBabyProfiles(): List<BabyProfile> =
+    productSelectionManager.availableProducts.value
       .filterIsInstance<ProductSelection.Baby>()
       .map { it.profile }
+
+  /**
+   * Shows the baby picker. On confirm, assigns the reading to the chosen baby.
+   * [preSelectedBabyId] pre-selects a baby (used by Reassign); [previousEntryIds] are the
+   * locally-saved entries to remove first when reassigning, so a reassign never duplicates.
+   */
+  private fun showAssignMeasurementDialog(
+    reading: String,
+    entry: List<ScaleEntry>,
+    preSelectedBabyId: String? = null,
+    previousEntryIds: List<Long> = emptyList(),
+  ) {
+    val babies = availableBabyProfiles()
     dialogQueueService.showDialog(
       DialogModel.Custom(
         contentKey = DialogType.AssignMeasurement,
-        params = mapOf(
-          "babies" to babies,
-          "reading" to reading,
-          "timestamp" to "Just now",
-        ),
+        params = buildMap {
+          put("babies", babies)
+          put("reading", reading)
+          put("timestamp", "Just now")
+          preSelectedBabyId?.let { put("preSelectedBabyId", it) }
+        },
         onConfirm = { result ->
           val babyId = result as? String ?: return@Custom
           viewModelScope.launch {
-            try {
-              // TODO: Create BabyEntry with babyId and save
-              entryService.addEntry(entry)
-              checkAccountFlags("entry")
-              AppLog.i(TAG, "Baby entry assigned to $babyId")
-            } catch (e: Exception) {
-              AppLog.e(TAG, "Error saving baby entry", e)
-            }
+            assignReadingToBaby(reading, entry, babyId, babies, previousEntryIds)
           }
         },
         dismissOnBackPress = true,
         dismissOnClickOutside = true,
+      ),
+    )
+  }
+
+  /**
+   * Persists the reading to the selected baby (local-only — MOB-428) and surfaces the
+   * post-assignment card with a Reassign affordance. When reassigning, the entries from the
+   * previously chosen baby are deleted first so the reading lands on exactly one baby.
+   */
+  private suspend fun assignReadingToBaby(
+    reading: String,
+    entry: List<ScaleEntry>,
+    babyId: String,
+    babies: List<BabyProfile>,
+    previousEntryIds: List<Long>,
+  ) {
+    try {
+      val accountId = currentAccountId ?: return
+      // Persist to the new baby first; addBabyEntry returns -1 on a null account or a swallowed
+      // DB-insert exception. Bail before touching the previous baby's entries or claiming success,
+      // so a failed write never surfaces as "Reading assigned to X" (and a later Reassign never
+      // deletes a bogus -1 id, which would leave a duplicate behind).
+      val savedIds = entry.map { entryService.addBabyEntry(it.toBabyEntry(babyId, accountId)) }
+      if (savedIds.any { it <= 0L }) {
+        AppLog.e(TAG, "Baby entry save failed for $babyId (savedIds=$savedIds)")
+        dialogQueueService.showToast(Toast.Simple(message = ReadingToastStrings.SaveFailed))
+        return
+      }
+      // Save succeeded — now it's safe to remove the entries from the previously chosen baby.
+      previousEntryIds.forEach { entryService.deleteBabyEntryLocally(it) }
+      checkAccountFlags("entry")
+      AppLog.i(TAG, "Baby entry assigned to $babyId")
+      babies.firstOrNull { it.id == babyId }?.let { baby ->
+        showBabyAssignedToast(reading, entry, baby, savedIds)
+      }
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error saving baby entry", e)
+    }
+  }
+
+  /** Post-assignment card ("Reading assigned to X") whose Reassign re-opens the picker. */
+  private fun showBabyAssignedToast(
+    reading: String,
+    entry: List<ScaleEntry>,
+    baby: BabyProfile,
+    savedIds: List<Long>,
+  ) {
+    dialogQueueService.showToast(
+      Toast.Custom(
+        ReadingToast(
+          reading = reading,
+          type = ProductType.BABY,
+          timestamp = "Just now",
+          assignedTo = baby.name,
+          primaryAction = {
+            dialogQueueService.dismissToast()
+            showAssignMeasurementDialog(
+              reading = reading,
+              entry = entry,
+              preSelectedBabyId = baby.id,
+              previousEntryIds = savedIds,
+            )
+          },
+        ),
+      ),
+    )
+  }
+
+  /**
+   * Builds a local [BabyEntry] from an incoming scale reading. The reading weight is stored
+   * in tenths-of-lb; the baby graph reads decigrams, so convert lb → decigrams to keep
+   * storage and display consistent. Marked CREATE; [IEntryService.addBabyEntry] persists it
+   * locally without queuing it for sync (MOB-428).
+   */
+  private fun ScaleEntry.toBabyEntry(babyId: String, accountId: String): BabyEntry {
+    val lbs = ConversionTools.convertStoredToLbs(scale.scaleEntry.weight)
+    return BabyEntry(
+      entry = entry.copy(
+        id = 0L,
+        accountId = accountId,
+        operationType = OperationType.CREATE.name,
+        isSynced = true,
+      ),
+      babyEntry = BabyEntryEntity(
+        id = 0L,
+        babyId = babyId,
+        babyWeightDecigrams = ConversionTools.convertLbToDecigrams(lbs),
+        entryNote = scale.scaleEntry.note,
       ),
     )
   }

@@ -28,6 +28,7 @@ import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
+import com.dmdbrands.gurus.weight.features.common.components.BabyEmptyState
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.ProductTypeHeader
@@ -98,6 +99,18 @@ private fun EntryScreenContent(
       )
     },
   ) {
+    if (selectedProduct is ProductSelection.BabyScale) {
+      // Owns a baby scale but no baby profiles: no form to fill, prompt to add one. (MOB-416)
+      BabyEmptyState(
+        onAddBaby = {
+          scope.launch {
+            navStackController.addRoute(AppRoute.AccountSettings.AddBaby)
+          }
+        },
+      )
+      return@AppScaffold
+    }
+
     Column(
       modifier = Modifier
         .verticalScroll(scrollState)
@@ -134,6 +147,9 @@ private fun EntryScreenContent(
             )
           }
         }
+
+        // Handled above before the form column.
+        is ProductSelection.BabyScale -> Unit
       }
 
       // Single save button for all product types

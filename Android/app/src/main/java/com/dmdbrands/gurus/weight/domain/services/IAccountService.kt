@@ -185,6 +185,19 @@ interface IAccountService {
    */
   suspend fun logoutAll(): Boolean
 
+  /**
+   * Removes the specified account from this device only ("Removed = gone", MA-2672 / MOB-424).
+   * Fully deletes the local account; the server account is not deleted. Use [logout] to keep
+   * the account listed as "Logged out".
+   * @param accountId ID of the account to remove
+   * @param fcmToken FCM token for push notifications (optional)
+   * @return true if the account was removed successfully, false otherwise
+   */
+  suspend fun removeAccountFromDevice(
+    accountId: String,
+    fcmToken: String?,
+  ): Boolean
+
   // Theme Mode Operations
   /**
    * Gets the current theme mode for the active account as a flow.

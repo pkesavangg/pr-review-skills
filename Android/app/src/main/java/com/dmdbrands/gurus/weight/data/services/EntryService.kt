@@ -164,6 +164,37 @@ class EntryService(
         }
     }
 
+    /**
+     * Saves a baby reading locally under the active (parent) account. Inserted with
+     * isSynced = true so [syncOperationsInternal] — which casts every unsynced entry to
+     * ScaleEntry — never picks it up; baby entries have no server contract yet (MOB-428).
+     */
+    override suspend fun addBabyEntry(entry: BabyEntry): Long {
+        val currentAccountId = accountId ?: return -1
+        return try {
+            val localEntry = entry.updateEntry(
+                entry.entry.copy(
+                    accountId = currentAccountId,
+                    operationType = OperationType.CREATE.name,
+                    isSynced = true,
+                ),
+            )
+            entryRepository.insert(localEntry)
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Error saving baby entry", e)
+            -1
+        }
+    }
+
+    /** Hard-deletes a locally-saved baby entry (cascades to baby_entry). Local-only (MOB-428). */
+    override suspend fun deleteBabyEntryLocally(entryId: Long) {
+        try {
+            entryRepository.deleteById(entryId)
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Error deleting baby entry", e)
+        }
+    }
+
     // ── Sync ──────────────────────────────────────────────────────────────
 
     override suspend fun syncOperations(newEntries: List<Entry>, deleteOps: List<Entry>) {

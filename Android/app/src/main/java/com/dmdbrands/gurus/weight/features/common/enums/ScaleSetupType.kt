@@ -40,7 +40,16 @@ enum class ScaleSetupType(
   ;
 
   companion object {
+    /**
+     * Setup types that represent a Weight Scale (as opposed to a Blood Pressure
+     * Monitor or Baby Scale). Used to gate weight-scale-specific UI.
+     */
+    val weightScaleTypes: Set<ScaleSetupType> = setOf(Wifi, Bluetooth, Lcbt, EspTouchWifi, BtWifiR4, AppSync)
+
     fun fromString(value: String?): ScaleSetupType? = values().find { it.value == value }
+
+    /** Returns true when [value] maps to a Weight Scale setup type. */
+    fun isWeightScale(value: String?): Boolean = fromString(value) in weightScaleTypes
 
     /**
      * Returns the display label for the given scale setup type.

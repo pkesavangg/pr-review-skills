@@ -104,6 +104,7 @@ private fun ProductSelection.displayName(): String = when (this) {
     is ProductSelection.MyWeight -> "My Weight & Body Comp"
     is ProductSelection.BloodPressure -> "My Blood Pressure"
     is ProductSelection.Baby -> profile.name
+    is ProductSelection.BabyScale -> "Baby Scale"
 }
 
 @Composable
@@ -111,6 +112,7 @@ private fun ProductSelection.displayColor(): Color = when (this) {
     is ProductSelection.MyWeight -> colorScheme.iconPrimary
     is ProductSelection.BloodPressure -> colorScheme.success
     is ProductSelection.Baby -> BabyPurple
+    is ProductSelection.BabyScale -> BabyPurple
 }
 
 @PreviewTheme

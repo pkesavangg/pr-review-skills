@@ -29,6 +29,9 @@ class ProductSelectionManager @Inject constructor(
   private val _isSnapshotMode = MutableStateFlow(true)
   override val isSnapshotMode: StateFlow<Boolean> = _isSnapshotMode.asStateFlow()
 
+  private val _hasBabyScaleDevice = MutableStateFlow(false)
+  override val hasBabyScaleDevice: StateFlow<Boolean> = _hasBabyScaleDevice.asStateFlow()
+
   override fun setSnapshotMode(enabled: Boolean) {
     _isSnapshotMode.value = enabled
   }
@@ -49,6 +52,8 @@ class ProductSelectionManager @Inject constructor(
 
     val babyProfiles = productSelectionRepository.getBabyProfiles(accountId)
     val hasBpm = productSelectionRepository.hasBpmDevice(accountId)
+    val hasBabyScale = productSelectionRepository.hasBabyScaleDevice(accountId)
+    _hasBabyScaleDevice.value = hasBabyScale
 
     val products = mutableListOf<ProductSelection>(ProductSelection.MyWeight)
 
@@ -56,8 +61,14 @@ class ProductSelectionManager @Inject constructor(
       products.add(ProductSelection.BloodPressure)
     }
 
-    babyProfiles.forEach { profile ->
-      products.add(ProductSelection.Baby(profile))
+    if (babyProfiles.isNotEmpty()) {
+      babyProfiles.forEach { profile ->
+        products.add(ProductSelection.Baby(profile))
+      }
+    } else if (hasBabyScale) {
+      // Owns a baby scale but has no profiles (e.g. deleted last baby): keep
+      // "Baby Scale" in the dropdown so taps route to the add-baby flow. (MOB-416)
+      products.add(ProductSelection.BabyScale)
     }
 
     _availableProducts.value = products
@@ -89,6 +100,7 @@ class ProductSelectionManager @Inject constructor(
       ProductType.BABY -> available.filterIsInstance<ProductSelection.Baby>()
         .firstOrNull { it.profile.id == savedBabyId }
         ?: available.firstOrNull { it is ProductSelection.Baby }
+        ?: available.firstOrNull { it is ProductSelection.BabyScale }
     } ?: ProductSelection.MyWeight
   }
 
