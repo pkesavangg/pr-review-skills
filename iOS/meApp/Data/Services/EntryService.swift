@@ -597,7 +597,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         for snapshot in snapshots {
             hasher.combine(snapshot.entryTimestamp)
             hasher.combine(snapshot.babyId)
-            hasher.combine(snapshot.weightOunces)
+            hasher.combine(snapshot.weightDecigrams)
             hasher.combine(snapshot.lengthInches)
         }
         return hasher.finalize()
@@ -1817,7 +1817,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     private struct BabyEntrySnapshot: Sendable {
         let entryTimestamp: String
         let babyId: String
-        let weightOunces: Int
+        let weightDecigrams: Int
         let lengthInches: Int
     }
 
@@ -1834,17 +1834,17 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             return BabyEntrySnapshot(
                 entryTimestamp: entry.entryTimestamp,
                 babyId: babyEntry.babyId,
-                weightOunces: babyEntry.weight,
+                weightDecigrams: babyEntry.weight,
                 lengthInches: babyEntry.length
             )
         }
     }
 
-    /// Converts baby weight in ounces to the stored weight format (tenths of lbs)
+    /// Converts baby weight in decigrams to the stored weight format (tenths of lbs)
     /// used by BathScaleWeightSummary and the chart rendering pipeline.
-    private nonisolated func ouncesToStoredWeight(_ ounces: Int) -> Int {
-        let lbs = Double(ounces) / 16.0
-        return ConversionTools.convertLbsToStored(lbs)
+    private nonisolated func decigramsToStoredWeight(_ decigrams: Int) -> Int {
+        let kg = Double(decigrams) / BabyPercentileGrowthReference.decigramsToKgFactor
+        return ConversionTools.convertKgToStored(kg)
     }
 
     /// Aggregates baby entry snapshots into daily summaries.
@@ -1862,7 +1862,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
             let date = DateTimeTools.getDateFromDateString(day, format: "yyyy-MM-dd")
             let latestTimestamp = daySnapshots.compactMap(\.entryTimestamp).max() ?? ""
-            let storedWeights = daySnapshots.map { ouncesToStoredWeight($0.weightOunces) }
+            let storedWeights = daySnapshots.map { decigramsToStoredWeight($0.weightDecigrams) }
 
             return BathScaleWeightSummary(
                 accountId: "baby_\(babyId)",
@@ -1891,7 +1891,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             let dateString = "\(month)-01"
             let date = DateTimeTools.formatter("yyyy-MM-dd").date(from: dateString) ?? Date()
             let latestTimestamp = monthSnapshots.compactMap(\.entryTimestamp).max() ?? ""
-            let storedWeights = monthSnapshots.map { ouncesToStoredWeight($0.weightOunces) }
+            let storedWeights = monthSnapshots.map { decigramsToStoredWeight($0.weightDecigrams) }
 
             return BathScaleWeightSummary(
                 accountId: "baby_\(babyId)",

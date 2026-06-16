@@ -110,6 +110,13 @@ final class HistoryStore: ObservableObject {
                     self.monthsLoadTask?.cancel()
                     self.monthsLoadTask = nil
                     self.invalidateCacheForCurrentType()
+                    // Baby entries may be assigned while a different product type is active,
+                    // meaning invalidateCacheForCurrentType() won't clear the baby cache.
+                    // Always flush baby history cache on any baby entry event so the next
+                    // History open fetches fresh data regardless of current product mode.
+                    if entry.entryType == EntryType.baby.rawValue {
+                        self.loadedProductTypes = self.loadedProductTypes.filter { !$0.hasPrefix("baby_") }
+                    }
                     await self.loadMonthsInternal(canShowLoader: false)
                     // If we're viewing a month and the saved entry belongs to that month, refresh entries inline
                     if let selectedMonth = self.selectedMonth {
@@ -303,7 +310,13 @@ final class HistoryStore: ObservableObject {
 
     // swiftlint:disable:next cyclomatic_complexity function_body_length
     private func loadMonthsInternal(canShowLoader: Bool = true) async {
-        guard monthsLoadTask == nil else { return }            // prevent overlap
+        // If a load is already in progress, wait for it to complete rather than
+        // returning early. This prevents a stale empty-state flash when a tab-switch
+        // triggers loadMonths() while an entrySaved reload is still fetching data.
+        if let existingTask = monthsLoadTask {
+            await existingTask.value
+            return
+        }
 
         // Blood pressure mode — load from local BPM entries
         if isBloodPressureMode {

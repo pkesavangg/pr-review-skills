@@ -75,6 +75,7 @@ final class BabyTrendViewModel {
         if hasPointSelected(in: dashboardStore) {
             return dashboardStore.displayManager.weightDisplayLabel
         }
+        guard dashboardStore.hasBabyEntries else { return DashboardStrings.noEntries }
         return "\(dashboardStore.state.graph.selectedPeriod.rawValue) average"
     }
 
@@ -118,6 +119,7 @@ final class BabyTrendViewModel {
         dashboardStore: DashboardStore,
         babyProfile: BabyProfile
     ) -> Double {
+        guard dashboardStore.hasBabyEntries else { return 0 }
         if hasPointSelected(in: dashboardStore),
            let displayWeight = dashboardStore.displayManager.displayWeight,
            abs(displayWeight) >= AppConstants.Precision.doubleEqualityEpsilon {

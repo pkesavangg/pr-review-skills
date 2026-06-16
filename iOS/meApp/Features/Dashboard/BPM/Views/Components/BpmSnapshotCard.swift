@@ -12,7 +12,7 @@ import SwiftUI
 struct BpmSnapshotCard: View {
     private enum Layout {
         static let valueSpacing: CGFloat = 12
-        static let pulseColumnWidth: CGFloat = 72
+        static let pulseColumnWidth: CGFloat = 120
         static let labelBottomTightening: CGFloat = -6
     }
 
@@ -199,6 +199,7 @@ struct BpmSnapshotCard: View {
                             .fontOpenSans(.heading1)
                             .fontWeight(.heavy)
                             .foregroundColor(theme.textSubheading)
+                            .fixedSize(horizontal: true, vertical: false)
                     }
                     .frame(width: Layout.pulseColumnWidth, alignment: .leading)
                 }
@@ -229,6 +230,7 @@ struct BpmSnapshotCard: View {
                         Text(BpmDashboardStrings.bpPulseZeroPlaceholder)
                             .fontOpenSans(.heading1).fontWeight(.heavy)
                             .foregroundColor(theme.textSubheading)
+                            .fixedSize(horizontal: true, vertical: false)
                     }
                     .frame(width: Layout.pulseColumnWidth, alignment: .leading)
                 }

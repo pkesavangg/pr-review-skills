@@ -63,7 +63,8 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
                 )
                 .padding(.vertical, .spacingSM)
                 .padding(.horizontal, 15)
-                if !dashboardStore.state.data.hasAnyEntries {
+                if !dashboardStore.state.data.hasAnyEntries ||
+                   (dashboardStore.isBabySelection && !dashboardStore.hasBabyEntries) {
                     noEntriesFooter()
                 }
             }
