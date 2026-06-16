@@ -61,6 +61,7 @@ enum Endpoint {
     case integrationHealthDevice(String) 
     case integrationHealth
     case integrationHealthLog
+    case integrationSuggestion
     case wifiScale(request: String?)
 
     var urlRequest: URLRequest? {
@@ -220,6 +221,8 @@ enum Endpoint {
             return request(path: "/integrations/health")
         case .integrationHealthLog:
             return request(path: "/integrations/health/log")
+        case .integrationSuggestion:
+            return request(path: "/integrations/suggestion")
         case .wifiScale(let request):
             var components = URLComponents(string: "\(API.baseURL)/account/scale")
             if let requestValue = request {

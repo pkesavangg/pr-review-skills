@@ -356,7 +356,8 @@ final class IntegrationsService: IntegrationServiceProtocol {
     // MARK: - Request New Integration
 
     func requestNewIntegration(text: String) async throws {
-        // TODO: replace with real API call once the backend endpoint is available.
         logger.log(level: .info, tag: tag, message: "Request new integration submitted: \(text)")
+        try await apiRepository.requestNewIntegration(suggestion: text)
+        logger.log(level: .success, tag: tag, message: "Request new integration API call succeeded")
     }
 }
