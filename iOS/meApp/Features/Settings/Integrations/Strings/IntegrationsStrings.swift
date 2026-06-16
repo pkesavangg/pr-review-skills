@@ -26,4 +26,8 @@ struct IntegrationsStrings {
     static let requestIntegrationPlaceholder = "integration"
     static let requestIntegrationSend = "SEND"
     static let requestIntegrationCancel = "CANCEL"
+
+    static let requestIntegrationSuccessTitle = "Thanks for the suggestion"
+    static let requestIntegrationSuccessMessage = "Our team will do our best to get it added in the future."
+    static let requestIntegrationSuccessDismiss = "DISMISS"
 }

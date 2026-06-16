@@ -420,14 +420,16 @@ class IntegrationStore: ObservableObject {
 
     // MARK: - Request New Integration
 
+    private let integrationLang = IntegrationsStrings.self
+
     /// Presents the "Request an Integration" modal where users can submit a free-text request.
     func showRequestIntegrationModal() {
         notificationService.showModal(ModalData(
             presentedView: AnyView(RequestIntegrationModalView(
                 onSend: { [weak self] text in
                     guard let self else { return }
-                    logger.log(level: .info, tag: tag, message: "Request new integration submitted: \(text)")
                     notificationService.dismissModal()
+                    Task { await self.submitIntegrationRequest(text: text) }
                 },
                 onCancel: { [weak self] in
                     self?.notificationService.dismissModal()
@@ -435,5 +437,29 @@ class IntegrationStore: ObservableObject {
             )),
             backdropDismiss: true
         ))
+    }
+
+    private func submitIntegrationRequest(text: String) async {
+        notificationService.showLoader(LoaderModel(text: LoaderStrings.sendingRequest))
+        do {
+            try await integrationsService.requestNewIntegration(text: text)
+            notificationService.dismissLoader()
+            showRequestIntegrationSuccessAlert()
+            logger.log(level: .success, tag: tag, message: "Request new integration sent: \(text)")
+        } catch {
+            notificationService.dismissLoader()
+            logger.log(level: .error, tag: tag, message: "Failed to send integration request", data: error.localizedDescription)
+        }
+    }
+
+    private func showRequestIntegrationSuccessAlert() {
+        let alert = AlertModel(
+            title: integrationLang.requestIntegrationSuccessTitle,
+            message: integrationLang.requestIntegrationSuccessMessage,
+            buttons: [
+                AlertButtonModel(title: integrationLang.requestIntegrationSuccessDismiss, type: .primary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
     }
 }

@@ -25,7 +25,9 @@ enum CustomTextStyle: CaseIterable {
     case link2
     case button1
     case button2
-    
+    case label1
+    case itemTitle
+
     var size: CGFloat {
         switch self {
         case .heading1: return 60
@@ -44,9 +46,11 @@ enum CustomTextStyle: CaseIterable {
         case .link2: return 12
         case .button1: return 16
         case .button2: return 14
+        case .label1: return 14
+        case .itemTitle: return 46
         }
     }
-    
+
     var weight: Font.Weight {
         switch self {
         case .heading1, .heading2: return .heavy // Extra Bold
@@ -55,6 +59,8 @@ enum CustomTextStyle: CaseIterable {
         case .body1, .body2, .body3, .body4, .body5: return .regular
         case .link1, .link2: return .semibold
         case .button1, .button2: return .semibold
+        case .label1: return .bold
+        case .itemTitle: return .regular
         }
     }
 }

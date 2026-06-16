@@ -352,4 +352,11 @@ final class IntegrationsService: IntegrationServiceProtocol {
             logger.log(level: .error, tag: tag, message: "Failed to log HealthKit integration", data: error.localizedDescription)
         }
     }
+
+    // MARK: - Request New Integration
+
+    func requestNewIntegration(text: String) async throws {
+        // TODO: replace with real API call once the backend endpoint is available.
+        logger.log(level: .info, tag: tag, message: "Request new integration submitted: \(text)")
+    }
 }
