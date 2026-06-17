@@ -255,6 +255,7 @@ final class SignupStore: ObservableObject {
     /// Sets isSignupInProgress so ContentViewModel does not navigate to dashboard yet.
     /// On success advances to the profileReady slide.
     func createAccount() {
+        guard !accountService.isSignupInProgress else { return }
         Task {
             await performCreateAccount()
         }
@@ -263,6 +264,7 @@ final class SignupStore: ObservableObject {
     /// Called from the profileReady step "FINISH" button — saves device profiles and finalizes.
     /// Clears isSignupInProgress so ContentViewModel can navigate to dashboard.
     func finishSignup() {
+        guard !accountService.isSignupInProgress else { return }
         Task {
             await performSaveDevicesAndFinalize()
         }
