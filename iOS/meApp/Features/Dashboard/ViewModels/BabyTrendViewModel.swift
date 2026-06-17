@@ -207,8 +207,11 @@ final class BabyTrendViewModel {
         case .imperialLbDecimal:
             return BabyWeightDisplay(primary: String(format: "%.1f", weight), primaryUnit: BabyDashboardStrings.lb, secondary: nil, secondaryUnit: nil)
         case .imperialLbOz:
-            let wholeLbs = Int(weight)
-            let remainingOz = (weight - Double(wholeLbs)) * 16.0
+            var wholeLbs = Int(weight)
+            let rawOz = (weight - Double(wholeLbs)) * 16.0
+            let roundedOz = (rawOz * 10).rounded() / 10
+            var remainingOz = roundedOz
+            if roundedOz >= 16.0 { wholeLbs += 1; remainingOz = 0.0 }
             return BabyWeightDisplay(primary: "\(wholeLbs)", primaryUnit: BabyDashboardStrings.lbs, secondary: String(format: "%.1f", remainingOz), secondaryUnit: BabyDashboardStrings.oz)
         }
     }

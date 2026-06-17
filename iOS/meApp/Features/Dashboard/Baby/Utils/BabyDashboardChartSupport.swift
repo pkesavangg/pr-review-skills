@@ -456,8 +456,11 @@ enum BabyDashboardChartSupport {
 
     static func formatBabyWeight(_ storedWeight: Int, unit: WeightUnit) -> (lbs: String, oz: String) {
         let displayWeight = convertStoredWeightToDisplay(storedWeight, unit: unit)
-        let wholeLbs = Int(displayWeight)
-        let remainingOz = (displayWeight - Double(wholeLbs)) * 16.0
+        var wholeLbs = Int(displayWeight)
+        let rawOz = (displayWeight - Double(wholeLbs)) * 16.0
+        let roundedOz = (rawOz * 10).rounded() / 10
+        var remainingOz = roundedOz
+        if roundedOz >= 16.0 { wholeLbs += 1; remainingOz = 0.0 }
         return (lbs: "\(wholeLbs)", oz: String(format: "%.1f", remainingOz))
     }
 
@@ -489,8 +492,11 @@ enum BabyDashboardChartSupport {
                 secondary: nil, secondaryUnit: nil
             )
         case .imperialLbOz:
-            let wholeLbs = Int(displayWeight)
-            let remainingOz = (displayWeight - Double(wholeLbs)) * 16.0
+            var wholeLbs = Int(displayWeight)
+            let rawOz = (displayWeight - Double(wholeLbs)) * 16.0
+            let roundedOz = (rawOz * 10).rounded() / 10
+            var remainingOz = roundedOz
+            if roundedOz >= 16.0 { wholeLbs += 1; remainingOz = 0.0 }
             return BabyWeightDisplay(
                 primary: "\(wholeLbs)",
                 primaryUnit: BabyDashboardStrings.lbs,
