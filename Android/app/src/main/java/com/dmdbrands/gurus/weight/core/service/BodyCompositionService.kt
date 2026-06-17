@@ -52,7 +52,7 @@ constructor(
         val bodyCompEntity =
           WeightCompSettingsEntity(
             accountId = activeAccount.id,
-            height = response.account.height,
+            height = response.account.height ?: BodyCompUpdateRequest.DEFAULT_HEIGHT,
             activityLevel = response.account.activityLevel,
             weightUnit = response.account.weightUnit,
             isSynced = true,

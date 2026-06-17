@@ -184,6 +184,22 @@ class AccountRepositoryTest {
         assertThat(e.message).isEqualTo("Network error")
     }
 
+    @Test
+    fun `login maps account with null gender dob and height without crashing`() = runTest {
+        // MOB-591: per Me App 2.0 spec gender/dob/height are optional for baby-only accounts and
+        // come back as null. Mapping must not throw an NPE while building the domain Account.
+        val infoWithNulls = accountInfo.copy(gender = null, dob = null, height = null)
+        val responseWithNulls = loginResponse.copy(account = infoWithNulls)
+        coEvery { authAPI.login(any()) } returns responseWithNulls
+        coEvery { accountDao.getAccountEntity(any()) } returns null
+
+        // Reaching a returned Account at all proves the null gender/dob/height did not throw an
+        // NPE while building the domain model — the MOB-591 login crash.
+        val result = repository.login(TEST_EMAIL, TEST_PASSWORD)
+
+        assertThat(result.id).isEqualTo(TEST_ACCOUNT_ID)
+    }
+
     // -------------------------------------------------------------------------
     // Auth: signup
     // -------------------------------------------------------------------------

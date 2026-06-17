@@ -256,7 +256,7 @@ class EntryService(
                     // skipping cross-device entries between the two timestamp values.
                     val confirmed = response.entries.mapNotNull { it.toDomainEntry(accountId) }
                     EntryServiceHelper.executeOperations(entryRepository, confirmed)
-                    accountRepository.updateSyncTimeStamp(response.timestamp)
+                    response.timestamp?.takeIf { it.isNotBlank() }?.let { accountRepository.updateSyncTimeStamp(it) }
                 } catch (e: Exception) {
                     // Atomic failure — the whole batch is rolled back server-side; leave every
                     // op unsynced (attempts++) so the entire batch is retried on the next sync.
@@ -305,7 +305,7 @@ class EntryService(
                 if (domainEntries.isNotEmpty()) {
                     EntryServiceHelper.executeOperations(entryRepository, domainEntries)
                 }
-                accountRepository.updateSyncTimeStamp(response.timestamp)
+                response.timestamp?.takeIf { it.isNotBlank() }?.let { accountRepository.updateSyncTimeStamp(it) }
                 AppLog.d(TAG, "Unified sync: ${domainEntries.size} entries applied, cursor=${response.timestamp}")
             } catch (e: Exception) {
                 AppLog.e(TAG, "Unified sync GET failed, persisting placeholders for retry", e)

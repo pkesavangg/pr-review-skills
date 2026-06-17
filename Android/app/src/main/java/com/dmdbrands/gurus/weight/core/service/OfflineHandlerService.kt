@@ -121,7 +121,7 @@ class OfflineHandlerService
         val weightCompSettings =
           WeightCompSettingsEntity(
             accountId = bodyCompResponse.account.id,
-            height = bodyCompResponse.account.height,
+            height = bodyCompResponse.account.height ?: BodyCompUpdateRequest.DEFAULT_HEIGHT,
             activityLevel = bodyCompResponse.account.activityLevel,
             weightUnit = bodyCompResponse.account.weightUnit,
             isSynced = true,

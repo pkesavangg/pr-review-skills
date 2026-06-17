@@ -84,7 +84,7 @@ class ProfileViewModel @Inject constructor(
               email = currentAccount.email,
               zipcode = currentAccount.zipcode,
               birthday = DateTimeValue.Date(
-                DateTimeValue.getEpochMillisFromIsoString(currentAccount.dob),
+                DateTimeValue.getEpochMillisFromIsoString(currentAccount.dob ?: ""),
               ),
               gender = currentAccount.gender ?: "",
               height = currentAccount.height ?: 0,

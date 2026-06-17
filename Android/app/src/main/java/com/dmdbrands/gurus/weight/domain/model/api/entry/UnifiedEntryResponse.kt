@@ -6,7 +6,8 @@ package com.dmdbrands.gurus.weight.domain.model.api.entry
  */
 data class UnifiedEntryResponse(
     val entries: List<UnifiedEntry>,
-    val timestamp: String,
+    // Nullable: server may omit the sync cursor; guard before writing it (MOB-591).
+    val timestamp: String?,
 )
 
 /**

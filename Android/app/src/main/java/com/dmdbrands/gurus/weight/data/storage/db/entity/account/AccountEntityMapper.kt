@@ -19,11 +19,13 @@ object AccountEntityMapper {
             id = account.id,
             firstName = account.firstName,
             lastName = account.lastName,
-            dob = account.dob,
+            // Persist "" for an unset dob so the Room column stays non-null (MOB-591).
+            dob = account.dob ?: "",
             email = account.email,
             expiresAt = account.expiresAt,
             fcmToken = account.fcmToken,
-            gender = account.gender,
+            // Persist "" for an unset gender so the Room column stays non-null (MOB-591).
+            gender = account.gender ?: "",
             isActiveAccount = account.isActiveAccount,
             isLoggedIn = account.isLoggedIn,
             isExpired = account.isExpired,

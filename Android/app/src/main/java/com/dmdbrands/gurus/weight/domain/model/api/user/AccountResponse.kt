@@ -17,9 +17,10 @@ data class AccountInfo(
   val zipcode: String,
   val weightUnit: String,
   val isWeightlessOn: Boolean,
-  val height: Int,
+  // Nullable for baby-only accounts (Me App 2.0 spec §1.1/§1.4) — avoids login NPE (MOB-591).
+  val height: Int?,
   val activityLevel: String,
-  val dob: String,
+  val dob: String?,
   val weightlessTimestamp: String?,
   val weightlessWeight: Float?,
   val isStreakOn: Boolean,

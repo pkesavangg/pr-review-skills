@@ -25,11 +25,11 @@ data class Account(
   val id: String,
   val firstName: String,
   val lastName: String,
-  val dob: String,
+  val dob: String? = null,
   val email: String,
   val expiresAt: String? = null,
   val fcmToken: String? = null,
-  val gender: String,
+  val gender: String? = null,
   val isActiveAccount: Boolean = false,
   val isLoggedIn: Boolean = false,
   val isExpired: Boolean = false,
@@ -105,7 +105,7 @@ data class Account(
       }
     return GGBTUserProfile(
       name = firstName,
-      age = calculateAge(dob),
+      age = dob?.let { calculateAge(it) },
       sex = gender,
       unit = weightUnit.value,
       weight = initialWeight,
