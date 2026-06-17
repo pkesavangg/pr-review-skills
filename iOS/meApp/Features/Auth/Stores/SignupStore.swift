@@ -189,6 +189,18 @@ final class SignupStore: ObservableObject {
         return currentDevice?.profileReadyTitle ?? SignupStrings.ProfileReadyStep.weightScaleTitle
     }
 
+    /// Title shown on the "Connect Another Device" screen.
+    /// Shows a combined title once 2+ devices are fully registered (both disabled),
+    /// otherwise shows the single last-completed device title.
+    var pickNextDeviceTitle: String {
+        if registeredDeviceTypes.count >= 2 {
+            let names = registeredDeviceTypes.map(\.profileReadyName).joined(separator: " & ")
+            return "Your \(names) profiles are ready!"
+        }
+        return lastCompletedDeviceType?.profileReadyTitle
+            ?? SignupStrings.ProfileReadyStep.weightScaleTitle
+    }
+
     // MARK: - Height Management
 
     func updateHeightPickerValues(from storedHeight: Int) {
@@ -319,10 +331,10 @@ final class SignupStore: ObservableObject {
     }
 
     func connectAnotherDevice() {
-        // Use the second-to-last visible step value so the bar reads ~90% instead of 100%.
-        let terminalSteps: Set<SignupStep> = [.allProfilesReady, .signupError]
-        let visibleCount = Double(steps.filter { !terminalSteps.contains($0) }.count)
-        savedProgressValue = visibleCount > 1 ? (visibleCount - 1) / visibleCount : 0.9
+        // Fixed at 0.9 so the bar reads ~90% on every iteration — the subsequent-device
+        // loop has far fewer steps (profileReady + pickNextDevice + profileReady = 3),
+        // and a computed ratio would drop to ~67% on the second pass.
+        savedProgressValue = 0.9
         if let current = selectedDeviceType {
             lastCompletedDeviceType = current
             disabledDeviceTypes.insert(current)

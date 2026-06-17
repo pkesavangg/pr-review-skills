@@ -49,12 +49,12 @@ final class LandingStore: ObservableObject {
             .sink { [weak self] all in
                 guard let self = self else { return }
 
-                // Separate fully-authenticated accounts from those needing re-login.
-                let loggedInAccounts = all.filter {
+                // Only active accounts (isLoggedIn=true, isExpired=false) appear on the
+                // landing screen. Manually logged-out accounts (isLoggedIn=false) and
+                // auto-logged-out accounts (isExpired=true) are excluded — they should
+                // not be selectable from landing.
+                let activeAccounts = all.filter {
                     $0.isLoggedIn == true && ($0.isExpired ?? false) == false
-                }
-                let loggedOutAccounts = all.filter {
-                    $0.isLoggedIn != true || ($0.isExpired ?? false) == true
                 }
 
                 let sortByLastActive: (AccountSnapshot, AccountSnapshot) -> Bool = { lhs, rhs in
@@ -63,23 +63,20 @@ final class LandingStore: ObservableObject {
                     return lhsDate > rhsDate
                 }
 
-                // Logged-in accounts first, then logged-out accounts — both sorted by recency.
-                let allSorted = loggedInAccounts.sorted(by: sortByLastActive)
-                    + loggedOutAccounts.sorted(by: sortByLastActive)
+                let sorted = activeAccounts.sorted(by: sortByLastActive)
 
-                self.accounts = allSorted
+                self.accounts = sorted
 
-                self.userItems = allSorted.map { account in
+                self.userItems = sorted.map { account in
                     let displayName = account.firstName?.isEmpty == false
                         ? (account.firstName ?? account.email)
                         : account.email
-                    let needsLogin = account.isLoggedIn != true || (account.isExpired ?? false)
                     return UserItemInfo(
                         accountID: account.accountId,
                         name: displayName,
                         email: account.email,
                         isSelected: false,
-                        isExpired: needsLogin,
+                        isExpired: false,
                         canShowSelection: false
                     )
                 }

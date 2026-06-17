@@ -305,6 +305,20 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
 
         // Reconstruction: derive from server-synced devices.
         let devices = scaleService.scales
+
+        // Don't reconstruct and save if ScaleService hasn't synced yet. Saving a device-only
+        // subset before sync completes permanently drops product types the user earned via
+        // manual entries (e.g. "blood_pressure" with no paired BP device). The scalesPublisher
+        // will fire once devices are loaded and trigger a fresh rebuild().
+        guard !devices.isEmpty else {
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Reconstruction skipped — ScaleService not yet loaded for accountId=\(account.accountId)"
+            )
+            return ["myWeight"]
+        }
+
         var serverTypes: [String] = []
 
         if devices.contains(where: { $0.deviceType == DeviceType.scale.rawValue }) {
