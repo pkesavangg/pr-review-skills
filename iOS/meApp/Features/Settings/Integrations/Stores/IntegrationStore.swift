@@ -439,7 +439,7 @@ class IntegrationStore: ObservableObject {
         ))
     }
 
-    private func submitIntegrationRequest(text: String) async {
+    func submitIntegrationRequest(text: String) async {
         notificationService.showLoader(LoaderModel(text: LoaderStrings.sendingRequest))
         do {
             try await integrationsService.requestNewIntegration(text: text)
