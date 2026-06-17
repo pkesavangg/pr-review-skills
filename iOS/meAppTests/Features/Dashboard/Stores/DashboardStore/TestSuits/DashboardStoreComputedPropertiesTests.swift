@@ -299,6 +299,39 @@ extension DashboardStoreTests {
         #expect(store.shouldShowDivider == true)
     }
 
+    // MARK: - hasBabyEntries
+
+    @Test("hasBabyEntries: returns false when no baby profile is selected")
+    func hasBabyEntriesFalseNoProfileSelected() {
+        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        #expect(store.hasBabyEntries == false)
+    }
+
+    @Test("hasBabyEntries: returns false when baby profile selected but no summaries loaded")
+    func hasBabyEntriesFalseNoSummaries() {
+        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let baby = BabyProfile(id: "baby-1", name: "Aria")
+        store.selectProductItem(.baby(profile: baby))
+
+        #expect(store.hasBabyEntries == false)
+    }
+
+    @Test("hasBabyEntries: returns true when daily summaries exist for selected baby profile")
+    func hasBabyEntriesTrueWithDailySummaries() {
+        TestDependencyContainer.reset()
+        let deps = TestDependencyContainer.registerDashboardConcreteDependencies()
+        let store = DashboardStore(
+            lightweight: true,
+            formatter: MockDashboardFormatter(),
+            cacheManager: MockDashboardCacheManager()
+        )
+        let baby = BabyProfile(id: "baby-1", name: "Aria")
+        store.selectProductItem(.baby(profile: baby))
+        deps.entry.babyDailySummariesByProfile["baby-1"] = [DashboardTestFixtures.makeSummary()]
+
+        #expect(store.hasBabyEntries == true)
+    }
+
     @Test("allContentRemoved: false by default")
     func allContentRemovedFalseDefault() {
         let (store, _, _) = DashboardStoreTestSupport.makeSUT()
