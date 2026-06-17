@@ -34,6 +34,10 @@ struct ScaleManualListView: View {
                     }
                 }
             }
+            .background(theme.backgroundPrimary)
+            .clipShape(RoundedRectangle(cornerRadius: .spacingSM))
+            .padding(.horizontal, .spacingSM)
+            .padding(.bottom, .spacingXS)
         }
     }
     

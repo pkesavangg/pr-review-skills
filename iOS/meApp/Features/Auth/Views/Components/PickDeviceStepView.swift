@@ -36,7 +36,7 @@ struct PickDeviceStepView: View {
 
 // MARK: - DeviceCard
 
-private struct DeviceCard: View {
+struct DeviceCard: View {
     @Environment(\.appTheme) private var theme
     let deviceType: SignupDeviceType
     let isSelected: Bool

@@ -32,6 +32,8 @@ struct SignupScreen: View {
                     headerTitle: SignupStrings.AddBabyStep.title,
                     headerSubtitle: SignupStrings.AddBabyStep.subtitle
                 ))
+            case .pickNextDevice:
+                AnyView(ConnectAnotherDeviceStepView(signupStore: signupStore))
             case .babyList:
                 AnyView(BabyListStepView(
                     title: SignupStrings.BabyListStep.title,
@@ -55,7 +57,10 @@ struct SignupScreen: View {
             case .password:
                 AnyView(PasswordStepView(signupStore: signupStore))
             case .profileReady:
-                AnyView(ProfileReadyStepView(title: signupStore.profileReadyTitle))
+                AnyView(ProfileReadyStepView(
+                    title: signupStore.profileReadyTitle,
+                    completedDevices: signupStore.allCompletedDevices
+                ))
             case .allProfilesReady:
                 AnyView(SignupSuccessStepView(
                     deviceTypes: signupStore.deviceStatuses.map(\.device)
@@ -68,7 +73,7 @@ struct SignupScreen: View {
     
     @ViewBuilder
     private func navbarLeadingContent() -> some View {
-        if signupStore.currentStep != .allProfilesReady {
+        if signupStore.currentStep != .allProfilesReady && signupStore.currentStep != .pickNextDevice {
             AppIconView(icon: AppAssets.xmarkSmall, size: IconSize(width: 24, height: 24))
                 .foregroundColor(theme.statusIconPrimary)
         }
@@ -93,7 +98,7 @@ struct SignupScreen: View {
                 leadingContent: navbarLeadingContent,
                 trailingContent: navbarTrailingContent,
                 onLeadingTap: {
-                    if signupStore.currentStep != .allProfilesReady {
+                    if signupStore.currentStep != .allProfilesReady && signupStore.currentStep != .pickNextDevice {
                         signupStore.handleExit(router: isFromAccountSwitching ? nil : router)
                     }
                 },
@@ -162,6 +167,30 @@ struct SignupScreen: View {
                 }
                 .padding(.vertical, .spacingSM)
 
+            } else if signupStore.currentStep == .pickNextDevice {
+                HStack(alignment: .center) {
+                    ButtonView(
+                        text: commonLang.back,
+                        type: .textPrimary,
+                        size: .small,
+                        isDisabled: false,
+                        padding: true
+                    ) {
+                        withAnimation { signupStore.moveToPreviousStep() }
+                    }
+                    Spacer()
+                    ButtonView(
+                        text: SignupStrings.PickDeviceStep.addDeviceButton,
+                        type: .filledPrimary,
+                        size: .large,
+                        isDisabled: !signupStore.isNextEnabled
+                    ) {
+                        withAnimation { signupStore.moveToNextStep() }
+                    }
+                    .padding(.trailing, .spacingSM)
+                }
+                .padding(.vertical, .spacingSM)
+
             } else if signupStore.currentStep == .allProfilesReady {
                 ButtonView(
                     text: SignupStrings.AllProfilesReadyStep.doneButton,
@@ -177,13 +206,13 @@ struct SignupScreen: View {
             } else if signupStore.currentStep == .signupError {
                 HStack {
                     ButtonView(
-                        text: SignupStrings.SignupErrorStep.cancelButton,
+                        text: SignupStrings.SignupErrorStep.finishButton,
                         type: .textPrimary,
                         size: .small,
                         isDisabled: false,
                         padding: true
                     ) {
-                        signupStore.cancelSignup(router: isFromAccountSwitching ? nil : router)
+                        signupStore.completeSignup()
                     }
                     Spacer()
                     ButtonView(
@@ -215,7 +244,9 @@ struct SignupScreen: View {
 
                     Spacer()
 
-                    ButtonView(text: signupStore.currentStep == SignupStep.password ? commonLang.complete : commonLang.next,
+                    ButtonView(text: signupStore.currentStep == SignupStep.password
+                               ? SignupStrings.PasswordStep.createButton
+                               : commonLang.next,
                                type: .filledPrimary,
                                size: .small,
                                isDisabled: !signupStore.isNextEnabled,

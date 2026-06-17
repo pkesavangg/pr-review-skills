@@ -47,7 +47,7 @@ enum CustomTextStyle: CaseIterable {
         case .button1: return 16
         case .button2: return 14
         case .label1: return 14
-        case .itemTitle: return 46
+        case .itemTitle: return 16
         }
     }
 
