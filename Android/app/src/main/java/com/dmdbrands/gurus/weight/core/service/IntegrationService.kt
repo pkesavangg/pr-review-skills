@@ -301,7 +301,7 @@ class IntegrationService @Inject constructor(
   override suspend fun submitIntegrationRequest(suggestion: String) {
     val trimmed = suggestion.trim()
     require(trimmed.isNotEmpty()) { "Integration suggestion cannot be blank" }
-    val response = integrationRepository.requestIntegration(mapOf("request" to trimmed))
+    val response = integrationRepository.requestIntegration(mapOf("suggestion" to trimmed))
     if (!response.isSuccessful) {
       AppLog.w(TAG, "submitIntegrationRequest failed: HTTP ${response.code()}")
       error("Server returned ${response.code()}")
