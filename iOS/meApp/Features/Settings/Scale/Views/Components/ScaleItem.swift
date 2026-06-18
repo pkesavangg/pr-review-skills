@@ -69,7 +69,8 @@ struct ScaleItemView: View {
                 .frame(width: 75, height: 75)
                 .opacity(isDisabled ? 0.5 : 1)
                 .themeDropShadow()
-                
+                .accessibilityHidden(true)
+
             VStack(alignment: .leading, spacing: .zero) {
                 Text(modelNumber)
                     .fontOpenSans(.heading5)
@@ -82,7 +83,7 @@ struct ScaleItemView: View {
                     .lineLimit(1)
                     .padding(.bottom, (status == .noStatus || !shouldShowStatus) ? 0 : .spacingXS)
                     .opacity(isDisabled ? 0.7 : 1)
-                
+
                 if status != .noStatus && shouldShowStatus {
                     HStack(spacing: .spacingXS) {
                         AppIconView(
@@ -91,7 +92,8 @@ struct ScaleItemView: View {
                         )
                         .foregroundColor(statusIconDetails.color)
                         .opacity((status == .notConnected || isDisabled) ? 0.5 : 1)
-                        
+                        .accessibilityHidden(true)
+
                         Text(status.displayText)
                             .fontOpenSans(.body2)
                             .foregroundColor(theme.textBody)
@@ -99,9 +101,10 @@ struct ScaleItemView: View {
                     }
                 }
             }
-            
+            .accessibilityElement(children: .combine)
+
             Spacer()
-            
+
             if !hideChevron && !isDisabled {
                 Button(action: {
                     onTap()
@@ -109,6 +112,7 @@ struct ScaleItemView: View {
                     AppIconView(icon: AppAssets.chevronRight, size: IconSize(width: 32, height: 32))
                         .foregroundColor(theme.actionPrimary)
                 })
+                .accessibilityHidden(true)
             }
         }
         .frame(height: 75)
@@ -118,6 +122,8 @@ struct ScaleItemView: View {
         .onTapGesture {
            onTap()
         }
+        .accessibilityHint(SettingsStrings.A11y.scaleRowHint)
+        .accessibilityAddTraits(.isButton)
     }
 }
 

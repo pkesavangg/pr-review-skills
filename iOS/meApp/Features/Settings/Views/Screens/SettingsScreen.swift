@@ -141,6 +141,7 @@ struct SettingsScreen: View {
             .onLongPressGesture {
                 router.navigate(to: .myAccounts)
             }
+            .accessibilityHidden(true)
             Text(settingsStore.profileName)
                 .fontOpenSans(.heading3)
                 .foregroundColor(theme.textHeading)
@@ -150,6 +151,7 @@ struct SettingsScreen: View {
                 .fontOpenSans(.body2)
                 .foregroundColor(theme.textBody)
         }
+        .accessibilityElement(children: .combine)
         .frame(maxWidth: .infinity)
         .listRowBackground(Color.clear)
     }

@@ -27,8 +27,10 @@ struct ActionListItemView: View {
                         Circle()
                             .fill(config.dotColor ?? theme.textError)
                             .frame(width: 9, height: 9)
+                            .accessibilityHidden(true)
                     } else if let leadingIcon = config.leadingIcon {
                         leadingIcon
+                            .accessibilityHidden(true)
                     }
                     
                     actionLabelText(config.title, isDestructive: config.isDestructive)
@@ -63,14 +65,17 @@ struct ActionListItemView: View {
         case .right:
             AppIconView(icon: AppAssets.chevronRight, size: IconSize(width: 22, height: 22))
                 .foregroundColor(theme.statusIconPrimary)
+                .accessibilityHidden(true)
         case .upDown:
             AppIconView(icon: AppAssets.chevronUpDown, size: IconSize(width: 22, height: 22))
                 .foregroundColor(theme.statusIconSecondary)
+                .accessibilityHidden(true)
         case .loading:
             ProgressView()
                 .progressViewStyle(.circular)
                 .frame(width: 22, height: 22)
                 .tint(theme.statusIconSecondary)
+                .accessibilityHidden(true)
         case .none:
             EmptyView()
         }

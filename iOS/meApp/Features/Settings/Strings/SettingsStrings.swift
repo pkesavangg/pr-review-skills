@@ -54,6 +54,15 @@ struct SettingsStrings {
     static let switchAccounts = "Switch Accounts"
     static let deleteAccount = "Delete Account"
 
+    struct A11y {
+        static let profileAvatarLabel = "Profile avatar"
+        static let scaleImageLabel = "Scale product image"
+        static let scaleRowHint = "Double tap to view scale settings"
+        static let scaleStatusLabel: (String, String, String) -> String = { model, name, status in
+            "\(model). \(name). \(status)"
+        }
+    }
+
     // Unit Type picker
     enum UnitType {
         // Section headers (shown when a baby scale is present)
