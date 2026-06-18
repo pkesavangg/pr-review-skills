@@ -11,12 +11,12 @@ import Foundation
 struct BabyTrendDisplayState {
     let selectedMetric: BabyMetric
     let headlineLabel: String
-    let weightDisplay: (lbs: String, oz: String)
+    let weightDisplay: BabyWeightDisplay
     let heightDisplayText: String
 }
 
 struct BabyGrowthPercentilesSheetState {
-    let weightDisplay: (lbs: String, oz: String)
+    let weightDisplay: BabyWeightDisplay
     let weightPercentileText: String
     let heightDisplayText: String
     let heightPercentileText: String
@@ -41,7 +41,7 @@ final class BabyTrendViewModel {
         return BabyTrendDisplayState(
             selectedMetric: selectedMetric,
             headlineLabel: headlineLabel(in: dashboardStore),
-            weightDisplay: weightLbsOz(for: displayWeight),
+            weightDisplay: weightDisplay(for: displayWeight, units: dashboardStore.currentMeasurementUnits),
             heightDisplayText: heightDisplayText(for: displayHeight)
         )
     }
@@ -75,6 +75,7 @@ final class BabyTrendViewModel {
         if hasPointSelected(in: dashboardStore) {
             return dashboardStore.displayManager.weightDisplayLabel
         }
+        guard dashboardStore.hasBabyEntries else { return DashboardStrings.noEntries }
         return "\(dashboardStore.state.graph.selectedPeriod.rawValue) average"
     }
 
@@ -118,6 +119,7 @@ final class BabyTrendViewModel {
         dashboardStore: DashboardStore,
         babyProfile: BabyProfile
     ) -> Double {
+        guard dashboardStore.hasBabyEntries else { return 0 }
         if hasPointSelected(in: dashboardStore),
            let displayWeight = dashboardStore.displayManager.displayWeight,
            abs(displayWeight) >= AppConstants.Precision.doubleEqualityEpsilon {
@@ -178,7 +180,7 @@ final class BabyTrendViewModel {
         )
 
         return BabyGrowthPercentilesSheetState(
-            weightDisplay: weightLbsOz(for: displayWeight),
+            weightDisplay: weightDisplay(for: displayWeight, units: dashboardStore.currentMeasurementUnits),
             weightPercentileText: percentileText(
                 weightPercentile(
                     dashboardStore: dashboardStore,
@@ -197,11 +199,23 @@ final class BabyTrendViewModel {
         )
     }
 
-    private func weightLbsOz(for weight: Double) -> (lbs: String, oz: String) {
-        guard weight > 0 else { return (lbs: "--", oz: "--") }
-        let wholeLbs = Int(weight)
-        let remainingOz = (weight - Double(wholeLbs)) * 16.0
-        return (lbs: "\(wholeLbs)", oz: String(format: "%.1f", remainingOz))
+    private func weightDisplay(for weight: Double, units: MeasurementUnits) -> BabyWeightDisplay {
+        guard weight > 0 else {
+            return BabyDashboardChartSupport.emptyWeightDisplay(for: units)
+        }
+        switch units {
+        case .metric:
+            return BabyWeightDisplay(primary: String(format: "%.3f", weight), primaryUnit: BabyDashboardStrings.kg, secondary: nil, secondaryUnit: nil)
+        case .imperialLbDecimal:
+            return BabyWeightDisplay(primary: String(format: "%.1f", weight), primaryUnit: BabyDashboardStrings.lb, secondary: nil, secondaryUnit: nil)
+        case .imperialLbOz:
+            var wholeLbs = Int(weight)
+            let rawOz = (weight - Double(wholeLbs)) * 16.0
+            let roundedOz = (rawOz * 10).rounded() / 10
+            var remainingOz = roundedOz
+            if roundedOz >= 16.0 { wholeLbs += 1; remainingOz = 0.0 }
+            return BabyWeightDisplay(primary: "\(wholeLbs)", primaryUnit: BabyDashboardStrings.lbs, secondary: String(format: "%.1f", remainingOz), secondaryUnit: BabyDashboardStrings.oz)
+        }
     }
 
     private func heightDisplayText(for height: Double) -> String {

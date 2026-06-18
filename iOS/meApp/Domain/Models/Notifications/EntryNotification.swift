@@ -30,6 +30,10 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
     /// May be nil if created from DTO without a persisted Entry.
     let persistentId: PersistentIdentifier?
     let accountId: String
+    /// Total number of readings in the BT batch that produced this notification.
+    /// 1 for a single reading; >1 when the device sent a batch (e.g. GGBPMEntryList or GGEntryList).
+    /// Historical entries in the batch are saved silently; this value lets the toast show the correct count.
+    let batchCount: Int
     let entryTimestamp: String
     let serverTimestamp: String?
     let operationType: String
@@ -72,10 +76,11 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
     /// Creates a notification by extracting all data from an Entry.
     /// Must be called on MainActor to safely access Entry relationships.
     @MainActor
-    init(from entry: Entry) {
+    init(from entry: Entry, batchCount: Int = 1) {
         self.id = entry.id
         self.persistentId = entry.persistentModelID
         self.accountId = entry.accountId
+        self.batchCount = batchCount
         self.entryTimestamp = entry.entryTimestamp
         self.serverTimestamp = entry.serverTimestamp
         self.operationType = entry.operationType
@@ -120,6 +125,7 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
         self.id = id
         self.persistentId = persistentId
         self.accountId = dto.accountId ?? ""
+        self.batchCount = 1
         self.entryTimestamp = dto.entryTimestamp ?? ""
         self.serverTimestamp = dto.serverTimestamp
         self.operationType = dto.operationType ?? ""

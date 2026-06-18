@@ -9,11 +9,12 @@ import SwiftUI
 
 struct SectionHeader: View {
     let title: String
+    var fontStyle: CustomTextStyle = .heading4
     @Environment(\.appTheme) private var theme
 
     var body: some View {
         Text(title)
-            .fontOpenSans(.heading4)
+            .fontOpenSans(fontStyle)
             .foregroundColor(theme.textHeading)
             .textCase(.none)
             .padding(.bottom, .spacingXS)

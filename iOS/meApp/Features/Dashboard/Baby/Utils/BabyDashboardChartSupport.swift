@@ -8,6 +8,14 @@
 
 import Foundation
 
+/// Multi-unit baby weight display value. Primary is always populated; secondary (oz) is non-nil only for the lbs+oz format.
+struct BabyWeightDisplay {
+    let primary: String        // "7" / "7.7" / "3.520"
+    let primaryUnit: String    // "lbs" / "lb" / "kg"
+    let secondary: String?     // "12.0" for lbs+oz, nil otherwise
+    let secondaryUnit: String? // "oz" for lbs+oz, nil otherwise
+}
+
 enum BabyDashboardChartSupport {
     private static let percentileSeriesPrefix = "baby_percentile_"
     private static let heightSeriesName = "baby_height"
@@ -448,8 +456,11 @@ enum BabyDashboardChartSupport {
 
     static func formatBabyWeight(_ storedWeight: Int, unit: WeightUnit) -> (lbs: String, oz: String) {
         let displayWeight = convertStoredWeightToDisplay(storedWeight, unit: unit)
-        let wholeLbs = Int(displayWeight)
-        let remainingOz = (displayWeight - Double(wholeLbs)) * 16.0
+        var wholeLbs = Int(displayWeight)
+        let rawOz = (displayWeight - Double(wholeLbs)) * 16.0
+        let roundedOz = (rawOz * 10).rounded() / 10
+        var remainingOz = roundedOz
+        if roundedOz >= 16.0 { wholeLbs += 1; remainingOz = 0.0 }
         return (lbs: "\(wholeLbs)", oz: String(format: "%.1f", remainingOz))
     }
 
@@ -461,6 +472,60 @@ enum BabyDashboardChartSupport {
         guard !weights.isEmpty else { return nil }
         let avgStored = Int((weights.reduce(0, +) / Double(weights.count)).rounded())
         return formatBabyWeight(avgStored, unit: unit)
+    }
+
+    // MARK: - MeasurementUnits-aware display formatting
+
+    static func formatBabyWeightDisplay(_ storedWeight: Int, units: MeasurementUnits) -> BabyWeightDisplay {
+        let displayWeight = convertStoredWeightToDisplay(storedWeight, unit: units == .metric ? .kg : .lb)
+        switch units {
+        case .metric:
+            return BabyWeightDisplay(
+                primary: String(format: "%.3f", displayWeight),
+                primaryUnit: BabyDashboardStrings.kg,
+                secondary: nil, secondaryUnit: nil
+            )
+        case .imperialLbDecimal:
+            return BabyWeightDisplay(
+                primary: String(format: "%.1f", displayWeight),
+                primaryUnit: BabyDashboardStrings.lb,
+                secondary: nil, secondaryUnit: nil
+            )
+        case .imperialLbOz:
+            var wholeLbs = Int(displayWeight)
+            let rawOz = (displayWeight - Double(wholeLbs)) * 16.0
+            let roundedOz = (rawOz * 10).rounded() / 10
+            var remainingOz = roundedOz
+            if roundedOz >= 16.0 { wholeLbs += 1; remainingOz = 0.0 }
+            return BabyWeightDisplay(
+                primary: "\(wholeLbs)",
+                primaryUnit: BabyDashboardStrings.lbs,
+                secondary: String(format: "%.1f", remainingOz),
+                secondaryUnit: BabyDashboardStrings.oz
+            )
+        }
+    }
+
+    static func weekAverageDisplay(
+        from summaries: [BathScaleWeightSummary],
+        units: MeasurementUnits
+    ) -> BabyWeightDisplay? {
+        let weights = summaries.map(\.weight).filter { $0 > 0 }
+        guard !weights.isEmpty else { return nil }
+        let avgStored = Int((weights.reduce(0, +) / Double(weights.count)).rounded())
+        return formatBabyWeightDisplay(avgStored, units: units)
+    }
+
+    /// Placeholder display shown when no readings are available.
+    static func emptyWeightDisplay(for units: MeasurementUnits) -> BabyWeightDisplay {
+        switch units {
+        case .metric:
+            return BabyWeightDisplay(primary: "--", primaryUnit: BabyDashboardStrings.kg, secondary: nil, secondaryUnit: nil)
+        case .imperialLbDecimal:
+            return BabyWeightDisplay(primary: "--", primaryUnit: BabyDashboardStrings.lb, secondary: nil, secondaryUnit: nil)
+        case .imperialLbOz:
+            return BabyWeightDisplay(primary: "00", primaryUnit: BabyDashboardStrings.lbs, secondary: "00", secondaryUnit: BabyDashboardStrings.oz)
+        }
     }
 
     // MARK: - Snapshot Card Helpers

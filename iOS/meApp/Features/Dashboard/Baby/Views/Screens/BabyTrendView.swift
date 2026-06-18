@@ -90,32 +90,34 @@ struct BabyTrendView: View {
         .padding(.horizontal, .spacingSM)
     }
 
-    // MARK: - Baby Weight Display (lbs + oz)
+    // MARK: - Baby Weight Display
 
     @ViewBuilder
     private var babyWeightDisplay: some View {
-        let lbsOz = displayState.weightDisplay
+        let display = displayState.weightDisplay
         HStack(alignment: .lastTextBaseline, spacing: .zero) {
-            Text(lbsOz.lbs)
+            Text(display.primary)
                 .fontOpenSans(.heading1)
                 .fontWeight(.heavy)
                 .foregroundColor(babyColor)
 
-            Text(BabyDashboardStrings.lbs)
+            Text(display.primaryUnit)
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
                 .padding(.leading, 4)
 
-            Text(lbsOz.oz)
-                .fontOpenSans(.heading1)
-                .fontWeight(.heavy)
-                .foregroundColor(babyColor)
-                .padding(.leading, .spacingMD)
+            if let secondary = display.secondary, let secondaryUnit = display.secondaryUnit {
+                Text(secondary)
+                    .fontOpenSans(.heading1)
+                    .fontWeight(.heavy)
+                    .foregroundColor(babyColor)
+                    .padding(.leading, .spacingMD)
 
-            Text(BabyDashboardStrings.oz)
-                .fontOpenSans(.subHeading2)
-                .foregroundColor(theme.textSubheading)
-                .padding(.leading, 4)
+                Text(secondaryUnit)
+                    .fontOpenSans(.subHeading2)
+                    .foregroundColor(theme.textSubheading)
+                    .padding(.leading, 4)
+            }
         }
         .frame(height: 55)
     }

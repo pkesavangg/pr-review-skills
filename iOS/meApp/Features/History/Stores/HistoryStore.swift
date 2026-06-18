@@ -49,6 +49,7 @@ final class HistoryStore: ObservableObject {
     // MARK: - Optimistic Delete / Undo State
     private var pendingBPDelete: BPHistoryEntry?
     private var pendingBabyDelete: BabyHistoryEntry?
+    private var pendingWGDelete: EntrySnapshot?
 
     /// Whether the current product type selection is blood pressure.
     var isBloodPressureMode: Bool {
@@ -109,6 +110,13 @@ final class HistoryStore: ObservableObject {
                     self.monthsLoadTask?.cancel()
                     self.monthsLoadTask = nil
                     self.invalidateCacheForCurrentType()
+                    // Baby entries may be assigned while a different product type is active,
+                    // meaning invalidateCacheForCurrentType() won't clear the baby cache.
+                    // Always flush baby history cache on any baby entry event so the next
+                    // History open fetches fresh data regardless of current product mode.
+                    if entry.entryType == EntryType.baby.rawValue {
+                        self.loadedProductTypes = self.loadedProductTypes.filter { !$0.hasPrefix("baby_") }
+                    }
                     await self.loadMonthsInternal(canShowLoader: false)
                     // If we're viewing a month and the saved entry belongs to that month, refresh entries inline
                     if let selectedMonth = self.selectedMonth {
@@ -170,6 +178,27 @@ final class HistoryStore: ObservableObject {
                 self.loadMonths()
             }
             .store(in: &cancellables)
+
+        // Reload history when the unit type changes so pre-formatted display strings
+        // (baby weightDisplay/lengthDisplay) reflect the newly selected unit.
+        accountService.activeAccountPublisher
+            .dropFirst()
+            .compactMap { $0 }
+            .removeDuplicates {
+                $0.weightUnit == $1.weightUnit && $0.measurementUnits == $1.measurementUnits
+            }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.monthsLoadTask?.cancel()
+                self.monthsLoadTask = nil
+                self.loadedProductTypes.removeAll()
+                self.loadMonths()
+                if let selectedBabyDay = self.selectedBabyDay {
+                    self.selectBabyDay(selectedBabyDay)
+                }
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Public API --------------------------------------------------
@@ -229,10 +258,8 @@ final class HistoryStore: ObservableObject {
             message: AlertStrings.DeleteEntryAlert.message,
             buttons: [
                 AlertButtonModel(title: AlertStrings.DeleteEntryAlert.deleteButton, type: .danger) { _ in
-                    Task {
-                        await self.deleteEntryInternal(entryId: entry.id)
-                        onCancel?()
-                    }
+                    onCancel?()
+                    self.confirmWGDelete(entry)
                 },
                 AlertButtonModel(title: AlertStrings.DeleteEntryAlert.cancelButton, type: .secondary) { _ in
                     self.notificationService.dismissAlert()
@@ -283,7 +310,13 @@ final class HistoryStore: ObservableObject {
 
     // swiftlint:disable:next cyclomatic_complexity function_body_length
     private func loadMonthsInternal(canShowLoader: Bool = true) async {
-        guard monthsLoadTask == nil else { return }            // prevent overlap
+        // If a load is already in progress, wait for it to complete rather than
+        // returning early. This prevents a stale empty-state flash when a tab-switch
+        // triggers loadMonths() while an entrySaved reload is still fetching data.
+        if let existingTask = monthsLoadTask {
+            await existingTask.value
+            return
+        }
 
         // Blood pressure mode — load from local BPM entries
         if isBloodPressureMode {
@@ -515,7 +548,52 @@ final class HistoryStore: ObservableObject {
             notificationService.showToast(ToastModel(
                 message: HistoryListStrings.couldntDelete,
                 btnTextView: AnyView(Text(HistoryListStrings.tryAgain).fontOpenSans(.button1)),
-                onClick: { Task { @MainActor in self.confirmBabyDelete(babyEntry) } }
+                onClick: { Task { @MainActor in self.confirmBabyDelete(babyEntry) } },
+                isError: true
+            ))
+        }
+    }
+
+    // MARK: - WG Delete (optimistic + 3-second UNDO)
+
+    private func confirmWGDelete(_ entry: EntrySnapshot) {
+        entries.removeAll { $0.id == entry.id }
+        pendingWGDelete = entry
+
+        let time = DateTimeTools.getFormattedTime(entry.entryTimestamp)
+        notificationService.showToast(ToastModel(
+            message: "\(time) \(HistoryListStrings.readingDeleted)",
+            btnTextView: AnyView(Text(HistoryListStrings.undo).fontOpenSans(.button1)),
+            onClick: { Task { @MainActor in self.undoWGDelete() } },
+            duration: 3,
+            onDismiss: { Task { @MainActor in self.commitWGDelete() } }
+        ))
+    }
+
+    func undoWGDelete() {
+        guard let entry = pendingWGDelete else { return }
+        pendingWGDelete = nil
+        entries.append(entry)
+        entries.sort { $0.entryTimestamp > $1.entryTimestamp }
+        notificationService.showToast(ToastModel(message: HistoryListStrings.readingRestored))
+    }
+
+    private func commitWGDelete() {
+        guard let entry = pendingWGDelete else { return }
+        pendingWGDelete = nil
+        Task { await deleteWGEntryInternal(entry) }
+    }
+
+    private func deleteWGEntryInternal(_ entry: EntrySnapshot) async {
+        do {
+            try await entryService.deleteEntry(entryId: entry.id)
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to delete WG entry: \(error.localizedDescription)")
+            notificationService.showToast(ToastModel(
+                message: HistoryListStrings.couldntDelete,
+                btnTextView: AnyView(Text(HistoryListStrings.tryAgain).fontOpenSans(.button1)),
+                onClick: { Task { @MainActor in self.confirmWGDelete(entry) } },
+                isError: true
             ))
         }
     }
@@ -684,9 +762,17 @@ final class HistoryStore: ObservableObject {
 
     // MARK: - Baby API
 
-    /// Whether the active account uses metric (kg) for weight.
+    /// Whether the active account uses metric units for baby entries.
+    /// Uses the baby-specific `measurementUnits` field (set via "My Kids Unit Type"),
+    /// not the adult weight unit, so baby history reflects the correct unit selection.
     var isMetric: Bool {
-        accountService.activeAccount?.weightUnit == .kg
+        accountService.activeAccount?.measurementUnits == MeasurementUnits.metric.rawValue
+    }
+
+    private var currentMeasurementUnits: MeasurementUnits {
+        guard let raw = accountService.activeAccount?.measurementUnits,
+              let units = MeasurementUnits(rawValue: raw) else { return .imperialLbOz }
+        return units
     }
 
     /// User tapped a baby day row.
@@ -706,7 +792,8 @@ final class HistoryStore: ObservableObject {
                     && $0.babyEntry?.babyId == babyId
                     && self.localDayString(from: $0.entryTimestamp) == day.id
                 }
-                let metric = self.isMetric
+                let units = self.currentMeasurementUnits
+                let metric = units == .metric
                 babyEntries = dayEntries.compactMap { entry -> BabyHistoryEntry? in
                     guard let baby = entry.babyEntry else { return nil }
                     let decigrams = baby.weight
@@ -738,7 +825,7 @@ final class HistoryStore: ObservableObject {
                         lengthCm: lengthCm,
                         percentile: pct,
                         notes: entry.note?.isEmpty == false ? entry.note : nil,
-                        weightDisplay: self.formatBabyWeightDisplay(decigrams: decigrams, source: source, isMetric: metric),
+                        weightDisplay: self.formatBabyWeightDisplay(decigrams: decigrams, source: source, units: units),
                         lengthDisplay: self.formatBabyLengthDisplay(mm: mm, isMetric: metric)
                     )
                 }.sorted { $0.entryTimestamp > $1.entryTimestamp }
@@ -756,18 +843,22 @@ final class HistoryStore: ObservableObject {
 
     // MARK: - Baby Display Formatting
 
-    /// Formats baby weight in decigrams as a display string based on unit preference.
+    /// Formats baby weight in decigrams as a display string based on the active measurement units.
     /// When source is provided (e.g. "0220", "0222"), applies graduation rounding to match scale LCD.
-    private func formatBabyWeightDisplay(decigrams: Int, source: String? = nil, isMetric: Bool) -> String {
+    private func formatBabyWeightDisplay(decigrams: Int, source: String? = nil, units: MeasurementUnits) -> String {
         guard decigrams > 0 else { return "--" }
-        let displayUnit: ConversionTools.BabyDisplayUnit = isMetric ? .kg : .lbOz
+        let displayUnit: ConversionTools.BabyDisplayUnit = units == .metric ? .kg : .lbOz
         let graduatedDecigrams = ConversionTools.convertToDisplayWeightBase(
             decigrams: decigrams, source: source, unit: displayUnit, isBabyScaleEntry: true
         )
-        if isMetric {
+        switch units {
+        case .metric:
             let kg = ConversionTools.convertBabyDecigramsToKg(graduatedDecigrams)
             return "\(String(format: "%.3f", kg)) \(HistoryListStrings.kg)"
-        } else {
+        case .imperialLbDecimal:
+            let lb = ConversionTools.convertBabyDecigramsToLb(graduatedDecigrams)
+            return "\(String(format: "%.1f", lb)) \(HistoryListStrings.lb)"
+        case .imperialLbOz:
             let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(graduatedDecigrams)
             return "\(lbsOz.lbs) \(HistoryListStrings.lbs) \(String(format: "%.1f", lbsOz.oz)) \(HistoryListStrings.oz)"
         }
@@ -847,7 +938,8 @@ final class HistoryStore: ObservableObject {
         }.filter { !$0.key.isEmpty }
 
         // Build days sorted newest first
-        let metric = self.isMetric
+        let units = self.currentMeasurementUnits
+        let metric = units == .metric
         let days: [BabyHistoryDay] = grouped.map { dayId, dayEntries in
             let count = dayEntries.count
             let weights = dayEntries.compactMap { $0.babyEntry?.weight }
@@ -880,7 +972,7 @@ final class HistoryStore: ObservableObject {
                 lengthInches: lengthInches,
                 lengthCm: lengthCm,
                 percentile: pct,
-                weightDisplay: self.formatBabyWeightDisplay(decigrams: avgWeight, isMetric: metric),
+                weightDisplay: self.formatBabyWeightDisplay(decigrams: avgWeight, units: units),
                 lengthDisplay: self.formatBabyLengthDisplay(mm: avgMm, isMetric: metric)
             )
         }.sorted { $0.id > $1.id }

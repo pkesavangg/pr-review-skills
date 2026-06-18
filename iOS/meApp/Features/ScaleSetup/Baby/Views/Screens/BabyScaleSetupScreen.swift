@@ -76,6 +76,7 @@ struct BabyScaleSetupScreen: View {
             skipDialogOverlay
         }
         .animation(.easeInOut, value: setupStore.showSkipDialog)
+        .animation(.easeInOut, value: setupStore.showSkipEditDialog)
         .environmentObject(setupStore)
         .onAppear {
             isBeingDismissed = false
@@ -103,7 +104,7 @@ struct BabyScaleSetupScreen: View {
 
     /// Steps where the footer should show "FINISH" instead of "NEXT".
     private var finishSteps: Set<BabyScaleSetupStep> {
-        [.babyAdded]
+        [.babyAdded, .done]
     }
 
     // MARK: - Footer Buttons
@@ -125,7 +126,7 @@ struct BabyScaleSetupScreen: View {
 
             Spacer()
 
-            if setupStore.currentStep == .paired || setupStore.currentStep == .babyProfile {
+            if setupStore.currentStep == .babyProfile {
                 ButtonView(
                     text: commonLang.skip,
                     type: .inlineTextTertiary,
@@ -158,46 +159,65 @@ struct BabyScaleSetupScreen: View {
     @ViewBuilder
     private var skipDialogOverlay: some View {
         if setupStore.showSkipDialog {
-            ZStack {
-                theme.supportOverlay
-                    .ignoresSafeArea()
+            skipOverlay(
+                title: lang.SkipDialog.title,
+                message: lang.SkipDialog.message,
+                onConfirm: { setupStore.handleSkipConfirmed() },
+                onCancel: { setupStore.handleSkipCancelled() }
+            )
+        } else if setupStore.showSkipEditDialog {
+            skipOverlay(
+                title: lang.SkipEditDialog.title,
+                message: lang.SkipEditDialog.message,
+                onConfirm: { setupStore.handleSkipEditConfirmed() },
+                onCancel: { setupStore.handleSkipEditCancelled() }
+            )
+        }
+    }
 
-                VStack(spacing: .spacingMD) {
-                    Text(lang.SkipDialog.title)
-                        .fontOpenSans(.heading4)
-                        .fontWeight(.bold)
-                        .foregroundColor(theme.textHeading)
-                        .multilineTextAlignment(.center)
+    private func skipOverlay(
+        title: String,
+        message: String,
+        onConfirm: @escaping () -> Void,
+        onCancel: @escaping () -> Void
+    ) -> some View {
+        ZStack {
+            theme.supportOverlay
+                .ignoresSafeArea()
 
-                    Text(lang.SkipDialog.message)
-                        .fontOpenSans(.body2)
-                        .foregroundColor(theme.textBody)
-                        .multilineTextAlignment(.center)
+            VStack(spacing: .spacingMD) {
+                Text(title)
+                    .fontOpenSans(.heading4)
+                    .fontWeight(.bold)
+                    .foregroundColor(theme.textHeading)
+                    .multilineTextAlignment(.center)
 
-                    ButtonView(
-                        text: lang.SkipDialog.finishSetup,
-                        type: .filledPrimary,
-                        size: .large,
-                        isDisabled: false
-                    ) {
-                        setupStore.handleSkipConfirmed()
-                    }
+                Text(message)
+                    .fontOpenSans(.body2)
+                    .foregroundColor(theme.textBody)
+                    .multilineTextAlignment(.center)
 
-                    ButtonView(
-                        text: lang.SkipDialog.cancel,
-                        type: .inlineTextPrimary,
-                        size: .large,
-                        isDisabled: false
-                    ) {
-                        setupStore.handleSkipCancelled()
-                    }
-                }
-                .padding(.spacingMD)
-                .background(theme.backgroundPrimary)
-                .cornerRadius(.radiusMD)
-                .padding(.horizontal, .spacingMD)
-                .transition(.scale.combined(with: .opacity))
+                ButtonView(
+                    text: lang.SkipDialog.yesSkip,
+                    type: .filledPrimary,
+                    size: .large,
+                    isDisabled: false,
+                    action: { onConfirm() }
+                )
+
+                ButtonView(
+                    text: lang.SkipDialog.goBack,
+                    type: .inlineTextPrimary,
+                    size: .large,
+                    isDisabled: false,
+                    action: { onCancel() }
+                )
             }
+            .padding(.spacingMD)
+            .background(theme.backgroundPrimary)
+            .cornerRadius(.radiusMD)
+            .padding(.horizontal, .spacingMD)
+            .transition(.scale.combined(with: .opacity))
         }
     }
 }

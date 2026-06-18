@@ -263,6 +263,19 @@ final class EntryRepository: EntryRepositoryProtocol {
         }
     }
 
+    /// Stores the server-assigned entryId after a successful create sync.
+    func updateEntryServerEntryId(entryId: String, serverEntryId: String) async throws {
+        guard let uuid = UUID(uuidString: entryId) else { return }
+        try await performBackgroundTask { ctx in
+            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == uuid })
+            if let existing = try ctx.fetch(descriptor).first {
+                existing.serverEntryId = serverEntryId
+                try ctx.save()
+            }
+            return ()
+        }
+    }
+
     /// Marks an entry as deleted in the background context without mutating the
     /// @Model object on the main actor.  Use this instead of setting
     /// `entry.operationType` and `entry.isSynced` directly when the call-site is

@@ -419,7 +419,17 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
                     if case .baby = $0 { return true }
                     return false
                 }
-                self.canShowSnapshotOverview = items.count > 1
+                // Show the snapshot overview when:
+                //   • Any baby item exists (pending or real) — baby scale paired with or
+                //     without a profile, even after scale/profile removal while productTypes
+                //     still retains "baby". No weight/BPM required.
+                //   • OR two non-baby product types are both paired (weight + BPM).
+                // Multiple baby profiles must NOT inflate the count — they are accessed
+                // via the dropdown inside the baby dashboard.
+                let hasWeight = items.contains { $0 == .myWeight }
+                let hasBpm = items.contains { $0 == .myBloodPressure }
+                self.canShowSnapshotOverview = self.hasBabySnapshotItem
+                    || [hasWeight, hasBpm].filter { $0 }.count > 1
             }
             .store(in: &cancellables)
 
@@ -802,6 +812,14 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     var hasAnyEntries: Bool { state.data.hasAnyEntries }
 
+    /// True when the selected baby profile has at least one real (non-dummy) scale reading.
+    var hasBabyEntries: Bool {
+        guard let babyProfile = selectedBabyProfile else { return false }
+        let daily = entryService.babyDailySummariesByProfile[babyProfile.id] ?? []
+        let monthly = entryService.babyMonthlySummariesByProfile[babyProfile.id] ?? []
+        return !daily.isEmpty || !monthly.isEmpty
+    }
+
     // MARK: - Account & Weight Properties
 
     var isWeightlessModeEnabled: Bool {
@@ -847,6 +865,11 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     var currentUnitString: String { currentUnit.rawValue }
     var currentUnitText: String { accountService.activeAccount?.weightUnit.rawValue ?? "lbs" }
     var currentWeightlessMode: Bool { accountService.activeAccount?.isWeightlessOn ?? false }
+    var currentMeasurementUnits: MeasurementUnits {
+        guard let raw = accountService.activeAccount?.measurementUnits,
+              let units = MeasurementUnits(rawValue: raw) else { return .imperialLbOz }
+        return units
+    }
     var unitText: String { goalManager.getUnitText() }
 
     var hasEntriesButNoneInCurrentPeriod: Bool {

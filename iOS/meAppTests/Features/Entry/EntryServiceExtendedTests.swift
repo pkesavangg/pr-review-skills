@@ -318,6 +318,66 @@ struct EntryServiceExtendedTests {
         #expect(streak.max == 3)
     }
 
+    // MARK: - serverEntryId persistence
+
+    @Test("syncAllEntriesWithRemote: stores server-assigned entryId returned in submit response")
+    func syncAllEntriesWithRemoteStoresServerEntryId() async {
+        let repo = MockEntryRepository()
+        repo.entries = [EntryTestFixtures.makeEntry(isSynced: false)]
+
+        let remote = MockEntryRepositoryAPI()
+        remote.submitEntriesResult = UnifiedEntryResponse(
+            entries: [UnifiedEntryResult(
+                category: EntryCategory.weight.rawValue,
+                entryId: "server-abc-123",
+                operationType: "create",
+                entryTimestamp: "2026-03-01T08:00:00Z",
+                serverTimestamp: "2026-03-01T08:00:05Z",
+                source: "manual",
+                weight: 1800, bodyFat: nil, muscleMass: nil, water: nil,
+                bmi: nil, boneMass: nil, impedance: nil, unit: "lb",
+                systolic: nil, diastolic: nil, pulse: nil, note: nil
+            )],
+            timestamp: "2026-03-01T08:00:05Z"
+        )
+
+        let sut = makeSUT(repo: repo, remote: remote)
+        await sut.syncAllEntriesWithRemote()
+
+        #expect(repo.updateEntryServerEntryIdCalls == 1)
+        #expect(repo.lastServerEntryId == "server-abc-123")
+    }
+
+    @Test("syncAllEntriesWithRemote: logs error and continues when serverEntryId persistence fails")
+    func syncAllEntriesWithRemoteLogsErrorOnServerEntryIdFailure() async {
+        let repo = MockEntryRepository()
+        repo.entries = [EntryTestFixtures.makeEntry(isSynced: false)]
+        repo.updateEntryServerEntryIdError = EntryTestError.localFailure
+
+        let remote = MockEntryRepositoryAPI()
+        remote.submitEntriesResult = UnifiedEntryResponse(
+            entries: [UnifiedEntryResult(
+                category: EntryCategory.weight.rawValue,
+                entryId: "server-xyz-456",
+                operationType: "create",
+                entryTimestamp: "2026-03-01T08:00:00Z",
+                serverTimestamp: "2026-03-01T08:00:05Z",
+                source: "manual",
+                weight: 1800, bodyFat: nil, muscleMass: nil, water: nil,
+                bmi: nil, boneMass: nil, impedance: nil, unit: "lb",
+                systolic: nil, diastolic: nil, pulse: nil, note: nil
+            )],
+            timestamp: "2026-03-01T08:00:05Z"
+        )
+
+        let logger = MockLoggerService()
+        let sut = makeSUT(repo: repo, remote: remote, logger: logger)
+        await sut.syncAllEntriesWithRemote()
+
+        #expect(logger.messages.contains(where: { $0.contains("Failed to persist serverEntryId") }))
+        #expect(repo.updateEntrySyncStatusCalls == 1, "Sync should continue despite serverEntryId write failure")
+    }
+
     // MARK: - exportCSV
 
     @Test("exportCSV no active account: throws AccountError.noActiveAccount")

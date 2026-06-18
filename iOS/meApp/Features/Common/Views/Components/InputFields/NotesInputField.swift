@@ -66,7 +66,7 @@ struct NotesInputField: View {
                         .padding(.vertical, CGFloat.spacingXS - 2)
                 }
             }
-            .background(theme.backgroundPrimary)
+            .background(theme.backgroundSecondary)
             .cornerRadius(BorderRadius.sm)
 
             if let errorMessage = config.errorMessage {

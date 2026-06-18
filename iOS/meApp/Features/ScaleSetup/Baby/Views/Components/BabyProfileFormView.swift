@@ -169,6 +169,9 @@ struct BabyProfileFormView: View {
             showDatePicker = false
             showSexPicker = false
         }
+        .onChange(of: form.name.value) { _, _ in
+            form.duplicateNameError = nil
+        }
         .pickerSheet(
             isPresented: $showSexPicker,
             selectedValues: [selectedSex],

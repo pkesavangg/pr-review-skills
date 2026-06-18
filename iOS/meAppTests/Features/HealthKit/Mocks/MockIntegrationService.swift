@@ -64,5 +64,7 @@ final class MockIntegrationService: IntegrationServiceProtocol {
         clearIntegrationCalls += 1
         if let clearIntegrationError { throw clearIntegrationError }
     }
+    func syncNewEntry(notification: EntryNotification) async throws {}
     func logHealthEntry(notification: EntryNotification) async {}
+    func requestNewIntegration(text: String) async throws {}
 }

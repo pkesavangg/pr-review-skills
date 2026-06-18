@@ -444,6 +444,49 @@ struct IntegrationStoreTests {
         #expect(shown == true)
     }
 
+    // MARK: - submitIntegrationRequest
+
+    @Test("submitIntegrationRequest success: shows loader then success alert")
+    func submitIntegrationRequestSuccess() async {
+        let integration = MockIntegrationStoreService()
+        let notification = MockNotificationHelperService()
+        let (store, _, _, _, _) = makeSUT(
+            integrationService: integration,
+            notificationService: notification
+        )
+
+        await store.submitIntegrationRequest(text: "Garmin sync")
+
+        #expect(integration.requestNewIntegrationCalls == ["Garmin sync"])
+        #expect(notification.showLoaderCalls == 1)
+        #expect(notification.dismissLoaderCalls == 1)
+        // Success alert shown with a single dismiss button
+        #expect(notification.showAlertCalls == 1)
+        #expect(notification.alertData?.title == IntegrationsStrings.requestIntegrationSuccessTitle)
+        #expect(notification.alertData?.buttons.count == 1)
+    }
+
+    @Test("submitIntegrationRequest failure: shows loader then error alert")
+    func submitIntegrationRequestFailure() async {
+        let integration = MockIntegrationStoreService()
+        integration.requestNewIntegrationError = IntegrationStoreTestError.removeFailed
+        let notification = MockNotificationHelperService()
+        let (store, _, _, _, _) = makeSUT(
+            integrationService: integration,
+            notificationService: notification
+        )
+
+        await store.submitIntegrationRequest(text: "Garmin sync")
+
+        #expect(integration.requestNewIntegrationCalls == ["Garmin sync"])
+        #expect(notification.showLoaderCalls == 1)
+        #expect(notification.dismissLoaderCalls == 1)
+        // Error alert shown with a single dismiss button
+        #expect(notification.showAlertCalls == 1)
+        #expect(notification.alertData?.title == IntegrationsStrings.requestIntegrationErrorTitle)
+        #expect(notification.alertData?.buttons.count == 1)
+    }
+
     @Test("account publisher handles nil account correctly")
     func accountPublisherHandlesNilAccount() async {
         let account = MockAccountService()

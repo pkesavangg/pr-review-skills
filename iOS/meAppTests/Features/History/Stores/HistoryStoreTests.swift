@@ -751,4 +751,95 @@ struct HistoryStoreTests {
         #expect(entryService.deleteEntryByIdCalls == 0)
         #expect(notificationService.showToastCalls >= 1)
     }
+
+    // MARK: - WG Delete optimistic + 3-second undo state machine
+
+    private func loadWGEntry(_ entry: EntrySnapshot, into store: HistoryStore, entryService: MockEntryService) async {
+        let month = makeHistoryMonth(id: "2026-03")
+        entryService.fetchEntrySnapshotsForMonthResult = .success([entry])
+        store.setSelectedMonth(selectedMonth: month)
+        await store.loadEntries(for: month)
+    }
+
+    @Test("confirmWGDelete: removes entry from list and shows undo toast")
+    func confirmWGDeleteRemovesEntryAndShowsUndoToast() async {
+        let (store, entryService, notificationService, _, _) = makeSUT()
+        let entry = EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-10T08:00:00Z")
+        await loadWGEntry(entry, into: store, entryService: entryService)
+        #expect(store.entries.count == 1)
+
+        store.showDeleteEntryAlert(entry: entry)
+        guard let deleteButton = notificationService.alertData?.buttons.first(where: { $0.type == .danger }) else {
+            Issue.record("Expected delete alert button")
+            return
+        }
+        deleteButton.action(nil)
+
+        #expect(store.entries.isEmpty)
+        #expect(notificationService.showToastCalls >= 1)
+        #expect(notificationService.toastData?.message.contains(HistoryListStrings.readingDeleted) == true)
+    }
+
+    @Test("undoWGDelete: restores the entry and shows restore toast")
+    func undoWGDeleteRestoresEntry() async {
+        let (store, entryService, notificationService, _, _) = makeSUT()
+        let entry = EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-10T08:00:00Z")
+        await loadWGEntry(entry, into: store, entryService: entryService)
+
+        store.showDeleteEntryAlert(entry: entry)
+        guard let deleteButton = notificationService.alertData?.buttons.first(where: { $0.type == .danger }) else {
+            Issue.record("Expected delete alert button")
+            return
+        }
+        deleteButton.action(nil)
+        #expect(store.entries.isEmpty)
+
+        store.undoWGDelete()
+
+        #expect(store.entries.count == 1)
+        #expect(store.entries.first?.entryTimestamp == entry.entryTimestamp)
+        #expect(notificationService.toastData?.message == HistoryListStrings.readingRestored)
+    }
+
+    @Test("commitWGDelete: calls deleteEntry after toast dismiss")
+    func commitWGDeleteCallsDeleteService() async {
+        let (store, entryService, notificationService, _, _) = makeSUT()
+        let entry = EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-10T08:00:00Z")
+        await loadWGEntry(entry, into: store, entryService: entryService)
+
+        store.showDeleteEntryAlert(entry: entry)
+        guard let deleteButton = notificationService.alertData?.buttons.first(where: { $0.type == .danger }) else {
+            Issue.record("Expected delete alert button")
+            return
+        }
+        deleteButton.action(nil)
+
+        notificationService.toastData?.onDismiss?()
+        let done = await waitUntil { entryService.deleteEntryByIdCalls == 1 }
+
+        #expect(done == true)
+        #expect(entryService.deletedEntryIds.first == entry.id)
+    }
+
+    @Test("deleteWGEntryInternal failure: shows error toast with retry button")
+    func deleteWGEntryInternalFailureShowsErrorToast() async {
+        let (store, entryService, notificationService, _, _) = makeSUT()
+        let entry = EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-10T08:00:00Z")
+        await loadWGEntry(entry, into: store, entryService: entryService)
+        entryService.deleteEntryByIdError = HistoryStoreTestError.deleteFailed
+
+        store.showDeleteEntryAlert(entry: entry)
+        guard let deleteButton = notificationService.alertData?.buttons.first(where: { $0.type == .danger }) else {
+            Issue.record("Expected delete alert button")
+            return
+        }
+        deleteButton.action(nil)
+
+        notificationService.toastData?.onDismiss?()
+        let done = await waitUntil { notificationService.showToastCalls >= 2 }
+
+        #expect(done == true)
+        #expect(notificationService.toastData?.isError == true)
+        #expect(notificationService.toastData?.message == HistoryListStrings.couldntDelete)
+    }
 }

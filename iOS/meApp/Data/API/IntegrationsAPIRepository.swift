@@ -99,5 +99,19 @@ final class IntegrationAPIRepository: IntegrationRepositoryAPIProtocol {
             needsAuth: true
         ) as EmptyResponse
     }
+
+    // MARK: - Request New Integration
+
+    func requestNewIntegration(suggestion: String) async throws {
+        struct SuggestionRequest: Codable {
+            let suggestion: String
+        }
+        _ = try await httpClient.send(
+            .integrationSuggestion,
+            method: .post,
+            body: SuggestionRequest(suggestion: suggestion),
+            needsAuth: true
+        ) as EmptyResponse
+    }
 }
 // swiftlint:enable function_parameter_count

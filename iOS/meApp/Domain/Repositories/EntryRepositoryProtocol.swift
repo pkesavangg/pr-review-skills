@@ -29,6 +29,10 @@ protocol EntryRepositoryProtocol {
     /// Use this instead of mutating @Model then calling updateEntry (R7/R9).
     func updateEntrySyncStatus(entryId: String, isSynced: Bool, isFailedToSync: Bool, attempts: Int) async throws
 
+    /// Stores the server-assigned entryId returned from a successful create sync.
+    /// Required so subsequent delete operations can include it in the request body.
+    func updateEntryServerEntryId(entryId: String, serverEntryId: String) async throws
+
     /// Deletes an entry by its unique ID.
     /// - Parameter id: The ID of the entry to delete.
     func deleteEntry(byId id: String) async throws
