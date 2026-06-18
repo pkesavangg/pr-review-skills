@@ -184,7 +184,7 @@ final class SignupStore: ObservableObject {
 
         if done.count >= 2 {
             let names = done.map(\.profileReadyName).joined(separator: " & ")
-            return "Your \(names) profiles are ready!"
+            return SignupStrings.ProfileReadyStep.multiDeviceTitle(names: names)
         }
         return currentDevice?.profileReadyTitle ?? SignupStrings.ProfileReadyStep.weightScaleTitle
     }
@@ -195,7 +195,7 @@ final class SignupStore: ObservableObject {
     var pickNextDeviceTitle: String {
         if registeredDeviceTypes.count >= 2 {
             let names = registeredDeviceTypes.map(\.profileReadyName).joined(separator: " & ")
-            return "Your \(names) profiles are ready!"
+            return SignupStrings.ProfileReadyStep.multiDeviceTitle(names: names)
         }
         return lastCompletedDeviceType?.profileReadyTitle
             ?? SignupStrings.ProfileReadyStep.weightScaleTitle
