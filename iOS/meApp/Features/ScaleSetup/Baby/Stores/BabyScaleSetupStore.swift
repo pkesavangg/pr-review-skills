@@ -17,6 +17,7 @@ final class BabyScaleSetupStore: ObservableObject {
     @Injector var accountService: AccountServiceProtocol
     @Injector var scaleService: ScaleServiceProtocol
     @Injector var babyService: BabyServiceProtocol
+    @Injector var productTypeStore: ProductTypeStoreProtocol
 
     let lang = BabyScaleSetupStrings.self
     let commonLang = CommonStrings.self
