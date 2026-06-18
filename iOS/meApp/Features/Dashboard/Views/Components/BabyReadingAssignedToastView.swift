@@ -9,9 +9,14 @@ import SwiftUI
 
 /// Parses a raw weight string into styled SwiftUI `Text` with numbers large+colored
 /// and unit words normal+dark. Used by the arrival toast, assigned toast, and assign modal.
-/// - Numbers: 28pt bold, first number in `babyPrimary`, second in `actionSuccess`
-/// - Units / suffix tokens: body2, `textHeading` color
-func styledBabyWeightText(_ weightString: String, theme: AppColors.Palette) -> Text {
+/// - `numberStyle`: typography style for numeric tokens (default `.heading4`, 24pt bold)
+/// - `unitStyle`: typography style for unit/text tokens (default `.body2`, 16pt regular)
+func styledBabyWeightText(
+    _ weightString: String,
+    theme: AppColors.Palette,
+    numberStyle: CustomTextStyle = .heading4,
+    unitStyle: CustomTextStyle = .body2
+) -> Text {
     let tokens = weightString.components(separatedBy: " ")
     var isFirstNumber = true
     return tokens.reduce(Text("")) { acc, token in
@@ -19,11 +24,11 @@ func styledBabyWeightText(_ weightString: String, theme: AppColors.Palette) -> T
             let color = isFirstNumber ? theme.babyPrimary : theme.actionSuccess
             isFirstNumber = false
             return acc + Text(token)
-                .font(.system(size: 28, weight: .bold))
+                .fontOpenSans(numberStyle)
                 .foregroundColor(color)
         } else {
             return acc + Text(" \(token)")
-                .fontOpenSans(.body2)
+                .fontOpenSans(unitStyle)
                 .foregroundColor(theme.textHeading)
         }
     }
@@ -44,23 +49,23 @@ struct BabyReadingAssignedToastView: View {
             styledBabyWeightText(weightString, theme: theme)
 
             (Text(DashboardStrings.babyReadingAssignedTo + " ")
-                .fontOpenSans(.body2)
+                .fontOpenSans(.body3)
                 .foregroundColor(theme.actionSuccess)
             + Text(babyName.uppercased())
-                .fontOpenSans(.body2)
+                .fontOpenSans(.body3)
                 .bold()
                 .foregroundColor(theme.actionSuccess))
 
             HStack(spacing: .spacingXS) {
                 Text(DashboardStrings.babyReadingWrongBaby)
-                    .fontOpenSans(.body2)
+                    .fontOpenSans(.body4)
                     .foregroundColor(theme.textBody)
                     .lineLimit(1)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer()
                 Button(action: onReassign) {
                     Text(DashboardStrings.babyReadingReassign)
-                        .fontOpenSans(.body1)
+                        .fontOpenSans(.body3)
                         .bold()
                         .underline()
                         .foregroundColor(theme.textHeading)

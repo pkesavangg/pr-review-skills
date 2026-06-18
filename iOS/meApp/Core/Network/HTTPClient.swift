@@ -43,7 +43,7 @@ final class HTTPClient: HTTPClientProtocol {
             NetworkMonitor.shared.getCurrentConnectionStatus()
         }
     }
-    
+
     // MARK: - GET Request
     func get<T: Decodable>(
         _ endpoint: Endpoint,
@@ -52,7 +52,7 @@ final class HTTPClient: HTTPClientProtocol {
         accountId: String? = nil
     ) async throws -> T {
         try checkConnectivity()
-        
+
         let request = try await makeRequest(
             for: endpoint,
             method: .get,
@@ -62,7 +62,7 @@ final class HTTPClient: HTTPClientProtocol {
         )
         return try await send(request: request, needsAuth: needsAuth, accountId: accountId)
     }
-    
+
     // MARK: - POST/PUT/PATCH/DELETE with Body
     func send<T: Encodable, R: Decodable>(
         _ endpoint: Endpoint,
@@ -73,7 +73,7 @@ final class HTTPClient: HTTPClientProtocol {
         accountId: String? = nil
     ) async throws -> R {
         try checkConnectivity()
-        
+
         var request = try await makeRequest(
             for: endpoint,
             method: method,
@@ -85,7 +85,7 @@ final class HTTPClient: HTTPClientProtocol {
         request.httpBody = try JSONEncoder().encode(body)
         return try await send(request: request, needsAuth: needsAuth, accountId: accountId)
     }
-    
+
     // MARK: - Core Send Logic
     private func send<T: Decodable>(
         request: URLRequest,
@@ -96,7 +96,7 @@ final class HTTPClient: HTTPClientProtocol {
         // Skip token check for logout and refresh token endpoints
         let skipTokenCheck = request.url?.path.contains("/refresh-token") == true ||
         request.url?.path.contains("/logout") == true || request.url?.path.contains("/login") == true
-        
+
         // Only check token expiration if needed and not skipped
         if needsAuth && !skipTokenCheck {
             let account = try await getAccount(accountId)
@@ -135,7 +135,7 @@ final class HTTPClient: HTTPClientProtocol {
             throw error
         }
     }
-    
+
     // MARK: - Request Execution
     /// Performs the actual network request and handles response decoding.
     private func performRequest<T: Decodable>(_ request: URLRequest) async throws -> T { // swiftlint:disable:this cyclomatic_complexity
@@ -156,25 +156,21 @@ final class HTTPClient: HTTPClientProtocol {
         } catch {
             throw error
         }
-        
+
         guard let httpResponse = response as? HTTPURLResponse else {
             throw HTTPError.invalidResponse
         }
-
-        #if DEBUG
-        debugPrintResponse(request, statusCode: httpResponse.statusCode, data: data)
-        #endif
 
         // Map raw status code to enum
         guard let status = HTTPStatusCode(rawValue: httpResponse.statusCode) else {
             throw HTTPError.statusCode(httpResponse.statusCode)
         }
-        
+
         // Check for success status
         guard status.isSuccess else {
             throw parseErrorResponse(data: data, status: status, statusCode: httpResponse.statusCode)
         }
-        
+
         // Handle 204 No Content
         if status == .noContent || data.isEmpty {
             if let emptyResponse = EmptyResponse() as? T {
@@ -183,12 +179,12 @@ final class HTTPClient: HTTPClientProtocol {
                 throw HTTPError.decodingError
             }
         }
-        
+
         // Handle plain text response for String.self
         if T.self == String.self, let string = String(data: data, encoding: .utf8) as? T {
             return string
         }
-        
+
         // Attempt to decode response
         do {
             logRawResponse(data: data)
@@ -257,7 +253,7 @@ final class HTTPClient: HTTPClientProtocol {
         }
         #endif
     }
-    
+
     // MARK: - Account Handling
     /// Retrieves the active account or a specific account by ID.
     private func getAccount(_ accountId: String?) async throws -> AccountSnapshot {
@@ -273,7 +269,7 @@ final class HTTPClient: HTTPClientProtocol {
             return account
         }
     }
-    
+
     // MARK: - Request Constructor
     private func makeRequest(
         for endpoint: Endpoint,
@@ -285,9 +281,9 @@ final class HTTPClient: HTTPClientProtocol {
         guard var request = endpoint.urlRequest else {
             throw HTTPError.badRequest
         }
-        
+
         request.httpMethod = method.rawValue
-        
+
         var allHeaders = headers ?? [:]
         if needsAuth {
             // Always fetch fresh authenticated data; cached responses can become stale when device time is changed.
@@ -303,12 +299,12 @@ final class HTTPClient: HTTPClientProtocol {
                 }
             }
         }
-        
+
         allHeaders.forEach { request.setValue($1, forHTTPHeaderField: $0) }
-        
+
         return request
     }
-    
+
     // MARK: - Connectivity Check
     private func checkConnectivity() throws {
         let isConnected = connectivityProvider()
@@ -319,7 +315,7 @@ final class HTTPClient: HTTPClientProtocol {
             throw HTTPError.noInternet
         }
     }
-    
+
     private func showToastIfNeeded(_ message: String) {
         let now = Date()
         if let lastToastShownTime, now.timeIntervalSince(lastToastShownTime) < 2.0 {
@@ -328,7 +324,7 @@ final class HTTPClient: HTTPClientProtocol {
         lastToastShownTime = now
         notificationHelperService.showToast(ToastModel(message: message))
     }
-    
+
 }
 
 #if DEBUG || LOCAL_DEV_TLS

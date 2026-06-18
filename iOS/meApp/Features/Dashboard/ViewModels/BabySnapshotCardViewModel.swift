@@ -30,6 +30,12 @@ final class BabySnapshotCardViewModel: ObservableObject {
         activeAccount?.weightUnit.rawValue ?? "lbs"
     }
 
+    var measurementUnits: MeasurementUnits {
+        guard let raw = activeAccount?.measurementUnits,
+              let units = MeasurementUnits(rawValue: raw) else { return .imperialLbOz }
+        return units
+    }
+
     private var weightUnit: WeightUnit {
         activeAccount?.weightUnit ?? .lb
     }

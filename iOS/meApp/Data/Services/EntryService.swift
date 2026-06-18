@@ -597,7 +597,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         for snapshot in snapshots {
             hasher.combine(snapshot.entryTimestamp)
             hasher.combine(snapshot.babyId)
-            hasher.combine(snapshot.weightOunces)
+            hasher.combine(snapshot.weightDecigrams)
             hasher.combine(snapshot.lengthInches)
         }
         return hasher.finalize()
@@ -1062,6 +1062,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 let entryTimestamp = operation.entryTimestamp
                 let currentAttempts = operation.attempts
                 let note = operation.note
+                let serverEntryId = operation.serverEntryId
                 let dto = operation.toOperationDTO()
 
                 // Map to the unified request(s). Weight/BP produce one request; a baby entry
@@ -1069,7 +1070,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 let requests: [UnifiedEntryRequest]
                 if dto.entryType == EntryType.baby.rawValue {
                     requests = BabyEntryRequest.makeRequests(from: dto, entryId: entryIdString, note: note)
-                } else if let request = UnifiedEntryRequest(from: dto, note: note) {
+                } else if let request = UnifiedEntryRequest(from: dto, serverEntryId: serverEntryId, note: note) {
                     requests = [request]
                 } else {
                     requests = []
@@ -1078,10 +1079,26 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
                 do {
                     // POST /v3/entries/ — atomic batch; baby entries submit their sub-type rows together.
-                    try await remoteRepo.submitEntries(requests)
+                    let submitResponse = try await remoteRepo.submitEntries(requests)
+                    logger.log(
+                        level: .info,
+                        tag: tag,
+                        message: "API submitEntries response: entryId=\(entryIdString), responseEntries.count=\(submitResponse.entries.count)"
+                    )
 
                     if operationType == "create" {
                         hadSuccessfulCreate = true
+                        // Store server-assigned entryId so future delete requests can include it.
+                        if let responseEntryId = submitResponse.entries.first?.entryId {
+                            do {
+                                try await localRepo.updateEntryServerEntryId(
+                                    entryId: entryIdString,
+                                    serverEntryId: responseEntryId
+                                )
+                            } catch {
+                                logger.log(level: .error, tag: tag, message: "Failed to persist serverEntryId for entryId=\(entryIdString): \(error.localizedDescription)")
+                            }
+                        }
                         // R9: Use primitive-based update instead of mutating @Model
                         try await localRepo.updateEntrySyncStatus(
                             entryId: entryIdString,
@@ -1804,7 +1821,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     private struct BabyEntrySnapshot: Sendable {
         let entryTimestamp: String
         let babyId: String
-        let weightOunces: Int
+        let weightDecigrams: Int
         let lengthInches: Int
     }
 
@@ -1821,17 +1838,17 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             return BabyEntrySnapshot(
                 entryTimestamp: entry.entryTimestamp,
                 babyId: babyEntry.babyId,
-                weightOunces: babyEntry.weight,
+                weightDecigrams: babyEntry.weight,
                 lengthInches: babyEntry.length
             )
         }
     }
 
-    /// Converts baby weight in ounces to the stored weight format (tenths of lbs)
+    /// Converts baby weight in decigrams to the stored weight format (tenths of lbs)
     /// used by BathScaleWeightSummary and the chart rendering pipeline.
-    private nonisolated func ouncesToStoredWeight(_ ounces: Int) -> Int {
-        let lbs = Double(ounces) / 16.0
-        return ConversionTools.convertLbsToStored(lbs)
+    private nonisolated func decigramsToStoredWeight(_ decigrams: Int) -> Int {
+        let kg = Double(decigrams) / BabyPercentileGrowthReference.decigramsToKgFactor
+        return ConversionTools.convertKgToStored(kg)
     }
 
     /// Aggregates baby entry snapshots into daily summaries.
@@ -1849,7 +1866,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
             let date = DateTimeTools.getDateFromDateString(day, format: "yyyy-MM-dd")
             let latestTimestamp = daySnapshots.compactMap(\.entryTimestamp).max() ?? ""
-            let storedWeights = daySnapshots.map { ouncesToStoredWeight($0.weightOunces) }
+            let storedWeights = daySnapshots.map { decigramsToStoredWeight($0.weightDecigrams) }
 
             return BathScaleWeightSummary(
                 accountId: "baby_\(babyId)",
@@ -1878,7 +1895,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             let dateString = "\(month)-01"
             let date = DateTimeTools.formatter("yyyy-MM-dd").date(from: dateString) ?? Date()
             let latestTimestamp = monthSnapshots.compactMap(\.entryTimestamp).max() ?? ""
-            let storedWeights = monthSnapshots.map { ouncesToStoredWeight($0.weightOunces) }
+            let storedWeights = monthSnapshots.map { decigramsToStoredWeight($0.weightDecigrams) }
 
             return BathScaleWeightSummary(
                 accountId: "baby_\(babyId)",

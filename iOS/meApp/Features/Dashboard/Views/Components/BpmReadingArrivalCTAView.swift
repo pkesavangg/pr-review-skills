@@ -47,13 +47,13 @@ struct BpmReadingArrivalCTAView: View {
 
     private var bloodPressureText: Text {
         Text("\(systolic)")
-            .font(.system(size: 28, weight: .bold))
+            .fontOpenSans(.heading4)
             .foregroundColor(theme.actionSuccess)
         + Text("/")
-            .font(.system(size: 28, weight: .bold))
+            .fontOpenSans(.heading4)
             .foregroundColor(theme.textHeading)
         + Text("\(diastolic)")
-            .font(.system(size: 28, weight: .bold))
+            .fontOpenSans(.heading4)
             .foregroundColor(theme.actionSuccess)
         + Text(" \(DashboardStrings.bpmReadingArrivalMmhg)")
             .fontOpenSans(.body2)
@@ -62,10 +62,13 @@ struct BpmReadingArrivalCTAView: View {
 
     private var pulseText: Text {
         Text("\(pulse)")
-            .font(.system(size: 28, weight: .bold))
+            .fontOpenSans(.heading4)
             .foregroundColor(theme.textHeading)
-        + Text(" \(DashboardStrings.bpmReadingArrivalPulse) - \(timestamp)")
+        + Text(" \(DashboardStrings.bpmReadingArrivalPulse)")
             .fontOpenSans(.body2)
             .foregroundColor(theme.textHeading)
+        + Text("  \(timestamp)")
+            .fontOpenSans(.body4)
+            .foregroundColor(theme.textSubheading)
     }
 }

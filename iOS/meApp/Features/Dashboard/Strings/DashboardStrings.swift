@@ -92,7 +92,7 @@ struct DashboardStrings {
     static let yesterdayAtFormat = "Yesterday %@"
 
     // Baby reading arrival
-    static let babyReadingArrivalTitle = "New Baby Scale Reading Received"
+    static let babyReadingArrivalTitle = "New Reading Received"
     static let babyReadingArrivalAssign = "ASSIGN"
     static let babyReadingArrivalDontAssign = "DON'T ASSIGN"
 
@@ -105,7 +105,10 @@ struct DashboardStrings {
     static let assignMeasurementTitle = "Assign Measurement"
     static let assignMeasurementSubtitle = "Which baby is this measurement for?"
     static let assignMeasurementAssign = "ASSIGN"
+    static let assignMeasurementAddBaby = "ADD A BABY"
     static let assignMeasurementDontAssign = "DON'T ASSIGN"
+    static let assignMeasurementNewBaby = "Assign to new baby"
+    static let assignMeasurementNewBabySubtitle = "create new baby profile"
 
     // Assigned baby toast
     static let babyReadingAssignedTo = "Reading assigned to"
@@ -113,12 +116,12 @@ struct DashboardStrings {
     static let babyReadingReassign = "Reassign"
 
     // Weight scale reading arrival
-    static let weightReadingArrivalTitle = "New Weight Scale Reading Received"
+    static let weightReadingArrivalTitle = "New Reading Received"
     static let weightReadingArrivalSave = "SAVE"
     static let weightReadingArrivalDiscard = "DISCARD"
 
     // BPM reading arrival
-    static let bpmReadingArrivalTitle = "New BP Reading Received"
+    static let bpmReadingArrivalTitle = "New Reading Received"
     static let bpmReadingArrivalSave = "SAVE"
     static let bpmReadingArrivalDiscard = "DISCARD"
     static let bpmReadingArrivalMmhg = "mmhg"

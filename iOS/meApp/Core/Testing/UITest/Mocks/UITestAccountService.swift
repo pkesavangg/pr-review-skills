@@ -6,6 +6,9 @@ import Foundation
 final class UITestAccountService: AccountServiceProtocol {
     @Published var activeAccount: AccountSnapshot?
     @Published var allAccounts: [AccountSnapshot] = []
+    @Published var isSignupInProgress: Bool = false
+    var isSignupInProgressPublisher: Published<Bool>.Publisher { $isSignupInProgress }
+    func markSignupInProgress(_ inProgress: Bool) { isSignupInProgress = inProgress }
 
     var activeAccountPublisher: Published<AccountSnapshot?>.Publisher { $activeAccount }
     var allAccountsPublisher: Published<[AccountSnapshot]>.Publisher { $allAccounts }

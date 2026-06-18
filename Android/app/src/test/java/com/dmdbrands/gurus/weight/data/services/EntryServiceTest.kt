@@ -166,7 +166,7 @@ class EntryServiceTest {
         coEvery { entryRepository.getUnSynced(testAccountId) } returns emptyList()
         coEvery { entryRepository.getOperationCount(testAccountId) } returns 0
         coEvery { entryRepository.getOperationsFromAPI(any()) } returns null
-        coEvery { accountRepository.getSyncTimeStamp() } returns flowOf("")
+        every { accountRepository.getSyncTimeStamp() } returns flowOf("")
         val captured = mutableListOf<List<UnifiedEntryRequest>>()
         coEvery { entryRepository.sendBatchToAPI(capture(captured)) } returns
             UnifiedEntryResponse(entries = emptyList(), timestamp = "2024-01-01T00:00:00.000Z")
@@ -186,7 +186,7 @@ class EntryServiceTest {
         coEvery { entryRepository.getOperationCount(testAccountId) } returns 0
         coEvery { entryRepository.getOperationsFromAPI(any()) } returns null
         coEvery { entryRepository.getEntryById(any()) } returns null
-        coEvery { accountRepository.getSyncTimeStamp() } returns flowOf("")
+        every { accountRepository.getSyncTimeStamp() } returns flowOf("")
         coEvery { accountRepository.updateSyncTimeStamp(any()) } returns Unit
         coEvery { entryRepository.sendBatchToAPI(any()) } returns
             UnifiedEntryResponse(entries = emptyList(), timestamp = "2024-01-01T00:00:00.000Z")
@@ -204,7 +204,7 @@ class EntryServiceTest {
         coEvery { entryRepository.getUnSynced(testAccountId) } returns emptyList()
         coEvery { entryRepository.getOperationCount(testAccountId) } returns 0
         coEvery { entryRepository.getOperationsFromAPI(any()) } returns null
-        coEvery { accountRepository.getSyncTimeStamp() } returns flowOf("")
+        every { accountRepository.getSyncTimeStamp() } returns flowOf("")
         coEvery { entryRepository.sendBatchToAPI(any()) } throws RuntimeException("batch failed")
 
         // Should not throw — the whole batch is left unsynced for the next retry.

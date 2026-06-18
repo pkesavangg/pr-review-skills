@@ -127,8 +127,9 @@ class SettingsStore: ObservableObject {
         hasWeightScale || hasBpmDevice
     }
 
+    /// True when the Unit Type row should be visible (hidden for BP-only accounts).
     var shouldShowUnitType: Bool {
-        hasWeightScale || hasBabyScale || hasBpmDevice
+        hasBabyScale || hasWeightScale
     }
 
     var shouldShowNotifications: Bool {
@@ -139,8 +140,8 @@ class SettingsStore: ObservableObject {
         hasWeightScale
     }
 
-    var shouldShowMyKids: Bool {
-        hasBabyProfile
+    var isMyKidsEnabled: Bool {
+        hasBabyProfile || hasBabyScale
     }
 
     /// Main browser presentation binding for the view
@@ -434,9 +435,16 @@ class SettingsStore: ObservableObject {
     }
 
     var unitTypeText: String {
+        if hasBabyScale {
+            switch selectedMeasurementUnits {
+            case .metric:           return SettingsStrings.UnitType.metricCm
+            case .imperialLbOz:     return SettingsStrings.UnitType.lbsOzIn
+            case .imperialLbDecimal: return SettingsStrings.UnitType.lbsDecimalIn
+            }
+        }
         switch activeAccount?.weightUnit {
-        case .kg: return commonLang.unitKgCm
-        case .lb: return commonLang.unitLbsFeet
+        case .kg:   return commonLang.unitKgCm
+        case .lb:   return commonLang.unitLbsFeet
         case .none: return ""
         }
     }
@@ -1715,11 +1723,12 @@ class SettingsStore: ObservableObject {
         }
     }
 
-    /// Presents the Unit Type dialog: a single weight-unit list, or — when the account
-    /// has a baby scale paired — a "My Weight" + "My Kids" radio dialog.
+    /// Presents the Unit Type dialog. Shows only the section relevant to the account's device type:
+    /// "My Kids" options for baby-scale accounts, "My Weight" options for weight-scale-only accounts.
     func presentUnitPicker() {
+        let mode: UnitTypePickerModalView.UnitDisplayMode = hasBabyScale ? .myKids : .myWeight
         let picker = UnitTypePickerModalView(
-            showMyKids: hasBabyProfile,
+            mode: mode,
             selectedWeightUnit: activeAccount?.weightUnit ?? .lb,
             selectedMeasurementUnits: selectedMeasurementUnits,
             onCancel: { [weak self] in

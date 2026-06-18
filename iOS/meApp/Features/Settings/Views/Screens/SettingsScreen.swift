@@ -161,12 +161,13 @@ struct SettingsScreen: View {
             })
             .listRowInsets()
             .accessibilityIdentifier(AccessibilityID.settingsRowUserProfile)
-            if settingsStore.shouldShowMyKids {
-                ActionListItemView(config: ActionListItemConfig(title: settingsLang.myKids) {
-                    router.navigate(to: .myKids)
-                })
-                .listRowInsets()
-            }
+            ActionListItemView(config: ActionListItemConfig(
+                title: settingsLang.myKids,
+                isDisabled: !settingsStore.isMyKidsEnabled
+            ) {
+                router.navigate(to: .myKids)
+            })
+            .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.addEditScales) { router.navigate(to: .addEditScales) })
             .listRowInsets()
             .accessibilityIdentifier(AccessibilityID.accountSettingsAddScalesRow)
@@ -189,12 +190,13 @@ struct SettingsScreen: View {
 
     private func appSettingsSection() -> some View {
         Section(header: sectionHeader(title: settingsLang.appSettings)) {
-            // Unit Type is always visible regardless of paired devices (MOB-417).
-            ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.unitType,
-                value: settingsStore.unitTypeText,
-                chevronType: .upDown) { settingsStore.presentUnitPicker() })
-            .listRowInsets()
+            if settingsStore.shouldShowUnitType {
+                ActionListItemView(config: ActionListItemConfig(
+                    title: settingsLang.unitType,
+                    value: settingsStore.unitTypeText,
+                    chevronType: .upDown) { settingsStore.presentUnitPicker() })
+                .listRowInsets()
+            }
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.appPermissions) {
                 router.navigate(to: .appPermissions)
             })

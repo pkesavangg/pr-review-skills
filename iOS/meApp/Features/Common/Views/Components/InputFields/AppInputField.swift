@@ -32,10 +32,10 @@ struct AppInputField: View {
     // Callbacks
     var onCommit: (() -> Void)?
     var onEditingChanged: ((Bool) -> Void)?
-    
+
     // Internal state
     @FocusState private var fieldIsFocused: Bool
-    
+
     var body: some View {
         if config.inputType == .notes {
             textareaBody
@@ -61,48 +61,55 @@ struct AppInputField: View {
 
     private var textareaBody: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ZStack(alignment: .topLeading) {
-                TextEditor(text: $value)
-                    .font(.body1)
-                    .foregroundColor(theme.textBody)
-                    .scrollContentBackground(.hidden)
-                    .padding(.horizontal, CGFloat.spacingXS)
-                    .padding(.top, isTextareaLabelActive ? CGFloat.spacingLG : CGFloat.spacingXS)
-                    .padding(.bottom, 24) // reserve space so text doesn't hide under the counter
-                    .frame(minHeight: 100)
-                    .background(theme.backgroundPrimary)
-                    .cornerRadius(BorderRadius.sm)
-                    .onTapGesture {
-                        focusedField = config.focusField
-                    }
-                    .onChange(of: value) { _, newValue in
-                        if newValue.count > notesMaxCharacters {
-                            value = String(newValue.prefix(notesMaxCharacters))
+            VStack(alignment: .leading, spacing: 0) {
+                ZStack(alignment: .topLeading) {
+                    TextEditor(text: $value)
+                        .font(.body1)
+                        .foregroundColor(theme.textBody)
+                        .scrollContentBackground(.hidden)
+                        .padding(.horizontal, CGFloat.spacingXS)
+                        .padding(.top, isTextareaLabelActive ? CGFloat.spacingLG : CGFloat.spacingXS)
+                        .frame(height: 100)
+                        .onTapGesture {
+                            focusedField = config.focusField
                         }
-                    }
-                    .overlay(alignment: .bottomTrailing) {
-                        // Counter — always visible from the first character (MOB-437).
-                        // Three states: default/filled → subdued; 280/280 → error red.
-                        Text("\(value.count)/\(notesMaxCharacters)")
-                            .fontOpenSans(.body4)
-                            .foregroundStyle(
-                                value.count >= notesMaxCharacters
-                                    ? theme.textError
-                                    : theme.textSubheading
-                            )
-                            .padding(.trailing, CGFloat.spacingXS + 4)
-                            .padding(.bottom, CGFloat.spacingXS + 2)
-                    }
+                        .onChange(of: value) { _, newValue in
+                            if newValue.count > notesMaxCharacters {
+                                value = String(newValue.prefix(notesMaxCharacters))
+                            }
+                        }
 
-                Text(config.label)
-                    .fontOpenSans(isTextareaLabelActive ? .subHeading2 : .subHeading1)
-                    .foregroundColor(floatingLabelColor)
-                    .padding(.horizontal, CGFloat.spacingXS + 4)
-                    .padding(.vertical, CGFloat.spacingXS + 8)
-                    .offset(y: isTextareaLabelActive ? -8 : 0)
-                    .animation(.easeInOut(duration: 0.1), value: isTextareaLabelActive)
-                    .allowsHitTesting(false)
+                    Text(config.label)
+                        .fontOpenSans(isTextareaLabelActive ? .subHeading2 : .subHeading1)
+                        .foregroundColor(floatingLabelColor)
+                        .padding(.horizontal, CGFloat.spacingXS + 4)
+                        .padding(.vertical, CGFloat.spacingXS + 8)
+                        .offset(y: isTextareaLabelActive ? -8 : 0)
+                        .animation(.easeInOut(duration: 0.1), value: isTextareaLabelActive)
+                        .allowsHitTesting(false)
+                }
+
+                // Underline separating the text area from the counter row
+                Rectangle()
+                    .fill(theme.statusUtilityPrimary)
+                    .frame(height: 1)
+
+                // Counter row — three states: default/filled → subdued; 280/280 → error red (MOB-437)
+                HStack {
+                    Spacer()
+                    Text("\(value.count)/\(notesMaxCharacters)")
+                        .fontOpenSans(.body4)
+                        .foregroundStyle(
+                            value.count >= notesMaxCharacters
+                                ? theme.textError
+                                : theme.textSubheading
+                        )
+                        .padding(.trailing, CGFloat.spacingXS + 4)
+                        .padding(.vertical, CGFloat.spacingXS - 2)
+                }
             }
+            .background(theme.backgroundPrimary)
+            .cornerRadius(BorderRadius.sm)
 
             if let errorMessage = config.errorMessage {
                 Text(errorMessage)
@@ -193,7 +200,7 @@ struct AppInputField: View {
             .opacity(config.isDisabled ? disabledOverlayOpacity : 0)
             .cornerRadius(.radiusSM)
     }
-    
+
     private var floatingLabelColor: Color {
         if config.isDisabled { return theme.textBody.opacity(0.38) }
         return config.errorMessage != nil ? theme.textError : theme.textSubheading
@@ -221,7 +228,7 @@ struct AppInputField: View {
             return .default
         }
     }
-    
+
     private var trailingIconView: some View {
         HStack(spacing: 4) {
             if let trailingLabel = config.trailingLabel {
@@ -275,7 +282,7 @@ struct AppInputTestingField: View {
     @State var disabledText: String = "Enter text here"
     @State var modelNumber: String = ""
     @State var focusedField: FocusField?
-    
+
     var body: some View {
         VStack {
             AppInputField(
@@ -289,7 +296,7 @@ struct AppInputTestingField: View {
                 focusedField: $focusedField) {
                     focusedField = .email
                 }
-            
+
             AppInputField(
                 config: TextInputConfig(
                     label: "Email",
@@ -301,7 +308,7 @@ struct AppInputTestingField: View {
                 focusedField: $focusedField) {
                     focusedField = .password
                 }
-            
+
             AppInputField(
                 config: TextInputConfig(
                     label: "Password",
@@ -316,7 +323,7 @@ struct AppInputTestingField: View {
             ) {
                 focusedField = .bodyFat
             }
-            
+
             AppInputField(
                 config: TextInputConfig(
                     label: "Phone Number",
@@ -327,7 +334,7 @@ struct AppInputTestingField: View {
                 value: $number,
                 focusedField: $focusedField
             )
-            
+
             AppInputField(
                 config: TextInputConfig(
                     label: "Disabled Input",
@@ -340,7 +347,7 @@ struct AppInputTestingField: View {
             ) {
                 focusedField = .password
             }
-            
+
             AppInputField(
                 config: TextInputConfig(
                     label: "Model Number",

@@ -46,6 +46,46 @@ struct BabyDashboardChartSupportTests {
 
     // MARK: - resolvedBirthday
 
+    // MARK: - formatBabyWeightDisplay oz rounding
+
+    @Test("formatBabyWeightDisplay imperialLbOz: normal case converts fractional lbs to oz correctly")
+    func formatBabyWeightDisplayImperialLbOzNormalCase() {
+        // storedWeight = 105 → displayWeight = 10.5 lbs → rawOz = 0.5 * 16 = 8.0 oz
+        let result = BabyDashboardChartSupport.formatBabyWeightDisplay(105, units: .imperialLbOz)
+
+        #expect(result.primary == "10")
+        #expect(result.secondary == "8.0")
+    }
+
+    @Test("formatBabyWeightDisplay imperialLbOz: near-boundary 10.9 lbs stays below 16 oz without carry")
+    func formatBabyWeightDisplayImperialLbOzNearBoundaryNoCarry() {
+        // storedWeight = 109 → displayWeight = 10.9 lbs → rawOz = 0.9 * 16 = 14.4 oz — no carry
+        let result = BabyDashboardChartSupport.formatBabyWeightDisplay(109, units: .imperialLbOz)
+
+        #expect(result.primary == "10")
+        #expect(result.secondary == "14.4")
+    }
+
+    // MARK: - formatBabyWeight oz rounding
+
+    @Test("formatBabyWeight: normal case converts fractional lbs to oz correctly")
+    func formatBabyWeightNormalCase() {
+        // storedWeight = 105 → displayWeight = 10.5 lbs → rawOz = 8.0 oz
+        let result = BabyDashboardChartSupport.formatBabyWeight(105, unit: .lb)
+
+        #expect(result.lbs == "10")
+        #expect(result.oz == "8.0")
+    }
+
+    @Test("formatBabyWeight: near-boundary 10.9 lbs stays below 16 oz without carry")
+    func formatBabyWeightNearBoundaryNoCarry() {
+        // storedWeight = 109 → displayWeight = 10.9 lbs → rawOz = 14.4 oz — no carry
+        let result = BabyDashboardChartSupport.formatBabyWeight(109, unit: .lb)
+
+        #expect(result.lbs == "10")
+        #expect(result.oz == "14.4")
+    }
+
     @Test("resolvedBirthday returns babyProfile.birthday when set and not in the future")
     func resolvedBirthdayUsesProfileBirthday() {
         let pastDate = cal.date(byAdding: .day, value: -30, to: Date()) ?? Date()

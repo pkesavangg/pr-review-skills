@@ -78,10 +78,13 @@ struct BabyGrowthPercentilesSheet: View {
 
     private var weightCard: some View {
         // CDC Growth Percentiles — weight row (Figma node 26501:378218)
-        HStack(alignment: .lastTextBaseline, spacing: 0) {
+        let display = state.weightDisplay
+        return HStack(alignment: .lastTextBaseline, spacing: 0) {
             HStack(alignment: .lastTextBaseline, spacing: 0) {
-                valueUnitPair(value: state.weightDisplay.lbs, unit: BabyDashboardStrings.lbs)
-                valueUnitPair(value: state.weightDisplay.oz, unit: BabyDashboardStrings.oz)
+                valueUnitPair(value: display.primary, unit: display.primaryUnit)
+                if let secondary = display.secondary, let secondaryUnit = display.secondaryUnit {
+                    valueUnitPair(value: secondary, unit: secondaryUnit)
+                }
             }
 
             Spacer(minLength: Self.weightCardWeightToPercentileSpacing)
@@ -95,9 +98,12 @@ struct BabyGrowthPercentilesSheet: View {
         .background(theme.backgroundPrimary)
         .clipShape(RoundedRectangle(cornerRadius: Self.weightCardCornerRadius, style: .continuous))
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            "Weight \(state.weightDisplay.lbs) pounds \(state.weightDisplay.oz) ounces, \(state.weightPercentileText) percent"
-        )
+        .accessibilityLabel({
+            let weightText = display.secondary != nil
+                ? "\(display.primary) \(display.primaryUnit) \(display.secondary ?? "") \(display.secondaryUnit ?? "")"
+                : "\(display.primary) \(display.primaryUnit)"
+            return "Weight \(weightText), \(state.weightPercentileText) percent"
+        }())
     }
 
     private func percentileCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {

@@ -74,7 +74,7 @@ struct BabySnapshotCard: View {
     @State private var cachedSnapshotWindow: DashboardSnapshotChartWindow?
     @State private var cachedChartSummaries: [BathScaleWeightSummary] = []
     @State private var cachedRecentWeekSummaries: [BathScaleWeightSummary] = []
-    @State private var cachedWeekAverageLbsOz: (lbs: String, oz: String)?
+    @State private var cachedWeekAverageDisplay: BabyWeightDisplay?
     @State private var cachedWeightUnit: WeightUnit = .lb
     @State private var cachedPercentilePointsByLine: [BabyPercentileLine: [BabyPercentileChartPoint]] = [:]
     @State private var cachedEffectiveBounds: (start: Date, end: Date)?
@@ -127,6 +127,7 @@ struct BabySnapshotCard: View {
         var hasher = Hasher()
         hasher.combine(summaries.count)
         hasher.combine(babyProfile.id)
+        hasher.combine(viewModel.activeAccount?.measurementUnits)
         if let first = summaries.first { hasher.combine(first.entryTimestamp) }
         if let last = summaries.last { hasher.combine(last.entryTimestamp) }
         return hasher.finalize()
@@ -137,13 +138,14 @@ struct BabySnapshotCard: View {
         let inputSummaries = summaries
         let profile = babyProfile
         let weightUnit = viewModel.activeAccount?.weightUnit ?? .lb
+        let measurementUnits = viewModel.measurementUnits
 
         let result = await Task.detached(priority: .utility) {
             let window = DashboardSnapshotChartWindow.make(summaries: inputSummaries) { $0.weight > 0 }
             let chart = window?.chartSummaries ?? []
             let recent = window?.visibleSummaries ?? []
             let avgSource = recent.isEmpty ? chart.suffix(1).map { $0 } : recent
-            let avg = chart.isEmpty ? nil : BabyDashboardChartSupport.weekAverageLbsOz(from: avgSource, unit: weightUnit)
+            let avg = chart.isEmpty ? nil : BabyDashboardChartSupport.weekAverageDisplay(from: avgSource, units: measurementUnits)
 
             // Always compute effective bounds — use window bounds or current week when no entries
             let effectiveBounds: (start: Date, end: Date)
@@ -188,7 +190,7 @@ struct BabySnapshotCard: View {
         cachedSnapshotWindow = result.0
         cachedChartSummaries = result.1
         cachedRecentWeekSummaries = result.2
-        cachedWeekAverageLbsOz = result.3
+        cachedWeekAverageDisplay = result.3
         cachedWeightUnit = result.4
         cachedPercentilePointsByLine = result.5
         cachedEffectiveBounds = result.6
@@ -204,60 +206,18 @@ struct BabySnapshotCard: View {
 
     private var headlineSection: some View {
         VStack(alignment: .leading, spacing: Layout.headlineSpacing) {
-            if let avg = cachedWeekAverageLbsOz {
+            if let avg = cachedWeekAverageDisplay {
                 Text(BabyDashboardStrings.babyWeightLabel(name: babyName))
                     .fontOpenSans(.subHeading1)
                     .foregroundColor(theme.textSubheading)
 
-                HStack(alignment: .lastTextBaseline, spacing: .zero) {
-                    Text(avg.lbs)
-                        .fontOpenSans(.heading1)
-                        .fontWeight(.heavy)
-                        .foregroundColor(babyColor)
-
-                    Text(BabyDashboardStrings.lbs)
-                        .fontOpenSans(.subHeading2)
-                        .foregroundColor(theme.textSubheading)
-                        .padding(.leading, Layout.unitSpacing)
-
-                    Text(avg.oz)
-                        .fontOpenSans(.heading1)
-                        .fontWeight(.heavy)
-                        .foregroundColor(babyColor)
-                        .padding(.leading, .spacingMD)
-
-                    Text(BabyDashboardStrings.oz)
-                        .fontOpenSans(.subHeading2)
-                        .foregroundColor(theme.textSubheading)
-                        .padding(.leading, Layout.unitSpacing)
-                }
+                babyWeightRow(display: avg)
             } else {
                 Text(BabyDashboardStrings.babyWeightLabel(name: babyName))
                     .fontOpenSans(.subHeading1)
                     .foregroundColor(theme.textSubheading)
 
-                HStack(alignment: .lastTextBaseline, spacing: .zero) {
-                    Text("00")
-                        .fontOpenSans(.heading1)
-                        .fontWeight(.heavy)
-                        .foregroundColor(babyColor)
-
-                    Text(BabyDashboardStrings.lbs)
-                        .fontOpenSans(.subHeading2)
-                        .foregroundColor(theme.textSubheading)
-                        .padding(.leading, Layout.unitSpacing)
-
-                    Text("00")
-                        .fontOpenSans(.heading1)
-                        .fontWeight(.heavy)
-                        .foregroundColor(babyColor)
-                        .padding(.leading, .spacingMD)
-
-                    Text(BabyDashboardStrings.oz)
-                        .fontOpenSans(.subHeading2)
-                        .foregroundColor(theme.textSubheading)
-                        .padding(.leading, Layout.unitSpacing)
-                }
+                babyWeightRow(display: BabyDashboardChartSupport.emptyWeightDisplay(for: viewModel.measurementUnits))
             }
         }
     }
@@ -411,13 +371,40 @@ struct BabySnapshotCard: View {
         return "\(startFmt.string(from: start)) - \(endDay), \(sy)".lowercased()
     }
 
+    @ViewBuilder
+    private func babyWeightRow(display: BabyWeightDisplay) -> some View {
+        HStack(alignment: .lastTextBaseline, spacing: .zero) {
+            Text(display.primary)
+                .fontOpenSans(.heading1)
+                .fontWeight(.heavy)
+                .foregroundColor(babyColor)
+
+            Text(display.primaryUnit)
+                .fontOpenSans(.subHeading2)
+                .foregroundColor(theme.textSubheading)
+                .padding(.leading, Layout.unitSpacing)
+
+            if let secondary = display.secondary, let secondaryUnit = display.secondaryUnit {
+                Text(secondary)
+                    .fontOpenSans(.heading1)
+                    .fontWeight(.heavy)
+                    .foregroundColor(babyColor)
+                    .padding(.leading, .spacingMD)
+
+                Text(secondaryUnit)
+                    .fontOpenSans(.subHeading2)
+                    .foregroundColor(theme.textSubheading)
+                    .padding(.leading, Layout.unitSpacing)
+            }
+        }
+    }
+
     private var accessibilityLabel: String {
-        if let avg = cachedWeekAverageLbsOz {
-            return BabyDashboardStrings.babyWeightSnapshotAccessibility(
-                name: babyName,
-                lbs: avg.lbs,
-                oz: avg.oz
-            )
+        if let avg = cachedWeekAverageDisplay {
+            let weightText = avg.secondary != nil
+                ? "\(avg.primary) \(avg.primaryUnit) \(avg.secondary ?? "") \(avg.secondaryUnit ?? "")"
+                : "\(avg.primary) \(avg.primaryUnit)"
+            return "\(babyName) snapshot, weight \(weightText)"
         }
         return BabyDashboardStrings.babySnapshotNoReadings
     }

@@ -28,7 +28,7 @@ struct DashboardScreen: View {
     /// the user's in-session navigation choices.
     @State private var hasInitializedProductRedirect = false
     private var canShowSnapshotOverview: Bool {
-        store.availableProductItems.count > 1
+        store.canShowSnapshotOverview
     }
 
     private var shouldShowSnapshotOverview: Bool {
@@ -43,11 +43,15 @@ struct DashboardScreen: View {
                     ScrollView(showsIndicators: false) {
                         MultiDeviceSnapshotView(
                             availableItems: store.availableProductItems,
-                            selectedItem: store.selectedProductItem
-                        ) { selectedItem in
-                            store.selectProductItem(selectedItem)
-                            isInProductDashboard = true
-                        }
+                            selectedItem: store.selectedProductItem,
+                            onSelectItem: { selectedItem in
+                                store.selectProductItem(selectedItem)
+                                isInProductDashboard = true
+                            },
+                            onAddBaby: {
+                                tabViewModel.navigateToSettings(route: .addBaby)
+                            }
+                        )
                     }
                 } else {
                     navbarHeader()
@@ -160,7 +164,7 @@ struct DashboardScreen: View {
 
         }
     }
-    
+
     private func snapshotLogo() -> some View {
         AppIconView(icon: AppAssets.wgLogo, size: IconSize(width: 45, height: 45))
             .foregroundColor(theme.textSubheading)
@@ -170,17 +174,24 @@ struct DashboardScreen: View {
 
     private func navbarHeader() -> some View {
         let isProductDashboardFromSnapshot = canShowSnapshotOverview && isInProductDashboard
+        // Show the product-selector title + chevron whenever there are multiple selectable items.
+        // This covers two cases:
+        //   1. Multi-product: user drilled in from the snapshot overview (isProductDashboardFromSnapshot).
+        //   2. Single-product-type with multiple profiles: e.g. only a baby scale paired but 2+ baby
+        //      profiles exist — no snapshot overview shows, but the dropdown is still needed.
+        let showProductSelector = isProductDashboardFromSnapshot ||
+            (!canShowSnapshotOverview && store.availableProductItems.count > 1)
         return NavbarHeaderView<AppIconView, EmptyView>(
-            title: isProductDashboardFromSnapshot ? store.selectedProductItem.dashboardTitle : nil,
+            title: showProductSelector ? store.selectedProductItem.dashboardTitle : nil,
             leadingContent: isProductDashboardFromSnapshot
                 ? { AppIconView(icon: AppAssets.chevronLeft) }
                 : nil,
             onLeadingTap: isProductDashboardFromSnapshot ? { isInProductDashboard = false } : nil,
-            onTitleTap: isProductDashboardFromSnapshot ? {
+            onTitleTap: showProductSelector ? {
                 isProductTypeSelectorPresented = true
             } : nil,
             canShowBorder: false,
-            canShowTitleChevron: isProductDashboardFromSnapshot
+            canShowTitleChevron: showProductSelector
         )
         .sheet(isPresented: $isProductTypeSelectorPresented) {
             ProductTypeSelectorSheet(
@@ -191,7 +202,7 @@ struct DashboardScreen: View {
         }
         .zIndex(100)
     }
-    
+
     private func dashboardScroll(availableHeight: CGFloat) -> some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 0) {
@@ -246,7 +257,15 @@ struct DashboardScreen: View {
 
     @ViewBuilder
     private func babyDashboardContent(babyProfile: BabyProfile) -> some View {
-        BabyTrendView(dashboardStore: store, babyProfile: babyProfile)
+        if babyProfile.isPendingSelection {
+            NoBabySnapshotCard {
+                tabViewModel.navigateToSettings(route: .addBaby)
+            }
+            .padding(.horizontal, .spacingMD)
+            .padding(.top, .spacingXL)
+        } else {
+            BabyTrendView(dashboardStore: store, babyProfile: babyProfile)
+        }
     }
 
     private func actionButtons() -> some View {

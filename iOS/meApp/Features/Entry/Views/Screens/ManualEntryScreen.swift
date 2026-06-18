@@ -144,7 +144,7 @@ struct ManualEntryScreen: View {
             iconAsset: appAssets.babyAppIcon,
             iconTint: theme.babyPrimary
         ) {
-            tabViewModel.navigateToSettings(route: .myKids, sourceTab: .entry)
+            tabViewModel.navigateToSettings(route: .addBaby, sourceTab: .entry)
         }
     }
 

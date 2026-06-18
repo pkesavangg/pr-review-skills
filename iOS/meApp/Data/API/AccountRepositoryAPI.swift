@@ -24,9 +24,9 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
             let productTypes: [String]
             let measurementUnits: String?
         }
-        let productTypes = profile.productTypes ?? [ProductType.weight.rawValue]
-        let requiresHeight = productTypes.contains(ProductType.weight.rawValue)
-        let requiresGenderAndDob = requiresHeight || productTypes.contains(ProductType.bloodPressure.rawValue)
+        let productTypes = profile.productTypes ?? [ProductType.weight.apiValue]
+        let requiresHeight = productTypes.contains(ProductType.weight.apiValue)
+        let requiresGenderAndDob = requiresHeight || productTypes.contains(ProductType.bloodPressure.apiValue)
         let createAccountRequest = RegisterRequest(
             email: email,
             password: password,
@@ -61,6 +61,16 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
         )
     }
 
+    func patchProductTypes(_ productTypes: [String]) async throws -> AccountResponse {
+        struct ProductTypesRequest: Codable { let productTypes: [String] }
+        return try await httpClient.send(
+            .updateProductTypes,
+            method: .patch,
+            body: ProductTypesRequest(productTypes: productTypes),
+            needsAuth: true
+        )
+    }
+
     func logIn(email: String, password: String) async throws -> AccountResponse {
         struct LoginRequest: Codable {
             let email: String
@@ -86,7 +96,7 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
         let dto = updatedAccount.toAccountDTO()
         return try await httpClient.send(.updateAccount, method: .put, body: dto, needsAuth: true)
     }
-    
+
     func createGoal(_ goal: Goal) async throws -> GoalResponse {
         return try await httpClient.send(.setGoal, method: .post, body: goal, needsAuth: true)
     }
@@ -174,7 +184,7 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
             needsAuth: true
         )
     }
-    
+
     func refreshToken(refreshToken: String, accountId: String?) async throws -> Tokens {
         struct Request: Codable { let refreshToken: String }
         return try await httpClient.send(

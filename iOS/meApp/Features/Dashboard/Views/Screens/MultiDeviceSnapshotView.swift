@@ -14,6 +14,7 @@ struct MultiDeviceSnapshotView: View {
     let selectedItem: ProductSelection
     @StateObject private var viewModel = MultiDeviceSnapshotViewModel()
     let onSelectItem: (ProductSelection) -> Void
+    let onAddBaby: () -> Void
 
     var body: some View {
         // Collapse all baby items to just the last-active one (MOB-435).
@@ -71,11 +72,17 @@ struct MultiDeviceSnapshotView: View {
             }
             .accessibilityIdentifier(AccessibilityID.bpCard)
         case .baby(let profile):
-            BabySnapshotCard(
-                babyProfile: profile,
-                summaries: viewModel.babySummaries(for: profile)
-            ) {
-                onSelectItem(item)
+            if profile.isPendingSelection {
+                NoBabySnapshotCard {
+                    onAddBaby()
+                }
+            } else {
+                BabySnapshotCard(
+                    babyProfile: profile,
+                    summaries: viewModel.babySummaries(for: profile)
+                ) {
+                    onSelectItem(item)
+                }
             }
         }
     }
@@ -87,8 +94,12 @@ struct MultiDeviceSnapshotView: View {
             SnapshotSkeletonCardView(style: .weight)
         case .myBloodPressure:
             SnapshotSkeletonCardView(style: .bloodPressure)
-        case .baby:
-            SnapshotSkeletonCardView(style: .baby)
+        case .baby(let profile):
+            if profile.isPendingSelection {
+                NoBabySnapshotCard { onAddBaby() }
+            } else {
+                SnapshotSkeletonCardView(style: .baby)
+            }
         }
     }
 

@@ -25,8 +25,7 @@ struct BabyHistoryEditSheet: View {
     @State private var notesText: String
     @State private var entryDate: Date
     @State private var isSaving = false
-
-    private let notesLimit = 280
+    @State private var focusedField: FocusField?
 
     init(entry: BabyHistoryEntry) {
         self.entry = entry
@@ -91,25 +90,11 @@ struct BabyHistoryEditSheet: View {
                     Text(HistoryListStrings.notes)
                         .fontOpenSans(.subHeading2)
                         .foregroundStyle(theme.textSubheading)
-                    ZStack(alignment: .bottomTrailing) {
-                        TextField("Add notes…", text: $notesText, axis: .vertical)
-                            .font(.body2)
-                            .foregroundStyle(theme.textBody)
-                            .lineLimit(4...)
-                            .padding(.spacingXS)
-                            .padding(.bottom, .spacingLG)
-                            .onChange(of: notesText) { _, newValue in
-                                if newValue.count > notesLimit {
-                                    notesText = String(newValue.prefix(notesLimit))
-                                }
-                            }
-                        Text("\(notesText.count)/\(notesLimit)")
-                            .fontOpenSans(.body3)
-                            .foregroundStyle(notesText.count >= notesLimit ? theme.textError : theme.textSubheading)
-                            .padding(.spacingXS)
-                    }
-                    .background(theme.backgroundSecondary)
-                    .clipShape(RoundedRectangle(cornerRadius: .radiusSM))
+                    NotesInputField(
+                        config: TextInputConfig(label: HistoryListStrings.addNotesPlaceholder, focusField: .notes),
+                        value: $notesText,
+                        focusedField: $focusedField
+                    )
                 }
 
                 HStack {

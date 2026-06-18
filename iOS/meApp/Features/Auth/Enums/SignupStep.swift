@@ -29,9 +29,9 @@ enum SignupDeviceStatus {
 
 /// The device type the user selects during signup.
 enum SignupDeviceType: String, CaseIterable, Identifiable {
-    case babyScale
     case bpm
     case weightScale
+    case babyScale
 
     var id: String { rawValue }
 
@@ -70,9 +70,9 @@ enum SignupDeviceType: String, CaseIterable, Identifiable {
     /// The product-type string persisted on the account for this device.
     var productType: String {
         switch self {
-        case .weightScale: return "myWeight"
-        case .bpm: return "myBloodPressure"
-        case .babyScale: return "baby"
+        case .weightScale: return ProductType.weight.apiValue
+        case .bpm: return ProductType.bloodPressure.apiValue
+        case .babyScale: return ProductType.baby.apiValue
         }
     }
 

@@ -104,6 +104,18 @@ final class ContentViewModel: ObservableObject {
                     return
                 }
 
+                // Account was created mid-signup — hold off on dashboard navigation until
+                // the signup flow explicitly clears this flag via finishSignup/completeSignup.
+                guard !self.accountService.isSignupInProgress else { return }
+
+                self.performAppInitialization()
+            }
+            .store(in: &cancellables)
+
+        self.accountService.isSignupInProgressPublisher
+            .dropFirst()
+            .sink { [weak self] inProgress in
+                guard let self, !inProgress, self.isLoggedIn else { return }
                 self.performAppInitialization()
             }
             .store(in: &cancellables)

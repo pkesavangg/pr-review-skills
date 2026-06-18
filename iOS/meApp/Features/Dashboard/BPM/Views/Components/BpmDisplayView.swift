@@ -17,7 +17,7 @@ struct BpmDisplayView: View {
         static let valueSpacing: CGFloat = 12
         static let unitSpacing: CGFloat = 4
         static let slashSpacing: CGFloat = 12
-        static let pulseColumnWidth: CGFloat = 88
+        static let pulseColumnWidth: CGFloat = 108
     }
     
     @ObservedObject var dashboardStore: DashboardStore

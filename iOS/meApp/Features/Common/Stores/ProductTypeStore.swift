@@ -212,18 +212,18 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         let hasBpm = devices.contains { $0.deviceType == DeviceType.bpm.rawValue }
         let hasBabyScale = devices.contains { $0.deviceType == DeviceType.babyScale.rawValue }
 
-        if hasWeightScale && !types.contains("myWeight") {
-            types.append("myWeight")
+        if hasWeightScale && !types.contains(ProductType.weight.apiValue) {
+            types.append(ProductType.weight.apiValue)
             changed = true
         }
 
-        if hasBpm && !types.contains("myBloodPressure") {
-            types.append("myBloodPressure")
+        if hasBpm && !types.contains(ProductType.bloodPressure.apiValue) {
+            types.append(ProductType.bloodPressure.apiValue)
             changed = true
         }
 
-        if hasBabyScale && !types.contains("baby") {
-            types.append("baby")
+        if hasBabyScale && !types.contains(ProductType.baby.apiValue) {
+            types.append(ProductType.baby.apiValue)
             changed = true
         }
 
@@ -242,10 +242,10 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
     private func syncProductTypesFromBabies(_ babies: [Baby]) {
         guard let account = accountService.activeAccount,
               !babies.isEmpty,
-              !account.productTypes.contains("baby") else { return }
+              !account.productTypes.contains(ProductType.baby.apiValue) else { return }
 
         var types = account.productTypes
-        types.append("baby")
+        types.append(ProductType.baby.apiValue)
         Task {
             try? await accountService.updateProductTypes(types)
         }
@@ -273,15 +273,16 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
     }
 
     /// Maps server-side raw product type strings to the app-internal values used by rebuild().
-    /// The server stores "weight" / "bpm"; the app checks for "myWeight" / "myBloodPressure".
+    /// The server stores "weight" / "blood_pressure"; the app checks for "myWeight" / "myBloodPressure".
+    /// "bpm" is kept for backward compat with any legacy-stored values.
     private func normalizeProductTypes(_ types: [String]) -> [String] {
         var seen = Set<String>()
         return types.compactMap { type in
             let normalized: String
             switch type {
-            case "weight":          normalized = "myWeight"
-            case "bpm":             normalized = "myBloodPressure"
-            default:                normalized = type
+            case "weight":                      normalized = "myWeight"
+            case "blood_pressure", "bpm":       normalized = "myBloodPressure"
+            default:                            normalized = type
             }
             return seen.insert(normalized).inserted ? normalized : nil
         }
@@ -297,38 +298,38 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         guard let account = accountService.activeAccount else { return ["myWeight"] }
 
         if !account.productTypes.isEmpty {
-            // The server stores "weight" / "bpm"; the app checks for "myWeight" / "myBloodPressure".
+            // The server stores "weight" / "blood_pressure"; the app checks for "myWeight" / "myBloodPressure".
             // Normalize here so rebuild()'s contains() checks always succeed.
             return normalizeProductTypes(account.productTypes)
         }
 
         // Reconstruction: derive from server-synced devices.
         let devices = scaleService.scales
-        var reconstructed: [String] = []
+        var serverTypes: [String] = []
 
         if devices.contains(where: { $0.deviceType == DeviceType.scale.rawValue }) {
-            reconstructed.append("myWeight")
+            serverTypes.append(ProductType.weight.apiValue)
         }
         if devices.contains(where: { $0.deviceType == DeviceType.bpm.rawValue }) {
-            reconstructed.append("myBloodPressure")
+            serverTypes.append(ProductType.bloodPressure.apiValue)
         }
         if devices.contains(where: { $0.deviceType == DeviceType.babyScale.rawValue }) || !babyService.currentBabies.isEmpty {
-            reconstructed.append("baby")
+            serverTypes.append(ProductType.baby.apiValue)
         }
-        if reconstructed.isEmpty {
-            reconstructed = ["myWeight"]
+        if serverTypes.isEmpty {
+            serverTypes = [ProductType.weight.apiValue]
         }
 
         Task {
-            try? await accountService.updateProductTypes(reconstructed)
+            try? await accountService.updateProductTypes(serverTypes)
         }
         logger.log(
             level: .info,
             tag: tag,
-            message: "Reconstructed productTypes=\(reconstructed) for accountId=\(account.accountId)"
+            message: "Reconstructed productTypes=\(serverTypes) for accountId=\(account.accountId)"
         )
 
-        return reconstructed
+        return normalizeProductTypes(serverTypes)
     }
 
     private func rebuild() {
@@ -348,7 +349,7 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         }
 
         // 3. Individual babies — listed when productTypes contains "baby"
-        if productTypes.contains("baby") {
+        if productTypes.contains(ProductType.baby.apiValue) {
             if babies.isEmpty {
                 items.append(.baby(profile: Self.placeholderBabyProfile))
             } else {

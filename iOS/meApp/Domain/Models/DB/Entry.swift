@@ -41,6 +41,9 @@ final class Entry {
     var attempts: Int
     /// Whether entry is failed to sync
     var isFailedToSync: Bool
+    /// Server-assigned entry identifier returned from the create response.
+    /// Stored after a successful create sync; required by the server for delete operations.
+    var serverEntryId: String?
     @Relationship var scaleEntry: BathScaleEntry?
     @Relationship var scaleEntryMetric: BathScaleMetric?
     @Relationship var bpmEntry: BPMEntry?

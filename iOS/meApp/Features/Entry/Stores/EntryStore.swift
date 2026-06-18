@@ -49,7 +49,22 @@ final class EntryStore: ObservableObject {
 
     let tag = "EntryStore"
 
-    var isBabyFormValid: Bool { babyForm.isValid }
+    var isBabyFormValid: Bool {
+        let weightValid: Bool
+        switch babyWeightUnit {
+        case .kg: weightValid = !babyForm.kg.value.isEmpty && babyForm.kg.isValid
+        case .lb: weightValid = !babyForm.lb.value.isEmpty && babyForm.lb.isValid
+        case .lbsOz: weightValid = !babyForm.pounds.value.isEmpty && babyForm.pounds.isValid && babyForm.ounces.isValid
+        }
+
+        let lengthValid: Bool
+        switch babyLengthUnit {
+        case .inches: lengthValid = !babyForm.inches.value.isEmpty && babyForm.inches.isValid
+        case .cm: lengthValid = !babyForm.cm.value.isEmpty && babyForm.cm.isValid
+        }
+
+        return weightValid && lengthValid && babyForm.date.isValid
+    }
 
     var maxSelectableTime: Date {
         if Calendar.current.isDateInToday(manualEntryForm.date.value) {
@@ -200,6 +215,7 @@ final class EntryStore: ObservableObject {
             // Let event streams (entrySaved) trigger downstream reloads
             resetForm()
             logger.log(level: .success, tag: self.tag, message: "Manual entry save succeeded. accountId=\(accountId), timestamp=\(entryTimestamp)")
+            return true
         } catch {
             logger.log(
                 level: .error,
@@ -331,15 +347,36 @@ final class EntryStore: ObservableObject {
 
     @MainActor private func updateWeightUnitFromAccount(_ account: AccountSnapshot?) {
         let unit = account?.weightUnit ?? .lb
+        let newBabyWeightUnit = babyWeightUnitFor(account)
+        let newBabyLengthUnit: BabyLengthUnit = newBabyWeightUnit == .kg ? .cm : .inches
 
+        var didChange = false
         if self.weightUnit != unit {
             self.weightUnit = unit
-            self.babyWeightUnit = unit == .kg ? .kg : .lbsOz
-            self.babyLengthUnit = unit == .kg ? .cm : .inches
+            didChange = true
+        }
+        if self.babyWeightUnit != newBabyWeightUnit {
+            self.babyWeightUnit = newBabyWeightUnit
+            didChange = true
+        }
+        if self.babyLengthUnit != newBabyLengthUnit {
+            self.babyLengthUnit = newBabyLengthUnit
+            didChange = true
+        }
+        if didChange {
             self.updateWeightValidators()
             self.calculateBMI()
-            // Force UI update
             self.objectWillChange.send()
+        }
+    }
+
+    private func babyWeightUnitFor(_ account: AccountSnapshot?) -> BabyWeightUnit {
+        guard let raw = account?.measurementUnits,
+              let units = MeasurementUnits(rawValue: raw) else { return .lbsOz }
+        switch units {
+        case .metric:            return .kg
+        case .imperialLbDecimal: return .lb
+        case .imperialLbOz:      return .lbsOz
         }
     }
 
@@ -570,8 +607,9 @@ final class EntryStore: ObservableObject {
     }
 
     @MainActor func resetBabyForm() {
-        babyWeightUnit = weightUnit == .kg ? .kg : .lbsOz
-        babyLengthUnit = weightUnit == .kg ? .cm : .inches
+        let newBabyWeightUnit = babyWeightUnitFor(accountService.activeAccount)
+        babyWeightUnit = newBabyWeightUnit
+        babyLengthUnit = newBabyWeightUnit == .kg ? .cm : .inches
         babyForm = BabyEntryForm()
         babyForm.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }

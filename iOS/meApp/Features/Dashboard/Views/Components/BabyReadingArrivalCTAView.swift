@@ -21,9 +21,9 @@ struct BabyReadingArrivalCTAView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: .spacingXS) {
             (styledBabyWeightText(weightString, theme: theme)
-            + Text(" - \(timestamp)")
-                .fontOpenSans(.body2)
-                .foregroundColor(theme.textHeading))
+            + Text("  \(timestamp)")
+                .fontOpenSans(.body4)
+                .foregroundColor(theme.textSubheading))
 
             HStack(spacing: .spacingSM) {
                 ButtonView(

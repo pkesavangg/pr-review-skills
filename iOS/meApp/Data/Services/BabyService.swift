@@ -12,7 +12,8 @@ import SwiftData
 /// Backs the local SwiftData `Baby` table with the remote Baby Profile API (MOB-386):
 /// mutations write to the server first, then mirror locally; `loadBabies(for:)` pulls the
 /// server list and merges it into the local store. ProductTypes are kept in sync — `"baby"`
-/// is appended on first create and removed when the last baby is deleted.
+/// is appended on first create and never removed, so the baby selection remains visible
+/// even after all profiles are deleted.
 @MainActor
 final class BabyService: ObservableObject, BabyServiceProtocol {
     static let shared = BabyService()
@@ -126,7 +127,6 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
         context.delete(baby)
         try context.save()
         try reloadLocalBabies(for: accountId)
-        try await removeBabyProductTypeIfLastDeleted()
     }
 
     func loadBabies(for accountId: String) async throws {
@@ -208,16 +208,4 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
         )
     }
 
-    /// Removes "baby" from the active account's productTypes when no babies remain.
-    private func removeBabyProductTypeIfLastDeleted() async throws {
-        guard let snapshot = accountService.activeAccount,
-              babies.isEmpty,
-              snapshot.productTypes.contains("baby") else { return }
-        try await accountService.updateProductTypes(snapshot.productTypes.filter { $0 != "baby" })
-        LoggerService.shared.log(
-            level: .info,
-            tag: tag,
-            message: "Removed baby from productTypes for accountId=\(snapshot.accountId)"
-        )
-    }
 }

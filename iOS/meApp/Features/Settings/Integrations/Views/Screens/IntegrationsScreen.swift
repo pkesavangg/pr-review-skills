@@ -35,7 +35,7 @@ struct IntegrationsScreen: View {
                 // Hidden entirely when the user has no weight scale — the store
                 // gates these items, so the section disappears when the list is empty.
                 if !providerIntegrations.isEmpty {
-                    Section(header: SectionHeader(title: IntegrationsStrings.weightScalesSectionTitle)) {
+                    Section(header: SectionHeader(title: IntegrationsStrings.weightScalesSectionTitle, fontStyle: .label1)) {
                         ForEach(providerIntegrations, id: \.id) { item in
                             IntegrationListItemView(
                                 item: item
@@ -46,7 +46,7 @@ struct IntegrationsScreen: View {
                 }
 
                 // Apple Health — available to both weight-scale and BPM users.
-                Section(header: SectionHeader(title: IntegrationsStrings.weightScalesAndBpmSectionTitle)) {
+                Section(header: SectionHeader(title: IntegrationsStrings.weightScalesAndBpmSectionTitle, fontStyle: .label1)) {
                     HealthKitIntegrationListItemView()
                         .listRowInsets()
                 }
@@ -55,7 +55,7 @@ struct IntegrationsScreen: View {
                 Section {
                     Button(action: { store.showRequestIntegrationModal() }) {
                         Text(IntegrationsStrings.requestNewIntegration)
-                            .fontOpenSans(.button1)
+                            .fontOpenSans(.label1)
                             .foregroundColor(theme.textHeading)
                             .frame(maxWidth: .infinity, alignment: .center)
                     }
@@ -86,4 +86,4 @@ struct IntegrationsScreen: View {
     IntegrationsScreen()
         .environmentObject(Theme.shared)
         .environmentObject(Router<SettingsRoute>())
-} 
+}

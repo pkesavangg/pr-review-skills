@@ -89,6 +89,7 @@ final class BabyScaleSetupStore: ObservableObject {
     @Published var savedBabies: [Baby] = []
     @Published var editingBaby: Baby?
     @Published var showSkipDialog: Bool = false
+    @Published var showSkipEditDialog: Bool = false
     @Published var showBabyDatePicker: Bool = false
     @Published var showBabySexPicker: Bool = false
 

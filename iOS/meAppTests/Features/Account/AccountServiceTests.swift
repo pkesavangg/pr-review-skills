@@ -666,7 +666,7 @@ struct AccountServiceTests {
         }
     }
 
-    @Test("refreshTokens missing refresh token: throws") 
+    @Test("refreshTokens missing refresh token: throws")
     func refreshTokensMissingRefreshToken() async {
         let sut = makeSUT()
         sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
@@ -1427,6 +1427,65 @@ struct AccountServiceTests {
         #expect(isAvailable == false)
         #expect(api.checkEmailAvailabilityCalls == 1)
         #expect(api.lastCheckEmailAvailabilityEmail == "taken@example.com")
+    }
+
+    // MARK: - updateProductTypes
+
+    @Test("updateProductTypes: server returns productTypes, local account is updated with server value")
+    func updateProductTypesServerResponseUsesServerValue() async throws {
+        let api = MockAccountAPIRepository()
+        let local = MockAccountRepository()
+        let account = AccountTestFixtures.makeAccountModel(id: "101", isLoggedIn: true, isActive: true)
+        local.seed([account])
+        api.patchProductTypesResult = .success(
+            AccountResponse(
+                account: AccountTestFixtures.makeAccountDTO(id: "101", productTypes: ["blood_pressure"]),
+                accessToken: nil, refreshToken: nil, expiresAt: nil
+            )
+        )
+
+        let sut = makeSUT(api: api, local: local)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", isActiveAccount: true)
+
+        try await sut.updateProductTypes(["weight"])
+
+        #expect(api.patchProductTypesCalls == 1)
+        #expect(api.lastPatchProductTypes == ["weight"])
+        let updated = try await local.fetchAccount(byId: "101")
+        #expect(updated?.productTypes == ["blood_pressure"])
+    }
+
+    @Test("updateProductTypes: server returns nil productTypes, falls back to sent value")
+    func updateProductTypesServerNilFallsBackToSentValue() async throws {
+        let api = MockAccountAPIRepository()
+        let local = MockAccountRepository()
+        let account = AccountTestFixtures.makeAccountModel(id: "101", isLoggedIn: true, isActive: true)
+        local.seed([account])
+        api.patchProductTypesResult = .success(AccountTestFixtures.makeAccountResponse(accountId: "101"))
+
+        let sut = makeSUT(api: api, local: local)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", isActiveAccount: true)
+
+        try await sut.updateProductTypes(["weight", "blood_pressure"])
+
+        let updated = try await local.fetchAccount(byId: "101")
+        #expect(updated?.productTypes == ["weight", "blood_pressure"])
+    }
+
+    @Test("updateProductTypes: API failure propagates error")
+    func updateProductTypesAPIFailurePropagates() async throws {
+        let api = MockAccountAPIRepository()
+        let local = MockAccountRepository()
+        let account = AccountTestFixtures.makeAccountModel(id: "101", isLoggedIn: true, isActive: true)
+        local.seed([account])
+        api.patchProductTypesResult = .failure(AccountTestError.apiFailed)
+
+        let sut = makeSUT(api: api, local: local)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", isActiveAccount: true)
+
+        await #expect(throws: AccountTestError.apiFailed) {
+            try await sut.updateProductTypes(["weight"])
+        }
     }
 
     @Test("refreshAccount: parses productTypes and measurementUnits from response")

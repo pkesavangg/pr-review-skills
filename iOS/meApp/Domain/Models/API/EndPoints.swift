@@ -32,6 +32,7 @@ enum Endpoint {
     case updateProgressMetrics
     case updateNotifications
     case updateMeasurementUnits
+    case updateProductTypes
     case emailCheck
     case updateDeviceInfo
     case operations(startTimestamp: String?)
@@ -56,10 +57,11 @@ enum Endpoint {
     case babyId(String)
     case review
     case scaleR4Preference
-    case integrationProvider(String) 
-    case integrationHealthDevice(String) 
+    case integrationProvider(String)
+    case integrationHealthDevice(String)
     case integrationHealth
     case integrationHealthLog
+    case integrationSuggestion
     case wifiScale(request: String?)
 
     var urlRequest: URLRequest? {
@@ -102,6 +104,8 @@ enum Endpoint {
             return request(path: "/account/notification")
         case .updateMeasurementUnits:
             return request(path: "/account/measurement-units")
+        case .updateProductTypes:
+            return request(path: "/account/products")
         case .emailCheck:
             return request(path: "/account/email-check")
         case .updateDeviceInfo:
@@ -217,6 +221,8 @@ enum Endpoint {
             return request(path: "/integrations/health")
         case .integrationHealthLog:
             return request(path: "/integrations/health/log")
+        case .integrationSuggestion:
+            return request(path: "/integrations/suggestion")
         case .wifiScale(let request):
             var components = URLComponents(string: "\(API.baseURL)/account/scale")
             if let requestValue = request {
@@ -232,7 +238,7 @@ enum Endpoint {
         guard let url = URL(string: "\(API.baseURL)\(path)") else { return nil }
         return URLRequest(url: url)
     }
-   
+
     // Helper for CSV-style endpoints with optional download and offset query parameters
     private func csvRequest(path: String, utcOffset: Int?, download: Bool?) -> URLRequest? {
         var components = URLComponents(string: "\(API.baseURL)\(path)")

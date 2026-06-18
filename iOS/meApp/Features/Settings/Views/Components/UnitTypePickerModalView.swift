@@ -7,16 +7,22 @@ import SwiftUI
 
 /// Radio-style Unit Type dialog presented via `notificationService.showModal`.
 ///
-/// Two layouts:
-/// - **No baby scale** — a single weight-unit list (`lb & feet` / `kg & cm`) bound to `WeightUnit`.
-/// - **With baby scale** — a "My Weight" section (`WeightUnit`) plus a "My Kids" section
-///   (`MeasurementUnits`) for the baby-scale readings.
+/// Two layouts driven by `UnitDisplayMode`:
+/// - `.myWeight` — a single weight-unit list (`lb & feet` / `kg & cm`) bound to `WeightUnit`.
+/// - `.myKids`   — a "My Kids" section only (`MeasurementUnits`) for baby-scale readings.
 ///
-/// `onSave` returns both selections; for the no-baby layout `measurementUnits` is passed through unchanged.
+/// Only one section is shown at a time; the combined "My Weight + My Kids" layout is
+/// never used (per product requirement: show only one relevant section based on device type).
+/// `onSave` always returns both values; the unchanged unit is passed through unmodified.
 struct UnitTypePickerModalView: View {
     @Environment(\.appTheme) private var theme
 
-    let showMyKids: Bool
+    enum UnitDisplayMode {
+        case myWeight
+        case myKids
+    }
+
+    let mode: UnitDisplayMode
     let onCancel: () -> Void
     let onSave: (WeightUnit, MeasurementUnits) -> Void
 
@@ -27,13 +33,13 @@ struct UnitTypePickerModalView: View {
     private let commonLang = CommonStrings.self
 
     init(
-        showMyKids: Bool,
+        mode: UnitDisplayMode,
         selectedWeightUnit: WeightUnit,
         selectedMeasurementUnits: MeasurementUnits,
         onCancel: @escaping () -> Void,
         onSave: @escaping (WeightUnit, MeasurementUnits) -> Void
     ) {
-        self.showMyKids = showMyKids
+        self.mode = mode
         self.onCancel = onCancel
         self.onSave = onSave
         _selectedWeightUnit = State(initialValue: selectedWeightUnit)
@@ -47,10 +53,9 @@ struct UnitTypePickerModalView: View {
                 .foregroundStyle(theme.textHeading)
                 .accessibilityAddTraits(.isHeader)
 
-            if showMyKids {
-                babyScaleLayout
-            } else {
-                weightOnlyLayout
+            switch mode {
+            case .myWeight: weightOnlyLayout
+            case .myKids:   kidsOnlyLayout
             }
 
             actionButtons
@@ -75,50 +80,24 @@ struct UnitTypePickerModalView: View {
         }
     }
 
-    private var babyScaleLayout: some View {
-        VStack(alignment: .leading, spacing: .spacingSM) {
-            // My Weight
-            sectionHeader(lang.myWeight)
-            VStack(alignment: .leading, spacing: 0) {
-                radioRow(
-                    title: lang.lbsIn,
-                    isSelected: selectedWeightUnit == .lb
-                ) { selectedWeightUnit = .lb }
-                radioRow(
-                    title: lang.metricCm,
-                    isSelected: selectedWeightUnit == .kg
-                ) { selectedWeightUnit = .kg }
-            }
-
-            Divider().background(theme.statusUtilityPrimary)
-
-            // My Kids
-            sectionHeader(lang.myKids)
-            VStack(alignment: .leading, spacing: 0) {
-                radioRow(
-                    title: lang.lbsOzIn,
-                    isSelected: selectedMeasurementUnits == .imperialLbOz
-                ) { selectedMeasurementUnits = .imperialLbOz }
-                radioRow(
-                    title: lang.lbsDecimalIn,
-                    isSelected: selectedMeasurementUnits == .imperialLbDecimal
-                ) { selectedMeasurementUnits = .imperialLbDecimal }
-                radioRow(
-                    title: lang.metricCm,
-                    isSelected: selectedMeasurementUnits == .metric
-                ) { selectedMeasurementUnits = .metric }
-            }
+    private var kidsOnlyLayout: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            radioRow(
+                title: lang.lbsOzIn,
+                isSelected: selectedMeasurementUnits == .imperialLbOz
+            ) { selectedMeasurementUnits = .imperialLbOz }
+            radioRow(
+                title: lang.lbsDecimalIn,
+                isSelected: selectedMeasurementUnits == .imperialLbDecimal
+            ) { selectedMeasurementUnits = .imperialLbDecimal }
+            radioRow(
+                title: lang.metricCm,
+                isSelected: selectedMeasurementUnits == .metric
+            ) { selectedMeasurementUnits = .metric }
         }
     }
 
     // MARK: - Components
-
-    private func sectionHeader(_ title: String) -> some View {
-        Text(title)
-            .fontOpenSans(.body1)
-            .bold()
-            .foregroundStyle(theme.textHeading)
-    }
 
     private func radioRow(title: String, isSelected: Bool, onTap: @escaping () -> Void) -> some View {
         Button(action: onTap) {
