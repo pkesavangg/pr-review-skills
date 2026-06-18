@@ -12,17 +12,20 @@ struct SexStepView: View {
     @ObservedObject var signupStore: SignupStore
     @Environment(\.appTheme) private var theme
     let sexStepLang = SignupStrings.SexStep.self
+    let accLang = SignupStrings.Accessibility.self
 
     var body: some View {
         SignupStepWrapper(title: sexStepLang.title, subtitle: sexStepLang.subtitle) {
             HStack(spacing: .spacingLG) {
                 ForEach(Sex.allCases.filter { $0 != .private }, id: \.self) { sex in
+                    let isSelected = signupStore.signupForm.gender.value == sex.rawValue
                     SelectableCircleButton(
                         label: sex.rawValue.uppercased(),
-                        isSelected: signupStore.signupForm.gender.value == sex.rawValue
+                        isSelected: isSelected
                     ) {
                         signupStore.signupForm.gender.value = sex.rawValue
                     }
+                    .accessibilityValue(isSelected ? accLang.accSelectedValue : accLang.accNotSelectedValue)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .center)

@@ -32,6 +32,9 @@ struct LoginScreen: View {
                 leadingContent: {
                     AppIconView(icon: AppAssets.xmarkSmall, size: IconSize(width: 24, height: 24))
                         .foregroundColor(theme.statusIconPrimary)
+                        .accessibilityLabel(lang.accCloseLabel)
+                        .accessibilityHint(lang.accCloseHint)
+                        .accessibilityAddTraits(.isButton)
                 },
                 trailingContent: {
                     Button {
@@ -40,6 +43,8 @@ struct LoginScreen: View {
                         AppIconView(icon: AppAssets.helpCircle, size: IconSize(width: 24, height: 24))
                             .foregroundColor(theme.statusIconPrimary)
                     }
+                    .accessibilityLabel(lang.accHelpLabel)
+                    .accessibilityHint(lang.accHelpHint)
                 },
                 onLeadingTap: {
                     store.handleExit(router: isFromAccountSwitching ? nil : router)
@@ -67,6 +72,7 @@ struct LoginScreen: View {
                                     .foregroundColor(theme.textHeading)
                                     .frame(maxWidth: .infinity, alignment: .center)
                                     .padding(.bottom, .spacingXL)
+                                    .accessibilityAddTraits(.isHeader)
                                 VStack {
                                     // Email Input Field
                                     AppInputField(
@@ -140,6 +146,7 @@ struct LoginScreen: View {
                                             }
                                         }
                                     .accessibilityIdentifier(AccessibilityID.loginSubmitButton)
+                                    .accessibilityHint(lang.accLogInHint)
 
                                     ButtonView(
                                         text: lang.forgotPassword,
@@ -151,6 +158,7 @@ struct LoginScreen: View {
                                             store.showPasswordResetPrompt()
                                         }
                                     .accessibilityIdentifier(AccessibilityID.loginForgotPasswordButton)
+                                    .accessibilityHint(lang.accForgotPasswordHint)
                                 }
                             }
                             .padding(.top, .spacingLG)

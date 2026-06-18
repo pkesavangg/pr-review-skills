@@ -15,11 +15,13 @@ struct ProfileReadyStepView: View {
             AppIconView(icon: AppAssets.checkMarkLarge, size: IconSize(width: 180, height: 180))
                 .foregroundColor(theme.statusSuccess)
                 .frame(maxWidth: .infinity, alignment: .center)
+                .accessibilityHidden(true)
             Text(title)
                 .fontOpenSans(.heading4)
                 .foregroundColor(theme.textHeading)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, alignment: .center)
+                .accessibilityAddTraits(.isHeader)
             Spacer()
         }
         .padding(.horizontal, .spacingSM)
