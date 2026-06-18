@@ -19,7 +19,10 @@ data class AccountInfo(
   val isWeightlessOn: Boolean,
   // Nullable for baby-only accounts (Me App 2.0 spec §1.1/§1.4) — avoids login NPE (MOB-591).
   val height: Int?,
-  val activityLevel: String,
+  // Nullable for baby-only accounts (Me App 2.0 spec §1.1/§1.4) — the server can omit
+  // activityLevel just like height/dob, so a non-null field would re-trigger the login NPE
+  // this PR fixes (MOB-591). Defaults applied at the mapping boundaries.
+  val activityLevel: String?,
   val dob: String?,
   val weightlessTimestamp: String?,
   val weightlessWeight: Float?,

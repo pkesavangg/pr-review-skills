@@ -122,7 +122,7 @@ class OfflineHandlerService
           WeightCompSettingsEntity(
             accountId = bodyCompResponse.account.id,
             height = bodyCompResponse.account.height ?: BodyCompUpdateRequest.DEFAULT_HEIGHT,
-            activityLevel = bodyCompResponse.account.activityLevel,
+            activityLevel = bodyCompResponse.account.activityLevel ?: BodyCompUpdateRequest.DEFAULT_ACTIVITY_LEVEL,
             weightUnit = bodyCompResponse.account.weightUnit,
             isSynced = true,
           )

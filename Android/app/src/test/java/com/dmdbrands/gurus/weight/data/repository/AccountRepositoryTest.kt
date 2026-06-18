@@ -20,6 +20,7 @@ import com.dmdbrands.gurus.weight.domain.model.api.user.AccountToken
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.proto.DefaultGraphSegment
 import com.dmdbrands.gurus.weight.proto.ThemeMode
 import com.dmdbrands.gurus.weight.proto.UserAccount
 import com.google.common.truth.Truth.assertThat
@@ -32,8 +33,8 @@ import io.mockk.mockk
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import retrofit2.HttpException
 import retrofit2.Response
 import kotlin.test.assertFailsWith
@@ -150,11 +151,14 @@ class AccountRepositoryTest {
         productSettings = null,
     )
 
-    @Before
+    @BeforeEach
     fun setUp() {
         MockKAnnotations.init(this)
-        // AccountRepository reads userDataStore.currentThemeModeFlow at construction time.
+        // AccountRepository reads userDataStore.currentThemeModeFlow and defaultGraphSegmentFlow
+        // at construction time, so both must be stubbed before constructing the repository.
         every { userDataStore.currentThemeModeFlow } returns flowOf(ThemeMode.SYSTEM)
+        every { userDataStore.defaultGraphSegmentFlow } returns
+            flowOf(DefaultGraphSegment.DEFAULT_GRAPH_SEGMENT_UNSPECIFIED)
         repository = AccountRepository(accountDao, mockk(relaxed = true), userDataStore, tokenManager, mockk(relaxed = true), authAPI, userAPI)
     }
 
