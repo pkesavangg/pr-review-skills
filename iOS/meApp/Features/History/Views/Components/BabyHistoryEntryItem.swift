@@ -28,6 +28,10 @@ struct BabyHistoryEntryItem: View {
         DateTimeTools.getFormattedTime(entry.entryTimestamp)
     }
 
+    private var combinedAccessibilityLabel: String {
+        "\(timeText), \(HistoryListStrings.weight) \(entry.weightDisplay), \(HistoryListStrings.length) \(entry.lengthDisplay)"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Main entry row
@@ -87,6 +91,10 @@ struct BabyHistoryEntryItem: View {
             .padding(.horizontal, .spacingSM)
             .contentShape(Rectangle())
             .background(isExpanded ? theme.actionSecondary : Color.clear)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(combinedAccessibilityLabel)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint(isExpanded ? HistoryListStrings.accEntryCollapseHint : HistoryListStrings.accEntryExpandHint)
             .swipeableActions(
                 buttons: [
                     SwipeButton(
@@ -98,6 +106,8 @@ struct BabyHistoryEntryItem: View {
                                     .fontOpenSans(.button1)
                                     .fontWeight(.bold)
                                     .foregroundStyle(theme.textInverse)
+                                    .accessibilityLabel(HistoryListStrings.accDeleteEntryLabel)
+                                    .accessibilityIdentifier(AccessibilityID.historyDeleteButton)
                             )
                         }
                     )

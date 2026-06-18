@@ -28,6 +28,18 @@ struct DateLabelView: View {
         return formatter
     }()
 
+    /// Full spoken date for VoiceOver (e.g. "June 11, 2025").
+    private var spokenDateLabel: String {
+        Self.spokenFormatter.string(from: date)
+    }
+
+    private static let spokenFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .long
+        f.timeStyle = .none
+        return f
+    }()
+
     var body: some View {
         ChipView(
             text: formattedDateString,
@@ -35,6 +47,7 @@ struct DateLabelView: View {
             isSelected: isSelected,
             onTap: onTap
         )
+        .accessibilityLabel(spokenDateLabel)
     }
 }
 
