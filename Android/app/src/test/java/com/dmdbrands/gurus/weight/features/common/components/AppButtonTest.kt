@@ -12,11 +12,12 @@ import org.junit.jupiter.api.Test
 class AppButtonTest {
 
     @Test
-    fun `isInlineText is true for InlineTextPrimary, Secondary, and Tertiary`() {
+    fun `isInlineText is true for InlineText variants and ErrorText`() {
         listOf(
             ButtonType.InlineTextPrimary,
             ButtonType.InlineTextSecondary,
             ButtonType.InlineTextTertiary,
+            ButtonType.ErrorText,
         ).forEach { type ->
             assertThat(type.isInlineText).isTrue()
         }
@@ -28,6 +29,7 @@ class AppButtonTest {
             ButtonType.InlineTextPrimary,
             ButtonType.InlineTextSecondary,
             ButtonType.InlineTextTertiary,
+            ButtonType.ErrorText,
         )
         assertThat(nonInline).isNotEmpty()
         nonInline.forEach { type ->

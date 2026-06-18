@@ -544,6 +544,8 @@ sealed class SignupIntent : IReducer.Intent {
   object OpenHelpModal : SignupIntent()
   data class OpenURL(val url: String) : SignupIntent()
   object Skip : SignupIntent()
+  // Opens the baby Biological Sex picker via the shared settings-style radio modal.
+  object OpenBabySexPicker : SignupIntent()
   data class ToggleMetric(val useMetric: Boolean) : SignupIntent()
   data class Error(val message: String) : SignupIntent()
   object Success : SignupIntent()
@@ -610,6 +612,8 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
               },
               birthLength = bs.babyForm.birthLength.value,
               birthWeight = bs.babyForm.birthWeight.value,
+              birthWeightOz = bs.babyForm.birthWeightOz.value,
+              weightUnit = bs.babyForm.weightUnit.value,
             )
             val updatedBabies = if (bs.editingBabyId != null) {
               bs.babies.map { if (it.id == bs.editingBabyId) baby else it }
@@ -634,23 +638,34 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
       }
 
       is SignupIntent.Back -> {
-        var updatedState = if (state.currentStep == SignupStep.GOAL) {
-          state.copy(goalSkipped = false)
-        } else {
-          state
-        }
-        // Clear stale editingBabyId when leaving ADD_BABY via Back
+        // Editing a baby (entered from the baby list via the pencil): Back returns to the
+        // baby list and discards the in-progress edit, rather than navigating linearly.
         if (state.currentStep == SignupStep.ADD_BABY && state.babyState?.editingBabyId != null) {
-          updatedState = updatedState.copy(
-            babyState = updatedState.babyState?.copy(
+          state.copy(
+            babyState = state.babyState?.copy(
               babyForm = BabyFormControls.create(),
               editingBabyId = null,
             ),
+            currentStep = SignupStep.BABY_ADDED,
+            error = null,
           )
+        } else {
+          val updatedState = if (state.currentStep == SignupStep.GOAL) {
+            state.copy(goalSkipped = false)
+          } else {
+            state
+          }
+          // Strictly linear back navigation
+          var prevIndex = (updatedState.currentStepIndex - 1).coerceAtLeast(0)
+          // Skip the BABY_ADDED list when no baby exists (e.g. the user skipped the form):
+          // an empty "baby has been added" slide is meaningless, so land on ADD_BABY instead.
+          if (updatedState.steps.getOrNull(prevIndex) == SignupStep.BABY_ADDED &&
+            updatedState.babyState?.babies.isNullOrEmpty()
+          ) {
+            prevIndex = (prevIndex - 1).coerceAtLeast(0)
+          }
+          updatedState.copy(currentStep = updatedState.steps[prevIndex], error = null)
         }
-        // Strictly linear back navigation
-        val prevIndex = (updatedState.currentStepIndex - 1).coerceAtLeast(0)
-        updatedState.copy(currentStep = updatedState.steps[prevIndex], error = null)
       }
 
       is SignupIntent.Skip -> {
@@ -678,6 +693,33 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
                 )
               }
             }
+          }
+          // Skip while editing an existing baby: discard the edit and return to the list,
+          // keeping the already-added babies (Figma "Skip editing?" 31949-28040).
+          state.currentStep == SignupStep.ADD_BABY
+            && state.babyState?.editingBabyId != null -> {
+            state.copy(
+              babyState = state.babyState?.copy(
+                babyForm = BabyFormControls.create(),
+                editingBabyId = null,
+              ),
+              currentStep = SignupStep.BABY_ADDED,
+              error = null,
+            )
+          }
+          // Skip "Add another baby" while babies already exist: discard the in-progress
+          // (non-editing) form and return to the list, keeping the already-added babies —
+          // rather than discarding them all and finishing signup.
+          state.currentStep == SignupStep.ADD_BABY
+            && !state.babyState?.babies.isNullOrEmpty() -> {
+            state.copy(
+              babyState = state.babyState?.copy(
+                babyForm = BabyFormControls.create(),
+                editingBabyId = null,
+              ),
+              currentStep = SignupStep.BABY_ADDED,
+              error = null,
+            )
           }
           state.currentStep == SignupStep.ADD_BABY
             || state.currentStep == SignupStep.BABY_ADDED -> {
@@ -743,13 +785,18 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
       is SignupIntent.EditBaby -> {
         val bs = state.babyState ?: return state
         val baby = intent.baby
-        val newForm = BabyFormControls.create()
+        // Exclude the baby being edited so keeping its own name isn't flagged as a duplicate.
+        val newForm = BabyFormControls.create(
+          bs.babies.filter { it.id != baby.id }.map { it.name },
+        )
         newForm.name.onValueChange(baby.name)
         if (baby.birthday != null) newForm.birthday.onValueChange(baby.birthday)
         val sexValue = baby.biologicalSex?.value?.replaceFirstChar { it.uppercase() } ?: ""
         if (sexValue.isNotEmpty()) newForm.biologicalSex.onValueChange(sexValue)
         if (baby.birthLength.isNotEmpty()) newForm.birthLength.onValueChange(baby.birthLength)
         if (baby.birthWeight.isNotEmpty()) newForm.birthWeight.onValueChange(baby.birthWeight)
+        if (baby.birthWeightOz.isNotEmpty()) newForm.birthWeightOz.onValueChange(baby.birthWeightOz)
+        newForm.weightUnit.onValueChange(baby.weightUnit)
         state.copy(
           babyState = bs.copy(babyForm = newForm, editingBabyId = baby.id),
           currentStep = SignupStep.ADD_BABY,
@@ -759,7 +806,10 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
       is SignupIntent.AddAnotherBaby -> {
         val bs = state.babyState ?: return state
         state.copy(
-          babyState = bs.copy(babyForm = BabyFormControls.create(), editingBabyId = null),
+          babyState = bs.copy(
+            babyForm = BabyFormControls.create(bs.babies.map { it.name }),
+            editingBabyId = null,
+          ),
           currentStep = SignupStep.ADD_BABY,
         )
       }

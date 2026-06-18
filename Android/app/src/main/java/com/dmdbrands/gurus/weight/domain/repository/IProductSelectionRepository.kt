@@ -16,6 +16,12 @@ interface IProductSelectionRepository {
 
     suspend fun saveSelectedBabyProfileId(profileId: String?)
 
+    /**
+     * Clears the saved product selection (product type + baby profile) for the active account so
+     * the dashboard opens in snapshot (multi-product) mode instead of pinning a single product.
+     */
+    suspend fun clearSelectedProduct()
+
     suspend fun getBabyProfiles(accountId: String): List<BabyProfile>
 
     suspend fun hasBpmDevice(accountId: String): Boolean

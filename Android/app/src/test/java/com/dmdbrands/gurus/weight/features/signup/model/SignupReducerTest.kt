@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.signup.model
 
+import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationType
 import com.google.common.truth.Truth.assertThat
 import io.mockk.mockk
 import org.junit.jupiter.api.BeforeEach
@@ -43,6 +44,27 @@ class SignupReducerTest {
      */
     private val weightScaleSteps =
         SignupState.stepsForDevice(com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT)
+
+    /** The ordered step list for a first-pass Baby Scale signup (contains ADD_BABY / BABY_ADDED). */
+    private val babySteps =
+        SignupState.stepsForDevice(com.dmdbrands.gurus.weight.domain.enums.ProductType.BABY)
+
+    /** A [SignupState] pinned to ADD_BABY with a [BabyState] for baby-flow reducer tests. */
+    private fun babyStateAt(
+        babies: List<BabyProfile> = emptyList(),
+        babyForm: BabyFormControls = BabyFormControls.create(),
+        editingBabyId: String? = null,
+        step: SignupStep = SignupStep.ADD_BABY,
+    ): SignupState {
+        val controls = SignupFormControls.create()
+        val form = com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup(controls)
+        return SignupState(
+            form = form,
+            steps = babySteps,
+            currentStep = step,
+            babyState = BabyState(babies = babies, babyForm = babyForm, editingBabyId = editingBabyId),
+        )
+    }
 
     @BeforeEach
     fun setUp() {
@@ -290,5 +312,81 @@ class SignupReducerTest {
 
         assertThat(result.currentStep).isEqualTo(SignupStep.PASSWORD)
         assertThat(result.error).isEqualTo("err")
+    }
+
+    // -------------------------------------------------------------------------
+    // Baby flow — Skip / Next / Edit / AddAnother
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Skip on ADD_BABY with existing babies returns to BABY_ADDED preserving babies`() {
+        val baby = BabyProfile(name = "Sally")
+        val state = babyStateAt(babies = listOf(baby))
+
+        val result = reducer.reduce(state, SignupIntent.Skip)
+
+        assertThat(result.currentStep).isEqualTo(SignupStep.BABY_ADDED)
+        assertThat(result.babyState?.babies).containsExactly(baby)
+        assertThat(result.babyState?.editingBabyId).isNull()
+    }
+
+    @Test
+    fun `Skip on ADD_BABY with no babies advances to PASSWORD and resets baby state`() {
+        val state = babyStateAt(babies = emptyList())
+
+        val result = reducer.reduce(state, SignupIntent.Skip)
+
+        assertThat(result.currentStep).isEqualTo(SignupStep.PASSWORD)
+        assertThat(result.babyState?.babies).isEmpty()
+    }
+
+    @Test
+    fun `Next on ADD_BABY captures birthWeightOz and weightUnit into the baby`() {
+        val form = BabyFormControls.create()
+        form.name.onValueChange("Tammy")
+        form.birthWeight.onValueChange("7")
+        form.birthWeightOz.onValueChange("4")
+        form.weightUnit.onValueChange(BabyWeightUnit.LBS_OZ)
+        val state = babyStateAt(babyForm = form)
+
+        val result = reducer.reduce(state, SignupIntent.Next)
+
+        assertThat(result.currentStep).isEqualTo(SignupStep.BABY_ADDED)
+        val saved = result.babyState?.babies?.single()
+        assertThat(saved?.birthWeightOz).isEqualTo("4")
+        assertThat(saved?.weightUnit).isEqualTo(BabyWeightUnit.LBS_OZ)
+    }
+
+    @Test
+    fun `EditBaby seeds form excluding the edited baby's own name`() {
+        val sally = BabyProfile(id = "s1", name = "Sally")
+        val tammy = BabyProfile(id = "s2", name = "Tammy")
+        val state = babyStateAt(babies = listOf(sally, tammy))
+
+        val result = reducer.reduce(state, SignupIntent.EditBaby(sally))
+
+        assertThat(result.currentStep).isEqualTo(SignupStep.ADD_BABY)
+        assertThat(result.babyState?.editingBabyId).isEqualTo("s1")
+        val nameControl = requireNotNull(result.babyState?.babyForm?.name)
+        // Its own name is allowed (excluded from the duplicate set)…
+        nameControl.onValueChange("Sally")
+        assertThat(nameControl.error?.type).isNotEqualTo(ValidationType.DUPLICATE)
+        // …but a sibling's name is flagged.
+        nameControl.onValueChange("Tammy")
+        assertThat(nameControl.error?.type).isEqualTo(ValidationType.DUPLICATE)
+    }
+
+    @Test
+    fun `AddAnotherBaby seeds form with existing names for duplicate detection`() {
+        val sally = BabyProfile(id = "s1", name = "Sally")
+        val state = babyStateAt(babies = listOf(sally), step = SignupStep.BABY_ADDED)
+
+        val result = reducer.reduce(state, SignupIntent.AddAnotherBaby)
+
+        assertThat(result.currentStep).isEqualTo(SignupStep.ADD_BABY)
+        assertThat(result.babyState?.editingBabyId).isNull()
+        val nameControl = requireNotNull(result.babyState?.babyForm?.name)
+        nameControl.onValueChange("Sally")
+        assertThat(nameControl.error?.type).isEqualTo(ValidationType.DUPLICATE)
     }
 }

@@ -147,6 +147,7 @@ class AccountRepositoryTest {
         notificationSettings = null,
         dashboardSettings = null,
         integrationsSettings = null,
+        productSettings = null,
     )
 
     @Before

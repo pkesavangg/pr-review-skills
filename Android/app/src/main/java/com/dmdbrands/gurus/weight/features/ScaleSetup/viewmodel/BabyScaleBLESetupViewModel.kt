@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BabyScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.ScaleSetupStep
@@ -52,6 +53,10 @@ constructor(
   override fun provideInitialState(): BabyScaleSetupState {
     return BabyScaleSetupState()
   }
+
+  // Baby setup leaves the active product unchanged (no baby profile is bound at setup time), but
+  // pairing the scale must still add "baby" to productTypes so "My Kids" enables. (MOB-686)
+  override fun productToRegisterAfterSetup(): ProductType = ProductType.BABY
 
   init {
     lazyInit()

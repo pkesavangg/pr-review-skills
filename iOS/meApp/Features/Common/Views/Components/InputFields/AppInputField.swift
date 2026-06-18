@@ -32,10 +32,10 @@ struct AppInputField: View {
     // Callbacks
     var onCommit: (() -> Void)?
     var onEditingChanged: ((Bool) -> Void)?
-    
+
     // Internal state
     @FocusState private var fieldIsFocused: Bool
-    
+
     var body: some View {
         if config.inputType == .notes {
             textareaBody
@@ -200,7 +200,7 @@ struct AppInputField: View {
             .opacity(config.isDisabled ? disabledOverlayOpacity : 0)
             .cornerRadius(.radiusSM)
     }
-    
+
     private var floatingLabelColor: Color {
         if config.isDisabled { return theme.textBody.opacity(0.38) }
         return config.errorMessage != nil ? theme.textError : theme.textSubheading
@@ -228,7 +228,7 @@ struct AppInputField: View {
             return .default
         }
     }
-    
+
     private var trailingIconView: some View {
         HStack(spacing: 4) {
             if let trailingLabel = config.trailingLabel {
@@ -282,7 +282,7 @@ struct AppInputTestingField: View {
     @State var disabledText: String = "Enter text here"
     @State var modelNumber: String = ""
     @State var focusedField: FocusField?
-    
+
     var body: some View {
         VStack {
             AppInputField(
@@ -296,7 +296,7 @@ struct AppInputTestingField: View {
                 focusedField: $focusedField) {
                     focusedField = .email
                 }
-            
+
             AppInputField(
                 config: TextInputConfig(
                     label: "Email",
@@ -308,7 +308,7 @@ struct AppInputTestingField: View {
                 focusedField: $focusedField) {
                     focusedField = .password
                 }
-            
+
             AppInputField(
                 config: TextInputConfig(
                     label: "Password",
@@ -323,7 +323,7 @@ struct AppInputTestingField: View {
             ) {
                 focusedField = .bodyFat
             }
-            
+
             AppInputField(
                 config: TextInputConfig(
                     label: "Phone Number",
@@ -334,7 +334,7 @@ struct AppInputTestingField: View {
                 value: $number,
                 focusedField: $focusedField
             )
-            
+
             AppInputField(
                 config: TextInputConfig(
                     label: "Disabled Input",
@@ -347,7 +347,7 @@ struct AppInputTestingField: View {
             ) {
                 focusedField = .password
             }
-            
+
             AppInputField(
                 config: TextInputConfig(
                     label: "Model Number",

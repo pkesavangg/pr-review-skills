@@ -12,7 +12,8 @@ data class AccountInfo(
   val email: String,
   val firstName: String,
   val lastName: String,
-  val gender: String,
+  // Phase 2 (MOB-377): gender is optional at signup, so the server may echo it back as null.
+  val gender: String? = null,
   val zipcode: String,
   val weightUnit: String,
   val isWeightlessOn: Boolean,

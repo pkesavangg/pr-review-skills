@@ -666,7 +666,7 @@ struct AccountServiceTests {
         }
     }
 
-    @Test("refreshTokens missing refresh token: throws") 
+    @Test("refreshTokens missing refresh token: throws")
     func refreshTokensMissingRefreshToken() async {
         let sut = makeSUT()
         sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)

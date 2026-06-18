@@ -8,6 +8,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -17,6 +19,15 @@ class AppNotificationEventServiceTest {
     @JvmField
     @RegisterExtension
     val mainDispatcherRule = MainDispatcherRule()
+
+    // AppNotificationEventService is a process-wide singleton with a replay=1 tap flow, so a tap
+    // emitted by another test class lingers in the replay cache. Clear it before and after each
+    // test so the retained-tap assertions don't see another suite's leftover payload.
+    @BeforeEach
+    fun clearRetainedTap() = AppNotificationEventService.consumeTap()
+
+    @AfterEach
+    fun resetRetainedTap() = AppNotificationEventService.consumeTap()
 
     // -------------------------------------------------------------------------
     // emit — each event type is delivered to collectors

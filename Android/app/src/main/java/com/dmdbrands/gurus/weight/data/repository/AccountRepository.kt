@@ -824,7 +824,7 @@ constructor(
         email = account.email,
         expiresAt = loginResponse.expiresAt,
         fcmToken = null,
-        gender = account.gender,
+        gender = account.gender.orEmpty(),
         isActiveAccount = true,
         isLoggedIn = true,
         isExpired = false,

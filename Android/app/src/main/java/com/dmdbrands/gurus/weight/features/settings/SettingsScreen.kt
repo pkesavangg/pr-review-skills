@@ -82,12 +82,13 @@ fun SettingsScreenContent(
               },
             ),
           )
-          // "My Kids" always appears; enabled only when the account owns a baby
-          // scale (device-driven), not gated on an existing baby profile. (MOB-416)
+          // "My Kids" always appears; enabled once the account has engaged a baby scale
+          // (productTypes carries "baby") or currently owns one. Additive per MOB-686 Rule A:
+          // stays enabled after the device is removed. Not gated on an existing baby profile.
           add(
             SettingsItem(
               title = SettingsScreenStrings.MyKids,
-              enabled = state.hasBabyScaleDevice,
+              enabled = state.isMyKidsEnabled,
               onClick = {
                 coroutineScope.launch {
                   backStack.addRoute(AppRoute.AccountSettings.MyKids)

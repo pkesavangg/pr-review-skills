@@ -46,8 +46,12 @@ class HistoryViewModelTest {
     @MockK(relaxed = true)
     lateinit var entryReadService: IEntryReadService
 
+    @MockK(relaxed = true)
+    lateinit var entryCursorPager: com.dmdbrands.gurus.weight.data.services.EntryCursorPager
+
     private lateinit var navigationService: IAppNavigationService
     private lateinit var dialogQueueService: IDialogQueueService
+    private lateinit var productSelectionManager: IProductSelectionManager
 
     private lateinit var viewModel: HistoryViewModel
 
@@ -56,19 +60,28 @@ class HistoryViewModelTest {
         MockKAnnotations.init(this)
         navigationService = mockk(relaxed = true)
         dialogQueueService = mockk(relaxed = true)
+        productSelectionManager = mockk(relaxed = true)
         stubDefaultFlows()
         viewModel = HistoryViewModel(
             entryService = entryService,
             exportService = exportService,
             entryReadService = entryReadService,
+            entryCursorPager = entryCursorPager,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
+            productSelectionManager = productSelectionManager,
         )
     }
 
     private fun stubDefaultFlows() {
         every { entryService.isUpdating } returns MutableStateFlow(false)
+        // observeAndLoadHistory() collects availableProducts on init; without a real flow the
+        // relaxed mock emits a default value that fails the List<ProductSelection> cast.
+        every { productSelectionManager.availableProducts } returns
+            MutableStateFlow(listOf(ProductSelection.MyWeight))
+        every { productSelectionManager.selectedProduct } returns
+            MutableStateFlow(ProductSelection.MyWeight)
     }
 
     // -------------------------------------------------------------------------
@@ -96,6 +109,7 @@ class HistoryViewModelTest {
             entryService = entryService,
             exportService = exportService,
             entryReadService = entryReadService,
+            entryCursorPager = entryCursorPager,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -194,6 +208,7 @@ class HistoryViewModelTest {
             entryService = entryService,
             exportService = exportService,
             entryReadService = entryReadService,
+            entryCursorPager = entryCursorPager,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,

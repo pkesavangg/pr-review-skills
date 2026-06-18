@@ -125,12 +125,17 @@ private fun HeightField(
             }
             .padding(horizontal = MeTheme.spacing.md),
     ) {
-        // Left: static placeholder label — always visible
-        AppText(
-            text = SignupStrings.heightLabel.lowercase(),
-            textType = TextType.SubHeading,
+        // Left label, in a Row so the alignment lands on a direct Box child — AppText applies the
+        // modifier to its inner Text, not its root Column, so aligning it directly top-aligns.
+        Row(
             modifier = Modifier.align(Alignment.CenterStart),
-        )
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            AppText(
+                text = SignupStrings.heightLabel.lowercase(),
+                textType = TextType.SubHeading,
+            )
+        }
 
         // Right: selected value (value string already contains the unit) + dropdown chevron
         Row(
@@ -146,7 +151,7 @@ private fun HeightField(
                 )
             }
             Icon(
-                painter = painterResource(AppIcons.Default.ChevronDown),
+                painter = painterResource(AppIcons.Filled.CaretDown),
                 contentDescription = null,
                 tint = MeTheme.colorScheme.textSubheading,
                 modifier = Modifier.size(20.dp),
@@ -155,19 +160,25 @@ private fun HeightField(
     }
 
     if (isModalTriggered) {
-        ModalDialog(
+        HeightPickerDialog(
+            value = value,
             onDismiss = { isModalTriggered = false },
-            config = ModalConfigs.Critical,
-        ) {
-            AppHeightPickerModal(
-                value = value,
-                onCancel = { isModalTriggered = false },
-                onOk = { data ->
-                    isModalTriggered = false
-                    heightControl.onValueChange(data)
-                },
-            )
-        }
+            onConfirm = { data ->
+                isModalTriggered = false
+                heightControl.onValueChange(data)
+            },
+        )
+    }
+}
+
+@Composable
+private fun HeightPickerDialog(
+    value: HeightInput,
+    onDismiss: () -> Unit,
+    onConfirm: (HeightInput) -> Unit,
+) {
+    ModalDialog(onDismiss = onDismiss, config = ModalConfigs.Critical) {
+        AppHeightPickerModal(value = value, onCancel = onDismiss, onOk = onConfirm)
     }
 }
 
