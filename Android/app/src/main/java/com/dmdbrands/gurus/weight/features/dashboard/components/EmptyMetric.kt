@@ -34,6 +34,7 @@ fun EmptyMetric(onConnectScaleClick: () -> Unit, modifier: Modifier = Modifier) 
     AppButton(
       label = lang.connectScale,
       onClick = { onConnectScaleClick() },
+      modifier = Modifier.padding(bottom = MeTheme.spacing.md),
     )
   }
 }

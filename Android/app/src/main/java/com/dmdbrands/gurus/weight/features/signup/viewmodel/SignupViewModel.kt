@@ -230,13 +230,21 @@ constructor(
     viewModelScope.launch {
       try {
         val account: Account = if (needsAccount) {
-          val created = runCatching { accountService.signup(buildSignupRequest(stateValue, productType)) }
-            .onFailure { AppLog.e(TAG, "Account creation failed", it) }
-            .getOrNull()
-          if (created == null) {
-            // Account-creation failure stays as a toast on the password step.
+          val result = runCatching { accountService.signup(buildSignupRequest(stateValue, productType)) }
+          result.exceptionOrNull()?.let { e ->
+            // signup() handles HTTP errors itself (specific toast + null return);
+            // only unexpected throws (e.g. max accounts reached) reach here.
+            AppLog.e(TAG, "Account creation failed", e)
             dialogQueueService.dismissLoader()
             dialogQueueService.showToast(Toast.Simple(message = SignupErrorStrings.accountFailedToast))
+            return@launch
+          }
+          val created = result.getOrNull()
+          if (created == null) {
+            // AccountService.signup already surfaced the specific failure toast
+            // (e.g. "Email address is already in use"); don't mask it with a generic
+            // one here. (MOB-592)
+            dialogQueueService.dismissLoader()
             return@launch
           }
           AppLog.i(TAG, "Account created successfully")
@@ -352,15 +360,21 @@ constructor(
     val controls = stateValue.form.controls
     val isMetric = signupData.useMetric
     val weightUnit = if (isMetric) WeightUnit.KG else WeightUnit.LB
+    // Phase 2 (MOB-377): gender + dob are required only for weight/BP accounts, height
+    // only for weight. The baby-scale path skips those steps, so the form holds defaults
+    // (sex = ""). Sending an empty gender makes the server reject it as a missing required
+    // value (400), so omit these fields (null) when the chosen product doesn't capture them.
+    val needsGenderDob = productType == ProductType.MY_WEIGHT || productType == ProductType.BLOOD_PRESSURE
+    val needsHeight = productType == ProductType.MY_WEIGHT
     return SignupRequest(
       email = signupData.email.trim(),
       firstName = signupData.firstName.trim(),
       lastName = signupData.lastName.trim(),
-      gender = signupData.sex,
+      gender = signupData.sex.takeIf { needsGenderDob && it.isNotBlank() },
       zipcode = signupData.zipcode.trim(),
       password = signupData.password,
-      dob = DateTimeValue.getDateFormatFromMilliseconds(controls.birthday.value.getTimestamp()),
-      height = controls.height.value.toStoredHeight(),
+      dob = if (needsGenderDob) DateTimeValue.getDateFormatFromMilliseconds(controls.birthday.value.getTimestamp()) else null,
+      height = if (needsHeight) controls.height.value.toStoredHeight() else null,
       weightUnit = weightUnit.value,
       // Phase 2 (MOB-377): the account owns the first device picked; additional devices in the
       // multi-device loop are added via account update. measurementUnits derives from the unit choice.

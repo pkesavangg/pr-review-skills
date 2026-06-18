@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
+import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
@@ -14,6 +15,8 @@ import com.dmdbrands.gurus.weight.domain.services.IBabyProfileService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.common.model.Toast
+import com.dmdbrands.gurus.weight.features.signup.strings.SignupErrorStrings
 import com.dmdbrands.gurus.weight.features.signup.model.BabyFormControls
 import com.dmdbrands.gurus.weight.features.signup.model.BabyWeightUnit
 import com.dmdbrands.gurus.weight.features.signup.model.SignupIntent
@@ -420,6 +423,25 @@ class SignupViewModelTest {
     }
 
     @Test
+    fun `Submit does not show generic toast when signup returns null`() = runTest {
+        // AccountService.signup already surfaces the specific failure toast (e.g.
+        // "Email address is already in use"). The VM must not mask it with the
+        // generic "We couldn't create your account" toast. (MOB-592)
+        coEvery { accountService.signup(any()) } returns null
+
+        navigateToLastStepWithValidForm()
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        coVerify { accountService.signup(any()) }
+        verify(exactly = 0) {
+            dialogQueueService.showToast(
+                match<Toast.Simple> { it.message == SignupErrorStrings.accountFailedToast },
+            )
+        }
+    }
+
+    @Test
     fun `Submit when signup throws does not navigate to Loading`() = runTest {
         coEvery { accountService.signup(any()) } throws RuntimeException("Network error")
 
@@ -694,6 +716,51 @@ class SignupViewModelTest {
                 },
             )
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // Signup request payload — conditional gender/dob/height (MOB-592 / MOB-377)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Submit baby scale omits gender dob and height so the server does not 400`() = runTest {
+        // The baby path skips the GENDER/HEIGHT steps, leaving sex = "". Sending an
+        // empty gender made the server reject the request as a missing required value.
+        // For a baby-only account these fields must be omitted (null), not "".
+        val requestSlot = slot<SignupRequest>()
+        coEvery { accountService.signup(capture(requestSlot)) } returns TestFixtures.activeAccount
+
+        navigateToBabyPasswordStep { form ->
+            form.name.onValueChange("Tammy")
+            form.biologicalSex.onValueChange("male")
+            form.weightUnit.onValueChange(BabyWeightUnit.LBS)
+            form.birthWeight.onValueChange("7")
+        }
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        val request = requestSlot.captured
+        assertThat(request.productTypes).containsExactly(ProductType.BABY.apiValue)
+        assertThat(request.gender).isNull()
+        assertThat(request.dob).isNull()
+        assertThat(request.height).isNull()
+    }
+
+    @Test
+    fun `Submit weight scale sends gender dob and height`() = runTest {
+        val requestSlot = slot<SignupRequest>()
+        coEvery { accountService.signup(capture(requestSlot)) } returns TestFixtures.activeAccount
+        coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
+
+        navigateToLastStepWithValidForm()
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        val request = requestSlot.captured
+        assertThat(request.productTypes).containsExactly(ProductType.MY_WEIGHT.apiValue)
+        assertThat(request.gender).isEqualTo(TEST_SEX)
+        assertThat(request.dob).isNotNull()
+        assertThat(request.height).isNotNull()
     }
 
     @Test
