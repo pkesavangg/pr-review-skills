@@ -29,6 +29,7 @@ import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTa
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.BabyEmptyState
+import com.dmdbrands.gurus.weight.features.common.components.strings.BabyEmptyStateStrings
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.ProductTypeHeader
@@ -69,6 +70,8 @@ private fun EntryScreenContent(
 ) {
   val selectedProduct by productSelectionManager.selectedProduct
     .collectAsStateWithLifecycle()
+  val hasMultipleProducts = productSelectionManager.availableProducts
+    .collectAsStateWithLifecycle().value.size > 1
   val focusManager = LocalFocusManager.current
   val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -96,6 +99,7 @@ private fun EntryScreenContent(
       ProductTypeHeader(
         selectedProduct = selectedProduct,
         onClick = { productSelectionManager.showProductSheet(EntryScreenStrings.Title) },
+        showDropdown = hasMultipleProducts,
       )
     },
   ) {
@@ -107,6 +111,7 @@ private fun EntryScreenContent(
             navStackController.addRoute(AppRoute.AccountSettings.AddBaby)
           }
         },
+        description = BabyEmptyStateStrings.EntryDescription,
       )
       return@AppScaffold
     }

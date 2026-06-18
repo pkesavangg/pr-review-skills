@@ -162,6 +162,12 @@ constructor(
         val weightUnit = account?.weightUnit ?: state.value.weightMode
         handleIntent(EntryIntent.UpdateWeightUnit(weightUnit))
         viewModelScope.launch {
+          // Only (re)build the weight form for the weight product. For BP/Baby the active
+          // form is owned by observeProductSelection(); rebuilding a weight form here would
+          // clobber it (activeForm → Weight) and hide the BP/Baby entry form. (MOB-592)
+          if (productSelectionManager.selectedProduct.value !is ProductSelection.MyWeight) {
+            return@launch
+          }
           val hasAppSyncData = appSyncService.appSyncDataForEditing.first() != null
           if (!hasAppSyncData) {
             val activeAccount = accountService.activeAccountFlow.first()
