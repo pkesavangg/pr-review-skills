@@ -38,6 +38,7 @@ struct A3BpmPairedView: View {
                     .foregroundColor(theme.statusSuccess)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, .spacingXL)
+                    .accessibilityLabel(BpmSetupStrings.A11y.pairedSuccessLabel)
             }
             .padding(.top, .spacingLG)
             .padding(.horizontal, .spacingSM)
