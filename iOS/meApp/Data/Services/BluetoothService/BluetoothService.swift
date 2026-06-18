@@ -138,6 +138,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     /// Set by the scan pipeline before firing pendingScaleEntrySubject; cleared by confirm/discard.
     var pendingScaleEntry: Entry?
 
+    /// Earlier weight entries that were displaced when a new reading arrived before the user
+    /// acted on the previous toast. Queued here instead of auto-saved so that tapping DISCARD
+    /// discards all of them, matching user intent.
+    var displacedPendingEntries: [Entry] = []
+
     /// The most recently received BPM entry that is awaiting user confirmation.
     /// Set by the scan pipeline before firing pendingBpmEntrySubject; cleared by confirm/discard.
     var pendingBpmEntry: Entry?
@@ -258,6 +263,14 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     func confirmPendingScaleEntry() async throws {
         guard let entry = pendingScaleEntry else { return }
         pendingScaleEntry = nil
+        let displaced = displacedPendingEntries
+        displacedPendingEntries = []
+        for displacedEntry in displaced {
+            try await entryService.saveNewEntry(displacedEntry)
+            let displacedNotification = EntryNotification(from: displacedEntry)
+            newEntryReceivedSubject.send(displacedNotification)
+            logger.log(level: .info, tag: tag, message: "Displaced scale entry saved on confirm. entryId=\(displacedEntry.id.uuidString)")
+        }
         try await entryService.saveNewEntry(entry)
         let notification = EntryNotification(from: entry)
         newEntryReceivedSubject.send(notification)
@@ -268,6 +281,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     /// Called when the user taps DISCARD on the reading-arrival toast.
     func discardPendingScaleEntry() {
         guard let entry = pendingScaleEntry else { return }
+        let displaced = displacedPendingEntries
+        displacedPendingEntries = []
+        for displacedEntry in displaced {
+            logger.log(level: .info, tag: tag, message: "Displaced scale entry discarded. entryId=\(displacedEntry.id.uuidString)")
+        }
         logger.log(level: .info, tag: tag, message: "Pending scale entry discarded. entryId=\(entry.id.uuidString)")
         pendingScaleEntry = nil
     }

@@ -555,6 +555,10 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         ProductTypeStore.shared
     }
 
+    func clearProductTypeSelection() {
+        productTypeSelectorStore.clearPersistedSelection()
+    }
+
     var dashboardEntryService: EntryService {
         entryService
     }

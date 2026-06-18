@@ -133,6 +133,12 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
                                                accountId: accountService.activeAccount?.accountId)
     }
 
+    func clearPersistedSelection() {
+        guard let accountId = accountService.activeAccount?.accountId else { return }
+        let key = KvStorageKeys.selectedProductTypeKey(for: accountId)
+        kvStorage.clearValue(forKey: key)
+    }
+
     /// Package-internal entry point so unit tests can exercise the real logic
     /// without going through the singleton or copying the implementation.
     static func hasPersistedSelection(kvStorage: KvStorageServiceProtocol, accountId: String?) -> Bool {
