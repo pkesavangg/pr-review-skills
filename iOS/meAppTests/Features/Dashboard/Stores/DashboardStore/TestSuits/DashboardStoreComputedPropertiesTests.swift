@@ -352,5 +352,48 @@ extension DashboardStoreTests {
         #expect(store.shouldShowStreakGrid == false)
         #expect(store.allContentRemoved == true)
     }
+
+    // MARK: - canShowSnapshotOverview visibility matrix
+
+    private func makeStoreWithMockProductTypeStore(availableItems: [ProductSelection]) async -> DashboardStore {
+        TestDependencyContainer.reset()
+        _ = TestDependencyContainer.registerDashboardConcreteDependencies()
+        let mockPTS = MockProductTypeStore()
+        mockPTS.availableItems = availableItems
+        DependencyContainer.shared.register(mockPTS as ProductTypeStoreProtocol)
+        let store = DashboardStore(
+            lightweight: false,
+            formatter: MockDashboardFormatter(),
+            cacheManager: MockDashboardCacheManager()
+        )
+        await Task.yield()
+        await Task.yield()
+        return store
+    }
+
+    @Test("canShowSnapshotOverview: true when baby item is present (no weight or BPM required)")
+    func canShowSnapshotOverviewTrueForBabyOnly() async {
+        let babyProfile = BabyProfile(id: "baby-1", name: "Test Baby")
+        let store = await makeStoreWithMockProductTypeStore(availableItems: [.baby(profile: babyProfile)])
+
+        #expect(store.hasBabySnapshotItem == true)
+        #expect(store.canShowSnapshotOverview == true)
+    }
+
+    @Test("canShowSnapshotOverview: true when both weight and BPM are paired")
+    func canShowSnapshotOverviewTrueForWeightAndBPM() async {
+        let store = await makeStoreWithMockProductTypeStore(availableItems: [.myWeight, .myBloodPressure])
+
+        #expect(store.hasBabySnapshotItem == false)
+        #expect(store.canShowSnapshotOverview == true)
+    }
+
+    @Test("canShowSnapshotOverview: false when only weight is paired (no baby, no BPM)")
+    func canShowSnapshotOverviewFalseForWeightOnly() async {
+        let store = await makeStoreWithMockProductTypeStore(availableItems: [.myWeight])
+
+        #expect(store.hasBabySnapshotItem == false)
+        #expect(store.canShowSnapshotOverview == false)
+    }
     }
 }
