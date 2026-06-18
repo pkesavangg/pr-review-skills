@@ -14,6 +14,9 @@ extension BabyScaleSetupStore {
         let name = babyProfileForm.name.value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
 
+        // Clear any stale duplicate-name error before a new attempt.
+        babyProfileForm.duplicateNameError = nil
+
         let birthday = babyProfileForm.birthday.value
         let biologicalSex = babyProfileForm.biologicalSex.value.isEmpty ? nil : babyProfileForm.biologicalSex.value
         let lengthInches = babyProfileForm.parsedBirthLengthInches
@@ -57,7 +60,20 @@ extension BabyScaleSetupStore {
             navigateToStep(.babyAdded)
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save baby profile: \(error)")
-            scaleSetupError = .profileSaveFailed
+            if isDuplicateNameError(error) {
+                babyProfileForm.duplicateNameError = BabyScaleSetupStrings.BabyProfile.duplicateNameError
+            } else {
+                scaleSetupError = .profileSaveFailed
+            }
+        }
+    }
+
+    /// Returns true when the server rejected the request because the baby name is already taken (HTTP 409 Conflict).
+    private func isDuplicateNameError(_ error: Error) -> Bool {
+        switch error as? HTTPError {
+        case .statusCode(409): return true
+        case .apiError(_, let code): return code == 409
+        default: return false
         }
     }
 
@@ -115,8 +131,14 @@ extension BabyScaleSetupStore {
     // MARK: - Skip Baby Profile
 
     func showSkipBabyProfileDialog() {
-        showSkipDialog = true
+        if editingBaby != nil {
+            showSkipEditDialog = true
+        } else {
+            showSkipDialog = true
+        }
     }
+
+    // MARK: Skip Add Baby
 
     func handleSkipConfirmed() {
         showSkipDialog = false
@@ -125,6 +147,19 @@ extension BabyScaleSetupStore {
 
     func handleSkipCancelled() {
         showSkipDialog = false
+    }
+
+    // MARK: Skip Edit Baby
+
+    func handleSkipEditConfirmed() {
+        showSkipEditDialog = false
+        editingBaby = nil
+        babyProfileForm.reset()
+        navigateToStep(.babyAdded)
+    }
+
+    func handleSkipEditCancelled() {
+        showSkipEditDialog = false
     }
 
     // MARK: - Save Device Locally

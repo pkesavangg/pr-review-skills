@@ -10,6 +10,8 @@ enum IntegrationStoreTestError: Error, Equatable {
 final class MockIntegrationStoreService: IntegrationServiceProtocol {
     var removeIntegrationError: Error?
     var removeDelayNanoseconds: UInt64 = 0
+    var requestNewIntegrationError: Error?
+    private(set) var requestNewIntegrationCalls: [String] = []
 
     private(set) var removeIntegrationCalls: [IntegrationType] = []
 
@@ -30,7 +32,12 @@ final class MockIntegrationStoreService: IntegrationServiceProtocol {
     func isIntegrationAlreadyUsed(type: IntegrationType) async throws -> Bool { false }
     func clearIntegrationStatus(integrationType: IntegrationType) async throws {}
     func syncNewEntry(_ entry: Entry) async throws {}
+    func syncNewEntry(notification: EntryNotification) async throws {}
     func deleteEntry(_ entry: Entry) async throws {}
     func clearIntegration() async throws {}
     func logHealthEntry(notification: EntryNotification) async {}
+    func requestNewIntegration(text: String) async throws {
+        requestNewIntegrationCalls.append(text)
+        if let requestNewIntegrationError { throw requestNewIntegrationError }
+    }
 }

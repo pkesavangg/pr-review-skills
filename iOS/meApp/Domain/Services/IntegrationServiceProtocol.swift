@@ -16,6 +16,10 @@ protocol IntegrationServiceProtocol {
     /// - Parameter provider: The integration provider to remove.
     func removeIntegration(_ provider: IntegrationType) async throws
 
+    /// Submits a request for a new integration.
+    /// - Parameter text: The user-provided description of the requested integration.
+    func requestNewIntegration(text: String) async throws
+
     // MARK: - Status/Utility
 
     /// Gets the stored integration data for the current device/account.

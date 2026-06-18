@@ -78,18 +78,27 @@ struct BabyScaleSetupStrings {
         static let required = "Required."
         static let invalidWeight = "Please enter a valid weight."
         static let invalidLength = "Please enter a valid length."
+        static let duplicateNameError = "baby name already exists"
         static let kgUnit = "kg"
         static let cmUnit = "cm"
         static let inUnit = "in"
         static let unitNoteText = "Note: The selected weight unit determines the length unit automatically."
     }
 
-    // MARK: - Skip Dialog
+    // MARK: - Skip Dialog (Add Baby)
     struct SkipDialog {
         static let title = "Skip Baby Profile?"
-        static let message = "Setup is complete. You can add a baby profile later from Settings."
-        static let cancel = "CANCEL"
-        static let finishSetup = "FINISH SETUP"
+        static let message = "Your baby profile won't be created. You can add it anytime from my kids profile settings."
+        static let goBack = "GO BACK"
+        static let yesSkip = "YES, SKIP"
+    }
+
+    // MARK: - Skip Edit Dialog (Edit Baby)
+    struct SkipEditDialog {
+        static let title = "Skip editing?"
+        static let message = "Your changes won't be saved. You can do this anytime from my kids profile settings."
+        static let goBack = "GO BACK"
+        static let yesSkip = "YES, SKIP"
     }
 
     // MARK: - Baby Added

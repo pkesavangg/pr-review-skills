@@ -45,5 +45,9 @@ protocol IntegrationRepositoryAPIProtocol {
     /// - Parameter deviceId: The unique health-integration device identifier.
     func deleteHealthIntegration(deviceId: String) async throws
 
+    /// Submits a user's request for a new integration.
+    /// - Parameter suggestion: The free-text description of the requested integration.
+    func requestNewIntegration(suggestion: String) async throws
+
 }
 // swiftlint:enable function_parameter_count

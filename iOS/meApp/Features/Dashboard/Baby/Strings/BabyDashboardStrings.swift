@@ -43,6 +43,9 @@ enum BabyDashboardStrings {
 
     // MARK: - Empty State
     static let noReadingsYet = "No readings yet"
+    static let noBabiesTitle = "No babies added yet"
+    static let noBabiesSubtitle = "Add a baby to start tracking growth and overall health."
+    static let addBaby = "ADD A BABY"
 
     // MARK: - Accessibility
     static let babySnapshotNoReadings = "Baby snapshot, no readings yet"

@@ -729,10 +729,10 @@ struct AlertStrings {
     }
 
     struct RemoveBabyAlert {
-        static let title = "Remove Baby"
+        static let title = "Remove Baby?"
         static let message = "Are you sure you want to remove this baby? You will not be able to get it back."
-        static let deleteButton = "Delete"
-        static let cancelButton = "Cancel"
+        static let deleteButton = "DELETE"
+        static let cancelButton = "CANCEL"
     }
 }
 
@@ -758,6 +758,7 @@ struct LoaderStrings {
     /// Loader shown while retrieving the scale's MAC address.
     static let gettingMacAddress = "Getting MAC address..."
     static let updatingMode = "Updating Mode..."
+    static let sendingRequest = "Sending Request..."
 }
 
 struct URLStrings {
