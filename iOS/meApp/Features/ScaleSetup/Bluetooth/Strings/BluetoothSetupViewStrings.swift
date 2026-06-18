@@ -27,4 +27,11 @@ struct BluetoothSetupViewStrings {
             isSynced ? "Synced!" : "Syncing ..."
         }
     }
+
+    struct A11y {
+        static let gifHint = "Animation showing scale button press"
+        static let pairAgainHint = "Double tap to attempt pairing again"
+        static let pairedLabel = "Scale paired successfully"
+        static let pairingLoadingLabel = "Pairing in progress"
+    }
 }

@@ -48,6 +48,7 @@ struct ScaleSetupIntroView: View {
                 .cornerRadius(.radiusLG)
                 .themeDropShadow()
                 .padding(.bottom, .spacingLG)
+                .accessibilityHidden(true)
 
             Text(scaleSetupLang.modelTitle(introModelCode(for: scale)))
                 .fontOpenSans(.heading4)
@@ -57,6 +58,7 @@ struct ScaleSetupIntroView: View {
                 .fontOpenSans(.body2)
                 .foregroundColor(theme.textBody)
         }
+        .accessibilityElement(children: .combine)
     }
     
     private var buttonTitle: String? {

@@ -173,4 +173,18 @@ public struct WifiScaleSetupStrings {
             + "If this doesn't work out for you, give us a call and we'll work through it together."
         static let copy = defaultLang
     }
+
+    struct A11y {
+        static let gifHint = "Animation showing how to activate pairing mode"
+        static let errorCodeButtonLabel: (String) -> String = { "Error code \($0)" }
+        static let errorCodeButtonHint = "Double tap to select this error code"
+        static let errorCodeButtonSelectedLabel: (String) -> String = { "Error code \($0), selected" }
+        static let seeSomethingElseHint = "Double tap if you see a different screen on your scale"
+        static let setupCompleteOptionLabel = "Setup complete screen"
+        static let setupCompleteOptionHint = "Double tap if your scale shows the setup complete screen"
+        static let apModeOptionLabel = "Scale in AP mode screen"
+        static let apModeOptionHint = "Double tap if your scale shows the AP mode screen"
+        static let stepOnImageLabel = "Scale showing step on prompt"
+        static let apModeImageLabel = "Scale in AP mode"
+    }
 }
