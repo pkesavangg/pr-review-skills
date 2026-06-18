@@ -27,6 +27,11 @@ protocol AccountRepositoryAPIProtocol {
     /// - Returns: AccountResponse (from { account })
     func updateMeasurementUnits(_ measurementUnits: String) async throws -> AccountResponse
 
+    /// Updates the account's registered product types. (PATCH /account/products)
+    /// - Parameter productTypes: Array of product type strings, e.g. ["weight", "baby"].
+    /// - Returns: AccountResponse (from { account })
+    func patchProductTypes(_ productTypes: [String]) async throws -> AccountResponse
+
     /// Logs in with the given email and password. (POST /account/login)
     /// - Parameters:
     ///   - email: The user's email address.

@@ -221,9 +221,15 @@ struct SignupScreen: View {
                                isDisabled: !signupStore.isNextEnabled,
                                customHorizontalPadding: signupStore.currentStep == SignupStep.password ? .spacingXS : .spacingXS / 2,
                                customVerticalPadding: .spacingXS / 4) {
-                        withAnimation {
-                            hideKeyboard()
-                            signupStore.moveToNextStep()
+                        hideKeyboard()
+                        if signupStore.currentStep == .password {
+                            withAnimation {
+                                signupStore.createAccount()
+                            }
+                        } else {
+                            withAnimation {
+                                signupStore.moveToNextStep()
+                            }
                         }
                     }
                 }

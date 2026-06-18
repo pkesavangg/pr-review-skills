@@ -113,7 +113,7 @@ final class Account {
         // Create associated WeightCompSettings
         let settings = WeightCompSettings(
             accountId: dto.id,
-            height: String(dto.height),
+            height: dto.height.map { String($0) },
             activityLevel: dto.activityLevel,
             weightUnit: dto.weightUnit
         )
@@ -229,7 +229,7 @@ extension Account {
         self.email = response.email
         self.firstName = response.firstName
         self.gender = response.gender
-        self.height = String(response.height)
+        self.height = response.height.map { String($0) }
         self.dob = response.dob
 
         // Only populate productTypes from server when the local value is unset.
@@ -244,7 +244,7 @@ extension Account {
         }
 
         if let weightSettings = self.weightSettings {
-            weightSettings.height = String(response.height)
+            weightSettings.height = response.height.map { String($0) }
             weightSettings.activityLevel = response.activityLevel
             weightSettings.weightUnit = response.weightUnit
         }

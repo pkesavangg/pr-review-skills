@@ -62,6 +62,7 @@ struct SignupStrings {
         static let title = "Add a Baby"
         static let subtitle = "Let's add a baby. If you don't know their info, take your best guess. You can always update it later."
         static let birthdayLabel = "baby's Birthday"
+        static let duplicateName = "A baby with this name has already been added."
     }
 
     struct BabyListStep {

@@ -13,9 +13,6 @@ final class HTTPClient: HTTPClientProtocol {
     @Injector var accountService: AccountServiceProtocol
     @Injector var notificationHelperService: NotificationHelperServiceProtocol
     @Injector var logger: LoggerServiceProtocol
-    // TEMPORARY (MOB-382/383/384/385/386/405/407): dedicated console-only logger for Phase 2 API testing.
-    // Bypasses LoggerService's `.info` console gate; AppLogger writes to os.Logger only (never persisted/uploaded).
-    private let apiLogger = AppLogger(tag: "API")
     @Atomic public var skipCheckNetwork: Bool = false
     private let tokenManager: TokenManaging
     private let requestExecutor: (URLRequest) async throws -> (Data, URLResponse)
@@ -29,21 +26,13 @@ final class HTTPClient: HTTPClientProtocol {
     ) {
         self.tokenManager = tokenManager ?? TokenManager.shared
         self.requestExecutor = requestExecutor ?? { request in
-            #if DEBUG || LOCAL_DEV_TLS
-            // TEMPORARY (Phase 2 local testing): route through a session that trusts the
-            // local dev server's self-signed cert. Compiled in for DEBUG builds and any
-            // config that defines LOCAL_DEV_TLS (currently Production, for testing against
-            // the self-signed test server). MUST be removed before any real release.
-            return try await LocalDevTrust.session.data(for: request)
-            #else
-            return try await URLSession.shared.data(for: request)
-            #endif
+            try await URLSession.shared.data(for: request)
         }
         self.connectivityProvider = connectivityProvider ?? {
             NetworkMonitor.shared.getCurrentConnectionStatus()
         }
     }
-    
+
     // MARK: - GET Request
     func get<T: Decodable>(
         _ endpoint: Endpoint,
@@ -52,7 +41,7 @@ final class HTTPClient: HTTPClientProtocol {
         accountId: String? = nil
     ) async throws -> T {
         try checkConnectivity()
-        
+
         let request = try await makeRequest(
             for: endpoint,
             method: .get,
@@ -62,7 +51,7 @@ final class HTTPClient: HTTPClientProtocol {
         )
         return try await send(request: request, needsAuth: needsAuth, accountId: accountId)
     }
-    
+
     // MARK: - POST/PUT/PATCH/DELETE with Body
     func send<T: Encodable, R: Decodable>(
         _ endpoint: Endpoint,
@@ -73,7 +62,7 @@ final class HTTPClient: HTTPClientProtocol {
         accountId: String? = nil
     ) async throws -> R {
         try checkConnectivity()
-        
+
         var request = try await makeRequest(
             for: endpoint,
             method: method,
@@ -85,7 +74,7 @@ final class HTTPClient: HTTPClientProtocol {
         request.httpBody = try JSONEncoder().encode(body)
         return try await send(request: request, needsAuth: needsAuth, accountId: accountId)
     }
-    
+
     // MARK: - Core Send Logic
     private func send<T: Decodable>(
         request: URLRequest,
@@ -96,7 +85,7 @@ final class HTTPClient: HTTPClientProtocol {
         // Skip token check for logout and refresh token endpoints
         let skipTokenCheck = request.url?.path.contains("/refresh-token") == true ||
         request.url?.path.contains("/logout") == true || request.url?.path.contains("/login") == true
-        
+
         // Only check token expiration if needed and not skipped
         if needsAuth && !skipTokenCheck {
             let account = try await getAccount(accountId)
@@ -135,13 +124,10 @@ final class HTTPClient: HTTPClientProtocol {
             throw error
         }
     }
-    
+
     // MARK: - Request Execution
     /// Performs the actual network request and handles response decoding.
     private func performRequest<T: Decodable>(_ request: URLRequest) async throws -> T { // swiftlint:disable:this cyclomatic_complexity
-        #if DEBUG
-        debugPrintRequest(request)
-        #endif
         let (data, response): (Data, URLResponse)
         do {
             (data, response) = try await requestExecutor(request)
@@ -156,25 +142,21 @@ final class HTTPClient: HTTPClientProtocol {
         } catch {
             throw error
         }
-        
+
         guard let httpResponse = response as? HTTPURLResponse else {
             throw HTTPError.invalidResponse
         }
-
-        #if DEBUG
-        debugPrintResponse(request, statusCode: httpResponse.statusCode, data: data)
-        #endif
 
         // Map raw status code to enum
         guard let status = HTTPStatusCode(rawValue: httpResponse.statusCode) else {
             throw HTTPError.statusCode(httpResponse.statusCode)
         }
-        
+
         // Check for success status
         guard status.isSuccess else {
             throw parseErrorResponse(data: data, status: status, statusCode: httpResponse.statusCode)
         }
-        
+
         // Handle 204 No Content
         if status == .noContent || data.isEmpty {
             if let emptyResponse = EmptyResponse() as? T {
@@ -183,12 +165,12 @@ final class HTTPClient: HTTPClientProtocol {
                 throw HTTPError.decodingError
             }
         }
-        
+
         // Handle plain text response for String.self
         if T.self == String.self, let string = String(data: data, encoding: .utf8) as? T {
             return string
         }
-        
+
         // Attempt to decode response
         do {
             logRawResponse(data: data)
@@ -213,41 +195,6 @@ final class HTTPClient: HTTPClientProtocol {
         return HTTPError.statusCode(status.rawValue)
     }
 
-    // MARK: - Phase 2 API testing instrumentation (MOB-382/383/384/385/386/405/407)
-    // TEMPORARY: console prints to verify Phase 2 unified API requests/responses in Xcode.
-    // Remove before merging out of the testing branch.
-    // Searchable token prefixed to every API request/response log line so they can be
-    // filtered out of the combined log stream (search `API_TRACE` to see all traffic,
-    // `API_REQUEST` for outgoing, `API_RESPONSE` for incoming).
-    private static let apiTraceToken = "API_TRACE"
-
-    private func debugPrintRequest(_ request: URLRequest) {
-        let method = request.httpMethod ?? "?"
-        let url = request.url?.absoluteString ?? "?"
-        var bodyString = ""
-        if let body = request.httpBody, !body.isEmpty,
-           let string = String(data: body, encoding: .utf8) {
-            bodyString = "\n   request body: \(string)"
-        }
-        apiLogger.log(
-            level: .info,
-            tag: "API",
-            message: "\(Self.apiTraceToken) API_REQUEST ➡️ \(method) \(url)\(bodyString)"
-        )
-    }
-
-    private func debugPrintResponse(_ request: URLRequest, statusCode: Int, data: Data) {
-        let method = request.httpMethod ?? "?"
-        let url = request.url?.absoluteString ?? "?"
-        let icon = (200..<300).contains(statusCode) ? "✅" : "❌"
-        let bodyString = String(data: data, encoding: .utf8).flatMap { $0.isEmpty ? nil : $0 } ?? "<empty>"
-        apiLogger.log(
-            level: .info,
-            tag: "API",
-            message: "\(Self.apiTraceToken) API_RESPONSE \(icon) \(statusCode) \(method) \(url)\n   response: \(bodyString)"
-        )
-    }
-
     private func logRawResponse(data: Data) {
         #if DEBUG
         if let rawString = String(data: data, encoding: .utf8) {
@@ -257,7 +204,7 @@ final class HTTPClient: HTTPClientProtocol {
         }
         #endif
     }
-    
+
     // MARK: - Account Handling
     /// Retrieves the active account or a specific account by ID.
     private func getAccount(_ accountId: String?) async throws -> AccountSnapshot {
@@ -273,7 +220,7 @@ final class HTTPClient: HTTPClientProtocol {
             return account
         }
     }
-    
+
     // MARK: - Request Constructor
     private func makeRequest(
         for endpoint: Endpoint,
@@ -285,9 +232,9 @@ final class HTTPClient: HTTPClientProtocol {
         guard var request = endpoint.urlRequest else {
             throw HTTPError.badRequest
         }
-        
+
         request.httpMethod = method.rawValue
-        
+
         var allHeaders = headers ?? [:]
         if needsAuth {
             // Always fetch fresh authenticated data; cached responses can become stale when device time is changed.
@@ -303,12 +250,12 @@ final class HTTPClient: HTTPClientProtocol {
                 }
             }
         }
-        
+
         allHeaders.forEach { request.setValue($1, forHTTPHeaderField: $0) }
-        
+
         return request
     }
-    
+
     // MARK: - Connectivity Check
     private func checkConnectivity() throws {
         let isConnected = connectivityProvider()
@@ -319,7 +266,7 @@ final class HTTPClient: HTTPClientProtocol {
             throw HTTPError.noInternet
         }
     }
-    
+
     private func showToastIfNeeded(_ message: String) {
         let now = Date()
         if let lastToastShownTime, now.timeIntervalSince(lastToastShownTime) < 2.0 {
@@ -328,52 +275,8 @@ final class HTTPClient: HTTPClientProtocol {
         lastToastShownTime = now
         notificationHelperService.showToast(ToastModel(message: message))
     }
-    
-}
 
-#if DEBUG || LOCAL_DEV_TLS
-// MARK: - Local Dev Self-Signed Cert Trust (TEMPORARY — Phase 2 local testing)
-//
-// Lets the app talk to a dev/test server whose TLS cert is self-signed.
-// URLSession.shared cannot carry a delegate, so we use a dedicated session whose
-// delegate accepts the server trust — but ONLY for the LAN ranges / explicit dev hosts
-// listed below. Compiled in for DEBUG builds and any config defining LOCAL_DEV_TLS
-// (currently Production, for testing against the self-signed test server).
-// ⚠️ MUST be removed before any real release — it disables cert validation for those hosts.
-private final class LocalDevTrustDelegate: NSObject, URLSessionDelegate {
-    func urlSession(
-        _ session: URLSession,
-        didReceive challenge: URLAuthenticationChallenge,
-        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
-    ) {
-        let host = challenge.protectionSpace.host
-        // Explicit dev hosts (public IPs that won't match the LAN ranges below).
-        let trustedDevHosts: Set<String> = ["49.207.187.28"]
-        let isLocalHost = trustedDevHosts.contains(host)
-            || host.hasPrefix("192.168.")
-            || host.hasPrefix("10.")
-            || host.hasPrefix("127.")
-            || host.hasPrefix("172.")
-            || host.hasSuffix(".local")
-
-        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
-              isLocalHost,
-              let serverTrust = challenge.protectionSpace.serverTrust else {
-            completionHandler(.performDefaultHandling, nil)
-            return
-        }
-        completionHandler(.useCredential, URLCredential(trust: serverTrust))
-    }
 }
-
-private enum LocalDevTrust {
-    nonisolated(unsafe) static let session: URLSession = URLSession(
-        configuration: .default,
-        delegate: LocalDevTrustDelegate(),
-        delegateQueue: nil
-    )
-}
-#endif
 
 // MARK: - USAGE GUIDE
 //

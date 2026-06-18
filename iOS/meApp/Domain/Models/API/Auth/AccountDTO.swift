@@ -5,13 +5,13 @@ struct AccountDTO: Codable {
     let email: String
     let firstName: String
     let lastName: String?
-    let gender: Sex
+    let gender: Sex?
     let zipcode: String?
     let weightUnit: WeightUnit
     let isWeightlessOn: Bool?
-    let height: Double
+    let height: Double?
     let activityLevel: ActivityLevel?
-    let dob: String
+    let dob: String?
     let weightlessTimestamp: String?
     let weightlessWeight: Double?
     let isStreakOn: Bool?
