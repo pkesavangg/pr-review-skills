@@ -55,9 +55,26 @@ class ProductSelectionManager @Inject constructor(
     val hasBabyScale = productSelectionRepository.hasBabyScaleDevice(accountId)
     _hasBabyScaleDevice.value = hasBabyScale
 
-    val products = mutableListOf<ProductSelection>(ProductSelection.MyWeight)
+    // The account's productTypes (MOB-377) is the source of truth for which products the
+    // account owns. A fresh baby-scale (or BP) signup has the product on the account before
+    // any baby profile or paired device exists locally, so derive availability from it too —
+    // otherwise the dashboard wrongly falls back to weight-only. (MOB-592)
+    val productTypes = runCatching { accountService.get().getCurrentAccount()?.productTypes }
+      .getOrNull().orEmpty()
+    // productTypes is the account's owned-product list (MOB-377). Surface a product only
+    // when the account owns it — a baby-only (or BP-only) account must NOT show My Weight.
+    // Legacy/pre-Phase-2 accounts report an empty list, so default them to weight. (MOB-592)
+    val accountHasWeight = productTypes.isEmpty() || ProductType.MY_WEIGHT.apiValue in productTypes
+    val accountHasBp = ProductType.BLOOD_PRESSURE.apiValue in productTypes
+    val accountHasBaby = ProductType.BABY.apiValue in productTypes
 
-    if (hasBpm) {
+    val products = mutableListOf<ProductSelection>()
+
+    if (accountHasWeight) {
+      products.add(ProductSelection.MyWeight)
+    }
+
+    if (hasBpm || accountHasBp) {
       products.add(ProductSelection.BloodPressure)
     }
 
@@ -65,10 +82,16 @@ class ProductSelectionManager @Inject constructor(
       babyProfiles.forEach { profile ->
         products.add(ProductSelection.Baby(profile))
       }
-    } else if (hasBabyScale) {
-      // Owns a baby scale but has no profiles (e.g. deleted last baby): keep
-      // "Baby Scale" in the dropdown so taps route to the add-baby flow. (MOB-416)
+    } else if (hasBabyScale || accountHasBaby) {
+      // Owns the baby product but has no profiles yet (fresh baby-scale signup, or
+      // deleted last baby): keep "Baby Scale" so the dashboard shows the add-a-baby
+      // empty state and taps route to the add-baby flow. (MOB-416 / MOB-592)
       products.add(ProductSelection.BabyScale)
+    }
+
+    // Never leave the dashboard with no product (e.g. unexpected/empty productTypes).
+    if (products.isEmpty()) {
+      products.add(ProductSelection.MyWeight)
     }
 
     _availableProducts.value = products
@@ -101,7 +124,7 @@ class ProductSelectionManager @Inject constructor(
         .firstOrNull { it.profile.id == savedBabyId }
         ?: available.firstOrNull { it is ProductSelection.Baby }
         ?: available.firstOrNull { it is ProductSelection.BabyScale }
-    } ?: ProductSelection.MyWeight
+    } ?: available.firstOrNull() ?: ProductSelection.MyWeight
   }
 
   override suspend fun selectProduct(selection: ProductSelection) {

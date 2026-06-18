@@ -190,22 +190,23 @@ class AccountService(
       AppLog.d(TAG, "signup() successful")
       savedAccount
     } catch (e: Exception) {
-      if (e is HttpException) {
-        val signupError = SignupStrings.Error
-        val errorMessage =
-          when (e.code()) {
-            HttpErrorConfig.ResponseCode.UNAUTHORIZED -> signupError.MessageNotAuth
-            HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> signupError.MessageNoConn
-            HttpErrorConfig.ResponseCode.BAD_REQUEST -> signupError.accountExist
-            else -> signupError.MessageGeneric
-          }
-        val errorHeader =
-          when (e.code()) {
-            HttpErrorConfig.ResponseCode.BAD_REQUEST -> signupError.accountExistHeader
-            else -> null
-          }
-        showErrorToast(errorHeader, message = errorMessage)
-      }
+      // Surface the most specific message we can. The server returns 400 when the
+      // email is already registered, so map that to the "email already in use" copy
+      // rather than a generic failure. Non-HTTP failures fall back to the generic
+      // message — a toast is always shown here so callers don't add their own, which
+      // would mask this one. (MOB-592)
+      val signupError = SignupStrings.Error
+      val httpCode = (e as? HttpException)?.code()
+      val errorMessage =
+        when (httpCode) {
+          HttpErrorConfig.ResponseCode.UNAUTHORIZED -> signupError.MessageNotAuth
+          HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> signupError.MessageNoConn
+          HttpErrorConfig.ResponseCode.BAD_REQUEST -> signupError.accountExist
+          else -> signupError.MessageGeneric
+        }
+      val errorHeader =
+        if (httpCode == HttpErrorConfig.ResponseCode.BAD_REQUEST) signupError.accountExistHeader else null
+      showErrorToast(errorHeader, message = errorMessage)
       AppLog.e(TAG, "Account creation failed", e)
       appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Account creation failed"))
       null
