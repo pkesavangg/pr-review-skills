@@ -56,6 +56,7 @@ struct WeightTrendView: View {
             }
             .animation(.easeInOut(duration: 0.3), value: dashboardStore.state.graph.isGraphReady)
         }
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - Skeleton

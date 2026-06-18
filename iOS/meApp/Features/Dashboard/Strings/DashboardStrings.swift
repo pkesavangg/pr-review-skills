@@ -146,4 +146,18 @@ struct DashboardStrings {
     static func babyReadingArrivalTitleForSingleBaby(_ name: String) -> String {
         "New Reading Received for \(name)"
     }
+
+    // MARK: - Accessibility (VoiceOver) — spoken text only, not shown on screen
+    static let accSnapshotLogoLabel = "Weight Gurus"
+    static let accWeightChartLabel = "Weight trend chart"
+    static let accBpmChartLabel = "Blood pressure trend chart"
+    static let accBabyChartLabel = "Baby growth trend chart"
+    static let accChartXAxisName = "Date"
+    static let accChartWeightYAxisName = "Weight"
+    static let accChartBpmYAxisName = "Blood pressure"
+    static let accChartBabyYAxisName = "Measurement"
+    static let accRemoveMetricHint = "Double tap to remove from dashboard"
+    static let accAddMetricHint = "Double tap to add back to dashboard"
+    static let accMetricRemovedValue = "Hidden"
+    static let accMetricVisibleValue = "Visible"
 }
