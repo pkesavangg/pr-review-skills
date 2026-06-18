@@ -27,6 +27,8 @@ import io.mockk.slot
 import io.mockk.clearMocks
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -63,6 +65,7 @@ class EntryViewModelTest {
 
     private lateinit var navigationService: IAppNavigationService
     private lateinit var dialogQueueService: IDialogQueueService
+    private lateinit var productSelectionManager: IProductSelectionManager
     private lateinit var viewModel: EntryViewModel
 
     @BeforeEach
@@ -70,6 +73,7 @@ class EntryViewModelTest {
         MockKAnnotations.init(this)
         navigationService = mockk(relaxed = true)
         dialogQueueService = mockk(relaxed = true)
+        productSelectionManager = mockk(relaxed = true)
         stubDefaultFlows()
         viewModel = createViewModel()
     }
@@ -79,6 +83,8 @@ class EntryViewModelTest {
         every { accountService.activeAccountFlow } returns flowOf(TestFixtures.activeAccount)
         every { appSyncService.appSyncDataForEditing } returns MutableStateFlow(null)
         every { deviceService.hasBluetoothWifiScale } returns flowOf(false)
+        // Default to the weight product so UpdateOnRelaunch builds the weight form. (MOB-592)
+        every { productSelectionManager.selectedProduct } returns MutableStateFlow(ProductSelection.MyWeight)
     }
 
     private fun createViewModel(): EntryViewModel =
@@ -91,6 +97,7 @@ class EntryViewModelTest {
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
+            productSelectionManager = productSelectionManager,
         )
 
     // -------------------------------------------------------------------------
