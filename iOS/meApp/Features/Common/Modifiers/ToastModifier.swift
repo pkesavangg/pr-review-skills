@@ -91,6 +91,10 @@ struct ToastModifier: ViewModifier {
     private func toastView(for data: ToastModel) -> some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: .spacingXS) {
+                if let headerView = data.headerView {
+                    headerView
+                }
+
                 if let title = data.title {
                     Text(title)
                         .fontOpenSans(.heading5)
@@ -124,7 +128,7 @@ struct ToastModifier: ViewModifier {
         .padding(.spacingSM)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(width: min(UIScreen.main.bounds.width * 0.9, 550))
-        .background(theme.supportToastBackground)
+        .background(data.isError ? theme.textError.opacity(0.12) : theme.supportToastBackground)
         .cornerRadius(.radiusSM)
         .padding()
         .offset(x: offset.width, y: offset.height)

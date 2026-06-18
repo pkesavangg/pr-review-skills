@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.app.viewmodel
 
+import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
@@ -7,6 +8,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BabyScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0220
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0663
+import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
@@ -44,11 +46,13 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
@@ -85,12 +89,26 @@ class AppViewModelTest {
     private val authEventFlow = MutableSharedFlow<AuthState>()
     private lateinit var viewModel: AppViewModel
 
+    private val createdViewModels = mutableListOf<AppViewModel>()
+
     @BeforeEach
     fun setUp() {
         MockKAnnotations.init(this)
         navigationService = mockk(relaxed = true)
         dialogQueueService = mockk(relaxed = true)
         stubDefaultFlows()
+    }
+
+    @AfterEach
+    fun tearDown() {
+        // AppViewModel collects the AppNotificationEventService singleton's tapEvents in
+        // viewModelScope (which isn't a child of runTest), so without cancellation the collector
+        // leaks across test classes and steals later emissions — breaking
+        // AppNotificationEventServiceTest's retained-tap assertions. Cancel every VM we created
+        // and clear the singleton's retained tap.
+        createdViewModels.forEach { it.viewModelScope.cancel() }
+        createdViewModels.clear()
+        AppNotificationEventService.consumeTap()
     }
 
     private fun stubDefaultFlows() {
@@ -133,7 +151,7 @@ class AppViewModelTest {
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
-        )
+        ).also { createdViewModels += it }
 
     // -------------------------------------------------------------------------
     // Default State

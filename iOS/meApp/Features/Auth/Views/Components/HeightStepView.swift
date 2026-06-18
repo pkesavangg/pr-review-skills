@@ -19,23 +19,22 @@ struct HeightStepView: View {
     
     var body: some View {
         SignupStepWrapper(title: heightStepLang.title, subtitle: heightStepLang.subtitle) {
-            
-            VStack(alignment: .leading, spacing: .spacingLG) {
-                // Height Selection Chip
-                ChipView(
-                    text: signupStore.getFormattedHeight(),
-                    style: .bordered,
-                    isSelected: signupStore.showHeightInchesPicker || signupStore.showHeightCmPicker
+            VStack(spacing: .spacingMD) {
+                UnitValuePickerField(
+                    label: heightStepLang.fieldLabel,
+                    value: signupStore.getFormattedHeight(),
+                    isActive: signupStore.showHeightInchesPicker || signupStore.showHeightCmPicker
                 ) {
-                        signupStore.showHeightPicker()
-                    }
+                    signupStore.showHeightPicker()
+                }
                 .padding(.top, .spacingLG)
-                
-                CustomToggleView(isOn: $signupStore.signupForm.useMetric.value,
-                                 text: labels.useMetric)
-                
+
+                UnitSelectionToggle(
+                    imperialTitle: heightStepLang.imperialUnit,
+                    metricTitle: heightStepLang.metricUnit,
+                    isMetric: $signupStore.signupForm.useMetric.value
+                )
             }
-            .padding(.leading, 2)
         }
         .pickerSheet(
             isPresented: $signupStore.showHeightInchesPicker,

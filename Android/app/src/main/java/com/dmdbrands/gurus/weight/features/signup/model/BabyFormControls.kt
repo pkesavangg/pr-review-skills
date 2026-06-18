@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.signup.model
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
+import com.dmdbrands.gurus.weight.features.signup.strings.BabySignupStrings
 
 enum class BabyWeightUnit {
     LBS,
@@ -20,10 +21,17 @@ data class BabyFormControls(
     val weightUnit: FormControl<BabyWeightUnit>,
 ) {
     companion object {
-        fun create(): BabyFormControls = BabyFormControls(
+        /**
+         * @param existingNames names of babies already added during this signup session
+         *   (excluding the one being edited). Used to flag duplicate baby names inline.
+         */
+        fun create(existingNames: List<String> = emptyList()): BabyFormControls = BabyFormControls(
             name = FormControl.create(
                 initialValue = "",
-                validators = listOf(FormValidations.required()),
+                validators = listOf(
+                    FormValidations.required(),
+                    FormValidations.uniqueValue(existingNames, BabySignupStrings.nameDuplicateError),
+                ),
             ),
             birthday = FormControl.create(
                 initialValue = DateTimeValue.Date(System.currentTimeMillis()),

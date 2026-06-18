@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
@@ -107,6 +108,17 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
    * auto-switch the header to the newly added device (MOB-422).
    */
   protected open fun productSelectionAfterSetup(): ProductSelection? = null
+
+  /**
+   * The product to register on the account's productTypes when this device's setup completes
+   * (spec §2.19 PATCH /v3/account/products), independent of whether the active product is
+   * switched. Defaults to the active-switch product, so flows that switch also register. Flows
+   * that leave the active product unchanged (e.g. baby-scale setup, which returns null from
+   * [productSelectionAfterSetup]) override this so the paired device still updates productTypes —
+   * which drives "My Kids" enablement. addProduct() de-dupes, so registering here is safe even
+   * for flows that also persist via switchActiveProductAfterSetup. (MOB-686)
+   */
+  protected open fun productToRegisterAfterSetup(): ProductType? = productSelectionAfterSetup()?.productType
 
   private var deviceObservationJob: Job? = null
   protected val bluetoothTimeout: Long = 5 * 60 * 1000L
@@ -506,6 +518,9 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
           AppLog.d(TAG, "Setup finished, calling onSetupFinished")
           onSetupFinished()
           productSelectionManager.switchActiveProductAfterSetup(productSelectionAfterSetup())
+          // Register the paired device's product so productTypes reflects every paired device,
+          // even when the flow leaves the active product unchanged (e.g. baby scale). (MOB-686)
+          productToRegisterAfterSetup()?.let { productSelectionManager.persistProductForSetup(it) }
         }
         loadPluginData()
         navigateBack()

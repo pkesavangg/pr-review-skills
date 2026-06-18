@@ -186,4 +186,12 @@ final class MockTokenManagerAccountService: AccountServiceProtocol {
     func updateProductTypes(_ productTypes: [String]) async throws {
         throw UnexpectedCallError.methodCalled("updateProductTypes")
     }
+
+    func updateMeasurementUnits(_ measurementUnits: MeasurementUnits) async throws {
+        throw UnexpectedCallError.methodCalled("updateMeasurementUnits")
+    }
+
+    func checkEmailAvailability(email: String) async throws -> Bool {
+        throw UnexpectedCallError.methodCalled("checkEmailAvailability")
+    }
 }

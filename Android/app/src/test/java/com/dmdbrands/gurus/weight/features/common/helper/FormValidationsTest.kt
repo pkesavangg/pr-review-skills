@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationError
+import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationMessages
 import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationType
 import com.dmdbrands.gurus.weight.features.signup.model.SignupFormControls
 import com.google.common.truth.Truth.assertThat
@@ -763,6 +764,75 @@ class FormValidationsTest {
         val result = validator("\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000")
 
         // Kotlin trim() does not strip null bytes — 8 null bytes still have length 8
+        assertThat(result).isNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // uniqueValue
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `uniqueValue returns null when value not in list`() {
+        val validator = FormValidations.uniqueValue(listOf("Sally", "Tammy"))
+
+        val result = validator("Katey")
+
+        assertThat(result).isNull()
+    }
+
+    @Test
+    fun `uniqueValue returns DUPLICATE error for exact match`() {
+        val validator = FormValidations.uniqueValue(listOf("Sally", "Tammy"))
+
+        val result = validator("Sally")
+
+        assertThat(result).isNotNull()
+        assertThat(result?.type).isEqualTo(ValidationType.DUPLICATE)
+    }
+
+    @Test
+    fun `uniqueValue matches case-insensitively`() {
+        val validator = FormValidations.uniqueValue(listOf("Sally"))
+
+        val result = validator("sally")
+
+        assertThat(result).isNotNull()
+        assertThat(result?.type).isEqualTo(ValidationType.DUPLICATE)
+    }
+
+    @Test
+    fun `uniqueValue trims before comparing`() {
+        val validator = FormValidations.uniqueValue(listOf("Sally"))
+
+        val result = validator("  Sally  ")
+
+        assertThat(result).isNotNull()
+    }
+
+    @Test
+    fun `uniqueValue uses custom message when provided`() {
+        val validator = FormValidations.uniqueValue(listOf("Sally"), "Baby name already exists")
+
+        val result = validator("Sally")
+
+        assertThat(result?.message).isEqualTo("Baby name already exists")
+    }
+
+    @Test
+    fun `uniqueValue falls back to default message when none provided`() {
+        val validator = FormValidations.uniqueValue(listOf("Sally"))
+
+        val result = validator("Sally")
+
+        assertThat(result?.message).isEqualTo(ValidationMessages.DUPLICATE)
+    }
+
+    @Test
+    fun `uniqueValue returns null for empty existing list`() {
+        val validator = FormValidations.uniqueValue(emptyList())
+
+        val result = validator("Sally")
+
         assertThat(result).isNull()
     }
 }

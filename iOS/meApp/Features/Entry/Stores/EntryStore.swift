@@ -49,6 +49,8 @@ final class EntryStore: ObservableObject {
 
     let tag = "EntryStore"
 
+    var isBabyFormValid: Bool { babyForm.isValid }
+
     var maxSelectableTime: Date {
         if Calendar.current.isDateInToday(manualEntryForm.date.value) {
             let now = Date()
@@ -198,8 +200,6 @@ final class EntryStore: ObservableObject {
             // Let event streams (entrySaved) trigger downstream reloads
             resetForm()
             logger.log(level: .success, tag: self.tag, message: "Manual entry save succeeded. accountId=\(accountId), timestamp=\(entryTimestamp)")
-            notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
-            return true
         } catch {
             logger.log(
                 level: .error,
@@ -460,7 +460,6 @@ final class EntryStore: ObservableObject {
             try await entryService.createBpmEntry(dto)
             resetBPForm()
             logger.log(level: .success, tag: tag, message: "BPM entry save succeeded. timestamp=\(entryTimestamp)")
-            notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to save BPM entry. error=\(error.localizedDescription)")
             notificationService.showToast(ToastModel(title: toastLang.errorSavingEntry, message: toastLang.pleaseTryAgain))
@@ -477,7 +476,7 @@ final class EntryStore: ObservableObject {
             isSaving = false
         }
 
-        guard babyForm.isValid else { return }
+        guard isBabyFormValid else { return }
 
         guard case .baby(let profile) = productTypeStore.selectedItem,
               !profile.isPendingSelection else { return }
@@ -530,7 +529,6 @@ final class EntryStore: ObservableObject {
             )
             resetBabyForm()
             logger.log(level: .success, tag: tag, message: "Baby entry save succeeded. babyId=\(profile.id), timestamp=\(entryTimestamp)")
-            notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to save baby entry. error=\(error.localizedDescription)")
             notificationService.showToast(ToastModel(title: toastLang.errorSavingEntry, message: toastLang.pleaseTryAgain))
@@ -569,18 +567,6 @@ final class EntryStore: ObservableObject {
         case .cm: return babyForm.lengthErrorCm
         case .inches: return babyForm.lengthError
         }
-    }
-
-    /// Called when user toggles the baby weight unit segmented control.
-    func updateBabyWeightUnit(_ unit: BabyWeightUnit) {
-        guard unit != babyWeightUnit else { return }
-        babyWeightUnit = unit
-    }
-
-    /// Called when user toggles the baby length unit segmented control.
-    func updateBabyLengthUnit(_ unit: BabyLengthUnit) {
-        guard unit != babyLengthUnit else { return }
-        babyLengthUnit = unit
     }
 
     @MainActor func resetBabyForm() {

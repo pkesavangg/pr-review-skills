@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.core.helpers.stubNetworkAvailable
 import com.dmdbrands.gurus.weight.core.helpers.stubNetworkUnavailable
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.auth.ChangePasswordResponse
@@ -2135,5 +2136,41 @@ class AccountServiceTest {
         service.logoutAll()
 
         verify(atLeast = 1) { dialogQueueService.showToast(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // addProduct (spec §2.19 — PATCH /account/products)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `addProduct submits union of current productTypes and the new product`() = runTest {
+        // fakeAccount defaults to productTypes = ["weight"].
+        coEvery { accountRepository.updateProducts(any()) } just Runs
+
+        service.addProduct(ProductType.BLOOD_PRESSURE)
+
+        coVerify(exactly = 1) {
+            accountRepository.updateProducts(listOf("weight", "blood_pressure"))
+        }
+    }
+
+    @Test
+    fun `addProduct is a no-op when the product is already present`() = runTest {
+        // fakeAccount already owns "weight".
+        coEvery { accountRepository.updateProducts(any()) } just Runs
+
+        service.addProduct(ProductType.MY_WEIGHT)
+
+        coVerify(exactly = 0) { accountRepository.updateProducts(any()) }
+    }
+
+    @Test
+    fun `addProduct throws and does not submit when offline`() = runTest {
+        stubNetworkUnavailable()
+        coEvery { accountRepository.updateProducts(any()) } just Runs
+
+        runCatching { service.addProduct(ProductType.BLOOD_PRESSURE) }
+
+        coVerify(exactly = 0) { accountRepository.updateProducts(any()) }
     }
 }

@@ -5,8 +5,12 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.isVali
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.api.EntryApi
 import com.dmdbrands.gurus.weight.data.api.OperationsResponse
+import com.dmdbrands.gurus.weight.domain.model.api.entry.EntriesCursorResponse
+import com.dmdbrands.gurus.weight.domain.model.api.entry.EntriesSyncResponse
 import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryDao
 import com.dmdbrands.gurus.weight.domain.model.api.entry.ScaleApiEntry
+import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryRequest
+import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryResponse
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
@@ -175,6 +179,18 @@ class EntryRepository @Inject constructor(
     }
   }
 
+  override suspend fun sendBatchToAPI(entries: List<UnifiedEntryRequest>): UnifiedEntryResponse {
+    try {
+      AppLog.d("EntryRepository", "Sending batch of ${entries.size} entries to /v3/entries/")
+      val response = entryApi.postEntries(entries)
+      AppLog.i("EntryRepository", "Batch sent successfully: ${response.entries.size} entries persisted")
+      return response
+    } catch (e: Exception) {
+      AppLog.e("EntryRepository", "Failed to send batch to API (size=${entries.size})", e)
+      throw e
+    }
+  }
+
   /**
    * Gets operations from the API since the last update, or all if lastUpdated is null.
    * @param lastUpdated The last updated timestamp, or null.
@@ -205,4 +221,55 @@ class EntryRepository @Inject constructor(
   override suspend fun getOperationCount(accountId: String): Int =
     entryDao.getOperationCount(accountId)
 
+  // ── Unified /v3/entries/ read (MOB-380) ───────────────────────────────────
+
+  override suspend fun getEntriesSync(
+    start: String,
+    category: String?,
+  ): EntriesSyncResponse {
+    AppLog.d("EntryRepository", "getEntriesSync start=$start category=$category")
+    return try {
+      val response = entryApi.getEntriesSync(start, category)
+      AppLog.i("EntryRepository", "getEntriesSync returned ${response.entries.size} entries")
+      response
+    } catch (e: Exception) {
+      AppLog.e("EntryRepository", "getEntriesSync failed", e)
+      throw e
+    }
+  }
+
+  override suspend fun getEntriesPage(
+    cursor: String?,
+    limit: Int,
+    category: String?,
+  ): EntriesCursorResponse {
+    AppLog.d("EntryRepository", "getEntriesPage cursor=$cursor limit=$limit category=$category")
+    return try {
+      val response = entryApi.getEntriesPage(cursor, limit, category)
+      AppLog.i("EntryRepository", "getEntriesPage returned ${response.entries.size} entries hasMore=${response.hasMore}")
+      response
+    } catch (e: Exception) {
+      AppLog.e("EntryRepository", "getEntriesPage failed", e)
+      throw e
+    }
+  }
+
+  override suspend fun exportEntriesCsv(
+    category: String?,
+    download: Boolean,
+    utcOffset: Int,
+  ): okhttp3.ResponseBody? {
+    AppLog.d("EntryRepository", "exportEntriesCsv category=$category download=$download")
+    return try {
+      val response = entryApi.exportEntriesCsv(
+        category = category,
+        download = if (download) "true" else null,
+        utcOffset = utcOffset,
+      )
+      if (response.isSuccessful) response.body() else null
+    } catch (e: Exception) {
+      AppLog.e("EntryRepository", "exportEntriesCsv failed", e)
+      throw e
+    }
+  }
 }

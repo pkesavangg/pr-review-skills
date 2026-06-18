@@ -18,7 +18,7 @@ struct GoalStepView: View {
     
     let goalStepLang = SignupStrings.GoalStep.self
     let labels = InputFieldLabels.self
-    
+
     var body: some View {
         SignupStepWrapper(title: goalStepLang.title, subtitle: goalStepLang.subtitle) {
             VStack {
@@ -98,6 +98,13 @@ struct GoalStepView: View {
                     }
                 }
                 .padding(.top, .spacingMD)
+
+                UnitSelectionToggle(
+                    imperialTitle: goalStepLang.imperialUnit,
+                    metricTitle: goalStepLang.metricUnit,
+                    isMetric: $signupStore.signupForm.useMetric.value
+                )
+                .padding(.top, .spacingXS)
             }
             .padding(.top, .spacingLG)
             .onChange(of: signupStore.signupForm.goalType.value) { _, _ in

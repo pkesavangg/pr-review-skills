@@ -15,7 +15,7 @@ struct PickDeviceStepView: View {
             VStack(alignment: .leading, spacing: .spacingLG) {
                 Text(lang.title)
                     .fontOpenSans(.heading4)
-                    .foregroundColor(theme.textHeading)
+                    .foregroundStyle(theme.textHeading)
 
                 ForEach(SignupDeviceType.allCases) { deviceType in
                     let isDisabled = signupStore.disabledDeviceTypes.contains(deviceType)
@@ -55,16 +55,16 @@ private struct DeviceCard: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(deviceType.title)
                         .fontOpenSans(.heading5)
-                        .foregroundColor(isDisabled ? theme.textSubheading : theme.textHeading)
+                        .foregroundStyle(isDisabled ? theme.textSubheading : theme.textHeading)
                     Text(isDisabled ? SignupStrings.PickDeviceStep.alreadyAdded : deviceType.subtitle.lowercased())
                         .fontOpenSans(.body3)
-                        .foregroundColor(theme.textSubheading)
+                        .foregroundStyle(theme.textSubheading)
                 }
 
                 Spacer()
 
                 Image(systemName: isSelected ? "circle.inset.filled" : "circle")
-                    .foregroundColor(isDisabled ? theme.textSubheading.opacity(0.4) : (isSelected ? theme.actionPrimary : theme.textSubheading))
+                    .foregroundStyle(isDisabled ? theme.textSubheading.opacity(0.4) : (isSelected ? theme.actionPrimary : theme.textSubheading))
                     .font(.system(size: 22))
             }
             .padding(.spacingSM)

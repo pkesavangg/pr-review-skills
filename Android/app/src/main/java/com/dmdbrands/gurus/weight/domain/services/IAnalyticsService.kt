@@ -13,6 +13,7 @@ interface IAnalyticsService {
         const val LOGIN_SUCCESS = "login_success"
         const val LOGIN_FAILURE = "login_failure"
         const val SIGNUP_COMPLETED = "signup_completed"
+        const val BABY_PROFILE_CREATED = "baby_profile_created"
     }
 
     object Params {

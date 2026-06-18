@@ -14,6 +14,8 @@ import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
  */
 suspend fun IProductSelectionManager.switchActiveProductAfterSetup(selection: ProductSelection?) {
   selection ?: return
+  // Add the connected product to the account's productTypes on the server (spec §2.19).
+  persistProductForSetup(selection.productType)
   selectProduct(selection)
   setSnapshotMode(false)
 }

@@ -26,7 +26,7 @@ final class SignupStore: ObservableObject {
     var alertLang = AlertStrings.self
     var loaderLang = LoaderStrings.self
     var commonLang = CommonStrings.self
-    
+
     @Published var currentStepIndex: Int = 0 {
         didSet {
             currentStep = steps[currentStepIndex]
@@ -64,19 +64,19 @@ final class SignupStore: ObservableObject {
     @Published var showHeightCmPicker = false
 
     @Published var isFromAccountSwitching: Bool = false
-    
+
     var onSignupSuccess: (() -> Void)?
     var dismissAction: DismissAction?
-    
+
     let heightInchesOptions = ConversionTools.heightInchesOptions
     let heightCmOptions     = ConversionTools.heightCmOptions
-    
+
     private let toastLang = ToastStrings.self
     private var cancellables = Set<AnyCancellable>()
     private var previousMetricValue: Bool = false
-    
+
     private let tag = "SignupStore"
-    
+
     init() {
         // Resolve once per store instance to avoid cross-test DI races when
         // async step actions execute after other suites reset the container.
@@ -94,7 +94,7 @@ final class SignupStore: ObservableObject {
         rebuildSteps()
         currentStep = steps[currentStepIndex]
     }
-    
+
     /// Builds the ordered steps for the current signup flow.
     /// Called only at navigation milestones (init, device pick, connect-another-device)
     /// so the published `steps` array stays stable for the duration of a single device loop.
@@ -148,7 +148,7 @@ final class SignupStore: ObservableObject {
     var canConnectAnotherDevice: Bool {
         disabledDeviceTypes.count < SignupDeviceType.allCases.count - 1
     }
-    
+
     var progressValue: Double {
         Double(currentStepIndex + 1) / Double(steps.count)
     }
@@ -163,25 +163,25 @@ final class SignupStore: ObservableObject {
     }
 
     // MARK: - Height Management
-    
+
     func updateHeightPickerValues(from storedHeight: Int) {
         let selections = ConversionTools.pickerSelections(from: storedHeight)
         selectedHeightInches = selections.inches
         selectedHeightCm     = selections.cm
     }
-    
+
     func getFormattedHeight() -> String {
         let storedHeight = Int(signupForm.height.value)
         return ConversionTools.convertToFormattedHeight(storedHeight, isMetric: signupForm.useMetric.value)
     }
-    
+
     func updateFormHeight(fromMetric: Bool, values: [String]) {
         // Validate height before updating
         guard ConversionTools.isValidHeightPickerValues(fromMetric: fromMetric, values: values) else {
             logger.log(level: .error, tag: tag, message: "Invalid height values rejected: \(values)")
             return
         }
-        
+
         if fromMetric {
             let cm = Int(values.joined()) ?? 178
             // Double-check cm is valid
@@ -204,7 +204,7 @@ final class SignupStore: ObservableObject {
         // Update both picker values to stay in sync
         updateHeightPickerValues(from: Int(signupForm.height.value))
     }
-    
+
     func showHeightPicker() {
         if signupForm.useMetric.value {
             showHeightCmPicker = true
@@ -212,7 +212,7 @@ final class SignupStore: ObservableObject {
             showHeightInchesPicker = true
         }
     }
-    
+
     // MARK: - Navigation
 
     func handleSkip() {
@@ -367,7 +367,7 @@ final class SignupStore: ObservableObject {
         babies.remove(at: index)
         updateNextButtonState()
     }
-    
+
     func updateNextButtonState() {
         switch currentStep {
         case .name:
@@ -399,13 +399,13 @@ final class SignupStore: ObservableObject {
             isNextEnabled = true
         }
     }
-    
+
     /// Checks if the current height value is valid.
     /// For metric: height must be >= 100 cm
     /// For imperial: height must be >= 2'0" (24 inches)
     private var isHeightValid: Bool {
         let storedHeight = Int(signupForm.height.value)
-        
+
         if signupForm.useMetric.value {
             let cm = ConversionTools.convertStoredHeightToCm(storedHeight)
             return ConversionTools.isValidHeightCm(cm)
@@ -414,20 +414,20 @@ final class SignupStore: ObservableObject {
             return ConversionTools.isValidHeightInches(feet: feetInches[0], inches: feetInches[1])
         }
     }
-    
+
     func getError<T>(for control: FormControl<T>) -> String? {
         signupForm.getError(for: control)
     }
 
     // MARK: - Field Touch / Validation (Signup)
-    
+
     /// Marks a specific field as touched and triggers validation.
     /// Used by signup input views to show field errors as soon as the user leaves a field
     /// or presses the keyboard "Next/Done" button.
     /// - Parameter field: The field to touch and validate.
     func touchAndValidate(field: FocusField) {
         var didUpdate = true
-        
+
         switch field {
         case .firstName:
             signupForm.firstName.markAsTouched()
@@ -460,18 +460,18 @@ final class SignupStore: ObservableObject {
         default:
             didUpdate = false
         }
-        
+
         if didUpdate {
             objectWillChange.send()
         }
     }
-    
+
     /// Call this from `onEditingChanged` for fields where we want to validate on blur.
     func handleEditingChanged(_ isEditing: Bool, field: FocusField) {
         guard !isEditing else { return }
         touchAndValidate(field: field)
     }
-    
+
     func handleExit(router: Router<AuthRoute>? = nil) {
         // If the form is not dirty, dismiss the signup screen
         if !signupForm.isDirty {
@@ -500,7 +500,7 @@ final class SignupStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-    
+
     func showHelpModal() {
         notificationService.showModal(ModalData(
             presentedView: AnyView(HelpModalView {
@@ -508,7 +508,7 @@ final class SignupStore: ObservableObject {
             })
         ))
     }
-    
+
     func createUser() async {
         notificationService.showLoader(LoaderModel(text: loaderLang.creatingAccount))
 
@@ -666,16 +666,19 @@ final class SignupStore: ObservableObject {
             }
         }
     }
-    
+
     // MARK: - Private Methods
     private func isGoalStepValid() -> Bool {
         // Use the form's isGoalValidForSave which checks: dirty, touched, and no errors
         signupForm.isGoalValidForSave
     }
-    
+
     private func generateProfile() -> Profile {
         let formattedDOB = DateTimeTools.formatDateToYMD_Local(signupForm.birthday.value)
-        
+        let measurementUnits: String? = signupForm.useMetric.value
+            ? MeasurementUnits.metric.rawValue
+            : MeasurementUnits.imperialLbOz.rawValue
+
         return Profile(
             firstName: removeWhiteSpace(signupForm.firstName.value),
             lastName: removeWhiteSpace(signupForm.lastName.value),
@@ -684,22 +687,24 @@ final class SignupStore: ObservableObject {
             dob: formattedDOB,
             weightUnit: signupForm.useMetric.value ? .kg : .lb,
             height: signupForm.height.value,
-            activityLevel: .normal
+            activityLevel: .normal,
+            productTypes: signupForm.productTypes,
+            measurementUnits: measurementUnits
         )
     }
-    
+
     private func generateGoalRequest() -> Goal? {
         guard !isGoalSkipped else { return nil }
-        
+
         let useMetric = signupForm.useMetric.value
         let goalTypeValue = signupForm.goalType.value
         let current = Double(signupForm.currentWeight.value) ?? 0.0
         let target = Double(signupForm.goalWeight.value) ?? 0.0
-        
+
         let convert = { (weight: Double) -> Int in
             ConversionTools.convertDisplayToStored(weight, forceMetric: useMetric)
         }
-        
+
         if goalTypeValue == GoalType.maintain.rawValue {
             return Goal(
                 type: .maintain,
@@ -779,7 +784,7 @@ final class SignupStore: ObservableObject {
             message: "Persisted signup-selected device type. accountId=\(accountId), deviceType=\(primaryDevice.rawValue)"
         )
     }
-    
+
     private func handleSignupError(_ error: Error) {
         var toastMessage: String?
         let toastTitle: String = toastLang.errorCreatingAccount
@@ -826,7 +831,7 @@ final class SignupStore: ObservableObject {
                 self?.updateNextButtonState()
             }
             .store(in: &cancellables)
-        
+
         // React to password-related changes only when we're on the password step
         let passwordChanges = Publishers.CombineLatest(
             signupForm.password.$value,
@@ -837,7 +842,7 @@ final class SignupStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _, _ in
                 self?.signupForm.validate()
-                
+
                 if self?.currentStep == .password {
                     self?.updateNextButtonState()
                 }
@@ -852,17 +857,17 @@ final class SignupStore: ObservableObject {
                 self?.updateNextButtonState()
             }
             .store(in: &cancellables)
-        
+
         // Observe useMetric changes
         signupForm.useMetric.$value
             .dropFirst()
             .sink { [weak self] isMetric in
                 guard let self = self else { return }
                 let oldMetricValue = self.previousMetricValue
-                
+
                 // Update validators first to ensure validation uses correct unit constraints
                 self.updateWeightValidators(isMetric: isMetric)
-                
+
                 // Convert weight values when switching units
                 if !self.signupForm.currentWeight.value.isEmpty {
                     let convertedCurrentWeight = ConversionTools.convertDisplayWeightValue(
@@ -873,7 +878,7 @@ final class SignupStore: ObservableObject {
                     self.signupForm.currentWeight.value = convertedCurrentWeight
                     self.signupForm.currentWeight.validate()
                 }
-                
+
                 if !self.signupForm.goalWeight.value.isEmpty {
                     let convertedGoalWeight = ConversionTools.convertDisplayWeightValue(
                         self.signupForm.goalWeight.value,
@@ -883,15 +888,15 @@ final class SignupStore: ObservableObject {
                     self.signupForm.goalWeight.value = convertedGoalWeight
                     self.signupForm.goalWeight.validate()
                 }
-                
+
                 self.updateHeightPickerValues(from: Int(self.signupForm.height.value))
-                
+
                 // Update previous value for next change
                 self.previousMetricValue = isMetric
             }
             .store(in: &cancellables)
     }
-    
+
     private func updateWeightValidators(isMetric: Bool) {
         let maxWeight = isMetric ? 450.0 : 999.0
         // Remove old validator
@@ -942,7 +947,7 @@ final class SignupStore: ObservableObject {
         // Ensure the primary action button reflects the current (reset) state.
         updateNextButtonState()
     }
-    
+
     /// Presents an alert informing the user that the maximum number of accounts
     /// has been reached.
     private func showMaxUserAccountsAlert() {

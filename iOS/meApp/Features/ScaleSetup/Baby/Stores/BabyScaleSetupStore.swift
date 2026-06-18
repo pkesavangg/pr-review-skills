@@ -132,6 +132,8 @@ final class BabyScaleSetupStore: ObservableObject {
                 ))
             case .babyAdded:
                 return AnyView(BabyAddedListView())
+            case .done:
+                return AnyView(BabySetupDoneView())
             }
         }
     }
@@ -141,7 +143,7 @@ final class BabyScaleSetupStore: ObservableObject {
     /// Updates the enabled state of the footer "Next" button based on the current step.
     func updateNextEnabled() {
         switch currentStep {
-        case .intro, .wakeup, .connectingBluetooth, .connectionError, .paired, .babyAdded:
+        case .intro, .wakeup, .connectingBluetooth, .connectionError, .paired, .babyAdded, .done:
             isNextEnabled = true
         case .permissions:
             isNextEnabled = arePermissionsEnabled()

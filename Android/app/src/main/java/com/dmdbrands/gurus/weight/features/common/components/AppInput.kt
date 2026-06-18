@@ -287,7 +287,9 @@ fun <T> InputFieldBase(
     val showPasswordToggle = isPassword && showTrailingIcon
     val showTrailingButton = showTrailingIcon && !isPassword &&
             enabled &&
-            !readOnly &&
+            // A read-only field still shows its trailing icon when it drives a custom action
+            // (e.g. a dropdown/caret via onTrailingAction); only the bare clear-X is hidden when read-only.
+            (!readOnly || onTrailingAction != null) &&
             (showTrailingIconAlways || formControl?.value?.toString()?.isNotEmpty() == true)
 
     val inputTextColor =

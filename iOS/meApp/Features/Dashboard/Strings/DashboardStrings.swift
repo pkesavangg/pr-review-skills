@@ -9,6 +9,7 @@ import Foundation
 
 struct DashboardStrings {
     // Action buttons
+    static let selectGraph = "Select Graph"
     static let editDashboard = "Edit dashboard"
     static let updateGoal = "Update Goal"
     static let metricInfo = "Metric info"
@@ -76,7 +77,10 @@ struct DashboardStrings {
     }
 
     // Empty state messages
-    static let noEntriesMessage = "To collect an entry, connect a scale or add a manual entry."
+    static let noEntries = "no entries"
+    static let noEntriesMessage = "To collect an entry, connect a device or add a manual entry."
+    static let noReadingsYet = "No readings yet"
+    static let connectDevice = "Connect Device"
     static func noEntriesInPeriodMessage(_ timePeriod: String) -> String {
         return "You haven't added any entries this \(timePeriod)."
     }
@@ -91,6 +95,11 @@ struct DashboardStrings {
     static let babyReadingArrivalTitle = "New Baby Scale Reading Received"
     static let babyReadingArrivalAssign = "ASSIGN"
     static let babyReadingArrivalDontAssign = "DON'T ASSIGN"
+
+    // Baby reading arrival — no baby profile
+    static let babyReadingNoProfileMessage = "Add a baby to save this reading."
+    static let babyReadingNoProfileAddBaby = "ADD A BABY"
+    static let babyReadingNoProfileDiscard = "DISCARD"
 
     // Assign baby modal
     static let assignMeasurementTitle = "Assign Measurement"
@@ -116,8 +125,22 @@ struct DashboardStrings {
     static let bpmReadingArrivalPulse = "pulse"
     static let weightReadingArrivalJustNow = "Just now"
 
-    // Graph scroll hint modal (MA-3925 / MA-3984)
+    // Graph scroll hint modal
     static let graphScrollHintTitle = "NEW: Scrollable Graph"
     static let graphScrollHintMessage = "Swipe left or right on the graph to view more growth data over time."
-    static let graphScrollHintConfirm = "Got it"
+    static let graphScrollHintConfirm = "GOT IT"
+
+    // Wi-Fi reading arrival (entry already saved server-side — VIEW navigates to History)
+    static let readingArrivalView = "VIEW"
+    static let wifiReadingArrivalTitle = "New Reading saved to your log"
+
+    // Multiple readings counter (shown when a second reading arrives while a card is active)
+    static func moreReadingsReceived(_ count: Int) -> String {
+        "\(count) more reading\(count == 1 ? "" : "s") received for this session"
+    }
+
+    // Baby reading — single baby: baby name embedded in the toast title
+    static func babyReadingArrivalTitleForSingleBaby(_ name: String) -> String {
+        "New Reading Received for \(name)"
+    }
 }

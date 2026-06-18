@@ -319,6 +319,7 @@ final class A6ScaleSetupStore: ObservableObject {
             bluetoothService.syncDevices([])
             
             LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully: \(savedScale.id)")
+            ProductTypeStore.shared.selectLastAdded(.myWeight)
 
             // Post notification that scale was added
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)

@@ -41,6 +41,8 @@ final class MockEntryService: EntryServiceProtocol {
     private(set) var getEntryCountCalls = 0
     private(set) var loadBabyDashboardDataCalls = 0
     private(set) var lastLoadedBabyDashboardId: String?
+    private(set) var assignBabyEntryCalls = 0
+    private(set) var lastAssignedBabyId: String?
 
     func syncAllEntriesWithRemote() async { syncAllEntriesWithRemoteCalls += 1 }
     func migrateFromSQLiteIfNeeded() async {}
@@ -75,7 +77,10 @@ final class MockEntryService: EntryServiceProtocol {
         deletedEntryIds.append(entryId)
         if let error = deleteEntryByIdError { throw error }
     }
-    func assignBabyEntry(entryId: UUID, babyId: String) async throws {}
+    func assignBabyEntry(entryId: UUID, babyId: String) async throws {
+        assignBabyEntryCalls += 1
+        lastAssignedBabyId = babyId
+    }
     func fetchEntrySnapshot(byId id: UUID) async throws -> EntrySnapshot? {
         fetchEntrySnapshotByIdCalls += 1
         return try fetchEntrySnapshotByIdResult.get()
@@ -134,12 +139,49 @@ final class MockEntryService: EntryServiceProtocol {
         )
     }
     func getStreak(entryType: EntryType) async throws -> Streak { Streak(current: 0, max: 0) }
-    func exportCSV() async throws {
+    func exportCSV(category: String?, babyId: String?) async throws {
         exportCSVCalls += 1
+        lastExportCSVCategory = category
+        lastExportCSVBabyId = babyId
         _ = try exportCSVResult.get()
     }
 
-    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {}
+    /// Pages returned by successive `fetchEntriesPage` calls. When exhausted, falls back to `.empty`.
+    var fetchEntriesPageResults: [EntriesPage] = []
+    var fetchEntriesPageError: Error?
+    private(set) var fetchEntriesPageCalls = 0
+    private(set) var lastFetchEntriesPageCursor: String?
+    private(set) var lastFetchEntriesPageLimit: Int?
+    private(set) var lastFetchEntriesPageCategory: String?
+    private(set) var lastFetchEntriesPageBabyId: String?
+    private(set) var lastExportCSVCategory: String?
+    private(set) var lastExportCSVBabyId: String?
+
+    func fetchEntriesPage(cursor: String?, limit: Int, category: String?, babyId: String?) async throws -> EntriesPage {
+        fetchEntriesPageCalls += 1
+        lastFetchEntriesPageCursor = cursor
+        lastFetchEntriesPageLimit = limit
+        lastFetchEntriesPageCategory = category
+        lastFetchEntriesPageBabyId = babyId
+        if let fetchEntriesPageError { throw fetchEntriesPageError }
+        guard !fetchEntriesPageResults.isEmpty else { return .empty }
+        return fetchEntriesPageResults.removeFirst()
+    }
+
+    struct CreateBabyEntryCall {
+        let babyId: String
+        let weight: Int
+        let length: Int
+        let note: String
+        let entryTimestamp: String
+    }
+    private(set) var createBabyEntryCalls: [CreateBabyEntryCall] = []
+    var createBabyEntryError: Error?
+
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws {
+        createBabyEntryCalls.append(CreateBabyEntryCall(babyId: babyId, weight: weight, length: length, note: note, entryTimestamp: entryTimestamp))
+        if let createBabyEntryError { throw createBabyEntryError }
+    }
     private(set) var createBpmEntryCalls = 0
     private(set) var fetchBpmEntriesCalls = 0
     private(set) var deleteBpmEntryCalls = 0
@@ -155,5 +197,4 @@ final class MockEntryService: EntryServiceProtocol {
     func exportBpmCSV() async throws { exportBpmCSVCalls += 1 }
     func migrateBabyEntriesToDecigrams() async {}
     func getEntry(byId id: UUID) async throws -> Entry? { nil }
-    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws {}
 }

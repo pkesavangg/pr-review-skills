@@ -38,6 +38,9 @@ secrets.json
 GoogleService-Info.plist
 **/GoogleService-Info.plist
 
+# Refact.ai extension state
+.refact/
+
 # Claude skill transient state
 Android/.claude/*.json
 # Lefthook local overrides (developer-specific)

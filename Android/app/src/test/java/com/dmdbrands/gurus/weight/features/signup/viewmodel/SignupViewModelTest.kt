@@ -7,11 +7,15 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
+import com.dmdbrands.gurus.weight.domain.services.IBabyProfileService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.signup.model.BabyFormControls
+import com.dmdbrands.gurus.weight.features.signup.model.BabyWeightUnit
 import com.dmdbrands.gurus.weight.features.signup.model.SignupIntent
 import com.dmdbrands.gurus.weight.features.signup.model.SignupStep
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
@@ -64,7 +68,7 @@ class SignupViewModelTest {
     lateinit var analyticsService: IAnalyticsService
 
     @MockK(relaxUnitFun = true)
-    lateinit var analyticsService: IAnalyticsService
+    lateinit var babyProfileService: IBabyProfileService
 
     @MockK(relaxed = true)
     lateinit var productSelectionRepository: IProductSelectionRepository
@@ -83,6 +87,7 @@ class SignupViewModelTest {
             goalService = goalService,
             analyticsService = analyticsService,
             productSelectionRepository = productSelectionRepository,
+            babyProfileService = babyProfileService,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -573,5 +578,140 @@ class SignupViewModelTest {
         controls.confirmPassword.onValueChange(TEST_PASSWORD)
         controls.zipcode.onValueChange(TEST_ZIPCODE)
         // Now on PASSWORD — next Next triggers submit
+    }
+
+    // -------------------------------------------------------------------------
+    // Baby signup — persist babies to the server (POST /v3/baby/)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Walks the Baby Scale flow: fills the common head, selects the baby scale, configures the
+     * baby form via [configureBaby] and saves it, then fills PASSWORD — landing on the final
+     * data step so the next Next triggers submit.
+     */
+    private fun navigateToBabyPasswordStep(configureBaby: (BabyFormControls) -> Unit) {
+        val controls = viewModel.state.value.form.controls
+        controls.firstName.onValueChange(TEST_FIRST_NAME)
+        controls.lastName.onValueChange(TEST_LAST_NAME)
+        viewModel.handleIntent(SignupIntent.Next) // → EMAIL
+        controls.email.onValueChange(TEST_EMAIL)
+        viewModel.handleIntent(SignupIntent.Next) // → BIRTHDAY
+        viewModel.handleIntent(SignupIntent.Next) // → PICK_DEVICE
+        viewModel.handleIntent(SignupIntent.SelectDevice(ProductType.BABY.id))
+        viewModel.handleIntent(SignupIntent.Next) // → ADD_BABY
+
+        val babyForm = requireNotNull(viewModel.state.value.babyState).babyForm
+        configureBaby(babyForm)
+        viewModel.handleIntent(SignupIntent.Next) // ADD_BABY → BABY_ADDED (baby saved to list)
+        viewModel.handleIntent(SignupIntent.Next) // BABY_ADDED → PASSWORD
+
+        controls.password.onValueChange(TEST_PASSWORD)
+        controls.confirmPassword.onValueChange(TEST_PASSWORD)
+        controls.zipcode.onValueChange(TEST_ZIPCODE)
+    }
+
+    @Test
+    fun `Submit baby scale persists baby with lbs-oz weight and inch length converted`() = runTest {
+        coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
+
+        navigateToBabyPasswordStep { form ->
+            form.name.onValueChange("Tammy")
+            form.biologicalSex.onValueChange("male")
+            form.weightUnit.onValueChange(BabyWeightUnit.LBS_OZ)
+            form.birthWeight.onValueChange("7")
+            form.birthWeightOz.onValueChange("4")
+            form.birthLength.onValueChange("20")
+        }
+        viewModel.handleIntent(SignupIntent.Next) // triggers submit
+        advanceUntilIdle()
+
+        val expectedDg = ConversionTools.convertLbOzToDecigrams(7, 4.0)
+        val expectedMm = ConversionTools.convertInchesToMm(20.0)
+        coVerify {
+            babyProfileService.save(
+                match {
+                    it.name == "Tammy" &&
+                        it.sex == "male" &&
+                        it.accountId == TestFixtures.activeAccount.id &&
+                        it.birthWeightDecigrams == expectedDg &&
+                        it.birthLengthMillimeters == expectedMm &&
+                        it.birthdate != null
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `Submit baby scale persists baby with kg weight and cm length converted`() = runTest {
+        coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
+
+        navigateToBabyPasswordStep { form ->
+            form.name.onValueChange("Katey")
+            form.biologicalSex.onValueChange("female")
+            form.weightUnit.onValueChange(BabyWeightUnit.KG)
+            form.birthWeight.onValueChange("3.5")
+            form.birthLength.onValueChange("50")
+        }
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        val expectedDg = ConversionTools.convertKgToDecigrams(3.5)
+        val expectedMm = ConversionTools.convertCmToMm(50.0)
+        coVerify {
+            babyProfileService.save(
+                match {
+                    it.name == "Katey" &&
+                        it.sex == "female" &&
+                        it.birthWeightDecigrams == expectedDg &&
+                        it.birthLengthMillimeters == expectedMm
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `Submit baby scale persists baby with decimal-lbs weight converted`() = runTest {
+        coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
+
+        navigateToBabyPasswordStep { form ->
+            form.name.onValueChange("Sam")
+            form.biologicalSex.onValueChange("other")
+            form.weightUnit.onValueChange(BabyWeightUnit.LBS)
+            form.birthWeight.onValueChange("7.5")
+            form.birthLength.onValueChange("19")
+        }
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        val expectedDg = ConversionTools.convertLbToDecigrams(7.5)
+        coVerify {
+            babyProfileService.save(
+                match {
+                    it.name == "Sam" &&
+                        // Gender.OTHER maps to BabySex "private".
+                        it.sex == "private" &&
+                        it.birthWeightDecigrams == expectedDg
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `Submit baby scale swallows a save failure and still reaches the Ready terminal`() = runTest {
+        coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
+        coEvery { babyProfileService.save(any()) } throws RuntimeException("network down")
+
+        navigateToBabyPasswordStep { form ->
+            form.name.onValueChange("Tammy")
+            form.biologicalSex.onValueChange("male")
+            form.weightUnit.onValueChange(BabyWeightUnit.LBS)
+            form.birthWeight.onValueChange("7")
+        }
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        // The failure is best-effort/swallowed: save was attempted and the flow still advances.
+        coVerify { babyProfileService.save(any()) }
+        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.DEVICE_READY)
     }
 }

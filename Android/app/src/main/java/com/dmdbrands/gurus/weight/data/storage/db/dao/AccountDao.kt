@@ -13,6 +13,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.account.DashboardSettin
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.GoalSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.IntegrationsSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.NotificationSettingsEntity
+import com.dmdbrands.gurus.weight.data.storage.db.entity.account.ProductSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.StreaksSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.WeightCompSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.WeightlessSettingsEntity
@@ -153,6 +154,13 @@ interface AccountDao {
 
     @Update
     suspend fun updateIntegrationsSettings(settings: IntegrationsSettingsEntity)
+
+    // Product Settings (Phase 2 / MOB-377)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertProductSettings(settings: ProductSettingsEntity)
+
+    @Update
+    suspend fun updateProductSettings(settings: ProductSettingsEntity)
 
     /**
      * Gets the active account if it is not synced.

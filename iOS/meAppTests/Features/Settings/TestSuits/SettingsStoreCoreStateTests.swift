@@ -165,14 +165,12 @@ extension SettingsStoreTests {
             store.presentAppearancePicker()
             store.presentNotificationPicker()
             store.presentGenderPicker()
-            store.presentUnitPicker()
             store.presentActivityPicker()
             store.presentHeightPicker()
 
             #expect(store.showAppearancePicker == true)
             #expect(store.showNotificationPicker == true)
             #expect(store.showGenderPicker == true)
-            #expect(store.showUnitPicker == true)
             #expect(store.showActivityPicker == true)
             #expect(store.showHeightCmPicker == true)
         }
@@ -263,8 +261,6 @@ extension SettingsStoreTests {
             #expect(store.showNotificationPicker == true)
             store.presentGenderPicker()
             #expect(store.showGenderPicker == true)
-            store.presentUnitPicker()
-            #expect(store.showUnitPicker == true)
             store.presentActivityPicker()
             #expect(store.showActivityPicker == true)
         }
@@ -294,7 +290,6 @@ extension SettingsStoreTests {
             #expect(store.showAppearancePicker == false)
             #expect(store.showNotificationPicker == false)
             #expect(store.showGenderPicker == false)
-            #expect(store.showUnitPicker == false)
             #expect(store.showActivityPicker == false)
             #expect(store.showHeightCmPicker == false)
         }

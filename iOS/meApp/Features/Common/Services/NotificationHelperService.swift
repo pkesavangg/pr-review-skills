@@ -71,7 +71,9 @@ class NotificationHelperService: NotificationHelperServiceProtocol, ObservableOb
     
     @MainActor func showToast(_ data: ToastModel) {
         var toast = data
+        let callerOnDismiss = toast.onDismiss
         toast.onDismiss = { [weak self] in
+            callerOnDismiss?()
             self?.dismissToast()
         }
         /// Set up the active count change handler to update hasActiveToasts

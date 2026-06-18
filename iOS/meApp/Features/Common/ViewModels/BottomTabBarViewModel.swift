@@ -95,6 +95,21 @@ class BottomTabBarViewModel: ObservableObject {
     private var weightReadingTimeoutTask: Task<Void, Never>?
     /// Tracks the auto-save timeout task for the BPM reading arrival toast.
     private var bpmReadingTimeoutTask: Task<Void, Never>?
+    // MARK: - Multiple-readings counter tracking
+    // Each reading type tracks how many readings arrived while a card is visible.
+    // The count drives the header row ("X more readings received  VIEW") shown above the title.
+    // isReplacing* is set just before notificationService.showToast() so that the outgoing
+    // card's onDismiss callback does not prematurely zero the counter.
+    private var babyReadingCount: Int = 0
+    private var isReplacingBabyCard: Bool = false
+    private var btWeightReadingCount: Int = 0
+    private var isReplacingBtWeightCard: Bool = false
+    private var wifiWeightReadingCount: Int = 0
+    private var isReplacingWifiWeightCard: Bool = false
+    private var btBpmReadingCount: Int = 0
+    private var isReplacingBtBpmCard: Bool = false
+    private var wifiBpmReadingCount: Int = 0
+    private var isReplacingWifiBpmCard: Bool = false
     private let promptDelay = 3.0 // Delay before checking Apple Health integration status and set a goal prompt
     /// Retains the Combine subscription for app-active notifications specifically used
     /// when we need to re-check HealthKit permissions after the user is redirected to
@@ -145,6 +160,40 @@ class BottomTabBarViewModel: ObservableObject {
             .sink { [weak self] notification in
                 guard let self, !self.bluetoothService.isSetupInProgress else { return }
                 self.showBpmReadingArrivalCard(notification: notification)
+            }
+            .store(in: &cancellables)
+
+        // Wi-Fi weight scale entries arrive already saved server-side via newEntryReceivedPublisher.
+        // Unlike BT entries (pendingScaleEntryPublisher), these never need SAVE/DISCARD — only VIEW.
+        // Guard: only show when (a) the entry did NOT come from a BT confirmation path
+        // (BT-confirmed entries carry source == bluetoothScale or btWifiR4) and (b) the account
+        // has at least one Wi-Fi-capable scale paired.
+        bluetoothService.newEntryReceivedPublisher
+            .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
+            .filter { [weak self] notification in
+                guard notification.entryType == EntryType.scale.rawValue else { return false }
+                let btSources = [ScaleSourceType.bluetoothScale.rawValue, ScaleSourceType.btWifiR4.rawValue]
+                guard !btSources.contains(notification.source ?? "") else { return false }
+                return self?.hasWifiCapableScale ?? false
+            }
+            .sink { [weak self] notification in
+                self?.showWifiWeightReadingCard(notification: notification)
+            }
+            .store(in: &cancellables)
+
+        // Wi-Fi BPM entries follow the same already-saved pattern as Wi-Fi weight entries.
+        // Guard: BT BPM entries always have a nil source (no scaleEntry); only surface the card
+        // when the notification carries an explicit source (i.e. a future Wi-Fi BPM device) and
+        // the account has a Wi-Fi-capable scale paired.
+        bluetoothService.newEntryReceivedPublisher
+            .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
+            .filter { [weak self] notification in
+                guard notification.entryType == EntryType.bpm.rawValue else { return false }
+                guard notification.source != nil else { return false }
+                return self?.hasWifiCapableScale ?? false
+            }
+            .sink { [weak self] notification in
+                self?.showWifiBpmReadingCard(notification: notification)
             }
             .store(in: &cancellables)
 
@@ -502,8 +551,6 @@ class BottomTabBarViewModel: ObservableObject {
                         self.presentHKIntegrationModal(for: modalState)
                     case .outOfSync:
                         self.presentHKIntegrationModal(for: .outOfSync)
-                    case .updatePermissions:
-                        break
                     }
                 }
             }
@@ -558,13 +605,6 @@ class BottomTabBarViewModel: ObservableObject {
                 }
             }
 
-        case .updatePermissions:
-            onPrimary = { [weak self] in
-                self?.notificationService.dismissModal()
-            }
-            onSecondary = { [weak self] in
-                self?.notificationService.dismissModal()
-            }
         }
 
         let modalView = HKIntegrationModalView(
@@ -687,7 +727,12 @@ class BottomTabBarViewModel: ObservableObject {
     }
 
     /// Shows a reading-arrival card when a baby scale entry arrives via Bluetooth.
-    /// The entry is already persisted at this point; tapping DON'T ASSIGN deletes it.
+    /// The entry is already persisted at this point.
+    ///
+    /// - Single baby: personalized title ("New Reading Received for EMMA") + DISCARD/SAVE.
+    /// - Multiple babies: standard title + DON'T ASSIGN / ASSIGN → opens selection modal.
+    /// - Multiple buffered readings: compact header row shows count + VIEW above the card.
+    // swiftlint:disable:next function_body_length
     private func showBabyReadingArrivalCard(notification: EntryNotification) {
         let lang = DashboardStrings.self
         let isMetric = accountService.activeAccount?.weightUnit == .kg
@@ -696,14 +741,18 @@ class BottomTabBarViewModel: ObservableObject {
             source: notification.babySource,
             isMetric: isMetric
         )
-
         let relativeTime = DateTimeTools.getArrivalRelativeTime(fromISOString: notification.entryTimestamp)
             ?? DashboardStrings.justNow
         let message = "\(weightString) · \(relativeTime)"
         let entryId = notification.id
 
-        var didUserAct = false
+        // No baby profile exists — surface an "ADD A BABY" CTA (MOB-425).
+        guard !babyService.currentBabies.isEmpty else {
+            showBabyReadingNoProfileCard(entryId: entryId, weightString: weightString, relativeTime: relativeTime)
+            return
+        }
 
+        var didUserAct = false
         // Extract primitives before any Task boundary — Baby is non-Sendable.
         let activeBabyId = babyService.currentBabies.first?.id
         let babyItems: [AssignBabyModalView.BabyItem] = babyService.currentBabies.map {
@@ -711,13 +760,9 @@ class BottomTabBarViewModel: ObservableObject {
         }
 
         let autoAssign: () -> Void = { [weak self] in
-            guard let self else { return }
+            guard let self, let activeBabyId else { return }
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                guard let activeBabyId else {
-                    self.logger.log(level: .info, tag: self.tag, message: "Baby reading auto-assign: no active baby found, entryId=\(entryId)")
-                    return
-                }
                 do {
                     try await self.entryService.assignBabyEntry(entryId: entryId, babyId: activeBabyId)
                     self.logger.log(level: .info, tag: self.tag, message: "Baby reading auto-assigned to babyId=\(activeBabyId), entryId=\(entryId)")
@@ -727,56 +772,186 @@ class BottomTabBarViewModel: ObservableObject {
             }
         }
 
+        babyReadingCount += 1
+        let count = babyReadingCount
+
+        let onViewHeader: () -> Void = { [weak self] in
+            guard let self else { return }
+            self.babyReadingCount = 0
+            self.notificationService.dismissToast()
+            self.selectTab(.history)
+            autoAssign()
+        }
+
+        let headerView: AnyView? = count > 1
+            ? AnyView(MultipleReadingsToastView(count: count - 1, onView: onViewHeader))
+            : nil
+
+        let onDismiss: () -> Void = { [weak self] in
+            guard let self, !self.isReplacingBabyCard else {
+                self?.isReplacingBabyCard = false
+                return
+            }
+            self.babyReadingCount = 0
+            guard !didUserAct else { return }
+            autoAssign()
+        }
+
+        let toast: ToastModel
+        if babyItems.count == 1, let singleBabyId = activeBabyId {
+            // Single baby: personalized title + SAVE/DISCARD (no selection modal).
+            let singleBabyName = babyItems[0].name
+            toast = ToastModel(
+                title: lang.babyReadingArrivalTitleForSingleBaby(singleBabyName),
+                message: "\(weightString) - \(relativeTime)",
+                headerView: headerView,
+                btnTextView: AnyView(
+                    WeightScaleReadingArrivalCTAView(
+                        onSave: { [weak self] in
+                            didUserAct = true
+                            guard let self else { return }
+                            self.babyReadingCount = 0
+                            self.notificationService.dismissToast()
+                            Task { @MainActor [weak self] in
+                                guard let self else { return }
+                                do {
+                                    try await self.entryService.assignBabyEntry(entryId: entryId, babyId: singleBabyId)
+                                    self.logger.log(level: .info, tag: self.tag, message: "Baby reading saved (single baby). babyId=\(singleBabyId), entryId=\(entryId)")
+                                    self.showAssignedBabyToast(
+                                        babyName: singleBabyName,
+                                        entryId: entryId,
+                                        weightString: weightString,
+                                        weightMessage: message,
+                                        babyItems: babyItems
+                                    )
+                                } catch {
+                                    self.logger.log(level: .error, tag: self.tag, message: "Failed to save baby reading (single baby). entryId=\(entryId)", data: error.localizedDescription)
+                                }
+                            }
+                        },
+                        onDiscard: { [weak self] in
+                            didUserAct = true
+                            guard let self else { return }
+                            self.babyReadingCount = 0
+                            self.notificationService.dismissToast()
+                            self.discardBabyReading(entryId: entryId)
+                        }
+                    )
+                ),
+                duration: 8.0,
+                onDismiss: onDismiss
+            )
+        } else {
+            // Multiple babies: DON'T ASSIGN / ASSIGN → opens modal.
+            toast = ToastModel(
+                title: lang.babyReadingArrivalTitle,
+                message: "",
+                headerView: headerView,
+                btnTextView: AnyView(
+                    BabyReadingArrivalCTAView(
+                        weightString: weightString,
+                        timestamp: relativeTime,
+                        onAssign: { [weak self] in
+                            didUserAct = true
+                            guard let self else { return }
+                            self.babyReadingCount = 0
+                            self.notificationService.dismissToast()
+                            self.showAssignBabyModal(
+                                entryId: entryId,
+                                weightString: weightString,
+                                weightMessage: message,
+                                babyItems: babyItems
+                            )
+                        },
+                        onDiscard: { [weak self] in
+                            didUserAct = true
+                            guard let self else { return }
+                            self.babyReadingCount = 0
+                            self.notificationService.dismissToast()
+                            self.discardBabyReading(entryId: entryId)
+                        }
+                    )
+                ),
+                duration: 8.0,
+                onDismiss: onDismiss
+            )
+        }
+
+        if count > 1 { isReplacingBabyCard = true }
+        logger.log(level: .info, tag: tag, message: "Showing baby reading arrival card. count=\(count)")
+        notificationService.showToast(toast)
+    }
+
+    /// Shown when a baby scale reading arrives but no baby profile exists (MOB-425).
+    /// Offers an "ADD A BABY" CTA that deep-links to the add-a-baby flow in Settings,
+    /// keeping the reading so it can be saved against the new baby. If the user discards
+    /// the card — or lets it time out without adding a baby — the reading is discarded and
+    /// won't appear in History (per the MOB-425 design).
+    private func showBabyReadingNoProfileCard(entryId: UUID, weightString: String, relativeTime: String) {
+        var didUserAct = false
+
         let toast = ToastModel(
-            title: lang.babyReadingArrivalTitle,
+            title: DashboardStrings.babyReadingArrivalTitle,
             message: "",
             btnTextView: AnyView(
-                BabyReadingArrivalCTAView(
+                BabyReadingNoProfileCTAView(
                     weightString: weightString,
                     timestamp: relativeTime,
-                    onAssign: { [weak self] in
+                    onAddBaby: { [weak self] in
                         didUserAct = true
-                        self?.notificationService.dismissToast()
-                        self?.showAssignBabyModal(
-                            entryId: entryId,
-                            weightString: weightString,
-                            weightMessage: message,
-                            babyItems: babyItems
+                        guard let self else { return }
+                        self.notificationService.dismissToast()
+                        self.navigateToSettings(route: .myKids)
+                        self.logger.log(
+                            level: .info,
+                            tag: self.tag,
+                            message: "Baby reading no-profile CTA tapped; routing to add-a-baby. entryId=\(entryId)"
                         )
                     },
                     onDiscard: { [weak self] in
                         didUserAct = true
                         guard let self else { return }
                         self.notificationService.dismissToast()
-                        Task { [weak self] in
-                            guard let self else { return }
-                            do {
-                                try await self.entryService.deleteEntry(entryId: entryId)
-                                self.logger.log(level: .info, tag: self.tag, message: "Baby reading discarded. entryId=\(entryId)")
-                            } catch {
-                                self.logger.log(
-                                    level: .error,
-                                    tag: self.tag,
-                                    message: "Failed to discard baby reading. entryId=\(entryId)",
-                                    data: error.localizedDescription
-                                )
-                                self.notificationService.showToast(
-                                    ToastModel(message: "Failed to remove reading. Please try again.")
-                                )
-                            }
-                        }
+                        self.discardBabyReading(entryId: entryId)
                     }
                 )
             ),
             duration: 8.0,
-            onDismiss: {
+            onDismiss: { [weak self] in
+                // No baby was added — discard the reading so it doesn't linger orphaned.
                 guard !didUserAct else { return }
-                autoAssign()
+                self?.discardBabyReading(entryId: entryId)
             }
         )
 
-        logger.log(level: .info, tag: tag, message: "Showing baby reading arrival card. weight=\(weightString)")
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Showing baby reading no-profile card. entryId=\(entryId)"
+        )
         notificationService.showToast(toast)
+    }
+
+    /// Deletes a baby scale reading entry. Used when the user discards a reading, or when
+    /// the no-profile card times out without a baby being added (MOB-425).
+    private func discardBabyReading(entryId: UUID) {
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await self.entryService.deleteEntry(entryId: entryId)
+                self.logger.log(level: .info, tag: self.tag, message: "Baby reading discarded. entryId=\(entryId)")
+            } catch {
+                self.logger.log(
+                    level: .error,
+                    tag: self.tag,
+                    message: "Failed to discard baby reading. entryId=\(entryId)",
+                    data: error.localizedDescription
+                )
+                self.notificationService.showToast(
+                    ToastModel(message: "Failed to remove reading. Please try again.")
+                )
+            }
+        }
     }
 
     /// Presents the baby-selection modal so the user can choose which baby to assign the entry to.
@@ -891,29 +1066,56 @@ class BottomTabBarViewModel: ObservableObject {
             : String(format: "%.1f lbs", display)
     }
 
-    /// Shows a reading-arrival card when a weight scale entry arrives via Bluetooth.
-    /// The entry has NOT been saved yet. Tapping SAVE confirms it; tapping DISCARD drops it.
-    /// If the toast times out without user interaction the entry is saved automatically.
+    /// Shows a reading-arrival card when a BT weight scale entry arrives.
+    /// The entry has NOT been saved yet. SAVE confirms it; DISCARD drops it.
+    /// Auto-saves on timeout. When multiple readings arrive in a session a compact
+    /// counter header row ("X more readings received  VIEW") is shown above the card.
     private func showWeightScaleReadingArrivalCard(notification: EntryNotification) { // swiftlint:disable:this function_body_length
         let lang = DashboardStrings.self
         let isMetric = accountService.activeAccount?.weightUnit == .kg
         let weightString = weightDisplayString(stored: notification.weight ?? 0, isMetric: isMetric)
-
         let relativeTime = DateTimeTools.getArrivalRelativeTime(fromISOString: notification.entryTimestamp)
             ?? DashboardStrings.justNow
         let message = "\(weightString) - \(relativeTime)"
         let toastDuration = 8.0
 
-        // Cancel any in-flight timeout task for a previous toast
         weightReadingTimeoutTask?.cancel()
+
+        btWeightReadingCount += 1
+        let count = btWeightReadingCount
+
+        let onViewHeader: () -> Void = { [weak self] in
+            guard let self else { return }
+            self.btWeightReadingCount = 0
+            self.weightReadingTimeoutTask?.cancel()
+            self.notificationService.dismissToast()
+            self.selectTab(.history)
+            Task { [weak self] in
+                try? await self?.bluetoothService.confirmPendingScaleEntry()
+            }
+        }
+
+        let headerView: AnyView? = count > 1
+            ? AnyView(MultipleReadingsToastView(count: count - 1, onView: onViewHeader))
+            : nil
+
+        let onDismiss: () -> Void = { [weak self] in
+            guard let self, !self.isReplacingBtWeightCard else {
+                self?.isReplacingBtWeightCard = false
+                return
+            }
+            self.btWeightReadingCount = 0
+        }
 
         let toast = ToastModel(
             title: lang.weightReadingArrivalTitle,
             message: message,
+            headerView: headerView,
             btnTextView: AnyView(
                 WeightScaleReadingArrivalCTAView(
                     onSave: { [weak self] in
                         guard let self else { return }
+                        self.btWeightReadingCount = 0
                         self.weightReadingTimeoutTask?.cancel()
                         self.notificationService.dismissToast()
                         Task { [weak self] in
@@ -921,17 +1123,13 @@ class BottomTabBarViewModel: ObservableObject {
                             do {
                                 try await self.bluetoothService.confirmPendingScaleEntry()
                             } catch {
-                                self.logger.log(
-                                    level: .error,
-                                    tag: self.tag,
-                                    message: "Failed to save weight reading.",
-                                    data: error.localizedDescription
-                                )
+                                self.logger.log(level: .error, tag: self.tag, message: "Failed to save weight reading.", data: error.localizedDescription)
                             }
                         }
                     },
                     onDiscard: { [weak self] in
                         guard let self else { return }
+                        self.btWeightReadingCount = 0
                         self.weightReadingTimeoutTask?.cancel()
                         self.bluetoothService.discardPendingScaleEntry()
                         self.notificationService.dismissToast()
@@ -939,38 +1137,34 @@ class BottomTabBarViewModel: ObservableObject {
                     }
                 )
             ),
-            duration: toastDuration
+            duration: toastDuration,
+            onDismiss: onDismiss
         )
 
         // Auto-save after the toast duration if the user didn't act.
-        // confirmPendingScaleEntry() is a no-op if pendingScaleEntry is already nil
-        // (meaning the user tapped SAVE or DISCARD before the timeout fired).
         weightReadingTimeoutTask = Task { [weak self] in
             do {
                 try await Task.sleep(nanoseconds: UInt64(toastDuration * 1_000_000_000))
             } catch {
-                return // cancelled or interrupted — do not auto-save
+                return
             }
             guard let self else { return }
+            self.btWeightReadingCount = 0
             do {
                 try await self.bluetoothService.confirmPendingScaleEntry()
             } catch {
-                self.logger.log(
-                    level: .error,
-                    tag: self.tag,
-                    message: "Failed to auto-save weight reading on timeout.",
-                    data: error.localizedDescription
-                )
+                self.logger.log(level: .error, tag: self.tag, message: "Failed to auto-save weight reading on timeout.", data: error.localizedDescription)
             }
         }
 
-        logger.log(level: .info, tag: tag, message: "Showing weight reading arrival card. weight=\(weightString)")
+        if count > 1 { isReplacingBtWeightCard = true }
+        logger.log(level: .info, tag: tag, message: "Showing weight reading arrival card. count=\(count)")
         notificationService.showToast(toast)
     }
 
-    /// Shows a reading-arrival card when a BPM reading arrives via Bluetooth.
-    /// The entry has NOT been saved yet. Tapping SAVE confirms it; tapping DISCARD drops it.
-    /// If the toast times out without user interaction the entry is saved automatically.
+    /// Shows a reading-arrival card when a BT BPM reading arrives.
+    /// The entry has NOT been saved yet. SAVE confirms it; DISCARD drops it.
+    /// Auto-saves on timeout. Multiple readings in a session add a counter header row.
     private func showBpmReadingArrivalCard(notification: EntryNotification) {
         let lang = DashboardStrings.self
         let systolic = notification.systolic ?? 0
@@ -982,9 +1176,36 @@ class BottomTabBarViewModel: ObservableObject {
 
         bpmReadingTimeoutTask?.cancel()
 
+        btBpmReadingCount += 1
+        let count = btBpmReadingCount
+
+        let onViewHeader: () -> Void = { [weak self] in
+            guard let self else { return }
+            self.btBpmReadingCount = 0
+            self.bpmReadingTimeoutTask?.cancel()
+            self.notificationService.dismissToast()
+            self.selectTab(.history)
+            Task { [weak self] in
+                try? await self?.bluetoothService.confirmPendingBpmEntry()
+            }
+        }
+
+        let headerView: AnyView? = count > 1
+            ? AnyView(MultipleReadingsToastView(count: count - 1, onView: onViewHeader))
+            : nil
+
+        let onDismiss: () -> Void = { [weak self] in
+            guard let self, !self.isReplacingBtBpmCard else {
+                self?.isReplacingBtBpmCard = false
+                return
+            }
+            self.btBpmReadingCount = 0
+        }
+
         let toast = ToastModel(
             title: lang.bpmReadingArrivalTitle,
             message: "",
+            headerView: headerView,
             btnTextView: AnyView(
                 BpmReadingArrivalCTAView(
                     systolic: systolic,
@@ -993,6 +1214,7 @@ class BottomTabBarViewModel: ObservableObject {
                     timestamp: relativeTime,
                     onSave: { [weak self] in
                         guard let self else { return }
+                        self.btBpmReadingCount = 0
                         self.bpmReadingTimeoutTask?.cancel()
                         self.notificationService.dismissToast()
                         Task { [weak self] in
@@ -1000,17 +1222,13 @@ class BottomTabBarViewModel: ObservableObject {
                             do {
                                 try await self.bluetoothService.confirmPendingBpmEntry()
                             } catch {
-                                self.logger.log(
-                                    level: .error,
-                                    tag: self.tag,
-                                    message: "Failed to save BPM reading.",
-                                    data: error.localizedDescription
-                                )
+                                self.logger.log(level: .error, tag: self.tag, message: "Failed to save BPM reading.", data: error.localizedDescription)
                             }
                         }
                     },
                     onDiscard: { [weak self] in
                         guard let self else { return }
+                        self.btBpmReadingCount = 0
                         self.bpmReadingTimeoutTask?.cancel()
                         self.bluetoothService.discardPendingBpmEntry()
                         self.notificationService.dismissToast()
@@ -1018,29 +1236,136 @@ class BottomTabBarViewModel: ObservableObject {
                     }
                 )
             ),
-            duration: toastDuration
+            duration: toastDuration,
+            onDismiss: onDismiss
         )
 
         // Auto-save after the toast duration if the user didn't act.
-        // confirmPendingBpmEntry() is a no-op if pendingBpmEntry is already nil
-        // (meaning the user tapped SAVE or DISCARD before the timeout fired).
         bpmReadingTimeoutTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(toastDuration * 1_000_000_000))
             guard !Task.isCancelled, let self else { return }
+            self.btBpmReadingCount = 0
             do {
                 try await self.bluetoothService.confirmPendingBpmEntry()
             } catch {
-                self.logger.log(
-                    level: .error,
-                    tag: self.tag,
-                    message: "Failed to auto-save BPM reading on timeout.",
-                    data: error.localizedDescription
-                )
+                self.logger.log(level: .error, tag: self.tag, message: "Failed to auto-save BPM reading on timeout.", data: error.localizedDescription)
             }
         }
 
-        logger.log(level: .info, tag: tag, message: "Showing BPM reading arrival card. \(systolic)/\(diastolic) pulse=\(pulse)")
+        if count > 1 { isReplacingBtBpmCard = true }
+        logger.log(level: .info, tag: tag, message: "Showing BPM reading arrival card. count=\(count)")
         notificationService.showToast(toast)
+    }
+
+    // MARK: - Wi-Fi Reading Arrival Cards
+
+    /// Shows a VIEW-only arrival card when a Wi-Fi weight entry is received.
+    /// Wi-Fi entries are already saved server-side — no SAVE/DISCARD needed.
+    /// When multiple readings arrive in a session, a compact counter header row
+    /// ("X more readings received  VIEW") appears above the latest reading.
+    private func showWifiWeightReadingCard(notification: EntryNotification) {
+        let isMetric = accountService.activeAccount?.weightUnit == .kg
+        let weightString = weightDisplayString(stored: notification.weight ?? 0, isMetric: isMetric)
+        let relativeTime = DateTimeTools.getArrivalRelativeTime(fromISOString: notification.entryTimestamp)
+            ?? DashboardStrings.justNow
+
+        wifiWeightReadingCount += 1
+        let count = wifiWeightReadingCount
+
+        let onView: () -> Void = { [weak self] in
+            guard let self else { return }
+            self.wifiWeightReadingCount = 0
+            self.notificationService.dismissToast()
+            self.selectTab(.history)
+            self.logger.log(level: .info, tag: self.tag, message: "Wi-Fi weight reading VIEW tapped; navigating to History.")
+        }
+
+        let onDismiss: () -> Void = { [weak self] in
+            guard let self, !self.isReplacingWifiWeightCard else {
+                self?.isReplacingWifiWeightCard = false
+                return
+            }
+            self.wifiWeightReadingCount = 0
+        }
+
+        let headerView: AnyView? = count > 1
+            ? AnyView(MultipleReadingsToastView(count: count - 1, onView: onView))
+            : nil
+
+        let toast = ToastModel(
+            title: DashboardStrings.wifiReadingArrivalTitle,
+            message: "\(weightString) - \(relativeTime)",
+            headerView: headerView,
+            btnTextView: AnyView(ReadingArrivalViewCTAView(onView: onView)),
+            duration: 8.0,
+            onDismiss: onDismiss
+        )
+
+        if count > 1 { isReplacingWifiWeightCard = true }
+        logger.log(level: .info, tag: tag, message: "Showing Wi-Fi weight reading card. count=\(count)")
+        notificationService.showToast(toast)
+    }
+
+    /// Shows a VIEW-only arrival card when a Wi-Fi BPM entry is received.
+    /// Wi-Fi BPM entries are already saved server-side — no SAVE/DISCARD needed.
+    /// Multiple readings add a counter header row above the latest reading.
+    private func showWifiBpmReadingCard(notification: EntryNotification) {
+        let systolic = notification.systolic ?? 0
+        let diastolic = notification.diastolic ?? 0
+        let pulse = notification.pulse ?? 0
+        let relativeTime = DateTimeTools.getArrivalRelativeTime(fromISOString: notification.entryTimestamp)
+            ?? DashboardStrings.justNow
+
+        wifiBpmReadingCount += 1
+        let count = wifiBpmReadingCount
+
+        let onView: () -> Void = { [weak self] in
+            guard let self else { return }
+            self.wifiBpmReadingCount = 0
+            self.notificationService.dismissToast()
+            self.selectTab(.history)
+            self.logger.log(level: .info, tag: self.tag, message: "Wi-Fi BPM reading VIEW tapped; navigating to History.")
+        }
+
+        let onDismiss: () -> Void = { [weak self] in
+            guard let self, !self.isReplacingWifiBpmCard else {
+                self?.isReplacingWifiBpmCard = false
+                return
+            }
+            self.wifiBpmReadingCount = 0
+        }
+
+        let headerView: AnyView? = count > 1
+            ? AnyView(MultipleReadingsToastView(count: count - 1, onView: onView))
+            : nil
+
+        // BPM values shown in message; btnTextView holds the single VIEW button.
+        let bpmMessage = "\(systolic)/\(diastolic) \(DashboardStrings.bpmReadingArrivalMmhg) \(pulse) \(DashboardStrings.bpmReadingArrivalPulse) - \(relativeTime)"
+
+        let toast = ToastModel(
+            title: DashboardStrings.wifiReadingArrivalTitle,
+            message: bpmMessage,
+            headerView: headerView,
+            btnTextView: AnyView(ReadingArrivalViewCTAView(onView: onView)),
+            duration: 8.0,
+            onDismiss: onDismiss
+        )
+
+        if count > 1 { isReplacingWifiBpmCard = true }
+        logger.log(level: .info, tag: tag, message: "Showing Wi-Fi BPM reading card. count=\(count)")
+        notificationService.showToast(toast)
+    }
+
+    // MARK: - Wi-Fi Capability Helpers
+
+    /// Returns true when at least one paired scale supports Wi-Fi readings
+    /// (pure Wi-Fi scales or BT+Wi-Fi R4 hybrids). Used to gate the
+    /// "New Reading saved to your log" card so it never fires for BT-only accounts.
+    private var hasWifiCapableScale: Bool {
+        scaleService.scales.contains { scale in
+            let type = scale.bathScale?.scaleType
+            return type == ScaleType.wifi.rawValue || type == ScaleType.bluetoothR4.rawValue
+        }
     }
 
     // MARK: - Scale Discovery Handling

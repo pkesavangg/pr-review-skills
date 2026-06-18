@@ -1364,6 +1364,96 @@ struct AccountServiceTests {
 
     // MARK: - Helpers
 
+    // MARK: - measurementUnits & email-check (MOB-382)
+
+    @Test("updateMeasurementUnits success: calls API and persists units locally")
+    func updateMeasurementUnitsSuccess() async throws {
+        let api = MockAccountAPIRepository()
+        let local = MockAccountRepository()
+        let keychain = MockKeychainService()
+        let account = AccountTestFixtures.makeAccountModel(id: "101", email: "user@example.com", isLoggedIn: true, isActive: true)
+        local.seed([account])
+        api.updateMeasurementUnitsResult = .success(
+            AccountTestFixtures.makeAccountResponse(accountId: "101", email: "user@example.com")
+        )
+
+        let sut = makeSUT(api: api, local: local, keychain: keychain)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
+
+        try await sut.updateMeasurementUnits(.imperialLbOz)
+
+        #expect(api.updateMeasurementUnitsCalls == 1)
+        #expect(api.lastUpdatedMeasurementUnits == MeasurementUnits.imperialLbOz.rawValue)
+        let updated = try await local.fetchAccount(byId: "101")
+        #expect(updated?.measurementUnits == MeasurementUnits.imperialLbOz.rawValue)
+        #expect(sut.activeAccount?.measurementUnits == MeasurementUnits.imperialLbOz.rawValue)
+    }
+
+    @Test("updateMeasurementUnits no active account: throws")
+    func updateMeasurementUnitsNoActiveAccount() async {
+        let sut = makeSUT()
+        do {
+            try await sut.updateMeasurementUnits(.metric)
+            Issue.record("Expected noActiveAccount")
+        } catch {
+            assertNoActiveAccount(error)
+        }
+    }
+
+    @Test("updateMeasurementUnits API failure: propagates error")
+    func updateMeasurementUnitsAPIFailure() async {
+        let api = MockAccountAPIRepository()
+        let local = MockAccountRepository()
+        let account = AccountTestFixtures.makeAccountModel(id: "101", email: "user@example.com", isLoggedIn: true, isActive: true)
+        local.seed([account])
+        api.updateMeasurementUnitsResult = .failure(AccountTestError.apiFailed)
+
+        let sut = makeSUT(api: api, local: local)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
+
+        await #expect(throws: AccountTestError.apiFailed) {
+            try await sut.updateMeasurementUnits(.metric)
+        }
+    }
+
+    @Test("checkEmailAvailability: returns repo result and forwards email")
+    func checkEmailAvailabilityForwards() async throws {
+        let api = MockAccountAPIRepository()
+        api.checkEmailAvailabilityResult = .success(false)
+        let sut = makeSUT(api: api)
+
+        let isAvailable = try await sut.checkEmailAvailability(email: "taken@example.com")
+
+        #expect(isAvailable == false)
+        #expect(api.checkEmailAvailabilityCalls == 1)
+        #expect(api.lastCheckEmailAvailabilityEmail == "taken@example.com")
+    }
+
+    @Test("refreshAccount: parses productTypes and measurementUnits from response")
+    func refreshAccountParsesNewFields() async throws {
+        let api = MockAccountAPIRepository()
+        let local = MockAccountRepository()
+        let account = AccountTestFixtures.makeAccountModel(id: "101", email: "user@example.com", isLoggedIn: true, isActive: true)
+        local.seed([account])
+        api.fetchAccountResult = .success(
+            AccountTestFixtures.makeAccountDTO(
+                id: "101",
+                email: "user@example.com",
+                productTypes: ["weight", "blood_pressure"],
+                measurementUnits: "metric"
+            )
+        )
+
+        let sut = makeSUT(api: api, local: local)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
+
+        try await sut.refreshAccount(accountId: "101")
+
+        let updated = try await local.fetchAccount(byId: "101")
+        #expect(updated?.productTypes == ["weight", "blood_pressure"])
+        #expect(updated?.measurementUnits == "metric")
+    }
+
     private func makeSUT(
         api: MockAccountAPIRepository? = nil,
         local: MockAccountRepository? = nil,

@@ -1,2 +1,2 @@
 APP_ENV = DEV
-API_BASE_URL = ec2-34-197-4-77.compute-1.amazonaws.com/v3
+API_BASE_URL = 49.207.187.28:4200/wg-server-2573/v3

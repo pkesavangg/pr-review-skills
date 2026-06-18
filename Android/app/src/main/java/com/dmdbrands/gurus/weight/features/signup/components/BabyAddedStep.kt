@@ -1,17 +1,16 @@
 package com.dmdbrands.gurus.weight.features.signup.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,10 +19,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
+import com.dmdbrands.gurus.weight.features.common.components.AppProfileAvatar
 import com.dmdbrands.gurus.weight.features.common.components.AppStyledCard
 import com.dmdbrands.gurus.weight.features.common.components.AppSwipeableActionItem
 import com.dmdbrands.gurus.weight.features.common.components.AppSwipeableListActions
@@ -61,10 +61,19 @@ fun BabyAddedStep(
     ) {
         AppText(BabySignupStrings.babyAddedTitle, TextType.Title, spacing = MeTheme.spacing.lg)
 
-        Column(
-            verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.x3s),
-        ) {
+        // Reuses the same swipe primitive + AppProfileAvatar as the switch-account list (AppUserList)
+        // for visual parity, with thin dividers between rows. (Figma 31880-34959)
+        Column {
             babies.forEachIndexed { index, baby ->
+                val corner = MeTheme.borderRadius.sm
+                // Round the revealed delete action's outer corners to match the list card
+                // (first row → top, last row → bottom), like AppUserList.
+                val actionShape = when {
+                    babies.size == 1 -> RoundedCornerShape(topEnd = corner + 2.dp, bottomEnd = corner + 2.dp)
+                    index == 0 -> RoundedCornerShape(topEnd = corner + 2.dp)
+                    index == babies.lastIndex -> RoundedCornerShape(bottomEnd = corner + 2.dp)
+                    else -> RectangleShape
+                }
                 AppSwipeableListItem(
                     onActionOpened = { openedIdx -> openIndex = openedIdx },
                     isSwipeable = true,
@@ -72,7 +81,7 @@ fun BabyAddedStep(
                     iconWidth = 56.dp,
                     showAction = openIndex == index,
                     actionContent = {
-                        AppSwipeableListActions {
+                        AppSwipeableListActions(shape = actionShape) {
                             AppSwipeableActionItem(
                                 iconId = AppIcons.Default.Delete,
                                 contentDescription = BabySignupStrings.deleteBaby,
@@ -82,23 +91,44 @@ fun BabyAddedStep(
                             }
                         }
                     },
-                ) {
-                    BaseListItem(
-                        title = baby.name,
-                        leadingContent = {
-                            BabyAvatar(name = baby.name)
-                        },
-                        trailingContent = {
-                            IconButton(onClick = { onEditBaby(baby) }) {
-                                Icon(
-                                    painter = painterResource(AppIcons.Default.EditPencil),
-                                    contentDescription = BabySignupStrings.editBaby,
-                                    tint = MeTheme.colorScheme.textBody,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-                        },
-                    )
+                ) { progress ->
+                    // While dragging, square the corners so the row meets the red action cleanly;
+                    // at rest, round the card's outer corners by row position (mirrors AppUserList).
+                    val r = if (progress > 0f) 0.dp else corner
+                    val rowShape = when {
+                        babies.size == 1 -> RoundedCornerShape(r)
+                        index == 0 -> RoundedCornerShape(topStart = r, topEnd = r)
+                        index == babies.lastIndex -> RoundedCornerShape(bottomStart = r, bottomEnd = r)
+                        else -> RectangleShape
+                    }
+                    Column(
+                        modifier = Modifier
+                            .clip(rowShape)
+                            .background(MeTheme.colorScheme.primaryBackground, rowShape),
+                    ) {
+                        BaseListItem(
+                            title = baby.name,
+                            leadingContent = {
+                                AppProfileAvatar(text = baby.name, isActive = false)
+                            },
+                            trailingContent = {
+                                IconButton(onClick = { onEditBaby(baby) }) {
+                                    Icon(
+                                        painter = painterResource(AppIcons.Default.EditPencil),
+                                        contentDescription = BabySignupStrings.editBaby,
+                                        tint = MeTheme.colorScheme.textBody,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
+                            },
+                        )
+                        if (index < babies.lastIndex) {
+                            HorizontalDivider(
+                                color = MeTheme.colorScheme.utility,
+                                thickness = 0.5.dp,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -116,28 +146,6 @@ fun BabyAddedStep(
                 size = ButtonSize.Small,
             )
         }
-    }
-}
-
-@Composable
-private fun BabyAvatar(
-    name: String,
-    modifier: Modifier = Modifier,
-) {
-    val initial = name.firstOrNull()?.uppercase() ?: "?"
-    Box(
-        modifier = modifier
-            .size(40.dp)
-            .clip(CircleShape)
-            .background(MeTheme.colorScheme.secondaryBackground),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = initial,
-            style = MeTheme.typography.heading5,
-            color = MeTheme.colorScheme.textBody,
-            textAlign = TextAlign.Center,
-        )
     }
 }
 

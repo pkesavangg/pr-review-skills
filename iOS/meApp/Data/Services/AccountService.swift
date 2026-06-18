@@ -535,6 +535,39 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         )
     }
 
+    /// Updates the active account's preferred measurement units via the server,
+    /// then persists the returned account locally.
+    func updateMeasurementUnits(_ measurementUnits: MeasurementUnits) async throws {
+        guard let accountId = activeAccount?.accountId,
+              let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
+            throw AccountError.noActiveAccount
+        }
+        do {
+            logger.log(level: .info, tag: tag, message: "Update measurementUnits requested for accountId=\(accountId)")
+            let response = try await apiRepo.updateMeasurementUnits(measurementUnits.rawValue)
+            localAccount.update(from: response)
+            // Ensure the value is stored even if the server response omits it.
+            localAccount.measurementUnits = measurementUnits.rawValue
+            localAccount.isSynced = true
+            try await updateAccountClearingTokens(localAccount)
+            try await updatePublishedState()
+            logger.log(level: .info, tag: tag, message: "Update measurementUnits successful for accountId=\(accountId)")
+        } catch {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Update measurementUnits failed for accountId=\(accountId): \(error.localizedDescription)"
+            )
+            throw error
+        }
+    }
+
+    /// Checks whether an email is available for registration. No auth required.
+    func checkEmailAvailability(email: String) async throws -> Bool {
+        logger.log(level: .info, tag: tag, message: "Email availability check requested for email=\(maskedEmail(email))")
+        return try await apiRepo.checkEmailAvailability(email: email)
+    }
+
     /// Updates the tokens for the active account or a specific account by ID.
     func updateTokens(_ tokens: Tokens, _ accountId: String? = nil) async throws {
         // Update tokens for the active account if accountId is nil

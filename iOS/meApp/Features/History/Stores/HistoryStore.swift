@@ -46,6 +46,10 @@ final class HistoryStore: ObservableObject {
     @Published private(set) var selectedBabyDay: BabyHistoryDay?
     @Published var expandedBabyEntries: Set<String> = []
 
+    // MARK: - Optimistic Delete / Undo State
+    private var pendingBPDelete: BPHistoryEntry?
+    private var pendingBabyDelete: BabyHistoryEntry?
+
     /// Whether the current product type selection is blood pressure.
     var isBloodPressureMode: Bool {
         productTypeStore.selectedItem == .myBloodPressure
@@ -57,8 +61,29 @@ final class HistoryStore: ObservableObject {
         return false
     }
 
+    /// The baby id of the current selection, or `nil` when a non-baby product is selected.
+    /// Used to scope unified `/v3/entries/` reads and CSV export to a single baby.
+    private var selectedBabyId: String? {
+        if case .baby(let profile) = productTypeStore.selectedItem { return profile.id }
+        return nil
+    }
+
     // MARK: - UI Flags
     @Published var isEmptyState: Bool = false
+
+    // MARK: - Cursor Pagination State (Remote Read)
+    /// Accumulated entries pulled from the unified `GET /v3/entries/` cursor endpoint.
+    @Published private(set) var pagedEntries: [BathScaleOperationDTO] = []
+    /// Whether the server reported more pages beyond what has been loaded.
+    @Published private(set) var hasMorePages: Bool = false
+    /// Whether a page request is currently in flight (drives the list footer spinner).
+    @Published private(set) var isLoadingPage: Bool = false
+    /// True once loadFirstPage has completed at least one fetch (even if it returned empty).
+    /// Guards loadNextPage against re-fetching page 1 for accounts with no remote entries.
+    @Published private(set) var hasLoadedFirstPage: Bool = false
+
+    /// The cursor for the next page request — the `entryTimestamp` of the last loaded row.
+    private var nextCursor: String?
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -367,7 +392,7 @@ final class HistoryStore: ObservableObject {
         notificationService.dismissLoader()
     }
 
-    // MARK: - BP Delete
+    // MARK: - BP Delete (optimistic + 3-second UNDO)
 
     func showDeleteBPEntryAlert(entry: BPHistoryEntry) {
         let alert = AlertModel(
@@ -375,7 +400,7 @@ final class HistoryStore: ObservableObject {
             message: AlertStrings.DeleteEntryAlert.message,
             buttons: [
                 AlertButtonModel(title: AlertStrings.DeleteEntryAlert.deleteButton, type: .danger) { _ in
-                    Task { await self.deleteBPEntryInternal(entry) }
+                    self.confirmBPDelete(entry)
                 },
                 AlertButtonModel(title: AlertStrings.DeleteEntryAlert.cancelButton, type: .secondary) { _ in
                     self.notificationService.dismissAlert()
@@ -385,18 +410,56 @@ final class HistoryStore: ObservableObject {
         notificationService.showAlert(alert)
     }
 
+    private func confirmBPDelete(_ entry: BPHistoryEntry) {
+        bpEntries.removeAll { $0.id == entry.id }
+        pendingBPDelete = entry
+
+        let label = bpEntryLabel(entry)
+        notificationService.showToast(ToastModel(
+            message: "\(label) \(HistoryListStrings.readingDeleted)",
+            btnTextView: AnyView(Text(HistoryListStrings.undo).fontOpenSans(.button1)),
+            onClick: { Task { @MainActor in self.undoBPDelete() } },
+            duration: 3,
+            onDismiss: { Task { @MainActor in self.commitBPDelete() } }
+        ))
+    }
+
+    func undoBPDelete() {
+        guard let entry = pendingBPDelete else { return }
+        pendingBPDelete = nil
+        bpEntries.append(entry)
+        bpEntries.sort { $0.entryTimestamp > $1.entryTimestamp }
+        let label = bpEntryLabel(entry)
+        notificationService.showToast(ToastModel(message: "\(label) \(HistoryListStrings.readingRestored)"))
+    }
+
+    private func commitBPDelete() {
+        guard let entry = pendingBPDelete else { return }
+        pendingBPDelete = nil
+        Task { await deleteBPEntryInternal(entry) }
+    }
+
     private func deleteBPEntryInternal(_ entry: BPHistoryEntry) async {
         do {
-            notificationService.showLoader(LoaderModel(text: loaderLang.deletingEntry))
             try await entryService.deleteBpmEntry(entryTimestamp: entry.entryTimestamp)
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to delete BP entry: \(error.localizedDescription)")
-            notificationService.showToast(ToastModel(message: toastLang.errorDeletingEntry))
+            notificationService.showToast(ToastModel(
+                message: HistoryListStrings.couldntDelete,
+                btnTextView: AnyView(Text(HistoryListStrings.tryAgain).fontOpenSans(.button1)),
+                onClick: { Task { @MainActor in self.confirmBPDelete(entry) } },
+                isError: true
+            ))
         }
-        notificationService.dismissLoader()
     }
 
-    // MARK: - Baby Delete
+    private func bpEntryLabel(_ entry: BPHistoryEntry) -> String {
+        let date = DateTimeTools.getFormattedDay(entry.entryTimestamp)
+        let time = DateTimeTools.getFormattedTime(entry.entryTimestamp)
+        return "\(date) (\(time))"
+    }
+
+    // MARK: - Baby Delete (optimistic + 3-second UNDO)
 
     func showDeleteBabyEntryAlert(entry: BabyHistoryEntry) {
         let alert = AlertModel(
@@ -404,7 +467,7 @@ final class HistoryStore: ObservableObject {
             message: AlertStrings.DeleteEntryAlert.message,
             buttons: [
                 AlertButtonModel(title: AlertStrings.DeleteEntryAlert.deleteButton, type: .danger) { _ in
-                    Task { await self.deleteBabyEntryInternal(entry) }
+                    self.confirmBabyDelete(entry)
                 },
                 AlertButtonModel(title: AlertStrings.DeleteEntryAlert.cancelButton, type: .secondary) { _ in
                     self.notificationService.dismissAlert()
@@ -414,15 +477,166 @@ final class HistoryStore: ObservableObject {
         notificationService.showAlert(alert)
     }
 
+    private func confirmBabyDelete(_ entry: BabyHistoryEntry) {
+        babyEntries.removeAll { $0.id == entry.id }
+        pendingBabyDelete = entry
+
+        let label = DateTimeTools.getArrivalRelativeTime(fromISOString: entry.entryTimestamp)
+            ?? DateTimeTools.getFormattedTime(entry.entryTimestamp)
+
+        notificationService.showToast(ToastModel(
+            message: "\(label): \(HistoryListStrings.readingDeleted)",
+            btnTextView: AnyView(Text(HistoryListStrings.undo).fontOpenSans(.button1)),
+            onClick: { Task { @MainActor in self.undoBabyDelete() } },
+            duration: 3,
+            onDismiss: { Task { @MainActor in self.commitBabyDelete() } }
+        ))
+    }
+
+    func undoBabyDelete() {
+        guard let entry = pendingBabyDelete else { return }
+        pendingBabyDelete = nil
+        babyEntries.append(entry)
+        babyEntries.sort { $0.entryTimestamp > $1.entryTimestamp }
+        notificationService.showToast(ToastModel(message: HistoryListStrings.readingRestored))
+    }
+
+    private func commitBabyDelete() {
+        guard let entry = pendingBabyDelete else { return }
+        pendingBabyDelete = nil
+        Task { await deleteBabyEntryInternal(entry) }
+    }
+
     private func deleteBabyEntryInternal(_ babyEntry: BabyHistoryEntry) async {
         do {
-            notificationService.showLoader(LoaderModel(text: loaderLang.deletingEntry))
             try await entryService.deleteEntry(entryId: babyEntry.id)
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to delete baby entry: \(error.localizedDescription)")
-            notificationService.showToast(ToastModel(message: toastLang.errorDeletingEntry))
+            notificationService.showToast(ToastModel(
+                message: HistoryListStrings.couldntDelete,
+                btnTextView: AnyView(Text(HistoryListStrings.tryAgain).fontOpenSans(.button1)),
+                onClick: { Task { @MainActor in self.confirmBabyDelete(babyEntry) } }
+            ))
         }
-        notificationService.dismissLoader()
+    }
+
+    // MARK: - BP Edit (delete-old + create-new)
+
+    func updateBPEntry(
+        old: BPHistoryEntry,
+        systolic: Int,
+        diastolic: Int,
+        pulse: Int,
+        note: String,
+        entryTimestamp: String
+    ) async {
+        notificationService.showLoader(LoaderModel(text: loaderLang.savingEntry))
+        defer { notificationService.dismissLoader() }
+        do {
+            let meanArterial = String(Int(round(Double(diastolic) + (Double(systolic) - Double(diastolic)) / 3.0)))
+            let dto = BpmOperationDTO(
+                accountId: nil,
+                systolic: Double(systolic),
+                diastolic: Double(diastolic),
+                pulse: Double(pulse),
+                meanArterial: meanArterial,
+                note: note.isEmpty ? nil : note,
+                source: EntrySource.manual.rawValue,
+                unit: nil,
+                entryTimestamp: entryTimestamp,
+                operationType: nil,
+                serverTimestamp: nil
+            )
+            // Delete first so that a shared timestamp (user kept the original)
+            // doesn't cause deleteBpmEntry to match and remove the freshly created entry.
+            try await entryService.deleteBpmEntry(entryTimestamp: old.entryTimestamp)
+            do {
+                try await entryService.createBpmEntry(dto)
+            } catch {
+                // Delete succeeded but create failed — the original entry is gone.
+                // Bubble a distinct log so support can distinguish this from a plain save error.
+                logger.log(level: .error, tag: tag, message: "BP entry create failed after delete (entry lost): \(error.localizedDescription)")
+                notificationService.showToast(ToastModel(message: toastLang.errorSavingEntry))
+                return
+            }
+            logger.log(level: .info, tag: tag, message: "BP entry updated: \(entryTimestamp)")
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to delete BP entry during update: \(error.localizedDescription)")
+            notificationService.showToast(ToastModel(message: toastLang.errorSavingEntry))
+        }
+    }
+
+    // MARK: - Baby Edit (delete-old + create-new)
+
+    func updateBabyEntry(
+        old: BabyHistoryEntry,
+        note: String,
+        weightDecigrams: Int,
+        lengthMm: Int,
+        entryTimestamp: String
+    ) async {
+        guard case .baby(let profile) = productTypeStore.selectedItem,
+              !profile.isPendingSelection else { return }
+
+        notificationService.showLoader(LoaderModel(text: loaderLang.savingEntry))
+        defer { notificationService.dismissLoader() }
+        do {
+            try await entryService.createBabyEntry(
+                babyId: profile.id,
+                weight: weightDecigrams,
+                length: lengthMm,
+                note: note,
+                entryTimestamp: entryTimestamp,
+                source: nil
+            )
+            try await entryService.deleteEntry(entryId: old.id)
+            logger.log(level: .info, tag: tag, message: "Baby entry updated: \(entryTimestamp)")
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to update baby entry: \(error.localizedDescription)")
+            notificationService.showToast(ToastModel(message: toastLang.errorSavingEntry))
+        }
+    }
+
+    // MARK: - Cursor Pagination (Remote Read)
+
+    /// Loads the first page of remote entries for the current product selection,
+    /// resetting any previously accumulated pages.
+    func loadFirstPage() async {
+        nextCursor = nil
+        pagedEntries = []
+        hasMorePages = false
+        hasLoadedFirstPage = false
+        await loadNextPage()
+    }
+
+    /// Loads the next page of remote entries and appends it to `pagedEntries`.
+    ///
+    /// No-ops while a request is already in flight, or once the server has reported there
+    /// are no more pages (after at least one page has been fetched).
+    func loadNextPage() async {
+        guard !isLoadingPage else { return }
+        guard hasMorePages || !hasLoadedFirstPage else { return }
+
+        isLoadingPage = true
+        defer { isLoadingPage = false }
+
+        do {
+            let category = productTypeStore.selectedItem.entriesCategory
+            let page = try await entryService.fetchEntriesPage(
+                cursor: nextCursor,
+                limit: EntriesPagination.defaultLimit,
+                category: category,
+                babyId: selectedBabyId
+            )
+            pagedEntries.append(contentsOf: page.entries)
+            nextCursor = page.nextCursor
+            hasMorePages = page.hasMore
+            hasLoadedFirstPage = true
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to load entries page: \(error.localizedDescription)")
+            hasMorePages = false
+            hasLoadedFirstPage = true
+        }
     }
 
     // MARK: - Export Data
@@ -430,7 +644,7 @@ final class HistoryStore: ObservableObject {
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.sendingCsv))
             do {
-                try await entryService.exportCSV()
+                try await entryService.exportCSV(category: productTypeStore.selectedItem.entriesCategory, babyId: selectedBabyId)
                 notificationService.showToast(ToastModel(message: toastLang.csvExported))
             } catch {
                 logger.log(level: .error, tag: tag, message: "CSV export failed:", data: error.localizedDescription)

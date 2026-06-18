@@ -1,7 +1,11 @@
 package com.dmdbrands.gurus.weight.domain.repository
 
 import com.dmdbrands.gurus.weight.data.api.OperationsResponse
+import com.dmdbrands.gurus.weight.domain.model.api.entry.EntriesCursorResponse
+import com.dmdbrands.gurus.weight.domain.model.api.entry.EntriesSyncResponse
 import com.dmdbrands.gurus.weight.domain.model.api.entry.ScaleApiEntry
+import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryRequest
+import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryResponse
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import kotlinx.coroutines.flow.Flow
 
@@ -107,11 +111,30 @@ interface IEntryRepository {
   suspend fun sendOperationToAPI(operation: ScaleApiEntry?)
 
   /**
+   * Sends a batch of unified entries to `POST /v3/entries/` as an atomic request.
+   * Throws on any non-2xx (whole batch failed — server rolls back).
+   * @param entries The mixed-category entries to write.
+   * @return The unified response (persisted entries + sync timestamp).
+   */
+  suspend fun sendBatchToAPI(entries: List<UnifiedEntryRequest>): UnifiedEntryResponse
+
+  /**
    * Gets operations from the API since a specific timestamp.
    * @param lastUpdated The timestamp to get operations since
    * @return List of EntryEntity objects from the API
    */
   suspend fun getOperationsFromAPI(syncTimeStamp: String): OperationsResponse?
+
+  // ── Unified /v3/entries/ read (MOB-380) ───────────────────────────────────
+
+  /** Fetches all entries since [start] (sync-mode delta). Throws on failure. */
+  suspend fun getEntriesSync(start: String, category: String? = null): EntriesSyncResponse
+
+  /** Fetches a single cursor page. Throws on failure. */
+  suspend fun getEntriesPage(cursor: String? = null, limit: Int = 20, category: String? = null): EntriesCursorResponse
+
+  /** Streams a CSV export body; null on non-2xx. Throws on network error. */
+  suspend fun exportEntriesCsv(category: String? = null, download: Boolean = false, utcOffset: Int = 0): okhttp3.ResponseBody?
 
   /**
    * Gets the operation count for an account.

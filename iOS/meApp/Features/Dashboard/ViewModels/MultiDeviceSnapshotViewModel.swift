@@ -108,24 +108,37 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
         return hasher.finalize()
     }
 
-    /// Filters available items to show only one baby snapshot (the latest added / last in list).
-    func snapshotItems(from availableItems: [ProductSelection]) -> [ProductSelection] {
-        var items: [ProductSelection] = []
-        var latestBaby: ProductSelection?
+    /// Returns the items to display on the multi-device snapshot overview.
+    /// Non-baby items (weight, BPM) are always included.
+    /// All baby items are collapsed to a single card:
+    ///   • The currently selected baby when a baby is selected (last-active — persisted across sessions).
+    ///   • The first baby in the list when no baby is currently selected (e.g. user is on weight view).
+    /// This implements MOB-435: one baby snapshot, driven by the last-active baby.
+    func snapshotItems(from availableItems: [ProductSelection], selectedItem: ProductSelection) -> [ProductSelection] {
+        var nonBabyItems: [ProductSelection] = []
+        var babyItems: [ProductSelection] = []
 
         for item in availableItems {
             if case .baby(let profile) = item {
                 guard !profile.isPendingSelection else { continue }
-                latestBaby = item
+                babyItems.append(item)
             } else {
-                items.append(item)
+                nonBabyItems.append(item)
             }
         }
 
-        if let baby = latestBaby {
-            items.append(baby)
+        // Prefer the currently selected baby; fall back to the first baby in the list.
+        let activeBaby: ProductSelection? = {
+            if case .baby = selectedItem, babyItems.contains(selectedItem) {
+                return selectedItem
+            }
+            return babyItems.first
+        }()
+
+        if let baby = activeBaby {
+            return nonBabyItems + [baby]
         }
-        return items
+        return nonBabyItems
     }
 
     func babySummaries(for babyProfile: BabyProfile) -> [BathScaleWeightSummary] {

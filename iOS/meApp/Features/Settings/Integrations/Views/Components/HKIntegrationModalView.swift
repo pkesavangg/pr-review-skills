@@ -21,7 +21,6 @@ struct HKIntegrationModalView: View {
         case .outOfSync: return HKIntegrationModalStrings.outOfSync
         case .finishAdding: return HKIntegrationModalStrings.finishAdding
         case .addIntegration: return HKIntegrationModalStrings.addIntegration
-        case .updatePermissions: return HKIntegrationModalStrings.updatePermissions
         }
     }
     

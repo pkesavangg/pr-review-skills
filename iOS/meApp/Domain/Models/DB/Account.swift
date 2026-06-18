@@ -71,7 +71,10 @@ final class Account {
     var isSynced: Bool?
     /// Product types the user has selected (e.g. "myWeight", "myBloodPressure", "baby")
     var productTypes: [String] = []
-    
+    /// Preferred measurement units ("metric", "imperialLbOz", "imperialLbDecimal").
+    /// Sourced from the server `measurementUnits` field; nil until set.
+    var measurementUnits: String?
+
     // Relationship to WeightCompSettings
     @Relationship(deleteRule: .cascade) var weightSettings: WeightCompSettings?
     // Relationship to WeightCompSettings
@@ -104,7 +107,8 @@ final class Account {
         self.refreshToken = nil
         self.expiresAt = nil
         self.isSynced = nil
-        self.productTypes = []
+        self.productTypes = dto.productTypes ?? []
+        self.measurementUnits = dto.measurementUnits
 
         // Create associated WeightCompSettings
         let settings = WeightCompSettings(
@@ -114,7 +118,7 @@ final class Account {
             weightUnit: dto.weightUnit
         )
         self.weightSettings = settings
-        
+
         // Create associated GoalSettings
         let goalSettings = GoalSettings(
             accountId: dto.id,
@@ -125,7 +129,7 @@ final class Account {
             isSynced: false
         )
         self.goalSettings = goalSettings
-        
+
         // Create associated StreaksSettings
         let streaksSettings = StreaksSettings(
             accountId: dto.id,
@@ -134,7 +138,7 @@ final class Account {
             isSynced: false
         )
         self.streaksSettings = streaksSettings
-        
+
         // Create associated WeightlessSettings
         let weightlessSettings = WeightlessSettings(
             accountId: dto.id,
@@ -144,7 +148,7 @@ final class Account {
             isSynced: false
         )
         self.weightlessSettings = weightlessSettings
-        
+
         // Create associated NotificationSettings
         let notificationSettings = NotificationSettings(
             accountId: dto.id,
@@ -153,7 +157,7 @@ final class Account {
             isSynced: false
         )
         self.notificationSettings = notificationSettings
-        
+
         // Create associated DashboardSettings
         let dashboardSettings = DashboardSettings(
             accountId: dto.id,
@@ -163,7 +167,7 @@ final class Account {
             isSynced: false
         )
         self.dashboardSettings = dashboardSettings
-        
+
         // Create associated IntegrationSettings
         let integrationSettings = IntegrationSettings(
             accountId: dto.id,
@@ -177,7 +181,7 @@ final class Account {
         )
         self.integrationSettings = integrationSettings
     }
-    
+
     func toAccountDTO() -> AccountDTO {
         return AccountDTO(
             id: self.accountId,
@@ -209,7 +213,9 @@ final class Account {
             isMFPOn: self.integrationSettings?.isMfpOn,
             isMFPValid: self.integrationSettings?.isMfpValid,
             isHealthKitOn: self.integrationSettings?.isHealthKitOn,
-            isHealthConnectOn: self.integrationSettings?.isHealthConnectOn
+            isHealthConnectOn: self.integrationSettings?.isHealthConnectOn,
+            productTypes: self.productTypes,
+            measurementUnits: self.measurementUnits
         )
     }
 }
@@ -225,7 +231,18 @@ extension Account {
         self.gender = response.gender
         self.height = String(response.height)
         self.dob = response.dob
-        
+
+        // Only populate productTypes from server when the local value is unset.
+        // updateProductTypes() has no server API call, so productTypes are client-managed.
+        // A server refresh returning the account's default (e.g. ["myWeight"]) must not
+        // overwrite a signup selection already written locally (e.g. ["baby"]).
+        if let productTypes = response.productTypes, self.productTypes.isEmpty {
+            self.productTypes = productTypes
+        }
+        if let measurementUnits = response.measurementUnits {
+            self.measurementUnits = measurementUnits
+        }
+
         if let weightSettings = self.weightSettings {
             weightSettings.height = String(response.height)
             weightSettings.activityLevel = response.activityLevel
@@ -237,7 +254,7 @@ extension Account {
         if let zipcode = response.zipcode {
             self.zipcode = zipcode
         }
-            
+
         // Consolidated weightless settings update logic
         if let isWeightlessOn = response.isWeightlessOn, isWeightlessOn == false {
             // Explicitly turned off: clear weight and timestamp
@@ -298,12 +315,12 @@ extension Account {
             goalSettings.goalPercent = response.goalPercent
         }
     }
-    
+
     // Add a separate method for updating from AccountResponse
     func update(from response: AccountResponse) {
         // Update account data
         update(from: response.account)
-        
+
         // Update tokens
         if let accessToken = response.accessToken {
             self.accessToken = accessToken
@@ -314,17 +331,17 @@ extension Account {
         if let expiresAt = response.expiresAt {
             self.expiresAt = expiresAt
         }
-        
+
         self.isSynced = true
     }
-    
+
     // Add a method to update from Tokens
     func update(from tokens: Tokens) {
         self.accessToken = tokens.accessToken
         self.refreshToken = tokens.refreshToken
         self.expiresAt = tokens.expiresAt
     }
-    
+
     // Add a method to update from Profile
     func update(from profile: Profile) {
         self.firstName = profile.firstName
@@ -337,7 +354,7 @@ extension Account {
         self.weightSettings?.activityLevel = profile.activityLevel
         // Optionally update goalSettings if profile contains goal info (add logic if needed)
     }
-    
+
     // Add a method to update from GoalSettings
     func update(from goalSettings: GoalResponse) {
         self.goalSettings?.goalType = goalSettings.type

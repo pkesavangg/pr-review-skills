@@ -250,6 +250,36 @@ class SettingsReducerTest {
     }
 
     @Test
+    fun `isMyKidsEnabled is true when hasBabyScaleDevice is true`() {
+        val state = SettingsState(hasBabyScaleDevice = true, account = null)
+
+        assertThat(state.isMyKidsEnabled).isTrue()
+    }
+
+    @Test
+    fun `isMyKidsEnabled is true when productTypes contains baby even without device`() {
+        val account = fakeAccount.copy(productTypes = listOf("weight", "baby"))
+        val state = SettingsState(hasBabyScaleDevice = false, account = account)
+
+        assertThat(state.isMyKidsEnabled).isTrue()
+    }
+
+    @Test
+    fun `isMyKidsEnabled is false when no device and account is null`() {
+        val state = SettingsState(hasBabyScaleDevice = false, account = null)
+
+        assertThat(state.isMyKidsEnabled).isFalse()
+    }
+
+    @Test
+    fun `isMyKidsEnabled is false when no device and productTypes lacks baby`() {
+        val account = fakeAccount.copy(productTypes = listOf("weight", "blood_pressure"))
+        val state = SettingsState(hasBabyScaleDevice = false, account = account)
+
+        assertThat(state.isMyKidsEnabled).isFalse()
+    }
+
+    @Test
     fun `side-effect and modal intents return null`() {
         val state = SettingsState()
 

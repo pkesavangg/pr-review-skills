@@ -20,6 +20,8 @@ final class MockAccountAPIRepository: AccountRepositoryAPIProtocol {
     var requestPasswordResetResult: Result<Void, Error> = .success(())
     var updatePasswordResult: Result<Tokens, Error> = .success(AccountTestFixtures.makeTokens())
     var refreshTokenResult: Result<Tokens, Error> = .success(AccountTestFixtures.makeTokens())
+    var checkEmailAvailabilityResult: Result<Bool, Error> = .success(true)
+    var updateMeasurementUnitsResult: Result<AccountResponse, Error> = .success(AccountTestFixtures.makeAccountResponse())
 
     private(set) var createAccountCalls = 0
     private(set) var logInCalls = 0
@@ -38,7 +40,11 @@ final class MockAccountAPIRepository: AccountRepositoryAPIProtocol {
     private(set) var requestPasswordResetCalls = 0
     private(set) var updatePasswordCalls = 0
     private(set) var refreshTokenCalls = 0
+    private(set) var checkEmailAvailabilityCalls = 0
+    private(set) var updateMeasurementUnitsCalls = 0
 
+    private(set) var lastCheckEmailAvailabilityEmail: String?
+    private(set) var lastUpdatedMeasurementUnits: String?
     private(set) var lastCreateAccountEmail: String?
     private(set) var lastCreateAccountPassword: String?
     private(set) var lastCreateAccountProfile: Profile?
@@ -62,6 +68,18 @@ final class MockAccountAPIRepository: AccountRepositoryAPIProtocol {
         lastCreateAccountPassword = password
         lastCreateAccountProfile = profile
         return try createAccountResult.get()
+    }
+
+    func checkEmailAvailability(email: String) async throws -> Bool {
+        checkEmailAvailabilityCalls += 1
+        lastCheckEmailAvailabilityEmail = email
+        return try checkEmailAvailabilityResult.get()
+    }
+
+    func updateMeasurementUnits(_ measurementUnits: String) async throws -> AccountResponse {
+        updateMeasurementUnitsCalls += 1
+        lastUpdatedMeasurementUnits = measurementUnits
+        return try updateMeasurementUnitsResult.get()
     }
 
     func logIn(email: String, password: String) async throws -> AccountResponse {

@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.AccountFlag
 import com.dmdbrands.gurus.weight.domain.repository.IAccountFlagRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountFlagService
+import com.dmdbrands.gurus.weight.domain.services.IReviewService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,6 +25,7 @@ class AccountFlagService
       @ApplicationContext val context: Context,
       private val accountFlagRepository: IAccountFlagRepository,
       private val appReviewManager: IAppReviewManager,
+      private val reviewService: IReviewService,
     ) : IAccountFlagService {
 
     // Current account flag
@@ -80,9 +82,30 @@ class AccountFlagService
             val wasDeleted = deleteFlag(flagId)
             if (wasDeleted) {
               // Trigger app review flow using AppReviewManager
-              //review shown using this variable from homescreen
               AppLog.d("AccountFlagService", "Trigger app rate review")
               return true
+            }
+          }
+          "scale-review-ask" -> {
+            // Post a dismissal via the unified /v3/review/ endpoint then clear the flag.
+            // Actual star rating / feedback is collected by the review UI (not wired here yet);
+            // this handles the "user dismissed without rating" path so the flag is cleared.
+            try {
+              val sku = (flag.data as? Map<*, *>)?.get("sku") as? String
+              reviewService.submitReview(
+                reviewType = "scale",
+                status = "dismissed",
+                sku = sku,
+                flagId = flagId,
+              )
+              // submitReview already deletes the flag server-side; clear the in-memory cache
+              // too (mirrors the app-rate-ask path via deleteFlag) so a subsequent
+              // checkAccountFlag in this session does not re-process the dismissed flag.
+              firstFlag = null
+              AppLog.d("AccountFlagService", "scale-review-ask dismissed sku=$sku flagId=$flagId")
+              return true
+            } catch (e: Exception) {
+              AppLog.e("AccountFlagService", "Failed to dismiss scale review", e.toString())
             }
           }
           else -> {

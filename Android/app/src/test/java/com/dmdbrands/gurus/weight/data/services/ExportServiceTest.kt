@@ -51,6 +51,8 @@ class ExportServiceTest {
     private val dialogQueueService: IDialogQueueService = mockk(relaxed = true)
     private val deviceService: GGDeviceService = mockk()
     private val logRepository: ILogRepository = mockk()
+    private val entryRepository: com.dmdbrands.gurus.weight.domain.repository.IEntryRepository = mockk(relaxed = true)
+    private val context: android.content.Context = mockk(relaxed = true)
 
     private lateinit var service: ExportService
 
@@ -107,6 +109,8 @@ class ExportServiceTest {
         dialogQueueService = dialogQueueService,
         deviceService = deviceService,
         logRepository = logRepository,
+        entryRepository = entryRepository,
+        context = context,
     )
 
     // -------------------------------------------------------------------------

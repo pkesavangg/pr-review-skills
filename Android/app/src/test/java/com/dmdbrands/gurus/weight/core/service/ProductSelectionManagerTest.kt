@@ -4,12 +4,14 @@ import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
+import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.google.common.truth.Truth.assertThat
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
+import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
@@ -18,6 +20,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
+import javax.inject.Provider
 
 class ProductSelectionManagerTest {
 
@@ -31,6 +34,8 @@ class ProductSelectionManagerTest {
 
     @MockK(relaxUnitFun = true)
     private lateinit var productSelectionRepository: IProductSelectionRepository
+
+    private val accountService: IAccountService = mockk(relaxed = true)
 
     private lateinit var manager: ProductSelectionManager
 
@@ -54,6 +59,7 @@ class ProductSelectionManagerTest {
 
         manager = ProductSelectionManager(
             productSelectionRepository = productSelectionRepository,
+            accountService = Provider { accountService },
         )
     }
 

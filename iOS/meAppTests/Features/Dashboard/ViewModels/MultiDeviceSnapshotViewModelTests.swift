@@ -98,20 +98,36 @@ struct MultiDeviceSnapshotViewModelTests {
     func snapshotItemsPassThroughMyWeight() {
         let (sut, _) = makeSUT()
         let items: [ProductSelection] = [.myWeight]
-        let result = sut.snapshotItems(from: items)
+        let result = sut.snapshotItems(from: items, selectedItem: .myWeight)
         #expect(result == [.myWeight])
     }
 
-    @Test("snapshotItems deduplicates multiple babies and keeps only the last")
-    func snapshotItemsKeepsOnlyLastBaby() {
+    @Test("snapshotItems collapses multiple babies to one, falling back to first when no baby selected")
+    func snapshotItemsKeepsOnlyFirstBabyWhenNoneSelected() {
         let (sut, _) = makeSUT()
         let baby1 = makeBabyProfile(id: "b1", name: "First")
         let baby2 = makeBabyProfile(id: "b2", name: "Second")
         let items: [ProductSelection] = [.myWeight, .baby(profile: baby1), .baby(profile: baby2)]
 
-        let result = sut.snapshotItems(from: items)
+        let result = sut.snapshotItems(from: items, selectedItem: .myWeight)
 
-        // Only the last baby (baby2) should appear
+        let babyItems = result.compactMap { item -> BabyProfile? in
+            if case .baby(let profile) = item { return profile }
+            return nil
+        }
+        #expect(babyItems.count == 1)
+        #expect(babyItems.first?.id == "b1")
+    }
+
+    @Test("snapshotItems returns selected baby when selectedItem is a baby present in the list")
+    func snapshotItemsReturnsSelectedBaby() {
+        let (sut, _) = makeSUT()
+        let baby1 = makeBabyProfile(id: "b1", name: "First")
+        let baby2 = makeBabyProfile(id: "b2", name: "Second")
+        let items: [ProductSelection] = [.myWeight, .baby(profile: baby1), .baby(profile: baby2)]
+
+        let result = sut.snapshotItems(from: items, selectedItem: .baby(profile: baby2))
+
         let babyItems = result.compactMap { item -> BabyProfile? in
             if case .baby(let profile) = item { return profile }
             return nil
@@ -120,13 +136,30 @@ struct MultiDeviceSnapshotViewModelTests {
         #expect(babyItems.first?.id == "b2")
     }
 
+    @Test("snapshotItems falls back to first baby when selected baby is absent from the list")
+    func snapshotItemsFallsBackToFirstWhenSelectedAbsent() {
+        let (sut, _) = makeSUT()
+        let baby1 = makeBabyProfile(id: "b1", name: "First")
+        let baby2 = makeBabyProfile(id: "b2", name: "Second")
+        let absentBaby = makeBabyProfile(id: "b3", name: "Absent")
+        let items: [ProductSelection] = [.myWeight, .baby(profile: baby1), .baby(profile: baby2)]
+
+        let result = sut.snapshotItems(from: items, selectedItem: .baby(profile: absentBaby))
+
+        let babyIds = result.compactMap { item -> String? in
+            if case .baby(let p) = item { return p.id }
+            return nil
+        }
+        #expect(babyIds == ["b1"])
+    }
+
     @Test("snapshotItems appends BPM when bpmDailySummaries is non-empty and BPM not already present")
     func snapshotItemsAddsBpmWhenDataExists() async {
         let (sut, entryService) = makeSUT()
         entryService.bpmDailySummaries = [makeBpmSummary(systolic: 120, diastolic: 80, date: Date())]
         await DashboardTestFixtures.waitUntil { sut.bpmDailySummaries.count == 1 }
 
-        let result = sut.snapshotItems(from: [.myWeight])
+        let result = sut.snapshotItems(from: [.myWeight], selectedItem: .myWeight)
 
         #expect(result.contains(.myBloodPressure))
     }
@@ -137,7 +170,7 @@ struct MultiDeviceSnapshotViewModelTests {
         entryService.bpmDailySummaries = [makeBpmSummary(systolic: 120, diastolic: 80, date: Date())]
         await DashboardTestFixtures.waitUntil { sut.bpmDailySummaries.count == 1 }
 
-        let result = sut.snapshotItems(from: [.myWeight, .myBloodPressure])
+        let result = sut.snapshotItems(from: [.myWeight, .myBloodPressure], selectedItem: .myWeight)
 
         let bpmCount = result.filter { $0 == .myBloodPressure }.count
         #expect(bpmCount == 1)
@@ -146,8 +179,7 @@ struct MultiDeviceSnapshotViewModelTests {
     @Test("snapshotItems does not add BPM when bpmDailySummaries is empty")
     func snapshotItemsDoesNotAddBpmWithNoData() {
         let (sut, _) = makeSUT()
-        // bpmDailySummaries is empty by default
-        let result = sut.snapshotItems(from: [.myWeight])
+        let result = sut.snapshotItems(from: [.myWeight], selectedItem: .myWeight)
 
         #expect(!result.contains(.myBloodPressure))
     }
@@ -159,7 +191,7 @@ struct MultiDeviceSnapshotViewModelTests {
         await DashboardTestFixtures.waitUntil { sut.bpmDailySummaries.count == 1 }
 
         let baby = makeBabyProfile()
-        let result = sut.snapshotItems(from: [.myWeight, .baby(profile: baby)])
+        let result = sut.snapshotItems(from: [.myWeight, .baby(profile: baby)], selectedItem: .myWeight)
 
         if case .baby = result.last {
             // pass

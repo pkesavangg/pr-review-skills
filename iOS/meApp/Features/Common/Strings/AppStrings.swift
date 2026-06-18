@@ -18,6 +18,7 @@ struct CommonStrings {
     static let save = "Save"
     static let skip = "Skip"
     static let logIn = "Log in"
+    static let loggedOut = "Logged out"
     static let signUp = "Sign up"
     static let complete = "Complete"
     static let edit = "Edit"
@@ -247,14 +248,6 @@ struct HKIntegrationModalStrings {
         primaryButtonTitle: "CONNECT",
         secondaryButtonTitle: nil
     )
-
-    static let updatePermissions = HKIntegrationModalContent(
-        imageName: AppAssets.hkLogoLarge,
-        title: "Update Apple Health Permissions",
-        message: "You paired a new device that can sync additional health data. Update Apple Health permissions for Weight Gurus now?",
-        primaryButtonTitle: "UPDATE",
-        secondaryButtonTitle: "NOT NOW"
-    )
 }
 
 /// Constants for form validation error messages
@@ -303,6 +296,7 @@ struct InputFieldLabels {
     static let confirmPassword = "confirm password"
     static let confirmNewPassword = "confirm new password"
     static let currentPassword = "current password"
+    static let height = "height"
     static let startingWeight = "starting weight"
     static let startingWeightLabel: (Bool) -> String = { isKg in
         return isKg ? "starting weight (kg)" : "starting weight (lbs)"
@@ -312,6 +306,10 @@ struct InputFieldLabels {
     }
     static let goalWeight = "goal weight"
     static let useMetric = "Use Metric Units"
+    /// Unit suffix shown on the right of a unit-value input field, e.g. "(kg)" / "(lbs)".
+    static let weightUnitSuffix: (Bool) -> String = { isKg in
+        return isKg ? "(kg)" : "(lbs)"
+    }
     static let zipCode = "zipcode"
     static let birthday = "birthday"
     static let weightLabel: (Bool) -> String = { isKg in

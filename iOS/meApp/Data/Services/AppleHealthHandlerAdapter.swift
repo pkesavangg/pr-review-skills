@@ -45,9 +45,10 @@ final class AppleHealthHandlerAdapter: HealthKitHandlerProtocol {
         let appType: GGAppType
         switch (hasScale, hasBpm) {
         case (true, true):
-            // Both scale and BPM paired — should use .ALL to request Weight Gurus + Balance Health
-            // permissions together. Using .WEIGHT_GURUS for now since ggHealthKitPackage changes
-            // are not yet merged to main.
+            // Both scale and BPM in scope. ggHealthKitPackage requests one app type per call, so
+            // HealthKitService requests Weight Gurus and Balance Health back-to-back to cover all
+            // six data types (MOB-405); permission counting and sync then run under Weight Gurus,
+            // which covers the weight metrics + heart rate while blood pressure writes regardless.
             appType = .WEIGHT_GURUS
         case (false, true):
             appType = .BALANCE_HEALTH

@@ -2,6 +2,8 @@ package com.dmdbrands.gurus.weight.domain.services
 
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
+import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.proto.ThemeMode
@@ -146,6 +148,18 @@ interface IAccountService {
   ): Boolean
 
   suspend fun updateDashboardType(type: DashboardType)
+
+  /** Checks email availability for signup (no auth). MOB-377. */
+  suspend fun emailCheck(email: String): Boolean
+
+  /** Updates the account-level measurement system. MOB-377. */
+  suspend fun updateMeasurementUnits(measurementUnits: MeasurementUnits)
+
+  /**
+   * Adds [productType] to the account's `productTypes` on the server (spec §2.19) and
+   * persists the result locally. No-op if the product is already present.
+   */
+  suspend fun addProduct(productType: ProductType)
 
   /**
    * Handles unauthorized logout when token refresh fails. Marks account as expired, removes from storage, and triggers unauthorized logout event.

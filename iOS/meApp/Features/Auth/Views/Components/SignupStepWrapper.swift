@@ -31,7 +31,7 @@ struct SignupStepWrapper<Content: View>: View {
 
                     Text(subtitle)
                         .fontOpenSans(.body2)
-                        .foregroundColor(theme.textHeading)
+                        .foregroundColor(theme.textSubheading)
                 }
 
                 VStack(alignment: .leading, spacing: 0) {

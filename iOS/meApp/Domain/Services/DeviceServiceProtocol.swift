@@ -48,4 +48,27 @@ protocol DeviceServiceProtocol {
     ///   - showToast: Whether to show a toast/notification (optional, default true).
     func deleteDevice(_ deviceId: String, showToast: Bool) async throws
 
+    // MARK: - Unified Device API (Me App 2.0 — /v3/paired-device/)
+
+    /// Lists paired devices of any product type from the unified `/paired-device/` endpoint.
+    /// - Parameter deviceType: Optional filter; pass `nil` to fetch every device type.
+    /// - Returns: The remote `PairedDeviceResponse` objects.
+    func listPairedDevices(deviceType: DeviceType?) async throws -> [PairedDeviceResponse]
+
+    /// Pairs a new device of any product type via the unified `/paired-device/` endpoint.
+    /// The server auto-adds the corresponding product to the account's `productTypes`.
+    /// - Parameter request: The unified device-pairing request.
+    /// - Returns: The created `PairedDeviceResponse`.
+    func createPairedDevice(_ request: PairedDeviceRequest) async throws -> PairedDeviceResponse
+
+    /// Updates a paired device's nickname via the unified `/paired-device/:deviceId` endpoint.
+    /// - Parameters:
+    ///   - deviceId: The ID of the device to update.
+    ///   - nickname: The new nickname.
+    /// - Returns: The updated `PairedDeviceResponse`.
+    func updatePairedDevice(_ deviceId: String, nickname: String) async throws -> PairedDeviceResponse
+
+    /// Unpairs a device via the unified `/paired-device/:deviceId` endpoint (204 No Content).
+    /// - Parameter deviceId: The ID of the device to unpair.
+    func deletePairedDevice(_ deviceId: String) async throws
 }

@@ -21,17 +21,20 @@ enum ActivityLevel: String, Codable, Equatable {
 enum Sex: String, Codable, Equatable, CaseIterable {
     case male
     case female
-    
+    case `private`
+
     init?(rawInput: String?) {
         guard let input = rawInput?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() else {
             return nil
         }
-        
+
         switch input {
         case "male":
             self = .male
         case "female":
             self = .female
+        case "private":
+            self = .private
         default:
             return nil
         }
@@ -43,6 +46,26 @@ enum Sex: String, Codable, Equatable, CaseIterable {
 enum WeightUnit: String, Codable, Equatable {
     case kg
     case lb
+}
+
+// MARK: - MeasurementUnits
+
+/// Preferred measurement units for multi-product accounts.
+/// Mirrors the server `measurementUnits` field (see Me App 2.0 API spec).
+enum MeasurementUnits: String, Codable, Equatable, CaseIterable {
+    case metric
+    case imperialLbOz
+    case imperialLbDecimal
+}
+
+// MARK: - ProductType
+
+/// Product-type identifiers persisted in `account.productTypes`.
+/// Raw values match the persisted vocabulary: "myWeight", "myBloodPressure", "baby".
+enum ProductType: String, Codable, Equatable, CaseIterable {
+    case weight = "myWeight"
+    case bloodPressure = "myBloodPressure"
+    case baby
 }
 
 // MARK: - DashboardType

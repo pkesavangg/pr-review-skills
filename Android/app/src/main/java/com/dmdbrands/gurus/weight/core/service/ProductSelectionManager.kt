@@ -5,15 +5,19 @@ import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
+import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
+import javax.inject.Provider
 
 class ProductSelectionManager @Inject constructor(
   private val productSelectionRepository: IProductSelectionRepository,
+  // Provider breaks a potential Hilt init cycle (AccountService graph is large).
+  private val accountService: Provider<IAccountService>,
 ) : IProductSelectionManager {
 
   private val _availableProducts = MutableStateFlow<List<ProductSelection>>(listOf(ProductSelection.MyWeight))
@@ -72,6 +76,13 @@ class ProductSelectionManager @Inject constructor(
 
     _selectedProduct.value = restoreSavedSelection(products)
     _isSnapshotMode.value = !productSelectionRepository.observeHasUserSelected().first()
+  }
+
+  override suspend fun persistProductForSetup(productType: ProductType) {
+    // Submit to the server (spec §2.19). Swallow failures: a network hiccup here must never
+    // disrupt the just-completed device setup — the next account sync will reconcile.
+    runCatching { accountService.get().addProduct(productType) }
+      .onFailure { AppLog.e(TAG, "persistProductForSetup failed for ${productType.apiValue}", it) }
   }
 
   /**

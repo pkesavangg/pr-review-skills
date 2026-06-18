@@ -25,6 +25,8 @@ enum BabyScaleSetupStep: Int, CaseIterable {
     case babyProfile
     /// "Your Baby Has Been Added!" — list of babies + add more.
     case babyAdded
+    /// "You're Done!" — closing screen with GO TO DASHBOARD / ADD A DEVICE.
+    case done
 
     /// Convenience property for page-based controls.
     var index: Int { rawValue }

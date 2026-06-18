@@ -81,6 +81,13 @@ enum ProductSelection: Equatable, Hashable, Identifiable {
         }
     }
 
+    /// True when this is the baby placeholder shown before any baby profile has been added.
+    /// Used to surface the "No babies added yet" empty state on the Manual Entry and History tabs.
+    var isPendingBaby: Bool {
+        if case .baby(let profile) = self { return profile.isPendingSelection }
+        return false
+    }
+
     /// The DeviceType to use when saving or filtering entries for this selection.
     var deviceType: DeviceType {
         switch self {
@@ -97,5 +104,11 @@ enum ProductSelection: Equatable, Hashable, Identifiable {
         case .myWeight: return .scale
         case .baby: return .baby
         }
+    }
+
+    /// The unified entries API `category` this selection maps to (`weight`/`bp`/`baby`).
+    /// Used to scope reads, cursor pagination, and CSV export to the active product.
+    var entriesCategory: String? {
+        EntryCategory(entryType: entryType)?.rawValue
     }
 }

@@ -8,6 +8,9 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEnt
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
 import com.dmdbrands.gurus.weight.domain.model.api.entry.ScaleApiEntry
+import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryRequest
+import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryResponse
+import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PopulatedActiveEntry
@@ -167,6 +170,31 @@ class EntryRepositoryTest {
         coEvery { entryApi.sendOperation(any()) } throws RuntimeException("network error")
 
         repository.sendOperationToAPI(operation)
+    }
+
+    // ── sendBatchToAPI ─────────────────────────────────────────────────────────
+
+    @Test
+    fun `sendBatchToAPI posts entries and returns response`() = runTest {
+        val requests = listOf(
+            UnifiedEntryRequest(category = "weight", operationType = "create", entryTimestamp = "2024-01-15T00:00:00.000Z", weight = 750),
+        )
+        val response = UnifiedEntryResponse(entries = emptyList(), timestamp = "2024-01-15T00:00:01.000Z")
+        coEvery { entryApi.postEntries(requests) } returns response
+
+        val result = repository.sendBatchToAPI(requests)
+
+        assertThat(result).isEqualTo(response)
+        coVerify { entryApi.postEntries(requests) }
+    }
+
+    @Test(expected = RuntimeException::class)
+    fun `sendBatchToAPI rethrows exception from api (atomic failure)`() = runTest {
+        coEvery { entryApi.postEntries(any()) } throws RuntimeException("batch failed")
+
+        repository.sendBatchToAPI(
+            listOf(UnifiedEntryRequest(category = "bp", operationType = "create", entryTimestamp = "t", systolic = 120, diastolic = 80, pulse = 72)),
+        )
     }
 
     // ── getOperationsFromAPI ───────────────────────────────────────────────────
