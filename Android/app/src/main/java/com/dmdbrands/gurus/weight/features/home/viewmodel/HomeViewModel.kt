@@ -173,6 +173,11 @@ constructor(
         // Safely handle the flow data - it can be String or GGPermissionStatusMap
         when (data) {
           is GGPermissionStatusMap -> {
+            // MOB-710-DIAG: observe WHEN the permission map first becomes non-empty after launch.
+            AppLog.d(
+              TAG,
+              "MOB-710-DIAG permission flow emitted: empty=${data.isEmpty()} size=${data.size} value=$data",
+            )
             val isAppSyncPermissionsEnabled =
               AppPermissionsHelper.areRequiredPermissionsEnabled(
                 data, setupType = ScaleSetupType.AppSync,
@@ -189,6 +194,15 @@ constructor(
   }
 
   private fun checkAndRequestCameraPermission(onResult: (Boolean) -> Unit) {
+    // MOB-710-DIAG: snapshot of permission state at the moment AppSync is tapped, so we can see
+    // whether the flow has loaded yet relative to dashboard navigation.
+    AppLog.d(
+      TAG,
+      "MOB-710-DIAG AppSync tapped -> state.isAppSyncPermissionsEnabled=" +
+        "${state.value.isAppSyncPermissionsEnabled} flowEmpty=" +
+        "${ggPermissionService.permissionCallBackFlow.value.isEmpty()} " +
+        "flowValue=${ggPermissionService.permissionCallBackFlow.value}",
+    )
     if (state.value.isAppSyncPermissionsEnabled) {
       onResult(true)
       return
