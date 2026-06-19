@@ -1,14 +1,17 @@
 package com.dmdbrands.gurus.weight.domain.model.api.entry
 
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
+import com.dmdbrands.gurus.weight.domain.enums.BabyEntryType
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntryWithMetrics
 import com.google.common.truth.Truth.assertThat
-import org.junit.Test
+import org.junit.jupiter.api.Test
 
 class UnifiedEntryMapperTest {
 
@@ -105,6 +108,65 @@ class UnifiedEntryMapperTest {
     @Test
     fun `delete op is lowercased`() {
         assertThat(bpmEntry(op = "DELETE").toUnifiedRequest().operationType).isEqualTo("delete")
+    }
+
+    // ── BabyEntry → request (MOB-381 / §2.16) ────────────────────────────────────
+
+    private fun babyEntry(
+        type: BabyEntryType,
+        weightDecigrams: Int? = null,
+        lengthMm: Int? = null,
+    ) = BabyEntry(
+        entry = EntryEntity(
+            accountId = ACCOUNT_ID,
+            entryTimestamp = TIMESTAMP,
+            operationType = "CREATE",
+            deviceType = "manual",
+            deviceId = "",
+        ),
+        babyEntry = BabyEntryEntity(
+            id = 0L,
+            babyId = "baby-1",
+            babyWeightDecigrams = weightDecigrams,
+            babyLengthMillimeters = lengthMm,
+            entryNote = "after bath",
+            entryType = type.value,
+            source = EntrySource.MANUAL.value,
+        ),
+    )
+
+    @Test
+    fun `baby weight entry maps to baby category with weight entryType`() {
+        val req = babyEntry(BabyEntryType.WEIGHT, weightDecigrams = 45_200).toUnifiedRequest()
+
+        assertThat(req.category).isEqualTo(EntryCategory.BABY.value)
+        assertThat(req.operationType).isEqualTo("create")
+        assertThat(req.babyId).isEqualTo("baby-1")
+        assertThat(req.entryType).isEqualTo(BabyEntryType.WEIGHT.value)
+        assertThat(req.babyWeightDecigrams).isEqualTo(45_200)
+        assertThat(req.babyLengthMillimeters).isNull()
+        assertThat(req.entryNote).isEqualTo("after bath")
+        assertThat(req.source).isEqualTo(EntrySource.MANUAL.value)
+    }
+
+    @Test
+    fun `baby length entry maps to measureLength entryType`() {
+        val req = babyEntry(BabyEntryType.MEASURE_LENGTH, lengthMm = 510).toUnifiedRequest()
+
+        assertThat(req.entryType).isEqualTo(BabyEntryType.MEASURE_LENGTH.value)
+        assertThat(req.babyLengthMillimeters).isEqualTo(510)
+        assertThat(req.babyWeightDecigrams).isNull()
+    }
+
+    @Test
+    fun `toUnifiedRequestOrNull dispatches baby and drops empty readings`() {
+        assertThat(babyEntry(BabyEntryType.WEIGHT, weightDecigrams = 45_200).toUnifiedRequestOrNull()?.category)
+            .isEqualTo("baby")
+        assertThat(babyEntry(BabyEntryType.MEASURE_LENGTH, lengthMm = 510).toUnifiedRequestOrNull())
+            .isNotNull()
+        // No value for the entryType → dropped, not POSTed as a 0 reading.
+        assertThat(babyEntry(BabyEntryType.WEIGHT, weightDecigrams = 0).toUnifiedRequestOrNull()).isNull()
+        assertThat(babyEntry(BabyEntryType.MEASURE_LENGTH, lengthMm = null).toUnifiedRequestOrNull()).isNull()
     }
 
     // ── Entry.toUnifiedRequestOrNull ─────────────────────────────────────────────

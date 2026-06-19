@@ -9,10 +9,15 @@ import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
+import com.dmdbrands.gurus.weight.domain.enums.BabyEntryType
+import com.dmdbrands.gurus.weight.domain.model.api.entry.EntrySource
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.features.common.helper.form.MultiFormGroup
@@ -394,9 +399,23 @@ constructor(
 
   private fun saveBabyEntry() {
     val babyForm = (_state.value.activeForm as? ActiveEntryForm.Baby)?.form ?: return
+    val babyId = (productSelectionManager.selectedProduct.value as? ProductSelection.Baby)?.profile?.id
+    if (babyId == null) {
+      AppLog.w(TAG, "No baby selected; cannot save baby entry")
+      return
+    }
     dialogQueueService.showLoader(message = DashboardString.Loader.save)
     viewModelScope.launch {
+      val accountId = accountService.activeAccountFlow.first()?.id
+      if (accountId == null) {
+        dialogQueueService.dismissLoader()
+        return@launch
+      }
       try {
+        // addEntry persists locally (isSynced=false) and syncs to POST /v3/entries/
+        // (category=baby) — the same path manual BP uses.
+        buildBabyEntries(babyForm.forms.baby.controls, accountId, babyId)
+          .forEach { entryService.addEntry(it) }
         analyticsService.logEvent(IAnalyticsService.Events.MANUAL_ENTRY_CREATED)
         dialogQueueService.showToast(
           Toast.Simple(
@@ -406,9 +425,7 @@ constructor(
         )
         handleIntent(
           EntryIntent.UpdateActiveForm(
-            ActiveEntryForm.Baby(
-              form = MultiFormGroup.create(forms = BabyEntryForm.create()),
-            ),
+            ActiveEntryForm.Baby(form = MultiFormGroup.create(forms = BabyEntryForm.create())),
           ),
         )
         deactivate()
@@ -426,6 +443,68 @@ constructor(
       }
     }
   }
+
+  /**
+   * Reads the baby form and builds one [BabyEntry] per provided measure. Weight and length
+   * are distinct entryTypes (§2.16), so an entry with both yields two entries.
+   */
+  private fun buildBabyEntries(
+    controls: BabyEntryFormControls,
+    accountId: String,
+    babyId: String,
+  ): List<BabyEntry> {
+    val timestamp = DateTimeConverter.timestampToIso(controls.dateTime.value.getTimestamp())
+    val note = controls.notes.value.ifBlank { null }
+    val lbs = controls.pounds.value.toIntOrNull() ?: 0
+    val oz = controls.ounces.value.toDoubleOrNull() ?: 0.0
+    val inches = controls.inches.value.toDoubleOrNull()
+    return buildList {
+      if (lbs > 0 || oz > 0) {
+        add(
+          buildBabyEntry(
+            accountId, babyId, timestamp, note, BabyEntryType.WEIGHT,
+            weightDecigrams = ConversionTools.convertLbOzToDecigrams(lbs, oz),
+          ),
+        )
+      }
+      if (inches != null && inches > 0) {
+        add(
+          buildBabyEntry(
+            accountId, babyId, timestamp, note, BabyEntryType.MEASURE_LENGTH,
+            lengthMm = ConversionTools.convertInchesToMm(inches),
+          ),
+        )
+      }
+    }
+  }
+
+  /** Builds a single-measure baby [BabyEntry] (weight OR length per [type]) for manual entry. */
+  private fun buildBabyEntry(
+    accountId: String,
+    babyId: String,
+    timestamp: String,
+    note: String?,
+    type: BabyEntryType,
+    weightDecigrams: Int? = null,
+    lengthMm: Int? = null,
+  ): BabyEntry = BabyEntry(
+    entry = EntryEntity(
+      accountId = accountId,
+      entryTimestamp = timestamp,
+      operationType = "create",
+      deviceType = "manual",
+      deviceId = "",
+    ),
+    babyEntry = BabyEntryEntity(
+      id = 0L,
+      babyId = babyId,
+      babyWeightDecigrams = weightDecigrams,
+      babyLengthMillimeters = lengthMm,
+      entryNote = note,
+      entryType = type.value,
+      source = EntrySource.MANUAL.value,
+    ),
+  )
 
   /**
    * Loads AppSync data into the form for editing, following ProfileViewModel pattern.
