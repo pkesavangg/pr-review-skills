@@ -10,7 +10,7 @@ struct ConnectAnotherDeviceStepView: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
+        ScrollView(.vertical) {
             VStack(alignment: .center, spacing: .spacingLG) {
                 VStack(spacing: .spacingXS) {
                     Text(signupStore.pickNextDeviceTitle)
@@ -44,6 +44,7 @@ struct ConnectAnotherDeviceStepView: View {
                 }
             }
         }
+        .scrollIndicators(.hidden)
     }
 }
 

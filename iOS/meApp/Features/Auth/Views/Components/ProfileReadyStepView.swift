@@ -23,7 +23,7 @@ struct ProfileReadyStepView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
             if completedDevices.count >= 2 {
                 HStack(spacing: .spacingLG) {
-                    ForEach(completedDevices, id: \.id) { device in
+                    ForEach(completedDevices) { device in
                         Image(device.iconName)
                             .resizable()
                             .scaledToFit()
