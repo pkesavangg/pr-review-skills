@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.domain.model.api.entry
 
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
+import com.dmdbrands.gurus.weight.domain.enums.BabyEntryType
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
@@ -68,15 +69,41 @@ fun BpmEntry.toUnifiedRequest(): UnifiedEntryRequest = UnifiedEntryRequest(
 )
 
 /**
- * Maps a domain [Entry] to a [UnifiedEntryRequest], or null for categories not
- * wired for write yet (baby — Android 3 / MOB-381).
+ * Builds the unified request for a baby entry (§2.16 / MOB-381). Weight and length are
+ * distinct `entryType`s, so each [BabyEntry] carries exactly one measure — the value that
+ * doesn't match its [entryType] is left null.
+ */
+fun BabyEntry.toUnifiedRequest(): UnifiedEntryRequest {
+    val type = BabyEntryType.fromValue(entryType)
+    return UnifiedEntryRequest(
+        category = EntryCategory.BABY.value,
+        operationType = entry.operationType.lowercase(),
+        entryTimestamp = entry.entryTimestamp,
+        babyId = babyId,
+        entryType = type.value,
+        babyWeightDecigrams = if (type == BabyEntryType.WEIGHT) babyWeightDecigrams else null,
+        babyLengthMillimeters = if (type == BabyEntryType.MEASURE_LENGTH) babyLengthMillimeters else null,
+        entryNote = entryNote,
+        source = babyEntry.source ?: EntrySource.MANUAL.value,
+    )
+}
+
+/** True when the baby entry carries a positive value for its [entryType]. */
+private fun BabyEntry.hasValidReading(): Boolean = when (BabyEntryType.fromValue(entryType)) {
+    BabyEntryType.WEIGHT -> (babyWeightDecigrams ?: 0) > 0
+    BabyEntryType.MEASURE_LENGTH -> (babyLengthMillimeters ?: 0) > 0
+}
+
+/**
+ * Maps a domain [Entry] to a [UnifiedEntryRequest], or null when the reading is
+ * invalid/garbage (dropped rather than failing the atomic batch).
  */
 fun Entry.toUnifiedRequestOrNull(): UnifiedEntryRequest? = when (this) {
     // Drop a 0/garbage weight rather than writing it as a real reading (mirrors the
     // read-path guard that refuses to persist a 0-weight entry).
     is ScaleEntry -> toUnifiedRequest().takeIf { (it.weight ?: 0) > 0 }
     is BpmEntry -> if (hasValidReading()) toUnifiedRequest() else null
-    is BabyEntry -> null
+    is BabyEntry -> if (hasValidReading()) toUnifiedRequest() else null
 }
 
 /**

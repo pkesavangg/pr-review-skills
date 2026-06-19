@@ -5,7 +5,10 @@ import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
+import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
@@ -176,6 +179,33 @@ class EntryViewModelTest {
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
         coVerify { entryService.addEntry(entry = any()) }
+    }
+
+    @Test
+    fun `Save with baby form sends weight and length baby entries`() = runTest {
+        val baby = ProductSelection.Baby(
+            BabyProfile(id = "baby-1", name = "Timmy", birthdate = null, accountId = "acc-1"),
+        )
+        every { productSelectionManager.selectedProduct } returns MutableStateFlow(baby)
+        viewModel = createViewModel()
+
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
+        form.forms.baby.controls.pounds.onValueChange("7")
+        form.forms.baby.controls.ounces.onValueChange("4")
+        form.forms.baby.controls.inches.onValueChange("20")
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+
+        val captured = mutableListOf<Entry>()
+        coEvery { entryService.addEntry(entry = capture(captured)) } returns Unit
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        // Weight + length are separate entryTypes → two baby entries for the selected baby.
+        assertThat(captured).hasSize(2)
+        assertThat(captured.all { it is BabyEntry }).isTrue()
+        assertThat(captured.map { (it as BabyEntry).entryType }).containsExactly("weight", "measureLength")
+        assertThat((captured.first() as BabyEntry).babyId).isEqualTo("baby-1")
     }
 
     @Test
