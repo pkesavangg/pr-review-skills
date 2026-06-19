@@ -16,7 +16,7 @@ struct SignupErrorStepView: View {
             return false
         }.map(\.device)
         if failed.count == 1 {
-            return "We couldn't complete your \(failed[0].title) setup. Check your connection and try again."
+            return "We couldn't complete your \(failed[0].profileReadyName) setup. Check your connection and try again."
         }
         return lang.subtitle
     }
