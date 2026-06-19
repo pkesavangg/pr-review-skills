@@ -41,4 +41,10 @@ final class MockProductTypeStore: ProductTypeStoreProtocol {
         resetToDefaultCalls += 1
         selectedItem = .myWeight
     }
+
+    private(set) var clearPersistedSelectionCalls = 0
+
+    func clearPersistedSelection() {
+        clearPersistedSelectionCalls += 1
+    }
 }

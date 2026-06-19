@@ -134,9 +134,8 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
     }
 
     func clearPersistedSelection() {
-        guard let accountId = accountService.activeAccount?.accountId else { return }
-        let key = KvStorageKeys.selectedProductTypeKey(for: accountId)
-        kvStorage.clearValue(forKey: key)
+        ProductTypeStore.clearPersistedSelection(kvStorage: kvStorage,
+                                                 accountId: accountService.activeAccount?.accountId)
     }
 
     /// Package-internal entry point so unit tests can exercise the real logic
@@ -145,6 +144,14 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         guard let accountId else { return false }
         let key = KvStorageKeys.selectedProductTypeKey(for: accountId)
         return kvStorage.getValue(forKey: key) != nil
+    }
+
+    /// Package-internal entry point so unit tests can exercise the real logic
+    /// without going through the singleton or copying the implementation.
+    static func clearPersistedSelection(kvStorage: KvStorageServiceProtocol, accountId: String?) {
+        guard let accountId else { return }
+        let key = KvStorageKeys.selectedProductTypeKey(for: accountId)
+        kvStorage.clearValue(forKey: key)
     }
 
     /// Returns the resolved `isInProductDashboard` value for the initial product redirect,

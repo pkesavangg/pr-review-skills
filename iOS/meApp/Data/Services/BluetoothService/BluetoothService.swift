@@ -266,10 +266,14 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         let displaced = displacedPendingEntries
         displacedPendingEntries = []
         for displacedEntry in displaced {
-            try await entryService.saveNewEntry(displacedEntry)
-            let displacedNotification = EntryNotification(from: displacedEntry)
-            newEntryReceivedSubject.send(displacedNotification)
-            logger.log(level: .info, tag: tag, message: "Displaced scale entry saved on confirm. entryId=\(displacedEntry.id.uuidString)")
+            do {
+                try await entryService.saveNewEntry(displacedEntry)
+                let displacedNotification = EntryNotification(from: displacedEntry)
+                newEntryReceivedSubject.send(displacedNotification)
+                logger.log(level: .info, tag: tag, message: "Displaced scale entry saved on confirm. entryId=\(displacedEntry.id.uuidString)")
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to save displaced scale entry on confirm. entryId=\(displacedEntry.id.uuidString)", data: error.localizedDescription)
+            }
         }
         try await entryService.saveNewEntry(entry)
         let notification = EntryNotification(from: entry)

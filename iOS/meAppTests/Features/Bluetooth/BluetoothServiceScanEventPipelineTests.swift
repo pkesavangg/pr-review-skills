@@ -90,6 +90,57 @@ struct BluetoothServiceScanEventPipelineTests {
         #expect(logger.messages.contains { $0.contains("No valid entries") } == false)
     }
 
+    @Test("confirming after a displaced entry saves both the displaced and the primary entry")
+    func confirmSavesBothDisplacedAndPrimaryEntry() async throws {
+        let sdk = MockBluetoothSDKClient()
+        let account = MockAccountService()
+        let entry = MockEntryService()
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-confirm", email: "confirm@example.com", isLoggedIn: true, isActiveAccount: true)
+        let sut = makeSUT(account: account, entry: entry, sdk: sdk)
+        _ = await waitUntil { sut.activeAccount?.accountId == "acct-confirm" }
+
+        try await sut.startSmartScan()
+        // Two readings arrive before the user acts: the first becomes displaced, the second is pending.
+        _ = await collectValues(count: 2, from: sut.pendingScaleEntryPublisher) {
+            await sendScanResponse(makeScanResponse(type: .SINGLE_ENTRY, data: makeEntry(protocolType: "A6", timestamp: 1_730_000_000_000, weightInKg: 70.0)), through: sdk)
+            await sendScanResponse(makeScanResponse(type: .SINGLE_ENTRY, data: makeEntry(protocolType: "A6", timestamp: 1_730_000_100_000, weightInKg: 71.0)), through: sdk)
+        }
+
+        #expect(entry.savedEntries.isEmpty)
+        #expect(sut.displacedPendingEntries.count == 1)
+
+        try await sut.confirmPendingScaleEntry()
+
+        #expect(entry.savedEntries.count == 2)
+        #expect(sut.displacedPendingEntries.isEmpty)
+        #expect(sut.pendingScaleEntry == nil)
+    }
+
+    @Test("discarding after a displaced entry drops both the displaced and the primary entry")
+    func discardDropsBothDisplacedAndPrimaryEntry() async throws {
+        let sdk = MockBluetoothSDKClient()
+        let account = MockAccountService()
+        let entry = MockEntryService()
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-discard", email: "discard@example.com", isLoggedIn: true, isActiveAccount: true)
+        let sut = makeSUT(account: account, entry: entry, sdk: sdk)
+        _ = await waitUntil { sut.activeAccount?.accountId == "acct-discard" }
+
+        try await sut.startSmartScan()
+        _ = await collectValues(count: 2, from: sut.pendingScaleEntryPublisher) {
+            await sendScanResponse(makeScanResponse(type: .SINGLE_ENTRY, data: makeEntry(protocolType: "A6", timestamp: 1_730_000_000_000, weightInKg: 70.0)), through: sdk)
+            await sendScanResponse(makeScanResponse(type: .SINGLE_ENTRY, data: makeEntry(protocolType: "A6", timestamp: 1_730_000_100_000, weightInKg: 71.0)), through: sdk)
+        }
+
+        #expect(sut.displacedPendingEntries.count == 1)
+
+        sut.discardPendingScaleEntry()
+
+        #expect(entry.savedEntries.isEmpty)
+        #expect(sut.displacedPendingEntries.isEmpty)
+        #expect(sut.pendingScaleEntry == nil)
+    }
+
+
 //    @Test("device connected updates connection state, weight-only status, and debounced alert visibility")
 //    func deviceConnectedUpdatesStateAndShowsDebouncedAlert() async throws {
 //        let rawBroadcastId = "AA11"

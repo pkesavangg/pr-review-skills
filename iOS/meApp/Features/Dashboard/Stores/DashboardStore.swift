@@ -556,7 +556,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     }
 
     func clearProductTypeSelection() {
-        productTypeSelectorStore.clearPersistedSelection()
+        productTypeStore.clearPersistedSelection()
     }
 
     var dashboardEntryService: EntryService {
