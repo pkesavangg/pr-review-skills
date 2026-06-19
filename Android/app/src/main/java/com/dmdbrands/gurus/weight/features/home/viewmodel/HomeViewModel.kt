@@ -24,6 +24,7 @@ import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.home.reducer.HomeIntent
 import com.dmdbrands.gurus.weight.features.home.reducer.HomeReducer
 import com.dmdbrands.gurus.weight.features.home.reducer.HomeState
+import com.dmdbrands.gurus.weight.features.home.strings.HomeStrings
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleApiEntry
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
 import com.dmdbrands.library.ggbluetooth.enums.GGBTSettingType
@@ -34,13 +35,18 @@ import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
 import com.greatergoods.ggInAppMessaging.domain.services.IInAppMessagingService
+import com.greatergoods.libs.appsync.AppSyncResultHolder
 import com.greatergoods.libs.appsync.model.AppSyncResult
+import com.greatergoods.libs.appsync.startAppSyncScan
+import com.greatergoods.libs.appsync.utility.AppSyncResultFactory
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import android.app.Activity
 
@@ -104,6 +110,9 @@ constructor(
   companion object {
     private const val HEALTH_CONNECT_CHECK_DELAY_MS = 1000L
     private const val IAM_FEED_MODAL_RETRY_DELAY_MS = 1500L
+
+    // Max time to wait for the BLE permission flow to load before deciding on the camera prompt.
+    private const val PERMISSION_LOAD_TIMEOUT_MS = 4000L
     private val APPSYNC_SKUS = setOf(
       "0340", "0341", "0342", "0343", "0345", "0346", "0347",
       "0358", "0359", "0364", "0369", "0370", "0371",
@@ -116,6 +125,8 @@ constructor(
       is HomeIntent.CheckAndRequestPermission -> {
         checkAndRequestCameraPermission(intent.onResult)
       }
+
+      is HomeIntent.StartAppSyncScan -> startAppSyncScanFlow(intent.activity)
 
       is HomeIntent.HandleAppSyncResult -> handleAppSyncResult(intent.result)
 
@@ -185,6 +196,24 @@ constructor(
 
     viewModelScope.launch {
       try {
+        // The BLE permission flow holds an empty map until its first poll emits after a scan
+        // starts (~1.2s+ after cold start). If the status hasn't loaded yet, show a loader and
+        // wait for the real status before deciding, so we don't prompt off a stale empty map
+        // (MOB-710). Timeout-guarded so a slow/absent scan can't hang the tap.
+        if (ggPermissionService.permissionCallBackFlow.value.isEmpty()) {
+          dialogQueueService.showLoader(HomeStrings.CheckingCameraPermission)
+          val loaded = withTimeoutOrNull(PERMISSION_LOAD_TIMEOUT_MS) {
+            ggPermissionService.permissionCallBackFlow.first { it.isNotEmpty() }
+          }
+          dialogQueueService.dismissLoader()
+          if (loaded != null &&
+            AppPermissionsHelper.areRequiredPermissionsEnabled(loaded, setupType = ScaleSetupType.AppSync)
+          ) {
+            onResult(true)
+            return@launch
+          }
+        }
+
         var permissionResultReceived = false
 
         // Launch a job to wait for the NEXT permission update from flow
@@ -253,6 +282,52 @@ constructor(
       } catch (e: Exception) {
         AppLog.e(TAG, "Error in checkAndRequestCameraPermission", e.toString())
         onResult(false)
+      }
+    }
+  }
+
+  /**
+   * Launches the AppSync camera scan and handles its result.
+   *
+   * Runs on [viewModelScope] rather than the home screen's rememberCoroutineScope. Previously the
+   * scan was launched from a scope tied to the bottom-nav composition; after the device had been
+   * idle for a while the composition could be disposed, cancelling that scope and failing the scan
+   * with "rememberCoroutineScope left the composition" — and leaving the local isScanning guard
+   * stuck true so the AppSync icon stopped responding to taps while other tabs kept working
+   * (MOB-710). Hoisting isScanning into [HomeState] and launching on the ViewModel scope keeps the
+   * scan alive across recomposition and guarantees the guard is reset in the finally block.
+   */
+  private fun startAppSyncScanFlow(activity: Activity) {
+    if (state.value.isScanning) {
+      AppLog.d(TAG, "AppSync scan already in progress — ignoring tap")
+      return
+    }
+    handleIntent(HomeIntent.SetScanning(true))
+    viewModelScope.launch {
+      try {
+        val result = startAppSyncScan(
+          context = activity,
+          zoom = state.value.appSyncZoomLevel,
+          showManualEntryButton = true,
+          onBack = {
+            // Create cancelled result and call intent handler immediately
+            val cancelResult = AppSyncResultFactory.createCancelResult(state.value.appSyncZoomLevel)
+            AppSyncResultHolder.result = cancelResult
+            handleIntent(HomeIntent.HandleAppSyncResult(cancelResult))
+          },
+        )
+        AppLog.w(
+          TAG,
+          "Scale display detected results on home flow " +
+            "(device=${android.os.Build.MODEL}, result=$result errors=${result.errors})",
+        )
+        handleIntent(HomeIntent.HandleAppSyncResult(result))
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        AppLog.e(TAG, "AppSync scan failed on home flow: ${e.message}", e)
+      } finally {
+        handleIntent(HomeIntent.SetScanning(false))
       }
     }
   }
