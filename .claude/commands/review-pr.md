@@ -49,12 +49,13 @@ The last call returns inline review comments with `id`, `path`, `line`, `body`, 
 
 Inspect `files[].path` from Step 1:
 
+- **Appium / E2E (WebdriverIO + TypeScript)** if any path matches: `**/wdio*.conf.*`, `**/*.page.ts`, `**/*.spec.ts` (under a `test/`, `tests/`, or `e2e/` dir), `**/pageobjects/**`, or the PR touches a `package.json` declaring `appium`, `webdriverio`, or any `@wdio/*` dependency. This is mobile test-automation code (TypeScript driving Appium), distinct from the app's native iOS/Android source. When this is detected, run the Appium pipeline (§ 4a.6) **instead of** the SwiftUI/Compose pipelines — the `.swift`/`.kt` rules don't apply to test code.
 - **iOS / SwiftUI** if any path matches: `*.swift`, `**/*.xcodeproj/**`, `Package.swift`, `*.xcconfig`, `*.entitlements`, `**/Info.plist`, `.swiftlint.yml`
 - **Android / Compose** if any path matches: `*.kt`, `*.kts`, `**/build.gradle*`, `**/AndroidManifest.xml`, `**/res/**`, `**/proguard-rules.pro`, `gradle.properties`
 - **Both** if both sets appear (monorepo)
 - **Other** if neither — post one top-level comment that the PR is outside this reviewer's scope and move on.
 
-Announce in chat: `Detected: iOS only` / `Android only` / `iOS + Android`.
+Announce in chat: `Detected: iOS only` / `Android only` / `iOS + Android` / `Appium E2E`.
 
 ## Step 3 — Detect mode
 
@@ -172,6 +173,26 @@ This is a verbatim MIT-licensed snapshot of [compose-expert v2.3.1](https://gith
 Use each rule's prescribed severity — do not re-classify the way you do for `compose-expert`.
 
 **De-duplicate against `compose-expert`.** If `compose-expert` already raised a finding at the same `file:line` with overlapping substance, drop the references/compose/ finding to avoid two comments for one issue. The full de-dup against prior reviewer comments still happens at Step 4a.4.
+
+### 4a.6 — Appium / E2E (if Appium detected)
+
+When the PR is **Appium E2E** (§ Step 2), skip the SwiftUI (4a.1/4a.1.5) and Compose (4a.2/4a.2.5) pipelines — they target native app source, not test-automation code. Instead, review like a **senior mobile test-automation engineer**: first build a mental model of the project (WebdriverIO + Appium + TypeScript, Page Object Model — base `Page`, `*.page.ts` selector getters switching on `driver.isAndroid`, Mocha specs, Allure/video reporting), then apply both **technical** rules (locators, waits, async correctness) and **logical** rules (does each test actually verify behavior, is it independent, can it fail).
+
+Read these six reference files and apply them to the changed `.ts` / config files:
+
+- `$REFS_DIR/appium/locators.md`
+- `$REFS_DIR/appium/waits-and-synchronization.md`
+- `$REFS_DIR/appium/page-objects.md`
+- `$REFS_DIR/appium/test-structure-and-assertions.md`
+- `$REFS_DIR/appium/reliability-and-flakiness.md`
+- `$REFS_DIR/appium/typescript-and-async.md`
+- `$REFS_DIR/appium/config-and-secrets.md`
+
+Each rule states its own severity, a **Sniff** pattern (grep/`rg` over `.ts`), and a **Fix** with before/after — **use the severity each rule prescribes**, do not re-classify. Pull whole files from the checked-out branch for context (e.g. confirm a selector getter has no real assertion downstream, or that an action method is actually awaited at the call site) rather than judging from the diff alone.
+
+**De-duplicate** Appium findings against each other by `file:line` before posting (e.g. a missing-`await` and an action-without-wait on the same line → one comment). The full de-dup against prior reviewer comments still happens at Step 4a.4.
+
+Note on § 4a.3 below for Appium repos: the "non-trivial production code without tests" rule does **not** apply (the diff *is* tests). The Jira/issue-reference and PR-description rules still apply normally.
 
 ### 4a.3 — Cross-cutting (both platforms)
 
