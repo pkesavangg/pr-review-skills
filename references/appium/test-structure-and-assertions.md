@@ -50,6 +50,23 @@ describe("Landing", () => {
 
 ---
 
+## P2 — Arrow function for a Mocha hook/test that needs `this`
+
+Mocha binds per-test context (`this.timeout()`, `this.retries()`, `this.skip()`) to the callback's `this`. An arrow function captures the enclosing `this` instead, so those controls silently do nothing — or throw.
+
+```typescript
+it("slow login", async () => {
+  this.timeout(120000);          // `this` is not the Mocha context — no effect / error
+  await LandingPage.clickLogin();
+});
+```
+
+**Sniff.** `describe`/`it`/`before*`/`after*` callbacks written as `() => {}` whose body references `this.timeout`/`this.retries`/`this.skip`.
+
+**Fix.** Use a regular `function () { … }` for any hook/test that needs the Mocha context. (Arrow functions are fine where `this` isn't used — don't flag those.)
+
+---
+
 ## P2 — Commented-out test logic / assertions shipped
 
 Large blocks of commented placeholder code (`// const secureArea = …`) merged into the suite are noise that masks whether the test is real.

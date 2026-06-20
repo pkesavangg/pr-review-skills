@@ -64,7 +64,23 @@ Without an app reset between specs, residual state (logged-in session, cached in
 
 **Sniff.** New multi-test specs with no reset strategy, or capabilities setting `noReset: true` / `fullReset: false` without a matching in-test reset.
 
-**Fix.** Establish known state per test — relaunch/reset in `beforeEach`, or `driver.terminateApp`/`activateApp`. Decide a `noReset` policy deliberately and document it.
+**Fix.** Establish known state per test — relaunch/reset in `beforeEach`, or `driver.terminateApp`/`activateApp`. Decide a `noReset` policy deliberately and document it. When running parallel (`maxInstances > 1`), isolate each test's data with unique identifiers (per-run user/email/record) so concurrent sessions don't collide on shared backend state.
+
+---
+
+## P2 — Repeated setup flow not extracted / UI used where an API shortcut exists
+
+Driving multi-step setup (log in, seed state) through the UI in every test is slow and adds a flake surface that has nothing to do with what the test verifies. Repeated inline sequences also drift out of sync.
+
+```typescript
+// every test logs in through the UI just to reach the screen under test
+await LandingPage.clickLogin();
+await LoginPage.login(user, pass);   // 6 UI steps × N tests = slow + flaky
+```
+
+**Sniff.** The same multi-step interaction copy-pasted across specs, especially auth/setup that isn't the actual subject of the test.
+
+**Fix.** Extract reusable flows into a WDIO custom command (`browser.addCommand('loginViaApi', …)`) or a shared helper, and prefer an **API/deep-link shortcut** to reach the screen under test when login itself isn't what's being verified. Reserve the full UI flow for the tests that actually assert on it.
 
 ---
 
@@ -91,3 +107,7 @@ afterTest: async function (test, context, { error }) {
 `bail: 0` runs the whole suite after an environmental failure (device offline), flooding the report; very high `connectionRetryCount` can hide real connectivity issues.
 
 **Fix.** Tune `bail`/retry counts to your CI intent and comment the rationale.
+
+---
+
+*The custom-command / API-shortcut and parallel-isolation guidance was cross-checked against the MIT-licensed [`LambdaTest/agent-skills` webdriverio-skill](https://github.com/LambdaTest/agent-skills); browser-only items were excluded as inapplicable to native mobile.*

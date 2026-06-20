@@ -38,7 +38,12 @@ await (await this.btnSubmit).click();   // no guarantee it's rendered & enabled 
 
 **Sniff.** `.click()` / `.setValue()` / `.addValue()` / `.touchAction(` on `+` lines where the immediately preceding lines don't wait for that element (`waitForElement`, `waitForDisplayed`, `waitForEnabled`).
 
-**Fix.** Precede the interaction with `await this.waitForElement(el)` (or `waitForDisplayed`/`waitForClickable`). For text entry, also `waitForEnabled`.
+**Fix.** Match the wait to the interaction:
+
+- Before **tap/click** → `waitForClickable()` (an element can be *displayed* but still overlapped, animating, or disabled — `waitForDisplayed` alone lets "element not interactable" through).
+- Before **assertions and `setValue`/typing** → `waitForDisplayed()` (and `waitForEnabled()` for inputs).
+
+This project's base `waitForElement` wraps `waitForDisplayed`; add a `waitForClickable` helper for tap targets.
 
 ---
 
@@ -57,13 +62,29 @@ expect(await dashboard.isDisplayed()).toBe(true);   // checks once, immediately
 
 ---
 
+## P1 — Cached element handle reused after a re-render (stale element)
+
+Storing an element in a variable and reusing it after the view tree changes throws `StaleElementReferenceException` — common on mobile when a list recycles (RecyclerView / `LazyColumn`), a Compose screen recomposes, or navigation replaces the view.
+
+```typescript
+const row = await $('~item_3');
+await row.click();          // navigates / re-renders the list
+await row.getText();        // STALE — `row` points at a detached element
+```
+
+**Sniff.** A `const el = await $(...)` (or `await this.someSelector`) reused across an action that mutates/re-renders the screen, rather than re-querying.
+
+**Fix.** Re-query each time you touch the element — exactly what this project's `private get` selectors do (they call `$()` on every access). Don't hoist an element handle across a state change; access the getter again. WDIO auto-retries the *lookup*, not a stale handle you cached.
+
+---
+
 ## P2 — Magic timeout numbers scattered inline
 
 `waitForDisplayed({ timeout: 15000 })`, `30000`, `5000` sprinkled across files make tuning impossible and hide inconsistent expectations.
 
 **Sniff.** Numeric `timeout:` literals (or bare ms numbers passed to waits) repeated across changed files.
 
-**Fix.** Centralize in a `timeouts` constants module (`SHORT`, `MEDIUM`, `LONG`) or rely on the configured `waitforTimeout`. The base `waitForElement` already defaults to 15000 — pass named constants, not magic numbers.
+**Fix.** Centralize in a `timeouts` constants module and reference named tiers instead of magic numbers — a workable convention: `SHORT ≈ 5s` (a control that should already be present), `MEDIUM ≈ 10–15s` (normal element appearance — the base `waitForElement` default), `LONG ≈ 30s` (app launch / cold start / first network call). Bump thresholds (or rely on a higher `waitforTimeout`) on CI, where hardware is slower than a dev laptop.
 
 ---
 
@@ -80,3 +101,7 @@ Polling these in a manual loop, or treating a single `isDisplayed()` as "it's re
 Relying on the implicit default is fine generally, but slow first-launch / cold-start screens often need a longer, intentional timeout.
 
 **Fix.** Pass an explicit named timeout for known-slow screens (app launch, first network call) and comment why.
+
+---
+
+*Some guidance here (clickable-vs-displayed waits, stale-element re-query, CI timeout sizing) was cross-checked against the MIT-licensed [`LambdaTest/agent-skills` webdriverio-skill](https://github.com/LambdaTest/agent-skills); browser-only items (network mocks, iframes, cookies, visual regression) were intentionally excluded as inapplicable to native mobile.*
