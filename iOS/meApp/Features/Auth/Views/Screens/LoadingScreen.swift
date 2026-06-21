@@ -35,6 +35,7 @@ struct LoadingScreen: View {
                         .accessibilityHidden(true)
 
                 }
+                .accessibilityElement(children: .ignore)
                 .accessibilityLabel(lang.accLoadingLabel)
                 .padding(.top, .spacing3XL)
 

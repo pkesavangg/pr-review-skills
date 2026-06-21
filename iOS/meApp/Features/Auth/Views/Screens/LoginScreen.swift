@@ -34,7 +34,6 @@ struct LoginScreen: View {
                         .foregroundColor(theme.statusIconPrimary)
                         .accessibilityLabel(lang.accCloseLabel)
                         .accessibilityHint(lang.accCloseHint)
-                        .accessibilityAddTraits(.isButton)
                 },
                 trailingContent: {
                     Button {
