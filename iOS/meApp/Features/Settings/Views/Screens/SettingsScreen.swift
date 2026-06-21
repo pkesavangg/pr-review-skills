@@ -141,7 +141,6 @@ struct SettingsScreen: View {
             .onLongPressGesture {
                 router.navigate(to: .myAccounts)
             }
-            .accessibilityHidden(true)
             Text(settingsStore.profileName)
                 .fontOpenSans(.heading3)
                 .foregroundColor(theme.textHeading)
