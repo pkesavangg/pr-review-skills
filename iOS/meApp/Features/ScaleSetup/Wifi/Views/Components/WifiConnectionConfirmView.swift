@@ -133,6 +133,7 @@ struct WifiConnectionConfirmView: View {
             }
             .accessibilityLabel(WifiScaleSetupStrings.A11y.setupCompleteOptionLabel)
             .accessibilityHint(WifiScaleSetupStrings.A11y.setupCompleteOptionHint)
+            .accessibilityAddTraits(selectedOption == .complete ? .isSelected : [])
         }
     }
 
@@ -144,9 +145,10 @@ struct WifiConnectionConfirmView: View {
             }
             .accessibilityLabel(WifiScaleSetupStrings.A11y.apModeOptionLabel)
             .accessibilityHint(WifiScaleSetupStrings.A11y.apModeOptionHint)
+            .accessibilityAddTraits(selectedOption == .apMode ? .isSelected : [])
         }
     }
-    
+
     private var apModeImage: some View {
         let displaySku = sku == sku0384 ? sku0384 : sku0396
         let shouldUseFilled = mode == .apModeOnly ? true : (selectedOption == .apMode)
