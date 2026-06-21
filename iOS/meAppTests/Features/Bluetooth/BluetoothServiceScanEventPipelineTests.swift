@@ -140,7 +140,6 @@ struct BluetoothServiceScanEventPipelineTests {
         #expect(sut.pendingScaleEntry == nil)
     }
 
-
 //    @Test("device connected updates connection state, weight-only status, and debounced alert visibility")
 //    func deviceConnectedUpdatesStateAndShowsDebouncedAlert() async throws {
 //        let rawBroadcastId = "AA11"
