@@ -12,6 +12,7 @@ struct BPMonthSummaryItem: View {
     let month: BPHistoryMonth
 
     private var combinedAccessibilityLabel: String {
+        // swiftlint:disable:next line_length
         "\(monthYearText), \(month.count) \(HistoryListStrings.entries), \(HistoryListStrings.avgPressure) \(month.pressureText) \(EntryUnit.mmhg.displayString), \(HistoryListStrings.avgPulse) \(month.avgPulse)"
     }
 

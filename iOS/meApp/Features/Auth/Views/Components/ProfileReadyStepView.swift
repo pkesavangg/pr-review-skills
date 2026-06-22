@@ -22,6 +22,7 @@ struct ProfileReadyStepView: View {
                 .foregroundColor(theme.textHeading)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, alignment: .center)
+                .accessibilityAddTraits(.isHeader)
             if completedDevices.count >= 2 {
                 HStack(spacing: .spacingLG) {
                     ForEach(completedDevices) { device in
@@ -34,7 +35,6 @@ struct ProfileReadyStepView: View {
                     }
                 }
             }
-                .accessibilityAddTraits(.isHeader)
             Spacer()
         }
         .padding(.horizontal, .spacingSM)
