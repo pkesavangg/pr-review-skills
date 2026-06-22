@@ -41,6 +41,8 @@ struct LandingScreen: View {
 
                         LogoView()
                             .padding(.bottom, 55)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(lang.accLogoLabel)
 
                         VStack(alignment: .center, spacing: .spacingSM) {
 
@@ -58,6 +60,7 @@ struct LandingScreen: View {
                             })
                             .buttonStyle(AppPressableButtonStyle(type: .filledSecondary, size: .large, backgroundColorOverride: nil))
                             .accessibilityIdentifier(AccessibilityID.landingLogInButton)
+                            .accessibilityHint(lang.accLogInHint)
 
                             ButtonView(text: lang.signUp, type: .outlinedSecondary, size: .large, isDisabled: false) {
                                 if landingStore.canAddMoreAccounts() {
@@ -66,6 +69,7 @@ struct LandingScreen: View {
                             }
                             .frame(width: 96)
                             .accessibilityIdentifier(AccessibilityID.landingSignUpButton)
+                            .accessibilityHint(lang.accSignUpHint)
                         }
                         .padding(.bottom, .spacing6XL)
 

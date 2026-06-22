@@ -28,12 +28,14 @@ struct BabyScaleConnectingView: View {
 
                     VStack(spacing: .spacingMD) {
                         SetupLoaderView(connectionState: .loading)
+                            .accessibilityHidden(true)
 
                         ConnectionIndicatorView(
                             image: AppAssets.bluetooth,
                             isFailure: false,
                             showPulsingCircle: false
                         )
+                        .accessibilityHidden(true)
                     }
 
                     Spacer()

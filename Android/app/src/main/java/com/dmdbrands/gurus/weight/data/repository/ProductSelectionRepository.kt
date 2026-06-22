@@ -7,6 +7,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.dao.DeviceDao
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
+import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -56,6 +57,17 @@ class ProductSelectionRepository @Inject constructor(
         userDataStore.setSelectedBabyProfileId(accountId, profileId.orEmpty())
     }
 
+    override suspend fun clearSelectedProduct() {
+        val accountId = userDataStore.currentAccountIdFlow.first()
+        if (accountId == null) {
+            AppLog.w(TAG, "No active account; skipping clearSelectedProduct")
+            return
+        }
+        // Blank product type → observeHasUserSelected() emits false → dashboard opens in snapshot mode.
+        userDataStore.setSelectedProductType(accountId, "")
+        userDataStore.setSelectedBabyProfileId(accountId, "")
+    }
+
     override suspend fun getBabyProfiles(accountId: String): List<BabyProfile> =
         babyProfileDao.observeByAccountId(accountId).first().map { entity ->
             BabyProfile(
@@ -68,6 +80,9 @@ class ProductSelectionRepository @Inject constructor(
 
     override suspend fun hasBpmDevice(accountId: String): Boolean =
         deviceDao.getDevicesByTypeWithAccount("BPM", accountId).first().isNotEmpty()
+
+    override suspend fun hasBabyScaleDevice(accountId: String): Boolean =
+        deviceDao.getDevicesByTypeWithAccount(ScaleSetupType.BabyScale.value, accountId).first().isNotEmpty()
 
     private companion object {
         const val TAG = "ProductSelectionRepo"

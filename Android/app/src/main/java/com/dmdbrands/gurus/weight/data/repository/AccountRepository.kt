@@ -38,7 +38,9 @@ import com.dmdbrands.gurus.weight.domain.model.api.dashboard.DashboardMetricsReq
 import com.dmdbrands.gurus.weight.domain.model.api.dashboard.DashboardTypeRequest
 import com.dmdbrands.gurus.weight.domain.model.api.dashboard.ProgressMetricsRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountInfo
+import com.dmdbrands.gurus.weight.domain.model.api.user.BodyCompUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.MeasurementUnitsRequest
+import com.dmdbrands.gurus.weight.domain.model.api.user.ProductsRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountToken
 import com.dmdbrands.gurus.weight.features.common.enums.toGraphSegment
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
@@ -226,6 +228,12 @@ constructor(
   override suspend fun updateMeasurementUnits(measurementUnits: MeasurementUnits) {
     val response = userAPI.updateMeasurementUnits(MeasurementUnitsRequest(measurementUnits.value))
     // Persist the server-confirmed account state (incl. productTypes/measurementUnits) locally.
+    syncAccountSettingsWithServer(response.account, isOnline = true)
+  }
+
+  override suspend fun updateProducts(productTypes: List<String>) {
+    val response = userAPI.updateProducts(ProductsRequest(productTypes))
+    // Persist the server-confirmed account state (incl. productTypes) locally.
     syncAccountSettingsWithServer(response.account, isOnline = true)
   }
 
@@ -646,8 +654,10 @@ constructor(
       if (isActiveAccount) {
         accountDao.deactivateAllAccounts()
       }
-      // Update account flags in DB: set isLoggedIn, isExpired, isActive to false
-      accountDao.logoutAccount(accountId)
+      // Keep the account row listed as "Logged out" (isLoggedIn stays 1) so it still
+      // appears on the (Multi-)Landing screen — "Logged out ≠ gone" (MA-2672 / MOB-424).
+      // markAccountExpired sets isExpired = 1 and isActiveAccount = 0, matching the
+      // already-implemented auto-logout (401) state.
       markAccountExpired(accountId)
       // Clear tokens from DataStore and TokenManager
       userDataStore.clearAccountTokens(accountId)
@@ -678,8 +688,10 @@ constructor(
           // Continue with local logout even if API fails
         }
       }
-      // Clear all accounts from database
-      accountDao.logoutAllAccounts()
+      // Mark all accounts as "Logged out" but keep them listed (isLoggedIn stays 1)
+      // so they remain visible on the (Multi-)Landing screen — "Logged out ≠ gone"
+      // (MA-2672 / MOB-424).
+      accountDao.markAllAccountsExpired()
       // Clear tokens
       tokenManager.clearTokens()
       AppLog.d(TAG, "All accounts logged out successfully")
@@ -738,6 +750,36 @@ constructor(
   }
 
   /**
+   * Removes the account from this device only ("Removed = gone", MA-2672 / MOB-424).
+   * Unlike [logoutAccount] (which keeps the account listed as "Logged out"), this fully
+   * deletes the local account row and its related settings, then clears tokens. The server
+   * account is NOT deleted — that is handled by [deleteAccount].
+   */
+  override suspend fun removeAccountFromDevice(
+    accountId: String,
+    fcmToken: String?,
+    isActiveAccount: Boolean,
+  ) {
+    try {
+      // Best-effort server-side session logout; continue with local removal regardless.
+      try {
+        authAPI.logoutWithToken(LogoutRequest(fcmToken ?: ""), accountId)
+      } catch (e: Exception) {
+        AppLog.e(TAG, "API logout during removeAccountFromDevice failed", e)
+      }
+      if (isActiveAccount) {
+        accountDao.deactivateAllAccounts()
+        tokenManager.clearTokens()
+      }
+      accountDao.deleteAllTables(accountId)
+      clearAccountTokens(accountId)
+      AppLog.d(TAG, "Account $accountId removed from this device")
+    } catch (e: Exception) {
+      AppLog.e(TAG, "removeAccountFromDevice failed", e)
+    }
+  }
+
+  /**
    * Deletes the current user account via API and clears local data.
    */
   override suspend fun deleteAccount(accountID: String, isActiveAccount: Boolean) {
@@ -783,7 +825,7 @@ constructor(
         email = account.email,
         expiresAt = loginResponse.expiresAt,
         fcmToken = null,
-        gender = account.gender,
+        gender = account.gender.orEmpty(),
         isActiveAccount = true,
         isLoggedIn = true,
         isExpired = false,
@@ -895,8 +937,8 @@ constructor(
       // Update weight composition settings
       val weightCompSettings = WeightCompSettingsEntity(
         accountId = accountInfo.id,
-        height = accountInfo.height,
-        activityLevel = accountInfo.activityLevel,
+        height = accountInfo.height ?: BodyCompUpdateRequest.DEFAULT_HEIGHT,
+        activityLevel = accountInfo.activityLevel ?: BodyCompUpdateRequest.DEFAULT_ACTIVITY_LEVEL,
         weightUnit = accountInfo.weightUnit,
         isSynced = true,
       )
@@ -935,15 +977,8 @@ constructor(
       )
       accountDao.updateIntegrationsSettings(integrationsSettings)
 
-      // Update product settings (Phase 2 / MOB-377). Insert(REPLACE) upserts in case the
-      // row predates this account's product_settings backfill.
-      val productSettings = ProductSettingsEntity(
-        accountId = accountInfo.id,
-        productTypes = accountInfo.productTypes ?: listOf(ProductType.MY_WEIGHT.apiValue),
-        measurementUnits = MeasurementUnits.fromValue(accountInfo.measurementUnits).value,
-        isSynced = true,
-      )
-      accountDao.insertProductSettings(productSettings)
+      // Update product settings (Phase 2 / MOB-377).
+      upsertProductSettings(accountInfo)
 
       // Mark account as synced only when online (from server)
       if (isOnline) {
@@ -955,6 +990,20 @@ constructor(
       AppLog.e(TAG, "Failed to sync settings for account: ${accountInfo.id}", e)
       throw e
     }
+  }
+
+  /**
+   * Upserts the account's product settings (productTypes + measurementUnits). Insert(REPLACE)
+   * upserts in case the row predates this account's product_settings backfill. MOB-377 / §2.19.
+   */
+  private suspend fun upsertProductSettings(accountInfo: AccountInfo) {
+    val productSettings = ProductSettingsEntity(
+      accountId = accountInfo.id,
+      productTypes = accountInfo.productTypes ?: listOf(ProductType.MY_WEIGHT.apiValue),
+      measurementUnits = MeasurementUnits.fromValue(accountInfo.measurementUnits).value,
+      isSynced = true,
+    )
+    accountDao.insertProductSettings(productSettings)
   }
 
   override suspend fun hasShownNotificationAlertForAccount(accountId: String): Boolean =

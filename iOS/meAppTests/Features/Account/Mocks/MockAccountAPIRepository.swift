@@ -22,6 +22,7 @@ final class MockAccountAPIRepository: AccountRepositoryAPIProtocol {
     var refreshTokenResult: Result<Tokens, Error> = .success(AccountTestFixtures.makeTokens())
     var checkEmailAvailabilityResult: Result<Bool, Error> = .success(true)
     var updateMeasurementUnitsResult: Result<AccountResponse, Error> = .success(AccountTestFixtures.makeAccountResponse())
+    var patchProductTypesResult: Result<AccountResponse, Error> = .success(AccountTestFixtures.makeAccountResponse())
 
     private(set) var createAccountCalls = 0
     private(set) var logInCalls = 0
@@ -42,6 +43,8 @@ final class MockAccountAPIRepository: AccountRepositoryAPIProtocol {
     private(set) var refreshTokenCalls = 0
     private(set) var checkEmailAvailabilityCalls = 0
     private(set) var updateMeasurementUnitsCalls = 0
+    private(set) var patchProductTypesCalls = 0
+    private(set) var lastPatchProductTypes: [String]?
 
     private(set) var lastCheckEmailAvailabilityEmail: String?
     private(set) var lastUpdatedMeasurementUnits: String?
@@ -80,6 +83,12 @@ final class MockAccountAPIRepository: AccountRepositoryAPIProtocol {
         updateMeasurementUnitsCalls += 1
         lastUpdatedMeasurementUnits = measurementUnits
         return try updateMeasurementUnitsResult.get()
+    }
+
+    func patchProductTypes(_ productTypes: [String]) async throws -> AccountResponse {
+        patchProductTypesCalls += 1
+        lastPatchProductTypes = productTypes
+        return try patchProductTypesResult.get()
     }
 
     func logIn(email: String, password: String) async throws -> AccountResponse {

@@ -61,12 +61,12 @@ val DEVICES =
     ScaleInfo("Smart Baby Scale", "0220", ScaleSetupType.BabyScale, false, createdAt = null),
     ScaleInfo("Smart Baby Scale", "0222", ScaleSetupType.BabyScale, false, createdAt = null),
     // Blood Pressure Monitors
-    ScaleInfo("Smart Wrist Blood Pressure Monitor", "0603", ScaleSetupType.Bluetooth, false, createdAt = null),
-    ScaleInfo("Smart Blood Pressure Monitor", "0604", ScaleSetupType.Bluetooth, false, createdAt = null),
-    ScaleInfo("Smart Pro-Series Blood Pressure Monitor", "0634", ScaleSetupType.Bluetooth, false, createdAt = null),
-    ScaleInfo("All-In-One Bluetooth Blood Pressure Monitor", "0636", ScaleSetupType.Bluetooth, false, createdAt = null),
-    ScaleInfo("Smart Blood Pressure Monitor", "0661", ScaleSetupType.Bluetooth, false, createdAt = null),
-    ScaleInfo("Smart Blood Pressure Monitor", "0663", ScaleSetupType.Bluetooth, false, createdAt = null),
+    ScaleInfo("Smart Wrist Blood Pressure Monitor", "0603", ScaleSetupType.BpmBluetooth, false, createdAt = null),
+    ScaleInfo("Smart Blood Pressure Monitor", "0604", ScaleSetupType.BpmBluetooth, false, createdAt = null),
+    ScaleInfo("Smart Pro-Series Blood Pressure Monitor", "0634", ScaleSetupType.BpmBluetooth, false, createdAt = null),
+    ScaleInfo("All-In-One Bluetooth Blood Pressure Monitor", "0636", ScaleSetupType.BpmBluetooth, false, createdAt = null),
+    ScaleInfo("Smart Blood Pressure Monitor", "0661", ScaleSetupType.BpmA6Bluetooth, false, createdAt = null),
+    ScaleInfo("Smart Blood Pressure Monitor", "0663", ScaleSetupType.BpmA6Bluetooth, false, createdAt = null),
   )
 
 /** Baby scales — derived from [SCALES] via [DeviceHelper.BABY_SCALE_SKUS]. */

@@ -141,7 +141,7 @@ class SettingsStore: ObservableObject {
     }
 
     var isMyKidsEnabled: Bool {
-        hasBabyScale
+        hasBabyProfile || hasBabyScale
     }
 
     /// Main browser presentation binding for the view

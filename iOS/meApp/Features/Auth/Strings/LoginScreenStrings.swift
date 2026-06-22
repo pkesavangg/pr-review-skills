@@ -12,4 +12,12 @@ struct LoginScreenStrings {
     static let forgotPassword = "forgot password?"
     static let byLoggingIn = "by logging in, you are agreeing to our"
     static let passwordPlaceholder = "Enter your password"
+
+    // MARK: - Accessibility (VoiceOver) — spoken text only, not shown on screen
+    static let accCloseLabel = "Close"
+    static let accCloseHint = "Returns to the previous screen"
+    static let accHelpLabel = "Help"
+    static let accHelpHint = "Opens help and support"
+    static let accLogInHint = "Logs you into your account"
+    static let accForgotPasswordHint = "Opens password reset"
 }

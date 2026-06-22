@@ -7,6 +7,7 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IBodyCompositionService
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.profile.model.ProfileIntent
+import com.dmdbrands.gurus.weight.features.profile.model.ProfileReducer
 import com.dmdbrands.gurus.weight.features.profile.strings.ProfileStrings
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
@@ -370,12 +371,15 @@ class ProfileViewModelTest {
 
     @Test
     fun `Submit intent sets isLoading true and clears error`() {
-        viewModel.handleIntent(ProfileIntent.Error("previous error"))
-        viewModel.handleIntent(ProfileIntent.Submit)
+        // Verify the reducer in isolation: ProfileViewModel.onSubmit runs form
+        // validation as a side effect and immediately dispatches Error when the
+        // (empty) default form is invalid, so we assert the pure reducer transition.
+        val previous = viewModel.state.value.copy(isLoading = false, error = "previous error")
 
-        val state = viewModel.state.value
-        assertThat(state.isLoading).isTrue()
-        assertThat(state.error).isNull()
+        val state = ProfileReducer().reduce(previous, ProfileIntent.Submit)
+
+        assertThat(state?.isLoading).isTrue()
+        assertThat(state?.error).isNull()
     }
 
     // -------------------------------------------------------------------------

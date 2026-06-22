@@ -40,6 +40,8 @@ struct AppSyncEntryCardView: View {
                 metricText(label: AppSyncEntryCardStrings.waterWeight, value: metrics.waterWeight)
                 metricText(label: AppSyncEntryCardStrings.bmi, value: metrics.bmi)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(AppSyncEntryCardStrings.A11y.metricsGroupLabel)
 
             // Primary save button
             ButtonView(
@@ -49,6 +51,7 @@ struct AppSyncEntryCardView: View {
                 isDisabled: false,
                 action: onSave
             )
+            .accessibilityHint(AppSyncEntryCardStrings.A11y.saveHint)
             // Secondary edit button
             ButtonView(
                 text: CommonStrings.edit,
@@ -57,6 +60,7 @@ struct AppSyncEntryCardView: View {
                 isDisabled: false,
                 action: onEdit
             )
+            .accessibilityHint(AppSyncEntryCardStrings.A11y.editHint)
         }
         .padding(.spacingMD)
         .padding(.vertical, .spacingSM)

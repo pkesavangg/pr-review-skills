@@ -16,6 +16,7 @@ struct ProfileReadyStepView: View {
             AppIconView(icon: AppAssets.checkMarkLarge, size: IconSize(width: 180, height: 180))
                 .foregroundColor(theme.statusSuccess)
                 .frame(maxWidth: .infinity, alignment: .center)
+                .accessibilityHidden(true)
             Text(title)
                 .fontOpenSans(.heading4)
                 .foregroundColor(theme.textHeading)
@@ -29,9 +30,11 @@ struct ProfileReadyStepView: View {
                             .scaledToFit()
                             .frame(width: 60, height: 60)
                             .accessibilityLabel(device.profileReadyName)
+                            .accessibilityHidden(true)
                     }
                 }
             }
+                .accessibilityAddTraits(.isHeader)
             Spacer()
         }
         .padding(.horizontal, .spacingSM)

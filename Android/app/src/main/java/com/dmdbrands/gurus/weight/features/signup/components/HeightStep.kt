@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -18,6 +19,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppHeightPickerModal
 import com.dmdbrands.gurus.weight.features.common.components.AppInputDefaults
 import com.dmdbrands.gurus.weight.features.common.components.AppStyledCard
@@ -34,6 +41,8 @@ import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.common.composition.LocalCardAlignment
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
+import com.dmdbrands.gurus.weight.resources.AppIcons
+import androidx.compose.material3.Icon
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
@@ -60,18 +69,13 @@ fun HeightStep(
         SegmentButtonData(id = UNIT_CM_ID, label = SignupStrings.heightUnitCm),
     )
     val selectedOption = if (useMetricControl.value) unitOptions[1] else unitOptions[0]
-    val trailingUnit = if (useMetricControl.value) SignupStrings.heightUnitCm.lowercase() else "in"
-
     AppStyledCard(
         cardAlignmentType = LocalCardAlignment.current,
     ) {
         AppText(SignupStrings.heightStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
         AppText(SignupStrings.heightStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.lg)
 
-        HeightField(
-            heightControl = heightControl,
-            trailingUnit = trailingUnit,
-        )
+        HeightField(heightControl = heightControl)
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.md))
 
@@ -99,48 +103,82 @@ fun HeightStep(
 @Composable
 private fun HeightField(
     heightControl: FormControl<HeightInput>,
-    trailingUnit: String,
 ) {
     var isModalTriggered by remember { mutableStateOf(false) }
     val value = heightControl.value
     val hasValue = !value.isEmpty()
 
+    // Updated layout per MOB-258 / MA-4006 UX resolution:
+    // Placeholder label stays on the LEFT; selected value + chevron appear on the RIGHT.
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(AppInputDefaults.SingleLineHeight)
             .clip(RoundedCornerShape(MeTheme.borderRadius.sm))
             .background(MeTheme.colorScheme.primaryBackground)
-            .clickable { isModalTriggered = true }
+            .clickable(onClickLabel = SignupStrings.heightLabel) { isModalTriggered = true }
+            // The field is a dropdown trigger: announce its role and the currently selected
+            // value to TalkBack (the plain "height" label alone doesn't convey either).
+            .semantics {
+                role = Role.DropdownList
+                if (hasValue) stateDescription = value.getString()
+            }
             .padding(horizontal = MeTheme.spacing.md),
     ) {
-        AppText(
-            text = if (hasValue) value.getString() else SignupStrings.heightLabel.lowercase(),
-            textType = if (hasValue) TextType.Body else TextType.SubHeading,
+        // Left label, in a Row so the alignment lands on a direct Box child — AppText applies the
+        // modifier to its inner Text, not its root Column, so aligning it directly top-aligns.
+        Row(
             modifier = Modifier.align(Alignment.CenterStart),
-        )
-        Box(modifier = Modifier.align(Alignment.CenterEnd)) {
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             AppText(
-                text = "($trailingUnit)",
+                text = SignupStrings.heightLabel.lowercase(),
                 textType = TextType.SubHeading,
+            )
+        }
+
+        // Right: selected value (value string already contains the unit) + dropdown chevron
+        Row(
+            modifier = Modifier.align(Alignment.CenterEnd),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
+        ) {
+            if (hasValue) {
+                // Figma: Mobile/Heading 5 — Bold, 16px, dark (#2c2827)
+                AppText(
+                    text = value.getString(),
+                    textType = TextType.ListTitle1,
+                )
+            }
+            Icon(
+                painter = painterResource(AppIcons.Filled.CaretDown),
+                contentDescription = null,
+                tint = MeTheme.colorScheme.textSubheading,
+                modifier = Modifier.size(20.dp),
             )
         }
     }
 
     if (isModalTriggered) {
-        ModalDialog(
+        HeightPickerDialog(
+            value = value,
             onDismiss = { isModalTriggered = false },
-            config = ModalConfigs.Critical,
-        ) {
-            AppHeightPickerModal(
-                value = value,
-                onCancel = { isModalTriggered = false },
-                onOk = { data ->
-                    isModalTriggered = false
-                    heightControl.onValueChange(data)
-                },
-            )
-        }
+            onConfirm = { data ->
+                isModalTriggered = false
+                heightControl.onValueChange(data)
+            },
+        )
+    }
+}
+
+@Composable
+private fun HeightPickerDialog(
+    value: HeightInput,
+    onDismiss: () -> Unit,
+    onConfirm: (HeightInput) -> Unit,
+) {
+    ModalDialog(onDismiss = onDismiss, config = ModalConfigs.Critical) {
+        AppHeightPickerModal(value = value, onCancel = onDismiss, onOk = onConfirm)
     }
 }
 

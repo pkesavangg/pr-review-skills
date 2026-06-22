@@ -86,4 +86,4 @@ struct IntegrationsScreen: View {
     IntegrationsScreen()
         .environmentObject(Theme.shared)
         .environmentObject(Router<SettingsRoute>())
-} 
+}

@@ -42,6 +42,7 @@ struct A3BpmScanningView: View {
                             gifName: gifName,
                             subdirectory: bpmMediaSubdirectory
                         )
+                        .accessibilityHidden(true)
                     }
                     .padding(.horizontal, 0)
                     .frame(maxWidth: .infinity, alignment: .center)

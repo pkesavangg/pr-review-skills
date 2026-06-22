@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.core.helpers.stubNetworkAvailable
 import com.dmdbrands.gurus.weight.core.helpers.stubNetworkUnavailable
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.auth.ChangePasswordResponse
@@ -177,6 +178,7 @@ class AccountServiceTest {
         appNavigationService,
         storageClearService,
         analyticsService = mockk(relaxed = true),
+        userDataStore = mockk(relaxed = true),
         appScope = TestScope(mainDispatcherRule.dispatcher),
     )
 
@@ -859,6 +861,54 @@ class AccountServiceTest {
 
         assertThat(result).isFalse()
         coVerify { appNavigationService.emitAuthEvent(any<AuthState.Error>()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // removeAccountFromDevice
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `removeAccountFromDevice delegates to repository with active flag and returns true`() = runTest {
+        coEvery { accountRepository.removeAccountFromDevice(any(), any(), any()) } just Runs
+
+        val result = service.removeAccountFromDevice(fakeAccount.id, fcmToken = "token")
+
+        assertThat(result).isTrue()
+        // fakeAccount is the active account in setUp → isActiveAccount = true.
+        coVerify { accountRepository.removeAccountFromDevice(fakeAccount.id, "token", true) }
+        // Local removal must not emit a logout auth event (Multi-Landing handles navigation).
+        coVerify(exactly = 0) { appNavigationService.emitAuthEvent(any<AuthState.LoggedOut>()) }
+    }
+
+    @Test
+    fun `removeAccountFromDevice passes isActiveAccount false for a non-active account`() = runTest {
+        withAccounts(active = fakeAccount)
+        coEvery { accountRepository.removeAccountFromDevice(any(), any(), any()) } just Runs
+
+        val result = service.removeAccountFromDevice(fakeAccount2.id, fcmToken = null)
+
+        assertThat(result).isTrue()
+        coVerify { accountRepository.removeAccountFromDevice(fakeAccount2.id, null, false) }
+    }
+
+    @Test
+    fun `removeAccountFromDevice returns false on exception`() = runTest {
+        coEvery { accountRepository.removeAccountFromDevice(any(), any(), any()) } throws RuntimeException("DB error")
+
+        val result = service.removeAccountFromDevice(fakeAccount.id, fcmToken = null)
+
+        assertThat(result).isFalse()
+    }
+
+    @Test
+    fun `removeAccountFromDevice shows no-network toast when offline but proceeds`() = runTest {
+        stubNetworkUnavailable()
+        coEvery { accountRepository.removeAccountFromDevice(any(), any(), any()) } just Runs
+
+        val result = service.removeAccountFromDevice(fakeAccount.id, fcmToken = null)
+
+        assertThat(result).isTrue()
+        verify { dialogQueueService.showToast(any()) }
     }
 
     // -------------------------------------------------------------------------
@@ -1817,7 +1867,11 @@ class AccountServiceTest {
 
         assertThat(result).isFalse()
         // Only HttpException triggers error toast display
-        verify(exactly = 0) { dialogQueueService.showToast(match { it.title != null }) }
+        verify(exactly = 0) {
+            dialogQueueService.showToast(
+                match<com.dmdbrands.gurus.weight.features.common.model.Toast.Simple> { it.title != null },
+            )
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -2067,7 +2121,7 @@ class AccountServiceTest {
         service.logout(fakeAccount.id, fcmToken = null)
 
         verify {
-            dialogQueueService.showToast(match<com.dmdbrands.gurus.weight.features.common.model.Toast> {
+            dialogQueueService.showToast(match<com.dmdbrands.gurus.weight.features.common.model.Toast.Simple> {
                 it.title == null && it.action == null
             })
         }
@@ -2082,5 +2136,41 @@ class AccountServiceTest {
         service.logoutAll()
 
         verify(atLeast = 1) { dialogQueueService.showToast(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // addProduct (spec §2.19 — PATCH /account/products)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `addProduct submits union of current productTypes and the new product`() = runTest {
+        // fakeAccount defaults to productTypes = ["weight"].
+        coEvery { accountRepository.updateProducts(any()) } just Runs
+
+        service.addProduct(ProductType.BLOOD_PRESSURE)
+
+        coVerify(exactly = 1) {
+            accountRepository.updateProducts(listOf("weight", "blood_pressure"))
+        }
+    }
+
+    @Test
+    fun `addProduct is a no-op when the product is already present`() = runTest {
+        // fakeAccount already owns "weight".
+        coEvery { accountRepository.updateProducts(any()) } just Runs
+
+        service.addProduct(ProductType.MY_WEIGHT)
+
+        coVerify(exactly = 0) { accountRepository.updateProducts(any()) }
+    }
+
+    @Test
+    fun `addProduct throws and does not submit when offline`() = runTest {
+        stubNetworkUnavailable()
+        coEvery { accountRepository.updateProducts(any()) } just Runs
+
+        runCatching { service.addProduct(ProductType.BLOOD_PRESSURE) }
+
+        coVerify(exactly = 0) { accountRepository.updateProducts(any()) }
     }
 }

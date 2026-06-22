@@ -6,9 +6,9 @@ ProfileUpdateRequest(
   val email: String,
   val firstName: String,
   val lastName: String,
-  val gender: String, // 'male' or 'female'
+  val gender: String?, // 'male', 'female', or null when unset (MOB-591)
   val zipcode: String,
-  val dob: String,
+  val dob: String?,
   val height: Double? = null,
   val weight: Double? = null,
   val activityLevel: String? = null,

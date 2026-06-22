@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
+import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.AppsyncScaleSetupStep
@@ -55,6 +56,7 @@ class AppsyncScaleSetupViewModelTest {
     @MockK(relaxed = true) lateinit var permissionService: GGPermissionService
     @MockK(relaxed = true) lateinit var dialogUtility: IDialogUtility
     @MockK(relaxed = true) lateinit var deviceService: IDeviceService
+    @MockK(relaxed = true) lateinit var appSyncService: IAppSyncService
 
     private lateinit var viewModel: AppsyncScaleSetupViewModel
 
@@ -85,6 +87,7 @@ class AppsyncScaleSetupViewModelTest {
             permissionService = permissionService,
             dialogUtility = dialogUtility,
             deviceService = deviceService,
+            appSyncService = appSyncService,
             sku = sku,
         ).initTestDependencies()
         return viewModel

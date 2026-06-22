@@ -99,7 +99,7 @@ class DashboardSnapshotViewModel @Inject constructor(
   private suspend fun updateWeightChart(points: List<WeightSnapshotPoint>) {
     val entries = points.filter { it.weight > 0 }.sortedBy { it.entryTimestamp }
     if (entries.isEmpty()) {
-      handleIntent(DashboardSnapshotIntent.SetWeightChart(SnapshotChartData(label = "—")))
+      handleIntent(DashboardSnapshotIntent.SetWeightChart(SnapshotChartData(isEmpty = true)))
       return
     }
 
@@ -149,7 +149,7 @@ class DashboardSnapshotViewModel @Inject constructor(
 
   private suspend fun updateBpChart(points: List<PeriodBpmSummary>) {
     if (points.isEmpty()) {
-      handleIntent(DashboardSnapshotIntent.SetBpChart(SnapshotChartData(label = "—")))
+      handleIntent(DashboardSnapshotIntent.SetBpChart(SnapshotChartData(isEmpty = true)))
       return
     }
 
@@ -209,7 +209,7 @@ class DashboardSnapshotViewModel @Inject constructor(
     val profileId = profile.id
     val sorted = points.filter { (it.avgWeightDecigrams ?: 0) > 0 }.sortedBy { it.entryTimestamp }
     if (sorted.isEmpty()) {
-      handleIntent(DashboardSnapshotIntent.SetBabyChart(profileId, SnapshotChartData(label = "—")))
+      handleIntent(DashboardSnapshotIntent.SetBabyChart(profileId, SnapshotChartData(isEmpty = true)))
       return
     }
 

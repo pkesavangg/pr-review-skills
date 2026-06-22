@@ -1,7 +1,7 @@
 package com.dmdbrands.gurus.weight.features.addScale.strings
 
 object AddScaleScreenStrings {
-  const val Header = "Add & Edit Devices"
+  const val Header = "My Devices"
   const val Title = "Add a Device"
   const val Subtitle = "Enter the 4-digit model number found on the back of your device."
   const val ModelNumberLabel = "model number"

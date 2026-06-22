@@ -49,8 +49,8 @@ class WeightUnitTest {
   }
 
   @Test
-  fun `LB unit display is lbs forward slash in`() {
-    assertThat(WeightUnit.LB.unit).isEqualTo("lbs / in")
+  fun `LB unit display is lbs forward slash ft`() {
+    assertThat(WeightUnit.LB.unit).isEqualTo("lbs / ft")
   }
 
   @Test

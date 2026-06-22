@@ -11,7 +11,10 @@ import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryDao
 import com.dmdbrands.gurus.weight.domain.model.api.entry.ScaleApiEntry
 import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryRequest
 import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryResponse
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.repository.IEntryRepository
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertToStored
 import kotlinx.coroutines.flow.Flow
@@ -33,7 +36,7 @@ class EntryRepository @Inject constructor(
    */
   override suspend fun insert(entry: Entry): Long {
     return if (isValidIsoTimestamp(entry.entry.entryTimestamp))
-      entryDao.insert(entry.convertToStored())
+      entryDao.insert(preserveLocalScaleNote(entry).convertToStored())
     else
       -1
   }
@@ -42,16 +45,72 @@ class EntryRepository @Inject constructor(
    * Updates a single entry.
    */
   override suspend fun update(entry: Entry): Long {
-    return entryDao.update(entry.convertToStored())
+    return entryDao.update(preserveLocalScaleNote(entry).convertToStored())
+  }
+
+  /**
+   * Note-only update (MOB-438) — writes just the note column for the entry's id, so weight
+   * and metrics are never re-converted.
+   */
+  override suspend fun updateNote(entry: Entry, note: String?) {
+    val id = entry.entry.id
+    when (entry) {
+      is ScaleEntry -> entryDao.updateScaleNote(id, note)
+      is BpmEntry -> entryDao.updateBpmNote(id, note)
+      is BabyEntry -> entryDao.updateBabyNote(id, note)
+    }
   }
 
   /**
    * Inserts a list of entries.
    */
   override suspend fun insert(entries: List<Entry>) {
-    val validEntries = entries.filter { isValidIsoTimestamp(it.entry.entryTimestamp) }.map { it.convertToStored() }
-    entryDao.insert(validEntries)
+    val valid = entries.filter { isValidIsoTimestamp(it.entry.entryTimestamp) }
+
+    // Batch-fetch existing local notes once per account, then merge in memory — avoids a
+    // per-entry SELECT during a full sync (MOB-438 PR review).
+    val accountIds = valid
+      .filterIsInstance<ScaleEntry>()
+      .filter { it.scale.scaleEntry.note.isNullOrBlank() }
+      .map { it.entry.accountId }
+      .toSet()
+    val noteByKey = HashMap<String, String>()
+    accountIds.forEach { accountId ->
+      entryDao.getStoredScaleNotes(accountId).forEach { row ->
+        row.note?.takeIf { it.isNotBlank() }?.let { noteByKey[noteKey(accountId, row.entryTimestamp)] = it }
+      }
+    }
+
+    val merged = valid.map { entry ->
+      if (entry is ScaleEntry && entry.scale.scaleEntry.note.isNullOrBlank()) {
+        noteByKey[noteKey(entry.entry.accountId, entry.entry.entryTimestamp)]?.let { existing ->
+          entry.copy(scale = entry.scale.copy(scaleEntry = entry.scale.scaleEntry.copy(note = existing)))
+        } ?: entry
+      } else {
+        entry
+      }
+    }.map { it.convertToStored() }
+
+    entryDao.insert(merged)
   }
+
+  /**
+   * Keeps a locally-entered weight note when an incoming (server-sourced) scale entry has
+   * none. The server contract (ScaleApiEntry) carries no note field, so a synced entry would
+   * otherwise overwrite the local note with null. Device-local only (MOB-438). Used for the
+   * single-entry insert/update path; the bulk [insert] path batches the lookup instead.
+   */
+  private suspend fun preserveLocalScaleNote(entry: Entry): Entry {
+    if (entry !is ScaleEntry || !entry.scale.scaleEntry.note.isNullOrBlank()) return entry
+    val existingNote = entryDao.getStoredScaleNote(entry.entry.accountId, entry.entry.entryTimestamp)
+    return if (existingNote.isNullOrBlank()) {
+      entry
+    } else {
+      entry.copy(scale = entry.scale.copy(scaleEntry = entry.scale.scaleEntry.copy(note = existingNote)))
+    }
+  }
+
+  private fun noteKey(accountId: String, timestamp: String): String = "$accountId$timestamp"
 
   /**
    * Marks an entry as deleted.

@@ -79,6 +79,12 @@ interface IAccountRepository {
   suspend fun updateMeasurementUnits(measurementUnits: MeasurementUnits)
 
   /**
+   * Sets the account's product types on the server (spec §2.19) and persists the
+   * server-confirmed account state locally.
+   */
+  suspend fun updateProducts(productTypes: List<String>)
+
+  /**
    * Updates the dashboard metrics for the active account.
    * @param dashboardKeys The list of dashboard keys to update
    */
@@ -236,6 +242,16 @@ interface IAccountRepository {
    * @param accountId The account ID to remove
    */
   suspend fun removeAccount(accountId: String)
+
+  /**
+   * Removes the account from this device only: deletes the local account row and related
+   * settings and clears tokens, after a best-effort server session logout. The server
+   * account is not deleted. "Removed = gone" (MA-2672 / MOB-424).
+   * @param accountId The account ID to remove
+   * @param fcmToken The FCM token for push notifications (optional)
+   * @param isActiveAccount Whether this is the active account
+   */
+  suspend fun removeAccountFromDevice(accountId: String, fcmToken: String?, isActiveAccount: Boolean)
 
   fun getActiveAccountWeightUnitFlow(): Flow<WeightUnit?>
   fun getActiveAccountWeightlessFlow(): Flow<Weightless>

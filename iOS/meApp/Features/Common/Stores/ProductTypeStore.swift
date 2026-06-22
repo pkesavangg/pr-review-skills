@@ -225,18 +225,18 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         let hasBpm = devices.contains { $0.deviceType == DeviceType.bpm.rawValue }
         let hasBabyScale = devices.contains { $0.deviceType == DeviceType.babyScale.rawValue }
 
-        if hasWeightScale && !types.contains("weight") {
-            types.append("weight")
+        if hasWeightScale && !types.contains(ProductType.weight.apiValue) {
+            types.append(ProductType.weight.apiValue)
             changed = true
         }
 
-        if hasBpm && !types.contains("blood_pressure") {
-            types.append("blood_pressure")
+        if hasBpm && !types.contains(ProductType.bloodPressure.apiValue) {
+            types.append(ProductType.bloodPressure.apiValue)
             changed = true
         }
 
-        if hasBabyScale && !types.contains("baby") {
-            types.append("baby")
+        if hasBabyScale && !types.contains(ProductType.baby.apiValue) {
+            types.append(ProductType.baby.apiValue)
             changed = true
         }
 
@@ -255,10 +255,10 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
     private func syncProductTypesFromBabies(_ babies: [Baby]) {
         guard let account = accountService.activeAccount,
               !babies.isEmpty,
-              !account.productTypes.contains("baby") else { return }
+              !account.productTypes.contains(ProductType.baby.apiValue) else { return }
 
         var types = account.productTypes
-        types.append("baby")
+        types.append(ProductType.baby.apiValue)
         Task {
             try? await accountService.updateProductTypes(types)
         }
@@ -335,16 +335,16 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         var serverTypes: [String] = []
 
         if devices.contains(where: { $0.deviceType == DeviceType.scale.rawValue }) {
-            serverTypes.append("weight")
+            serverTypes.append(ProductType.weight.apiValue)
         }
         if devices.contains(where: { $0.deviceType == DeviceType.bpm.rawValue }) {
-            serverTypes.append("blood_pressure")
+            serverTypes.append(ProductType.bloodPressure.apiValue)
         }
         if devices.contains(where: { $0.deviceType == DeviceType.babyScale.rawValue }) || !babyService.currentBabies.isEmpty {
-            serverTypes.append("baby")
+            serverTypes.append(ProductType.baby.apiValue)
         }
         if serverTypes.isEmpty {
-            serverTypes = ["weight"]
+            serverTypes = [ProductType.weight.apiValue]
         }
 
         Task {
@@ -376,7 +376,7 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         }
 
         // 3. Individual babies — listed when productTypes contains "baby"
-        if productTypes.contains("baby") {
+        if productTypes.contains(ProductType.baby.apiValue) {
             if babies.isEmpty {
                 items.append(.baby(profile: Self.placeholderBabyProfile))
             } else {

@@ -137,6 +137,17 @@ class EntryService(
         }
     }
 
+    /**
+     * Updates only an entry's note locally (e.g. editing a note from History). The note is
+     * device-local (the server contract carries no note for weight); the local write is
+     * preserved across sync by [IEntryRepository]. See MOB-438.
+     */
+    override suspend fun updateNote(entry: Entry, note: String?) {
+        // Propagate failures so the caller can surface an error instead of silently
+        // treating a failed write as success (MOB-438 PR review).
+        entryRepository.updateNote(entry, note)
+    }
+
     /** Deletes an entry both locally and remotely. */
     override suspend fun deleteEntry(entry: Entry) {
         val currentAccountId = accountId ?: return
@@ -150,6 +161,37 @@ class EntryService(
             syncOperationsInternal(currentAccountId, emptyList(), listOf(deleteEntry))
         } catch (e: Exception) {
             AppLog.e(TAG, "Error deleting entry", e)
+        }
+    }
+
+    /**
+     * Saves a baby reading locally under the active (parent) account. Inserted with
+     * isSynced = true so [syncOperationsInternal] — which casts every unsynced entry to
+     * ScaleEntry — never picks it up; baby entries have no server contract yet (MOB-428).
+     */
+    override suspend fun addBabyEntry(entry: BabyEntry): Long {
+        val currentAccountId = accountId ?: return -1
+        return try {
+            val localEntry = entry.updateEntry(
+                entry.entry.copy(
+                    accountId = currentAccountId,
+                    operationType = OperationType.CREATE.name,
+                    isSynced = true,
+                ),
+            )
+            entryRepository.insert(localEntry)
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Error saving baby entry", e)
+            -1
+        }
+    }
+
+    /** Hard-deletes a locally-saved baby entry (cascades to baby_entry). Local-only (MOB-428). */
+    override suspend fun deleteBabyEntryLocally(entryId: Long) {
+        try {
+            entryRepository.deleteById(entryId)
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Error deleting baby entry", e)
         }
     }
 
@@ -214,7 +256,7 @@ class EntryService(
                     // skipping cross-device entries between the two timestamp values.
                     val confirmed = response.entries.mapNotNull { it.toDomainEntry(accountId) }
                     EntryServiceHelper.executeOperations(entryRepository, confirmed)
-                    accountRepository.updateSyncTimeStamp(response.timestamp)
+                    response.timestamp?.takeIf { it.isNotBlank() }?.let { accountRepository.updateSyncTimeStamp(it) }
                 } catch (e: Exception) {
                     // Atomic failure — the whole batch is rolled back server-side; leave every
                     // op unsynced (attempts++) so the entire batch is retried on the next sync.
@@ -263,7 +305,7 @@ class EntryService(
                 if (domainEntries.isNotEmpty()) {
                     EntryServiceHelper.executeOperations(entryRepository, domainEntries)
                 }
-                accountRepository.updateSyncTimeStamp(response.timestamp)
+                response.timestamp?.takeIf { it.isNotBlank() }?.let { accountRepository.updateSyncTimeStamp(it) }
                 AppLog.d(TAG, "Unified sync: ${domainEntries.size} entries applied, cursor=${response.timestamp}")
             } catch (e: Exception) {
                 AppLog.e(TAG, "Unified sync GET failed, persisting placeholders for retry", e)

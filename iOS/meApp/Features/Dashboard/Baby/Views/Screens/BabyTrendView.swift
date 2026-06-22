@@ -53,6 +53,20 @@ struct BabyTrendView: View {
         !dashboardStore.state.graph.isGraphReady
     }
 
+    private var babyInfoAccessibilityLabel: String {
+        let headline = displayState.headlineLabel
+        if displayState.selectedMetric == .weight {
+            let display = displayState.weightDisplay
+            var text = "\(headline), \(display.primary) \(display.primaryUnit)"
+            if let secondary = display.secondary, let secondaryUnit = display.secondaryUnit {
+                text += " \(secondary) \(secondaryUnit)"
+            }
+            return text
+        } else {
+            return "\(headline), \(displayState.heightDisplayText) \(BabyDashboardStrings.inches)"
+        }
+    }
+
     @ViewBuilder
     private var babyInfoSection: some View {
         HStack(alignment: .top) {
@@ -82,6 +96,8 @@ struct BabyTrendView: View {
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(babyInfoAccessibilityLabel)
+            .accessibilityHint(BabyDashboardStrings.accPercentilesHint)
 
             Spacer()
 
@@ -187,6 +203,7 @@ struct BabyTrendView: View {
                 )
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(displayState.selectedMetric == metric ? .isSelected : [])
     }
 }
 

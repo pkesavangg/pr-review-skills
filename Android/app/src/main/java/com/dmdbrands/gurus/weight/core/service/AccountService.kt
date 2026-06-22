@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
@@ -364,6 +365,18 @@ class AccountService(
     accountRepository.updateMeasurementUnits(measurementUnits)
   }
 
+  override suspend fun addProduct(productType: ProductType) {
+    val apiValue = productType.apiValue
+    val current = getCurrentAccount()?.productTypes ?: listOf(ProductType.MY_WEIGHT.apiValue)
+    if (apiValue in current) {
+      AppLog.d(TAG, "addProduct: $apiValue already present, skipping")
+      return
+    }
+    AppLog.d(TAG, "addProduct: $apiValue")
+    requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
+    accountRepository.updateProducts(current + apiValue)
+  }
+
   /**
    * Checks login status for the active account by calling getAccount API if online.
    * If offline or on network/HTTP failure (except 401), falls back to local DB validity. Only 401 marks account expired.
@@ -649,6 +662,32 @@ class AccountService(
     } catch (e: Exception) {
       AppLog.e(TAG, "Logout all failed", e)
       appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Logout all failed"))
+      false
+    }
+
+  /**
+   * Removes the specified account from this device only ("Removed = gone", MA-2672 / MOB-424).
+   * Fully deletes the local account; the server account is not deleted. Navigation away from an
+   * emptied list is handled by the (Multi-)Landing screen observing [loggedInAccountsFlow].
+   * @param accountId ID of the account to remove
+   * @param fcmToken FCM token for push notifications (optional)
+   * @return true if the account was removed successfully, false otherwise
+   */
+  override suspend fun removeAccountFromDevice(
+    accountId: String,
+    fcmToken: String?,
+  ): Boolean =
+    try {
+      if (!isNetworkAvailable()) {
+        showNoNetworkErrorToast()
+      }
+      AppLog.v(TAG, "removeAccountFromDevice() called for accountId: $accountId")
+      val isActiveAccount = getCurrentAccount()?.id == accountId
+      accountRepository.removeAccountFromDevice(accountId, fcmToken, isActiveAccount)
+      AppLog.d(TAG, "Account removed from device")
+      true
+    } catch (e: Exception) {
+      AppLog.e(TAG, "removeAccountFromDevice failed", e)
       false
     }
 

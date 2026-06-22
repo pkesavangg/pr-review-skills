@@ -13,6 +13,9 @@ final class HTTPClient: HTTPClientProtocol {
     @Injector var accountService: AccountServiceProtocol
     @Injector var notificationHelperService: NotificationHelperServiceProtocol
     @Injector var logger: LoggerServiceProtocol
+    // TEMPORARY (MOB-382/383/384/385/386/405/407): dedicated console-only logger for Phase 2 API testing.
+    // Bypasses LoggerService's `.info` console gate; AppLogger writes to os.Logger only (never persisted/uploaded).
+    private let apiLogger = AppLogger(tag: "API")
     @Atomic public var skipCheckNetwork: Bool = false
     private let tokenManager: TokenManaging
     private let requestExecutor: (URLRequest) async throws -> (Data, URLResponse)
@@ -26,7 +29,15 @@ final class HTTPClient: HTTPClientProtocol {
     ) {
         self.tokenManager = tokenManager ?? TokenManager.shared
         self.requestExecutor = requestExecutor ?? { request in
-            try await URLSession.shared.data(for: request)
+            #if DEBUG || LOCAL_DEV_TLS
+            // TEMPORARY (Phase 2 local testing): route through a session that trusts the
+            // local dev server's self-signed cert. Compiled in for DEBUG builds and any
+            // config that defines LOCAL_DEV_TLS (currently Production, for testing against
+            // the self-signed test server). MUST be removed before any real release.
+            return try await LocalDevTrust.session.data(for: request)
+            #else
+            return try await URLSession.shared.data(for: request)
+            #endif
         }
         self.connectivityProvider = connectivityProvider ?? {
             NetworkMonitor.shared.getCurrentConnectionStatus()
@@ -128,6 +139,9 @@ final class HTTPClient: HTTPClientProtocol {
     // MARK: - Request Execution
     /// Performs the actual network request and handles response decoding.
     private func performRequest<T: Decodable>(_ request: URLRequest) async throws -> T { // swiftlint:disable:this cyclomatic_complexity
+        #if DEBUG
+        debugPrintRequest(request)
+        #endif
         let (data, response): (Data, URLResponse)
         do {
             (data, response) = try await requestExecutor(request)
@@ -193,6 +207,41 @@ final class HTTPClient: HTTPClientProtocol {
         }
 
         return HTTPError.statusCode(status.rawValue)
+    }
+
+    // MARK: - Phase 2 API testing instrumentation (MOB-382/383/384/385/386/405/407)
+    // TEMPORARY: console prints to verify Phase 2 unified API requests/responses in Xcode.
+    // Remove before merging out of the testing branch.
+    // Searchable token prefixed to every API request/response log line so they can be
+    // filtered out of the combined log stream (search `API_TRACE` to see all traffic,
+    // `API_REQUEST` for outgoing, `API_RESPONSE` for incoming).
+    private static let apiTraceToken = "API_TRACE"
+
+    private func debugPrintRequest(_ request: URLRequest) {
+        let method = request.httpMethod ?? "?"
+        let url = request.url?.absoluteString ?? "?"
+        var bodyString = ""
+        if let body = request.httpBody, !body.isEmpty,
+           let string = String(data: body, encoding: .utf8) {
+            bodyString = "\n   request body: \(string)"
+        }
+        apiLogger.log(
+            level: .info,
+            tag: "API",
+            message: "\(Self.apiTraceToken) API_REQUEST ➡️ \(method) \(url)\(bodyString)"
+        )
+    }
+
+    private func debugPrintResponse(_ request: URLRequest, statusCode: Int, data: Data) {
+        let method = request.httpMethod ?? "?"
+        let url = request.url?.absoluteString ?? "?"
+        let icon = (200..<300).contains(statusCode) ? "✅" : "❌"
+        let bodyString = String(data: data, encoding: .utf8).flatMap { $0.isEmpty ? nil : $0 } ?? "<empty>"
+        apiLogger.log(
+            level: .info,
+            tag: "API",
+            message: "\(Self.apiTraceToken) API_RESPONSE \(icon) \(statusCode) \(method) \(url)\n   response: \(bodyString)"
+        )
     }
 
     private func logRawResponse(data: Data) {
@@ -277,6 +326,50 @@ final class HTTPClient: HTTPClientProtocol {
     }
 
 }
+
+#if DEBUG || LOCAL_DEV_TLS
+// MARK: - Local Dev Self-Signed Cert Trust (TEMPORARY — Phase 2 local testing)
+//
+// Lets the app talk to a dev/test server whose TLS cert is self-signed.
+// URLSession.shared cannot carry a delegate, so we use a dedicated session whose
+// delegate accepts the server trust — but ONLY for the LAN ranges / explicit dev hosts
+// listed below. Compiled in for DEBUG builds and any config defining LOCAL_DEV_TLS
+// (currently Production, for testing against the self-signed test server).
+// ⚠️ MUST be removed before any real release — it disables cert validation for those hosts.
+private final class LocalDevTrustDelegate: NSObject, URLSessionDelegate {
+    func urlSession(
+        _ session: URLSession,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        let host = challenge.protectionSpace.host
+        // Explicit dev hosts (public IPs that won't match the LAN ranges below).
+        let trustedDevHosts: Set<String> = ["49.207.187.28"]
+        let isLocalHost = trustedDevHosts.contains(host)
+            || host.hasPrefix("192.168.")
+            || host.hasPrefix("10.")
+            || host.hasPrefix("127.")
+            || host.hasPrefix("172.")
+            || host.hasSuffix(".local")
+
+        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+              isLocalHost,
+              let serverTrust = challenge.protectionSpace.serverTrust else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+        completionHandler(.useCredential, URLCredential(trust: serverTrust))
+    }
+}
+
+private enum LocalDevTrust {
+    nonisolated(unsafe) static let session: URLSession = URLSession(
+        configuration: .default,
+        delegate: LocalDevTrustDelegate(),
+        delegateQueue: nil
+    )
+}
+#endif
 
 // MARK: - USAGE GUIDE
 //

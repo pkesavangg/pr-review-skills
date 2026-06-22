@@ -302,6 +302,23 @@ struct BabyScaleSetupStoreTests {
         #expect(store.savedBabies.isEmpty)
     }
 
+    @Test("saveBabyProfile HTTP 409: sets duplicateNameError instead of generic error")
+    func saveBabyProfile_409Error_setsDuplicateNameError() async {
+        let babyService = MockBabyService()
+        babyService.saveBabyError = HTTPError.statusCode(409)
+        let sut = makeSUT(babyService: babyService)
+        let store = sut.store
+        store.scaleItem = makeScaleItem()
+        store.navigateToStep(.babyProfile)
+        store.babyProfileForm.name.value = "Aria"
+
+        await store.saveBabyProfile()
+
+        #expect(store.babyProfileForm.duplicateNameError == BabyScaleSetupStrings.BabyProfile.duplicateNameError)
+        #expect(store.scaleSetupError == .none)
+        #expect(store.savedBabies.isEmpty)
+    }
+
     @Test("saveBabyProfile does nothing when name is empty")
     func saveBabyProfile_emptyName_doesNothing() async {
         let sut = makeSUT()
@@ -671,6 +688,59 @@ struct BabyScaleSetupStoreTests {
         store.handleSkipCancelled()
 
         #expect(store.showSkipDialog == false)
+    }
+
+    // MARK: - Skip Edit Baby Dialog
+
+    @Test("showSkipBabyProfileDialog with editingBaby sets showSkipEditDialog")
+    func showSkipBabyProfileDialog_withEditingBaby_setsEditFlag() {
+        let (store, _, _, _, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        store.editingBaby = Baby(accountId: "acct-1", name: "Aria")
+
+        store.showSkipBabyProfileDialog()
+
+        #expect(store.showSkipEditDialog == true)
+        #expect(store.showSkipDialog == false)
+    }
+
+    @Test("showSkipBabyProfileDialog without editingBaby sets showSkipDialog")
+    func showSkipBabyProfileDialog_noEditingBaby_setsAddFlag() {
+        let (store, _, _, _, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        store.editingBaby = nil
+
+        store.showSkipBabyProfileDialog()
+
+        #expect(store.showSkipDialog == true)
+        #expect(store.showSkipEditDialog == false)
+    }
+
+    @Test("handleSkipEditConfirmed clears dialog, editingBaby, resets form, and navigates to babyAdded")
+    func handleSkipEditConfirmed_clearsAndNavigates() {
+        let (store, _, _, _, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        store.editingBaby = Baby(accountId: "acct-1", name: "Aria")
+        store.babyProfileForm.name.value = "Aria"
+        store.showSkipEditDialog = true
+
+        store.handleSkipEditConfirmed()
+
+        #expect(store.showSkipEditDialog == false)
+        #expect(store.editingBaby == nil)
+        #expect(store.babyProfileForm.name.value == "")
+        #expect(store.currentStep == .babyAdded)
+    }
+
+    @Test("handleSkipEditCancelled dismisses skip-edit dialog only")
+    func handleSkipEditCancelled_dismissesOnly() {
+        let (store, _, _, _, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        store.showSkipEditDialog = true
+
+        store.handleSkipEditCancelled()
+
+        #expect(store.showSkipEditDialog == false)
     }
 
     // MARK: - confirmDeleteBabyFromList (MA-3617)

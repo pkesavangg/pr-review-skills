@@ -11,6 +11,10 @@ struct BPMonthSummaryItem: View {
 
     let month: BPHistoryMonth
 
+    private var combinedAccessibilityLabel: String {
+        "\(monthYearText), \(month.count) \(HistoryListStrings.entries), \(HistoryListStrings.avgPressure) \(month.pressureText) \(EntryUnit.mmhg.displayString), \(HistoryListStrings.avgPulse) \(month.avgPulse)"
+    }
+
     private var monthYearText: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM"
@@ -74,6 +78,10 @@ struct BPMonthSummaryItem: View {
             }
             .padding(.vertical, .spacingMD)
             .padding(.horizontal, .spacingSM)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(combinedAccessibilityLabel)
+            .accessibilityHint(HistoryListStrings.accMonthRowHint)
+            .accessibilityAddTraits(.isButton)
             Divider()
                 .foregroundColor(theme.actionPrimary)
         }

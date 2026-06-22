@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -48,6 +49,7 @@ fun SwipeableListItemScope.WeightHistoryDetailItem(
     item: ScaleEntry,
     isExpanded: Boolean = false,
     onItemOpen: (Long) -> Unit = {},
+    onEditEntry: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val bodyMetric = fromScaleEntry(item)
@@ -55,7 +57,9 @@ fun SwipeableListItemScope.WeightHistoryDetailItem(
     Swipeable {
         WeightHistoryDetailItemHeader(
             item = item,
-            canExpand = getMetrics(bodyMetric).isNotEmpty(),
+            // Always expandable so note-less entries can still reveal the add-note
+            // affordance in the details section (MOB-438).
+            canExpand = true,
             isExpanded = isExpanded,
             onClick = {
                 onItemOpen(item.entry.id)
@@ -70,6 +74,7 @@ fun SwipeableListItemScope.WeightHistoryDetailItem(
         ) {
             WeightHistoryDetailItemDetails(
                 item = item,
+                onEditEntry = onEditEntry,
             )
         }
         if (!isExpanded) {
@@ -99,6 +104,7 @@ fun WeightHistoryDetailItemHeader(
         modifier =
             Modifier
                 .fillMaxWidth()
+                .testTag("entry_row")
                 .background(backgroundColor)
                 .combinedClickable(
                   enabled = canExpand,

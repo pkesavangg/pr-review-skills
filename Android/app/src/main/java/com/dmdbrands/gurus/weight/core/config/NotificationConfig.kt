@@ -25,5 +25,11 @@ object NotificationConfig {
         importance(),
         "General notification",
       ),
+      ChannelConfig(
+        NotificationChannel.ENTRY_NOTIFICATION,
+        "Entries",
+        importance(),
+        "New reading synced to your account",
+      ),
     )
 }

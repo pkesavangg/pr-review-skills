@@ -34,6 +34,7 @@ fun <T> AppTextArea(
     supportingText: String? = null,
     minHeight: Dp = 118.dp,
     maxLength: Int? = null,
+    showCharacterCounter: Boolean = false,
     imeAction: ImeAction = ImeAction.Default,
     onImeAction: (() -> Unit)? = null,
     onValueChange: ((T?) -> Unit)? = null,
@@ -51,6 +52,7 @@ fun <T> AppTextArea(
         supportingText = supportingText,
         inputType = AppInputType.TEXT,
         maxLength = maxLength,
+        showCharacterCounter = showCharacterCounter,
         singleLine = false,
         showTrailingIcon = false,
         onImeAction = onImeAction,
@@ -64,12 +66,32 @@ fun AppTextAreaPreview() {
     MeAppTheme {
         val empty = remember { FormControl.create("", emptyList()) }
         val withText = remember { FormControl.create("This is a multi-line note.", emptyList()) }
+        val atMax = remember { FormControl.create("x".repeat(280), emptyList()) }
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.padding(16.dp),
         ) {
-            AppTextArea(formControl = empty, label = "notes")
-            AppTextArea(formControl = withText, label = "notes")
+            // Default state — counter shows 0/280
+            AppTextArea(
+                formControl = empty,
+                label = "notes",
+                maxLength = 280,
+                showCharacterCounter = true,
+            )
+            // Filled state — counter shows current count
+            AppTextArea(
+                formControl = withText,
+                label = "notes",
+                maxLength = 280,
+                showCharacterCounter = true,
+            )
+            // Max-limit-reached state — counter shows 280/280 in error color
+            AppTextArea(
+                formControl = atMax,
+                label = "notes",
+                maxLength = 280,
+                showCharacterCounter = true,
+            )
         }
     }
 }

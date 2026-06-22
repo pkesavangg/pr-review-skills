@@ -38,11 +38,6 @@ interface IProfileSettingsManager {
 
   fun onWeightlessClick(scope: CoroutineScope)
 
-  fun onShowWeightlessModal(
-    scope: CoroutineScope,
-    stateProvider: () -> SettingsState,
-  )
-
   fun onStreakUpdate(
     scope: CoroutineScope,
     stateProvider: () -> SettingsState,
@@ -104,34 +99,6 @@ constructor(
     scope.launch {
       navigationService.navigateTo(AppRoute.AccountSettings.Weightless)
     }
-  }
-
-  override fun onShowWeightlessModal(
-    scope: CoroutineScope,
-    stateProvider: () -> SettingsState,
-  ) {
-    val currentAccount = stateProvider().account
-    currentAccount?.isWeightlessOn ?: false
-
-    showRadioGroupModal(
-      dialogService = dialogQueueService,
-      title = "Weightless Mode",
-      options =
-        listOf(
-          RadioButtonOption("true", "On"),
-          RadioButtonOption("false", "Off"),
-        ),
-      selectedItem = stateProvider().account?.isWeightlessOn ?: false,
-      onConfirm = { selectedWeightless ->
-        selectedWeightless?.let { weightlessValue ->
-          val isWeightlessOn = weightlessValue.toString().toBoolean()
-          onWeightlessUpdate(scope, stateProvider, isWeightlessOn)
-        }
-      },
-      onCancel = {
-        AppLog.d(TAG, "Weightless mode selection cancelled")
-      },
-    )
   }
 
   override fun onStreakUpdate(
@@ -272,33 +239,6 @@ constructor(
         AppLog.i(TAG, "Successfully updated activity level")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error updating activity level", e)
-      } finally {
-        dialogQueueService.dismissLoader()
-      }
-    }
-  }
-
-  private fun onWeightlessUpdate(
-    scope: CoroutineScope,
-    stateProvider: () -> SettingsState,
-    isWeightlessOn: Boolean,
-  ) {
-    val currentAccount = stateProvider().account
-    if (currentAccount?.isWeightlessOn == isWeightlessOn) {
-      AppLog.d(TAG, "Weightless mode is already set to $isWeightlessOn, no update needed")
-      return
-    }
-
-    dialogQueueService.showLoader("Updating weightless mode...")
-    scope.launch {
-      try {
-        userSettingsService.toggleWeightlessSetting(
-          isWeightlessOn = isWeightlessOn,
-          weightlessWeight = if (isWeightlessOn) currentAccount?.weightlessWeight?.toDouble() else null,
-        )
-        AppLog.i(TAG, "Successfully updated weightless mode")
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error updating weightless mode", e)
       } finally {
         dialogQueueService.dismissLoader()
       }

@@ -5,15 +5,13 @@ import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryDetail
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
-import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
-import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
-import com.dmdbrands.gurus.weight.domain.services.IHistoryService
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -59,7 +57,7 @@ class HistoryDetailViewModelTest {
     lateinit var healthConnectService: IHealthConnectService
 
     @MockK(relaxed = true)
-    lateinit var historyService: IHistoryService
+    lateinit var entryReadService: IEntryReadService
 
     private lateinit var navigationService: IAppNavigationService
     private lateinit var dialogQueueService: IDialogQueueService
@@ -82,12 +80,12 @@ class HistoryDetailViewModelTest {
         month: String = TEST_MONTH,
         entries: List<ScaleEntry> = listOf(TestFixtures.weightEntry),
     ): HistoryDetailViewModel {
-        every { historyService.getDetail(any(), eq(month)) } returns flowOf(HistoryDetail.Weight(entries))
+        every { entryReadService.getDetail(any(), eq(month)) } returns flowOf(HistoryDetail.Weight(entries))
         return HistoryDetailViewModel(
             accountService = accountService,
             entryService = entryService,
             healthConnectService = healthConnectService,
-            historyService = historyService,
+            entryReadService = entryReadService,
             month = month,
             productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
         ).initTestDependencies(
@@ -466,18 +464,18 @@ class HistoryDetailViewModelTest {
         viewModel = createViewModel(month = "2024-03")
         advanceUntilIdle()
 
-        verify { historyService.getDetail(any(), eq("2024-03")) }
+        verify { entryReadService.getDetail(any(), eq("2024-03")) }
     }
 
     @Test
     fun `loadHistoryDetail sets error when entries are empty`() = runTest {
-        every { historyService.getDetail(any(), eq(TEST_MONTH)) } returns flowOf(HistoryDetail.Weight(emptyList()))
+        every { entryReadService.getDetail(any(), eq(TEST_MONTH)) } returns flowOf(HistoryDetail.Weight(emptyList()))
 
         viewModel = HistoryDetailViewModel(
             accountService = accountService,
             entryService = entryService,
             healthConnectService = healthConnectService,
-            historyService = historyService,
+            entryReadService = entryReadService,
             month = TEST_MONTH,
             productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
         ).initTestDependencies(
@@ -505,13 +503,13 @@ class HistoryDetailViewModelTest {
 
     @Test
     fun `loadHistoryDetail sets error on exception`() = runTest {
-        every { historyService.getDetail(any(), any()) } throws RuntimeException("test error")
+        every { entryReadService.getDetail(any(), any()) } throws RuntimeException("test error")
 
         viewModel = HistoryDetailViewModel(
             accountService = accountService,
             entryService = entryService,
             healthConnectService = healthConnectService,
-            historyService = historyService,
+            entryReadService = entryReadService,
             month = TEST_MONTH,
             productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
         ).initTestDependencies(

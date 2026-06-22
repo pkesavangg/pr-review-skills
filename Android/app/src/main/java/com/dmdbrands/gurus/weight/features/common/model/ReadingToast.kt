@@ -8,6 +8,7 @@ data class ReadingToast(
     val type: ProductType,
     val timestamp: String,
     val assignedTo: String? = null,
+    val noBabyProfile: Boolean = false,
     val primaryAction: () -> Unit = {},
     val secondaryAction: () -> Unit = {},
 ) : ToastContent {

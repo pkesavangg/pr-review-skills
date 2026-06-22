@@ -115,7 +115,7 @@ object AppIcons {
     fun StepOnGif(sku: String): Int {
       return when (sku) {
         "0375", "0376", "0380", "0382" -> R.raw.step_on_scale
-        else -> R.raw.step_on_scale
+        else -> R.raw.placeholder_scale
       }
     }
 
@@ -125,7 +125,7 @@ object AppIcons {
         "0376" -> R.raw.start_pair_mode_0376
         "0380" -> R.raw.start_pair_mode_0380
         "0382" -> R.raw.start_pair_mode_0382
-        else -> R.raw.start_pair_mode_0375
+        else -> R.raw.placeholder_scale
       }
     }
 
@@ -135,7 +135,7 @@ object AppIcons {
         "0376" -> R.raw.set_user_number_0376
         "0380" -> R.raw.set_user_number_0380
         "0382" -> R.raw.set_user_number_0382
-        else -> R.raw.set_user_number_0375
+        else -> R.raw.placeholder_scale
       }
     }
 

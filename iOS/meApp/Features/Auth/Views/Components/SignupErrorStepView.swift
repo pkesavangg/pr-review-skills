@@ -16,7 +16,7 @@ struct SignupErrorStepView: View {
             return false
         }.map(\.device)
         if failed.count == 1 {
-            return "We couldn't complete your \(failed[0].title) setup. Check your connection and try again."
+            return "We couldn't complete your \(failed[0].profileReadyName) setup. Check your connection and try again."
         }
         return lang.subtitle
     }
@@ -35,6 +35,7 @@ struct SignupErrorStepView: View {
                     )
                     .foregroundColor(theme.statusError)
                 }
+                .accessibilityHidden(true)
 
                 VStack(spacing: .spacingXS) {
                     Text(lang.title)
@@ -90,6 +91,7 @@ private struct DeviceStatusCard: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 44, height: 44)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(deviceType.title)

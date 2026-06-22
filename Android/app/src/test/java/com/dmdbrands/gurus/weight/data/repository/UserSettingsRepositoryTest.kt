@@ -41,6 +41,9 @@ class UserSettingsRepositoryTest {
   @MockK(relaxUnitFun = true)
   lateinit var accountDao: AccountDao
 
+  @MockK(relaxUnitFun = true)
+  lateinit var userDataStore: com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
+
   private lateinit var repository: UserSettingsRepository
   private val mockAccountEntity = mockk<AccountEntity>(relaxed = true) {
     every { id } returns ACCOUNT_ID
@@ -64,7 +67,7 @@ class UserSettingsRepositoryTest {
   fun setUp() {
     MockKAnnotations.init(this)
     mockkObject(AccountEntityMapper)
-    repository = UserSettingsRepository(userSettingsAPI, accountDao)
+    repository = UserSettingsRepository(userSettingsAPI, accountDao, userDataStore)
   }
 
   @After

@@ -49,6 +49,7 @@ enum BabyDashboardStrings {
 
     // MARK: - Accessibility
     static let babySnapshotNoReadings = "Baby snapshot, no readings yet"
+    static let accPercentilesHint = "Opens growth percentiles chart"
 
     static func babyWeightSnapshotAccessibility(name: String, lbs: String, oz: String) -> String {
         "\(name) snapshot, weight \(lbs) pounds \(oz) ounces"

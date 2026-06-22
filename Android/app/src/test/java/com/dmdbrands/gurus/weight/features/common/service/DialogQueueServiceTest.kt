@@ -50,8 +50,8 @@ class DialogQueueServiceTest {
         alertDelayMillis = 500L,
     )
 
-    private val testToast = Toast(message = "Test toast")
-    private val testToastWithTitle = Toast(message = "Toast message", title = "Toast title")
+    private val testToast = Toast.Simple(message = "Test toast")
+    private val testToastWithTitle = Toast.Simple(message = "Toast message", title = "Toast title")
 
     @BeforeEach
     fun setUp() {

@@ -1090,10 +1090,14 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                         hadSuccessfulCreate = true
                         // Store server-assigned entryId so future delete requests can include it.
                         if let responseEntryId = submitResponse.entries.first?.entryId {
-                            try? await localRepo.updateEntryServerEntryId(
-                                entryId: entryIdString,
-                                serverEntryId: responseEntryId
-                            )
+                            do {
+                                try await localRepo.updateEntryServerEntryId(
+                                    entryId: entryIdString,
+                                    serverEntryId: responseEntryId
+                                )
+                            } catch {
+                                logger.log(level: .error, tag: tag, message: "Failed to persist serverEntryId for entryId=\(entryIdString): \(error.localizedDescription)")
+                            }
                         }
                         // R9: Use primitive-based update instead of mutating @Model
                         try await localRepo.updateEntrySyncStatus(

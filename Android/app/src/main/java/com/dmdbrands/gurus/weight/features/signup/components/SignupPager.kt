@@ -57,6 +57,15 @@ fun SignupPager(
       )
       return
     }
+    SignupStep.ERROR -> {
+      SignupErrorStep(
+        failedDeviceId = state.form.controls.device.value,
+        registeredDevices = state.registeredDevices,
+        onFinish = { onIntent(SignupIntent.FinishSignup) },
+        onTryAgain = { onIntent(SignupIntent.RetryDevice) },
+      )
+      return
+    }
     else -> Unit
   }
 
@@ -78,7 +87,9 @@ fun SignupPager(
         type = ButtonType.TextPrimary,
         label = SignupStrings.backButton,
         size = ButtonSize.Small,
-        enabled = !state.isFirstStep,
+        // BACK is disabled on the baby list: once a baby is added the user moves forward
+        // (NEXT) or edits via the pencil — they cannot navigate back into the form. (model A)
+        enabled = !state.isFirstStep && state.currentStep != SignupStep.BABY_ADDED,
         onClick = onBack,
       )
     },
@@ -175,6 +186,8 @@ fun SignupPager(
             SignupStep.ADD_BABY ->
               AddBabyStep(
                 babyForm = state.babyState?.babyForm ?: BabyFormControls.create(),
+                isEditing = state.babyState?.editingBabyId != null,
+                onOpenSexPicker = { onIntent(SignupIntent.OpenBabySexPicker) },
               )
 
             SignupStep.BABY_ADDED ->
@@ -197,7 +210,8 @@ fun SignupPager(
             // Unreachable here — handled by the early-return above.
             // Branches kept so the `when` over SignupStep stays exhaustive.
             SignupStep.DEVICE_READY,
-            SignupStep.ALL_DEVICES_READY -> Unit
+            SignupStep.ALL_DEVICES_READY,
+            SignupStep.ERROR -> Unit
           }
         }
       }
@@ -217,4 +231,7 @@ fun SignupPager(
 private fun shouldBlockBack(state: SignupState): Boolean =
   state.currentStep == SignupStep.DEVICE_READY ||
     state.currentStep == SignupStep.ALL_DEVICES_READY ||
+    state.currentStep == SignupStep.ERROR ||
+    // Baby list: a confirmed baby cannot be undone via back — forward (NEXT) / edit / add only.
+    state.currentStep == SignupStep.BABY_ADDED ||
     (state.currentStep == SignupStep.PICK_DEVICE && state.registeredDevices.isNotEmpty())

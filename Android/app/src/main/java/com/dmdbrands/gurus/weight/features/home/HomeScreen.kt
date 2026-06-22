@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color.Companion.Red
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.activity.compose.LocalActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.app.components.HomeNavHost
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
@@ -40,7 +41,6 @@ import com.greatergoods.libs.appsync.AppSyncResultHolder
 import com.greatergoods.libs.appsync.startAppSyncScan
 import com.greatergoods.libs.appsync.utility.AppSyncResultFactory
 import kotlinx.coroutines.launch
-import android.app.Activity
 
 /**
  * Home screen displaying current user data, logout option, and switch account section.
@@ -68,13 +68,14 @@ fun HomeScreenContent(
 ) {
   val topLevelBackStack = LocalNavBackStack.current
   val context = LocalContext.current
+  val activity = LocalActivity.current
   var isScanning by remember { mutableStateOf(false) }
   val coroutineScope = rememberCoroutineScope()
   LocalSoftwareKeyboardController.current
   // Observe shouldAskForReview state and launch review when true
   LaunchedEffect(state.shouldAskForReview) {
     if (state.shouldAskForReview) {
-      handleIntent(HomeIntent.LaunchAppReview(context as Activity))
+      activity?.let { handleIntent(HomeIntent.LaunchAppReview(it)) }
     }
   }
 

@@ -82,11 +82,12 @@ struct WifiSelectionView: View {
             Text(isConnected ? lang.alreadyConnected : lang.selectNetwork)
                 .fontOpenSans(.heading4)
                 .foregroundColor(theme.textHeading)
-            
+
             Text(isConnected ? lang.continueOrChooseDiff : lang.pickClosestNetwork)
                 .fontOpenSans(.body2)
                 .foregroundColor(theme.textBody)
         }
+        .accessibilityElement(children: .combine)
     }
     
     @ViewBuilder

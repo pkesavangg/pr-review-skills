@@ -50,6 +50,7 @@ sealed interface BpDashboardIntent : BaseGraphIntent {
   data class SetIsEmpty(val isEmpty: Boolean) : BpDashboardIntent
   data class SetLastReadings(val value: BpLastReadings) : BpDashboardIntent
   data object Refresh : BpDashboardIntent
+  data object OnConnectDevice : BpDashboardIntent
 }
 
 // ── Reducer ──
@@ -77,6 +78,7 @@ class BpDashboardReducer : BaseGraphReducer<BpDashboardState>(), IReducer<BpDash
       is BpDashboardIntent.SetIsEmpty -> state.copy(isEmpty = intent.isEmpty)
       is BpDashboardIntent.SetLastReadings -> state.copy(lastReadings = intent.value)
       is BpDashboardIntent.Refresh -> state
+      is BpDashboardIntent.OnConnectDevice -> state
     }
     else -> reduceBaseIntent(state, intent)
   }

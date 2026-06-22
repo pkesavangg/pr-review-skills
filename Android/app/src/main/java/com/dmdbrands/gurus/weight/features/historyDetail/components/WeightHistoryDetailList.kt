@@ -32,6 +32,7 @@ fun WeightHistoryDetailList(
   itemsOpened: List<Long> = emptyList(),
   onItemsOpen: (List<Long>) -> Unit,
   onItemDelete: (ScaleEntry) -> Unit,
+  onEditEntry: (ScaleEntry) -> Unit = {},
 ) {
   // Create a derived state to force recomposition when itemsOpened changes
   val expandedItems by remember(itemsOpened) {
@@ -67,6 +68,7 @@ fun WeightHistoryDetailList(
         }
         onItemsOpen(newItemsOpened)
       },
+      onEditEntry = { onEditEntry(item) },
     )
   }
 }

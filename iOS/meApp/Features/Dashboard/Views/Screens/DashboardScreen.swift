@@ -164,12 +164,13 @@ struct DashboardScreen: View {
 
         }
     }
-    
+
     private func snapshotLogo() -> some View {
         AppIconView(icon: AppAssets.wgLogo, size: IconSize(width: 45, height: 45))
             .foregroundColor(theme.textSubheading)
             .frame(maxWidth: .infinity)
             .padding(.vertical, .spacingXS)
+            .accessibilityLabel(lang.accSnapshotLogoLabel)
     }
 
     private func navbarHeader() -> some View {
@@ -205,7 +206,7 @@ struct DashboardScreen: View {
         }
         .zIndex(100)
     }
-    
+
     private func dashboardScroll(availableHeight: CGFloat) -> some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 0) {

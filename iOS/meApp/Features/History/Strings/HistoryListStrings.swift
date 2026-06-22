@@ -57,4 +57,11 @@ enum HistoryListStrings {
     static let readingRestored = "Reading restored."
     static let couldntDelete = "Couldn't delete!"
     static let tryAgain = "TRY AGAIN"
+
+    // MARK: - Accessibility (VoiceOver) — spoken text only, not shown on screen
+    static let accDeleteEntryLabel = "Delete entry"
+    static let accMonthRowHint = "Double tap to view entries"
+    static let accDayRowHint = "Double tap to view entries"
+    static let accEntryExpandHint = "Double tap to expand metrics"
+    static let accEntryCollapseHint = "Double tap to collapse metrics"
 }

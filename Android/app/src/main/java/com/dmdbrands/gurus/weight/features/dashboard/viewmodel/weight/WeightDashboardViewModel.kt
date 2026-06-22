@@ -334,6 +334,9 @@ class WeightDashboardViewModel @Inject constructor(
         dialogQueueService.showLoader(message = DashboardString.Loader.Save)
         dashboardService.resetVisibleKeys(dashboardType = state.value.dashboardType)
         handleIntent(WeightDashboardIntent.SetSelectedStat(null))
+        // Signal the UI to exit edit mode and scroll back to the top, matching
+        // iOS post-reset behavior (MOB-445).
+        handleIntent(WeightDashboardIntent.ResetComplete)
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to reset dashboard", e)
       } finally {

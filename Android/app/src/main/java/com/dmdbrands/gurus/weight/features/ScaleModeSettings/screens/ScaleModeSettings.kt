@@ -98,7 +98,7 @@ fun ScaleModeSettingsScreen(
       Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+        horizontalArrangement = Arrangement.spacedBy(spacing.xs),
       ) {
         AppIcon(
           id = AppIcons.Metrics.Pulse,

@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BabyScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.ScaleSetupStep
@@ -11,8 +12,10 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.SetupInitData
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BabyScaleSetupReducer
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BabyScaleSetupState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.ScaleSetupIntent
+import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BabyScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import dagger.assisted.Assisted
@@ -50,6 +53,10 @@ constructor(
   override fun provideInitialState(): BabyScaleSetupState {
     return BabyScaleSetupState()
   }
+
+  // Baby setup leaves the active product unchanged (no baby profile is bound at setup time), but
+  // pairing the scale must still add "baby" to productTypes so "My Kids" enables. (MOB-686)
+  override fun productToRegisterAfterSetup(): ProductType = ProductType.BABY
 
   init {
     lazyInit()
@@ -135,7 +142,26 @@ constructor(
   }
 
   override fun onSkip() {
-    onNext()
+    // On the baby-profile steps, skipping confirms via the "Skip Baby Profile?" dialog and
+    // finishes setup (MOB-440). Other steps fall through to the normal next-step advance.
+    when (state.value.step) {
+      BabyScaleSetupStep.PAIRED_SUCCESS,
+      BabyScaleSetupStep.BABY_PROFILE_FORM -> showSkipBabyProfileDialog()
+      else -> onNext()
+    }
+  }
+
+  private fun showSkipBabyProfileDialog() {
+    dialogQueueService.enqueue(
+      DialogModel.Confirm(
+        title = BabyScaleSetupStrings.SkipDialog.Title,
+        message = BabyScaleSetupStrings.SkipDialog.Message,
+        confirmText = BabyScaleSetupStrings.SkipDialog.FinishSetup,
+        cancelText = BabyScaleSetupStrings.SkipDialog.Cancel,
+        onConfirm = { handleIntent(ScaleSetupIntent.ExitSetup(true)) },
+        onCancel = {},
+      ),
+    )
   }
 
   override fun onTryAgain() {

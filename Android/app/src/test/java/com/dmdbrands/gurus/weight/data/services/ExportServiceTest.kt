@@ -51,6 +51,8 @@ class ExportServiceTest {
     private val dialogQueueService: IDialogQueueService = mockk(relaxed = true)
     private val deviceService: GGDeviceService = mockk()
     private val logRepository: ILogRepository = mockk()
+    private val entryRepository: com.dmdbrands.gurus.weight.domain.repository.IEntryRepository = mockk(relaxed = true)
+    private val context: android.content.Context = mockk(relaxed = true)
 
     private lateinit var service: ExportService
 
@@ -107,6 +109,8 @@ class ExportServiceTest {
         dialogQueueService = dialogQueueService,
         deviceService = deviceService,
         logRepository = logRepository,
+        entryRepository = entryRepository,
+        context = context,
     )
 
     // -------------------------------------------------------------------------
@@ -591,7 +595,7 @@ class ExportServiceTest {
         service.showErrorToast(AccountSettingsAction.EXPORT_CSV, httpException(0))
 
         verify {
-            dialogQueueService.showToast(match<Toast> {
+            dialogQueueService.showToast(match<Toast.Simple> {
                 it.message == ToastStrings.Error.LoginError.MessageNoConn &&
                     it.title == null && it.action == null
             })

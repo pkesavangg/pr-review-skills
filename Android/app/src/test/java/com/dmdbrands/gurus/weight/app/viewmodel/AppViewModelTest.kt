@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.app.viewmodel
 
+import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
@@ -7,6 +8,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BabyScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0220
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0663
+import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
@@ -18,9 +20,15 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountFlagService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
+import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
+import com.dmdbrands.gurus.weight.features.common.model.Toast
+import com.dmdbrands.gurus.weight.features.common.strings.ReadingToastStrings
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
 import com.dmdbrands.library.ggbluetooth.enums.GGAppType
@@ -38,14 +46,19 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
+import kotlin.reflect.full.callSuspend
+import kotlin.reflect.full.declaredMemberFunctions
+import kotlin.reflect.jvm.isAccessible
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AppViewModelTest {
@@ -56,6 +69,7 @@ class AppViewModelTest {
 
     @MockK(relaxed = true) lateinit var appRepository: IAppRepository
     @MockK(relaxed = true) lateinit var entryService: IEntryService
+    @MockK(relaxed = true) lateinit var entryReadService: IEntryReadService
     @MockK(relaxed = true) lateinit var logManager: LogManager
     @MockK(relaxed = true) lateinit var tokenManager: ITokenManager
     @MockK(relaxed = true) lateinit var dashboardService: IDashboardService
@@ -75,12 +89,26 @@ class AppViewModelTest {
     private val authEventFlow = MutableSharedFlow<AuthState>()
     private lateinit var viewModel: AppViewModel
 
+    private val createdViewModels = mutableListOf<AppViewModel>()
+
     @BeforeEach
     fun setUp() {
         MockKAnnotations.init(this)
         navigationService = mockk(relaxed = true)
         dialogQueueService = mockk(relaxed = true)
         stubDefaultFlows()
+    }
+
+    @AfterEach
+    fun tearDown() {
+        // AppViewModel collects the AppNotificationEventService singleton's tapEvents in
+        // viewModelScope (which isn't a child of runTest), so without cancellation the collector
+        // leaks across test classes and steals later emissions — breaking
+        // AppNotificationEventServiceTest's retained-tap assertions. Cancel every VM we created
+        // and clear the singleton's retained tap.
+        createdViewModels.forEach { it.viewModelScope.cancel() }
+        createdViewModels.clear()
+        AppNotificationEventService.consumeTap()
     }
 
     private fun stubDefaultFlows() {
@@ -96,13 +124,14 @@ class AppViewModelTest {
         coEvery { feedService.checkAndTriggerFeedModal() } returns false
         coEvery { accountFlagService.getAccountFlag() } returns null
         every { navigationService.authEvent } returns authEventFlow
-        coEvery { entryService.latestEntry } returns MutableStateFlow(null)
+        every { entryReadService.latestEntry() } returns flowOf<Entry?>(null)
     }
 
     private fun createViewModel(): AppViewModel =
         AppViewModel(
             appRepository = appRepository,
             entryService = entryService,
+            entryReadService = entryReadService,
             logManager = logManager,
             appNavigationService = navigationService,
             tokenManager = tokenManager,
@@ -122,7 +151,7 @@ class AppViewModelTest {
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
-        )
+        ).also { createdViewModels += it }
 
     // -------------------------------------------------------------------------
     // Default State
@@ -314,7 +343,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `OnPopUpConnect with BPM SKU navigates to LcbtScaleSetup`() = runTest {
+    fun `OnPopUpConnect with BPM SKU navigates to BpmSetup`() = runTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -328,8 +357,8 @@ class AppViewModelTest {
 
         coVerify {
             navigationService.navigateTo(
-                match<AppRoute.ScaleSetup.LcbtScaleSetup> {
-                    it.sku == SKU_0663 && it.initialStep == LcbtScaleSetupStep.CONNECTING_BLUETOOTH
+                match<AppRoute.ScaleSetup.BpmSetup> {
+                    it.sku == SKU_0663
                 },
             )
         }
@@ -497,5 +526,68 @@ class AppViewModelTest {
         advanceUntilIdle()
 
         coVerify { logManager.cleanupOldLogs(5) }
+    }
+
+    // -------------------------------------------------------------------------
+    // Baby reading assignment — silent-failure guard (MOB-426 / MOB-428)
+    // -------------------------------------------------------------------------
+
+    private suspend fun AppViewModel.assignReadingToBaby(
+        entry: List<ScaleEntry>,
+        babyId: String,
+        babies: List<BabyProfile>,
+        previousEntryIds: List<Long>,
+    ) {
+        val fn = AppViewModel::class.declaredMemberFunctions.first { it.name == "assignReadingToBaby" }
+        fn.isAccessible = true
+        fn.callSuspend(this, "75.0 lbs", entry, babyId, babies, previousEntryIds)
+    }
+
+    private fun aBaby(id: String = "baby1") =
+        BabyProfile(id = id, accountId = "active-account-id", name = "Emma")
+
+    @Test
+    fun `assignReadingToBaby surfaces an error and skips success when the save fails`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        coEvery { entryService.addBabyEntry(any()) } returns -1L
+
+        viewModel.assignReadingToBaby(
+            entry = listOf(TestFixtures.weightEntry),
+            babyId = "baby1",
+            babies = listOf(aBaby()),
+            previousEntryIds = listOf(99L),
+        )
+        advanceUntilIdle()
+
+        val toasts = mutableListOf<Toast>()
+        verify { dialogQueueService.showToast(capture(toasts)) }
+        // The user sees the failure copy, not a false "Reading assigned" confirmation.
+        assertThat(toasts.any { it is Toast.Simple && it.message == ReadingToastStrings.SaveFailed }).isTrue()
+        assertThat(toasts.any { it is Toast.Custom }).isFalse()
+        // A failed save must not delete the previously-assigned entries.
+        coVerify(exactly = 0) { entryService.deleteBabyEntryLocally(any()) }
+    }
+
+    @Test
+    fun `assignReadingToBaby deletes previous entries and confirms when the save succeeds`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        coEvery { entryService.addBabyEntry(any()) } returns 5L
+
+        viewModel.assignReadingToBaby(
+            entry = listOf(TestFixtures.weightEntry),
+            babyId = "baby1",
+            babies = listOf(aBaby()),
+            previousEntryIds = listOf(99L),
+        )
+        advanceUntilIdle()
+
+        // Reassign only removes the old entry after the new one is safely persisted.
+        coVerify { entryService.deleteBabyEntryLocally(99L) }
+        val toasts = mutableListOf<Toast>()
+        verify { dialogQueueService.showToast(capture(toasts)) }
+        assertThat(toasts.any { it is Toast.Simple && it.message == ReadingToastStrings.SaveFailed }).isFalse()
+        assertThat(toasts.any { it is Toast.Custom }).isTrue()
     }
 }

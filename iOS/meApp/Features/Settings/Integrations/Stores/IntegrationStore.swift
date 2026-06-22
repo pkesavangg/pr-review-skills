@@ -439,15 +439,16 @@ class IntegrationStore: ObservableObject {
         ))
     }
 
-    private func submitIntegrationRequest(text: String) async {
+    func submitIntegrationRequest(text: String) async {
         notificationService.showLoader(LoaderModel(text: LoaderStrings.sendingRequest))
         do {
             try await integrationsService.requestNewIntegration(text: text)
             notificationService.dismissLoader()
             showRequestIntegrationSuccessAlert()
-            logger.log(level: .success, tag: tag, message: "Request new integration sent: \(text)")
+            logger.log(level: .success, tag: tag, message: "Request new integration sent (\(text.count) chars)")
         } catch {
             notificationService.dismissLoader()
+            showRequestIntegrationErrorAlert()
             logger.log(level: .error, tag: tag, message: "Failed to send integration request", data: error.localizedDescription)
         }
     }
@@ -458,6 +459,17 @@ class IntegrationStore: ObservableObject {
             message: integrationLang.requestIntegrationSuccessMessage,
             buttons: [
                 AlertButtonModel(title: integrationLang.requestIntegrationSuccessDismiss, type: .primary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+
+    private func showRequestIntegrationErrorAlert() {
+        let alert = AlertModel(
+            title: integrationLang.requestIntegrationErrorTitle,
+            message: integrationLang.requestIntegrationErrorMessage,
+            buttons: [
+                AlertButtonModel(title: integrationLang.requestIntegrationErrorDismiss, type: .primary) { _ in }
             ]
         )
         notificationService.showAlert(alert)

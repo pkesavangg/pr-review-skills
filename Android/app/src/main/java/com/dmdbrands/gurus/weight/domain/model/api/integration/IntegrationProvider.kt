@@ -54,6 +54,17 @@ sealed class IntegrationProvider(
     }
 
   /**
+   * Groups the provider into the section it belongs to on the Integrations screen.
+   * Fitbit / MyFitnessPal sync weight only → [IntegrationCategory.WeightScale].
+   * Health Connect syncs metrics relevant to paired devices → [IntegrationCategory.WeightScaleAndBpm].
+   */
+  fun getCategory(): IntegrationCategory =
+    when (this) {
+      is Fitbit, is MyFitnessPal -> IntegrationCategory.WeightScale
+      is HealthConnect -> IntegrationCategory.WeightScaleAndBpm
+    }
+
+  /**
    * Gets the API endpoint for this provider.
    */
   fun getApiEndpoint(): String =

@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.core.shared.utilities.IAppReviewManager
 import com.dmdbrands.gurus.weight.domain.model.AccountFlag
 import com.dmdbrands.gurus.weight.domain.repository.IAccountFlagRepository
+import com.dmdbrands.gurus.weight.domain.services.IReviewService
 import com.google.common.truth.Truth.assertThat
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -24,6 +25,7 @@ class AccountFlagServiceTest {
     private val context: Context = mockk(relaxed = true)
     private val accountFlagRepository: IAccountFlagRepository = mockk()
     private val appReviewManager: IAppReviewManager = mockk(relaxed = true)
+    private val reviewService: IReviewService = mockk(relaxed = true)
 
     private lateinit var service: AccountFlagService
 
@@ -34,7 +36,7 @@ class AccountFlagServiceTest {
 
     @BeforeEach
     fun setUp() {
-        service = AccountFlagService(context, accountFlagRepository, appReviewManager)
+        service = AccountFlagService(context, accountFlagRepository, appReviewManager, reviewService)
     }
 
     // -------------------------------------------------------------------------
@@ -160,7 +162,7 @@ class AccountFlagServiceTest {
 
     @Test
     fun `checkAccountFlag returns false when flag type has extra words but first word is unknown`() = runTest {
-        val complexUnknown = AccountFlag(id = "f4", type = "scale-review-ask login", trigger = "login")
+        val complexUnknown = AccountFlag(id = "f4", type = "unknown-flag-type login", trigger = "login")
         coEvery { accountFlagRepository.getAccountFlags() } returns listOf(complexUnknown)
         service.getAccountFlag()
 

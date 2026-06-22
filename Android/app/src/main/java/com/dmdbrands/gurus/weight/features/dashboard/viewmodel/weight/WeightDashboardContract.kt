@@ -47,6 +47,10 @@ data class WeightDashboardState(
   val isEmpty: Boolean = false,
   val dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS,
   val secondaryKey: DashboardKey? = null,
+  // One-shot signal, incremented each time a RESET DASHBOARD completes. The UI
+  // observes the change to exit edit mode and scroll back to the top — keeping
+  // post-reset behavior consistent with iOS (MOB-445).
+  val resetSignal: Int = 0,
 ) : BaseDashboardState
 
 // ── Intents (extends BaseGraphIntent — inherits all shared intents) ──
@@ -70,6 +74,7 @@ sealed interface WeightDashboardIntent : BaseGraphIntent {
   data object Refresh : WeightDashboardIntent
   data object OnConnectScale : WeightDashboardIntent
   data object ResetDashboard : WeightDashboardIntent
+  data object ResetComplete : WeightDashboardIntent
   data class UpdateVisibleKeys(val keys: List<DashboardKey>, val dashboardType: DashboardType) : WeightDashboardIntent
   data object NavigateToGoal : WeightDashboardIntent
 }
@@ -112,6 +117,7 @@ class WeightDashboardReducer : BaseGraphReducer<WeightDashboardState>(), IReduce
       is WeightDashboardIntent.Refresh -> state
       is WeightDashboardIntent.OnConnectScale -> state
       is WeightDashboardIntent.ResetDashboard -> state
+      is WeightDashboardIntent.ResetComplete -> state.copy(resetSignal = state.resetSignal + 1)
       is WeightDashboardIntent.UpdateVisibleKeys -> state
       is WeightDashboardIntent.NavigateToGoal -> state
     }

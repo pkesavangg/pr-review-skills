@@ -22,16 +22,18 @@ struct ActivatePairingModeView: View {
                         .foregroundColor(theme.textHeading)
                         .multilineTextAlignment(.leading)
                         .lineLimit(nil)
-                    
+
                     Text(lang.description.asAttributed(withBoldWords: lang.boldWords))
                         .foregroundColor(theme.textBody)
                 }
+                .accessibilityElement(children: .combine)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                
+
                 VStack(alignment: .center) {
                     GifView(gifName: appAssets.wifiStepOnGif(sku), height: 250)
                         .frame(height: 250)
                         .frame(maxWidth: 370)
+                        .accessibilityHidden(true)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
             }

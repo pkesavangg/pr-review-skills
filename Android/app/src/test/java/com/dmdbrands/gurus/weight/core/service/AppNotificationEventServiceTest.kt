@@ -8,6 +8,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -17,6 +19,15 @@ class AppNotificationEventServiceTest {
     @JvmField
     @RegisterExtension
     val mainDispatcherRule = MainDispatcherRule()
+
+    // AppNotificationEventService is a process-wide singleton with a replay=1 tap flow, so a tap
+    // emitted by another test class lingers in the replay cache. Clear it before and after each
+    // test so the retained-tap assertions don't see another suite's leftover payload.
+    @BeforeEach
+    fun clearRetainedTap() = AppNotificationEventService.consumeTap()
+
+    @AfterEach
+    fun resetRetainedTap() = AppNotificationEventService.consumeTap()
 
     // -------------------------------------------------------------------------
     // emit — each event type is delivered to collectors
@@ -147,6 +158,50 @@ class AppNotificationEventServiceTest {
         // Now subscribe — SharedFlow with no replay should deliver nothing
         AppNotificationEventService.events.test {
             // No item should be available immediately
+            expectNoEvents()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // tapEvents — replay=1 retains a cold-start tap for a late subscriber (MOB-434)
+    // -------------------------------------------------------------------------
+
+    private val tapPayload =
+        NotificationTapPayload(accountId = "acc-1", destination = "weight_scale", monthKey = "2026-06")
+
+    @Test
+    fun `emitTap delivers payload to active collector`() = runTest {
+        AppNotificationEventService.consumeTap()
+        AppNotificationEventService.tapEvents.test {
+            AppNotificationEventService.emitTap(tapPayload)
+            assertThat(awaitItem()).isEqualTo(tapPayload)
+            cancelAndIgnoreRemainingEvents()
+        }
+        AppNotificationEventService.consumeTap()
+    }
+
+    @Test
+    fun `late subscriber receives the retained tap because replay is 1`() = runTest {
+        AppNotificationEventService.consumeTap()
+        // Emit before any collector is attached (cold-start: tap fired in MainActivity.onCreate
+        // before AppViewModel subscribes). replay=1 must retain it.
+        AppNotificationEventService.emitTap(tapPayload)
+
+        AppNotificationEventService.tapEvents.test {
+            assertThat(awaitItem()).isEqualTo(tapPayload)
+            cancelAndIgnoreRemainingEvents()
+        }
+        AppNotificationEventService.consumeTap()
+    }
+
+    @Test
+    fun `consumeTap clears the retained tap so a future subscriber sees nothing`() = runTest {
+        AppNotificationEventService.consumeTap()
+        AppNotificationEventService.emitTap(tapPayload)
+        AppNotificationEventService.consumeTap()
+
+        AppNotificationEventService.tapEvents.test {
             expectNoEvents()
             cancelAndIgnoreRemainingEvents()
         }

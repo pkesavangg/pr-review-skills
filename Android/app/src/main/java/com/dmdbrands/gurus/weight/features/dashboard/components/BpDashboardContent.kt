@@ -37,7 +37,22 @@ import com.dmdbrands.gurus.weight.features.dashboard.string.DashboardString as M
 @Composable
 fun BpDashboardContent(
   state: BpDashboardState,
+  onConnectDevice: () -> Unit = {},
 ) {
+  // First-run state: no entries yet → show the shared CONNECT DEVICE CTA (MOB-432).
+  if (state.isEmpty) {
+    Column(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = MeTheme.spacing.sm),
+      horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+      Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+      EmptyMetric(onConnectScaleClick = onConnectDevice)
+    }
+    return
+  }
+
   // "Three entry average" is account-scoped, derived from the last N per-day BP averages
   // in state — independent of the chart's selected window.
   val lastReadings = state.lastReadings
@@ -89,7 +104,7 @@ fun BpDashboardContent(
       }
       Spacer(modifier = Modifier.height(MeTheme.spacing.x3s))
       Text(
-        text = if (entryCount > 0) "$entryCount ${DashboardString.Bp.EntryAverageSuffix}" else DashboardString.Bp.NoEntries,
+        text = DashboardString.Bp.entryAverageLabel(entryCount),
         style = MeTheme.typography.subHeading1,
         color = MeTheme.colorScheme.textSubheading,
       )
