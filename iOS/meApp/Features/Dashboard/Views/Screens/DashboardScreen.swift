@@ -186,7 +186,10 @@ struct DashboardScreen: View {
             leadingContent: isProductDashboardFromSnapshot
                 ? { AppIconView(icon: AppAssets.chevronLeft) }
                 : nil,
-            onLeadingTap: isProductDashboardFromSnapshot ? { isInProductDashboard = false } : nil,
+            onLeadingTap: isProductDashboardFromSnapshot ? {
+                isInProductDashboard = false
+                store.clearProductTypeSelection()
+            } : nil,
             onTitleTap: showProductSelector ? {
                 isProductTypeSelectorPresented = true
             } : nil,
