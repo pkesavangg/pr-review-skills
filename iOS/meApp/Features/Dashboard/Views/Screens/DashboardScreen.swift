@@ -170,6 +170,7 @@ struct DashboardScreen: View {
             .foregroundColor(theme.textSubheading)
             .frame(maxWidth: .infinity)
             .padding(.vertical, .spacingXS)
+            .accessibilityLabel(lang.accSnapshotLogoLabel)
     }
 
     private func navbarHeader() -> some View {

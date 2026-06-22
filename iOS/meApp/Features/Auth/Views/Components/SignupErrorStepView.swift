@@ -24,6 +24,7 @@ struct SignupErrorStepView: View {
                     )
                     .foregroundColor(theme.statusError)
                 }
+                .accessibilityHidden(true)
 
                 VStack(spacing: .spacingXS) {
                     Text(lang.title)
@@ -79,6 +80,7 @@ private struct DeviceStatusCard: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 44, height: 44)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(deviceType.title)

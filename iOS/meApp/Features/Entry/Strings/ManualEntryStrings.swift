@@ -36,4 +36,11 @@ struct ManualEntryStrings {
     static func typicalRange(_ min: Int, _ max: Int) -> String {
         "This value is outside the typical range of \(min) to \(max)."
     }
+
+    // MARK: - Accessibility (VoiceOver) — spoken text only, not shown on screen
+    static let accDateHint = "Opens date picker"
+    static let accTimeHint = "Opens time picker"
+    static let accBodyMetricsHeader = "Body metrics, optional"
+    static let accBodyMetricsExpandHint = "Expands body metrics section"
+    static let accBodyMetricsCollapseHint = "Collapses body metrics section"
 }

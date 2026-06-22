@@ -101,4 +101,23 @@ struct SignupStrings {
         static let cancelButton = "CANCEL"
         static let tryAgainButton = "TRY AGAIN"
     }
+
+    // MARK: - Accessibility (VoiceOver) — spoken text only, not shown on screen
+    struct Accessibility {
+        static let accCloseLabel = "Close"
+        static let accCloseHint = "Returns to the previous screen"
+        static let accHelpLabel = "Help"
+        static let accHelpHint = "Opens help and support"
+        static let accBackHint = "Returns to the previous step"
+        static let accNextHint = "Proceeds to the next step"
+        static let accCompleteHint = "Completes account creation"
+        static let accSkipHint = "Skips this optional step"
+        static let accFinishHint = "Finishes profile setup"
+        static let accConnectAnotherDeviceHint = "Connects another device to your profile"
+        static let accDoneHint = "Completes signup"
+        static let accCancelHint = "Cancels signup"
+        static let accTryAgainHint = "Retries failed device setup"
+        static let accSelectedValue = "Selected"
+        static let accNotSelectedValue = "Not selected"
+    }
 }

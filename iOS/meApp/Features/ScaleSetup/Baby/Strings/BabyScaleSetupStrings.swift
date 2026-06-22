@@ -132,4 +132,8 @@ struct BabyScaleSetupStrings {
         static let pairingFailed = "Failed to pair with the scale. Please try again."
         static let profileSaveFailed = "Failed to save baby profile. Please try again."
     }
+
+    struct A11y {
+        static let scaleImageLabel = "Baby scale product image"
+    }
 }

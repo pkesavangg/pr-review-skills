@@ -66,11 +66,16 @@ struct SignupScreen: View {
         }
     }
     
+    let accLang = SignupStrings.Accessibility.self
+
     @ViewBuilder
     private func navbarLeadingContent() -> some View {
         if signupStore.currentStep != .allProfilesReady {
             AppIconView(icon: AppAssets.xmarkSmall, size: IconSize(width: 24, height: 24))
                 .foregroundColor(theme.statusIconPrimary)
+                .accessibilityLabel(accLang.accCloseLabel)
+                .accessibilityHint(accLang.accCloseHint)
+                .accessibilityAddTraits(.isButton)
         }
     }
 
@@ -83,6 +88,8 @@ struct SignupScreen: View {
                 AppIconView(icon: AppAssets.helpCircle, size: IconSize(width: 24, height: 24))
                     .foregroundColor(theme.statusIconPrimary)
             }
+            .accessibilityLabel(accLang.accHelpLabel)
+            .accessibilityHint(accLang.accHelpHint)
         }
     }
 
@@ -148,6 +155,7 @@ struct SignupScreen: View {
                         signupStore.finishSignup()
                     }
                     .padding(.horizontal, .spacingSM)
+                    .accessibilityHint(accLang.accFinishHint)
 
                     ButtonView(
                         text: SignupStrings.ProfileReadyStep.connectAnotherDevice,
@@ -159,6 +167,7 @@ struct SignupScreen: View {
                             signupStore.connectAnotherDevice()
                         }
                     }
+                    .accessibilityHint(accLang.accConnectAnotherDeviceHint)
                 }
                 .padding(.vertical, .spacingSM)
 
@@ -173,6 +182,7 @@ struct SignupScreen: View {
                 }
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingSM)
+                .accessibilityHint(accLang.accDoneHint)
 
             } else if signupStore.currentStep == .signupError {
                 HStack {
@@ -185,6 +195,7 @@ struct SignupScreen: View {
                     ) {
                         signupStore.cancelSignup(router: isFromAccountSwitching ? nil : router)
                     }
+                    .accessibilityHint(accLang.accCancelHint)
                     Spacer()
                     ButtonView(
                         text: SignupStrings.SignupErrorStep.tryAgainButton,
@@ -196,6 +207,7 @@ struct SignupScreen: View {
                     ) {
                         signupStore.retryFailedDevices()
                     }
+                    .accessibilityHint(accLang.accTryAgainHint)
                 }
                 .padding(.vertical, .spacingSM)
                 .padding(.trailing, .spacingSM)
@@ -212,6 +224,7 @@ struct SignupScreen: View {
                             signupStore.moveToPreviousStep()
                         }
                     }
+                    .accessibilityHint(accLang.accBackHint)
 
                     Spacer()
 
@@ -232,6 +245,7 @@ struct SignupScreen: View {
                             }
                         }
                     }
+                    .accessibilityHint(signupStore.currentStep == SignupStep.password ? accLang.accCompleteHint : accLang.accNextHint)
                 }
                 .overlay {
                     HStack {
@@ -243,6 +257,7 @@ struct SignupScreen: View {
                                     signupStore.handleSkip()
                                 }
                             }
+                            .accessibilityHint(accLang.accSkipHint)
                         }
                         Spacer()
                     }

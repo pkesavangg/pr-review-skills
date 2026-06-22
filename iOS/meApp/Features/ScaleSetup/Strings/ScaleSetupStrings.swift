@@ -48,4 +48,19 @@ struct ScaleSetupStrings {
         static let appSyncDescription = "To sync new entries, tap the icon at the bottom right of the app when you see "
             + "the result code display on your scale's screen."
     }
+
+    struct A11y {
+        static let closeButtonLabel = "Close"
+        static let closeButtonHint = "Dismiss this sheet"
+        static let connectButtonHint = "Double tap to connect to this scale"
+        static let userNumberLabel: (Int) -> String = { "User number \($0)" }
+        static let userNumberHint = "Double tap to select"
+        static let networkRowLabel: (String) -> String = { "Wi-Fi network: \($0)" }
+        static let networkRowHint = "Double tap to select this network"
+        static let refreshNetworksHint = "Double tap to refresh available networks"
+        static let successIconLabel = "Setup complete"
+        static let tryAgainHint = "Double tap to retry the connection"
+        static let supportHint = "Double tap to contact support"
+        static let setupWifiLaterHint = "Double tap to skip Wi-Fi setup"
+    }
 }

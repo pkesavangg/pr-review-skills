@@ -27,6 +27,12 @@ struct BPHistoryEntryItem: View {
         BPCategory.classify(systolic: entry.systolic, diastolic: entry.diastolic).color(theme: theme)
     }
 
+    private var combinedAccessibilityLabel: String {
+        let day = DateTimeTools.getFormattedDay(entry.entryTimestamp)
+        let time = DateTimeTools.getFormattedTime(entry.entryTimestamp)
+        return "\(day), \(time), \(entry.systolic) over \(entry.diastolic) \(HistoryListStrings.mmhg), \(HistoryListStrings.pulse) \(entry.pulse)"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Main entry row
@@ -75,6 +81,10 @@ struct BPHistoryEntryItem: View {
             .padding(.horizontal, .spacingSM)
             .contentShape(Rectangle())
             .background(isExpanded ? theme.actionSecondary : Color.clear)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(combinedAccessibilityLabel)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint(isExpanded ? HistoryListStrings.accEntryCollapseHint : HistoryListStrings.accEntryExpandHint)
             .swipeableActions(
                 buttons: [
                     SwipeButton(
@@ -86,6 +96,8 @@ struct BPHistoryEntryItem: View {
                                     .fontOpenSans(.button1)
                                     .fontWeight(.bold)
                                     .foregroundStyle(theme.textInverse)
+                                    .accessibilityLabel(HistoryListStrings.accDeleteEntryLabel)
+                                    .accessibilityIdentifier(AccessibilityID.historyDeleteButton)
                             )
                         }
                     )

@@ -87,22 +87,23 @@ struct BluetoothConnectionView: View {
                                 .scaledToFit()
                                 .frame(width: 180, height: 180)
                                 .themeDropShadow()
+                                .accessibilityHidden(true)
                         }
-                        
+
                         VStack(spacing: .spacingMD) {
-                            // Re-instantiate the loader every time the state changes so
-                            // we don't keep the previous animation colours (e.g. red ➜ blue).
                             SetupLoaderView(connectionState: state)
-                                .id(state)  // Force a fresh view when the enum value flips
-                            
+                                .id(state)
+                                .accessibilityHidden(true)
+
                             ConnectionIndicatorView(
                                 image: AppAssets.bluetooth,
                                 isFailure: state == .failure,
                                 showPulsingCircle: false
                             )
+                            .accessibilityHidden(true)
                         }
                     }
-                    
+
                     // Action buttons (visible only on failure)
                     if state == .failure {
                         VStack(spacing: .spacingMD) {
@@ -113,7 +114,8 @@ struct BluetoothConnectionView: View {
                                 isDisabled: false,
                                 action: onTryAgain
                             )
-                            
+                            .accessibilityHint(ScaleSetupStrings.A11y.tryAgainHint)
+
                             ButtonView(
                                 text: commonStrings.support,
                                 type: .inlineTextPrimary,
@@ -121,6 +123,7 @@ struct BluetoothConnectionView: View {
                                 isDisabled: false,
                                 action: onSupport
                             )
+                            .accessibilityHint(ScaleSetupStrings.A11y.supportHint)
                         }
                         .padding(.top, .spacingXL)
                     }

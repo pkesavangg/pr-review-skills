@@ -70,6 +70,7 @@ struct AppInputField: View {
                         .padding(.horizontal, CGFloat.spacingXS)
                         .padding(.top, isTextareaLabelActive ? CGFloat.spacingLG : CGFloat.spacingXS)
                         .frame(height: 100)
+                        .accessibilityLabel(config.label)
                         .onTapGesture {
                             focusedField = config.focusField
                         }
@@ -193,6 +194,7 @@ struct AppInputField: View {
         )
         .focused($fieldIsFocused)
         .padding(.leading, .spacingSM)
+        .accessibilityLabel(config.label)
     }
 
     private var disabledOverlay: some View {

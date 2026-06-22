@@ -28,6 +28,7 @@ struct SignupStepWrapper<Content: View>: View {
                     Text(title)
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
+                        .accessibilityAddTraits(.isHeader)
 
                     Text(subtitle)
                         .fontOpenSans(.body2)
