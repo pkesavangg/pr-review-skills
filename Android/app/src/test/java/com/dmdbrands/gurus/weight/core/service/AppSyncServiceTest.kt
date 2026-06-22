@@ -7,7 +7,6 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.entry.ScaleApiEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
-import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
@@ -36,7 +35,6 @@ class AppSyncServiceTest {
 
     // --- Mocks ---
     private val entryService: IEntryService = mockk()
-    private val accountService: IAccountService = mockk(relaxed = true)
     private val appNavigationService: IAppNavigationService = mockk(relaxed = true)
     private val dialogQueueService: IDialogQueueService = mockk(relaxed = true)
 
@@ -51,9 +49,9 @@ class AppSyncServiceTest {
         mockkObject(AppLog)
         service = AppSyncService(
             entryService = entryService,
-            accountService = accountService,
             appNavigationService = appNavigationService,
             dialogQueueService = dialogQueueService,
+            userDataStore = mockk(relaxed = true),
         )
     }
 
@@ -200,7 +198,7 @@ class AppSyncServiceTest {
 
         service.handleSaveAppSyncData(fakeScaleEntry)
 
-        val toastSlot = slot<Toast>()
+        val toastSlot = slot<Toast.Simple>()
         coVerify { dialogQueueService.showToast(capture(toastSlot)) }
         assertThat(toastSlot.captured.title).isEqualTo(EntryScreenStrings.EntryAddedTitle)
         assertThat(toastSlot.captured.message).isEqualTo(EntryScreenStrings.EntryAdded)

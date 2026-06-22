@@ -122,10 +122,11 @@ constructor(
   fun onExportDataClick() {
     AppLog.d(TAG, "Export data clicked")
 
-    // Show confirmation dialog
+    // Show confirmation dialog with a title that matches the active history type
+    val productType = productSelectionManager.selectedProduct.value.productType
     dialogQueueService.enqueue(
       DialogModel.Confirm(
-        title = ExportStrings.ExportDialogTitle,
+        title = ExportStrings.exportDialogTitle(productType),
         message = ExportStrings.ExportDialogMessage,
         confirmText = ExportStrings.SendButton,
         cancelText = ExportStrings.CancelButton,

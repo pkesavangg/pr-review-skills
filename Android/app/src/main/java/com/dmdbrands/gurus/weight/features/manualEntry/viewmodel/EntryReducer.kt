@@ -18,6 +18,7 @@ import androidx.compose.runtime.Stable
  */
 data class WeightDateTimeFormControls(
   val weight: FormControl<String>,
+  val notes: FormControl<String>,
   val dateTime: FormControl<DateTimeValue>,
 )
 
@@ -133,6 +134,7 @@ data class EntryForm(
               }
             },
           ),
+          notes = FormControl.create("", emptyList()),
           dateTime = FormControl.create(
             DateTimeValue.DateTime(millis = currentTimeMillis, hour = hour, minute = minute),
             listOf(),

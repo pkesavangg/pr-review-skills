@@ -54,7 +54,7 @@ protocol AccountRepositoryAPIProtocol {
     /// - Parameter updatedAccount: The updated Account object.
     /// - Returns: AccountResponse (from { account })
     func editAccount(_ updatedAccount: Account) async throws -> AccountResponse
-    
+
     /// Creates a new goal with the given Goal object (POST /account/goal).
     /// - Parameter goal: The Goal object to create.
     /// - Returns: GoalResponse (from { account })
@@ -119,7 +119,7 @@ protocol AccountRepositoryAPIProtocol {
     ///   - newPassword: The new password to set.
     ///   - Returns: Tokens (access and refresh tokens)
     func updatePassword(oldPassword: String, newPassword: String) async throws -> Tokens
-    
+
     /// Refreshes the access token using the provided refresh token. (POST /account/refresh-token)
     /// - Parameters:
     ///  - refreshToken: The refresh token to use for refreshing the session.

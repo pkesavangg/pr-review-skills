@@ -31,6 +31,7 @@ struct A3BpmPairedView: View {
                     ) {
                         onLearnHowToMeasure()
                     }
+                    .accessibilityHint(BpmSetupStrings.A11y.learnHowHint)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -38,6 +39,7 @@ struct A3BpmPairedView: View {
                     .foregroundColor(theme.statusSuccess)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, .spacingXL)
+                    .accessibilityLabel(BpmSetupStrings.A11y.pairedSuccessLabel)
             }
             .padding(.top, .spacingLG)
             .padding(.horizontal, .spacingSM)

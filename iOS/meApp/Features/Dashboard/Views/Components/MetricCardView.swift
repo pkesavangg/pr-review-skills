@@ -73,6 +73,15 @@ struct MetricCardView: View {
         isDropTarget ? 2 : 0
     }
     
+    private var combinedAccessibilityLabel: String {
+        "\(value), \(displayLabel)"
+    }
+
+    private var accessibilityEditHint: String {
+        guard isEditMode else { return "" }
+        return isRemoved ? DashboardStrings.accAddMetricHint : DashboardStrings.accRemoveMetricHint
+    }
+
     /// Returns the appropriate label based on parentView context
     private var displayLabel: String {
         if parentView == .R4ScaleSetup {
@@ -128,6 +137,11 @@ struct MetricCardView: View {
             .onTapGesture {
                 onTap()
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(combinedAccessibilityLabel)
+            .accessibilityHint(accessibilityEditHint)
+            .accessibilityValue(isEditMode ? (isRemoved ? DashboardStrings.accMetricRemovedValue : DashboardStrings.accMetricVisibleValue) : "")
+            .accessibilityAddTraits(.isButton)
     }
     
     private func content() -> some View {

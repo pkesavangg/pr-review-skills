@@ -17,6 +17,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
 import com.dmdbrands.gurus.weight.features.common.components.AppIconType
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
+import com.dmdbrands.gurus.weight.features.common.components.BabyEmptyState
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.ProductTypeHeader
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
@@ -151,6 +152,16 @@ fun HistoryScreenContent(
               }},
             )
           }
+        }
+
+        is ProductSelection.BabyScale -> {
+          BabyEmptyState(
+            onAddBaby = {
+              coroutineScope.launch {
+                navBackStack.addRoute(AppRoute.AccountSettings.AddBaby)
+              }
+            },
+          )
         }
       }
     }

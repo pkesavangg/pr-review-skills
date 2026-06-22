@@ -17,22 +17,26 @@ struct BtWiFiFinishStepView: View {
                 Text(lang.title)
                     .fontOpenSans(.heading4)
                     .foregroundColor(theme.textHeading)
-                
+
                 Text(lang.subtitle)
                     .fontOpenSans(.body2)
                     .foregroundColor(theme.textHeading)
                     .multilineTextAlignment(.center)
             }
+            .accessibilityElement(children: .combine)
+
             VStack {
                 Image(AppAssets.accuCheck)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(height: 190)
                     .frame(maxWidth: .infinity)
-                
+                    .accessibilityLabel(BtWifiScaleSetupStrings.A11y.accuCheckImageLabel)
+
                 ButtonView(text: lang.whatThis, type: .inlineTextPrimary, size: .large, isDisabled: false) {
                     onWhatThisTapped()
                 }
+                .accessibilityHint(BtWifiScaleSetupStrings.A11y.whatThisHint)
             }
         }
         .padding(.bottom, .spacingLG)

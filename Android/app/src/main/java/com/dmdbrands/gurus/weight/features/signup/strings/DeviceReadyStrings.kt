@@ -5,7 +5,7 @@ package com.dmdbrands.gurus.weight.features.signup.strings
  * tail of the multi-device signup flow (MA-3825).
  */
 object DeviceReadyStrings {
-    const val finish = "FINISH"
+    const val finish = "GET STARTED"
     const val connectAnother = "CONNECT ANOTHER DEVICE"
     const val allDevicesTitle = "All your health profiles have been set up successfully!"
 

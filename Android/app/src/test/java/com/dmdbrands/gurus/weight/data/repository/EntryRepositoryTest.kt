@@ -21,10 +21,7 @@ import com.google.common.truth.Truth.assertThat
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
-import io.mockk.every
 import io.mockk.impl.annotations.MockK
-import io.mockk.verify
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
@@ -51,6 +48,7 @@ class EntryRepositoryTest {
     @Test
     fun `insert single entry with valid timestamp calls dao and returns id`() = runTest {
         val entry = buildScaleEntry(VALID_TIMESTAMP)
+        coEvery { entryDao.getStoredScaleNote(any(), any()) } returns null
         coEvery { entryDao.insert(any<Entry>()) } returns 42L
 
         val result = repository.insert(entry)
@@ -84,6 +82,7 @@ class EntryRepositoryTest {
     @Test
     fun `insert list with all valid entries passes all to dao`() = runTest {
         val entries = listOf(buildScaleEntry(VALID_TIMESTAMP), buildBpmEntry(VALID_TIMESTAMP))
+        coEvery { entryDao.getStoredScaleNotes(any()) } returns emptyList()
 
         repository.insert(entries)
 
@@ -94,6 +93,7 @@ class EntryRepositoryTest {
     fun `insert list filters invalid entries and passes only valid ones to dao`() = runTest {
         val valid = buildScaleEntry(VALID_TIMESTAMP)
         val invalid = buildScaleEntry(INVALID_TIMESTAMP)
+        coEvery { entryDao.getStoredScaleNotes(any()) } returns emptyList()
 
         repository.insert(listOf(valid, invalid))
 
@@ -103,6 +103,7 @@ class EntryRepositoryTest {
     @Test
     fun `insert list with all invalid entries passes empty list to dao`() = runTest {
         val entries = listOf(buildScaleEntry(INVALID_TIMESTAMP), buildBpmEntry(INVALID_TIMESTAMP))
+        coEvery { entryDao.getStoredScaleNotes(any()) } returns emptyList()
 
         repository.insert(entries)
 
@@ -114,6 +115,7 @@ class EntryRepositoryTest {
     @Test
     fun `update delegates to dao and returns row count`() = runTest {
         val entry = buildScaleEntry(VALID_TIMESTAMP)
+        coEvery { entryDao.getStoredScaleNote(any(), any()) } returns null
         coEvery { entryDao.update(any<Entry>()) } returns 1L
 
         val result = repository.update(entry)
@@ -261,16 +263,13 @@ class EntryRepositoryTest {
         assertThat(result).isNull()
     }
 
-    // ── getLatestEntry ─────────────────────────────────────────────────────────
-
     @Test
-    fun `getLatestEntry maps null dao emission to null`() = runTest {
-        every { entryDao.getLatestEntry(ACCOUNT_ID) } returns flowOf(null)
+    fun `getEntryById returns mapped entry when dao returns populated entry`() = runTest {
+        coEvery { entryDao.getEntryById(1L) } returns buildPopulatedEntry()
 
-        val flow = repository.getLatestEntry(ACCOUNT_ID)
-        val result = flow.toList()
+        val result = repository.getEntryById(1L)
 
-        assertThat(result).containsExactly(null)
+        assertThat(result).isNotNull()
     }
 
     // ── getEntriesByAccount ────────────────────────────────────────────────────
@@ -284,6 +283,15 @@ class EntryRepositoryTest {
         assertThat(result).isEmpty()
     }
 
+    @Test
+    fun `getEntriesByAccount returns mapped entries from dao`() = runTest {
+        coEvery { entryDao.getEntriesByAccount(ACCOUNT_ID) } returns listOf(buildPopulatedActiveEntry())
+
+        val result = repository.getEntriesByAccount(ACCOUNT_ID)
+
+        assertThat(result).hasSize(1)
+    }
+
     // ── getUnSynced ────────────────────────────────────────────────────────────
 
     @Test
@@ -293,6 +301,15 @@ class EntryRepositoryTest {
         val result = repository.getUnSynced(ACCOUNT_ID)
 
         assertThat(result).isEmpty()
+    }
+
+    @Test
+    fun `getUnSynced returns mapped entries from dao`() = runTest {
+        coEvery { entryDao.getUnSynced(ACCOUNT_ID) } returns listOf(buildPopulatedEntry())
+
+        val result = repository.getUnSynced(ACCOUNT_ID)
+
+        assertThat(result).hasSize(1)
     }
 
     // ── incrementAttempts ──────────────────────────────────────────────────────
@@ -330,197 +347,6 @@ class EntryRepositoryTest {
         assertThat(result).isEqualTo(15)
     }
 
-    // ── getTotalCount ──────────────────────────────────────────────────────────
-
-    @Test
-    fun `getTotalCount delegates to dao`() = runTest {
-        coEvery { entryDao.getTotalCount(ACCOUNT_ID) } returns 100
-
-        val result = repository.getTotalCount(ACCOUNT_ID)
-
-        assertThat(result).isEqualTo(100)
-    }
-
-    // ── getLongestStreakCount ──────────────────────────────────────────────────
-
-    @Test
-    fun `getLongestStreakCount delegates to dao`() = runTest {
-        coEvery { entryDao.getLongestStreakCount(ACCOUNT_ID) } returns 30
-
-        val result = repository.getLongestStreakCount(ACCOUNT_ID)
-
-        assertThat(result).isEqualTo(30)
-    }
-
-    // ── getStreakData ──────────────────────────────────────────────────────────
-
-    @Test
-    fun `getStreakData returns timestamps from dao`() = runTest {
-        val timestamps = listOf("2024-01-15T10:00:00.000Z", "2024-01-14T09:00:00.000Z")
-        coEvery { entryDao.getStreakData(ACCOUNT_ID) } returns timestamps
-
-        val result = repository.getStreakData(ACCOUNT_ID)
-
-        assertThat(result).isEqualTo(timestamps)
-    }
-
-    // ── getOldestEntry ─────────────────────────────────────────────────────────
-
-    @Test
-    fun `getOldestEntry returns null when dao returns null`() = runTest {
-        coEvery { entryDao.getOldestEntry(any()) } returns null
-
-        val result = repository.getOldestEntry(ACCOUNT_ID)
-
-        assertThat(result).isNull()
-    }
-
-    // ── getEntriesInRange ──────────────────────────────────────────────────────
-
-    @Test
-    fun `getEntriesInRange returns empty list when dao flow emits empty list`() = runTest {
-        every {
-            entryDao.getEntriesInRange(ACCOUNT_ID, "2024-01-01", "2024-01-31")
-        } returns flowOf(emptyList())
-
-        val result = repository.getEntriesInRange(ACCOUNT_ID, "2024-01-01", "2024-01-31")
-
-        assertThat(result).isEmpty()
-    }
-
-    // ── getEntryById (non-null) ────────────────────────────────────────────────
-
-    @Test
-    fun `getEntryById returns mapped entry when dao returns populated entry`() = runTest {
-        coEvery { entryDao.getEntryById(1L) } returns buildPopulatedEntry()
-
-        val result = repository.getEntryById(1L)
-
-        assertThat(result).isNotNull()
-    }
-
-    // ── getLatestEntry (non-null) ──────────────────────────────────────────────
-
-    @Test
-    fun `getLatestEntry maps non-null dao emission to entry`() = runTest {
-        every { entryDao.getLatestEntry(ACCOUNT_ID) } returns flowOf(buildPopulatedActiveEntry())
-
-        val result = repository.getLatestEntry(ACCOUNT_ID).toList()
-
-        assertThat(result).hasSize(1)
-        assertThat(result[0]).isNotNull()
-    }
-
-    // ── getEntriesByAccount (with entries) ────────────────────────────────────
-
-    @Test
-    fun `getEntriesByAccount returns mapped entries from dao`() = runTest {
-        coEvery { entryDao.getEntriesByAccount(ACCOUNT_ID) } returns listOf(buildPopulatedActiveEntry())
-
-        val result = repository.getEntriesByAccount(ACCOUNT_ID)
-
-        assertThat(result).hasSize(1)
-    }
-
-    // ── getOldestEntry (non-null) ─────────────────────────────────────────────
-
-    @Test
-    fun `getOldestEntry returns mapped entry when dao finds entry`() = runTest {
-        coEvery { entryDao.getOldestEntry(ACCOUNT_ID) } returns buildPopulatedActiveEntry()
-
-        val result = repository.getOldestEntry(ACCOUNT_ID)
-
-        assertThat(result).isNotNull()
-    }
-
-    // ── getUnSynced (with entries) ────────────────────────────────────────────
-
-    @Test
-    fun `getUnSynced returns mapped entries from dao`() = runTest {
-        coEvery { entryDao.getUnSynced(ACCOUNT_ID) } returns listOf(buildPopulatedEntry())
-
-        val result = repository.getUnSynced(ACCOUNT_ID)
-
-        assertThat(result).hasSize(1)
-    }
-
-    // ── getEntriesInRange (with entries) ──────────────────────────────────────
-
-    @Test
-    fun `getEntriesInRange returns mapped entries from dao flow`() = runTest {
-        every {
-            entryDao.getEntriesInRange(ACCOUNT_ID, "2024-01-01", "2024-01-31")
-        } returns flowOf(listOf(buildPopulatedActiveEntry()))
-
-        val result = repository.getEntriesInRange(ACCOUNT_ID, "2024-01-01", "2024-01-31")
-
-        assertThat(result).hasSize(1)
-    }
-
-    // ── getEntriesByTimeRange ──────────────────────────────────────────────────
-
-    @Test
-    fun `getEntriesByTimeRange returns empty flow when dao returns empty`() = runTest {
-        every {
-            entryDao.getEntriesByTimeRange(ACCOUNT_ID, "2024-01-01", "2024-01-31")
-        } returns flowOf(emptyList())
-
-        val result = repository.getEntriesByTimeRange(ACCOUNT_ID, "2024-01-01", "2024-01-31").toList()
-
-        assertThat(result).hasSize(1)
-        assertThat(result[0]).isEmpty()
-    }
-
-    // ── getEntriesByDeviceType ─────────────────────────────────────────────────
-
-    @Test
-    fun `getEntriesByDeviceType returns empty flow when dao returns empty`() = runTest {
-        every { entryDao.getEntriesByDeviceType(ACCOUNT_ID, DEVICE_TYPE_SCALE) } returns flowOf(emptyList())
-
-        val result = repository.getEntriesByDeviceType(ACCOUNT_ID, DEVICE_TYPE_SCALE).toList()
-
-        assertThat(result).hasSize(1)
-        assertThat(result[0]).isEmpty()
-    }
-
-    @Test
-    fun `getEntriesByDeviceType maps entries from dao`() = runTest {
-        every {
-            entryDao.getEntriesByDeviceType(ACCOUNT_ID, DEVICE_TYPE_SCALE)
-        } returns flowOf(listOf(buildPopulatedActiveEntry()))
-
-        val result = repository.getEntriesByDeviceType(ACCOUNT_ID, DEVICE_TYPE_SCALE).toList()
-
-        assertThat(result[0]).hasSize(1)
-    }
-
-    // ── getLastNDaysEntries ────────────────────────────────────────────────────
-
-    @Test
-    fun `getLastNDaysEntries returns empty flow when dao returns empty`() = runTest {
-        every { entryDao.getEntriesSince(ACCOUNT_ID, any()) } returns flowOf(emptyList())
-
-        val result = repository.getLastNDaysEntries(ACCOUNT_ID, 7).toList()
-
-        assertThat(result).hasSize(1)
-        assertThat(result[0]).isEmpty()
-        verify { entryDao.getEntriesSince(ACCOUNT_ID, any()) }
-    }
-
-    // ── getEntriesByOperationType ──────────────────────────────────────────────
-
-    @Test
-    fun `getEntriesByOperationType returns empty flow when dao returns empty`() = runTest {
-        every {
-            entryDao.getEntriesByOperationType(ACCOUNT_ID, OPERATION_TYPE_CREATE)
-        } returns flowOf(emptyList())
-
-        val result = repository.getEntriesByOperationType(ACCOUNT_ID, OPERATION_TYPE_CREATE).toList()
-
-        assertThat(result).hasSize(1)
-        assertThat(result[0]).isEmpty()
-    }
-
     // ── getFailedOperations ────────────────────────────────────────────────────
 
     @Test
@@ -540,102 +366,6 @@ class EntryRepositoryTest {
         val result = repository.getFailedOperations(ACCOUNT_ID, 3)
 
         assertThat(result).hasSize(1)
-    }
-
-    // ── getMonthDetail ─────────────────────────────────────────────────────────
-
-    @Test
-    fun `getMonthDetail returns empty flow when dao returns empty`() = runTest {
-        every { entryDao.getMonthDetail(ACCOUNT_ID, "2024-01") } returns flowOf(emptyList())
-
-        val result = repository.getMonthDetail(ACCOUNT_ID, "2024-01").toList()
-
-        assertThat(result).hasSize(1)
-        assertThat(result[0]).isEmpty()
-    }
-
-    // ── getMonthlyAverage ──────────────────────────────────────────────────────
-
-    @Test
-    fun `getMonthlyAverage returns empty flow when dao returns empty`() = runTest {
-        every { entryDao.getMonthlyHistory(ACCOUNT_ID) } returns flowOf(emptyList())
-
-        val result = repository.getMonthlyAverage(ACCOUNT_ID).toList()
-
-        assertThat(result).hasSize(1)
-        assertThat(result[0]).isEmpty()
-    }
-
-    @Test
-    fun `getMonthlyAverage maps and converts history months via convertToDisplay`() = runTest {
-        val historyMonth = HistoryMonth(entryTimestamp = "January 2024", avgWeight = 1650.0, entryCount = 5, change = 100.0)
-        every { entryDao.getMonthlyHistory(ACCOUNT_ID) } returns flowOf(listOf(historyMonth))
-
-        val result = repository.getMonthlyAverage(ACCOUNT_ID).toList()
-
-        assertThat(result[0]).hasSize(1)
-        // convertToDisplay divides avgWeight by 10
-        assertThat(result[0][0].avgWeight).isEqualTo(165.0)
-    }
-
-    // ── getMonthlyHistoryLastYear ──────────────────────────────────────────────
-
-    @Test
-    fun `getMonthlyHistoryLastYear returns empty flow when dao returns empty`() = runTest {
-        every { entryDao.getMonthlyHistoryLastYear(ACCOUNT_ID) } returns flowOf(emptyList())
-
-        val result = repository.getMonthlyHistoryLastYear(ACCOUNT_ID).toList()
-
-        assertThat(result).hasSize(1)
-        assertThat(result[0]).isEmpty()
-    }
-
-    // ── getMonthlyBodyScaleAveragesWithJoin ────────────────────────────────────
-
-    @Test
-    fun `getMonthlyBodyScaleAveragesWithJoin returns empty flow when dao returns empty`() = runTest {
-        every { entryDao.getMonthlyBodyScaleAveragesWithJoin(ACCOUNT_ID) } returns flowOf(emptyList())
-
-        val result = repository.getMonthlyBodyScaleAveragesWithJoin(ACCOUNT_ID).toList()
-
-        assertThat(result).hasSize(1)
-        assertThat(result[0]).isEmpty()
-    }
-
-    // ── getMonthlyBodyScaleLatestWithJoin ──────────────────────────────────────
-
-    @Test
-    fun `getMonthlyBodyScaleLatestWithJoin returns empty flow when dao returns empty`() = runTest {
-        every { entryDao.getMonthlyBodyScaleLatestWithJoin(ACCOUNT_ID) } returns flowOf(emptyList())
-
-        val result = repository.getMonthlyBodyScaleLatestWithJoin(ACCOUNT_ID).toList()
-
-        assertThat(result).hasSize(1)
-        assertThat(result[0]).isEmpty()
-    }
-
-    // ── getDaywiseBodyScaleAveragesWithJoin ────────────────────────────────────
-
-    @Test
-    fun `getDaywiseBodyScaleAveragesWithJoin returns empty flow when dao returns empty`() = runTest {
-        every { entryDao.getDaywiseBodyScaleAveragesWithJoin(ACCOUNT_ID) } returns flowOf(emptyList())
-
-        val result = repository.getDaywiseBodyScaleAveragesWithJoin(ACCOUNT_ID).toList()
-
-        assertThat(result).hasSize(1)
-        assertThat(result[0]).isEmpty()
-    }
-
-    // ── getDaywiseBodyScaleLatestWithJoin ──────────────────────────────────────
-
-    @Test
-    fun `getDaywiseBodyScaleLatestWithJoin returns empty flow when dao returns empty`() = runTest {
-        every { entryDao.getDaywiseBodyScaleLatestWithJoin(ACCOUNT_ID) } returns flowOf(emptyList())
-
-        val result = repository.getDaywiseBodyScaleLatestWithJoin(ACCOUNT_ID).toList()
-
-        assertThat(result).hasSize(1)
-        assertThat(result[0]).isEmpty()
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
@@ -717,7 +447,7 @@ class EntryRepositoryTest {
             deviceId = "device2",
         )
         val bpmEntryEntity = BpmEntryEntity(
-            entryId = 2L,
+            id = 2L,
             systolic = 120,
             diastolic = 80,
             pulse = 70,

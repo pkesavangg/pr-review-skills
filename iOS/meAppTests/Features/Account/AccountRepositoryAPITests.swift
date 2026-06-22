@@ -564,6 +564,38 @@ struct AccountRepositoryAPITests {
         #expect(body["email"] as? String == "taken@example.com")
     }
 
+    // MARK: - patchProductTypes
+
+    @Test("patchProductTypes success: PATCH updateProductTypes with auth, sends productTypes array")
+    func patchProductTypesSuccess() async throws {
+        let (sut, http) = makeSUT()
+        http.sendResult = AccountTestFixtures.makeAccountResponse()
+
+        _ = try await sut.patchProductTypes(["weight", "blood_pressure"])
+
+        #expect(http.sendCalls == 1)
+        #expect(http.lastSendMethod == .patch)
+        #expect(http.lastSendNeedsAuth == true)
+        guard case .updateProductTypes = http.lastSendEndpoint else {
+            Issue.record("Expected .updateProductTypes endpoint"); return
+        }
+        let body = try jsonBody(http.lastSendBody)
+        #expect(body["productTypes"] as? [String] == ["weight", "blood_pressure"])
+    }
+
+    @Test("patchProductTypes failure: propagates error from http client")
+    func patchProductTypesFailure() async throws {
+        let (sut, http) = makeSUT()
+        http.sendError = HTTPError.serverError
+
+        await #expect(throws: HTTPError.serverError) {
+            try await sut.patchProductTypes(["weight"])
+        }
+        #expect(http.sendCalls == 1)
+    }
+
+    // MARK: - updateMeasurementUnits
+
     @Test("updateMeasurementUnits: PATCH measurement-units with auth, sends units")
     func updateMeasurementUnitsSuccess() async throws {
         let (sut, http) = makeSUT()

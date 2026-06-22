@@ -51,7 +51,21 @@ abstract class BaseGraphReducer<S : BaseDashboardState> {
     }
 
     is BaseGraphIntent.SetRefreshing -> copyBaseFields(state, isRefreshing = intent.isRefreshing)
-    is BaseGraphIntent.SetSelectedSegment -> copyBaseFields(state, selectedSegment = intent.segment, scrollTarget = intent.anchorTimestamp, markerIndex = null)
+    is BaseGraphIntent.SetSelectedSegment -> {
+      // Auto-focus the latest entry on the newly selected segment so its marker +
+      // "latest entry"/"month average" label show immediately (released as soon as the
+      // user scrubs or scrolls — see GraphView). Setting it here, before the new
+      // segment's chart re-initialises, lets initialMarkerX render the marker.
+      val latestMarker = state.segmentStates[intent.segment]?.data
+        ?.maxOfOrNull { it.getTimeStamp() }
+        ?.toDouble()
+      copyBaseFields(
+        state,
+        selectedSegment = intent.segment,
+        scrollTarget = intent.anchorTimestamp,
+        markerIndex = latestMarker,
+      )
+    }
     is BaseGraphIntent.UpdateMarkerIndex -> copyBaseFields(state, markerIndex = intent.markerIndex)
     is BaseGraphIntent.ScrollRange -> {
       val current = state.segmentStates[intent.segment] ?: SegmentState()

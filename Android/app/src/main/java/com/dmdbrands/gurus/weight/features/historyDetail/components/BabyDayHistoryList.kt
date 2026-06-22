@@ -15,6 +15,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 fun BabyDayHistoryList(
     entries: List<BabyEntry>,
     isMetric: Boolean = false,
+    onEditEntry: (BabyEntry) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val expandedIndices = remember { mutableStateListOf<Int>() }
@@ -32,6 +33,7 @@ fun BabyDayHistoryList(
                         expandedIndices.add(index)
                     }
                 },
+                onEditEntry = { onEditEntry(item) },
             )
         }
     }

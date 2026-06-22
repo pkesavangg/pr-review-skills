@@ -196,7 +196,7 @@ class WeightlessViewModelTest {
         advanceUntilIdle()
 
         verify {
-            dialogQueueService.showToast(match<Toast> {
+            dialogQueueService.showToast(match<Toast.Simple> {
                 it.title == SUCCESS_TITLE && it.message == SUCCESS_MESSAGE
             })
         }
@@ -340,7 +340,7 @@ class WeightlessViewModelTest {
         advanceUntilIdle()
 
         verify {
-            dialogQueueService.showToast(match<Toast> {
+            dialogQueueService.showToast(match<Toast.Simple> {
                 it.title == SUCCESS_TITLE && it.message == SUCCESS_MESSAGE
             })
         }
@@ -522,7 +522,7 @@ class WeightlessViewModelTest {
         advanceUntilIdle()
 
         verify {
-            dialogQueueService.showToast(match<Toast> {
+            dialogQueueService.showToast(match<Toast.Simple> {
                 it.title == SUCCESS_TITLE && it.message == SUCCESS_MESSAGE && it.action == null
             })
         }

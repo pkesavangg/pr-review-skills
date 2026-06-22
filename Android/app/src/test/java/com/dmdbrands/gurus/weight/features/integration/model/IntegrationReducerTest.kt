@@ -390,4 +390,14 @@ class IntegrationReducerTest {
 
         assertThat(result.integrations).containsExactly(healthConnectItem)
     }
+
+    @Test
+    fun `RequestNewIntegration returns state unchanged`() {
+        val state = IntegrationState(integrations = listOf(fitbitItem).toImmutableList())
+
+        val result = reducer.reduce(state, IntegrationIntent.RequestNewIntegration)
+
+        assertThat(result).isEqualTo(state)
+        assertThat(result.integrations).containsExactly(fitbitItem)
+    }
 }

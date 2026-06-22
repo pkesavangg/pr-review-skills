@@ -183,7 +183,7 @@ class EntryViewModelTest {
     fun `Save shows success toast on success`() = runTest {
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
-        verify { dialogQueueService.showToast(match<Toast> { it.title == SUCCESS_TOAST_TITLE }) }
+        verify { dialogQueueService.showToast(match<Toast.Simple> { it.title == SUCCESS_TOAST_TITLE }) }
     }
 
     @Test
@@ -216,7 +216,7 @@ class EntryViewModelTest {
         coEvery { entryService.addEntry(entry = any()) } throws RuntimeException(NETWORK_ERROR)
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
-        verify { dialogQueueService.showToast(match<Toast> { it.title == ERROR_TOAST_TITLE }) }
+        verify { dialogQueueService.showToast(match<Toast.Simple> { it.title == ERROR_TOAST_TITLE }) }
     }
 
     @Test

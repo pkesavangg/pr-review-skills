@@ -25,5 +25,7 @@ fun DashboardChartHeader(
     is ProductSelection.MyWeight -> WeightChartHeader(state = state, segment = segment)
     is ProductSelection.BloodPressure -> BpChartHeader(state = state, segment = segment)
     is ProductSelection.Baby -> BabyChartHeader(state = state, segment = segment, handleIntent = handleIntent)
+    // No profile yet (MOB-416): baby surface shows an empty state, no chart header.
+    is ProductSelection.BabyScale -> Unit
   }
 }

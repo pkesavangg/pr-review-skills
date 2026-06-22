@@ -24,6 +24,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -298,6 +299,34 @@ class DeviceServiceTest {
             assertThat(awaitItem()).isFalse()
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `hasWeightScale emits false when no scale paired`() = runTest {
+        service.hasWeightScale.test {
+            assertThat(awaitItem()).isFalse()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `hasWeightScale emits true when a weight scale is paired`() = runTest {
+        val scale = fakeDevice(deviceType = ScaleSetupType.Bluetooth.value)
+        every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(scale))
+        service.setAccountId(accountId)
+        Thread.sleep(2000) // fetchScales runs on IO
+
+        assertThat(service.hasWeightScale.first()).isTrue()
+    }
+
+    @Test
+    fun `hasWeightScale emits false when only a BPM device is paired`() = runTest {
+        val bpm = fakeDevice(deviceType = ScaleSetupType.BpmBluetooth.value)
+        every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(bpm))
+        service.setAccountId(accountId)
+        Thread.sleep(2000) // fetchScales runs on IO
+
+        assertThat(service.hasWeightScale.first()).isFalse()
     }
 
     // -------------------------------------------------------------------------

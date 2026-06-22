@@ -14,6 +14,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
@@ -39,6 +41,7 @@ fun ReadingArrivalCard(
 ) {
     Card(
         modifier = modifier
+            .testTag("reading_toast_card")
             .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 16.dp)
             .cssBoxShadow(
@@ -58,10 +61,14 @@ fun ReadingArrivalCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            if (readingToast.type == ProductType.BABY && readingToast.assignedTo != null) {
-                BabyAssignedContent(readingToast, clearToast)
-            } else {
-                ReadingContent(readingToast, clearToast)
+            when {
+                readingToast.type == ProductType.BABY && readingToast.noBabyProfile ->
+                    NoBabyContent(readingToast, clearToast)
+
+                readingToast.type == ProductType.BABY && readingToast.assignedTo != null ->
+                    BabyAssignedContent(readingToast, clearToast)
+
+                else -> ReadingContent(readingToast, clearToast)
             }
         }
     }
@@ -100,7 +107,7 @@ private fun ReadingContent(
             fontWeight = FontWeight.Bold,
             color = colorScheme.textSubheading,
             modifier = Modifier
-                .clickable {
+                .clickable(role = Role.Button) {
                     readingToast.secondaryAction()
                     clearToast()
                 }
@@ -118,6 +125,74 @@ private fun ReadingContent(
         ) {
             Text(
                 text = ReadingToastStrings.primaryAction(readingToast.type),
+                style = MeTheme.typography.button2,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.toastBackground,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            )
+        }
+    }
+}
+
+/**
+ * Baby reading arrived but no baby profile exists to save it to.
+ * Offers a DISCARD action and an "ADD A BABY" CTA that deep-links to the add-a-baby flow.
+ */
+@Composable
+private fun NoBabyContent(
+    readingToast: ReadingToast,
+    clearToast: () -> Unit,
+) {
+    val measurementType = readingToast.type.toMeasurementType()
+
+    Text(
+        text = ReadingToastStrings.NoBabyTitle,
+        style = MeTheme.typography.heading5,
+        color = colorScheme.textBody,
+    )
+    Text(
+        text = ReadingToastStrings.NoBabySubtitle,
+        style = MeTheme.typography.body2,
+        color = colorScheme.textBody,
+    )
+    Text(
+        text = rememberMeasurementText(
+            text = "${readingToast.reading} · ${readingToast.timestamp}",
+            type = measurementType,
+            valueStyle = MeTheme.typography.heading4,
+        ),
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = ReadingToastStrings.Discard,
+            style = MeTheme.typography.button2,
+            fontWeight = FontWeight.Bold,
+            color = colorScheme.textSubheading,
+            modifier = Modifier
+                .clickable(role = Role.Button) {
+                    readingToast.secondaryAction()
+                    clearToast()
+                }
+                .padding(vertical = 6.dp),
+        )
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = colorScheme.textBody,
+            ),
+            onClick = {
+                readingToast.primaryAction()
+                clearToast()
+            },
+        ) {
+            Text(
+                text = ReadingToastStrings.AddBaby,
                 style = MeTheme.typography.button2,
                 fontWeight = FontWeight.Bold,
                 color = colorScheme.toastBackground,
@@ -162,7 +237,7 @@ private fun BabyAssignedContent(
             style = MeTheme.typography.button2,
             fontWeight = FontWeight.Bold,
             color = colorScheme.textBody,
-            modifier = Modifier.clickable {
+            modifier = Modifier.clickable(role = Role.Button) {
                 readingToast.primaryAction()
             },
         )
@@ -178,6 +253,21 @@ private fun ReadingArrivalCardBabyPreview() {
                 reading = "14 lbs 6 oz",
                 type = ProductType.BABY,
                 timestamp = "Just now",
+            ),
+        )
+    }
+}
+
+@PreviewTheme
+@Composable
+private fun ReadingArrivalCardNoBabyPreview() {
+    MeAppTheme {
+        ReadingArrivalCard(
+            readingToast = ReadingToast(
+                reading = "14 lbs 6 oz",
+                type = ProductType.BABY,
+                timestamp = "Just now",
+                noBabyProfile = true,
             ),
         )
     }

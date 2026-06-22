@@ -39,9 +39,10 @@ struct ConnectingBluetoothView: View {
                         .frame(width: DevicePlatform.isMiniPhone ? 350 : 370,
                                height: DevicePlatform.isMiniPhone ? 200 : 250)
                         .scaleEffect(DevicePlatform.isMiniPhone ? 0.8 : 0.9)
+                        .accessibilityHidden(true)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
-                
+
                 // Connection state content
                 switch connectionState {
                 case .loading:
@@ -49,17 +50,21 @@ struct ConnectingBluetoothView: View {
                         Text(lang.pairing)
                             .fontOpenSans(.body1)
                             .foregroundColor(theme.textBody)
-                        
+
                         LoadingDotsView(color: theme.textBody)
                             .offset(y: .spacingXS)
+                            .accessibilityHidden(true)
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(BluetoothSetupViewStrings.A11y.pairingLoadingLabel)
                 case .success:
                     Text(lang.paired)
                         .fontOpenSans(.body1)
                         .foregroundColor(theme.textBody)
                         .frame(maxWidth: .infinity, alignment: .center)
-                    
+                        .accessibilityLabel(BluetoothSetupViewStrings.A11y.pairedLabel)
+
                 case .failure:
                     ButtonView(
                         text: lang.pairAgain,
@@ -69,6 +74,7 @@ struct ConnectingBluetoothView: View {
                     ) {
                             pairAgain?()
                         }
+                    .accessibilityHint(BluetoothSetupViewStrings.A11y.pairAgainHint)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.horizontal, .spacingSM)
                 default:

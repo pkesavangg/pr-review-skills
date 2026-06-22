@@ -24,6 +24,7 @@ enum class SignupStep {
   PASSWORD,
   DEVICE_READY,
   ALL_DEVICES_READY,
+  ERROR,
 }
 
 /**Add commentMore actions

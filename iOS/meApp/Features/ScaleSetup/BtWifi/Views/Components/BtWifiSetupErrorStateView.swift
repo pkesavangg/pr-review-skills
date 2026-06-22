@@ -83,6 +83,7 @@ struct BtWifiSetupErrorStateView: View {
                             customImageSize: CGSize(width: 8, height: 35),
                             showSmallCircleOverride: true
                         )
+                        .accessibilityHidden(true)
                         .padding(.bottom, 180)
                     }
 
@@ -95,6 +96,7 @@ struct BtWifiSetupErrorStateView: View {
                             isDisabled: false,
                             action: onTryAgain
                         )
+                        .accessibilityHint(ScaleSetupStrings.A11y.tryAgainHint)
 
                         ButtonView(
                             text: commonStrings.support,
@@ -103,6 +105,7 @@ struct BtWifiSetupErrorStateView: View {
                             isDisabled: false,
                             action: onSupport
                         )
+                        .accessibilityHint(ScaleSetupStrings.A11y.supportHint)
                     }
                     .padding(.top, .spacingXL)
                 }

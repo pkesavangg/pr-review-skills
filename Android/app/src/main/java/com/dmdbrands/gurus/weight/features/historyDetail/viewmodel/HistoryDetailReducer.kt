@@ -18,6 +18,8 @@ data class HistoryDetailState(
   val month: String = "",
   val itemsOpened: ImmutableList<Long> = persistentListOf(),
   val historyItems: ImmutableList<Entry> = persistentListOf(),
+  /** Non-null while the note-edit modal is open for this entry (MOB-438). */
+  val noteEditEntry: Entry? = null,
 ) : IReducer.State
 
 /**
@@ -28,6 +30,9 @@ sealed interface HistoryDetailIntent : IReducer.Intent {
   data class LoadHistoryDetail(val month: String) : HistoryDetailIntent
   data class SetItemsOpened(val ids: List<Long>) : HistoryDetailIntent
   data class DeleteEntry(val entry: Entry) : HistoryDetailIntent
+  data class EditEntry(val entry: Entry) : HistoryDetailIntent
+  data object DismissNoteEditor : HistoryDetailIntent
+  data class SaveNote(val entry: Entry, val note: String) : HistoryDetailIntent
   object Retry : HistoryDetailIntent
   data class SetError(val message: String) : HistoryDetailIntent
   object ClearError : HistoryDetailIntent
@@ -52,6 +57,8 @@ class HistoryDetailReducer : IReducer<HistoryDetailState, HistoryDetailIntent> {
       HistoryDetailIntent.ClearError -> state.copy(errorMessage = null)
       is HistoryDetailIntent.LoadHistoryDetail -> state.copy(isLoading = true)
       is HistoryDetailIntent.SetItemsOpened -> state.copy(itemsOpened = intent.ids.toImmutableList())
+      is HistoryDetailIntent.EditEntry -> state.copy(noteEditEntry = intent.entry)
+      HistoryDetailIntent.DismissNoteEditor -> state.copy(noteEditEntry = null)
       is HistoryDetailIntent.SetHistoryItems ->
         state.copy(
           month = intent.month,

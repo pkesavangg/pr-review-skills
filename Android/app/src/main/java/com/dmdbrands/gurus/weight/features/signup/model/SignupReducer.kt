@@ -382,11 +382,20 @@ data class SignupState(
   val goalSkipped: Boolean = false,
   val babyState: BabyState? = null,
   val registeredDevices: Set<ProductType> = emptySet(),
+  // True once the account has been created on the password step. Tracked
+  // separately from [registeredDevices] so a Try Again after an
+  // account-created-but-device-failed error does not re-create the account.
+  val accountCreated: Boolean = false,
 ) : IReducer.State {
-  val currentStepIndex: Int get() = steps.indexOf(currentStep).coerceAtLeast(0)
+  // ERROR is a terminal screen rendered outside the pager and is not part of
+  // [steps]; pin it to the last index so progress reads full and RegisterDevice
+  // (which uses steps.last()) still lands on the real Ready terminal.
+  val currentStepIndex: Int
+    get() =
+      if (currentStep == SignupStep.ERROR) steps.lastIndex.coerceAtLeast(0)
+      else steps.indexOf(currentStep).coerceAtLeast(0)
   val isFirstStep: Boolean get() = currentStepIndex == 0
   val isLastStep: Boolean get() = currentStepIndex == steps.size - 1
-  val accountCreated: Boolean get() = registeredDevices.isNotEmpty()
 
   /**
    * True when the next step in [steps] is a Ready terminal screen — i.e.
@@ -456,7 +465,8 @@ data class SignupState(
             && form.controls.zipcode.isValueValid()
 
         SignupStep.DEVICE_READY,
-        SignupStep.ALL_DEVICES_READY -> true
+        SignupStep.ALL_DEVICES_READY,
+        SignupStep.ERROR -> true
       }
 
   companion object {
@@ -534,6 +544,8 @@ sealed class SignupIntent : IReducer.Intent {
   object OpenHelpModal : SignupIntent()
   data class OpenURL(val url: String) : SignupIntent()
   object Skip : SignupIntent()
+  // Opens the baby Biological Sex picker via the shared settings-style radio modal.
+  object OpenBabySexPicker : SignupIntent()
   data class ToggleMetric(val useMetric: Boolean) : SignupIntent()
   data class Error(val message: String) : SignupIntent()
   object Success : SignupIntent()
@@ -558,6 +570,18 @@ sealed class SignupIntent : IReducer.Intent {
    * the terminal Ready step.
    */
   object RegisterDevice : SignupIntent()
+
+  /**
+   * Error-screen intents (MOB-420).
+   *
+   * [AccountCreated] flips [SignupState.accountCreated] once the account exists
+   * so a subsequent retry skips account creation. [ShowDeviceError] moves to the
+   * terminal ERROR screen on a product-creation failure. [RetryDevice] is handled
+   * by SignupViewModel, which re-runs the failed device's side effects.
+   */
+  object AccountCreated : SignupIntent()
+  object ShowDeviceError : SignupIntent()
+  object RetryDevice : SignupIntent()
 }
 
 /**
@@ -588,6 +612,8 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
               },
               birthLength = bs.babyForm.birthLength.value,
               birthWeight = bs.babyForm.birthWeight.value,
+              birthWeightOz = bs.babyForm.birthWeightOz.value,
+              weightUnit = bs.babyForm.weightUnit.value,
             )
             val updatedBabies = if (bs.editingBabyId != null) {
               bs.babies.map { if (it.id == bs.editingBabyId) baby else it }
@@ -612,23 +638,34 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
       }
 
       is SignupIntent.Back -> {
-        var updatedState = if (state.currentStep == SignupStep.GOAL) {
-          state.copy(goalSkipped = false)
-        } else {
-          state
-        }
-        // Clear stale editingBabyId when leaving ADD_BABY via Back
+        // Editing a baby (entered from the baby list via the pencil): Back returns to the
+        // baby list and discards the in-progress edit, rather than navigating linearly.
         if (state.currentStep == SignupStep.ADD_BABY && state.babyState?.editingBabyId != null) {
-          updatedState = updatedState.copy(
-            babyState = updatedState.babyState?.copy(
+          state.copy(
+            babyState = state.babyState?.copy(
               babyForm = BabyFormControls.create(),
               editingBabyId = null,
             ),
+            currentStep = SignupStep.BABY_ADDED,
+            error = null,
           )
+        } else {
+          val updatedState = if (state.currentStep == SignupStep.GOAL) {
+            state.copy(goalSkipped = false)
+          } else {
+            state
+          }
+          // Strictly linear back navigation
+          var prevIndex = (updatedState.currentStepIndex - 1).coerceAtLeast(0)
+          // Skip the BABY_ADDED list when no baby exists (e.g. the user skipped the form):
+          // an empty "baby has been added" slide is meaningless, so land on ADD_BABY instead.
+          if (updatedState.steps.getOrNull(prevIndex) == SignupStep.BABY_ADDED &&
+            updatedState.babyState?.babies.isNullOrEmpty()
+          ) {
+            prevIndex = (prevIndex - 1).coerceAtLeast(0)
+          }
+          updatedState.copy(currentStep = updatedState.steps[prevIndex], error = null)
         }
-        // Strictly linear back navigation
-        val prevIndex = (updatedState.currentStepIndex - 1).coerceAtLeast(0)
-        updatedState.copy(currentStep = updatedState.steps[prevIndex], error = null)
       }
 
       is SignupIntent.Skip -> {
@@ -656,6 +693,33 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
                 )
               }
             }
+          }
+          // Skip while editing an existing baby: discard the edit and return to the list,
+          // keeping the already-added babies (Figma "Skip editing?" 31949-28040).
+          state.currentStep == SignupStep.ADD_BABY
+            && state.babyState?.editingBabyId != null -> {
+            state.copy(
+              babyState = state.babyState?.copy(
+                babyForm = BabyFormControls.create(),
+                editingBabyId = null,
+              ),
+              currentStep = SignupStep.BABY_ADDED,
+              error = null,
+            )
+          }
+          // Skip "Add another baby" while babies already exist: discard the in-progress
+          // (non-editing) form and return to the list, keeping the already-added babies —
+          // rather than discarding them all and finishing signup.
+          state.currentStep == SignupStep.ADD_BABY
+            && !state.babyState?.babies.isNullOrEmpty() -> {
+            state.copy(
+              babyState = state.babyState?.copy(
+                babyForm = BabyFormControls.create(),
+                editingBabyId = null,
+              ),
+              currentStep = SignupStep.BABY_ADDED,
+              error = null,
+            )
           }
           state.currentStep == SignupStep.ADD_BABY
             || state.currentStep == SignupStep.BABY_ADDED -> {
@@ -721,13 +785,18 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
       is SignupIntent.EditBaby -> {
         val bs = state.babyState ?: return state
         val baby = intent.baby
-        val newForm = BabyFormControls.create()
+        // Exclude the baby being edited so keeping its own name isn't flagged as a duplicate.
+        val newForm = BabyFormControls.create(
+          bs.babies.filter { it.id != baby.id }.map { it.name },
+        )
         newForm.name.onValueChange(baby.name)
         if (baby.birthday != null) newForm.birthday.onValueChange(baby.birthday)
         val sexValue = baby.biologicalSex?.value?.replaceFirstChar { it.uppercase() } ?: ""
         if (sexValue.isNotEmpty()) newForm.biologicalSex.onValueChange(sexValue)
         if (baby.birthLength.isNotEmpty()) newForm.birthLength.onValueChange(baby.birthLength)
         if (baby.birthWeight.isNotEmpty()) newForm.birthWeight.onValueChange(baby.birthWeight)
+        if (baby.birthWeightOz.isNotEmpty()) newForm.birthWeightOz.onValueChange(baby.birthWeightOz)
+        newForm.weightUnit.onValueChange(baby.weightUnit)
         state.copy(
           babyState = bs.copy(babyForm = newForm, editingBabyId = baby.id),
           currentStep = SignupStep.ADD_BABY,
@@ -737,7 +806,10 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
       is SignupIntent.AddAnotherBaby -> {
         val bs = state.babyState ?: return state
         state.copy(
-          babyState = bs.copy(babyForm = BabyFormControls.create(), editingBabyId = null),
+          babyState = bs.copy(
+            babyForm = BabyFormControls.create(bs.babies.map { it.name }),
+            editingBabyId = null,
+          ),
           currentStep = SignupStep.ADD_BABY,
         )
       }
@@ -772,6 +844,16 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
       }
 
       is SignupIntent.FinishSignup -> state.copy(isLoading = false, error = null)
+
+      is SignupIntent.AccountCreated -> state.copy(accountCreated = true)
+
+      // Product-creation failure — move to the terminal ERROR screen. The failed
+      // device is the current selection; registeredDevices holds the successes.
+      is SignupIntent.ShowDeviceError ->
+        state.copy(currentStep = SignupStep.ERROR, isLoading = false)
+
+      // Side effect (retry) runs in SignupViewModel; reducer only reflects loading.
+      is SignupIntent.RetryDevice -> state.copy(isLoading = true, error = null)
 
       is SignupIntent.OnRequestBack -> state.copy(isLoading = false, error = null)
       is SignupIntent.OpenHelpModal -> state.copy(isLoading = false, error = null)

@@ -1,7 +1,9 @@
 package com.dmdbrands.gurus.weight.features.settings.viewmodel
 
 import androidx.compose.runtime.Stable
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 
 /**
@@ -23,6 +25,12 @@ data class SettingsState(
   val showUnreadFeedIndication: Boolean = false,
   val isExportEnabled: Boolean = false,
   val isBabyProduct: Boolean = false,
+  val hasWeightScale: Boolean = false,
+  // Local-only My Kids unit preference. Defaults to LB_OZ — the canonical
+  // baby scale unit. Backend has no per-baby unit; this is loaded from
+  // [UserDataStore.babyWeightUnitForCurrentAccountFlow].
+  val babyWeightUnit: WeightUnit = WeightUnit.LB_OZ,
+  val hasBabyScaleDevice: Boolean = false,
 ) : IReducer.State {
 
   /**
@@ -35,6 +43,16 @@ data class SettingsState(
       account?.shouldSendEntryNotifications == true -> "On"
       else -> "Off"
     }
+
+  /**
+   * Whether the "My Kids" Settings row is enabled. Per MOB-686 Rule A, this turns on once the
+   * account has engaged a baby scale at least once (signup or Add Devices) and is additive: it
+   * stays on after the baby-scale device is removed, because the account's persisted
+   * [Account.productTypes] still carries "baby" (the device list alone would flip back to false).
+   */
+  val isMyKidsEnabled: Boolean
+    get() = hasBabyScaleDevice ||
+      account?.productTypes?.contains(ProductType.BABY.apiValue) == true
 }
 
 /**
@@ -69,7 +87,7 @@ sealed interface SettingsIntent : IReducer.Intent {
   object ShowActivityLevelModal : SettingsIntent
   object ShowUnitTypeModal : SettingsIntent
   object ShowNotificationsModal : SettingsIntent
-  object ShowWeightlessModal : SettingsIntent
+  object NavigateToWeightless : SettingsIntent
   data class ToggleStreak(val checked: Boolean) : SettingsIntent
   object goalSettingModal : SettingsIntent
   object ShowAppearanceModal : SettingsIntent
@@ -82,6 +100,9 @@ sealed interface SettingsIntent : IReducer.Intent {
   data class SetShowUnreadFeedIndication(val show: Boolean) : SettingsIntent
   data class SetExportEnabled(val enabled: Boolean) : SettingsIntent
   data class SetIsBabyProduct(val isBabyProduct: Boolean) : SettingsIntent
+  data class SetHasWeightScale(val hasWeightScale: Boolean) : SettingsIntent
+  data class SetBabyWeightUnit(val unit: WeightUnit) : SettingsIntent
+  data class SetHasBabyScaleDevice(val hasBabyScaleDevice: Boolean) : SettingsIntent
   object DeleteAccount : SettingsIntent
   object ConfirmDeleteAccount : SettingsIntent
   object TriggerTestCrash : SettingsIntent
@@ -113,6 +134,9 @@ class SettingsReducer : IReducer<SettingsState, SettingsIntent> {
       is SettingsIntent.SetShowUnreadFeedIndication -> state.copy(showUnreadFeedIndication = intent.show)
       is SettingsIntent.SetExportEnabled -> state.copy(isExportEnabled = intent.enabled)
       is SettingsIntent.SetIsBabyProduct -> state.copy(isBabyProduct = intent.isBabyProduct)
+      is SettingsIntent.SetHasWeightScale -> state.copy(hasWeightScale = intent.hasWeightScale)
+      is SettingsIntent.SetBabyWeightUnit -> state.copy(babyWeightUnit = intent.unit)
+      is SettingsIntent.SetHasBabyScaleDevice -> state.copy(hasBabyScaleDevice = intent.hasBabyScaleDevice)
       else -> null
       // Add more intent handling as needed
     }

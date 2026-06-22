@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -42,6 +43,7 @@ fun ToastCard(
   Card(
     modifier =
       modifier
+        .testTag("toast_card")
         .statusBarsPadding()
         .padding(horizontal = 16.dp, vertical = 16.dp).cssBoxShadow(
         color = colorScheme.glow,
@@ -65,6 +67,7 @@ fun ToastCard(
       toast.title?.let {
         Text(
           text = it,
+          modifier = Modifier.testTag("toast_title"),
           style = MeTheme.typography.heading5,
           color = colorScheme.textBody,
         )
@@ -76,6 +79,7 @@ fun ToastCard(
       ) {
         Text(
           text = toast.message,
+          modifier = Modifier.testTag("toast_message"),
           style = MeTheme.typography.body2,
           color = colorScheme.textBody,
         )
@@ -88,6 +92,7 @@ fun ToastCard(
           color = colorScheme.primaryAction,
           modifier =
             Modifier
+              .testTag("toast_action")
               .padding(vertical = 6.dp, horizontal = 2.dp)
               .clickable {
                 it.action()

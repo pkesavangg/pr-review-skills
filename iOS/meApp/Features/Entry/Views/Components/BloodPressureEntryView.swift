@@ -91,12 +91,14 @@ struct BloodPressureEntryView: View {
                     ) {
                         toggleDatePicker()
                     }
+                    .accessibilityHint(bpLang.accDateHint)
                     TimeLabelView(
                         time: entryStore.bpForm.time.value,
                         isSelected: entryStore.showTimePicker
                     ) {
                         toggleTimePicker()
                     }
+                    .accessibilityHint(bpLang.accTimeHint)
                 }
                 .padding(.top, .spacingXS)
 

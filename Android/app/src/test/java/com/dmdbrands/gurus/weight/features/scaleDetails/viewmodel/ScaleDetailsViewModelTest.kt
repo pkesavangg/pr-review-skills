@@ -352,7 +352,7 @@ class ScaleDetailsViewModelTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
-        val device = TestFixtures.bleDevice
+        val device = TestFixtures.bleDevice.copy(sku = "0383")
         viewModel.handleIntent(ScaleDetailsIntent.SetScaleInfo(device))
         advanceUntilIdle()
 

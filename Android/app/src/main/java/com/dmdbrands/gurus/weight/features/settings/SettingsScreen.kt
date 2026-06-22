@@ -74,6 +74,7 @@ fun SettingsScreenContent(
           add(
             SettingsItem(
               title = SettingsScreenStrings.UserProfile,
+              testTag = "settings_row_user_profile",
               onClick = {
                 coroutineScope.launch {
                   backStack.addRoute(AppRoute.AccountSettings.Profile)
@@ -81,21 +82,24 @@ fun SettingsScreenContent(
               },
             ),
           )
-          if (state.isBabyProduct) {
-            add(
-              SettingsItem(
-                title = SettingsScreenStrings.MyKids,
-                onClick = {
-                  coroutineScope.launch {
-                    backStack.addRoute(AppRoute.AccountSettings.MyKids)
-                  }
-                },
-              ),
-            )
-          }
+          // "My Kids" always appears; enabled once the account has engaged a baby scale
+          // (productTypes carries "baby") or currently owns one. Additive per MOB-686 Rule A:
+          // stays enabled after the device is removed. Not gated on an existing baby profile.
+          add(
+            SettingsItem(
+              title = SettingsScreenStrings.MyKids,
+              enabled = state.isMyKidsEnabled,
+              onClick = {
+                coroutineScope.launch {
+                  backStack.addRoute(AppRoute.AccountSettings.MyKids)
+                }
+              },
+            ),
+          )
           add(
             SettingsItem(
               title = SettingsScreenStrings.MyDevices,
+              testTag = "settings_row_my_devices",
               onClick = {
                 handleIntent.invoke(SettingsIntent.OpenMyDevices)
               },
@@ -104,6 +108,7 @@ fun SettingsScreenContent(
           add(
             SettingsItem(
               title = SettingsScreenStrings.Integrations,
+              testTag = "settings_row_integrations",
               onClick = {
                 coroutineScope.launch {
                   backStack.addRoute(AppRoute.Integration.IntegrationList)
@@ -114,6 +119,7 @@ fun SettingsScreenContent(
           add(
             SettingsItem(
               title = SettingsScreenStrings.ChangePassword,
+              testTag = "settings_row_change_password",
               onClick = {
                 coroutineScope.launch {
                   backStack.addRoute(AppRoute.AccountSettings.ChangePassword)
@@ -134,6 +140,7 @@ fun SettingsScreenContent(
               type = SettingsItemType.Dropdown(
                 state.account?.weightUnit?.unit ?: SettingsScreenStrings.NotSet,
               ),
+              testTag = "settings_row_unit_type",
               onClick = {
                 handleIntent.invoke(SettingsIntent.ShowUnitTypeModal)
               },
@@ -141,17 +148,11 @@ fun SettingsScreenContent(
             SettingsItem(
               title = SettingsScreenStrings.Permissions,
               type = SettingsItemType.Action(),
+              testTag = "settings_row_permissions",
               onClick = {
                 coroutineScope.launch {
                   backStack.addRoute(AppRoute.AccountSettings.AppPermissions)
                 }
-              },
-            ),
-            SettingsItem(
-              title = SettingsScreenStrings.Notifications,
-              type = SettingsItemType.Dropdown(state.currentNotificationStatus),
-              onClick = {
-                handleIntent.invoke(SettingsIntent.ShowNotificationsModal)
               },
             ),
             SettingsItem(
@@ -162,6 +163,7 @@ fun SettingsScreenContent(
               },
               type = SettingsItemType.Action(),
               showUnreadIndicator = state.showUnreadFeedIndication,
+              testTag = "settings_row_messages",
               onClick = {
                 coroutineScope.launch {
                   backStack.addRoute(AppRoute.Feed.FeedMessages)
@@ -172,6 +174,7 @@ fun SettingsScreenContent(
             SettingsItem(
               title = SettingsScreenStrings.Appearance,
               type = SettingsItemType.Dropdown(state.currentThemeMode),
+              testTag = "settings_row_appearance",
               onClick = {
                 handleIntent.invoke(SettingsIntent.ShowAppearanceModal)
               },
@@ -179,39 +182,52 @@ fun SettingsScreenContent(
           ),
       )
 
-      // Weight Scale Section
-      SettingsSection(
-        title = SettingsScreenStrings.WeightScale,
-        items =
-          listOf(
-            SettingsItem(
-              title = SettingsScreenStrings.GoalSetting,
-              type = SettingsItemType.Action(),
-              onClick = {
-                handleIntent.invoke(SettingsIntent.goalSettingModal)
-              },
-            ),
-            SettingsItem(
-              title = SettingsScreenStrings.ActivityLevel,
-              type = SettingsItemType.Dropdown(
-                state.account?.activityLevel?.replaceFirstChar { it.uppercase() }
-                  ?: SettingsScreenStrings.NotSet,
+      // My Weight Section — only shown when a Weight Scale is paired
+      if (state.hasWeightScale) {
+        SettingsSection(
+          title = SettingsScreenStrings.WeightScale,
+          items =
+            listOf(
+              SettingsItem(
+                title = SettingsScreenStrings.Notifications,
+                type = SettingsItemType.Dropdown(state.currentNotificationStatus),
+                testTag = "settings_row_notifications",
+                onClick = {
+                  handleIntent.invoke(SettingsIntent.ShowNotificationsModal)
+                },
               ),
-              onClick = {
-                handleIntent.invoke(SettingsIntent.ShowActivityLevelModal)
-              },
-            ),
-            SettingsItem(
-              title = SettingsScreenStrings.Weightless,
-              type = SettingsItemType.Action(
-                viewModel?.getWeightlessDisplayText() ?: "Off",
+              SettingsItem(
+                title = SettingsScreenStrings.GoalSetting,
+                type = SettingsItemType.Action(),
+                testTag = "settings_row_goal_setting",
+                onClick = {
+                  handleIntent.invoke(SettingsIntent.goalSettingModal)
+                },
               ),
-              onClick = {
-                handleIntent.invoke(SettingsIntent.ShowWeightlessModal)
-              },
+              SettingsItem(
+                title = SettingsScreenStrings.ActivityLevel,
+                type = SettingsItemType.Dropdown(
+                  state.account?.activityLevel?.replaceFirstChar { it.uppercase() }
+                    ?: SettingsScreenStrings.NotSet,
+                ),
+                testTag = "settings_row_activity_level",
+                onClick = {
+                  handleIntent.invoke(SettingsIntent.ShowActivityLevelModal)
+                },
+              ),
+              SettingsItem(
+                title = SettingsScreenStrings.Weightless,
+                type = SettingsItemType.Action(
+                  viewModel?.getWeightlessDisplayText() ?: "Off",
+                ),
+                testTag = "settings_row_weightless",
+                onClick = {
+                  handleIntent.invoke(SettingsIntent.NavigateToWeightless)
+                },
+              ),
             ),
-          ),
-      )
+        )
+      }
 
       // Support Section
       SettingsSection(
@@ -221,6 +237,7 @@ fun SettingsScreenContent(
             SettingsItem(
               title = SettingsScreenStrings.Help,
               type = SettingsItemType.Action(),
+              testTag = "settings_row_help",
               onClick = {
                 handleIntent(SettingsIntent.OpenHelp)
               },
@@ -228,6 +245,7 @@ fun SettingsScreenContent(
             SettingsItem(
               title = SettingsScreenStrings.PrivacyPolicy,
               type = SettingsItemType.Action(),
+              testTag = "settings_row_privacy_policy",
               onClick = {
                 handleIntent(SettingsIntent.OpenPrivacyPolicy)
               },
@@ -235,6 +253,7 @@ fun SettingsScreenContent(
             SettingsItem(
               title = SettingsScreenStrings.TermsOfService,
               type = SettingsItemType.Action(),
+              testTag = "settings_row_terms_of_service",
               onClick = {
                 handleIntent(SettingsIntent.OpenTermsOfService)
               },
@@ -242,6 +261,7 @@ fun SettingsScreenContent(
             SettingsItem(
               title = SettingsScreenStrings.GreaterGoodsDotCom,
               type = SettingsItemType.Action(),
+              testTag = "settings_row_greater_goods",
               onClick = {
                 handleIntent(SettingsIntent.OpenGreaterGoodsWebsite)
               },
@@ -303,6 +323,7 @@ fun SettingsScreenContent(
             SettingsItem(
               title = SettingsScreenStrings.SwitchAccounts,
               type = SettingsItemType.Action(),
+              testTag = "settings_row_switch_accounts",
               onClick = {
                 handleIntent(SettingsIntent.SwitchAccount)
               },
@@ -312,6 +333,7 @@ fun SettingsScreenContent(
             SettingsItem(
               title = SettingsScreenStrings.LogOut,
               type = SettingsItemType.None,
+              testTag = "settings_row_log_out",
               onClick = {
                 handleIntent(SettingsIntent.Logout)
               },
@@ -322,6 +344,7 @@ fun SettingsScreenContent(
               SettingsItem(
                 title = SettingsScreenStrings.LogoutAll,
                 type = SettingsItemType.None,
+                testTag = "settings_row_logout_all",
                 onClick = {
                   handleIntent(SettingsIntent.LogoutAllAccounts)
                 },
@@ -333,6 +356,7 @@ fun SettingsScreenContent(
               title = SettingsScreenStrings.DeleteAccount,
               type = SettingsItemType.None,
               color = SettingColorType.Danger,
+              testTag = "settings_row_delete_account",
               onClick = { handleIntent(SettingsIntent.ConfirmDeleteAccount) },
             ),
           )

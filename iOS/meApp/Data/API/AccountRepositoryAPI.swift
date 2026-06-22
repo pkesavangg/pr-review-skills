@@ -96,7 +96,7 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
         let dto = updatedAccount.toAccountDTO()
         return try await httpClient.send(.updateAccount, method: .put, body: dto, needsAuth: true)
     }
-    
+
     func createGoal(_ goal: Goal) async throws -> GoalResponse {
         return try await httpClient.send(.setGoal, method: .post, body: goal, needsAuth: true)
     }
@@ -184,7 +184,7 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
             needsAuth: true
         )
     }
-    
+
     func refreshToken(refreshToken: String, accountId: String?) async throws -> Tokens {
         struct Request: Codable { let refreshToken: String }
         return try await httpClient.send(

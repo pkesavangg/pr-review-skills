@@ -116,6 +116,7 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
                     showTrailingIcon = true,
                     imeAction = ImeAction.Next,
                     nextFocusRequester = lastNameFocusRequester,
+                    testTag = "first_name_field",
                     modifier = Modifier
                       .semantics { contentType = ContentType.PersonFirstName }
                       .focusRequester(firstNameFocusRequester),
@@ -128,6 +129,7 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
                     showTrailingIcon = true,
                     imeAction = ImeAction.Next,
                     nextFocusRequester = emailFocusRequester,
+                    testTag = "last_name_field",
                     modifier = Modifier
                       .semantics { contentType = ContentType.PersonLastName }
                       .focusRequester(lastNameFocusRequester),
@@ -140,6 +142,7 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
                         showTrailingIcon = true,
                         imeAction = ImeAction.Next,
                         nextFocusRequester = zipcodeFocusRequester,
+                        testTag = "email_field",
                         modifier = Modifier
                           .semantics { contentType = ContentType.EmailAddress }
                           .focusRequester(emailFocusRequester),
@@ -152,6 +155,7 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
                         showTrailingIcon = true,
                         imeAction = ImeAction.Next,
                         nextFocusRequester = birthdayFocusRequester,
+                        testTag = "zipcode_field",
                         modifier = Modifier
                           .semantics { contentType = ContentType.PostalCode }
                           .focusRequester(zipcodeFocusRequester),
@@ -176,6 +180,7 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
                             ?.replaceFirstChar { it.uppercase() }
                             ?: ProfileStrings.NotSet,
                         ),
+                        testTag = "settings_row_biological_sex",
                         onClick = { handleIntent(ProfileIntent.ShowBiologicalSexModal) },
                       )
                     ),
@@ -197,6 +202,7 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
                             isMetric = state.weightUnit == WeightUnit.KG,
                           ),
                         ),
+                        testTag = "settings_row_height",
                         onClick = { handleIntent(ProfileIntent.ShowHeightModal) },
                       ),
                     ),

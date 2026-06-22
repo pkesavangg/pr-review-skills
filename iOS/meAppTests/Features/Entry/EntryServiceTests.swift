@@ -288,6 +288,39 @@ struct EntryServiceTests {
         #expect(remote.lastExportCsvRequest?.download == false)
     }
 
+    // MARK: - loadBabyDashboardData / decigramsToStoredWeight
+
+    @Test("loadBabyDashboardData: decigramsToStoredWeight converts baby decigrams to stored weight correctly")
+    func loadBabyDashboardDataDecigramsConversion() async {
+        let repo = MockEntryRepository()
+        let entry = Entry(
+            entryTimestamp: "2026-05-06T08:00:00Z",
+            accountId: "acct-1",
+            operationType: OperationType.create.rawValue,
+            entryType: EntryType.baby.rawValue,
+            isSynced: true
+        )
+        // 45200 dg → 4.52 kg → Int(round(4.52 × 22.0462)) = Int(round(99.649)) = 100
+        entry.babyEntry = BabyEntry(babyId: "baby-1", length: 510, weight: 45200)
+        repo.entries = [entry]
+        let sut = makeSUT(repo: repo)
+
+        await sut.loadBabyDashboardData(babyId: "baby-1")
+
+        let summaries = sut.babyDailySummariesByProfile["baby-1"] ?? []
+        #expect(summaries.count == 1)
+        #expect(summaries.first?.weight == 100.0)
+    }
+
+    @Test("loadBabyDashboardData: no entries produces empty summaries")
+    func loadBabyDashboardDataEmptyEntriesProducesNoSummaries() async {
+        let sut = makeSUT()
+
+        await sut.loadBabyDashboardData(babyId: "baby-none")
+
+        #expect((sut.babyDailySummariesByProfile["baby-none"] ?? []).isEmpty)
+    }
+
     @Test("saveNewEntry integration failure: logs but still succeeds")
     func saveNewEntryIntegrationFailure() async throws {
         let repo = MockEntryRepository()

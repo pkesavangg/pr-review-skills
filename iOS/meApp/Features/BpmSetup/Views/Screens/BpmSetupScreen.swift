@@ -41,6 +41,7 @@ struct BpmSetupScreen: View {
                 leadingContent: {
                     AppIconView(icon: AppAssets.xmarkSmall, size: IconSize(width: 24, height: 24))
                         .foregroundColor(theme.statusIconPrimary)
+                        .accessibilityLabel(BpmSetupStrings.A11y.closeButtonLabel)
                 },
                 trailingContent: {
                     Button {
@@ -49,6 +50,8 @@ struct BpmSetupScreen: View {
                         AppIconView(icon: AppAssets.helpCircle)
                             .foregroundColor(theme.statusIconPrimary)
                     }
+                    .accessibilityLabel(BpmSetupStrings.A11y.helpButtonLabel)
+                    .accessibilityHint(BpmSetupStrings.A11y.helpButtonHint)
                 },
                 onLeadingTap: { setupStore.handleExit() },
                 onTrailingTap: {},

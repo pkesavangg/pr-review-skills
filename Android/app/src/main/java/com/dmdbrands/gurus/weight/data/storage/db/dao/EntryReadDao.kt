@@ -18,7 +18,13 @@ import kotlinx.coroutines.flow.Flow
  * DAO for history-specific read queries across all product types.
  * Separate from [EntryDao] to keep CRUD/sync operations isolated.
  * All queries use entry_view (filters deleted entries).
+ *
+ * LargeClass is suppressed: this is intentionally the consolidated read-only DAO
+ * for every product's history/graph/snapshot queries. The methods are cohesive
+ * (all `@Query` reads, no logic) and splitting them further would scatter closely
+ * related SQL without reducing real complexity.
  */
+@Suppress("LargeClass")
 @Dao
 interface EntryReadDao {
 
@@ -303,36 +309,151 @@ interface EntryReadDao {
   fun getWeightMonthlyGraphData(accountId: String): Flow<List<PeriodBodyScaleSummary>>
 
   /**
-   * Weight daily averages for graph — all body scale metrics grouped by day.
-   * Used for WEEK graph segment.
+   * Weight daily graph data — single-pass hybrid daywise query (ported from
+   * release/5.0.3 `EntryDao.getDaywiseBodyScaleHybridWithJoin`, MA-3965).
+   *
+   * Used for the WEEK and MONTH graph segments (both read the daily producer).
+   *
+   * The most recent day with a valid weight entry surfaces the **latest** non-null
+   * positive value per metric (latest-entry semantics); every earlier day surfaces
+   * the **daily average** per metric (5.0.0 behaviour). One query → one Room
+   * invalidation → one emission per write, so the latest day never briefly flashes
+   * its average before a second flow catches up.
+   *
+   * Implementation notes:
+   *  - "latest day" is data-driven: `MAX(day)` where at least one entry has weight > 0.
+   *  - Latest-day branch reuses a window-function walkback (one pass per day, O(N))
+   *    to pick the latest positive value per metric independently.
+   *  - Average-day branch keeps the AVG-over-positive-only-values logic.
+   *  - entryTimestamp is anchored to start-of-day for every point (MAX for the
+   *    latest day, MIN for earlier days), preserving the chart's x-positions.
    */
   @Query(
     """
-    SELECT
-      strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
-      datetime(MIN(e.entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of day') AS entryTimestamp,
-      AVG(CASE WHEN bse.weight > 0 THEN bse.weight ELSE NULL END) AS weight,
-      AVG(CASE WHEN bse.bodyFat > 0 THEN bse.bodyFat ELSE NULL END) AS bodyFat,
-      AVG(CASE WHEN bse.muscleMass > 0 THEN bse.muscleMass ELSE NULL END) AS muscleMass,
-      AVG(CASE WHEN bse.water > 0 THEN bse.water ELSE NULL END) AS water,
-      AVG(CASE WHEN bse.bmi > 0 THEN bse.bmi ELSE NULL END) AS bmi,
-      AVG(CASE WHEN bsem.bmr > 0 THEN bsem.bmr ELSE NULL END) AS bmr,
-      AVG(CASE WHEN bsem.metabolicAge > 0 THEN bsem.metabolicAge ELSE NULL END) AS metabolicAge,
-      AVG(CASE WHEN bsem.proteinPercent > 0 THEN bsem.proteinPercent ELSE NULL END) AS proteinPercent,
-      AVG(CASE WHEN bsem.pulse > 0 THEN bsem.pulse ELSE NULL END) AS pulse,
-      AVG(CASE WHEN bsem.skeletalMusclePercent > 0 THEN bsem.skeletalMusclePercent ELSE NULL END) AS skeletalMusclePercent,
-      AVG(CASE WHEN bsem.subcutaneousFatPercent > 0 THEN bsem.subcutaneousFatPercent ELSE NULL END) AS subcutaneousFatPercent,
-      AVG(CASE WHEN bsem.visceralFatLevel > 0 THEN bsem.visceralFatLevel ELSE NULL END) AS visceralFatLevel,
-      AVG(CASE WHEN bsem.boneMass > 0 THEN bsem.boneMass ELSE NULL END) AS boneMass,
-      AVG(CASE WHEN bsem.impedance > 0 THEN bsem.impedance ELSE NULL END) AS impedance,
-      MAX(e.unit) AS unit
-    FROM entry_view AS e
-    LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
-    LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
-    WHERE e.accountId = :accountId
-      AND (e.operationType IS NULL OR e.operationType != 'delete')
-    GROUP BY period
-    ORDER BY period DESC
+WITH daily_entries AS (
+  SELECT
+    strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS day,
+    e.entryTimestamp,
+    e.unit,
+    bse.weight,
+    bse.bodyFat,
+    bse.muscleMass,
+    bse.water,
+    bse.bmi,
+    bsem.bmr,
+    bsem.metabolicAge,
+    bsem.proteinPercent,
+    bsem.pulse,
+    bsem.skeletalMusclePercent,
+    bsem.subcutaneousFatPercent,
+    bsem.visceralFatLevel,
+    bsem.boneMass,
+    bsem.impedance
+  FROM entry_view e
+  LEFT JOIN body_scale_entry bse ON e.id = bse.id
+  LEFT JOIN body_scale_entry_metric bsem ON e.id = bsem.id
+  WHERE e.accountId = :accountId
+    AND (e.operationType IS NULL OR e.operationType != 'delete')
+),
+latest_day_cte AS (
+  SELECT MAX(day) AS latest_day FROM daily_entries WHERE weight > 0
+),
+ranked AS (
+  SELECT
+    de.day,
+    de.entryTimestamp,
+    de.unit,
+    de.weight, de.bodyFat, de.muscleMass, de.water, de.bmi,
+    de.bmr, de.metabolicAge, de.proteinPercent, de.pulse,
+    de.skeletalMusclePercent, de.subcutaneousFatPercent,
+    de.visceralFatLevel, de.boneMass, de.impedance,
+    MAX(CASE WHEN de.weight                 > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_weight,
+    MAX(CASE WHEN de.bodyFat                > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_bodyFat,
+    MAX(CASE WHEN de.muscleMass             > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_muscleMass,
+    MAX(CASE WHEN de.water                  > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_water,
+    MAX(CASE WHEN de.bmi                    > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_bmi,
+    MAX(CASE WHEN de.bmr                    > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_bmr,
+    MAX(CASE WHEN de.metabolicAge           > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_metabolicAge,
+    MAX(CASE WHEN de.proteinPercent         > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_proteinPercent,
+    MAX(CASE WHEN de.pulse                  > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_pulse,
+    MAX(CASE WHEN de.skeletalMusclePercent  > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_skeletalMusclePercent,
+    MAX(CASE WHEN de.subcutaneousFatPercent > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_subcutaneousFatPercent,
+    MAX(CASE WHEN de.visceralFatLevel       > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_visceralFatLevel,
+    MAX(CASE WHEN de.boneMass               > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_boneMass,
+    MAX(CASE WHEN de.impedance              > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_impedance,
+    MAX(CASE WHEN de.unit IS NOT NULL           THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_unit,
+    (SELECT latest_day FROM latest_day_cte) AS latest_day
+  FROM daily_entries de
+)
+SELECT
+  day AS period,
+  CASE WHEN day = latest_day
+    THEN datetime(MAX(entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of day')
+    ELSE datetime(MIN(entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of day')
+  END AS entryTimestamp,
+  CASE WHEN day = latest_day
+    THEN MAX(CASE WHEN entryTimestamp = lt_weight                 AND weight                 > 0 THEN weight                 END)
+    ELSE AVG(CASE WHEN weight                 > 0 THEN weight                 ELSE NULL END)
+  END AS weight,
+  CASE WHEN day = latest_day
+    THEN MAX(CASE WHEN entryTimestamp = lt_bodyFat                AND bodyFat                > 0 THEN bodyFat                END)
+    ELSE AVG(CASE WHEN bodyFat                > 0 THEN bodyFat                ELSE NULL END)
+  END AS bodyFat,
+  CASE WHEN day = latest_day
+    THEN MAX(CASE WHEN entryTimestamp = lt_muscleMass             AND muscleMass             > 0 THEN muscleMass             END)
+    ELSE AVG(CASE WHEN muscleMass             > 0 THEN muscleMass             ELSE NULL END)
+  END AS muscleMass,
+  CASE WHEN day = latest_day
+    THEN MAX(CASE WHEN entryTimestamp = lt_water                  AND water                  > 0 THEN water                  END)
+    ELSE AVG(CASE WHEN water                  > 0 THEN water                  ELSE NULL END)
+  END AS water,
+  CASE WHEN day = latest_day
+    THEN MAX(CASE WHEN entryTimestamp = lt_bmi                    AND bmi                    > 0 THEN bmi                    END)
+    ELSE AVG(CASE WHEN bmi                    > 0 THEN bmi                    ELSE NULL END)
+  END AS bmi,
+  CASE WHEN day = latest_day
+    THEN MAX(CASE WHEN entryTimestamp = lt_bmr                    AND bmr                    > 0 THEN bmr                    END)
+    ELSE AVG(CASE WHEN bmr                    > 0 THEN bmr                    ELSE NULL END)
+  END AS bmr,
+  CASE WHEN day = latest_day
+    THEN MAX(CASE WHEN entryTimestamp = lt_metabolicAge           AND metabolicAge           > 0 THEN metabolicAge           END)
+    ELSE AVG(CASE WHEN metabolicAge           > 0 THEN metabolicAge           ELSE NULL END)
+  END AS metabolicAge,
+  CASE WHEN day = latest_day
+    THEN MAX(CASE WHEN entryTimestamp = lt_proteinPercent         AND proteinPercent         > 0 THEN proteinPercent         END)
+    ELSE AVG(CASE WHEN proteinPercent         > 0 THEN proteinPercent         ELSE NULL END)
+  END AS proteinPercent,
+  CASE WHEN day = latest_day
+    THEN MAX(CASE WHEN entryTimestamp = lt_pulse                  AND pulse                  > 0 THEN pulse                  END)
+    ELSE AVG(CASE WHEN pulse                  > 0 THEN pulse                  ELSE NULL END)
+  END AS pulse,
+  CASE WHEN day = latest_day
+    THEN MAX(CASE WHEN entryTimestamp = lt_skeletalMusclePercent  AND skeletalMusclePercent  > 0 THEN skeletalMusclePercent  END)
+    ELSE AVG(CASE WHEN skeletalMusclePercent  > 0 THEN skeletalMusclePercent  ELSE NULL END)
+  END AS skeletalMusclePercent,
+  CASE WHEN day = latest_day
+    THEN MAX(CASE WHEN entryTimestamp = lt_subcutaneousFatPercent AND subcutaneousFatPercent > 0 THEN subcutaneousFatPercent END)
+    ELSE AVG(CASE WHEN subcutaneousFatPercent > 0 THEN subcutaneousFatPercent ELSE NULL END)
+  END AS subcutaneousFatPercent,
+  CASE WHEN day = latest_day
+    THEN MAX(CASE WHEN entryTimestamp = lt_visceralFatLevel       AND visceralFatLevel       > 0 THEN visceralFatLevel       END)
+    ELSE AVG(CASE WHEN visceralFatLevel       > 0 THEN visceralFatLevel       ELSE NULL END)
+  END AS visceralFatLevel,
+  CASE WHEN day = latest_day
+    THEN MAX(CASE WHEN entryTimestamp = lt_boneMass               AND boneMass               > 0 THEN boneMass               END)
+    ELSE AVG(CASE WHEN boneMass               > 0 THEN boneMass               ELSE NULL END)
+  END AS boneMass,
+  CASE WHEN day = latest_day
+    THEN MAX(CASE WHEN entryTimestamp = lt_impedance              AND impedance              > 0 THEN impedance              END)
+    ELSE AVG(CASE WHEN impedance              > 0 THEN impedance              ELSE NULL END)
+  END AS impedance,
+  CASE WHEN day = latest_day
+    THEN MAX(CASE WHEN entryTimestamp = lt_unit                   AND unit IS NOT NULL           THEN unit                   END)
+    ELSE MAX(unit)
+  END AS unit
+FROM ranked
+GROUP BY day
+ORDER BY day DESC
     """,
   )
   fun getWeightDailyGraphData(accountId: String): Flow<List<PeriodBodyScaleSummary>>
@@ -402,23 +523,61 @@ interface EntryReadDao {
   fun getBpmMonthlyGraphData(accountId: String): Flow<List<PeriodBpmSummary>>
 
   /**
-   * BP daily averages for graph — avg systolic/diastolic/pulse grouped by day.
-   * Used for WEEK graph segment.
+   * BP daily graph data — hybrid daywise query (MA-3965 latest-vs-average rule).
+   *
+   * Used for the WEEK and MONTH graph segments. The most recent day with a valid
+   * reading surfaces that **latest reading's** systolic/diastolic/pulse (all taken
+   * from the single most recent entry, since BP values are recorded together);
+   * every earlier day surfaces the **daily average**. Earlier-day averaging and the
+   * `MAX(entryTimestamp)` x-position match the previous pure-average query, so only
+   * the latest day's value changes.
    */
   @Query(
     """
-    SELECT
-        strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
-        MAX(e.entryTimestamp) AS entryTimestamp,
-        CAST(AVG(bp.systolic) AS INTEGER) AS avgSystolic,
-        CAST(AVG(bp.diastolic) AS INTEGER) AS avgDiastolic,
-        CAST(AVG(bp.pulse) AS INTEGER) AS avgPulse
-    FROM entry_view e
-    INNER JOIN bpm_entry bp ON e.id = bp.id
-    WHERE e.accountId = :accountId
-      AND (e.operationType IS NULL OR e.operationType != 'delete')
-    GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
-    ORDER BY period DESC
+WITH daily_bp AS (
+  SELECT
+    strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS day,
+    e.entryTimestamp,
+    bp.systolic,
+    bp.diastolic,
+    bp.pulse
+  FROM entry_view e
+  INNER JOIN bpm_entry bp ON e.id = bp.id
+  WHERE e.accountId = :accountId
+    AND (e.operationType IS NULL OR e.operationType != 'delete')
+),
+latest_day_cte AS (
+  SELECT MAX(day) AS latest_day FROM daily_bp WHERE systolic > 0
+),
+ranked AS (
+  SELECT
+    d.day,
+    d.entryTimestamp,
+    d.systolic,
+    d.diastolic,
+    d.pulse,
+    MAX(CASE WHEN d.systolic > 0 THEN d.entryTimestamp END) OVER (PARTITION BY d.day) AS lt_ts,
+    (SELECT latest_day FROM latest_day_cte) AS latest_day
+  FROM daily_bp d
+)
+SELECT
+  day AS period,
+  MAX(entryTimestamp) AS entryTimestamp,
+  CASE WHEN day = latest_day
+    THEN CAST(MAX(CASE WHEN entryTimestamp = lt_ts THEN systolic END) AS INTEGER)
+    ELSE CAST(AVG(systolic) AS INTEGER)
+  END AS avgSystolic,
+  CASE WHEN day = latest_day
+    THEN CAST(MAX(CASE WHEN entryTimestamp = lt_ts THEN diastolic END) AS INTEGER)
+    ELSE CAST(AVG(diastolic) AS INTEGER)
+  END AS avgDiastolic,
+  CASE WHEN day = latest_day
+    THEN CAST(MAX(CASE WHEN entryTimestamp = lt_ts THEN pulse END) AS INTEGER)
+    ELSE CAST(AVG(pulse) AS INTEGER)
+  END AS avgPulse
+FROM ranked
+GROUP BY day
+ORDER BY period DESC
     """,
   )
   fun getBpmDailyGraphData(accountId: String): Flow<List<PeriodBpmSummary>>
@@ -684,24 +843,59 @@ interface EntryReadDao {
   fun getBabyMonthlyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>
 
   /**
-   * Baby daily averages for graph — avg weight/length grouped by day.
-   * Used for WEEK graph segment.
+   * Baby daily graph data — hybrid daywise query (MA-3965 latest-vs-average rule).
+   *
+   * Used for the WEEK and MONTH graph segments. The most recent day with a valid
+   * weight entry surfaces the **latest** non-null positive weight/length; every
+   * earlier day keeps the **daily average** exactly as the previous query computed
+   * it (plain `CAST(AVG(...))`), so only the latest day's value changes. "latest
+   * day" is data-driven per baby (`MAX(day)` where weight > 0).
    */
   @Query(
     """
-    SELECT
-        be.babyId AS babyId,
-        strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
-        MAX(e.entryTimestamp) AS entryTimestamp,
-        CAST(AVG(be.babyWeightDecigrams) AS INTEGER) AS avgWeightDecigrams,
-        CAST(AVG(be.babyLengthMillimeters) AS INTEGER) AS avgLengthMillimeters
-    FROM entry_view e
-    INNER JOIN baby_entry be ON e.id = be.id
-    WHERE e.accountId = :accountId
-      AND be.babyId = :babyId
-      AND (e.operationType IS NULL OR e.operationType != 'delete')
-    GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
-    ORDER BY period DESC
+WITH daily_baby AS (
+  SELECT
+    be.babyId AS babyId,
+    strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS day,
+    e.entryTimestamp,
+    be.babyWeightDecigrams AS weightDecigrams,
+    be.babyLengthMillimeters AS lengthMillimeters
+  FROM entry_view e
+  INNER JOIN baby_entry be ON e.id = be.id
+  WHERE e.accountId = :accountId
+    AND be.babyId = :babyId
+    AND (e.operationType IS NULL OR e.operationType != 'delete')
+),
+latest_day_cte AS (
+  SELECT MAX(day) AS latest_day FROM daily_baby WHERE weightDecigrams > 0
+),
+ranked AS (
+  SELECT
+    d.babyId,
+    d.day,
+    d.entryTimestamp,
+    d.weightDecigrams,
+    d.lengthMillimeters,
+    MAX(CASE WHEN d.weightDecigrams   > 0 THEN d.entryTimestamp END) OVER (PARTITION BY d.day) AS lt_weight,
+    MAX(CASE WHEN d.lengthMillimeters > 0 THEN d.entryTimestamp END) OVER (PARTITION BY d.day) AS lt_length,
+    (SELECT latest_day FROM latest_day_cte) AS latest_day
+  FROM daily_baby d
+)
+SELECT
+  MAX(babyId) AS babyId,
+  day AS period,
+  MAX(entryTimestamp) AS entryTimestamp,
+  CASE WHEN day = latest_day
+    THEN CAST(MAX(CASE WHEN entryTimestamp = lt_weight AND weightDecigrams > 0 THEN weightDecigrams END) AS INTEGER)
+    ELSE CAST(AVG(weightDecigrams) AS INTEGER)
+  END AS avgWeightDecigrams,
+  CASE WHEN day = latest_day
+    THEN CAST(MAX(CASE WHEN entryTimestamp = lt_length AND lengthMillimeters > 0 THEN lengthMillimeters END) AS INTEGER)
+    ELSE CAST(AVG(lengthMillimeters) AS INTEGER)
+  END AS avgLengthMillimeters
+FROM ranked
+GROUP BY day
+ORDER BY period DESC
     """,
   )
   fun getBabyDailyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>

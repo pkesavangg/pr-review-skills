@@ -10,6 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
@@ -34,6 +35,10 @@ import com.greatergoods.ggInAppMessaging.theme.LocalIamColors
 import com.greatergoods.ggInAppMessaging.theme.LocalIamTypography
 import com.greatergoods.ggInAppMessaging.theme.model.IamTypography
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.res.Configuration
+import android.content.res.Resources
 
 val LocalAppTheme =
   staticCompositionLocalOf<ThemeMode> {
@@ -134,9 +139,32 @@ fun MeAppTheme(
       }
     }
 
+  // Override Configuration.uiMode so painterResource() and other resource lookups
+  // resolve drawable-night/, values-night/, raw-night/ against the user's pick
+  // instead of the OS-level uiMode. Without this, multi-color icons like
+  // ic_settings_selected (selected bottom-nav tab) stay stuck on the OS theme
+  // when the user switches in-app Appearance — see MA-3996.
+  val baseContext = LocalContext.current
+  val configuration = LocalConfiguration.current
+  val themedContext = remember(baseContext, configuration, darkTheme) {
+    val nightFlag = if (darkTheme) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO
+    // Rebuild from the live LocalConfiguration (not baseContext's snapshot) and flip only the
+    // night bit, so screenWidthDp/fontScale/locale/orientation still propagate on config changes.
+    val overridden = Configuration(configuration).apply {
+      uiMode = applyNightFlag(uiMode, nightFlag)
+    }
+    // Wrap with ContextWrapper so the Activity remains discoverable via
+    // getBaseContext() — required by hiltViewModel() and other Activity-context
+    // lookups. Plain createConfigurationContext() returns a ContextImpl with no
+    // Activity in its base chain and breaks Hilt.
+    ThemedContextWrapper(baseContext, baseContext.createConfigurationContext(overridden).resources)
+  }
+
   CompositionLocalProvider(
     LocalAppTheme provides themeMode,
     LocalColorScheme provides meAppColorScheme,
+    LocalContext provides themedContext,
+    LocalConfiguration provides themedContext.resources.configuration,
     LocalDensity provides cappedDensity,
     LocalTypography provides AppTypography,
     LocalSpacing provides SpacingToken,
@@ -279,4 +307,18 @@ object MeTheme {
   val borderRadius: BorderRadius
     @Composable @ReadOnlyComposable
     get() = LocalBorderRadius.current
+}
+
+/**
+ * Context wrapper that returns an override Resources (with adjusted Configuration.uiMode)
+ * while keeping the original Activity discoverable via base context. This is required
+ * because `hiltViewModel()` and related APIs walk getBaseContext() looking for an
+ * Activity — `createConfigurationContext()` alone returns a ContextImpl that breaks
+ * that lookup. See MA-3996.
+ */
+private class ThemedContextWrapper(
+  base: Context,
+  private val themedResources: Resources,
+) : ContextWrapper(base) {
+  override fun getResources(): Resources = themedResources
 }

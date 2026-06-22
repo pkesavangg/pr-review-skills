@@ -84,16 +84,17 @@ fun DeviceReadyStep(
         ) {
             AppButton(
                 label = DeviceReadyStrings.finish,
-                type = ButtonType.SecondaryFilled,
+                type = ButtonType.PrimaryFilled,
                 size = ButtonSize.Large,
                 onClick = onFinish,
             )
             AppButton(
                 label = DeviceReadyStrings.connectAnother,
-                type = ButtonType.TextSecondary,
+                type = ButtonType.TextPrimary,
                 size = ButtonSize.Large,
                 onClick = onConnectAnother,
             )
+            Spacer(modifier = Modifier.height(MeTheme.spacing.md))
         }
     }
 }

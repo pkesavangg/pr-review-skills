@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
@@ -70,6 +71,9 @@ constructor(
   }
 
   override fun provideInitialState(): BtScaleSetupState = BtScaleSetupState()
+
+  /** Surface the My Weight dashboard after adding a scale (MOB-422). */
+  override fun productSelectionAfterSetup(): ProductSelection = ProductSelection.MyWeight
 
   override suspend fun onSetupFinished() {
     dialogQueueService.showLoader(ScaleSetupStrings.SaveScaleLoader)

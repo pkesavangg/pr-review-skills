@@ -16,6 +16,7 @@ import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.components.HeightInput
 import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
 import com.dmdbrands.gurus.weight.features.common.components.showRadioGroupModal
+import com.dmdbrands.gurus.weight.features.common.helper.form.AppValidatorConfig
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
@@ -83,8 +84,13 @@ class ProfileViewModel @Inject constructor(
               lastName = currentAccount.lastName,
               email = currentAccount.email,
               zipcode = currentAccount.zipcode,
+              // For an unset DOB (e.g. baby-only accounts, MOB-591) fall back to the form's
+              // default sentinel instead of coercing null -> "" -> today. Passing "" here would
+              // make getEpochMillisFromIsoString swallow the parse failure and return now, so the
+              // editor would pre-fill the birthday to today and could persist a wrong DOB on save.
               birthday = DateTimeValue.Date(
-                DateTimeValue.getEpochMillisFromIsoString(currentAccount.dob),
+                currentAccount.dob?.let { DateTimeValue.getEpochMillisFromIsoString(it) }
+                  ?: DateTimeValue.getEpochMillisFromDateString(AppValidatorConfig.DateOfBirth.DEFAULT_VALUE),
               ),
               gender = currentAccount.gender ?: "",
               height = currentAccount.height ?: 0,
@@ -169,6 +175,18 @@ class ProfileViewModel @Inject constructor(
       val newGender = formControls.gender.value.ifEmpty { null }
       val newHeight = formControls.height.value.takeIf { it > 0 }
 
+      // Don't fabricate a DOB for an account that never had one. If the account's dob was unset
+      // and the user left the picker on the default sentinel, send null so the server keeps it
+      // unset rather than persisting the sentinel/today as a real birthday (MOB-591).
+      val birthdayMillis = formControls.birthday.value.getTimestamp()
+      val defaultBirthdayMillis =
+        DateTimeValue.getEpochMillisFromDateString(AppValidatorConfig.DateOfBirth.DEFAULT_VALUE)
+      val newDob = if (currentAccount.dob == null && birthdayMillis == defaultBirthdayMillis) {
+        null
+      } else {
+        DateTimeValue.getDateFormatFromMilliseconds(birthdayMillis)
+      }
+
       val profileUpdateRequest = ProfileUpdateRequest(
         id = currentAccount.id,
         firstName = formControls.firstName.value.trim(),
@@ -176,7 +194,7 @@ class ProfileViewModel @Inject constructor(
         email = formControls.email.value.trim(),
         zipcode = formControls.zipcode.value.trim(),
         gender = newGender ?: currentAccount.gender,
-        dob = DateTimeValue.getDateFormatFromMilliseconds(formControls.birthday.value.getTimestamp()),
+        dob = newDob,
       )
       try {
         var scaleResult: GGUserActionResponseType? = null

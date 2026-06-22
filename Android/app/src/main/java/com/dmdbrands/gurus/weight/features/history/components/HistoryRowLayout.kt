@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -54,9 +52,8 @@ fun HistoryRowLayout(
       )
       .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
     verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.lg),
   ) {
-    // Content: month + product columns, spread evenly
+    // Content: month + product columns, spread evenly across the available width.
     Row(
       modifier = Modifier.weight(1f),
       verticalAlignment = Alignment.CenterVertically,
@@ -83,8 +80,9 @@ fun HistoryRowLayout(
       content()
     }
 
-    // Right chevron
+    // Right chevron — explicit 32dp gap so it stays flush regardless of inner-row width.
     AppIcon(
+      modifier = Modifier.padding(start = MeTheme.spacing.lg),
       id = AppIcons.Default.RightCaret,
       contentDescription = HistoryItemStrings.GoToMonthView,
       onClick = null,

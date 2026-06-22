@@ -36,7 +36,7 @@ struct UserNumberButtonGrid: View {
                                     Circle()
                                         .stroke(theme.actionPrimary, lineWidth: 2)
                                 )
-                            
+
                             Text("U\(number)")
                                 .fontOpenSans(.button1)
                                 .foregroundColor(isSelected ? theme.actionInverse : theme.actionPrimary)
@@ -49,6 +49,11 @@ struct UserNumberButtonGrid: View {
                                 onNumberSelected?(number)
                             }
                         }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(ScaleSetupStrings.A11y.userNumberLabel(number))
+                        .accessibilityHint(ScaleSetupStrings.A11y.userNumberHint)
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityAddTraits(isSelected ? .isSelected : [])
                     }
                 }
             }

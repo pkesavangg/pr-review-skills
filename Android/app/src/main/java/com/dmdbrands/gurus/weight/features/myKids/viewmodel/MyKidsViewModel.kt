@@ -91,6 +91,10 @@ class MyKidsViewModel @Inject constructor(
                     handleIntent(MyKidsIntent.SetActiveBabyId(profile.id))
                 }
 
+                // Refresh available products so the new baby appears in the dropdown
+                // (and replaces the "Baby Scale" empty entry) without an app restart. (MOB-416)
+                productSelectionManager.loadAvailableProducts(accountId)
+
                 AppLog.d(TAG, "Saved baby profile: ${profile.id}")
                 navigationService.navigateBack()
             } catch (e: Exception) {
@@ -104,12 +108,10 @@ class MyKidsViewModel @Inject constructor(
     private fun deleteBaby(babyId: String) {
         viewModelScope.launch {
             try {
+                val accountId = accountRepository.getActiveAccount().first()?.id
                 babyProfileService.delete(babyId)
-                // If deleted baby was the active one, clear activeBabyId
-                if (_state.value.activeBabyId == babyId) {
-                    val activeAccount = accountRepository.getActiveAccount().first()
-                    val accountId = activeAccount?.id ?: return@launch
-                    // Set next available baby as active, or null if none
+                // If deleted baby was the active one, move active to the next or clear it
+                if (_state.value.activeBabyId == babyId && accountId != null) {
                     val remaining = _state.value.babies.filter { it.id != babyId }
                     val nextId = remaining.firstOrNull()?.id
                     if (nextId != null) {
@@ -119,6 +121,12 @@ class MyKidsViewModel @Inject constructor(
                         accountRepository.clearActiveBabyId(accountId)
                         handleIntent(MyKidsIntent.SetActiveBabyId(null))
                     }
+                }
+                // Refresh available products so the dropdown and baby surfaces update live:
+                // deleting the last baby surfaces "Baby Scale" when a scale is owned (empty
+                // state + ADD A BABY), otherwise drops the baby entry entirely. (MOB-416)
+                if (accountId != null) {
+                    productSelectionManager.loadAvailableProducts(accountId)
                 }
                 AppLog.d(TAG, "Deleted baby profile: $babyId")
             } catch (e: Exception) {

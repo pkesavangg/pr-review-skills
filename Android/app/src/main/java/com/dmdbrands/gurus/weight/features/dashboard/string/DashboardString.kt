@@ -10,8 +10,8 @@ object DashboardString {
   }
 
   object EmptyMetric {
-    const val description = "To collect an entry, connect a scale or add a manual entry. "
-    const val connectScale = "Connect Scale"
+    const val description = "To collect an entry, connect a device or add a manual entry."
+    const val connectScale = "Connect Device"
   }
 
   object ControlPanel {

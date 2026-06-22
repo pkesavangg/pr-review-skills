@@ -76,6 +76,7 @@ fun DashboardSnapshotScreen(
             is ProductSelection.MyWeight -> "weight"
             is ProductSelection.BloodPressure -> "bp"
             is ProductSelection.Baby -> "baby-${product.profile.id}"
+            is ProductSelection.BabyScale -> "baby-scale"
           }
         },
       ) { product ->
@@ -112,6 +113,10 @@ fun DashboardSnapshotScreen(
               }
             },
           )
+
+          // Baby scale owned but no profile: snapshot empty card is tracked separately
+          // (MOB-431). MOB-416 surfaces the empty state on the single dashboard instead.
+          is ProductSelection.BabyScale -> Unit
         }
       }
     }

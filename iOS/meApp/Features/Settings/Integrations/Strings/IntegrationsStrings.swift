@@ -30,4 +30,8 @@ struct IntegrationsStrings {
     static let requestIntegrationSuccessTitle = "Thanks for the suggestion"
     static let requestIntegrationSuccessMessage = "Our team will do our best to get it added in the future."
     static let requestIntegrationSuccessDismiss = "DISMISS"
+
+    static let requestIntegrationErrorTitle = "Couldn't send request"
+    static let requestIntegrationErrorMessage = "Something went wrong. Please try again."
+    static let requestIntegrationErrorDismiss = "DISMISS"
 }

@@ -5,15 +5,19 @@ import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
+import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
+import javax.inject.Provider
 
 class ProductSelectionManager @Inject constructor(
   private val productSelectionRepository: IProductSelectionRepository,
+  // Provider breaks a potential Hilt init cycle (AccountService graph is large).
+  private val accountService: Provider<IAccountService>,
 ) : IProductSelectionManager {
 
   private val _availableProducts = MutableStateFlow<List<ProductSelection>>(listOf(ProductSelection.MyWeight))
@@ -24,6 +28,9 @@ class ProductSelectionManager @Inject constructor(
 
   private val _isSnapshotMode = MutableStateFlow(true)
   override val isSnapshotMode: StateFlow<Boolean> = _isSnapshotMode.asStateFlow()
+
+  private val _hasBabyScaleDevice = MutableStateFlow(false)
+  override val hasBabyScaleDevice: StateFlow<Boolean> = _hasBabyScaleDevice.asStateFlow()
 
   override fun setSnapshotMode(enabled: Boolean) {
     _isSnapshotMode.value = enabled
@@ -45,6 +52,8 @@ class ProductSelectionManager @Inject constructor(
 
     val babyProfiles = productSelectionRepository.getBabyProfiles(accountId)
     val hasBpm = productSelectionRepository.hasBpmDevice(accountId)
+    val hasBabyScale = productSelectionRepository.hasBabyScaleDevice(accountId)
+    _hasBabyScaleDevice.value = hasBabyScale
 
     val products = mutableListOf<ProductSelection>(ProductSelection.MyWeight)
 
@@ -52,8 +61,14 @@ class ProductSelectionManager @Inject constructor(
       products.add(ProductSelection.BloodPressure)
     }
 
-    babyProfiles.forEach { profile ->
-      products.add(ProductSelection.Baby(profile))
+    if (babyProfiles.isNotEmpty()) {
+      babyProfiles.forEach { profile ->
+        products.add(ProductSelection.Baby(profile))
+      }
+    } else if (hasBabyScale) {
+      // Owns a baby scale but has no profiles (e.g. deleted last baby): keep
+      // "Baby Scale" in the dropdown so taps route to the add-baby flow. (MOB-416)
+      products.add(ProductSelection.BabyScale)
     }
 
     _availableProducts.value = products
@@ -61,6 +76,13 @@ class ProductSelectionManager @Inject constructor(
 
     _selectedProduct.value = restoreSavedSelection(products)
     _isSnapshotMode.value = !productSelectionRepository.observeHasUserSelected().first()
+  }
+
+  override suspend fun persistProductForSetup(productType: ProductType) {
+    // Submit to the server (spec §2.19). Swallow failures: a network hiccup here must never
+    // disrupt the just-completed device setup — the next account sync will reconcile.
+    runCatching { accountService.get().addProduct(productType) }
+      .onFailure { AppLog.e(TAG, "persistProductForSetup failed for ${productType.apiValue}", it) }
   }
 
   /**
@@ -78,6 +100,7 @@ class ProductSelectionManager @Inject constructor(
       ProductType.BABY -> available.filterIsInstance<ProductSelection.Baby>()
         .firstOrNull { it.profile.id == savedBabyId }
         ?: available.firstOrNull { it is ProductSelection.Baby }
+        ?: available.firstOrNull { it is ProductSelection.BabyScale }
     } ?: ProductSelection.MyWeight
   }
 
@@ -113,6 +136,6 @@ class ProductSelectionManager @Inject constructor(
     private const val TAG = "ProductSelectionManager"
 
     /** Flip to `true` to use sample products (BP + 2 babies) for testing. */
-    var USE_SAMPLE_PRODUCTS = true
+    var USE_SAMPLE_PRODUCTS = false
   }
 }

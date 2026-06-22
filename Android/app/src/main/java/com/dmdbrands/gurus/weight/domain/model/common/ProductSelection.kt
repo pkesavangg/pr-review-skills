@@ -17,4 +17,14 @@ sealed class ProductSelection {
     data class Baby(val profile: BabyProfile) : ProductSelection() {
         override val productType = ProductType.BABY
     }
+
+    /**
+     * The user owns a baby scale but currently has no baby profiles (e.g. deleted
+     * their last one, or completed Baby Scale signup but skipped baby details).
+     * Keeps "Baby Scale" available in the product dropdown; baby surfaces render an
+     * empty state with an `ADD A BABY` CTA. (MOB-416)
+     */
+    data object BabyScale : ProductSelection() {
+        override val productType = ProductType.BABY
+    }
 }

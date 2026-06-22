@@ -7,6 +7,7 @@ final class MockEntryRepository: EntryRepositoryProtocol {
 
     var saveEntryError: Error?
     var updateEntryError: Error?
+    var updateEntryServerEntryIdError: Error?
     var deleteEntryError: Error?
     var deleteAllEntriesError: Error?
     var fetchEntriesAsDTOError: Error?
@@ -19,6 +20,8 @@ final class MockEntryRepository: EntryRepositoryProtocol {
     private(set) var updateEntryCalls = 0
     private(set) var deleteEntryCalls = 0
     private(set) var updateEntrySyncStatusCalls = 0
+    private(set) var updateEntryServerEntryIdCalls = 0
+    private(set) var lastServerEntryId: String?
     private(set) var fetchEntriesAsDTOCalls = 0
 
     private(set) var lastSavedEntry: Entry?
@@ -47,6 +50,15 @@ final class MockEntryRepository: EntryRepositoryProtocol {
         if let updateEntryError { throw updateEntryError }
         entries.removeAll(where: { $0.id == entry.id })
         entries.append(entry)
+    }
+
+    func updateEntryServerEntryId(entryId: String, serverEntryId: String) async throws {
+        updateEntryServerEntryIdCalls += 1
+        lastServerEntryId = serverEntryId
+        if let updateEntryServerEntryIdError { throw updateEntryServerEntryIdError }
+        if let entry = entries.first(where: { $0.id.uuidString == entryId }) {
+            entry.serverEntryId = serverEntryId
+        }
     }
 
     func updateEntrySyncStatus(entryId: String, isSynced: Bool, isFailedToSync: Bool, attempts: Int) async throws {

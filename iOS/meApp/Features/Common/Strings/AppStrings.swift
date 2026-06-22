@@ -1047,6 +1047,12 @@ struct AppSyncEntryCardStrings {
     static let muscleMass = "Muscle Mass"
     static let waterWeight = "Water Weight"
     static let bmi = "BMI"
+
+    struct A11y {
+        static let metricsGroupLabel = "Scan results"
+        static let saveHint = "Double tap to save this entry"
+        static let editHint = "Double tap to edit this entry before saving"
+    }
 }
 
 /// Constants used in the Set A Goal card

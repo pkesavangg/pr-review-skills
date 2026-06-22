@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
+import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.ICrashReportingService
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.settings.manager.IDataSettingsManager
@@ -29,6 +30,7 @@ constructor(
   private val scaleSettingsManager: IScaleSettingsManager,
   private val dataSettingsManager: IDataSettingsManager,
   private val crashReportingService: ICrashReportingService,
+  private val deviceService: IDeviceService,
 ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
   SettingsReducer(),
 ) {
@@ -45,6 +47,8 @@ constructor(
     scaleSettingsManager.loadMacAddressSettings(viewModelScope, ::dispatchIntent)
     notificationSettingsManager.initFeedNotificationListener(viewModelScope, ::dispatchIntent)
     dataSettingsManager.observeExportEnabled(viewModelScope, ::dispatchIntent)
+    observeWeightScalePairing()
+    unitSettingsManager.observeBabyWeightUnit(viewModelScope, ::dispatchIntent)
   }
 
   override fun onDependenciesReady() {
@@ -99,8 +103,8 @@ constructor(
         notificationSettingsManager.onNotificationsClick(viewModelScope, ::currentState)
       }
 
-      SettingsIntent.ShowWeightlessModal -> {
-        profileSettingsManager.onShowWeightlessModal(viewModelScope, ::currentState)
+      SettingsIntent.NavigateToWeightless -> {
+        profileSettingsManager.onWeightlessClick(viewModelScope)
       }
 
       SettingsIntent.goalSettingModal -> {
@@ -186,12 +190,26 @@ constructor(
     handleIntent(intent)
   }
 
+  private fun observeWeightScalePairing() {
+    viewModelScope.launch {
+      deviceService.hasWeightScale
+        .distinctUntilChanged()
+        .collect { hasWeightScale -> dispatchIntent(SettingsIntent.SetHasWeightScale(hasWeightScale)) }
+    }
+  }
+
   private fun observeProductSelection() {
     viewModelScope.launch {
       productSelectionManager.selectedProduct
         .map { it.productType == ProductType.BABY }
         .distinctUntilChanged()
         .collect { isBaby -> dispatchIntent(SettingsIntent.SetIsBabyProduct(isBaby)) }
+    }
+    // "My Kids" always shows in Settings; its enabled state is driven by baby-scale
+    // device ownership rather than an existing baby profile. (MOB-416)
+    viewModelScope.launch {
+      productSelectionManager.hasBabyScaleDevice
+        .collect { hasDevice -> dispatchIntent(SettingsIntent.SetHasBabyScaleDevice(hasDevice)) }
     }
   }
 

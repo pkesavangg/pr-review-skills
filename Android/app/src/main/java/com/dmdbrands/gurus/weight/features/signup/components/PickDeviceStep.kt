@@ -88,7 +88,13 @@ fun PickDeviceStep(
         cardAlignmentType = LocalCardAlignment.current,
         modifier = modifier,
     ) {
-        AppText(PickDeviceStrings.title, TextType.Title, spacing = MeTheme.spacing.lg)
+        AppText(PickDeviceStrings.title, TextType.Title, spacing = MeTheme.spacing.xs)
+        AppText(
+            text = PickDeviceStrings.addLaterNote,
+            textType = TextType.SubHeading,
+            color = MeTheme.colorScheme.textSubheading,
+            spacing = MeTheme.spacing.lg,
+        )
 
         Column(
             verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),

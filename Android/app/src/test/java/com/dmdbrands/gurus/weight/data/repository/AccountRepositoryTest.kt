@@ -20,6 +20,7 @@ import com.dmdbrands.gurus.weight.domain.model.api.user.AccountToken
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.proto.DefaultGraphSegment
 import com.dmdbrands.gurus.weight.proto.ThemeMode
 import com.dmdbrands.gurus.weight.proto.UserAccount
 import com.google.common.truth.Truth.assertThat
@@ -32,8 +33,8 @@ import io.mockk.mockk
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import retrofit2.HttpException
 import retrofit2.Response
 import kotlin.test.assertFailsWith
@@ -147,13 +148,17 @@ class AccountRepositoryTest {
         notificationSettings = null,
         dashboardSettings = null,
         integrationsSettings = null,
+        productSettings = null,
     )
 
-    @Before
+    @BeforeEach
     fun setUp() {
         MockKAnnotations.init(this)
-        // AccountRepository reads userDataStore.currentThemeModeFlow at construction time.
+        // AccountRepository reads userDataStore.currentThemeModeFlow and defaultGraphSegmentFlow
+        // at construction time, so both must be stubbed before constructing the repository.
         every { userDataStore.currentThemeModeFlow } returns flowOf(ThemeMode.SYSTEM)
+        every { userDataStore.defaultGraphSegmentFlow } returns
+            flowOf(DefaultGraphSegment.DEFAULT_GRAPH_SEGMENT_UNSPECIFIED)
         repository = AccountRepository(accountDao, mockk(relaxed = true), userDataStore, tokenManager, mockk(relaxed = true), authAPI, userAPI)
     }
 
@@ -181,6 +186,22 @@ class AccountRepositoryTest {
             repository.login(TEST_EMAIL, TEST_PASSWORD)
         }
         assertThat(e.message).isEqualTo("Network error")
+    }
+
+    @Test
+    fun `login maps account with null gender dob and height without crashing`() = runTest {
+        // MOB-591: per Me App 2.0 spec gender/dob/height are optional for baby-only accounts and
+        // come back as null. Mapping must not throw an NPE while building the domain Account.
+        val infoWithNulls = accountInfo.copy(gender = null, dob = null, height = null)
+        val responseWithNulls = loginResponse.copy(account = infoWithNulls)
+        coEvery { authAPI.login(any()) } returns responseWithNulls
+        coEvery { accountDao.getAccountEntity(any()) } returns null
+
+        // Reaching a returned Account at all proves the null gender/dob/height did not throw an
+        // NPE while building the domain model — the MOB-591 login crash.
+        val result = repository.login(TEST_EMAIL, TEST_PASSWORD)
+
+        assertThat(result.id).isEqualTo(TEST_ACCOUNT_ID)
     }
 
     // -------------------------------------------------------------------------
@@ -430,12 +451,13 @@ class AccountRepositoryTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `logoutAccount API succeeds performs local logout and returns true`() = runTest {
+    fun `logoutAccount marks account expired keeping it listed and returns true`() = runTest {
         val result = repository.logoutAccount(TEST_ACCOUNT_ID, null, isActiveAccount = true)
 
         assertThat(result).isTrue()
         coVerify { accountDao.deactivateAllAccounts() }
-        coVerify { accountDao.logoutAccount(TEST_ACCOUNT_ID) }
+        // "Logged out ≠ gone": the row stays listed (isLoggedIn untouched) — only marked expired.
+        coVerify(exactly = 0) { accountDao.logoutAccount(any()) }
         coVerify { accountDao.markAccountExpired(TEST_ACCOUNT_ID) }
         coVerify { userDataStore.clearAccountTokens(TEST_ACCOUNT_ID) }
     }
@@ -447,17 +469,18 @@ class AccountRepositoryTest {
         val result = repository.logoutAccount(TEST_ACCOUNT_ID, TEST_FCM_TOKEN, isActiveAccount = false)
 
         assertThat(result).isTrue()
-        coVerify { accountDao.logoutAccount(TEST_ACCOUNT_ID) }
+        coVerify { accountDao.markAccountExpired(TEST_ACCOUNT_ID) }
     }
 
     @Test
-    fun `logoutAllAccounts clears all accounts and returns true`() = runTest {
+    fun `logoutAllAccounts marks all accounts expired keeping them listed and returns true`() = runTest {
         every { accountDao.getAllLoggedInAccounts() } returns flowOf(listOf(entityAccountWithRelations))
 
         val result = repository.logoutAllAccounts()
 
         assertThat(result).isTrue()
-        coVerify { accountDao.logoutAllAccounts() }
+        coVerify { accountDao.markAllAccountsExpired() }
+        coVerify(exactly = 0) { accountDao.logoutAllAccounts() }
         coVerify { tokenManager.clearTokens() }
     }
 
@@ -854,7 +877,7 @@ class AccountRepositoryTest {
 
         assertThat(result).isTrue()
         coVerify(exactly = 0) { accountDao.deactivateAllAccounts() }
-        coVerify { accountDao.logoutAccount(TEST_ACCOUNT_ID) }
+        coVerify(exactly = 0) { accountDao.logoutAccount(any()) }
         coVerify { accountDao.markAccountExpired(TEST_ACCOUNT_ID) }
         coVerify { userDataStore.clearAccountTokens(TEST_ACCOUNT_ID) }
     }
@@ -866,11 +889,44 @@ class AccountRepositoryTest {
     @Test
     fun `logoutAllAccounts when DAO throws returns false`() = runTest {
         every { accountDao.getAllLoggedInAccounts() } returns flowOf(listOf(entityAccountWithRelations))
-        coEvery { accountDao.logoutAllAccounts() } throws RuntimeException("DB error")
+        coEvery { accountDao.markAllAccountsExpired() } throws RuntimeException("DB error")
 
         val result = repository.logoutAllAccounts()
 
         assertThat(result).isFalse()
+    }
+
+    // -------------------------------------------------------------------------
+    // removeAccountFromDevice
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `removeAccountFromDevice deletes local account and clears tokens`() = runTest {
+        repository.removeAccountFromDevice(TEST_ACCOUNT_ID, TEST_FCM_TOKEN, isActiveAccount = false)
+
+        coVerify { accountDao.deleteAllTables(TEST_ACCOUNT_ID) }
+        coVerify { userDataStore.clearAccountTokens(TEST_ACCOUNT_ID) }
+        // Not the active account → must not deactivate or clear the global token manager.
+        coVerify(exactly = 0) { accountDao.deactivateAllAccounts() }
+        coVerify(exactly = 0) { tokenManager.clearTokens() }
+    }
+
+    @Test
+    fun `removeAccountFromDevice active account deactivates and clears token manager`() = runTest {
+        repository.removeAccountFromDevice(TEST_ACCOUNT_ID, null, isActiveAccount = true)
+
+        coVerify { accountDao.deactivateAllAccounts() }
+        coVerify { tokenManager.clearTokens() }
+        coVerify { accountDao.deleteAllTables(TEST_ACCOUNT_ID) }
+    }
+
+    @Test
+    fun `removeAccountFromDevice continues local removal when API logout throws`() = runTest {
+        coEvery { authAPI.logoutWithToken(any(), any()) } throws RuntimeException("network")
+
+        repository.removeAccountFromDevice(TEST_ACCOUNT_ID, TEST_FCM_TOKEN, isActiveAccount = false)
+
+        coVerify { accountDao.deleteAllTables(TEST_ACCOUNT_ID) }
     }
 
     // -------------------------------------------------------------------------
@@ -1065,8 +1121,8 @@ class AccountRepositoryTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `logoutAccount when accountDao logoutAccount throws returns false`() = runTest {
-        coEvery { accountDao.logoutAccount(any()) } throws RuntimeException("DB crash")
+    fun `logoutAccount when clearing tokens throws returns false`() = runTest {
+        coEvery { userDataStore.clearAccountTokens(any()) } throws RuntimeException("DB crash")
 
         val result = repository.logoutAccount(TEST_ACCOUNT_ID, null, isActiveAccount = false)
 
@@ -1084,7 +1140,7 @@ class AccountRepositoryTest {
         val result = repository.logoutAllAccounts()
 
         assertThat(result).isTrue()
-        coVerify { accountDao.logoutAllAccounts() }
+        coVerify { accountDao.markAllAccountsExpired() }
         coVerify { tokenManager.clearTokens() }
     }
 

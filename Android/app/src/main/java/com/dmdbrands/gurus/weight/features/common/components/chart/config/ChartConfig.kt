@@ -62,6 +62,14 @@ fun rememberChartConfig(
         percentileBandColor = SnapshotColors.PercentileBand,
         // Baby avgWeightDecigrams is raw storage (not display units) — skip pre-warming.
       )
+
+      // No profile yet (MOB-416): baby surfaces render an empty state instead of a
+      // chart, so this config is never actually drawn — mirror Baby for safety.
+      is ProductSelection.BabyScale -> ChartConfig(
+        lines = listOf(LineSpec(color = SnapshotColors.Baby)),
+        hasPercentileLayer = hasPercentile,
+        percentileBandColor = SnapshotColors.PercentileBand,
+      )
     }
   }
 }

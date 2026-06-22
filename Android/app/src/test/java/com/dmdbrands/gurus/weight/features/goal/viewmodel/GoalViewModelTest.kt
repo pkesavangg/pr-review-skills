@@ -9,6 +9,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -62,6 +63,9 @@ class GoalViewModelTest {
     @MockK(relaxUnitFun = true)
     lateinit var entryService: IEntryService
 
+    @MockK(relaxUnitFun = true)
+    lateinit var entryReadService: IEntryReadService
+
     @MockK(relaxed = true)
     lateinit var ggDeviceService: GGDeviceService
 
@@ -82,7 +86,7 @@ class GoalViewModelTest {
 
     private fun stubDefaultFlows() {
         every { accountService.activeAccountFlow } returns accountFlow
-        every { entryService.latestEntry } returns latestEntryFlow
+        every { entryReadService.latestEntry() } returns latestEntryFlow
     }
 
     private fun createViewModel(): GoalViewModel =
@@ -91,6 +95,7 @@ class GoalViewModelTest {
             accountService = accountService,
             goalService = goalService,
             entryService = entryService,
+            entryReadService = entryReadService,
             ggDeviceService = ggDeviceService,
         ).initTestDependencies(
             navigationService = navigationService,
@@ -328,7 +333,7 @@ class GoalViewModelTest {
         advanceUntilIdle()
 
         verify {
-            dialogQueueService.showToast(match<Toast> {
+            dialogQueueService.showToast(match<Toast.Simple> {
                 it.title == SUCCESS_TITLE && it.message == SUCCESS_MESSAGE
             })
         }

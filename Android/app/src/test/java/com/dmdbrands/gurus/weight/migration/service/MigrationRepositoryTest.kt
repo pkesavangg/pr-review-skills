@@ -224,25 +224,38 @@ class MigrationRepositoryTest {
     }
 
     @Test
-    fun `insertScaleEntries returns partial count when some inserts fail`() = runTest {
+    fun `insertScaleEntries propagates exception when an insert fails`() = runTest {
+        // Production insertScaleEntries does not catch per-row failures; any insert error
+        // propagates so the caller fails the whole migration (forcing a full server re-sync).
         val entries = listOf(mockk<ScaleEntry>(), mockk<ScaleEntry>(), mockk<ScaleEntry>())
         coEvery { entryDao.insert(entries[0] as Entry) } returns 1L
         coEvery { entryDao.insert(entries[1] as Entry) } throws RuntimeException(ENTRY_ERROR)
         coEvery { entryDao.insert(entries[2] as Entry) } returns 3L
 
-        val result = sut.insertScaleEntries(entries)
-
-        assertThat(result).isEqualTo(2)
+        try {
+            sut.insertScaleEntries(entries)
+            @Suppress("UNREACHABLE_CODE")
+            assertThat(false).isTrue()
+        } catch (e: RuntimeException) {
+            assertThat(e.message).isEqualTo(ENTRY_ERROR)
+        }
+        // Stops at the failing entry — the third entry is never inserted.
+        coVerify(exactly = 1) { entryDao.insert(entries[0] as Entry) }
+        coVerify(exactly = 0) { entryDao.insert(entries[2] as Entry) }
     }
 
     @Test
-    fun `insertScaleEntries returns zero when all inserts fail`() = runTest {
+    fun `insertScaleEntries propagates exception when first insert fails`() = runTest {
         val entries = listOf(mockk<ScaleEntry>(), mockk<ScaleEntry>())
         coEvery { entryDao.insert(any<Entry>()) } throws RuntimeException(ENTRY_ERROR)
 
-        val result = sut.insertScaleEntries(entries)
-
-        assertThat(result).isEqualTo(0)
+        try {
+            sut.insertScaleEntries(entries)
+            @Suppress("UNREACHABLE_CODE")
+            assertThat(false).isTrue()
+        } catch (e: RuntimeException) {
+            assertThat(e.message).isEqualTo(ENTRY_ERROR)
+        }
     }
 
     @Test
@@ -254,16 +267,22 @@ class MigrationRepositoryTest {
     }
 
     @Test
-    fun `insertScaleEntries continues inserting after individual failure`() = runTest {
+    fun `insertScaleEntries stops at the first failing insert`() = runTest {
+        // Fail-fast: the loop aborts on the first throwing insert, so later entries are not attempted.
         val entries = listOf(mockk<ScaleEntry>(), mockk<ScaleEntry>(), mockk<ScaleEntry>())
         coEvery { entryDao.insert(entries[0] as Entry) } throws RuntimeException(ENTRY_ERROR)
         coEvery { entryDao.insert(entries[1] as Entry) } returns 2L
         coEvery { entryDao.insert(entries[2] as Entry) } returns 3L
 
-        val result = sut.insertScaleEntries(entries)
-
-        assertThat(result).isEqualTo(2)
-        coVerify(exactly = 3) { entryDao.insert(any<Entry>()) }
+        try {
+            sut.insertScaleEntries(entries)
+            @Suppress("UNREACHABLE_CODE")
+            assertThat(false).isTrue()
+        } catch (e: RuntimeException) {
+            assertThat(e.message).isEqualTo(ENTRY_ERROR)
+        }
+        coVerify(exactly = 1) { entryDao.insert(entries[0] as Entry) }
+        coVerify(exactly = 0) { entryDao.insert(entries[1] as Entry) }
     }
 
     // endregion

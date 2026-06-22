@@ -214,6 +214,9 @@ class MigrationServiceTest {
 
   @Test
   fun `performIonicMigration returns failure when exception thrown`() = runTest {
+    // Account must migrate first; otherwise an existing source DB short-circuits to a different
+    // Failure ("did not produce an activeAccountId") before openDatabase is ever called.
+    stubAccountMigrationSuccess()
     stubDbOpen()
     // openDatabase throws, caught by migrateIonicDatabase's catch, propagates as Failure
     every { SQLiteDatabase.openDatabase(any<String>(), any(), any()) } throws RuntimeException("boom")
@@ -293,7 +296,10 @@ class MigrationServiceTest {
   }
 
   @Test
-  fun `account migration sets sync timestamp when accountId not in themeModeMap`() = runTest {
+  fun `migration writes deferred sync timestamp after entries migrate`() = runTest {
+    // The sync timestamp is no longer written in saveAccountAndSettings; it is deferred to
+    // migrateIonicDatabase Step 5 and written only after entry migration completes. That path
+    // requires a located+opened Ionic DB, so stub the DB open and (empty) entry tables here.
     every { CapacitorStorageHelper.locateAndReadAccountFromCapacitorStorage(context) } returns testAccountJson
     val ionicAccount: IonicAccount = mockk(relaxed = true) {
       every { refreshToken } returns "refresh"
@@ -303,9 +309,12 @@ class MigrationServiceTest {
     every { IonicDataConverter.parseAccountWithGson(testAccountJson) } returns ionicAccount
     val accountEntity = mockAccountEntity()
     every { IonicDataConverter.convertIonicAccountToAccountEntity(any()) } returns accountEntity
-    // Theme mode map does NOT contain the active accountId
     every { CapacitorStorageHelper.locateAndReadThemeModeFromCapacitorStorage(context) } returns mapOf("other-id" to "light")
     every { CapacitorStorageHelper.getLastSyncTimestampForAccount(context, testAccountId) } returns "99999"
+
+    stubDbOpen()
+    stubTableExists("entry", false)
+    stubTableExists("opStack", false)
 
     service.performIonicMigration(context)
 
@@ -616,7 +625,11 @@ class MigrationServiceTest {
   // ══════════════════════════════════════════════════════════
 
   @Test
-  fun `opStack entries are batched at BATCH_SIZE of 500`() = runTest {
+  fun `opStack entries are inserted per keyset page`() = runTest {
+    // Migration now uses keyset paging (WHERE rowid > ? LIMIT PAGE_SIZE) instead of in-memory
+    // 500-row batching. Each page drains its cursor fully and inserts once. The cursor mock
+    // returns all 750 rows in a single page, so there is exactly one insert of 750 entries; the
+    // loop then re-queries, the exhausted cursor yields 0 rows (< PAGE_SIZE) and the loop ends.
     stubAccountMigrationSuccess()
     stubDbOpen()
 
@@ -639,11 +652,12 @@ class MigrationServiceTest {
     val result = service.performIonicMigration(context) as MigrationResult.Success
 
     assertThat(result.migratedCount).isEqualTo(750)
-    assertThat(batchSizes).isEqualTo(listOf(500, 250))
+    assertThat(batchSizes).isEqualTo(listOf(750))
   }
 
   @Test
-  fun `entry table entries are batched at BATCH_SIZE of 500`() = runTest {
+  fun `entry table entries are inserted per keyset page`() = runTest {
+    // See opStack test: one page drains the whole cursor and inserts once.
     stubAccountMigrationSuccess()
     stubDbOpen()
 
@@ -666,7 +680,7 @@ class MigrationServiceTest {
     val result = service.performIonicMigration(context) as MigrationResult.Success
 
     assertThat(result.migratedCount).isEqualTo(1200)
-    assertThat(batchSizes).isEqualTo(listOf(500, 500, 200))
+    assertThat(batchSizes).isEqualTo(listOf(1200))
   }
 
   @Test
@@ -720,7 +734,9 @@ class MigrationServiceTest {
   }
 
   @Test
-  fun `entry conversion exception is caught and entry is skipped`() = runTest {
+  fun `opStack conversion exception fails the migration`() = runTest {
+    // Conversion exceptions now propagate (fail-fast) so the worker retries and a blank
+    // lastSyncTimestamp forces a full server re-sync. They are no longer skipped per-row.
     stubAccountMigrationSuccess()
     stubDbOpen()
 
@@ -739,9 +755,10 @@ class MigrationServiceTest {
     }
     coEvery { migrationRepository.insertScaleEntries(any()) } answers { firstArg<List<ScaleEntry>>().size }
 
-    val result = service.performIonicMigration(context) as MigrationResult.Success
+    val result = service.performIonicMigration(context)
 
-    assertThat(result.migratedCount).isEqualTo(2)
+    assertThat(result).isInstanceOf(MigrationResult.Failure::class.java)
+    assertThat(result.errorMessage).contains("bad row")
   }
 
   // ══════════════════════════════════════════════════════════
@@ -781,14 +798,17 @@ class MigrationServiceTest {
   }
 
   @Test
-  fun `cleanup runs even when migration fails with exception`() = runTest {
+  fun `cleanup is skipped when migration fails with exception`() = runTest {
+    // clearAllIonicData runs only on the success path; on failure the finally block only closes
+    // the SQLite DB, leaving Capacitor data intact so a retry can re-read it.
+    stubAccountMigrationSuccess()
     stubDbOpen()
     every { SQLiteDatabase.openDatabase(any<String>(), any(), any()) } throws RuntimeException("db error")
 
-    service.performIonicMigration(context)
+    val result = service.performIonicMigration(context)
 
-    // clearAllIonicData still called in finally block
-    verify { context.deleteSharedPreferences("CapacitorStorage") }
+    assertThat(result).isInstanceOf(MigrationResult.Failure::class.java)
+    verify(exactly = 0) { context.deleteSharedPreferences("CapacitorStorage") }
   }
 
   @Test
@@ -818,14 +838,17 @@ class MigrationServiceTest {
   }
 
   @Test
-  fun `clearAllIonicData skips deleteDatabase when no ionic db found`() = runTest {
-    // locateIonicDb returns null (default in setup) — no DB open, no deleteDatabase call for a path
+  fun `no cleanup when no ionic db found and account migrated`() = runTest {
+    // locateIonicDb returns null (default) → migrateIonicDatabase returns Success(0) early, before
+    // reaching clearAllIonicData. So neither deleteDatabase nor deleteSharedPreferences is called.
     stubAccountMigrationSuccess()
 
-    service.performIonicMigration(context)
+    val result = service.performIonicMigration(context) as MigrationResult.Success
 
-    // deleteSharedPreferences always called
-    verify { context.deleteSharedPreferences("CapacitorStorage") }
+    assertThat(result.migratedCount).isEqualTo(0)
+    assertThat(result.accountMigrated).isTrue()
+    verify(exactly = 0) { context.deleteDatabase(any()) }
+    verify(exactly = 0) { context.deleteSharedPreferences(any()) }
   }
 
   // ══════════════════════════════════════════════════════════
@@ -871,32 +894,18 @@ class MigrationServiceTest {
   // ══════════════════════════════════════════════════════════
 
   @Test
-  fun `migration proceeds without account scoping when account migration fails`() = runTest {
+  fun `migration fails when source entry DB exists but no account migrated`() = runTest {
+    // A source entry DB needs an AccountEntity in Room or every insert FK-fails. When account
+    // migration produced no activeAccountId, the migration fail-stops before opening the DB so
+    // the worker retries (and a blank lastSyncTimestamp drives a full server re-sync).
     // Default stub: no account data → activeAccountId is null
-    stubDbOpen()
+    every { IonicDatabaseHelper.locateIonicDb(context) } returns "/fake/db/path"
 
-    stubTableExists("entry", false)
-    stubTableExists("opStack", true)
-    stubTableExists("opStack_metric", false)
+    val result = service.performIonicMigration(context)
 
-    val entry1 = mockScaleEntry("acc-1")
-    val entry2 = mockScaleEntry("acc-2")
-
-    val cursor = createCursorMock(2)
-    every { sqliteDb.rawQuery(match { it.contains("FROM opStack e") }, any()) } returns cursor
-
-    var callCount = 0
-    every { IonicDataConverter.convertCursorToScaleEntry(cursor, isOpStack = true) } answers {
-      callCount++
-      if (callCount == 1) entry1 else entry2
-    }
-    coEvery { migrationRepository.insertScaleEntries(any()) } answers { firstArg<List<ScaleEntry>>().size }
-
-    val result = service.performIonicMigration(context) as MigrationResult.Success
-
-    // Both entries migrated since no account scoping
-    assertThat(result.migratedCount).isEqualTo(2)
-    assertThat(result.accountMigrated).isFalse()
+    assertThat(result).isInstanceOf(MigrationResult.Failure::class.java)
+    assertThat(result.errorMessage).contains("did not produce an activeAccountId")
+    coVerify(exactly = 0) { migrationRepository.insertScaleEntries(any()) }
   }
 
   @Test
@@ -1008,6 +1017,9 @@ class MigrationServiceTest {
 
   @Test
   fun `performIonicMigration logs error when migration result is failure`() = runTest {
+    // Account must migrate first so the flow opens the DB and reaches the entry query; otherwise a
+    // located source DB without an activeAccountId fail-stops with a different message.
+    stubAccountMigrationSuccess()
     stubDbOpen()
     // Make migrateIonicDatabase return Failure by having the entry table query fail inside the try block
     // after DB is opened. The catch in migrateIonicDatabase produces Failure.
@@ -1021,7 +1033,8 @@ class MigrationServiceTest {
     val result = service.performIonicMigration(context)
 
     assertThat(result).isInstanceOf(MigrationResult.Failure::class.java)
-    verify { AppLog.e(any(), match { it.contains("entry query error") }, any<String>()) }
+    // Production logs via AppLog.e(tag, message) — the data arg defaults to null, so match isNull().
+    verify { AppLog.e(any(), match { it.contains("entry query error") }, isNull<String>()) }
   }
 
   // ══════════════════════════════════════════════════════════
@@ -1097,7 +1110,8 @@ class MigrationServiceTest {
   }
 
   @Test
-  fun `entry table conversion exception is caught and entry is skipped`() = runTest {
+  fun `entry table conversion exception fails the migration`() = runTest {
+    // Conversion exceptions propagate from the entry-table path too (fail-fast, see opStack test).
     stubAccountMigrationSuccess()
     stubDbOpen()
 
@@ -1116,9 +1130,10 @@ class MigrationServiceTest {
     }
     coEvery { migrationRepository.insertScaleEntries(any()) } answers { firstArg<List<ScaleEntry>>().size }
 
-    val result = service.performIonicMigration(context) as MigrationResult.Success
+    val result = service.performIonicMigration(context)
 
-    assertThat(result.migratedCount).isEqualTo(2)
+    assertThat(result).isInstanceOf(MigrationResult.Failure::class.java)
+    assertThat(result.errorMessage).contains("bad row")
   }
 
   @Test
@@ -1148,8 +1163,8 @@ class MigrationServiceTest {
 
     // DB should be closed in finally
     verify { sqliteDb.close() }
-    // clearAllIonicData should still be called in finally
-    verify { context.deleteSharedPreferences("CapacitorStorage") }
+    // clearAllIonicData runs only on success, so on this failure path it is NOT called.
+    verify(exactly = 0) { context.deleteSharedPreferences("CapacitorStorage") }
   }
 
   @Test
@@ -1295,17 +1310,18 @@ class MigrationServiceTest {
   }
 
   @Test
-  fun `clearAllIonicData deletes database when locateIonicDb returns path`() = runTest {
+  fun `clearAllIonicData deletes database on the success path when locateIonicDb returns a path`() = runTest {
     stubAccountMigrationSuccess()
-    // locateIonicDb returns non-null so clearAllIonicData calls deleteDatabase
+    // locateIonicDb returns non-null and the DB opens cleanly with no entry tables, so the
+    // migration succeeds and clearAllIonicData (success-only) deletes the DB + Capacitor prefs.
     every { IonicDatabaseHelper.locateIonicDb(context) } returns "/fake/db/path"
+    every { SQLiteDatabase.openDatabase(any<String>(), any(), any()) } returns sqliteDb
+    stubTableExists("entry", false)
+    stubTableExists("opStack", false)
 
-    // Don't open the DB to avoid entry migration
-    every { SQLiteDatabase.openDatabase(any<String>(), any(), any()) } throws RuntimeException("skip entries")
+    val result = service.performIonicMigration(context)
 
-    service.performIonicMigration(context)
-
-    // clearAllIonicData should attempt to delete the database
+    assertThat(result.isSuccess).isTrue()
     verify { context.deleteDatabase("/fake/db/path") }
     verify { context.deleteSharedPreferences("CapacitorStorage") }
   }

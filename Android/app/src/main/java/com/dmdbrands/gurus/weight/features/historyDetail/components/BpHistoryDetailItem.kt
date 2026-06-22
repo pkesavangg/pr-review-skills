@@ -13,8 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
 import com.dmdbrands.gurus.weight.domain.enums.BpSeverity
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
@@ -34,6 +34,7 @@ fun BpHistoryDetailItem(
   timeDisplay: String,
   isExpanded: Boolean,
   onToggle: () -> Unit,
+  onEditEntry: () -> Unit = {},
 ) {
   val severity = BpSeverity.from(entry.systolic, entry.diastolic)
   val severityColor = when (severity) {
@@ -47,7 +48,7 @@ fun BpHistoryDetailItem(
     label = "chevron",
   )
 
-  Column(modifier = Modifier.fillMaxWidth()) {
+  Column(modifier = Modifier.fillMaxWidth().testTag("entry_row")) {
     // Entry row
     Row(
       modifier = Modifier
@@ -103,21 +104,18 @@ fun BpHistoryDetailItem(
           )
         }
       }
-      // Chevron — always present for alignment, invisible if no note
+      // Chevron — always present and tappable so note-less entries can still expand
+      // to reveal the add-note affordance (MOB-438).
       AppIcon(
         id = AppIcons.Default.ChevronDown,
         contentDescription = "notes",
-        modifier = Modifier
-          .rotate(rotation)
-          .alpha(if (hasNote) 1f else 0f),
-        onClick = if (hasNote) {
-          { onToggle() }
-        } else null,
+        modifier = Modifier.rotate(rotation),
+        onClick = { onToggle() },
       )
     }
 
-    // Expandable note
-    AnimatedVisibility(visible = isExpanded && !entry.note.isNullOrBlank()) {
+    // Expandable note — shows the saved note or an add-note prompt, plus an edit pencil.
+    AnimatedVisibility(visible = isExpanded) {
       Column(
         modifier = Modifier
           .fillMaxWidth()
@@ -128,12 +126,25 @@ fun BpHistoryDetailItem(
           color = MeTheme.colorScheme.utility,
           modifier = Modifier.padding(bottom = MeTheme.spacing.sm),
         )
-        Text(
-          text = entry.note ?: "",
-          style = MeTheme.typography.subHeading2,
-          color = MeTheme.colorScheme.textBody,
-          modifier = Modifier.padding(bottom = MeTheme.spacing.sm),
-        )
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = MeTheme.spacing.sm),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Text(
+            text = if (hasNote) entry.note.orEmpty() else HistoryItemStrings.NoNoteYet,
+            style = MeTheme.typography.subHeading2,
+            color = if (hasNote) MeTheme.colorScheme.textBody else MeTheme.colorScheme.textSubheading,
+            modifier = Modifier.weight(1f),
+          )
+          AppIcon(
+            id = AppIcons.Default.EditPencil,
+            contentDescription = HistoryItemStrings.EditNoteContentDescription,
+            onClick = { onEditEntry() },
+            modifier = Modifier.padding(start = MeTheme.spacing.sm),
+          )
+        }
       }
     }
 
