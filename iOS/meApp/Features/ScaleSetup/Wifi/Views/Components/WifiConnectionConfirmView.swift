@@ -80,6 +80,7 @@ struct WifiConnectionConfirmView: View {
                                                 isDarkMode: themeManager.isDarkMode))
                 .resizable()
                 .frame(width: imageSize100, height: imageSize100)
+                .accessibilityLabel(WifiScaleSetupStrings.A11y.stepOnImageLabel)
             } else {
                 GifView(
                     gifName: appAssets.wifiSetupStepOnGifName(
@@ -90,6 +91,7 @@ struct WifiConnectionConfirmView: View {
                     height: imageSize100
                 )
                 .frame(width: imageSize120, height: imageSize100)
+                .accessibilityLabel(WifiScaleSetupStrings.A11y.stepOnImageLabel)
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
@@ -112,6 +114,7 @@ struct WifiConnectionConfirmView: View {
                     Image(appAssets.completeImageName(isFilled: selectedOption == .complete, isDarkMode: themeManager.isDarkMode))
                         .resizable()
                         .frame(width: imageSize100, height: imageSize100)
+                        .accessibilityHidden(true)
                 } else {
                     if let userNumber = self.userNumber {
                         GifView(
@@ -124,20 +127,28 @@ struct WifiConnectionConfirmView: View {
                             height: imageSize100
                         )
                         .frame(width: imageSize120, height: imageSize100)
+                        .accessibilityHidden(true)
                     }
                 }
             }
+            .accessibilityLabel(WifiScaleSetupStrings.A11y.setupCompleteOptionLabel)
+            .accessibilityHint(WifiScaleSetupStrings.A11y.setupCompleteOptionHint)
+            .accessibilityAddTraits(selectedOption == .complete ? .isSelected : [])
         }
     }
-    
+
     private var apModeOption: some View {
         VStack {
             Button(action: handleApModeSelection) {
                 apModeImage
+                    .accessibilityHidden(true)
             }
+            .accessibilityLabel(WifiScaleSetupStrings.A11y.apModeOptionLabel)
+            .accessibilityHint(WifiScaleSetupStrings.A11y.apModeOptionHint)
+            .accessibilityAddTraits(selectedOption == .apMode ? .isSelected : [])
         }
     }
-    
+
     private var apModeImage: some View {
         let displaySku = sku == sku0384 ? sku0384 : sku0396
         let shouldUseFilled = mode == .apModeOnly ? true : (selectedOption == .apMode)
@@ -170,6 +181,7 @@ struct WifiConnectionConfirmView: View {
             size: .large,
             isDisabled: false
         ) { onClickButton?() }
+        .accessibilityHint(WifiScaleSetupStrings.A11y.seeSomethingElseHint)
     }
     
     private func handleCompleteSelection() {

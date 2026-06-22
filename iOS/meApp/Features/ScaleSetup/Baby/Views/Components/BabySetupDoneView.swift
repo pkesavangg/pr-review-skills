@@ -24,6 +24,7 @@ struct BabySetupDoneView: View {
                         .fontOpenSans(.body2)
                         .foregroundStyle(theme.textBody)
                 }
+                .accessibilityElement(children: .combine)
 
                 GifView(gifName: AppAssets.checkmarkSuccessGif, width: 160, height: 160)
                     .frame(width: 160, height: 160)

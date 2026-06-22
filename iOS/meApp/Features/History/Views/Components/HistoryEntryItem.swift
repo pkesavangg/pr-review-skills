@@ -24,6 +24,20 @@ struct HistoryEntryItem: View {
 
     // MARK: - Computed Properties
 
+    private var combinedAccessibilityLabel: String {
+        let day = DateTimeTools.getFormattedDay(entry.entryTimestamp)
+        let time = DateTimeTools.getFormattedTime(entry.entryTimestamp)
+        let weightVal = WeightValueConvertor.formatWeight(
+            Double(entry.scaleEntry?.weight ?? 0),
+            showSymbol: false,
+            weightUnit: weightUnit,
+            weightless: weightlessSettings
+        )
+        let displayValue = ConversionTools.convertStoredToDisplay(Int(entry.scaleEntry?.weight ?? 0), isMetric: weightUnit == .kg)
+        let unitLabel = WeightValueConvertor.unitForDisplay(value: displayValue, unit: weightUnit)
+        return "\(day), \(time), \(weightVal) \(unitLabel)"
+    }
+
     // Hide "bpm" on pulse for weight-scale entries so heart rate renders as a bare number.
     private func displayMetric(for metric: BodyMetric, config: MetricData) -> MetricData {
         guard metric == .pulse, entry.entryType == EntryType.scale.rawValue else {
@@ -101,6 +115,10 @@ struct HistoryEntryItem: View {
             .contentShape(Rectangle())
             .background(isExpanded ? theme.actionSecondary : Color.clear)
             .accessibilityIdentifier(AccessibilityID.historyEntryRow)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(combinedAccessibilityLabel)
+            .accessibilityAddTraits(entry.metricItems.isEmpty ? [] : .isButton)
+            .accessibilityHint(entry.metricItems.isEmpty ? "" : (isExpanded ? HistoryListStrings.accEntryCollapseHint : HistoryListStrings.accEntryExpandHint))
             // Swipeable delete action
             .swipeableActions(
                 buttons: [
@@ -113,6 +131,8 @@ struct HistoryEntryItem: View {
                                     .fontOpenSans(.button1)
                                     .fontWeight(.bold)
                                     .foregroundStyle(theme.textInverse)
+                                    .accessibilityLabel(HistoryListStrings.accDeleteEntryLabel)
+                                    .accessibilityIdentifier(AccessibilityID.historyDeleteButton)
                             )
                         }
                     )

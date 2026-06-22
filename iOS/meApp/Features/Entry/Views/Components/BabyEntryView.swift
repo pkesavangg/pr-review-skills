@@ -151,12 +151,14 @@ struct BabyEntryView: View {
                     ) {
                         toggleDatePicker()
                     }
+                    .accessibilityHint(babyLang.accDateHint)
                     TimeLabelView(
                         time: entryStore.babyForm.time.value,
                         isSelected: entryStore.showTimePicker
                     ) {
                         toggleTimePicker()
                     }
+                    .accessibilityHint(babyLang.accTimeHint)
                 }
                 .padding(.top, .spacingXS)
 

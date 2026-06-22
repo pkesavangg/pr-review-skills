@@ -11,6 +11,10 @@ struct BabyDaySummaryItem: View {
 
     let day: BabyHistoryDay
 
+    private var combinedAccessibilityLabel: String {
+        "\(dateText), \(day.entryCount) \(HistoryListStrings.entries), \(HistoryListStrings.weight) \(weightText), \(HistoryListStrings.length) \(lengthText)"
+    }
+
     private var dateText: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
@@ -98,6 +102,10 @@ struct BabyDaySummaryItem: View {
             }
             .padding(.vertical, .spacingMD)
             .padding(.horizontal, .spacingSM)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(combinedAccessibilityLabel)
+            .accessibilityHint(HistoryListStrings.accDayRowHint)
+            .accessibilityAddTraits(.isButton)
             Divider()
                 .foregroundColor(theme.actionPrimary)
         }
@@ -120,5 +128,7 @@ struct BabyWeekHeaderView: View {
         .padding(.horizontal, .spacingSM)
         .padding(.top, .spacingMD)
         .padding(.bottom, .spacingXS)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 }

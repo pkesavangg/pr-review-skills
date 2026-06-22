@@ -17,19 +17,21 @@ struct BtWifiSetupStepOnView: View {
                 Text(lang.title)
                     .fontOpenSans(.heading4)
                     .foregroundColor(theme.textHeading)
-                
+
                 Text(lang.subtitle)
                     .fontOpenSans(.body2)
                     .foregroundColor(theme.textHeading)
             }
-            
+            .accessibilityElement(children: .combine)
+
             VStack(alignment: .center) {
                 GifView(gifName: AppAssets.stepOnGif, height: 211)
                     .frame(width: 370, height: 211)
                     .clipShape(RoundedRectangle(cornerRadius: .radiusSM))
+                    .accessibilityHidden(true)
             }
             .frame(maxWidth: .infinity, alignment: .center)
-            
+
         }
         .padding(.bottom, .spacingLG)
     }

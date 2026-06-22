@@ -137,4 +137,18 @@ struct BpmSetupStrings {
         static let dismissButton = "DISMISS"
         static let tryAgainButton = "TRY AGAIN"
     }
+
+    struct A11y {
+        static let gifLabel = "Animated device instruction"
+        static let deviceImageLabel = "Blood pressure monitor"
+static let pairedSuccessLabel = "Monitor paired successfully"
+        static let learnHowHint = "Double tap to start a quick measurement tutorial"
+        static let closeButtonLabel = "Close"
+        static let helpButtonLabel = "Help"
+        static let helpButtonHint = "Double tap to contact support"
+        static let userSlotNumericLabel: (Int) -> String = { "User \($0)" }
+        static let userSlotAlphaLabel: (String) -> String = { "User \($0)" }
+        static let userSlotButtonHint = "Double tap to select this user"
+        static let modelCardHint = "Double tap to select this monitor model"
+    }
 }
