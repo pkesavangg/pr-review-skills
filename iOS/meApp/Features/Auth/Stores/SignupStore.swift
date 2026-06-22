@@ -78,6 +78,7 @@ final class SignupStore: ObservableObject {
     private var previousMetricValue: Bool = false
 
     private let tag = "SignupStore"
+    private var isFinalizingSignup = false
 
     init() {
         // Resolve once per store instance to avoid cross-test DI races when
@@ -299,9 +300,11 @@ final class SignupStore: ObservableObject {
     /// Called from the profileReady step "FINISH" button — saves device profiles and finalizes.
     /// Clears isSignupInProgress so ContentViewModel can navigate to dashboard.
     func finishSignup() {
-        guard !accountService.isSignupInProgress else { return }
+        guard !isFinalizingSignup else { return }
+        isFinalizingSignup = true
         Task {
             await performSaveDevicesAndFinalize()
+            isFinalizingSignup = false
         }
     }
 

@@ -44,6 +44,7 @@ struct DashboardScreen: View {
                         MultiDeviceSnapshotView(
                             availableItems: store.availableProductItems,
                             selectedItem: store.selectedProductItem,
+                            selectedPeriod: store.state.graph.selectedPeriod,
                             onSelectItem: { selectedItem in
                                 store.selectProductItem(selectedItem)
                                 isInProductDashboard = true

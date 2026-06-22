@@ -12,6 +12,7 @@ struct MultiDeviceSnapshotView: View {
     let availableItems: [ProductSelection]
     /// The currently selected product — used to pick which baby to show (MOB-435).
     let selectedItem: ProductSelection
+    let selectedPeriod: TimePeriod
     @StateObject private var viewModel = MultiDeviceSnapshotViewModel()
     let onSelectItem: (ProductSelection) -> Void
     let onAddBaby: () -> Void
@@ -62,7 +63,7 @@ struct MultiDeviceSnapshotView: View {
     private func snapshotCard(for item: ProductSelection) -> some View {
         switch item {
         case .myWeight:
-            WeightSnapshotCard(summaries: viewModel.dailySummaries) {
+            WeightSnapshotCard(summaries: viewModel.dailySummaries, selectedPeriod: selectedPeriod) {
                 onSelectItem(item)
             }
             .accessibilityIdentifier(AccessibilityID.weightCard)
