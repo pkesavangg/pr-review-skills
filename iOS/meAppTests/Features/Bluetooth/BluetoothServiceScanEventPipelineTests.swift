@@ -1,6 +1,6 @@
 import Combine
 import Foundation
-import GGBluetoothSwiftPackage
+@testable import GGBluetoothSwiftPackage
 import Testing
 @testable import meApp
 
@@ -135,6 +135,77 @@ struct BluetoothServiceScanEventPipelineTests {
 
         sut.discardPendingScaleEntry()
 
+        #expect(entry.savedEntries.isEmpty)
+        #expect(sut.displacedPendingEntries.isEmpty)
+        #expect(sut.pendingScaleEntry == nil)
+    }
+
+    @Test("MULTI_ENTRIES batch queues historical entries as displaced and confirms all together")
+    func batchEntryQueuesHistoricalAndConfirmsAll() async throws {
+        let sdk = MockBluetoothSDKClient()
+        let account = MockAccountService()
+        let entry = MockEntryService()
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(
+            id: "acct-batch-confirm",
+            email: "batch-confirm@example.com",
+            isLoggedIn: true,
+            isActiveAccount: true
+        )
+        let sut = makeSUT(account: account, entry: entry, sdk: sdk)
+        _ = await waitUntil { sut.activeAccount?.accountId == "acct-batch-confirm" }
+
+        try await sut.startSmartScan()
+        let entryList = makeEntryList([
+            makeEntry(protocolType: "A6", timestamp: 1_730_000_100_000, weightInKg: 72.0),
+            makeEntry(protocolType: "A6", timestamp: 1_730_000_000_000, weightInKg: 71.0)
+        ])
+        let notifications = await collectValues(count: 1, from: sut.pendingScaleEntryPublisher) {
+            await sendScanResponse(makeScanResponse(type: .MULTI_ENTRIES, data: entryList), through: sdk)
+        }
+
+        // Latest (index 0) is held pending; historical (index 1) is queued as displaced
+        #expect(notifications.first?.batchCount == 2)
+        #expect(notifications.first?.accountId == "acct-batch-confirm")
+        #expect(entry.savedEntries.isEmpty)
+        #expect(sut.displacedPendingEntries.count == 1)
+        #expect(sut.pendingScaleEntry != nil)
+
+        try await sut.confirmPendingScaleEntry()
+
+        #expect(entry.savedEntries.count == 2)
+        #expect(sut.displacedPendingEntries.isEmpty)
+        #expect(sut.pendingScaleEntry == nil)
+    }
+
+    @Test("MULTI_ENTRIES batch queues historical entries as displaced and discards all together")
+    func batchEntryQueuesHistoricalAndDiscardsAll() async throws {
+        let sdk = MockBluetoothSDKClient()
+        let account = MockAccountService()
+        let entry = MockEntryService()
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(
+            id: "acct-batch-discard",
+            email: "batch-discard@example.com",
+            isLoggedIn: true,
+            isActiveAccount: true
+        )
+        let sut = makeSUT(account: account, entry: entry, sdk: sdk)
+        _ = await waitUntil { sut.activeAccount?.accountId == "acct-batch-discard" }
+
+        try await sut.startSmartScan()
+        let entryList = makeEntryList([
+            makeEntry(protocolType: "A6", timestamp: 1_730_000_100_000, weightInKg: 72.0),
+            makeEntry(protocolType: "A6", timestamp: 1_730_000_000_000, weightInKg: 71.0)
+        ])
+        _ = await collectValues(count: 1, from: sut.pendingScaleEntryPublisher) {
+            await sendScanResponse(makeScanResponse(type: .MULTI_ENTRIES, data: entryList), through: sdk)
+        }
+
+        #expect(entry.savedEntries.isEmpty)
+        #expect(sut.displacedPendingEntries.count == 1)
+
+        sut.discardPendingScaleEntry()
+
+        // Discard drops both the pending entry and all displaced entries without saving
         #expect(entry.savedEntries.isEmpty)
         #expect(sut.displacedPendingEntries.isEmpty)
         #expect(sut.pendingScaleEntry == nil)
@@ -434,6 +505,10 @@ private func makeEntry(protocolType: String, timestamp: Int, weightInKg: Float) 
         ],
         as: GGEntry.self
     )
+}
+
+private func makeEntryList(_ entries: [GGEntry]) -> GGEntryList {
+    GGEntryList(list: entries)
 }
 
 private func encodeJSONObject<T: Encodable>(_ value: T) -> Any {
