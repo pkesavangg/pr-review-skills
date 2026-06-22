@@ -268,6 +268,7 @@ struct PermissionListView: View {
                 .fontOpenSans(.body2)
                 .foregroundColor(theme.textBody)
         }
+        .accessibilityElement(children: .combine)
     }
 
     private func statusIcon(for isEnabled: Bool, required: Bool, showsChevron: Bool = false, isRowDisabled: Bool = false) -> AnyView {

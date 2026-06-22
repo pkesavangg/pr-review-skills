@@ -15,6 +15,7 @@ struct ScaleStatusBanner: View {
         HStack {
             AppIconView(icon: type.iconName, size: IconSize(width: 24, height: 24))
                 .foregroundColor(iconColor)
+                .accessibilityHidden(true)
             
             Text(type.message)
                 .fontOpenSans(.body3)

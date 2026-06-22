@@ -24,6 +24,7 @@ struct BpmReadingArrivalCTAView: View {
                 bloodPressureText
                 pulseText
             }
+            .accessibilityElement(children: .combine)
 
             HStack(spacing: .spacingSM) {
                 ButtonView(
