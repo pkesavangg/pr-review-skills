@@ -106,7 +106,7 @@ struct BaseInputField: View {
         }
         .accessibilityIdentifier(accessibilityIdentifier ?? "")
         .id("\(fieldType)-\(themeRefreshId)")
-        .font(.body2)
+        .font(.custom("OpenSans-Regular", size: CustomTextStyle.body2.size))
         .padding(.top, (isFocused || !value.isEmpty) ? focusedTopPadding : 0)
         .padding(.trailing, trailingPadding)
         .foregroundStyle(textColor)

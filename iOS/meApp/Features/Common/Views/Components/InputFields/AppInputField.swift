@@ -64,7 +64,7 @@ struct AppInputField: View {
             VStack(alignment: .leading, spacing: 0) {
                 ZStack(alignment: .topLeading) {
                     TextEditor(text: $value)
-                        .font(.body3)
+                        .font(.custom("OpenSans-Regular", size: CustomTextStyle.body3.size))
                         .foregroundColor(theme.textSubheading)
                         .scrollContentBackground(.hidden)
                         .padding(.horizontal, CGFloat.spacingXS)
