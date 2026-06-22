@@ -443,6 +443,43 @@ class AppViewModelTest {
         verify(exactly = 0) { dialogQueueService.showToast(any()) }
     }
 
+    @Test
+    fun `AuthState AccountSwitched resets scale-discovered state so reconnect alert is not suppressed`() = runTest {
+        // MOB-175: switching accounts in-session must clear the previous account's skip/ignore
+        // state. Otherwise a scale skipped under the previous account stays muted and the
+        // duplicate-user reconnect alert never reappears after switching back.
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        authEventFlow.emit(
+            AuthState.AccountSwitched(
+                account = TestFixtures.activeAccount,
+                showToast = true,
+            ),
+        )
+        advanceUntilIdle()
+
+        verify { bluetoothPreferencesService.clearSkipDevices() }
+    }
+
+    @Test
+    fun `AuthState AccountSwitched resets scale-discovered state even when showToast is false`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        authEventFlow.emit(
+            AuthState.AccountSwitched(
+                account = TestFixtures.activeAccount,
+                showToast = false,
+            ),
+        )
+        advanceUntilIdle()
+
+        // The reset is independent of the toast — it must happen on every account switch.
+        verify { bluetoothPreferencesService.clearSkipDevices() }
+        verify(exactly = 0) { dialogQueueService.showToast(any()) }
+    }
+
     // -------------------------------------------------------------------------
     // Auth State — AccountDeleted
     // -------------------------------------------------------------------------

@@ -362,6 +362,11 @@ constructor(
           }
 
           is AuthState.AccountSwitched -> {
+            // Switching accounts must start the new account with a clean scan state. Otherwise the
+            // previous account's skip/ignore flags leak across and can suppress the duplicate-user
+            // reconnect alert after switching back to a previously connected account (MOB-175).
+            // Mirrors the reset already done on LoggedInFromLoading / LoggedOut.
+            resetScaleDiscoveredState()
             if (authState.showToast) {
               val accountName = authState.account.firstName
               dialogQueueService.showToast(
@@ -840,7 +845,14 @@ constructor(
                           continuation.resume(response.user)
                         }
                       }
-                      val scaleToken = userList.find { user -> user.name == device.preferences?.displayName }?.token
+                      // When two accounts use the same scale display name (e.g. both "renu"), matching
+                      // purely by name picks an arbitrary user and can delete the wrong account's slot.
+                      // Prefer the user whose token matches THIS account's stored token; fall back to the
+                      // name match only when no token match exists (MOB-175).
+                      val localToken = device.toGGBTDevice().token
+                      val nameMatches = userList.filter { user -> user.name == device.preferences?.displayName }
+                      val scaleToken = nameMatches.firstOrNull { it.token == localToken }?.token
+                        ?: nameMatches.firstOrNull()?.token
                       ggDeviceService.deleteAccount(device.toGGBTDevice().copy(token = scaleToken)) {
                         if (it.name == GGUserActionResponseType.DELETE_COMPLETED.name) {
                           viewModelScope.launch {
