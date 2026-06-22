@@ -726,6 +726,19 @@ struct SignupStoreTests {
         #expect(store.profileReadyTitle == SignupStrings.ProfileReadyStep.babyScaleTitle)
     }
 
+    @Test("profileReadyTitle shows combined multi-device title when exactly 2 devices done")
+    func profileReadyTitleCombinedWhenTwoDevicesDone() {
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.weightScale)
+        store.connectAnotherDevice()
+        store.selectDeviceType(.bpm)
+
+        // Two devices done but a third can still be connected — should show combined title, not all-profiles
+        #expect(store.canConnectAnotherDevice == true)
+        let expectedNames = [SignupDeviceType.weightScale, .bpm].map(\.profileReadyName).joined(separator: " & ")
+        #expect(store.profileReadyTitle == SignupStrings.ProfileReadyStep.multiDeviceTitle(names: expectedNames))
+    }
+
     @Test("profileReadyTitle switches to all-profiles copy on the final device")
     func profileReadyTitleAllProfilesOnFinalDevice() {
         let (store, _, _, _) = makeSUT()

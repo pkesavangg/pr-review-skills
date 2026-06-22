@@ -10,20 +10,22 @@ struct ConnectAnotherDeviceStepView: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
+        ScrollView(.vertical) {
             VStack(alignment: .center, spacing: .spacingLG) {
                 VStack(spacing: .spacingXS) {
-                    Text(signupStore.profileReadyTitle)
+                    Text(signupStore.pickNextDeviceTitle)
                         .fontOpenSans(.heading4)
                         .foregroundStyle(theme.textHeading)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity, alignment: .center)
 
-                    Text(SignupStrings.ProfileReadyStep.connectAnotherSubtitle)
-                        .fontOpenSans(.body2)
-                        .foregroundStyle(theme.textSubheading)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity, alignment: .center)
+                    if signupStore.canConnectAnotherDevice {
+                        Text(SignupStrings.ProfileReadyStep.connectAnotherSubtitle)
+                            .fontOpenSans(.body2)
+                            .foregroundStyle(theme.textSubheading)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
                 }
 
                 VStack(spacing: .spacingXS) {
@@ -42,6 +44,7 @@ struct ConnectAnotherDeviceStepView: View {
                 }
             }
         }
+        .scrollIndicators(.hidden)
     }
 }
 

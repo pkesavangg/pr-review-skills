@@ -88,6 +88,9 @@ struct SignupStrings {
         static let finishButton = "Get Started"
         static let connectAnotherDevice = "CONNECT ANOTHER DEVICE"
         static let connectAnotherSubtitle = "Connect another device to keep everything in one place."
+        static func multiDeviceTitle(names: String) -> String {
+            "Your \(names) profiles are ready!"
+        }
     }
 
     struct AllProfilesReadyStep {

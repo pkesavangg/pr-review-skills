@@ -78,6 +78,7 @@ final class SignupStore: ObservableObject {
     private var previousMetricValue: Bool = false
 
     private let tag = "SignupStore"
+    private var isFinalizingSignup = false
 
     init() {
         // Resolve once per store instance to avoid cross-test DI races when
@@ -184,9 +185,21 @@ final class SignupStore: ObservableObject {
 
         if done.count >= 2 {
             let names = done.map(\.profileReadyName).joined(separator: " & ")
-            return "Your \(names) profiles are ready!"
+            return SignupStrings.ProfileReadyStep.multiDeviceTitle(names: names)
         }
         return currentDevice?.profileReadyTitle ?? SignupStrings.ProfileReadyStep.weightScaleTitle
+    }
+
+    /// Title shown on the "Connect Another Device" screen.
+    /// Shows a combined title once 2+ devices are fully registered (both disabled),
+    /// otherwise shows the single last-completed device title.
+    var pickNextDeviceTitle: String {
+        if registeredDeviceTypes.count >= 2 {
+            let names = registeredDeviceTypes.map(\.profileReadyName).joined(separator: " & ")
+            return SignupStrings.ProfileReadyStep.multiDeviceTitle(names: names)
+        }
+        return lastCompletedDeviceType?.profileReadyTitle
+            ?? SignupStrings.ProfileReadyStep.weightScaleTitle
     }
 
     // MARK: - Height Management
@@ -287,9 +300,11 @@ final class SignupStore: ObservableObject {
     /// Called from the profileReady step "FINISH" button — saves device profiles and finalizes.
     /// Clears isSignupInProgress so ContentViewModel can navigate to dashboard.
     func finishSignup() {
-        guard !accountService.isSignupInProgress else { return }
+        guard !isFinalizingSignup else { return }
+        isFinalizingSignup = true
         Task {
             await performSaveDevicesAndFinalize()
+            isFinalizingSignup = false
         }
     }
 
@@ -321,10 +336,10 @@ final class SignupStore: ObservableObject {
     }
 
     func connectAnotherDevice() {
-        // Use the second-to-last visible step value so the bar reads ~90% instead of 100%.
-        let terminalSteps: Set<SignupStep> = [.allProfilesReady, .signupError]
-        let visibleCount = Double(steps.filter { !terminalSteps.contains($0) }.count)
-        savedProgressValue = visibleCount > 1 ? (visibleCount - 1) / visibleCount : 0.9
+        // Fixed at 0.9 so the bar reads ~90% on every iteration — the subsequent-device
+        // loop has far fewer steps (profileReady + pickNextDevice + profileReady = 3),
+        // and a computed ratio would drop to ~67% on the second pass.
+        savedProgressValue = 0.9
         if let current = selectedDeviceType {
             lastCompletedDeviceType = current
             disabledDeviceTypes.insert(current)
