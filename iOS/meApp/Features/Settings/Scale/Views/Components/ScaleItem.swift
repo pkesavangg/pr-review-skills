@@ -101,7 +101,6 @@ struct ScaleItemView: View {
                     }
                 }
             }
-            .accessibilityElement(children: .combine)
 
             Spacer()
 
@@ -122,6 +121,7 @@ struct ScaleItemView: View {
         .onTapGesture {
            onTap()
         }
+        .accessibilityElement(children: .combine)
         .accessibilityHint(SettingsStrings.A11y.scaleRowHint)
         .accessibilityAddTraits(.isButton)
     }

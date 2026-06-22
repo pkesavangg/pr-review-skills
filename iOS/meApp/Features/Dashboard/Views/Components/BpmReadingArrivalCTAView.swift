@@ -25,6 +25,7 @@ struct BpmReadingArrivalCTAView: View {
                 pulseText
             }
             .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(systolic) over \(diastolic) \(DashboardStrings.bpmReadingArrivalMmhg), \(pulse) \(DashboardStrings.bpmReadingArrivalPulse), \(timestamp)")
 
             HStack(spacing: .spacingSM) {
                 ButtonView(
