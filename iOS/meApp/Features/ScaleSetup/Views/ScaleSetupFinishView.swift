@@ -24,17 +24,19 @@ struct ScaleSetupFinishView: View {
                             .multilineTextAlignment(.leading)
                             .lineLimit(nil)
                             .fixedSize(horizontal: false, vertical: true)
-                        
+
                         Text(description)
                             .fontOpenSans(.body2)
                             .foregroundColor(theme.textBody)
                     }
+                    .accessibilityElement(children: .combine)
                     Spacer()
                 }
                 AppIconView(icon: AppAssets.checkMarkLarge, size: IconSize(width: 180, height: 180))
                     .foregroundColor(theme.statusSuccess)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, .spacingXL)
+                    .accessibilityLabel(ScaleSetupStrings.A11y.successIconLabel)
                 if isAppSyncScaleSetup {
                     ThemedImage(name: AppAssets.appSyncTab)
                 }

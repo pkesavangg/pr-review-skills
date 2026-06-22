@@ -28,6 +28,7 @@ struct A3BpmModelSelectionView: View {
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textBody)
                 }
+                .accessibilityElement(children: .combine)
 
                 LazyVGrid(columns: columns, spacing: .spacingMD) {
                     ForEach(models) { model in
@@ -62,6 +63,7 @@ private struct BpmModelCard: View {
                     .scaledToFit()
                     .frame(height: 100)
                     .cornerRadius(.radiusMD)
+                    .accessibilityHidden(true)
 
                 Text(bpmListModelLabel(primarySku: model.sku))
                     .fontOpenSans(.body2)
@@ -80,6 +82,8 @@ private struct BpmModelCard: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityHint(BpmSetupStrings.A11y.modelCardHint)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
