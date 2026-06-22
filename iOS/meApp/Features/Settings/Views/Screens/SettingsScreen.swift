@@ -141,6 +141,9 @@ struct SettingsScreen: View {
             .onLongPressGesture {
                 router.navigate(to: .myAccounts)
             }
+            .accessibilityAction(named: SettingsStrings.A11y.profileSwitchAccountsAction) {
+                router.navigate(to: .myAccounts)
+            }
             Text(settingsStore.profileName)
                 .fontOpenSans(.heading3)
                 .foregroundColor(theme.textHeading)

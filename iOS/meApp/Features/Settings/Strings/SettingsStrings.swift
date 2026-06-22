@@ -56,6 +56,7 @@ struct SettingsStrings {
 
     struct A11y {
         static let scaleRowHint = "Double tap to view scale settings"
+        static let profileSwitchAccountsAction = "Switch Accounts"
     }
 
     // Unit Type picker
