@@ -32,10 +32,10 @@ struct A3BpmUserSelectionView: View {
                         .multilineTextAlignment(.leading)
                         .lineLimit(nil)
                 }
+                .accessibilityElement(children: .combine)
                 .padding(.horizontal, .spacingXSM)
 
                 if bpmItem.hasNumericUsers {
-                    // Icon buttons with User 1 / User 2 (0603 only)
                     HStack(spacing: .spacingLG) {
                         BpmUserIconButton(
                             iconName: AppAssets.a3BpmUser1,
@@ -43,6 +43,9 @@ struct A3BpmUserSelectionView: View {
                         ) {
                             onSelect(1)
                         }
+                        .accessibilityLabel(BpmSetupStrings.A11y.userSlotNumericLabel(1))
+                        .accessibilityHint(BpmSetupStrings.A11y.userSlotButtonHint)
+                        .accessibilityAddTraits(selectedUser == 1 ? .isSelected : [])
 
                         BpmUserIconButton(
                             iconName: AppAssets.a3BpmUser2,
@@ -50,10 +53,12 @@ struct A3BpmUserSelectionView: View {
                         ) {
                             onSelect(2)
                         }
+                        .accessibilityLabel(BpmSetupStrings.A11y.userSlotNumericLabel(2))
+                        .accessibilityHint(BpmSetupStrings.A11y.userSlotButtonHint)
+                        .accessibilityAddTraits(selectedUser == 2 ? .isSelected : [])
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                 } else {
-                    // Icon buttons with User A / User B (0604, 0634, 0636, 0661, 0663)
                     HStack(spacing: .spacingLG) {
                         BpmUserIconButton(
                             iconName: AppAssets.a6BpmUserA,
@@ -61,6 +66,9 @@ struct A3BpmUserSelectionView: View {
                         ) {
                             onSelect(1)
                         }
+                        .accessibilityLabel(BpmSetupStrings.A11y.userSlotAlphaLabel("A"))
+                        .accessibilityHint(BpmSetupStrings.A11y.userSlotButtonHint)
+                        .accessibilityAddTraits(selectedUser == 1 ? .isSelected : [])
 
                         BpmUserIconButton(
                             iconName: AppAssets.a6BpmUserB,
@@ -68,6 +76,9 @@ struct A3BpmUserSelectionView: View {
                         ) {
                             onSelect(2)
                         }
+                        .accessibilityLabel(BpmSetupStrings.A11y.userSlotAlphaLabel("B"))
+                        .accessibilityHint(BpmSetupStrings.A11y.userSlotButtonHint)
+                        .accessibilityAddTraits(selectedUser == 2 ? .isSelected : [])
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                 }
@@ -91,6 +102,7 @@ private struct BpmUserIconButton: View {
                 .scaledToFit()
                 .frame(width: 89, height: 161)
                 .opacity(isSelected ? 1.0 : 0.72)
+                .accessibilityHidden(true)
         }
         .buttonStyle(.plain)
     }
