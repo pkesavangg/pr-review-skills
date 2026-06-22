@@ -16,6 +16,11 @@ struct MonthSummaryItem: View {
 
     let month: HistoryMonth
     /// Localized date formatter: "MMM yyyy"
+    private var combinedAccessibilityLabel: String {
+        let count = month.count ?? 0
+        return "\(monthYearText), \(count) \(HistoryListStrings.entries), \(HistoryListStrings.average) \(avgWeightText)"
+    }
+
     private var monthYearText: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM"
@@ -90,6 +95,10 @@ struct MonthSummaryItem: View {
         }
         .padding(.vertical, .spacingMD)
         .padding(.horizontal, .spacingSM)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(combinedAccessibilityLabel)
+        .accessibilityHint(HistoryListStrings.accMonthRowHint)
+        .accessibilityAddTraits(.isButton)
         Divider()
             .foregroundColor(theme.actionPrimary)
       }

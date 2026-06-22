@@ -44,6 +44,7 @@ struct A3BpmInstructionView: View {
                         .lineLimit(nil)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                .accessibilityElement(children: .combine)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 mediaView
@@ -64,6 +65,7 @@ struct A3BpmInstructionView: View {
                         subdirectory: gifSubdirectory,
                         verticalAlignment: gifVerticalAlignment
                     )
+                    .accessibilityLabel(BpmSetupStrings.A11y.gifLabel)
                 }
             } else {
                 measurementGifView(gifName: gifName)
@@ -77,6 +79,7 @@ struct A3BpmInstructionView: View {
                         width: imageMediaSize.width,
                         height: imageMediaSize.height
                     )
+                    .accessibilityLabel(BpmSetupStrings.A11y.deviceImageLabel)
             }
         } else if let imagePath {
             wrappedMediaViewIfNeeded {
@@ -87,6 +90,7 @@ struct A3BpmInstructionView: View {
                         width: imageMediaSize.width,
                         height: imageMediaSize.height
                     )
+                    .accessibilityLabel(BpmSetupStrings.A11y.deviceImageLabel)
             }
         }
     }
@@ -111,6 +115,7 @@ struct A3BpmInstructionView: View {
             width: gifMediaSize.width,
             height: 250
         )
+        .accessibilityLabel(BpmSetupStrings.A11y.gifLabel)
         .frame(width: gifMediaSize.width, height: 250)
         .clipped()
         .clipShape(RoundedRectangle(cornerRadius: .radiusLG))

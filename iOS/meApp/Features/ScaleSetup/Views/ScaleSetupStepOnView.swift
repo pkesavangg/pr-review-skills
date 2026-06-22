@@ -34,6 +34,7 @@ struct ScaleSetupStepOnView: View {
                         .frame(width: DevicePlatform.isMiniPhone ? 350 : 370,
                                height: DevicePlatform.isMiniPhone ? 200 : 211)
                         .scaleEffect(DevicePlatform.isMiniPhone ? 0.8 : 0.9)
+                        .accessibilityHidden(true)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
                 if let isEntrySynced = isEntrySynced {

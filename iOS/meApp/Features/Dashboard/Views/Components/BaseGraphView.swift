@@ -5,6 +5,7 @@
 //  Created by Assistant on 04/07/25.
 //
 
+import Accessibility
 import Charts
 import SwiftUI
 
@@ -113,6 +114,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
             // changes (e.g. the auto-select on a period switch), so the crosshair tracks it.
             syncViewModelSelectionFromStore()
         }
+        .accessibilityChartDescriptor(self)
         .graphViewStyle(
             canAddPadding: !viewModel.hasXAxis,
             canAddTrailingPadding: selectedBabyProfile == nil && viewModel.hasChartOperations,
@@ -684,6 +686,98 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
             if isScrollable {
                 dashboardStore.state.graph.chartHeight = roundedHeight
             }
+        }
+    }
+}
+
+// MARK: - AXChartDescriptorRepresentable
+
+extension BaseGraphView: AXChartDescriptorRepresentable {
+    func makeChartDescriptor() -> AXChartDescriptor {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .medium
+        dateFormatter.timeStyle = .none
+
+        // Ordered unique date strings for the categorical x-axis
+        var seenDates = Set<String>()
+        var orderedDateStrings: [String] = []
+        for point in cachedAllPlottedPoints.sorted(by: { $0.date < $1.date }) {
+            let str = dateFormatter.string(from: point.date)
+            if seenDates.insert(str).inserted {
+                orderedDateStrings.append(str)
+            }
+        }
+
+        let xAxis = AXCategoricalDataAxisDescriptor(
+            title: DashboardStrings.accChartXAxisName,
+            categoryOrder: orderedDateStrings.isEmpty ? ["–"] : orderedDateStrings
+        )
+
+        let yRange = viewModel.yAxisDomain
+        let lower = yRange.lowerBound.isFinite ? yRange.lowerBound : 0.0
+        let upper = yRange.upperBound.isFinite ? yRange.upperBound : 1.0
+        let safeRange = lower < upper ? lower...upper : lower...(lower + 1)
+        let displayManager = dashboardStore.displayManager
+        let yAxis = AXNumericDataAxisDescriptor(
+            title: chartDescriptorYAxisTitle,
+            range: safeRange,
+            gridlinePositions: viewModel.yAxisTicks
+        ) { value in
+            displayManager.formatYAxisTickLabel(value)
+        }
+
+        // Build per-series data points, preserving the existing series render order
+        var seriesDataPoints: [String: [AXDataPoint]] = [:]
+        for point in cachedAllPlottedPoints.sorted(by: { $0.date < $1.date }) {
+            let key = point.original.series
+            let axPoint = AXDataPoint(x: dateFormatter.string(from: point.date), y: point.original.value)
+            seriesDataPoints[key, default: []].append(axPoint)
+        }
+
+        var seriesDescriptors = cachedOrderedSeriesNames.compactMap { name -> AXDataSeriesDescriptor? in
+            guard let points = seriesDataPoints[name] else { return nil }
+            return AXDataSeriesDescriptor(
+                name: axSeriesDisplayName(for: name),
+                isContinuous: true,
+                dataPoints: points
+            )
+        }
+        if seriesDescriptors.isEmpty {
+            seriesDescriptors = [AXDataSeriesDescriptor(name: "", isContinuous: true, dataPoints: [])]
+        }
+
+        return AXChartDescriptor(
+            title: chartDescriptorTitle,
+            summary: nil,
+            xAxis: xAxis,
+            yAxis: yAxis,
+            additionalAxes: [],
+            series: seriesDescriptors
+        )
+    }
+
+    private var chartDescriptorTitle: String {
+        switch dashboardStore.productType {
+        case .bpm: return DashboardStrings.accBpmChartLabel
+        case .baby: return DashboardStrings.accBabyChartLabel
+        default: return DashboardStrings.accWeightChartLabel
+        }
+    }
+
+    private var chartDescriptorYAxisTitle: String {
+        switch dashboardStore.productType {
+        case .bpm: return DashboardStrings.accChartBpmYAxisName
+        case .baby: return DashboardStrings.accChartBabyYAxisName
+        default: return DashboardStrings.accChartWeightYAxisName
+        }
+    }
+
+    private func axSeriesDisplayName(for series: String) -> String {
+        switch series.lowercased() {
+        case "systolic": return BpmDashboardStrings.systolic
+        case "diastolic": return BpmDashboardStrings.diastolic
+        case "pulse": return BpmDashboardStrings.pulse.capitalized
+        default: return series
         }
     }
 }

@@ -25,11 +25,13 @@ struct BabyPairedSuccessView: View {
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textBody)
                 }
+                .accessibilityElement(children: .combine)
 
                 // Animated success checkmark — centered
                 GifView(gifName: AppAssets.checkmarkSuccessGif, width: 160, height: 160)
                     .frame(width: 160, height: 160)
                     .frame(maxWidth: .infinity)
+                    .accessibilityHidden(true)
             }
             .padding(.top, .spacingLG)
         }

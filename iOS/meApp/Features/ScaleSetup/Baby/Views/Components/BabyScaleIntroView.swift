@@ -22,6 +22,7 @@ struct BabyScaleIntroView: View {
                         .cornerRadius(.radiusLG)
                         .themeDropShadow()
                         .padding(.bottom, .spacingLG)
+                        .accessibilityHidden(true)
 
                     Text(ScaleSetupStrings.modelTitle(scale.sku))
                         .fontOpenSans(.heading4)
@@ -32,6 +33,7 @@ struct BabyScaleIntroView: View {
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textBody)
                 }
+                .accessibilityElement(children: .combine)
                 .frame(maxWidth: .infinity)
 
                 Text(lang.Intro.troubleSettingUp)
