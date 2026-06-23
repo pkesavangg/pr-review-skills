@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.domain.model.api.entry
 
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
 import com.dmdbrands.gurus.weight.domain.enums.BabyEntryType
@@ -69,41 +70,60 @@ fun BpmEntry.toUnifiedRequest(): UnifiedEntryRequest = UnifiedEntryRequest(
 )
 
 /**
- * Builds the unified request for a baby entry (§2.16 / MOB-381). Weight and length are
- * distinct `entryType`s, so each [BabyEntry] carries exactly one measure — the value that
- * doesn't match its [entryType] is left null.
+ * Builds the §2.16 baby request(s) for this entry. A single local baby row carries BOTH
+ * measures (matching the combined history/detail row), but the server models `weight` and
+ * `measureLength` as distinct entries (distinct `entryType` + `entryId`) that may share an
+ * `entryTimestamp`. So a combined row fans out to up to TWO requests; a measure of 0/null
+ * is dropped rather than POSTed as a garbage reading.
  */
-fun BabyEntry.toUnifiedRequest(): UnifiedEntryRequest {
-    val type = BabyEntryType.fromValue(entryType)
-    return UnifiedEntryRequest(
-        category = EntryCategory.BABY.value,
-        operationType = entry.operationType.lowercase(),
-        entryTimestamp = entry.entryTimestamp,
-        babyId = babyId,
-        entryType = type.value,
-        babyWeightDecigrams = if (type == BabyEntryType.WEIGHT) babyWeightDecigrams else null,
-        babyLengthMillimeters = if (type == BabyEntryType.MEASURE_LENGTH) babyLengthMillimeters else null,
-        entryNote = entryNote,
-        source = babyEntry.source ?: EntrySource.MANUAL.value,
-    )
+fun BabyEntry.toUnifiedRequests(): List<UnifiedEntryRequest> = buildList {
+    val weightDg = babyWeightDecigrams
+    if (weightDg != null && weightDg > 0) {
+        add(babyRequest(BabyEntryType.WEIGHT, weightDecigrams = weightDg))
+    }
+    val lengthMm = babyLengthMillimeters
+    if (lengthMm != null && lengthMm > 0) {
+        add(babyRequest(BabyEntryType.MEASURE_LENGTH, lengthMm = lengthMm))
+    }
 }
 
-/** True when the baby entry carries a positive value for its [entryType]. */
-private fun BabyEntry.hasValidReading(): Boolean = when (BabyEntryType.fromValue(entryType)) {
-    BabyEntryType.WEIGHT -> (babyWeightDecigrams ?: 0) > 0
-    BabyEntryType.MEASURE_LENGTH -> (babyLengthMillimeters ?: 0) > 0
-}
+private fun BabyEntry.babyRequest(
+    type: BabyEntryType,
+    weightDecigrams: Int? = null,
+    lengthMm: Int? = null,
+): UnifiedEntryRequest = UnifiedEntryRequest(
+    category = EntryCategory.BABY.value,
+    operationType = entry.operationType.lowercase(),
+    entryTimestamp = entry.entryTimestamp,
+    babyId = babyId,
+    // Deterministic idempotency key (§2.16 requires entryId for baby): baby + entryType +
+    // timestamp always yields the same id, so a retried sync can't duplicate it server-side
+    // and the weight/length halves of one reading get distinct ids.
+    entryId = babyEntryId(babyId, type.value, entry.entryTimestamp),
+    entryType = type.value,
+    babyWeightDecigrams = weightDecigrams,
+    babyLengthMillimeters = lengthMm,
+    entryNote = entryNote,
+    source = babyEntry.source ?: EntrySource.MANUAL.value,
+)
 
 /**
- * Maps a domain [Entry] to a [UnifiedEntryRequest], or null when the reading is
- * invalid/garbage (dropped rather than failing the atomic batch).
+ * Stable client idempotency key for a baby entry (§2.16 `entryId`). Derived from the
+ * fields that identify the logical reading so retries/edits resolve to the same id.
  */
-fun Entry.toUnifiedRequestOrNull(): UnifiedEntryRequest? = when (this) {
-    // Drop a 0/garbage weight rather than writing it as a real reading (mirrors the
-    // read-path guard that refuses to persist a 0-weight entry).
-    is ScaleEntry -> toUnifiedRequest().takeIf { (it.weight ?: 0) > 0 }
-    is BpmEntry -> if (hasValidReading()) toUnifiedRequest() else null
-    is BabyEntry -> if (hasValidReading()) toUnifiedRequest() else null
+private fun babyEntryId(babyId: String, entryType: String, entryTimestamp: String): String =
+    "${babyId}_${entryType}_$entryTimestamp"
+
+/**
+ * Maps a domain [Entry] to the unified request(s) to POST. Weight/BP map to at most one;
+ * baby may map to two (weight + measureLength). Garbage/empty readings are dropped so a
+ * single bad reading can't fail the atomic batch.
+ */
+fun Entry.toUnifiedRequests(): List<UnifiedEntryRequest> = when (this) {
+    // Drop a 0/garbage weight rather than writing it as a real reading.
+    is ScaleEntry -> listOfNotNull(toUnifiedRequest().takeIf { (it.weight ?: 0) > 0 })
+    is BpmEntry -> listOfNotNull(if (hasValidReading()) toUnifiedRequest() else null)
+    is BabyEntry -> toUnifiedRequests()
 }
 
 /**
@@ -116,8 +136,60 @@ fun UnifiedEntry.toDomainEntry(accountId: String): Entry? =
         // than persisting it as a 0-weight reading.
         EntryCategory.WEIGHT -> weight?.let { ScaleEntry.fromScaleApiEntry(toScaleApiEntry(), accountId = accountId) }
         EntryCategory.BP -> toBpmEntry(accountId)
+        EntryCategory.BABY -> toBabyEntry(accountId)
         else -> null
     }
+
+/**
+ * Maps a batch of server [UnifiedEntry] rows to domain entries, merging the baby `weight`
+ * and `measureLength` rows that share a (babyId, entryTimestamp) back into ONE combined
+ * [BabyEntry] — the inverse of the POST split ([toUnifiedRequests]). This is required by the
+ * local UNIQUE(accountId, entryTimestamp) index, which allows only one row per timestamp.
+ * Weight/BP map 1:1.
+ */
+fun List<UnifiedEntry>.toDomainEntries(accountId: String): List<Entry> {
+    val (baby, others) = partition { EntryCategory.fromValue(it.category) == EntryCategory.BABY }
+    val mappedOthers = others.mapNotNull { it.toDomainEntry(accountId) }
+    val mergedBaby = baby
+        .groupBy { it.babyId to it.entryTimestamp }
+        .mapNotNull { (_, group) -> group.toMergedBabyEntry(accountId) }
+    return mappedOthers + mergedBaby
+}
+
+/** Combines the weight + measureLength server rows of one baby reading into a single [BabyEntry]. */
+private fun List<UnifiedEntry>.toMergedBabyEntry(accountId: String): BabyEntry? {
+    val first = firstOrNull() ?: return null
+    val id = first.babyId ?: return null
+    val weightDg = firstNotNullOfOrNull { e ->
+        e.babyWeightDecigrams?.takeIf { e.entryType == BabyEntryType.WEIGHT.value && it > 0 }
+    }
+    val lengthMm = firstNotNullOfOrNull { e ->
+        e.babyLengthMillimeters?.takeIf { e.entryType == BabyEntryType.MEASURE_LENGTH.value && it > 0 }
+    }
+    if (weightDg == null && lengthMm == null) return null
+
+    val entryEntity = EntryEntity(
+        accountId = accountId,
+        entryTimestamp = first.entryTimestamp,
+        serverTimestamp = first.serverTimestamp,
+        opTimestamp = first.serverTimestamp,
+        operationType = first.operationType ?: EntryOperationType.CREATE.value,
+        deviceType = "manual",
+        deviceId = first.entryId ?: "",
+        unit = WeightUnit.LB,
+        isSynced = true,
+    )
+    val babyEntity = BabyEntryEntity(
+        id = 0L,
+        babyId = id,
+        babyWeightDecigrams = weightDg,
+        babyLengthMillimeters = lengthMm,
+        entryNote = firstNotNullOfOrNull { it.entryNote },
+        entryType = if (weightDg != null) BabyEntryType.WEIGHT.value else BabyEntryType.MEASURE_LENGTH.value,
+        source = first.source,
+    )
+    return BabyEntry(entry = entryEntity, babyEntry = babyEntity)
+}
 
 /** Adapts the weight fields of a [UnifiedEntry] to the existing [ScaleApiEntry] shape. */
 private fun UnifiedEntry.toScaleApiEntry(): ScaleApiEntry = ScaleApiEntry(
@@ -165,4 +237,45 @@ private fun UnifiedEntry.toBpmEntry(accountId: String): BpmEntry {
         note = note,
     )
     return BpmEntry(entry = entryEntity, bpmEntry = bpmEntity)
+}
+
+/**
+ * Maps a server baby [UnifiedEntry] back to a domain [BabyEntry] (read path for §2.17).
+ * Only `weight` and `measureLength` are modeled locally — other baby entryTypes
+ * (feeding/sleep/diaper/snapshot) and entries without a usable value return null so
+ * they're skipped rather than mis-stored. The raw [entryType] string is matched
+ * explicitly (not via [BabyEntryType.fromValue], which defaults unknown values to WEIGHT).
+ */
+private fun UnifiedEntry.toBabyEntry(accountId: String): BabyEntry? {
+    val id = babyId ?: return null
+    val type = when (entryType) {
+        BabyEntryType.WEIGHT.value -> BabyEntryType.WEIGHT
+        BabyEntryType.MEASURE_LENGTH.value -> BabyEntryType.MEASURE_LENGTH
+        else -> return null
+    }
+    val weightDg = if (type == BabyEntryType.WEIGHT) babyWeightDecigrams else null
+    val lengthMm = if (type == BabyEntryType.MEASURE_LENGTH) babyLengthMillimeters else null
+    if ((weightDg ?: 0) <= 0 && (lengthMm ?: 0) <= 0) return null
+
+    val entryEntity = EntryEntity(
+        accountId = accountId,
+        entryTimestamp = entryTimestamp,
+        serverTimestamp = serverTimestamp,
+        opTimestamp = serverTimestamp,
+        operationType = operationType ?: EntryOperationType.CREATE.value,
+        deviceType = "manual",
+        deviceId = entryId ?: "",
+        unit = WeightUnit.LB,
+        isSynced = true,
+    )
+    val babyEntity = BabyEntryEntity(
+        id = 0L,
+        babyId = id,
+        babyWeightDecigrams = weightDg,
+        babyLengthMillimeters = lengthMm,
+        entryNote = entryNote,
+        entryType = type.value,
+        source = source,
+    )
+    return BabyEntry(entry = entryEntity, babyEntry = babyEntity)
 }

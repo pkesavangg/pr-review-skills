@@ -36,6 +36,14 @@ data class UnifiedEntry(
     val diastolic: Int? = null,
     val note: String? = null,
 
+    // baby (§2.16/§2.17): weight & measureLength are distinct entryTypes
+    val babyId: String? = null,
+    val entryId: String? = null,
+    val entryType: String? = null,
+    val babyWeightDecigrams: Int? = null,
+    val babyLengthMillimeters: Int? = null,
+    val entryNote: String? = null,
+
     // shared
     val pulse: Int? = null,
     val source: String? = null,

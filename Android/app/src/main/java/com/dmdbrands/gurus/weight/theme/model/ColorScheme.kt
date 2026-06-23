@@ -60,6 +60,8 @@ data class ColorScheme(
   val textSubheading: Color,
   val textError: Color,
   val textErrorDisabled: Color,
+  // Advisory (non-blocking) warning text, e.g. out-of-typical-range manual entry.
+  val textWarning: Color,
   // Brand
   val meAppPrimary: Color,
   val wgPrimary: Color,

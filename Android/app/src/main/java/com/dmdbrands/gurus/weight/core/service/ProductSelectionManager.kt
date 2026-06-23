@@ -97,8 +97,17 @@ class ProductSelectionManager @Inject constructor(
     _availableProducts.value = products
     AppLog.d(TAG, "Available: $products")
 
-    _selectedProduct.value = restoreSavedSelection(products)
-    _isSnapshotMode.value = !productSelectionRepository.observeHasUserSelected().first()
+    val restored = restoreSavedSelection(products)
+    _selectedProduct.value = restored
+
+    // Snapshot is the multi-product chooser. With a single available product there's nothing
+    // to choose, so skip it and go straight to that product's detail dashboard. Otherwise fall
+    // back to the saved-pick behavior (skip only if the user has already chosen before).
+    if (products.size == 1) {
+      _isSnapshotMode.value = false
+    } else {
+      _isSnapshotMode.value = !productSelectionRepository.observeHasUserSelected().first()
+    }
   }
 
   override suspend fun persistProductForSetup(productType: ProductType) {

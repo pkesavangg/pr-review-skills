@@ -108,7 +108,7 @@ private fun EntryScreenContent(
       BabyEmptyState(
         onAddBaby = {
           scope.launch {
-            navStackController.addRoute(AppRoute.AccountSettings.AddBaby)
+            navStackController.addRoute(AppRoute.AccountSettings.AddBaby())
           }
         },
         description = BabyEmptyStateStrings.EntryDescription,
