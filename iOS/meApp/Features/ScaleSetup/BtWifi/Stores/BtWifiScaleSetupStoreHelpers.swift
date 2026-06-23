@@ -125,7 +125,7 @@ extension BtWifiScaleSetupStore {
     /// Updates `isNextEnabled` depending on the current step and permission state.
     func updateNextEnabled() {
         let states = bluetoothPermissionStates()
-        let hasScaleMetricsChanged = savedScaleMetricsSnapshot != nil && savedScaleMetricsSnapshot != selectedScaleMetrics
+        let hasDeviceMetricsChanged = savedDeviceMetricsSnapshot != nil && savedDeviceMetricsSnapshot != selectedDeviceMetrics
 
         let context = SetupValidationContext(
             currentStep: currentStep,
@@ -142,7 +142,7 @@ extension BtWifiScaleSetupStore {
             initialScaleModeSnapshot: initialScaleModeSnapshot,
             isHeartRateEnabled: isHeartRateEnabled,
             initialHeartRateEnabledSnapshot: initialHeartRateEnabledSnapshot,
-            hasScaleMetricsChanged: hasScaleMetricsChanged,
+            hasDeviceMetricsChanged: hasDeviceMetricsChanged,
             hasDashboardCustomizationChanged: hasDashboardCustomizationChanged()
         )
 

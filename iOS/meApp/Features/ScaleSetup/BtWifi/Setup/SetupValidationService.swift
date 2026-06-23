@@ -11,11 +11,11 @@ struct SetupValidationContext {
     let duplicateNameInitial: String
     let duplicateNameIsValid: Bool
     let isWifiPasswordValid: Bool
-    let selectedScaleMode: ScaleModes
-    let initialScaleModeSnapshot: ScaleModes?
+    let selectedScaleMode: DeviceModes
+    let initialScaleModeSnapshot: DeviceModes?
     let isHeartRateEnabled: Bool
     let initialHeartRateEnabledSnapshot: Bool?
-    let hasScaleMetricsChanged: Bool
+    let hasDeviceMetricsChanged: Bool
     let hasDashboardCustomizationChanged: Bool
 }
 
@@ -71,7 +71,7 @@ struct SetupValidationService: SetupValidationServicing {
         case .scaleUsername:
             isEnabled = isDuplicateNameValidAndChanged(in: context)
         case .scaleMetrics:
-            isEnabled = context.hasScaleMetricsChanged
+            isEnabled = context.hasDeviceMetricsChanged
         case .scaleMode:
             isEnabled = context.selectedScaleMode != context.initialScaleModeSnapshot ||
                 context.isHeartRateEnabled != (context.initialHeartRateEnabledSnapshot ?? false)

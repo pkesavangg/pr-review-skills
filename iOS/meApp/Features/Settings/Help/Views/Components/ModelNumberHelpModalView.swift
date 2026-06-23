@@ -11,7 +11,7 @@ struct ModelNumberHelpModalView: View {
     let onClose: () -> Void
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var themeManager: Theme
-    let lang = MyScaleStrings.self
+    let lang = MyDeviceStrings.self
 
     var body: some View {
         VStack(spacing: 0) {

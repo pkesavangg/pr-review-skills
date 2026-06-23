@@ -7,8 +7,8 @@ struct ScaleMetricsCustomizationView: View {
     private let initialEnabledKeys: [String]
 
     // MARK: - State
-    @State private var bodyMetrics: [ScaleMetricSetting] = []
-    @State private var progressMetrics: [ScaleMetricSetting] = []
+    @State private var bodyMetrics: [DeviceMetricSetting] = []
+    @State private var progressMetrics: [DeviceMetricSetting] = []
 
     /// Emits ordered list of enabled metric keys and whether it differs from the initial keys
     /// whenever user toggles / reorders.
@@ -16,7 +16,7 @@ struct ScaleMetricsCustomizationView: View {
 
     private let lang = BtWifiScaleSetupStrings.ScaleMetricsCustomizationViewStrings.self
 
-    init(initialEnabledKeys: [String] = ScaleMetrics.defaultMetricsKeys,
+    init(initialEnabledKeys: [String] = DeviceMetrics.defaultMetricsKeys,
          onSave: @escaping ([String], Bool) -> Void) {
         self.initialEnabledKeys = initialEnabledKeys
         self.onSave = onSave
@@ -93,8 +93,8 @@ struct ScaleMetricsCustomizationView: View {
     /// Configure toggle states and order based on `initialEnabledKeys` once when the view appears.
     private func configureInitialState() {
         // Prepare metrics arrays with correct enabled state first.
-        var allBody = ScaleMetrics.bodyMetrics
-        var allProgress = ScaleMetrics.progressMetrics
+        var allBody = DeviceMetrics.bodyMetrics
+        var allProgress = DeviceMetrics.progressMetrics
 
         for index in allBody.indices {
             allBody[index].isEnabled = initialEnabledKeys.contains(allBody[index].key)
@@ -104,7 +104,7 @@ struct ScaleMetricsCustomizationView: View {
         }
 
         // Re-order according to saved order but keep any new metrics at end in default order.
-        let ordering: (ScaleMetricSetting, ScaleMetricSetting) -> Bool = { first, second in
+        let ordering: (DeviceMetricSetting, DeviceMetricSetting) -> Bool = { first, second in
             let firstIndex = initialEnabledKeys.firstIndex(of: first.key) ?? Int.max
             let secondIndex = initialEnabledKeys.firstIndex(of: second.key) ?? Int.max
             return firstIndex < secondIndex
@@ -117,7 +117,7 @@ struct ScaleMetricsCustomizationView: View {
     }
 
     /// Handles metric toggle and reorders the list to move toggled item to end of its group
-    private func handleBodyMetricToggle(metric: ScaleMetricSetting, isEnabled: Bool) {
+    private func handleBodyMetricToggle(metric: DeviceMetricSetting, isEnabled: Bool) {
         // Update toggle state immediately so SwiftUI can re-evaluate .moveDisabled()
         if let idx = bodyMetrics.firstIndex(where: { $0.key == metric.key }) {
             bodyMetrics[idx].isEnabled = isEnabled
@@ -127,13 +127,13 @@ struct ScaleMetricsCustomizationView: View {
         // Reorder on next run loop to ensure .moveDisabled() is updated first
         Task { @MainActor in
             withAnimation {
-                self.bodyMetrics = ScaleMetricSetting.reorderOnToggle(items: self.bodyMetrics, key: metric.key, isEnabled: isEnabled)
+                self.bodyMetrics = DeviceMetricSetting.reorderOnToggle(items: self.bodyMetrics, key: metric.key, isEnabled: isEnabled)
             }
         }
     }
     
     /// Handles progress metric toggle and reorders the list
-    private func handleProgressMetricToggle(metric: ScaleMetricSetting, isEnabled: Bool) {
+    private func handleProgressMetricToggle(metric: DeviceMetricSetting, isEnabled: Bool) {
         // Update toggle state immediately so SwiftUI can re-evaluate .moveDisabled()
         if let idx = progressMetrics.firstIndex(where: { $0.key == metric.key }) {
             progressMetrics[idx].isEnabled = isEnabled
@@ -143,7 +143,7 @@ struct ScaleMetricsCustomizationView: View {
         // Reorder on next run loop to ensure .moveDisabled() is updated first
         Task { @MainActor in
             withAnimation {
-                self.progressMetrics = ScaleMetricSetting.reorderOnToggle(items: self.progressMetrics, key: metric.key, isEnabled: isEnabled)
+                self.progressMetrics = DeviceMetricSetting.reorderOnToggle(items: self.progressMetrics, key: metric.key, isEnabled: isEnabled)
             }
         }
     }

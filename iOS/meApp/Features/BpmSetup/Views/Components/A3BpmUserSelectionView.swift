@@ -10,7 +10,7 @@ import SwiftUI
 struct A3BpmUserSelectionView: View {
     @Environment(\.appTheme) private var theme
 
-    let bpmItem: ScaleItemInfo
+    let bpmItem: DeviceItemInfo
     @Binding var selectedUser: Int?
     let onSelect: (Int) -> Void
 
@@ -110,7 +110,7 @@ private struct BpmUserIconButton: View {
 
 #Preview {
     A3BpmUserSelectionView(
-        bpmItem: ScaleItemInfo(
+        bpmItem: DeviceItemInfo(
             productName: "Smart Blood Pressure Monitor",
             sku: "0604",
             imgPath: "",

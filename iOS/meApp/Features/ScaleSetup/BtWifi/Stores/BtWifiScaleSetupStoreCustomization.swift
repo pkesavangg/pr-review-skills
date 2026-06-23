@@ -21,7 +21,7 @@ extension BtWifiScaleSetupStore {
         case .scaleMode:
             preloadScaleMode()
         case .scaleMetrics:
-            preloadScaleMetrics()
+            preloadDeviceMetrics()
         case .dashboardMetrics:
             Task { [weak self] in
                 guard let self else { return }
@@ -46,24 +46,24 @@ extension BtWifiScaleSetupStore {
         initialHeartRateEnabledSnapshot = isHeartRateEnabled
     }
 
-    private func preloadScaleMetrics() {
+    private func preloadDeviceMetrics() {
         Task { [weak self] in
             guard let self else { return }
             if let savedScale = self.savedScale,
                let preference = await self.scaleService.fetchAttachedPreference(by: savedScale.id) {
                 await MainActor.run {
-                    self.selectedScaleMetrics = Array(preference.displayMetrics)
-                    self.initialScaleMetricsSnapshot = Array(preference.displayMetrics)
-                    if self.savedScaleMetricsSnapshot == nil {
-                        self.savedScaleMetricsSnapshot = Array(preference.displayMetrics)
+                    self.selectedDeviceMetrics = Array(preference.displayMetrics)
+                    self.initialDeviceMetricsSnapshot = Array(preference.displayMetrics)
+                    if self.savedDeviceMetricsSnapshot == nil {
+                        self.savedDeviceMetricsSnapshot = Array(preference.displayMetrics)
                     }
                 }
             } else {
                 await MainActor.run {
-                    self.selectedScaleMetrics = ScaleMetrics.defaultMetricsKeys
-                    self.initialScaleMetricsSnapshot = ScaleMetrics.defaultMetricsKeys
-                    if self.savedScaleMetricsSnapshot == nil {
-                        self.savedScaleMetricsSnapshot = ScaleMetrics.defaultMetricsKeys
+                    self.selectedDeviceMetrics = DeviceMetrics.defaultMetricsKeys
+                    self.initialDeviceMetricsSnapshot = DeviceMetrics.defaultMetricsKeys
+                    if self.savedDeviceMetricsSnapshot == nil {
+                        self.savedDeviceMetricsSnapshot = DeviceMetrics.defaultMetricsKeys
                     }
                 }
             }
@@ -71,7 +71,7 @@ extension BtWifiScaleSetupStore {
     }
 
     /// Handles scale mode and heart rate changes
-    func handleScaleModeChange(_ scaleMode: ScaleModes, heartRateEnabled: Bool) {
+    func handleScaleModeChange(_ scaleMode: DeviceModes, heartRateEnabled: Bool) {
         selectedScaleMode = scaleMode
         isHeartRateEnabled = heartRateEnabled
         updateNextEnabled()
@@ -124,7 +124,7 @@ extension BtWifiScaleSetupStore {
         case .scaleMode:
             saveViewSettingsScaleMode()
         case .scaleMetrics:
-            saveViewSettingsScaleMetrics()
+            saveViewSettingsDeviceMetrics()
         case .dashboardMetrics:
             saveViewSettingsDashboardMetrics()
         default:
@@ -158,12 +158,12 @@ extension BtWifiScaleSetupStore {
         hasSavedSettings = true
     }
 
-    private func saveViewSettingsScaleMetrics() {
+    private func saveViewSettingsDeviceMetrics() {
         if let savedScale = savedScale {
             Task {
                 if let attached = await scaleService.fetchAttachedPreference(by: savedScale.id) {
-                    attached.displayMetrics = selectedScaleMetrics
-                    await MainActor.run { self.savedScaleMetricsSnapshot = self.selectedScaleMetrics }
+                    attached.displayMetrics = selectedDeviceMetrics
+                    await MainActor.run { self.savedDeviceMetricsSnapshot = self.selectedDeviceMetrics }
                 }
             }
         }
@@ -197,7 +197,7 @@ extension BtWifiScaleSetupStore {
                 resetFormState()
             }
         case .scaleMetrics:
-            if let savedState = savedScaleMetricsSnapshot { selectedScaleMetrics = savedState }
+            if let savedState = savedDeviceMetricsSnapshot { selectedDeviceMetrics = savedState }
         default:
             break
         }
@@ -238,7 +238,7 @@ extension BtWifiScaleSetupStore {
                 }
 
                 let scaleUsers = self.userList.map { deviceUser in
-                    ScaleUser(name: deviceUser.name, token: deviceUser.token)
+                    DeviceUser(name: deviceUser.name, token: deviceUser.token)
                 }
                 self.userNameForm.updateUserList(scaleUsers)
                 self.resetFormState()
@@ -329,7 +329,7 @@ extension BtWifiScaleSetupStore {
         let defaultDTO = R4ScalePreferenceDTO(
             scaleId: savedScale.id,
             displayName: firstName ?? "User",
-            displayMetrics: ScaleMetrics.defaultMetricsKeys,
+            displayMetrics: DeviceMetrics.defaultMetricsKeys,
             shouldFactoryReset: false,
             shouldMeasureImpedance: true,
             shouldMeasurePulse: false,
@@ -343,8 +343,8 @@ extension BtWifiScaleSetupStore {
     }
 
     private func buildUpdatedPreference(savedScale: DeviceSnapshot, currentPreference: R4ScalePreference) -> R4ScalePreference {
-        let saveScaleMetrics = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleMetrics.rawValue)
-        let saveScaleMode = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleModes.rawValue)
+        let saveDeviceMetrics = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleMetrics.rawValue)
+        let saveScaleMode = selectedCustomizeItems.contains(CustomizeSettingsItem.deviceModes.rawValue)
         let saveScaleUsername = selectedCustomizeItems.contains(CustomizeSettingsItem.userName.rawValue)
         let displayName = saveScaleUsername
             ? (userNameForm.displayName.value.isEmpty ? (firstName ?? "User") : userNameForm.displayName.value)
@@ -352,7 +352,7 @@ extension BtWifiScaleSetupStore {
         let dto = R4ScalePreferenceDTO(
             scaleId: savedScale.id,
             displayName: displayName,
-            displayMetrics: saveScaleMetrics ? selectedScaleMetrics : currentPreference.displayMetrics,
+            displayMetrics: saveDeviceMetrics ? selectedDeviceMetrics : currentPreference.displayMetrics,
             shouldFactoryReset: false,
             shouldMeasureImpedance: saveScaleMode ? (selectedScaleMode == .allBodyMetrics) : currentPreference.shouldMeasureImpedance,
             shouldMeasurePulse: saveScaleMode ? isHeartRateEnabled : currentPreference.shouldMeasurePulse,

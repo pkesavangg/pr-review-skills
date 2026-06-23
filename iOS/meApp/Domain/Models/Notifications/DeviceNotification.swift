@@ -14,7 +14,7 @@ import SwiftData
 ///
 /// ## Usage
 /// ```swift
-/// // In ScaleService (MainActor context):
+/// // In DeviceService (MainActor context):
 /// let notification = DeviceNotification(from: device)
 /// deviceUpdated.send(notification)
 ///
@@ -111,8 +111,8 @@ struct DeviceNotification: Sendable, Identifiable, Equatable {
         }
     }
 
-    /// Creates a notification from a ScaleDTO (for cases where Device is not available).
-    init(from dto: ScaleDTO, persistentId: PersistentIdentifier? = nil) {
+    /// Creates a notification from a DeviceDTO (for cases where Device is not available).
+    init(from dto: DeviceDTO, persistentId: PersistentIdentifier? = nil) {
         self.id = dto.id ?? UUID().uuidString
         self.persistentId = persistentId
         self.accountId = dto.userId ?? ""

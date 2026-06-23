@@ -2,16 +2,10 @@ import Combine
 import Foundation
 import SwiftUI
 
-/// User model for duplicate checking
-struct ScaleUser {
-    let name: String
-    let token: String?
-}
-
 /// Form for handling username input with validation
 class UserNameForm: ObservableForm {
     var displayName = FormControl("", validators: [.required, .noWhiteSpace, .alphanumeric, .userNameUnavailable, .maxLength(20)])
-    @Published var userList: [ScaleUser] = []
+    @Published var userList: [DeviceUser] = []
     /// The current user's initial name
     var currentUserName: String?
     private let errorMessages = FormErrorMessages.self
@@ -25,7 +19,7 @@ class UserNameForm: ObservableForm {
     }
     
     /// Update the user list for duplicate checking and refresh validation
-    func updateUserList(_ users: [ScaleUser]) {
+    func updateUserList(_ users: [DeviceUser]) {
         userList = users
         setupDuplicateValidation()
     }

@@ -127,7 +127,7 @@ extension BluetoothService {
         return Int(round(metric * 10))
     }
 
-    func mapProtocolToScaleType(_ protocolType: String) -> ScaleSourceType {
+    func mapProtocolToDeviceModelType(_ protocolType: String) -> DeviceSourceType {
         switch protocolType {
         case "A3": return .bluetooth
         case "A6": return .bluetoothScale

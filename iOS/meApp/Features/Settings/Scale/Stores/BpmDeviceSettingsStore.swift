@@ -10,7 +10,7 @@ import SwiftUI
 @MainActor
 final class BpmDeviceSettingsStore: ObservableObject {
     @Injector var notificationService: NotificationHelperServiceProtocol
-    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var scaleService: PairedDeviceServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     @Injector var permissionsService: PermissionsServiceProtocol
@@ -38,7 +38,7 @@ final class BpmDeviceSettingsStore: ObservableObject {
     @Published var showProductBrowser: Bool = false
     @Published var productURL: URL?
 
-    let disconnectableScaleTypes: Set<ScaleSourceType> = [.btWifiR4, .bluetooth, .bluetoothScale, .lcbt, .lcbtScale]
+    let disconnectableDeviceModelTypes: Set<DeviceSourceType> = [.btWifiR4, .bluetooth, .bluetoothScale, .lcbt, .lcbtScale]
 
     // Strings
     private let loaderLang = LoaderStrings.self
@@ -62,7 +62,7 @@ final class BpmDeviceSettingsStore: ObservableObject {
     init(
         device: Device,
         notificationService: NotificationHelperServiceProtocol?,
-        scaleService: ScaleServiceProtocol?,
+        scaleService: PairedDeviceServiceProtocol?,
         bluetoothService: BluetoothServiceProtocol?,
         logger: LoggerServiceProtocol?,
         permissionsService: PermissionsServiceProtocol?
@@ -191,8 +191,8 @@ final class BpmDeviceSettingsStore: ObservableObject {
         return isSuccess
     }
 
-    private func getScaleType() -> ScaleSourceType? {
+    private func getDeviceModelType() -> DeviceSourceType? {
         guard let scaleType = device.bathScale?.scaleType else { return nil }
-        return ScaleSourceType(rawValue: scaleType)
+        return DeviceSourceType(rawValue: scaleType)
     }
 }

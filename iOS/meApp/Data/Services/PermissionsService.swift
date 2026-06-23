@@ -21,7 +21,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     // Shared singleton instance for global access. Prefer DI for new code when possible.
     static let shared = PermissionsService(
         notificationService: NotificationHelperService.shared,
-        scaleService: ScaleService.shared,
+        scaleService: DeviceService.shared,
         logger: LoggerService.shared
     )
 
@@ -42,7 +42,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     // MARK: - Dependencies
 
     private let notificationService: NotificationHelperServiceProtocol
-    private let scaleService: ScaleServiceProtocol
+    private let scaleService: PairedDeviceServiceProtocol
     private let logger: LoggerServiceProtocol
     var permissionClient: PermissionSDKClient
 
@@ -53,7 +53,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
 
     init(
         notificationService: NotificationHelperServiceProtocol,
-        scaleService: ScaleServiceProtocol,
+        scaleService: PairedDeviceServiceProtocol,
         logger: LoggerServiceProtocol,
         permissionClient: PermissionSDKClient = GGBluetoothSwiftPackage.shared
     ) {
@@ -166,7 +166,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
 
         for device in devices {
             let rawType = (device.bathScale?.scaleType ?? device.deviceType ?? "")
-            guard let scaleType = ScaleSourceType(rawValue: rawType) else { continue }
+            guard let scaleType = DeviceSourceType(rawValue: rawType) else { continue }
             switch scaleType {
             case .wifi, .espTouchWifi:
                 newRequired.insert(.notifications)

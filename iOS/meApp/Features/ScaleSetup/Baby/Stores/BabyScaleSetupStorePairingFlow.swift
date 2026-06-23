@@ -144,7 +144,7 @@ extension BabyScaleSetupStore {
             var deviceMetadata: DeviceMetaData?
             let deviceInfoResult = await bluetoothService.getDeviceInfo(broadcastId: scale.broadcastIdString ?? "", skipConnectionCheck: true)
             if case .success(let deviceInfo) = deviceInfoResult {
-                let dto = ScaleMetaDataDTO(
+                let dto = DeviceMetaDataDTO(
                     firmwareRevision: deviceInfo.firmwareRevision?.replacingOccurrences(of: "\0", with: ""),
                     hardwareRevision: deviceInfo.hardwareRevision?.replacingOccurrences(of: "\0", with: ""),
                     latestFirmwareVersion: nil,

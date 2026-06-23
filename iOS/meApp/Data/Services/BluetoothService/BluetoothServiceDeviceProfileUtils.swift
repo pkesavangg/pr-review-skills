@@ -12,7 +12,7 @@ import SwiftData
 extension BluetoothService {
     // MARK: - Scale & Profile Helpers
 
-    func getSafeScaleType(for device: DeviceSnapshot) -> String? {
+    func getSafeDeviceModelType(for device: DeviceSnapshot) -> String? {
         device.bathScale?.scaleType
     }
 

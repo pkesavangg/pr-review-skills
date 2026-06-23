@@ -20,7 +20,7 @@ class HelpStore: ObservableObject {
     @Injector var entryService: EntryServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     @Injector var feedService: FeedServiceProtocol
-    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var scaleService: PairedDeviceServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
     private let appReviewHandler: AppReviewHandlerProtocol
     var kvStorage = KvStorageService.shared
@@ -65,7 +65,7 @@ class HelpStore: ObservableObject {
         scaleService.scalesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] scales in
-                self?.scales = scales.filter { $0.bathScale?.scaleType == ScaleSourceType.btWifiR4.rawValue }
+                self?.scales = scales.filter { $0.bathScale?.scaleType == DeviceSourceType.btWifiR4.rawValue }
             }
             .store(in: &cancellables)
     }

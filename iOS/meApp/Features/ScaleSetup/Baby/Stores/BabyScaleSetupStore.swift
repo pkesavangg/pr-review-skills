@@ -15,7 +15,7 @@ final class BabyScaleSetupStore: ObservableObject {
     @Injector var permissionsService: PermissionsServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var accountService: AccountServiceProtocol
-    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var scaleService: PairedDeviceServiceProtocol
     @Injector var babyService: BabyServiceProtocol
     @Injector var productTypeStore: ProductTypeStoreProtocol
 
@@ -24,7 +24,7 @@ final class BabyScaleSetupStore: ObservableObject {
     let tag = "BabyScaleSetupStore"
 
     /// Resolved scale metadata used across the setup flow.
-    var scaleItem: ScaleItemInfo?
+    var scaleItem: DeviceItemInfo?
     /// Callback used by the screen to dismiss itself.
     var dismissAction: (() -> Void)?
     /// Discovered scale information.

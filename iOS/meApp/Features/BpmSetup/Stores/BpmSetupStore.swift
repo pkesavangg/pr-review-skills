@@ -16,7 +16,7 @@ final class BpmSetupStore: ObservableObject {
     @Injector private var notificationService: NotificationHelperServiceProtocol
     @Injector private var permissionsService: PermissionsServiceProtocol
     @Injector private var bluetoothService: BluetoothServiceProtocol
-    @Injector private var scaleService: ScaleServiceProtocol
+    @Injector private var scaleService: PairedDeviceServiceProtocol
     @Injector private var accountService: AccountServiceProtocol
 
     // MARK: - Private
@@ -25,7 +25,7 @@ final class BpmSetupStore: ObservableObject {
     private var scanTimerTask: Task<Void, Never>?
     private var bpmReadingSubscription: AnyCancellable?
 
-    private(set) var bpmItem: ScaleItemInfo?
+    private(set) var bpmItem: DeviceItemInfo?
     private var discoveredDevice: Device?
     private var discoveryEvent: DeviceDiscoveryEvent?
     private var isDeviceSaved: Bool = false
@@ -106,7 +106,7 @@ final class BpmSetupStore: ObservableObject {
     }
 
     // swiftlint:disable:next cyclomatic_complexity
-    private func buildStepView(_ step: BpmSetupStep, bpmItem: ScaleItemInfo) -> AnyView {
+    private func buildStepView(_ step: BpmSetupStep, bpmItem: DeviceItemInfo) -> AnyView {
         switch step {
         case .selectModel: return buildSelectModelView()
         case .intro: return buildIntroView(bpmItem: bpmItem)
@@ -136,7 +136,7 @@ final class BpmSetupStore: ObservableObject {
         )
     }
 
-    private func buildIntroView(bpmItem: ScaleItemInfo) -> AnyView {
+    private func buildIntroView(bpmItem: DeviceItemInfo) -> AnyView {
         AnyView(ScaleSetupIntroView(scale: bpmItem, troubleText: BpmSetupStrings.troubleSettingUp))
     }
 
@@ -144,7 +144,7 @@ final class BpmSetupStore: ObservableObject {
         AnyView(PermissionListView(setupType: .bpm))
     }
 
-    private func buildSelectUserView(bpmItem: ScaleItemInfo) -> AnyView {
+    private func buildSelectUserView(bpmItem: DeviceItemInfo) -> AnyView {
         AnyView(
             A3BpmUserSelectionView(
                 bpmItem: bpmItem,
@@ -158,7 +158,7 @@ final class BpmSetupStore: ObservableObject {
         )
     }
 
-    private func buildPowerSwitchView(bpmItem: ScaleItemInfo) -> AnyView {
+    private func buildPowerSwitchView(bpmItem: DeviceItemInfo) -> AnyView {
         AnyView(
             A3BpmInstructionView(
                 title: BpmSetupStrings.PowerSwitch.title,
@@ -172,7 +172,7 @@ final class BpmSetupStore: ObservableObject {
         )
     }
 
-    private func buildSetUserView(bpmItem: ScaleItemInfo) -> AnyView {
+    private func buildSetUserView(bpmItem: DeviceItemInfo) -> AnyView {
         AnyView(
             A3BpmInstructionView(
                 title: BpmSetupStrings.SetUser.title(userLabel(for: selectedUserNumber ?? 1)),
@@ -188,7 +188,7 @@ final class BpmSetupStore: ObservableObject {
         )
     }
 
-    private func buildConfirmUserView(bpmItem: ScaleItemInfo) -> AnyView {
+    private func buildConfirmUserView(bpmItem: DeviceItemInfo) -> AnyView {
         AnyView(
             A3BpmInstructionView(
                 title: BpmSetupStrings.ConfirmUser.title,
@@ -204,7 +204,7 @@ final class BpmSetupStore: ObservableObject {
         )
     }
 
-    private func buildPrePairingView(bpmItem: ScaleItemInfo) -> AnyView {
+    private func buildPrePairingView(bpmItem: DeviceItemInfo) -> AnyView {
         AnyView(
             A3BpmInstructionView(
                 title: BpmSetupStrings.PrePairing.title,
@@ -218,7 +218,7 @@ final class BpmSetupStore: ObservableObject {
         )
     }
 
-    private func buildScanningView(bpmItem: ScaleItemInfo) -> AnyView {
+    private func buildScanningView(bpmItem: DeviceItemInfo) -> AnyView {
         AnyView(
             A3BpmScanningView(
                 connectionState: connectionState,
@@ -252,7 +252,7 @@ final class BpmSetupStore: ObservableObject {
         )
     }
 
-    private func buildMeasureSetupView(bpmItem: ScaleItemInfo) -> AnyView {
+    private func buildMeasureSetupView(bpmItem: DeviceItemInfo) -> AnyView {
         AnyView(
             A3BpmInstructionView(
                 title: BpmSetupStrings.MeasureSetup.title,
@@ -267,7 +267,7 @@ final class BpmSetupStore: ObservableObject {
         )
     }
 
-    private func buildMeasureStartView(bpmItem: ScaleItemInfo) -> AnyView {
+    private func buildMeasureStartView(bpmItem: DeviceItemInfo) -> AnyView {
         AnyView(
             A3BpmInstructionView(
                 title: BpmSetupStrings.MeasureStart.title,

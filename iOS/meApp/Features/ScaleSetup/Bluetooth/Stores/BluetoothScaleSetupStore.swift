@@ -20,7 +20,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
     @Injector private var notificationService: NotificationHelperServiceProtocol
     @Injector private var permissionsService: PermissionsServiceProtocol
     @Injector private var bluetoothService: BluetoothServiceProtocol
-    @Injector private var scaleService: ScaleServiceProtocol
+    @Injector private var scaleService: PairedDeviceServiceProtocol
     @Injector private var accountService: AccountServiceProtocol
     
     // MARK: - Private
@@ -29,7 +29,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
     private var stepTimerTask: Task<Void, Never>?
     private var newEntrySubscription: AnyCancellable?
     
-    private var scaleItem: ScaleItemInfo?
+    private var scaleItem: DeviceItemInfo?
     private var discoveredScale: Device?
     private var discoveryEvent: DeviceDiscoveryEvent?
     /// Flag to track if scale has been saved to prevent duplicate saves
@@ -510,7 +510,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         let deviceInfoResult = await bluetoothService.getDeviceInfo(broadcastId: deviceToSave.broadcastIdString ?? "", skipConnectionCheck: true)
         switch deviceInfoResult {
         case .success(let deviceInfo):
-            let dto = ScaleMetaDataDTO(
+            let dto = DeviceMetaDataDTO(
                 firmwareRevision: deviceInfo.firmwareRevision?.replacingOccurrences(of: "\0", with: ""),
                 hardwareRevision: deviceInfo.hardwareRevision?.replacingOccurrences(of: "\0", with: ""),
                 latestFirmwareVersion: nil,

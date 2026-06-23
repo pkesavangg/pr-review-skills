@@ -12,7 +12,7 @@ final class UsersViewModel: ObservableObject {
     @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var permissionsService: PermissionsServiceProtocol
-    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var scaleService: PairedDeviceServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     @Published var userNameForm = UserNameForm()
     @Published var deviceUsers: [DeviceUser] = []
@@ -60,7 +60,7 @@ final class UsersViewModel: ObservableObject {
             let currentName = self.currentDeviceUser?.name ?? ""
             userNameForm.setDisplayName(currentName)
             let scaleUsers = otherDeviceUsersList.map { deviceUser in
-                ScaleUser(name: deviceUser.name, token: deviceUser.token)
+                DeviceUser(name: deviceUser.name, token: deviceUser.token)
             }
             userNameForm.updateUserList(scaleUsers)
         }
@@ -176,7 +176,7 @@ final class UsersViewModel: ObservableObject {
         let currentName = currentDeviceUser?.name ?? ""
         userNameForm.setDisplayName(currentName)
         let scaleUsers = otherDeviceUsersList.map { deviceUser in
-            ScaleUser(name: deviceUser.name, token: deviceUser.token)
+            DeviceUser(name: deviceUser.name, token: deviceUser.token)
         }
         userNameForm.updateUserList(scaleUsers)
     }

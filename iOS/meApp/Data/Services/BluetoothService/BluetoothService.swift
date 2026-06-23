@@ -34,7 +34,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
     /// Legacy singleton for compatibility. Prefer dependency injection for new code.
     static let shared = BluetoothService(accountService: AccountService.shared,
-                                         scaleService: ScaleService.shared,
+                                         scaleService: DeviceService.shared,
                                          entryService: EntryService.shared,
                                          babyService: BabyService.shared,
                                          logger: LoggerService.shared)
@@ -118,7 +118,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     // MARK: - Navigation Callback
 
     /// Callback to handle scale setup navigation. Set by the UI layer (e.g. BottomTabBarViewModel).
-    var onOpenScaleSetup: ((DeviceSnapshot, DeviceDiscoveryEvent?, Bool, Bool) -> Void)?
+    var onOpenDeviceSetup: ((DeviceSnapshot, DeviceDiscoveryEvent?, Bool, Bool) -> Void)?
 
     // MARK: - Subjects for Scale Discovery
 
@@ -166,7 +166,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     // MARK: - Dependencies
 
     let accountService: AccountServiceProtocol
-    let scaleService: ScaleServiceProtocol
+    let scaleService: PairedDeviceServiceProtocol
     let entryService: EntryServiceProtocol
     let babyService: BabyServiceProtocol
     let logger: LoggerServiceProtocol
@@ -185,7 +185,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     // MARK: - Alert Dependencies
 
     let notificationService: NotificationHelperServiceProtocol
-    var scaleInfoUtils: ScaleInfoUtils { ScaleInfoUtils.shared }
+    var scaleInfoUtils: DeviceInfoUtils { DeviceInfoUtils.shared }
 
     // MARK: - BLE Components
 
@@ -203,7 +203,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      */
     init(
         accountService: AccountServiceProtocol,
-        scaleService: ScaleServiceProtocol,
+        scaleService: PairedDeviceServiceProtocol,
         entryService: EntryServiceProtocol,
         babyService: BabyServiceProtocol,
         logger: LoggerServiceProtocol,
@@ -342,7 +342,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             logger.log(level: .info, tag: tag, message: "Bluetooth scales update received empty list; synced zero devices")
             return
         }
-        let allowedTypes: Set<ScaleSourceType> = Set([
+        let allowedTypes: Set<DeviceSourceType> = Set([
             .bluetooth,
             .bluetoothScale,
             .lcbt,
@@ -356,8 +356,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             // cause a valid new device to be treated as already-known (MOB-427 fix).
             guard !accountId.isEmpty,
                   scale.accountId == accountId,
-                  let raw = getSafeScaleType(for: scale),
-                  let type = ScaleSourceType(rawValue: raw)
+                  let raw = getSafeDeviceModelType(for: scale),
+                  let type = DeviceSourceType(rawValue: raw)
             else { return false }
             return allowedTypes.contains(type)
         }

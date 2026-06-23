@@ -16,7 +16,7 @@ final class AppReviewService: AppReviewHandlerProtocol, ReviewReportHandlerProto
 
     private let logger: LoggerServiceProtocol
     private let notificationHelper: NotificationHelperServiceProtocol
-    private let reviewRepository: ScaleRepositoryAPIProtocol
+    private let reviewRepository: DeviceRepositoryAPIProtocol
     private let sleepHandler: @Sendable (UInt64) async -> Void
     private let hasActiveWindowScene: @MainActor () -> Bool
     private let nativeReviewRequest: @MainActor () -> Void
@@ -28,7 +28,7 @@ final class AppReviewService: AppReviewHandlerProtocol, ReviewReportHandlerProto
     init(
         logger: LoggerServiceProtocol? = nil,
         notificationHelper: NotificationHelperServiceProtocol? = nil,
-        reviewRepository: ScaleRepositoryAPIProtocol? = nil,
+        reviewRepository: DeviceRepositoryAPIProtocol? = nil,
         reviewPromptDelay: UInt64 = UInt64(AppConstants.TimeoutsAndRetention.appReviewTriggerTimeout),
         sleepHandler: @escaping @Sendable (UInt64) async -> Void = { delayNanoseconds in
             try? await Task.sleep(nanoseconds: delayNanoseconds)
@@ -54,7 +54,7 @@ final class AppReviewService: AppReviewHandlerProtocol, ReviewReportHandlerProto
     ) {
         self.logger = logger ?? LoggerService.shared
         self.notificationHelper = notificationHelper ?? NotificationHelperService.shared
-        self.reviewRepository = reviewRepository ?? ScaleAPIRepository()
+        self.reviewRepository = reviewRepository ?? DeviceAPIRepository()
         self.reviewPromptDelay = reviewPromptDelay
         self.sleepHandler = sleepHandler
         self.hasActiveWindowScene = hasActiveWindowScene

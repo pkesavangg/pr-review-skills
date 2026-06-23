@@ -21,7 +21,7 @@ extension BluetoothService {
             return
         }
 
-        let scaleInfo = scaleInfoUtils.getScaleInfo(byScaleName: deviceDetails.deviceName)
+        let scaleInfo = scaleInfoUtils.getScaleInfo(byDeviceName: deviceDetails.deviceName)
         guard let discoveredScale = bluetoothScales.first(where: { $0.broadcastIdString == deviceDetails.broadcastIdString }) else {
             logger.log(level: .error, tag: tag, message: "Discovered scale not found in bluetoothScales")
             return
@@ -35,7 +35,7 @@ extension BluetoothService {
 
         let userToDelete = findUserToDelete(userList: userList, discoveredScale: discoveredScale)
 
-        let openScaleSetup: () -> Void = { [weak self] in
+        let openDeviceSetup: () -> Void = { [weak self] in
             guard let self = self else { return }
 
             Task { @MainActor in
@@ -59,7 +59,7 @@ extension BluetoothService {
 
                 let deviceDiscoveryEvent = DeviceDiscoveryEvent(
                     device: discoveredScale,
-                    deviceInfo: scaleInfo ?? ScaleItemInfo(
+                    deviceInfo: scaleInfo ?? DeviceItemInfo(
                         productName: deviceDetails.deviceName,
                         sku: "0412",
                         imgPath: AppAssets.meLogoDark,
@@ -70,7 +70,7 @@ extension BluetoothService {
                     isNew: true
                 )
 
-                self.onOpenScaleSetup?(discoveredScale, deviceDiscoveryEvent, true, isDuplicateUserError)
+                self.onOpenDeviceSetup?(discoveredScale, deviceDiscoveryEvent, true, isDuplicateUserError)
             }
         }
 
@@ -93,7 +93,7 @@ extension BluetoothService {
                         }
                     },
                     AlertButtonModel(title: alertStrings.DuplicateUserAlert.reconnectButton, type: .primary) { _ in
-                        openScaleSetup()
+                        openDeviceSetup()
                     }
                 ]
             )
@@ -111,7 +111,7 @@ extension BluetoothService {
                         }
                     },
                     AlertButtonModel(title: alertStrings.ReconnectDeviceAlert.reconnectButton, type: .primary) { _ in
-                        openScaleSetup()
+                        openDeviceSetup()
                     }
                 ]
             )
@@ -125,7 +125,7 @@ extension BluetoothService {
             bluetoothScales.contains { scale in
                 let isR4Scale: Bool = {
                     guard let raw = scale.bathScale?.scaleType else { return false }
-                    return ScaleSourceType(rawValue: raw) == .btWifiR4
+                    return DeviceSourceType(rawValue: raw) == .btWifiR4
                 }()
                 let namesMatch: Bool = {
                     if let pref = scale.r4ScalePreference {

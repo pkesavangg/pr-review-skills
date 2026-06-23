@@ -12,7 +12,7 @@ import SwiftUI
 @MainActor
 final class DisplayMetricsViewModel: ObservableObject {
     let notificationService: NotificationHelperServiceProtocol
-    let scaleService: ScaleServiceProtocol
+    let scaleService: PairedDeviceServiceProtocol
     let bluetoothService: BluetoothServiceProtocol
     let logger: LoggerServiceProtocol
     let accountService: AccountServiceProtocol
@@ -24,8 +24,8 @@ final class DisplayMetricsViewModel: ObservableObject {
         scaleService.scales.first(where: { $0.id == scaleIdString })
     }
 
-    @Published var metrics: [ScaleMetricSetting] = []
-    @Published var progressMetrics: [ScaleMetricSetting] = []
+    @Published var metrics: [DeviceMetricSetting] = []
+    @Published var progressMetrics: [DeviceMetricSetting] = []
     @Published var displayMetricsValue: String = ""
 
     // Banner states
@@ -46,7 +46,7 @@ final class DisplayMetricsViewModel: ObservableObject {
         scale: Device,
         isWeighOnlyModeEnabledByOthers: Bool = false,
         notificationService: NotificationHelperServiceProtocol? = nil,
-        scaleService: ScaleServiceProtocol? = nil,
+        scaleService: PairedDeviceServiceProtocol? = nil,
         bluetoothService: BluetoothServiceProtocol? = nil,
         logger: LoggerServiceProtocol? = nil,
         accountService: AccountServiceProtocol? = nil
@@ -54,7 +54,7 @@ final class DisplayMetricsViewModel: ObservableObject {
         self.scaleIdString = scale.id
         self.isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers
         self.notificationService = notificationService ?? Self.resolveDependency(NotificationHelperServiceProtocol.self)
-        self.scaleService = scaleService ?? Self.resolveDependency(ScaleServiceProtocol.self)
+        self.scaleService = scaleService ?? Self.resolveDependency(PairedDeviceServiceProtocol.self)
         self.bluetoothService = bluetoothService ?? Self.resolveDependency(BluetoothServiceProtocol.self)
         self.logger = logger ?? Self.resolveDependency(LoggerServiceProtocol.self)
         self.accountService = accountService ?? Self.resolveDependency(AccountServiceProtocol.self)
@@ -81,8 +81,8 @@ final class DisplayMetricsViewModel: ObservableObject {
     private func loadDisplayMetrics() {
         guard let preference = deviceSnapshot?.r4ScalePreference else {
             // Default metrics if no preference
-            metrics = ScaleMetrics.bodyMetrics
-            progressMetrics = ScaleMetrics.progressMetrics
+            metrics = DeviceMetrics.bodyMetrics
+            progressMetrics = DeviceMetrics.progressMetrics
             updateDisplayMetricsValue()
             return
         }
@@ -92,10 +92,10 @@ final class DisplayMetricsViewModel: ObservableObject {
         
         // Get available body metrics based on impedance setting
         let availableBodyMetrics = shouldMeasureImpedance ? 
-            ScaleMetrics.bodyMetrics : 
-            ScaleMetrics.bodyMetrics.filter { $0.key == "bmi" }
+            DeviceMetrics.bodyMetrics : 
+            DeviceMetrics.bodyMetrics.filter { $0.key == "bmi" }
         
-        // Order body metrics: enabled first (in displayMetrics order), then disabled (in ScaleMetrics order)
+        // Order body metrics: enabled first (in displayMetrics order), then disabled (in DeviceMetrics order)
         metrics = orderMetrics(
             availableMetrics: availableBodyMetrics,
             displayMetricsKeys: displayMetricsKeys
@@ -103,7 +103,7 @@ final class DisplayMetricsViewModel: ObservableObject {
         
         // Order progress metrics the same way
         progressMetrics = orderMetrics(
-            availableMetrics: ScaleMetrics.progressMetrics,
+            availableMetrics: DeviceMetrics.progressMetrics,
             displayMetricsKeys: displayMetricsKeys
         )
         
@@ -111,10 +111,10 @@ final class DisplayMetricsViewModel: ObservableObject {
     }
     
     private func orderMetrics(
-        availableMetrics: [ScaleMetricSetting],
+        availableMetrics: [DeviceMetricSetting],
         displayMetricsKeys: [String]
-    ) -> [ScaleMetricSetting] {
-        var orderedMetrics: [ScaleMetricSetting] = []
+    ) -> [DeviceMetricSetting] {
+        var orderedMetrics: [DeviceMetricSetting] = []
         
         // First, add enabled metrics in the order they appear in displayMetrics
         for key in displayMetricsKeys {
@@ -125,7 +125,7 @@ final class DisplayMetricsViewModel: ObservableObject {
             }
         }
         
-        // Then, add disabled metrics in their original ScaleMetrics order
+        // Then, add disabled metrics in their original DeviceMetrics order
         for metric in availableMetrics where !displayMetricsKeys.contains(metric.key) {
             var disabledMetric = metric
             disabledMetric.isEnabled = false
@@ -174,20 +174,20 @@ final class DisplayMetricsViewModel: ObservableObject {
         // Disable and reorder heart rate in body metrics
         if let idx = metrics.firstIndex(where: { $0.key == heartRateKey }) {
             metrics[idx].isEnabled = false
-            metrics = ScaleMetricSetting.reorderOnToggle(items: metrics, key: heartRateKey, isEnabled: false)
+            metrics = DeviceMetricSetting.reorderOnToggle(items: metrics, key: heartRateKey, isEnabled: false)
         }
         
         // Disable and reorder heart rate in progress metrics (if it exists there)
         if let idx = progressMetrics.firstIndex(where: { $0.key == heartRateKey }) {
             progressMetrics[idx].isEnabled = false
-            progressMetrics = ScaleMetricSetting.reorderOnToggle(items: progressMetrics, key: heartRateKey, isEnabled: false)
+            progressMetrics = DeviceMetricSetting.reorderOnToggle(items: progressMetrics, key: heartRateKey, isEnabled: false)
         }
         
         // Update display metrics value to reflect the change
         updateDisplayMetricsValue()
     }
     
-    func updateMetrics(_ newMetrics: [ScaleMetricSetting]) {
+    func updateMetrics(_ newMetrics: [DeviceMetricSetting]) {
         // Check if this is a toggle operation (enabled state changed) or a reorder operation
         let oldEnabledKeys = Set(metrics.filter { $0.isEnabled }.map { $0.key })
         let newEnabledKeys = Set(newMetrics.filter { $0.isEnabled }.map { $0.key })
@@ -209,7 +209,7 @@ final class DisplayMetricsViewModel: ObservableObject {
         hasChanges = true
     }
     
-    func updateProgressMetrics(_ newMetrics: [ScaleMetricSetting]) {
+    func updateProgressMetrics(_ newMetrics: [DeviceMetricSetting]) {
         // Check if this is a toggle operation (enabled state changed) or a reorder operation
         let oldEnabledKeys = Set(progressMetrics.filter { $0.isEnabled }.map { $0.key })
         let newEnabledKeys = Set(newMetrics.filter { $0.isEnabled }.map { $0.key })
@@ -257,7 +257,7 @@ final class DisplayMetricsViewModel: ObservableObject {
         // Reorder on next run loop to ensure .moveDisabled() is updated first
         Task { @MainActor in
             withAnimation {
-                self.metrics = ScaleMetricSetting.reorderOnToggle(items: self.metrics, key: key, isEnabled: isEnabled)
+                self.metrics = DeviceMetricSetting.reorderOnToggle(items: self.metrics, key: key, isEnabled: isEnabled)
             }
         }
     }
@@ -280,7 +280,7 @@ final class DisplayMetricsViewModel: ObservableObject {
         // Reorder on next run loop to ensure .moveDisabled() is updated first
         Task { @MainActor in
             withAnimation {
-                self.progressMetrics = ScaleMetricSetting.reorderOnToggle(items: self.progressMetrics, key: key, isEnabled: isEnabled)
+                self.progressMetrics = DeviceMetricSetting.reorderOnToggle(items: self.progressMetrics, key: key, isEnabled: isEnabled)
             }
         }
     }
@@ -318,7 +318,7 @@ final class DisplayMetricsViewModel: ObservableObject {
                 if isBMIEnabled {
                     // Add BMI if not already present
                     if !updatedDisplayMetrics.contains("bmi") {
-                        let progressMetricsKeys = ScaleMetrics.progressMetrics.map { $0.key }
+                        let progressMetricsKeys = DeviceMetrics.progressMetrics.map { $0.key }
                         if let firstProgressIndex = updatedDisplayMetrics.firstIndex(where: { progressMetricsKeys.contains($0) }) {
                             updatedDisplayMetrics.insert("bmi", at: firstProgressIndex)
                         } else {
@@ -334,7 +334,7 @@ final class DisplayMetricsViewModel: ObservableObject {
                 let progressEnabledKeys = progressMetrics.filter { $0.isEnabled }.map { $0.key }
 
                 // Remove old progress metrics and add new ones in order
-                let progressMetricsKeys = ScaleMetrics.progressMetrics.map { $0.key }
+                let progressMetricsKeys = DeviceMetrics.progressMetrics.map { $0.key }
                 updatedDisplayMetrics.removeAll { progressMetricsKeys.contains($0) }
                 updatedDisplayMetrics.append(contentsOf: progressEnabledKeys)
 

@@ -9,7 +9,7 @@ import Foundation
 
 /// Protocol defining the interface for account flag operations
 @MainActor
-public protocol AccountFlagServiceProtocol: AppReviewHandlerProtocol, ScaleReviewHandlerProtocol {
+public protocol AccountFlagServiceProtocol: AppReviewHandlerProtocol, DeviceReviewHandlerProtocol {
     /// Fetches account flags from the API
     /// Prefers flags with trigger 'login' if present, otherwise returns the first flag
     /// - Returns: The preferred account flag or nil if none found
@@ -64,7 +64,7 @@ protocol ReviewReportHandlerProtocol {
 
 /// Protocol for handling scale review actions triggered by account flags
 @MainActor
-public protocol ScaleReviewHandlerProtocol {
+public protocol DeviceReviewHandlerProtocol {
     /// Emits a scale review event with the provided parameters
     /// - Parameters:
     ///   - screen: The screen identifier for the review

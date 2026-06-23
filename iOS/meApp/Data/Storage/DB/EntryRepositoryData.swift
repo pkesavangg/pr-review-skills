@@ -17,8 +17,8 @@ struct EntrySyncData: Sendable {
     let isSynced: Bool
     let isFailedToSync: Bool
     let attempts: Int
-    let scaleEntry: ScaleEntryData?
-    let scaleEntryMetric: ScaleMetricData?
+    let scaleEntry: DeviceEntryData?
+    let scaleEntryMetric: DeviceMetricData?
     // BPM scalars
     let bpmSystolic: Int?
     let bpmDiastolic: Int?
@@ -32,7 +32,7 @@ struct EntrySyncData: Sendable {
     let babyEntryWeight: Int?
 }
 
-struct ScaleEntryData: Sendable {
+struct DeviceEntryData: Sendable {
     let weight: Int?
     let bodyFat: Int?
     let muscleMass: Int?
@@ -41,7 +41,7 @@ struct ScaleEntryData: Sendable {
     let source: String?
 }
 
-struct ScaleMetricData: Sendable {
+struct DeviceMetricData: Sendable {
     let bmr: Int?
     let metabolicAge: Int?
     let proteinPercent: Int?

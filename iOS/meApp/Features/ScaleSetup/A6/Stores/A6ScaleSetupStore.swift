@@ -15,7 +15,7 @@ final class A6ScaleSetupStore: ObservableObject {
     @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var permissionsService: PermissionsServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
-    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var scaleService: PairedDeviceServiceProtocol
     @Injector var accountService: AccountServiceProtocol
     
     // MARK: - Private
@@ -24,7 +24,7 @@ final class A6ScaleSetupStore: ObservableObject {
     private var deviceDiscoveryCancellable: AnyCancellable?
     
     /// Resolved scale metadata used across the setup flow.
-    private var scaleItem: ScaleItemInfo?
+    private var scaleItem: DeviceItemInfo?
     private var originalSku: String?
     /// Callback used by the screen to dismiss itself.
     var dismissAction: (() -> Void)?
@@ -325,7 +325,7 @@ final class A6ScaleSetupStore: ObservableObject {
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
-            self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
+            self.notificationService.showToast(ToastModel(message: ToastStrings.saveDeviceError))
         }
         bluetoothService.isSetupInProgress = false
     }

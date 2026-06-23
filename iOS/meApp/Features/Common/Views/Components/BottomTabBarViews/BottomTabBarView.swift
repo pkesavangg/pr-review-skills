@@ -108,7 +108,7 @@ struct BottomTabBarView: View {
                             },
                             onConnect: {
                                 viewModel.notificationService.dismissModal()
-                                viewModel.openScaleSetup(scale: scale, event: viewModel.discoveryEvent)
+                                viewModel.openDeviceSetup(scale: scale, event: viewModel.discoveryEvent)
                             }
                         )
                         .cornerRadius(.radiusSM)
@@ -132,7 +132,7 @@ struct BottomTabBarView: View {
                             viewModel.dismissDiscoveredScaleSheet()
                         },
                         onConnect: {
-                            viewModel.openScaleSetup(scale: scale, event: viewModel.discoveryEvent)
+                            viewModel.openDeviceSetup(scale: scale, event: viewModel.discoveryEvent)
                         }
                     )
                     .deviceDiscoverSheetStyle()

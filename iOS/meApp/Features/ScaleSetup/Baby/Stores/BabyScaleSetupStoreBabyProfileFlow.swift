@@ -164,7 +164,7 @@ extension BabyScaleSetupStore {
 
     // MARK: - Save Device Locally
 
-    /// Creates a local Device record for the baby scale so it appears in My Scales.
+    /// Creates a local Device record for the baby scale so it appears in My Devices.
     func saveScaleLocally() async {
         guard !isScaleSaved else { return }
         guard let accountId = accountService.activeAccount?.accountId else {

@@ -7,7 +7,7 @@ import SwiftUI
 class PermissionsListViewModel: ObservableObject {
     @Injector var permissionsService: PermissionsServiceProtocol
     @Injector var loggerService: LoggerServiceProtocol
-    @Injector var wifiScaleService: WifiScaleServiceProtocol
+    @Injector var wifiDeviceService: WifiPairedDeviceServiceProtocol
     
     // MARK: Published Permission Flags
     @Published var bluetoothAuthorized: Bool = false
@@ -98,7 +98,7 @@ class PermissionsListViewModel: ObservableObject {
 
     private func refreshWifiNetworkName() {
         Task { [weak self] in
-            self?.wifiNetworkName = await self?.wifiScaleService.getConnectedWifiInfo().ssid
+            self?.wifiNetworkName = await self?.wifiDeviceService.getConnectedWifiInfo().ssid
         }
     }
 }

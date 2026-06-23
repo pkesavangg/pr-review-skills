@@ -6,7 +6,7 @@ import SwiftUI
 class NetworkForm: ObservableForm {
     var ssid = FormControl("", validators: [.required])
     var password = FormControl("", validators: [.required])
-    private let apModeSSIDPrefix = "gg_SmartScaleSetup"
+    private let apModeSSIDPrefix = "gg_SmartDeviceSetup"
     @Published var networkHasNoPassword: Bool = false {
         didSet {
             updatePasswordValidation()

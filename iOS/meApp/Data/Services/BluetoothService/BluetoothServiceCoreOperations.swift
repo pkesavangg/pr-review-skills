@@ -98,11 +98,11 @@ extension BluetoothService {
             scaleToSave.password = scale.password
             var metaData = deviceDetails
             let scaleType = scale.bathScale?.scaleType ?? ""
-            if metaData == nil && (scaleType == ScaleSourceType.btWifiR4.rawValue || scaleType == ScaleSourceType.bluetooth.rawValue) {
+            if metaData == nil && (scaleType == DeviceSourceType.btWifiR4.rawValue || scaleType == DeviceSourceType.bluetooth.rawValue) {
                 let deviceInfoResult = await getDeviceInfo(broadcastId: scale.broadcastIdString ?? "", skipConnectionCheck: true)
                 switch deviceInfoResult {
                 case .success(let deviceInfo):
-                    let dto = ScaleMetaDataDTO(
+                    let dto = DeviceMetaDataDTO(
                         firmwareRevision: deviceInfo.firmwareRevision?.replacingOccurrences(of: "\0", with: ""),
                         hardwareRevision: deviceInfo.hardwareRevision?.replacingOccurrences(of: "\0", with: ""),
                         latestFirmwareVersion: nil,
@@ -114,7 +114,7 @@ extension BluetoothService {
                         wifiMac: ""
                     )
                     metaData = DeviceMetaData(from: dto)
-                    if scaleType == ScaleSourceType.btWifiR4.rawValue {
+                    if scaleType == DeviceSourceType.btWifiR4.rawValue {
                         let wifiMacResult = await getWifiMacAddress(broadcastId: scale.broadcastIdString ?? "")
                         switch wifiMacResult {
                         case .success(let wifiMacAddress):
@@ -427,7 +427,7 @@ extension BluetoothService {
         while Date() < deadline {
             if Task.isCancelled { return false }
             let hasR4 = bluetoothScales.contains { scale in
-                if let raw = getSafeScaleType(for: scale) { return ScaleSourceType(rawValue: raw) == .btWifiR4 }
+                if let raw = getSafeDeviceModelType(for: scale) { return DeviceSourceType(rawValue: raw) == .btWifiR4 }
                 return false
             }
             if hasR4 { return true }

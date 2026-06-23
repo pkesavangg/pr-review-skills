@@ -9,7 +9,7 @@ final class AppSyncSetupStore: ObservableObject {
 
     @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var logger: LoggerServiceProtocol
-    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var scaleService: PairedDeviceServiceProtocol
     @Injector var accountService: AccountServiceProtocol
     @Injector var permissionsService: PermissionsServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
@@ -56,7 +56,7 @@ final class AppSyncSetupStore: ObservableObject {
 
     private let tag = "AppSyncSetupStore"
     private var cancellables = Set<AnyCancellable>()
-    private var scaleItem: ScaleItemInfo?
+    private var scaleItem: DeviceItemInfo?
 
     // Strings
     let loaderLang = LoaderStrings.self
@@ -80,7 +80,7 @@ final class AppSyncSetupStore: ObservableObject {
         // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
         // Pass original SKU to routes (not mapped), setup will save original SKU
         let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
-        // Resolve SKU → ScaleItemInfo (fallback to first element).
+        // Resolve SKU → DeviceItemInfo (fallback to first element).
         let resolved = SCALES.first { $0.sku == lookupSku } ?? SCALES[0]
         scaleItem = resolved
 
@@ -191,7 +191,7 @@ final class AppSyncSetupStore: ObservableObject {
 
     // MARK: - Step → View mapping
 
-    private func viewForStep(_ step: AppSyncSetupStep, scaleItem: ScaleItemInfo) -> AnyView {
+    private func viewForStep(_ step: AppSyncSetupStep, scaleItem: DeviceItemInfo) -> AnyView {
         switch step {
         case .intro:
             return AnyView(ScaleSetupIntroView(scale: scaleItem))
@@ -227,7 +227,7 @@ final class AppSyncSetupStore: ObservableObject {
         case .finish:
             let lang = ScaleSetupStrings.FinishViewStrings.self
             return AnyView(
-                ScaleSetupFinishView(title: lang.title, description: lang.appSyncDescription, isAppSyncScaleSetup: true)
+                ScaleSetupFinishView(title: lang.title, description: lang.appSyncDescription, isAppSyncDeviceSetup: true)
                     .environmentObject(Theme.shared)
             )
         }
@@ -280,7 +280,7 @@ final class AppSyncSetupStore: ObservableObject {
                     deviceName: scaleItem.productName,
                     deviceType: DeviceType.scale.rawValue,
                     createdAt: createdAt,
-                    bathScale: BathScale(scaleType: ScaleSourceType.appsync.rawValue, bodyComp: scaleItem.bodyComp)
+                    bathScale: BathScale(scaleType: DeviceSourceType.appsync.rawValue, bodyComp: scaleItem.bodyComp)
                 )
                 let response = try await self.scaleService.createDevice(newDevice, false)
                 await self.scaleService.syncAllScalesWithRemote()
@@ -301,7 +301,7 @@ final class AppSyncSetupStore: ObservableObject {
                     tag: tag,
                     message: "Failed to save AppSync scale: sku=\(scaleItem.sku), accountId=\(accountId), error=\(error.localizedDescription)"
                 )
-                self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
+                self.notificationService.showToast(ToastModel(message: ToastStrings.saveDeviceError))
             }
             self.bluetoothService.isSetupInProgress = false
         }

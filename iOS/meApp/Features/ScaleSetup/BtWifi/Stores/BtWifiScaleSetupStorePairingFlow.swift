@@ -490,9 +490,9 @@ extension BtWifiScaleSetupStore {
                     userNameForm.setCurrentUserName(nil)
                 }
 
-                // Convert DeviceUser list to ScaleUser list for form validation
+                // Convert DeviceUser list to DeviceUser list for form validation
                 let scaleUsers = userList.map { deviceUser in
-                    ScaleUser(name: deviceUser.name, token: deviceUser.token)
+                    DeviceUser(name: deviceUser.name, token: deviceUser.token)
                 }
                 userNameForm.updateUserList(scaleUsers)
                 userNameForm.displayName.markAsPristine()
@@ -538,7 +538,7 @@ extension BtWifiScaleSetupStore {
             let deviceInfoResult = await bluetoothService.getDeviceInfo(broadcastId: scale.broadcastIdString ?? "", skipConnectionCheck: true)
             switch deviceInfoResult {
             case .success(let deviceInfo):
-                let dto = ScaleMetaDataDTO(
+                let dto = DeviceMetaDataDTO(
                     firmwareRevision: deviceInfo.firmwareRevision?.replacingOccurrences(of: "\0", with: ""),
                     hardwareRevision: deviceInfo.hardwareRevision?.replacingOccurrences(of: "\0", with: ""),
                     latestFirmwareVersion: nil,
@@ -597,7 +597,7 @@ extension BtWifiScaleSetupStore {
             }
             
             // Ensure connection status is updated after sync completes
-            // This prevents UI flicker when navigating back to MyScalesScreen
+            // This prevents UI flicker when navigating back to MyDevicesScreen
             do {
                 try await scaleService.updateAllScalesStatus(nil)
             } catch {
@@ -605,7 +605,7 @@ extension BtWifiScaleSetupStore {
             }
             
             Task {
-                await self.pushNotificationService.setupPushNotifications(isFromScaleSetup: true)
+                await self.pushNotificationService.setupPushNotifications(isFromDeviceSetup: true)
             }
             
             LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully: \(savedScale.id)")
@@ -630,7 +630,7 @@ extension BtWifiScaleSetupStore {
         }
         
         do {
-            let scaleTokenResponse = try await wifiScaleService.getScaleToken(request: "4")
+            let scaleTokenResponse = try await wifiDeviceService.getScaleToken(request: "4")
             self.scaleToken = scaleTokenResponse.token
             LoggerService.shared.log(level: .info, tag: tag, message: "Successfully fetched WiFi scale token")
         } catch {

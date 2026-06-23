@@ -21,7 +21,7 @@ final class ContentViewModel: ObservableObject {
     @Published var entries: [EntrySnapshot] = []
 
     @Injector var accountService: AccountServiceProtocol
-    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var scaleService: PairedDeviceServiceProtocol
     @Injector var feedService: FeedServiceProtocol
     @Injector var entryService: EntryServiceProtocol
     @Injector var logger: LoggerServiceProtocol
@@ -39,7 +39,7 @@ final class ContentViewModel: ObservableObject {
     // swiftlint:disable:next cyclomatic_complexity
     init( // swiftlint:disable:this function_body_length
         accountService: AccountServiceProtocol? = nil,
-        scaleService: ScaleServiceProtocol? = nil,
+        scaleService: PairedDeviceServiceProtocol? = nil,
         feedService: FeedServiceProtocol? = nil,
         entryService: EntryServiceProtocol? = nil,
         logger: LoggerServiceProtocol? = nil,

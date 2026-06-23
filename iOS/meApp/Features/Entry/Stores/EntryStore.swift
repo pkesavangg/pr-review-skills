@@ -11,7 +11,7 @@ final class EntryStore: ObservableObject {
     @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var entryService: EntryServiceProtocol
     @Injector var logger: LoggerServiceProtocol
-    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var scaleService: PairedDeviceServiceProtocol
     @Injector var productTypeStore: ProductTypeStoreProtocol
 
     // Strings
@@ -82,7 +82,7 @@ final class EntryStore: ObservableObject {
     // MARK: - Init
     init() {
         scaleService.scalesPublisher
-            .map { $0.contains { $0.bathScale?.scaleType == ScaleSourceType.btWifiR4.rawValue } }
+            .map { $0.contains { $0.bathScale?.scaleType == DeviceSourceType.btWifiR4.rawValue } }
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .assign(to: \.canShowOtherBodyMetrics, on: self)

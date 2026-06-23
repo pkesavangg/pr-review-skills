@@ -10,7 +10,7 @@ import SwiftUI
 @MainActor
 final class AdditionalSettingsViewModel: ObservableObject {
     @Injector var notificationService: NotificationHelperServiceProtocol
-    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var scaleService: PairedDeviceServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     @Injector var accountService: AccountServiceProtocol

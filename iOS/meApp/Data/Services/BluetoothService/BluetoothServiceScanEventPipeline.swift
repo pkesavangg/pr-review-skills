@@ -135,7 +135,7 @@ extension BluetoothService {
     private func handleNewDevice(_ deviceData: GGScanResponseData) async {
         guard let deviceDetails = deviceData as? GGDeviceDetails else { return }
 
-        let scaleInfo = ScaleInfoUtils.shared.getScaleInfo(byScaleName: deviceDetails.deviceName)
+        let scaleInfo = DeviceInfoUtils.shared.getScaleInfo(byDeviceName: deviceDetails.deviceName)
         // Discovery creates a temporary device model. A3 BPMs may not have a stable
         // hex broadcast ID yet, so we preserve the raw discovery identifier for pairing
         // and patch in the stable post-connect fields later.
@@ -372,7 +372,7 @@ extension BluetoothService {
     }
 
     private func createBathScaleEntry(ggEntry: GGEntry, protocolType: ProtocolType, activeAccount: AccountSnapshot) -> BathScaleEntry {
-        var sourceType = ScaleSourceType.bluetoothScale
+        var sourceType = DeviceSourceType.bluetoothScale
         if protocolType == .R4 {
             sourceType = .btWifiR4
         }
@@ -410,7 +410,7 @@ extension BluetoothService {
         guard let broadcastId = broadcastId else { return .scale }
         if let scale = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId }),
            let sku = scale.sku {
-            let scaleInfo = ScaleInfoUtils.shared.getScaleInfo(bySku: sku)
+            let scaleInfo = DeviceInfoUtils.shared.getScaleInfo(bySku: sku)
             if scaleInfo?.setupType == .babyScale {
                 return .babyScale
             }
@@ -478,7 +478,7 @@ extension BluetoothService {
                 guard scale.isConnected else { return false }
                 // Exclude baby scales — weight-only mode only applies to adult weight scales
                 if let sku = scale.sku,
-                   ScaleInfoUtils.shared.getScaleInfo(bySku: sku)?.setupType == .babyScale {
+                   DeviceInfoUtils.shared.getScaleInfo(bySku: sku)?.setupType == .babyScale {
                     return false
                 }
                 return true
