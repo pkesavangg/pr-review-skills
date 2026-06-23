@@ -79,8 +79,8 @@ final class LoginStore: ObservableObject {
     var onPasswordResetAlertDismissed: (() -> Void)?
 
     // Services (inject as needed)
-    @Injector var accountService: AccountService
-    @Injector var logger: LoggerService
+    @Injector var accountService: AccountServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
     @Injector var notificationService: NotificationHelperService
 
     // MARK: - Login Form
