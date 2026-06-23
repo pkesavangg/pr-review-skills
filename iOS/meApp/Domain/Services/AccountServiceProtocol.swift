@@ -153,6 +153,15 @@ protocol AccountServiceProtocol {
 
     /// Deletes all accounts stored locally on the device.
     func logOutAllAccounts() async throws
+
+    /// Deletes all accounts from local storage (without API logout).
+    func deleteAllAccounts() async throws
+
+    /// Creates a goal for the currently active account.
+    /// - Parameter goal: The Goal to create.
+    /// - Returns: The updated Account object.
+    @discardableResult
+    func createGoal(_ goal: Goal) async throws -> Account
     
     /// Syncs all unsynced accounts with the backend.
     /// - Note: This should be called on app launch to ensure all local changes are synchronized.
