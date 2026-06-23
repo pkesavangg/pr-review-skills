@@ -426,4 +426,131 @@ struct LoginStoreTests {
         store.handleExit(router: nil)
         #expect(notificationService.showAlertCallCount == 1)
     }
+
+    // MARK: - openPrivacy / openTerms / openHelp
+
+    @Test("openPrivacy sets showPrivacyBrowser to true")
+    func openPrivacySetsFlag() {
+        let (store, _, _, _) = makeSUT()
+        store.openPrivacy()
+        #expect(store.showPrivacyBrowser)
+        #expect(store.browserURL != nil)
+    }
+
+    @Test("openTerms sets showTermsBrowser to true")
+    func openTermsSetsFlag() {
+        let (store, _, _, _) = makeSUT()
+        store.openTerms()
+        #expect(store.showTermsBrowser)
+        #expect(store.browserURL != nil)
+    }
+
+    @Test("openHelp shows modal")
+    func openHelpShowsModal() {
+        let (store, _, notificationService, _) = makeSUT()
+        store.openHelp()
+        #expect(notificationService.showModalCallCount == 1)
+    }
+
+    // MARK: - isBrowserPresented / presentingBrowserURL
+
+    @Test("isBrowserPresented is true when showPrivacyBrowser is true")
+    func isBrowserPresentedWhenPrivacy() {
+        let (store, _, _, _) = makeSUT()
+        store.openPrivacy()
+        #expect(store.isBrowserPresented.wrappedValue)
+    }
+
+    @Test("isBrowserPresented is true when showTermsBrowser is true")
+    func isBrowserPresentedWhenTerms() {
+        let (store, _, _, _) = makeSUT()
+        store.openTerms()
+        #expect(store.isBrowserPresented.wrappedValue)
+    }
+
+    @Test("isBrowserPresented is false when all browser flags are false")
+    func isBrowserPresentedFalseWhenNone() {
+        let (store, _, _, _) = makeSUT()
+        #expect(!store.isBrowserPresented.wrappedValue)
+    }
+
+    @Test("setting isBrowserPresented to false clears all browser flags")
+    func settingIsBrowserPresentedFalseClearsFlags() {
+        let (store, _, _, _) = makeSUT()
+        store.openPrivacy()
+        store.isBrowserPresented.wrappedValue = false
+        #expect(!store.showPrivacyBrowser)
+        #expect(!store.showTermsBrowser)
+        #expect(!store.showHelpBrowser)
+        #expect(store.browserURL == nil)
+    }
+
+    @Test("presentingBrowserURL returns browserURL when set")
+    func presentingBrowserURLReturnsBrowserURL() {
+        let (store, _, _, _) = makeSUT()
+        store.openPrivacy()
+        let url = store.presentingBrowserURL
+        #expect(url.absoluteString.contains("http"))
+    }
+
+    @Test("presentingBrowserURL returns base URL when browserURL is nil")
+    func presentingBrowserURLReturnsBaseURL() {
+        let (store, _, _, _) = makeSUT()
+        let url = store.presentingBrowserURL
+        #expect(!url.absoluteString.isEmpty)
+    }
+
+    // MARK: - handlePasswordReset via alert button callbacks
+
+    @Test("showPasswordResetPrompt cancel button clears isPasswordResetAlertVisible")
+    func passwordResetCancelButtonClearsAlert() {
+        let (store, _, notificationService, _) = makeSUT()
+        store.showPasswordResetPrompt()
+        // Invoke cancel button (index 0)
+        notificationService.lastShownAlert?.buttons[0].action(nil)
+        #expect(!store.isPasswordResetAlertVisible)
+    }
+
+    @Test("showPasswordResetPrompt submit button triggers handlePasswordReset for valid email")
+    func passwordResetSubmitButtonCallsResetWithValidEmail() async {
+        let (store, accountService, notificationService, _) = makeSUT()
+        store.loginForm.email.value = "user@example.com"
+        store.showPasswordResetPrompt()
+
+        // Invoke submit button (index 1) with a valid email
+        let submitAction = notificationService.lastShownAlert?.buttons[1].action
+        submitAction?("user@example.com")
+
+        // Give the async Task inside the callback a chance to run
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        #expect(accountService.requestPasswordResetCallCount == 1)
+    }
+
+    @Test("showPasswordResetPrompt submit with invalid email shows toast not API call")
+    func passwordResetSubmitWithInvalidEmailShowsToast() async {
+        let (store, accountService, notificationService, _) = makeSUT()
+        store.showPasswordResetPrompt()
+
+        let submitAction = notificationService.lastShownAlert?.buttons[1].action
+        notificationService.reset()
+        submitAction?("bad-email")
+
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        #expect(accountService.requestPasswordResetCallCount == 0)
+        #expect(notificationService.showToastCallCount == 1)
+    }
+
+    @Test("handlePasswordReset failure sets resetError")
+    func passwordResetFailureSetsResetError() async {
+        let error = NSError(domain: "net", code: -1)
+        let (store, _, notificationService, _) = makeSUT(resetPasswordError: error)
+        store.loginForm.email.value = "user@example.com"
+        store.showPasswordResetPrompt()
+
+        let submitAction = notificationService.lastShownAlert?.buttons[1].action
+        submitAction?("user@example.com")
+
+        try? await Task.sleep(nanoseconds: 500_000_000)
+        #expect(store.resetError != nil)
+    }
 }
