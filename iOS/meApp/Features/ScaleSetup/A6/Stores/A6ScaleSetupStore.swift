@@ -14,13 +14,13 @@ final class A6ScaleSetupStore: ObservableObject {
     // MARK: - Dependencies
     @Injector private var notificationService: NotificationHelperService
     /// Centralised permission handling service.
-    @Injector private var permissionsService: PermissionsService
+    @Injector private var permissionsService: PermissionsServiceProtocol
     /// Bluetooth service for device discovery
-    @Injector private var bluetoothService: BluetoothService
+    @Injector private var bluetoothService: BluetoothServiceProtocol
     /// Scale service for scale operations
-    @Injector private var scaleService: ScaleService
+    @Injector private var scaleService: ScaleServiceProtocol
     /// Account service for account operations
-    @Injector private var accountService: AccountService
+    @Injector private var accountService: AccountServiceProtocol
     
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
@@ -102,7 +102,7 @@ final class A6ScaleSetupStore: ObservableObject {
     // MARK: - Lifecycle
     init() {
         // Observe permission updates so the footer button reacts instantly.
-        permissionsService.$permissions
+        permissionsService.permissionsPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateNextEnabled()
@@ -110,7 +110,7 @@ final class A6ScaleSetupStore: ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
+
     // MARK: - Navigation Helpers
     func moveToNextStep() {
         let nextIndex = adjustedIndex(from: currentStepIndex + 1, direction: 1)

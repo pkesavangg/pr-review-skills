@@ -7,12 +7,11 @@ import Combine
 final class AppSyncSetupStore: ObservableObject {
     // MARK: - Dependencies
     @Injector private var notificationService: NotificationHelperService
-    @Injector private var logger: LoggerService
-    @Injector private var scaleService: ScaleService
-    @Injector private var accountService: AccountService
-    // Permissions
-    @Injector private var permissionsService: PermissionsService
-    @Injector private var bluetoothService: BluetoothService
+    @Injector private var logger: LoggerServiceProtocol
+    @Injector private var scaleService: ScaleServiceProtocol
+    @Injector private var accountService: AccountServiceProtocol
+    @Injector private var permissionsService: PermissionsServiceProtocol
+    @Injector private var bluetoothService: BluetoothServiceProtocol
     
     // MARK: - Public state
     @Published var currentStepIndex: Int = 0 {
@@ -62,7 +61,7 @@ final class AppSyncSetupStore: ObservableObject {
     // MARK: - Lifecycle
     init() {
         // Observe permission changes and update button state accordingly
-        permissionsService.$permissions
+        permissionsService.permissionsPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateNextEnabled()
@@ -272,7 +271,7 @@ final class AppSyncSetupStore: ObservableObject {
                     createdAt: createdAt,
                     bathScale: BathScale(scaleType: ScaleSourceType.appsync.rawValue, bodyComp: scaleItem.bodyComp)
                 )
-                let response = try await self.scaleService.createDevice(newDevice)
+                let response = try await self.scaleService.createDevice(newDevice, false)
                 await self.scaleService.syncAllScalesWithRemote()
                 logger.log(level: .info, tag: tag, message: "AppSync scale saved successfully. scaleId=\(response.id), sku=\(scaleItem.sku), accountId=\(accountId)")
                 

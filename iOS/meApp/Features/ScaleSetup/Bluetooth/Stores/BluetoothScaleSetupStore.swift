@@ -14,10 +14,10 @@ import Combine
 final class BluetoothScaleSetupStore: ObservableObject {
     // MARK: - Dependencies
     @Injector private var notificationService: NotificationHelperService
-    @Injector private var permissionsService: PermissionsService
-    @Injector private var bluetoothService: BluetoothService
-    @Injector private var scaleService: ScaleService
-    @Injector private var accountService: AccountService
+    @Injector private var permissionsService: PermissionsServiceProtocol
+    @Injector private var bluetoothService: BluetoothServiceProtocol
+    @Injector private var scaleService: ScaleServiceProtocol
+    @Injector private var accountService: AccountServiceProtocol
     
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
@@ -125,7 +125,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
     // MARK: - Init
     init() {
         // Observe permission updates so the footer button reacts instantly.
-        permissionsService.$permissions
+        permissionsService.permissionsPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateNextEnabled()
@@ -133,7 +133,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
+
     // MARK: - Navigation Helpers
     func moveToNextStep() {
         // Special handling when moving from permissions step

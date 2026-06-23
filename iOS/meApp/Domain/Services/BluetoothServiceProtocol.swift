@@ -154,4 +154,13 @@ protocol BluetoothServiceProtocol {
     /// This method is typically called during account deletion to clean up scale connections.
     /// - Returns: Result<Void, BluetoothServiceError>
     func deleteR4Scales() async -> Result<Void, BluetoothServiceError>
+
+    /// Re-applies the skip-device list to the BLE SDK, excluding already-paired scales.
+    func reapplySkipDevicesExcludingPaired()
+
+    /// Disconnects all currently connected scales.
+    func disconnectConnectedScales() async
+
+    /// Converts a hex string to an integer value.
+    func convertHexToInt(_ hex: String) -> Int64
 }

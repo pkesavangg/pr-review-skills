@@ -7,6 +7,9 @@ import Combine
 /// editing, deleting, updating scale meta and preferences, connection management, and pairing logic.
 protocol ScaleServiceProtocol: DeviceServiceProtocol {
 
+    /// The current list of paired scales (synchronous accessor).
+    var scales: [Device] { get }
+
     /// The scales managed by the service.
     ///
     /// This is a BehaviorSubject that emits the current list of scales.
@@ -60,4 +63,13 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
     /// Synchronous variant to fetch an attached R4 scale preference by its scale ID.
     /// Must be called on main actor. Intended for synchronous call sites.
     func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference?
+
+    /// Syncs all scales with the remote server.
+    func syncAllScalesWithRemote() async
+
+    /// Creates a new Bluetooth (A3) scale entry.
+    func createBluetoothScale(device: Device, sku: String?, userNumber: String, accountId: String, deviceMetadata: DeviceMetaData?, skipDuplicateCheck: Bool) async throws -> Device
+
+    /// Creates a new A6 (LCBT) scale entry.
+    func createA6Scale(device: Device, sku: String?, accountId: String, deviceMetadata: DeviceMetaData?, skipDuplicateCheck: Bool) async throws -> Device
 }
