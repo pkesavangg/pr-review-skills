@@ -16,10 +16,10 @@ import UIKit
 /// Holds the selection state and exposes helper APIs to update it.
 @MainActor
 class IntegrationStore: ObservableObject {
-    @Injector private var logger: LoggerService
+    @Injector private var logger: LoggerServiceProtocol
     @Injector private var notificationService: NotificationHelperService
-    @Injector private var accountService: AccountService
-    @Injector private var integrationsService: IntegrationsService
+    @Injector private var accountService: AccountServiceProtocol
+    @Injector private var integrationsService: IntegrationServiceProtocol
     
     var cancellables: Set<AnyCancellable> = []
     @Published var accountID = ""
@@ -63,7 +63,7 @@ class IntegrationStore: ObservableObject {
     /// Initializes the store and starts observing account changes so the UI always reflects the latest integration state.
     init() {
         // Initialize the integrations list with any pre-defined items.
-        accountService.$activeAccount
+        accountService.activeAccountPublisher
             .sink { [weak self] account in
                 guard let self else { return }
                 self.applyAccountState(account)
@@ -125,7 +125,7 @@ class IntegrationStore: ObservableObject {
         logger.log(level: .info, tag: tag, message: "Refreshing account after integration browser flow")
         Task {
             do {
-                let account = try await accountService.refreshAccount()
+                let account = try await accountService.refreshAccount(accountId: nil)
                 self.applyAccountState(account)
                 handlePostIntegrationResult(using: account)
                 logger.log(level: .success, tag: tag, message: "Integration post-browser account refresh succeeded")
@@ -165,7 +165,7 @@ class IntegrationStore: ObservableObject {
         do {
             guard let provider = mapToIntegrationType(item.type) else { return }
             try await integrationsService.removeIntegration(provider)
-            let account = try await accountService.refreshAccount()
+            let account = try await accountService.refreshAccount(accountId: nil)
             self.applyAccountState(account)
             handlePostIntegrationResult(using: account)
             logger.log(level: .success, tag: tag, message: "Remove integration succeeded. provider=\(integrationProviderKey(item.type))")
@@ -339,7 +339,7 @@ class IntegrationStore: ObservableObject {
         logger.log(level: .info, tag: tag, message: "Silent remove integration started. provider=\(integrationProviderKey(type))")
         do {
             try await integrationsService.removeIntegration(provider)
-            _ = try await accountService.refreshAccount()
+            _ = try await accountService.refreshAccount(accountId: nil)
             logger.log(level: .success, tag: tag, message: "Silent remove integration succeeded. provider=\(integrationProviderKey(type))")
             return true
         } catch {

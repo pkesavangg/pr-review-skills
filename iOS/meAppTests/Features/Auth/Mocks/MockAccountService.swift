@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import Combine
 @testable import meApp
 
 /// Mock for AccountServiceProtocol used in SignupStore and related tests.
@@ -11,7 +12,9 @@ import Foundation
 final class MockAccountService: AccountServiceProtocol {
 
     // MARK: - activeAccount
-    var activeAccount: Account?
+    @Published var activeAccount: Account?
+
+    var activeAccountPublisher: AnyPublisher<Account?, Never> { $activeAccount.eraseToAnyPublisher() }
 
     // MARK: - signUp
     var signUpResult: Account?
@@ -236,8 +239,10 @@ final class MockAccountService: AccountServiceProtocol {
     // MARK: - refreshAccount
     var refreshAccountResult: Account?
     var refreshAccountError: Error?
+    var refreshAccountCallCount = 0
 
     func refreshAccount(accountId: String?) async throws -> Account {
+        refreshAccountCallCount += 1
         if let error = refreshAccountError { throw error }
         return refreshAccountResult ?? AccountTestFixtures.makeAccount()
     }
