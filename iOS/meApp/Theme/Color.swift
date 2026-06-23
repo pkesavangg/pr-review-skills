@@ -26,6 +26,7 @@ enum AppColors {
         let textHeading: Color
         let textBody: Color
         let textSubheading: Color
+        let textDisabled: Color
         let textError: Color
         let textErrorDisabled: Color
         let textInverse: Color
