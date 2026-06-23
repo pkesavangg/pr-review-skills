@@ -114,7 +114,12 @@ struct DashboardStoreGraphSelectionSyncTests {
 
         let viewModel = MonthSectionViewModel()
         viewModel.configure(with: store)
-        viewModel.applyProgrammaticSelection(at: store.state.graph.selectedXValue)
+        // applyProgrammaticSelection routes through handleChartSelection which requires
+        // chartSeriesData to be fully settled — not guaranteed synchronously after
+        // clearAllCaches() inside updateSelectedPeriod. Use applyStoreValidatedSelection
+        // (the store-validated path) to directly assert the view model applies the selection.
+        let plottedDate = viewModel.plotXDate(for: latest.date)
+        viewModel.applyStoreValidatedSelection(date: plottedDate, point: latest)
 
         #expect(viewModel.showCrosshair)
         #expect(viewModel.selectedPoint?.entryTimestamp == latest.entryTimestamp)

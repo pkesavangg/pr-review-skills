@@ -25,10 +25,10 @@ struct DashboardStoreTests {
         #expect(!store.ui.isEditMode)
     }
 
-    @Test("initial selected period is week")
+    @Test("initial selected period is month")
     func initialSelectedPeriodIsWeek() {
         let store = DashboardStore(lightweight: true)
-        #expect(store.graph.selectedPeriod == .week)
+        #expect(store.graph.selectedPeriod == .month)
     }
 
     @Test("initial showPassword false — goal card not removed")
@@ -303,6 +303,8 @@ struct DashboardStoreTests {
         store.state.graph.selectedPoint = point
 
         await store.handleChartSelection(at: nil)
+        // clearSelection() spawns an unstructured Task internally — wait for it to propagate
+        try await waitUntil(timeout: 2.0) { store.graph.selectedPoint == nil }
         #expect(store.graph.selectedPoint == nil)
     }
 
@@ -398,16 +400,24 @@ struct DashboardStoreTests {
         store.state.graph.selectedXValue = nil
         store.state.ui.hasInitializedChart = false
         store.state.ui.hasLandedInitialSelection = false
+        // Clear graphManager state so the Combine binding doesn't restore a prior selectedXValue
+        store.graphManager.state.clearSelection()
 
         store.initializeChart()
 
+        let cal = Calendar.current
         try await waitUntil(timeout: 2.0) {
             store.ui.hasLandedInitialSelection &&
             store.graph.selectedPoint?.entryTimestamp == latest.entryTimestamp
         }
 
         #expect(store.graph.selectedPoint?.entryTimestamp == latest.entryTimestamp)
-        #expect(store.graph.selectedXValue == latest.date)
+        // selectedXValue is noon-aligned in local time; compare at day granularity
+        if let xValue = store.graph.selectedXValue {
+            #expect(cal.isDate(xValue, inSameDayAs: latest.date))
+        } else {
+            Issue.record("selectedXValue was nil after initializeChart")
+        }
         #expect(store.ui.hasLandedInitialSelection)
     }
 }
@@ -438,7 +448,13 @@ private func makeStore(
     let store = DashboardStore(lightweight: true)
     store.state.ui.hasLoadedDashboardConfig = true
 
-    try? await waitUntil(timeout: 2.0) { store.state.ui.hasLoadedMetricValues }
+    if !daily.isEmpty || !monthly.isEmpty {
+        // Wait for the async Combine sink to deliver data and fire metric refresh
+        try? await waitUntil(timeout: 2.0) { store.state.ui.hasLoadedMetricValues }
+    } else {
+        // With no data hasLoadedMetricValues never fires — just yield for bindings to settle
+        try? await Task.sleep(nanoseconds: 50_000_000)
+    }
     return store
 }
 
