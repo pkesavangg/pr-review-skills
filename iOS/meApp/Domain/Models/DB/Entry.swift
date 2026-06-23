@@ -29,7 +29,7 @@ final class Entry {
     /// Type of operation (eg., 'create', 'delete', 'note')
     var operationType: String
     /// Device type (eg., 'scale', 'bgm' )
-    var deviceType: String
+    var deviceType: String = DeviceType.scale.rawValue
     /// Whether entry is synced online
     var isSynced: Bool
     /// Number of attempts to sync the entry
