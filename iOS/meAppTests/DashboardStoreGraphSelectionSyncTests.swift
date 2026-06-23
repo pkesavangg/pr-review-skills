@@ -3,6 +3,7 @@ import Testing
 @testable import meApp
 
 @MainActor
+@Suite(.serialized)
 struct DashboardStoreGraphSelectionSyncTests {
 
     @Test
@@ -141,21 +142,30 @@ struct DashboardStoreGraphSelectionSyncTests {
         )
 
         store.state.graph.selectedPeriod = .month
-        store.state.graph.selectedPoint = nil
-        store.state.graph.selectedXValue = nil
         store.state.ui.hasInitializedChart = false
         store.state.ui.hasLandedInitialSelection = false
+        // Clear both the store slice AND graphManager.state — the Combine sink
+        // (graphManager.$state → store.graph) fires on the next graphManager mutation
+        // and will restore any non-nil graphManager.state.selectedXValue, causing
+        // shouldPreferLatestSelectionForInitialMetrics to return false.
+        store.graphManager.state.clearSelection()
 
         store.initializeChart()
 
         try await waitUntil(timeout: 2.0) {
-            store.state.graph.selectedPoint?.entryTimestamp == latest.entryTimestamp &&
-            store.state.graph.selectedXValue == latest.date &&
-            store.state.ui.hasLandedInitialSelection
+            let cal = Calendar.current
+            let xValueOnSameDay = store.state.graph.selectedXValue.map {
+                cal.isDate($0, inSameDayAs: latest.date)
+            } ?? false
+            return store.state.graph.selectedPoint?.entryTimestamp == latest.entryTimestamp &&
+                xValueOnSameDay &&
+                store.state.ui.hasLandedInitialSelection
         }
 
         #expect(store.state.graph.selectedPoint?.entryTimestamp == latest.entryTimestamp)
-        #expect(store.state.graph.selectedXValue == latest.date)
+        // selectedXValue is plot-aligned (noon local time), so compare at day granularity
+        let calendar = Calendar.current
+        #expect(store.state.graph.selectedXValue.map { calendar.isDate($0, inSameDayAs: latest.date) } == true)
         #expect(store.state.ui.hasLandedInitialSelection)
     }
 
