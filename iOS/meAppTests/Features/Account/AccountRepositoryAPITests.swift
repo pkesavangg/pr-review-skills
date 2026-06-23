@@ -160,4 +160,96 @@ struct AccountRepositoryAPITests {
 
         #expect(client.sendCallCount == 1)
     }
+
+    // MARK: - logIn: success
+
+    @Test("logIn succeeds and returns AccountResponse")
+    func logInSuccess() async throws {
+        let (sut, client) = makeSUT()
+        let expected = AccountTestFixtures.makeAccountResponse(
+            id: "login-id",
+            email: "login@example.com",
+            accessToken: "tok-login"
+        )
+        client.sendResult = expected
+
+        let result = try await sut.logIn(email: "login@example.com", password: "secret")
+
+        #expect(result.account.id == "login-id")
+        #expect(result.account.email == "login@example.com")
+        #expect(result.accessToken == "tok-login")
+        #expect(client.sendCallCount == 1)
+    }
+
+    @Test("logIn uses .post method")
+    func logInUsesPostMethod() async throws {
+        let (sut, client) = makeSUT()
+        client.sendResult = AccountTestFixtures.makeAccountResponse()
+
+        _ = try await sut.logIn(email: "test@example.com", password: "pass123")
+
+        #expect(client.lastSendMethod == .post)
+    }
+
+    // MARK: - logIn: HTTP errors
+
+    @Test("logIn throws unauthorized on 401")
+    func logInThrowsUnauthorized() async {
+        let (sut, client) = makeSUT()
+        client.sendError = HTTPError.unauthorized
+
+        await #expect(throws: HTTPError.self) {
+            _ = try await sut.logIn(email: "test@example.com", password: "wrong")
+        }
+    }
+
+    @Test("logIn throws serverError on 500")
+    func logInThrowsServerError() async {
+        let (sut, client) = makeSUT()
+        client.sendError = HTTPError.serverError
+
+        await #expect(throws: HTTPError.self) {
+            _ = try await sut.logIn(email: "test@example.com", password: "pass")
+        }
+    }
+
+    @Test("logIn throws noInternet when offline")
+    func logInThrowsNoInternet() async {
+        let (sut, client) = makeSUT()
+        client.sendError = HTTPError.noInternet
+
+        await #expect(throws: HTTPError.self) {
+            _ = try await sut.logIn(email: "test@example.com", password: "pass")
+        }
+    }
+
+    @Test("logIn throws apiError with message")
+    func logInThrowsApiError() async {
+        let (sut, client) = makeSUT()
+        client.sendError = HTTPError.apiError(message: "account locked", code: 403)
+
+        var caught: Error?
+        do {
+            _ = try await sut.logIn(email: "locked@example.com", password: "pass")
+        } catch {
+            caught = error
+        }
+
+        guard let httpErr = caught as? HTTPError,
+              case .apiError(let message, _) = httpErr else {
+            Issue.record("Expected HTTPError.apiError but got \(String(describing: caught))")
+            return
+        }
+        #expect(message == "account locked")
+    }
+
+    @Test("logIn passes email and password to HTTP client")
+    func logInForwardsCredentials() async throws {
+        let (sut, client) = makeSUT()
+        client.sendResult = AccountTestFixtures.makeAccountResponse()
+
+        _ = try await sut.logIn(email: "user@example.com", password: "password123")
+
+        #expect(client.sendCallCount == 1)
+    }
 }

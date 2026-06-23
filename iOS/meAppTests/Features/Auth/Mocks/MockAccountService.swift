@@ -35,10 +35,18 @@ final class MockAccountService: AccountServiceProtocol {
     // MARK: - logIn
     var logInResult: Account?
     var logInError: Error?
+    var logInCallCount = 0
+    var lastLogInEmail: String?
+    var lastLogInPassword: String?
 
     func logIn(email: String, password: String) async throws -> Account {
+        logInCallCount += 1
+        lastLogInEmail = email
+        lastLogInPassword = password
         if let error = logInError { throw error }
-        return logInResult ?? AccountTestFixtures.makeAccount()
+        let account = logInResult ?? AccountTestFixtures.makeAccount()
+        activeAccount = account
+        return account
     }
 
     // MARK: - logOut
@@ -214,8 +222,12 @@ final class MockAccountService: AccountServiceProtocol {
 
     // MARK: - requestPasswordReset
     var requestPasswordResetError: Error?
+    var requestPasswordResetCallCount = 0
+    var lastResetEmail: String?
 
     func requestPasswordReset(email: String) async throws {
+        requestPasswordResetCallCount += 1
+        lastResetEmail = email
         if let error = requestPasswordResetError { throw error }
     }
 

@@ -30,8 +30,14 @@ final class MockAccountAPIRepository: AccountRepositoryAPIProtocol {
     // MARK: - logIn
     var logInResult: AccountResponse?
     var logInError: Error?
+    var logInCallCount = 0
+    var lastLogInEmail: String?
+    var lastLogInPassword: String?
 
     func logIn(email: String, password: String) async throws -> AccountResponse {
+        logInCallCount += 1
+        lastLogInEmail = email
+        lastLogInPassword = password
         if let error = logInError { throw error }
         return logInResult ?? AccountTestFixtures.makeAccountResponse()
     }

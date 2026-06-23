@@ -237,4 +237,135 @@ struct AccountServiceTests {
         #expect(result.accountId == "goal-account")
         #expect(apiRepo.createGoalCallCount == 1)
     }
+
+    // MARK: - logIn: success - new account
+
+    @Test("logIn creates and saves a new account")
+    func logInSuccessNewAccount() async throws {
+        let (sut, apiRepo, localRepo) = makeSUT()
+        let response = AccountTestFixtures.makeAccountResponse(
+            id: "login-id",
+            email: "login@example.com",
+            accessToken: "tok-login"
+        )
+        apiRepo.logInResult = response
+
+        let account = try await sut.logIn(
+            email: "login@example.com",
+            password: "pass123"
+        )
+
+        #expect(account.accountId == "login-id")
+        #expect(account.email == "login@example.com")
+        #expect(account.accessToken == "tok-login")
+        #expect(account.isLoggedIn == true)
+        #expect(account.isActiveAccount == true)
+        #expect(localRepo.saveAccountCallCount == 1)
+        #expect(apiRepo.logInCallCount == 1)
+    }
+
+    @Test("logIn updates existing local account")
+    func logInUpdatesExistingAccount() async throws {
+        let (sut, apiRepo, localRepo) = makeSUT()
+        let existing = AccountTestFixtures.makeAccount(id: "existing-id", email: "login@example.com")
+        localRepo.seed(existing)
+        apiRepo.logInResult = AccountTestFixtures.makeAccountResponse(
+            id: "existing-id",
+            email: "login@example.com"
+        )
+
+        let account = try await sut.logIn(email: "login@example.com", password: "pass")
+
+        #expect(account.accountId == "existing-id")
+        #expect(localRepo.saveAccountCallCount == 0)
+        #expect(localRepo.updateAccountCallCount >= 1)
+    }
+
+    @Test("logIn sets activeAccount after success")
+    func logInSetsActiveAccount() async throws {
+        let (sut, apiRepo, _) = makeSUT()
+        apiRepo.logInResult = AccountTestFixtures.makeAccountResponse(id: "active-login-id")
+
+        _ = try await sut.logIn(email: "test@example.com", password: "pass")
+
+        #expect(sut.activeAccount?.accountId == "active-login-id")
+    }
+
+    // MARK: - logIn: maxAccountsReached
+
+    @Test("logIn throws maxAccountsReached when account limit is hit")
+    func logInThrowsMaxAccountsReached() async {
+        let (sut, _, localRepo) = makeSUT()
+        for i in 0..<AppConstants.Account.maxAccounts {
+            let acct = AccountTestFixtures.makeAccount(
+                id: "acct-\(i)",
+                email: "user\(i)@example.com"
+            )
+            localRepo.seed(acct)
+        }
+
+        var caught: Error?
+        do {
+            _ = try await sut.logIn(email: "newcomer@example.com", password: "pass")
+        } catch {
+            caught = error
+        }
+
+        guard let accountErr = caught as? AccountError,
+              case .maxAccountsReached = accountErr else {
+            Issue.record("Expected AccountError.maxAccountsReached but got \(String(describing: caught))")
+            return
+        }
+        #expect(Bool(true))
+    }
+
+    @Test("logIn allows existing email even at account limit")
+    func logInAllowsExistingEmailAtLimit() async throws {
+        let (sut, apiRepo, localRepo) = makeSUT()
+        let existingEmail = "existing@example.com"
+        for i in 0..<AppConstants.Account.maxAccounts {
+            let email = i == 0 ? existingEmail : "user\(i)@example.com"
+            localRepo.seed(AccountTestFixtures.makeAccount(id: "acct-\(i)", email: email))
+        }
+        apiRepo.logInResult = AccountTestFixtures.makeAccountResponse(
+            id: "acct-0",
+            email: existingEmail
+        )
+
+        let account = try await sut.logIn(email: existingEmail, password: "pass")
+        #expect(account.email == existingEmail)
+    }
+
+    // MARK: - logIn: API failures
+
+    @Test("logIn rethrows unauthorized error")
+    func logInRethrowsUnauthorized() async {
+        let (sut, apiRepo, _) = makeSUT()
+        apiRepo.logInError = HTTPError.unauthorized
+
+        await #expect(throws: HTTPError.self) {
+            _ = try await sut.logIn(email: "test@example.com", password: "wrong")
+        }
+    }
+
+    @Test("logIn rethrows noInternet error")
+    func logInRethrowsNoInternet() async {
+        let (sut, apiRepo, _) = makeSUT()
+        apiRepo.logInError = HTTPError.noInternet
+
+        var caught: Error?
+        do { _ = try await sut.logIn(email: "t@e.com", password: "p") } catch { caught = error }
+        #expect(caught != nil)
+    }
+
+    @Test("logIn rethrows save failure")
+    func logInRethrowsSaveFailure() async {
+        let (sut, apiRepo, localRepo) = makeSUT()
+        apiRepo.logInResult = AccountTestFixtures.makeAccountResponse(id: "save-fail-id")
+        localRepo.saveAccountError = NSError(domain: "SwiftData", code: 1)
+
+        await #expect(throws: Error.self) {
+            _ = try await sut.logIn(email: "test@example.com", password: "pass")
+        }
+    }
 }
