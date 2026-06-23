@@ -1073,7 +1073,13 @@ class SignupViewModelTest {
 
         viewModel.handleIntent(SignupIntent.OpenBabySexPicker)
 
-        verify { dialogQueueService.enqueue(any()) }
+        // Pin the specific radio-group picker dialog, not just "some dialog model", so a stray
+        // confirm/other dialog can't satisfy this verify. (PR #2110 review)
+        verify {
+            dialogQueueService.enqueue(
+                match<DialogModel.Custom> { it.contentKey == DialogType.RadioGroupPicker },
+            )
+        }
     }
 
     // -------------------------------------------------------------------------
