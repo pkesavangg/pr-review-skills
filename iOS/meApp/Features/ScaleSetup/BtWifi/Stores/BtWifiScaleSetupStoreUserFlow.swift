@@ -176,10 +176,7 @@ extension BtWifiScaleSetupStore {
 
             if currentCustomizeSetting == .scaleUsername {
                 await MainActor.run {
-                    let scaleUsers = self.userList.map { deviceUser in
-                        DeviceUser(name: deviceUser.name, token: deviceUser.token)
-                    }
-                    self.userNameForm.updateUserList(scaleUsers)
+                    self.userNameForm.updateUserList(self.userList)
                     if self.userNameForm.currentUserName == nil {
                         let currentName = self.initialDisplayNameSnapshot ?? self.firstName ?? "User"
                         self.userNameForm.setCurrentUserName(currentName)

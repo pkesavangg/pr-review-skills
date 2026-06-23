@@ -158,7 +158,7 @@ extension BabyScaleSetupStore {
                 deviceMetadata = DeviceMetaData(from: dto)
             }
 
-            let device = try await scaleService.createR4Scale(
+            let device = try await deviceService.createR4Scale(
                 scaleId: scaleID,
                 accountId: accountId,
                 displayName: displayName,
@@ -175,7 +175,7 @@ extension BabyScaleSetupStore {
                 skipDuplicateCheck: false
             )
             self.savedScale = device.toSnapshot(isConnected: true)
-            await scaleService.syncAllScalesWithRemote()
+            await deviceService.syncAllScalesWithRemote()
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
             LoggerService.shared.log(level: .info, tag: tag, message: "Baby scale saved: \(device.id)")
         } catch {

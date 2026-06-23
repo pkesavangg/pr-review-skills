@@ -23,7 +23,7 @@ struct DeviceUIState {
 // MARK: - Data State
 struct DeviceDataState {
     var scales: [Device] = []
-    var addScaleForm = AddDeviceForm()
+    var addDeviceForm = AddDeviceForm()
     var wifiPasswordValidationForm = WifiPasswordValidationForm()
     var nicknameInput: String = ""
     var browserURL: URL?

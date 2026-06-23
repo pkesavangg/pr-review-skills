@@ -78,7 +78,7 @@ struct MyDevicesScreen: View {
     /// - Parameters:
     ///   - scale: The `DeviceItemInfo` that the user selected / submitted.
     ///   - clearUI: When `true` the keyboard is dismissed and the add-scale form reset before navigation (used by the submit button path).
-    private func handleScaleSelection(_ scale: DeviceItemInfo, clearUI: Bool = false) {
+    private func handleDeviceSelection(_ scale: DeviceItemInfo, clearUI: Bool = false) {
         // Closure executed once all pre-flight checks pass.
         let proceed = {
             if clearUI {
@@ -138,7 +138,7 @@ struct MyDevicesScreen: View {
                         config: TextInputConfig(
                             label: lang.modelNumber.lowercased(),
                             inputType: .metric,
-                            errorMessage: scaleStore.addScaleForm.getError(for: .modelNumber),
+                            errorMessage: scaleStore.addDeviceForm.getError(for: .modelNumber),
                             focusField: .modelNumber,
                             customIcon: AppAssets.helpCircle,
                             onCustomIconTap: {
@@ -150,7 +150,7 @@ struct MyDevicesScreen: View {
                             allowWholeNumbers: true,
                             showPrefixZero: true
                         ),
-                        value: $scaleStore.addScaleForm.modelNumber.value,
+                        value: $scaleStore.addDeviceForm.modelNumber.value,
                         focusedField: focusBinding
                     )
                     .padding(.bottom, .spacingMD)
@@ -158,10 +158,10 @@ struct MyDevicesScreen: View {
                         text: CommonStrings.submit,
                         type: .filledPrimary,
                         size: .large,
-                        isDisabled: !scaleStore.addScaleForm.isValid
+                        isDisabled: !scaleStore.addDeviceForm.isValid
                     ) {
                             // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
-                            let enteredValue = scaleStore.addScaleForm.modelNumberValue
+                            let enteredValue = scaleStore.addDeviceForm.modelNumberValue
                             let lookupSku = DeviceHelper.mapSkuForDisplay(enteredValue)
 
                             // Find the scale or BPM matching the SKU.
@@ -179,7 +179,7 @@ struct MyDevicesScreen: View {
                                 bodyComp: scaleInfo.bodyComp
                             )
 
-                            handleScaleSelection(scaleWithOriginalSku, clearUI: true)
+                            handleDeviceSelection(scaleWithOriginalSku, clearUI: true)
                         }
                     .padding(.bottom, .spacingSM)
 
@@ -208,7 +208,7 @@ struct MyDevicesScreen: View {
                             // Delay so the scale list sheet dismisses before presenting the next one
                             Task { @MainActor in
                                 try? await Task.sleep(nanoseconds: 250_000_000)
-                                handleScaleSelection(scale)
+                                handleDeviceSelection(scale)
                             }
                         }
                     case .setupFlow(let scale):

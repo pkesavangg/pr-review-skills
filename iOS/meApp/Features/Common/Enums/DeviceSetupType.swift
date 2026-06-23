@@ -1,12 +1,12 @@
 //
-//  ScaleSetupType.swift
+//  DeviceSetupType.swift
 //  meApp
 //
 //  Created by Kesavan Panchabakesan on 23/06/25.
 //
 
 /// Enumeration representing the underlying connectivity/setup mechanism for a device.
-enum ScaleSetupType: String {
+enum DeviceSetupType: String {
     case bluetooth
     case wifi
     case appSync

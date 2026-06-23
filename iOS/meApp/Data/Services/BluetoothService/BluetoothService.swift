@@ -34,7 +34,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
     /// Legacy singleton for compatibility. Prefer dependency injection for new code.
     static let shared = BluetoothService(accountService: AccountService.shared,
-                                         scaleService: DeviceService.shared,
+                                         deviceService: DeviceService.shared,
                                          entryService: EntryService.shared,
                                          babyService: BabyService.shared,
                                          logger: LoggerService.shared)
@@ -166,7 +166,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     // MARK: - Dependencies
 
     let accountService: AccountServiceProtocol
-    let scaleService: PairedDeviceServiceProtocol
+    let deviceService: PairedDeviceServiceProtocol
     let entryService: EntryServiceProtocol
     let babyService: BabyServiceProtocol
     let logger: LoggerServiceProtocol
@@ -197,13 +197,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      Initializes the BluetoothService with all required dependencies.
      - Parameters:
      - accountService: The account service dependency.
-     - scaleService: The scale service dependency.
+     - deviceService: The scale service dependency.
      - entryService: The entry service dependency.
      - logger: The logger service dependency.
      */
     init(
         accountService: AccountServiceProtocol,
-        scaleService: PairedDeviceServiceProtocol,
+        deviceService: PairedDeviceServiceProtocol,
         entryService: EntryServiceProtocol,
         babyService: BabyServiceProtocol,
         logger: LoggerServiceProtocol,
@@ -212,7 +212,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         notificationService: NotificationHelperServiceProtocol? = nil
     ) {
         self.accountService = accountService
-        self.scaleService = scaleService
+        self.deviceService = deviceService
         self.entryService = entryService
         self.babyService = babyService
         self.logger = logger
@@ -227,7 +227,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
     private func setupSubscriptions() {
         // Subscribe to scale changes
-        scaleService.scalesPublisher
+        deviceService.scalesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] scales in
                 Task { await self?.handleScalesUpdate(scales) }

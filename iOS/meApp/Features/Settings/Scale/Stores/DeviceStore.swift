@@ -16,13 +16,13 @@ class DeviceStore: ObservableObject {
     
     // MARK: - Dependencies
     @Injector private var notificationService: NotificationHelperServiceProtocol
-    @Injector private var scaleService: PairedDeviceServiceProtocol
+    @Injector private var deviceService: PairedDeviceServiceProtocol
     @Injector private var bluetoothService: BluetoothServiceProtocol
     @Injector private var logger: LoggerServiceProtocol
     @Injector private var permissionsService: PermissionsServiceProtocol
     
     @Published var scales: [DeviceSnapshot] = []
-    @Published var addScaleForm = AddDeviceForm()    
+    @Published var addDeviceForm = AddDeviceForm()    
     
     private let tag = "DeviceStore"
     
@@ -65,8 +65,8 @@ class DeviceStore: ObservableObject {
     
     // MARK: - Helper Methods
     func resetForm() {
-        self.addScaleForm.reset()
-        self.addScaleForm = AddDeviceForm()
+        self.addDeviceForm.reset()
+        self.addDeviceForm = AddDeviceForm()
     }
     
     func updateSetupInProgressStatus(_ isInProgress: Bool) {
@@ -104,7 +104,7 @@ class DeviceStore: ObservableObject {
     
     private func setupSubscriptions() {
         // Subscribe to scale service updates
-        scaleService.scalesPublisher
+        deviceService.scalesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] devices in
                 // Sort scales by createdAt timestamp in descending order (latest first)

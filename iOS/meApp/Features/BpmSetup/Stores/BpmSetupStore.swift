@@ -16,7 +16,7 @@ final class BpmSetupStore: ObservableObject {
     @Injector private var notificationService: NotificationHelperServiceProtocol
     @Injector private var permissionsService: PermissionsServiceProtocol
     @Injector private var bluetoothService: BluetoothServiceProtocol
-    @Injector private var scaleService: PairedDeviceServiceProtocol
+    @Injector private var deviceService: PairedDeviceServiceProtocol
     @Injector private var accountService: AccountServiceProtocol
 
     // MARK: - Private
@@ -513,7 +513,7 @@ final class BpmSetupStore: ObservableObject {
         let discoveredMac = device.mac ?? ""
 
         if !discoveredMac.isEmpty {
-            let existingDevices = (try? await scaleService.getDevices()) ?? []
+            let existingDevices = (try? await deviceService.getDevices()) ?? []
 
             if let existing = existingDevices.first(where: {
                 guard let existingMac = $0.mac, !existingMac.isEmpty else { return false }
@@ -572,7 +572,7 @@ final class BpmSetupStore: ObservableObject {
         }
 
         let broadcastId = device.broadcastIdString ?? ""
-        let pairedSKUMonitors = scaleService.scales.filter { $0.sku == selectedSku }
+        let pairedSKUMonitors = deviceService.scales.filter { $0.sku == selectedSku }
 
         LoggerService.shared.log(
             level: .info,
@@ -619,7 +619,7 @@ final class BpmSetupStore: ObservableObject {
                 // Look up the existing device with same SKU but different user number,
                 // so we can delete it if the user chooses to replace.
                 if deviceToDelete == nil {
-                    let existingDevices = (try? await scaleService.getDevices()) ?? []
+                    let existingDevices = (try? await deviceService.getDevices()) ?? []
                     let selectedUser = "\(selectedUserNumber ?? 1)"
                     deviceToDelete = existingDevices.first { existing in
                         existing.sku == selectedSku && existing.userNumber != selectedUser
@@ -681,7 +681,7 @@ final class BpmSetupStore: ObservableObject {
             return
         }
 
-        let existingDevices = (try? await scaleService.getDevices()) ?? []
+        let existingDevices = (try? await deviceService.getDevices()) ?? []
         let peripheralId = device.peripheralIdentifier ?? ""
 
         if !peripheralId.isEmpty,
@@ -872,7 +872,7 @@ final class BpmSetupStore: ObservableObject {
         // specific user's entry — other users' entries for the same physical device remain.
         if let existingDevice = deviceToDelete, !existingDevice.id.isEmpty {
             LoggerService.shared.log(level: .info, tag: tag, message: "Deleting previous device entry (id: \(existingDevice.id)) before saving new pairing")
-            try? await scaleService.deleteSingleDeviceEntry(existingDevice.id)
+            try? await deviceService.deleteSingleDeviceEntry(existingDevice.id)
             deviceToDelete = nil
         }
         canReplaceUser = false
@@ -881,7 +881,7 @@ final class BpmSetupStore: ObservableObject {
         // If a duplicate is found, delete the old entry before saving the new one so the list
         // only ever shows one monitor per user number for a given physical device.
         let selectedUser = "\(selectedUserNumber ?? 1)"
-        let existingDevices = (try? await scaleService.getDevices()) ?? []
+        let existingDevices = (try? await deviceService.getDevices()) ?? []
         let broadcastId = discoveredDevice?.broadcastIdString ?? ""
         let peripheralId = discoveredDevice?.peripheralIdentifier ?? ""
 
@@ -893,7 +893,7 @@ final class BpmSetupStore: ObservableObject {
 
         if let duplicate, !duplicate.id.isEmpty {
             LoggerService.shared.log(level: .info, tag: tag, message: "Removing duplicate BPM entry (id: \(duplicate.id)) before saving updated pairing")
-            try? await scaleService.deleteSingleDeviceEntry(duplicate.id)
+            try? await deviceService.deleteSingleDeviceEntry(duplicate.id)
         }
 
         let deviceToSave: Device
@@ -921,7 +921,7 @@ final class BpmSetupStore: ObservableObject {
         }
 
         do {
-            _ = try await scaleService.createBluetoothScale(
+            _ = try await deviceService.createBluetoothScale(
                 device: deviceToSave,
                 sku: bpmItem.sku,
                 userNumber: "\(selectedUserNumber ?? 1)",
@@ -1374,7 +1374,7 @@ extension BpmSetupStore {
             notificationHelper: notificationService,
             permissions: permissionsService,
             bluetooth: bluetoothService,
-            scale: scaleService,
+            scale: deviceService,
             account: accountService
         )
         _ = injectedDependencies

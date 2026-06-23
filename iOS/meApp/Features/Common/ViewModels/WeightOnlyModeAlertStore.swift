@@ -12,7 +12,7 @@ import Foundation
 @MainActor
 final class WeightOnlyModeAlertStore: ObservableObject {
     // MARK: - Dependencies
-    private let scaleService: PairedDeviceServiceProtocol
+    private let deviceService: PairedDeviceServiceProtocol
     @Injector private var bluetoothService: BluetoothServiceProtocol
     @Injector private var notificationService: NotificationHelperServiceProtocol
 
@@ -28,9 +28,9 @@ final class WeightOnlyModeAlertStore: ObservableObject {
 
     // MARK: - Initialization
     init(
-        scaleService: PairedDeviceServiceProtocol? = nil
+        deviceService: PairedDeviceServiceProtocol? = nil
     ) {
-        self.scaleService = scaleService ?? Self.resolveDependency(PairedDeviceServiceProtocol.self)
+        self.deviceService = deviceService ?? Self.resolveDependency(PairedDeviceServiceProtocol.self)
         warmInjectedDependencies()
         setupObservers()
     }
@@ -53,7 +53,7 @@ final class WeightOnlyModeAlertStore: ObservableObject {
             }
 
             do {
-                let allScales = try await self.scaleService.getDevices()
+                let allScales = try await self.deviceService.getDevices()
                 let filteredScales = allScales.filter { scale in
                     scale.isWeighOnlyModeEnabledByOthers == true
                 }

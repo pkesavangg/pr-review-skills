@@ -50,7 +50,7 @@ struct DeviceManualListRowView: View {
     }
 
     /// Returns human-readable connectivity label for a given setup type.
-    private func connectivityText(for type: ScaleSetupType) -> String {
+    private func connectivityText(for type: DeviceSetupType) -> String {
         switch type {
         case .bluetooth, .lcbt, .babyScale:
             return "Bluetooth"
@@ -65,7 +65,7 @@ struct DeviceManualListRowView: View {
         }
     }
 
-    private func iconName(for type: ScaleSetupType) -> String {
+    private func iconName(for type: DeviceSetupType) -> String {
         switch type {
         case .bluetooth, .lcbt:
             return AppAssets.bluetooth

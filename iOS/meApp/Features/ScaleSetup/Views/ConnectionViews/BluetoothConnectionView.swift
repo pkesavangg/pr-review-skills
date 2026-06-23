@@ -19,7 +19,7 @@ import SwiftUI
 struct BluetoothConnectionView: View {
     // MARK: - Props
     let state: ConnectionState
-    let setupType: ScaleSetupType
+    let setupType: DeviceSetupType
     /// Optional error code to display when `state == .failure`.
     var errorCode: String?
     

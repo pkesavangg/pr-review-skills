@@ -93,7 +93,7 @@ extension BluetoothService {
         let connectedScales = bluetoothScales.filter { $0.isConnected }
         for scale in connectedScales {
             if let broadcastId = scale.broadcastIdString {
-                await scaleService.updateConnectedDeviceWeightOnlyMode(
+                await deviceService.updateConnectedDeviceWeightOnlyMode(
                     broadcastId: broadcastId,
                     isWeightOnlyModeEnabledByOthers: false
                 )
@@ -114,7 +114,7 @@ extension BluetoothService {
 
         for scale in connectedR4Scales {
             let broadcastId = scale.broadcastIdString ?? ""
-            await scaleService.updateConnectedDeviceWeightOnlyMode(
+            await deviceService.updateConnectedDeviceWeightOnlyMode(
                 broadcastId: broadcastId,
                 isWeightOnlyModeEnabledByOthers: false
             )

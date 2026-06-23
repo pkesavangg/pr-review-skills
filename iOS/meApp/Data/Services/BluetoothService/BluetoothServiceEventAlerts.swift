@@ -21,7 +21,7 @@ extension BluetoothService {
             return
         }
 
-        let scaleInfo = scaleInfoUtils.getScaleInfo(byDeviceName: deviceDetails.deviceName)
+        let scaleInfo = scaleInfoUtils.getDeviceInfo(byDeviceName: deviceDetails.deviceName)
         guard let discoveredScale = bluetoothScales.first(where: { $0.broadcastIdString == deviceDetails.broadcastIdString }) else {
             logger.log(level: .error, tag: tag, message: "Discovered scale not found in bluetoothScales")
             return

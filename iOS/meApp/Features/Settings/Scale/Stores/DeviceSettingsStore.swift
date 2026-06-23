@@ -10,7 +10,7 @@ import SwiftUI
 @MainActor
 final class DeviceSettingsStore: ObservableObject {
     @Injector var notificationService: NotificationHelperServiceProtocol
-    @Injector var scaleService: PairedDeviceServiceProtocol
+    @Injector var deviceService: PairedDeviceServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     @Injector var accountService: AccountServiceProtocol
@@ -22,7 +22,7 @@ final class DeviceSettingsStore: ObservableObject {
 
     // Reads the current snapshot directly from the service — the single source of truth.
     private var deviceSnapshot: DeviceSnapshot? {
-        scaleService.scales.first(where: { $0.id == scaleIdString })
+        deviceService.scales.first(where: { $0.id == scaleIdString })
     }
 
     @Published var isDeviceConnected: Bool = false
@@ -67,7 +67,7 @@ final class DeviceSettingsStore: ObservableObject {
         self.init(
             scale: scale,
             notificationService: nil,
-            scaleService: nil,
+            deviceService: nil,
             bluetoothService: nil,
             logger: nil,
             accountService: nil,
@@ -78,7 +78,7 @@ final class DeviceSettingsStore: ObservableObject {
     init(
         scale: Device,
         notificationService: NotificationHelperServiceProtocol?,
-        scaleService: PairedDeviceServiceProtocol?,
+        deviceService: PairedDeviceServiceProtocol?,
         bluetoothService: BluetoothServiceProtocol?,
         logger: LoggerServiceProtocol?,
         accountService: AccountServiceProtocol?,
@@ -88,7 +88,7 @@ final class DeviceSettingsStore: ObservableObject {
         self.initialNickname = scale.nickname ?? scale.deviceName
 
         if let notificationService { self.notificationService = notificationService }
-        if let scaleService { self.scaleService = scaleService }
+        if let deviceService { self.deviceService = deviceService }
         if let bluetoothService { self.bluetoothService = bluetoothService }
         if let logger { self.logger = logger }
         if let accountService { self.accountService = accountService }
@@ -102,7 +102,7 @@ final class DeviceSettingsStore: ObservableObject {
         // Keep the local state in-sync with updates coming from `DeviceService`.
         // The snapshot arriving in the callback is already the authoritative, up-to-date
         // source — read from it directly rather than doing an extra SwiftData round-trip.
-        self.scaleService.scalesPublisher
+        self.deviceService.scalesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] devices in
                 guard let self = self else { return }
@@ -267,7 +267,7 @@ final class DeviceSettingsStore: ObservableObject {
             dto.isSynced = true
             Task { @MainActor in
                 do {
-                    try await scaleService.updateScalePreference(deviceId, fromDTO: dto)
+                    try await deviceService.updateScalePreference(deviceId, fromDTO: dto)
                 } catch {
                     logger.log(level: .error, tag: tag, message: "Failed to update preference sync status: \(error)")
                 }
@@ -311,7 +311,7 @@ final class DeviceSettingsStore: ObservableObject {
             if let wifiConfigured = deviceInfo.isWifiConfigured {
                 self.isWifiConfigured = wifiConfigured
                 if let broadcastId = deviceSnapshot?.broadcastIdString, !broadcastId.isEmpty {
-                    await scaleService.updateConnectedDeviceWifiStatus(
+                    await deviceService.updateConnectedDeviceWifiStatus(
                         broadcastId: broadcastId,
                         isConfigured: wifiConfigured
                     )
@@ -353,10 +353,10 @@ final class DeviceSettingsStore: ObservableObject {
                 // Disconnects only the scale being deleted and prevents it from reconnecting.
                 _ = await bluetoothService.disconnectDevice(broadcastId: broadcastId)
             }
-            try await scaleService.deleteDevice(scaleId, showToast: true)
+            try await deviceService.deleteDevice(scaleId, showToast: true)
             bluetoothService.isSetupInProgress = false
-            await scaleService.pushLocalChangesToServer()
-            await scaleService.syncAllScalesWithRemote()           
+            await deviceService.pushLocalChangesToServer()
+            await deviceService.syncAllScalesWithRemote()           
             notificationService.showToast(ToastModel(title: ToastStrings.deleted, message: ToastStrings.scaleDeleted))
             isSuccess = true
         } catch {

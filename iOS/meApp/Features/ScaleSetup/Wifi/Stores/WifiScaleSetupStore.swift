@@ -16,7 +16,7 @@ final class WifiScaleSetupStore: ObservableObject {
     private let wifiDeviceService: WifiPairedDeviceServiceProtocol
     private let accountService: AccountServiceProtocol
     private let logger: LoggerServiceProtocol
-    private let scaleService: PairedDeviceServiceProtocol
+    private let deviceService: PairedDeviceServiceProtocol
     private let pushNotificationService: PushNotificationServiceProtocol
     private let httpClient: HTTPClientProtocol
     private var bluetoothService: BluetoothServiceProtocol
@@ -209,7 +209,7 @@ final class WifiScaleSetupStore: ObservableObject {
             wifiDeviceService: WifiScaleSetupStore.resolveDependency(WifiPairedDeviceServiceProtocol.self),
             accountService: WifiScaleSetupStore.resolveDependency(AccountServiceProtocol.self),
             logger: WifiScaleSetupStore.resolveDependency(LoggerServiceProtocol.self),
-            scaleService: WifiScaleSetupStore.resolveDependency(PairedDeviceServiceProtocol.self),
+            deviceService: WifiScaleSetupStore.resolveDependency(PairedDeviceServiceProtocol.self),
             pushNotificationService: WifiScaleSetupStore.resolveDependency(PushNotificationServiceProtocol.self),
             httpClient: WifiScaleSetupStore.resolveDependency(HTTPClientProtocol.self),
             bluetoothService: WifiScaleSetupStore.resolveDependency(BluetoothServiceProtocol.self),
@@ -223,7 +223,7 @@ final class WifiScaleSetupStore: ObservableObject {
         wifiDeviceService: WifiPairedDeviceServiceProtocol,
         accountService: AccountServiceProtocol,
         logger: LoggerServiceProtocol,
-        scaleService: PairedDeviceServiceProtocol,
+        deviceService: PairedDeviceServiceProtocol,
         pushNotificationService: PushNotificationServiceProtocol,
         httpClient: HTTPClientProtocol,
         bluetoothService: BluetoothServiceProtocol,
@@ -234,7 +234,7 @@ final class WifiScaleSetupStore: ObservableObject {
         self.wifiDeviceService = wifiDeviceService
         self.accountService = accountService
         self.logger = logger
-        self.scaleService = scaleService
+        self.deviceService = deviceService
         self.pushNotificationService = pushNotificationService
         self.httpClient = httpClient
         self.bluetoothService = bluetoothService
@@ -704,8 +704,8 @@ final class WifiScaleSetupStore: ObservableObject {
                     token: self.scaleToken ?? "",
                     bathScale: BathScale(scaleType: DeviceSourceType.wifi.rawValue, bodyComp: scaleItem.bodyComp)
                 )
-                let response = try await self.scaleService.createDevice(newDevice, false)
-                await self.scaleService.syncAllScalesWithRemote()
+                let response = try await self.deviceService.createDevice(newDevice, false)
+                await self.deviceService.syncAllScalesWithRemote()
                 Task {
                     await self.pushNotificationService.setupPushNotifications(isFromDeviceSetup: true)
                 }

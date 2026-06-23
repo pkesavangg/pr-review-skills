@@ -9,7 +9,7 @@ final class AppSyncSetupStore: ObservableObject {
 
     @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var logger: LoggerServiceProtocol
-    @Injector var scaleService: PairedDeviceServiceProtocol
+    @Injector var deviceService: PairedDeviceServiceProtocol
     @Injector var accountService: AccountServiceProtocol
     @Injector var permissionsService: PermissionsServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
@@ -252,13 +252,13 @@ final class AppSyncSetupStore: ObservableObject {
             // Remove any existing device with the same SKU to avoid duplicates
             // Map SKU for comparison (e.g., 0022 -> 0383) so 0022 and 0383 are treated as duplicates
             do {
-                let existingDevices = try await self.scaleService.getDevices()
+                let existingDevices = try await self.deviceService.getDevices()
                 let scaleLookupSku = DeviceHelper.mapSkuForDisplay(scaleItem.sku)
                 if let oldDevice = existingDevices.first(where: {
                     DeviceHelper.mapSkuForDisplay($0.sku ?? "") == scaleLookupSku
                 }) {
                     do {
-                        try await self.scaleService.deleteDevice(oldDevice.id, showToast: false)
+                        try await self.deviceService.deleteDevice(oldDevice.id, showToast: false)
                     } catch {
                         self.logger.log(
                             level: .error,
@@ -282,8 +282,8 @@ final class AppSyncSetupStore: ObservableObject {
                     createdAt: createdAt,
                     bathScale: BathScale(scaleType: DeviceSourceType.appsync.rawValue, bodyComp: scaleItem.bodyComp)
                 )
-                let response = try await self.scaleService.createDevice(newDevice, false)
-                await self.scaleService.syncAllScalesWithRemote()
+                let response = try await self.deviceService.createDevice(newDevice, false)
+                await self.deviceService.syncAllScalesWithRemote()
                 logger.log(
                     level: .info,
                     tag: tag,

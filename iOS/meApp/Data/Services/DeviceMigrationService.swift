@@ -20,7 +20,7 @@ protocol DeviceMigrationServiceProtocol {
 @MainActor
 final class DeviceMigrationService: DeviceMigrationServiceProtocol {
     @Injector private var logger: LoggerServiceProtocol
-    @Injector private var scaleService: DeviceService
+    @Injector private var deviceService: DeviceService
     private let scaleRepository = DeviceRepository()
     private let kvStorage: KvStorageServiceProtocol
     private let createScaleInLocalOverride: (@MainActor (Device) async throws -> Device)?
@@ -119,7 +119,7 @@ final class DeviceMigrationService: DeviceMigrationServiceProtocol {
         if let createScaleInLocalOverride {
             return try await createScaleInLocalOverride(device)
         }
-        return try await scaleService.createScaleInLocal(device)
+        return try await deviceService.createScaleInLocal(device)
     }
 
     private func resolveSyncAllScalesWithRemote() async {
@@ -127,14 +127,14 @@ final class DeviceMigrationService: DeviceMigrationServiceProtocol {
             await syncAllScalesWithRemoteOverride()
             return
         }
-        await scaleService.syncAllScalesWithRemote()
+        await deviceService.syncAllScalesWithRemote()
     }
 
     private func resolveDeviceById(_ id: String) async throws -> Device? {
         if let getDeviceByIdOverride {
             return try await getDeviceByIdOverride(id)
         }
-        return try await scaleService.getDevice(by: id)?.toDevice()
+        return try await deviceService.getDevice(by: id)?.toDevice()
     }
     
     /// Retrieves stored Ionic scale data for a specific account

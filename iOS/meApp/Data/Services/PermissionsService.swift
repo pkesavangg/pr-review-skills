@@ -21,7 +21,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     // Shared singleton instance for global access. Prefer DI for new code when possible.
     static let shared = PermissionsService(
         notificationService: NotificationHelperService.shared,
-        scaleService: DeviceService.shared,
+        deviceService: DeviceService.shared,
         logger: LoggerService.shared
     )
 
@@ -42,7 +42,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     // MARK: - Dependencies
 
     private let notificationService: NotificationHelperServiceProtocol
-    private let scaleService: PairedDeviceServiceProtocol
+    private let deviceService: PairedDeviceServiceProtocol
     private let logger: LoggerServiceProtocol
     var permissionClient: PermissionSDKClient
 
@@ -53,19 +53,19 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
 
     init(
         notificationService: NotificationHelperServiceProtocol,
-        scaleService: PairedDeviceServiceProtocol,
+        deviceService: PairedDeviceServiceProtocol,
         logger: LoggerServiceProtocol,
         permissionClient: PermissionSDKClient = GGBluetoothSwiftPackage.shared
     ) {
         self.notificationService = notificationService
-        self.scaleService = scaleService
+        self.deviceService = deviceService
         self.logger = logger
         self.permissionClient = permissionClient
         // Compute the initial required permissions
-        updateRequiredCategories(with: scaleService.scales)
+        updateRequiredCategories(with: deviceService.scales)
 
         // Observe scale changes to keep required permissions up-to-date
-        scaleService.scalesPublisher
+        deviceService.scalesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] scales in
                 self?.updateRequiredCategories(with: scales)

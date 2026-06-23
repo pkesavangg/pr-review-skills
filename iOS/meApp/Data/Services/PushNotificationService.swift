@@ -17,7 +17,7 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
     @Injector private var accountService: AccountServiceProtocol
     @Injector private var notificationService: NotificationHelperServiceProtocol
     @Injector private var bluetoothService: BluetoothServiceProtocol
-    @Injector private var scaleService: PairedDeviceServiceProtocol
+    @Injector private var deviceService: PairedDeviceServiceProtocol
     @Injector private var keychainService: KeychainServiceProtocol
     // API repository for push-notification related network calls
     private let apiRepo: PushNotificationRepositoryAPIProtocol
@@ -49,7 +49,7 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
         accountService: AccountServiceProtocol? = nil,
         notificationService: NotificationHelperServiceProtocol? = nil,
         bluetoothService: BluetoothServiceProtocol? = nil,
-        scaleService: PairedDeviceServiceProtocol? = nil,
+        deviceService: PairedDeviceServiceProtocol? = nil,
         keychainService: KeychainServiceProtocol? = nil,
         kvStorage: KvStorageServiceProtocol? = nil,
         logger: LoggerServiceProtocol? = nil,
@@ -80,8 +80,8 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
         if let bluetoothService {
             self.bluetoothService = bluetoothService
         }
-        if let scaleService {
-            self.scaleService = scaleService
+        if let deviceService {
+            self.deviceService = deviceService
         }
         if let keychainService {
             self.keychainService = keychainService
@@ -357,7 +357,7 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
 
     private func syncDevices() async {
         logger.log(level: .info, tag: tag, message: "Scale sync from push flow started")
-        await scaleService.syncAllScalesWithRemote()
+        await deviceService.syncAllScalesWithRemote()
         logger.log(level: .info, tag: tag, message: "Scale sync from push flow completed")
     }
 

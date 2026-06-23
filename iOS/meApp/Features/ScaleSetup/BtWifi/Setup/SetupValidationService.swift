@@ -11,8 +11,8 @@ struct SetupValidationContext {
     let duplicateNameInitial: String
     let duplicateNameIsValid: Bool
     let isWifiPasswordValid: Bool
-    let selectedScaleMode: DeviceModes
-    let initialScaleModeSnapshot: DeviceModes?
+    let selectedDeviceMode: DeviceModes
+    let initialDeviceModeSnapshot: DeviceModes?
     let isHeartRateEnabled: Bool
     let initialHeartRateEnabledSnapshot: Bool?
     let hasDeviceMetricsChanged: Bool
@@ -73,7 +73,7 @@ struct SetupValidationService: SetupValidationServicing {
         case .scaleMetrics:
             isEnabled = context.hasDeviceMetricsChanged
         case .scaleMode:
-            isEnabled = context.selectedScaleMode != context.initialScaleModeSnapshot ||
+            isEnabled = context.selectedDeviceMode != context.initialDeviceModeSnapshot ||
                 context.isHeartRateEnabled != (context.initialHeartRateEnabledSnapshot ?? false)
         case .dashboardMetrics:
             isEnabled = context.hasDashboardCustomizationChanged

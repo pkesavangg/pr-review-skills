@@ -31,9 +31,9 @@ extension BluetoothService {
      */
     func resyncAndScan() async -> Result<Void, BluetoothServiceError> {
         do {
-            try await scaleService.updateAllScalesStatus(nil)
+            try await deviceService.updateAllScalesStatus(nil)
             clearScaleDiscoveredInfo()
-            try await scaleService.syncDevices(tempDevice: nil)
+            try await deviceService.syncDevices(tempDevice: nil)
             syncDevices(bluetoothScales)
             return .success(())
         } catch let error as BluetoothServiceError {
@@ -128,8 +128,8 @@ extension BluetoothService {
                 }
             }
             scaleToSave.metaData = metaData
-            let savedScale = try await scaleService.createDevice(scaleToSave, skipDuplicateCheck ?? false)
-            try await scaleService.syncDevices(tempDevice: nil)
+            let savedScale = try await deviceService.createDevice(scaleToSave, skipDuplicateCheck ?? false)
+            try await deviceService.syncDevices(tempDevice: nil)
             return .success(savedScale)
         } catch let error as BluetoothServiceError {
             return .failure(error)

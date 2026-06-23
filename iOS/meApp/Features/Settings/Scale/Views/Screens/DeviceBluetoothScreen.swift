@@ -11,7 +11,7 @@ import SwiftUI
 
 @MainActor
 final class DeviceBluetoothConnectionStore: ObservableObject {
-    @Injector private var scaleService: PairedDeviceServiceProtocol
+    @Injector private var deviceService: PairedDeviceServiceProtocol
     @Published private(set) var isDeviceConnected: Bool = false
 
     private let scaleIdString: String
@@ -19,8 +19,8 @@ final class DeviceBluetoothConnectionStore: ObservableObject {
 
     init(scale: Device) {
         self.scaleIdString = scale.id
-        isDeviceConnected = scaleService.scales.first(where: { $0.id == scaleIdString })?.isConnected ?? false
-        scaleService.scalesPublisher
+        isDeviceConnected = deviceService.scales.first(where: { $0.id == scaleIdString })?.isConnected ?? false
+        deviceService.scalesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] devices in
                 guard let self else { return }

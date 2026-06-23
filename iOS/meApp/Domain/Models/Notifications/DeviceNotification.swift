@@ -19,7 +19,7 @@ import SwiftData
 /// deviceUpdated.send(notification)
 ///
 /// // In subscriber:
-/// scaleService.deviceUpdated.sink { notification in
+/// deviceService.deviceUpdated.sink { notification in
 ///     // Safe to use notification.deviceName, notification.isConnected, etc.
 /// }
 /// ```

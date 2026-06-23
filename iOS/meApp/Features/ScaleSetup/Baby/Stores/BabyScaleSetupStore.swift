@@ -15,7 +15,7 @@ final class BabyScaleSetupStore: ObservableObject {
     @Injector var permissionsService: PermissionsServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var accountService: AccountServiceProtocol
-    @Injector var scaleService: PairedDeviceServiceProtocol
+    @Injector var deviceService: PairedDeviceServiceProtocol
     @Injector var babyService: BabyServiceProtocol
     @Injector var productTypeStore: ProductTypeStoreProtocol
 

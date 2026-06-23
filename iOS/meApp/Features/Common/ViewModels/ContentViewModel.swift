@@ -21,7 +21,7 @@ final class ContentViewModel: ObservableObject {
     @Published var entries: [EntrySnapshot] = []
 
     @Injector var accountService: AccountServiceProtocol
-    @Injector var scaleService: PairedDeviceServiceProtocol
+    @Injector var deviceService: PairedDeviceServiceProtocol
     @Injector var feedService: FeedServiceProtocol
     @Injector var entryService: EntryServiceProtocol
     @Injector var logger: LoggerServiceProtocol
@@ -39,7 +39,7 @@ final class ContentViewModel: ObservableObject {
     // swiftlint:disable:next cyclomatic_complexity
     init( // swiftlint:disable:this function_body_length
         accountService: AccountServiceProtocol? = nil,
-        scaleService: PairedDeviceServiceProtocol? = nil,
+        deviceService: PairedDeviceServiceProtocol? = nil,
         feedService: FeedServiceProtocol? = nil,
         entryService: EntryServiceProtocol? = nil,
         logger: LoggerServiceProtocol? = nil,
@@ -50,8 +50,8 @@ final class ContentViewModel: ObservableObject {
         if let accountService {
             self.accountService = accountService
         }
-        if let scaleService {
-            self.scaleService = scaleService
+        if let deviceService {
+            self.deviceService = deviceService
         }
         if let feedService {
             self.feedService = feedService
@@ -242,7 +242,7 @@ final class ContentViewModel: ObservableObject {
         feedService.checkAndTriggerFeedModal()
 
         // Sync scales with remote server to ensure all previously saved scales are loaded
-        await scaleService.syncAllScalesWithRemote()
+        await deviceService.syncAllScalesWithRemote()
 
         logger.log(level: .info, tag: tag, message: "Initialization loaded entries. count=\(entries.count)")
         await checkAccountFlagsAfterLogin()

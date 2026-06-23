@@ -10,7 +10,7 @@ import SwiftUI
 final class SoftwareUpdateViewModel: ObservableObject {
     @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var notificationService: NotificationHelperServiceProtocol
-    @Injector var scaleService: PairedDeviceServiceProtocol
+    @Injector var deviceService: PairedDeviceServiceProtocol
     @Injector var logger: LoggerServiceProtocol
 
     @Published var selectedDate = Date()
@@ -23,7 +23,7 @@ final class SoftwareUpdateViewModel: ObservableObject {
     let latestVersion: String?
 
     private var deviceSnapshot: DeviceSnapshot? {
-        scaleService.scales.first(where: { $0.id == scaleIdString })
+        deviceService.scales.first(where: { $0.id == scaleIdString })
     }
 
     private let tag = "SoftwareUpdateViewModel"

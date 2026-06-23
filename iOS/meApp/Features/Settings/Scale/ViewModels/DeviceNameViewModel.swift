@@ -10,7 +10,7 @@ import SwiftUI
 @MainActor
 final class DeviceNameViewModel: ObservableObject {
     @Injector var notificationService: NotificationHelperServiceProtocol
-    @Injector var scaleService: PairedDeviceServiceProtocol
+    @Injector var deviceService: PairedDeviceServiceProtocol
     @Injector var logger: LoggerServiceProtocol
 
     private let scaleIdString: String
@@ -18,7 +18,7 @@ final class DeviceNameViewModel: ObservableObject {
     private let tag = "DeviceNameViewModel"
 
     private var deviceSnapshot: DeviceSnapshot? {
-        scaleService.scales.first(where: { $0.id == scaleIdString })
+        deviceService.scales.first(where: { $0.id == scaleIdString })
     }
 
     private var currentNickname: String {
@@ -34,8 +34,8 @@ final class DeviceNameViewModel: ObservableObject {
         let deviceId = scaleIdString
         notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
         do {
-            _ = try await scaleService.editDevice(deviceId, properties: ["nickname": newName])
-            await scaleService.pushLocalChangesToServer()
+            _ = try await deviceService.editDevice(deviceId, properties: ["nickname": newName])
+            await deviceService.pushLocalChangesToServer()
             notificationService.showToast(ToastModel(title: ToastStrings.success, message: ToastStrings.scaleNameUpdated))
             logger.log(level: .info, tag: tag, message: "Scale name updated successfully", data: ["scaleId": deviceId, "newName": newName])
             onSuccess?()

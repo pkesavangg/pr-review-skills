@@ -58,7 +58,7 @@ extension BluetoothService {
     }
 
     func fetchAttachedPreference(by id: String) -> R4ScalePreference? {
-        scaleService.fetchAttachedPreferenceSync(by: id)
+        deviceService.fetchAttachedPreferenceSync(by: id)
     }
 
     func mapToGGPreference(deviceId: String, preference: R4ScalePreference?) -> GGDevicePreference? {

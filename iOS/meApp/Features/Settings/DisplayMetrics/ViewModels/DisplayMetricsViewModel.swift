@@ -12,7 +12,7 @@ import SwiftUI
 @MainActor
 final class DisplayMetricsViewModel: ObservableObject {
     let notificationService: NotificationHelperServiceProtocol
-    let scaleService: PairedDeviceServiceProtocol
+    let deviceService: PairedDeviceServiceProtocol
     let bluetoothService: BluetoothServiceProtocol
     let logger: LoggerServiceProtocol
     let accountService: AccountServiceProtocol
@@ -21,7 +21,7 @@ final class DisplayMetricsViewModel: ObservableObject {
 
     /// Reads the current snapshot directly from the service — the single source of truth.
     private var deviceSnapshot: DeviceSnapshot? {
-        scaleService.scales.first(where: { $0.id == scaleIdString })
+        deviceService.scales.first(where: { $0.id == scaleIdString })
     }
 
     @Published var metrics: [DeviceMetricSetting] = []
@@ -46,7 +46,7 @@ final class DisplayMetricsViewModel: ObservableObject {
         scale: Device,
         isWeighOnlyModeEnabledByOthers: Bool = false,
         notificationService: NotificationHelperServiceProtocol? = nil,
-        scaleService: PairedDeviceServiceProtocol? = nil,
+        deviceService: PairedDeviceServiceProtocol? = nil,
         bluetoothService: BluetoothServiceProtocol? = nil,
         logger: LoggerServiceProtocol? = nil,
         accountService: AccountServiceProtocol? = nil
@@ -54,7 +54,7 @@ final class DisplayMetricsViewModel: ObservableObject {
         self.scaleIdString = scale.id
         self.isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers
         self.notificationService = notificationService ?? Self.resolveDependency(NotificationHelperServiceProtocol.self)
-        self.scaleService = scaleService ?? Self.resolveDependency(PairedDeviceServiceProtocol.self)
+        self.deviceService = deviceService ?? Self.resolveDependency(PairedDeviceServiceProtocol.self)
         self.bluetoothService = bluetoothService ?? Self.resolveDependency(BluetoothServiceProtocol.self)
         self.logger = logger ?? Self.resolveDependency(LoggerServiceProtocol.self)
         self.accountService = accountService ?? Self.resolveDependency(AccountServiceProtocol.self)
@@ -342,8 +342,8 @@ final class DisplayMetricsViewModel: ObservableObject {
             }
 
             // Step 3: Save to local database using DTO-based method
-            try await scaleService.updateScalePreference(deviceId, fromDTO: dto)
-            await scaleService.pushLocalChangesToServer()
+            try await deviceService.updateScalePreference(deviceId, fromDTO: dto)
+            await deviceService.pushLocalChangesToServer()
 
             // Step 4: Bluetooth update if connected
             if isConnected {

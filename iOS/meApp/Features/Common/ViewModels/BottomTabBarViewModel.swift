@@ -53,7 +53,7 @@ class BottomTabBarViewModel: ObservableObject {
     // New dependencies for Set Goal Card logic
     @Injector private var entryService: EntryServiceProtocol
     @Injector private var accountService: AccountServiceProtocol
-    @Injector private var scaleService: PairedDeviceServiceProtocol
+    @Injector private var deviceService: PairedDeviceServiceProtocol
     // New dependency to evaluate permission status
     @Injector private var permissionsService: PermissionsServiceProtocol
     @Injector private var pushNotificationService: PushNotificationServiceProtocol
@@ -244,7 +244,7 @@ class BottomTabBarViewModel: ObservableObject {
             .store(in: &cancellables)
 
         // Update the app sync tab based on the app sync scale defined in the paired scale list
-        scaleService.scalesPublisher
+        deviceService.scalesPublisher
             .map { scales in
                 scales.contains { $0.bathScale?.scaleType == DeviceSourceType.appsync.rawValue }
             }
@@ -310,7 +310,7 @@ class BottomTabBarViewModel: ObservableObject {
             logger: logger,
             entry: entryService,
             account: accountService,
-            scale: scaleService,
+            scale: deviceService,
             permissions: permissionsService,
             push: pushNotificationService,
             integration: integrationService
@@ -1375,7 +1375,7 @@ class BottomTabBarViewModel: ObservableObject {
     /// (pure Wi-Fi scales or BT+Wi-Fi R4 hybrids). Used to gate the
     /// "New Reading saved to your log" card so it never fires for BT-only accounts.
     private var hasWifiCapableScale: Bool {
-        scaleService.scales.contains { scale in
+        deviceService.scales.contains { scale in
             let type = scale.bathScale?.scaleType
             return type == DeviceModelType.wifi.rawValue || type == DeviceModelType.bluetoothR4.rawValue
         }

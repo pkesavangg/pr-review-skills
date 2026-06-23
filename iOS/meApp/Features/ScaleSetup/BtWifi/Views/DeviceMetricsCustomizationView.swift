@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct ScaleMetricsCustomizationView: View {
+struct DeviceMetricsCustomizationView: View {
     @Environment(\.appTheme) private var theme
 
     /// Keys (ordered) that were previously enabled. Determines initial toggle state **and** order.
@@ -14,7 +14,7 @@ struct ScaleMetricsCustomizationView: View {
     /// whenever user toggles / reorders.
     let onSave: ([String], Bool) -> Void
 
-    private let lang = BtWifiScaleSetupStrings.ScaleMetricsCustomizationViewStrings.self
+    private let lang = BtWifiScaleSetupStrings.DeviceMetricsCustomizationViewStrings.self
 
     init(initialEnabledKeys: [String] = DeviceMetrics.defaultMetricsKeys,
          onSave: @escaping ([String], Bool) -> Void) {
@@ -150,6 +150,6 @@ struct ScaleMetricsCustomizationView: View {
 }
 
 #Preview {
-    ScaleMetricsCustomizationView { _, _ in }
+    DeviceMetricsCustomizationView { _, _ in }
     .environmentObject(Theme.shared)
 }

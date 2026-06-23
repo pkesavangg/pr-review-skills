@@ -20,7 +20,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
     @Injector private var notificationService: NotificationHelperServiceProtocol
     @Injector private var permissionsService: PermissionsServiceProtocol
     @Injector private var bluetoothService: BluetoothServiceProtocol
-    @Injector private var scaleService: PairedDeviceServiceProtocol
+    @Injector private var deviceService: PairedDeviceServiceProtocol
     @Injector private var accountService: AccountServiceProtocol
     
     // MARK: - Private
@@ -303,7 +303,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
                     discoveredScale?.peripheralIdentifier = deviceInfo.serialNumber
                     discoveredScale?.userNumber = "\(selectedUserNumber ?? 0)"
                     discoveredScale?.mac = deviceInfo.macAddress
-                    let scaleToDelete = scaleService.scales.first {
+                    let scaleToDelete = deviceService.scales.first {
                         $0.peripheralIdentifier == discoveredScale?.peripheralIdentifier
                     }
                     if scaleToDelete != nil {
@@ -490,12 +490,12 @@ final class BluetoothScaleSetupStore: ObservableObject {
         // Delete the existing scale if there's a duplicate
         if let scaleToDelete = scaleToDelete {
             do {
-                let existingDevices = try await self.scaleService.getDevices()
+                let existingDevices = try await self.deviceService.getDevices()
                 if let oldDevice = existingDevices.first(where: { $0.id == scaleToDelete.id }) {
-                    try await self.scaleService.deleteDevice(oldDevice.id, showToast: false)
+                    try await self.deviceService.deleteDevice(oldDevice.id, showToast: false)
                     // Explicitly refresh the scales list after deletion to ensure consistency
-                    _ = try await self.scaleService.getDevices()
-                    await self.scaleService.syncAllScalesWithRemote()
+                    _ = try await self.deviceService.getDevices()
+                    await self.deviceService.syncAllScalesWithRemote()
                 }
             } catch {
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to delete existing scale: \(error.localizedDescription)")
@@ -534,7 +534,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
                 return
             }
             
-            let savedScale = try await scaleService.createBluetoothScale(
+            let savedScale = try await deviceService.createBluetoothScale(
                 device: deviceToSave,
                 sku: scaleItem?.sku ?? discoveryEvent.device.sku,
                 userNumber: deviceToSave.userNumber ?? "1",
@@ -544,7 +544,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
                 deviceType: scaleItem?.setupType == .bpm ? .bpm : .scale
             )
             
-            await self.scaleService.syncAllScalesWithRemote()
+            await self.deviceService.syncAllScalesWithRemote()
 
             isScaleSaved = true
             LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully with ID: \(savedScale.id)")
@@ -693,7 +693,7 @@ extension BluetoothScaleSetupStore {
             notificationHelper: notificationService,
             permissions: permissionsService,
             bluetooth: bluetoothService,
-            scale: scaleService,
+            scale: deviceService,
             account: accountService
         )
         _ = injectedDependencies

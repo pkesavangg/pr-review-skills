@@ -13,7 +13,7 @@ struct DeviceItemInfo: Identifiable, Sendable {
     let productName: String
     let sku: String
     let imgPath: String
-    let setupType: ScaleSetupType // Underlying connectivity type
+    let setupType: DeviceSetupType // Underlying connectivity type
     let bodyComp: Bool    // Whether the scale supports body-composition
 
     // BPM-specific properties (defaults safe for non-BPM callers)
@@ -26,7 +26,7 @@ struct DeviceItemInfo: Identifiable, Sendable {
         productName: String,
         sku: String,
         imgPath: String,
-        setupType: ScaleSetupType,
+        setupType: DeviceSetupType,
         bodyComp: Bool,
         hasNumericUsers: Bool = false,
         toggleButton: Bool = false,

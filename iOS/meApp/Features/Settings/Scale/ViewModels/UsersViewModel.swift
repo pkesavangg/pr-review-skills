@@ -12,7 +12,7 @@ final class UsersViewModel: ObservableObject {
     @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var permissionsService: PermissionsServiceProtocol
-    @Injector var scaleService: PairedDeviceServiceProtocol
+    @Injector var deviceService: PairedDeviceServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     @Published var userNameForm = UserNameForm()
     @Published var deviceUsers: [DeviceUser] = []
@@ -23,7 +23,7 @@ final class UsersViewModel: ObservableObject {
 
     /// Reads the current snapshot directly from the service — the single source of truth.
     private var deviceSnapshot: DeviceSnapshot? {
-        scaleService.scales.first(where: { $0.id == scaleIdString })
+        deviceService.scales.first(where: { $0.id == scaleIdString })
     }
 
     private let tag = "UsersViewModel"
@@ -59,10 +59,7 @@ final class UsersViewModel: ObservableObject {
             // Pre-populate the form with the current user's name and user list
             let currentName = self.currentDeviceUser?.name ?? ""
             userNameForm.setDisplayName(currentName)
-            let scaleUsers = otherDeviceUsersList.map { deviceUser in
-                DeviceUser(name: deviceUser.name, token: deviceUser.token)
-            }
-            userNameForm.updateUserList(scaleUsers)
+            userNameForm.updateUserList(otherDeviceUsersList)
         }
 
         // Resolve DI-backed services up front so async work started from init
@@ -71,7 +68,7 @@ final class UsersViewModel: ObservableObject {
         _ = notificationService
         _ = bluetoothService
         _ = permissionsService
-        _ = scaleService
+        _ = deviceService
         _ = logger
 
         setupFormObservers()
@@ -126,8 +123,8 @@ final class UsersViewModel: ObservableObject {
                 let broadcastId = deviceSnapshot?.broadcastIdString ?? ""
                 var dto = preference.toDTO()
                 dto.displayName = newName
-                try await scaleService.updateScalePreference(deviceId, fromDTO: dto)
-                await scaleService.pushLocalChangesToServer()
+                try await deviceService.updateScalePreference(deviceId, fromDTO: dto)
+                await deviceService.pushLocalChangesToServer()
                 let result = await bluetoothService.updateAccount(broadcastId: broadcastId)
                 switch result {
                 case .success:
@@ -175,10 +172,7 @@ final class UsersViewModel: ObservableObject {
         logger.log(level: .info, tag: tag, message: "Successfully loaded \(users.count) users from scale")
         let currentName = currentDeviceUser?.name ?? ""
         userNameForm.setDisplayName(currentName)
-        let scaleUsers = otherDeviceUsersList.map { deviceUser in
-            DeviceUser(name: deviceUser.name, token: deviceUser.token)
-        }
-        userNameForm.updateUserList(scaleUsers)
+        userNameForm.updateUserList(otherDeviceUsersList)
     }
 
     private func reloadUsersAfterDeletion(broadcastId: String) async {
@@ -235,7 +229,7 @@ final class UsersViewModel: ObservableObject {
         }
 
         do {
-            try await scaleService.updateAllScalesStatus(nil)
+            try await deviceService.updateAllScalesStatus(nil)
         } catch {
             logger.log(level: .error, tag: tag, message: "updateAllScalesStatus failed: \(error.localizedDescription)")
         }

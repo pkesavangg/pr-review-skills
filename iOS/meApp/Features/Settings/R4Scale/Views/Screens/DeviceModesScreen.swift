@@ -195,7 +195,7 @@ struct DeviceModesScreen: View {
 @MainActor
 final class DeviceModesViewModel: ObservableObject {
     @Injector var notificationService: NotificationHelperServiceProtocol
-    @Injector var scaleService: PairedDeviceServiceProtocol
+    @Injector var deviceService: PairedDeviceServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     @Injector var accountService: AccountServiceProtocol
@@ -204,7 +204,7 @@ final class DeviceModesViewModel: ObservableObject {
 
     /// Reads the current snapshot directly from the service — the single source of truth.
     private var deviceSnapshot: DeviceSnapshot? {
-        scaleService.scales.first(where: { $0.id == scaleIdString })
+        deviceService.scales.first(where: { $0.id == scaleIdString })
     }
 
     @Published var modeValue: DeviceModes = .weightOnly
@@ -281,8 +281,8 @@ final class DeviceModesViewModel: ObservableObject {
         notificationService.showLoader(LoaderModel(text: LoaderStrings.saving))
 
         do {
-            try await scaleService.updateScalePreference(deviceId, fromDTO: dto)
-            await scaleService.pushLocalChangesToServer()
+            try await deviceService.updateScalePreference(deviceId, fromDTO: dto)
+            await deviceService.pushLocalChangesToServer()
 
             if isConnected {
                 let result = await bluetoothService.updateAccount(broadcastId: broadcastId)
@@ -291,18 +291,18 @@ final class DeviceModesViewModel: ObservableObject {
                     switch response {
                     case .userSelectionInProgress:
                         dto.isSynced = false
-                        try await scaleService.updateScalePreference(deviceId, fromDTO: dto)
+                        try await deviceService.updateScalePreference(deviceId, fromDTO: dto)
                         notificationService.dismissLoader()
                         showUpdateAccountFailedAlert(onSuccess: onSuccess)
                         return
 
                     case .creationCompleted:
                         dto.isSynced = true
-                        try await scaleService.updateScalePreference(deviceId, fromDTO: dto)
+                        try await deviceService.updateScalePreference(deviceId, fromDTO: dto)
 
                     default:
                         dto.isSynced = false
-                        try await scaleService.updateScalePreference(deviceId, fromDTO: dto)
+                        try await deviceService.updateScalePreference(deviceId, fromDTO: dto)
                         throw BluetoothServiceError.updateProfileFailed(
                             NSError(
                                 domain: "DeviceModesViewModel",
@@ -317,13 +317,13 @@ final class DeviceModesViewModel: ObservableObject {
                 case .failure(let error):
                     logger.log(level: .error, tag: tag, message: "Failed to update scale via Bluetooth: \(error.localizedDescription)")
                     dto.isSynced = false
-                    try await scaleService.updateScalePreference(deviceId, fromDTO: dto)
+                    try await deviceService.updateScalePreference(deviceId, fromDTO: dto)
                     throw error
                 }
             } else {
                 // Device offline — mark preference to sync on reconnect
                 dto.isSynced = false
-                try await scaleService.updateScalePreference(deviceId, fromDTO: dto)
+                try await deviceService.updateScalePreference(deviceId, fromDTO: dto)
                 logger.log(level: .info, tag: tag, message: "Scale mode saved while device offline - will sync when device reconnects")
             }
             await loadScaleModeData()

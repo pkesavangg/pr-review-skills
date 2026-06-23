@@ -26,7 +26,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Scale service for scale-related operations
     @Injector var wifiDeviceService: WifiPairedDeviceServiceProtocol
     
-    @Injector var scaleService: PairedDeviceServiceProtocol
+    @Injector var deviceService: PairedDeviceServiceProtocol
     @Injector var pushNotificationService: PushNotificationServiceProtocol
     @Injector var entryService: EntryServiceProtocol
     @Injector var goalAlertService: GoalAlertServiceProtocol
@@ -219,7 +219,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     @Published var hasSavedSettings: Bool = false
     
     /// Scale mode selection (All Body Metrics or Weight Only)
-    @Published var selectedScaleMode: DeviceModes = .allBodyMetrics
+    @Published var selectedDeviceMode: DeviceModes = .allBodyMetrics
     
     /// Heart rate measurement setting
     @Published var isHeartRateEnabled: Bool = false
@@ -283,7 +283,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     lazy var dashboardStore: DashboardStore = makeDashboardStore()
     // Snapshots to detect changes and gate Save button enabling
     var initialDisplayNameSnapshot: String?
-    var initialScaleModeSnapshot: DeviceModes?
+    var initialDeviceModeSnapshot: DeviceModes?
     var initialHeartRateEnabledSnapshot: Bool?
     var initialDashboardMetricLabelsSnapshot: [String]?
     var initialDashboardRemovedMetricsSnapshot: Set<String>?
@@ -449,7 +449,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                             DuplicateUserView(isFromCustomizeSettings: true).environmentObject(self)
                         case .scaleMode:
                             DeviceModesSelectionView(
-                                selectedMode: selectedScaleMode,
+                                selectedMode: selectedDeviceMode,
                                 isHeartRateEnabled: isHeartRateEnabled,
                                 isR4DeviceSetup: true,
                                 onBIAButtonTap: { [weak self] in
@@ -461,7 +461,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                             )
                         case .scaleMetrics:
                             // Scale metrics customization screen.
-                            ScaleMetricsCustomizationView(initialEnabledKeys: selectedDeviceMetrics) { [weak self] metrics, _ in
+                            DeviceMetricsCustomizationView(initialEnabledKeys: selectedDeviceMetrics) { [weak self] metrics, _ in
                                 guard let self else { return }
                                 // Only update the local state, don't persist until Save is clicked
                                 self.selectedDeviceMetrics = metrics
