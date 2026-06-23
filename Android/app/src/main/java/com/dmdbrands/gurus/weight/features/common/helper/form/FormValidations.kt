@@ -21,10 +21,13 @@ object ValidationType {
   const val BLANK = "blank"
   const val INVALID_SCALE_DISPLAY_NAME = "invalidScaleDisplayName"
   const val DUPLICATE = "duplicate"
+  const val WARNING = "warning"
+  const val MAX_LIMIT = "max_limit"
 }
 
 object ValidationMessages {
   const val RANGE = "value must be between %d and %d"
+  const val BETWEEN_WARNING = "this number should be between %d-%d"
   const val INVALID_NUMBER = "invalid number"
   const val INVALID_EMAIL = "must use a valid email"
   const val EMAIL_INVALID_FORMAT = "must use a valid email"
@@ -308,6 +311,77 @@ object FormValidations {
         ValidationError(ValidationType.MATCH_PASSWORD, ValidationMessages.PASSWORD_MISMATCH)
       } else {
         null
+      }
+    }
+
+  /**
+   * Advisory (non-blocking) range check for manual entry. Returns a WARNING-severity
+   * result when an integer value falls outside [min]..[max]; the value still saves.
+   * Mirrors Balance Health's `setWarningMessages` for systolic/diastolic/pulse.
+   * Blank values are left to [required]; non-numeric/out-of-hard-cap are left to
+   * [hardMaxValidator], so this only flags an in-cap-but-atypical number.
+   */
+  fun rangeWarningValidator(min: Int, max: Int): Validator<String> =
+    { value ->
+      val v = value.toIntOrNull()
+      if (v != null && (v < min || v > max)) {
+        ValidationError(
+          ValidationType.WARNING,
+          String.format(ValidationMessages.BETWEEN_WARNING, min, max),
+          ValidationSeverity.WARNING,
+        )
+      } else {
+        null
+      }
+    }
+
+  /**
+   * Blocking upper-bound check for manual entry. Returns an ERROR when an integer
+   * value exceeds [max] (or isn't a valid whole number). Mirrors Balance Health's
+   * hard 500 cap on systolic/diastolic/pulse. Blank is left to [required].
+   */
+  fun hardMaxValidator(max: Int): Validator<String> =
+    { value ->
+      if (value.isBlank()) {
+        null
+      } else {
+        val v = value.toIntOrNull()
+        when {
+          v == null -> ValidationError(ValidationType.NOT_IN_RANGE, ValidationMessages.INVALID_NUMBER)
+          v > max -> ValidationError(
+            ValidationType.MAX_LIMIT,
+            String.format(ValidationMessages.LESS_THAN, max),
+          )
+          else -> null
+        }
+      }
+    }
+
+  /**
+   * Exclusive decimal range check for free decimal entry (e.g. baby oz/length).
+   * Parses the literal decimal string (not the implicit-decimal [bodyCompValidator]
+   * transform) so it pairs with [AppInputType.DECIMAL_STRING]. Value must be
+   * strictly inside ([min], [max]). Blank is left to [required] (optional fields
+   * simply pass when empty).
+   */
+  fun decimalRangeValidator(min: Int, max: Int): Validator<String> =
+    { value ->
+      if (value.isBlank()) {
+        null
+      } else {
+        val v = value.toDoubleOrNull()
+        when {
+          v == null -> ValidationError(ValidationType.NOT_IN_RANGE, ValidationMessages.INVALID_NUMBER)
+          v <= min -> ValidationError(
+            ValidationType.GREATER,
+            String.format(ValidationMessages.GREATER_THAN, min),
+          )
+          v >= max -> ValidationError(
+            ValidationType.LESSER,
+            String.format(ValidationMessages.LESS_THAN, max),
+          )
+          else -> null
+        }
       }
     }
 

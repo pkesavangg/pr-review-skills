@@ -76,6 +76,7 @@ val LightColorScheme =
     textSubheading = LightColorToken.subheading,
     textError = LightColorToken.textError,
     textErrorDisabled = LightColorToken.textErrorDisabled,
+    textWarning = LightColorToken.textWarning,
     // Brand
     meAppPrimary = LightColorToken.meAppPrimary,
     wgPrimary = LightColorToken.wgPrimary,
@@ -145,6 +146,7 @@ val DarkColorScheme =
     textSubheading = DarkColorToken.subheading,
     textError = DarkColorToken.textError,
     textErrorDisabled = DarkColorToken.textErrorDisabled,
+    textWarning = DarkColorToken.textWarning,
     // Brand
     meAppPrimary = DarkColorToken.meAppPrimary,
     wgPrimary = DarkColorToken.wgPrimary,

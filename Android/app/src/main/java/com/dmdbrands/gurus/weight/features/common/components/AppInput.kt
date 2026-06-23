@@ -67,6 +67,13 @@ enum class AppInputType {
      */
     BODY_COMP,
     NUMERIC_STRING,
+
+    /**
+     * Free decimal entry: digits plus a single literal '.' (e.g. baby weight oz
+     * "15.9" or length "20.5"). Unlike [BODY_COMP] there's no implicit-decimal
+     * visual transform — the typed string is the value. Mirrors Smart Baby.
+     */
+    DECIMAL_STRING,
 }
 
 object AppInputDefaults {
@@ -95,6 +102,7 @@ object AppInputDefaults {
             AppInputType.EMAIL -> KeyboardType.Email
             AppInputType.NUMBER, AppInputType.BODY_COMP, AppInputType.NUMERIC_STRING
             -> KeyboardType.Number
+            AppInputType.DECIMAL_STRING -> KeyboardType.Decimal
             AppInputType.PASSWORD -> KeyboardType.Password
         }
 
@@ -140,6 +148,11 @@ object AppInputDefaults {
     ): String =
         when (type) {
             AppInputType.BODY_COMP -> value.filter { it.isDigit() }
+            // Digits plus at most one decimal point (the first one typed).
+            AppInputType.DECIMAL_STRING -> {
+                val firstDot = value.indexOf('.')
+                value.filterIndexed { index, c -> c.isDigit() || (c == '.' && index == firstDot) }
+            }
             else -> value
         }
 }
@@ -487,12 +500,22 @@ fun <T> InputFieldBase(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val errorMessage = formControl?.error?.message.orEmpty()
+        // Advisory warning (non-blocking): shown only when there's no blocking error.
+        val isWarning = formControl?.warning != null && (formControl.dirty || formControl.touched)
+        val warningMessage = formControl?.warning?.message.orEmpty()
         Box(modifier = Modifier.weight(1f)) {
             when {
                 isError ->
                     Text(
                         text = errorMessage.lowercase(),
                         color = colorScheme.textError,
+                        style = typography.body3,
+                    )
+
+                isWarning ->
+                    Text(
+                        text = warningMessage.lowercase(),
+                        color = colorScheme.textWarning,
                         style = typography.body3,
                     )
 

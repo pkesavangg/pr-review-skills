@@ -119,7 +119,7 @@ fun DashboardSnapshotScreen(
           is ProductSelection.BabyScale -> BabyEmptySnapshotCard(
             onAddBaby = {
               scope.launch {
-                navBackStack.addRoute(AppRoute.AccountSettings.AddBaby)
+                navBackStack.addRoute(AppRoute.AccountSettings.AddBaby())
               }
             },
           )

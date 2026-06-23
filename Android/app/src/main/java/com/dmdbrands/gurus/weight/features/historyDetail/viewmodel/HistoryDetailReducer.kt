@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.historyDetail.viewmodel
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import androidx.compose.runtime.Stable
 import kotlinx.collections.immutable.ImmutableList
@@ -20,6 +21,8 @@ data class HistoryDetailState(
   val historyItems: ImmutableList<Entry> = persistentListOf(),
   /** Non-null while the note-edit modal is open for this entry (MOB-438). */
   val noteEditEntry: Entry? = null,
+  /** Non-null while the full baby edit popover is open for this entry. */
+  val babyEditEntry: BabyEntry? = null,
 ) : IReducer.State
 
 /**
@@ -33,6 +36,19 @@ sealed interface HistoryDetailIntent : IReducer.Intent {
   data class EditEntry(val entry: Entry) : HistoryDetailIntent
   data object DismissNoteEditor : HistoryDetailIntent
   data class SaveNote(val entry: Entry, val note: String) : HistoryDetailIntent
+
+  /** Opens the full baby edit popover (weight/length/notes/date) for [entry]. */
+  data class EditBabyEntry(val entry: BabyEntry) : HistoryDetailIntent
+  data object DismissBabyEditor : HistoryDetailIntent
+
+  /** Saves edits to a baby [entry] (decigrams/mm already converted from the form). */
+  data class SaveBabyEdit(
+    val entry: BabyEntry,
+    val weightDecigrams: Int?,
+    val lengthMillimeters: Int?,
+    val note: String?,
+    val timestamp: String,
+  ) : HistoryDetailIntent
   object Retry : HistoryDetailIntent
   data class SetError(val message: String) : HistoryDetailIntent
   object ClearError : HistoryDetailIntent
@@ -59,6 +75,8 @@ class HistoryDetailReducer : IReducer<HistoryDetailState, HistoryDetailIntent> {
       is HistoryDetailIntent.SetItemsOpened -> state.copy(itemsOpened = intent.ids.toImmutableList())
       is HistoryDetailIntent.EditEntry -> state.copy(noteEditEntry = intent.entry)
       HistoryDetailIntent.DismissNoteEditor -> state.copy(noteEditEntry = null)
+      is HistoryDetailIntent.EditBabyEntry -> state.copy(babyEditEntry = intent.entry)
+      HistoryDetailIntent.DismissBabyEditor -> state.copy(babyEditEntry = null)
       is HistoryDetailIntent.SetHistoryItems ->
         state.copy(
           month = intent.month,

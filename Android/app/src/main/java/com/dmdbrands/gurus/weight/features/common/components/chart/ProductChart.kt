@@ -84,11 +84,22 @@ fun rememberProductChart(
   // ── Y-range provider (config-driven) ──
   // seedMinY/seedMaxY are pre-computed in the respective ViewModel (updateSegmentRanges)
   // so the correct range is available on frame-0 for both first load and segment switches.
+  //
+  // Guard against a null / non-finite / zero-width range reaching Vico. A single data
+  // point (e.g. the first baby entry) — or a frame where the range hasn't been seeded
+  // yet — would otherwise pass NaN here, which Vico maps to a NaN pixel → a point shape
+  // with a NaN corner radius → IllegalArgumentException ("Corner size … can't be NaN").
+  // A finite, strictly-increasing fallback lets the chart render instead of crashing;
+  // the real range arrives on the next frame. Normal (valid) ranges pass through unchanged.
+  val safeMinX = segmentState.chartMinX?.takeIf { it.isFinite() } ?: 0.0
+  val safeMaxX = segmentState.chartMaxX?.takeIf { it.isFinite() && it > safeMinX } ?: (safeMinX + 1.0)
+  val safeSeedMinY = segmentState.seedMinY?.takeIf { it.isFinite() } ?: 0.0
+  val safeSeedMaxY = segmentState.seedMaxY?.takeIf { it.isFinite() && it > safeSeedMinY } ?: (safeSeedMinY + 1.0)
   val scrollAwareRange = rememberScrollAwareRangeProvider(
-    minX = segmentState.chartMinX ?: Double.NaN,
-    maxX = segmentState.chartMaxX ?: Double.NaN,
-    seedMinY = segmentState.seedMinY ?: Double.NaN,
-    seedMaxY = segmentState.seedMaxY ?: Double.NaN,
+    minX = safeMinX,
+    maxX = safeMaxX,
+    seedMinY = safeSeedMinY,
+    seedMaxY = safeSeedMaxY,
   ) { visibleSeriesEntries, visibleXRange ->
     // Extract Y values: all series (BP), first series only (weight/baby)
     val yValues = if (config.useAllSeriesForYRange) {
@@ -112,6 +123,13 @@ fun rememberProductChart(
     val step = axisMeta.step
 
     onYRangeSettled(rangeMinY, rangeMaxY)
+
+    // Defensive: a non-finite or non-positive step (or degenerate range) would hang the
+    // tick loop / yield a bad range. Fall back to a flat 1-unit range so the chart still draws.
+    if (!step.isFinite() || step <= 0.0 || !rangeMinY.isFinite() || rangeMaxY <= rangeMinY) {
+      val base = rangeMinY.takeIf { it.isFinite() } ?: 0.0
+      return@rememberScrollAwareRangeProvider (base..(base + 1.0)) to listOf(base, base + 1.0)
+    }
 
     val ticks = mutableListOf<Double>()
     var tick = rangeMinY

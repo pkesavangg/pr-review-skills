@@ -69,13 +69,14 @@ fun MyKidsScreen(viewModel: MyKidsViewModel = hiltViewModel()) {
         if (state.babies.isEmpty()) {
             MyKidsEmptyState(
                 modifier = scaffoldModifier,
-                onAddBaby = { coroutineScope.launch { backStack.addRoute(AppRoute.AccountSettings.AddBaby) } },
+                onAddBaby = { coroutineScope.launch { backStack.addRoute(AppRoute.AccountSettings.AddBaby()) } },
             )
         } else {
             MyKidsList(
                 modifier = scaffoldModifier,
                 babies = state.babies,
-                onAddBaby = { coroutineScope.launch { backStack.addRoute(AppRoute.AccountSettings.AddBaby) } },
+                onAddBaby = { coroutineScope.launch { backStack.addRoute(AppRoute.AccountSettings.AddBaby()) } },
+                onEditBaby = { id -> coroutineScope.launch { backStack.addRoute(AppRoute.AccountSettings.AddBaby(id)) } },
                 onDeleteBaby = { viewModel.handleIntent(MyKidsIntent.DeleteBaby(it)) },
             )
         }
@@ -86,6 +87,7 @@ fun MyKidsScreen(viewModel: MyKidsViewModel = hiltViewModel()) {
 private fun MyKidsList(
     babies: ImmutableList<BabyProfile>,
     onAddBaby: () -> Unit,
+    onEditBaby: (String) -> Unit,
     onDeleteBaby: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -125,7 +127,7 @@ private fun MyKidsList(
                         title = baby.name.ifEmpty { "${MyKidsStrings.BabyFallbackPrefix} ${index + 1}" },
                         leadingContent = { BabyAvatar(name = baby.name.ifEmpty { MyKidsStrings.AvatarFallback }) },
                         trailingContent = {
-                            IconButton(onClick = { /* edit — future */ }) {
+                            IconButton(onClick = { onEditBaby(baby.id) }) {
                                 Icon(
                                     painter = painterResource(AppIcons.Default.EditPencil),
                                     contentDescription = MyKidsStrings.EditBaby,

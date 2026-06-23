@@ -230,7 +230,7 @@ fun DashboardScreen() {
         BabyScaleEmptyDashboard(
           onConnectDevice = {
             scope.launch {
-              navBackStack.addRoute(AppRoute.AccountSettings.AddBaby)
+              navBackStack.addRoute(AppRoute.AccountSettings.AddBaby())
             }
           },
         )

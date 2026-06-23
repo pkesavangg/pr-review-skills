@@ -423,11 +423,10 @@ constructor(
             message = EntryScreenStrings.EntryAdded,
           ),
         )
-        handleIntent(
-          EntryIntent.UpdateActiveForm(
-            ActiveEntryForm.Baby(form = MultiFormGroup.create(forms = BabyEntryForm.create())),
-          ),
-        )
+        // Match the weight/BP save flow: just deactivate + pop back to where the
+        // entry screen was opened from. (Rebuilding the form here re-activated the
+        // screen and prevented the back navigation — the form is recreated by
+        // observeProductSelection the next time Entry is opened anyway.)
         deactivate()
         navigationService.navigateBack(AppRoute.Home)
       } catch (e: Exception) {
@@ -458,35 +457,25 @@ constructor(
     val lbs = controls.pounds.value.toIntOrNull() ?: 0
     val oz = controls.ounces.value.toDoubleOrNull() ?: 0.0
     val inches = controls.inches.value.toDoubleOrNull()
-    return buildList {
-      if (lbs > 0 || oz > 0) {
-        add(
-          buildBabyEntry(
-            accountId, babyId, timestamp, note, BabyEntryType.WEIGHT,
-            weightDecigrams = ConversionTools.convertLbOzToDecigrams(lbs, oz),
-          ),
-        )
-      }
-      if (inches != null && inches > 0) {
-        add(
-          buildBabyEntry(
-            accountId, babyId, timestamp, note, BabyEntryType.MEASURE_LENGTH,
-            lengthMm = ConversionTools.convertInchesToMm(inches),
-          ),
-        )
-      }
-    }
+
+    val weightDecigrams = if (lbs > 0 || oz > 0) ConversionTools.convertLbOzToDecigrams(lbs, oz) else null
+    val lengthMm = if (inches != null && inches > 0) ConversionTools.convertInchesToMm(inches) else null
+    if (weightDecigrams == null && lengthMm == null) return emptyList()
+
+    // ONE local row carries both measures — the unique (accountId, entryTimestamp) index
+    // allows only one row per timestamp, and the history/detail UI shows weight + length on
+    // one line. The row fans out to the two §2.16 requests (distinct entryId) only at POST.
+    return listOf(buildBabyEntry(accountId, babyId, timestamp, note, weightDecigrams, lengthMm))
   }
 
-  /** Builds a single-measure baby [BabyEntry] (weight OR length per [type]) for manual entry. */
+  /** Builds the combined baby [BabyEntry] (weight and/or length) for manual entry. */
   private fun buildBabyEntry(
     accountId: String,
     babyId: String,
     timestamp: String,
     note: String?,
-    type: BabyEntryType,
-    weightDecigrams: Int? = null,
-    lengthMm: Int? = null,
+    weightDecigrams: Int?,
+    lengthMm: Int?,
   ): BabyEntry = BabyEntry(
     entry = EntryEntity(
       accountId = accountId,
@@ -501,7 +490,8 @@ constructor(
       babyWeightDecigrams = weightDecigrams,
       babyLengthMillimeters = lengthMm,
       entryNote = note,
-      entryType = type.value,
+      // Primary type for the local row; POST splits per present measure regardless.
+      entryType = if (weightDecigrams != null) BabyEntryType.WEIGHT.value else BabyEntryType.MEASURE_LENGTH.value,
       source = EntrySource.MANUAL.value,
     ),
   )

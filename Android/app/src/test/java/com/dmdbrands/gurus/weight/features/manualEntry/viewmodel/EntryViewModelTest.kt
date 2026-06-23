@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.manualEntry.viewmodel
 
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
@@ -182,7 +183,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Save with baby form sends weight and length baby entries`() = runTest {
+    fun `Save with baby form saves one combined baby entry carrying weight and length`() = runTest {
         val baby = ProductSelection.Baby(
             BabyProfile(id = "baby-1", name = "Timmy", birthdate = null, accountId = "acc-1"),
         )
@@ -201,11 +202,13 @@ class EntryViewModelTest {
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
 
-        // Weight + length are separate entryTypes → two baby entries for the selected baby.
-        assertThat(captured).hasSize(2)
-        assertThat(captured.all { it is BabyEntry }).isTrue()
-        assertThat(captured.map { (it as BabyEntry).entryType }).containsExactly("weight", "measureLength")
-        assertThat((captured.first() as BabyEntry).babyId).isEqualTo("baby-1")
+        // One local row carries BOTH measures (the unique entryTimestamp index allows only one
+        // row per timestamp; the POST split fans it into two §2.16 requests later).
+        assertThat(captured).hasSize(1)
+        val entry = captured.single() as BabyEntry
+        assertThat(entry.babyId).isEqualTo("baby-1")
+        assertThat(entry.babyWeightDecigrams).isEqualTo(ConversionTools.convertLbOzToDecigrams(7, 4.0))
+        assertThat(entry.babyLengthMillimeters).isEqualTo(ConversionTools.convertInchesToMm(20.0))
     }
 
     @Test
