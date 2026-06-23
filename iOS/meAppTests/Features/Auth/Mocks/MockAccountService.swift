@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import Combine
 @testable import meApp
 
 /// Mock for AccountServiceProtocol used in SignupStore and related tests.
@@ -11,7 +12,9 @@ import Foundation
 final class MockAccountService: AccountServiceProtocol {
 
     // MARK: - activeAccount
-    var activeAccount: Account?
+    @Published var activeAccount: Account?
+
+    var activeAccountPublisher: AnyPublisher<Account?, Never> { $activeAccount.eraseToAnyPublisher() }
 
     // MARK: - signUp
     var signUpResult: Account?

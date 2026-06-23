@@ -5,10 +5,10 @@ import Combine
 @MainActor
 final class EntryStore: ObservableObject {
     // Dependencies
-    @Injector var accountService: AccountService
+    @Injector var accountService: AccountServiceProtocol
     @Injector var notificationService: NotificationHelperService
-    @Injector var entryService: EntryService
-    @Injector var logger: LoggerService
+    @Injector var entryService: EntryServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
     @Injector var scaleService: ScaleService
 
     // Strings
@@ -281,7 +281,7 @@ final class EntryStore: ObservableObject {
 
     private func initializeObservers() {
         // Observe account changes directly to catch all updates
-        accountService.$activeAccount
+        accountService.activeAccountPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] account in
                 guard let self = self else { return }
