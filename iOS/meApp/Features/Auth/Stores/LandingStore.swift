@@ -15,31 +15,31 @@ final class LandingStore: ObservableObject {
     @Injector private var accountService: AccountServiceProtocol
     @Injector private var notificationService: NotificationHelperServiceProtocol
     @Injector private var logger: LoggerServiceProtocol
-    
+
     private let networkMonitor = NetworkMonitor.shared
-    
+
     // MARK: Published State
     @Published var accounts: [AccountSnapshot] = []
     @Published var userItems: [UserItemInfo] = []
-    
+
     let loadingLang = LoaderStrings.self
     let alertStrings = AlertStrings.self
     private let appConstants = AppConstants.self
     private let toastLang = ToastStrings.self
-    
+
     // MARK: Private
     private var cancellables: Set<AnyCancellable> = []
     private var connectionCheckTimeout: DispatchWorkItem?
     private let tag = "LandingStore"
-    
+
     // MARK: Init
     init() {
         setupAccountObservation()
         setupNetworkMonitoring()
     }
-    
+
     // MARK: - Setup Methods
-    
+
     /// Observes account changes and updates the local account list.
     /// All saved accounts are shown — logged-in, expired, and manually logged-out.
     /// Accounts disappear only when explicitly removed from the device.
@@ -83,7 +83,7 @@ final class LandingStore: ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
+
     /// Observes network connectivity changes and shows toast when connection is lost.
     /// Implements a delay mechanism to avoid false alerts during quick network toggles.
     private func setupNetworkMonitoring() {
@@ -94,16 +94,16 @@ final class LandingStore: ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
+
     // MARK: - Network Monitoring
-    
+
     /// Handles network status changes and shows toast when network disconnects.
     /// - Parameter isConnected: Current network connection status.
     private func handleNetworkStatusChange(isConnected: Bool) {
         connectionCheckTimeout?.cancel()
-        
+
         guard !isConnected else { return }
-        
+
         // Delay the toast to avoid false alerts during quick toggles (similar to weightGurus)
         let workItem = DispatchWorkItem { [weak self] in
             guard let self = self, !self.networkMonitor.isConnected else { return }
@@ -112,7 +112,7 @@ final class LandingStore: ObservableObject {
         connectionCheckTimeout = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
     }
-    
+
     /// Shows a toast notification when network connection is lost.
     private func showNoConnectionToast() {
         let toast = ToastModel(
@@ -121,7 +121,7 @@ final class LandingStore: ObservableObject {
         )
         notificationService.showToast(toast)
     }
-    
+
     // MARK: Intent(s)
     /// Attempts to make the supplied account active.
     func switchAccount(to accountID: String) {
@@ -129,7 +129,7 @@ final class LandingStore: ObservableObject {
             logger.log(level: .error, tag: tag, message: "Account with ID \(accountID) not found")
             return
         }
-        
+
         // R1: Extract @Model data before async boundary
         let userName = account.firstName?.isEmpty == false ? account.firstName ?? account.email : account.email
 
@@ -153,7 +153,7 @@ final class LandingStore: ObservableObject {
             }
         }
     }
-    
+
     // MARK: - Remove Account
 
     /// Removes an account from this device. Prompts for confirmation first.
@@ -218,7 +218,7 @@ final class LandingStore: ObservableObject {
         }
         return true
     }
-    
+
     /// Presents an alert informing the user that the maximum number of accounts
     /// has been reached.
     private func showMaxUserAccountsAlert() {
@@ -232,7 +232,7 @@ final class LandingStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-    
+
     deinit {
       cancellables.forEach { $0.cancel() }
       cancellables.removeAll()

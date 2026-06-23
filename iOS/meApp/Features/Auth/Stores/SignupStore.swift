@@ -60,8 +60,8 @@ final class SignupStore: ObservableObject {
     @Published var babyProfileForm = BabyProfileSetupForm()
 
     // Height-related published properties
-    @Published var selectedHeightInches: [String] = ["5", "10"]  // Default 5'10"
-    @Published var selectedHeightCm: [String] = ["1", "7", "8"]  // Default 178cm
+    @Published var selectedHeightInches: [String] = ["6", "5"]  // Default 6'5"
+    @Published var selectedHeightCm: [String] = ["1", "9", "6"]  // Default 196cm
     @Published var showHeightInchesPicker = false
     @Published var showHeightCmPicker = false
 
@@ -263,17 +263,57 @@ final class SignupStore: ObservableObject {
             objectWillChange.send()
             moveToNextStep()
         case .addBaby:
-            // Skip baby flow entirely — jump to password (first loop) or profileReady (subsequent loops)
-            resetBabyProfileForm()
-            objectWillChange.send()
-            let jumpTarget: SignupStep = steps.contains(.password) ? .password : .profileReady
-            if let targetIndex = steps.firstIndex(of: jumpTarget) {
-                currentStepIndex = targetIndex
+            if isEditingBabyIndex != nil {
+                showSkipEditBabyAlert()
+            } else {
+                showSkipAddBabyAlert()
             }
         default:
             objectWillChange.send()
             moveToNextStep()
         }
+    }
+
+    private func showSkipAddBabyAlert() {
+        let lang = AlertStrings.SkipAddBabyAlert.self
+        let alert = AlertModel(
+            title: lang.title,
+            message: lang.message,
+            buttons: [
+                AlertButtonModel(title: lang.skipButton, type: .primary) { [weak self] _ in
+                    guard let self else { return }
+                    self.resetBabyProfileForm()
+                    self.objectWillChange.send()
+                    let jumpTarget: SignupStep = self.steps.contains(.password) ? .password : .profileReady
+                    if let targetIndex = self.steps.firstIndex(of: jumpTarget) {
+                        self.currentStepIndex = targetIndex
+                    }
+                },
+                AlertButtonModel(title: lang.goBackButton, type: .secondary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+
+    private func showSkipEditBabyAlert() {
+        let lang = AlertStrings.SkipEditBabyAlert.self
+        let alert = AlertModel(
+            title: lang.title,
+            message: lang.message,
+            buttons: [
+                AlertButtonModel(title: lang.skipButton, type: .primary) { [weak self] _ in
+                    guard let self else { return }
+                    self.resetBabyProfileForm()
+                    self.isEditingBabyIndex = nil
+                    self.objectWillChange.send()
+                    if let babyListIndex = self.steps.firstIndex(of: .babyList) {
+                        self.currentStepIndex = babyListIndex
+                    }
+                },
+                AlertButtonModel(title: lang.goBackButton, type: .secondary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
     }
 
     func moveToNextStep() {

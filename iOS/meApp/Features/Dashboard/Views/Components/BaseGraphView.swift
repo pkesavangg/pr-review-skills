@@ -717,12 +717,13 @@ extension BaseGraphView: AXChartDescriptorRepresentable {
         let lower = yRange.lowerBound.isFinite ? yRange.lowerBound : 0.0
         let upper = yRange.upperBound.isFinite ? yRange.upperBound : 1.0
         let safeRange = lower < upper ? lower...upper : lower...(lower + 1)
+        let displayManager = dashboardStore.displayManager
         let yAxis = AXNumericDataAxisDescriptor(
             title: chartDescriptorYAxisTitle,
             range: safeRange,
             gridlinePositions: viewModel.yAxisTicks
         ) { value in
-            dashboardStore.displayManager.formatYAxisTickLabel(value)
+            displayManager?.formatYAxisTickLabel(value) ?? ""
         }
 
         // Build per-series data points, preserving the existing series render order
