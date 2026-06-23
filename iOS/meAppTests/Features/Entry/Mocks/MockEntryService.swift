@@ -3,8 +3,11 @@
 //  meAppTests
 //
 
-import Foundation
 @testable import meApp
+
+private enum MockEntryServiceError: Error {
+    case notConfigured(String)
+}
 
 @MainActor
 final class MockEntryService: EntryServiceProtocol {
@@ -120,7 +123,7 @@ final class MockEntryService: EntryServiceProtocol {
     func getProgress() async throws -> Progress {
         if let error = getProgressError { throw error }
         if let result = getProgressResult { return result }
-        throw NSError(domain: "MockEntryService", code: -1, userInfo: [NSLocalizedDescriptionKey: "No progress result configured"])
+        throw MockEntryServiceError.notConfigured("No progress result configured")
     }
 
     // MARK: - getStreak

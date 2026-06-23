@@ -71,3 +71,9 @@ protocol LoggerServiceProtocol {
     func sendScaleLogsToServer(deviceLogs: [DeviceLogEntry], version: String) async throws
 }
 
+extension LoggerServiceProtocol {
+    func log(level: LogLevel, tag: String, message: String) {
+        log(level: level, tag: tag, message: message, data: nil, function: #function, line: #line, accountId: nil)
+    }
+}
+

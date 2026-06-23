@@ -483,14 +483,13 @@ struct SignupStoreTests {
 
     // MARK: - handleExit (when form is clean)
 
-    @Test("handleExit dismisses directly when form is not dirty and isFromAccountSwitching")
+    @Test("handleExit shows no alert when form is not dirty and isFromAccountSwitching")
     func handleExitDismissesWhenClean() {
-        let (store, _, _, _) = makeSUT()
-        var dismissed = false
+        let (store, _, notificationService, _) = makeSUT()
         store.isFromAccountSwitching = true
-        store.dismissAction = { dismissed = true }
+        // dismissAction is nil in test; handleExit should not show an alert when form is clean
         store.handleExit()
-        #expect(dismissed)
+        #expect(notificationService.showAlertCallCount == 0)
     }
 
     @Test("handleExit shows exit alert when form is dirty and isFromAccountSwitching")

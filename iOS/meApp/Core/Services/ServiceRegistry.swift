@@ -33,6 +33,7 @@ class ServiceRegistry {
         DependencyContainer.shared.register(HealthKitService.shared)
         DependencyContainer.shared.register(KvStorageService.shared)
         DependencyContainer.shared.register(LoggerService.shared)
+        DependencyContainer.shared.register(LoggerService.shared as LoggerServiceProtocol)
         DependencyContainer.shared.register(NotificationHelperService.shared)
         DependencyContainer.shared.register(PushNotificationService.shared)
         DependencyContainer.shared.register(FeedService.shared)

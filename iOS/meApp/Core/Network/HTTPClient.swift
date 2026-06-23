@@ -28,6 +28,26 @@ protocol HTTPClientProtocol {
     ) async throws -> R
 }
 
+extension HTTPClientProtocol {
+    func get<T: Decodable>(
+        _ endpoint: Endpoint,
+        needsAuth: Bool = false,
+        accountId: String? = nil
+    ) async throws -> T {
+        try await get(endpoint, headers: nil, needsAuth: needsAuth, accountId: accountId)
+    }
+
+    func send<T: Encodable, R: Decodable>(
+        _ endpoint: Endpoint,
+        method: HTTPMethod,
+        body: T,
+        needsAuth: Bool = false,
+        accountId: String? = nil
+    ) async throws -> R {
+        try await send(endpoint, method: method, body: body, headers: nil, needsAuth: needsAuth, accountId: accountId)
+    }
+}
+
 final class HTTPClient: HTTPClientProtocol {
     static let shared = HTTPClient()
     @Injector var accountService: AccountService

@@ -4,6 +4,7 @@
 //
 
 import Testing
+import Foundation
 @testable import meApp
 
 @Suite("EntryStore", .serialized)
