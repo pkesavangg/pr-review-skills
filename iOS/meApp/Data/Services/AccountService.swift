@@ -5,11 +5,11 @@ import Combine
 final class AccountService: AccountServiceProtocol, ObservableObject {
     static let shared: AccountService = AccountService()
     @Injector var notificationService: NotificationHelperService
-    @Injector var logger: LoggerService
+    @Injector var logger: LoggerServiceProtocol
     @Injector var bluetoothService: BluetoothService
 
-    private let apiRepo: AccountRepositoryAPIProtocol = AccountRepositoryAPI()
-    private let localRepo: AccountRepositoryProtocol = AccountRepository()
+    private let apiRepo: AccountRepositoryAPIProtocol
+    private let localRepo: AccountRepositoryProtocol
     private let networkMonitor: NetworkMonitor = NetworkMonitor.shared
     /// API repository for integration-related network calls
     private let integrationApiRepo: IntegrationRepositoryAPIProtocol = IntegrationAPIRepository()
@@ -23,7 +23,16 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     var cancellables = Set<AnyCancellable>()
     private let tag = "AccountService"
 
+    /// Testable initializer that accepts injected repositories.
+    /// Skips the heavy startup Tasks (migration, refresh, sync) to enable unit testing.
+    init(apiRepo: AccountRepositoryAPIProtocol, localRepo: AccountRepositoryProtocol) {
+        self.apiRepo = apiRepo
+        self.localRepo = localRepo
+    }
+
     init() {
+        self.apiRepo = AccountRepositoryAPI()
+        self.localRepo = AccountRepository()
         // Asynchronously load active account from local storage to set theme early
         Task {
             do {

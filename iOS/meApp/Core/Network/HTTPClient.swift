@@ -7,7 +7,28 @@
 
 import Foundation
 
-final class HTTPClient {
+// MARK: - HTTPClientProtocol
+/// Protocol abstracting the HTTP client for testability.
+@MainActor
+protocol HTTPClientProtocol {
+    func get<T: Decodable>(
+        _ endpoint: Endpoint,
+        headers: [String: String]?,
+        needsAuth: Bool,
+        accountId: String?
+    ) async throws -> T
+
+    func send<T: Encodable, R: Decodable>(
+        _ endpoint: Endpoint,
+        method: HTTPMethod,
+        body: T,
+        headers: [String: String]?,
+        needsAuth: Bool,
+        accountId: String?
+    ) async throws -> R
+}
+
+final class HTTPClient: HTTPClientProtocol {
     static let shared = HTTPClient()
     @Injector var accountService: AccountService
     @Injector var notificationHelperService: NotificationHelperService
