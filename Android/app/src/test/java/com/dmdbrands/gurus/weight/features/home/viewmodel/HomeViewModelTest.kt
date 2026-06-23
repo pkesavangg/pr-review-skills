@@ -13,6 +13,7 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
+import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.home.reducer.HomeIntent
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
@@ -27,6 +28,8 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -265,6 +268,27 @@ class HomeViewModelTest {
         viewModel.handleIntent(HomeIntent.CheckAndRequestPermission { })
         advanceUntilIdle()
         verify { dialogUtility.permissionAlert(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `CheckAndRequestPermission dismisses the loader when permission status never loads`() = runTest {
+        // Loader must always be dismissed, even if the flow never emits (times out) or the
+        // coroutine is cancelled mid-await — the try/finally guard. (PR #2093 review)
+        val permFlow = MutableStateFlow(mutableMapOf<String, String>())
+        every { ggPermissionService.permissionCallBackFlow } returns permFlow
+        viewModel = createViewModel()
+        mockkObject(AppPermissionsHelper)
+        every { AppPermissionsHelper.areRequiredPermissionsEnabled(any(), any()) } returns false
+
+        try {
+            viewModel.handleIntent(HomeIntent.CheckAndRequestPermission { })
+            advanceUntilIdle() // advances past PERMISSION_LOAD_TIMEOUT_MS
+
+            verify { dialogQueueService.showLoader(any()) }
+            verify { dialogQueueService.dismissLoader() }
+        } finally {
+            unmockkObject(AppPermissionsHelper)
+        }
     }
 
     // -------------------------------------------------------------------------

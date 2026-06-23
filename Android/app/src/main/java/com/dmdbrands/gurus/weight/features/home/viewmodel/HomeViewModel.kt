@@ -202,10 +202,15 @@ constructor(
         // (MOB-710). Timeout-guarded so a slow/absent scan can't hang the tap.
         if (ggPermissionService.permissionCallBackFlow.value.isEmpty()) {
           dialogQueueService.showLoader(HomeStrings.CheckingCameraPermission)
-          val loaded = withTimeoutOrNull(PERMISSION_LOAD_TIMEOUT_MS) {
-            ggPermissionService.permissionCallBackFlow.first { it.isNotEmpty() }
+          // try/finally so the loader is always dismissed — including if this coroutine is
+          // cancelled mid-await (otherwise the loader could be left up). (PR #2093 review)
+          val loaded = try {
+            withTimeoutOrNull(PERMISSION_LOAD_TIMEOUT_MS) {
+              ggPermissionService.permissionCallBackFlow.first { it.isNotEmpty() }
+            }
+          } finally {
+            dialogQueueService.dismissLoader()
           }
-          dialogQueueService.dismissLoader()
           if (loaded != null &&
             AppPermissionsHelper.areRequiredPermissionsEnabled(loaded, setupType = ScaleSetupType.AppSync)
           ) {
