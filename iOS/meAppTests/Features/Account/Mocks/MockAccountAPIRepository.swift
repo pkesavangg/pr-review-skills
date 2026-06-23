@@ -182,4 +182,14 @@ final class MockAccountAPIRepository: AccountRepositoryAPIProtocol {
         lastRefreshToken = refreshToken
         return try refreshTokenResult.get()
     }
+
+    var patchProductTypesResult: Result<AccountResponse, Error> = .success(AccountTestFixtures.makeAccountResponse())
+    private(set) var patchProductTypesCalls = 0
+    private(set) var lastPatchProductTypes: [String]?
+
+    func patchProductTypes(_ productTypes: [String]) async throws -> AccountResponse {
+        patchProductTypesCalls += 1
+        lastPatchProductTypes = productTypes
+        return try patchProductTypesResult.get()
+    }
 }

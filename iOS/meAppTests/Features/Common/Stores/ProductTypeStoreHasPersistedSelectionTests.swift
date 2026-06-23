@@ -226,3 +226,53 @@ struct HasPersistedSelectionKvStorageTests {
         }
     }
 }
+
+// MARK: - clearPersistedSelection via MockKvStorageService
+
+/// Exercises `ProductTypeStore.clearPersistedSelection(kvStorage:accountId:)` —
+/// the package-internal static entry point called by the instance method.
+@Suite("clearPersistedSelection via KV storage")
+@MainActor
+struct ClearPersistedSelectionKvStorageTests {
+
+    @Test("does nothing when accountId is nil")
+    func doesNothingWhenNoActiveAccount() {
+        let kv = MockKvStorageService()
+        ProductTypeStore.clearPersistedSelection(kvStorage: kv, accountId: nil)
+        #expect(kv.getAllKeys().isEmpty)
+    }
+
+    @Test("removes the persisted key for the active account")
+    func removesKeyForActiveAccount() {
+        let kv = MockKvStorageService()
+        let accountId = "acct-clear-1"
+        let key = KvStorageKeys.selectedProductTypeKey(for: accountId)
+        kv.setValue("myWeight", forKey: key)
+
+        ProductTypeStore.clearPersistedSelection(kvStorage: kv, accountId: accountId)
+
+        #expect(ProductTypeStore.hasPersistedSelection(kvStorage: kv, accountId: accountId) == false)
+    }
+
+    @Test("does not affect a different account's persisted selection")
+    func doesNotAffectOtherAccount() {
+        let kv = MockKvStorageService()
+        let otherKey = KvStorageKeys.selectedProductTypeKey(for: "acct-other")
+        kv.setValue("myWeight", forKey: otherKey)
+
+        ProductTypeStore.clearPersistedSelection(kvStorage: kv, accountId: "acct-clear-2")
+
+        #expect(ProductTypeStore.hasPersistedSelection(kvStorage: kv, accountId: "acct-other") == true)
+    }
+
+    @Test("is idempotent — clearing an already-absent key is safe")
+    func idempotentWhenKeyAbsent() {
+        let kv = MockKvStorageService()
+        let accountId = "acct-clear-3"
+
+        ProductTypeStore.clearPersistedSelection(kvStorage: kv, accountId: accountId)
+        ProductTypeStore.clearPersistedSelection(kvStorage: kv, accountId: accountId)
+
+        #expect(ProductTypeStore.hasPersistedSelection(kvStorage: kv, accountId: accountId) == false)
+    }
+}

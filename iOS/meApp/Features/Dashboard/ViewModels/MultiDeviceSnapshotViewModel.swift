@@ -113,15 +113,20 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
     /// All baby items are collapsed to a single card:
     ///   • The currently selected baby when a baby is selected (last-active — persisted across sessions).
     ///   • The first baby in the list when no baby is currently selected (e.g. user is on weight view).
+    ///   • The pending placeholder when a baby scale is paired but no baby profile has been added yet.
     /// This implements MOB-435: one baby snapshot, driven by the last-active baby.
     func snapshotItems(from availableItems: [ProductSelection], selectedItem: ProductSelection) -> [ProductSelection] {
         var nonBabyItems: [ProductSelection] = []
         var babyItems: [ProductSelection] = []
+        var pendingBabyItem: ProductSelection?
 
         for item in availableItems {
             if case .baby(let profile) = item {
-                guard !profile.isPendingSelection else { continue }
-                babyItems.append(item)
+                if profile.isPendingSelection {
+                    pendingBabyItem = item
+                } else {
+                    babyItems.append(item)
+                }
             } else {
                 nonBabyItems.append(item)
             }
@@ -137,6 +142,10 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
 
         if let baby = activeBaby {
             return nonBabyItems + [baby]
+        }
+        // No real babies — show NoBabySnapshotCard when baby scale is paired but no profile added
+        if let pending = pendingBabyItem {
+            return nonBabyItems + [pending]
         }
         return nonBabyItems
     }

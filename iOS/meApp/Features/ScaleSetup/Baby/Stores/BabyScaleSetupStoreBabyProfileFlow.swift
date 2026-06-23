@@ -198,6 +198,8 @@ extension BabyScaleSetupStore {
             isScaleSaved = true
             await scaleService.syncAllScalesWithRemote()
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
+            let pendingProfile = BabyProfile(id: BabyProfile.pendingSelectionId, name: ProductTypeStrings.babyScale)
+            productTypeStore.selectLastAdded(.baby(profile: pendingProfile))
             LoggerService.shared.log(level: .info, tag: tag, message: "Baby scale saved locally with SKU: \(sku ?? "unknown")")
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save baby scale locally: \(error)")

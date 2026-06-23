@@ -15,6 +15,7 @@ enum SignupStep: Int, CaseIterable {
     case password
     case addBaby
     case babyList
+    case pickNextDevice
     case profileReady
     case allProfilesReady
     case signupError
@@ -64,6 +65,14 @@ enum SignupDeviceType: String, CaseIterable, Identifiable {
         case .babyScale: return SignupStrings.ProfileReadyStep.babyScaleTitle
         case .bpm: return SignupStrings.ProfileReadyStep.bpmTitle
         case .weightScale: return SignupStrings.ProfileReadyStep.weightScaleTitle
+        }
+    }
+
+    var profileReadyName: String {
+        switch self {
+        case .weightScale: return "weight scale"
+        case .bpm: return "blood pressure monitor"
+        case .babyScale: return "baby scale"
         }
     }
 

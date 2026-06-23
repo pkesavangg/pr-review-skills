@@ -17,6 +17,7 @@ struct WeightSnapshotCard: View {
 
     @StateObject private var viewModel = WeightSnapshotCardViewModel()
     let summaries: [BathScaleWeightSummary]
+    let selectedPeriod: TimePeriod
     let onTap: () -> Void
     @Environment(\.appTheme) private var theme
     private let yAxisFormatter = DashboardFormatter()
@@ -80,6 +81,7 @@ struct WeightSnapshotCard: View {
     private var summariesTaskID: Int {
         var hasher = Hasher()
         hasher.combine(summaries.count)
+        hasher.combine(selectedPeriod.rawValue)
         if let first = summaries.first { hasher.combine(first.entryTimestamp) }
         if let last = summaries.last { hasher.combine(last.entryTimestamp) }
         return hasher.finalize()
@@ -121,15 +123,26 @@ struct WeightSnapshotCard: View {
         cachedGoalWeightDisplay = result.5
 
         let calendar = Calendar.current
-        if let bounds = result.0?.bounds {
-            let displayEnd = calendar.date(byAdding: .day, value: -1, to: bounds.end) ?? bounds.end
-            cachedDateRangeLabel = Self.weekDateRangeLabel(start: bounds.start, displayEnd: displayEnd)
-        } else {
-            let today = Date()
-            let daysToSunday = calendar.component(.weekday, from: today) - 1
-            let start = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -daysToSunday, to: today) ?? today)
-            let displayEnd = calendar.date(byAdding: .day, value: 6, to: start) ?? today
-            cachedDateRangeLabel = Self.weekDateRangeLabel(start: start, displayEnd: displayEnd)
+        let today = Date()
+        switch selectedPeriod {
+        case .week:
+            if let bounds = result.0?.bounds {
+                let displayEnd = calendar.date(byAdding: .day, value: -1, to: bounds.end) ?? bounds.end
+                cachedDateRangeLabel = Self.weekDateRangeLabel(start: bounds.start, displayEnd: displayEnd)
+            } else {
+                let daysToSunday = calendar.component(.weekday, from: today) - 1
+                let start = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -daysToSunday, to: today) ?? today)
+                let displayEnd = calendar.date(byAdding: .day, value: 6, to: start) ?? today
+                cachedDateRangeLabel = Self.weekDateRangeLabel(start: start, displayEnd: displayEnd)
+            }
+        case .month:
+            let fmt = DateFormatter()
+            fmt.dateFormat = "MMM yyyy"
+            cachedDateRangeLabel = fmt.string(from: today).lowercased()
+        case .year, .total:
+            let fmt = DateFormatter()
+            fmt.dateFormat = "yyyy"
+            cachedDateRangeLabel = fmt.string(from: today)
         }
         hasCacheLoaded = true
     }

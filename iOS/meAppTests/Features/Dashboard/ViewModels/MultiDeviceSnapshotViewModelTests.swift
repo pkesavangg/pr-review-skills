@@ -184,6 +184,40 @@ struct MultiDeviceSnapshotViewModelTests {
         #expect(!result.contains(.myBloodPressure))
     }
 
+    @Test("snapshotItems returns pending baby placeholder when no real baby profile exists")
+    func snapshotItemsReturnsPendingBabyWhenNoRealBabies() {
+        let (sut, _) = makeSUT()
+        let pendingProfile = BabyProfile(id: BabyProfile.pendingSelectionId, name: "Baby Scale")
+        let items: [ProductSelection] = [.myWeight, .baby(profile: pendingProfile)]
+
+        let result = sut.snapshotItems(from: items, selectedItem: .myWeight)
+
+        let babyItems = result.compactMap { item -> BabyProfile? in
+            if case .baby(let profile) = item { return profile }
+            return nil
+        }
+        #expect(babyItems.count == 1)
+        #expect(babyItems.first?.isPendingSelection == true)
+    }
+
+    @Test("snapshotItems shows real baby over pending placeholder when both present")
+    func snapshotItemsPrefersRealBabyOverPending() {
+        let (sut, _) = makeSUT()
+        let realBaby = makeBabyProfile(id: "real-baby", name: "Aria")
+        let pendingProfile = BabyProfile(id: BabyProfile.pendingSelectionId, name: "Baby Scale")
+        let items: [ProductSelection] = [.myWeight, .baby(profile: realBaby), .baby(profile: pendingProfile)]
+
+        let result = sut.snapshotItems(from: items, selectedItem: .myWeight)
+
+        let babyItems = result.compactMap { item -> BabyProfile? in
+            if case .baby(let profile) = item { return profile }
+            return nil
+        }
+        #expect(babyItems.count == 1)
+        #expect(babyItems.first?.isPendingSelection == false)
+        #expect(babyItems.first?.id == "real-baby")
+    }
+
     @Test("snapshotItems places baby last")
     func snapshotItemsBabyIsLast() async {
         let (sut, entryService) = makeSUT()

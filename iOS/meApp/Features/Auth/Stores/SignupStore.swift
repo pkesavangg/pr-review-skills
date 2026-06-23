@@ -43,6 +43,8 @@ final class SignupStore: ObservableObject {
     @Published var selectedDeviceType: SignupDeviceType?
     // Devices already added during this signup session — shown as disabled on the pick screen
     @Published var disabledDeviceTypes: Set<SignupDeviceType> = []
+    // The last device type the user completed — used for the "connect another device" screen title
+    @Published var lastCompletedDeviceType: SignupDeviceType?
     // Accumulates every device type confirmed through connectAnotherDevice().
     // Used by setInitialProductTypes to send ALL selected devices on FINISH.
     @Published var registeredDeviceTypes: [SignupDeviceType] = []
@@ -76,6 +78,7 @@ final class SignupStore: ObservableObject {
     private var previousMetricValue: Bool = false
 
     private let tag = "SignupStore"
+    private var isFinalizingSignup = false
 
     init() {
         // Resolve once per store instance to avoid cross-test DI races when
@@ -107,7 +110,7 @@ final class SignupStore: ObservableObject {
         // Email is the 2nd step (per design): Name → Email → Birthday → Pick a Device
         // On subsequent device loops email is already collected — skip it
         var result: [SignupStep] = isSubsequentDevice
-            ? [.name, .dateOfBirth, .pickDevice]
+            ? [.profileReady, .pickNextDevice]
             : [.name, .email, .dateOfBirth, .pickDevice]
 
         switch selectedDeviceType {
@@ -149,7 +152,14 @@ final class SignupStore: ObservableObject {
         disabledDeviceTypes.count < SignupDeviceType.allCases.count - 1
     }
 
+    // Snapshotted when connectAnotherDevice() is called so the progress bar
+    // doesn't reset to near-zero on the pickNextDevice screen.
+    private var savedProgressValue: Double = 0
+
     var progressValue: Double {
+        if currentStep == .pickNextDevice {
+            return savedProgressValue
+        }
         let terminalSteps: Set<SignupStep> = [.allProfilesReady, .signupError]
         let visibleCount = steps.filter { !terminalSteps.contains($0) }.count
         guard visibleCount > 0 else { return 1.0 }
@@ -157,13 +167,39 @@ final class SignupStore: ObservableObject {
         return Double(clampedIndex) / Double(visibleCount)
     }
 
+    /// All device types completed so far (registered + current selection if not yet registered).
+    var allCompletedDevices: [SignupDeviceType] {
+        guard let current = selectedDeviceType else { return registeredDeviceTypes }
+        return registeredDeviceTypes.contains(current)
+            ? registeredDeviceTypes
+            : registeredDeviceTypes + [current]
+    }
+
     var profileReadyTitle: String {
-        // When the current device completes the full set, the per-device "Your X
-        // profile is ready" reads oddly — show the all-profiles message instead.
         if !canConnectAnotherDevice {
             return SignupStrings.AllProfilesReadyStep.title
         }
-        return selectedDeviceType?.profileReadyTitle ?? SignupStrings.ProfileReadyStep.weightScaleTitle
+        let currentDevice = selectedDeviceType ?? lastCompletedDeviceType
+        var done = registeredDeviceTypes
+        if let device = currentDevice, !done.contains(device) { done.append(device) }
+
+        if done.count >= 2 {
+            let names = done.map(\.profileReadyName).joined(separator: " & ")
+            return SignupStrings.ProfileReadyStep.multiDeviceTitle(names: names)
+        }
+        return currentDevice?.profileReadyTitle ?? SignupStrings.ProfileReadyStep.weightScaleTitle
+    }
+
+    /// Title shown on the "Connect Another Device" screen.
+    /// Shows a combined title once 2+ devices are fully registered (both disabled),
+    /// otherwise shows the single last-completed device title.
+    var pickNextDeviceTitle: String {
+        if registeredDeviceTypes.count >= 2 {
+            let names = registeredDeviceTypes.map(\.profileReadyName).joined(separator: " & ")
+            return SignupStrings.ProfileReadyStep.multiDeviceTitle(names: names)
+        }
+        return lastCompletedDeviceType?.profileReadyTitle
+            ?? SignupStrings.ProfileReadyStep.weightScaleTitle
     }
 
     // MARK: - Height Management
@@ -264,9 +300,11 @@ final class SignupStore: ObservableObject {
     /// Called from the profileReady step "FINISH" button — saves device profiles and finalizes.
     /// Clears isSignupInProgress so ContentViewModel can navigate to dashboard.
     func finishSignup() {
-        guard !accountService.isSignupInProgress else { return }
+        guard !isFinalizingSignup else { return }
+        isFinalizingSignup = true
         Task {
             await performSaveDevicesAndFinalize()
+            isFinalizingSignup = false
         }
     }
 
@@ -298,14 +336,19 @@ final class SignupStore: ObservableObject {
     }
 
     func connectAnotherDevice() {
+        // Fixed at 0.9 so the bar reads ~90% on every iteration — the subsequent-device
+        // loop has far fewer steps (profileReady + pickNextDevice + profileReady = 3),
+        // and a computed ratio would drop to ~67% on the second pass.
+        savedProgressValue = 0.9
         if let current = selectedDeviceType {
+            lastCompletedDeviceType = current
             disabledDeviceTypes.insert(current)
             registeredDeviceTypes.append(current)
         }
         selectedDeviceType = nil
         rebuildSteps()
-        guard let pickDeviceIndex = steps.firstIndex(of: .pickDevice) else { return }
-        currentStepIndex = pickDeviceIndex
+        guard let pickNextDeviceIndex = steps.firstIndex(of: .pickNextDevice) else { return }
+        currentStepIndex = pickNextDeviceIndex
     }
 
     func moveToPreviousStep() {
@@ -436,6 +479,8 @@ final class SignupStore: ObservableObject {
             let fieldsValid = signupForm.password.isValid && signupForm.confirmPassword.isValid && signupForm.zipcode.isValid
             let passwordsMatch = !signupForm.formErrors[.passwordMatch]
             isNextEnabled = fieldsValid && passwordsMatch
+        case .pickNextDevice:
+            isNextEnabled = selectedDeviceType != nil
         case .profileReady:
             isNextEnabled = true
         case .allProfilesReady, .signupError:
@@ -992,6 +1037,8 @@ final class SignupStore: ObservableObject {
 
         // Reset navigation/UI state.
         selectedDeviceType = nil
+        lastCompletedDeviceType = nil
+        savedProgressValue = 0
         disabledDeviceTypes = []
         registeredDeviceTypes = []
         deviceStatuses = []

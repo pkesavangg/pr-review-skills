@@ -1723,10 +1723,19 @@ class SettingsStore: ObservableObject {
         }
     }
 
-    /// Presents the Unit Type dialog. Shows only the section relevant to the account's device type:
-    /// "My Kids" options for baby-scale accounts, "My Weight" options for weight-scale-only accounts.
+    /// Presents the Unit Type dialog.
+    /// - Both scales paired → `.both`: "My Weight" applies to weight scale, "My Kids" to baby scale.
+    /// - Baby scale only   → `.myKids`.
+    /// - Weight scale only → `.myWeight`.
     func presentUnitPicker() {
-        let mode: UnitTypePickerModalView.UnitDisplayMode = hasBabyScale ? .myKids : .myWeight
+        let mode: UnitTypePickerModalView.UnitDisplayMode
+        if hasWeightScale && hasBabyScale {
+            mode = .both
+        } else if hasBabyScale {
+            mode = .myKids
+        } else {
+            mode = .myWeight
+        }
         let picker = UnitTypePickerModalView(
             mode: mode,
             selectedWeightUnit: activeAccount?.weightUnit ?? .lb,
