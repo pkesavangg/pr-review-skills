@@ -1,5 +1,6 @@
 import Foundation
 import GGBluetoothSwiftPackage
+import Combine
 
 /// Protocol defining the service interface for managing and requesting various app permissions.
 ///
@@ -10,6 +11,15 @@ protocol PermissionsServiceProtocol: AnyObject {
     // MARK: - Published Properties
     /// Latest permission status keyed by permission type. `nil` until first update from SDK.
     var permissions: [GGPermissionType: GGPermissionState]? { get }
+
+    /// Publisher for permission changes.
+    var permissionsPublisher: AnyPublisher<[GGPermissionType: GGPermissionState]?, Never> { get }
+
+    /// Required permission categories that are mandatory.
+    var requiredCategories: Set<PermissionCategory> { get }
+
+    /// Publisher for required-categories changes.
+    var requiredCategoriesPublisher: AnyPublisher<Set<PermissionCategory>, Never> { get }
 
     // MARK: - Mutation
     /// Updates the cached permission map with the latest values from the SDK.

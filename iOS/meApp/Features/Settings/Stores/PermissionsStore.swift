@@ -22,8 +22,8 @@ final class PermissionsStore: ObservableObject {
     @Published private(set) var isBluetoothOn: Bool = false
 
     // MARK: - Dependencies
-    @Injector private var permissionsService: PermissionsService
-    @Injector private var logger: LoggerService
+    @Injector private var permissionsService: PermissionsServiceProtocol
+    @Injector private var logger: LoggerServiceProtocol
 
     private var cancellables: Set<AnyCancellable> = []
     private let tag = "PermissionsStore"
@@ -34,7 +34,7 @@ final class PermissionsStore: ObservableObject {
         // Update Bluetooth permissions
         updateBluetoothPermissions()
         
-        permissionsService.$requiredCategories
+        permissionsService.requiredCategoriesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] categories in
                 self?.requiredCategories = categories
@@ -42,11 +42,10 @@ final class PermissionsStore: ObservableObject {
             }
             .store(in: &cancellables)
 
-            
         // Subscribe to real-time permission changes from PermissionsService
         // This ensures Bluetooth permissions are updated immediately when the user changes them
         // while already on the ScaleBluetoothScreen
-        permissionsService.$permissions
+        permissionsService.permissionsPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateBluetoothPermissions()

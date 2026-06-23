@@ -29,6 +29,14 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private let tag = "PermissionsService"
 
+    var permissionsPublisher: AnyPublisher<[GGPermissionType: GGPermissionState]?, Never> {
+        $permissions.eraseToAnyPublisher()
+    }
+
+    var requiredCategoriesPublisher: AnyPublisher<Set<PermissionCategory>, Never> {
+        $requiredCategories.eraseToAnyPublisher()
+    }
+
     // MARK: - Init
     private init() {
         // Compute the initial required permissions
