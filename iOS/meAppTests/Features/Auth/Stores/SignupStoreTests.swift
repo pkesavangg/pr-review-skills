@@ -548,4 +548,146 @@ struct SignupStoreTests {
 
         #expect(accountService.lastSignUpEmail == "spaced@example.com")
     }
+
+    // MARK: - getFormattedHeight
+
+    @Test("getFormattedHeight returns non-empty string in imperial mode")
+    func getFormattedHeightImperial() {
+        let (store, _, _, _) = makeSUT()
+        store.signupForm.useMetric.value = false
+        let result = store.getFormattedHeight()
+        #expect(!result.isEmpty)
+    }
+
+    @Test("getFormattedHeight returns non-empty string in metric mode")
+    func getFormattedHeightMetric() {
+        let (store, _, _, _) = makeSUT()
+        store.signupForm.useMetric.value = true
+        let result = store.getFormattedHeight()
+        #expect(!result.isEmpty)
+    }
+
+    // MARK: - showHeightPicker
+
+    @Test("showHeightPicker sets showHeightCmPicker when useMetric is true")
+    func showHeightPickerMetric() {
+        let (store, _, _, _) = makeSUT()
+        store.signupForm.useMetric.value = true
+        store.showHeightPicker()
+        #expect(store.showHeightCmPicker)
+        #expect(!store.showHeightInchesPicker)
+    }
+
+    @Test("showHeightPicker sets showHeightInchesPicker when useMetric is false")
+    func showHeightPickerImperial() {
+        let (store, _, _, _) = makeSUT()
+        store.signupForm.useMetric.value = false
+        store.showHeightPicker()
+        #expect(store.showHeightInchesPicker)
+        #expect(!store.showHeightCmPicker)
+    }
+
+    // MARK: - isHeightValid via updateNextButtonState
+
+    @Test("isNextEnabled true on height step when stored height is valid imperial")
+    func isNextEnabledHeightStepValidImperial() {
+        let (store, _, _, _) = makeSUT()
+        store.currentStepIndex = SignupStep.height.index
+        store.signupForm.useMetric.value = false
+        // 5'10" = 70 inches stored as feet*12+inches=70 → use updateFormHeight
+        store.updateFormHeight(fromMetric: false, values: ["5", "10"])
+        store.updateNextButtonState()
+        #expect(store.isNextEnabled)
+    }
+
+    @Test("isNextEnabled true on height step when stored height is valid metric")
+    func isNextEnabledHeightStepValidMetric() {
+        let (store, _, _, _) = makeSUT()
+        store.currentStepIndex = SignupStep.height.index
+        store.signupForm.useMetric.value = true
+        store.updateFormHeight(fromMetric: true, values: ["1", "7", "5"])
+        store.updateNextButtonState()
+        #expect(store.isNextEnabled)
+    }
+
+    // MARK: - getError(for:)
+
+    @Test("getError delegates to signupForm and returns nil for untouched control")
+    func getErrorDelegatesForUntouched() {
+        let (store, _, _, _) = makeSUT()
+        let result = store.getError(for: store.signupForm.email)
+        #expect(result == nil)
+    }
+
+    @Test("getError delegates to signupForm and returns error for touched invalid email")
+    func getErrorDelegatesForTouchedInvalidEmail() {
+        let (store, _, _, _) = makeSUT()
+        store.signupForm.email.markAsTouched()
+        store.signupForm.email.value = "bad-format"
+        store.signupForm.email.validate()
+        let result = store.getError(for: store.signupForm.email)
+        #expect(result != nil)
+    }
+
+    // MARK: - handleEditingChanged
+
+    @Test("handleEditingChanged touches field when isEditing becomes false")
+    func handleEditingChangedOnBlur() {
+        let (store, _, _, _) = makeSUT()
+        #expect(!store.signupForm.firstName.isTouched)
+        store.handleEditingChanged(false, field: .firstName)
+        #expect(store.signupForm.firstName.isTouched)
+    }
+
+    @Test("handleEditingChanged does nothing when isEditing is true")
+    func handleEditingChangedNoOpWhileEditing() {
+        let (store, _, _, _) = makeSUT()
+        store.handleEditingChanged(true, field: .firstName)
+        #expect(!store.signupForm.firstName.isTouched)
+    }
+
+    // MARK: - showHelpModal
+
+    @Test("showHelpModal calls notificationService.showModal once")
+    func showHelpModalCallsModal() {
+        let (store, _, notificationService, _) = makeSUT()
+        store.showHelpModal()
+        #expect(notificationService.showModalCallCount == 1)
+    }
+
+    // MARK: - generateGoalRequest via createUser (maintain mode)
+
+    @Test("createUser generates maintain goal when goalType is maintain")
+    func createUserGeneratesMaintainGoal() async {
+        let (store, accountService, _, _) = makeSUT()
+        store.signupForm.email.value = "test@example.com"
+        store.signupForm.password.value = "pass123"
+        store.isGoalSkipped = false
+        store.signupForm.goalType.value = GoalType.maintain.rawValue
+        store.signupForm.goalWeight.value = "150"
+
+        await store.createUser()
+
+        #expect(accountService.createGoalCallCount == 1)
+    }
+
+    // MARK: - updateFormHeight invalid values
+
+    @Test("updateFormHeight rejects invalid metric values")
+    func updateFormHeightRejectsInvalidMetric() {
+        let (store, _, _, _) = makeSUT()
+        let originalHeight = store.signupForm.height.value
+        store.signupForm.useMetric.value = true
+        store.updateFormHeight(fromMetric: true, values: ["0", "0", "0"])
+        #expect(store.signupForm.height.value == originalHeight)
+    }
+
+    @Test("updateFormHeight rejects invalid imperial values")
+    func updateFormHeightRejectsInvalidImperial() {
+        let (store, _, _, _) = makeSUT()
+        let originalHeight = store.signupForm.height.value
+        store.signupForm.useMetric.value = false
+        store.updateFormHeight(fromMetric: false, values: ["0", "0"])
+        #expect(store.signupForm.height.value == originalHeight)
+    }
 }

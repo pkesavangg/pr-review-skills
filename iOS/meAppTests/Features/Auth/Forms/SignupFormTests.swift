@@ -367,4 +367,133 @@ struct SignupFormTests {
         #expect(form.currentWeight.value == "")
         #expect(form.goalWeight.value == "")
     }
+
+    // MARK: - validateForm weight equal error
+
+    @Test("validateForm sets weightEqual error when weights are equal in lose/gain mode")
+    func validateFormSetsWeightEqualError() {
+        let form = makeForm()
+        form.goalType.value = GoalTypeSegment.losegainValue
+        form.currentWeight.value = "180"
+        form.goalWeight.value = "180"
+        form.currentWeight.validate()
+        form.goalWeight.validate()
+        form.validate()
+        #expect(form.formErrors[.weightEqual])
+    }
+
+    @Test("validateForm clears weightEqual error in maintain mode")
+    func validateFormNoWeightEqualErrorInMaintainMode() {
+        let form = makeForm()
+        form.goalType.value = GoalType.maintain.rawValue
+        form.currentWeight.value = "180"
+        form.goalWeight.value = "180"
+        form.validate()
+        #expect(!form.formErrors[.weightEqual])
+    }
+
+    // MARK: - isGoalValidForSave lose/gain mode
+
+    @Test("isGoalValidForSave is true for lose/gain mode with different valid weights")
+    func goalValidForSaveTrueLoseMode() {
+        let form = makeForm()
+        form.goalType.value = GoalTypeSegment.losegainValue
+        form.currentWeight.value = "200"
+        form.goalWeight.value = "180"
+        form.currentWeight.markAsTouched()
+        form.goalWeight.markAsTouched()
+        form.currentWeight.validate()
+        form.goalWeight.validate()
+        form.validate()
+        #expect(form.isGoalValidForSave)
+    }
+
+    // MARK: - getError additional paths
+
+    @Test("getError returns nil for currentWeight in maintain mode even when touched")
+    func getErrorNilForCurrentWeightInMaintainMode() {
+        let form = makeForm()
+        form.goalType.value = GoalType.maintain.rawValue
+        form.currentWeight.markAsTouched()
+        form.currentWeight.value = "150"
+        form.currentWeight.validate()
+        let error = form.getError(for: form.currentWeight)
+        #expect(error == nil)
+    }
+
+    @Test("getError returns signupPasswordMinLength for password that is too short")
+    func getErrorPasswordMinLength() {
+        let form = makeForm()
+        form.password.markAsTouched()
+        form.password.value = "abc"
+        form.password.validate()
+        let error = form.getError(for: form.password)
+        #expect(error == FormErrorMessages.signupPasswordMinLength)
+    }
+
+    @Test("getError returns signupPasswordMinLength for confirmPassword that is too short")
+    func getErrorConfirmPasswordMinLength() {
+        let form = makeForm()
+        form.confirmPassword.markAsTouched()
+        form.confirmPassword.value = "ab"
+        form.confirmPassword.validate()
+        let error = form.getError(for: form.confirmPassword)
+        #expect(error == FormErrorMessages.signupPasswordMinLength)
+    }
+
+    @Test("getError returns passwordMaxLength for password that exceeds max length")
+    func getErrorPasswordMaxLength() {
+        let form = makeForm()
+        form.password.markAsTouched()
+        form.password.value = String(repeating: "a", count: 51)
+        form.password.validate()
+        let error = form.getError(for: form.password)
+        #expect(error == FormErrorMessages.passwordMaxLength)
+    }
+
+    @Test("getError returns maxLength(20) for zipcode exceeding max")
+    func getErrorZipcodeMaxLength() {
+        let form = makeForm()
+        form.zipcode.markAsTouched()
+        form.zipcode.value = String(repeating: "1", count: 21)
+        form.zipcode.validate()
+        let error = form.getError(for: form.zipcode)
+        #expect(error == FormErrorMessages.maxLength(20))
+    }
+
+    @Test("getError returns emailMaxLength for email that is too long")
+    func getErrorEmailMaxLength() {
+        let form = makeForm()
+        form.email.markAsTouched()
+        form.email.value = String(repeating: "a", count: 95) + "@b.com"
+        form.email.validate()
+        let error = form.getError(for: form.email)
+        #expect(error == FormErrorMessages.emailMaxLength)
+    }
+
+    @Test("getError returns valueShouldNotBeEqual for goalWeight when weights are equal in lose/gain mode")
+    func getErrorWeightEqualForGoalWeight() {
+        let form = makeForm()
+        form.goalType.value = GoalTypeSegment.losegainValue
+        form.currentWeight.markAsTouched()
+        form.goalWeight.markAsTouched()
+        form.currentWeight.value = "180"
+        form.goalWeight.value = "180"
+        form.currentWeight.validate()
+        form.goalWeight.validate()
+        form.validate()
+        let error = form.getError(for: form.goalWeight)
+        #expect(error == FormErrorMessages.valueShouldNotBeEqual)
+    }
+
+    @Test("getError returns futureDate error for birthday set to future")
+    func getErrorFutureDateBirthday() {
+        let form = makeForm()
+        form.birthday.markAsTouched()
+        let future = Calendar.current.date(byAdding: .year, value: 1, to: Date()) ?? Date()
+        form.birthday.value = future
+        form.birthday.validate()
+        let error = form.getError(for: form.birthday)
+        #expect(error == FormErrorMessages.futureDate)
+    }
 }
