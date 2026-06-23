@@ -22,6 +22,7 @@ object ColorPalette {
   val Green850 = Color(0xFF3C6F2F)
 
   val Neutral100 = Color(0xFFFFFFFF)
+  val Neutral130 = Color(0xFFF2F3F3) // neutral-900 (dark): Action primary-pressed
   val Neutral150 = Color(0xFFF6F4F1)
   val Neutral200 = Color(0xFF424242)
   val Neutral230 = Color(0x33424242)
@@ -43,6 +44,7 @@ object ColorPalette {
   val Neutral900 = Color(0xFF222D39)
   val Neutral950 = Color(0xFF12161B)
   val Neutral1000 = Color(0xFF2C2827)
+  val Neutral1050 = Color(0xFF1F1C1B) // neutral-900 (light): Action primary-pressed
 
   val Red100 = Color(0xFFF5C0BD)
   val Red500 = Color(0xFFF28B82)
@@ -73,4 +75,22 @@ object ColorPalette {
   val green250 = Color(0x339DAD99)
   val green900 = Color(0xFF6E796B) // tertiary action
   val green950 = Color(0xFF9DAD99)
+
+  // Greater Goods + promo new scale steps (-200 disabled, -900 pressed); light then dark
+  val GgSecondary200 = Color(0xFFA1A1A1) // gg-secondary-200 (light)
+  val GgSecondary200Dark = Color(0xFFBFBAB6) // gg-secondary-200 (dark)
+  val GgSecondary900 = Color(0xFF2F2F2F) // gg-secondary-900 (light)
+  val GgSecondary900Dark = Color(0xFFE8E3DE) // gg-secondary-900 (dark)
+  val PromoRed200 = Color(0xFFD5A6A1) // promo-red-200 (light)
+  val PromoRed200Dark = Color(0xFF854640) // promo-red-200 (dark)
+  val PromoRed900 = Color(0xFF98483F) // promo-red-900 (light)
+  val PromoRed900Dark = Color(0xFFE3847B) // promo-red-900 (dark)
+  val PromoBlue200 = Color(0xFFA7B9C3) // promo-blue-200 (light)
+  val PromoBlue200Dark = Color(0xFF596A76) // promo-blue-200 (dark)
+  val PromoBlue900 = Color(0xFF3F5E70) // promo-blue-900 (light)
+  val PromoBlue900Dark = Color(0xFF9AB4C3) // promo-blue-900 (dark)
+  val PromoGreen200 = Color(0xFFB4BBB0) // promo-green-200 (light)
+  val PromoGreen200Dark = Color(0xFF6B7768) // promo-green-200 (dark)
+  val PromoGreen900 = Color(0xFF5B6358) // promo-green-900 (light)
+  val PromoGreen900Dark = Color(0xFFB3C4AF) // promo-green-900 (dark)
 }

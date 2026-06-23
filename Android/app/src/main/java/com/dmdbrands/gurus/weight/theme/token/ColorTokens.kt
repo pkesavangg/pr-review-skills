@@ -40,10 +40,10 @@ internal object LightColorToken {
   val textErrorDisabled = ColorPalette.Red100 // #F5C0BD
 
   // Action
-  val primaryFocusedAction = ColorPalette.Blue900
-  val primaryAction = ColorPalette.Blue800 // #1565C0
-  val primaryActionDisabled = ColorPalette.Blue500 // #B8D6F4
-  val secondaryAction = ColorPalette.Neutral1000 // #2C2827
+  val primaryFocusedAction = ColorPalette.Neutral1050 // #1F1C1B (primary-pressed)
+  val primaryAction = ColorPalette.Neutral1000 // #2C2827 (primary-default)
+  val primaryActionDisabled = ColorPalette.Neutral400 // #D0CCCA (primary-disabled)
+  val secondaryAction = ColorPalette.Neutral100 // #FFFFFF (secondary-default)
   val secondaryActionDisabled = ColorPalette.Neutral400 // #D0CCCA
   val tertiaryAction = ColorPalette.Neutral600 // #7B726E
   val tertiaryActionDisabled = ColorPalette.Neutral400 // #D0CCCA
@@ -57,12 +57,12 @@ internal object LightColorToken {
 
   // Icon
   val iconPrimary = ColorPalette.Blue800 // #1565C0
-  val iconPrimaryDisabled = ColorPalette.Blue200 // #B8D6F4
+  val iconPrimaryDisabled = ColorPalette.Blue500 // 50% of #1565C0 (icon-primary-disabled)
   val iconSecondary = ColorPalette.Neutral600 // #7B726E
   val iconSecondaryDisabled = ColorPalette.Neutral400 // #D0CCCA
 
   // Loading
-  val loading = ColorPalette.Blue200 // #B8D6F4
+  val loading = ColorPalette.Blue500 // 50% of #1565C0 (loading)
   val loadingError = ColorPalette.Red100 // #F5C0BD
 
   // Support
@@ -79,7 +79,31 @@ internal object LightColorToken {
 
   // Brand
   val meAppPrimary = ColorPalette.Teal100 // #65CEC8
-  val wgPrimary = ColorPalette.Teal100 // #1565C0
+  val wgPrimary = ColorPalette.Blue800 // #1565C0 (wg-primary)
+
+  // Action - secondary pressed
+  val secondaryFocusedAction = ColorPalette.Neutral1050 // #1F1C1B (secondary-pressed)
+  // Status - utility secondary
+  val utilitySecondary = ColorPalette.Neutral1000 // #2C2827 (utility-secondary)
+  // Text - disabled & inverse
+  val textDisabled = ColorPalette.Neutral400 // #D0CCCA (disabled-text)
+  val textInverse = ColorPalette.Neutral100 // #FFFFFF (text inverse)
+  // Logo
+  val logoPrimary = ColorPalette.Neutral1000 // #2C2827 (logo-primary)
+  val logoSecondary = ColorPalette.Neutral100 // #FFFFFF (logo-secondary)
+  // Greater Goods / promo (default=800, pressed=900, disabled=200)
+  val ggSecondaryAction = ColorPalette.Neutral200 // #424242 (gg-secondary-default)
+  val ggSecondaryActionPressed = ColorPalette.GgSecondary900 // #2F2F2F (gg-secondary-pressed)
+  val ggSecondaryActionDisabled = ColorPalette.GgSecondary200 // #A1A1A1 (gg-secondary-disabled)
+  val promoRed = ColorPalette.Red700 // #B8584E (promo-red-default)
+  val promoRedPressed = ColorPalette.PromoRed900 // #98483F (promo-red-pressed)
+  val promoRedDisabled = ColorPalette.PromoRed200 // #D5A6A1 (promo-red-disabled)
+  val promoBlue = ColorPalette.blue700 // #4E738A (promo-blue-default)
+  val promoBluePressed = ColorPalette.PromoBlue900 // #3F5E70 (promo-blue-pressed)
+  val promoBlueDisabled = ColorPalette.PromoBlue200 // #A7B9C3 (promo-blue-disabled)
+  val promoGreen = ColorPalette.green900 // #6E796B (promo-green-default)
+  val promoGreenPressed = ColorPalette.PromoGreen900 // #5B6358 (promo-green-pressed)
+  val promoGreenDisabled = ColorPalette.PromoGreen200 // #B4BBB0 (promo-green-disabled)
 }
 
 /**
@@ -112,10 +136,10 @@ internal object DarkColorToken {
   val textErrorDisabled = ColorPalette.Red950 // #5C1A16
 
   // Action
-  val primaryFocusedAction = ColorPalette.Blue980
-  val primaryAction = ColorPalette.Blue400 // #2B8AEB
-  val primaryActionDisabled = ColorPalette.Blue600 // 60% of #2B8AEB
-  val secondaryAction = ColorPalette.Neutral700 // #E0E1E1
+  val primaryFocusedAction = ColorPalette.Neutral130 // #F2F3F3 (primary-pressed)
+  val primaryAction = ColorPalette.Neutral700 // #E0E1E1 (primary-default)
+  val primaryActionDisabled = ColorPalette.Neutral800 // #565F68 (primary-disabled)
+  val secondaryAction = ColorPalette.Neutral900 // #222D39 (secondary-default)
   val secondaryActionDisabled = ColorPalette.Neutral800 // #565F68
   val tertiaryAction = ColorPalette.Neutral750 // #92989F
   val tertiaryActionDisabled = ColorPalette.Neutral800 // #565F68
@@ -129,12 +153,12 @@ internal object DarkColorToken {
 
   // Icon
   val iconPrimary = ColorPalette.Blue400 // #2B8AEB
-  val iconPrimaryDisabled = ColorPalette.Blue950 // 40% of #2B8AEB
+  val iconPrimaryDisabled = ColorPalette.Blue600 // 60% of #2B8AEB (icon-primary-disabled)
   val iconSecondary = ColorPalette.Neutral750 // #92989F
   val iconSecondaryDisabled = ColorPalette.Neutral800 // #565F68
 
   // Loading
-  val loading = ColorPalette.Blue950 // 40% of #2B8AEB
+  val loading = ColorPalette.Blue600 // 60% of #2B8AEB (loading)
   val loadingError = ColorPalette.Red950 // #5C1A16
 
   // Support
@@ -151,5 +175,29 @@ internal object DarkColorToken {
 
   // Brand
   val meAppPrimary = ColorPalette.Teal200 // #00B3A6
-  val wgPrimary = ColorPalette.Teal200 // #1565C0
+  val wgPrimary = ColorPalette.Blue400 // #2B8AEB (wg-primary)
+
+  // Action - secondary pressed
+  val secondaryFocusedAction = ColorPalette.Neutral130 // #F2F3F3 (secondary-pressed)
+  // Status - utility secondary
+  val utilitySecondary = ColorPalette.Neutral700 // #E0E1E1 (utility-secondary)
+  // Text - disabled & inverse
+  val textDisabled = ColorPalette.Neutral800 // #565F68 (disabled-text)
+  val textInverse = ColorPalette.Neutral900 // #222D39 (text inverse)
+  // Logo
+  val logoPrimary = ColorPalette.Neutral700 // #E0E1E1 (logo-primary)
+  val logoSecondary = ColorPalette.Neutral900 // #222D39 (logo-secondary)
+  // Greater Goods / promo (default=800, pressed=900, disabled=200)
+  val ggSecondaryAction = ColorPalette.Neutral250 // #FCF8F4 (gg-secondary-default)
+  val ggSecondaryActionPressed = ColorPalette.GgSecondary900Dark // #E8E3DE (gg-secondary-pressed)
+  val ggSecondaryActionDisabled = ColorPalette.GgSecondary200Dark // #BFBAB6 (gg-secondary-disabled)
+  val promoRed = ColorPalette.Red750 // #D9675C (promo-red-default)
+  val promoRedPressed = ColorPalette.PromoRed900Dark // #E3847B (promo-red-pressed)
+  val promoRedDisabled = ColorPalette.PromoRed200Dark // #854640 (promo-red-disabled)
+  val promoBlue = ColorPalette.blue750 // #839DAD (promo-blue-default)
+  val promoBluePressed = ColorPalette.PromoBlue900Dark // #9AB4C3 (promo-blue-pressed)
+  val promoBlueDisabled = ColorPalette.PromoBlue200Dark // #596A76 (promo-blue-disabled)
+  val promoGreen = ColorPalette.green950 // #9DAD99 (promo-green-default)
+  val promoGreenPressed = ColorPalette.PromoGreen900Dark // #B3C4AF (promo-green-pressed)
+  val promoGreenDisabled = ColorPalette.PromoGreen200Dark // #6B7768 (promo-green-disabled)
 }
