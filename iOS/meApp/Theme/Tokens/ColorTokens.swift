@@ -58,6 +58,11 @@ struct ColorTokens {
     static let promoRed200 = Color("promoRed200")
     static let promoRed800 = Color("promoRed800")
     static let promoRed900 = Color("promoRed900")
+
+    // Device / scale accent colors
+    static let weightScale = Color("weightScale")
+    static let bpm = Color("bpm")
+    static let babyScale = Color("babyScale")
     // MARK: - App Palette Definitions
     struct Palette {
         static let primary = AppColors.Palette(
