@@ -28,7 +28,7 @@ struct UnitSelectionToggle: View {
             segment(title: imperialTitle, isSelected: !isMetric) { isMetric = false }
             segment(title: metricTitle, isSelected: isMetric) { isMetric = true }
         }
-        .background(theme.backgroundPrimary)
+        .background(theme.backgroundSecondary)
         .clipShape(Capsule())
         .accessibilityElement(children: .contain)
         .accessibilityIdentifierIfPresent(accessibilityIdentifier)
@@ -50,12 +50,12 @@ struct UnitSelectionToggle: View {
         }, label: {
             Text(title)
                 .fontOpenSans(.button2)
-                .foregroundStyle(isSelected ? theme.textInverse : theme.actionSecondary)
+                .foregroundStyle(isSelected ? theme.textInverse : theme.actionTertiary)
                 .frame(minWidth: 75)
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingXS)
                 .background(
-                    Capsule().fill(isSelected ? theme.actionSecondary : Color.clear)
+                    Capsule().fill(isSelected ? theme.actionPrimary : Color.clear)
                 )
         })
         .buttonStyle(.plain)

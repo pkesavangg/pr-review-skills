@@ -44,7 +44,7 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
                 }, label: {
                     Text(segmentDisplayName(for: segment))
                         .fontOpenSans(.heading5)
-                        .foregroundColor(selectedSegment == segment ? theme.textInverse : theme.actionSecondary)
+                        .foregroundColor(selectedSegment == segment ? theme.textInverse : theme.actionTertiary)
                         .frame(maxWidth: usesIntrinsicWidth ? nil : .infinity)
                         .lineLimit(1)
                         .padding(.vertical, 8)
@@ -87,11 +87,12 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
         .background(
             // Animated background
             RoundedRectangle(cornerRadius: .radiusMD)
-                .fill(theme.actionSecondary)
+                .fill(theme.actionPrimary)
                 .frame(width: selectedWidth())
                 .offset(x: calculateOffset())
                 .compositingGroup()
         )
+        .background(theme.backgroundSecondary)
         .clipShape(RoundedRectangle(cornerRadius: .radiusMD))
     }
 
