@@ -114,7 +114,7 @@ internal object DarkColorToken {
   // Action
   val primaryFocusedAction = ColorPalette.Blue980
   val primaryAction = ColorPalette.Blue400 // #2B8AEB
-  val primaryActionDisabled = ColorPalette.Blue600 // 40% of #2B8AEB
+  val primaryActionDisabled = ColorPalette.Blue600 // 60% of #2B8AEB
   val secondaryAction = ColorPalette.Neutral700 // #E0E1E1
   val secondaryActionDisabled = ColorPalette.Neutral800 // #565F68
   val tertiaryAction = ColorPalette.Neutral750 // #92989F

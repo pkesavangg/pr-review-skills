@@ -7,7 +7,7 @@ object ColorPalette {
   val Blue200 = Color(0xFFB8D6F4)
   val Blue400 = Color(0xFF2B8AEB)
   val Blue500 = Color(0x801565C0)
-  val Blue600 = Color(0x802B8AEB)
+  val Blue600 = Color(0x992B8AEB)
   val Blue800 = Color(0xFF1565C0)
   val Blue900 = Color(0xFF11519A)
   val Blue980 = Color(0xFF55A1EF)
@@ -29,9 +29,9 @@ object ColorPalette {
   val Neutral270 = Color(0x33FCF8F4)// 20% of #fcf8f4
   val Neutral300 = Color(0x80FFFFFF)     // 50% of #FFFFFF (semi-transparent white)
   val Neutral400 = Color(0xFFD0CCCA)
-  val Neutral450 = Color(0x40000000)     // 25% of #000000 (semi-transparent Black)
+  val Neutral450 = Color(0x26000000)     // 15% of #000000 (semi-transparent Black)
   val Neutral500 = Color(0x402C2827)     // 25% of #2C2827 (semi-transparent dark)
-  val Neutral550 = Color(0x40FFFFFF)     // 25% of #FFFFFF (semi-transparent white)
+  val Neutral550 = Color(0x26FFFFFF)     // 15% of #FFFFFF (semi-transparent white)
   val Neutral600 = Color(0xFF7B726E)
   val Neutral650 = Color(0x40E0E1E1)     // 25% of #E0E1E1
   val Neutral700 = Color(0xFFE0E1E1)
@@ -53,6 +53,8 @@ object ColorPalette {
 
   val Teal100 = Color(0xFF65CEC8)
   val Teal200 = Color(0xFF00B3A6)
+
+  val Accucheck = Color(0xFF61AD94) // brand color (same in light & dark)
 
   val Purple300 = Color(0xFF8841A4) // baby brand color
 
