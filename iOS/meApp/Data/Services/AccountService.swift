@@ -19,6 +19,10 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     @Published var activeAccount: Account? = nil
     @Published var allAccounts: [Account] = []
 
+    var activeAccountPublisher: AnyPublisher<Account?, Never> {
+        $activeAccount.eraseToAnyPublisher()
+    }
+
     var alertLang =  AlertStrings.self.ExpiredUserLogOutAlert
     var cancellables = Set<AnyCancellable>()
     private let tag = "AccountService"

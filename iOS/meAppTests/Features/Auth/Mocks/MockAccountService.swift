@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import Combine
 @testable import meApp
 
 /// Mock for AccountServiceProtocol used in SignupStore and related tests.
@@ -11,7 +12,15 @@ import Foundation
 final class MockAccountService: AccountServiceProtocol {
 
     // MARK: - activeAccount
-    var activeAccount: Account?
+    var activeAccount: Account? {
+        get { _activeAccount }
+        set { _activeAccount = newValue; activeAccountSubject.send(newValue) }
+    }
+    private var _activeAccount: Account?
+    private let activeAccountSubject = CurrentValueSubject<Account?, Never>(nil)
+    var activeAccountPublisher: AnyPublisher<Account?, Never> {
+        activeAccountSubject.eraseToAnyPublisher()
+    }
 
     // MARK: - signUp
     var signUpResult: Account?
