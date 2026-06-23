@@ -100,8 +100,8 @@ struct LoginFormTests {
     @Test("form is invalid with email exceeding 100 chars")
     func formIsInvalidWithLongEmail() {
         let form = LoginForm()
-        let localPart = String(repeating: "a", count: 93)
-        form.email.value = "\(localPart)@b.com"  // 101 chars total
+        let localPart = String(repeating: "a", count: 95)
+        form.email.value = "\(localPart)@b.com"  // 101 chars total (95 + 6)
         form.password.value = "password123"
         #expect(!form.isValid)
     }
@@ -109,8 +109,8 @@ struct LoginFormTests {
     @Test("form is valid with exactly 100-char email")
     func formIsValidWithMaxEmail() {
         let form = LoginForm()
-        let localPart = String(repeating: "a", count: 92)
-        form.email.value = "\(localPart)@b.com"  // exactly 100 chars
+        let localPart = String(repeating: "a", count: 94)
+        form.email.value = "\(localPart)@b.com"  // exactly 100 chars (94 + 6)
         form.password.value = "password123"
         #expect(form.isValid)
     }
@@ -143,8 +143,8 @@ struct LoginFormTests {
     @Test("getError returns emailMaxLength error when email exceeds 100 chars")
     func emailErrorIsMaxLengthWhenTooLong() {
         let form = LoginForm()
-        let localPart = String(repeating: "a", count: 93)
-        form.email.value = "\(localPart)@b.com"  // 101 chars
+        let localPart = String(repeating: "a", count: 95)
+        form.email.value = "\(localPart)@b.com"  // 101 chars (95 + 6)
         let error = form.getError(for: form.email)
         #expect(error == FormErrorMessages.emailMaxLength)
     }

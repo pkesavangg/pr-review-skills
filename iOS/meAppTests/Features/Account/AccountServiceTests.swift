@@ -249,6 +249,7 @@ struct AccountServiceTests {
             accessToken: "tok-login"
         )
         apiRepo.logInResult = response
+        apiRepo.fetchAccountResult = AccountTestFixtures.makeAccountDTO(id: "login-id", email: "login@example.com")
 
         let account = try await sut.logIn(
             email: "login@example.com",
@@ -273,6 +274,7 @@ struct AccountServiceTests {
             id: "existing-id",
             email: "login@example.com"
         )
+        apiRepo.fetchAccountResult = AccountTestFixtures.makeAccountDTO(id: "existing-id", email: "login@example.com")
 
         let account = try await sut.logIn(email: "login@example.com", password: "pass")
 
@@ -285,6 +287,7 @@ struct AccountServiceTests {
     func logInSetsActiveAccount() async throws {
         let (sut, apiRepo, _) = makeSUT()
         apiRepo.logInResult = AccountTestFixtures.makeAccountResponse(id: "active-login-id")
+        apiRepo.fetchAccountResult = AccountTestFixtures.makeAccountDTO(id: "active-login-id")
 
         _ = try await sut.logIn(email: "test@example.com", password: "pass")
 
@@ -331,6 +334,7 @@ struct AccountServiceTests {
             id: "acct-0",
             email: existingEmail
         )
+        apiRepo.fetchAccountResult = AccountTestFixtures.makeAccountDTO(id: "acct-0", email: existingEmail)
 
         let account = try await sut.logIn(email: existingEmail, password: "pass")
         #expect(account.email == existingEmail)
