@@ -34,10 +34,10 @@ struct DateLabelView: View {
     }
 
     private static let spokenFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .long
-        f.timeStyle = .none
-        return f
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        formatter.timeStyle = .none
+        return formatter
     }()
 
     var body: some View {
