@@ -1,7 +1,14 @@
 import Foundation
+import Combine
 
 /// Protocol defining the service interface for managing user entries, including CRUD, queries, and progress/statistics.
 protocol EntryServiceProtocol {
+
+    /// Publisher that fires when a new entry is saved.
+    var entrySaved: PassthroughSubject<EntryNotification, Never> { get }
+
+    /// Publisher that fires when an entry is deleted.
+    var entryDeleted: PassthroughSubject<EntryNotification, Never> { get }
 
     /// Syncs all entries with the remote backend.
     func syncAllEntriesWithRemote() async

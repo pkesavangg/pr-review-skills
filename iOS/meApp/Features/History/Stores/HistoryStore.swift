@@ -13,10 +13,10 @@ import SwiftUI
 final class HistoryStore: ObservableObject {
     
     // MARK: - Dependencies
-    @Injector private var entryService: EntryService
+    @Injector private var entryService: EntryServiceProtocol
     @Injector private var notificationService: NotificationHelperService
-    @Injector private var logger: LoggerService
-    @Injector private var accountService: AccountService
+    @Injector private var logger: LoggerServiceProtocol
+    @Injector private var accountService: AccountServiceProtocol
     
     // MARK: - Summary Screen State
     @Published private(set) var months: [HistoryMonth] = []
@@ -115,7 +115,7 @@ final class HistoryStore: ObservableObject {
     
     func refreshAllEntries() async {
         // Refresh account data to ensure we have latest unit settings
-        try? await accountService.refreshAccount()
+        try? await accountService.refreshAccount(accountId: nil)
         await entryService.syncAllEntriesWithRemote()
         await loadMonthsInternal(canShowLoader: false)
         if let selectedMonth {
