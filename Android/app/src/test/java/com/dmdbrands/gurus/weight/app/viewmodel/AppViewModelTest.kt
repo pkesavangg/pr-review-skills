@@ -452,6 +452,11 @@ class AppViewModelTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
+        // Simulate a scale having been discovered before the switch, so we can prove the reset
+        // flips it back (pins the full reset, not just the clearSkipDevices side effect).
+        viewModel.handleIntent(AppIntent.SetScaleDiscovered(true))
+        assertThat(viewModel.state.value.isScaleDiscovered).isTrue()
+
         authEventFlow.emit(
             AuthState.AccountSwitched(
                 account = TestFixtures.activeAccount,
@@ -461,6 +466,8 @@ class AppViewModelTest {
         advanceUntilIdle()
 
         verify { bluetoothPreferencesService.clearSkipDevices() }
+        // resetScaleDiscoveredState() also dispatches SetScaleDiscovered(false).
+        assertThat(viewModel.state.value.isScaleDiscovered).isFalse()
     }
 
     @Test
