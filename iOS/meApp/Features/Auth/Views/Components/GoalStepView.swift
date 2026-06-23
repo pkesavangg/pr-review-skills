@@ -40,14 +40,15 @@ struct GoalStepView: View {
                     if signupStore.signupForm.goalType.value != GoalType.maintain.rawValue {
                         MetricInputField(
                             config: TextInputConfig(
-                                label: "\(labels.startingWeight) (\(signupStore.signupForm.useMetric.value ? "kg" : "lbs"))",
+                                label: labels.startingWeight,
                                 placeholder: "0.0",
                                 inputType: .metric,
                                 errorMessage: signupStore.getError(for: signupStore.signupForm.currentWeight),
                                 isDisabled: signupStore.signupForm.goalType.value == GoalType.maintain.rawValue,
                                 focusField: .currentWeight,
                                 maxLength: 4,
-                                maxValue: 999.9
+                                maxValue: 999.9,
+                                trailingLabel: signupStore.signupForm.useMetric.value ? "(kg)" : "(lbs)"
                             ),
                             value: $signupStore.signupForm.currentWeight.value,
                             focusedField: $focusedField,
@@ -70,13 +71,14 @@ struct GoalStepView: View {
                     
                     MetricInputField(
                         config: TextInputConfig(
-                            label: "\(labels.goalWeight) (\(signupStore.signupForm.useMetric.value ? "kg" : "lbs"))",
+                            label: labels.goalWeight,
                             placeholder: "0.0",
                             inputType: .metric,
                             errorMessage: signupStore.getError(for: signupStore.signupForm.goalWeight),
                             focusField: .goalWeight,
                             maxLength: 4,
-                            maxValue: 999.9
+                            maxValue: 999.9,
+                            trailingLabel: signupStore.signupForm.useMetric.value ? "(kg)" : "(lbs)"
                         ),
                         value: $signupStore.signupForm.goalWeight.value,
                         focusedField: $focusedField,
