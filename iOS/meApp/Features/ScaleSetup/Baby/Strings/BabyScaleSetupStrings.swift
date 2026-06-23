@@ -135,8 +135,5 @@ struct BabyScaleSetupStrings {
 
     struct A11y {
         static let scaleImageLabel = "Baby scale product image"
-        static let gifHint = "Success animation"
-        static let pairedGroupLabel: (String, String) -> String = { "\($0). \($1)" }
-        static let doneGroupLabel: (String, String) -> String = { "\($0). \($1)" }
     }
 }

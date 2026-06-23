@@ -36,6 +36,13 @@ android {
   buildFeatures {
     compose = true
   }
+  testOptions {
+    unitTests.isReturnDefaultValues = true
+  }
+}
+
+tasks.withType<Test> {
+  useJUnitPlatform()
 }
 
 dependencies {
@@ -43,6 +50,9 @@ dependencies {
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.appcompat)
   testImplementation(libs.junit.jupiter)
+  testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+  testImplementation(libs.mockk)
+  testImplementation(libs.truth)
   androidTestImplementation(libs.androidx.junit)
   androidTestImplementation(libs.androidx.espresso.core)
   // CameraX core and lifecycle

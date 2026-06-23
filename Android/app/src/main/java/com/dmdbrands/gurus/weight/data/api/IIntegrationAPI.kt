@@ -13,7 +13,7 @@ import retrofit2.http.Path
 interface IIntegrationAPI {
     companion object {
         private const val INTEGRATIONS = "integrations/"
-        private const val REQUEST = "request"
+        private const val SUGGESTION = "suggestion"
     }
 
     /**
@@ -28,10 +28,10 @@ interface IIntegrationAPI {
     )
 
     /**
-     * Submits a user-suggested integration. Matches the existing wgApp4 endpoint
-     * (POST /integrations/request, body { "request": "<text>" }, plain-text response).
+     * Submits a user-suggested integration to the v3 server
+     * (POST /v3/integrations/suggestion, body { "suggestion": "<text>" }, 201 on success).
      */
-    @POST(INTEGRATIONS + REQUEST)
+    @POST(INTEGRATIONS + SUGGESTION)
     suspend fun requestIntegration(
         @Body body: Map<String, String>,
     ): Response<ResponseBody>

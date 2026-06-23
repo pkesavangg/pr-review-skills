@@ -94,6 +94,7 @@ fun DeviceReadyStep(
                 size = ButtonSize.Large,
                 onClick = onConnectAnother,
             )
+            Spacer(modifier = Modifier.height(MeTheme.spacing.md))
         }
     }
 }

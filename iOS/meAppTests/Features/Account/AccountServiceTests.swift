@@ -666,7 +666,7 @@ struct AccountServiceTests {
         }
     }
 
-    @Test("refreshTokens missing refresh token: throws") 
+    @Test("refreshTokens missing refresh token: throws")
     func refreshTokensMissingRefreshToken() async {
         let sut = makeSUT()
         sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", email: "user@example.com", isActiveAccount: true)
@@ -1511,6 +1511,77 @@ struct AccountServiceTests {
         let updated = try await local.fetchAccount(byId: "101")
         #expect(updated?.productTypes == ["weight", "blood_pressure"])
         #expect(updated?.measurementUnits == "metric")
+    }
+
+    // MARK: - updateProductTypes
+
+    @Test("updateProductTypes: server returning subset — union preserves locally-sent types")
+    func updateProductTypesServerSubsetPreservesLocalTypes() async throws {
+        let api = MockAccountAPIRepository()
+        let local = MockAccountRepository()
+        let account = AccountTestFixtures.makeAccountModel(id: "100", email: "a@example.com", isLoggedIn: true, isActive: true)
+        local.seed([account])
+
+        // Server only echoes back ["weight"] even though we sent ["weight", "blood_pressure"]
+        api.patchProductTypesResult = .success(
+            AccountResponse(
+                account: AccountTestFixtures.makeAccountDTO(id: "100", email: "a@example.com", productTypes: ["weight"]),
+                accessToken: "tok",
+                refreshToken: "rtok",
+                expiresAt: "2099-01-01T00:00:00Z"
+            )
+        )
+
+        let sut = makeSUT(api: api, local: local)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "100", email: "a@example.com", isLoggedIn: true, isActiveAccount: true)
+
+        try await sut.updateProductTypes(["weight", "blood_pressure"])
+
+        let saved = local.all().first
+        let types = Set(saved?.productTypes ?? [])
+        #expect(types.contains("weight"))
+        #expect(types.contains("blood_pressure"))
+        #expect(api.patchProductTypesCalls == 1)
+    }
+
+    @Test("updateProductTypes: server returning superset — stores union of all types")
+    func updateProductTypesServerSupersetStoresAll() async throws {
+        let api = MockAccountAPIRepository()
+        let local = MockAccountRepository()
+        let account = AccountTestFixtures.makeAccountModel(id: "100", email: "a@example.com", isLoggedIn: true, isActive: true)
+        local.seed([account])
+
+        api.patchProductTypesResult = .success(
+            AccountResponse(
+                account: AccountTestFixtures.makeAccountDTO(id: "100", email: "a@example.com", productTypes: ["weight", "blood_pressure", "baby"]),
+                accessToken: "tok",
+                refreshToken: "rtok",
+                expiresAt: "2099-01-01T00:00:00Z"
+            )
+        )
+
+        let sut = makeSUT(api: api, local: local)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "100", email: "a@example.com", isLoggedIn: true, isActiveAccount: true)
+
+        try await sut.updateProductTypes(["weight"])
+
+        let saved = local.all().first
+        let types = Set(saved?.productTypes ?? [])
+        #expect(types.contains("weight"))
+        #expect(types.contains("blood_pressure"))
+        #expect(types.contains("baby"))
+    }
+
+    @Test("updateProductTypes: no active account — throws noActiveAccount")
+    func updateProductTypesNoActiveAccountThrows() async {
+        let sut = makeSUT()
+
+        do {
+            try await sut.updateProductTypes(["weight"])
+            Issue.record("Expected noActiveAccount error")
+        } catch {
+            assertNoActiveAccount(error)
+        }
     }
 
     private func makeSUT(

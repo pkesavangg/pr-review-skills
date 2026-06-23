@@ -101,7 +101,7 @@ Pipeline includes:
 - Secrets scanning: Gitleaks (`.gitleaks.toml`)
 - Dependency scanning: Dependabot (`.github/dependabot.yml`)
 - Pre-commit hooks: `.githooks/` (Gitleaks + SwiftLint)
-- Commit message validation: JIRA ticket reference required (MA-XXXX)
+- Commit message validation: JIRA ticket reference required (MOB-XXXX; legacy MA-XXXX also accepted)
 
 ## Team
 

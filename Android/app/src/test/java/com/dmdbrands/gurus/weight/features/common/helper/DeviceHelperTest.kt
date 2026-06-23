@@ -115,8 +115,9 @@ class DeviceHelperTest {
 
         assertThat(info).isNotNull()
         // 0664 resolves to the 0604 catalog entry for lookup, but the original
-        // variant SKU is preserved on the returned ScaleInfo.
+        // variant SKU is preserved on the returned ScaleInfo. 0604 is a BPM, so its
+        // catalog setupType is BpmBluetooth.
         assertThat(info?.sku).isEqualTo(SKU_0664)
-        assertThat(info?.setupType).isEqualTo(ScaleSetupType.Bluetooth)
+        assertThat(info?.setupType).isEqualTo(ScaleSetupType.BpmBluetooth)
     }
 }

@@ -24,18 +24,26 @@ struct BabyHistoryEditSheet: View {
 
     @State private var notesText: String
     @State private var entryDate: Date
+    @State private var entryTime: Date
+    @State private var showDatePicker = false
+    @State private var showTimePicker = false
     @State private var isSaving = false
     @State private var focusedField: FocusField?
 
+    private let labels = InputFieldLabels.self
+    private let lang = HistoryListStrings.self
+
     init(entry: BabyHistoryEntry) {
         self.entry = entry
+        let parsed = DateTimeTools.parse(entry.entryTimestamp) ?? Date()
         _lbsText = State(initialValue: "\(entry.weightLbs)")
         _ozText = State(initialValue: String(format: "%.1f", entry.weightOz))
         _kgText = State(initialValue: entry.weightKg > 0 ? String(format: "%.3f", entry.weightKg) : "")
         _inchesText = State(initialValue: entry.lengthInches > 0 ? String(format: "%.1f", entry.lengthInches) : "")
         _cmText = State(initialValue: entry.lengthCm > 0 ? String(format: "%.1f", entry.lengthCm) : "")
         _notesText = State(initialValue: entry.notes ?? "")
-        _entryDate = State(initialValue: DateTimeTools.parse(entry.entryTimestamp) ?? Date())
+        _entryDate = State(initialValue: parsed)
+        _entryTime = State(initialValue: parsed)
     }
 
     private var isMetric: Bool { historyStore.isMetric }
@@ -53,49 +61,77 @@ struct BabyHistoryEditSheet: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: .spacingLG) {
-                HStack {
-                    Spacer()
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark")
-                            .fontWeight(.semibold)
-                            .foregroundStyle(theme.textBody)
-                    }
-                    .buttonStyle(.plain)
-                }
+                closeButton
 
                 if isMetric {
-                    labeledField(label: HistoryListStrings.kg, text: $kgText, keyboard: .decimalPad)
-                    labeledField(label: HistoryListStrings.cm, text: $cmText, keyboard: .decimalPad)
-                } else {
-                    labeledField(label: HistoryListStrings.pounds, text: $lbsText, keyboard: .numberPad)
-                    labeledField(label: HistoryListStrings.ounces, text: $ozText, keyboard: .decimalPad)
-                    labeledField(label: HistoryListStrings.inches, text: $inchesText, keyboard: .decimalPad)
-                }
-
-                VStack(alignment: .leading, spacing: .spacingXS) {
-                    Text("Date")
-                        .fontOpenSans(.subHeading2)
-                        .foregroundStyle(theme.textSubheading)
-                    HStack(spacing: .spacingSM) {
-                        DatePicker("", selection: $entryDate, displayedComponents: .date)
-                            .datePickerStyle(.compact)
-                            .labelsHidden()
-                        DatePicker("", selection: $entryDate, displayedComponents: .hourAndMinute)
-                            .datePickerStyle(.compact)
-                            .labelsHidden()
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: .spacingXS) {
-                    Text(HistoryListStrings.notes)
-                        .fontOpenSans(.subHeading2)
-                        .foregroundStyle(theme.textSubheading)
-                    NotesInputField(
-                        config: TextInputConfig(label: HistoryListStrings.addNotesPlaceholder, focusField: .notes),
-                        value: $notesText,
+                    MetricInputField(
+                        config: TextInputConfig(
+                            label: lang.kg,
+                            inputType: .metric,
+                            focusField: .weight,
+                            allowWholeNumbers: false
+                        ),
+                        value: $kgText,
                         focusedField: $focusedField
-                    )
+                    ) { focusedField = .inches }
+
+                    MetricInputField(
+                        config: TextInputConfig(
+                            label: lang.cm,
+                            inputType: .metric,
+                            focusField: .inches,
+                            allowWholeNumbers: false
+                        ),
+                        value: $cmText,
+                        focusedField: $focusedField
+                    ) { focusedField = .notes }
+                } else {
+                    MetricInputField(
+                        config: TextInputConfig(
+                            label: lang.pounds,
+                            inputType: .metric,
+                            focusField: .weight,
+                            maxLength: 3,
+                            allowWholeNumbers: true
+                        ),
+                        value: $lbsText,
+                        focusedField: $focusedField
+                    ) { focusedField = .ounces }
+
+                    MetricInputField(
+                        config: TextInputConfig(
+                            label: lang.ounces,
+                            inputType: .metric,
+                            focusField: .ounces,
+                            allowWholeNumbers: false
+                        ),
+                        value: $ozText,
+                        focusedField: $focusedField
+                    ) { focusedField = .inches }
+
+                    MetricInputField(
+                        config: TextInputConfig(
+                            label: lang.inches,
+                            inputType: .metric,
+                            focusField: .inches,
+                            allowWholeNumbers: false
+                        ),
+                        value: $inchesText,
+                        focusedField: $focusedField
+                    ) { focusedField = .notes }
                 }
+
+                AppInputField(
+                    config: TextInputConfig(
+                        label: lang.notes,
+                        inputType: .notes,
+                        focusField: .notes
+                    ),
+                    value: $notesText,
+                    focusedField: $focusedField
+                )
+
+                datePicker
 
                 HStack {
                     Spacer()
@@ -104,9 +140,7 @@ struct BabyHistoryEditSheet: View {
                         type: .filledPrimary,
                         size: .large,
                         isDisabled: !isValid || isSaving
-                    ) {
-                        saveEntry()
-                    }
+                    ) { saveEntry() }
                     Spacer()
                 }
             }
@@ -116,35 +150,79 @@ struct BabyHistoryEditSheet: View {
         .presentationDragIndicator(.visible)
     }
 
-    @ViewBuilder
-    private func labeledField(label: String, text: Binding<String>, keyboard: UIKeyboardType) -> some View {
-        VStack(alignment: .leading, spacing: .spacingXS) {
-            Text(label)
-                .fontOpenSans(.subHeading2)
-                .foregroundStyle(theme.textSubheading)
-            HStack {
-                TextField("", text: text)
-                    .font(.body2)
+    // MARK: - Private Views
+
+    private var closeButton: some View {
+        HStack {
+            Spacer()
+            Button { dismiss() } label: {
+                Image(systemName: "xmark")
+                    .fontWeight(.semibold)
                     .foregroundStyle(theme.textBody)
-                    .keyboardType(keyboard)
-                if !text.wrappedValue.isEmpty {
-                    Button {
-                        text.wrappedValue = ""
-                    } label: {
-                        Image(systemName: "xmark.circle")
-                            .foregroundStyle(theme.textSubheading)
-                    }
-                    .buttonStyle(.plain)
-                }
             }
-            .padding(.spacingXS)
-            .background(theme.backgroundSecondary)
-            .clipShape(RoundedRectangle(cornerRadius: .radiusSM))
+            .buttonStyle(.plain)
         }
     }
 
+    private var datePicker: some View {
+        VStack(alignment: .leading, spacing: .spacingXS) {
+            Text(labels.date)
+                .fontOpenSans(.heading4)
+                .foregroundColor(theme.textHeading)
+
+            HStack(spacing: .spacingSM) {
+                DateLabelView(date: entryDate, isSelected: showDatePicker) {
+                    toggleDatePicker()
+                }
+                TimeLabelView(time: entryTime, isSelected: showTimePicker) {
+                    toggleTimePicker()
+                }
+            }
+
+            DatePickerView(
+                isPresented: $showDatePicker,
+                date: $entryDate,
+                startDate: Date(timeIntervalSince1970: 946684800),
+                endDate: Date()
+            )
+            .onChange(of: showDatePicker) { _, isPresented in
+                if isPresented {
+                    focusedField = nil
+                    if showTimePicker { showTimePicker = false }
+                }
+            }
+
+            TimePickerView(
+                isPresented: $showTimePicker,
+                time: $entryTime,
+                selectedDate: entryDate,
+                endTime: Date()
+            )
+            .onChange(of: showTimePicker) { _, isPresented in
+                if isPresented {
+                    focusedField = nil
+                    if showDatePicker { showDatePicker = false }
+                }
+            }
+        }
+    }
+
+    // MARK: - Actions
+
+    private func toggleDatePicker() {
+        focusedField = nil
+        withAnimation { showDatePicker.toggle() }
+        if showTimePicker { showTimePicker = false }
+    }
+
+    private func toggleTimePicker() {
+        focusedField = nil
+        withAnimation { showTimePicker.toggle() }
+        if showDatePicker { showDatePicker = false }
+    }
+
     private func saveEntry() {
-        let timestamp = DateTimeTools.isoString(date: entryDate, time: entryDate, useUTC: true)
+        let timestamp = DateTimeTools.isoString(date: entryDate, time: entryTime, useUTC: true)
 
         let weightDecigrams: Int
         let lengthMm: Int

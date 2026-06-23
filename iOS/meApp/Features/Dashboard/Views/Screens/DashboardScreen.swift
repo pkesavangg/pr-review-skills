@@ -44,6 +44,7 @@ struct DashboardScreen: View {
                         MultiDeviceSnapshotView(
                             availableItems: store.availableProductItems,
                             selectedItem: store.selectedProductItem,
+                            selectedPeriod: store.state.graph.selectedPeriod,
                             onSelectItem: { selectedItem in
                                 store.selectProductItem(selectedItem)
                                 isInProductDashboard = true
@@ -164,7 +165,7 @@ struct DashboardScreen: View {
 
         }
     }
-    
+
     private func snapshotLogo() -> some View {
         AppIconView(icon: AppAssets.wgLogo, size: IconSize(width: 45, height: 45))
             .foregroundColor(theme.textSubheading)
@@ -187,7 +188,10 @@ struct DashboardScreen: View {
             leadingContent: isProductDashboardFromSnapshot
                 ? { AppIconView(icon: AppAssets.chevronLeft) }
                 : nil,
-            onLeadingTap: isProductDashboardFromSnapshot ? { isInProductDashboard = false } : nil,
+            onLeadingTap: isProductDashboardFromSnapshot ? {
+                isInProductDashboard = false
+                store.clearProductTypeSelection()
+            } : nil,
             onTitleTap: showProductSelector ? {
                 isProductTypeSelectorPresented = true
             } : nil,
@@ -203,7 +207,7 @@ struct DashboardScreen: View {
         }
         .zIndex(100)
     }
-    
+
     private func dashboardScroll(availableHeight: CGFloat) -> some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 0) {

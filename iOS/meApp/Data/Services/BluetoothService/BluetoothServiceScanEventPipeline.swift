@@ -260,24 +260,11 @@ extension BluetoothService {
 
         logger.log(level: .info, tag: tag, message: "Weight readings received from device: count=1")
         // Weight entries: hold pending user confirmation via the toast.
-        // If a previous entry is still awaiting confirmation, save it automatically
-        // before overwriting — the user only sees one toast at a time.
+        // If a previous entry is still awaiting confirmation, queue it so the user's
+        // DISCARD action drops it too — avoid auto-saving before the user has decided.
         if let existing = pendingScaleEntry {
-            do {
-                try await entryService.saveNewEntry(existing)
-                logger.log(
-                    level: .info,
-                    tag: tag,
-                    message: "Auto-saved displaced pending entry. entryId=\(existing.id.uuidString)"
-                )
-            } catch {
-                logger.log(
-                    level: .error,
-                    tag: tag,
-                    message: "Failed to auto-save displaced pending entry. entryId=\(existing.id.uuidString)",
-                    data: error.localizedDescription
-                )
-            }
+            displacedPendingEntries.append(existing)
+            logger.log(level: .info, tag: tag, message: "Queued displaced pending entry. entryId=\(existing.id.uuidString)")
         }
         pendingScaleEntry = entry
         pendingScaleEntrySubject.send(EntryNotification(from: entry, batchCount: 1))
@@ -322,39 +309,21 @@ extension BluetoothService {
             return
         }
 
-        // Weight/BPM batches: save historical entries immediately; hold the most recent
-        // (first in the list) pending user confirmation via the toast.
+        // Weight batches: queue ALL entries (historical + latest) as displaced pending
+        // so that DISCARD drops every entry in the batch — not just the most recent one.
+        // The latest (first in the list) becomes pendingScaleEntry shown in the toast;
+        // historical entries sit in displacedPendingEntries and are saved or discarded
+        // together with it when the user acts on the toast.
         let historicalEntries = entries.dropFirst()
         for entry in historicalEntries {
-            do {
-                try await entryService.saveNewEntry(entry)
-            } catch {
-                logger.log(
-                    level: .error,
-                    tag: tag,
-                    message: "Failed to save historical entry. entryId=\(entry.id.uuidString)",
-                    data: error.localizedDescription
-                )
-            }
+            displacedPendingEntries.append(entry)
+            logger.log(level: .info, tag: tag, message: "Queued historical batch entry as displaced pending. entryId=\(entry.id.uuidString)")
         }
         if let latestEntry = entries.first {
-            // Auto-save any displaced pending entry before replacing it.
+            // Queue any previously pending entry so DISCARD drops it too.
             if let existing = pendingScaleEntry {
-                do {
-                    try await entryService.saveNewEntry(existing)
-                    logger.log(
-                        level: .info,
-                        tag: tag,
-                        message: "Auto-saved displaced pending entry. entryId=\(existing.id.uuidString)"
-                    )
-                } catch {
-                    logger.log(
-                        level: .error,
-                        tag: tag,
-                        message: "Failed to auto-save displaced pending entry. entryId=\(existing.id.uuidString)",
-                        data: error.localizedDescription
-                    )
-                }
+                displacedPendingEntries.append(existing)
+                logger.log(level: .info, tag: tag, message: "Queued displaced pending entry. entryId=\(existing.id.uuidString)")
             }
             pendingScaleEntry = latestEntry
             let notification = EntryNotification(from: latestEntry, batchCount: entries.count)

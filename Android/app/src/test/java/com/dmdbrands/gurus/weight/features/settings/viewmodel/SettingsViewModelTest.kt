@@ -5,7 +5,9 @@ import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.shared.utilities.browser.ICustomTabManager
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
+import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.features.settings.manager.IDataSettingsManager
 import com.dmdbrands.gurus.weight.features.settings.manager.INotificationSettingsManager
 import com.dmdbrands.gurus.weight.features.settings.manager.IProfileSettingsManager
@@ -71,6 +73,7 @@ class SettingsViewModelTest {
     private lateinit var navigationService: IAppNavigationService
     private lateinit var dialogQueueService: IDialogQueueService
     private lateinit var customTabManager: ICustomTabManager
+    private lateinit var productSelectionManager: IProductSelectionManager
     private lateinit var viewModel: SettingsViewModel
 
     @BeforeEach
@@ -79,7 +82,12 @@ class SettingsViewModelTest {
         navigationService = mockk(relaxed = true)
         dialogQueueService = mockk(relaxed = true)
         customTabManager = mockk(relaxed = true)
+        productSelectionManager = mockk(relaxed = true)
         every { deviceService.hasWeightScale } returns flowOf(false)
+        // observeProductSelection() collects these on init; relaxed-mock flows emit default
+        // values that fail the ProductSelection cast, surfacing as UncaughtExceptionsBeforeTest.
+        every { productSelectionManager.selectedProduct } returns MutableStateFlow(ProductSelection.MyWeight)
+        every { productSelectionManager.hasBabyScaleDevice } returns MutableStateFlow(false)
         viewModel = SettingsViewModel(
             profileSettingsManager = profileSettingsManager,
             unitSettingsManager = unitSettingsManager,
@@ -92,6 +100,7 @@ class SettingsViewModelTest {
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
             customTabManager = customTabManager,
+            productSelectionManager = productSelectionManager,
         )
     }
 
@@ -252,6 +261,7 @@ class SettingsViewModelTest {
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
             customTabManager = customTabManager,
+            productSelectionManager = productSelectionManager,
         )
         advanceUntilIdle()
         assertThat(vm.state.value.hasWeightScale).isTrue()

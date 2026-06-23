@@ -47,5 +47,7 @@ data class EntriesCursorResponse(
  */
 data class EntriesSyncResponse(
     val entries: List<EntryApiModel>,
-    val timestamp: String,
+    // Nullable: the server may omit the sync cursor (e.g. first sync with an empty start).
+    // Guard before writing it to avoid a proto-setter NPE (MOB-591).
+    val timestamp: String?,
 )

@@ -57,8 +57,8 @@ enum Endpoint {
     case babyId(String)
     case review
     case scaleR4Preference
-    case integrationProvider(String) 
-    case integrationHealthDevice(String) 
+    case integrationProvider(String)
+    case integrationHealthDevice(String)
     case integrationHealth
     case integrationHealthLog
     case integrationSuggestion
@@ -238,7 +238,7 @@ enum Endpoint {
         guard let url = URL(string: "\(API.baseURL)\(path)") else { return nil }
         return URLRequest(url: url)
     }
-   
+
     // Helper for CSV-style endpoints with optional download and offset query parameters
     private func csvRequest(path: String, utcOffset: Int?, download: Bool?) -> URLRequest? {
         var components = URLComponents(string: "\(API.baseURL)\(path)")

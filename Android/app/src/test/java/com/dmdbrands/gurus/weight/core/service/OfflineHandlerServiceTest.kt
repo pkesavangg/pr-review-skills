@@ -310,8 +310,8 @@ class OfflineHandlerServiceTest {
                 fakeAccount.id,
                 WeightCompSettingsEntity(
                     accountId = fakeAccountInfo.id,
-                    height = fakeAccountInfo.height,
-                    activityLevel = fakeAccountInfo.activityLevel,
+                    height = fakeAccountInfo.height ?: BodyCompUpdateRequest.DEFAULT_HEIGHT,
+                    activityLevel = fakeAccountInfo.activityLevel ?: BodyCompUpdateRequest.DEFAULT_ACTIVITY_LEVEL,
                     weightUnit = fakeAccountInfo.weightUnit,
                     isSynced = true,
                 )

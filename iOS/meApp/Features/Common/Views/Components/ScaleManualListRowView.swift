@@ -30,8 +30,7 @@ struct ScaleManualListRowView: View {
                 Text(scale.productName.lowercased())
                     .fontOpenSans(.body2)
                     .foregroundColor(theme.textSubheading)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                    .fixedSize(horizontal: false, vertical: true)
 
     }
     .frame(height: 75)

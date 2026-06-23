@@ -141,8 +141,7 @@ struct BpmSetupStrings {
     struct A11y {
         static let gifLabel = "Animated device instruction"
         static let deviceImageLabel = "Blood pressure monitor"
-        static let scanningAnimationLabel = "Searching for monitor"
-        static let pairedSuccessLabel = "Monitor paired successfully"
+static let pairedSuccessLabel = "Monitor paired successfully"
         static let learnHowHint = "Double tap to start a quick measurement tutorial"
         static let closeButtonLabel = "Close"
         static let helpButtonLabel = "Help"

@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.data.services
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.model.api.entry.EntriesSyncResponse
 import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryRequest
 import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryResponse
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
@@ -166,7 +167,7 @@ class EntryServiceTest {
         coEvery { entryRepository.getUnSynced(testAccountId) } returns emptyList()
         coEvery { entryRepository.getOperationCount(testAccountId) } returns 0
         coEvery { entryRepository.getOperationsFromAPI(any()) } returns null
-        every { accountRepository.getSyncTimeStamp() } returns flowOf("")
+        coEvery { accountRepository.getSyncTimeStamp() } returns flowOf("")
         val captured = mutableListOf<List<UnifiedEntryRequest>>()
         coEvery { entryRepository.sendBatchToAPI(capture(captured)) } returns
             UnifiedEntryResponse(entries = emptyList(), timestamp = "2024-01-01T00:00:00.000Z")
@@ -186,7 +187,7 @@ class EntryServiceTest {
         coEvery { entryRepository.getOperationCount(testAccountId) } returns 0
         coEvery { entryRepository.getOperationsFromAPI(any()) } returns null
         coEvery { entryRepository.getEntryById(any()) } returns null
-        every { accountRepository.getSyncTimeStamp() } returns flowOf("")
+        coEvery { accountRepository.getSyncTimeStamp() } returns flowOf("")
         coEvery { accountRepository.updateSyncTimeStamp(any()) } returns Unit
         coEvery { entryRepository.sendBatchToAPI(any()) } returns
             UnifiedEntryResponse(entries = emptyList(), timestamp = "2024-01-01T00:00:00.000Z")
@@ -200,11 +201,34 @@ class EntryServiceTest {
     }
 
     @Test
+    fun `sync with null server timestamp does not crash and skips cursor update`() = runTest {
+        // MOB-591: the server may return a null sync timestamp (e.g. first sync with empty start).
+        // It must not be written through to the proto store (NPE) — the cursor update is skipped.
+        coEvery { entryRepository.getUnSynced(testAccountId) } returns emptyList()
+        coEvery { entryRepository.getOperationCount(testAccountId) } returns 0
+        coEvery { entryRepository.getOperationsFromAPI(any()) } returns null
+        coEvery { entryRepository.getEntryById(any()) } returns null
+        coEvery { accountRepository.getSyncTimeStamp() } returns flowOf("")
+        coEvery { accountRepository.updateSyncTimeStamp(any()) } returns Unit
+        coEvery { entryRepository.sendBatchToAPI(any()) } returns
+            UnifiedEntryResponse(entries = emptyList(), timestamp = null)
+        coEvery { entryRepository.getEntriesSync(any(), any()) } returns
+            EntriesSyncResponse(entries = emptyList(), timestamp = null)
+
+        // Should not throw.
+        service.updateAllData(testAccountId)
+        service.addEntry(realScaleEntry())
+
+        // Null timestamp is never written to the sync cursor.
+        coVerify(exactly = 0) { accountRepository.updateSyncTimeStamp(any()) }
+    }
+
+    @Test
     fun `atomic batch failure does not crash and is swallowed for retry`() = runTest {
         coEvery { entryRepository.getUnSynced(testAccountId) } returns emptyList()
         coEvery { entryRepository.getOperationCount(testAccountId) } returns 0
         coEvery { entryRepository.getOperationsFromAPI(any()) } returns null
-        every { accountRepository.getSyncTimeStamp() } returns flowOf("")
+        coEvery { accountRepository.getSyncTimeStamp() } returns flowOf("")
         coEvery { entryRepository.sendBatchToAPI(any()) } throws RuntimeException("batch failed")
 
         // Should not throw — the whole batch is left unsynced for the next retry.

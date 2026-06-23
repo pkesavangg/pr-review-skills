@@ -38,6 +38,7 @@ import com.dmdbrands.gurus.weight.domain.model.api.dashboard.DashboardMetricsReq
 import com.dmdbrands.gurus.weight.domain.model.api.dashboard.DashboardTypeRequest
 import com.dmdbrands.gurus.weight.domain.model.api.dashboard.ProgressMetricsRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountInfo
+import com.dmdbrands.gurus.weight.domain.model.api.user.BodyCompUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.MeasurementUnitsRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProductsRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountToken
@@ -824,7 +825,7 @@ constructor(
         email = account.email,
         expiresAt = loginResponse.expiresAt,
         fcmToken = null,
-        gender = account.gender,
+        gender = account.gender.orEmpty(),
         isActiveAccount = true,
         isLoggedIn = true,
         isExpired = false,
@@ -936,8 +937,8 @@ constructor(
       // Update weight composition settings
       val weightCompSettings = WeightCompSettingsEntity(
         accountId = accountInfo.id,
-        height = accountInfo.height,
-        activityLevel = accountInfo.activityLevel,
+        height = accountInfo.height ?: BodyCompUpdateRequest.DEFAULT_HEIGHT,
+        activityLevel = accountInfo.activityLevel ?: BodyCompUpdateRequest.DEFAULT_ACTIVITY_LEVEL,
         weightUnit = accountInfo.weightUnit,
         isSynced = true,
       )

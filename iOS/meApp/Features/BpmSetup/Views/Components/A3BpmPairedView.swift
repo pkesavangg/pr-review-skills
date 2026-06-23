@@ -31,6 +31,7 @@ struct A3BpmPairedView: View {
                     ) {
                         onLearnHowToMeasure()
                     }
+                    .accessibilityHint(BpmSetupStrings.A11y.learnHowHint)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 

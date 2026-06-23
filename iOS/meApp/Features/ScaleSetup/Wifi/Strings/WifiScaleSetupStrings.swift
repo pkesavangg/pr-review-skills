@@ -175,7 +175,6 @@ public struct WifiScaleSetupStrings {
     }
 
     struct A11y {
-        static let gifHint = "Animation showing how to activate pairing mode"
         static let errorCodeButtonLabel: (String) -> String = { "Error code \($0)" }
         static let errorCodeButtonHint = "Double tap to select this error code"
         static let errorCodeButtonSelectedLabel: (String) -> String = { "Error code \($0), selected" }
@@ -185,6 +184,5 @@ public struct WifiScaleSetupStrings {
         static let apModeOptionLabel = "Scale in AP mode screen"
         static let apModeOptionHint = "Double tap if your scale shows the AP mode screen"
         static let stepOnImageLabel = "Scale showing step on prompt"
-        static let apModeImageLabel = "Scale in AP mode"
     }
 }

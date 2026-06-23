@@ -299,6 +299,39 @@ extension DashboardStoreTests {
         #expect(store.shouldShowDivider == true)
     }
 
+    // MARK: - hasBabyEntries
+
+    @Test("hasBabyEntries: returns false when no baby profile is selected")
+    func hasBabyEntriesFalseNoProfileSelected() {
+        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        #expect(store.hasBabyEntries == false)
+    }
+
+    @Test("hasBabyEntries: returns false when baby profile selected but no summaries loaded")
+    func hasBabyEntriesFalseNoSummaries() {
+        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let baby = BabyProfile(id: "baby-1", name: "Aria")
+        store.selectProductItem(.baby(profile: baby))
+
+        #expect(store.hasBabyEntries == false)
+    }
+
+    @Test("hasBabyEntries: returns true when daily summaries exist for selected baby profile")
+    func hasBabyEntriesTrueWithDailySummaries() {
+        TestDependencyContainer.reset()
+        let deps = TestDependencyContainer.registerDashboardConcreteDependencies()
+        let store = DashboardStore(
+            lightweight: true,
+            formatter: MockDashboardFormatter(),
+            cacheManager: MockDashboardCacheManager()
+        )
+        let baby = BabyProfile(id: "baby-1", name: "Aria")
+        store.selectProductItem(.baby(profile: baby))
+        deps.entry.babyDailySummariesByProfile["baby-1"] = [DashboardTestFixtures.makeSummary()]
+
+        #expect(store.hasBabyEntries == true)
+    }
+
     @Test("allContentRemoved: false by default")
     func allContentRemovedFalseDefault() {
         let (store, _, _) = DashboardStoreTestSupport.makeSUT()
@@ -318,6 +351,49 @@ extension DashboardStoreTests {
         #expect(store.metricsToShow.isEmpty)
         #expect(store.shouldShowStreakGrid == false)
         #expect(store.allContentRemoved == true)
+    }
+
+    // MARK: - canShowSnapshotOverview visibility matrix
+
+    private func makeStoreWithMockProductTypeStore(availableItems: [ProductSelection]) async -> DashboardStore {
+        TestDependencyContainer.reset()
+        _ = TestDependencyContainer.registerDashboardConcreteDependencies()
+        let mockPTS = MockProductTypeStore()
+        mockPTS.availableItems = availableItems
+        DependencyContainer.shared.register(mockPTS as ProductTypeStoreProtocol)
+        let store = DashboardStore(
+            lightweight: false,
+            formatter: MockDashboardFormatter(),
+            cacheManager: MockDashboardCacheManager()
+        )
+        await Task.yield()
+        await Task.yield()
+        return store
+    }
+
+    @Test("canShowSnapshotOverview: true when baby item is present (no weight or BPM required)")
+    func canShowSnapshotOverviewTrueForBabyOnly() async {
+        let babyProfile = BabyProfile(id: "baby-1", name: "Test Baby")
+        let store = await makeStoreWithMockProductTypeStore(availableItems: [.baby(profile: babyProfile)])
+
+        #expect(store.hasBabySnapshotItem == true)
+        #expect(store.canShowSnapshotOverview == true)
+    }
+
+    @Test("canShowSnapshotOverview: true when both weight and BPM are paired")
+    func canShowSnapshotOverviewTrueForWeightAndBPM() async {
+        let store = await makeStoreWithMockProductTypeStore(availableItems: [.myWeight, .myBloodPressure])
+
+        #expect(store.hasBabySnapshotItem == false)
+        #expect(store.canShowSnapshotOverview == true)
+    }
+
+    @Test("canShowSnapshotOverview: false when only weight is paired (no baby, no BPM)")
+    func canShowSnapshotOverviewFalseForWeightOnly() async {
+        let store = await makeStoreWithMockProductTypeStore(availableItems: [.myWeight])
+
+        #expect(store.hasBabySnapshotItem == false)
+        #expect(store.canShowSnapshotOverview == false)
     }
     }
 }

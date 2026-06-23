@@ -57,6 +57,17 @@ class ProductSelectionRepository @Inject constructor(
         userDataStore.setSelectedBabyProfileId(accountId, profileId.orEmpty())
     }
 
+    override suspend fun clearSelectedProduct() {
+        val accountId = userDataStore.currentAccountIdFlow.first()
+        if (accountId == null) {
+            AppLog.w(TAG, "No active account; skipping clearSelectedProduct")
+            return
+        }
+        // Blank product type → observeHasUserSelected() emits false → dashboard opens in snapshot mode.
+        userDataStore.setSelectedProductType(accountId, "")
+        userDataStore.setSelectedBabyProfileId(accountId, "")
+    }
+
     override suspend fun getBabyProfiles(accountId: String): List<BabyProfile> =
         babyProfileDao.observeByAccountId(accountId).first().map { entity ->
             BabyProfile(

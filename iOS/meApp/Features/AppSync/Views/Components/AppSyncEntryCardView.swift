@@ -40,8 +40,8 @@ struct AppSyncEntryCardView: View {
                 metricText(label: AppSyncEntryCardStrings.waterWeight, value: metrics.waterWeight)
                 metricText(label: AppSyncEntryCardStrings.bmi, value: metrics.bmi)
             }
-            .accessibilityLabel(AppSyncEntryCardStrings.A11y.metricsGroupLabel)
             .accessibilityElement(children: .combine)
+            .accessibilityLabel(AppSyncEntryCardStrings.A11y.metricsGroupLabel)
 
             // Primary save button
             ButtonView(

@@ -70,7 +70,7 @@ object SignupStrings {
   const val backButton = "BACK"
   const val skipButton = "SKIP"
   const val nextButton = "NEXT"
-  const val completeButton = "Complete"
+  const val completeButton = "CREATE"
 
   // Loader message
   const val LoaderMessage = "Creating your account..."

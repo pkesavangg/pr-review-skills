@@ -38,4 +38,9 @@ protocol ProductTypeStoreProtocol: AnyObject {
     /// Returns true when the current account has a persisted product selection in local storage.
     /// Used to decide whether to redirect returning users straight to the product detail dashboard.
     var hasPersistedSelection: Bool { get }
+
+    /// Removes the persisted product selection for the current account.
+    /// Call this when the user explicitly navigates back to the snapshot overview so the
+    /// next cold launch shows the snapshot instead of jumping straight to the product dashboard.
+    func clearPersistedSelection()
 }

@@ -19,16 +19,24 @@ struct BPHistoryEditSheet: View {
     @State private var pulseText: String
     @State private var notesText: String
     @State private var entryDate: Date
+    @State private var entryTime: Date
+    @State private var showDatePicker = false
+    @State private var showTimePicker = false
     @State private var isSaving = false
     @State private var focusedField: FocusField?
 
+    private let labels = InputFieldLabels.self
+    private let lang = HistoryListStrings.self
+
     init(entry: BPHistoryEntry) {
         self.entry = entry
+        let parsed = DateTimeTools.parse(entry.entryTimestamp) ?? Date()
         _systolicText = State(initialValue: "\(entry.systolic)")
         _diastolicText = State(initialValue: "\(entry.diastolic)")
         _pulseText = State(initialValue: "\(entry.pulse)")
         _notesText = State(initialValue: entry.notes ?? "")
-        _entryDate = State(initialValue: DateTimeTools.parse(entry.entryTimestamp) ?? Date())
+        _entryDate = State(initialValue: parsed)
+        _entryTime = State(initialValue: parsed)
     }
 
     private var isValid: Bool {
@@ -40,46 +48,55 @@ struct BPHistoryEditSheet: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: .spacingLG) {
-                HStack {
-                    Spacer()
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark")
-                            .fontWeight(.semibold)
-                            .foregroundStyle(theme.textBody)
-                    }
-                    .buttonStyle(.plain)
-                }
+                closeButton
 
-                Group {
-                    labeledField(label: HistoryListStrings.systolic, text: $systolicText, keyboard: .numberPad)
-                    labeledField(label: HistoryListStrings.diastolic, text: $diastolicText, keyboard: .numberPad)
-                    labeledField(label: HistoryListStrings.pulse, text: $pulseText, keyboard: .numberPad)
-                }
+                MetricInputField(
+                    config: TextInputConfig(
+                        label: lang.systolic,
+                        inputType: .metric,
+                        focusField: .systolic,
+                        maxLength: 3,
+                        allowWholeNumbers: true
+                    ),
+                    value: $systolicText,
+                    focusedField: $focusedField
+                ) { focusedField = .diastolic }
 
-                VStack(alignment: .leading, spacing: .spacingXS) {
-                    Text("Date")
-                        .fontOpenSans(.subHeading2)
-                        .foregroundStyle(theme.textSubheading)
-                    HStack(spacing: .spacingSM) {
-                        DatePicker("", selection: $entryDate, displayedComponents: .date)
-                            .datePickerStyle(.compact)
-                            .labelsHidden()
-                        DatePicker("", selection: $entryDate, displayedComponents: .hourAndMinute)
-                            .datePickerStyle(.compact)
-                            .labelsHidden()
-                    }
-                }
+                MetricInputField(
+                    config: TextInputConfig(
+                        label: lang.diastolic,
+                        inputType: .metric,
+                        focusField: .diastolic,
+                        maxLength: 3,
+                        allowWholeNumbers: true
+                    ),
+                    value: $diastolicText,
+                    focusedField: $focusedField
+                ) { focusedField = .pulse }
 
-                VStack(alignment: .leading, spacing: .spacingXS) {
-                    Text(HistoryListStrings.notes)
-                        .fontOpenSans(.subHeading2)
-                        .foregroundStyle(theme.textSubheading)
-                    NotesInputField(
-                        config: TextInputConfig(label: HistoryListStrings.addNotesPlaceholder, focusField: .notes),
-                        value: $notesText,
-                        focusedField: $focusedField
-                    )
-                }
+                MetricInputField(
+                    config: TextInputConfig(
+                        label: lang.pulse,
+                        inputType: .metric,
+                        focusField: .pulse,
+                        maxLength: 3,
+                        allowWholeNumbers: true
+                    ),
+                    value: $pulseText,
+                    focusedField: $focusedField
+                ) { focusedField = .notes }
+
+                AppInputField(
+                    config: TextInputConfig(
+                        label: lang.notes,
+                        inputType: .notes,
+                        focusField: .notes
+                    ),
+                    value: $notesText,
+                    focusedField: $focusedField
+                )
+
+                datePicker
 
                 HStack {
                     Spacer()
@@ -88,49 +105,94 @@ struct BPHistoryEditSheet: View {
                         type: .filledPrimary,
                         size: .large,
                         isDisabled: !isValid || isSaving
-                    ) {
-                        saveEntry()
-                    }
+                    ) { saveEntry() }
                     Spacer()
                 }
             }
             .padding(.spacingMD)
         }
+        .scrollDismissesKeyboard(.interactively)
+        .background(theme.backgroundSecondary.ignoresSafeArea())
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
     }
 
-    @ViewBuilder
-    private func labeledField(label: String, text: Binding<String>, keyboard: UIKeyboardType) -> some View {
-        VStack(alignment: .leading, spacing: .spacingXS) {
-            Text(label)
-                .fontOpenSans(.subHeading2)
-                .foregroundStyle(theme.textSubheading)
-            HStack {
-                TextField("", text: text)
-                    .font(.body2)
+    // MARK: - Subviews
+
+    private var closeButton: some View {
+        HStack {
+            Spacer()
+            Button { dismiss() } label: {
+                Image(systemName: "xmark")
+                    .fontWeight(.semibold)
                     .foregroundStyle(theme.textBody)
-                    .keyboardType(keyboard)
-                if !text.wrappedValue.isEmpty {
-                    Button {
-                        text.wrappedValue = ""
-                    } label: {
-                        Image(systemName: "xmark.circle")
-                            .foregroundStyle(theme.textSubheading)
-                    }
-                    .buttonStyle(.plain)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var datePicker: some View {
+        VStack(alignment: .leading, spacing: .spacingSM) {
+            Text(labels.date)
+                .fontOpenSans(.subHeading1)
+                .foregroundColor(theme.textSubheading)
+
+            HStack(spacing: .spacingSM) {
+                DateLabelView(date: entryDate, isSelected: showDatePicker) {
+                    toggleDatePicker()
+                }
+                TimeLabelView(time: entryTime, isSelected: showTimePicker) {
+                    toggleTimePicker()
                 }
             }
-            .padding(.spacingXS)
-            .background(theme.backgroundSecondary)
-            .clipShape(RoundedRectangle(cornerRadius: .radiusSM))
+            .padding(.leading, 2)
+
+            DatePickerView(
+                isPresented: $showDatePicker,
+                date: $entryDate,
+                startDate: Date(timeIntervalSince1970: 946684800),
+                endDate: Date()
+            )
+            .onChange(of: showDatePicker) { _, isPresented in
+                if isPresented {
+                    focusedField = nil
+                    if showTimePicker { showTimePicker = false }
+                }
+            }
+
+            TimePickerView(
+                isPresented: $showTimePicker,
+                time: $entryTime,
+                selectedDate: entryDate,
+                endTime: Date()
+            )
+            .onChange(of: showTimePicker) { _, isPresented in
+                if isPresented {
+                    focusedField = nil
+                    if showDatePicker { showDatePicker = false }
+                }
+            }
         }
+    }
+
+    // MARK: - Actions
+
+    private func toggleDatePicker() {
+        focusedField = nil
+        withAnimation { showDatePicker.toggle() }
+        if showTimePicker { showTimePicker = false }
+    }
+
+    private func toggleTimePicker() {
+        focusedField = nil
+        withAnimation { showTimePicker.toggle() }
+        if showDatePicker { showDatePicker = false }
     }
 
     private func saveEntry() {
         guard let sys = Int(systolicText), let dia = Int(diastolicText), let pul = Int(pulseText) else { return }
         isSaving = true
-        let timestamp = DateTimeTools.isoString(date: entryDate, time: entryDate, useUTC: true)
+        let timestamp = DateTimeTools.isoString(date: entryDate, time: entryTime, useUTC: true)
         Task {
             await historyStore.updateBPEntry(
                 old: entry,

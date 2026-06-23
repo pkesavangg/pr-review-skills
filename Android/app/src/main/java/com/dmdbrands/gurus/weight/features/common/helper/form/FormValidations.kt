@@ -20,6 +20,7 @@ object ValidationType {
   const val WEIGHT_MATCH = "weightMatch"
   const val BLANK = "blank"
   const val INVALID_SCALE_DISPLAY_NAME = "invalidScaleDisplayName"
+  const val DUPLICATE = "duplicate"
 }
 
 object ValidationMessages {
@@ -41,6 +42,7 @@ object ValidationMessages {
   const val KG_RANGE = "Value should be between 0 kg and 450 kg"
   const val LB_RANGE = "Value should be between 0 lbs and 999 lbs"
   const val WEIGHT_MATCH = "value should not be equal to starting weight"
+  const val DUPLICATE = "value already exists"
 }
 
 object FormValidations {
@@ -104,6 +106,26 @@ object FormValidations {
         null
       }
     }
+
+  /**
+   * Fails when the trimmed, case-insensitive value matches any entry in [existingValues].
+   * Used to enforce uniqueness against a snapshot of sibling values (e.g. baby names already
+   * added during signup). Exclude the value being edited from [existingValues] so re-saving an
+   * unchanged value does not flag itself.
+   */
+  fun uniqueValue(
+    existingValues: List<String>,
+    customMessage: String? = null,
+  ): Validator<String> {
+    val normalized = existingValues.map { it.trim().lowercase() }
+    return { value ->
+      if (value.trim().lowercase() in normalized) {
+        ValidationError(ValidationType.DUPLICATE, customMessage ?: ValidationMessages.DUPLICATE)
+      } else {
+        null
+      }
+    }
+  }
 
   fun notSame(other: FormControl<String>): Validator<String> =
     { value ->

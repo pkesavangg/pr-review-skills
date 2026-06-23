@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.settings.viewmodel
 
 import androidx.compose.runtime.Stable
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
@@ -42,6 +43,16 @@ data class SettingsState(
       account?.shouldSendEntryNotifications == true -> "On"
       else -> "Off"
     }
+
+  /**
+   * Whether the "My Kids" Settings row is enabled. Per MOB-686 Rule A, this turns on once the
+   * account has engaged a baby scale at least once (signup or Add Devices) and is additive: it
+   * stays on after the baby-scale device is removed, because the account's persisted
+   * [Account.productTypes] still carries "baby" (the device list alone would flip back to false).
+   */
+  val isMyKidsEnabled: Boolean
+    get() = hasBabyScaleDevice ||
+      account?.productTypes?.contains(ProductType.BABY.apiValue) == true
 }
 
 /**

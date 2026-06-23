@@ -7,12 +7,12 @@ import SwiftUI
 
 /// Radio-style Unit Type dialog presented via `notificationService.showModal`.
 ///
-/// Two layouts driven by `UnitDisplayMode`:
+/// Three layouts driven by `UnitDisplayMode`:
 /// - `.myWeight` — a single weight-unit list (`lb & feet` / `kg & cm`) bound to `WeightUnit`.
 /// - `.myKids`   — a "My Kids" section only (`MeasurementUnits`) for baby-scale readings.
+/// - `.both`     — both sections with a divider; shown when weight scale + baby scale are paired.
+///                 "My Weight" changes apply to the weight scale; "My Kids" changes apply to the baby scale.
 ///
-/// Only one section is shown at a time; the combined "My Weight + My Kids" layout is
-/// never used (per product requirement: show only one relevant section based on device type).
 /// `onSave` always returns both values; the unchanged unit is passed through unmodified.
 struct UnitTypePickerModalView: View {
     @Environment(\.appTheme) private var theme
@@ -20,6 +20,7 @@ struct UnitTypePickerModalView: View {
     enum UnitDisplayMode {
         case myWeight
         case myKids
+        case both
     }
 
     let mode: UnitDisplayMode
@@ -56,6 +57,7 @@ struct UnitTypePickerModalView: View {
             switch mode {
             case .myWeight: weightOnlyLayout
             case .myKids:   kidsOnlyLayout
+            case .both:     bothLayout
             }
 
             actionButtons
@@ -66,6 +68,45 @@ struct UnitTypePickerModalView: View {
     }
 
     // MARK: - Layouts
+
+    private var bothLayout: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(lang.myWeight)
+                .fontOpenSans(.heading5)
+                .foregroundStyle(theme.textHeading)
+                .padding(.bottom, .spacingXS)
+
+            radioRow(
+                title: lang.lbsIn,
+                isSelected: selectedWeightUnit == .lb
+            ) { selectedWeightUnit = .lb }
+            radioRow(
+                title: lang.metricCm,
+                isSelected: selectedWeightUnit == .kg
+            ) { selectedWeightUnit = .kg }
+
+            Divider()
+                .padding(.vertical, .spacingSM)
+
+            Text(lang.myKids)
+                .fontOpenSans(.heading5)
+                .foregroundStyle(theme.textHeading)
+                .padding(.bottom, .spacingXS)
+
+            radioRow(
+                title: lang.lbsOzIn,
+                isSelected: selectedMeasurementUnits == .imperialLbOz
+            ) { selectedMeasurementUnits = .imperialLbOz }
+            radioRow(
+                title: lang.lbsDecimalIn,
+                isSelected: selectedMeasurementUnits == .imperialLbDecimal
+            ) { selectedMeasurementUnits = .imperialLbDecimal }
+            radioRow(
+                title: lang.metricCm,
+                isSelected: selectedMeasurementUnits == .metric
+            ) { selectedMeasurementUnits = .metric }
+        }
+    }
 
     private var weightOnlyLayout: some View {
         VStack(alignment: .leading, spacing: 0) {

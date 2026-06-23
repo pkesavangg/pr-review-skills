@@ -11,4 +11,6 @@ data class BabyProfile(
     val biologicalSex: Gender? = null,
     val birthLength: String = "",
     val birthWeight: String = "",
+    val birthWeightOz: String = "",
+    val weightUnit: BabyWeightUnit = BabyWeightUnit.LBS,
 )
