@@ -20,6 +20,11 @@ final class MockScaleSetupBluetoothService: BluetoothServiceProtocol {
         deviceDiscoveredSubject.eraseToAnyPublisher()
     }
 
+    /// Test helper: emit a device-discovery event to subscribers.
+    func emitDiscovery(_ event: DeviceDiscoveryEvent) {
+        deviceDiscoveredSubject.send(event)
+    }
+
     private let deviceInfoUpdatedSubject = PassthroughSubject<DeviceInfo, Never>()
     var deviceInfoUpdatedPublisher: AnyPublisher<DeviceInfo, Never> {
         deviceInfoUpdatedSubject.eraseToAnyPublisher()
@@ -77,7 +82,7 @@ final class MockScaleSetupBluetoothService: BluetoothServiceProtocol {
 
     // MARK: - Profile / Account
     func updateUserProfileForR4Scales() async -> Result<[String], BluetoothServiceError> { .success([]) }
-    func updateAccount(on device: Device, preference: R4ScalePreference) async -> Result<UserCreationResponse, BluetoothServiceError> { .failure(.unknown) }
+    func updateAccount(on device: Device, preference: R4ScalePreference) async -> Result<UserCreationResponse, BluetoothServiceError> { .failure(.notImplemented) }
 
     // MARK: - Device Information
     func getDeviceInfo(for device: Device, skipConnectionCheck: Bool) async -> Result<DeviceInfo, BluetoothServiceError> { .failure(.notImplemented) }

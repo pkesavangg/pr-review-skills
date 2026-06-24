@@ -192,7 +192,7 @@ struct AppSyncSetupStoreTests {
     }
 
     @Test("isNextEnabled updates when permissions publisher fires")
-    async func nextEnabledWhenPermissionsGranted() async {
+    func nextEnabledWhenPermissionsGranted() async {
         let (store, permissions, _, _, _, _, _) = makeSUT()
         permissions.revokeAll()
         store.configure(with: bodyCompSku)
@@ -208,7 +208,7 @@ struct AppSyncSetupStoreTests {
     // MARK: - handlePermissionChange
 
     @Test("permission revoked during appSync navigates back to permissions")
-    async func permissionRevokedDuringAppSyncNavigatesBack() async {
+    func permissionRevokedDuringAppSyncNavigatesBack() async {
         let (store, permissions, _, _, _, _, _) = makeSUT()
         permissions.revokeAll()
         store.configure(with: bodyCompSku)
@@ -245,6 +245,64 @@ struct AppSyncSetupStoreTests {
         #expect(bluetooth.isSetupInProgress == true)
         store.cleanUp()
         #expect(bluetooth.isSetupInProgress == false)
+    }
+
+    // MARK: - Added coverage
+
+    @Test("stepViews builds a view per step after configure")
+    func stepViewsBuildsViews() {
+        let (store, _, _, _, _, _, _) = makeSUT()
+        store.configure(with: bodyCompSku)
+        #expect(store.stepViews.count == store.steps.count)
+    }
+
+    @Test("showHelpModal presents a modal")
+    func showHelpModalPresentsModal() {
+        let (store, _, _, _, _, _, notification) = makeSUT()
+        store.configure(with: bodyCompSku)
+        store.showHelpModal()
+        #expect(notification.showModalCallCount == 1)
+    }
+
+    @Test("handleExit shows an exit alert whose confirm button dismisses")
+    func handleExitConfirmDismisses() {
+        let (store, _, _, _, _, _, notification) = makeSUT()
+        store.configure(with: bodyCompSku)
+        var dismissed = false
+        store.dismissAction = { dismissed = true }
+
+        store.handleExit()
+        #expect(notification.showAlertCallCount == 1)
+
+        notification.lastShownAlert?.buttons.first?.action(nil)
+        #expect(dismissed)
+    }
+
+    @Test("moveToNextStep at the final step saves the scale")
+    func finalStepSavesScale() async {
+        let (store, _, scaleService, accountService, _, _, _) = makeSUT()
+        accountService.activeAccount = AccountTestFixtures.makeAccount()
+        store.configure(with: bodyCompSku)
+        store.currentStepIndex = store.steps.count - 1
+
+        store.moveToNextStep()
+
+        await waitUntil(timeoutNanoseconds: 5_000_000_000) { scaleService.createDeviceCallCount == 1 }
+        #expect(scaleService.createDeviceCallCount == 1)
+    }
+
+    @Test("saveScale removes an existing duplicate device before creating")
+    func saveScaleRemovesDuplicate() async {
+        let (store, _, scaleService, accountService, _, _, _) = makeSUT()
+        accountService.activeAccount = AccountTestFixtures.makeAccount()
+        store.configure(with: bodyCompSku)
+        scaleService.getDevicesResult = [Device(id: "old", accountId: "a1", sku: bodyCompSku)]
+        store.currentStepIndex = store.steps.count - 1
+
+        store.moveToNextStep()
+
+        await waitUntil(timeoutNanoseconds: 5_000_000_000) { scaleService.deleteDeviceCallCount >= 1 }
+        #expect(scaleService.deleteDeviceCallCount >= 1)
     }
 }
 

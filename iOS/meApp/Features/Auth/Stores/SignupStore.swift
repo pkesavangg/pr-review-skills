@@ -41,7 +41,7 @@ final class SignupStore: ObservableObject {
     @Published var isFromAccountSwitching: Bool = false
     
     var onSignupSuccess: (() -> Void)?
-    var dismissAction: DismissAction?
+    var dismissAction: (() -> Void)?
     
     let heightInchesOptions = ConversionTools.heightInchesOptions
     let heightCmOptions     = ConversionTools.heightCmOptions

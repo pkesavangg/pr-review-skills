@@ -103,8 +103,13 @@ public class FormControl<Value: Equatable>: AbstractControl {
     public func removeValidator(ofType type: ValidatorType) {
         let beforeCount = validators.count
         validators.removeAll { $0.type == type }
-        if beforeCount != validators.count, validateType == .automatic {
-            validate()
+        if beforeCount != validators.count {
+            // collectErrors only refreshes errors for current validators, so a removed
+            // validator's stale error would otherwise persist and keep the control invalid.
+            errors.remove(for: type)
+            if validateType == .automatic {
+                validate()
+            }
         }
     }
     

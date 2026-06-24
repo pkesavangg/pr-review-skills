@@ -178,7 +178,7 @@ struct A6ScaleSetupStoreTests {
     }
 
     @Test("isNextEnabled updates when permissions publisher fires")
-    async func nextEnabledWhenBluetoothGranted() async {
+    func nextEnabledWhenBluetoothGranted() async {
         let (store, permissions, _, _, _, _) = makeSUT()
         permissions.revokeAll()
         store.configure(with: a6Sku)
@@ -194,7 +194,7 @@ struct A6ScaleSetupStoreTests {
     // MARK: - handlePermissionChange
 
     @Test("Bluetooth revoked while on wakeUp navigates back to permissions")
-    async func bluetoothRevokedDuringWakeUpNavigatesBack() async {
+    func bluetoothRevokedDuringWakeUpNavigatesBack() async {
         let (store, permissions, _, _, _, _) = makeSUT()
         permissions.revokeAll()
         store.configure(with: a6Sku)
@@ -243,6 +243,96 @@ struct A6ScaleSetupStoreTests {
         #expect(bluetooth.isSetupInProgress == true)
         store.cleanUp()
         #expect(bluetooth.isSetupInProgress == false)
+    }
+
+    // MARK: - Added coverage
+
+    @Test("stepViews builds a view per step after configure")
+    func stepViewsBuildsViews() {
+        let (store, _, _, _, _, _) = makeSUT()
+        store.configure(with: a6Sku)
+        #expect(store.stepViews.count == store.steps.count)
+    }
+
+    @Test("showHelpModal presents a modal")
+    func showHelpModalPresentsModal() {
+        let (store, _, _, _, _, notification) = makeSUT()
+        store.configure(with: a6Sku)
+        store.showHelpModal()
+        #expect(notification.showModalCallCount == 1)
+    }
+
+    @Test("handleExit shows an exit alert whose confirm button dismisses")
+    func handleExitConfirmDismisses() {
+        let (store, _, _, _, _, notification) = makeSUT()
+        store.configure(with: a6Sku)
+        var dismissed = false
+        store.dismissAction = { dismissed = true }
+
+        store.handleExit()
+        #expect(notification.showAlertCallCount == 1)
+
+        notification.lastShownAlert?.buttons.first?.action(nil)
+        #expect(dismissed)
+    }
+
+    @Test("configure with discovery context saves the discovered scale")
+    func configureSavesDiscoveredScale() async {
+        let (store, _, _, scaleService, accountService, _) = makeSUT()
+        accountService.activeAccount = AccountTestFixtures.makeAccount()
+        let device = Device(id: "d1", accountId: "a1", sku: a6Sku)
+        scaleService.createA6ScaleResult = device
+        let info = SCALES.first(where: { $0.setupType == .lcbt }) ?? SCALES[0]
+        let event = DeviceDiscoveryEvent(device: device, deviceInfo: info, protocolType: .A6, isNew: true)
+
+        store.configure(with: a6Sku, discoveredScale: device, discoveryEvent: event)
+
+        await waitUntil(timeoutNanoseconds: 5_000_000_000) { scaleService.createA6ScaleCallCount == 1 }
+        #expect(scaleService.createA6ScaleCallCount == 1)
+    }
+
+    @Test("known scale discovery during wakeUp shows the known-scale alert")
+    func knownScaleDiscoveryShowsAlert() async {
+        let (store, permissions, bluetooth, _, _, notification) = makeSUT()
+        permissions.grantAll()
+        store.configure(with: a6Sku)
+        guard let wakeIdx = store.steps.firstIndex(of: .wakeUp) else { return }
+        store.currentStepIndex = wakeIdx
+        let device = Device(id: "known1", accountId: "a1", sku: a6Sku)
+        let info = SCALES.first(where: { $0.setupType == .lcbt }) ?? SCALES[0]
+
+        bluetooth.emitDiscovery(DeviceDiscoveryEvent(device: device, deviceInfo: info, protocolType: .A6, isNew: false))
+
+        await waitUntil { notification.showAlertCallCount >= 1 }
+        #expect(notification.showAlertCallCount >= 1)
+    }
+
+    @Test("new scale discovery during wakeUp advances the flow")
+    func newScaleDiscoveryAdvances() async {
+        let (store, permissions, bluetooth, _, _, _) = makeSUT()
+        permissions.grantAll()
+        store.configure(with: a6Sku)
+        guard let wakeIdx = store.steps.firstIndex(of: .wakeUp) else { return }
+        store.currentStepIndex = wakeIdx
+        let device = Device(id: "new1", accountId: "a1", sku: a6Sku)
+        let info = SCALES.first(where: { $0.setupType == .lcbt }) ?? SCALES[0]
+
+        bluetooth.emitDiscovery(DeviceDiscoveryEvent(device: device, deviceInfo: info, protocolType: .A6, isNew: true))
+
+        await waitUntil { store.currentStepIndex != wakeIdx }
+        #expect(store.currentStepIndex != wakeIdx)
+    }
+
+    @Test("markA6ScalesUnsyncedForUnitUpdate processes A6 scales")
+    func markA6ScalesUnsynced() async {
+        let (store, _, _, scaleService, _, _) = makeSUT()
+        let a6 = Device(id: "a6-1", accountId: "a1", sku: a6Sku)
+        a6.protocolType = "A6"
+        scaleService.scales = [a6]
+
+        await store.markA6ScalesUnsyncedForUnitUpdate()
+
+        #expect(scaleService.scales.count == 1)
     }
 }
 

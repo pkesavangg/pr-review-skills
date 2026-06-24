@@ -106,7 +106,7 @@ struct UserNameFormTests {
     @Test("name of 21 chars fails maxLength")
     func maxLengthExceeded() {
         let form = UserNameForm()
-        form.setDisplayName("AliceBob12345678901A")  // 21 chars
+        form.setDisplayName("AliceBob12345678901AB")  // 21 chars
         form.displayName.validate()
         #expect(form.displayName.errors[.maxLength] == true)
     }
