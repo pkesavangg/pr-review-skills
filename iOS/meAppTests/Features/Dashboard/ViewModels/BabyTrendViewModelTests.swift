@@ -82,8 +82,8 @@ struct BabyTrendViewModelTests {
         let state = sut.displayState(dashboardStore: store, babyProfile: baby)
 
         // Either a numeric value or "--" placeholder
-        #expect(!state.weightDisplay.lbs.isEmpty)
-        #expect(!state.weightDisplay.oz.isEmpty)
+        #expect(!state.weightDisplay.primary.isEmpty)
+        #expect((state.weightDisplay.secondary?.isEmpty == false))
     }
 
     @Test("displayState heightDisplayText is non-empty")
@@ -173,8 +173,8 @@ struct BabyTrendViewModelTests {
 
         let state = sut.growthPercentilesSheetState(dashboardStore: store, babyProfile: baby)
 
-        #expect(!state.weightDisplay.lbs.isEmpty)
-        #expect(!state.weightDisplay.oz.isEmpty)
+        #expect(!state.weightDisplay.primary.isEmpty)
+        #expect((state.weightDisplay.secondary?.isEmpty == false))
     }
 
     @Test("growthPercentilesSheetState returns -- when display weight is 0")
@@ -187,7 +187,7 @@ struct BabyTrendViewModelTests {
         let state = sut.growthPercentilesSheetState(dashboardStore: store, babyProfile: babyFuture)
 
         // Either a number or "--"
-        #expect(!state.weightDisplay.lbs.isEmpty)
+        #expect(!state.weightDisplay.primary.isEmpty)
     }
 
     // MARK: - handlePeriodChange

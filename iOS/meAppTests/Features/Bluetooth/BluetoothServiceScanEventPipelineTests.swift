@@ -226,7 +226,7 @@ struct BluetoothServiceScanEventPipelineTests {
 //            id: "r4-scale-1",
 //            broadcastIdString: storedBroadcastId,
 //            isConnected: true,
-//            bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true)
+//            bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
 //        )
 //        device.r4ScalePreference = makePreference(id: "r4-scale-1", shouldMeasureImpedance: true)
 //        sut.bluetoothScales = [device]
@@ -254,7 +254,7 @@ struct BluetoothServiceScanEventPipelineTests {
 //        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-r4-disconnect", email: "r4d@example.com", isLoggedIn: true, isActiveAccount: true)
 //        let sut = makeSUT(account: account, scale: scale, sdk: sdk)
 //        _ = await waitUntil { sut.activeAccount?.accountId == "acct-r4-disconnect" }
-//        let device = makeDevice(id: "r4-scale-2", broadcastIdString: "R4-2", isConnected: true, bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true))
+//        let device = makeDevice(id: "r4-scale-2", broadcastIdString: "R4-2", isConnected: true, bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true))
 //        device.isWeighOnlyModeEnabledByOthers = true
 //        sut.bluetoothScales = [device]
 //
@@ -278,7 +278,7 @@ struct BluetoothServiceScanEventPipelineTests {
         account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-info", email: "info@example.com", isLoggedIn: true, isActiveAccount: true)
         let sut = makeSUT(account: account, scale: scale, sdk: sdk)
         _ = await waitUntil { sut.activeAccount?.accountId == "acct-info" }
-        let device = makeDevice(id: "info-scale-1", broadcastIdString: "INFO-1", isConnected: true, bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true))
+        let device = makeDevice(id: "info-scale-1", broadcastIdString: "INFO-1", isConnected: true, bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true))
         device.r4ScalePreference = makePreference(id: "info-scale-1", shouldMeasureImpedance: true)
         sut.bluetoothScales = [device.toSnapshot()]
 
@@ -326,7 +326,7 @@ struct BluetoothServiceScanEventPipelineTests {
     @Test("weight-only alert debounce emits only the final stable state")
     func weightOnlyAlertDebounceEmitsFinalStateOnly() async {
         let sut = makeSUT()
-        let deviceBase = makeDevice(id: "alert-scale-1", broadcastIdString: "ALERT-1", isConnected: true, bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true))
+        let deviceBase = makeDevice(id: "alert-scale-1", broadcastIdString: "ALERT-1", isConnected: true, bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true))
         deviceBase.isWeighOnlyModeEnabledByOthers = true
         let snapshotOn = deviceBase.toSnapshot()
         deviceBase.isWeighOnlyModeEnabledByOthers = false
@@ -361,7 +361,7 @@ struct BluetoothServiceScanEventPipelineTests {
     ) -> BluetoothService {
         BluetoothService(
             accountService: account ?? MockAccountService(),
-            scaleService: scale ?? MockScaleService(),
+            deviceService: scale ?? MockScaleService(),
             entryService: entry ?? MockEntryService(),
             babyService: MockBabyService(),
             logger: logger ?? MockLoggerService(),

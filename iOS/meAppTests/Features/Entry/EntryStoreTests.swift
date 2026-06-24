@@ -128,8 +128,8 @@ struct EntryStoreTests {
         store.manualEntryForm.validate()
         #expect(store.manualEntryForm.isValid == true)
 
-        async let first: Void = store.saveEntry()
-        async let second: Void = store.saveEntry()
+        async let first: Bool = store.saveEntry()
+        async let second: Bool = store.saveEntry()
         _ = await (first, second)
 
         #expect(store.isSaving == false)
@@ -406,7 +406,7 @@ private func makeSUT() -> (EntryStore, MockEntryStoreEntryService, TestNotificat
     DependencyContainer.shared.register(notificationService)
     DependencyContainer.shared.register(notificationService as NotificationHelperServiceProtocol)
     DependencyContainer.shared.register(entryService as EntryServiceProtocol)
-    DependencyContainer.shared.register(scaleService as ScaleServiceProtocol)
+    DependencyContainer.shared.register(scaleService as PairedDeviceServiceProtocol)
 
     let store = EntryStore()
     // Pin dependencies on store to avoid later global re-resolution.
@@ -414,7 +414,7 @@ private func makeSUT() -> (EntryStore, MockEntryStoreEntryService, TestNotificat
     store.notificationService = notificationService
     store.entryService = entryService
     store.logger = logger
-    store.scaleService = scaleService
+    store.deviceService = scaleService
     return (store, entryService, notificationService, accountService)
 }
 

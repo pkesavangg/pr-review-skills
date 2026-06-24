@@ -12,7 +12,7 @@ struct BluetoothServiceBpmTests {
     @Test("BPM discovery event: deviceCategory is .bpm when setupType is .bpm")
     func bpmDiscoveryEventHasBpmCategory() {
         let device = BluetoothTestFixtures.makeDevice(id: "bpm-1", broadcastIdString: "BPM001")
-        let bpmInfo = ScaleItemInfo(
+        let bpmInfo = DeviceItemInfo(
             productName: "Blood Pressure Monitor",
             sku: "0603",
             imgPath: "0603",
@@ -37,7 +37,7 @@ struct BluetoothServiceBpmTests {
     @Test("Scale discovery event: deviceCategory defaults to .scale")
     func scaleDiscoveryEventDefaultsToScale() {
         let device = BluetoothTestFixtures.makeDevice(id: "scale-1", broadcastIdString: "SC001")
-        let scaleInfo = ScaleItemInfo(
+        let scaleInfo = DeviceItemInfo(
             productName: "Bluetooth Smart Scale",
             sku: "0375",
             imgPath: "0375",
@@ -135,21 +135,21 @@ struct BluetoothServiceBpmTests {
         #expect(BPMS.map(\.sku).sorted() == ["0603", "0604", "0634", "0636", "0661", "0663"])
     }
 
-    // MARK: - ScaleInfoUtils BPM Lookup Tests
+    // MARK: - DeviceInfoUtils BPM Lookup Tests
 
-    @Test("ScaleInfoUtils includes BPM devices in scales list")
+    @Test("DeviceInfoUtils includes BPM devices in scales list")
     func scaleInfoUtilsIncludesBpm() {
-        let utils = ScaleInfoUtils()
-        let bpmInfo = utils.getScaleInfo(bySku: "0603")
+        let utils = DeviceInfoUtils()
+        let bpmInfo = utils.getDeviceInfo(bySku: "0603")
 
         #expect(bpmInfo != nil)
         #expect(bpmInfo?.setupType == .bpm)
         #expect(bpmInfo?.productName == "Smart Wrist Blood Pressure Monitor")
     }
 
-    @Test("ScaleInfoUtils isBpmDevice returns true for BPM SKUs")
+    @Test("DeviceInfoUtils isBpmDevice returns true for BPM SKUs")
     func scaleInfoUtilsIsBpmDevice() {
-        let utils = ScaleInfoUtils()
+        let utils = DeviceInfoUtils()
 
         #expect(utils.isBpmDevice(sku: "0603") == true)
         #expect(utils.isBpmDevice(sku: "0661") == true)
@@ -273,7 +273,7 @@ struct BluetoothServiceBpmTests {
     ) -> BluetoothService {
         BluetoothService(
             accountService: account ?? MockAccountService(),
-            scaleService: scale ?? MockScaleService(),
+            deviceService: scale ?? MockScaleService(),
             entryService: entry ?? MockEntryService(),
             babyService: MockBabyService(),
             logger: logger ?? MockLoggerService(),

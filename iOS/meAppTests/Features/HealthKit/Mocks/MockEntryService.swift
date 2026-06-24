@@ -99,6 +99,9 @@ final class MockEntryService: EntryServiceProtocol {
         return try getAllEntriesResult.get()
     }
     func getAllEntriesAsDTO() async throws -> [BathScaleOperationDTO] { [] }
+    func getAllEntriesAsSnapshots() async throws -> [EntrySnapshot] {
+        try fetchAllEntrySnapshotsResult.get()
+    }
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool { false }
     func getEntryCount() async throws -> Int {
         getEntryCountCalls += 1

@@ -197,7 +197,7 @@ struct BluetoothServiceCoreOperationsTests {
         let device = makeDevice(
             id: "new-device-1",
             broadcastIdString: "AA11",
-            bathScale: BathScale(scaleType: ScaleSourceType.bluetoothScale.rawValue, bodyComp: true)
+            bathScale: BathScale(scaleType: DeviceSourceType.bluetoothScale.rawValue, bodyComp: true)
         )
         device.nickname = nil
         device.password = 1234
@@ -287,7 +287,7 @@ struct BluetoothServiceCoreOperationsTests {
         let device = makeDevice(
             id: "new-device-4",
             broadcastIdString: "CC33",
-            bathScale: BathScale(scaleType: ScaleSourceType.wifi.rawValue, bodyComp: true)
+            bathScale: BathScale(scaleType: DeviceSourceType.wifi.rawValue, bodyComp: true)
         )
 
         let result = await sut.addNewDevice(device, metaData: nil)
@@ -325,7 +325,7 @@ struct BluetoothServiceCoreOperationsTests {
         let device = makeDevice(
             id: "r4-device",
             broadcastIdString: "R4AA11",
-            bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true)
+            bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
         )
 
         let result = await sut.addNewDevice(device, metaData: nil)
@@ -726,7 +726,7 @@ struct BluetoothServiceCoreOperationsTests {
     ) -> BluetoothService {
         BluetoothService(
             accountService: account ?? MockAccountService(),
-            scaleService: scale ?? MockScaleService(),
+            deviceService: scale ?? MockScaleService(),
             entryService: entry ?? MockEntryService(),
             babyService: MockBabyService(),
             logger: logger ?? MockLoggerService(),
