@@ -20,6 +20,7 @@ data class HomeState(
   val showUnreadFeedIndicator: Boolean = false,
   val shouldAskForReview: Boolean = false,
   val appSyncZoomLevel: Int = AppSyncConfig.DEFAULT_ZOOM,
+  val isScanning: Boolean = false,
 ) : IReducer.State
 
 /**
@@ -69,6 +70,17 @@ sealed interface HomeIntent : IReducer.Intent {
   data class LaunchAppReview(val activity: Activity) : HomeIntent
 
   data class SetAppSyncZoomLevel(val zoom: Int) : HomeIntent
+
+  /**
+   * Starts the AppSync camera scan flow on the ViewModel scope.
+   *
+   * Carries the [Activity] needed to launch the scan activity. Running on the ViewModel
+   * scope (instead of the screen's rememberCoroutineScope) means the scan survives
+   * recomposition/disposal after the device has been idle (MOB-710).
+   */
+  data class StartAppSyncScan(val activity: Activity) : HomeIntent
+
+  data class SetScanning(val scanning: Boolean) : HomeIntent
 }
 
 /**
@@ -96,6 +108,7 @@ class HomeReducer : IReducer<HomeState, HomeIntent> {
         state.copy(showUnreadFeedIndicator = intent.show)
       is HomeIntent.SetShouldAskForReview -> state.copy(shouldAskForReview = intent.shouldAsk)
       is HomeIntent.SetAppSyncZoomLevel -> state.copy(appSyncZoomLevel = intent.zoom)
+      is HomeIntent.SetScanning -> state.copy(isScanning = intent.scanning)
 
       else -> state.copy()
     }

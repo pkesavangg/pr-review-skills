@@ -55,8 +55,8 @@ struct DisplayMetricsViewModelTests {
 
         await viewModel.loadDisplayMetricsData()
 
-        #expect(viewModel.metrics.map(\.key) == ScaleMetrics.bodyMetrics.map(\.key))
-        #expect(viewModel.progressMetrics.map(\.key) == ScaleMetrics.progressMetrics.map(\.key))
+        #expect(viewModel.metrics.map(\.key) == DeviceMetrics.bodyMetrics.map(\.key))
+        #expect(viewModel.progressMetrics.map(\.key) == DeviceMetrics.progressMetrics.map(\.key))
         #expect(viewModel.showWeightOnlyBanner == false)
         #expect(viewModel.showHeartRateBanner == false)
         #expect(viewModel.hasChanges == false)
@@ -380,18 +380,18 @@ struct DisplayMetricsViewModelTests {
 
         DependencyContainer.shared.register(logger as LoggerServiceProtocol)
         DependencyContainer.shared.register(notification as NotificationHelperServiceProtocol)
-        DependencyContainer.shared.register(scaleService as ScaleServiceProtocol)
+        DependencyContainer.shared.register(scaleService as PairedDeviceServiceProtocol)
         DependencyContainer.shared.register(bluetooth as BluetoothServiceProtocol)
         DependencyContainer.shared.register(account as AccountServiceProtocol)
 
         let viewModel = DisplayMetricsViewModel(scale: scale)
 
         #expect((viewModel.notificationService as? MockNotificationHelperService) === notification)
-        #expect((viewModel.scaleService as? MockScaleService) === scaleService)
+        #expect((viewModel.deviceService as? MockScaleService) === scaleService)
         #expect((viewModel.bluetoothService as? MockBluetoothService) === bluetooth)
     }
 
-    @Test("loadDisplayMetricsData reflects the latest snapshot published by ScaleService")
+    @Test("loadDisplayMetricsData reflects the latest snapshot published by DeviceService")
     func loadDisplayMetricsDataReflectsLatestSnapshot() async {
         let initial = makeScale(
             preference: ScaleTestFixtures.makePreferenceDTO(
@@ -440,14 +440,14 @@ struct DisplayMetricsViewModelTests {
         let bluetooth = bluetooth ?? MockBluetoothService()
         let accountService = accountService ?? MockAccountService()
 
-        // Publish the scale as a DeviceSnapshot so the ViewModel can resolve it via ScaleService.
+        // Publish the scale as a DeviceSnapshot so the ViewModel can resolve it via DeviceService.
         scaleService.scales = [scale.toSnapshot(isConnected: scale.isConnected ?? false)]
 
         let viewModel = DisplayMetricsViewModel(
             scale: scale,
             isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers,
             notificationService: notification,
-            scaleService: scaleService,
+            deviceService: scaleService,
             bluetoothService: bluetooth,
             logger: logger,
             accountService: accountService
@@ -469,7 +469,7 @@ struct DisplayMetricsViewModelTests {
         return scale
     }
 
-    private func setEnabled(keys: Set<String>, in source: [ScaleMetricSetting]) -> [ScaleMetricSetting] {
+    private func setEnabled(keys: Set<String>, in source: [DeviceMetricSetting]) -> [DeviceMetricSetting] {
         source.map { metric in
             var updated = metric
             updated.isEnabled = keys.contains(metric.key)

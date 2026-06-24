@@ -64,7 +64,7 @@ struct HelpStoreTests {
 
         let r4Device = ScaleTestFixtures.makeDevice(id: "r4-scale")
         let nonR4Device = Device(id: "non-r4", accountId: "acct-1", hasServerID: false)
-        nonR4Device.bathScale = BathScale(scaleType: ScaleSourceType.bluetooth.rawValue, bodyComp: false)
+        nonR4Device.bathScale = BathScale(scaleType: DeviceSourceType.bluetooth.rawValue, bodyComp: false)
         let noScaleDevice = Device(id: "no-scale", accountId: "acct-1", hasServerID: false)
 
         scaleService.scales = [r4Device.toSnapshot(), nonR4Device.toSnapshot(), noScaleDevice.toSnapshot()]
@@ -365,7 +365,7 @@ private func makeSUT(
     DependencyContainer.shared.register(notification as NotificationHelperServiceProtocol)
     DependencyContainer.shared.register(entry as EntryServiceProtocol)
     DependencyContainer.shared.register(logger as LoggerServiceProtocol)
-    DependencyContainer.shared.register(scale as ScaleServiceProtocol)
+    DependencyContainer.shared.register(scale as PairedDeviceServiceProtocol)
     DependencyContainer.shared.register(bluetooth as BluetoothServiceProtocol)
 
     let store = HelpStore(appReviewHandler: appReview)
@@ -373,7 +373,7 @@ private func makeSUT(
     store.notificationService = notification
     store.entryService = entry
     store.logger = logger
-    store.scaleService = scale
+    store.deviceService = scale
     store.bluetoothService = bluetooth
 
     return (store, notification, account, logger, entry, bluetooth, appReview)
