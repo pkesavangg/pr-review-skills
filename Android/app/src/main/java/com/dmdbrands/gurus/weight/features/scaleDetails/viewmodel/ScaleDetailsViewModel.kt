@@ -3,7 +3,6 @@ package com.dmdbrands.gurus.weight.features.scaleDetails.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
-import com.dmdbrands.gurus.weight.core.service.AccountService
 import com.dmdbrands.gurus.weight.core.service.AppStatusService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
@@ -12,6 +11,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
+import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
@@ -52,7 +52,7 @@ import kotlinx.coroutines.launch
 class ScaleDetailsViewModel
 @AssistedInject
 constructor(
-  private var accountService: AccountService,
+  private val accountService: IAccountService,
   private val deviceService: IDeviceService,
   private val ggDeviceService: GGDeviceService,
   private val permissionService: GGPermissionService,
@@ -108,7 +108,6 @@ constructor(
 
       ScaleDetailsIntent.OpenWiFiSetup -> openWiFiSetup()
 
-
       ScaleDetailsIntent.ShowScaleNameModal -> openScaleNameModal()
       ScaleDetailsIntent.UpdateScaleName -> updateScaleName()
       is ScaleDetailsIntent.OnCopyMacAddress -> onCopyMacAddress(intent.isCopied)
@@ -150,7 +149,8 @@ constructor(
   private fun configureR4ScaleDetails() {
     viewModelScope.launch {
       try {
-        ggDeviceService.getConnectedWifiSSID(state.value.scale!!.toGGBTDevice()) { ssid ->
+        val scale = state.value.scale ?: return@launch
+        ggDeviceService.getConnectedWifiSSID(scale.toGGBTDevice()) { ssid ->
           handleIntent(ScaleDetailsIntent.SetConnectedSSID(if (ssid.isEmpty()) null else ssid.cleanCorruptedChars()))
         }
         fetchWifiMacAddress()
@@ -168,8 +168,9 @@ constructor(
     viewModelScope.launch {
       val scale = state.value.scale
       if (scale != null &&
-          scale.deviceType == ScaleSetupType.BtWifiR4.value &&
-          scale.connectionStatus == BLEStatus.CONNECTED) {
+        scale.deviceType == ScaleSetupType.BtWifiR4.value &&
+        scale.connectionStatus == BLEStatus.CONNECTED
+      ) {
         try {
           ggDeviceService.getConnectedWifiMacAddress(scale.toGGBTDevice()) { macAddress ->
             handleIntent(ScaleDetailsIntent.SetWifiMacAddress(macAddress))
@@ -239,23 +240,15 @@ constructor(
 
   private fun openScaleMode() {
     viewModelScope.launch {
-      if (!state.value.scale
-          ?.id
-          .isNullOrEmpty()
-      ) {
-        navigationService.navigateTo(AppRoute.ScaleDetails.ScaleMode(state.value.scale!!.id))
-      }
+      val id = state.value.scale?.id ?: return@launch
+      navigationService.navigateTo(AppRoute.ScaleDetails.ScaleMode(id))
     }
   }
 
   private fun openScaleDisplayMetrics() {
     viewModelScope.launch {
-      if (!state.value.scale
-          ?.id
-          .isNullOrEmpty()
-      ) {
-        navigationService.navigateTo(AppRoute.ScaleDetails.ScaleDisplayMetrics(state.value.scale!!.id))
-      }
+      val id = state.value.scale?.id ?: return@launch
+      navigationService.navigateTo(AppRoute.ScaleDetails.ScaleDisplayMetrics(id))
     }
   }
 
@@ -264,13 +257,13 @@ constructor(
       viewModelScope.launch {
         dialogQueueService.showDialog(
           DialogModel.Confirm(
-            message = ScaleDetailsStrings.DeleteScaleConfirmation,
+            message = ScaleDetailsStrings.DeleteConfirmation,
             confirmText = ScaleDetailsStrings.Delete,
             cancelText = ScaleDetailsStrings.Cancel,
             primaryActionType = com.dmdbrands.gurus.weight.features.common.components.ButtonType.ErrorText,
             onConfirm = {
               viewModelScope.launch {
-                val scale = state.value.scale!!
+                val scale = state.value.scale ?: return@launch
                 dialogQueueService.dismissCurrent()
                 dialogQueueService.showLoader(message = ScaleDetailsStrings.DeleteLoaderMessage)
                 try {
@@ -280,7 +273,7 @@ constructor(
                         ggDeviceService.disconnectDevice(scale.toGGBTDevice())
                       } else {
                         dialogQueueService.showToast(
-                          Toast(
+                          Toast.Simple(
                             message = ScaleDetailsStrings.DeleteErrorMessage,
                           ),
                         )
@@ -289,13 +282,13 @@ constructor(
                   }
                   deviceService.deleteScale(scale.id)
                   dialogQueueService.showToast(
-                    Toast(
+                    Toast.Simple(
                       message = ScaleDetailsStrings.DeleteSuccessMessage,
                     ),
                   )
                 } catch (e: Exception) {
                   dialogQueueService.showToast(
-                    Toast(
+                    Toast.Simple(
                       message = ScaleDetailsStrings.DeleteErrorMessage,
                     ),
                   )
@@ -305,11 +298,11 @@ constructor(
                 }
               }
             },
-          onDismiss = {
+            onDismiss = {
               dialogQueueService.dismissCurrent()
             },
 
-          ),
+            ),
 
           )
       }
@@ -321,12 +314,8 @@ constructor(
 
   private fun openScaleUsers() {
     viewModelScope.launch {
-      if (!state.value.scale
-          ?.id
-          .isNullOrEmpty()
-      ) {
-        navigationService.navigateTo(AppRoute.ScaleDetails.ScaleUsers(state.value.scale!!.id))
-      }
+      val id = state.value.scale?.id ?: return@launch
+      navigationService.navigateTo(AppRoute.ScaleDetails.ScaleUsers(id))
     }
   }
 
@@ -341,7 +330,7 @@ constructor(
           "scaleId" to (state.value.scale?.id ?: scaleId),
           "accountId" to (activeAccount?.id ?: ""),
         ),
-        dismissOnBackPress = true
+        dismissOnBackPress = true,
       ),
     )
   }
@@ -368,7 +357,8 @@ constructor(
     )
     viewModelScope.launch {
       try {
-        deviceService.updateScaleNickname(state.value.scale!!, scaleName)
+        val scale = state.value.scale ?: return@launch
+        deviceService.updateScaleNickname(scale, scaleName)
         AppLog.i("SaveScaleName", "Updated scale name: ${state.value.scale}")
         showToast(ScaleNameDialogStrings.Toast.Success)
         dialogQueueService.dismissCurrent()
@@ -411,7 +401,7 @@ constructor(
 
   private fun showToast(message: String) {
     dialogQueueService.showToast(
-      Toast(
+      Toast.Simple(
         title = null,
         message = message,
         action = null,
@@ -534,7 +524,6 @@ constructor(
         val scale = state.value.scale
         if (scale != null && scale.connectionStatus == BLEStatus.CONNECTED) {
           showToast(ScaleDetailsStrings.DownloadingLogs)
-// TODO: need to implement download option
           ggDeviceService.getDeviceLogs(scale.toGGBTDevice()) { logResponse ->
             // AppLog.d(TAG, "Device logs downloaded: ${logResponse.logs?.size ?: 0} entries")
             showToast(ScaleDetailsStrings.LogsDownloaded)
@@ -812,7 +801,7 @@ constructor(
 
           // Show success toast
           dialogQueueService.showToast(
-            Toast(
+            Toast.Simple(
               message = ScaleDetailsStrings.EnableBodyMetricsAlertSuccess,
             ),
           )

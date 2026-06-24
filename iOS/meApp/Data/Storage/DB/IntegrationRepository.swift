@@ -11,12 +11,12 @@ import Foundation
 final class IntegrationRepository: IntegrationRepositoryProtocol {
     // MARK: - Properties
     
-    private let kvStorage: KvStorageService
+    private let kvStorage: KvStorageServiceProtocol
     private let logger = LoggerService.shared
-        
+
     // MARK: - Initialization
-    
-    init(kvStorage: KvStorageService = .shared) {
+
+    init(kvStorage: KvStorageServiceProtocol = KvStorageService.shared) {
         self.kvStorage = kvStorage
     }
     
@@ -81,8 +81,11 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
                     return true
                 }
             } catch {
-                logger.log(level: .error, tag: "IntegrationRepository", 
-                          message: "Failed to decode integration info for key \(key): \(error.localizedDescription)")
+                logger.log(
+                    level: .error,
+                    tag: "IntegrationRepository",
+                    message: "Failed to decode integration info for key \(key): \(error.localizedDescription)"
+                )
                 continue
             }
         }

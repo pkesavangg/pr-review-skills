@@ -16,8 +16,9 @@ struct LoginScreen: View {
     @State private var keyboardHeight: CGFloat = 0
     
     /// Optional e-mail address passed from previous screen to pre-populate the form
-    var prefilledEmail: String? = nil
+    var prefilledEmail: String?
     var isFromAccountSwitching: Bool = false
+    var onAccountSwitchingLoginSuccess: (() -> Void)?
     
     let labels = InputFieldLabels.self
     let commonLang = CommonStrings.self
@@ -31,19 +32,23 @@ struct LoginScreen: View {
                 leadingContent: {
                     AppIconView(icon: AppAssets.xmarkSmall, size: IconSize(width: 24, height: 24))
                         .foregroundColor(theme.statusIconPrimary)
+                        .accessibilityLabel(lang.accCloseLabel)
+                        .accessibilityHint(lang.accCloseHint)
                 },
                 trailingContent: {
                     Button {
                         store.openHelp()
                     } label: {
-                        AppIconView(icon: AppAssets.helpCircle,  size: IconSize(width: 24, height: 24))
+                        AppIconView(icon: AppAssets.helpCircle, size: IconSize(width: 24, height: 24))
                             .foregroundColor(theme.statusIconPrimary)
                     }
+                    .accessibilityLabel(lang.accHelpLabel)
+                    .accessibilityHint(lang.accHelpHint)
                 },
                 onLeadingTap: {
                     store.handleExit(router: isFromAccountSwitching ? nil : router)
                 },
-                onTrailingTap: {  },
+                onTrailingTap: { },
                 canShowBorder: isFromAccountSwitching,
                 canShowPresentationIndicator: isFromAccountSwitching,
                 shouldShowBackground: false
@@ -66,6 +71,7 @@ struct LoginScreen: View {
                                     .foregroundColor(theme.textHeading)
                                     .frame(maxWidth: .infinity, alignment: .center)
                                     .padding(.bottom, .spacingXL)
+                                    .accessibilityAddTraits(.isHeader)
                                 VStack {
                                     // Email Input Field
                                     AppInputField(
@@ -76,7 +82,8 @@ struct LoginScreen: View {
                                             focusField: .email
                                         ),
                                         value: $store.loginForm.email.value,
-                                        focusedField: $focusedField
+                                        focusedField: $focusedField,
+                                        accessibilityIdentifier: AccessibilityID.loginEmailField
                                     ) {
                                         store.setEmailTouched()
                                         focusedField = .password
@@ -99,7 +106,8 @@ struct LoginScreen: View {
                                             focusField: .password
                                         ),
                                         value: $store.loginForm.password.value,
-                                        focusedField: $focusedField
+                                        focusedField: $focusedField,
+                                        accessibilityIdentifier: AccessibilityID.loginPasswordField
                                     ) {
                                         store.setPasswordTouched()
                                         focusedField = nil
@@ -124,8 +132,8 @@ struct LoginScreen: View {
                                         text: commonLang.logIn,
                                         type: .filledPrimary,
                                         size: .large,
-                                        isDisabled: !store.isFormValid || store.isFormSubmitting,
-                                        action: {
+                                        isDisabled: !store.isFormValid || store.isFormSubmitting
+                                    ) {
                                             focusedField = nil
                                             store.loginForm.email.markAsDirty()
                                             store.loginForm.password.markAsDirty()
@@ -136,22 +144,23 @@ struct LoginScreen: View {
                                                 }
                                             }
                                         }
-                                    )
-                                    
+                                    .accessibilityIdentifier(AccessibilityID.loginSubmitButton)
+                                    .accessibilityHint(lang.accLogInHint)
+
                                     ButtonView(
                                         text: lang.forgotPassword,
                                         type: .textPrimary,
                                         size: .small,
-                                        isDisabled: false,
-                                        action: {
+                                        isDisabled: false
+                                    ) {
                                             focusedField = nil
                                             store.showPasswordResetPrompt()
                                         }
-                                    )
+                                    .accessibilityIdentifier(AccessibilityID.loginForgotPasswordButton)
+                                    .accessibilityHint(lang.accForgotPasswordHint)
                                 }
                             }
                             .padding(.top, .spacingLG)
-                            
                             
                             // Only show spacer when keyboard is not visible
                             if keyboardHeight == 0 {
@@ -199,12 +208,17 @@ struct LoginScreen: View {
             store.isFromAccountSwitching = isFromAccountSwitching
             if isFromAccountSwitching {
                 store.dismissAction = dismiss
+                store.onLoginSuccess = onAccountSwitchingLoginSuccess ?? {
+                    dismiss()
+                }
                 // Set up exit handler to dismiss the sheet
                 store.onAccountSwitchingExit = {
                     dismiss()
                 }
             } else {
-                store.onLoginSuccess = { router.navigateBack() }
+                // Successful auth promotes the root ContentView from landing to dashboard.
+                // Avoid relying on auth-stack pops so all login success paths land on dashboard.
+                store.onLoginSuccess = {}
             }
             
             // Set up callback to clear focus when password reset alert is dismissed
@@ -223,6 +237,7 @@ struct LoginScreen: View {
                 hideKeyboard()
             }
         }
+        .accessibilityIdentifier(AccessibilityID.loginScreenRoot)
     }
 }
 

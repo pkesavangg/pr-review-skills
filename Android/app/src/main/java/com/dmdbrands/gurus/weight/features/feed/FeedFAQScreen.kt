@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
@@ -26,7 +26,7 @@ import com.greatergoods.ggInAppMessaging.ui.components.FAQComponent
 fun FeedFAQScreen(
 ) {
   val viewModel: FeedLandingViewModel = hiltViewModel()
-  val state by viewModel.state.collectAsState()
+  val state by viewModel.state.collectAsStateWithLifecycle()
   BackHandler {
     viewModel.handleIntent(FeedLandingIntent.OnBackPress)
   }

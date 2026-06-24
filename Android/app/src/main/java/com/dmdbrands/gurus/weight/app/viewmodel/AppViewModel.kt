@@ -5,11 +5,14 @@ import com.dmdbrands.gurus.weight.app.components.ReconnectScale
 import com.dmdbrands.gurus.weight.app.string.AppString.SCALEDISCOVEREDTIMEOUT
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
+import com.dmdbrands.gurus.weight.core.network.TokenMigrationHelper
 import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.service.NotificationEventType
+import com.dmdbrands.gurus.weight.core.service.NotificationTapPayload
 import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventService
+import com.dmdbrands.gurus.weight.core.service.pushNotification.NotificationDestination
 import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventType
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
@@ -18,6 +21,12 @@ import com.dmdbrands.gurus.weight.domain.model.permission.PermissionState
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
+import com.dmdbrands.gurus.weight.data.services.OperationType
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
+import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IAppRepository
@@ -25,28 +34,43 @@ import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.AuthState
 import com.dmdbrands.gurus.weight.domain.services.IAccountFlagService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
+import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
+import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BabyScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
+import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.MonitorSetupStepHelper
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0412
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
 import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
+import com.dmdbrands.gurus.weight.features.common.components.DialogType
+import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.common.model.ReadingToast
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
+import com.dmdbrands.gurus.weight.features.common.strings.ReadingToastStrings
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toBpmEntry
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
 import com.dmdbrands.library.ggbluetooth.enums.GGAppType
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
 import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
+import com.dmdbrands.library.ggbluetooth.model.GGBPMEntry
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
+import com.dmdbrands.library.ggbluetooth.model.GGEntry
 import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGCacheDevice
@@ -78,6 +102,7 @@ class AppViewModel
 constructor(
   private val appRepository: IAppRepository,
   private val entryService: IEntryService,
+  private val entryReadService: IEntryReadService,
   private val logManager: LogManager,
   private val appNavigationService: IAppNavigationService,
   private val tokenManager: ITokenManager,
@@ -92,11 +117,19 @@ constructor(
   private val feedService: IFeedService,
   private val ggInAppMessagingService: GGInAppMessagingService,
   private val accountFlagService: IAccountFlagService,
+  private val tokenMigrationHelper: TokenMigrationHelper,
+  private val analyticsService: IAnalyticsService,
 ) : BaseIntentViewModel<AppState, AppIntent>(
   reducer = AppReducer(),
 ) {
   companion object {
     private const val TAG = "AppViewModel"
+    /** BLE protocol types eligible for the discovery popup. */
+    private val DISCOVERY_ELIGIBLE_PROTOCOLS = setOf(
+      GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value,     // WiFi+BT scales (0412)
+      GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value,     // LCBT/Baby scales
+      GGDeviceProtocolType.GG_DEVICE_PROTOCOL_TK_BGM.value, // Blood pressure monitors
+    )
   }
 
   override fun provideInitialState(): AppState = AppState()
@@ -143,9 +176,11 @@ constructor(
         AppLog.e("MainActivity", "Failed to cleanup old logs", e)
       }
 
-      // Load all tokens into TokenManager's in-memory map
+      // Migrate tokens from DataStore to EncryptedSharedPreferences (one-time)
+      // then load all tokens into TokenManager's in-memory map
       try {
         initEvents()
+        tokenMigrationHelper.migrateIfNeeded()
         tokenManager.loadAllTokens()
         tokenManager.getCurrentAccountID()
         AppLog.v(TAG, "Loaded all tokens into TokenManager")
@@ -208,25 +243,43 @@ constructor(
       handleIntent(AppIntent.SetScaleDiscovered(false))
       // Clear all dialogs including IAM modal to ensure it's dismissed when connecting to scale
       dialogQueueService.clear()
-      if (sku == SKU_0412) {
-        navigationService.navigateTo(
-          AppRoute.ScaleSetup.BtWifiScaleSetup(
-            SKU_0412,
-            BtWifiSetupStep.CONNECTING_BLUETOOTH,
-            discoveredBroadcastId,
-          ),
-        )
-      } else if (sku != null) {
-        val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku!!)
-        // Pass original SKU to routes (not mapped), setup will save original SKU
-        navigationService.navigateTo(
-          AppRoute.ScaleSetup.LcbtScaleSetup(
-            sku!!,
-            discoveredBroadcastId,
-            LcbtScaleSetupStep.CONNECTING_BLUETOOTH,
-            scaleInfo = scaleInfo,
-          ),
-        )
+      val localSku = sku ?: return@launch
+      val scaleInfo = ScaleDataHelper.findScaleInfoBySku(localSku)
+      when {
+        localSku == SKU_0412 -> {
+          navigationService.navigateTo(
+            AppRoute.ScaleSetup.BtWifiScaleSetup(
+              SKU_0412,
+              BtWifiSetupStep.CONNECTING_BLUETOOTH,
+              discoveredBroadcastId,
+            ),
+          )
+        }
+        DeviceHelper.isBabyScale(localSku) -> {
+          navigationService.navigateTo(
+            AppRoute.ScaleSetup.BabyScaleSetup(
+              sku = localSku,
+              initialStep = BabyScaleSetupStep.WAKEUP,
+              broadcastId = discoveredBroadcastId,
+              scaleInfo = scaleInfo,
+            ),
+          )
+        }
+        DeviceHelper.isBpmDevice(localSku) -> {
+          navigationService.navigateTo(
+            AppRoute.ScaleSetup.BpmSetup(sku = localSku),
+          )
+        }
+        else -> {
+          navigationService.navigateTo(
+            AppRoute.ScaleSetup.LcbtScaleSetup(
+              localSku,
+              discoveredBroadcastId,
+              LcbtScaleSetupStep.CONNECTING_BLUETOOTH,
+              scaleInfo = scaleInfo,
+            ),
+          )
+        }
       }
       onPopUpDismiss()
     }
@@ -289,6 +342,22 @@ constructor(
             }
           }
 
+          is AuthState.EncryptionFailure -> {
+            // Encryption failure affects all accounts (shared encrypted file).
+            // Reuse existing logout alert pattern — force re-login.
+            viewModelScope.launch {
+              val activeAccount = accountService.getCurrentAccount()
+              val username = activeAccount?.firstName ?: ""
+              // Log out all accounts since encrypted storage is shared
+              accountService.logoutAll()
+              stopScan()
+              navigationService.replaceStack(route = AppRoute.Auth.Landing)
+              if (username.isNotEmpty()) {
+                dialogUtility.showAccountLoggedOutAlert(username)
+              }
+            }
+          }
+
           is AuthState.AccountAdded -> {
           }
 
@@ -296,7 +365,7 @@ constructor(
             if (authState.showToast) {
               val accountName = authState.account.firstName
               dialogQueueService.showToast(
-                Toast(
+                Toast.Simple(
                   title = null,
                   message = ToastStrings.Success.AccountSwitchSuccess.Message(
                     accountName,
@@ -344,13 +413,33 @@ constructor(
 
           NotificationEventType.NOTIFICATION_RECEIVED -> {
             entryService.syncOperations()
-            dialogQueueService.showToast(Toast(message = "Success! Entry added"))
+            dialogQueueService.showToast(Toast.Simple(message = "Success! Entry added"))
           }
 
           else -> {}
         }
       }
     }
+    viewModelScope.launch {
+      AppNotificationEventService.tapEvents.collect { tap ->
+        handleNotificationTap(tap)
+        AppNotificationEventService.consumeTap()
+      }
+    }
+  }
+
+  /**
+   * Handles a notification deep-link: switches to the target account when it differs from
+   * the active one, then navigates to the relevant History destination (MOB-434).
+   */
+  private suspend fun handleNotificationTap(tap: NotificationTapPayload) {
+    val accountId = tap.accountId
+    if (accountId != null && accountId != accountService.activeAccount.value?.id) {
+      accountService.getLoggedInAccounts().firstOrNull { it.id == accountId }?.let { target ->
+        accountService.switchAccount(target)
+      }
+    }
+    navigationService.navigateTo(NotificationDestination.toRoute(tap.destination, tap.monthKey))
   }
 
   /**
@@ -509,10 +598,48 @@ constructor(
   private fun handleEntryResponse(entryResponse: GGScanResponse.Entry) {
     when (entryResponse.type) {
       GGScanResponseType.SINGLE_ENTRY, GGScanResponseType.MULTI_ENTRIES -> {
-        saveEntry(entryResponse.data.map { it as GGScaleEntry })
+        val scaleEntries = entryResponse.data.filterIsInstance<GGScaleEntry>()
+        val bpmEntries = entryResponse.data.filterIsInstance<GGBPMEntry>()
+        if (scaleEntries.isNotEmpty()) {
+          saveEntry(scaleEntries)
+        }
+        if (bpmEntries.isNotEmpty()) {
+          saveBpmEntry(bpmEntries)
+        }
       }
 
       else -> null
+    }
+  }
+
+  private fun saveBpmEntry(ggEntries: List<GGBPMEntry>) {
+    saveBluetoothEntries(ggEntries) { accountId, deviceId ->
+      ggEntries.mapIndexed { index, entry -> entry.toBpmEntry(accountId, deviceId, index.toLong()) }
+    }
+  }
+
+  private fun <T : GGEntry> saveBluetoothEntries(
+    ggEntries: List<T>,
+    mapEntries: suspend (accountId: String, deviceId: String) -> List<Entry>,
+  ) {
+    viewModelScope.launch {
+      if (ggEntries.isEmpty()) return@launch
+      val accountId = currentAccountId ?: return@launch
+      val isSetupInProgress = deviceService.isSetupInProgress()
+      val device = deviceService.getScaleByBroadcastId(ggEntries.first().broadcastId, accountId)
+
+      if (device == null && !isSetupInProgress) return@launch
+
+      try {
+        val entries = mapEntries(accountId, device?.id ?: "")
+        entryService.addEntry(entries)
+        if (!isSetupInProgress) {
+          dialogQueueService.showToast(Toast.Simple(message = "entry saved successfully"))
+        }
+        checkAccountFlags("entry")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error saving entry", e)
+      }
     }
   }
 
@@ -532,7 +659,7 @@ constructor(
       when (deviceResponse.type) {
         GGScanResponseType.NEW_DEVICE -> {
           AppLog.d(TAG, "new device discovered ${data.macAddress} $canShowScaleDiscoveredModal")
-          if (canShowScaleDiscoveredModal && (data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value || data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value)) {
+          if (canShowScaleDiscoveredModal && data.protocolType in DISCOVERY_ELIGIBLE_PROTOCOLS) {
             val currentRoute = navigationService.getCurrentRoute()
             val isSetupInProgress = deviceService.isSetupInProgress()
             val isOnMainScreen = currentRoute is AppRoute.Home || currentRoute is AppRoute.Main.Dashboard
@@ -548,8 +675,8 @@ constructor(
               AppLog.d(TAG, "isSkipped: $isSkipped, isIgnored: $isIgnored")
 
               // Apply MAC address filtering for 0412 scales (similar to Angular's onfoundnewsmartwifiscale)
-              val deviceSku = data.getSKU() ?: return@launch
-              val shouldShow = if (deviceSku == "0412") {
+              val deviceSku = data.getSKU().orEmpty()
+              val shouldShow = if (deviceSku == SKU_0412) {
                 val isAllow = bluetoothPreferencesService.shouldShowDevice(data.macAddress)
                 isAllow
               } else {
@@ -572,11 +699,24 @@ constructor(
                   }
                 }
 
-                val customizedDevice = if (sku == "0412") customizeDevice(data) else Device(
-                  device = data,
-                  deviceType = ScaleSetupType.Lcbt.value,
-                  sku = sku,
-                )
+                val customizedDevice = when {
+                  deviceSku == SKU_0412 -> customizeDevice(data)
+                  DeviceHelper.isBabyScale(deviceSku) -> Device(
+                    device = data,
+                    deviceType = ScaleSetupType.BabyScale.value,
+                    sku = deviceSku,
+                  )
+                  DeviceHelper.isBpmDevice(deviceSku) -> Device(
+                    device = data,
+                    deviceType = MonitorSetupStepHelper.setupTypeForSku(deviceSku).value,
+                    sku = deviceSku,
+                  )
+                  else -> Device(
+                    device = data,
+                    deviceType = ScaleSetupType.Lcbt.value,
+                    sku = deviceSku,
+                  )
+                }
                 ggDeviceService.addCacheDevice(discoveredBroadcastId, customizedDevice)
                 canShowScaleDiscoveredModal = false
               } else {
@@ -599,6 +739,12 @@ constructor(
 
         GGScanResponseType.DEVICE_CONNECTED -> {
           AppLog.d(TAG, "Device connected ${data.broadcastId}")
+          analyticsService.logEvent(
+            IAnalyticsService.Events.SCALE_CONNECTED,
+            android.os.Bundle().apply {
+              putString(IAnalyticsService.Params.SCALE_TYPE, data.broadcastId ?: "unknown")
+            },
+          )
           onDeviceUpdate(
             deviceDetail = data,
             connectionStatus = BLEStatus.CONNECTED,
@@ -632,37 +778,44 @@ constructor(
 
         GGScanResponseType.DEVICE_MEMORY_FULL -> {
           val currentRoute = navigationService.getCurrentRoute()
-          if (currentRoute !is AppRoute.ScaleSetup && !isKnownScale) {
+          val isOnAuthScreen = currentRoute is AppRoute.Auth
+          if (currentRoute !is AppRoute.ScaleSetup && isKnownScale && !isOnAuthScreen) {
             dialogQueueService.showDialog(
               ReconnectScale.getMaxUserAlert(
                 onConfirm = {
                   viewModelScope.launch {
-                    val accountId = currentAccountId ?: return@launch
-                    dialogQueueService.showLoader("Loading...")
-                    val device = deviceService.getScaleByBroadcastId(data.broadcastId!!, accountId) ?: return@launch
-                    val deviceSku = data.getSKU() ?: run {
-                      dialogQueueService.dismissLoader()
-                      return@launch
-                    }
-                    ggDeviceService.addCacheDevice(data.broadcastId, device)
-                    ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
-                      viewModelScope.launch {
-                        dialogQueueService.dismissLoader()
-                        navigationService.navigateTo(
-                          AppRoute.ScaleSetup.BtWifiScaleSetup(
-                            sku = deviceSku,
-                            initialStep = BtWifiSetupStep.USER_LIMIT_REACHED,
-                            broadcastId = data.broadcastId,
-                            userList = response.user,
-                          ),
-                        )
+                    try {
+                      val accountId = currentAccountId ?: return@launch
+                      val broadcastId = data.broadcastId ?: return@launch
+                      val device = deviceService.getScaleByBroadcastId(broadcastId, accountId)
+                      if (device == null) {
+                        AppLog.w(TAG, "DEVICE_MEMORY_FULL: scale not found for broadcastId=$broadcastId")
+                        return@launch
                       }
+                      dialogQueueService.showLoader("Loading...")
+                      ggDeviceService.addCacheDevice(data.broadcastId, device)
+                      ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
+                        viewModelScope.launch {
+                          dialogQueueService.dismissLoader()
+                          navigationService.navigateTo(
+                            AppRoute.ScaleSetup.BtWifiScaleSetup(
+                              sku = data.getSKU().orEmpty(),
+                              initialStep = BtWifiSetupStep.USER_LIMIT_REACHED,
+                              broadcastId = data.broadcastId,
+                              userList = response.user,
+                            ),
+                          )
+                        }
+                      }
+                    } catch (e: Exception) {
+                      AppLog.e(TAG, "DEVICE_MEMORY_FULL: error handling max user alert", e)
+                      dialogQueueService.dismissLoader()
                     }
                   }
                 },
                 onCancel = {
-                  if (data.broadcastId != null) {
-                    ggDeviceService.skipDevice(data.broadcastId!!, considerForSession = true)
+                  data.broadcastId?.let { broadcastId ->
+                    ggDeviceService.skipDevice(broadcastId, considerForSession = true)
                   }
                 },
               ),
@@ -673,14 +826,15 @@ constructor(
         GGScanResponseType.DEVICE_DUPLICATE_USER -> {
           try {
             val currentRoute = navigationService.getCurrentRoute()
-            if (currentRoute !is AppRoute.ScaleSetup) {
+            val isOnAuthScreen = currentRoute is AppRoute.Auth
+            if (currentRoute !is AppRoute.ScaleSetup && !isOnAuthScreen) {
               dialogQueueService.showDialog(
                 ReconnectScale.getDuplicateUserAlert(
                   onConfirm = {
                     viewModelScope.launch {
                       val accountId = currentAccountId ?: return@launch
-                      val device = deviceService.getScaleByBroadcastId(data.broadcastId!!, accountId) ?: return@launch
-                      val deviceSku = data.getSKU() ?: return@launch
+                      val broadcastId = data.broadcastId ?: return@launch
+                      val device = deviceService.getScaleByBroadcastId(broadcastId, accountId) ?: return@launch
                       val userList = suspendCoroutine { continuation ->
                         ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
                           continuation.resume(response.user)
@@ -693,7 +847,7 @@ constructor(
                             ggDeviceService.addCacheDevice(data.broadcastId, device)
                             navigationService.navigateTo(
                               AppRoute.ScaleSetup.BtWifiScaleSetup(
-                                deviceSku,
+                                data.getSKU().orEmpty(),
                                 BtWifiSetupStep.CONNECTING_BLUETOOTH,
                                 data.broadcastId,
                               ),
@@ -704,8 +858,8 @@ constructor(
                     }
                   },
                   onCancel = {
-                    if (data.broadcastId != null) {
-                      ggDeviceService.skipDevice(data.broadcastId!!, considerForSession = true)
+                    data.broadcastId?.let { broadcastId ->
+                      ggDeviceService.skipDevice(broadcastId, considerForSession = true)
                     }
                   },
                 ),
@@ -777,20 +931,222 @@ constructor(
         }
       }
 
-      try {
-        entryService.addEntry(entry)
-        if (!isSetupInProgress) {
-          dialogQueueService.showToast(
-            Toast(
-              message = "entry saved successfully",
-            ),
-          )
+      if (isSetupInProgress) {
+        // During setup, save immediately without toast
+        try {
+          entryService.addEntry(entry)
+          checkAccountFlags("entry")
+        } catch (e: Exception) {
+          AppLog.e(TAG, "Error during saving entry", e)
         }
-        // Check for account flags after entry is saved
-        checkAccountFlags("entry")
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error during saving entry", e)
+      } else {
+        // Show reading toast — user decides to save or discard
+        val readingType = device?.sku?.let { sku ->
+          when {
+            DeviceHelper.isBabyScale(sku) -> ProductType.BABY
+            DeviceHelper.isBpmDevice(sku) -> ProductType.BLOOD_PRESSURE
+            else -> ProductType.MY_WEIGHT
+          }
+        } ?: ProductType.MY_WEIGHT
+
+        val firstEntry = entry.firstOrNull() ?: return@launch
+        val reading = formatReadingForDisplay(firstEntry, readingType)
+
+        // A baby scale reading with no baby profile has nowhere to be saved —
+        // surface an "ADD A BABY" CTA instead of the assign flow (MOB-426).
+        val hasNoBabyProfile = readingType == ProductType.BABY &&
+          productSelectionManager.availableProducts.value
+            .filterIsInstance<ProductSelection.Baby>()
+            .isEmpty()
+
+        dialogQueueService.showToast(
+          Toast.Custom(
+            ReadingToast(
+              reading = reading,
+              type = readingType,
+              timestamp = "Just now",
+              noBabyProfile = hasNoBabyProfile,
+              primaryAction = {
+                if (hasNoBabyProfile) {
+                  viewModelScope.launch {
+                    navigationService.navigateTo(AppRoute.AccountSettings.AddBaby)
+                  }
+                } else if (readingType == ProductType.BABY) {
+                  val babies = availableBabyProfiles()
+                  if (babies.size == 1) {
+                    // Single baby — skip the picker and assign straight to that baby (MOB-428).
+                    viewModelScope.launch {
+                      assignReadingToBaby(reading, entry, babies.first().id, babies, emptyList())
+                    }
+                  } else {
+                    showAssignMeasurementDialog(reading, entry)
+                  }
+                } else {
+                  viewModelScope.launch {
+                    try {
+                      entryService.addEntry(entry)
+                      checkAccountFlags("entry")
+                      AppLog.i(TAG, "Entry saved via reading toast")
+                    } catch (e: Exception) {
+                      AppLog.e(TAG, "Error saving entry from toast", e)
+                    }
+                  }
+                }
+              },
+              secondaryAction = {
+                // The reading is only persisted on Save/Assign, so discarding an unsynced
+                // reading just dismisses the card — nothing was written (MOB-428).
+                dialogQueueService.dismissToast()
+                AppLog.i(TAG, "Entry discarded via reading toast")
+              },
+            ),
+          ),
+        )
       }
+    }
+  }
+
+  private fun availableBabyProfiles(): List<BabyProfile> =
+    productSelectionManager.availableProducts.value
+      .filterIsInstance<ProductSelection.Baby>()
+      .map { it.profile }
+
+  /**
+   * Shows the baby picker. On confirm, assigns the reading to the chosen baby.
+   * [preSelectedBabyId] pre-selects a baby (used by Reassign); [previousEntryIds] are the
+   * locally-saved entries to remove first when reassigning, so a reassign never duplicates.
+   */
+  private fun showAssignMeasurementDialog(
+    reading: String,
+    entry: List<ScaleEntry>,
+    preSelectedBabyId: String? = null,
+    previousEntryIds: List<Long> = emptyList(),
+  ) {
+    val babies = availableBabyProfiles()
+    dialogQueueService.showDialog(
+      DialogModel.Custom(
+        contentKey = DialogType.AssignMeasurement,
+        params = buildMap {
+          put("babies", babies)
+          put("reading", reading)
+          put("timestamp", "Just now")
+          preSelectedBabyId?.let { put("preSelectedBabyId", it) }
+        },
+        onConfirm = { result ->
+          val babyId = result as? String ?: return@Custom
+          viewModelScope.launch {
+            assignReadingToBaby(reading, entry, babyId, babies, previousEntryIds)
+          }
+        },
+        dismissOnBackPress = true,
+        dismissOnClickOutside = true,
+      ),
+    )
+  }
+
+  /**
+   * Persists the reading to the selected baby (local-only — MOB-428) and surfaces the
+   * post-assignment card with a Reassign affordance. When reassigning, the entries from the
+   * previously chosen baby are deleted first so the reading lands on exactly one baby.
+   */
+  private suspend fun assignReadingToBaby(
+    reading: String,
+    entry: List<ScaleEntry>,
+    babyId: String,
+    babies: List<BabyProfile>,
+    previousEntryIds: List<Long>,
+  ) {
+    try {
+      val accountId = currentAccountId ?: return
+      // Persist to the new baby first; addBabyEntry returns -1 on a null account or a swallowed
+      // DB-insert exception. Bail before touching the previous baby's entries or claiming success,
+      // so a failed write never surfaces as "Reading assigned to X" (and a later Reassign never
+      // deletes a bogus -1 id, which would leave a duplicate behind).
+      val savedIds = entry.map { entryService.addBabyEntry(it.toBabyEntry(babyId, accountId)) }
+      if (savedIds.any { it <= 0L }) {
+        AppLog.e(TAG, "Baby entry save failed for $babyId (savedIds=$savedIds)")
+        dialogQueueService.showToast(Toast.Simple(message = ReadingToastStrings.SaveFailed))
+        return
+      }
+      // Save succeeded — now it's safe to remove the entries from the previously chosen baby.
+      previousEntryIds.forEach { entryService.deleteBabyEntryLocally(it) }
+      checkAccountFlags("entry")
+      AppLog.i(TAG, "Baby entry assigned to $babyId")
+      babies.firstOrNull { it.id == babyId }?.let { baby ->
+        showBabyAssignedToast(reading, entry, baby, savedIds)
+      }
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error saving baby entry", e)
+    }
+  }
+
+  /** Post-assignment card ("Reading assigned to X") whose Reassign re-opens the picker. */
+  private fun showBabyAssignedToast(
+    reading: String,
+    entry: List<ScaleEntry>,
+    baby: BabyProfile,
+    savedIds: List<Long>,
+  ) {
+    dialogQueueService.showToast(
+      Toast.Custom(
+        ReadingToast(
+          reading = reading,
+          type = ProductType.BABY,
+          timestamp = "Just now",
+          assignedTo = baby.name,
+          primaryAction = {
+            dialogQueueService.dismissToast()
+            showAssignMeasurementDialog(
+              reading = reading,
+              entry = entry,
+              preSelectedBabyId = baby.id,
+              previousEntryIds = savedIds,
+            )
+          },
+        ),
+      ),
+    )
+  }
+
+  /**
+   * Builds a local [BabyEntry] from an incoming scale reading. The reading weight is stored
+   * in tenths-of-lb; the baby graph reads decigrams, so convert lb → decigrams to keep
+   * storage and display consistent. Marked CREATE; [IEntryService.addBabyEntry] persists it
+   * locally without queuing it for sync (MOB-428).
+   */
+  private fun ScaleEntry.toBabyEntry(babyId: String, accountId: String): BabyEntry {
+    val lbs = ConversionTools.convertStoredToLbs(scale.scaleEntry.weight)
+    return BabyEntry(
+      entry = entry.copy(
+        id = 0L,
+        accountId = accountId,
+        operationType = OperationType.CREATE.name,
+        isSynced = true,
+      ),
+      babyEntry = BabyEntryEntity(
+        id = 0L,
+        babyId = babyId,
+        babyWeightDecigrams = ConversionTools.convertLbToDecigrams(lbs),
+        entryNote = scale.scaleEntry.note,
+      ),
+    )
+  }
+
+  private fun formatReadingForDisplay(entry: ScaleEntry, type: ProductType): String {
+    val weight = entry.scale.scaleEntry.weight
+    val unit = entry.entry.unit
+    return when (type) {
+      ProductType.BABY -> {
+        val totalOz = weight / 10.0 * 0.035274 * 16 // decigrams → oz approximation
+        val lbs = (totalOz / 16).toInt()
+        val oz = totalOz % 16
+        "$lbs ${unit.label} ${formatWeightValue(oz)} oz"
+      }
+      ProductType.BLOOD_PRESSURE -> {
+        // Weight field stores systolic for BPM protocol entries
+        "${formatWeightValue(weight)} ${unit.label}"
+      }
+      ProductType.MY_WEIGHT -> "${formatWeightValue(weight)} ${unit.label}"
     }
   }
 
@@ -812,17 +1168,14 @@ constructor(
   private fun checkAndRequestNotificationPermission() {
     viewModelScope.launch {
       try {
-        val notificationAlertShown = if (currentAccountId != null) {
-          accountService.hasShownNotificationAlertForAccount(currentAccountId!!)
-        } else {
-          false
-        }
-        if (!notificationAlertShown && currentAccountId != null) {
-          accountService.setNotificationAlertShownForAccount(currentAccountId!!, true)
-          AppLog.d(TAG, "Stored notification alert setting for account: $currentAccountId")
+        val accountId = currentAccountId ?: return@launch
+        val notificationAlertShown = accountService.hasShownNotificationAlertForAccount(accountId)
+        if (!notificationAlertShown) {
+          accountService.setNotificationAlertShownForAccount(accountId, true)
+          AppLog.d(TAG, "Stored notification alert setting for account: $accountId")
           requestPermissions(GGPermissionType.NOTIFICATION)
         } else {
-          AppLog.d(TAG, "Notification alert already shown for account: $currentAccountId, skipping permission request")
+           AppLog.d(TAG, "Notification alert already shown for account: $accountId, skipping permission request")
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to check/request notification permission", e.toString())
@@ -855,7 +1208,10 @@ constructor(
         it?.toGGBTUserProfile()
       }.distinctUntilChanged().collect { ggBTUserProfile ->
         if (ggBTUserProfile != null) {
-          val currentWeight = when (val latestWeightEntry = entryService.latestEntry.value) {
+          // Cold Flow: creates a new Room observer each call. Acceptable here because
+          // .first() materialises a single value and disposes immediately; this path
+          // only runs when activeAccountFlow emits (account switch / login).
+          val currentWeight = when (val latestWeightEntry = entryReadService.latestEntry().first()) {
             is ScaleEntry -> latestWeightEntry.scale.scaleEntry.weight
             else -> ggBTUserProfile.weight // Fallback to initial weight
           }
@@ -866,7 +1222,7 @@ constructor(
             ),
           )
           if (!_state.value.hasScanStarted) {
-            ggPermissionService.startScan(GGAppType.WEIGHT_GURUS, updatedProfile)
+            ggPermissionService.startScan(GGAppType.ME_HEALTH, updatedProfile)
             handleIntent(AppIntent.SetScanStatus(true))
           }
           ggDeviceService.updateProfile(updatedProfile) {}
@@ -998,7 +1354,7 @@ constructor(
 
       is IAMDialogEvent.PromoCodeCopied -> {
         dialogQueueService.showToast(
-          Toast(
+          Toast.Simple(
             message = ToastStrings.Success.PromoCodeCopied.Message,
           ),
         )

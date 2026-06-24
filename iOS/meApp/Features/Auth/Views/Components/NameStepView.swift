@@ -23,7 +23,8 @@ struct NameStepView: View {
                     Text(nameStepLang.title)
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
-                    
+                        .accessibilityAddTraits(.isHeader)
+
                     Text(nameStepLang.subtitle)
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textHeading)
@@ -40,6 +41,7 @@ struct NameStepView: View {
                         ),
                         value: $signupStore.signupForm.firstName.value,
                         focusedField: $focusedField,
+                        accessibilityIdentifier: AccessibilityID.signupFirstNameField,
                         onCommit: {
                             signupStore.touchAndValidate(field: .firstName)
                             focusedField = .lastName

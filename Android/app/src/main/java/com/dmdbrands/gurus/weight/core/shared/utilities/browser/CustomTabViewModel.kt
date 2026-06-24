@@ -33,8 +33,4 @@ class CustomTabViewModel
             }
         }
 
-        override fun onCleared() {
-            super.onCleared()
-            customTabManager.unbind()
-        }
     }

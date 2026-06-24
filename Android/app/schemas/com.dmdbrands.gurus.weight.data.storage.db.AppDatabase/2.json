@@ -1,0 +1,1329 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "8597b95e0b65af5e9e4326476a913b0b",
+    "entities": [
+      {
+        "tableName": "account",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `firstName` TEXT NOT NULL, `lastName` TEXT NOT NULL, `dob` TEXT NOT NULL, `email` TEXT NOT NULL, `expiresAt` TEXT, `fcmToken` TEXT, `gender` TEXT NOT NULL, `isActiveAccount` INTEGER NOT NULL, `isLoggedIn` INTEGER NOT NULL, `isExpired` INTEGER NOT NULL, `isSynced` INTEGER NOT NULL, `lastActiveTime` TEXT, `zipcode` TEXT NOT NULL, PRIMARY KEY(`accountId`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firstName",
+            "columnName": "firstName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastName",
+            "columnName": "lastName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dob",
+            "columnName": "dob",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "email",
+            "columnName": "email",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expiresAt",
+            "columnName": "expiresAt",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fcmToken",
+            "columnName": "fcmToken",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "gender",
+            "columnName": "gender",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isActiveAccount",
+            "columnName": "isActiveAccount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isLoggedIn",
+            "columnName": "isLoggedIn",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isExpired",
+            "columnName": "isExpired",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isSynced",
+            "columnName": "isSynced",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastActiveTime",
+            "columnName": "lastActiveTime",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "zipcode",
+            "columnName": "zipcode",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_account_email",
+            "unique": true,
+            "columnNames": [
+              "email"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_account_email` ON `${TABLE_NAME}` (`email`)"
+          },
+          {
+            "name": "index_account_isActiveAccount",
+            "unique": false,
+            "columnNames": [
+              "isActiveAccount"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_account_isActiveAccount` ON `${TABLE_NAME}` (`isActiveAccount`)"
+          },
+          {
+            "name": "index_account_isLoggedIn",
+            "unique": false,
+            "columnNames": [
+              "isLoggedIn"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_account_isLoggedIn` ON `${TABLE_NAME}` (`isLoggedIn`)"
+          }
+        ]
+      },
+      {
+        "tableName": "device",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `accountId` TEXT NOT NULL, `peripheralIdentifier` TEXT, `nickname` TEXT, `sku` TEXT, `mac` TEXT, `password` INTEGER, `isDeleted` INTEGER NOT NULL, `deviceName` TEXT, `deviceType` TEXT, `broadcastId` INTEGER, `broadcastIdString` TEXT, `userNumber` TEXT, `protocolType` TEXT, `createdAt` TEXT, `isSynced` INTEGER NOT NULL, `hasServerID` INTEGER NOT NULL, `token` TEXT, `productType` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "peripheralIdentifier",
+            "columnName": "peripheralIdentifier",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "nickname",
+            "columnName": "nickname",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sku",
+            "columnName": "sku",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "mac",
+            "columnName": "mac",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "password",
+            "columnName": "password",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "isDeleted",
+            "columnName": "isDeleted",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deviceName",
+            "columnName": "deviceName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "deviceType",
+            "columnName": "deviceType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "broadcastId",
+            "columnName": "broadcastId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "broadcastIdString",
+            "columnName": "broadcastIdString",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "userNumber",
+            "columnName": "userNumber",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "protocolType",
+            "columnName": "protocolType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isSynced",
+            "columnName": "isSynced",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hasServerID",
+            "columnName": "hasServerID",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "token",
+            "columnName": "token",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "productType",
+            "columnName": "productType",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_device_accountId",
+            "unique": false,
+            "columnNames": [
+              "accountId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_device_accountId` ON `${TABLE_NAME}` (`accountId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "account",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "accountId"
+            ],
+            "referencedColumns": [
+              "accountId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "body_scale",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `scaleType` TEXT, `bodyComp` INTEGER NOT NULL, `isWeighOnlyModeEnabledByOthers` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `device`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "scaleType",
+            "columnName": "scaleType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "bodyComp",
+            "columnName": "bodyComp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isWeighOnlyModeEnabledByOthers",
+            "columnName": "isWeighOnlyModeEnabledByOthers",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "device",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "device_meta_data",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `modelNumber` TEXT, `serialNumber` TEXT, `firmwareRevision` TEXT, `hardwareRevision` TEXT, `softwareRevision` TEXT, `manufacturerName` TEXT, `systemId` TEXT, `latestVersion` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `device`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modelNumber",
+            "columnName": "modelNumber",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "serialNumber",
+            "columnName": "serialNumber",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "firmwareRevision",
+            "columnName": "firmwareRevision",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "hardwareRevision",
+            "columnName": "hardwareRevision",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "softwareRevision",
+            "columnName": "softwareRevision",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "manufacturerName",
+            "columnName": "manufacturerName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "systemId",
+            "columnName": "systemId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "latestVersion",
+            "columnName": "latestVersion",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "device",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "bpm",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `hasNumericUsers` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `device`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hasNumericUsers",
+            "columnName": "hasNumericUsers",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "device",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "r4_scale_preference",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `displayName` TEXT, `displayMetrics` TEXT, `shouldFactoryReset` INTEGER NOT NULL, `shouldMeasureImpedance` INTEGER NOT NULL, `shouldMeasurePulse` INTEGER NOT NULL, `timeFormat` TEXT, `tzOffset` INTEGER, `wifiFotaScheduleTime` INTEGER, `isSynced` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `device`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "displayName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "displayMetrics",
+            "columnName": "displayMetrics",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "shouldFactoryReset",
+            "columnName": "shouldFactoryReset",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "shouldMeasureImpedance",
+            "columnName": "shouldMeasureImpedance",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "shouldMeasurePulse",
+            "columnName": "shouldMeasurePulse",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timeFormat",
+            "columnName": "timeFormat",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "tzOffset",
+            "columnName": "tzOffset",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "wifiFotaScheduleTime",
+            "columnName": "wifiFotaScheduleTime",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "isSynced",
+            "columnName": "isSynced",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "device",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "entry",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `accountId` TEXT NOT NULL, `entryTimestamp` TEXT NOT NULL, `serverTimestamp` TEXT, `opTimestamp` TEXT, `operationType` TEXT NOT NULL, `deviceType` TEXT NOT NULL, `deviceId` TEXT NOT NULL, `attempts` INTEGER NOT NULL, `unit` TEXT NOT NULL, `isSynced` INTEGER NOT NULL, FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entryTimestamp",
+            "columnName": "entryTimestamp",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverTimestamp",
+            "columnName": "serverTimestamp",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "opTimestamp",
+            "columnName": "opTimestamp",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "operationType",
+            "columnName": "operationType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deviceType",
+            "columnName": "deviceType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deviceId",
+            "columnName": "deviceId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attempts",
+            "columnName": "attempts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "unit",
+            "columnName": "unit",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isSynced",
+            "columnName": "isSynced",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_entry_accountId",
+            "unique": false,
+            "columnNames": [
+              "accountId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_entry_accountId` ON `${TABLE_NAME}` (`accountId`)"
+          },
+          {
+            "name": "index_entry_entryTimestamp",
+            "unique": false,
+            "columnNames": [
+              "entryTimestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_entry_entryTimestamp` ON `${TABLE_NAME}` (`entryTimestamp`)"
+          },
+          {
+            "name": "index_entry_accountId_entryTimestamp",
+            "unique": true,
+            "columnNames": [
+              "accountId",
+              "entryTimestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_entry_accountId_entryTimestamp` ON `${TABLE_NAME}` (`accountId`, `entryTimestamp`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "account",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "accountId"
+            ],
+            "referencedColumns": [
+              "accountId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "body_scale_entry",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `weight` REAL NOT NULL, `bodyFat` REAL, `muscleMass` REAL, `water` REAL, `bmi` REAL, `source` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `entry`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weight",
+            "columnName": "weight",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bodyFat",
+            "columnName": "bodyFat",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "muscleMass",
+            "columnName": "muscleMass",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "water",
+            "columnName": "water",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "bmi",
+            "columnName": "bmi",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "entry",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "body_scale_entry_metric",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `bmr` REAL, `metabolicAge` INTEGER, `proteinPercent` REAL, `pulse` INTEGER, `skeletalMusclePercent` REAL, `subcutaneousFatPercent` REAL, `visceralFatLevel` REAL, `boneMass` REAL, `impedance` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `body_scale_entry`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bmr",
+            "columnName": "bmr",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "metabolicAge",
+            "columnName": "metabolicAge",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "proteinPercent",
+            "columnName": "proteinPercent",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "pulse",
+            "columnName": "pulse",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "skeletalMusclePercent",
+            "columnName": "skeletalMusclePercent",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "subcutaneousFatPercent",
+            "columnName": "subcutaneousFatPercent",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "visceralFatLevel",
+            "columnName": "visceralFatLevel",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "boneMass",
+            "columnName": "boneMass",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "impedance",
+            "columnName": "impedance",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "body_scale_entry",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "bpm_entry",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `systolic` INTEGER NOT NULL, `diastolic` INTEGER NOT NULL, `pulse` INTEGER NOT NULL, `meanArterial` TEXT NOT NULL, `note` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `entry`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "systolic",
+            "columnName": "systolic",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "diastolic",
+            "columnName": "diastolic",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pulse",
+            "columnName": "pulse",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "meanArterial",
+            "columnName": "meanArterial",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "entry",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "logs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `accountId` TEXT NOT NULL, `sessionId` TEXT NOT NULL, `tag` TEXT NOT NULL, `tagId` TEXT NOT NULL, `type` TEXT NOT NULL, `message` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `data` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tag",
+            "columnName": "tag",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tagId",
+            "columnName": "tagId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "message",
+            "columnName": "message",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "data",
+            "columnName": "data",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_logs_accountId",
+            "unique": false,
+            "columnNames": [
+              "accountId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_logs_accountId` ON `${TABLE_NAME}` (`accountId`)"
+          },
+          {
+            "name": "index_logs_sessionId",
+            "unique": false,
+            "columnNames": [
+              "sessionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_logs_sessionId` ON `${TABLE_NAME}` (`sessionId`)"
+          },
+          {
+            "name": "index_logs_type",
+            "unique": false,
+            "columnNames": [
+              "type"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_logs_type` ON `${TABLE_NAME}` (`type`)"
+          },
+          {
+            "name": "index_logs_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_logs_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ]
+      },
+      {
+        "tableName": "weight_comp_settings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `height` INTEGER NOT NULL, `activityLevel` TEXT NOT NULL, `weightUnit` TEXT NOT NULL, `isSynced` INTEGER NOT NULL, PRIMARY KEY(`accountId`), FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "height",
+            "columnName": "height",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activityLevel",
+            "columnName": "activityLevel",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weightUnit",
+            "columnName": "weightUnit",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isSynced",
+            "columnName": "isSynced",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "account",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "accountId"
+            ],
+            "referencedColumns": [
+              "accountId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "goal_settings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `goalType` TEXT, `weight` REAL NOT NULL, `goalWeight` TEXT NOT NULL, `goalPercent` REAL NOT NULL, `isSynced` INTEGER NOT NULL, PRIMARY KEY(`accountId`), FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "goalType",
+            "columnName": "goalType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "weight",
+            "columnName": "weight",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "goalWeight",
+            "columnName": "goalWeight",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "goalPercent",
+            "columnName": "goalPercent",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isSynced",
+            "columnName": "isSynced",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "account",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "accountId"
+            ],
+            "referencedColumns": [
+              "accountId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "streaks_settings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `isStreakOn` INTEGER NOT NULL, `streakTimestamp` TEXT NOT NULL, `isSynced` INTEGER NOT NULL, PRIMARY KEY(`accountId`), FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isStreakOn",
+            "columnName": "isStreakOn",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "streakTimestamp",
+            "columnName": "streakTimestamp",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isSynced",
+            "columnName": "isSynced",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "account",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "accountId"
+            ],
+            "referencedColumns": [
+              "accountId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "weightless_settings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `isWeightlessOn` INTEGER NOT NULL, `weightlessTimestamp` TEXT NOT NULL, `weightlessWeight` REAL NOT NULL, `isSynced` INTEGER NOT NULL, PRIMARY KEY(`accountId`), FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isWeightlessOn",
+            "columnName": "isWeightlessOn",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weightlessTimestamp",
+            "columnName": "weightlessTimestamp",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weightlessWeight",
+            "columnName": "weightlessWeight",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isSynced",
+            "columnName": "isSynced",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "account",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "accountId"
+            ],
+            "referencedColumns": [
+              "accountId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "notification_settings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `shouldSendEntryNotifications` INTEGER NOT NULL, `shouldSendWeightInEntryNotifications` INTEGER NOT NULL, `isSynced` INTEGER NOT NULL, PRIMARY KEY(`accountId`), FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "shouldSendEntryNotifications",
+            "columnName": "shouldSendEntryNotifications",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "shouldSendWeightInEntryNotifications",
+            "columnName": "shouldSendWeightInEntryNotifications",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isSynced",
+            "columnName": "isSynced",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "account",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "accountId"
+            ],
+            "referencedColumns": [
+              "accountId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "dashboard_settings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `dashboardMetrics` TEXT NOT NULL, `dashboardMilestones` TEXT NOT NULL, `dashboardType` TEXT NOT NULL, `isSynced` INTEGER NOT NULL, PRIMARY KEY(`accountId`), FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dashboardMetrics",
+            "columnName": "dashboardMetrics",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dashboardMilestones",
+            "columnName": "dashboardMilestones",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dashboardType",
+            "columnName": "dashboardType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isSynced",
+            "columnName": "isSynced",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "account",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "accountId"
+            ],
+            "referencedColumns": [
+              "accountId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "integrations_settings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `isFitbitOn` INTEGER NOT NULL, `isFitbitValid` INTEGER NOT NULL, `isHealthConnectOn` INTEGER NOT NULL, `isHealthKitOn` INTEGER NOT NULL, `isMFPOn` INTEGER NOT NULL, `isMFPValid` INTEGER NOT NULL, `isSynced` INTEGER NOT NULL, PRIMARY KEY(`accountId`), FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isFitbitOn",
+            "columnName": "isFitbitOn",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isFitbitValid",
+            "columnName": "isFitbitValid",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isHealthConnectOn",
+            "columnName": "isHealthConnectOn",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isHealthKitOn",
+            "columnName": "isHealthKitOn",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMFPOn",
+            "columnName": "isMFPOn",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMFPValid",
+            "columnName": "isMFPValid",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isSynced",
+            "columnName": "isSynced",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "account",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "accountId"
+            ],
+            "referencedColumns": [
+              "accountId"
+            ]
+          }
+        ]
+      }
+    ],
+    "views": [
+      {
+        "viewName": "entry_view",
+        "createSql": "CREATE VIEW `${VIEW_NAME}` AS SELECT * FROM entry e\n        WHERE e.operationType != 'delete'\n          AND NOT EXISTS (\n            SELECT 1 FROM entry d\n            WHERE d.accountId = e.accountId\n              AND d.entryTimestamp = e.entryTimestamp\n              AND d.operationType = 'delete'\n          )"
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8597b95e0b65af5e9e4326476a913b0b')"
+    ]
+  }
+}

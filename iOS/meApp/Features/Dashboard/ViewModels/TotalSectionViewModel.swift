@@ -5,27 +5,14 @@
 //  Created by Assistant on 04/07/25.
 //
 
+import Charts
 import Foundation
 import SwiftUI
-import Charts
 
 /// ViewModel specifically for the Total time period chart view
 /// Handles all total-specific chart logic, state management, and data processing
 @MainActor
-final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
-    
-    static func == (lhs: TotalSectionViewModel, rhs: TotalSectionViewModel) -> Bool {
-        // Compare essential properties that affect rendering
-        lhs.timePeriod == rhs.timePeriod &&
-        lhs.selectedDate == rhs.selectedDate &&
-        lhs.showCrosshair == rhs.showCrosshair &&
-        lhs.scrollPosition == rhs.scrollPosition &&
-        lhs.isScrolling == rhs.isScrolling &&
-        lhs.yAxisDomain == rhs.yAxisDomain &&
-        lhs.yAxisTicks == rhs.yAxisTicks &&
-        lhs.chartFrame == rhs.chartFrame &&
-        lhs.dashboardStore === rhs.dashboardStore  // Reference equality for store
-    }
+final class TotalSectionViewModel: BaseSectionViewModel {
     
     // MARK: - Constants
     
@@ -39,7 +26,6 @@ final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
     override var timePeriod: TimePeriod {
         return .total
     }
-    
     
     override var hasXAxis: Bool {
         return false // Total period has no X-axis
@@ -58,16 +44,27 @@ final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
     
     /// Full date range for X-axis domain
     override var dateRange: ClosedRange<Date> {
-        // Use cached bounds for O(1) lookup instead of O(n) map + min/max
-        guard let store = dashboardStore,
-              let bounds = store.dataManager.getDateBounds(for: timePeriod) else {
+        guard let store = dashboardStore else {
             // Empty-state: provide a non-zero domain so leading/trailing baselines render
             // Center around current scroll position to keep UX consistent with other sections
             let center = scrollPosition
             let halfWindow: TimeInterval = 24 * 60 * 60 // 1 day
             return center.addingTimeInterval(-halfWindow)...center.addingTimeInterval(halfWindow)
         }
-        
+
+        let bounds: (min: Date, max: Date)
+        if let cachedBounds = store.dataManager.getDateBounds(for: timePeriod) {
+            bounds = cachedBounds
+        } else {
+            let operations = store.continuousOperations
+            guard let minDate = operations.first?.date, let maxDate = operations.last?.date else {
+                let center = scrollPosition
+                let halfWindow: TimeInterval = 24 * 60 * 60
+                return center.addingTimeInterval(-halfWindow)...center.addingTimeInterval(halfWindow)
+            }
+            bounds = (minDate, maxDate)
+        }
+
         let minDate = bounds.min
         let maxDate = bounds.max
         let calendar = Calendar.current
@@ -121,14 +118,7 @@ final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
         let operations = chartOperations
         
         // Get Y-axis scale from graph manager
-        let yAxisScale = store.graphManager.getYAxisScale(
-            from: operations,
-            goalWeight: goalWeight,
-            isWeightlessMode: store.isWeightlessModeEnabled,
-            anchorWeight: store.weightlessAnchorWeight,
-            convertWeight: store.goalManager.convertWeightToDisplay,
-            chartHeight: chartFrame.height
-        )
+        let yAxisScale = store.yAxisScale(for: operations, chartHeight: chartFrame.height)
         
         self.yAxisDomain = yAxisScale.domain
         self.yAxisTicks = yAxisScale.ticks
@@ -137,8 +127,8 @@ final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
     override func configure(with store: DashboardStore) {
         self.dashboardStore = store
         // No scroll positioning for total view - use store's current position
-        self.scrollPosition = store.graph.xScrollPosition
-        self.isScrolling = store.graph.isScrolling
+        self.scrollPosition = store.state.graph.xScrollPosition
+        self.isScrolling = store.state.graph.isScrolling
         updateYAxisConfiguration()
         // Sync with any existing cached Y-axis values from the store
         syncYAxisFromStore()
@@ -150,15 +140,16 @@ final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
     /// - Clear selection if tapping in padded areas outside data (domain padding exists in total view).
     override func handleChartSelection(at date: Date?) {
         guard let date = date else { return }
-        guard !chartOperations.isEmpty else {
+        guard !chartSeriesData.isEmpty else {
             selectedDate = nil
             showCrosshair = false
             return
         }
 
-        // Determine actual plotted data bounds (without padded domain)
-        let ops = chartOperations.sorted { $0.date < $1.date }
-        guard let first = ops.first?.date, let last = ops.last?.date else {
+        // Snap against the actual plotted X values, not the raw operation dates.
+        // This matters for BPM total/year charts where the chart renders month aggregates.
+        let plottedDates = Array(Set(chartSeriesData.map { plotXDate(for: $0.date) })).sorted()
+        guard let first = plottedDates.first, let last = plottedDates.last else {
             selectedDate = nil
             showCrosshair = false
             return
@@ -180,10 +171,10 @@ final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
         let clampedDate = min(max(date, first), last)
 
         // Snap to the nearest real data point date
-        if let nearest = ops.min(by: { a, b in
-            abs(a.date.timeIntervalSince(clampedDate)) < abs(b.date.timeIntervalSince(clampedDate))
+        if let nearest = plottedDates.min(by: { firstDate, secondDate in
+            abs(firstDate.timeIntervalSince(clampedDate)) < abs(secondDate.timeIntervalSince(clampedDate))
         }) {
-            selectedDate = nearest.date
+            selectedDate = nearest
             showCrosshair = true
             // Let DashboardStore update metrics via handleChartSelection(at:)
         } else {
@@ -198,9 +189,10 @@ final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
         // Use the padded dateRange to align overlay positions with Chart plotting
         let domain = self.dateRange
         let totalTimeRange = domain.upperBound.timeIntervalSince(domain.lowerBound)
+        let effectiveDate = plotXDate(for: date)
         let xPosition: CGFloat
         if totalTimeRange > 0 {
-            let timeFromStart = date.timeIntervalSince(domain.lowerBound)
+            let timeFromStart = effectiveDate.timeIntervalSince(domain.lowerBound)
             let xRatio = timeFromStart / totalTimeRange
             xPosition = chartFrame.width * xRatio
         } else {
@@ -237,7 +229,6 @@ final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
     func getPointSizeForTotal() -> CGFloat {
         return pointSize // Use the base point size
     }
-    
     
     // MARK: - No-op methods for total view (no scrolling)
     override func handleScrollPositionChange(_ newPosition: Date?) {

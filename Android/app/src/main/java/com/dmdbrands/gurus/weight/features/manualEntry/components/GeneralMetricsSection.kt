@@ -53,6 +53,7 @@ fun GeneralMetricsSection(
                 .fillMaxWidth()
                 .focusRequester(bmiFocusRequester),
             index = 0,
+            testTag = "bmi_field",
         )
         AnimatedAppInput(
             formControl = controls.bodyFat,
@@ -66,6 +67,7 @@ fun GeneralMetricsSection(
                 .fillMaxWidth()
                 .focusRequester(bodyFatFocusRequester),
             index = 1,
+            testTag = "body_fat_field",
         )
         AnimatedAppInput(
             formControl = controls.muscleMass,
@@ -79,6 +81,7 @@ fun GeneralMetricsSection(
                 .fillMaxWidth()
                 .focusRequester(muscleMassFocusRequester),
             index = 2,
+            testTag = "muscle_mass_field",
         )
         AnimatedAppInput(
             formControl = controls.bodyWater,
@@ -92,6 +95,7 @@ fun GeneralMetricsSection(
                 .fillMaxWidth()
                 .focusRequester(bodyWaterFocusRequester),
             index = 3,
+            testTag = "body_water_field",
         )
     }
 }

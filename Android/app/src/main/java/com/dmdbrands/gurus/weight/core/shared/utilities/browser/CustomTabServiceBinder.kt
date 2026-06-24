@@ -41,7 +41,8 @@ class CustomTabServiceBinder(
                 }
             }
 
-        CustomTabsClient.bindCustomTabsService(context, packageName, connection!!)
+        val conn = connection ?: return
+        CustomTabsClient.bindCustomTabsService(context, packageName, conn)
     }
 
     fun unbind() {

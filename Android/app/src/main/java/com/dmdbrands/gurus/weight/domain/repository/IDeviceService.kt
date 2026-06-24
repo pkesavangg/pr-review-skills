@@ -21,6 +21,9 @@ interface IDeviceService {
   val isWeightOnlyModeAlertShown: MutableStateFlow<Boolean>
   val hasBluetoothWifiScale: Flow<Boolean>
 
+  /** Emits true when at least one paired device is a Weight Scale. */
+  val hasWeightScale: Flow<Boolean>
+
   /**
    * Set the current account ID and initialize scale data for that account.
    * This should be called when the user logs in or switches accounts.

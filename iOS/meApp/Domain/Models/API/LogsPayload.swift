@@ -43,7 +43,13 @@ enum LogEntryData: Codable {
             self = .string(str)
         } else {
             // For decoding, we'll just try to decode as string since we mainly encode
-            throw DecodingError.typeMismatch(LogEntryData.self, DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Expected string or array"))
+            throw DecodingError.typeMismatch(
+                LogEntryData.self,
+                DecodingError.Context(
+                    codingPath: decoder.codingPath,
+                    debugDescription: "Expected string or array"
+                )
+            )
         }
     }
-} 
+}

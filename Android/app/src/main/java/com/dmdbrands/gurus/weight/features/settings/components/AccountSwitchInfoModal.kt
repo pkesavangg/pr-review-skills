@@ -69,7 +69,7 @@ fun AccountSwitchInfoModal(
                     ) {
                         AppProfileAvatar(
                             text = userInitial,
-                            size = 72.dp,
+                            size = 55.dp,
                             isInfoIcon = true,
                             isActive = true,
                             enabled = true,

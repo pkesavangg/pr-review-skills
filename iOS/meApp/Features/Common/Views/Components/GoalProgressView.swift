@@ -1,4 +1,4 @@
- import SwiftUI
+import SwiftUI
 
 /// Stand-alone view that displays a user’s goal progress. It mirrors the
 /// styling of `GoalProgressCardView` but pulls its own data via
@@ -86,12 +86,11 @@ struct GoalProgressView: View {
                 text: lang.setGoalWeight,
                 type: .filledSuccess,
                 size: .large,
-                isDisabled: isSetGoalButtonDisabled ?? false,
-                action: {
+                isDisabled: isSetGoalButtonDisabled ?? false
+            ) {
                     tabViewModel.navigateToGoalSetting()
                 }
-            )
-            .padding(.vertical,.spacingXS)
+            .padding(.vertical, .spacingXS)
         }
         .frame(maxWidth: .infinity)
     }
@@ -114,7 +113,7 @@ struct GoalProgressView: View {
 
     // MARK: - Maintain goal UI (no progress bar)
     private var maintainGoalView: some View {
-        VStack{
+        VStack {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 deltaText
                 Text("\(unitFor(value: abs(viewModel.delta))) to \(formatGoalWeight(viewModel.goalWeight)) goal weight")

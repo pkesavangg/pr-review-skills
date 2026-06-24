@@ -22,8 +22,19 @@ struct MetricDetailView: View {
     let measurementLabel: String?
     
     private let placeholder = "--"
-
-    private var config: MetricData { BodyMetrics.config[metric]! }
+    private var config: MetricData {
+        BodyMetrics.config[metric]
+        ?? BodyMetrics.config[.weight]
+        ?? MetricData(
+            unit: "",
+            label: MetricStrings.weight,
+            bodyCompositionRelated: true,
+            icon: AppAssets.bmiIcon
+        )
+    }
+    private var fallbackBrowserURL: URL {
+        URL(string: URLStrings.baseUrl) ?? AppConstants.LegalURLs.greaterGoodsWebsite
+    }
 
     // Extract raw metric value from DTO (no SwiftData access needed)
     private var rawValue: Double? {
@@ -111,20 +122,20 @@ struct MetricDetailView: View {
     }
 
     // MARK: - Scale Preference Helpers
-    private var allScales: [Device] { ScaleService.shared.scales }
-    private var heartRateDisabledScales: [Device] {
+    private var allScales: [DeviceSnapshot] { DeviceService.shared.scales }
+    private var heartRateDisabledScales: [DeviceSnapshot] {
         allScales.filter { device in
             guard let pref = device.r4ScalePreference else { return false }
             return pref.shouldMeasureImpedance && !pref.shouldMeasurePulse
         }
     }
-    private var activePreference: R4ScalePreference? { allScales.first?.r4ScalePreference }
-    private var selectedDisabledPreference: R4ScalePreference? { heartRateDisabledScales.first?.r4ScalePreference }
+    private var activePreference: R4ScalePreferenceSnapshot? { allScales.first?.r4ScalePreference }
+    private var selectedDisabledPreference: R4ScalePreferenceSnapshot? { heartRateDisabledScales.first?.r4ScalePreference }
     private var isHeartRateOnBannerState: Bool { heartRateDisabledScales.isEmpty }
-    private var selectedModeFromPreference: ScaleModes { (activePreference?.shouldMeasureImpedance ?? true) ? .allBodyMetrics : .weightOnly }
-    /// Preferred scale for presenting ScaleModes when exactly one scale needs update.
+    private var selectedModeFromPreference: DeviceModes { (activePreference?.shouldMeasureImpedance ?? true) ? .allBodyMetrics : .weightOnly }
+    /// Preferred scale for presenting DeviceModes when exactly one scale needs update.
     private var selectedScale: Device? {
-        heartRateDisabledScales.first ?? ScaleService.shared.scales.first
+        (heartRateDisabledScales.first ?? DeviceService.shared.scales.first)?.toDevice()
     }
 
     var body: some View {
@@ -138,7 +149,7 @@ struct MetricDetailView: View {
                       Text(pre)
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
-                        .padding(.trailing, .spacingXS/2)
+                        .padding(.trailing, .spacingXS / 2)
                     }
                       Text(formattedValue)
                         .fontOpenSans(.heading2)
@@ -149,13 +160,13 @@ struct MetricDetailView: View {
                       Text(weightUnitLabel)
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
-                        .padding(.leading, .spacingXS/2)
+                        .padding(.leading, .spacingXS / 2)
                     }
                     if !config.unit.isEmpty {
                       Text(config.unit)
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
-                        .padding(.leading, .spacingXS/2)
+                        .padding(.leading, .spacingXS / 2)
                     }
                   }
                     // Measurement date/placeholder
@@ -172,7 +183,7 @@ struct MetricDetailView: View {
                                 if disabled.count == 1 {
                                     showScaleModesSheet = true
                                 } else if disabled.count > 1 {
-                                    // Dismiss this modal first, then route to My Scales via Settings tab routing
+                                    // Dismiss this modal first, then route to My Devices via Settings tab routing
                                     dismiss()
                                     tabViewModel.navigateToSettings(route: .addEditScales)
                                 }
@@ -214,14 +225,13 @@ struct MetricDetailView: View {
                                 type: .inlineTextPrimary,
                                 size: .small,
                                 isDisabled: false,
-                                alignment: .leading,
-                                action: {
+                                alignment: .leading
+                            ) {
                                   if let url = URL(string: res.link) {
                                     presentingBrowserURL = url
                                     isBrowserPresented = true
                                   }
                                 }
-                            )
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .multilineTextAlignment(.leading)
                         }
@@ -232,14 +242,14 @@ struct MetricDetailView: View {
             .padding(.horizontal, .spacingSM)
         }
         .inAppBrowser(
-          url: presentingBrowserURL ?? URL(string: URLStrings.baseUrl)!,
+          url: presentingBrowserURL ?? fallbackBrowserURL,
           isPresented: $isBrowserPresented
       )
         .sheet(isPresented: $showScaleModesSheet) {
             if let scale = selectedScale {
-                ScaleModesScreen(
+                DeviceModesScreen(
                     scale: scale,
-                    isR4ScaleSetup: false,
+                    isR4DeviceSetup: false,
                     isPresentedAsSheet: true
                 )
                 .environmentObject(Theme.shared)

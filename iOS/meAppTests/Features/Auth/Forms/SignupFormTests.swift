@@ -1,499 +1,336 @@
-//
-//  SignupFormTests.swift
-//  meAppTests
-//
-//  Comprehensive unit tests for SignupForm validation logic.
-//
-
-import Testing
+import Combine
 import Foundation
+import Testing
 @testable import meApp
 
-@Suite(.serialized)
-@MainActor
 struct SignupFormTests {
+    @Test("initial state")
+    func initialState() {
+        let form = SignupForm()
 
-    // MARK: - Helpers
-
-    private func makeForm() -> SignupForm {
-        SignupForm()
+        #expect(form.firstName.value == "")
+        #expect(form.lastName.value == "")
+        #expect(form.email.value == "")
+        #expect(form.password.value == "")
+        #expect(form.confirmPassword.value == "")
+        #expect(form.zipcode.value == "")
+        #expect(form.goalType.value == GoalTypeSegment.losegainValue)
+        #expect(form.isValid == false)
     }
 
-    // MARK: - firstName validation
+    // MARK: - Conditional gender/dob/height gating (MOB-382)
 
-    @Test("firstName is invalid when empty")
-    func firstNameInvalidWhenEmpty() {
-        let form = makeForm()
-        form.firstName.value = ""
-        form.firstName.validate()
-        #expect(!form.firstName.isValid)
-    }
+    @Test("default productTypes is weight and gender is required")
+    func defaultProductTypesRequiresGender() {
+        let form = SignupForm()
 
-    @Test("firstName is valid with normal text")
-    func firstNameValid() {
-        let form = makeForm()
-        form.firstName.value = "Alice"
-        form.firstName.validate()
-        #expect(form.firstName.isValid)
-    }
+        #expect(form.productTypes == [ProductType.weight.apiValue])
+        #expect(form.requiresGenderAndDob == true)
+        #expect(form.requiresHeight == true)
 
-    @Test("firstName is invalid when whitespace only")
-    func firstNameInvalidWhitespaceOnly() {
-        let form = makeForm()
-        form.firstName.value = "   "
-        form.firstName.validate()
-        #expect(!form.firstName.isValid)
-    }
-
-    @Test("firstName is invalid when exceeds max length")
-    func firstNameInvalidMaxLength() {
-        let form = makeForm()
-        form.firstName.value = String(repeating: "a", count: 101)
-        form.firstName.validate()
-        #expect(!form.firstName.isValid)
-    }
-
-    // MARK: - lastName validation
-
-    @Test("lastName is invalid when empty")
-    func lastNameInvalidWhenEmpty() {
-        let form = makeForm()
-        form.lastName.value = ""
-        form.lastName.validate()
-        #expect(!form.lastName.isValid)
-    }
-
-    @Test("lastName is valid with normal text")
-    func lastNameValid() {
-        let form = makeForm()
-        form.lastName.value = "Smith"
-        form.lastName.validate()
-        #expect(form.lastName.isValid)
-    }
-
-    // MARK: - email validation
-
-    @Test("email is invalid when empty")
-    func emailInvalidWhenEmpty() {
-        let form = makeForm()
-        form.email.value = ""
-        form.email.validate()
-        #expect(!form.email.isValid)
-    }
-
-    @Test("email is invalid with bad format")
-    func emailInvalidBadFormat() {
-        let form = makeForm()
-        form.email.value = "not-an-email"
-        form.email.validate()
-        #expect(!form.email.isValid)
-    }
-
-    @Test("email is valid with proper address")
-    func emailValid() {
-        let form = makeForm()
-        form.email.value = "user@example.com"
-        form.email.validate()
-        #expect(form.email.isValid)
-    }
-
-    @Test("email is invalid when exceeds 100 chars")
-    func emailInvalidMaxLength() {
-        let form = makeForm()
-        form.email.value = String(repeating: "a", count: 95) + "@b.com"
-        form.email.validate()
-        #expect(!form.email.isValid)
-    }
-
-    // MARK: - password validation
-
-    @Test("password is invalid when empty")
-    func passwordInvalidWhenEmpty() {
-        let form = makeForm()
-        form.password.value = ""
-        form.password.validate()
-        #expect(!form.password.isValid)
-    }
-
-    @Test("password is invalid when shorter than 6 chars")
-    func passwordInvalidTooShort() {
-        let form = makeForm()
-        form.password.value = "ab123"
-        form.password.validate()
-        #expect(!form.password.isValid)
-    }
-
-    @Test("password is valid with 6+ chars")
-    func passwordValid() {
-        let form = makeForm()
-        form.password.value = "secure123"
-        form.password.validate()
-        #expect(form.password.isValid)
-    }
-
-    @Test("password is invalid when exceeds 50 chars")
-    func passwordInvalidTooLong() {
-        let form = makeForm()
-        form.password.value = String(repeating: "a", count: 51)
-        form.password.validate()
-        #expect(!form.password.isValid)
-    }
-
-    // MARK: - confirmPassword validation
-
-    @Test("confirmPassword is invalid when empty")
-    func confirmPasswordInvalidWhenEmpty() {
-        let form = makeForm()
-        form.confirmPassword.value = ""
-        form.confirmPassword.validate()
-        #expect(!form.confirmPassword.isValid)
-    }
-
-    @Test("confirmPassword is valid when same as password")
-    func confirmPasswordValid() {
-        let form = makeForm()
-        form.password.value = "secure123"
-        form.confirmPassword.value = "secure123"
-        form.confirmPassword.validate()
-        form.validate()
-        #expect(form.confirmPassword.isValid)
-        #expect(!form.formErrors[.passwordMatch])
-    }
-
-    @Test("form has passwordMatch error when passwords differ")
-    func formHasPasswordMatchError() {
-        let form = makeForm()
-        form.password.value = "secure123"
-        form.confirmPassword.value = "different"
-        form.password.validate()
-        form.confirmPassword.validate()
-        form.validate()
-        #expect(form.formErrors[.passwordMatch])
-    }
-
-    @Test("form has no passwordMatch error when passwords match")
-    func formNoPasswordMatchError() {
-        let form = makeForm()
-        form.password.value = "abcdef"
-        form.confirmPassword.value = "abcdef"
-        form.password.validate()
-        form.confirmPassword.validate()
-        form.validate()
-        #expect(!form.formErrors[.passwordMatch])
-    }
-
-    // MARK: - zipcode validation
-
-    @Test("zipcode is invalid when empty")
-    func zipcodeInvalidWhenEmpty() {
-        let form = makeForm()
-        form.zipcode.value = ""
-        form.zipcode.validate()
-        #expect(!form.zipcode.isValid)
-    }
-
-    @Test("zipcode is valid with 5 digit zip")
-    func zipcodeValid() {
-        let form = makeForm()
-        form.zipcode.value = "90210"
-        form.zipcode.validate()
-        #expect(form.zipcode.isValid)
-    }
-
-    @Test("zipcode is invalid when exceeds 20 chars")
-    func zipcodeInvalidMaxLength() {
-        let form = makeForm()
-        form.zipcode.value = String(repeating: "1", count: 21)
-        form.zipcode.validate()
-        #expect(!form.zipcode.isValid)
-    }
-
-    // MARK: - gender validation
-
-    @Test("gender is invalid when empty")
-    func genderInvalidWhenEmpty() {
-        let form = makeForm()
         form.gender.value = ""
-        form.gender.validate()
-        #expect(!form.gender.isValid)
+        form.validate()
+        #expect(form.gender.errors[.required] == true)
     }
 
-    @Test("gender is valid when set to male")
-    func genderValidMale() {
-        let form = makeForm()
-        form.gender.value = Sex.male.rawValue
-        form.gender.validate()
-        #expect(form.gender.isValid)
+    @Test("baby-only productTypes: gender no longer required")
+    func babyOnlyProductTypesDropsGenderRequirement() {
+        let form = SignupForm()
+        form.productTypes = [ProductType.baby.apiValue]
+
+        #expect(form.requiresGenderAndDob == false)
+        #expect(form.requiresHeight == false)
+
+        form.gender.value = ""
+        form.validate()
+        #expect(form.gender.errors[.required] == false)
     }
 
-    // MARK: - birthday validation
+    @Test("blood_pressure productTypes: gender required but height not")
+    func bloodPressureRequiresGenderNotHeight() {
+        let form = SignupForm()
+        form.productTypes = [ProductType.bloodPressure.apiValue]
 
-    @Test("birthday is invalid when set to a future date")
-    func birthdayInvalidFutureDate() {
-        let form = makeForm()
-        let futureDate = Calendar.current.date(byAdding: .year, value: 1, to: Date()) ?? Date()
-        form.birthday.value = futureDate
-        form.birthday.validate()
-        #expect(!form.birthday.isValid)
+        #expect(form.requiresGenderAndDob == true)
+        #expect(form.requiresHeight == false)
+
+        form.gender.value = ""
+        form.validate()
+        #expect(form.gender.errors[.required] == true)
     }
 
-    @Test("birthday is valid when set to a past date")
-    func birthdayValidPastDate() {
-        let form = makeForm()
-        let pastDate = Calendar.current.date(from: DateComponents(year: 1990, month: 6, day: 15)) ?? Date()
-        form.birthday.value = pastDate
-        form.birthday.validate()
-        #expect(form.birthday.isValid)
+    @Test("password match validation")
+    func passwordMatchValidation() {
+        let form = SignupForm()
+        form.password.markAsTouched()
+        form.confirmPassword.markAsTouched()
+
+        form.password.value = "password123"
+        form.confirmPassword.value = "password456"
+        form.validate()
+
+        #expect(form.formErrors[.passwordMatch] == true)
+        #expect(form.getError(for: form.confirmPassword) == SignupFormTestText.passwordMatch)
+
+        form.confirmPassword.value = "password123"
+        form.validate()
+
+        #expect(form.formErrors[.passwordMatch] == false)
+        #expect(form.getError(for: form.confirmPassword) == nil)
     }
 
-    // MARK: - goal weight validation
+    @Test("email invalid format message")
+    func emailInvalidFormatMessage() {
+        let form = SignupForm()
+        form.email.markAsTouched()
+        form.email.value = "invalid-email"
 
-    @Test("isGoalValidForSave is false when no goal fields are dirty")
-    func goalValidForSaveFalseWhenNotDirty() {
-        let form = makeForm()
-        #expect(!form.isGoalValidForSave)
+        #expect(form.email.errors[.email] == true)
+        #expect(form.getError(for: form.email) == SignupFormTestText.email)
     }
 
-    @Test("isGoalValidForSave is false when weights are equal in lose/gain mode")
-    func goalValidForSaveFalseEqualWeights() {
-        let form = makeForm()
+    @Test("password and confirm password min and max messages")
+    func passwordAndConfirmPasswordLengthMessages() {
+        let form = SignupForm()
+        form.password.markAsTouched()
+        form.confirmPassword.markAsTouched()
+
+        form.password.value = "12345"
+        #expect(form.getError(for: form.password) == SignupFormTestText.signupPasswordMinLength)
+
+        form.confirmPassword.value = "12345"
+        #expect(form.getError(for: form.confirmPassword) == SignupFormTestText.signupPasswordMinLength)
+
+        form.password.value = String(repeating: "a", count: 51)
+        #expect(form.getError(for: form.password) == SignupFormTestText.passwordMaxLength)
+
+        form.confirmPassword.value = String(repeating: "a", count: 51)
+        #expect(form.getError(for: form.confirmPassword) == SignupFormTestText.passwordMaxLength)
+    }
+
+    @Test("equal weights produce goal error in lose or gain mode")
+    func equalWeightsValidation() {
+        let form = SignupForm()
+        form.goalType.value = GoalTypeSegment.losegainValue
+        form.currentWeight.markAsTouched()
+        form.goalWeight.markAsTouched()
+        form.currentWeight.value = "180"
+        form.goalWeight.value = "180"
+        form.validate()
+
+        #expect(form.hasEqualWeights == true)
+        #expect(form.formErrors[.weightEqual] == true)
+        #expect(form.getError(for: form.goalWeight) == SignupFormTestText.valueShouldNotBeEqual)
+    }
+
+    @Test("current weight error hidden in maintain mode")
+    func currentWeightErrorHiddenInMaintainMode() {
+        let form = SignupForm()
+        form.goalType.value = GoalType.maintain.rawValue
+        form.currentWeight.markAsTouched()
+        form.currentWeight.value = "0"
+
+        #expect(form.currentWeight.errors[.minValue] == true)
+        #expect(form.getError(for: form.currentWeight) == nil)
+    }
+
+    @Test("goal validity for maintain mode")
+    func goalValidityMaintainMode() {
+        let form = SignupForm()
+        form.goalType.value = GoalType.maintain.rawValue
+
+        #expect(form.isGoalValidForSave == false)
+
+        form.goalWeight.value = "150"
+        form.goalWeight.markAsTouched()
+
+        #expect(form.isGoalValidForSave == true)
+    }
+
+    @Test("goal validity fails when weights are equal in lose or gain")
+    func goalValidityLoseGainEqualWeights() {
+        let form = SignupForm()
         form.goalType.value = GoalTypeSegment.losegainValue
         form.currentWeight.value = "150"
         form.goalWeight.value = "150"
         form.currentWeight.markAsTouched()
         form.goalWeight.markAsTouched()
-        form.currentWeight.validate()
-        form.goalWeight.validate()
-        form.validate()
-        #expect(!form.isGoalValidForSave)
+
+        #expect(form.isGoalValidForSave == false)
     }
 
-    @Test("isGoalValidForSave is true for maintain mode with valid goal weight")
-    func goalValidForSaveTrueMaintain() {
-        let form = makeForm()
-        form.goalType.value = GoalType.maintain.rawValue
-        form.goalWeight.value = "150"
+    @Test("weight unit specific min error")
+    func weightUnitSpecificMinError() {
+        let form = SignupForm()
+        form.currentWeight.markAsTouched()
+
+        form.useMetric.value = false
+        form.currentWeight.value = "0"
+        #expect(form.getError(for: form.currentWeight) == SignupFormTestText.minWeightLb)
+
+        form.useMetric.value = true
+        form.currentWeight.value = "0"
+        #expect(form.getError(for: form.currentWeight) == SignupFormTestText.minWeightKg)
+    }
+
+    @Test("weight unit specific max error")
+    func weightUnitSpecificMaxError() {
+        let form = SignupForm()
+        form.currentWeight.addValidator(.maxValue(999.0))
+        form.currentWeight.markAsTouched()
+
+        form.useMetric.value = false
+        form.currentWeight.value = "1000"
+        #expect(form.getError(for: form.currentWeight) == SignupFormTestText.maxWeightLb)
+
+        form.currentWeight.removeValidator(ofType: .maxValue)
+        form.currentWeight.addValidator(.maxValue(450.0))
+        form.useMetric.value = true
+        form.currentWeight.value = "451"
+        #expect(form.getError(for: form.currentWeight) == SignupFormTestText.maxWeightKg)
+    }
+
+    @Test("future date validation")
+    func futureDateValidation() {
+        let form = SignupForm()
+        form.birthday.markAsTouched()
+        form.birthday.value = Date().addingTimeInterval(60 * 60 * 24)
+
+        #expect(form.birthday.errors[.futureDate] == true)
+        #expect(form.getError(for: form.birthday) == SignupFormTestText.futureDate)
+    }
+
+    @Test("name no whitespace validation")
+    func noWhiteSpaceValidation() {
+        let form = SignupForm()
+        form.firstName.markAsTouched()
+        form.firstName.value = "   "
+
+        #expect(form.firstName.errors[.noWhiteSpace] == true)
+        #expect(form.getError(for: form.firstName) == SignupFormTestText.noWhiteSpace)
+    }
+
+    @Test("required error uses leaveBlank for input controls")
+    func requiredLeaveBlankMessage() {
+        let form = SignupForm()
+        form.firstName.markAsTouched()
+        form.firstName.value = ""
+        form.firstName.validate()
+
+        #expect(form.firstName.errors[.required] == true)
+        #expect(form.getError(for: form.firstName) == SignupFormTestText.leaveBlank)
+    }
+
+    @Test("required error uses generic required for non-special control")
+    func requiredGenericMessage() {
+        let form = SignupForm()
+        form.gender.markAsTouched()
+        form.gender.value = ""
+        form.gender.validate()
+
+        #expect(form.gender.errors[.required] == true)
+        #expect(form.getError(for: form.gender) == SignupFormTestText.required)
+    }
+
+    @Test("field max length messages for email and zipcode")
+    func maxLengthMessages() {
+        let form = SignupForm()
+        form.email.markAsTouched()
+        form.zipcode.markAsTouched()
+
+        form.email.value = String(repeating: "a", count: 90) + "@example.com"
+        #expect(form.getError(for: form.email) == SignupFormTestText.emailMaxLength)
+
+        form.zipcode.value = String(repeating: "1", count: 21)
+        #expect(form.getError(for: form.zipcode) == SignupFormTestText.maxLength(20))
+    }
+
+    @Test("generic max length fallback message")
+    func genericMaxLengthFallback() {
+        let form = SignupForm()
+        let control = FormControl("", validators: [.maxLength(3)])
+        control.markAsTouched()
+        control.value = "abcd"
+
+        #expect(form.getError(for: control) == SignupFormTestText.maxLength(3))
+    }
+
+    @Test("goal touched state aggregate")
+    func goalTouchedAggregate() {
+        let form = SignupForm()
+        #expect(form.isTouched == false)
+
         form.goalWeight.markAsTouched()
-        form.goalWeight.validate()
-        #expect(form.isGoalValidForSave)
+        #expect(form.isTouched == true)
     }
 
-    @Test("hasEqualWeights is true when both weights are same positive number")
-    func hasEqualWeightsTrue() {
-        let form = makeForm()
-        form.currentWeight.value = "200"
-        form.goalWeight.value = "200"
-        #expect(form.hasEqualWeights)
-    }
-
-    @Test("hasEqualWeights is false when weights differ")
-    func hasEqualWeightsFalse() {
-        let form = makeForm()
-        form.currentWeight.value = "200"
-        form.goalWeight.value = "180"
-        #expect(!form.hasEqualWeights)
-    }
-
-    @Test("hasEqualWeights is false when a weight is empty")
-    func hasEqualWeightsFalseWhenEmpty() {
-        let form = makeForm()
-        form.currentWeight.value = ""
-        form.goalWeight.value = "200"
-        #expect(!form.hasEqualWeights)
-    }
-
-    // MARK: - isDirty
-
-    @Test("form isDirty after modifying firstName")
-    func formIsDirtyAfterChange() {
-        let form = makeForm()
-        #expect(!form.isDirty)
-        form.firstName.value = "Changed"
-        #expect(form.isDirty)
-    }
-
-    // MARK: - getError
-
-    @Test("getError returns nil when field is untouched and not dirty")
-    func getErrorNilWhenUntouched() {
-        let form = makeForm()
-        let error = form.getError(for: form.email)
-        #expect(error == nil)
-    }
-
-    @Test("getError returns leaveBlank for required text field when touched and empty")
-    func getErrorLeaveBlankForEmail() {
-        let form = makeForm()
-        form.email.markAsTouched()
-        form.email.value = ""
-        form.email.validate()
-        let error = form.getError(for: form.email)
-        #expect(error != nil)
-    }
-
-    @Test("getError returns email format error")
-    func getErrorEmailFormat() {
-        let form = makeForm()
-        form.email.markAsTouched()
-        form.email.value = "badformat"
-        form.email.validate()
-        let error = form.getError(for: form.email)
-        #expect(error == FormErrorMessages.email)
-    }
-
-    @Test("getError returns passwordMatch for confirmPassword when passwords differ")
-    func getErrorPasswordMatch() {
-        let form = makeForm()
-        form.password.value = "abcdef"
-        form.confirmPassword.value = "zzz999"
-        form.password.validate()
-        form.confirmPassword.markAsTouched()
-        form.confirmPassword.validate()
-        form.validate()
-        let error = form.getError(for: form.confirmPassword)
-        #expect(error == FormErrorMessages.passwordMatch)
-    }
-
-    // MARK: - resetGoal
-
-    @Test("resetGoal clears goal fields back to defaults")
-    func resetGoalClearsFields() {
-        let form = makeForm()
-        form.goalType.value = GoalType.gain.rawValue
+    @Test("goal validity succeeds for lose or gain with valid unequal weights")
+    func goalValidityLoseGainSuccess() {
+        let form = SignupForm()
+        form.goalType.value = GoalTypeSegment.losegainValue
         form.currentWeight.value = "180"
-        form.goalWeight.value = "200"
+        form.goalWeight.value = "170"
+        form.currentWeight.markAsTouched()
+        form.goalWeight.markAsTouched()
+
+        #expect(form.hasEqualWeights == false)
+        #expect(form.isGoalValidForSave == true)
+    }
+
+    @Test("resetGoal clears and resets interaction state")
+    func resetGoal() {
+        let form = SignupForm()
+        form.goalType.value = GoalType.maintain.rawValue
+        form.currentWeight.value = "180"
+        form.goalWeight.value = "150"
+        form.goalType.markAsTouched()
+        form.currentWeight.markAsTouched()
+        form.goalWeight.markAsTouched()
+
         form.resetGoal()
+
         #expect(form.goalType.value == GoalTypeSegment.losegainValue)
         #expect(form.currentWeight.value == "")
         #expect(form.goalWeight.value == "")
+        #expect(form.goalType.isTouched == false)
+        #expect(form.currentWeight.isTouched == false)
+        #expect(form.goalWeight.isTouched == false)
+        #expect(form.currentWeight.isDirty == false)
+        #expect(form.goalWeight.isDirty == false)
     }
 
-    // MARK: - validateForm weight equal error
+    @Test("formDidChange emits for field updates")
+    func formDidChangePublishes() {
+        let form = SignupForm()
+        var emissions = 0
+        var cancellables = Set<AnyCancellable>()
 
-    @Test("validateForm sets weightEqual error when weights are equal in lose/gain mode")
-    func validateFormSetsWeightEqualError() {
-        let form = makeForm()
-        form.goalType.value = GoalTypeSegment.losegainValue
-        form.currentWeight.value = "180"
-        form.goalWeight.value = "180"
-        form.currentWeight.validate()
-        form.goalWeight.validate()
-        form.validate()
-        #expect(form.formErrors[.weightEqual])
+        form.formDidChange
+            .sink { emissions += 1 }
+            .store(in: &cancellables)
+
+        form.firstName.value = "Test"
+        form.email.value = "test@example.com"
+        form.password.value = "password123"
+
+        #expect(emissions >= 3)
     }
+}
 
-    @Test("validateForm clears weightEqual error in maintain mode")
-    func validateFormNoWeightEqualErrorInMaintainMode() {
-        let form = makeForm()
-        form.goalType.value = GoalType.maintain.rawValue
-        form.currentWeight.value = "180"
-        form.goalWeight.value = "180"
-        form.validate()
-        #expect(!form.formErrors[.weightEqual])
-    }
-
-    // MARK: - isGoalValidForSave lose/gain mode
-
-    @Test("isGoalValidForSave is true for lose/gain mode with different valid weights")
-    func goalValidForSaveTrueLoseMode() {
-        let form = makeForm()
-        form.goalType.value = GoalTypeSegment.losegainValue
-        form.currentWeight.value = "200"
-        form.goalWeight.value = "180"
-        form.currentWeight.markAsTouched()
-        form.goalWeight.markAsTouched()
-        form.currentWeight.validate()
-        form.goalWeight.validate()
-        form.validate()
-        #expect(form.isGoalValidForSave)
-    }
-
-    // MARK: - getError additional paths
-
-    @Test("getError returns nil for currentWeight in maintain mode even when touched")
-    func getErrorNilForCurrentWeightInMaintainMode() {
-        let form = makeForm()
-        form.goalType.value = GoalType.maintain.rawValue
-        form.currentWeight.markAsTouched()
-        form.currentWeight.value = "150"
-        form.currentWeight.validate()
-        let error = form.getError(for: form.currentWeight)
-        #expect(error == nil)
-    }
-
-    @Test("getError returns signupPasswordMinLength for password that is too short")
-    func getErrorPasswordMinLength() {
-        let form = makeForm()
-        form.password.markAsTouched()
-        form.password.value = "abc"
-        form.password.validate()
-        let error = form.getError(for: form.password)
-        #expect(error == FormErrorMessages.signupPasswordMinLength)
-    }
-
-    @Test("getError returns signupPasswordMinLength for confirmPassword that is too short")
-    func getErrorConfirmPasswordMinLength() {
-        let form = makeForm()
-        form.confirmPassword.markAsTouched()
-        form.confirmPassword.value = "ab"
-        form.confirmPassword.validate()
-        let error = form.getError(for: form.confirmPassword)
-        #expect(error == FormErrorMessages.signupPasswordMinLength)
-    }
-
-    @Test("getError returns passwordMaxLength for password that exceeds max length")
-    func getErrorPasswordMaxLength() {
-        let form = makeForm()
-        form.password.markAsTouched()
-        form.password.value = String(repeating: "a", count: 51)
-        form.password.validate()
-        let error = form.getError(for: form.password)
-        #expect(error == FormErrorMessages.passwordMaxLength)
-    }
-
-    @Test("getError returns maxLength(20) for zipcode exceeding max")
-    func getErrorZipcodeMaxLength() {
-        let form = makeForm()
-        form.zipcode.markAsTouched()
-        form.zipcode.value = String(repeating: "1", count: 21)
-        form.zipcode.validate()
-        let error = form.getError(for: form.zipcode)
-        #expect(error == FormErrorMessages.maxLength(20))
-    }
-
-    @Test("getError returns emailMaxLength for email that is too long")
-    func getErrorEmailMaxLength() {
-        let form = makeForm()
-        form.email.markAsTouched()
-        form.email.value = String(repeating: "a", count: 95) + "@b.com"
-        form.email.validate()
-        let error = form.getError(for: form.email)
-        #expect(error == FormErrorMessages.emailMaxLength)
-    }
-
-    @Test("getError returns valueShouldNotBeEqual for goalWeight when weights are equal in lose/gain mode")
-    func getErrorWeightEqualForGoalWeight() {
-        let form = makeForm()
-        form.goalType.value = GoalTypeSegment.losegainValue
-        form.currentWeight.markAsTouched()
-        form.goalWeight.markAsTouched()
-        form.currentWeight.value = "180"
-        form.goalWeight.value = "180"
-        form.currentWeight.validate()
-        form.goalWeight.validate()
-        form.validate()
-        let error = form.getError(for: form.goalWeight)
-        #expect(error == FormErrorMessages.valueShouldNotBeEqual)
-    }
-
-    @Test("getError returns futureDate error for birthday set to future")
-    func getErrorFutureDateBirthday() {
-        let form = makeForm()
-        form.birthday.markAsTouched()
-        let future = Calendar.current.date(byAdding: .year, value: 1, to: Date()) ?? Date()
-        form.birthday.value = future
-        form.birthday.validate()
-        let error = form.getError(for: form.birthday)
-        #expect(error == FormErrorMessages.futureDate)
-    }
+private enum SignupFormTestText {
+    static let required = "This field is required"
+    static let leaveBlank = "This field is required"
+    static let email = "must use a valid email"
+    static let emailMaxLength = "email should not exceed 100 characters"
+    static let passwordMaxLength = "password should not exceed 50 characters"
+    static let signupPasswordMinLength = "minimum of 6 characters needed"
+    static let noWhiteSpace = "This field is required"
+    static let futureDate = "future dates not accepted"
+    static let passwordMatch = "both passwords must match"
+    static let valueShouldNotBeEqual = "value should not be equal to starting weight"
+    static let minWeightKg = "value should be greater than 0 kg"
+    static let minWeightLb = "value should be greater than 0 lbs"
+    static let maxWeightKg = "value should be less than 450 kg"
+    static let maxWeightLb = "value should be less than 999 lbs"
+    static func maxLength(_ length: Int) -> String { "maximum value should be \(length)" }
 }

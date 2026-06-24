@@ -1,96 +1,110 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
-import android.annotation.SuppressLint
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.theme.MeTheme
-import com.patrykandpatrick.vico.compose.cartesian.layer.continuous
+import com.patrykandpatrick.vico.compose.cartesian.axis.Axis
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianLayerRangeProvider
+import com.patrykandpatrick.vico.compose.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
+import com.patrykandpatrick.vico.compose.common.Fill
 import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
-import com.patrykandpatrick.vico.compose.common.fill
-import com.patrykandpatrick.vico.core.cartesian.axis.Axis
-import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartRanges
-import com.patrykandpatrick.vico.core.cartesian.data.CartesianLayerRangeProvider
-import com.patrykandpatrick.vico.core.cartesian.data.LineCartesianLayerModel
-import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
-import com.patrykandpatrick.vico.core.common.shape.CorneredShape
-
-internal typealias LineYTransform = (
-  series: List<LineCartesianLayerModel.Entry>,
-  yRange: CartesianChartRanges.YRange,
-  visibleXRange: ClosedFloatingPointRange<Double>,
-) -> DoubleArray?
+import android.annotation.SuppressLint
 
 /**
- * Builds a line layer driven by [rangeProvider]. When paired with [yTransform] +
- * [alwaysUseLiveRange] = true, vico invokes the transform on series-change / animation-target
- * change and projects cached output against the live yRange — used for a secondary line that
- * shares the primary's animated Y range without per-frame recomputation.
+ * Common composable for creating line layers with connection condition.
+ * Used for both primary and secondary layers with configurable color and axis position.
  */
 @SuppressLint("RestrictedApi")
 @Composable
-private fun lineLayer(
+internal fun rememberLineLayerWithConnection(
   segment: GraphSegment,
   lineColor: Color,
-  rangeProvider: CartesianLayerRangeProvider,
-  yTransform: LineYTransform? = null,
+  verticalAxisPosition: Axis.Position.Vertical,
+  rangeProvider: CartesianLayerRangeProvider = remember { CartesianLayerRangeProvider.auto() },
+  yTransform: ((
+    series: List<com.patrykandpatrick.vico.compose.cartesian.data.LineCartesianLayerModel.Entry>,
+    yRange: com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartRanges.YRange,
+    visibleXRange: ClosedFloatingPointRange<Double>,
+  ) -> DoubleArray?)? = null,
   alwaysUseLiveRange: Boolean = false,
 ): LineCartesianLayer {
+
   val lineThickness = if (segment == GraphSegment.TOTAL) 2.dp else 3.dp
   val pointSize = if (segment == GraphSegment.TOTAL) 5f else 8f
 
+  // Create line instance during composition (rememberLine is already memoized internally)
   val line = LineCartesianLayer.rememberLine(
-    fill = LineCartesianLayer.LineFill.single(fill(lineColor)),
-    stroke = LineCartesianLayer.LineStroke.continuous(thickness = lineThickness),
-    pointConnector = LineCartesianLayer.PointConnector.monotone(),
+    fill = LineCartesianLayer.LineFill.single(Fill(lineColor)),
+    stroke = LineCartesianLayer.LineStroke.Continuous(thickness = lineThickness),
+    interpolator = LineCartesianLayer.Interpolator.monotone(),
     pointProvider = LineCartesianLayer.PointProvider.single(
       point = LineCartesianLayer.Point(
         component = rememberShapeComponent(
-          fill(lineColor),
-          CorneredShape.Pill,
+          Fill(lineColor),
+          CircleShape,
           strokeThickness = 0.dp,
         ),
-        sizeDp = pointSize,
+        size = pointSize.dp,
       ),
     ),
   )
 
+  // Memoize lineProvider wrapper to prevent unnecessary recreations
   val lineProvider = remember(line) {
     LineCartesianLayer.LineProvider.series(listOf(line))
   }
 
   return rememberLineCartesianLayer(
     lineProvider = lineProvider,
-    verticalAxisPosition = Axis.Position.Vertical.End,
+    verticalAxisPosition = verticalAxisPosition,
     rangeProvider = rangeProvider,
     yTransform = yTransform,
     alwaysUseLiveRange = alwaysUseLiveRange,
   )
 }
 
+/**
+ * Convenience function for creating primary layer.
+ */
 @Composable
 internal fun primaryLayer(
   segment: GraphSegment,
-  rangeProvider: CartesianLayerRangeProvider,
-): LineCartesianLayer = lineLayer(
-  segment = segment,
-  lineColor = MeTheme.colorScheme.primaryAction,
-  rangeProvider = rangeProvider,
-)
+  rangeProvider: CartesianLayerRangeProvider = remember { CartesianLayerRangeProvider.auto() },
+): LineCartesianLayer {
+  return rememberLineLayerWithConnection(
+    segment = segment,
+    lineColor = MeTheme.colorScheme.primaryAction,
+    verticalAxisPosition = Axis.Position.Vertical.End,
+    rangeProvider = rangeProvider,
+  )
+}
 
+/**
+ * Convenience function for creating secondary layer.
+ * Secondary metrics use their own range provider for independent Y-axis scaling.
+ */
 @Composable
 internal fun secondaryLayer(
   segment: GraphSegment,
-  rangeProvider: CartesianLayerRangeProvider,
-  yTransform: LineYTransform,
-): LineCartesianLayer = lineLayer(
-  segment = segment,
-  lineColor = MeTheme.colorScheme.secondaryAction,
-  rangeProvider = rangeProvider,
-  yTransform = yTransform,
-  alwaysUseLiveRange = true,
-)
+  rangeProvider: CartesianLayerRangeProvider = remember { CartesianLayerRangeProvider.auto() },
+  yTransform: ((
+    series: List<com.patrykandpatrick.vico.compose.cartesian.data.LineCartesianLayerModel.Entry>,
+    yRange: com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartRanges.YRange,
+    visibleXRange: ClosedFloatingPointRange<Double>,
+  ) -> DoubleArray?)? = null,
+): LineCartesianLayer {
+  return rememberLineLayerWithConnection(
+    segment = segment,
+    lineColor = MeTheme.colorScheme.secondaryAction,
+    verticalAxisPosition = Axis.Position.Vertical.End,
+    rangeProvider = rangeProvider,
+    yTransform = yTransform,
+    alwaysUseLiveRange = true,
+  )
+}

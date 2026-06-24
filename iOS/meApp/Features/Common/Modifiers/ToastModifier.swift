@@ -4,6 +4,7 @@
 //
 //  Created by Kesavan Panchabakesan on 04/06/25.
 //
+import Combine
 import SwiftUI
 
 /// A view modifier that presents a customizable toast notification with optional action button.
@@ -43,6 +44,7 @@ import SwiftUI
 struct ToastModifier: ViewModifier {
     @Environment(\.appTheme) private var theme
     @Binding var toastData: ToastModel?
+    var dismissSignal: AnyPublisher<Void, Never>?
 
     @State private var offset = CGSize.zero
     @State private var isDragging = false
@@ -75,12 +77,24 @@ struct ToastModifier: ViewModifier {
                     addToast(toast)
                 }
             }
+            .ifLet(dismissSignal) { view, signal in
+                view.onReceive(signal) { _ in
+                    if let first = activeToasts.first {
+                        removeToast(id: first.id)
+                    }
+                }
+            }
         }
     }
     
+// swiftlint:disable:next function_body_length
     private func toastView(for data: ToastModel) -> some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: .spacingXS) {
+                if let headerView = data.headerView {
+                    headerView
+                }
+
                 if let title = data.title {
                     Text(title)
                         .fontOpenSans(.heading5)
@@ -90,9 +104,11 @@ struct ToastModifier: ViewModifier {
                         .truncationMode(.tail)
                 }
 
-                Text(data.message)
-                    .fontOpenSans(.body2)
-                    .foregroundColor(theme.textBody)
+                if !data.message.isEmpty {
+                    Text(data.message)
+                        .fontOpenSans(.body2)
+                        .foregroundColor(theme.textBody)
+                }
 
                 if let buttonTextView = data.btnTextView {
                     Button {
@@ -112,7 +128,7 @@ struct ToastModifier: ViewModifier {
         .padding(.spacingSM)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(width: min(UIScreen.main.bounds.width * 0.9, 550))
-        .background(theme.supportToastBackground)
+        .background(data.isError ? theme.textError.opacity(0.12) : theme.supportToastBackground)
         .cornerRadius(.radiusSM)
         .padding()
         .offset(x: offset.width, y: offset.height)
@@ -132,7 +148,8 @@ struct ToastModifier: ViewModifier {
                         }
                         
                         // Delay the removal to match the animation
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 300_000_000)
                             if let firstToast = activeToasts.first {
                                 removeToast(id: firstToast.id)
                             }
@@ -162,7 +179,8 @@ struct ToastModifier: ViewModifier {
         isDragging = false
         
         // Add new toast after delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             withAnimation(.spring(response: 0.5, dampingFraction: 0.65)) {
                 let newToastItem = (id: UUID(), toast: toast)
                 activeToasts.append(newToastItem)
@@ -175,7 +193,7 @@ struct ToastModifier: ViewModifier {
                 let newTimer = DispatchSource.makeTimerSource()
                 newTimer.schedule(deadline: .now() + toast.duration)
                 newTimer.setEventHandler {
-                    DispatchQueue.main.async {
+                    Task { @MainActor in
                         removeToast(id: newToastItem.id)
                     }
                 }
@@ -189,7 +207,7 @@ struct ToastModifier: ViewModifier {
     }
     
     private func removeToast(id: UUID) {
-        let toastToRemove = activeToasts.first(where: { $0.id == id })?.toast
+        let toastToRemove = activeToasts.first { $0.id == id }?.toast
         toastToRemove?.onDismiss?()
         
         withAnimation(.spring(response: 0.5, dampingFraction: 0.65)) {
@@ -200,7 +218,8 @@ struct ToastModifier: ViewModifier {
             toastToRemove?.onActiveCountChanged?(activeToasts.count)
             
             // Reset offset and dragging state after toast is removed
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 500_000_000)
                 offset = .zero
                 isDragging = false
             }

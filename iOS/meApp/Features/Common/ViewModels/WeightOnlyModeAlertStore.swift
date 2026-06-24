@@ -5,27 +5,33 @@
 //  Created by AI Assistant on 14/08/25.
 //
 
-import Foundation
 import Combine
+import Foundation
 
 /// Store for managing weight-only mode alert state and actions
 @MainActor
 final class WeightOnlyModeAlertStore: ObservableObject {
     // MARK: - Dependencies
-    @Injector private var scaleService: ScaleService
-    @Injector private var bluetoothService: BluetoothService
-    @Injector private var notificationService: NotificationHelperService
+    private let deviceService: PairedDeviceServiceProtocol
+    @Injector private var bluetoothService: BluetoothServiceProtocol
+    @Injector private var notificationService: NotificationHelperServiceProtocol
 
     // MARK: - Published Properties
     @Published var isLoading = false
-    @Published var weightOnlyScales: [Device] = []
+    @Published var weightOnlyScales: [DeviceSnapshot] = []
     @Published var showingScaleList = false
 
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
+    private var loadTask: Task<Void, Never>?
+    private var latestLoadRequestID = 0
 
     // MARK: - Initialization
-    init() {
+    init(
+        deviceService: PairedDeviceServiceProtocol? = nil
+    ) {
+        self.deviceService = deviceService ?? Self.resolveDependency(PairedDeviceServiceProtocol.self)
+        warmInjectedDependencies()
         setupObservers()
     }
 
@@ -33,24 +39,30 @@ final class WeightOnlyModeAlertStore: ObservableObject {
 
     /// Loads scales that have weight-only mode enabled by other users
     func loadWeightOnlyScales() {
+        latestLoadRequestID += 1
+        let requestID = latestLoadRequestID
         isLoading = true
+        loadTask?.cancel()
 
-        Task {
+        loadTask = Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            defer {
+                if requestID == self.latestLoadRequestID {
+                    self.isLoading = false
+                }
+            }
+
             do {
-                let allScales = try await scaleService.getDevices()
+                let allScales = try await self.deviceService.getDevices()
                 let filteredScales = allScales.filter { scale in
                     scale.isWeighOnlyModeEnabledByOthers == true
                 }
 
-                await MainActor.run {
-                    self.weightOnlyScales = filteredScales
-                    self.isLoading = false
-                }
+                guard !Task.isCancelled, requestID == self.latestLoadRequestID else { return }
+                self.weightOnlyScales = filteredScales
             } catch {
-                await MainActor.run {
-                    self.weightOnlyScales = []
-                    self.isLoading = false
-                }
+                guard !Task.isCancelled, requestID == self.latestLoadRequestID else { return }
+                self.weightOnlyScales = []
             }
         }
     }
@@ -58,8 +70,8 @@ final class WeightOnlyModeAlertStore: ObservableObject {
     /// Enables body metrics for the specified scale temporarily
     /// - Parameter scale: The scale to enable body metrics for
     func enableBodyMetricsForScale(onCancel: (() -> Void)? = nil) {
-       let alert = AlertModel(
-          title: AlertStrings.EnableBodyMetricsAlert.title,
+        let alert = AlertModel(
+            title: AlertStrings.EnableBodyMetricsAlert.title,
             message: AlertStrings.EnableBodyMetricsAlert.message,
             buttons: [
                 AlertButtonModel(title: AlertStrings.EnableBodyMetricsAlert.enableButton, type: .primary) { _ in
@@ -75,42 +87,48 @@ final class WeightOnlyModeAlertStore: ObservableObject {
     }
 
     func handleEnableBodyMetrics() {
-        Task {
-            // Enable body metrics for all connected scales that have weight-only mode enabled
-            let connectedScales = weightOnlyScales.filter { $0.isConnected == true }
-            
-            guard !connectedScales.isEmpty else {
-                return
-            }
-            notificationService.showLoader(LoaderModel(text: LoaderStrings.updatingMode))
-            // Use the same logic as ScaleSettingsStore - call updateWeightOnlyMode for connected scales
-            let result = await bluetoothService.updateWeightOnlyMode(on: nil) // nil means all connected scales
-            notificationService.dismissLoader()
+        // Snapshot synchronously to avoid racey reads if callers mutate state right after tap.
+        let connectedScales = weightOnlyScales.filter { $0.isConnected == true }
+        guard !connectedScales.isEmpty else {
+            return
+        }
+        notificationService.showLoader(LoaderModel(text: LoaderStrings.updatingMode))
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            // Use the same logic as DeviceSettingsStore - call updateWeightOnlyMode for connected scales.
+            let result = await self.bluetoothService.updateWeightOnlyMode(broadcastId: nil) // nil means all connected scales
+            self.notificationService.dismissLoader()
             switch result {
             case .success:
-                await MainActor.run {
-                    notificationService.showToast(
-                        ToastModel(
-                            message: WeightOnlyModeStrings.temporaryOverride
-                        )
+                self.notificationService.showToast(
+                    ToastModel(
+                        message: WeightOnlyModeStrings.temporaryOverride
                     )
-                }
-            case .failure(_):
-                await MainActor.run {
-                    notificationService.showToast(
-                        ToastModel(
-                            title: WeightOnlyModeStrings.enableFailedTitle,
-                            message: WeightOnlyModeStrings.enableFailedMessage
-                        )
+                )
+            case .failure:
+                self.notificationService.showToast(
+                    ToastModel(
+                        title: WeightOnlyModeStrings.enableFailedTitle,
+                        message: WeightOnlyModeStrings.enableFailedMessage
                     )
-                }
+                )
             }
         }
     }
 
+    @MainActor
+    private func warmInjectedDependencies() {
+        let injectedDependencies = (
+            bluetooth: bluetoothService,
+            notification: notificationService
+        )
+        _ = injectedDependencies
+    }
+
     func dismissWeightOnlyModeAlert(onCancel: (() -> Void)? = nil) {
-         let alert = AlertModel(
-          title: AlertStrings.DisableWeightOnlyModeAlert.title,
+        let alert = AlertModel(
+            title: AlertStrings.DisableWeightOnlyModeAlert.title,
             message: AlertStrings.DisableWeightOnlyModeAlert.message,
             buttons: [
                 AlertButtonModel(title: AlertStrings.DisableWeightOnlyModeAlert.dismissButton, type: .primary) { _ in
@@ -134,5 +152,13 @@ final class WeightOnlyModeAlertStore: ObservableObject {
                 self?.loadWeightOnlyScales()
             }
             .store(in: &cancellables)
+    }
+
+    private static func resolveDependency<T>(_ type: T.Type) -> T {
+        guard let dependency = DependencyContainer.shared.resolve(type) else {
+            let keys = DependencyContainer.shared.dependencies.keys.sorted().joined(separator: ", ")
+            fatalError("Dependency \(type) is not registered in DependencyContainer. Registered keys: [\(keys)]")
+        }
+        return dependency
     }
 }

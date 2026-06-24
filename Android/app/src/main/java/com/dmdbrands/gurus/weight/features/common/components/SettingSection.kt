@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.helper.DateFormatHelper
@@ -43,7 +44,8 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 @Composable
 fun SettingsSection(
     title: String? = null,
-    items: List<SettingsItem>,
+    hasBottomSpace: Boolean = true,
+    items: List<SettingsItem>
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         if (title != null) {
@@ -66,6 +68,7 @@ fun SettingsSection(
             Column {
                 items.forEachIndexed { index, item ->
                     SettingsItemRow(item)
+
                     if (index < items.size - 1) {
                         HorizontalDivider(
                             thickness = 0.5.dp,
@@ -76,7 +79,9 @@ fun SettingsSection(
             }
         }
 
-        Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
+        if (hasBottomSpace) {
+            Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
+        }
     }
 }
 
@@ -106,6 +111,7 @@ private fun SettingsItemRow(
     Surface(
       modifier = Modifier
         .fillMaxWidth()
+        .then(if (item.testTag != null) Modifier.testTag(item.testTag) else Modifier)
         .debounceClick(onClick = { if (item.enabled) item.onClick.invoke() }),
       color = MeTheme.colorScheme.primaryBackground,
     ) {
@@ -217,6 +223,7 @@ private fun SettingsItemRow(
                 }
             }
         }
+
     }
 }
 

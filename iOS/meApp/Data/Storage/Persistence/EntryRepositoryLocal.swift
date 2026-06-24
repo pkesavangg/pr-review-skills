@@ -1,11 +1,11 @@
 import Foundation
 
 /// Repository for managing the last sync timestamp for entries per account, using KvStorageService.
-final class EntryRepositoryLocal {
-    private let kv: KvStorageService
+final class EntryRepositoryLocal: EntrySyncStoreProtocol {
+    private let kv: KvStorageServiceProtocol
     private let timestampKey = "entry_last_sync_timestamp"
 
-    init(kv: KvStorageService = .shared) {
+    init(kv: KvStorageServiceProtocol = KvStorageService.shared) {
         self.kv = kv
     }
 

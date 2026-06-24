@@ -1,4 +1,4 @@
-/// Stores additional scale metrics for each entry.
+/// Stores additional scale and BPM metrics for each entry.
 ///
 /// | Column Name              | Type   | Description                    |
 /// |--------------------------|--------|--------------------------------|
@@ -40,7 +40,6 @@ final class BathScaleMetric {
     var impedance: Int?
     /// Unit of measurement
     var unit: String?
-
     init(
          bmr: Int? = nil,
          metabolicAge: Int? = nil,
@@ -78,8 +77,14 @@ final class BathScaleMetric {
             unit: dto.unit
         )
     }
+
+    convenience init(from dto: BpmOperationDTO) {
+        self.init(
+            pulse: dto.pulse.map { Int($0) },
+            unit: dto.unit
+        )
+    }
 }
 
 // NOTE: SwiftData models are NOT thread-safe. Do not mark as Sendable.
 // Use PersistentIdentifier to pass references between contexts.
-

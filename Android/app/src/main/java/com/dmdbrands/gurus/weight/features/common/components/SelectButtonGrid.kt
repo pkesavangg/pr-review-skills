@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,10 +20,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.helper.ErrorImageHelper
 import com.dmdbrands.gurus.weight.features.common.helper.SelectButtonHelper
@@ -36,6 +39,9 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.typography
 // Shared dimensions to keep Image and GIF items visually identical
 private val SelectItemWidth = 150.dp
 private val SelectItemHeight = 84.dp
+
+private const val SELECTED_ALPHA = 1f
+private const val UNSELECTED_ALPHA = 0.25f
 
 /**
  * A grid of selectable circular buttons that can display text/numbers or images.
@@ -51,6 +57,8 @@ fun SelectButtonGrid(
   isSelectable: Boolean = false,
   onItemSelected: ((String) -> Unit)? = null,
   sku: String? = null,
+  imageWidth: Dp = SelectItemWidth,
+  imageHeight: Dp = SelectItemHeight,
   modifier: Modifier = Modifier,
 ) {
   val maxColumns = 3
@@ -71,6 +79,8 @@ fun SelectButtonGrid(
             isSelectable = isSelectable,
             onItemSelected = onItemSelected,
             sku = sku,
+            imageWidth = imageWidth,
+            imageHeight = imageHeight,
           )
         }
       }
@@ -93,6 +103,8 @@ private fun SelectButtonItem(
   onItemSelected: ((String) -> Unit)?,
   modifier: Modifier = Modifier,
   sku: String? = null,
+  imageWidth: Dp = SelectItemWidth,
+  imageHeight: Dp = SelectItemHeight,
 ) {
   val isSelected = item.isSelected && isSelectable
   val backgroundColor = if (isSelected) colorScheme.iconPrimary else colorScheme.inverseAction
@@ -130,10 +142,12 @@ private fun SelectButtonItem(
     }
 
     is SelectButtonDisplayValue.Image -> {
-      // Invisible container ensures consistent size and tap target
+      val targetAlpha = if (isSelected) SELECTED_ALPHA else UNSELECTED_ALPHA
+      val animatedAlpha = animateFloatAsState(targetValue = targetAlpha, label = "userAlpha")
       Box(
         modifier = modifier
-          .size(width = SelectItemWidth, height = SelectItemHeight)
+          .size(width = imageWidth, height = imageHeight)
+          .alpha(animatedAlpha.value)
           .clipToBounds()
           .clickable(
             enabled = isSelectable,
@@ -152,10 +166,9 @@ private fun SelectButtonItem(
     }
 
     is SelectButtonDisplayValue.Gif -> {
-      // Invisible container ensures consistent size and tap target
       Box(
         modifier = modifier
-          .size(width = SelectItemWidth, height = SelectItemHeight)
+          .size(width = imageWidth, height = imageHeight)
           .clipToBounds()
           .clickable(
             enabled = isSelectable,

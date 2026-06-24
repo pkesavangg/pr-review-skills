@@ -2,10 +2,12 @@ package com.dmdbrands.gurus.weight.features.scaleMode.reducer
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
+import androidx.compose.runtime.Stable
 
 /**
  * State for ScaleModeScreen.
  */
+@Stable
 data class ScaleModeState(
   val scale: Device? = null,
   val isAllBodyMetrics: Boolean = true,

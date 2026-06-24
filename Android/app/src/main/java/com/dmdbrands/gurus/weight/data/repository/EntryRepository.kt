@@ -5,18 +5,20 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.isVali
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.api.EntryApi
 import com.dmdbrands.gurus.weight.data.api.OperationsResponse
+import com.dmdbrands.gurus.weight.domain.model.api.entry.EntriesCursorResponse
+import com.dmdbrands.gurus.weight.domain.model.api.entry.EntriesSyncResponse
 import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryDao
 import com.dmdbrands.gurus.weight.domain.model.api.entry.ScaleApiEntry
-import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
+import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryRequest
+import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryResponse
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.repository.IEntryRepository
-import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertToDisplay
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertToStored
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -34,7 +36,7 @@ class EntryRepository @Inject constructor(
    */
   override suspend fun insert(entry: Entry): Long {
     return if (isValidIsoTimestamp(entry.entry.entryTimestamp))
-      entryDao.insert(entry.convertToStored())
+      entryDao.insert(preserveLocalScaleNote(entry).convertToStored())
     else
       -1
   }
@@ -43,16 +45,72 @@ class EntryRepository @Inject constructor(
    * Updates a single entry.
    */
   override suspend fun update(entry: Entry): Long {
-    return entryDao.update(entry.convertToStored())
+    return entryDao.update(preserveLocalScaleNote(entry).convertToStored())
+  }
+
+  /**
+   * Note-only update (MOB-438) — writes just the note column for the entry's id, so weight
+   * and metrics are never re-converted.
+   */
+  override suspend fun updateNote(entry: Entry, note: String?) {
+    val id = entry.entry.id
+    when (entry) {
+      is ScaleEntry -> entryDao.updateScaleNote(id, note)
+      is BpmEntry -> entryDao.updateBpmNote(id, note)
+      is BabyEntry -> entryDao.updateBabyNote(id, note)
+    }
   }
 
   /**
    * Inserts a list of entries.
    */
   override suspend fun insert(entries: List<Entry>) {
-    val validEntries = entries.filter { isValidIsoTimestamp(it.entry.entryTimestamp) }.map { it.convertToStored() }
-    entryDao.insert(validEntries)
+    val valid = entries.filter { isValidIsoTimestamp(it.entry.entryTimestamp) }
+
+    // Batch-fetch existing local notes once per account, then merge in memory — avoids a
+    // per-entry SELECT during a full sync (MOB-438 PR review).
+    val accountIds = valid
+      .filterIsInstance<ScaleEntry>()
+      .filter { it.scale.scaleEntry.note.isNullOrBlank() }
+      .map { it.entry.accountId }
+      .toSet()
+    val noteByKey = HashMap<String, String>()
+    accountIds.forEach { accountId ->
+      entryDao.getStoredScaleNotes(accountId).forEach { row ->
+        row.note?.takeIf { it.isNotBlank() }?.let { noteByKey[noteKey(accountId, row.entryTimestamp)] = it }
+      }
+    }
+
+    val merged = valid.map { entry ->
+      if (entry is ScaleEntry && entry.scale.scaleEntry.note.isNullOrBlank()) {
+        noteByKey[noteKey(entry.entry.accountId, entry.entry.entryTimestamp)]?.let { existing ->
+          entry.copy(scale = entry.scale.copy(scaleEntry = entry.scale.scaleEntry.copy(note = existing)))
+        } ?: entry
+      } else {
+        entry
+      }
+    }.map { it.convertToStored() }
+
+    entryDao.insert(merged)
   }
+
+  /**
+   * Keeps a locally-entered weight note when an incoming (server-sourced) scale entry has
+   * none. The server contract (ScaleApiEntry) carries no note field, so a synced entry would
+   * otherwise overwrite the local note with null. Device-local only (MOB-438). Used for the
+   * single-entry insert/update path; the bulk [insert] path batches the lookup instead.
+   */
+  private suspend fun preserveLocalScaleNote(entry: Entry): Entry {
+    if (entry !is ScaleEntry || !entry.scale.scaleEntry.note.isNullOrBlank()) return entry
+    val existingNote = entryDao.getStoredScaleNote(entry.entry.accountId, entry.entry.entryTimestamp)
+    return if (existingNote.isNullOrBlank()) {
+      entry
+    } else {
+      entry.copy(scale = entry.scale.copy(scaleEntry = entry.scale.scaleEntry.copy(note = existingNote)))
+    }
+  }
+
+  private fun noteKey(accountId: String, timestamp: String): String = "$accountId$timestamp"
 
   /**
    * Marks an entry as deleted.
@@ -71,72 +129,14 @@ class EntryRepository @Inject constructor(
     entryDao.getEntryById(id)?.toEntry()
 
   /**
-   * Gets the latest valid entry for an account.
-   */
-  override suspend fun getLatestEntry(accountId: String): Flow<Entry?> =
-    entryDao.getLatestEntry(accountId).map { it?.toEntry() }
-
-  /**
    * Gets all valid entries for an account.
    */
   override suspend fun getEntriesByAccount(accountId: String, convertToDisplay: Boolean): List<Entry> =
     entryDao.getEntriesByAccount(accountId).mapNotNull { it.toEntry(convertToDisplay) }
 
-  /**
-   * Gets valid entries for an account within a time range.
-   */
-  //TODO: This is not used at the moment and is retained for possible future requirements
-  override fun getEntriesByTimeRange(
-    accountId: String,
-    startTime: String,
-    endTime: String
-  ): Flow<List<Entry>> =
-    entryDao.getEntriesByTimeRange(accountId, startTime, endTime).map { flow ->
-      flow.mapNotNull { it.toEntry() }
-    }
-
-  /**
-   * Gets valid entries for an account by device type.
-   */
-  override fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>> =
-    entryDao.getEntriesByDeviceType(accountId, deviceType).map { flow ->
-      flow.mapNotNull { it.toEntry() }
-    }
-
-  /**
-   * Retrieves entries for the last N days for a given account.
-   * @param accountId The account ID
-   * @param days Number of days to look back
-   * @return Flow of list of Entry objects
-   */
-  override suspend fun getLastNDaysEntries(accountId: String, days: Int): Flow<List<Entry>> {
-    val endInstant = java.time.Instant.now()
-    val startInstant = endInstant.minus(java.time.Duration.ofDays(days.toLong()))
-
-    // Format as ISO 8601 strings matching the format used by DateTimeConverter.timestampToIso
-    // Uses format: "yyyy-MM-dd'T'HH:mm:ss.SSSXXX" (e.g., "2025-01-15T10:30:00.000+00:00")
-    val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
-    val endZonedDateTime = java.time.ZonedDateTime.ofInstant(endInstant, java.time.ZoneOffset.UTC)
-    val startZonedDateTime = java.time.ZonedDateTime.ofInstant(startInstant, java.time.ZoneOffset.UTC)
-
-    val endDate = endZonedDateTime.format(formatter)
-    val startDate = startZonedDateTime.format(formatter)
-    return entryDao.getEntriesInRange(accountId, startDate, endDate).map { list ->
-      list.mapNotNull { it.toEntry() }
-    }
-  }
-
   override suspend fun deleteAllEntriesForAccount(accountId: String): Flow<Int> = flow {
     // emit(entryDao.deleteAllEntriesForAccount(accountId))
   }
-
-  /**
-   * Gets entries for an account by operation type.
-   */
-  override fun getEntriesByOperationType(accountId: String, operationType: String): Flow<List<Entry>> =
-    entryDao.getEntriesByOperationType(accountId, operationType).map { flow ->
-      flow.mapNotNull { it.toEntry() }
-    }
 
   /**
    * Gets all unsynced entries for an account.
@@ -179,6 +179,18 @@ class EntryRepository @Inject constructor(
     }
   }
 
+  override suspend fun sendBatchToAPI(entries: List<UnifiedEntryRequest>): UnifiedEntryResponse {
+    try {
+      AppLog.d("EntryRepository", "Sending batch of ${entries.size} entries to /v3/entries/")
+      val response = entryApi.postEntries(entries)
+      AppLog.i("EntryRepository", "Batch sent successfully: ${response.entries.size} entries persisted")
+      return response
+    } catch (e: Exception) {
+      AppLog.e("EntryRepository", "Failed to send batch to API (size=${entries.size})", e)
+      throw e
+    }
+  }
+
   /**
    * Gets operations from the API since the last update, or all if lastUpdated is null.
    * @param lastUpdated The last updated timestamp, or null.
@@ -202,34 +214,6 @@ class EntryRepository @Inject constructor(
   }
 
   /**
-   * Gets entries for a specific month and year.
-   * @param accountId The account ID
-   * @param month The month in YYYY-MM format
-   * @return Flow of list of entries for the specified month
-   */
-  override fun getMonthDetail(accountId: String, month: String): Flow<List<Entry>> =
-    entryDao.getMonthDetail(accountId, month).map { views ->
-      views.mapNotNull { it.toEntry() }
-    }
-
-  /**
-   * Gets all monthly aggregated data.
-   * @param accountId The account ID
-   * @return Flow of list of all monthly aggregated data
-   */
-  override fun getMonthlyAverage(accountId: String): Flow<List<HistoryMonth>> {
-    return entryDao.getMonthlyHistory(accountId).map { list -> list.map { it.convertToDisplay() } }
-  }
-
-  /**
-   * Gets monthly history for an account for the last 365 days.
-   * This method automatically filters entries from the last 365 days, groups by month, and calculates averages.
-   */
-  override fun getMonthlyHistoryLastYear(accountId: String): Flow<List<HistoryMonth>> {
-    return entryDao.getMonthlyHistoryLastYear(accountId).map { list -> list.map { it.convertToDisplay() } }
-  }
-
-  /**
    * Gets the operation count for an account.
    * @param accountId The account ID
    * @return The number of operations
@@ -237,77 +221,55 @@ class EntryRepository @Inject constructor(
   override suspend fun getOperationCount(accountId: String): Int =
     entryDao.getOperationCount(accountId)
 
-  /**
-   * Gets monthly averages of body scale data for an account using JOINs.
-   */
-  override fun getMonthlyBodyScaleAveragesWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
-    entryDao.getMonthlyBodyScaleAveragesWithJoin(accountId).map { list -> list.map { it.convertToDisplay() } }
+  // ── Unified /v3/entries/ read (MOB-380) ───────────────────────────────────
 
-  /**
-   * Gets the latest body scale entry for each month for an account using JOINs.
-   */
-  override fun getMonthlyBodyScaleLatestWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
-    entryDao.getMonthlyBodyScaleLatestWithJoin(accountId).map { list -> list.map { it.convertToDisplay() } }
+  override suspend fun getEntriesSync(
+    start: String,
+    category: String?,
+  ): EntriesSyncResponse {
+    AppLog.d("EntryRepository", "getEntriesSync start=$start category=$category")
+    return try {
+      val response = entryApi.getEntriesSync(start, category)
+      AppLog.i("EntryRepository", "getEntriesSync returned ${response.entries.size} entries")
+      response
+    } catch (e: Exception) {
+      AppLog.e("EntryRepository", "getEntriesSync failed", e)
+      throw e
+    }
+  }
 
-  /**
-   * Gets daywise averages of body scale data for an account using JOINs.
-   */
-  override fun getDaywiseBodyScaleAveragesWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
-    entryDao.getDaywiseBodyScaleAveragesWithJoin(accountId).map { list -> list.map { it.convertToDisplay() } }
+  override suspend fun getEntriesPage(
+    cursor: String?,
+    limit: Int,
+    category: String?,
+  ): EntriesCursorResponse {
+    AppLog.d("EntryRepository", "getEntriesPage cursor=$cursor limit=$limit category=$category")
+    return try {
+      val response = entryApi.getEntriesPage(cursor, limit, category)
+      AppLog.i("EntryRepository", "getEntriesPage returned ${response.entries.size} entries hasMore=${response.hasMore}")
+      response
+    } catch (e: Exception) {
+      AppLog.e("EntryRepository", "getEntriesPage failed", e)
+      throw e
+    }
+  }
 
-  /**
-   * Gets the latest body scale entry for each day for an account using JOINs.
-   */
-  override fun getDaywiseBodyScaleLatestWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
-    entryDao.getDaywiseBodyScaleLatestWithJoin(accountId).map { list -> list.map { it.convertToDisplay() } }
-
-  /**
-   * Per MA-3965: single-pass hybrid daywise — latest-per-metric on the most recent
-   * day with a valid entry; daily-average per metric on every earlier day.
-   */
-  override fun getDaywiseBodyScaleHybridWithJoin(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
-    entryDao.getDaywiseBodyScaleHybridWithJoin(accountId).map { list -> list.map { it.convertToDisplay() } }
-
-  /**
-   * Get the oldest entry for an account.
-   * @param accountId The account ID
-   * @return The oldest entry if found, null otherwise
-   */
-  override suspend fun getOldestEntry(accountId: String): Entry? =
-    entryDao.getOldestEntry(accountId)?.toEntry()
-
-  /**
-   * Get entry timestamps for streak calculation.
-   * Returns one entry timestamp per day, ordered with newest first.
-   * @param accountId The account ID
-   * @return List of entry timestamps for streak calculation
-   */
-  override suspend fun getStreakData(accountId: String): List<String> =
-    entryDao.getStreakData(accountId)
-
-  /**
-   * Get the total count of entries for an account.
-   * @param accountId The account ID
-   * @return The total count of entries
-   */
-  override suspend fun getTotalCount(accountId: String): Int =
-    entryDao.getTotalCount(accountId)
-
-  /**
-   * Get the longest streak count for an account.
-   * @param accountId The account ID
-   * @return The longest streak count
-   */
-  override suspend fun getLongestStreakCount(accountId: String): Int =
-    entryDao.getLongestStreakCount(accountId)
-
-  /**
-   * Get entries for an account in a specific date range (inclusive).
-   * @param accountId The account ID
-   * @param startDate The start date (ISO 8601 string)
-   * @param endDate The end date (ISO 8601 string)
-   * @return List of entries in the date range
-   */
-  override suspend fun getEntriesInRange(accountId: String, startDate: String, endDate: String): List<Entry> =
-    entryDao.getEntriesInRange(accountId, startDate, endDate).first().mapNotNull { it.toEntry() }
+  override suspend fun exportEntriesCsv(
+    category: String?,
+    download: Boolean,
+    utcOffset: Int,
+  ): okhttp3.ResponseBody? {
+    AppLog.d("EntryRepository", "exportEntriesCsv category=$category download=$download")
+    return try {
+      val response = entryApi.exportEntriesCsv(
+        category = category,
+        download = if (download) "true" else null,
+        utcOffset = utcOffset,
+      )
+      if (response.isSuccessful) response.body() else null
+    } catch (e: Exception) {
+      AppLog.e("EntryRepository", "exportEntriesCsv failed", e)
+      throw e
+    }
+  }
 }

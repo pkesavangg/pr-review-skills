@@ -7,6 +7,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 
 /**
@@ -69,8 +70,10 @@ suspend fun startAppSyncScan(
     AppSyncResultHolder.result = null
     AppSyncLogger.i("AppSyncScan", "Scan started (zoom=$zoom, showManualEntry=$showManualEntryButton)")
 
-    // Launch the scan activity
-    val activity = context as? Activity ?: error("Context must be an Activity")
+    // Launch the scan activity.
+    // A Compose LocalContext is typically a ContextWrapper (themed/OEM-wrapped), not the Activity
+    // itself, so a direct cast fails. Unwrap the baseContext chain to find the hosting Activity.
+    val activity = context.findActivity() ?: error("Context must be an Activity")
     val intent = Intent(context, AppSyncScanActivity::class.java)
 
     // Pass parameters via intent extras
@@ -110,3 +113,21 @@ suspend fun startAppSyncScan(
       100, // Poll every 100ms
     )
   }
+
+/**
+ * Resolves the hosting [Activity] from a [Context].
+ *
+ * A Compose `LocalContext.current` is commonly a [ContextWrapper] (theme wrapper, and on some OEM
+ * skins an additional wrapper layer) rather than the [Activity] itself, so a direct cast to
+ * [Activity] returns null. This walks the [ContextWrapper.baseContext] chain to find the Activity.
+ *
+ * @return the hosting [Activity], or null if none is found in the context chain.
+ */
+fun Context.findActivity(): Activity? {
+  var current: Context? = this
+  while (current is ContextWrapper) {
+    if (current is Activity) return current
+    current = current.baseContext
+  }
+  return null
+}

@@ -15,4 +15,9 @@ struct LandingScreenStrings {
     static let signUp = "sign up"
     static let logInToExistingAccount = "LOG IN TO EXISTING ACCOUNT"
     static let createNewAccount = "CREATE NEW ACCOUNT"
+
+    // MARK: - Accessibility (VoiceOver) — spoken text only, not shown on screen
+    static let accLogoLabel = "Weight Gurus, my everyday health"
+    static let accLogInHint = "Log in to an existing account"
+    static let accSignUpHint = "Create a new account"
 }

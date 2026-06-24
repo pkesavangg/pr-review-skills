@@ -1,5 +1,5 @@
-import SwiftUI
 import Charts
+import SwiftUI
 
 /// A ChartScrollTargetBehavior that provides robust paging behavior with date alignment.
 /// - Pages horizontally with 1 page for normal swipes and 2 pages for bigger swipes
@@ -43,6 +43,7 @@ struct PagedChartScrollBehavior: ChartScrollTargetBehavior {
         }
     }
 
+// swiftlint:disable:next cyclomatic_complexity function_body_length
     func updateTarget(_ target: inout ScrollTarget, context: ChartScrollTargetBehaviorContext) {
         let viewportW = context.containerSize.width
         let contentW = context.contentSize.width

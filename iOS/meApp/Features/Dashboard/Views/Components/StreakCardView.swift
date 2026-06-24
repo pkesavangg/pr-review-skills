@@ -37,7 +37,7 @@ struct StreakCardView: View {
 
     /// Returns the minimum height based on parentView
     private var cardMinHeight: CGFloat {
-        parentView == .R4ScaleSetup ? 74 : 70
+        parentView == .r4DeviceSetup ? 74 : 70
     }
 
     /// Reduces NoteBox padding at larger Dynamic Type sizes so longer streak values fit.
@@ -134,7 +134,7 @@ struct StreakCardView: View {
                 .foregroundColor(isRemoved ? theme.statusIconSecondary : theme.statusStreak)
                 .padding(.trailing, 2)
             }
-            if parentView == .R4ScaleSetup && isStreakItem {
+            if parentView == .r4DeviceSetup && isStreakItem {
                 Text(label)
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
@@ -150,7 +150,7 @@ struct StreakCardView: View {
                 }
             }
         }
-        .padding(.vertical, (parentView == .R4ScaleSetup && isStreakItem) ? 10 : 0)
+        .padding(.vertical, (parentView == .r4DeviceSetup && isStreakItem) ? 10 : 0)
     }
 }
 
@@ -184,7 +184,7 @@ struct StreakCardView: View {
             parentView: .dashboard
         )
         
-        // R4ScaleSetup view with streak items (icon + label only)
+        // R4DeviceSetup view with streak items (icon + label only)
         StreakCardView(
             value: "3",
             label: DashboardStrings.currentStreak,
@@ -195,10 +195,10 @@ struct StreakCardView: View {
             onToggleRemoval: {},
             onDrop: { _, _ in true },
             onDropTargetChanged: { _ in },
-            parentView: .R4ScaleSetup
+            parentView: .r4DeviceSetup
         )
         
-        // R4ScaleSetup view with non-streak items (icon + value + label)
+        // R4DeviceSetup view with non-streak items (icon + value + label)
         StreakCardView(
             value: "2.5",
             label: "lbs/week",
@@ -209,7 +209,7 @@ struct StreakCardView: View {
             onToggleRemoval: {},
             onDrop: { _, _ in true },
             onDropTargetChanged: { _ in },
-            parentView: .R4ScaleSetup
+            parentView: .r4DeviceSetup
         )
     }
     .padding()
