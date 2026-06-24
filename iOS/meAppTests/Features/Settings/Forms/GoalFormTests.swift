@@ -270,4 +270,32 @@ struct GoalFormTests {
         #expect(count >= 1)
         _ = cancellable
     }
+
+    // MARK: - Added coverage: focused-field validation
+
+    @Test("isValidForSave allows save while currentWeight focused in lose/gain mode")
+    func validWhileCurrentWeightFocused() {
+        let form = makeForm()
+        form.goalType.value = GoalType.lose.rawValue
+        form.currentWeight.value = "180"
+        form.goalWeight.value = "160"
+        #expect(form.isValidForSave(focusedField: .currentWeight))
+    }
+
+    @Test("isValidForSave allows save while goalWeight focused in lose/gain mode")
+    func validWhileGoalWeightFocused() {
+        let form = makeForm()
+        form.goalType.value = GoalType.lose.rawValue
+        form.currentWeight.value = "180"
+        form.goalWeight.value = "160"
+        #expect(form.isValidForSave(focusedField: .goalWeight))
+    }
+
+    @Test("isValidForSave while goalWeight focused in maintain mode is valid")
+    func validWhileGoalWeightFocusedMaintain() {
+        let form = makeForm()
+        form.goalType.value = GoalType.maintain.rawValue
+        form.goalWeight.value = "160"
+        #expect(form.isValidForSave(focusedField: .goalWeight))
+    }
 }

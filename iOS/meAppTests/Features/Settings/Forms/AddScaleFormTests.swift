@@ -23,7 +23,7 @@ struct AddScaleFormTests {
     func setModelNumberFiltersNonNumeric() {
         let form = makeForm()
         form.setModelNumber("03a4b")
-        #expect(form.modelNumber.value == "0340")
+        #expect(form.modelNumber.value == "034")
     }
 
     @Test("setModelNumber with digits only keeps value")

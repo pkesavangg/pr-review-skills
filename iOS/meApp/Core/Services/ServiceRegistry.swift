@@ -43,6 +43,16 @@ class ServiceRegistry {
         DependencyContainer.shared.register(AccountFlagService.shared)
         DependencyContainer.shared.register(AppReviewService.shared)
         DependencyContainer.shared.register(HTTPClient.shared)
+
+        // Register protocol-typed aliases so @Injector resolutions against the
+        // protocol abstractions (used for testability) resolve to the real
+        // services by default. Dependencies are keyed by type name, so the
+        // concrete registrations above do not satisfy a protocol-typed @Injector.
+        DependencyContainer.shared.register(LoggerService.shared as LoggerServiceProtocol)
+        DependencyContainer.shared.register(AccountService.shared as AccountServiceProtocol)
+        DependencyContainer.shared.register(EntryService.shared as EntryServiceProtocol)
+        DependencyContainer.shared.register(IntegrationsService.shared as IntegrationServiceProtocol)
+        DependencyContainer.shared.register(HTTPClient.shared as HTTPClientProtocol)
     }
 
     /// Registers services needed after login.
