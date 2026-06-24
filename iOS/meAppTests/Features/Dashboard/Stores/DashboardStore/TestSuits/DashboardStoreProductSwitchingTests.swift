@@ -153,14 +153,14 @@ extension DashboardStoreTests {
             #expect(store.productType == .bpm)
         }
 
-        @Test("selectProductItem transitions to baby keeps wg product type")
+        @Test("selectProductItem to a baby switches product type to baby")
         func selectProductItemBabyKeepsWgType() {
             let (store, _, _) = DashboardStoreTestSupport.makeSUT()
             let baby = makeBaby(id: "b-wg")
             store.selectProductItem(.baby(profile: baby))
 
             #expect(store.selectedProductItem == .baby(profile: baby))
-            #expect(store.productType == .scale)
+            #expect(store.productType == .baby)
         }
 
         @Test("selectProductItem back to myWeight clears baby selection")

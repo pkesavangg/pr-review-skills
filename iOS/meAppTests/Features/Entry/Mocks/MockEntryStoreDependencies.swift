@@ -49,7 +49,13 @@ final class MockEntryStoreEntryService: EntryServiceProtocol {
     func fetchEntrySnapshot(byId id: UUID) async throws -> EntrySnapshot? { nil }
     func fetchAllEntrySnapshots() async throws -> [EntrySnapshot] { [] }
     func fetchEntrySnapshots(forMonth month: String, entryType: EntryType) async throws -> [EntrySnapshot] { [] }
-    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {}
+    private(set) var createBabyEntryCalls = 0
+    private(set) var lastBabyEntry: (babyId: String, weight: Int, length: Int, note: String)?
+    var createBabyEntryError: Error?
+    private(set) var createBpmEntryCalls = 0
+    private(set) var lastBpmEntry: BpmOperationDTO?
+    var createBpmEntryError: Error?
+
     func getAllEntries() async throws -> [Entry] { [] }
     func getAllEntriesAsDTO() async throws -> [BathScaleOperationDTO] { [] }
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool { false }
@@ -67,11 +73,19 @@ final class MockEntryStoreEntryService: EntryServiceProtocol {
     func getStreak(entryType: EntryType) async throws -> Streak { Streak(current: 0, max: 0) }
     func exportCSV(category: String?, babyId: String?) async throws {}
     func fetchEntriesPage(cursor: String?, limit: Int, category: String?, babyId: String?) async throws -> EntriesPage { .empty }
-    func createBpmEntry(_ dto: BpmOperationDTO) async throws {}
+    func createBpmEntry(_ dto: BpmOperationDTO) async throws {
+        createBpmEntryCalls += 1
+        lastBpmEntry = dto
+        if let createBpmEntryError { throw createBpmEntryError }
+    }
     func fetchBpmEntries() async throws -> [BpmOperationDTO] { [] }
     func deleteBpmEntry(entryTimestamp: String) async throws {}
     func exportBpmCSV() async throws {}
     func migrateBabyEntriesToDecigrams() async {}
     func getEntry(byId id: UUID) async throws -> Entry? { nil }
-    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws {}
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws {
+        createBabyEntryCalls += 1
+        lastBabyEntry = (babyId, weight, length, note)
+        if let createBabyEntryError { throw createBabyEntryError }
+    }
 }

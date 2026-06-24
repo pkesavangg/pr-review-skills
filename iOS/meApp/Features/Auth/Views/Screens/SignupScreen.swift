@@ -132,7 +132,7 @@ struct SignupScreen: View {
         .onAppear {
             signupStore.isFromAccountSwitching = isFromAccountSwitching
             if isFromAccountSwitching {
-                signupStore.dismissAction = dismiss
+                signupStore.dismissAction = { dismiss() }
                 signupStore.onSignupSuccess = onAccountSwitchingSignupSuccess ?? {
                     dismiss()
                 }
