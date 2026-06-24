@@ -31,6 +31,7 @@ See [HOW-IT-WORKS.md](HOW-IT-WORKS.md) for flowcharts of both pipelines, what ge
 ```
 pr-review-skills/
 ├── README.md
+├── CLAUDE.md                   ← guidance for Claude when editing this repo (architecture invariants, rule-authoring house style, guardrails)
 ├── INSTALL.md
 ├── HOW-IT-WORKS.md
 ├── .claude/

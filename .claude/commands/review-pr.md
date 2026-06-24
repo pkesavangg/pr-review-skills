@@ -192,7 +192,7 @@ Each rule states its own severity, a **Sniff** pattern (grep/`rg` over `.ts`), a
 
 **De-duplicate** Appium findings against each other by `file:line` before posting (e.g. a missing-`await` and an action-without-wait on the same line → one comment). The full de-dup against prior reviewer comments still happens at Step 4a.4.
 
-Note on § 4a.3 below for Appium repos: the "non-trivial production code without tests" rule does **not** apply (the diff *is* tests). The Jira/issue-reference and PR-description rules still apply normally.
+Note on § 4a.3 below for Appium repos: the "non-trivial production code without tests" rule does **not** apply (the diff *is* tests), and the "missing screenshot/screen recording" rule does **not** apply either — E2E test code is non-visual, and its visual evidence is the Allure/video run report, not the PR body. The Jira/issue-reference and PR-description-match rules still apply normally.
 
 ### 4a.3 — Cross-cutting (both platforms)
 
@@ -212,6 +212,26 @@ Security and privacy live in their own sections (4a.0 and 4a.0.5). The remaining
   When flagging, quote the specific gap. Post one top-level comment: `P2 — PR description doesn't fully match the changes · <concrete gap — e.g., "Body lists 'added unit tests for X' but no test files appear in the diff. Either add the tests or remove that bullet.">`.
 
   This check is intentionally judgment-based — do not flag for minor wording drift, only when there's a material disconnect.
+
+- **P2** — **Missing screenshot / screen recording for a user-facing change.** A PR that changes what the user sees or does should prove it with a screenshot (static UI) or a screen recording (interactive flow), so reviewers and QA can verify the result without checking out and building the branch. Decide in three steps:
+
+  1. **Does this PR even need visual evidence?** It does **not** when the diff is *entirely* non-visual. Waive the requirement (and say so in the Step 5 summary with the reason) when every changed file falls into one of:
+     - **Docs / text only** — `*.md`, `README*`, `LICENSE`, `docs/**`, `CHANGELOG*`, comments-only edits.
+     - **Build / version metadata only** — build number or version bump: `versionCode` / `versionName` (Gradle), `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` / `CFBundleShortVersionString` / `CFBundleVersion` (`Info.plist`, `*.xcconfig`, pbxproj), `version` in `package.json`.
+     - **CI / tooling / config only** — `.github/**`, lint/formatter config, `.gitignore`, dependency-lockfile bumps, with no UI code touched.
+     - **Test-only, pure refactor/rename with no behavioral change, or backend/data-layer change with no UI surface.**
+
+  2. **Otherwise it's user-facing** — it touches a `View` / `Composable` / screen, navigation, a visible string or layout, styling, an animation, or any flow the user interacts with. Look for embedded media in the PR `body` by scanning for any of:
+     - Markdown image embeds — `![...](...)`.
+     - HTML media tags — `<img ...>`, `<video ...>`.
+     - GitHub attachment URLs — `https://github.com/user-attachments/assets/...`, `https://user-images.githubusercontent.com/...`, `.../assets/<uuid>`.
+     - Direct media links ending in `.png` / `.jpg` / `.jpeg` / `.gif` / `.webp` / `.mp4` / `.mov` / `.webm`.
+
+     If **none** are present, post one top-level comment that names the changed surface and says *why* evidence is needed: `P2 — Missing screenshot/screen recording · This PR changes user-facing UI (<name the changed screen/view/flow, e.g. "the Entry screen in EntryView.swift">). Add a screenshot for a static change, or a screen recording for an interactive/flow change, so reviewers can verify it without building the branch. (Not needed for docs-only or version/build-number bumps.)`
+
+  3. **If media is present, does it actually cover the change?** When the PR modifies an *interactive flow* (navigation, entry/onboarding, a multi-step form, a gesture, an animation) but the body only attaches a single static screenshot — or the attached media plainly shows a different screen than the one changed — the evidence doesn't demonstrate the behavior. Flag it: `P2 — Screen recording needed for a flow change · The PR changes the <name> flow but the body only shows <a static screenshot / an unrelated screen>. Attach a screen recording that walks through the actual <name> flow end-to-end.` For example, if the change touches entry functionality, the recording must show the entry flow itself, not an adjacent screen.
+
+  Judgment-based and one flag per PR: a one-line color-token tweak does not need a 30-second video; a new screen or a changed entry/onboarding flow does. For borderline cases (a small but visible tweak) prefer a gentle nudge over a hard flag.
 
 ### 4a.4 — De-duplicate against prior reviewers
 
@@ -243,7 +263,7 @@ gh api repos/{owner}/{repo}/pulls/<PR>/comments \
   -f side=RIGHT
 ```
 
-For findings without a single line (missing tests, missing Jira reference, description mismatch, weak PR description), use `gh pr comment <PR> -b "P2 — …"`. Prefix every finding with the exact priority string — the format `P0 — ` / `P1 — ` / `P2 — ` / `Nit — ` (priority, space, em-dash, space) is **mandatory** so Step 3 can identify these on future runs.
+For findings without a single line (missing tests, missing Jira reference, description mismatch, weak PR description, missing screenshot/recording), use `gh pr comment <PR> -b "P2 — …"`. Prefix every finding with the exact priority string — the format `P0 — ` / `P1 — ` / `P2 — ` / `Nit — ` (priority, space, em-dash, space) is **mandatory** so Step 3 can identify these on future runs.
 
 If `--dry-run` was passed, **skip this step entirely**: instead print the findings to chat as a numbered table — `# | priority | file:line | one-line issue` — followed by `(dry-run; nothing posted)`. Wait for the user's reply. Only post if they explicitly say to publish.
 

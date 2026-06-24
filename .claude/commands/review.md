@@ -165,7 +165,7 @@ Read and apply (use each rule's prescribed severity):
 - **P1** — `print` / `NSLog` (Swift) or `Log.d/i/w/e` / `println` (Kotlin) outside an explicit logger wrapper
 - **P1** — non-trivial production code added without any test file added in the same scope
 
-**Skip the `/review-pr`-only cross-cutting checks** (PR-title Jira reference, PR-description-vs-diff mismatch) — those make no sense pre-commit.
+**Skip the `/review-pr`-only cross-cutting checks** (PR-title Jira reference, PR-description-vs-diff mismatch, missing screenshot/screen recording) — those need a PR body and make no sense pre-commit.
 
 ### 4.4 — De-dup against the previous report (re-pass only)
 

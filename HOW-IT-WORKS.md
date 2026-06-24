@@ -244,7 +244,7 @@ flowchart TD
 | | [references/compose/modifier-conventions.md](references/compose/modifier-conventions.md) | Modifier chain order, accept-and-pass-through pattern |
 | | [references/compose/accessibility.md](references/compose/accessibility.md) | `contentDescription` on interactive `Icon`/`Image`, semantics, hit targets |
 | | [references/compose/api-guidelines.md](references/compose/api-guidelines.md) | Compose API conventions |
-| **4a.3 Cross-cutting** | Inline rules in [review-pr.md](.claude/commands/review-pr.md) | Raw `print`/`Log.d` outside logger wrapper · missing tests for non-trivial code · empty/Jira-ID-only PR description · **missing Jira/issue reference** · **PR description doesn't match the diff** |
+| **4a.3 Cross-cutting** | Inline rules in [review-pr.md](.claude/commands/review-pr.md) | Raw `print`/`Log.d` outside logger wrapper · missing tests for non-trivial code · empty/Jira-ID-only PR description · **missing Jira/issue reference** · **PR description doesn't match the diff** · **missing screenshot/recording on a user-facing change** (waived for docs-only / version-bump / config-only; recording must depict the actual changed flow) |
 | **4a.4 De-dup** | Inline logic in [review-pr.md](.claude/commands/review-pr.md) | For each candidate: same file + within ±5 lines + overlapping substance with any existing inline comment from any author → drop |
 | **4a.5 Post** | Inline logic | Post via `gh api .../pulls/<N>/comments` with mandatory `P0 — ` / `P1 — ` / `P2 — ` / `Nit — ` prefix |
 
