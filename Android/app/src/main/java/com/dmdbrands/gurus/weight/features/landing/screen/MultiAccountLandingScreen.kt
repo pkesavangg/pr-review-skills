@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +35,7 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.borderRadius
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * MultiAccountLandingScreen displays the app logo, subtitle, and a scrollable list of up to 5 accounts, with an Add Account button.
@@ -42,7 +43,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 @Composable
 fun MultiAccountLandingScreen() {
     val viewModel: MultiAccountLandingViewModel = hiltViewModel()
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
 
     MultiAccountLandingScreenContent(
@@ -72,6 +73,8 @@ fun MultiAccountLandingScreenContent(
                 painter = painterResource(id = AppIcons.Default.Banner),
                 contentDescription = null,
                 colorFilter = ColorFilter.tint(MeTheme.colorScheme.textBody),
+                modifier = Modifier.fillMaxWidth(),
+                alignment = Alignment.Center,
             )
             Spacer(Modifier.height(spacing.x3l))
             // Account list (max 5 in viewport, scrollable)
@@ -183,7 +186,7 @@ fun MultiAccountLandingScreenPreview() {
                         dashboardType = null,
                         dashboardMetrics = null,
                     ),
-                ),
+                ).toImmutableList(),
             ),
             {},
         )

@@ -121,8 +121,8 @@ class OfflineHandlerService
         val weightCompSettings =
           WeightCompSettingsEntity(
             accountId = bodyCompResponse.account.id,
-            height = bodyCompResponse.account.height,
-            activityLevel = bodyCompResponse.account.activityLevel,
+            height = bodyCompResponse.account.height ?: BodyCompUpdateRequest.DEFAULT_HEIGHT,
+            activityLevel = bodyCompResponse.account.activityLevel ?: BodyCompUpdateRequest.DEFAULT_ACTIVITY_LEVEL,
             weightUnit = bodyCompResponse.account.weightUnit,
             isSynced = true,
           )
@@ -261,7 +261,7 @@ class OfflineHandlerService
       try {
         // Get dashboard type from settings
         val dashboardType = DashboardType.entries.find {
-          it.value == unsyncedSettings.dashboardType
+          it.value.equals(unsyncedSettings.dashboardType, ignoreCase = true)
         } ?: DashboardType.DASHBOARD_4_METRICS
 
         // Sync dashboard metrics and progress metrics via API
@@ -279,7 +279,7 @@ class OfflineHandlerService
 
         AppLog.i(TAG, "Successfully synced dashboard settings for account: ${unsyncedSettings.accountId}")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error syncing dashboard settings for account ${unsyncedSettings.accountId}", e)
+         AppLog.e(TAG, "Error syncing dashboard settings for account ${unsyncedSettings.accountId}", e)
       }
     }
   }

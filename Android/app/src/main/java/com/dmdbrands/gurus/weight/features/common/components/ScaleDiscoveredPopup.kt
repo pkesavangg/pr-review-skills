@@ -27,7 +27,7 @@ fun ScaleDiscoveredModal(
   onClose: () -> Unit = {},
 ) {
   // Map SKU for display (e.g., 0022 -> 0383) for SCALES lookup and image
-  val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku)!!
+  val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku) ?: return
   val displaySku = scaleInfo.sku
   val scaleName = scaleInfo.productName
   Box(
@@ -63,7 +63,7 @@ fun ScaleDiscoveredModal(
         modifier = Modifier.padding(top = spacing.sm),
       )
       AppText(
-        text = AppPopupStrings.ScaleDiscoveredPopup.Title,
+        text = AppPopupStrings.ScaleDiscoveredPopup.Title(sku),
         textType = TextType.ListTitle2,
         textAlign = TextAlign.Center,
       )
@@ -73,7 +73,7 @@ fun ScaleDiscoveredModal(
         textAlign = TextAlign.Center,
       )
       AppButton(
-        label = "Connect",
+        label = AppPopupStrings.ScaleDiscoveredPopup.ConnectButton,
         type = ButtonType.PrimaryFilled,
         onClick = onConnect,
       )

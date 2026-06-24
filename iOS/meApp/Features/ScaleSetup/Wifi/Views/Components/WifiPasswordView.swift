@@ -11,15 +11,15 @@ struct WifiPasswordView: View {
     @EnvironmentObject var store: WifiScaleSetupStore
     @State private var focusedField: FocusField?
     var showWifiConnectionDetails: Bool = true
-    var onClickNetworkName: (() -> Void)? = nil
+    var onClickNetworkName: (() -> Void)?
     private let labels = InputFieldLabels.self
     private let lang = WifiScaleSetupStrings.WifiPasswordViewStrings.self
     
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
-                VStack(alignment: .leading){
-                    VStack(alignment: .leading, spacing: .spacingXS){
+                VStack(alignment: .leading) {
+                    VStack(alignment: .leading, spacing: .spacingXS) {
                         Text(lang.title)
                             .fontOpenSans(.heading4)
                             .fontWeight(.bold)
@@ -34,7 +34,8 @@ struct WifiPasswordView: View {
                         AppInputField(
                             config: TextInputConfig(
                                 label: labels.networkName,
-                                placeholder: store.permissionsSkipped ? "" : nil, inputType: .text,
+                                placeholder: store.permissionsSkipped ? "" : nil,
+                                inputType: .text,
                                 submitLabel: .next,
                                 errorMessage: store.networkForm.getError(for: store.networkForm.ssid),
                                 focusField: .networkName
@@ -58,7 +59,9 @@ struct WifiPasswordView: View {
                         }
                         // Clear SSID only if permissions were skipped and are still disabled
                         .onAppear {
-                            if store.permissionsSkipped && !store.arePermissionsEnabled() {
+                            if store.permissionsSkipped
+                                && !store.arePermissionsEnabled()
+                                && store.networkForm.ssid.value.isEmpty {
                                 store.networkForm.clearSSIDAndMarkPristine()
                             }
                         }
@@ -122,4 +125,3 @@ struct TestWifiPasswordEntryView: View {
             }
     }
 }
-

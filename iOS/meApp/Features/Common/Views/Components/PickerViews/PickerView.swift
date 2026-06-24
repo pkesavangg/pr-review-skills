@@ -86,7 +86,7 @@ struct PickerView<T: Hashable>: View {
             
             // Picker Section
             ZStack {
-                //Selection background
+                // Selection background
                 RoundedRectangle(cornerRadius: .radiusSM)
                     .fill(theme.backgroundSecondary)
                     .frame(height: 35)
@@ -252,17 +252,15 @@ struct PickerTestView: View {
             selectedValues: selectedHeightInches,
             options: heightInchesOptions,
             displayValue: { $0 },
-            pickerType: .heightInches,
-            onUpdate: { selectedHeightInches = $0 }
-        )
+            pickerType: .heightInches
+        ) { selectedHeightInches = $0 }
         .pickerSheet(
             isPresented: $showHeightCmPicker,
             selectedValues: selectedHeightCm,
             options: heightCmOptions,
             displayValue: { $0 },
-            pickerType: .heightCm,
-            onUpdate: { selectedHeightCm = $0 }
-        )
+            pickerType: .heightCm
+        ) { selectedHeightCm = $0 }
     }
 }
 

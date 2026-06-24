@@ -5,10 +5,12 @@ import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
 import com.dmdbrands.gurus.weight.features.common.model.Stat
+import androidx.compose.runtime.Stable
 
 /**
  * UI state for the metric info feature.
  */
+@Stable
 data class MetricInfoState(
   val stat: Stat? = null,
   val info: DashboardMetric? = null,

@@ -1,6 +1,8 @@
 package com.dmdbrands.gurus.weight.features.signup.model
 
+import androidx.compose.runtime.Stable
 import com.dmdbrands.gurus.weight.domain.enums.GoalType
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
@@ -13,13 +15,18 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations.we
 import com.dmdbrands.gurus.weight.features.common.helper.form.Validator
 import com.dmdbrands.gurus.weight.features.login.strings.LoginStrings
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
+import com.dmdbrands.gurus.weight.domain.enums.Gender
+import com.dmdbrands.gurus.weight.features.signup.strings.PickDeviceStrings
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toPersistentList
 import kotlin.math.round
-import kotlin.math.roundToInt
 
 /**
  * All form controls for the signup process in a single FormGroup.
  */
 data class SignupFormControls(
+  val device: FormControl<String>,
   val firstName: FormControl<String>,
   val lastName: FormControl<String>,
   val email: FormControl<String>,
@@ -75,13 +82,21 @@ data class SignupFormControls(
       // Create the SignupFormControls first
       val controls =
         SignupFormControls(
+          device =
+            FormControl.create(
+              "",
+              listOf(FormValidations.required()),
+            ),
           firstName =
             FormControl.create(
               signupData.firstName,
               listOf(
                 FormValidations.required(SignupStrings.Error.blank),
                 FormValidations.noWhiteSpace(),
-                FormValidations.maxLength(AppValidatorConfig.Name.MAX_LENGTH, customMessage = SignupStrings.Error.maxName),
+                FormValidations.maxLength(
+                  AppValidatorConfig.Name.MAX_LENGTH,
+                  customMessage = SignupStrings.Error.maxName,
+                ),
               ),
             ),
           lastName =
@@ -90,7 +105,10 @@ data class SignupFormControls(
               listOf(
                 FormValidations.required(SignupStrings.Error.blank),
                 FormValidations.noWhiteSpace(),
-                FormValidations.maxLength(AppValidatorConfig.Name.MAX_LENGTH,customMessage = SignupStrings.Error.maxName),
+                FormValidations.maxLength(
+                  AppValidatorConfig.Name.MAX_LENGTH,
+                  customMessage = SignupStrings.Error.maxName,
+                ),
               ),
             ),
           email =
@@ -98,8 +116,11 @@ data class SignupFormControls(
               signupData.email,
               listOf(
                 FormValidations.required(LoginStrings.Errors.emailBlank),
-          FormValidations.email(),
-          FormValidations.maxLength(AppValidatorConfig.Email.MAX_LENGTH, customMessage = LoginStrings.Errors.maxLengthEmail),
+                FormValidations.email(),
+                FormValidations.maxLength(
+                  AppValidatorConfig.Email.MAX_LENGTH,
+                  customMessage = LoginStrings.Errors.maxLengthEmail,
+                ),
               ),
             ),
           password =
@@ -107,8 +128,17 @@ data class SignupFormControls(
               signupData.password,
               listOf(
                 FormValidations.required(LoginStrings.Errors.emailBlank),
-                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "password", customMessage = LoginStrings.Errors.passwordlen, allowSpaces = true),
-                FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH,customMessage = LoginStrings.Errors.maxLengthPassword, allowSpaces = true),
+                FormValidations.minLength(
+                  AppValidatorConfig.Password.MIN_LENGTH,
+                  "password",
+                  customMessage = LoginStrings.Errors.passwordlen,
+                  allowSpaces = true,
+                ),
+                FormValidations.maxLength(
+                  AppValidatorConfig.Password.MAX_LENGTH,
+                  customMessage = LoginStrings.Errors.maxLengthPassword,
+                  allowSpaces = true,
+                ),
               ),
             ),
           confirmPassword =
@@ -116,8 +146,17 @@ data class SignupFormControls(
               signupData.confirmPassword,
               listOf(
                 FormValidations.required(LoginStrings.Errors.emailBlank),
-                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "confirmPassword",customMessage = LoginStrings.Errors.passwordlen, allowSpaces = true),
-                FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH,customMessage = LoginStrings.Errors.maxLengthPassword, allowSpaces = true),
+                FormValidations.minLength(
+                  AppValidatorConfig.Password.MIN_LENGTH,
+                  "confirmPassword",
+                  customMessage = LoginStrings.Errors.passwordlen,
+                  allowSpaces = true,
+                ),
+                FormValidations.maxLength(
+                  AppValidatorConfig.Password.MAX_LENGTH,
+                  customMessage = LoginStrings.Errors.maxLengthPassword,
+                  allowSpaces = true,
+                ),
               ),
             ),
           zipcode =
@@ -126,7 +165,10 @@ data class SignupFormControls(
               listOf(
                 FormValidations.required(LoginStrings.Errors.emailBlank),
                 FormValidations.noWhiteSpace(),
-              FormValidations.maxLength(AppValidatorConfig.ZipCode.MAX_LENGTH,customMessage = SignupStrings.Error.maxZipcode),
+                FormValidations.maxLength(
+                  AppValidatorConfig.ZipCode.MAX_LENGTH,
+                  customMessage = SignupStrings.Error.maxZipcode,
+                ),
               ),
             ),
           birthday =
@@ -181,8 +223,8 @@ data class SignupFormControls(
       controls.goalWeight.addValidator(
         FormValidations.weightMatchValidator(
           currentWeightControl = controls.currentWeight,
-          goalTypeControl = controls.goalType
-        )
+          goalTypeControl = controls.goalType,
+        ),
       )
 
       // Add password matching validation only to confirm password field
@@ -203,56 +245,79 @@ data class SignupFormControls(
         }
       }
 
+      // Track original entered weight values to prevent rounding loss on unit toggle round-trips.
+      // Each pair stores (rawValue, wasMetric): the user's typed value and the unit it was entered in.
+      // Toggling back to the original unit restores the exact input instead of re-converting.
+      // NOTE: These closure-local vars are invisible to MVI state — not observable, serializable,
+      // or restorable on process death. After a process kill, toggling units will re-convert with
+      // potential rounding loss. Acceptable for transient signup form state.
+      var originalCurrentWeight: Pair<String, Boolean>? = null
+      var originalGoalWeight: Pair<String, Boolean>? = null
+      var isUnitToggleUpdate = false
+
       // When current weight changes, validate goal weight (for lose/gain goals)
       controls.currentWeight.onValueChangeListener { _, _ ->
+        if (!isUnitToggleUpdate) {
+          originalCurrentWeight = null
+        }
         val goalType = controls.goalType.value
         if ((goalType == GoalType.LOSE.value || goalType == GoalType.GAIN.value || goalType == GoalType.LOSE_GAIN.value) &&
-            controls.goalWeight.value.isNotEmpty()) {
+          controls.goalWeight.value.isNotEmpty()
+        ) {
           controls.goalWeight.validate()
         }
       }
 
-      // When goal weight changes, validate it (already handled by onValueChange, but ensure it's validated)
       controls.goalWeight.onValueChangeListener { _, _ ->
-        // Validation is already triggered by onValueChange, but this ensures weight match validator runs
+        if (!isUnitToggleUpdate) {
+          originalGoalWeight = null
+        }
       }
 
       // Set up metric toggle validation trigger
       controls.useMetric.onValueChangeListener { oldValue, newValue ->
+        isUnitToggleUpdate = true
+        try {
+          // Convert current weight when switching units
+          if (controls.currentWeight.value.isNotEmpty()) {
+            val orig = originalCurrentWeight
+            if (orig != null && orig.second == newValue) {
+              // Toggling back to the unit the user originally typed — restore exact value
+              controls.currentWeight.onValueChange(orig.first)
+              originalCurrentWeight = null
+            } else {
+              if (orig == null) {
+                originalCurrentWeight = Pair(controls.currentWeight.value, oldValue)
+              }
+              val convertedCurrentWeight =
+                convertWeightValue(controls.currentWeight.value, fromMetric = oldValue, toMetric = newValue)
+              controls.currentWeight.onValueChange(convertedCurrentWeight)
+            }
+            controls.currentWeight.validate()
+          } else {
+            controls.currentWeight.validate()
+          }
 
-        // Convert weight values when switching units
-        if (controls.currentWeight.value.isNotEmpty()) {
-          val convertedCurrentWeight =
-            convertWeightValue(
-              controls.currentWeight.value,
-              oldValue,
-              newValue,
-            )
-          controls.currentWeight.onValueChange(convertedCurrentWeight)
-          // onValueChange() already calls validate(), but we explicitly validate again
-          // to ensure the dynamic validator closure reads the updated useMetric value
-          controls.currentWeight.validate()
-        } else {
-          // Re-validate empty fields to ensure validators are updated for future input
-          // This handles cases where user toggles unit before entering weight values
-          controls.currentWeight.validate()
-        }
-
-        if (controls.goalWeight.value.isNotEmpty()) {
-          val convertedGoalWeight =
-            convertWeightValue(
-              controls.goalWeight.value,
-              oldValue,
-              newValue,
-            )
-          controls.goalWeight.onValueChange(convertedGoalWeight)
-          // onValueChange() already calls validate(), but we explicitly validate again
-          // to ensure the dynamic validator closure reads the updated useMetric value
-          controls.goalWeight.validate()
-        } else {
-          // Re-validate empty fields to ensure validators are updated for future input
-          // This handles cases where user toggles unit before entering weight values
-          controls.goalWeight.validate()
+          // Convert goal weight when switching units
+          if (controls.goalWeight.value.isNotEmpty()) {
+            val orig = originalGoalWeight
+            if (orig != null && orig.second == newValue) {
+              controls.goalWeight.onValueChange(orig.first)
+              originalGoalWeight = null
+            } else {
+              if (orig == null) {
+                originalGoalWeight = Pair(controls.goalWeight.value, oldValue)
+              }
+              val convertedGoalWeight =
+                convertWeightValue(controls.goalWeight.value, fromMetric = oldValue, toMetric = newValue)
+              controls.goalWeight.onValueChange(convertedGoalWeight)
+            }
+            controls.goalWeight.validate()
+          } else {
+            controls.goalWeight.validate()
+          }
+        } finally {
+          isUnitToggleUpdate = false
         }
 
         // Update height input based on metric setting
@@ -260,27 +325,22 @@ data class SignupFormControls(
         val currentHeight = controls.height.value
         val newHeight =
           if (newValue) {
-            // Convert to metric (cm)
+            // Convert to metric (cm), coerced to the cm picker's 100..299 range
+            // so a short imperial height (the ft/in picker allows down to
+            // 2'0" ≈ 61 cm) doesn't produce an out-of-range value the picker
+            // can't display (MOB-172).
             when (currentHeight) {
-              is HeightInput.FtIn -> {
-                val totalInches = (currentHeight.feet * 12) + currentHeight.inches
-                // Use roundToInt() instead of toInt() to round to nearest instead of truncating
-                val cm = (totalInches * 2.54).roundToInt()
-                HeightInput.Cm(cm)
-              }
+              is HeightInput.FtIn ->
+                HeightInput.ftInToCm(currentHeight.feet, currentHeight.inches)
 
               is HeightInput.Cm -> currentHeight // Already metric
             }
           } else {
-            // Convert to imperial (ft/in)
+            // Convert to imperial (ft/in), capped to 7'11" so a tall metric
+            // height (cm picker allows up to 299 cm) doesn't produce an
+            // out-of-range value the picker can't display (MOB-172).
             when (currentHeight) {
-              is HeightInput.Cm -> {
-                // Use roundToInt() for proper rounding
-                val totalInches = (currentHeight.value / 2.54).roundToInt()
-                val feet = totalInches / 12
-                val inches = totalInches % 12
-                HeightInput.FtIn(feet, inches)
-              }
+              is HeightInput.Cm -> HeightInput.cmToFtIn(currentHeight.value)
 
               is HeightInput.FtIn -> currentHeight // Already imperial
             }
@@ -294,63 +354,79 @@ data class SignupFormControls(
 }
 
 /**
- * State for Signup screen, including form group, current step, and UI state.
- * @property form The form group containing all signup controls.
- * @property currentStep The current step in the signup process.
- * @property isLoading Whether the signup process is ongoing.
- * @property error Error message to display, if any.
- * @property goalSkipped Whether the goal step was skipped.
+ * Baby-specific state, null when not on baby path.
  */
+@Stable
+data class BabyState(
+  val babies: List<BabyProfile> = emptyList(),
+  val babyForm: BabyFormControls = BabyFormControls.create(),
+  val editingBabyId: String? = null,
+)
+
+/**
+ * State for Signup screen with dynamic step list based on device selection.
+ */
+@Stable
 data class SignupState(
   val form: FormGroup<SignupFormControls>,
+  val steps: ImmutableList<SignupStep> = COMMON_STEPS,
   val currentStep: SignupStep = SignupStep.NAME,
   val isLoading: Boolean = false,
   val error: String? = null,
   val goalSkipped: Boolean = false,
+  val babyState: BabyState? = null,
+  val registeredDevices: Set<ProductType> = emptySet(),
+  // True once the account has been created on the password step. Tracked
+  // separately from [registeredDevices] so a Try Again after an
+  // account-created-but-device-failed error does not re-create the account.
+  val accountCreated: Boolean = false,
 ) : IReducer.State {
-  val steps: List<SignupStep> = SignupStep.entries
-  val currentStepIndex: Int get() = steps.indexOf(currentStep)
+  // ERROR is a terminal screen rendered outside the pager and is not part of
+  // [steps]; pin it to the last index so progress reads full and RegisterDevice
+  // (which uses steps.last()) still lands on the real Ready terminal.
+  val currentStepIndex: Int
+    get() =
+      if (currentStep == SignupStep.ERROR) steps.lastIndex.coerceAtLeast(0)
+      else steps.indexOf(currentStep).coerceAtLeast(0)
   val isFirstStep: Boolean get() = currentStepIndex == 0
   val isLastStep: Boolean get() = currentStepIndex == steps.size - 1
-  val showSkipButton: Boolean get() = currentStep == SignupStep.GOAL
-  val progress: Float get() = (currentStepIndex + 1f) / steps.size
 
   /**
-   * Returns true if the current step form is valid without triggering validation.
-   * This is used for reactive UI updates to enable/disable the Next button.
+   * True when the next step in [steps] is a Ready terminal screen — i.e.
+   * the user has reached the form-completion step for this device pass.
+   * The reducer short-circuits Next on this step; SignupViewModel runs the
+   * signup/side-effect work and dispatches RegisterDevice on success.
    */
+  val isFinalDataStep: Boolean
+    get() {
+      val next = steps.getOrNull(currentStepIndex + 1)
+      return next == SignupStep.DEVICE_READY || next == SignupStep.ALL_DEVICES_READY
+    }
+  val showSkipButton: Boolean
+    get() = currentStep == SignupStep.GOAL
+      || currentStep == SignupStep.ADD_BABY
+      || (currentStep == SignupStep.BABY_ADDED && babyState?.babies.isNullOrEmpty())
+  val progress: Float get() = (currentStepIndex + 1f) / steps.size
+
   val isCurrentStepValid: Boolean
     get() =
       when (currentStep) {
-        SignupStep.NAME -> {
-          val controls = form.controls
-          val firstNameValid = controls.firstName.isValueValid()
-          val lastNameValid = controls.lastName.isValueValid()
-          firstNameValid && lastNameValid
-        }
+        SignupStep.NAME ->
+          form.controls.firstName.isValueValid() && form.controls.lastName.isValueValid()
 
-        SignupStep.BIRTHDAY -> {
-          val controls = form.controls
-          val birthdayValid = controls.birthday.isValueValid()
-          birthdayValid
-        }
+        SignupStep.EMAIL ->
+          form.controls.email.isValueValid()
 
-        SignupStep.GENDER -> {
-          val controls = form.controls
-          val sexValid = controls.sex.isValueValid()
-          sexValid
-        }
+        SignupStep.BIRTHDAY ->
+          form.controls.birthday.isValueValid()
 
-        SignupStep.HEIGHT -> {
-          // Height doesn't have validators and has a default value, so it's always valid
-          true
-        }
+        SignupStep.PICK_DEVICE ->
+          form.controls.device.isValueValid()
 
-        SignupStep.EMAIL -> {
-          val controls = form.controls
-          val emailValid = controls.email.isValueValid()
-          emailValid
-        }
+        SignupStep.GENDER ->
+          form.controls.sex.isValueValid()
+
+        SignupStep.HEIGHT -> true
 
         SignupStep.GOAL -> {
           if (goalSkipped) {
@@ -360,157 +436,427 @@ data class SignupState(
             val goalTypeValid = controls.goalType.isValueValid()
             val goalWeightValid = controls.goalWeight.isValueValid()
             val currentWeightValid =
-              if (controls.goalType.value == GoalType.MAINTAIN.value) {
-                true
-              } else {
-                val currentWeightValidated = controls.currentWeight.isValueValid()
-                currentWeightValidated
-              }
-
+              if (controls.goalType.value == GoalType.MAINTAIN.value) true
+              else controls.currentWeight.isValueValid()
             goalTypeValid && goalWeightValid && currentWeightValid
           }
         }
 
-        SignupStep.PASSWORD -> {
-          val controls = form.controls
+        SignupStep.ADD_BABY -> {
+          babyState?.let { bs ->
+            bs.babyForm.name.isValueValid()
+              && bs.babyForm.birthday.isValueValid()
+              && bs.babyForm.biologicalSex.isValueValid()
+          } ?: false
+        }
 
-          val passwordValid = controls.password.isValueValid()
-          val confirmPasswordValid = controls.confirmPassword.isValueValid()
-          val zipcodeValid = controls.zipcode.isValueValid()
+        SignupStep.BABY_ADDED ->
+          babyState?.babies?.isNotEmpty() == true
 
-          passwordValid && confirmPasswordValid && zipcodeValid
+        SignupStep.PASSWORD ->
+          form.controls.password.isValueValid()
+            && form.controls.confirmPassword.isValueValid()
+            && form.controls.zipcode.isValueValid()
+
+        SignupStep.DEVICE_READY,
+        SignupStep.ALL_DEVICES_READY,
+        SignupStep.ERROR -> true
+      }
+
+  companion object {
+    val COMMON_STEPS = persistentListOf(
+      SignupStep.NAME, SignupStep.EMAIL,
+      SignupStep.BIRTHDAY, SignupStep.PICK_DEVICE,
+      SignupStep.PASSWORD,
+    )
+
+    /**
+     * Builds the ordered step list for the current signup pass.
+     *
+     * On the first pass (registeredDevices is empty), the full common head
+     * (NAME → EMAIL → BIRTHDAY → PICK_DEVICE) and PASSWORD are included.
+     * On subsequent passes, the head collapses to just PICK_DEVICE and
+     * PASSWORD is omitted because the account already exists. The
+     * device-specific path also omits any slide whose data was already
+     * captured by a previously-registered device. The terminal step is
+     * ALL_DEVICES_READY when this pass will register the final device.
+     */
+    fun stepsForDevice(
+      device: ProductType?,
+      registeredDevices: Set<ProductType> = emptySet(),
+    ): ImmutableList<SignupStep> {
+      // Loop placeholder: user tapped Connect Another but hasn't picked yet.
+      if (device == null) return persistentListOf(SignupStep.PICK_DEVICE)
+
+      val isFirstPass = registeredDevices.isEmpty()
+      val isLastDevice = registeredDevices.size + 1 == ProductType.ALL.size
+      val terminalStep =
+        if (isLastDevice) SignupStep.ALL_DEVICES_READY else SignupStep.DEVICE_READY
+
+      val sexCaptured =
+        ProductType.MY_WEIGHT in registeredDevices
+          || ProductType.BLOOD_PRESSURE in registeredDevices
+      val heightCaptured = ProductType.MY_WEIGHT in registeredDevices
+      val goalCaptured = ProductType.MY_WEIGHT in registeredDevices
+
+      val head =
+        if (isFirstPass) {
+          listOf(
+            SignupStep.NAME, SignupStep.EMAIL,
+            SignupStep.BIRTHDAY, SignupStep.PICK_DEVICE,
+          )
+        } else {
+          listOf(SignupStep.PICK_DEVICE)
+        }
+
+      val pathSteps = when (device) {
+        ProductType.BABY -> listOf(SignupStep.ADD_BABY, SignupStep.BABY_ADDED)
+        ProductType.BLOOD_PRESSURE -> buildList {
+          if (!sexCaptured) add(SignupStep.GENDER)
+        }
+        ProductType.MY_WEIGHT -> buildList {
+          if (!sexCaptured) add(SignupStep.GENDER)
+          if (!heightCaptured) add(SignupStep.HEIGHT)
+          if (!goalCaptured) add(SignupStep.GOAL)
         }
       }
+
+      val tail = if (isFirstPass) listOf(SignupStep.PASSWORD, terminalStep) else listOf(terminalStep)
+
+      return (head + pathSteps + tail).toPersistentList()
+    }
+  }
 }
 
 /**
  * Intents for Signup screen actions.
  */
 sealed class SignupIntent : IReducer.Intent {
-  /** Move to the next step or submit if on last step. */
   object Next : SignupIntent()
-
-  /** Move to the previous step. */
   object Back : SignupIntent()
-
   object OnRequestBack : SignupIntent()
-
   object OpenHelpModal : SignupIntent()
-
-  data class OpenURL(
-    val url: String,
-  ) : SignupIntent()
-
-  /** Skip the current step (only available for goal step). */
+  data class OpenURL(val url: String) : SignupIntent()
   object Skip : SignupIntent()
-
-  /** Toggle between metric and imperial units. */
-  data class ToggleMetric(
-    val useMetric: Boolean,
-  ) : SignupIntent()
-
-  /** Show an error message. */
-  data class Error(
-    val message: String,
-  ) : SignupIntent()
-
-  /** Signup was successful. */
+  // Opens the baby Biological Sex picker via the shared settings-style radio modal.
+  object OpenBabySexPicker : SignupIntent()
+  data class ToggleMetric(val useMetric: Boolean) : SignupIntent()
+  data class Error(val message: String) : SignupIntent()
   object Success : SignupIntent()
+  data class UpdateGoalSkipped(val skipped: Boolean) : SignupIntent()
 
-  /** Update goal skip status. */
-  data class UpdateGoalSkipped(
-    val skipped: Boolean,
-  ) : SignupIntent()
+  /** Device selection — rebuilds step list and resets abandoned path data. */
+  data class SelectDevice(val device: String) : SignupIntent()
+
+  /** Baby flow intents */
+  data class DeleteBaby(val babyId: String) : SignupIntent()
+  data class EditBaby(val baby: BabyProfile) : SignupIntent()
+  object AddAnotherBaby : SignupIntent()
+
+  /** Multi-device loop intents (MA-3825) */
+  object ConnectAnotherDevice : SignupIntent()
+  object FinishSignup : SignupIntent()
+
+  /**
+   * Dispatched by SignupViewModel only after signup (first pass) or
+   * device-specific side effects (loop pass) succeed. Reducer adds the
+   * current device to [SignupState.registeredDevices] and advances to
+   * the terminal Ready step.
+   */
+  object RegisterDevice : SignupIntent()
+
+  /**
+   * Error-screen intents (MOB-420).
+   *
+   * [AccountCreated] flips [SignupState.accountCreated] once the account exists
+   * so a subsequent retry skips account creation. [ShowDeviceError] moves to the
+   * terminal ERROR screen on a product-creation failure. [RetryDevice] is handled
+   * by SignupViewModel, which re-runs the failed device's side effects.
+   */
+  object AccountCreated : SignupIntent()
+  object ShowDeviceError : SignupIntent()
+  object RetryDevice : SignupIntent()
 }
 
 /**
  * Reducer for Signup screen state transitions.
  */
 class SignupReducer : IReducer<SignupState, SignupIntent> {
-  /**
-   * Reduces the current state and intent to a new state.
-   * @param state The current state.
-   * @param intent The intent/action to handle.
-   * @return The new state after applying the intent.
-   */
   override fun reduce(
     state: SignupState,
     intent: SignupIntent,
   ): SignupState =
     when (intent) {
       is SignupIntent.Next -> {
-        if(!state.isLastStep){
-          val updatedState =
-            if (state.currentStep == SignupStep.GOAL) {
-              state.copy(goalSkipped = false)
-            } else {
-              state
-            }
-          val nextIndex = (updatedState.currentStepIndex + 1)
-            .coerceAtMost(updatedState.steps.lastIndex)
+        when {
+          // Last data step before a Ready terminal — advancement is gated on
+          // SignupViewModel dispatching RegisterDevice once the signup API
+          // call (or device-specific side effects) completes successfully.
+          state.isFinalDataStep -> state.copy(error = null)
 
-          val newStep = updatedState.steps[nextIndex]
-          updatedState.copy(
-            currentStep = newStep,
-            error = null
-          )
-        } else {
-          state.copy(isLoading = false, error = null)
+          // On ADD_BABY: save baby and go to BABY_ADDED
+          state.currentStep == SignupStep.ADD_BABY -> {
+            val bs = state.babyState ?: return state
+            val baby = BabyProfile(
+              id = bs.editingBabyId ?: java.util.UUID.randomUUID().toString(),
+              name = bs.babyForm.name.value,
+              birthday = bs.babyForm.birthday.value,
+              biologicalSex = Gender.entries.firstOrNull {
+                it.value.equals(bs.babyForm.biologicalSex.value, ignoreCase = true)
+              },
+              birthLength = bs.babyForm.birthLength.value,
+              birthWeight = bs.babyForm.birthWeight.value,
+              birthWeightOz = bs.babyForm.birthWeightOz.value,
+              weightUnit = bs.babyForm.weightUnit.value,
+            )
+            val updatedBabies = if (bs.editingBabyId != null) {
+              bs.babies.map { if (it.id == bs.editingBabyId) baby else it }
+            } else {
+              bs.babies + baby
+            }
+            state.copy(
+              babyState = BabyState(babies = updatedBabies),
+              currentStep = SignupStep.BABY_ADDED,
+            )
+          }
+          !state.isLastStep -> {
+            val updatedState =
+              if (state.currentStep == SignupStep.GOAL) state.copy(goalSkipped = false)
+              else state
+            val nextIndex = (updatedState.currentStepIndex + 1)
+              .coerceAtMost(updatedState.steps.lastIndex)
+            updatedState.copy(currentStep = updatedState.steps[nextIndex], error = null)
+          }
+          else -> state.copy(isLoading = false, error = null)
         }
       }
 
       is SignupIntent.Back -> {
-        val updatedState = if (state.currentStep == SignupStep.GOAL || state.currentStep == SignupStep.EMAIL) {
-          state.copy(goalSkipped = false)
-        } else {
-          state
-        }
-
-        val prevIndex = (updatedState.currentStepIndex - 1).coerceAtLeast(0)
-        updatedState.copy(currentStep = updatedState.steps[prevIndex], error = null)
-      }
-
-      is SignupIntent.Skip -> {
-        if (state.currentStep == SignupStep.GOAL) {
-          state.form.controls.currentWeight.reset()
-          state.form.controls.goalWeight.reset()
-          state.form.controls.goalType.reset()
-          val nextIndex = (state.currentStepIndex + 1).coerceAtMost(state.steps.lastIndex)
+        // Editing a baby (entered from the baby list via the pencil): Back returns to the
+        // baby list and discards the in-progress edit, rather than navigating linearly.
+        if (state.currentStep == SignupStep.ADD_BABY && state.babyState?.editingBabyId != null) {
           state.copy(
-            currentStep = state.steps[nextIndex],
-            goalSkipped = true,
+            babyState = state.babyState?.copy(
+              babyForm = BabyFormControls.create(),
+              editingBabyId = null,
+            ),
+            currentStep = SignupStep.BABY_ADDED,
             error = null,
           )
         } else {
-          state
+          val updatedState = if (state.currentStep == SignupStep.GOAL) {
+            state.copy(goalSkipped = false)
+          } else {
+            state
+          }
+          // Strictly linear back navigation
+          var prevIndex = (updatedState.currentStepIndex - 1).coerceAtLeast(0)
+          // Skip the BABY_ADDED list when no baby exists (e.g. the user skipped the form):
+          // an empty "baby has been added" slide is meaningless, so land on ADD_BABY instead.
+          if (updatedState.steps.getOrNull(prevIndex) == SignupStep.BABY_ADDED &&
+            updatedState.babyState?.babies.isNullOrEmpty()
+          ) {
+            prevIndex = (prevIndex - 1).coerceAtLeast(0)
+          }
+          updatedState.copy(currentStep = updatedState.steps[prevIndex], error = null)
         }
       }
 
-      is SignupIntent.OnRequestBack -> {
-        state.copy(isLoading = false, error = null)
+      is SignupIntent.Skip -> {
+        when {
+          state.currentStep == SignupStep.GOAL -> {
+            state.form.controls.currentWeight.reset()
+            state.form.controls.goalWeight.reset()
+            state.form.controls.goalType.reset()
+            if (state.registeredDevices.isEmpty()) {
+              // First pass: advance to PASSWORD (next step in steps list).
+              val nextIndex = (state.currentStepIndex + 1).coerceAtMost(state.steps.lastIndex)
+              state.copy(currentStep = state.steps[nextIndex], goalSkipped = true, error = null)
+            } else {
+              // Loop pass: no goal to create, no other side effects needed.
+              // Register the device immediately and jump to the terminal.
+              val device = ProductType.fromId(state.form.controls.device.value)
+              if (device == null) {
+                state.copy(goalSkipped = true, error = null)
+              } else {
+                state.copy(
+                  registeredDevices = state.registeredDevices + device,
+                  currentStep = state.steps.last(),
+                  goalSkipped = true,
+                  error = null,
+                )
+              }
+            }
+          }
+          // Skip while editing an existing baby: discard the edit and return to the list,
+          // keeping the already-added babies (Figma "Skip editing?" 31949-28040).
+          state.currentStep == SignupStep.ADD_BABY
+            && state.babyState?.editingBabyId != null -> {
+            state.copy(
+              babyState = state.babyState?.copy(
+                babyForm = BabyFormControls.create(),
+                editingBabyId = null,
+              ),
+              currentStep = SignupStep.BABY_ADDED,
+              error = null,
+            )
+          }
+          // Skip "Add another baby" while babies already exist: discard the in-progress
+          // (non-editing) form and return to the list, keeping the already-added babies —
+          // rather than discarding them all and finishing signup.
+          state.currentStep == SignupStep.ADD_BABY
+            && !state.babyState?.babies.isNullOrEmpty() -> {
+            state.copy(
+              babyState = state.babyState?.copy(
+                babyForm = BabyFormControls.create(),
+                editingBabyId = null,
+              ),
+              currentStep = SignupStep.BABY_ADDED,
+              error = null,
+            )
+          }
+          state.currentStep == SignupStep.ADD_BABY
+            || state.currentStep == SignupStep.BABY_ADDED -> {
+            if (state.registeredDevices.isEmpty()) {
+              // First pass: skip past baby steps to PASSWORD.
+              state.copy(
+                babyState = BabyState(),
+                currentStep = SignupStep.PASSWORD,
+                error = null,
+              )
+            } else {
+              // Loop pass: no babies to persist, no other side effects.
+              // Register the device immediately and jump to the terminal.
+              val device = ProductType.fromId(state.form.controls.device.value)
+              if (device == null) {
+                state.copy(babyState = BabyState(), error = null)
+              } else {
+                state.copy(
+                  babyState = BabyState(),
+                  registeredDevices = state.registeredDevices + device,
+                  currentStep = state.steps.last(),
+                  error = null,
+                )
+              }
+            }
+          }
+          else -> state
+        }
       }
 
-      is SignupIntent.OpenHelpModal -> {
-        state.copy(isLoading = false, error = null)
+      is SignupIntent.SelectDevice -> {
+        val productType = ProductType.fromId(intent.device)
+        val newSteps = SignupState.stepsForDevice(productType, state.registeredDevices)
+        val newBabyState = if (intent.device == PickDeviceStrings.Devices.BABY_SCALE)
+          BabyState() else null
+
+        // Reset abandoned path data only on the first pass — on loop iterations
+        // the previously-captured shared data must be preserved.
+        if (state.registeredDevices.isEmpty()
+          && state.form.controls.device.value != intent.device
+        ) {
+          state.form.controls.sex.reset()
+          state.form.controls.height.onValueChange(HeightInput.FtIn(5, 10))
+          state.form.controls.currentWeight.reset()
+          state.form.controls.goalWeight.reset()
+          state.form.controls.goalType.onValueChange(GoalType.LOSE_GAIN.value)
+        }
+
+        state.form.controls.device.onValueChange(intent.device)
+        state.copy(
+          steps = newSteps,
+          babyState = newBabyState,
+          goalSkipped = false,
+          error = null,
+        )
       }
 
-      is SignupIntent.Error -> {
-        state.copy(isLoading = false, error = intent.message)
+      is SignupIntent.DeleteBaby -> {
+        val bs = state.babyState ?: return state
+        state.copy(babyState = bs.copy(babies = bs.babies.filter { it.id != intent.babyId }))
       }
 
-      is SignupIntent.Success -> {
-        state.copy(isLoading = false, error = null)
+      is SignupIntent.EditBaby -> {
+        val bs = state.babyState ?: return state
+        val baby = intent.baby
+        // Exclude the baby being edited so keeping its own name isn't flagged as a duplicate.
+        val newForm = BabyFormControls.create(
+          bs.babies.filter { it.id != baby.id }.map { it.name },
+        )
+        newForm.name.onValueChange(baby.name)
+        if (baby.birthday != null) newForm.birthday.onValueChange(baby.birthday)
+        val sexValue = baby.biologicalSex?.value?.replaceFirstChar { it.uppercase() } ?: ""
+        if (sexValue.isNotEmpty()) newForm.biologicalSex.onValueChange(sexValue)
+        if (baby.birthLength.isNotEmpty()) newForm.birthLength.onValueChange(baby.birthLength)
+        if (baby.birthWeight.isNotEmpty()) newForm.birthWeight.onValueChange(baby.birthWeight)
+        if (baby.birthWeightOz.isNotEmpty()) newForm.birthWeightOz.onValueChange(baby.birthWeightOz)
+        newForm.weightUnit.onValueChange(baby.weightUnit)
+        state.copy(
+          babyState = bs.copy(babyForm = newForm, editingBabyId = baby.id),
+          currentStep = SignupStep.ADD_BABY,
+        )
       }
 
-      is SignupIntent.UpdateGoalSkipped -> {
-        state.copy(goalSkipped = intent.skipped)
+      is SignupIntent.AddAnotherBaby -> {
+        val bs = state.babyState ?: return state
+        state.copy(
+          babyState = bs.copy(
+            babyForm = BabyFormControls.create(bs.babies.map { it.name }),
+            editingBabyId = null,
+          ),
+          currentStep = SignupStep.ADD_BABY,
+        )
       }
+
+      is SignupIntent.ConnectAnotherDevice -> {
+        // Reset the device control so the loop pass starts unselected.
+        // Shared form data (sex, height, goal) is intentionally preserved.
+        state.form.controls.device.reset()
+        state.copy(
+          currentStep = SignupStep.PICK_DEVICE,
+          steps = SignupState.stepsForDevice(
+            device = null,
+            registeredDevices = state.registeredDevices,
+          ),
+          error = null,
+        )
+      }
+
+      is SignupIntent.RegisterDevice -> {
+        val device = ProductType.fromId(state.form.controls.device.value)
+          ?: return state.copy(error = "Missing device")
+        val newRegistered = state.registeredDevices + device
+        // Always jump to the terminal Ready step — the user may dispatch
+        // RegisterDevice from the final data step (Next on PASSWORD/GOAL/
+        // BABY_ADDED) or from earlier (Skip on ADD_BABY in a loop pass).
+        state.copy(
+          registeredDevices = newRegistered,
+          currentStep = state.steps.last(),
+          isLoading = false,
+          error = null,
+        )
+      }
+
+      is SignupIntent.FinishSignup -> state.copy(isLoading = false, error = null)
+
+      is SignupIntent.AccountCreated -> state.copy(accountCreated = true)
+
+      // Product-creation failure — move to the terminal ERROR screen. The failed
+      // device is the current selection; registeredDevices holds the successes.
+      is SignupIntent.ShowDeviceError ->
+        state.copy(currentStep = SignupStep.ERROR, isLoading = false)
+
+      // Side effect (retry) runs in SignupViewModel; reducer only reflects loading.
+      is SignupIntent.RetryDevice -> state.copy(isLoading = true, error = null)
+
+      is SignupIntent.OnRequestBack -> state.copy(isLoading = false, error = null)
+      is SignupIntent.OpenHelpModal -> state.copy(isLoading = false, error = null)
+      is SignupIntent.Error -> state.copy(isLoading = false, error = intent.message)
+      is SignupIntent.Success -> state.copy(isLoading = false, error = null)
+      is SignupIntent.UpdateGoalSkipped -> state.copy(goalSkipped = intent.skipped)
 
       is SignupIntent.ToggleMetric -> {
-        // Update the metric setting - this will trigger the listener which handles all conversions
-        val controls = state.form.controls
-        controls.useMetric.onValueChange(intent.useMetric)
-
+        state.form.controls.useMetric.onValueChange(intent.useMetric)
         state.copy(error = null)
       }
 

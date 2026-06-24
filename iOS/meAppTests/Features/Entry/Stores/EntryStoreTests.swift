@@ -16,13 +16,14 @@ struct EntryStoreTests {
 
     private func waitUntil(
         timeoutNanoseconds: UInt64 = 2_000_000_000,
-        pollNanoseconds: UInt64 = 5_000_000,
         condition: @MainActor () -> Bool
     ) async {
         let deadline = ContinuousClock.now + .nanoseconds(Int64(timeoutNanoseconds))
         while ContinuousClock.now < deadline {
             if condition() { return }
-            try? await Task.sleep(nanoseconds: pollNanoseconds)
+            // Continuations here resume synchronously on @MainActor, so yield
+            // cooperatively instead of sleeping a fixed interval — fully deterministic.
+            await Task.yield()
         }
     }
 

@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
@@ -25,7 +25,7 @@ import com.greatergoods.ggInAppMessaging.ui.screens.IamFeedLandingScreen
 @Composable
 fun FeedLandingScreen() {
   val viewModel: FeedLandingViewModel = hiltViewModel()
-  val state by viewModel.state.collectAsState()
+  val state by viewModel.state.collectAsStateWithLifecycle()
 
   // Handle back button press
   BackHandler {
@@ -53,9 +53,12 @@ fun FeedLandingScreen() {
         }
 
         state.feedItem != null -> {
-          IamFeedLandingScreen(
-            feedItem = state.feedItem!!,
-          )
+          val feedItem = state.feedItem
+          if (feedItem != null) {
+            IamFeedLandingScreen(
+              feedItem = feedItem,
+            )
+          }
         }
 
         else -> {

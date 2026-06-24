@@ -1,21 +1,31 @@
 package com.dmdbrands.gurus.weight.features.scaleDetails.strings
 
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
+
 object ScaleDetailsStrings {
-  const val DeleteScaleConfirmation = "Are you sure you want to delete this scale?"
+  const val DeleteConfirmation = "Are you sure you want to delete this device?"
   const val Delete = "Delete"
   const val Cancel = "Cancel"
-  const val DeleteSuccessMessage = "scale deleted successfully"
-  const val DeleteErrorMessage = "Error deleting scale"
-  const val DeleteLoaderMessage = "Deleting scale..."
-  const val Header = "Scale Settings"
+  const val DeleteSuccessMessage = "device deleted successfully"
+  const val DeleteErrorMessage = "Error deleting device"
+  const val DeleteLoaderMessage = "Deleting device..."
+  const val DeleteLabel = "Delete Device"
   const val Close = "Close"
   const val Mode = "Mode"
   const val AllBodyMetrics = "All Body Metrics"
   const val WeightOnly = "Weight Only"
   const val DisplayMetrics = "Display Metrics"
   const val Users = "Users"
-  const val UserNumber = "User Number"
-  const val ScaleName = "Scale Name"
+
+  /**
+   * Label for the user-slot setting row. BPM devices identify users with letters (A/B) or digits
+   * (1/2), so we show the generic "User" label; weight scales show "User Number" because the
+   * value is always numeric.
+   */
+  fun userNumberLabel(sku: String?) = when {
+    DeviceHelper.isBpmDevice(sku) -> "User"
+    else -> "User Number"
+  }
   const val Connection = "Connection"
   const val Bluetooth = "Bluetooth"
   const val Connected = "Connected"
@@ -27,7 +37,6 @@ object ScaleDetailsStrings {
   const val Sku = "SKU"
   const val DatePaired = "Date Paired"
   const val ProductGuide = "Product Guide"
-  const val DeleteScale = "Delete Scale"
   const val SetupIncomplete = "Setup Incomplete"
   const val SetupWifi = "Setup Wi-Fi"
 

@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.dashboard.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -15,10 +16,12 @@ import com.dmdbrands.gurus.weight.features.dashboard.string.DashboardString
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
 @Composable
-fun EmptyMetric(onConnectScaleClick: () -> Unit) {
+fun EmptyMetric(onConnectScaleClick: () -> Unit, modifier: Modifier = Modifier) {
   val lang = DashboardString.EmptyMetric
   Column(
-    modifier = Modifier.padding(horizontal = 16.dp),
+    modifier = modifier
+      .fillMaxWidth()
+      .padding(horizontal = 16.dp),
     verticalArrangement = Arrangement.Center,
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {

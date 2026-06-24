@@ -69,7 +69,6 @@ fun FeaturedProductVariations(
         },
       ),
     horizontalAlignment = Alignment.CenterHorizontally,
-    // verticalArrangement = Arrangement.spacedBy(24.dp),
   ) {
     // Supporting title and description
     SupportingTextSection(feedItem = feedItem)

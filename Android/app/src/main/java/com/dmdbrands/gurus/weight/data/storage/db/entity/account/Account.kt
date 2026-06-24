@@ -61,4 +61,11 @@ data class Account(
     )
     val integrationsSettings: IntegrationsSettingsEntity?,
 
+    @Relation(
+        entity = ProductSettingsEntity::class,
+        parentColumn = "accountId",
+        entityColumn = "accountId"
+    )
+    val productSettings: ProductSettingsEntity?,
+
     )

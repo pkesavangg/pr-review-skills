@@ -20,6 +20,7 @@ import androidx.room.PrimaryKey
     ],
 )
 data class BpmEntryEntity(
+    /** PK and FK to entry.id — matches production 5.0.0 schema. Do not rename. */
     @PrimaryKey
     val id: Long,
     val systolic: Int,

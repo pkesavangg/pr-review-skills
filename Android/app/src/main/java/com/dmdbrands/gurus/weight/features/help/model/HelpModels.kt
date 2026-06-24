@@ -1,11 +1,13 @@
 package com.dmdbrands.gurus.weight.features.help.model
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import androidx.compose.runtime.Stable
 
 
 /**
  * State model for the Help screen.
  */
+@Stable
 data class HelpState(
     val isLoading: Boolean = false,
     val error: String? = null

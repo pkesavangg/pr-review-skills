@@ -33,8 +33,7 @@ import com.greatergoods.libs.healthconnect.interfaces.IHealthConnect
 import com.greatergoods.libs.healthconnect.model.HealthConnectData
 import com.greatergoods.libs.healthconnect.model.HealthConnectOptions
 import com.greatergoods.libs.healthconnect.model.HealthConnectResult
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -85,7 +84,6 @@ class HealthConnect(
      * This method sets up the ActivityResultLauncher for permission requests.
      * Must be called before requesting permissions.
      */
-    @OptIn(DelicateCoroutinesApi::class)
     private fun load() {
         if (HealthConnectClient.getSdkStatus(activity) == HealthConnectClient.SDK_AVAILABLE ||
             HealthConnectClient.getSdkStatus(activity) == HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
@@ -93,7 +91,7 @@ class HealthConnect(
             try {
                 val requestPermissionActivityContract = PermissionController.createRequestPermissionResultContract()
                 requestPermissions = activity.registerForActivityResult(requestPermissionActivityContract) { grantedPermissions ->
-                    GlobalScope.launch {
+                    activity.lifecycleScope.launch {
                         try {
                             val hasAnyPermission = hasAnyPermissions(grantedPermissions)
 
@@ -112,11 +110,13 @@ class HealthConnect(
                             sendAuthorizationStatus(result)
 
                         } catch (e: Exception) {
-
+                            Log.e(TAG, "Failed to process permission result", e)
+                            sendAuthorizationStatus(HealthConnectRequestStatus.CANCELLED)
                         }
                     }
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "Failed to register for activity result", e)
             }
         }
     }
@@ -185,7 +185,7 @@ class HealthConnect(
                 val recordType = getRecordKClass(type)
                 if (recordType != null) {
                     healthConnectClient.deleteRecords(
-                        recordType.kotlin,
+                        recordType,
                         timeRangeFilter =
                             TimeRangeFilter.Companion
                                 .between(start, end),
@@ -207,7 +207,7 @@ class HealthConnect(
                 val recordType = getRecordKClass(entry.type)
                 if (recordType != null) {
                     healthConnectClient.deleteRecords(
-                        recordType.kotlin,
+                        recordType,
                         timeRangeFilter =
                             TimeRangeFilter.between(
                                 entry.timeStamp.minusSeconds(1),
@@ -400,7 +400,7 @@ class HealthConnect(
     private fun buildPermissionSet(options: HealthConnectOptions): Set<String> {
         val writePermissions = options.writeTypes.mapNotNull { dataType ->
             getRecordKClass(dataType)?.let { recordClass ->
-                HealthPermission.getWritePermission(recordClass.kotlin)
+                HealthPermission.getWritePermission(recordClass)
             }
         }
         return writePermissions.toSet()
@@ -417,17 +417,17 @@ class HealthConnect(
     /**
      * Get the Record class for a Health Connect Record type from DataType.
      */
-    private fun getRecordKClass(type: DataType): Class<out Record>? =
+    private fun getRecordKClass(type: DataType): KClass<out Record>? =
         when (type) {
-            DataType.BasalMetabolicRate -> BasalMetabolicRateRecord::class.java
-            DataType.BloodPressure -> BloodPressureRecord::class.java
-            DataType.RestingHeartRate -> RestingHeartRateRecord::class.java
-            DataType.BodyFat -> BodyFatRecord::class.java
-            DataType.BodyWaterMass -> BodyWaterMassRecord::class.java
-            DataType.BoneMass -> BoneMassRecord::class.java
-            DataType.Height -> HeightRecord::class.java
-            DataType.LeanBodyMass -> LeanBodyMassRecord::class.java
-            DataType.Weight -> WeightRecord::class.java
+            DataType.BasalMetabolicRate -> BasalMetabolicRateRecord::class
+            DataType.BloodPressure -> BloodPressureRecord::class
+            DataType.RestingHeartRate -> RestingHeartRateRecord::class
+            DataType.BodyFat -> BodyFatRecord::class
+            DataType.BodyWaterMass -> BodyWaterMassRecord::class
+            DataType.BoneMass -> BoneMassRecord::class
+            DataType.Height -> HeightRecord::class
+            DataType.LeanBodyMass -> LeanBodyMassRecord::class
+            DataType.Weight -> WeightRecord::class
         }
 
     /**

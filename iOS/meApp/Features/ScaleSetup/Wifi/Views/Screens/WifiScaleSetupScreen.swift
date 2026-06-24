@@ -46,12 +46,11 @@ struct WifiScaleSetupScreen: View {
             // Step views with swiper
             SwiperView(
                 selectedIndex: $setupStore.currentStepIndex,
-                views: stepViews,
-                shouldApplyHorizontalPadding: { index in
+                views: stepViews
+            ) { index in
                     let step = setupStore.steps[index]
                     return step != .errorSelect && step != .selectUser
                 }
-            )
             
             // Footer Buttons
             footerButtons
@@ -85,37 +84,39 @@ struct WifiScaleSetupScreen: View {
                        type: .inlineTextPrimary,
                        size: .small,
                        isDisabled: setupStore.shouldDisableBackButton(),
-                       useFrameForInlineText: true,
-                       action: {
+                       useFrameForInlineText: true) {
                 withAnimation {
                     hideKeyboard()
                 }
                 setupStore.handleBackButtonClick()
-            })
+            }
             Spacer()
             ButtonView(text: setupStore.nextButtonText,
                        type: .filledPrimary,
                        size: .small,
                        isDisabled: !setupStore.isNextEnabled,
                        customHorizontalPadding: .spacingXS / 2,
-                       customVerticalPadding: .spacingXS / 4,
-                       action: {
+                       customVerticalPadding: .spacingXS / 4) {
                 withAnimation {
                     hideKeyboard()
                 }
                 setupStore.handleNextButtonClick()
-            })
+            }
         }
         .overlay {
             HStack {
                 if setupStore.currentStep == .permissions && !setupStore.isForGetMac {
-                    ButtonView(text: commonLang.skip, type: .inlineTextTertiary, size: .
-                               large, isDisabled: false, action: {
+                    ButtonView(
+                        text: commonLang.skip,
+                        type: .inlineTextTertiary,
+                        size: .large,
+                        isDisabled: false
+                    ) {
                         withAnimation {
                             hideKeyboard()
                         }
                         setupStore.handleSkipWifiStep()
-                    })
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .center)

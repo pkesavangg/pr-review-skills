@@ -39,8 +39,13 @@ object RadioGroupModalStrings {
 
     // Unit Type Options
     object UnitType {
-        const val Imperial = "lbs & feet"
-        const val Metric = "kg & cm"
+        const val Imperial = "lbs / ft"
+        const val Metric = "kg / cm"
+        const val ImperialBaby = "lbs & oz / in"
+
+        // Per-product section headers used by the sectioned Unit Type modal.
+        const val MyWeightSection = "My Weight"
+        const val MyKidsSection = "My Kids"
     }
 
     // Notification Options (following Angular pattern)

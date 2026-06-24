@@ -12,12 +12,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.style.TextAlign
@@ -42,7 +41,6 @@ import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
-import android.app.Activity
 
 /**
  * Debug menu screen composable. Displays debug information and troubleshooting options.
@@ -51,7 +49,7 @@ import android.app.Activity
 @Composable
 fun DebugMenuScreen() {
   val viewModel: DebugMenuViewModel = hiltViewModel()
-  val state by viewModel.state.collectAsState()
+  val state by viewModel.state.collectAsStateWithLifecycle()
   val windowSize = LocalWindowInfo.current.containerSize
   val isTablet =
     with(LocalDensity.current) {
@@ -179,7 +177,6 @@ private fun AppInformationSection(state: com.dmdbrands.gurus.weight.features.deb
 private fun AppTroubleshootingSection(handleIntent: (DebugMenuIntent) -> Unit) {
   val activity = LocalActivity.current
   val scope = rememberCoroutineScope()
-  val context = LocalContext.current
   SettingsSection(
     title = DebugMenuStrings.SectionHeaders.AppTroubleshooting,
     items = listOf(
@@ -216,7 +213,7 @@ private fun AppTroubleshootingSection(handleIntent: (DebugMenuIntent) -> Unit) {
         title = DebugMenuStrings.Actions.ShowAppRate,
         type = SettingsItemType.None,
         onClick = {
-          handleIntent(DebugMenuIntent.ShowAppReviewWithActivity(context as Activity))
+          activity?.let { handleIntent(DebugMenuIntent.ShowAppReviewWithActivity(it)) }
         },
       ),
     ),

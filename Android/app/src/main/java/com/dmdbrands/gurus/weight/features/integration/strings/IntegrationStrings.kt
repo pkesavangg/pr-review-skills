@@ -6,6 +6,22 @@ package com.dmdbrands.gurus.weight.features.integration.strings
 object IntegrationStrings {
     const val Title = "Integrations"
 
+    // Section headers (device-driven)
+    const val SectionWeightScale = "Integrations for weight scales"
+    const val SectionWeightScaleAndBpm = "Integrations for Weight Scales & BPM"
+
+    // Footer CTA
+    const val RequestNewIntegration = "Request new integration"
+
+    // Request-an-Integration modal
+    const val RequestModalTitle = "Request an Integration"
+    const val RequestModalSubtitle = "What would you like to see added?"
+    const val RequestModalPlaceholder = "Integration"
+    const val RequestModalSend = "SEND"
+    const val RequestModalCancel = "CANCEL"
+    const val RequestSubmittedToast = "Thanks! We'll consider your request."
+    const val RequestFailedToast = "Couldn't send your request. Try again later."
+
     // Health Connect
     const val HealthConnectTitle = "Health Connect"
     const val HealthConnectDescription = "Connect with Health Connect to sync your health and fitness data across apps."

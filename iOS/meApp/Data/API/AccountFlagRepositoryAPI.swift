@@ -10,9 +10,12 @@ import Foundation
 /// API repository implementation for account flag operations
 @MainActor
 final class AccountFlagRepositoryAPI: AccountFlagRepositoryAPIProtocol {
-    private let httpClient = HTTPClient.shared
-    
+    private let httpClient: HTTPClientProtocol
     private let tag = "AccountFlagRepositoryAPI"
+
+    init(httpClient: HTTPClientProtocol? = nil) {
+        self.httpClient = httpClient ?? HTTPClient.shared
+    }
     
     /// Fetches account flags for the current user from the API
     /// - Returns: Array of account flag DTOs

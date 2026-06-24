@@ -13,7 +13,9 @@ struct BtWifiScaleSetupStrings {
             isCustomizationSettings ? "Confirm User Name" : "A user with this name already exists on the scale."
         }
         static let subtitle: (Bool) -> String = { isCustomizationSettings in
-            isCustomizationSettings ? "Change how your name appears on the scale." : "Choose a new user name to proceed. Or, if this is you, restore the existing account."
+            isCustomizationSettings
+                ? "Change how your name appears on the scale."
+                : "Choose a new user name to proceed. Or, if this is you, restore the existing account."
         }
         static let restoreAccountButton = "Restore account"
         static let lastActive = "last active"
@@ -78,12 +80,25 @@ struct BtWifiScaleSetupStrings {
     
     struct AccuCheckInfoModalViewStrings {
         static let title = "What is AccuCheck?"
-        static let description1 = "AccuCheck is Greater Goods’ proprietary algorithm, designed to provide the most accurate results possible every time you weigh in—down to .01 lb."
-        static let description2 = "Shortly after getting on the scale, you’ll see an orange light. This means that you’ve been weighed. When you get off the scale, you’ll see a green light. This means that AccuCheck has double checked its work, and your weight has been verified. Essentially, AccuCheck is a second set of eyes, every time."
+        static let description1 = "AccuCheck is Greater Goods’ proprietary algorithm, designed to provide the most accurate "
+            + "results possible every time you weigh in—down to .01 lb."
+        static let description2 = "Shortly after getting on the scale, you'll see an orange light. " +
+            "This means that you've been weighed. When you get off the scale, you'll see a green light. " +
+            "This means that AccuCheck has double checked its work, and your weight has been verified. " +
+            "Essentially, AccuCheck is a second set of eyes, every time."
     }
     
     struct ScaleMetricsCustomizationViewStrings {
         static let title = "Customize Your Scale"
         static let subtitle = "Rearrange tiles and/or hide unwanted metrics from your scale screen."
+    }
+
+    struct A11y {
+        static let accuCheckImageLabel = "AccuCheck measurement result"
+        static let whatThisHint = "Double tap to learn more about AccuCheck"
+        static let settingsItemHint = "Double tap to configure"
+        static let settingsItemDoneHint = "Already configured. Double tap to reconfigure"
+        static let closeAccuCheckLabel = "Close"
+        static let closeAccuCheckHint = "Dismiss AccuCheck information"
     }
 }

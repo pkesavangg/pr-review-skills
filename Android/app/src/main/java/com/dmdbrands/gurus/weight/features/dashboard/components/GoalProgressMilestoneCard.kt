@@ -31,7 +31,7 @@ import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
 import com.dmdbrands.gurus.weight.features.goal.components.EmptyGoal
 import com.dmdbrands.gurus.weight.features.goal.components.GoalMilestoneDisplay
@@ -52,7 +52,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  */
 @Composable
 fun GoalProgressMilestoneCard(
-  progress: Progress,
+  progress: WeightProgress,
   inEditMode: Boolean,
   isDragging: Boolean = false,
   isVisible: Boolean = true,
@@ -60,7 +60,7 @@ fun GoalProgressMilestoneCard(
   modifier: Modifier = Modifier,
   onBadgeClick: () -> Unit = {},
   onNavigateToGoal: () -> Unit = {},
-  onLongClick: (Progress) -> Unit = {}
+  onLongClick: (WeightProgress) -> Unit = {}
 ) {
   // Fine‑tunable badge offsets to match other cards' top‑right alignment
   val badgeOffsetX = (-5).dp

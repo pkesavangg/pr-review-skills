@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 04/06/25.
 //
 
-
 import SwiftUI
 import UIKit
 
@@ -94,7 +93,7 @@ struct AlertModifier: ViewModifier {
             return .emailAddress
         case .number, .metric:
             return .numberPad
-        case .password, .text:
+        case .password, .text, .notes:
             return .default
         }
     }
@@ -153,7 +152,8 @@ struct AlertModifier: ViewModifier {
         let delays: [TimeInterval] = [0.3, 0.5, 0.7, 1.0]
         
         for delay in delays {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                 guard self.alertData != nil else { return }
                 
                 if let alertWindow = self.findAlertWindow() {
@@ -248,12 +248,12 @@ struct AlertModifier: ViewModifier {
     
     private func isInAlertHierarchy(view: UIView) -> Bool {
         var currentView: UIView? = view
-        while let v = currentView {
-            let typeName = String(describing: type(of: v))
+        while let viewToCheck = currentView {
+            let typeName = String(describing: type(of: viewToCheck))
             if typeName.contains("Alert") || typeName.contains("_UIAlert") {
                 return true
             }
-            currentView = v.superview
+            currentView = viewToCheck.superview
         }
         return false
     }

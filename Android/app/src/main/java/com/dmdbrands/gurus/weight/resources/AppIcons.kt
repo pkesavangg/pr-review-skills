@@ -1,8 +1,11 @@
 package com.dmdbrands.gurus.weight.resources
 
 import com.dmdbrands.gurus.weight.R
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 
 object AppIcons {
+  private const val TAG = "AppIcons"
+
   object Default {
     val Close = R.drawable.ic_close
     val closeFilled = R.drawable.filled_close
@@ -34,6 +37,10 @@ object AppIcons {
     val Export = R.drawable.export_info
     val Plus = R.drawable.ic_plus
     val Minus = R.drawable.ic_minus
+    val EditPencil = R.drawable.ic_edit_pencil
+    val BabyScale = R.drawable.ic_baby_scale
+    val BloodPressureMonitor = R.drawable.ic_blood_pressure_monitor
+    val WeightScale = R.drawable.ic_weight_scale
   }
 
   object Outlined {
@@ -53,6 +60,7 @@ object AppIcons {
     val CaretDown = R.drawable.ic_filled_caret_down
     val AddCircle = R.drawable.ic_plus_circle_filled
     val MinusCircle = R.drawable.ic_minus_circle_filled
+    val Profile = R.drawable.ic_profile_fill
   }
 
   object Selection {
@@ -107,7 +115,7 @@ object AppIcons {
     fun StepOnGif(sku: String): Int {
       return when (sku) {
         "0375", "0376", "0380", "0382" -> R.raw.step_on_scale
-        else -> R.raw.step_on_scale
+        else -> R.raw.placeholder_scale
       }
     }
 
@@ -117,7 +125,7 @@ object AppIcons {
         "0376" -> R.raw.start_pair_mode_0376
         "0380" -> R.raw.start_pair_mode_0380
         "0382" -> R.raw.start_pair_mode_0382
-        else -> R.raw.start_pair_mode_0375
+        else -> R.raw.placeholder_scale
       }
     }
 
@@ -127,7 +135,7 @@ object AppIcons {
         "0376" -> R.raw.set_user_number_0376
         "0380" -> R.raw.set_user_number_0380
         "0382" -> R.raw.set_user_number_0382
-        else -> R.raw.set_user_number_0375
+        else -> R.raw.placeholder_scale
       }
     }
 
@@ -165,6 +173,9 @@ object AppIcons {
     val UserNameScale = R.drawable.scale_0412_user_name
     val AppSyncNavBar = R.drawable.app_bottom_bar
     val SetupCompleteCheck = R.drawable.setup_complete_check
+    val BabyScalePairedCheck = R.drawable.ic_baby_scale_paired_check
+    val BabyScaleSearching = R.drawable.ic_searching_indicator
+    val EditPencil = R.drawable.ic_edit_pencil
     val WifiAPMode = R.drawable.wifi_ap_mode
     val WifiSmartConnect = R.drawable.wifi_smart_connect
     val WifiAPModeSelected = R.drawable.wifi_ap_mode_filled
@@ -177,5 +188,108 @@ object AppIcons {
     val wifiAPModeStepOn = R.drawable.stepon_filled_0396
     val WifiAPModeFilled0384 = R.drawable.ap_filled_0384
     val WifiAPModeOutlined0384 = R.drawable.ap_outlined_0384
+
+    val BabyScale = R.drawable.ic_baby_scale
+    val BpmScale = R.drawable.ic_bpm_scale
+    val WeightScale = R.drawable.ic_weight_scale
+  }
+
+  object Monitor {
+    private fun gifBySku(sku: String, resources: Map<String, Int>, default: Int): Int =
+      resources[sku] ?: default
+
+    private val cuffGifs = mapOf(
+      "0603" to R.raw.cuff_0603,
+      "0604" to R.raw.cuff_0604,
+      "0634" to R.raw.cuff_0634,
+      "0636" to R.raw.cuff_0636,
+      "0661" to R.raw.cuff_0661,
+      "0663" to R.raw.cuff_0663,
+    )
+
+    private val pulseGifs = mapOf(
+      "0603" to R.raw.pulse_0603,
+      "0604" to R.raw.pulse_0604,
+      "0634" to R.raw.pulse_0634,
+      "0636" to R.raw.pulse_0636,
+      "0661" to R.raw.pulse_0661,
+      "0663" to R.raw.pulse_0663,
+    )
+
+    private val startGifs = mapOf(
+      "0603" to R.raw.start_0603,
+      "0604" to R.raw.start_0604,
+      "0634" to R.raw.start_0634,
+      "0636" to R.raw.start_0636,
+      "0661" to R.raw.start_0661,
+      "0663" to R.raw.start_0663,
+    )
+
+    private val syncingGifs = mapOf(
+      "0603" to R.raw.syncing_0603,
+      "0604" to R.raw.syncing_0604,
+      "0634" to R.raw.syncing_0634,
+      "0636" to R.raw.syncing_0636,
+      "0661" to R.raw.syncing_0661,
+      "0663" to R.raw.syncing_0663,
+    )
+
+    fun CuffGif(sku: String): Int = gifBySku(sku, cuffGifs, R.raw.cuff_0603)
+
+    fun PulseGif(sku: String): Int = gifBySku(sku, pulseGifs, R.raw.pulse_0603)
+
+    fun StartGif(sku: String): Int = gifBySku(sku, startGifs, R.raw.start_0603)
+
+    fun SyncingGif(sku: String): Int = gifBySku(sku, syncingGifs, R.raw.syncing_0603)
+
+    fun UserGif(sku: String, user: String): Int = when {
+      sku == "0603" && user == "1" -> R.raw.user_1_0603
+      sku == "0603" && user == "2" -> R.raw.user_2_0603
+      user.uppercase() == "A" -> when (sku) {
+        "0604" -> R.raw.user_a_0604
+        "0634" -> R.raw.user_a_0634
+        "0636" -> R.raw.user_a_0636
+        "0661" -> R.raw.user_a_0661
+        "0663" -> R.raw.user_a_0663
+        else -> R.raw.user_a_0604
+      }
+      else -> {
+        if (user.uppercase() != "B") {
+          AppLog.w(TAG, "UserGif: unexpected user='$user' for sku='$sku', falling back to user B")
+        }
+        when (sku) {
+          "0604" -> R.raw.user_b_0604
+          "0634" -> R.raw.user_b_0634
+          "0636" -> R.raw.user_b_0636
+          "0661" -> R.raw.user_b_0661
+          "0663" -> R.raw.user_b_0663
+          else -> R.raw.user_b_0604
+        }
+      }
+    }
+
+    fun MonitorOffImage(sku: String): Int = when (sku) {
+      "0603" -> R.drawable.monitor_off_0603
+      "0604" -> R.drawable.monitor_off_0604
+      "0634" -> R.drawable.monitor_off_0634
+      "0661" -> R.drawable.monitor_off_0661
+      "0663" -> R.drawable.monitor_off_0663
+      else -> R.drawable.ic_blood_pressure_monitor
+    }
+
+    // Shared across all monitor SKUs — only one power switch image exists
+    val PowerSwitchImage = R.drawable.power_switch_0636
+
+    // Mirrors Angular: userToggleImage(sku, userNumber)
+    // SKU 0663 → user0663_a / user0663_b
+    // Others   → user_a / user_b  (or user_1 / user_2 for numeric-user SKU 0603)
+    fun UserToggleImage(sku: String, user: String): Int = when {
+      sku == "0663" && user.uppercase() == "A" -> R.drawable.user0663_a
+      sku == "0663" && user.uppercase() == "B" -> R.drawable.user0663_b
+      user == "1" -> R.drawable.user_1
+      user == "2" -> R.drawable.user_2
+      user.uppercase() == "A" -> R.drawable.user_a
+      else -> R.drawable.user_b
+    }
   }
 }

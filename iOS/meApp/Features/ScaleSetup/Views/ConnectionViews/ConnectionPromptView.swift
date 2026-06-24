@@ -46,6 +46,7 @@ struct ConnectionPromptView: View {
                         .multilineTextAlignment(.center)
                 }
             }
+            .accessibilityElement(children: .combine)
 
             VStack(spacing: scaleImagePath == nil ? 0 : 90) {
                 if let scaleImagePath {
@@ -56,11 +57,13 @@ struct ConnectionPromptView: View {
                         .cornerRadius(.radiusLG)
                         .themeDropShadow()
                         .padding(.top, .spacingXS)
+                        .accessibilityHidden(true)
                 }
-                
+
                 ConnectionIndicatorView(image: image)
+                    .accessibilityHidden(true)
             }
-            
+
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }

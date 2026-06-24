@@ -1,3 +1,4 @@
+import Combine
 //
 //  SignupForm.swift
 //  meApp
@@ -5,7 +6,6 @@
 //  Created by Kesavan Panchabakesan on 11/06/25.
 //
 import Foundation
-import Combine
 
 // MARK: SignupForm
 /// This form is responsible for managing the signup process.
@@ -16,21 +16,50 @@ class SignupForm: ObservableForm {
         let defaultDate = Calendar.current.date(from: DateComponents(year: 2000, month: 1, day: 1)) ?? Date()
         return FormControl(defaultDate, validators: [.futureDate])
     }()
-    var gender = FormControl("", validators: [.required])
+    var gender = FormControl("male", validators: [.required])
     var goalType = FormControl(GoalTypeSegment.losegainValue, validators: [.required])
     var currentWeight = FormControl("", validators: [.required, .minValue()])
     var goalWeight = FormControl("", validators: [.required, .minValue()])
     var useMetric = FormControl(false)
-    var height = FormControl(Double(700))
+    var height = FormControl(Double(770))
     var email = FormControl("", validators: [.required, .email, .maxLength(100)])
     var password = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
     var confirmPassword = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
     var zipcode = FormControl("", validators: [.required, .noWhiteSpace, .maxLength(20)])
-    
-    
+
+    /// Products this signup is for. Drives conditional validation of
+    /// gender/dob/height per the multi-product API spec:
+    /// - gender & dob required only if `productTypes` includes "weight" or "blood_pressure"
+    /// - height required only if `productTypes` includes "weight"
+    /// Defaults to `["weight"]`, matching the server default.
+    var productTypes: [String] = [ProductType.weight.apiValue] {
+        didSet { applyConditionalValidators() }
+    }
+
+    /// Whether gender/dob are required for the current `productTypes`.
+    var requiresGenderAndDob: Bool {
+        productTypes.contains(ProductType.weight.apiValue) || productTypes.contains(ProductType.bloodPressure.apiValue)
+    }
+
+    /// Whether height is required for the current `productTypes`.
+    var requiresHeight: Bool {
+        productTypes.contains(ProductType.weight.apiValue)
+    }
+
+    /// Recomputes validators for the fields that are conditional on `productTypes`.
+    /// gender carries a `.required` validator only when needed; dob/height are
+    /// gated at request-build time (they have no `.required` validator here).
+    func applyConditionalValidators() {
+        if requiresGenderAndDob {
+            gender.addValidator(.required)
+        } else {
+            gender.removeValidator(ofType: .required)
+        }
+    }
+
     /// Publisher that merges all value changes in the form
     var formDidChange: AnyPublisher<Void, Never> {
-        Publishers.MergeMany([
+        let accountFields: [AnyPublisher<Void, Never>] = [
             firstName.$value.map { _ in () }.eraseToAnyPublisher(),
             lastName.$value.map { _ in () }.eraseToAnyPublisher(),
             birthday.$value.map { _ in () }.eraseToAnyPublisher(),
@@ -39,18 +68,21 @@ class SignupForm: ObservableForm {
             useMetric.$value.map { _ in () }.eraseToAnyPublisher(),
             currentWeight.$value.map { _ in () }.eraseToAnyPublisher(),
             goalWeight.$value.map { _ in () }.eraseToAnyPublisher(),
-            height.$value.map { _ in () }.eraseToAnyPublisher(),
+            height.$value.map { _ in () }.eraseToAnyPublisher()
+        ]
+        let authFields: [AnyPublisher<Void, Never>] = [
             email.$value.map { _ in () }.eraseToAnyPublisher(),
             password.$value.map { _ in () }.eraseToAnyPublisher(),
             confirmPassword.$value.map { _ in () }.eraseToAnyPublisher(),
-            zipcode.$value.map { _ in () }.eraseToAnyPublisher(),
-        ])
-        .eraseToAnyPublisher()
+            zipcode.$value.map { _ in () }.eraseToAnyPublisher()
+        ]
+        return Publishers.MergeMany(accountFields + authFields)
+            .eraseToAnyPublisher()
     }
-    
+
     override func validateForm() {
         var errors = ValidationErrors<Any>()
-        
+
         // Check if passwords match when both are filled
         if !password.errors[.required] && !confirmPassword.errors[.required] {
             if password.value != confirmPassword.value {
@@ -60,7 +92,7 @@ class SignupForm: ObservableForm {
                 )
             }
         }
-        
+
         // Check if goal weight equals current weight when in lose/gain mode
         if goalType.value != GoalType.maintain.rawValue {
             if hasEqualWeights {
@@ -70,36 +102,36 @@ class SignupForm: ObservableForm {
                 )
             }
         }
-        
+
         updateFormErrors(errors)
     }
-    
+
     // MARK: - Weight Validation Helpers
-    
+
     /// Returns `true` if both weights are positive and equal.
     var hasEqualWeights: Bool {
         let current = Double(currentWeight.value) ?? 0.0
         let goal = Double(goalWeight.value) ?? 0.0
         return current > 0 && goal > 0 && current == goal
     }
-    
+
     // MARK: - Form State Helpers
-    
+
     var isTouched: Bool {
         goalType.isTouched || currentWeight.isTouched || goalWeight.isTouched
     }
-    
+
     var isGoalValidForSave: Bool {
         let isAnyGoalFieldDirty =
         goalType.isDirty || currentWeight.isDirty || goalWeight.isDirty
         guard isAnyGoalFieldDirty else { return false }
-        
+
         let isMaintainMode = goalType.value == GoalType.maintain.rawValue
-        
+
         if !isMaintainMode && hasEqualWeights {
             return false
         }
-        
+
         // For maintain mode, only goal weight needs to be dirty/touched
         // For lose/gain mode, both weights need to be dirty/touched
         if isMaintainMode {
@@ -107,20 +139,21 @@ class SignupForm: ObservableForm {
         } else {
             guard isTouched || goalType.isDirty || (currentWeight.isDirty && goalWeight.isDirty) else { return false }
         }
-        
+
         return isMaintainMode
         ? goalWeight.isValid
         : currentWeight.isValid && goalWeight.isValid
     }
 
-    
-    func getError<T>(for control: FormControl<T>) -> String? {
+    func getError<T>(for control: FormControl<T>) -> String? { // swiftlint:disable:this cyclomatic_complexity function_body_length
         guard control.isTouched || control.isDirty else { return nil }
 
         if control === currentWeight && goalType.value == GoalType.maintain.rawValue {
             return nil
         }
-        if (control === email || control === password || control === confirmPassword || control === zipcode || control === firstName || control === lastName) && control.errors[.required] {
+        if (control === email || control === password || control === confirmPassword ||
+            control === zipcode || control === firstName || control === lastName) &&
+            control.errors[.required] {
             return FormErrorMessages.leaveBlank
         }
         if control.errors[.required] { return FormErrorMessages.required }
@@ -149,12 +182,13 @@ class SignupForm: ObservableForm {
                 return useMetric.value ? FormErrorMessages.minWeightKg : FormErrorMessages.minWeightLb
             }
         }
-        if control.errors[.maxValue], let _ = control.errors.value(for: .maxValue) as? Double {
+        if control.errors[.maxValue], control.errors.value(for: .maxValue) is Double {
             if control === currentWeight || control === goalWeight {
                 return useMetric.value ? FormErrorMessages.maxWeightKg : FormErrorMessages.maxWeightLb
             }
         }
         if control.errors[.noWhiteSpace] { return FormErrorMessages.noWhiteSpace }
+        if control.errors[.numericOnly] { return FormErrorMessages.numericOnly }
         if control.errors[.futureDate] { return FormErrorMessages.futureDate }
         if control === confirmPassword && formErrors[.passwordMatch] {
             return FormErrorMessages.passwordMatch
@@ -169,7 +203,7 @@ class SignupForm: ObservableForm {
 
         return nil
     }
-    
+
     /// Resets the goal-related form fields to their default state.
     func resetGoal() {
         goalType.value = GoalTypeSegment.losegainValue

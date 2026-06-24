@@ -15,9 +15,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.AppsyncSetupStrings
+import com.dmdbrands.gurus.weight.features.common.components.AnnotationPosition
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppGifImage
 import com.dmdbrands.gurus.weight.features.common.components.AppNote
@@ -42,7 +45,9 @@ fun SetupContent(
   setupFinished: Boolean = false,
   isGifImage: Boolean = false,
   supportingImage: Int? = null,
-  loaderText: String? = null ,
+  loaderText: String? = null,
+  annotatedSubtitle: String? = null,
+  onAnnotationClick: (() -> Unit)? = null,
   supportingButtonLabel: String? = null,
   onSupportingButtonClick: (() -> Unit)? = null,
   loaderClick: (() -> Unit)? = null,
@@ -63,11 +68,22 @@ fun SetupContent(
         modifier = Modifier.fillMaxWidth(),
       )
       subtitle?.let {
+        val isClickable = annotatedSubtitle != null && onAnnotationClick != null
+        val linkSpanStyle = if (isClickable) {
+          SpanStyle(
+            color = MeTheme.colorScheme.primaryAction,
+            textDecoration = TextDecoration.Underline,
+          )
+        } else null
         AppText(
           text = subtitle,
+          annotatedText = annotatedSubtitle,
           textType = TextType.Body,
-          canApplyUppercaseStyle = true,
+          canApplyUppercaseStyle = !isClickable,
           modifier = Modifier.fillMaxWidth(),
+          spanStyle = linkSpanStyle,
+          annotationPosition = AnnotationPosition.Middle,
+          onAnnotationClick = onAnnotationClick?.let { click -> { _ -> click() } },
         )
       }
     }
@@ -128,7 +144,7 @@ fun SetupContent(
           AppNote(
             message = noteMessage,
             showNote = true,
-            modifier = Modifier.padding(top = spacing.md)
+            modifier = Modifier.padding(top = spacing.md),
           )
         }
 
@@ -159,6 +175,7 @@ private fun SetupContentPreview() {
       subtitle = AppsyncSetupStrings.SetupComplete.Message,
       setupFinished = true,
       supportingImage = AppIcons.Setup.AppSyncNavBar,
+      noteMessage = "Sample note for preview"
     )
   }
 }

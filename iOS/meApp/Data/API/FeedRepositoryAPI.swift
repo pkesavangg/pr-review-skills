@@ -3,8 +3,12 @@ import UIKit
 
 @MainActor
 final class FeedRepositoryAPI: FeedRepositoryAPIProtocol {
-    private let httpClient = HTTPClient.shared
-    
+    private let httpClient: HTTPClientProtocol
+
+    init(httpClient: HTTPClientProtocol? = nil) {
+        self.httpClient = httpClient ?? HTTPClient.shared
+    }
+
     func fetchFeedItems() async throws -> [FeedItem] {
         return try await httpClient.get(.feed, needsAuth: true)
     }

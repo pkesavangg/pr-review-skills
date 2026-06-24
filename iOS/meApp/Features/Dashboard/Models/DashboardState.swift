@@ -1,14 +1,14 @@
-import SwiftUI
 import Foundation
+import SwiftUI
 
 /// Main dashboard state container
 struct DashboardState {
-    var ui: UIState = UIState()
-    var metrics: MetricsState = MetricsState()
-    var streak: StreakState = StreakState()
-    var graph: GraphState = GraphState()
-    var goal: GoalState = GoalState()
-    var data: DataState = DataState()
+    var ui = UIState()
+    var metrics = MetricsState()
+    var streak = StreakState()
+    var graph = GraphState()
+    var goal = GoalState()
+    var data = DataState()
 }
 
 // MARK: - UI State
@@ -19,10 +19,10 @@ struct UIState {
     var hasLoadedDashboardConfig: Bool = false // Flag to track when body metrics config is loaded from API
     var hasLoadedProgressMetrics: Bool = false // Flag to track when progress metrics (goal card + streaks) are loaded
     var hasLoadedMetricValues: Bool = false // Flag to track when actual metric values are loaded (not placeholders)
-    var loaderOverride: LoaderModel? = nil
-    var alertData: AlertModel? = nil
+    var loaderOverride: LoaderModel?
+    var alertData: AlertModel?
     var isEditMode: Bool = false
-    var selectedMetricLabel: String? = nil
+    var selectedMetricLabel: String?
     var gridLayoutId = UUID()
     var isGoalCardRemoved: Bool = false
     var isResettingDashboard: Bool = false // Flag to suppress UI updates during reset
@@ -37,10 +37,10 @@ struct UIState {
     var streakGridOrder: [String] = [] // Array of MetricItem.id.uuidString to preserve order
 
     // Drag & Drop State
-    var draggingMetric: MetricItem? = nil
-    var draggingStreak: MetricItem? = nil
+    var draggingMetric: MetricItem?
+    var draggingStreak: MetricItem?
     var isGoalCardBeingDragged: Bool = false
-    var dropHoverId: String? = nil
+    var dropHoverId: String?
 
     var isAnyItemBeingDragged: Bool {
         draggingMetric != nil || draggingStreak != nil || isGoalCardBeingDragged
@@ -55,46 +55,66 @@ struct UIState {
 }
 
 // MARK: - Metrics State
-struct MetricsState {
+struct MetricsState: Equatable {
     var dashboardType: DashboardType = .dashboard12
     var metrics: [MetricItem] = []
-    var activeMetricsCount: Int = 12
+    var activeMetricsCount: Int = 12 {
+        didSet {
+            if activeMetricsCount < 0 {
+                activeMetricsCount = 0
+            }
+        }
+    }
     var removedMetrics: Set<String> = []
+
+    private var sanitizedActiveMetricsCount: Int {
+        max(0, activeMetricsCount)
+    }
 
     var metricsToShow: [MetricItem] {
         // Show only active metrics based on activeMetricsCount
-        return Array(metrics.prefix(activeMetricsCount))
+        return Array(metrics.prefix(sanitizedActiveMetricsCount))
     }
 
     /// Returns grid columns configuration based on dashboard type
     var gridColumns: [GridItem] {
         // Columns strictly follow dashboard type
         let columnCount: Int = (dashboardType == .dashboard4)
-            ? DashboardConstants.UI.fourMetricGridColumns
-            : DashboardConstants.UI.twelveMetricGridColumns
-        return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columnCount)
+            ? DashboardConstants.UIConstants.fourMetricGridColumns
+            : DashboardConstants.UIConstants.twelveMetricGridColumns
+        return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UIConstants.gridSpacing), count: columnCount)
     }
 }
 
 // MARK: - Streak State
-struct StreakState {
+struct StreakState: Equatable {
     var streakItems: [MetricItem] = []
-    var activeStreakItemsCount: Int = 6
+    var activeStreakItemsCount: Int = 6 {
+        didSet {
+            if activeStreakItemsCount < 0 {
+                activeStreakItemsCount = 0
+            }
+        }
+    }
     var removedStreaks: Set<String> = []
 
+    private var sanitizedActiveStreakItemsCount: Int {
+        max(0, activeStreakItemsCount)
+    }
+
     var streakItemsToShow: [MetricItem] {
-        Array(streakItems.prefix(activeStreakItemsCount))
+        Array(streakItems.prefix(sanitizedActiveStreakItemsCount))
     }
 }
 
 // MARK: - Graph State
-struct GraphState {
-    var selectedEntry: BathScaleOperationDTO? = nil
+struct GraphState: Equatable {
+    var selectedEntry: BathScaleOperationDTO?
     var selectedPeriod: TimePeriod = DefaultGraphPeriodPreference.fallback
-    var xScrollPosition: Date = Date()
-    var selectedWeight: Double? = nil
-    var selectedPoint: BathScaleWeightSummary? = nil
-    var selectedXValue: Date? = nil
+    var xScrollPosition = Date()
+    var selectedWeight: Double?
+    var selectedPoint: BathScaleWeightSummary?
+    var selectedXValue: Date?
     var chartHeight: CGFloat = 0
     var annotationHeight: CGFloat = 0
 
@@ -104,7 +124,7 @@ struct GraphState {
     // Scroll and interaction state
     var isScrolling: Bool = false
     var showCrosshair: Bool = false
-    var scrollEndTimer: Timer? = nil
+    var scrollEndTimer: Timer?
 
     // Data change trigger for graph refresh
     var dataChangeTrigger: Int = 0
@@ -127,6 +147,16 @@ struct GraphState {
         showCrosshair = false
     }
 
+    /// MA-3977: currently active store-side selection, validated for direct application to a
+    /// section view model. Returns `nil` when no selection should be rendered. Single source of
+    /// truth for the post-tab-switch / cold-start sync paths so the read shape can't drift.
+    var validatedSelection: (date: Date, point: BathScaleWeightSummary?)? {
+        guard showCrosshair, let date = selectedXValue ?? selectedPoint?.date else {
+            return nil
+        }
+        return (date, selectedPoint)
+    }
+
     mutating func updateScrollState(isScrolling: Bool) {
         self.isScrolling = isScrolling
         if isScrolling {
@@ -134,20 +164,29 @@ struct GraphState {
         }
     }
 
-    /// Currently active store-side selection, validated for direct application
-    /// to a section view model. Returns `nil` when no selection should be
-    /// rendered. Single source of truth for the post-tab-switch /
-    /// cold-start sync paths so the read shape can't drift between call sites.
-    var validatedSelection: (date: Date, point: BathScaleWeightSummary?)? {
-        guard showCrosshair, let date = selectedXValue ?? selectedPoint?.date else {
-            return nil
-        }
-        return (date, selectedPoint)
+    static func == (lhs: GraphState, rhs: GraphState) -> Bool {
+        lhs.selectedEntry == rhs.selectedEntry &&
+        lhs.selectedPeriod == rhs.selectedPeriod &&
+        lhs.xScrollPosition == rhs.xScrollPosition &&
+        lhs.selectedWeight == rhs.selectedWeight &&
+        lhs.selectedPoint == rhs.selectedPoint &&
+        lhs.selectedXValue == rhs.selectedXValue &&
+        lhs.chartHeight == rhs.chartHeight &&
+        lhs.annotationHeight == rhs.annotationHeight &&
+        lhs.isGraphReady == rhs.isGraphReady &&
+        lhs.isScrolling == rhs.isScrolling &&
+        lhs.showCrosshair == rhs.showCrosshair &&
+        lhs.dataChangeTrigger == rhs.dataChangeTrigger &&
+        lhs.hasDetectedScrollInCurrentGesture == rhs.hasDetectedScrollInCurrentGesture &&
+        lhs.cachedYAxisDomain == rhs.cachedYAxisDomain &&
+        lhs.cachedYAxisTicks == rhs.cachedYAxisTicks &&
+        lhs.cachedXAxisValues == rhs.cachedXAxisValues
+        // scrollEndTimer is intentionally excluded — it is a scheduling detail, not semantic state
     }
 }
 
 // MARK: - Goal State
-struct GoalState {
+struct GoalState: Equatable {
     var goalType: GoalType = .gain
     var goalStartWeight: Double = 0.0
     var goalWeight: Double = 0.0
@@ -158,7 +197,7 @@ struct GoalState {
 }
 
 // MARK: - Data State
-struct DataState {
+struct DataState: Equatable {
     var dailySummaries: [BathScaleWeightSummary?] = []
     var monthlySummaries: [BathScaleWeightSummary?] = []
     var latestWeightStored: Int = 0
@@ -169,9 +208,5 @@ struct DataState {
 
     var hasAnyEntries: Bool {
         !dailySummaries.isEmpty || !monthlySummaries.isEmpty
-    }
-
-    var continuousOperations: [BathScaleWeightSummary] {
-        dailySummaries.compactMap { $0 }.sorted { $0.date < $1.date }
     }
 }

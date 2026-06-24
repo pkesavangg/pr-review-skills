@@ -29,4 +29,3 @@ struct EmailButtonView: View {
 #Preview(body: {
     EmailButtonView()
 })
-

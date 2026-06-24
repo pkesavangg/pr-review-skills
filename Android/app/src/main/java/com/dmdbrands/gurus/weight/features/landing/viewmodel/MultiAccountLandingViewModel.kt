@@ -62,7 +62,7 @@ class MultiAccountLandingViewModel @Inject constructor(
         }
     }
 
-    init {
+    override fun onDependenciesReady() {
         loadAccounts()
     }
 
@@ -82,9 +82,15 @@ class MultiAccountLandingViewModel @Inject constructor(
      */
     private fun loadAccounts() {
         viewModelScope.launch {
-            accountService.loggedInAccountsFlow.collectLatest {
-                val hasReachedMaxAccounts = accountService.hasReachedMaxAccounts.first()
-                handleIntent(MultiAccountLandingIntent.SetAccounts(it, hasReachedMaxAccounts))
+            accountService.loggedInAccountsFlow.collectLatest { accounts ->
+                if (accounts.isEmpty()) {
+                    // Last account was removed from this device — no accounts remain, so send
+                    // the user to the fresh Login / Welcome screen (MOB-424).
+                    navigationService.replaceStack(AppRoute.Auth.Landing)
+                } else {
+                    val hasReachedMaxAccounts = accountService.hasReachedMaxAccounts.first()
+                    handleIntent(MultiAccountLandingIntent.SetAccounts(accounts, hasReachedMaxAccounts))
+                }
             }
         }
     }
@@ -125,7 +131,8 @@ class MultiAccountLandingViewModel @Inject constructor(
     }
 
     /**
-     * Removes the account selected for removal (logout).
+     * Removes the account selected for removal from this device ("Removed = gone").
+     * Unlike logout, this fully deletes the local account so it no longer appears in the list.
      */
     private fun onRemoveAccount() {
         dialogQueueService.showLoader(AppPopupStrings.RemoveAccountDialog.Loader)
@@ -133,7 +140,7 @@ class MultiAccountLandingViewModel @Inject constructor(
             viewModelScope.launch {
                 try {
                   AppLog.d("MultiAccountLandingViewModel", "Removing account: ${account.id}")
-                    accountService.logout(account.id, account.fcmToken)
+                    accountService.removeAccountFromDevice(account.id, account.fcmToken)
                 } catch (e: Exception) {
                     AppLog.e("MultiAccountLandingViewModel", "Failed to remove account", e)
                 } finally {

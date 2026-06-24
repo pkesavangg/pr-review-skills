@@ -1,6 +1,5 @@
 plugins {
   alias(libs.plugins.android.library)
-  alias(libs.plugins.kotlin.android)
 }
 
 android {
@@ -27,8 +26,11 @@ android {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
   }
-  kotlinOptions {
-    jvmTarget = "11"
+}
+
+kotlin {
+  compilerOptions {
+    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
   }
 }
 
@@ -36,7 +38,7 @@ dependencies {
 
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.appcompat)
-  testImplementation(libs.junit)
+  testImplementation(libs.junit.jupiter)
   androidTestImplementation(libs.androidx.junit)
   androidTestImplementation(libs.androidx.espresso.core)
   implementation(libs.androidx.hilt.navigation.fragment)
@@ -47,5 +49,4 @@ dependencies {
   api(libs.gg.bluetooth.android)
   // implementation(project(":ggBluetoothLibrary"))
   implementation(libs.androidx.datastore.preferences)
-
 }

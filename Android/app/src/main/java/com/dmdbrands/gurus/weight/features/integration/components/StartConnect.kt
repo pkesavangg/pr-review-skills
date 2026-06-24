@@ -10,18 +10,13 @@ import com.dmdbrands.gurus.weight.features.integration.strings.HealthConnectStri
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 
-/**
- * A composable that displays the start connect screen for Health Connect integration.
- *
- * @param onPrimaryAction Callback when the primary button is clicked
- * @param modifier The modifier to be applied to the composable
- */
 @Composable
 fun StartConnect(
     onPrimaryAction: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     HealthConnectScreen(
+        modifier = modifier,
         content = HealthConnectScreenContent(
             image = AppIcons.Integrations.No_Permission,
             title = HealthConnectStrings.StartConnectStrings.Title,
@@ -29,7 +24,14 @@ fun StartConnect(
             primaryButtonLabel = HealthConnectStrings.ActionButtons.connect,
         ),
         onPrimaryAction = onPrimaryAction,
-        modifier = modifier
+        dataTypes = listOf(
+            HealthConnectStrings.StartConnectStrings.DataTypeWeight,
+            HealthConnectStrings.StartConnectStrings.DataTypeBmi,
+            HealthConnectStrings.StartConnectStrings.DataTypeBodyFat,
+            HealthConnectStrings.StartConnectStrings.DataTypeLeanBodyMass,
+            HealthConnectStrings.StartConnectStrings.DataTypeBloodPressure,
+            HealthConnectStrings.StartConnectStrings.DataTypeHeartRate,
+        ),
     )
 }
 

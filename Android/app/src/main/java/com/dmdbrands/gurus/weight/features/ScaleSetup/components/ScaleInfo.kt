@@ -49,16 +49,27 @@ fun ScaleInfo(
     verticalArrangement = Arrangement.Center,
   ) {
     val scaleName = scaleInfo?.productName
-    AppScaleImage(sku = displaySku, scaleImageSize = ScaleImageSize.Large)
+    val isBabyScale = setupType == ScaleSetupType.BabyScale
+    AppScaleImage(sku = displaySku, scaleImageSize = ScaleImageSize.Large, showShadow = !isBabyScale)
     Spacer(modifier = Modifier.height(spacing.lg))
     scaleName?.let {
-      AppText(text = ScaleSetupStrings.ScaleInfo.Title(displaySku), textType = TextType.ListTitle2)
+      AppText(
+        text = if (isBabyScale) ScaleSetupStrings.ScaleInfo.BabyScaleTitle
+        else ScaleSetupStrings.ScaleInfo.Title(displaySku),
+        textType = TextType.ListTitle2,
+      )
       Spacer(modifier = Modifier.height(spacing.xs))
       AppText(text = scaleName, textType = TextType.Body)
     }
     Spacer(modifier = Modifier.height(spacing.lg))
     AppText(
-      text = ScaleSetupStrings.ScaleInfo.Subtitle,
+      text = if (setupType == ScaleSetupType.BabyScale) {
+        ScaleSetupStrings.ScaleInfo.BabyScaleSubtitle
+      } else if(setupType == ScaleSetupType.BpmBluetooth || setupType == ScaleSetupType.BpmA6Bluetooth) {
+        ScaleSetupStrings.ScaleInfo.MonitorSubtitle
+      }else {
+        ScaleSetupStrings.ScaleInfo.Subtitle
+      },
       textType = TextType.Body,
       textAlign = TextAlign.Left,
       modifier = Modifier.fillMaxWidth(),

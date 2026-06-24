@@ -5,6 +5,8 @@ import androidx.navigation3.runtime.NavKey
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.features.MyAccounts.screen.MyAccountsScreen
 import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.AppsyncScaleSetupScreen
+import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.BabyScaleSetupScreen
+import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.BpmSetupScreen
 import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.BtScaleSetupScreen
 import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.BtWifiScaleSetupScreen
 import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.LcbtScaleSetupScreen
@@ -16,6 +18,7 @@ import com.dmdbrands.gurus.weight.features.appPermissions.AppPermissionsScreen
 import com.dmdbrands.gurus.weight.features.appSync.AppSync
 import com.dmdbrands.gurus.weight.features.changePassword.ChangePasswordScreen
 import com.dmdbrands.gurus.weight.features.dashboard.DashboardScreen
+import com.dmdbrands.gurus.weight.features.dashboard.snapshot.DashboardSnapshotScreen
 import com.dmdbrands.gurus.weight.features.debugMenu.screen.DebugMenuScreen
 import com.dmdbrands.gurus.weight.features.debugMenu.screen.ScaleLogsPickerScreen
 import com.dmdbrands.gurus.weight.features.feed.FeedFAQScreen
@@ -33,6 +36,8 @@ import com.dmdbrands.gurus.weight.features.landing.screen.MultiAccountLandingScr
 import com.dmdbrands.gurus.weight.features.login.screen.LoginScreen
 import com.dmdbrands.gurus.weight.features.manualEntry.EntryScreen
 import com.dmdbrands.gurus.weight.features.metricinfo.MetricInfoScreen
+import com.dmdbrands.gurus.weight.features.myKids.screens.AddBabyScreen
+import com.dmdbrands.gurus.weight.features.myKids.screens.MyKidsScreen
 import com.dmdbrands.gurus.weight.features.profile.screen.ProfileScreen
 import com.dmdbrands.gurus.weight.features.scaleDetails.screens.ScaleDetailsScreen
 import com.dmdbrands.gurus.weight.features.scaleDisplayMetrics.screens.ScaleDisplayMetricsScreen
@@ -55,6 +60,7 @@ fun EntryProviderScope<NavKey>.authEntries() {
 }
 
 fun EntryProviderScope<NavKey>.topLevelEntries() {
+  entry<AppRoute.Main.DashboardSnapshot> { DashboardSnapshotScreen() }
   entry<AppRoute.Main.Dashboard> { DashboardScreen() }
   entry<AppRoute.Main.History> { HistoryScreen() }
   entry<AppRoute.Main.Entry> { EntryScreen() } // Placeholder for EntryScreen
@@ -67,7 +73,7 @@ fun EntryProviderScope<NavKey>.accountSettingsEntries() {
   entry<AppRoute.AccountSettings.ChangePassword> { ChangePasswordScreen() }
   entry<AppRoute.AccountSettings.MyAccounts> { MyAccountsScreen() }
   entry<AppRoute.AccountSettings.Weightless> { WeightlessScreen() }
-  entry<AppRoute.AccountSettings.AddEditScales> { AddScaleScreen() }
+  entry<AppRoute.AccountSettings.MyDevices> { AddScaleScreen() }
   entry<AppRoute.AccountSettings.ChooseScale> { ChooseScaleScreen() }
   entry<AppRoute.AccountSettings.Goal> { GoalScreen() }
   entry<AppRoute.AccountSettings.HelpScreen> { HelpScreen() }
@@ -77,6 +83,8 @@ fun EntryProviderScope<NavKey>.accountSettingsEntries() {
     ScaleDetailsScreen(scaleInfo.scaleId)
   }
   entry<AppRoute.AccountSettings.AppPermissions> { AppPermissionsScreen() }
+  entry<AppRoute.AccountSettings.MyKids> { MyKidsScreen() }
+  entry<AppRoute.AccountSettings.AddBaby> { AddBabyScreen() }
 }
 
 fun EntryProviderScope<NavKey>.scaleDetailEntries() {
@@ -112,6 +120,12 @@ fun EntryProviderScope<NavKey>.scaleSetupEntries() {
   entry<AppRoute.ScaleSetup.AppsyncScaleSetup> { scaleInfo ->
     AppsyncScaleSetupScreen(scaleInfo.sku)
   }
+  entry<AppRoute.ScaleSetup.BpmSetup> { info ->
+    BpmSetupScreen(info.sku)
+  }
+  entry<AppRoute.ScaleSetup.BabyScaleSetup> { scaleInfo ->
+    BabyScaleSetupScreen(scaleInfo.sku, scaleInfo.scaleInfo, scaleInfo.broadcastId, scaleInfo.initialStep)
+  }
 }
 
 fun EntryProviderScope<NavKey>.dashboardEntries() {
@@ -126,7 +140,7 @@ fun EntryProviderScope<NavKey>.dashboardEntries() {
 
 fun EntryProviderScope<NavKey>.historyEntries() {
   entry<AppRoute.History.MonthDetails> { monthDetails ->
-    HistoryDetailScreen(monthDetails.month)
+    HistoryDetailScreen(monthDetails.month, monthDetails.productType)
   }
 }
 

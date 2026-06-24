@@ -45,8 +45,10 @@ struct ScaleDiscoveredSheetView: View {
                     AppIconView(icon: AppAssets.close, size: IconSize(width: 16, height: 16))
                         .foregroundColor(theme.statusIconPrimary)
                 }
+                .accessibilityLabel(ScaleSetupStrings.A11y.closeButtonLabel)
+                .accessibilityHint(ScaleSetupStrings.A11y.closeButtonHint)
             }
-            
+
             VStack(spacing: .spacingMD) {
                 // Scale artwork
                 if let image = viewModel.discoveryEvent?.deviceInfo.imgPath {
@@ -55,11 +57,12 @@ struct ScaleDiscoveredSheetView: View {
                         .scaledToFit()
                         .frame(width: 175, height: 175)
                         .themeDropShadow()
+                        .accessibilityHidden(true)
                 }
-                
+
                 // Title
                 VStack(spacing: .spacingXS) {
-                    Text(lang.title)
+                    Text(viewModel.discoveryEvent?.deviceCategory == .bpm ? lang.bpmTitle : lang.scaleTitle)
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
                         .multilineTextAlignment(.center)
@@ -70,7 +73,8 @@ struct ScaleDiscoveredSheetView: View {
                             .multilineTextAlignment(.center)
                     }
                 }
-                
+                .accessibilityElement(children: .combine)
+
                 // Connect CTA
                 ButtonView(
                     text: commonLang.connect,
@@ -79,18 +83,14 @@ struct ScaleDiscoveredSheetView: View {
                     isDisabled: false,
                     action: onConnect
                 )
+                .accessibilityHint(ScaleSetupStrings.A11y.connectButtonHint)
                 .padding(.bottom, .spacingMD)
             }
         }
         .padding([.horizontal, .top], .spacingMD)
         .frame(maxWidth: .infinity)
         .background(theme.backgroundPrimary)
-        // The SceneDelegate-level `AppDefaultButtonStyle` (PR #1936) can drop
-        // through `.sheet` presentations, letting iOS paint its Show Borders
-        // grey rounded-rectangle on the close-X icon. Re-applying it here
-        // keeps the close button clean when the accessibility setting is on.
-        .buttonStyle(AppDefaultButtonStyle())
-        .onDisappear(){
+        .onDisappear {
             viewModel.clearTimer()
         }
     }
@@ -116,7 +116,7 @@ private struct ScaleDiscoveredSheetTestView: View {
                 isConnected: false
             )
             
-            let dummyDeviceInfo = ScaleItemInfo(
+            let dummyDeviceInfo = DeviceItemInfo(
                 productName: "AccuCheck Verve Smart Scale",
                 sku: "0412",
                 imgPath: "0412",
@@ -125,12 +125,12 @@ private struct ScaleDiscoveredSheetTestView: View {
             )
             
             let dummyDiscoveryEvent = DeviceDiscoveryEvent(
-                device: dummyDevice,
+                device: dummyDevice.toSnapshot(),
                 deviceInfo: dummyDeviceInfo,
                 protocolType: .R4,
                 isNew: true
             )
-            
+
             ScaleDiscoveredSheetView(
                 device: dummyDevice,
                 discoveryEvent: dummyDiscoveryEvent,

@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.util
 
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BabyScaleSetupStep
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 
@@ -32,6 +33,7 @@ object ScaleSetupNavigationUtils {
     return when (scaleInfo.setupType) {
       ScaleSetupType.AppSync -> AppRoute.ScaleSetup.AppsyncScaleSetup(scaleInfo.sku)
       ScaleSetupType.Lcbt -> AppRoute.ScaleSetup.LcbtScaleSetup(scaleInfo.sku)
+      ScaleSetupType.BabyScale -> AppRoute.ScaleSetup.BabyScaleSetup(scaleInfo.sku)
       ScaleSetupType.BtWifiR4 -> AppRoute.ScaleSetup.BtWifiScaleSetup(scaleInfo.sku)
       ScaleSetupType.Bluetooth -> AppRoute.ScaleSetup.BtScaleSetup(scaleInfo.sku)
       ScaleSetupType.EspTouchWifi -> {
@@ -43,6 +45,8 @@ object ScaleSetupNavigationUtils {
         val wifiSetupType = determineWifiSetupType(scaleInfo)
         AppRoute.ScaleSetup.WifiScaleSetup(scaleInfo.sku, wifiSetupType, scaleInfo)
       }
+
+      ScaleSetupType.BpmBluetooth, ScaleSetupType.BpmA6Bluetooth -> AppRoute.ScaleSetup.BpmSetup(scaleInfo.sku)
     }
   }
 

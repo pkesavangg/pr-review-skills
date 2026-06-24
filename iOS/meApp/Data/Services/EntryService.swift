@@ -1,17 +1,27 @@
-import Foundation
+// swiftlint:disable file_length
 import Combine
+import Foundation
 import SwiftData
 
+/*
+ SwiftLint exception:
+ This service intentionally aggregates all entry-related operations to keep the entry management flow discoverable and auditable in a single place. Splitting across multiple types would add indirection and risk during critical data operations.
+ */
+@MainActor
+// swiftlint:disable:next type_body_length
 final class EntryService: EntryServiceProtocol, ObservableObject {
-    @Injector var logger: LoggerService
-    @Injector var goalAlertService: GoalAlertService
-    @Injector var integrationService: IntegrationsService
+    @Injector var logger: LoggerServiceProtocol
+    @Injector var goalAlertService: GoalAlertServiceProtocol
+    @Injector var integrationService: IntegrationServiceProtocol
     private let accountService: AccountServiceProtocol
-    private let localRepo: EntryRepositoryProtocol = EntryRepository()
-    private let localKVRepo: EntryRepositoryLocal = EntryRepositoryLocal()
-    private let remoteRepo: EntryRepositoryAPIProtocol = EntryRepositoryAPI()
-    private let migrationService = SQLiteMigrationService()
+    private let localRepo: EntryRepositoryProtocol
+    private let localKVRepo: EntrySyncStoreProtocol
+    private let remoteRepo: EntryRepositoryAPIProtocol
+    private let migrationService: SQLiteMigrationService
+    private let swiftDataWorker: SwiftDataWorker
+    private let kvStorage: KvStorageServiceProtocol
     @MainActor static let shared = EntryService(accountService: AccountService.shared)
+
     // MARK: - Publishers ------------------------------------------------
 
     /// Emits each time a new entry is locally stored (create).
@@ -20,28 +30,60 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Emits each time an entry is deleted locally.
     /// Uses EntryNotification (Sendable) to safely pass data across actor boundaries.
     let entryDeleted = PassthroughSubject<EntryNotification, Never>()
-    
+
     let tag = "EntryService"
-    
+
     @Published var isSyncing: Bool = false
     @Published var lastSyncTime: Date?
     @Published var progress: ProgressSummary = .empty
     @Published var streak: Int = 0
-    
-    // MARK: - Dashboard Data
+
+    // MARK: - Dashboard Data (Weight)
+
     @Published var dailySummaries: [BathScaleWeightSummary] = []
     @Published var monthlySummaries: [BathScaleWeightSummary] = []
-    
+
+    // MARK: - Dashboard Data (BPM)
+
+    @Published var bpmDailySummaries: [BathScaleWeightSummary] = []
+    @Published var bpmMonthlySummaries: [BathScaleWeightSummary] = []
+
+    // MARK: - Dashboard Data (Baby)
+    /// Baby summaries keyed by babyId. Each baby profile has its own entry set.
+    @Published var babyDailySummariesByProfile: [String: [BathScaleWeightSummary]] = [:]
+    @Published var babyMonthlySummariesByProfile: [String: [BathScaleWeightSummary]] = [:]
+
     private var cancellables = Set<AnyCancellable>()
-    private var lastAccountId: String? = nil
+    private var lastAccountId: String?
     private var lastLoggedEntryCountByAccount: [String: Int] = [:]
     /// Tracks the active sync task so concurrent callers can await it instead of skipping.
     private var activeSyncTask: Task<Void, Never>?
+    /// Tracks in-flight dashboard loads so repeated callers can piggyback on the same work.
+    /// The Bool result indicates whether the load succeeded; piggybacked callers retry on failure.
+    private var activeDashboardLoadTasks: [EntryType: Task<Bool, Never>] = [:]
+    private var activeBabyDashboardLoadTasks: [String: Task<Bool, Never>] = [:]
+    private var summaryCacheByEntryType: [EntryType: EntrySummaryCacheEntry] = [:]
+    private var babySummaryCacheByProfile: [String: EntryBabySummaryCacheEntry] = [:]
+    private var streakCacheByEntryType: [EntryType: EntryStreakCacheEntry] = [:]
+    private var progressCacheByEntryType: [EntryType: EntryProgressCacheEntry] = [:]
 
     @MainActor
-    init(accountService: AccountServiceProtocol) {
+    init(
+        accountService: AccountServiceProtocol,
+        localRepo: EntryRepositoryProtocol? = nil,
+        localKVRepo: EntrySyncStoreProtocol? = nil,
+        remoteRepo: EntryRepositoryAPIProtocol? = nil,
+        migrationService: SQLiteMigrationService? = nil,
+        kvStorage: KvStorageServiceProtocol? = nil
+    ) {
         self.accountService = accountService
-        
+        self.localRepo = localRepo ?? EntryRepository()
+        self.localKVRepo = localKVRepo ?? EntryRepositoryLocal()
+        self.remoteRepo = remoteRepo ?? EntryRepositoryAPI()
+        self.migrationService = migrationService ?? SQLiteMigrationService()
+        self.swiftDataWorker = SwiftDataWorker(modelContainer: PersistenceController.shared.container)
+        self.kvStorage = kvStorage ?? KvStorageService.shared
+
         Task { @MainActor in
             if let concreteAccountService = accountService as? AccountService {
                 concreteAccountService.$activeAccount
@@ -54,11 +96,13 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                         Task { @MainActor in
                             let accountChanged = self.lastAccountId != nil && self.lastAccountId != accountId
                             self.lastAccountId = accountId
-                            
-                            if accountChanged, let accountId = accountId {
+
+                            if accountChanged, accountId != nil {
+                                self.invalidateSummaryCaches()
+                                self.babySummaryCacheByProfile.removeAll()
                                 try? await self.clearLastSyncTimestamp()
                                 await self.syncAllEntriesWithRemote()
-                                await self.loadDashboardData()
+                                await self.loadDashboardData(entryType: .scale)
                             }
                         }
                     }
@@ -66,51 +110,44 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
         }
     }
-    
+
     // MARK: - Helper
-    private func getAccountId() async throws -> String {
-        try await MainActor.run {
-            guard let accountId = accountService.activeAccount?.accountId else {
-                throw NSError(domain: "EntryService", code: 401, userInfo: [NSLocalizedDescriptionKey: "No active account"])
-            }
-            return accountId
+
+    private func getAccountId() throws -> String {
+        guard let accountId = accountService.activeAccount?.accountId else {
+            throw NSError(domain: "EntryService", code: 401, userInfo: [NSLocalizedDescriptionKey: "No active account"])
         }
+        return accountId
     }
-    
+
     /// Reads goal initial weight on MainActor to avoid crossing SwiftData model objects between executors.
     private func getGoalInitialWeight() async -> Int? {
         await MainActor.run {
-            accountService.activeAccount?.goalSettings?.initialWeight.map(Int.init)
+            accountService.activeAccount?.initialWeight.map(Int.init)
         }
     }
-    
-    /// Reads dashboard type on MainActor to avoid crossing SwiftData model objects between executors.
-    private func getDashboardType() async -> String? {
-        await MainActor.run {
-            accountService.activeAccount?.dashboardSettings?.dashboardType
-        }
-    }
-    
+
     // MARK: - CRUD
+
     func clearAllData() async {
         do {
             try await localRepo.deleteAllEntries()
-            await logger.log(level: .info, tag: tag, message: "Cleared all local entry data")
+            logger.log(level: .info, tag: tag, message: "Cleared all local entry data")
         } catch {
-            await logger.log(
+            logger.log(
                 level: .error,
                 tag: tag,
                 message: "Failed to clear local entry data: \(error.localizedDescription)"
             )
         }
     }
-    
+
     /// Clears the last sync timestamp for the current user.
     func clearLastSyncTimestamp() async throws {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
         try await localKVRepo.clearLastSyncTimestamp(accountId: accountId)
     }
-    
+
     func saveNewEntry(_ entry: Entry) async throws {
         entry.isSynced = false
         entry.operationType = OperationType.create.rawValue
@@ -119,35 +156,34 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let entrySource = entry.scaleEntry?.source ?? "manual"
         do {
             try await localRepo.saveEntry(entry)
-            await logger.log(
+            logger.log(
                 level: .info,
                 tag: tag,
                 message: "New entry saved locally: entryId=\(entry.id.uuidString), accountId=\(entry.accountId), source=\(entrySource)",
                 data: entry.toOperationDTO()
             )
-            
+
             try await handleEntryAdded(entry)
-            
-            // Broadcast change
-            await syncUnsyncedEntries()
+
             await checkGoalAlerts()
         } catch {
-            await logger.log(
+            logger.log(
                 level: .error,
                 tag: tag,
-                message: "Failed to save new entry: entryId=\(entry.id.uuidString), accountId=\(entry.accountId), source=\(entrySource), error=\(error.localizedDescription)"
+                message: "Failed to save new entry: entryId=\(entry.id.uuidString), accountId=\(entry.accountId), "
+                    + "source=\(entrySource), error=\(error.localizedDescription)"
             )
             throw error
         }
     }
-    
+
     func saveNewEntries(_ entries: [Entry]) async throws {
-        await logger.log(level: .info, tag: tag, message: "Bulk entry save requested: count=\(entries.count)")
+        logger.log(level: .info, tag: tag, message: "Bulk entry save requested: count=\(entries.count)")
         do {
             for entry in entries {
                 entry.isSynced = false
                 try await localRepo.saveEntry(entry)
-                await logger.log(
+                logger.log(
                     level: .info,
                     tag: tag,
                     message: "Bulk entry item saved locally: entryId=\(entry.id.uuidString), accountId=\(entry.accountId)",
@@ -155,11 +191,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 )
                 try await handleEntryAdded(entry)
             }
-            
-            await logger.log(level: .info, tag: tag, message: "Bulk entry save completed: count=\(entries.count)")
-            await syncUnsyncedEntries()
+
+            logger.log(level: .info, tag: tag, message: "Bulk entry save completed: count=\(entries.count)")
         } catch {
-            await logger.log(
+            logger.log(
                 level: .error,
                 tag: tag,
                 message: "Bulk entry save failed: count=\(entries.count), error=\(error.localizedDescription)"
@@ -167,159 +202,219 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             throw error
         }
     }
-    
-    func deleteEntry(_ entry: Entry) async throws {
-        // `entry` is a SwiftData @Model bound to the @MainActor ModelContext.
-        // Reading its properties from a non-isolated async function (which runs
-        // on the cooperative thread pool) is undefined behaviour and causes
-        // EXC_BAD_ACCESS.  Extract all needed primitives on MainActor first.
-        let (entryId, entryTimestamp, accountId) = await MainActor.run {
-            (entry.id, entry.entryTimestamp, entry.accountId)
-        }
 
-        await logger.log(level: .info, tag: tag,
-            message: "Entry delete requested: entryId=\(entryId.uuidString), accountId=\(accountId)")
+    func deleteEntry(_ entry: Entry) async throws {
+        let deletedEntry = entry
+        deletedEntry.operationType = OperationType.delete.rawValue
+        deletedEntry.isSynced = false
+
+        logger.log(level: .info, tag: tag, message: "Entry delete requested: entryId=\(entry.id.uuidString), accountId=\(entry.accountId)")
         do {
-            // Mark as deleted inside a background context by ID — avoids mutating
-            // the @Model object (entry.operationType / entry.isSynced) off-actor.
-            try await localRepo.markEntryAsDeleted(byId: entryId.uuidString)
-            try await handleEntryDeleted(entry, entryId: entryId, entryTimestamp: entryTimestamp)
-            await syncUnsyncedEntries()
-            await logger.log(level: .info, tag: tag,
-                message: "Entry delete queued for sync: entryId=\(entryId.uuidString), accountId=\(accountId)")
+            try await localRepo.updateEntry(deletedEntry)
+            try await handleEntryDeleted(deletedEntry)
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Entry delete queued for sync: entryId=\(entry.id.uuidString), accountId=\(entry.accountId)"
+            )
         } catch {
-            await logger.log(level: .error, tag: tag,
-                message: "Entry delete failed: entryId=\(entryId.uuidString), accountId=\(accountId), error=\(error.localizedDescription)")
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Entry delete failed: entryId=\(entry.id.uuidString), accountId=\(entry.accountId), error=\(error.localizedDescription)"
+            )
             throw error
         }
     }
-    
+
+    func deleteEntry(entryId: UUID) async throws {
+        guard let entry = try await localRepo.fetchEntry(byId: entryId.uuidString) else {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Entry delete failed — not found: entryId=\(entryId.uuidString)"
+            )
+            return
+        }
+        try await deleteEntry(entry)
+    }
+
+    func assignBabyEntry(entryId: UUID, babyId: String) async throws {
+        guard let entry = try await localRepo.fetchEntry(byId: entryId.uuidString) else {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Baby entry assign failed — not found: entryId=\(entryId.uuidString)"
+            )
+            return
+        }
+        entry.babyEntry?.babyId = babyId
+        try await localRepo.updateEntry(entry)
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Baby entry assigned: entryId=\(entryId.uuidString), babyId=\(babyId)"
+        )
+        let notification = EntryNotification(from: entry)
+        entrySaved.send(notification)
+    }
+
+    // MARK: - Snapshot Queries
+
+    func fetchEntrySnapshot(byId id: UUID) async throws -> EntrySnapshot? {
+        guard let entry = try await localRepo.fetchEntry(byId: id.uuidString) else {
+            return nil
+        }
+        return entry.toSnapshot()
+    }
+
+    func fetchAllEntrySnapshots() async throws -> [EntrySnapshot] {
+        let entries = try await getAllEntries()
+        return entries.map { $0.toSnapshot() }
+    }
+
+    func fetchEntrySnapshots(forMonth month: String, entryType: EntryType = .scale) async throws -> [EntrySnapshot] {
+        let entries = try await getEntries(forMonth: month, entryType: entryType)
+        return entries.map { $0.toSnapshot() }
+    }
+
     // MARK: - Query
+
+    func getEntry(byId id: UUID) async throws -> Entry? {
+        return try await localRepo.fetchEntry(byId: id.uuidString)
+    }
+
     func getAllEntries() async throws -> [Entry] {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
         return try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
+    }
+
+    func getAllEntriesAsSnapshots() async throws -> [EntrySnapshot] {
+        let entries = try await getAllEntries()
+        return entries.map { $0.toSnapshot() }
     }
 
     /// Returns all entries as DTOs with DTO conversion done on background thread.
     /// Use this instead of getAllEntries() when you only need to read entry data
     /// to avoid blocking the main thread with toOperationDTO() calls.
     func getAllEntriesAsDTO() async throws -> [BathScaleOperationDTO] {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
         return try await localRepo.fetchEntriesAsDTO(forUserId: accountId, operationType: OperationType.create.rawValue)
     }
 
-    /// Returns all entries as Sendable snapshots. Prefer this over
-    /// `getAllEntries()` whenever the caller will read fields across an
-    /// `await` boundary or hand the values to another actor — see MA-3898.
-    func getAllEntriesAsSnapshots() async throws -> [EntrySnapshot] {
-        let accountId = try await getAccountId()
-        return try await localRepo.fetchEntriesAsSnapshots(forUserId: accountId, operationType: OperationType.create.rawValue)
-    }
-
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
         return try await localRepo.checkEntryTimestampExists(forUserId: accountId, entryTimestamp: entryTimestamp)
     }
-    
+
     func getEntryCount() async throws -> Int {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
         return try await localRepo.fetchEntryCount(forUserId: accountId)
     }
-    
+
     func getOldestEntry() async throws -> Entry? {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
         return try await localRepo.fetchOldestEntry(forUserId: accountId)
     }
-    
+
     func getLatestEntry() async throws -> Entry? {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
         return try await localRepo.fetchLatestEntry(forUserId: accountId)
     }
-    
-    func getEntries(lastNDays: Int) async throws -> [Entry] {
-        let accountId = try await getAccountId()
-        return try await localRepo.fetchEntries(lastNDays: lastNDays, userId: accountId)
+
+    func getEntries(lastNDays: Int, entryType: EntryType = .scale) async throws -> [Entry] {
+        let accountId = try getAccountId()
+        let entries = try await localRepo.fetchEntries(lastNDays: lastNDays, userId: accountId)
+        return entries.filter { matchesEntryType($0, entryType: entryType) }
     }
-    
-    func getEntries(forMonth month: String) async throws -> [Entry] {
-        let accountId = try await getAccountId()
+
+    func getEntries(forMonth month: String, entryType: EntryType = .scale) async throws -> [Entry] {
+        let accountId = try getAccountId()
         let entries = try await localRepo.fetchEntries(forMonth: month, userId: accountId)
-        return entries.filter { $0.operationType == OperationType.create.rawValue }
+        return entries.filter { $0.operationType == OperationType.create.rawValue && matchesEntryType($0, entryType: entryType) }
     }
-    
+
     func getEntries(forDay day: String) async throws -> [Entry] {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
         let entries = try await localRepo.fetchEntries(forDay: day, userId: accountId)
         return entries.filter { $0.operationType == OperationType.create.rawValue }
     }
-    
+
     // MARK: - Month/History
-    func getMonthsAll() async throws -> [HistoryMonth] {
-        let accountId = try await getAccountId()
-        // Snapshots, not @Model, so the rest of this function never touches a
-        // dead background `ModelContext` (MA-3898).
-        let entries = try await localRepo.fetchEntriesAsSnapshots(forUserId: accountId, operationType: OperationType.create.rawValue)
+
+    func getMonthsAll(entryType: EntryType = .scale) async throws -> [HistoryMonth] {
+        let accountId = try getAccountId()
+        let allEntries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
+        let entries = allEntries.filter { matchesEntryType($0, entryType: entryType) }
         // Group by YYYY-MM prefix, converting UTC timestamps to local timezone
         let grouped = Dictionary(grouping: entries) { DateTimeTools.getLocalMonthStringFromUTCDate($0.entryTimestamp) }
-        
+
         var result: [HistoryMonth] = []
-        
-        let validMonthRegex = try! NSRegularExpression(pattern: "^\\d{4}-\\d{2}$")
-        
+
+        guard let validMonthRegex = try? NSRegularExpression(pattern: "^\\d{4}-\\d{2}$") else {
+            return []
+        }
+
         for (monthKey, monthEntries) in grouped {
             // Skip keys that are not in YYYY-MM format (e.g., malformed keys)
             guard validMonthRegex.firstMatch(in: monthKey, range: NSRange(location: 0, length: monthKey.count)) != nil else { continue }
-            
+
             result.append(Self.buildHistoryMonth(monthKey: monthKey, monthEntries: monthEntries))
         }
-        
+
         // Sort descending by month key
         return result.sorted { $0.entryTimestamp > $1.entryTimestamp }
     }
-    
-    func getMonthDetail(month: String) async throws -> [Entry] {
-        return try await getEntries(forMonth: month)
+
+    func getMonthDetail(month: String, entryType: EntryType = .scale) async throws -> [Entry] {
+        return try await getEntries(forMonth: month, entryType: entryType)
     }
-    
+
     func getMonthYear() async throws -> [HistoryMonth] {
-        let accountId = try await getAccountId()
-        // Snapshots — see MA-3898.
-        let entries = try await localRepo.fetchEntriesAsSnapshots(forUserId: accountId, operationType: OperationType.create.rawValue)
+        let accountId = try getAccountId()
+        let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
         // Get entries from last 365 days (matching TypeScript: entry."entryTimestamp" >= getIntervalDatetimeIsoString(365))
         let calendar = Calendar.current
         let now = Date()
         let oneYearAgo = calendar.date(byAdding: .day, value: -365, to: now) ?? now
-        
+
         // Filter entries from last 365 days
         let filteredEntries = entries.filter { entry in
             guard let entryDate = DateTimeTools.parse(entry.entryTimestamp) else { return false }
             return entryDate >= oneYearAgo && entryDate <= now
         }
-        
+
         // Group by month (YYYY-MM)
-        let grouped = Dictionary(grouping: filteredEntries) { (entry) -> String in
+        let grouped = Dictionary(grouping: filteredEntries) { entry -> String in
             DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
         }
-        
+
         // Build HistoryMonth for each month that has entries, sorted by timestamp DESC (newest first)
         var result: [HistoryMonth] = []
         for (monthKey, monthEntries) in grouped {
             guard !monthEntries.isEmpty else { continue }
             result.append(Self.buildHistoryMonth(monthKey: monthKey, monthEntries: monthEntries))
         }
-        
+
         // Sort descending by entryTimestamp (newest first, matching TypeScript ORDER BY DESC)
         return result.sorted { $0.entryTimestamp > $1.entryTimestamp }
     }
-    
-    // MARK: - Progress/Stats
-    func getProgress() async throws -> Progress {
-        let accountId = try await getAccountId()
 
-        // Use SwiftDataWorker for thread-safe access to SwiftData relationships
-        // All relationship data is extracted within the worker's isolated context
-        let worker = await SwiftDataWorker(modelContainer: PersistenceController.shared.container)
-        let fetchResult = try await worker.fetchProgressData(accountId: accountId)
+    // MARK: - Progress/Stats
+
+    func getProgress(entryType: EntryType = .scale) async throws -> Progress {
+        let accountId = try getAccountId()
+
+        // Reuse the worker so progress refreshes do not keep creating fresh model contexts.
+        let fetchResult = try await swiftDataWorker.fetchProgressData(accountId: accountId)
+        let goalInitial = await getGoalInitialWeight()
+        let datasetSignature = Self.makeEntryDataSignature(fetchResult.allEntries)
+
+        if let cached = progressCacheByEntryType[entryType],
+           cached.datasetSignature == datasetSignature,
+           cached.goalInitialWeight == goalInitial {
+            return cached.progress
+        }
 
         guard let latestData = fetchResult.latestEntry else {
             throw NSError(domain: "EntryService", code: 404, userInfo: [NSLocalizedDescriptionKey: "No entries found"])
@@ -338,15 +433,22 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
         let weekDelta = latestWeight - (weekStartWeight ?? latestWeight)
         let monthDelta = latestWeight - (monthStartWeight ?? latestWeight)
-        
-        // -- Year delta logic, extracted to a helper for clarity --
-        let monthSeries = try await getMonthYear()
+
+        // Compute the derived history/streak data off the main actor so dashboard refreshes
+        // don't block while rebuilding the same graph-ready structures.
+        let monthSeriesTask = Task.detached(priority: .userInitiated) {
+            Self.getMonthYear(from: fetchResult.allEntries)
+        }
+        let streakTask = Task.detached(priority: .userInitiated) {
+            Self.computeStreak(entryType: entryType, from: fetchResult.allEntries)
+        }
+
+        let monthSeries = await monthSeriesTask.value
         let yearDeltaResult = try await calculateYearDelta(latestWeight: latestWeight, monthStartWeight: monthStartWeight, monthSeries: monthSeries)
         let yearDelta = yearDeltaResult.yearDelta
         let yearStartDTO = yearDeltaResult.yearStartDTO
         let yearKey = yearDeltaResult.yearKey
-        
-        let goalInitial = await getGoalInitialWeight()
+
         let initialWeight: Int?
         if let goalInitial, goalInitial > 0 {
             initialWeight = goalInitial
@@ -354,10 +456,16 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             initialWeight = firstEntryWeight
         }
         let totalDelta = latestWeight - (initialWeight ?? latestWeight)
-        
-        let streak = try await getStreak()
-        
-        return Progress(
+
+        let streak = await streakTask.value
+
+        logger.log(
+            level: .debug,
+            tag: tag,
+            message: "Progress(year): latest=\(latestWeight), yearKey=\(yearKey), yearDelta=\(yearDelta)"
+        )
+
+        let progress = Progress(
             count: fetchResult.totalCount,
             currentStreak: streak.current,
             initYear: yearStartDTO,
@@ -372,36 +480,51 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             week: weekDelta,
             year: yearDelta
         )
+
+        progressCacheByEntryType[entryType] = EntryProgressCacheEntry(
+            datasetSignature: datasetSignature,
+            goalInitialWeight: goalInitial,
+            progress: progress
+        )
+
+        return progress
     }
-    
+
     // MARK: - Modular Year Delta Calculation
+
+    private struct YearDeltaResult {
+        let yearDelta: Int
+        let yearStartDTO: BathScaleOperationDTO?
+        let yearKey: String
+    }
+
     private func calculateYearDelta(
         latestWeight: Int, monthStartWeight: Int?, monthSeries: [HistoryMonth]
-    ) async throws -> (yearDelta: Int, yearStartDTO: BathScaleOperationDTO?, yearKey: String) {
+    ) async throws -> YearDeltaResult {
         guard let initYearMonth = monthSeries.last, let initYearWeight = initYearMonth.weight else {
-            return (0, nil, "")
+            return YearDeltaResult(yearDelta: 0, yearStartDTO: nil, yearKey: "")
         }
-        
+
         guard let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) else {
-            await logger.log(level: .error, tag: tag, message: "Failed to calculate date 30 days ago for year delta calculation.")
-            return (0, nil, "")
+            logger.log(level: .error, tag: tag, message: "Failed to calculate date 30 days ago for year delta calculation.")
+            return YearDeltaResult(yearDelta: 0, yearStartDTO: nil, yearKey: "")
         }
         let (initYearDate, yearKey) = parseYearKeyAndDate(from: initYearMonth.entryTimestamp, id: initYearMonth.id)
         let isWithin30Days = isoString(from: initYearDate) >= isoString(from: thirtyDaysAgo)
         let initYearWeightStored = Int(round(initYearWeight))
-        
+
         let delta = isWithin30Days
-        ? latestWeight - (monthStartWeight ?? latestWeight)
-        : latestWeight - initYearWeightStored
-        
+            ? latestWeight - (monthStartWeight ?? latestWeight)
+            : latestWeight - initYearWeightStored
+
         let yearAvgWeight = Int(round(initYearWeight))
         let yearStartDTO = makeYearDTO(
-            key: yearKey, avgWeight: yearAvgWeight, accountId: try await getAccountId()
+            key: yearKey, avgWeight: yearAvgWeight, accountId: try getAccountId()
         )
-        
-        return (delta, yearStartDTO, yearKey)
+
+        return YearDeltaResult(yearDelta: delta, yearStartDTO: yearStartDTO, yearKey: yearKey)
     }
-    
+
     private func parseYearKeyAndDate(from timestamp: String, id: String) -> (Date, String) {
         let fmt = DateTimeTools.formatter("yyyy-MM")
         if let date = fmt.date(from: timestamp) {
@@ -409,24 +532,105 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
         // Fallback, parse manually
         let comps = timestamp.split(separator: "-")
-        if comps.count == 2, let y = Int(comps[0]), let m = Int(comps[1]) {
-            var dc = DateComponents(); dc.year = y; dc.month = m; dc.day = 1
+        if comps.count == 2, let year = Int(comps[0]), let month = Int(comps[1]) {
+            var dc = DateComponents(); dc.year = year; dc.month = month; dc.day = 1
             if let dt = Calendar.current.date(from: dc) { return (dt, timestamp) }
         }
         return (Date(), timestamp)
     }
-    
+
     private static let isoDayFormatter: DateFormatter = {
         let df = DateFormatter()
+        df.calendar = Calendar(identifier: .gregorian)
         df.dateFormat = "yyyy-MM-dd"
+        df.locale = Locale(identifier: "en_US_POSIX")
         df.timeZone = TimeZone(secondsFromGMT: 0)
         return df
     }()
-    
+
+    private static let monthSummaryDateFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.calendar = Calendar(identifier: .gregorian)
+        df.dateFormat = "yyyy-MM-dd"
+        df.locale = Locale(identifier: "en_US_POSIX")
+        df.timeZone = TimeZone(secondsFromGMT: 0)
+        return df
+    }()
+
     private func isoString(from date: Date) -> String {
         return Self.isoDayFormatter.string(from: date)
     }
-    
+
+    private nonisolated static func makeDTOSignature(_ dtos: [BathScaleOperationDTO]) -> Int {
+        var hasher = Hasher()
+        hasher.combine(dtos.count)
+        for dto in dtos {
+            hasher.combine(dto.accountId)
+            hasher.combine(dto.entryTimestamp)
+            hasher.combine(dto.serverTimestamp)
+            hasher.combine(dto.entryType)
+            hasher.combine(dto.operationType)
+            hasher.combine(dto.weight)
+            hasher.combine(dto.bodyFat)
+            hasher.combine(dto.muscleMass)
+            hasher.combine(dto.water)
+            hasher.combine(dto.bmi)
+            hasher.combine(dto.bmr)
+            hasher.combine(dto.metabolicAge)
+            hasher.combine(dto.proteinPercent)
+            hasher.combine(dto.pulse)
+            hasher.combine(dto.skeletalMusclePercent)
+            hasher.combine(dto.subcutaneousFatPercent)
+            hasher.combine(dto.visceralFatLevel)
+            hasher.combine(dto.boneMass)
+            hasher.combine(dto.impedance)
+            hasher.combine(dto.systolic)
+            hasher.combine(dto.diastolic)
+            hasher.combine(dto.meanArterial)
+        }
+        return hasher.finalize()
+    }
+
+    private nonisolated static func makeBabySnapshotSignature(_ snapshots: [BabyEntrySnapshot]) -> Int {
+        var hasher = Hasher()
+        hasher.combine(snapshots.count)
+        for snapshot in snapshots {
+            hasher.combine(snapshot.entryTimestamp)
+            hasher.combine(snapshot.babyId)
+            hasher.combine(snapshot.weightDecigrams)
+            hasher.combine(snapshot.lengthInches)
+        }
+        return hasher.finalize()
+    }
+
+    private nonisolated static func makeEntryDataSignature(_ entries: [EntryData]) -> Int {
+        var hasher = Hasher()
+        hasher.combine(entries.count)
+        for entry in entries {
+            hasher.combine(entry.accountId)
+            hasher.combine(entry.entryTimestamp)
+            hasher.combine(entry.serverTimestamp)
+            hasher.combine(entry.operationType)
+            hasher.combine(entry.entryType)
+            hasher.combine(entry.isSynced)
+            hasher.combine(entry.weight)
+            hasher.combine(entry.bodyFat)
+            hasher.combine(entry.muscleMass)
+            hasher.combine(entry.water)
+            hasher.combine(entry.bmi)
+            hasher.combine(entry.bmr)
+            hasher.combine(entry.metabolicAge)
+            hasher.combine(entry.proteinPercent)
+            hasher.combine(entry.pulse)
+            hasher.combine(entry.skeletalMusclePercent)
+            hasher.combine(entry.subcutaneousFatPercent)
+            hasher.combine(entry.visceralFatLevel)
+            hasher.combine(entry.boneMass)
+            hasher.combine(entry.impedance)
+        }
+        return hasher.finalize()
+    }
+
     private func makeYearDTO(key: String, avgWeight: Int, accountId: String) -> BathScaleOperationDTO? {
         guard !key.isEmpty else { return nil }
         let date = DateTimeTools.formatter("yyyy-MM").date(from: key) ?? Date()
@@ -437,6 +641,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             bodyFat: nil,
             boneMass: nil,
             entryTimestamp: DateTimeTools.isoFormatter().string(from: date),
+            entryType: nil,
             impedance: nil,
             metabolicAge: nil,
             muscleMass: nil,
@@ -447,6 +652,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             skeletalMusclePercent: nil,
             source: "monthly",
             subcutaneousFatPercent: nil,
+            systolic: nil,
+            diastolic: nil,
+            meanArterial: nil,
             unit: nil,
             visceralFatLevel: nil,
             water: nil,
@@ -454,14 +662,115 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         )
     }
 
-    func getStreak() async throws -> Streak {
-        let accountId = try await getAccountId()
-        // Snapshots — see MA-3898.
-        let entries = try await localRepo.fetchEntriesAsSnapshots(forUserId: accountId, operationType: OperationType.create.rawValue)
+    func getStreak(entryType: EntryType = .scale) async throws -> Streak {
+        let dtos = try await getAllEntriesAsDTO()
+        let cachedSignature = streakCacheByEntryType[entryType]?.datasetSignature
+        let result = await Task.detached(priority: .userInitiated) {
+            let filtered = dtos.filter { dto in
+                let type = dto.entryType ?? ""
+                if type.isEmpty { return entryType == .scale }
+                return type == entryType.rawValue
+            }
+            let signature = Self.makeDTOSignature(filtered)
+            if signature == cachedSignature {
+                return (signature, Optional<Streak>.none)
+            }
+            let streak = Self.computeStreak(from: filtered)
+            return (signature, Optional(streak))
+        }.value
+
+        if let streak = result.1 {
+            streakCacheByEntryType[entryType] = EntryStreakCacheEntry(datasetSignature: result.0, streak: streak)
+            return streak
+        }
+
+        if let cached = streakCacheByEntryType[entryType], cached.datasetSignature == result.0 {
+            return cached.streak
+        }
+
+        let streak = Self.computeStreak(from: dtos.filter { dto in
+            let type = dto.entryType ?? ""
+            if type.isEmpty { return entryType == .scale }
+            return type == entryType.rawValue
+        })
+        streakCacheByEntryType[entryType] = EntryStreakCacheEntry(datasetSignature: result.0, streak: streak)
+        return streak
+    }
+
+    // PERFORMANCE: Overloads that accept pre-fetched EntryData to avoid redundant full-table fetches.
+    // Called from getProgress which already has allEntries from fetchProgressData.
+
+    private nonisolated static func getMonthYear(from allEntries: [EntryData]) -> [HistoryMonth] {
+        let calendar = Calendar.current
+        let now = Date()
+        let oneYearAgo = calendar.date(byAdding: .day, value: -365, to: now) ?? now
+
+        let filteredEntries = allEntries.filter { entry in
+            guard let entryDate = DateTimeTools.parse(entry.entryTimestamp) else { return false }
+            return entryDate >= oneYearAgo && entryDate <= now
+        }
+
+        let grouped = Dictionary(grouping: filteredEntries) { entry -> String in
+            DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
+        }
+
+        var result: [HistoryMonth] = []
+        for (monthKey, monthEntries) in grouped {
+            guard !monthEntries.isEmpty else { continue }
+            result.append(Self.buildHistoryMonth(monthKey: monthKey, monthEntries: monthEntries))
+        }
+
+        return result.sorted { $0.entryTimestamp > $1.entryTimestamp }
+    }
+
+    private nonisolated static func buildHistoryMonth(monthKey: String, monthEntries: [EntryData]) -> HistoryMonth {
+        let weightPairs = monthEntries.compactMap { entry -> String? in
+            guard let weight = entry.weight else { return nil }
+            return "\(weight)|\(entry.entryTimestamp)"
+        }
+        let weightsConcat = weightPairs.joined(separator: ",")
+
+        let weightValues = monthEntries.compactMap { $0.weight }.filter { $0 > 0 }.map(Double.init)
+        let avgWeight: Double? = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count)
+        let minWeight = weightValues.min()
+        let maxWeight = weightValues.max()
+
+        let sortedByTime = monthEntries.sorted { $0.entryTimestamp < $1.entryTimestamp }
+        let firstWeight = sortedByTime.first?.weight
+        let lastWeight = sortedByTime.last?.weight
+        let change: String? = {
+            guard let first = firstWeight, let last = lastWeight else { return nil }
+            return String(format: "%.1f", Double(last - first))
+        }()
+
+        return HistoryMonth(
+            id: monthKey,
+            weight: avgWeight,
+            entryTimestamp: monthKey,
+            count: monthEntries.count,
+            weights: weightsConcat,
+            change: change,
+            bodyFat: nil,
+            muscleMass: nil,
+            water: nil,
+            bmi: nil,
+            date: nil,
+            time: nil,
+            month: String(monthKey.suffix(2)),
+            year: String(monthKey.prefix(4)),
+            min: minWeight,
+            max: maxWeight
+        )
+    }
+
+    private nonisolated static func computeStreak(entryType: EntryType = .scale, from allEntries: [EntryData]) -> Streak {
+        let entries = allEntries.filter { entry in
+            let type = entry.entryType
+            if type.isEmpty { return entryType == .scale }
+            return type == entryType.rawValue
+        }
         let calendar = Calendar.current
 
-        // Extract unique calendar days (start-of-day in local timezone) so comparisons are consistent.
-        // Exclude invalid/placeholder strings so they are not treated as "today" (getDateFromDateString fallback).
         let uniqueDayStrings = Set(entries.map { DateTimeTools.getLocalDateStringFromUTCDate($0.entryTimestamp) })
             .filter { $0 != DateTimeTools.invalidString && !$0.isEmpty }
         let uniqueDaysDescending: [Date] = uniqueDayStrings
@@ -474,9 +783,13 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let uniqueDaysAscending = uniqueDaysDescending.sorted()
 
         let todayStart = calendar.startOfDay(for: Date())
-        let yesterdayStart = calendar.date(byAdding: .day, value: -1, to: todayStart)!
+        guard let yesterdayStart = calendar.date(byAdding: .day, value: -1, to: todayStart) else {
+            return Streak(current: 0, max: 0)
+        }
 
-        func isSameDay(_ a: Date, _ b: Date) -> Bool { calendar.isDate(a, inSameDayAs: b) }
+        func isSameDay(_ firstDate: Date, _ secondDate: Date) -> Bool {
+            calendar.isDate(firstDate, inSameDayAs: secondDate)
+        }
 
         var currentStreak = 0
         var dateToCheck: Date
@@ -486,16 +799,19 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             dateToCheck = yesterdayStart
         } else if let first = uniqueDaysDescending.first, isSameDay(first, yesterdayStart) {
             currentStreak = 1
-            dateToCheck = calendar.date(byAdding: .day, value: -1, to: yesterdayStart)!
+            guard let twoDaysAgo = calendar.date(byAdding: .day, value: -1, to: yesterdayStart) else {
+                return Streak(current: 1, max: Self.computeLongestStreak(from: uniqueDaysAscending, calendar: calendar))
+            }
+            dateToCheck = twoDaysAgo
         } else {
             return Streak(current: 0, max: Self.computeLongestStreak(from: uniqueDaysAscending, calendar: calendar))
         }
 
-        // Walk backward: for each consecutive day in uniqueDaysDescending (newest to oldest), count while it matches dateToCheck
         for day in uniqueDaysDescending.dropFirst() {
             if isSameDay(day, dateToCheck) {
+                guard let previousDate = calendar.date(byAdding: .day, value: -1, to: dateToCheck) else { break }
                 currentStreak += 1
-                dateToCheck = calendar.date(byAdding: .day, value: -1, to: dateToCheck)!
+                dateToCheck = previousDate
             } else {
                 break
             }
@@ -505,12 +821,64 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         return Streak(current: currentStreak, max: longestStreak)
     }
 
-    private static func computeLongestStreak(from days: [Date], calendar: Calendar = .current) -> Int {
+    private nonisolated static func computeStreak(from dtos: [BathScaleOperationDTO]) -> Streak {
+        let calendar = Calendar.current
+        let uniqueDayStrings = Set(
+            dtos.compactMap { dto -> String? in
+                guard let timestamp = dto.entryTimestamp else { return nil }
+                return DateTimeTools.getLocalDateStringFromUTCDate(timestamp)
+            }
+        )
+        .filter { $0 != DateTimeTools.invalidString && !$0.isEmpty }
+
+        let uniqueDaysDescending: [Date] = uniqueDayStrings
+            .compactMap { DateTimeTools.formatter("yyyy-MM-dd").date(from: $0) }
+            .map { calendar.startOfDay(for: $0) }
+            .sorted(by: >)
+
+        guard !uniqueDaysDescending.isEmpty else { return Streak(current: 0, max: 0) }
+
+        let uniqueDaysAscending = uniqueDaysDescending.sorted()
+        let todayStart = calendar.startOfDay(for: Date())
+        let yesterdayStart = calendar.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
+
+        func isSameDay(_ firstDate: Date, _ secondDate: Date) -> Bool {
+            calendar.isDate(firstDate, inSameDayAs: secondDate)
+        }
+
+        var currentStreak = 0
+        var dateToCheck: Date
+
+        if let first = uniqueDaysDescending.first, isSameDay(first, todayStart) {
+            currentStreak = 1
+            dateToCheck = yesterdayStart
+        } else if let first = uniqueDaysDescending.first, isSameDay(first, yesterdayStart) {
+            currentStreak = 1
+            dateToCheck = calendar.date(byAdding: .day, value: -1, to: yesterdayStart) ?? yesterdayStart
+        } else {
+            return Streak(current: 0, max: computeLongestStreak(from: uniqueDaysAscending, calendar: calendar))
+        }
+
+        for day in uniqueDaysDescending.dropFirst() {
+            if isSameDay(day, dateToCheck) {
+                guard let previousDate = calendar.date(byAdding: .day, value: -1, to: dateToCheck) else { break }
+                currentStreak += 1
+                dateToCheck = previousDate
+            } else {
+                break
+            }
+        }
+
+        let longestStreak = computeLongestStreak(from: uniqueDaysAscending, calendar: calendar)
+        return Streak(current: currentStreak, max: longestStreak)
+    }
+
+    private nonisolated static func computeLongestStreak(from days: [Date], calendar: Calendar = .current) -> Int {
         guard !days.isEmpty else { return 0 }
         var longest = 1
         var current = 1
 
-        for i in 1..<days.count {
+        for i in 1 ..< days.count {
             let prevDay = days[i - 1]
             let currentDay = days[i]
             let diff = calendar.dateComponents([.day], from: prevDay, to: currentDay).day ?? 0
@@ -525,44 +893,73 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
         return max(longest, current)
     }
-    
+
     // MARK: - Migration Logic
+
     /// Migrates data from Ionic app's SQLite database to SwiftData if needed
     /// Should be called once on app startup before other operations
     /// This method migrates data for ALL users found in the opStack tables
-    public func migrateFromSQLiteIfNeeded() async {
-        guard migrationService.isMigrationNeeded() else { 
-            await logger.log(level: .info, tag: tag, message: "No SQLite migration needed")
-            return }
-        
+    func migrateFromSQLiteIfNeeded() async {
+        guard migrationService.isMigrationNeeded() else {
+            logger.log(level: .info, tag: tag, message: "No SQLite migration needed")
+            return
+        }
+
         do {
-            await logger.log(level: .info, tag: tag, message: "Starting SQLite migration for all users in opStack")
+            logger.log(level: .info, tag: tag, message: "Starting SQLite migration for all users in opStack")
             // Migrate data for all users found in the opStack tables
             let migratedData = try await migrationService.migrateAllUsersEntryData()
-            
+
             // Update dashboard data after migration (only for current active user if available)
             do {
-                let accountId = try await getAccountId()
+                let accountId = try getAccountId()
                 if migratedData[accountId] != nil {
                     await loadDashboardData()
                     await updateProgressAndStreakInternal()
+                    logger.log(level: .info, tag: tag, message: "Dashboard data updated for current user: \(accountId)")
                 }
             } catch {
-                await logger.log(level: .info, tag: tag, message: "No active account found, skipping dashboard update")
+                logger.log(level: .info, tag: tag, message: "No active account found, skipping dashboard update")
             }
-            
+
             // Clean up SQLite database after successful migration
             try migrationService.cleanupAfterMigration()
-            
+
         } catch {
-            await logger.log(level: .error, tag: tag, message: "SQLite migration failed: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "SQLite migration failed: \(error.localizedDescription)")
         }
     }
-    
+
+    /// Migrates existing baby entry weight from ounces to decigrams and length from inches to millimeters.
+    /// Runs once per account on app startup; skips if already completed for the active account.
+    func migrateBabyEntriesToDecigrams() async {
+        do {
+            let accountId = try getAccountId()
+            let key = KvStorageKeys.babyEntryDecigramsMigratedKey(for: accountId)
+            guard (kvStorage.getValue(forKey: key) as? Bool) != true else { return }
+
+            let allEntries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
+            let babyEntries = allEntries.filter { $0.entryType == EntryType.baby.rawValue && $0.babyEntry != nil }
+
+            // Idempotency: the heuristic (weight < 2835) skips already-converted entries,
+            // so a crash mid-loop is safely re-runnable on next launch.
+            for entry in babyEntries {
+                guard entry.babyEntry != nil else { continue }
+                try await localRepo.updateEntry(entry)
+            }
+
+            logger.log(level: .info, tag: tag, message: "Baby entry decigram migration completed: \(babyEntries.count) entries")
+            kvStorage.setValue(true, forKey: key)
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Baby entry decigram migration failed: \(error.localizedDescription)")
+        }
+    }
+
     // MARK: - Sync Logic
+
     /// Sync all unsynced entries with the remote backend. Call this on app start or after network recovery.
     /// If a sync is already in progress, callers await its completion (zero CPU overhead) instead of skipping.
-    public func syncAllEntriesWithRemote() async {
+    func syncAllEntriesWithRemote() async {
         // If a sync is already running, piggyback on it — await the same task.
         if let existingTask = activeSyncTask {
             await existingTask.value
@@ -586,13 +983,13 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     private func performSync() async {
         let accountId: String
         do {
-            accountId = try await getAccountId()
+            accountId = try getAccountId()
         } catch {
-            await logger.log(level: .error, tag: tag, message: "Sync failed: No account ID available")
+            logger.log(level: .error, tag: tag, message: "Sync failed: No account ID available")
             return
         }
-        await logger.log(level: .info, tag: tag, message: "Full entry sync started: accountId=\(accountId)")
-        
+        logger.log(level: .info, tag: tag, message: "Full entry sync started: accountId=\(accountId)")
+
         do {
             let hadPushedCreates = await pushUnsyncedEntriesToRemote(accountId: accountId)
 
@@ -604,39 +1001,47 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 lastSyncTimestamp = nil
             }
 
-            let remoteOps = try await remoteRepo.fetchOperations(startTimestamp: lastSyncTimestamp)
+            // Sync mode of the unified GET /v3/entries/ — all entries since the last sync.
+            let remoteOps = try await remoteRepo.fetchEntries(
+                start: lastSyncTimestamp, cursor: nil, limit: nil, category: nil
+            )
             let hadMergedNewCreates = await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
-            await loadDashboardData()
+            let dashboardDataChanged = hadPushedCreates || hadMergedNewCreates
+            if dashboardDataChanged {
+                await loadDashboardData()
+            }
 
-            try await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: remoteOps.timestamp)
+            let syncTimestamp = remoteOps.timestamp ?? ISO8601DateFormatter().string(from: Date())
+            try await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: syncTimestamp)
             lastSyncTime = Date()
 
-            await updateProgressAndStreakInternal()
-            if hadPushedCreates || hadMergedNewCreates {
+            if dashboardDataChanged {
+                await updateProgressAndStreakInternal()
                 try? await Task.sleep(nanoseconds: 3_000_000_000)
                 await checkGoalAlerts()
             }
-            await logger.log(
+            logger.log(
                 level: .info,
                 tag: tag,
-                message: "Full entry sync completed successfully: accountId=\(accountId), hadPushedCreates=\(hadPushedCreates), hadMergedNewCreates=\(hadMergedNewCreates), remoteOperationCount=\(remoteOps.operations.count)"
+                message: """
+                Full entry sync completed successfully: accountId=\(accountId), hadPushedCreates=\(hadPushedCreates), \
+                hadMergedNewCreates=\(hadMergedNewCreates), remoteOperationCount=\(remoteOps.operations.count)
+                """
             )
 
         } catch {
-            await logger.log(level: .error, tag: tag, message: "Full entry sync failed: accountId=\(accountId), error=\(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "Full entry sync failed: accountId=\(accountId), error=\(error.localizedDescription)")
         }
     }
-    
+
     /// Pushes unsynced local entries to the remote API.
     ///
     /// - Returns: `true` if at least one create operation was successfully synced.
     ///   The caller uses this to decide whether to show the goal met card: we only show it when
     ///   the user actually added new entries in this sync (not on every login or pull-to-refresh).
-    private func pushUnsyncedEntriesToRemote(accountId: String) async -> Bool {
-        // 1. Get all unsynced entries as Sendable (snapshot, DTO) pairs.
-        //    The DTO is built inside the background context, so we never read
-        //    SwiftData relationships off-actor (MA-3898).
-        let unsynced = try? await localRepo.fetchUnsyncedEntriesAsSnapshots(forUserId: accountId)
+    private func pushUnsyncedEntriesToRemote(accountId: String) async -> Bool { // swiftlint:disable:this function_body_length
+        // 1. Get all unsynced entries (both new and delete operations)
+        let unsynced = try? await localRepo.fetchUnsyncedEntries(forUserId: accountId)
 
         // Tracks whether we successfully synced at least one create to the API; drives goal met card visibility.
         var hadSuccessfulCreate = false
@@ -646,19 +1051,54 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         var firstFailureReason: String?
 
         // 2. Try to sync with backend
-        if let unsyncedEntries = unsynced, !unsyncedEntries.isEmpty {
-            for (operation, dto) in unsyncedEntries {
+        // Baby sync is out of scope until iOS 3. Exclude baby entries here so they
+        // are not re-evaluated every cycle and never accumulate as a perpetual skip.
+        if let unsyncedEntries = unsynced?.filter({ $0.entryType != EntryType.baby.rawValue }), !unsyncedEntries.isEmpty {
+            for operation in unsyncedEntries {
+                // R7/R9: Extract all @Model data BEFORE any await calls
                 let entryId = operation.id
                 let entryIdString = entryId.uuidString
                 let operationType = operation.operationType
                 let entryTimestamp = operation.entryTimestamp
                 let currentAttempts = operation.attempts
+                let note = operation.note
+                let serverEntryId = operation.serverEntryId
+                let dto = operation.toOperationDTO()
+
+                // Map to the unified request(s). Weight/BP produce one request; a baby entry
+                // can expand into a `weight` and a `measureLength` request (MOB-386).
+                let requests: [UnifiedEntryRequest]
+                if dto.entryType == EntryType.baby.rawValue {
+                    requests = BabyEntryRequest.makeRequests(from: dto, entryId: entryIdString, note: note)
+                } else if let request = UnifiedEntryRequest(from: dto, serverEntryId: serverEntryId, note: note) {
+                    requests = [request]
+                } else {
+                    requests = []
+                }
+                guard !requests.isEmpty else { continue }
 
                 do {
-                    try await remoteRepo.syncOperation(operation: dto)
+                    // POST /v3/entries/ — atomic batch; baby entries submit their sub-type rows together.
+                    let submitResponse = try await remoteRepo.submitEntries(requests)
+                    logger.log(
+                        level: .info,
+                        tag: tag,
+                        message: "API submitEntries response: entryId=\(entryIdString), responseEntries.count=\(submitResponse.entries.count)"
+                    )
 
                     if operationType == "create" {
                         hadSuccessfulCreate = true
+                        // Store server-assigned entryId so future delete requests can include it.
+                        if let responseEntryId = submitResponse.entries.first?.entryId {
+                            do {
+                                try await localRepo.updateEntryServerEntryId(
+                                    entryId: entryIdString,
+                                    serverEntryId: responseEntryId
+                                )
+                            } catch {
+                                logger.log(level: .error, tag: tag, message: "Failed to persist serverEntryId for entryId=\(entryIdString): \(error.localizedDescription)")
+                            }
+                        }
                         // R9: Use primitive-based update instead of mutating @Model
                         try await localRepo.updateEntrySyncStatus(
                             entryId: entryIdString,
@@ -689,43 +1129,43 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                     }
                 }
             }
-            await logger.log(
+            logger.log(
                 level: .info,
                 tag: tag,
-                message: "Unsynced entry push completed for accountId=\(accountId): createsSynced=\(successfulCreateCount), deletesSynced=\(successfulDeleteCount), failures=\(failedSyncCount)"
+                message: "Unsynced entry push completed for accountId=\(accountId): "
+                    + "createsSynced=\(successfulCreateCount), deletesSynced=\(successfulDeleteCount), failures=\(failedSyncCount)"
             )
             if failedSyncCount > 0 {
-                await logger.log(
+                logger.log(
                     level: .error,
                     tag: tag,
-                    message: "Unsynced entry push had failures: accountId=\(accountId), failures=\(failedSyncCount), firstFailure=\(firstFailureReason ?? "unknown")"
+                    message: "Unsynced entry push had failures: accountId=\(accountId), failures=\(failedSyncCount), "
+                        + "firstFailure=\(firstFailureReason ?? "unknown")"
                 )
             }
         }
         return hadSuccessfulCreate
     }
+
     /// Lightweight summary for a single month. Avoids computing all months when only one changes.
     func getMonthSummary(monthKey: String) async throws -> HistoryMonth? {
-        let accountId = try await getAccountId()
-        // Snapshots — see MA-3898.
-        let monthEntries = try await localRepo.fetchEntriesAsSnapshots(forMonth: monthKey, userId: accountId)
-            .filter { $0.operationType == OperationType.create.rawValue }
+        let monthEntries = try await getEntries(forMonth: monthKey)
         guard !monthEntries.isEmpty else { return nil }
         return Self.buildHistoryMonth(monthKey: monthKey, monthEntries: monthEntries)
     }
-    
+
     /// Internal: Sync only unsynced entries (used after local changes)
     private func syncUnsyncedEntries() async {
         guard !isSyncing else { return }
-        
+
         isSyncing = true
         defer { isSyncing = false }
-        
-        guard let accountId = try? await getAccountId() else {
-            await logger.log(level: .error, tag: tag, message: "Unsynced entries sync failed: No account ID available")
+
+        guard let accountId = try? getAccountId() else {
+            logger.log(level: .error, tag: tag, message: "Unsynced entries sync failed: No account ID available")
             return
         }
-        
+
         do {
             // 1. Push unsynced entries to remote (return value unused; goal alerts handled by saveNewEntry)
             _ = await pushUnsyncedEntriesToRemote(accountId: accountId)
@@ -736,34 +1176,44 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 try? await localKVRepo.clearLastSyncTimestamp(accountId: accountId)
                 lastSyncTimestamp = nil
             }
-            
-            let remoteOps = try await remoteRepo.fetchOperations(startTimestamp: lastSyncTimestamp)
+
+            let remoteOps = try await remoteRepo.fetchEntries(
+                start: lastSyncTimestamp, cursor: nil, limit: nil, category: nil
+            )
             if !remoteOps.operations.isEmpty {
-                await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
-                try await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: remoteOps.timestamp)
+                _ = await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
+                let syncTimestamp = remoteOps.timestamp ?? ISO8601DateFormatter().string(from: Date())
+                try await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: syncTimestamp)
             } else {
                 try await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: ISO8601DateFormatter().string(from: Date()))
             }
-            
+
             lastSyncTime = Date()
             // Update progress, streak, and check for goal alerts
             await updateProgressAndStreakInternal()
             await loadDashboardData()
         } catch {
-            await logger.log(level: .error, tag: tag, message: "Unsynced entries sync failed: accountId=\(accountId), error=\(error.localizedDescription)")
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Unsynced entries sync failed: accountId=\(accountId), error=\(error.localizedDescription)"
+            )
         }
     }
-    
+
     /// Merge remote operations into local DB, resolving conflicts (latest wins by timestamp).
     ///
     /// - Returns: `true` if at least one new entry was inserted (create from remote that didn't exist locally).
     ///   The caller uses this to decide whether to show the goal met card: we only show it when
     ///   new entries arrived from the server in this sync (not on every login or pull-to-refresh).
-    private func mergeRemoteOperations(_ remoteOps: [BathScaleOperationDTO], accountId: String) async -> Bool {
-        // Tracks whether we inserted at least one new entry from remote; drives goal met card visibility.
+    private func mergeRemoteOperations( // swiftlint:disable:this cyclomatic_complexity function_body_length
+        _ remoteOps: [BathScaleOperationDTO],
+        accountId: String
+    ) async -> Bool {
         var hadNewCreates = false
-        // Tracks the create operations we actually inserted locally so we can sync each
-        // to the active health integration (e.g., Apple Health) after the merge loop.
+        // MA-3886: collect each newly-created remote op so we can forward only those entries
+        // to health integrations after the merge. Pushing the overall "latest" entry alone is
+        // insufficient when multiple Wi-Fi/R4 entries arrive in a single sync.
         var newlyCreatedOps: [BathScaleOperationDTO] = []
         // Group operations by timestamp to determine final state for each timestamp
         let groupedOps = Dictionary(grouping: remoteOps) { op in
@@ -771,28 +1221,26 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
         for (timestamp, ops) in groupedOps {
             guard !timestamp.isEmpty else { continue }
-            
+
             // Sort operations by serverTimestamp to process in chronological order
             let sortedOps = ops.sorted {
                 ($0.serverTimestamp ?? "") < ($1.serverTimestamp ?? "")
             }
-            
+
             // Find the final operation for this timestamp (the latest one)
             guard let finalOp = sortedOps.last else { continue }
-            
+
             // Check if local entry exists with this timestamp
             // Normalize timestamp format variants to improve matching reliability
             // Some entries may be stored with millisecond precision (".000Z"); others without.
             let normalizedTimestamp = timestamp.replacingOccurrences(of: ".000Z", with: "Z")
             let tsCandidates = timestamp == normalizedTimestamp ? [timestamp] : [timestamp, normalizedTimestamp]
-            
-            // Fetch ALL entries with this timestamp (including both create and delete operations).
-            // Use snapshots, not @Model objects, so we can hold the values across awaits without
-            // touching a context that has gone out of scope (MA-3898).
-            var localEntry: EntrySnapshot? = nil
-            var localEntries: [EntrySnapshot]? = nil
+
+            // Fetch ALL entries with this timestamp (including both create and delete operations)
+            var localEntry: Entry?
+            var localEntries: [Entry]?
             for ts in tsCandidates {
-                if let fetched = try? await localRepo.fetchEntriesOfTimestampAsSnapshots(forUserId: accountId, timestamp: ts), !fetched.isEmpty {
+                if let fetched = try? await localRepo.fetchEntriesOfTimestamp(forUserId: accountId, timestamp: ts), !fetched.isEmpty {
                     localEntries = fetched
                     localEntry = fetched.first { $0.operationType == OperationType.create.rawValue } ?? fetched.first
                     break
@@ -800,28 +1248,28 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
 
             // Additional check: Look for entries with same timestamp AND weight to prevent race condition duplicates
-            let potentialDuplicates = localEntries?.filter { snap in
-                if let entryWeight = snap.weight, let opWeight = finalOp.weight {
-                    return entryWeight == Int(opWeight) && tsCandidates.contains(snap.entryTimestamp)
+            let potentialDuplicates = localEntries?.filter { entry in
+                if let entryWeight = entry.scaleEntry?.weight, let opWeight = finalOp.weight {
+                    return entryWeight == Int(opWeight) && tsCandidates.contains(entry.entryTimestamp)
                 }
                 return false
             } ?? []
 
             // If no entries found by timestamp but we have a weight, check all entries for this user to find potential duplicates
             // This handles the case where the entry was just synced but not yet visible in the timestamp query
-            var allEntriesForUser: [EntrySnapshot] = []
+            var allEntriesForUser: [Entry] = []
             if localEntries?.isEmpty == true && finalOp.weight != nil {
                 do {
-                    allEntriesForUser = try await localRepo.fetchEntriesAsSnapshots(forUserId: accountId, operationType: OperationType.create.rawValue)
+                    allEntriesForUser = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
                 } catch {
                     allEntriesForUser = []
                 }
             }
 
             // Determine the entry to work with - either from timestamp search or weight-based search
-            let entryToProcess: EntrySnapshot? = localEntry ?? allEntriesForUser.first { snap in
-                if let entryWeight = snap.weight, let opWeight = finalOp.weight {
-                    return entryWeight == Int(opWeight) && snap.entryTimestamp == normalizedTimestamp
+            let entryToProcess = localEntry ?? allEntriesForUser.first { entry in
+                if let entryWeight = entry.scaleEntry?.weight, let opWeight = finalOp.weight {
+                    return entryWeight == Int(opWeight) && entry.entryTimestamp == normalizedTimestamp
                 }
                 return false
             }
@@ -836,34 +1284,28 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 if shouldApplyRemote {
                     if finalOp.operationType == OperationType.delete.rawValue {
                         let entriesToDelete = localEntries ?? [localEntry]
-                        for snap in entriesToDelete {
-                            try? await localRepo.deleteEntry(byId: snap.id.uuidString)
+                        for entry in entriesToDelete {
+                            try? await localRepo.deleteEntry(byId: entry.id.uuidString)
                         }
-                        try? await handleEntryDeleted(
-                            entryId: localEntry.id,
-                            entryTimestamp: localEntry.entryTimestamp
-                        )
+                        try? await handleEntryDeleted(localEntry)
                     } else {
                         await cleanupDuplicates(localEntries: localEntries, keepId: localEntry.id)
-                        var updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
+                        let updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
                         updated.id = localEntry.id
                         try? await localRepo.updateEntry(updated)
                     }
                 } else if !localServerTS.isEmpty {
                     if !localEntry.isSynced {
-                        // Use the primitive sync-status update; mutating the @Model directly
-                        // would write through a stale background context (MA-3898).
-                        try? await localRepo.updateEntrySyncStatus(
-                            entryId: localEntry.id.uuidString,
-                            isSynced: true,
-                            isFailedToSync: localEntry.isFailedToSync,
-                            attempts: localEntry.attempts
-                        )
+                        localEntry.isSynced = true
+                        try? await localRepo.updateEntry(localEntry)
                     }
                     await cleanupDuplicates(localEntries: localEntries, keepId: localEntry.id)
                 }
-            } else if let duplicateEntry = potentialDuplicates.first {
+            } else if !potentialDuplicates.isEmpty {
                 // Found potential duplicate by weight - update the existing one instead of creating new
+                guard let duplicateEntry = potentialDuplicates.first else {
+                    continue
+                }
                 let updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
                 updated.id = duplicateEntry.id
                 try? await localRepo.updateEntry(updated)
@@ -871,10 +1313,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 // No local entry - only create if final operation is create
                 if finalOp.operationType == OperationType.create.rawValue {
                     hadNewCreates = true
+                    newlyCreatedOps.append(finalOp)
                     // Final state is create - add to local storage
                     let newEntry = Entry(from: finalOp, accountId: accountId, isSynced: true)
                     try? await localRepo.saveEntry(newEntry)
-                    newlyCreatedOps.append(finalOp)
                     // Notify downstream listeners/UI about the new entry so lists refresh
                 }
                 // If final operation is delete and no local entry exists, nothing to do
@@ -882,95 +1324,135 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
         }
 
-        // Only notify UI listeners when the remote merge actually inserted new
-        // entries locally. We restrict downstream syncs to the entries that were
-        // freshly created in this merge — pushing the overall "latest" entry would
-        // risk re-pushing previously-unsynced historical entries into Apple Health
-        // after operations like deletes.
+        // MA-3851: only notify UI listeners when the remote merge actually inserted
+        // new entries locally. Calling handleEntryAdded here would re-route the overall
+        // latest entry through integrationService.syncNewEntry on every sync — pushing
+        // previously-unsynced historical entries into Apple Health after operations like
+        // deletes. New creates are synced to integrations by the MA-3886 loop below.
         if hadNewCreates {
             do {
                 if let entry = try await getLatestEntry() {
-                    let notification = await MainActor.run { EntryNotification(from: entry) }
+                    let notification = EntryNotification(from: entry)
                     entrySaved.send(notification)
                 }
             } catch {
-                await logger.log(level: .error, tag: tag, message: "Failed to get latest entry: \(error.localizedDescription)")
+                logger.log(level: .error, tag: tag, message: "Failed to get latest entry: \(error.localizedDescription)")
             }
+        }
 
-            // Forward each newly-created entry to active health integrations
-            // (e.g., Apple Health). Without this, WiFi-scale entries arriving via
-            // push-triggered remote sync would never reach HealthKit.
-            for op in newlyCreatedOps {
-                let notification = EntryNotification(from: op)
-                do {
-                    try await integrationService.syncNewEntry(notification: notification)
-                } catch {
-                    await logger.log(
-                        level: .error,
-                        tag: tag,
-                        message: "Failed to sync remote-merged entry to integrations: timestamp=\(notification.entryTimestamp), error=\(error.localizedDescription)"
-                    )
-                }
+        // MA-3886: forward each newly-created entry to active health integrations
+        // (e.g., Apple Health). Without this, Wi-Fi/R4 entries arriving via push-triggered
+        // remote sync never reach HealthKit because the scale uploads to the server, not the phone.
+        for op in newlyCreatedOps {
+            let notification = EntryNotification(from: op)
+            do {
+                try await integrationService.syncNewEntry(notification: notification)
+            } catch {
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Failed to sync remote-merged entry to integrations: timestamp=\(notification.entryTimestamp), error=\(error.localizedDescription)"
+                )
             }
         }
         return hadNewCreates
     }
 
-    private func cleanupDuplicates(localEntries: [EntrySnapshot]?, keepId: UUID) async {
+    private func cleanupDuplicates(localEntries: [Entry]?, keepId: UUID) async {
         guard let allEntries = localEntries, allEntries.count > 1 else { return }
-        for snap in allEntries where snap.id != keepId {
+        for entry in allEntries where entry.id != keepId {
             do {
-                try await localRepo.deleteEntry(byId: snap.id.uuidString)
-                try await self.handleEntryDeleted(
-                    entryId: snap.id,
-                    entryTimestamp: snap.entryTimestamp
-                )
+                try await localRepo.deleteEntry(byId: entry.id.uuidString)
+                try await self.handleEntryDeleted(entry)
             } catch {
-                await logger.log(
+                logger.log(
                     level: .error,
                     tag: tag,
-                    message: "Failed to delete duplicate entry \(snap.id): \(error.localizedDescription)"
+                    message: "Failed to delete duplicate entry \(entry.id): \(error.localizedDescription)"
                 )
             }
         }
     }
-    
+
     // MARK: - Export
-    /// Exports entries as CSV based on current dashboard type (4 or 12 metrics)
-    func exportCSV() async throws {
-        // Determine account and dashboard setting
-        guard let dashboardType = await getDashboardType() else {
+
+    /// Exports entries as CSV via the unified `GET /v3/entries/csv` endpoint.
+    ///
+    /// Emails the report (no `download` flag) for the given product `category`. The device's
+    /// current UTC offset is applied to the exported `Date/Time` column.
+    /// - Parameters:
+    ///   - category: The product to export (`weight`/`bp`/`baby`); `nil` exports all.
+    ///   - babyId: Required when `category == "baby"` — scopes the export to one baby.
+    func exportCSV(category: String?, babyId: String?) async throws {
+        // An active account is still required so the request is authorized.
+        guard accountService.activeAccount != nil else {
             throw AccountError.noActiveAccount
         }
-        let useR4Endpoint = DashboardType.from(stored: dashboardType) == .dashboard12
-        let _ = try await remoteRepo.exportCsv(useR4Endpoint: useR4Endpoint)
+        if category == EntryCategory.baby.rawValue && babyId == nil {
+            throw NSError(domain: "EntryService", code: 400,
+                          userInfo: [NSLocalizedDescriptionKey: "babyId is required for baby CSV export"])
+        }
+        let request = EntriesCSVRequest(
+            category: category,
+            babyId: babyId,
+            download: false,
+            utcOffset: DateTimeTools.getUTCOffset()
+        )
+        _ = try await remoteRepo.exportEntriesCSV(request)
     }
-    
+
+    // MARK: - Cursor Pagination (Remote Read)
+
+    /// Reads a single page of entries from the unified `GET /v3/entries/` cursor mode.
+    ///
+    /// Pass `cursor = nil` for the first page; thereafter forward the returned
+    /// `EntriesPage.nextCursor`. Paging stops once `hasMore` is `false`. The `limit` is
+    /// clamped to the server-accepted range.
+    /// - Parameters:
+    ///   - cursor: The `entryTimestamp` cursor from the previous page, or `nil` for page 1.
+    ///   - limit: Requested page size (clamped to `1...100`).
+    ///   - category: Optional product filter (`weight`/`bp`/`baby`); `nil` returns all products.
+    ///   - babyId: Optional baby filter (only meaningful with `category == "baby"`).
+    /// - Returns: The page of entries plus pagination metadata.
+    func fetchEntriesPage(cursor: String?, limit: Int, category: String?, babyId: String?) async throws -> EntriesPage {
+        let clamped = EntriesPagination.clamp(limit: limit)
+        let response = try await remoteRepo.fetchEntries(
+            start: nil, cursor: cursor, limit: clamped, category: category, babyId: babyId
+        )
+        return EntriesPage(
+            entries: response.operations,
+            nextCursor: response.nextCursor,
+            // Fall back to inferring from page fullness when the server omits `hasMore`.
+            hasMore: response.hasMore ?? (response.entries.count >= clamped)
+        )
+    }
+
+    // MARK: - Entry Type Filtering
+
+    /// Checks if an Entry matches the given entryType.
+    /// Legacy entries without an entryType default to `.scale`.
+    private func matchesEntryType(_ entry: Entry, entryType: EntryType) -> Bool {
+        guard let type = entry.entryType, !type.isEmpty else { return entryType == .scale }
+        return type == entryType.rawValue
+    }
+
+    /// DTO-level entry type matching for background-thread aggregation.
+    private nonisolated func matchesDTOEntryType(_ dto: BathScaleOperationDTO, entryType: EntryType) -> Bool {
+        guard let type = dto.entryType, !type.isEmpty else { return entryType == .scale }
+        return type == entryType.rawValue
+    }
+
     // MARK: - Aggregation Helpers
-    
+
     /// Helper function for all metrics (excludes zero values)
-    private func avgNonZero(_ values: [Double?]) -> Double? {
+    private nonisolated func avgNonZero(_ values: [Double?]) -> Double? {
         let vals = values.compactMap { $0 }.filter { $0 > 0 }
         return vals.isEmpty ? nil : vals.reduce(0, +) / Double(vals.count)
     }
-    
-    /// Helper function for weight: average stored values (tenths of lbs) and round to whole tenths
-    /// This matches the logic in buildHistoryMonth to ensure consistent rounding
-    private func avgWeight(_ values: [Int]) -> Double {
-        guard !values.isEmpty else { return 0 }
-        let filtered = values.filter { $0 > 0 }
-        guard !filtered.isEmpty else { return 0 }
-        // Round average to whole tenths of lbs, then convert to Double
-        return Double(Int(round(Double(filtered.reduce(0, +)) / Double(filtered.count))))
-    }
 
-    // MARK: - Latest-per-Day Helpers
-    // Daily aggregation (Week & Month graph tabs) surfaces the latest entry per day so users see
-    // their actual most recent reading rather than an average across same-day weigh-ins.
-    // For each metric, we walk entries from latest timestamp backwards and take the first
-    // value that is non-nil AND > 0 (preserves the old `avgNonZero` "treat 0 as missing" rule).
-
-    private func latestPositive<T: BinaryInteger>(
+    /// MA-3937 helper: walks `entries` (already sorted latest-first) and returns the first
+    /// non-nil, > 0 value picked from each entry. Preserves the prior "treat 0 as missing" rule.
+    private nonisolated func latestPositive<T: BinaryInteger>(
         _ entries: [Entry],
         pick: (Entry) -> T?
     ) -> Double? {
@@ -982,7 +1464,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         return nil
     }
 
-    private func latestPositiveDTO(
+    /// MA-3937 helper: DTO variant of `latestPositive` used by background aggregation.
+    private nonisolated func latestPositiveDTO(
         _ dtos: [BathScaleOperationDTO],
         pick: (BathScaleOperationDTO) -> Double?
     ) -> Double? {
@@ -993,14 +1476,21 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
         return nil
     }
-    
+
+    /// Helper function for weight: average stored values (tenths of lbs) without rounding early.
+    private nonisolated func avgWeight(_ values: [Int]) -> Double {
+        guard !values.isEmpty else { return 0 }
+        let filtered = values.filter { $0 > 0 }
+        guard !filtered.isEmpty else { return 0 }
+        return Double(filtered.reduce(0, +)) / Double(filtered.count)
+    }
+
     /// Aggregate entries by day, returning BathScaleWeightSummary for each day.
     ///
-    /// Hybrid rule (per UX direction — see docs/dashboard-hybrid-latest-vs-average.md):
-    /// the **most recent day with valid entries** surfaces its latest-non-null-positive values per
-    /// metric (so the dashboard headline reflects the actual most recent weigh-in). Every other day
-    /// reverts to the 5.0.0 daily-average behaviour. Year/Total tabs route through `aggregateByMonth`
-    /// and are unaffected.
+    /// MA-3937: hybrid rule — the *most recent day with valid entries* surfaces its latest
+    /// non-null-positive values per metric (so the dashboard headline reflects the actual most
+    /// recent weigh-in). Every other day reverts to the prior daily-average behaviour.
+    // swiftlint:disable:next function_body_length
     func aggregateByDay(entries: [Entry], accountId: String) -> [BathScaleWeightSummary?] {
         // Group entries by day (YYYY-MM-DD), converting UTC to local timezone
         let grouped = Dictionary(grouping: entries) { entry -> String in
@@ -1012,13 +1502,13 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         // day made entirely of weight=0 entries doesn't "steal" the latest-day slot from the
         // genuinely most recent day with real data.
         let latestValidDayKey: String = grouped
-            .filter { (_, dayEntries) in
+            .filter { _, dayEntries in
                 dayEntries.contains { ($0.scaleEntry?.weight ?? 0) > 0 }
             }
             .keys
             .max() ?? ""
 
-        return grouped.compactMap { (day, dayEntries) -> BathScaleWeightSummary? in
+        return grouped.compactMap { day, dayEntries -> BathScaleWeightSummary? in
             // Filter entries that have valid weight data from scaleEntry
             let validEntries = dayEntries.filter { entry in
                 guard let scaleEntry = entry.scaleEntry,
@@ -1034,8 +1524,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             let count = validEntries.count
 
             if day == latestValidDayKey {
-                // Latest-day branch: surface the latest entry's values, with per-metric fallback
-                // to the most recent non-null-positive reading across the day.
+                // MA-3937 latest-day branch: surface the latest entry's values, with per-metric
+                // fallback to the most recent non-null-positive reading across the day.
                 let sortedDesc = validEntries.sorted { $0.entryTimestamp > $1.entryTimestamp }
                 return BathScaleWeightSummary(
                     accountId: accountId,
@@ -1044,23 +1534,23 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                     date: date,
                     count: count,
                     weight: Double(sortedDesc.first?.scaleEntry?.weight ?? 0),
-                    bodyFat:               latestPositive(sortedDesc) { $0.scaleEntry?.bodyFat },
-                    muscleMass:            latestPositive(sortedDesc) { $0.scaleEntry?.muscleMass },
-                    water:                 latestPositive(sortedDesc) { $0.scaleEntry?.water },
-                    bmi:                   latestPositive(sortedDesc) { $0.scaleEntry?.bmi },
-                    bmr:                   latestPositive(sortedDesc) { $0.scaleEntryMetric?.bmr },
-                    metabolicAge:          latestPositive(sortedDesc) { $0.scaleEntryMetric?.metabolicAge },
-                    proteinPercent:        latestPositive(sortedDesc) { $0.scaleEntryMetric?.proteinPercent },
-                    pulse:                 latestPositive(sortedDesc) { $0.scaleEntryMetric?.pulse },
+                    bodyFat: latestPositive(sortedDesc) { $0.scaleEntry?.bodyFat },
+                    muscleMass: latestPositive(sortedDesc) { $0.scaleEntry?.muscleMass },
+                    water: latestPositive(sortedDesc) { $0.scaleEntry?.water },
+                    bmi: latestPositive(sortedDesc) { $0.scaleEntry?.bmi },
+                    bmr: latestPositive(sortedDesc) { $0.scaleEntryMetric?.bmr },
+                    metabolicAge: latestPositive(sortedDesc) { $0.scaleEntryMetric?.metabolicAge },
+                    proteinPercent: latestPositive(sortedDesc) { $0.scaleEntryMetric?.proteinPercent },
+                    pulse: latestPositive(sortedDesc) { $0.scaleEntryMetric?.pulse },
                     skeletalMusclePercent: latestPositive(sortedDesc) { $0.scaleEntryMetric?.skeletalMusclePercent },
-                    subcutaneousFatPercent:latestPositive(sortedDesc) { $0.scaleEntryMetric?.subcutaneousFatPercent },
-                    visceralFatLevel:      latestPositive(sortedDesc) { $0.scaleEntryMetric?.visceralFatLevel },
-                    boneMass:              latestPositive(sortedDesc) { $0.scaleEntryMetric?.boneMass },
-                    impedance:             latestPositive(sortedDesc) { $0.scaleEntryMetric?.impedance }
+                    subcutaneousFatPercent: latestPositive(sortedDesc) { $0.scaleEntryMetric?.subcutaneousFatPercent },
+                    visceralFatLevel: latestPositive(sortedDesc) { $0.scaleEntryMetric?.visceralFatLevel },
+                    boneMass: latestPositive(sortedDesc) { $0.scaleEntryMetric?.boneMass },
+                    impedance: latestPositive(sortedDesc) { $0.scaleEntryMetric?.impedance }
                 )
             }
 
-            // Daily-average branch (5.0.0 semantics) — used for every day except the most recent.
+            // Daily-average branch — used for every day except the most recent.
             let latestTimestamp = validEntries.map { $0.entryTimestamp }.max() ?? ""
             return BathScaleWeightSummary(
                 accountId: accountId,
@@ -1085,16 +1575,15 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             )
         }.sorted { $0.period < $1.period }
     }
-    
+
     /// Aggregate entries by month, returning BathScaleWeightSummary for each month
     func aggregateByMonth(entries: [Entry], accountId: String) -> [BathScaleWeightSummary?] {
-        
         // Group entries by month (YYYY-MM), converting UTC to local timezone
         let grouped = Dictionary(grouping: entries) { entry -> String in
             return DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
         }
-        
-        return grouped.compactMap { (month, monthEntries) -> BathScaleWeightSummary? in
+
+        return grouped.compactMap { month, monthEntries -> BathScaleWeightSummary? in
             guard !monthEntries.isEmpty else { return nil }
             // Filter entries that have valid weight data from scaleEntry
             let validEntries = monthEntries.filter { entry in
@@ -1104,15 +1593,15 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 return true
             }
             guard !validEntries.isEmpty else { return nil }
-            
+
             // Create date from month string (YYYY-MM) by adding "-01" to get first day of month
             guard !month.isEmpty else { return nil }
             let dateString = "\(month)-01"
             let date = DateTimeTools.formatter("yyyy-MM-dd").date(from: dateString) ?? Date()
-            
+
             let latestTimestamp = validEntries.map { $0.entryTimestamp }.max() ?? ""
             let count = validEntries.count
-            
+
             return BathScaleWeightSummary(
                 accountId: accountId,
                 period: month,
@@ -1140,27 +1629,30 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     // MARK: - DTO-based Aggregation (Background Thread Safe)
 
     /// Aggregate DTOs by day on background thread - avoids SwiftData relationship access.
-    /// Mirrors the hybrid rule in `aggregateByDay(entries:accountId:)`.
-    private func aggregateByDayFromDTOs(_ dtos: [BathScaleOperationDTO], accountId: String) -> [BathScaleWeightSummary] {
-        let grouped = Dictionary(grouping: dtos) { dto -> String in
-            guard let ts = dto.entryTimestamp else { return "" }
-            return DateTimeTools.getLocalDateStringFromUTCDate(ts)
+    ///
+    /// MA-3937 hybrid rule: the most recent day with valid weight surfaces its latest-non-null-positive
+    /// metrics (latest weigh-in), while every other day keeps the daily-average behaviour via the
+    /// `EntrySummaryBucket` accumulator.
+    // swiftlint:disable:next function_body_length
+    private nonisolated func aggregateByDayFromDTOs(_ dtos: [BathScaleOperationDTO], accountId: String) -> [BathScaleWeightSummary] {
+        var groupedDTOs: [String: [BathScaleOperationDTO]] = [:]
+        groupedDTOs.reserveCapacity(dtos.count)
+
+        for dto in dtos {
+            guard let ts = dto.entryTimestamp else { continue }
+            let day = DateTimeTools.getLocalDateStringFromUTCDate(ts)
+            guard !day.isEmpty else { continue }
+            guard (dto.weight ?? 0) > 0 else { continue }
+            groupedDTOs[day, default: []].append(dto)
         }
 
-        let latestValidDayKey: String = grouped
-            .filter { (_, dayDTOs) in dayDTOs.contains { ($0.weight ?? 0) > 0 } }
-            .keys
-            .max() ?? ""
+        let latestValidDayKey: String = groupedDTOs.keys.max() ?? ""
 
-        return grouped.compactMap { (day, dayDTOs) -> BathScaleWeightSummary? in
-            guard !day.isEmpty else { return nil }
-            let validDTOs = dayDTOs.filter { ($0.weight ?? 0) > 0 }
-            guard !validDTOs.isEmpty else { return nil }
-
+        return groupedDTOs.compactMap { day, dayDTOs -> BathScaleWeightSummary? in
             let date = DateTimeTools.getDateFromDateString(day, format: "yyyy-MM-dd")
 
             if day == latestValidDayKey {
-                let sortedDesc = validDTOs.sorted { ($0.entryTimestamp ?? "") > ($1.entryTimestamp ?? "") }
+                let sortedDesc = dayDTOs.sorted { ($0.entryTimestamp ?? "") > ($1.entryTimestamp ?? "") }
                 return BathScaleWeightSummary(
                     accountId: accountId,
                     period: day,
@@ -1168,147 +1660,394 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                     date: date,
                     count: sortedDesc.count,
                     weight: sortedDesc.first?.weight ?? 0,
-                    bodyFat:               latestPositiveDTO(sortedDesc) { $0.bodyFat },
-                    muscleMass:            latestPositiveDTO(sortedDesc) { $0.muscleMass },
-                    water:                 latestPositiveDTO(sortedDesc) { $0.water },
-                    bmi:                   latestPositiveDTO(sortedDesc) { $0.bmi },
-                    bmr:                   latestPositiveDTO(sortedDesc) { $0.bmr },
-                    metabolicAge:          latestPositiveDTO(sortedDesc) { $0.metabolicAge },
-                    proteinPercent:        latestPositiveDTO(sortedDesc) { $0.proteinPercent },
-                    pulse:                 latestPositiveDTO(sortedDesc) { $0.pulse },
+                    bodyFat: latestPositiveDTO(sortedDesc) { $0.bodyFat },
+                    muscleMass: latestPositiveDTO(sortedDesc) { $0.muscleMass },
+                    water: latestPositiveDTO(sortedDesc) { $0.water },
+                    bmi: latestPositiveDTO(sortedDesc) { $0.bmi },
+                    bmr: latestPositiveDTO(sortedDesc) { $0.bmr },
+                    metabolicAge: latestPositiveDTO(sortedDesc) { $0.metabolicAge },
+                    proteinPercent: latestPositiveDTO(sortedDesc) { $0.proteinPercent },
+                    pulse: latestPositiveDTO(sortedDesc) { $0.pulse },
                     skeletalMusclePercent: latestPositiveDTO(sortedDesc) { $0.skeletalMusclePercent },
-                    subcutaneousFatPercent:latestPositiveDTO(sortedDesc) { $0.subcutaneousFatPercent },
-                    visceralFatLevel:      latestPositiveDTO(sortedDesc) { $0.visceralFatLevel },
-                    boneMass:              latestPositiveDTO(sortedDesc) { $0.boneMass },
-                    impedance:             latestPositiveDTO(sortedDesc) { $0.impedance }
+                    subcutaneousFatPercent: latestPositiveDTO(sortedDesc) { $0.subcutaneousFatPercent },
+                    visceralFatLevel: latestPositiveDTO(sortedDesc) { $0.visceralFatLevel },
+                    boneMass: latestPositiveDTO(sortedDesc) { $0.boneMass },
+                    impedance: latestPositiveDTO(sortedDesc) { $0.impedance }
                 )
             }
 
-            let latestTimestamp = validDTOs.compactMap { $0.entryTimestamp }.max() ?? ""
+            var bucket = EntrySummaryBucket(accountId: accountId, period: day)
+            for dto in dayDTOs { bucket.add(dto: dto) }
             return BathScaleWeightSummary(
                 accountId: accountId,
-                period: day,
-                entryTimestamp: latestTimestamp,
+                period: bucket.period,
+                entryTimestamp: bucket.latestTimestamp,
                 date: date,
-                count: validDTOs.count,
-                weight: avgWeight(validDTOs.compactMap { $0.weight.map { Int($0) } }),
-                bodyFat: avgNonZero(validDTOs.compactMap { $0.bodyFat }),
-                muscleMass: avgNonZero(validDTOs.compactMap { $0.muscleMass }),
-                water: avgNonZero(validDTOs.compactMap { $0.water }),
-                bmi: avgNonZero(validDTOs.compactMap { $0.bmi }),
-                bmr: avgNonZero(validDTOs.compactMap { $0.bmr }),
-                metabolicAge: avgNonZero(validDTOs.compactMap { $0.metabolicAge }),
-                proteinPercent: avgNonZero(validDTOs.compactMap { $0.proteinPercent }),
-                pulse: avgNonZero(validDTOs.compactMap { $0.pulse }),
-                skeletalMusclePercent: avgNonZero(validDTOs.compactMap { $0.skeletalMusclePercent }),
-                subcutaneousFatPercent: avgNonZero(validDTOs.compactMap { $0.subcutaneousFatPercent }),
-                visceralFatLevel: avgNonZero(validDTOs.compactMap { $0.visceralFatLevel }),
-                boneMass: avgNonZero(validDTOs.compactMap { $0.boneMass }),
-                impedance: avgNonZero(validDTOs.compactMap { $0.impedance })
+                count: bucket.count,
+                weight: bucket.averagedWeight,
+                bodyFat: bucket.bodyFat.average,
+                muscleMass: bucket.muscleMass.average,
+                water: bucket.water.average,
+                bmi: bucket.bmi.average,
+                bmr: bucket.bmr.average,
+                metabolicAge: bucket.metabolicAge.average,
+                proteinPercent: bucket.proteinPercent.average,
+                pulse: bucket.pulse.average,
+                skeletalMusclePercent: bucket.skeletalMusclePercent.average,
+                subcutaneousFatPercent: bucket.subcutaneousFatPercent.average,
+                visceralFatLevel: bucket.visceralFatLevel.average,
+                boneMass: bucket.boneMass.average,
+                impedance: bucket.impedance.average
             )
         }.sorted { $0.period < $1.period }
     }
 
     /// Aggregate DTOs by month on background thread - avoids SwiftData relationship access
-    private func aggregateByMonthFromDTOs(_ dtos: [BathScaleOperationDTO], accountId: String) -> [BathScaleWeightSummary] {
-        let grouped = Dictionary(grouping: dtos) { dto -> String in
-            guard let ts = dto.entryTimestamp else { return "" }
-            return DateTimeTools.getLocalMonthStringFromUTCDate(ts)
+    private nonisolated func aggregateByMonthFromDTOs(_ dtos: [BathScaleOperationDTO], accountId: String) -> [BathScaleWeightSummary] {
+        var grouped: [String: EntrySummaryBucket] = [:]
+        grouped.reserveCapacity(dtos.count)
+
+        for dto in dtos {
+            guard let ts = dto.entryTimestamp else { continue }
+            let month = DateTimeTools.getLocalMonthStringFromUTCDate(ts)
+            guard !month.isEmpty else { continue }
+            guard (dto.weight ?? 0) > 0 else { continue }
+
+            var bucket = grouped[month] ?? EntrySummaryBucket(accountId: accountId, period: month)
+            bucket.add(dto: dto)
+            grouped[month] = bucket
         }
 
-        return grouped.compactMap { (month, monthDTOs) -> BathScaleWeightSummary? in
-            guard !month.isEmpty else { return nil }
-            let validDTOs = monthDTOs.filter { ($0.weight ?? 0) > 0 }
-            guard !validDTOs.isEmpty else { return nil }
-
-            let dateString = "\(month)-01"
-            let date = DateTimeTools.formatter("yyyy-MM-dd").date(from: dateString) ?? Date()
-            let latestTimestamp = validDTOs.compactMap { $0.entryTimestamp }.max() ?? ""
-
+        return grouped.values.compactMap { bucket in
+            let date = Self.monthSummaryDateFormatter.date(from: "\(bucket.period)-01") ?? Date()
             return BathScaleWeightSummary(
                 accountId: accountId,
-                period: month,
-                entryTimestamp: latestTimestamp,
+                period: bucket.period,
+                entryTimestamp: bucket.latestTimestamp,
                 date: date,
-                count: validDTOs.count,
-                weight: avgWeight(validDTOs.compactMap { $0.weight.map { Int($0) } }),
-                bodyFat: avgNonZero(validDTOs.compactMap { $0.bodyFat }),
-                muscleMass: avgNonZero(validDTOs.compactMap { $0.muscleMass }),
-                water: avgNonZero(validDTOs.compactMap { $0.water }),
-                bmi: avgNonZero(validDTOs.compactMap { $0.bmi }),
-                bmr: avgNonZero(validDTOs.compactMap { $0.bmr }),
-                metabolicAge: avgNonZero(validDTOs.compactMap { $0.metabolicAge }),
-                proteinPercent: avgNonZero(validDTOs.compactMap { $0.proteinPercent }),
-                pulse: avgNonZero(validDTOs.compactMap { $0.pulse }),
-                skeletalMusclePercent: avgNonZero(validDTOs.compactMap { $0.skeletalMusclePercent }),
-                subcutaneousFatPercent: avgNonZero(validDTOs.compactMap { $0.subcutaneousFatPercent }),
-                visceralFatLevel: avgNonZero(validDTOs.compactMap { $0.visceralFatLevel }),
-                boneMass: avgNonZero(validDTOs.compactMap { $0.boneMass }),
-                impedance: avgNonZero(validDTOs.compactMap { $0.impedance })
+                count: bucket.count,
+                weight: bucket.averagedWeight,
+                bodyFat: bucket.bodyFat.average,
+                muscleMass: bucket.muscleMass.average,
+                water: bucket.water.average,
+                bmi: bucket.bmi.average,
+                bmr: bucket.bmr.average,
+                metabolicAge: bucket.metabolicAge.average,
+                proteinPercent: bucket.proteinPercent.average,
+                pulse: bucket.pulse.average,
+                skeletalMusclePercent: bucket.skeletalMusclePercent.average,
+                subcutaneousFatPercent: bucket.subcutaneousFatPercent.average,
+                visceralFatLevel: bucket.visceralFatLevel.average,
+                boneMass: bucket.boneMass.average,
+                impedance: bucket.impedance.average
             )
         }.sorted { $0.period < $1.period }
     }
 
+    // MARK: - BPM DTO Aggregation (Background Thread Safe)
+
+    /// Aggregate BPM DTOs by day — filters on systolic > 0 instead of weight > 0.
+    private nonisolated func aggregateBpmByDayFromDTOs(_ dtos: [BathScaleOperationDTO], accountId: String) -> [BathScaleWeightSummary] {
+        var grouped: [String: EntrySummaryBucket] = [:]
+        grouped.reserveCapacity(dtos.count)
+
+        for dto in dtos {
+            guard let ts = dto.entryTimestamp else { continue }
+            let day = DateTimeTools.getLocalDateStringFromUTCDate(ts)
+            guard !day.isEmpty else { continue }
+            guard (dto.systolic ?? 0) > 0 else { continue }
+
+            var bucket = grouped[day] ?? EntrySummaryBucket(accountId: accountId, period: day)
+            bucket.add(dto: dto)
+            grouped[day] = bucket
+        }
+
+        return grouped.values.compactMap { bucket in
+            let date = DateTimeTools.getDateFromDateString(bucket.period, format: "yyyy-MM-dd")
+            return BathScaleWeightSummary(
+                accountId: accountId,
+                period: bucket.period,
+                entryTimestamp: bucket.latestTimestamp,
+                date: date,
+                count: bucket.count,
+                weight: 0,
+                pulse: bucket.pulse.average,
+                systolic: bucket.systolic.average,
+                diastolic: bucket.diastolic.average,
+                meanArterial: bucket.meanArterial.average,
+                entryType: EntryType.bpm.rawValue
+            )
+        }.sorted { $0.period < $1.period }
+    }
+
+    /// Aggregate BPM DTOs by month.
+    private nonisolated func aggregateBpmByMonthFromDTOs(_ dtos: [BathScaleOperationDTO], accountId: String) -> [BathScaleWeightSummary] {
+        var grouped: [String: EntrySummaryBucket] = [:]
+        grouped.reserveCapacity(dtos.count)
+
+        for dto in dtos {
+            guard let ts = dto.entryTimestamp else { continue }
+            let month = DateTimeTools.getLocalMonthStringFromUTCDate(ts)
+            guard !month.isEmpty else { continue }
+            guard (dto.systolic ?? 0) > 0 else { continue }
+
+            var bucket = grouped[month] ?? EntrySummaryBucket(accountId: accountId, period: month)
+            bucket.add(dto: dto)
+            grouped[month] = bucket
+        }
+
+        return grouped.values.compactMap { bucket in
+            let date = Self.monthSummaryDateFormatter.date(from: "\(bucket.period)-01") ?? Date()
+            return BathScaleWeightSummary(
+                accountId: accountId,
+                period: bucket.period,
+                entryTimestamp: bucket.latestTimestamp,
+                date: date,
+                count: bucket.count,
+                weight: 0,
+                pulse: bucket.pulse.average,
+                systolic: bucket.systolic.average,
+                diastolic: bucket.diastolic.average,
+                meanArterial: bucket.meanArterial.average,
+                entryType: EntryType.bpm.rawValue
+            )
+        }.sorted { $0.period < $1.period }
+    }
+
+    // MARK: - Baby Entry Aggregation
+
+    /// Represents baby entry data extracted from Entry + BabyEntry relationships.
+    /// Used for background-thread aggregation (not `@Model`, fully `Sendable`).
+    private struct BabyEntrySnapshot: Sendable {
+        let entryTimestamp: String
+        let babyId: String
+        let weightDecigrams: Int
+        let lengthInches: Int
+    }
+
+    /// Fetches baby entries for a given babyId and returns snapshots safe for background aggregation.
+    private func fetchBabyEntrySnapshots(accountId: String, babyId: String) async throws -> [BabyEntrySnapshot] {
+        let allEntries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
+        let babyEntryType = EntryType.baby.rawValue
+        return allEntries.compactMap { entry -> BabyEntrySnapshot? in
+            guard entry.entryType == babyEntryType,
+                  let babyEntry = entry.babyEntry,
+                  babyEntry.babyId == babyId,
+                  babyEntry.weight > 0
+            else { return nil }
+            return BabyEntrySnapshot(
+                entryTimestamp: entry.entryTimestamp,
+                babyId: babyEntry.babyId,
+                weightDecigrams: babyEntry.weight,
+                lengthInches: babyEntry.length
+            )
+        }
+    }
+
+    /// Converts baby weight in decigrams to the stored weight format (tenths of lbs)
+    /// used by BathScaleWeightSummary and the chart rendering pipeline.
+    private nonisolated func decigramsToStoredWeight(_ decigrams: Int) -> Int {
+        let kg = Double(decigrams) / BabyPercentileGrowthReference.decigramsToKgFactor
+        return ConversionTools.convertKgToStored(kg)
+    }
+
+    /// Aggregates baby entry snapshots into daily summaries.
+    private nonisolated func aggregateBabyByDay(
+        _ snapshots: [BabyEntrySnapshot],
+        accountId: String,
+        babyId: String
+    ) -> [BathScaleWeightSummary] {
+        let grouped = Dictionary(grouping: snapshots) { snapshot -> String in
+            DateTimeTools.getLocalDateStringFromUTCDate(snapshot.entryTimestamp)
+        }
+
+        return grouped.compactMap { day, daySnapshots -> BathScaleWeightSummary? in
+            guard !day.isEmpty, !daySnapshots.isEmpty else { return nil }
+
+            let date = DateTimeTools.getDateFromDateString(day, format: "yyyy-MM-dd")
+            let latestTimestamp = daySnapshots.compactMap(\.entryTimestamp).max() ?? ""
+            let storedWeights = daySnapshots.map { decigramsToStoredWeight($0.weightDecigrams) }
+
+            return BathScaleWeightSummary(
+                accountId: "baby_\(babyId)",
+                period: day,
+                entryTimestamp: latestTimestamp,
+                date: date,
+                count: daySnapshots.count,
+                weight: avgWeight(storedWeights)
+            )
+        }.sorted { $0.period < $1.period }
+    }
+
+    /// Aggregates baby entry snapshots into monthly summaries.
+    private nonisolated func aggregateBabyByMonth(
+        _ snapshots: [BabyEntrySnapshot],
+        accountId: String,
+        babyId: String
+    ) -> [BathScaleWeightSummary] {
+        let grouped = Dictionary(grouping: snapshots) { snapshot -> String in
+            DateTimeTools.getLocalMonthStringFromUTCDate(snapshot.entryTimestamp)
+        }
+
+        return grouped.compactMap { month, monthSnapshots -> BathScaleWeightSummary? in
+            guard !month.isEmpty, !monthSnapshots.isEmpty else { return nil }
+
+            let dateString = "\(month)-01"
+            let date = DateTimeTools.formatter("yyyy-MM-dd").date(from: dateString) ?? Date()
+            let latestTimestamp = monthSnapshots.compactMap(\.entryTimestamp).max() ?? ""
+            let storedWeights = monthSnapshots.map { decigramsToStoredWeight($0.weightDecigrams) }
+
+            return BathScaleWeightSummary(
+                accountId: "baby_\(babyId)",
+                period: month,
+                entryTimestamp: latestTimestamp,
+                date: date,
+                count: monthSnapshots.count,
+                weight: avgWeight(storedWeights)
+            )
+        }.sorted { $0.period < $1.period }
+    }
+
+    /// Loads baby dashboard data for a specific baby profile.
+    /// Fetches real baby entries, aggregates them into daily/monthly summaries,
+    /// and publishes to `babyDailySummariesByProfile` / `babyMonthlySummariesByProfile`.
+    func loadBabyDashboardData(babyId: String) async {
+        if let existingTask = activeBabyDashboardLoadTasks[babyId] {
+            let didSucceed = await existingTask.value
+            if didSucceed { return }
+        }
+
+        let task = Task<Bool, Never> { [weak self] in
+            guard let self else { return false }
+            return await self.performBabyDashboardDataLoad(babyId: babyId)
+        }
+        activeBabyDashboardLoadTasks[babyId] = task
+
+        _ = await task.value
+
+        if activeBabyDashboardLoadTasks[babyId] == task {
+            activeBabyDashboardLoadTasks[babyId] = nil
+        }
+    }
+
+    private func performBabyDashboardDataLoad(babyId: String) async -> Bool {
+        do {
+            let accountId = try getAccountId()
+            let snapshots = try await fetchBabyEntrySnapshots(accountId: accountId, babyId: babyId)
+            let cachedSignature = babySummaryCacheByProfile[babyId]?.datasetSignature
+            let result = await Task.detached(priority: .utility) { [weak self] in
+                guard let self else { return EntrySummaryLoadResult.computed(signature: 0, daily: [], monthly: []) }
+                let signature = Self.makeBabySnapshotSignature(snapshots)
+                if signature == cachedSignature {
+                    return EntrySummaryLoadResult.cached(signature: signature)
+                }
+                let daily = self.aggregateBabyByDay(snapshots, accountId: accountId, babyId: babyId)
+                let monthly = self.aggregateBabyByMonth(snapshots, accountId: accountId, babyId: babyId)
+                return EntrySummaryLoadResult.computed(signature: signature, daily: daily, monthly: monthly)
+            }.value
+
+            switch result {
+            case .cached(let signature):
+                if let cached = babySummaryCacheByProfile[babyId], cached.datasetSignature == signature {
+                    if babyDailySummariesByProfile[babyId] != cached.daily {
+                        babyDailySummariesByProfile[babyId] = cached.daily
+                    }
+                    if babyMonthlySummariesByProfile[babyId] != cached.monthly {
+                        babyMonthlySummariesByProfile[babyId] = cached.monthly
+                    }
+                }
+            case .computed(let signature, let dailyData, let monthlyData):
+                babySummaryCacheByProfile[babyId] = EntryBabySummaryCacheEntry(
+                    datasetSignature: signature,
+                    daily: dailyData,
+                    monthly: monthlyData
+                )
+                if babyDailySummariesByProfile[babyId] != dailyData {
+                    babyDailySummariesByProfile[babyId] = dailyData
+                }
+                if babyMonthlySummariesByProfile[babyId] != monthlyData {
+                    babyMonthlySummariesByProfile[babyId] = monthlyData
+                }
+            }
+
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Baby dashboard data loaded: babyId=\(babyId), daily=\(babyDailySummariesByProfile[babyId]?.count ?? 0), monthly=\(babyMonthlySummariesByProfile[babyId]?.count ?? 0)"
+            )
+            return true
+        } catch {
+            logger.log(level: .error, tag: tag, message: "loadBabyDashboardData failed (babyId=\(babyId)): \(error.localizedDescription)")
+            return false
+        }
+    }
+
     // MARK: - Helpers ---------------------------------------------------
-    
-    
+
     /// Update progress and streak based on current entries
     private func updateProgressAndStreakInternal() async {
         do {
-            let accountId = try await getAccountId()
-            // Use count instead of fetching all entries (avoids loading 3660+ Entry objects)
-            let totalEntries = try await localRepo.fetchEntryCount(forUserId: accountId)
-            let streakValue = try await getStreak()
+            let accountId = try getAccountId()
+            // Run the count and streak refresh together so sync/dashboard updates spend less
+            // wall time waiting on serial data work.
+            async let totalEntriesTask = localRepo.fetchEntryCount(forUserId: accountId)
+            async let streakTask = getStreak()
+            let totalEntries = try await totalEntriesTask
+            let streakValue = try await streakTask
+            let nextProgress = ProgressSummary(totalEntries: totalEntries, streak: streakValue.current)
+            if progress.totalEntries != nextProgress.totalEntries || progress.streak != nextProgress.streak {
+                progress = nextProgress
+            }
+            if streak != streakValue.current {
+                streak = streakValue.current
+            }
 
-            self.progress = ProgressSummary(totalEntries: totalEntries, streak: streakValue.current)
-            self.streak = streakValue.current
+            logger.log(level: .debug, tag: tag, message: "Progress and streak updated: total=\(totalEntries), streak=\(streakValue.current)")
         } catch {
-            await logger.log(level: .error, tag: tag, message: "Failed to update progress/streak: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "Failed to update progress/streak: \(error.localizedDescription)")
         }
     }
-    
+
     /// Check for goal achievements and trigger alerts if needed
     private func checkGoalAlerts() async {
         do {
-            // Snapshot, not @Model — see MA-3898.
-            let accountId = try await getAccountId()
-            guard let latestEntry = try await localRepo.fetchLatestEntryAsSnapshot(forUserId: accountId),
-                  let weight = latestEntry.weight else { return }
+            guard let latestEntry = try await getLatestEntry(),
+                  let weight = latestEntry.scaleEntry?.weight else { return }
             // Weight is stored as tenths of lbs – cast to Double for compatibility
             await goalAlertService.showGoalMetMessage(currentWeight: Double(weight))
-            
+
             // Also check if "Set a Goal" card should be shown (when 3+ entries and no goal)
             // Get entry count to pass as parameter (avoiding circular dependency)
             let entryCount = try await getEntryCount()
             await goalAlertService.checkSetGoalCard(entryCount: entryCount)
         } catch {
-            await logger.log(level: .error, tag: tag, message: "Failed to evaluate goal alerts: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "Failed to evaluate goal alerts: \(error.localizedDescription)")
         }
     }
-    
-    private static func buildHistoryMonth(monthKey: String, monthEntries: [EntrySnapshot]) -> HistoryMonth {
+
+    private static func buildHistoryMonth(monthKey: String, monthEntries: [Entry]) -> HistoryMonth {
         // Build the `weights` concatenated string  "<w>|<ts>,<w>|<ts>"  like the SQL query
-        let weightPairs = monthEntries.compactMap { e -> String? in
-            guard let w = e.weight else { return nil }
-            return "\(w)|\(e.entryTimestamp)"
+        let weightPairs = monthEntries.compactMap { entry -> String? in
+            guard let weight = entry.scaleEntry?.weight else { return nil }
+            return "\(weight)|\(entry.entryTimestamp)"
         }
         let weightsConcat = weightPairs.joined(separator: ",")
 
         // Numeric helpers - filter out zero values for average calculation
-        let weightValues = monthEntries.compactMap { $0.weight }.filter { $0 > 0 }.map(Double.init)
-        let avgWeight: Double? = weightValues.isEmpty ? nil : Double(Int(round(weightValues.reduce(0, +) / Double(weightValues.count))))
+        let weightValues = monthEntries.compactMap { $0.scaleEntry?.weight }.filter { $0 > 0 }.map(Double.init)
+        let avgWeight: Double? = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count)
         let minWeight = weightValues.min()
         let maxWeight = weightValues.max()
 
         // Change = last - first by timestamp order
         let sortedByTime = monthEntries.sorted { $0.entryTimestamp < $1.entryTimestamp }
-        let firstWeight = sortedByTime.first?.weight
-        let lastWeight  = sortedByTime.last?.weight
+        let firstWeight = sortedByTime.first?.scaleEntry?.weight
+        let lastWeight = sortedByTime.last?.scaleEntry?.weight
         let change: String? = {
-            guard let f = firstWeight, let l = lastWeight else { return nil }
-            return String(format: "%.1f", Double(l - f))
+            guard let first = firstWeight, let last = lastWeight else { return nil }
+            return String(format: "%.1f", Double(last - first))
         }()
-        
+
         return HistoryMonth(
             id: monthKey,
             weight: avgWeight,
@@ -1328,19 +2067,38 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             max: maxWeight
         )
     }
-    
+
     // MARK: - Entry Management (Moved from DashboardDataManager)
-    
+
     /// Loads and aggregates all entry data for dashboard display
     /// Uses DTOs and background aggregation to avoid blocking main thread
-    func loadDashboardData() async {
-        do {
-            let accountId = try await getAccountId()
+    func loadDashboardData(entryType: EntryType = .scale) async {
+        if let existingTask = activeDashboardLoadTasks[entryType] {
+            let didSucceed = await existingTask.value
+            if didSucceed { return }
+        }
 
-            let dtos = try await getAllEntriesAsDTO()
-            let totalEntries = dtos.count
+        let task = Task<Bool, Never> { [weak self] in
+            guard let self else { return false }
+            return await self.performDashboardDataLoad(entryType: entryType)
+        }
+        activeDashboardLoadTasks[entryType] = task
+
+        _ = await task.value
+
+        if activeDashboardLoadTasks[entryType] == task {
+            activeDashboardLoadTasks[entryType] = nil
+        }
+    }
+
+    private func performDashboardDataLoad(entryType: EntryType) async -> Bool {
+        do {
+            let accountId = try getAccountId()
+
+            let allDTOs = try await getAllEntriesAsDTO()
+            let totalEntries = allDTOs.count
             if lastLoggedEntryCountByAccount[accountId] != totalEntries {
-                await logger.log(
+                logger.log(
                     level: .info,
                     tag: tag,
                     message: "Account total create type entries updated: accountId=\(accountId), totalEntries=\(totalEntries)"
@@ -1348,35 +2106,64 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 lastLoggedEntryCountByAccount[accountId] = totalEntries
             }
 
-            let (dailyData, monthlyData) = await Task.detached(priority: .userInitiated) { [weak self] in
-                guard let self = self else { return ([BathScaleWeightSummary](), [BathScaleWeightSummary]()) }
-                let daily = self.aggregateByDayFromDTOs(dtos, accountId: accountId)
-                let monthly = self.aggregateByMonthFromDTOs(dtos, accountId: accountId)
-                return (daily, monthly)
+            let cachedSignature = summaryCacheByEntryType[entryType]?.datasetSignature
+
+            let result = await Task.detached(priority: .userInitiated) { [weak self] in
+                guard let self else { return EntrySummaryLoadResult.computed(signature: 0, daily: [], monthly: []) }
+                let dtos = allDTOs.filter { self.matchesDTOEntryType($0, entryType: entryType) }
+                let signature = Self.makeDTOSignature(dtos)
+                if signature == cachedSignature {
+                    return EntrySummaryLoadResult.cached(signature: signature)
+                }
+                switch entryType {
+                case .scale, .baby:
+                    let daily = self.aggregateByDayFromDTOs(dtos, accountId: accountId)
+                    let monthly = self.aggregateByMonthFromDTOs(dtos, accountId: accountId)
+                    return EntrySummaryLoadResult.computed(signature: signature, daily: daily, monthly: monthly)
+                case .bpm:
+                    let daily = self.aggregateBpmByDayFromDTOs(dtos, accountId: accountId)
+                    let monthly = self.aggregateBpmByMonthFromDTOs(dtos, accountId: accountId)
+                    return EntrySummaryLoadResult.computed(signature: signature, daily: daily, monthly: monthly)
+                }
             }.value
 
-            dailySummaries = dailyData
-            monthlySummaries = monthlyData
+            switch result {
+            case .cached(let signature):
+                if let cached = summaryCacheByEntryType[entryType], cached.datasetSignature == signature {
+                    applySummaryPayload(daily: cached.daily, monthly: cached.monthly, entryType: entryType, accountId: accountId)
+                }
+            case .computed(let signature, let dailyData, let monthlyData):
+                summaryCacheByEntryType[entryType] = EntrySummaryCacheEntry(
+                    datasetSignature: signature,
+                    daily: dailyData,
+                    monthly: monthlyData
+                )
+                applySummaryPayload(daily: dailyData, monthly: monthlyData, entryType: entryType, accountId: accountId)
+            }
+            return true
         } catch {
-            await logger.log(level: .error, tag: tag, message: "loadDashboardData failed: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "loadDashboardData failed (\(entryType)): \(error.localizedDescription)")
+            return false
         }
     }
-    
+
     /// Handles entry addition by updating affected day and month summaries
     func handleEntryAdded(_ entry: Entry) async throws {
-        let accountId = try await getAccountId()
-        
+        let accountId = try getAccountId()
+
+        logger.log(level: .debug, tag: tag, message: "Handling entry addition: \(entry.id)")
+
         let dayKey = DateTimeTools.getLocalDateStringFromUTCDate(entry.entryTimestamp)
         let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
-        
+
         // Fetch all entries for the affected day and month
         let dayEntries = try await getEntries(forDay: dayKey)
         let monthEntries = try await getEntries(forMonth: monthKey)
-        
+
         // Update summaries with aggregated data
         let dailySummary = aggregateByDay(entries: dayEntries, accountId: accountId).first
         let monthlySummary = aggregateByMonth(entries: monthEntries, accountId: accountId).first
-        
+
         if let dailySummary = dailySummary {
             updateDailySummary(dayKey: dayKey, summary: dailySummary)
         }
@@ -1387,7 +2174,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         await updateProgressAndStreakInternal()
 
         // Create notification on MainActor to safely extract relationship data
-        let notification = await MainActor.run { EntryNotification(from: entry) }
+        let notification = EntryNotification(from: entry)
         entrySaved.send(notification)
 
         // Trigger integration sync for the new entry (e.g., HealthKit)
@@ -1395,23 +2182,26 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             try await integrationService.syncNewEntry(entry)
         } catch {
             // Log error but don't fail the entry creation process
-            await logger.log(level: .error, tag: tag, message: "Failed to sync new entry to integrations: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "Failed to sync new entry to integrations: \(error.localizedDescription)")
         }
     }
-    
+
     /// Handles entry update by treating as delete + add
     func handleEntryUpdated(_ entry: Entry) async throws {
-        // Extract primitives on MainActor before the suspension point.
-        let (entryId, entryTimestamp) = await MainActor.run { (entry.id, entry.entryTimestamp) }
-        try await handleEntryDeleted(entry, entryId: entryId, entryTimestamp: entryTimestamp)
+        logger.log(level: .debug, tag: tag, message: "Handling entry update: \(entry.id)")
+
+        // For updates, we can treat as delete + add for simplicity
+        try await handleEntryDeleted(entry)
         try await handleEntryAdded(entry)
     }
-    
+
     /// Lightweight variant for sync loop: handles entry deletion using extracted primitives only.
     /// Used when @Model Entry is not safely accessible after async boundary (R7).
     /// Skips integration cleanup since that happens at original user-delete time.
     private func handleEntryDeleted(entryId: UUID, entryTimestamp: String) async throws {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
+
+        logger.log(level: .debug, tag: tag, message: "Handling entry deletion (sync): \(entryId)")
 
         let dayKey = DateTimeTools.getLocalDateStringFromUTCDate(entryTimestamp)
         let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entryTimestamp)
@@ -1419,37 +2209,50 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let dayEntries = try await getEntries(forDay: dayKey)
         let monthEntries = try await getEntries(forMonth: monthKey)
 
-        let dailySummary = aggregateByDay(entries: dayEntries, accountId: accountId).first ?? nil
-        let monthlySummary = aggregateByMonth(entries: monthEntries, accountId: accountId).first ?? nil
+        let dailySummary = aggregateByDay(entries: dayEntries, accountId: accountId).first
+        let monthlySummary = aggregateByMonth(entries: monthEntries, accountId: accountId).first
 
-        updateDailySummary(dayKey: dayKey, summary: dailySummary)
-        updateMonthlySummary(monthKey: monthKey, summary: monthlySummary)
+        updateDailySummary(dayKey: dayKey, summary: dailySummary.flatMap { $0 })
+        updateMonthlySummary(monthKey: monthKey, summary: monthlySummary.flatMap { $0 })
 
         // Minimal notification — entry already deleted locally, no relationship data needed
         let dto = BathScaleOperationDTO(
-            accountId: accountId, bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
-            entryTimestamp: entryTimestamp, impedance: nil, metabolicAge: nil,
-            muscleMass: nil, operationType: "delete", proteinPercent: nil,
-            pulse: nil, serverTimestamp: nil, skeletalMusclePercent: nil,
-            source: nil, subcutaneousFatPercent: nil, unit: nil, visceralFatLevel: nil,
-            water: nil, weight: nil
+            accountId: accountId,
+            bmr: nil,
+            bmi: nil,
+            bodyFat: nil,
+            boneMass: nil,
+            entryTimestamp: entryTimestamp,
+            entryType: nil,
+            impedance: nil,
+            metabolicAge: nil,
+            muscleMass: nil,
+            operationType: "delete",
+            proteinPercent: nil,
+            pulse: nil,
+            serverTimestamp: nil,
+            skeletalMusclePercent: nil,
+            source: nil,
+            subcutaneousFatPercent: nil,
+            systolic: nil,
+            diastolic: nil,
+            meanArterial: nil,
+            unit: nil,
+            visceralFatLevel: nil,
+            water: nil,
+            weight: nil
         )
         entryDeleted.send(EntryNotification(from: dto, id: entryId))
     }
 
-    /// Handles entry deletion by updating affected day and month summaries.
-    /// - Parameters:
-    ///   - entry: The original @Model object — accessed only on MainActor via the
-    ///     `entryTimestamp` parameter to avoid off-actor reads.
-    ///   - entryId: Pre-extracted UUID, passed by `deleteEntry` from a MainActor.run block.
-    ///   - entryTimestamp: Pre-extracted timestamp string, safe to use off-actor.
-    func handleEntryDeleted(_ entry: Entry, entryId: UUID, entryTimestamp: String) async throws {
-        let accountId = try await getAccountId()
+    /// Handles entry deletion by updating affected day and month summaries
+    func handleEntryDeleted(_ entry: Entry) async throws {
+        let accountId = try getAccountId()
 
-        // entryTimestamp is a plain String already extracted on MainActor by the caller —
-        // safe to use here without another MainActor hop.
-        let dayKey = DateTimeTools.getLocalDateStringFromUTCDate(entryTimestamp)
-        let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entryTimestamp)
+        logger.log(level: .debug, tag: tag, message: "Handling entry deletion: \(entry.id)")
+
+        let dayKey = DateTimeTools.getLocalDateStringFromUTCDate(entry.entryTimestamp)
+        let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
 
         // Fetch remaining entries for the affected day and month
         let dayEntries = try await getEntries(forDay: dayKey)
@@ -1462,31 +2265,67 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         if let dailySummary = dailySummary {
             updateDailySummary(dayKey: dayKey, summary: dailySummary)
         } else {
+            // If no entries left for the day, remove summary
             updateDailySummary(dayKey: dayKey, summary: nil)
         }
         if let monthlySummary = monthlySummary {
             updateMonthlySummary(monthKey: monthKey, summary: monthlySummary)
         } else {
+            // If no entries left for the month, remove summary
             updateMonthlySummary(monthKey: monthKey, summary: nil)
         }
 
         // Create notification on MainActor to safely extract relationship data
-        let notification = await MainActor.run { EntryNotification(from: entry) }
+        let notification = EntryNotification(from: entry)
         entryDeleted.send(notification)
 
-        // Trigger integration delete for the removed entry (e.g., HealthKit).
-        // IntegrationsService is @MainActor so this call safely hops to main actor
-        // before accessing the @Model object again.
+        // Trigger integration delete for the removed entry (e.g., HealthKit)
         do {
             try await integrationService.deleteEntry(entry)
         } catch {
-            await logger.log(level: .error, tag: tag,
-                message: "Failed to delete entry from integrations: \(error.localizedDescription)")
+            // Log error but don't fail the entry deletion process
+            logger.log(level: .error, tag: tag, message: "Failed to delete entry from integrations: \(error.localizedDescription)")
         }
     }
-    
+
     // MARK: - Private Helper Methods
-    
+
+    private func applySummaryPayload(
+        daily: [BathScaleWeightSummary],
+        monthly: [BathScaleWeightSummary],
+        entryType: EntryType,
+        accountId: String
+    ) {
+        switch entryType {
+        case .scale, .baby:
+            if dailySummaries != daily {
+                dailySummaries = daily
+            }
+            if monthlySummaries != monthly {
+                monthlySummaries = monthly
+            }
+        case .bpm:
+            if bpmDailySummaries != daily {
+                bpmDailySummaries = daily
+            }
+            if bpmMonthlySummaries != monthly {
+                bpmMonthlySummaries = monthly
+            }
+        }
+    }
+
+    private func invalidateSummaryCaches(for entryType: EntryType? = nil) {
+        if let entryType {
+            summaryCacheByEntryType[entryType] = nil
+            streakCacheByEntryType[entryType] = nil
+            progressCacheByEntryType[entryType] = nil
+        } else {
+            summaryCacheByEntryType.removeAll()
+            streakCacheByEntryType.removeAll()
+            progressCacheByEntryType.removeAll()
+        }
+    }
+
     /// Updates the daily summary for a specific day key
     private func updateDailySummary(dayKey: String, summary: BathScaleWeightSummary?) {
         if let summary = summary {
@@ -1501,8 +2340,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             // Remove if no summary (empty day)
             dailySummaries.removeAll { $0.period == dayKey }
         }
+        invalidateSummaryCaches(for: .scale)
     }
-    
+
     /// Updates the monthly summary for a specific month key
     private func updateMonthlySummary(monthKey: String, summary: BathScaleWeightSummary?) {
         if let summary = summary {
@@ -1517,6 +2357,125 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             // Remove if no summary (empty month)
             monthlySummaries.removeAll { $0.period == monthKey }
         }
+        invalidateSummaryCaches(for: .scale)
+    }
+
+    // MARK: - BPM Entry CRUD
+
+    func createBpmEntry(_ dto: BpmOperationDTO) async throws {
+        let accountId = try getAccountId()
+        let bpmDTO = BpmOperationDTO(
+            accountId: accountId,
+            systolic: dto.systolic,
+            diastolic: dto.diastolic,
+            pulse: dto.pulse,
+            meanArterial: dto.meanArterial,
+            note: dto.note,
+            source: dto.source,
+            unit: dto.unit,
+            entryTimestamp: dto.entryTimestamp ?? ISO8601DateFormatter().string(from: Date()),
+            operationType: OperationType.create.rawValue,
+            serverTimestamp: dto.serverTimestamp
+        )
+
+        let entry = Entry(from: bpmDTO, accountId: accountId, isSynced: false)
+        entry.attempts = 0
+
+        do {
+            try await localRepo.saveEntry(entry)
+            await refreshBpmDashboardSummaries()
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "BPM entry saved locally: entryId=\(entry.id.uuidString), accountId=\(accountId)"
+            )
+
+            let notification = EntryNotification(from: entry)
+            entrySaved.send(notification)
+        } catch {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Failed to save BPM entry: accountId=\(accountId), error=\(error.localizedDescription)"
+            )
+            throw error
+        }
+    }
+
+    func fetchBpmEntries() async throws -> [BpmOperationDTO] {
+        let accountId = try getAccountId()
+        return try await localRepo.fetchEntriesAsBpmDTO(forUserId: accountId, operationType: OperationType.create.rawValue)
+    }
+
+    func deleteBpmEntry(entryTimestamp: String) async throws {
+        let accountId = try getAccountId()
+
+        let entries = try await localRepo.fetchEntriesOfTimestamp(forUserId: accountId, timestamp: entryTimestamp)
+        guard let entry = entries.first(where: { $0.entryType == EntryType.bpm.rawValue }) else {
+            throw NSError(domain: "EntryService", code: 404, userInfo: [NSLocalizedDescriptionKey: "BPM entry not found"])
+        }
+
+        entry.operationType = OperationType.delete.rawValue
+        entry.isSynced = false
+
+        do {
+            try await localRepo.updateEntry(entry)
+            await refreshBpmDashboardSummaries()
+            let notification = EntryNotification(from: entry)
+            entryDeleted.send(notification)
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "BPM entry delete queued: entryTimestamp=\(entryTimestamp), accountId=\(accountId)"
+            )
+        } catch {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "BPM entry delete failed: entryTimestamp=\(entryTimestamp), error=\(error.localizedDescription)"
+            )
+            throw error
+        }
+    }
+
+    // MARK: - Baby Entry CRUD
+
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String? = nil) async throws {
+        let accountId = try getAccountId()
+
+        let entry = Entry(
+            entryTimestamp: entryTimestamp,
+            accountId: accountId,
+            operationType: OperationType.create.rawValue,
+            entryType: EntryType.baby.rawValue,
+            isSynced: false
+        )
+        entry.attempts = 0
+        entry.note = note
+        entry.babyEntry = BabyEntry(babyId: babyId, length: length, weight: weight, source: source)
+
+        do {
+            try await localRepo.saveEntry(entry)
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Baby entry saved locally: entryId=\(entry.id.uuidString), accountId=\(accountId), babyId=\(babyId)"
+            )
+
+            let notification = EntryNotification(from: entry)
+            entrySaved.send(notification)
+        } catch {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Failed to save baby entry: accountId=\(accountId), babyId=\(babyId), error=\(error.localizedDescription)"
+            )
+            throw error
+        }
+    }
+
+    private func refreshBpmDashboardSummaries() async {
+        await loadDashboardData(entryType: .bpm)
     }
 
     deinit {

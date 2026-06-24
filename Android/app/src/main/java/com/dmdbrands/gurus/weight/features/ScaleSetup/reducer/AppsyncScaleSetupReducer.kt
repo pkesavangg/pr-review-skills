@@ -6,15 +6,20 @@ import com.dmdbrands.gurus.weight.core.config.AppSyncConfig
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.AppsyncScaleSetupStep
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * State for AppsyncScaleSetupScreen.
  */
+@Stable
 data class AppsyncScaleSetupState(
   val currentStep: AppsyncScaleSetupStep = AppsyncScaleSetupStep.SCALE_INFO,
   val sku: String = "0341",
   val bodyComp: Boolean = true,
-  val steps: List<AppsyncScaleSetupStep> = emptyList(),
+  val steps: ImmutableList<AppsyncScaleSetupStep> = persistentListOf(),
   val isNextEnabled: Boolean = true,
   val error: String? = null,
   val isSetupFinished: Boolean = false,
@@ -43,6 +48,7 @@ sealed interface AppsyncScaleSetupIntent : IReducer.Intent {
     val step: AppsyncScaleSetupStep,
   ) : AppsyncScaleSetupIntent
 
+  @Stable
   data class SetNextButtonState(
     val isEnabled: Boolean,
   ) : AppsyncScaleSetupIntent
@@ -113,7 +119,7 @@ class AppsyncScaleSetupReducer : IReducer<AppsyncScaleSetupState, AppsyncScaleSe
         val newSteps = generateSteps(intent.bodyComp)
         state.copy(
           bodyComp = intent.bodyComp,
-          steps = newSteps,
+          steps = newSteps.toImmutableList(),
           // Reset to first step if current step is not in new steps
           currentStep = if (newSteps.contains(state.currentStep)) state.currentStep else newSteps.first()
         )

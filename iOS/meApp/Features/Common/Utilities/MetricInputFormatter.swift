@@ -76,23 +76,34 @@ class MetricFieldFormatter: ObservableObject {
         
         // Allow single zero
         let trimmedDigits = digitsOnly.replacingOccurrences(of: "^0+", with: "", options: .regularExpression)
-        let digits = trimmedDigits.isEmpty && digitsOnly.contains("0") ? "0" : trimmedDigits
-        
+        let digits: String
+        if trimmedDigits.isEmpty && digitsOnly.contains("0") {
+            // When clearZeroValue is enabled, treat zero-only input as empty
+            if config.clearZeroValue {
+                return emptyValue
+            }
+            digits = "0"
+        } else {
+            digits = trimmedDigits
+        }
+
         if digits.isEmpty {
             return emptyValue
         }
         
         // Limit to maxLength digits
+        let decimalPlaces = config.decimalPlaces
         let limitedDigits = String(digits.prefix(config.maxLength))
         let length = limitedDigits.count
-        
-        switch length {
-        case 1:
-            return "0.\(limitedDigits)"
-        default:
-            let beforeDecimal = limitedDigits.dropLast()
-            let afterDecimal = limitedDigits.suffix(1)
-            return "\(beforeDecimal).\(afterDecimal)"
+
+        if length <= decimalPlaces {
+            let padded = String(repeating: "0", count: decimalPlaces - length) + limitedDigits
+            return "0.\(padded)"
+        } else {
+            let splitIndex = length - decimalPlaces
+            let integerPart = String(limitedDigits.prefix(splitIndex))
+            let decimalPart = String(limitedDigits.suffix(decimalPlaces))
+            return "\(integerPart).\(decimalPart)"
         }
     }
     

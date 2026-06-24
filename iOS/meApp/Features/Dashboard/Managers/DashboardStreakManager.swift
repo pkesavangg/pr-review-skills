@@ -15,21 +15,34 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     
     // MARK: - Private Properties
     private var hasUpdatedWithRealData: Bool = false
-    private var originalStreakItems: [(value: String, label: String, unit: String?, preLabel: String?, icon: String?)] {
+    private var activeRefreshTask: Task<Void, Error>?
+    private var activeRefreshToken: UUID?
+    private var originalStreakItems: [MetricItem] {
         let streakLabels = getStreakLabels()
         return [
-            (DashboardStrings.placeholder, DashboardStrings.currentStreak, nil, nil, AppAssets.streak),
-            (DashboardStrings.placeholder, DashboardStrings.longestStreak, nil, nil, AppAssets.longestStreak),
-            (DashboardStrings.placeholder, streakLabels.week, nil, nil, nil),
-            (DashboardStrings.placeholder, streakLabels.month, nil, nil, nil),
-            (DashboardStrings.placeholder, streakLabels.year, nil, nil, nil),
-            (DashboardStrings.placeholder, streakLabels.total, nil, nil, nil)
+            MetricItem(value: DashboardStrings.placeholder, label: DashboardStrings.currentStreak, unit: nil, preLabel: nil, icon: AppAssets.streak),
+            MetricItem(
+                value: DashboardStrings.placeholder,
+                label: DashboardStrings.longestStreak,
+                unit: nil,
+                preLabel: nil,
+                icon: AppAssets.longestStreak
+            ),
+            MetricItem(value: DashboardStrings.placeholder, label: streakLabels.week, unit: nil, preLabel: nil, icon: nil),
+            MetricItem(value: DashboardStrings.placeholder, label: streakLabels.month, unit: nil, preLabel: nil, icon: nil),
+            MetricItem(value: DashboardStrings.placeholder, label: streakLabels.year, unit: nil, preLabel: nil, icon: nil),
+            MetricItem(value: DashboardStrings.placeholder, label: streakLabels.total, unit: nil, preLabel: nil, icon: nil)
         ]
     }
 
     // MARK: - Initialization
     init(initialState: StreakState = StreakState(), skipInitialSetup: Bool = false) {
         self.state = initialState
+        // Cache DI-backed services during construction so later async refreshes
+        // continue using the intended dependencies for this store instance.
+        _ = entryService
+        _ = logger
+        _ = accountService
         if !skipInitialSetup {
             setupInitialStreakItems()
         }
@@ -37,120 +50,109 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
 
     // MARK: - Setup Methods
     func setupInitialStreakItems() {
-        state.streakItems = originalStreakItems.map {
-            MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon)
-        }
+        state.streakItems = originalStreakItems
         state.activeStreakItemsCount = originalStreakItems.count
     }
 
     // MARK: - Streak Data Management
     func refreshStreakData() async throws {
-        do {
-            let progress = try await entryService.getProgress()
-            try await updateStreakItems(with: progress)
-        } catch {
-            logger.log(level: .error, tag: "DashboardStreakManager", message: "Failed to refresh streak data: \(error)")
-            throw DashboardError.dataLoadingFailed(error)
+        try await performCoalescedRefresh {
+            try await self.entryService.getProgress(entryType: .scale)
         }
     }
 
+// swiftlint:disable:next function_body_length
     func updateStreakItems(with progress: Progress) async throws {
-        do {
-            var updatedStreakItems: [MetricItem] = []
+        var updatedStreakItems: [MetricItem] = []
 
-            // Current streak
-            updatedStreakItems.append(MetricItem(
-                value: "\(progress.currentStreak)",
-                label: DashboardStrings.currentStreak,
-                unit: nil,
-                preLabel: nil,
-                icon: AppAssets.streak
-            ))
+        // Current streak
+        updatedStreakItems.append(MetricItem(
+            value: "\(progress.currentStreak)",
+            label: DashboardStrings.currentStreak,
+            unit: nil,
+            preLabel: nil,
+            icon: AppAssets.streak
+        ))
 
-            // Longest streak
-            updatedStreakItems.append(MetricItem(
-                value: "\(progress.longestStreak)",
-                label: DashboardStrings.longestStreak,
-                unit: nil,
-                preLabel: nil,
-                icon: AppAssets.longestStreak
-            ))
+        // Longest streak
+        updatedStreakItems.append(MetricItem(
+            value: "\(progress.longestStreak)",
+            label: DashboardStrings.longestStreak,
+            unit: nil,
+            preLabel: nil,
+            icon: AppAssets.longestStreak
+        ))
 
-            // Resolve unit once
-            let weightUnit: WeightUnit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
+        // Resolve unit once
+        let weightUnit: WeightUnit = accountService.activeAccount?.weightUnit ?? .lb
 
-            // Weekly change
-            let weeklyValue = Double(progress.week)
-            let weeklyDisplay = weightUnit == .kg
-                ? ConversionTools.convertStoredToKg(Int(weeklyValue))
-                : ConversionTools.convertStoredToLbs(Int(weeklyValue))
-            let weeklyUnitLabel = WeightValueConvertor.unitForDisplay(value: abs(weeklyDisplay), unit: weightUnit)
-            updatedStreakItems.append(MetricItem(
-                value: formatWeightChange(weeklyValue, unit: weightUnit.rawValue),
-                label: "\(weeklyUnitLabel)/week",
-                unit: nil,
-                preLabel: nil,
-                icon: nil
-            ))
+        // Weekly change
+        let weeklyValue = Double(progress.week)
+        let weeklyDisplay = weightUnit == .kg
+            ? ConversionTools.convertStoredToKg(weeklyValue)
+            : ConversionTools.convertStoredToLbs(weeklyValue)
+        let weeklyUnitLabel = WeightValueConvertor.unitForDisplay(value: abs(weeklyDisplay), unit: weightUnit)
+        updatedStreakItems.append(MetricItem(
+            value: formatWeightChange(weeklyValue, unit: weightUnit.rawValue),
+            label: "\(weeklyUnitLabel)/week",
+            unit: nil,
+            preLabel: nil,
+            icon: nil
+        ))
 
-            // Monthly change
-            let monthlyValue = Double(progress.month)
-            let monthlyDisplay = weightUnit == .kg
-                ? ConversionTools.convertStoredToKg(Int(monthlyValue))
-                : ConversionTools.convertStoredToLbs(Int(monthlyValue))
-            let monthlyUnitLabel = WeightValueConvertor.unitForDisplay(value: abs(monthlyDisplay), unit: weightUnit)
-            updatedStreakItems.append(MetricItem(
-                value: formatWeightChange(monthlyValue, unit: weightUnit.rawValue),
-                label: "\(monthlyUnitLabel)/month",
-                unit: nil,
-                preLabel: nil,
-                icon: nil
-            ))
+        // Monthly change
+        let monthlyValue = Double(progress.month)
+        let monthlyDisplay = weightUnit == .kg
+            ? ConversionTools.convertStoredToKg(monthlyValue)
+            : ConversionTools.convertStoredToLbs(monthlyValue)
+        let monthlyUnitLabel = WeightValueConvertor.unitForDisplay(value: abs(monthlyDisplay), unit: weightUnit)
+        updatedStreakItems.append(MetricItem(
+            value: formatWeightChange(monthlyValue, unit: weightUnit.rawValue),
+            label: "\(monthlyUnitLabel)/month",
+            unit: nil,
+            preLabel: nil,
+            icon: nil
+        ))
 
-            // Yearly change
-            let yearlyValue = Double(progress.year)
-            let yearlyDisplay = weightUnit == .kg
-                ? ConversionTools.convertStoredToKg(Int(yearlyValue))
-                : ConversionTools.convertStoredToLbs(Int(yearlyValue))
-            let yearlyUnitLabel = WeightValueConvertor.unitForDisplay(value: abs(yearlyDisplay), unit: weightUnit)
-            updatedStreakItems.append(MetricItem(
-                value: formatWeightChange(yearlyValue, unit: weightUnit.rawValue),
-                label: "\(yearlyUnitLabel)/year",
-                unit: nil,
-                preLabel: nil,
-                icon: nil
-            ))
+        // Yearly change
+        let yearlyValue = Double(progress.year)
+        let yearlyDisplay = weightUnit == .kg
+            ? ConversionTools.convertStoredToKg(yearlyValue)
+            : ConversionTools.convertStoredToLbs(yearlyValue)
+        let yearlyUnitLabel = WeightValueConvertor.unitForDisplay(value: abs(yearlyDisplay), unit: weightUnit)
+        updatedStreakItems.append(MetricItem(
+            value: formatWeightChange(yearlyValue, unit: weightUnit.rawValue),
+            label: "\(yearlyUnitLabel)/year",
+            unit: nil,
+            preLabel: nil,
+            icon: nil
+        ))
 
-            // Total change
-            let totalValue = Double(progress.total ?? 0)
-            let totalDisplay = weightUnit == .kg
-                ? ConversionTools.convertStoredToKg(Int(totalValue))
-                : ConversionTools.convertStoredToLbs(Int(totalValue))
-            let totalUnitLabel = WeightValueConvertor.unitForDisplay(value: abs(totalDisplay), unit: weightUnit)
-            updatedStreakItems.append(MetricItem(
-                value: formatWeightChange(totalValue, unit: weightUnit.rawValue),
-                label: "\(totalUnitLabel)/total",
-                unit: nil,
-                preLabel: nil,
-                icon: nil
-            ))
+        // Total change
+        let totalValue = Double(progress.total ?? 0)
+        let totalDisplay = weightUnit == .kg
+            ? ConversionTools.convertStoredToKg(totalValue)
+            : ConversionTools.convertStoredToLbs(totalValue)
+        let totalUnitLabel = WeightValueConvertor.unitForDisplay(value: abs(totalDisplay), unit: weightUnit)
+        updatedStreakItems.append(MetricItem(
+            value: formatWeightChange(totalValue, unit: weightUnit.rawValue),
+            label: "\(totalUnitLabel)/total",
+            unit: nil,
+            preLabel: nil,
+            icon: nil
+        ))
 
-            // Update streak items array
-            let isFirstUpdate = !hasUpdatedWithRealData
-            state.streakItems = updatedStreakItems
-            hasUpdatedWithRealData = true
+        // Update streak items array
+        let isFirstUpdate = !hasUpdatedWithRealData
+        state.streakItems = updatedStreakItems
+        hasUpdatedWithRealData = true
 
-            // Preserve active count only after the first real data update
-            if !isFirstUpdate {
-                state.activeStreakItemsCount = min(
-                    state.activeStreakItemsCount,
-                    updatedStreakItems.count
-                )
-            }
-
-        } catch {
-            logger.log(level: .error, tag: "DashboardStreakManager", message: "Failed to update streak items: \(error)")
-            throw DashboardError.invalidMetricData("Failed to update streak items with progress data")
+        // Preserve active count only after the first real data update
+        if !isFirstUpdate {
+            state.activeStreakItemsCount = min(
+                state.activeStreakItemsCount,
+                updatedStreakItems.count
+            )
         }
     }
 
@@ -170,9 +172,43 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     
     /// Refreshes streak data when unit changes
     func refreshStreakDataForUnitChange() async throws {
-        // Re-fetch progress data and update with new unit
-        let progress = try await entryService.getProgress()
-        try await updateStreakItems(with: progress)
+        try await performCoalescedRefresh {
+            try await self.entryService.getProgress()
+        }
+    }
+
+    private func performCoalescedRefresh(
+        progressProvider: @escaping @MainActor () async throws -> Progress
+    ) async throws {
+        if let activeRefreshTask {
+            try await activeRefreshTask.value
+            return
+        }
+
+        let refreshToken = UUID()
+        activeRefreshToken = refreshToken
+
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let progress = try await progressProvider()
+            try await self.updateStreakItems(with: progress)
+        }
+        activeRefreshTask = task
+
+        do {
+            try await task.value
+            if activeRefreshToken == refreshToken {
+                activeRefreshTask = nil
+                activeRefreshToken = nil
+            }
+        } catch {
+            if activeRefreshToken == refreshToken {
+                activeRefreshTask = nil
+                activeRefreshToken = nil
+            }
+            logger.log(level: .error, tag: "DashboardStreakManager", message: "Failed to refresh streak data: \(error)")
+            throw DashboardError.dataLoadingFailed(error)
+        }
     }
 
     // MARK: - Streak Item Management
@@ -180,7 +216,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         if isEditMode {
             return state.streakItems
         } else {
-            return Array(state.streakItems.prefix(state.activeStreakItemsCount))
+            return Array(state.streakItems.prefix(max(0, state.activeStreakItemsCount)))
         }
     }
     
@@ -242,27 +278,35 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     
     /// Returns the current weight unit as a string (e.g., "lbs" or "kg")
     private func getUnitText() -> String {
-        return accountService.activeAccount?.weightSettings?.weightUnit?.rawValue ?? "lbs"
+        return accountService.activeAccount?.weightUnit.rawValue ?? "lbs"
     }
     
     /// Returns dynamic streak labels based on current unit
-    private func getStreakLabels() -> (week: String, month: String, year: String, total: String) {
+    private func getStreakLabels() -> StreakLabels {
         let unit = getUnitText()
-        return (
+        return StreakLabels(
             week: "\(unit)/week",
-            month: "\(unit)/month", 
+            month: "\(unit)/month",
             year: "\(unit)/year",
             total: "\(unit)/total"
         )
+    }
+    
+    /// Structure to hold streak labels and avoid large tuple
+    private struct StreakLabels {
+        let week: String
+        let month: String
+        let year: String
+        let total: String
     }
     
     private func formatWeightChange(_ value: Double, unit: String) -> String {
         // Convert stored weight to display unit
         let displayValue: Double
         if unit == "kg" {
-            displayValue = ConversionTools.convertStoredToKg(Int(value))
+            displayValue = ConversionTools.convertStoredToKg(value)
         } else {
-            displayValue = ConversionTools.convertStoredToLbs(Int(value))
+            displayValue = ConversionTools.convertStoredToLbs(value)
         }
         
         // Round to one decimal to determine if the displayed value is effectively zero
@@ -343,7 +387,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
 
     func getStreakGridColumns() -> [GridItem] {
         let columnCount = DevicePlatform.isTablet ? 4 : 2
-        return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columnCount)
+        return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UIConstants.gridSpacing), count: columnCount)
     }
 
     // MARK: - Streak Reordering
@@ -366,4 +410,3 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         }
     }
 }
-
