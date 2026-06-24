@@ -7,7 +7,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
@@ -89,7 +88,6 @@ fun AppHeightInput(
 fun AppHeightInputPreview() {
     MeAppTheme {
         Column(Modifier.fillMaxSize()) {
-            val fakeScope = rememberCoroutineScope()
             val heightControl =
                 remember { FormControl.create<HeightInput>(HeightInput.FtIn(5, 1), emptyList(), ) }
             AppHeightInput(formControl = heightControl)

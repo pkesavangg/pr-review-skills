@@ -43,6 +43,7 @@ fun AppScaffold(
     enable: Boolean = false,
     actions: (@Composable () -> Unit)? = null,
     navigationIcon: (@Composable () -> Unit)? = null,
+    topBarContent: (@Composable () -> Unit)? = null,
     isRefreshing: Boolean = false,
     onRefresh: (() -> Unit)? = null,
     appBarOnclick: () -> Unit = {},
@@ -52,9 +53,10 @@ fun AppScaffold(
         modifier = modifier
             .fillMaxSize(),
         topBar = {
-            if (title != null || navigationIcon != null || actions != null) {
+            if (title != null || navigationIcon != null || actions != null || topBarContent != null) {
                 AppBar(
                     title = title,
+                    topBarContent = topBarContent,
                     enable = enable,
                     navigationIcon = navigationIcon,
                     actions = actions,

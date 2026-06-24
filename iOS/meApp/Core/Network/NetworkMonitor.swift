@@ -5,10 +5,9 @@
 //  Created by Kesavan Panchabakesan on 28/05/25.
 //
 
-
-import Network
-import Foundation
 import Combine
+import Foundation
+import Network
 
 // MARK: - Network Monitor
 @MainActor
@@ -17,6 +16,10 @@ final class NetworkMonitor: ObservableObject {
     
     @Published private(set) var isConnected = false
     @Published private(set) var connectionType: NWInterface.InterfaceType?
+
+    var isConnectedPublisher: AnyPublisher<Bool, Never> {
+        $isConnected.eraseToAnyPublisher()
+    }
     
     private let monitor = NWPathMonitor()
     private let monitorQueue = DispatchQueue.global(qos: .utility)
@@ -39,7 +42,7 @@ final class NetworkMonitor: ObservableObject {
     private func startMonitoring() {
         guard !isMonitoring else { return }
         monitor.pathUpdateHandler = { [weak self] path in
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self?.handlePathUpdate(path)
             }
         }

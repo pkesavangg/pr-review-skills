@@ -164,7 +164,10 @@ object AppPermissionsHelper {
       }
 
       ScaleSetupType.Lcbt,
-      ScaleSetupType.Bluetooth -> {
+      ScaleSetupType.Bluetooth,
+      ScaleSetupType.BpmBluetooth,
+      ScaleSetupType.BpmA6Bluetooth,
+      ScaleSetupType.BabyScale -> {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
           listOf(
             GGPermissionType.BLUETOOTH_SWITCH,
@@ -205,7 +208,7 @@ object AppPermissionsHelper {
     wifiName: String? = null
   ): List<PermissionGroup> {
     val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku)
-    val scaleSetupType = scaleInfo!!.setupType
+    val scaleSetupType = scaleInfo?.setupType ?: return emptyList()
     val requiredPermissionTypes = requiredPermissionTypes ?: getRequiredPermissionTypes(scaleSetupType)
 
     // Build PermissionItems for only the required types
@@ -227,7 +230,10 @@ object AppPermissionsHelper {
       )
 
       ScaleSetupType.Lcbt,
-      ScaleSetupType.Bluetooth -> listOf(
+      ScaleSetupType.Bluetooth,
+      ScaleSetupType.BpmBluetooth,
+      ScaleSetupType.BpmA6Bluetooth,
+      ScaleSetupType.BabyScale -> listOf(
         AppPermissionsScreenStrings.BluetoothHeader,
         AppPermissionsScreenStrings.LocationHeader,
       )
@@ -302,7 +308,7 @@ object AppPermissionsHelper {
       return false
     }
     val scaleInfo = sku?.let { ScaleDataHelper.findScaleInfoBySku(it) }
-    val scaleSetupType = setupType ?: scaleInfo!!.setupType
+    val scaleSetupType = setupType ?: scaleInfo?.setupType ?: return false
     val requiredPermissionTypes = requiredPermissionTypes ?: getRequiredPermissionTypes(scaleSetupType)
 
     return requiredPermissionTypes.all { permissionType ->
@@ -342,7 +348,7 @@ object AppPermissionsHelper {
       return emptyList()
     }
     val scaleInfo = sku?.let { ScaleDataHelper.findScaleInfoBySku(it) }
-    val scaleSetupType = setupType ?: scaleInfo!!.setupType
+    val scaleSetupType = setupType ?: scaleInfo?.setupType ?: return emptyList()
     val requiredPermissionTypes = requiredPermissionTypes ?: getRequiredPermissionTypes(scaleSetupType)
 
     return requiredPermissionTypes.filter { permissionType ->
@@ -442,29 +448,6 @@ object AppPermissionsHelper {
   }
 
   /**
-   * Returns custom permission descriptions for SKU 0384.
-   */
-  private fun getCustomDescriptionsForSku0384(
-    permissionType: String,
-    defaultEnabled: String,
-    defaultDisabled: String,
-    wifiName: String? = null
-  ): Pair<String, String> {
-    return when (permissionType) {
-      GGPermissionType.WIFI_SWITCH -> {
-        val enabledDesc = if (wifiName != null && wifiName.isNotEmpty()) {
-          "${AppPermissionsScreenStrings.EnabledWifiDescription} + $wifiName"
-        } else {
-          AppPermissionsScreenStrings.EnabledWifiDescription
-        }
-        enabledDesc to AppPermissionsScreenStrings.DisabledWifiDescription
-      }
-
-      else -> defaultEnabled to defaultDisabled
-    }
-  }
-
-  /**
    * Gets the required permission sets based on paired scales.
    * This determines which permissions are required for the current setup.
    * Based on the Angular implementation in permissions.service.ts
@@ -478,7 +461,7 @@ object AppPermissionsHelper {
     pairedScales.forEach { scale ->
       val scaleSetupType = ScaleSetupType.fromString(scale.deviceType)
       when (scaleSetupType) {
-        ScaleSetupType.Bluetooth, ScaleSetupType.Lcbt -> {
+        ScaleSetupType.Bluetooth, ScaleSetupType.Lcbt, ScaleSetupType.BpmBluetooth, ScaleSetupType.BpmA6Bluetooth, ScaleSetupType.BabyScale -> {
           requiredPermissions.add(GGPermissionType.BLUETOOTH_SWITCH)
           if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             requiredPermissions.add(GGPermissionType.NEARBY_DEVICE)

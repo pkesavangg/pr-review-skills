@@ -1,5 +1,41 @@
-import SwiftUI
+import AuthenticationServices
 import SafariServices
+import SwiftUI
+
+// MARK: - OAuthWebSession
+
+/// Presents OAuth flows using ASWebAuthenticationSession with an ephemeral (private) session.
+/// Unlike SFSafariViewController, this shares no cookies with Safari or between sessions,
+/// so reconnecting Fitbit/MFP always shows a fresh login/account-selection screen.
+@MainActor
+final class OAuthWebSession: NSObject, ASWebAuthenticationPresentationContextProviding, ObservableObject {
+    private var session: ASWebAuthenticationSession?
+
+    /// Starts the OAuth web session for the given URL.
+    /// `completion` is called when the user dismisses the session (either after auth or via cancel).
+    func start(url: URL, completion: @escaping () -> Void) {
+        let session = ASWebAuthenticationSession(
+            url: url,
+            callbackURLScheme: nil  // server-side redirect; no deep-link callback needed
+        ) { _, _ in
+            // Fired on both success-dismiss and user cancel — in both cases the flow is done.
+            completion()
+        }
+        session.prefersEphemeralWebBrowserSession = true
+        session.presentationContextProvider = self
+        session.start()
+        self.session = session
+    }
+
+    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow } ?? ASPresentationAnchor()
+    }
+}
+
+// MARK: - SafariView
 
 /// A SwiftUI wrapper for presenting an in-app browser using SFSafariViewController.
 /// Use this view to present a web page modally within your app.
@@ -24,9 +60,7 @@ struct SafariView: UIViewControllerRepresentable {
 
 #Preview {
     // Example usage in a preview
-    SafariView(url: URL(string: "https://greatergoods.com/service")!, completion: {
-        print("Browser was dismissed")
-    })
+    SafariView(url: URL(string: "https://greatergoods.com/service") ?? URL(fileURLWithPath: "/")) { }
 }
 
 // MARK: - Usage Example
@@ -43,9 +77,7 @@ struct ContentView: View {
         .inAppBrowser(
             url: URL(string: "https://example.com")!,
             isPresented: $showBrowser
-        ) {
-            print("Browser was dismissed")
-        }
+        ) { }
     }
 }
 */

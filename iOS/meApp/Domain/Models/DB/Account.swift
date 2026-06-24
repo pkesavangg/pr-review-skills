@@ -13,9 +13,9 @@
 /// | isLoggedIn      | bool?   | If the user is logged in                    |
 /// | isExpired       | bool?   | Whether the account/session is expired      |
 /// | isActiveAccount | bool?   | Indicates if the account is active          |
-/// | accessToken     | string? | OAuth or app-specific access token           |
-/// | refreshToken    | string? | OAuth refresh token                         |
-/// | expiresAt       | string? | Access token expiration time                |
+/// | accessToken     | string? | In-memory only; tokens live in Keychain     |
+/// | refreshToken    | string? | In-memory only; tokens live in Keychain     |
+/// | expiresAt       | string? | In-memory only; tokens live in Keychain     |
 /// | fcmToken        | string? | Firebase Cloud Messaging token              |
 /// | lastActiveTime  | string? | Timestamp of last activity                  |
 /// | isSynced        | bool?   | Whether account is synced online            |
@@ -57,19 +57,24 @@ final class Account {
     var isExpired: Bool?
     /// Indicates if the account is currently active
     var isActiveAccount: Bool?
-    /// OAuth or app-specific access token
-    var accessToken: String?
-    /// OAuth refresh token
-    var refreshToken: String?
-    /// Access token expiration time
-    var expiresAt: String?
+    /// OAuth or app-specific access token (in-memory only; source of truth is Keychain).
+    @Transient var accessToken: String?
+    /// OAuth refresh token (in-memory only; source of truth is Keychain).
+    @Transient var refreshToken: String?
+    /// Access token expiration time (in-memory only; source of truth is Keychain).
+    @Transient var expiresAt: String?
     /// Firebase Cloud Messaging token
     var fcmToken: String?
     /// Timestamp of last activity
     var lastActiveTime: String?
     /// Whether account is updated and synced online
     var isSynced: Bool?
-    
+    /// Product types the user has selected (e.g. "myWeight", "myBloodPressure", "baby")
+    var productTypes: [String] = []
+    /// Preferred measurement units ("metric", "imperialLbOz", "imperialLbDecimal").
+    /// Sourced from the server `measurementUnits` field; nil until set.
+    var measurementUnits: String?
+
     // Relationship to WeightCompSettings
     @Relationship(deleteRule: .cascade) var weightSettings: WeightCompSettings?
     // Relationship to WeightCompSettings
@@ -84,6 +89,7 @@ final class Account {
     @Relationship(deleteRule: .cascade) var dashboardSettings: DashboardSettings?
     // Relationship to IntegrationSettings
     @Relationship(deleteRule: .cascade) var integrationSettings: IntegrationSettings?
+    // swiftlint:disable:next function_body_length
     init(from dto: AccountDTO) {
         self.accountId = dto.id
         self.email = dto.email
@@ -101,16 +107,18 @@ final class Account {
         self.refreshToken = nil
         self.expiresAt = nil
         self.isSynced = nil
-        
+        self.productTypes = dto.productTypes ?? []
+        self.measurementUnits = dto.measurementUnits
+
         // Create associated WeightCompSettings
         let settings = WeightCompSettings(
             accountId: dto.id,
-            height: String(dto.height),
+            height: dto.height.map { String($0) },
             activityLevel: dto.activityLevel,
             weightUnit: dto.weightUnit
         )
         self.weightSettings = settings
-        
+
         // Create associated GoalSettings
         let goalSettings = GoalSettings(
             accountId: dto.id,
@@ -121,7 +129,7 @@ final class Account {
             isSynced: false
         )
         self.goalSettings = goalSettings
-        
+
         // Create associated StreaksSettings
         let streaksSettings = StreaksSettings(
             accountId: dto.id,
@@ -130,17 +138,17 @@ final class Account {
             isSynced: false
         )
         self.streaksSettings = streaksSettings
-        
+
         // Create associated WeightlessSettings
         let weightlessSettings = WeightlessSettings(
             accountId: dto.id,
             isWeightlessOn: dto.isWeightlessOn ?? false,
             weightlessTimestamp: dto.weightlessTimestamp,
-            weightlessWeight: dto.weightlessWeight != nil ? Double(dto.weightlessWeight!) : nil,
+            weightlessWeight: dto.weightlessWeight.flatMap { Double($0) },
             isSynced: false
         )
         self.weightlessSettings = weightlessSettings
-        
+
         // Create associated NotificationSettings
         let notificationSettings = NotificationSettings(
             accountId: dto.id,
@@ -149,17 +157,17 @@ final class Account {
             isSynced: false
         )
         self.notificationSettings = notificationSettings
-        
+
         // Create associated DashboardSettings
         let dashboardSettings = DashboardSettings(
             accountId: dto.id,
             dashboardMetrics: dto.dashboardMetrics?.map { String(describing: $0) }.joined(separator: ","),
             progressMetrics: dto.progressMetrics?.joined(separator: ","),
-            dashboardType: dto.dashboardType != nil ? String(describing: dto.dashboardType!) : nil,
+            dashboardType: dto.dashboardType.map { String(describing: $0) },
             isSynced: false
         )
         self.dashboardSettings = dashboardSettings
-        
+
         // Create associated IntegrationSettings
         let integrationSettings = IntegrationSettings(
             accountId: dto.id,
@@ -173,7 +181,7 @@ final class Account {
         )
         self.integrationSettings = integrationSettings
     }
-    
+
     func toAccountDTO() -> AccountDTO {
         return AccountDTO(
             id: self.accountId,
@@ -188,7 +196,7 @@ final class Account {
             activityLevel: self.weightSettings?.activityLevel,
             dob: self.dob ?? "",
             weightlessTimestamp: self.weightlessSettings?.weightlessTimestamp,
-            weightlessWeight: self.weightlessSettings?.weightlessWeight != nil ? Double(self.weightlessSettings!.weightlessWeight!) : nil,
+            weightlessWeight: self.weightlessSettings?.weightlessWeight.flatMap { Double($0) },
             isStreakOn: self.streaksSettings?.isStreakOn,
             streakTimestamp: self.streaksSettings?.streakTimestamp,
             dashboardType: self.dashboardSettings?.dashboardType.flatMap { DashboardType(rawValue: $0) },
@@ -205,23 +213,38 @@ final class Account {
             isMFPOn: self.integrationSettings?.isMfpOn,
             isMFPValid: self.integrationSettings?.isMfpValid,
             isHealthKitOn: self.integrationSettings?.isHealthKitOn,
-            isHealthConnectOn: self.integrationSettings?.isHealthConnectOn
+            isHealthConnectOn: self.integrationSettings?.isHealthConnectOn,
+            productTypes: self.productTypes,
+            measurementUnits: self.measurementUnits
         )
     }
 }
 
 // MARK: - Update Methods
 extension Account {
-    func update(from response: AccountDTO) {
+    /// Updates account from AccountDTO response.
+    /// This method intentionally has high complexity to handle all account update scenarios in one place for maintainability.
+    func update(from response: AccountDTO) { // swiftlint:disable:this cyclomatic_complexity function_body_length
         self.accountId = response.id
         self.email = response.email
         self.firstName = response.firstName
         self.gender = response.gender
-        self.height = String(response.height)
+        self.height = response.height.map { String($0) }
         self.dob = response.dob
-        
+
+        // Only populate productTypes from server when the local value is unset.
+        // updateProductTypes() has no server API call, so productTypes are client-managed.
+        // A server refresh returning the account's default (e.g. ["myWeight"]) must not
+        // overwrite a signup selection already written locally (e.g. ["baby"]).
+        if let productTypes = response.productTypes, self.productTypes.isEmpty {
+            self.productTypes = productTypes
+        }
+        if let measurementUnits = response.measurementUnits {
+            self.measurementUnits = measurementUnits
+        }
+
         if let weightSettings = self.weightSettings {
-            weightSettings.height = String(response.height)
+            weightSettings.height = response.height.map { String($0) }
             weightSettings.activityLevel = response.activityLevel
             weightSettings.weightUnit = response.weightUnit
         }
@@ -231,7 +254,7 @@ extension Account {
         if let zipcode = response.zipcode {
             self.zipcode = zipcode
         }
-            
+
         // Consolidated weightless settings update logic
         if let isWeightlessOn = response.isWeightlessOn, isWeightlessOn == false {
             // Explicitly turned off: clear weight and timestamp
@@ -292,12 +315,12 @@ extension Account {
             goalSettings.goalPercent = response.goalPercent
         }
     }
-    
+
     // Add a separate method for updating from AccountResponse
     func update(from response: AccountResponse) {
         // Update account data
         update(from: response.account)
-        
+
         // Update tokens
         if let accessToken = response.accessToken {
             self.accessToken = accessToken
@@ -308,17 +331,17 @@ extension Account {
         if let expiresAt = response.expiresAt {
             self.expiresAt = expiresAt
         }
-        
+
         self.isSynced = true
     }
-    
+
     // Add a method to update from Tokens
     func update(from tokens: Tokens) {
         self.accessToken = tokens.accessToken
         self.refreshToken = tokens.refreshToken
         self.expiresAt = tokens.expiresAt
     }
-    
+
     // Add a method to update from Profile
     func update(from profile: Profile) {
         self.firstName = profile.firstName
@@ -331,7 +354,7 @@ extension Account {
         self.weightSettings?.activityLevel = profile.activityLevel
         // Optionally update goalSettings if profile contains goal info (add logic if needed)
     }
-    
+
     // Add a method to update from GoalSettings
     func update(from goalSettings: GoalResponse) {
         self.goalSettings?.goalType = goalSettings.type

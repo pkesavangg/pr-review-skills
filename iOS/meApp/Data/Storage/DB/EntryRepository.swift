@@ -1,3 +1,8 @@
+// swiftlint:disable file_length
+// This repository intentionally aggregates all Entry CRUD operations to maintain
+// a single source of truth for data access patterns. Splitting would fragment
+// the SwiftData context management and reduce maintainability.
+
 import Foundation
 import SwiftData
 
@@ -35,16 +40,23 @@ private actor EntryRepositoryBackgroundQueue {
 ///
 /// - Note: This repository uses background contexts for all operations to avoid blocking the main thread.
 ///   Methods that need MainActor access are explicitly marked.
+@MainActor
+// swiftlint:disable:next type_body_length
 final class EntryRepository: EntryRepositoryProtocol {
 
     // MARK: - Properties
-    private let container: ModelContainer = PersistenceController.shared.container
+    private let container: ModelContainer
 
-    /// Executes work on a background `ModelContext` serialized through the
-    /// app-wide queue (`EntryRepositoryBackgroundQueue`). Only one background
-    /// context is alive at a time — see MA-3898.
-    private func performBackgroundTask<T: Sendable>(_ work: @escaping @Sendable (ModelContext) throws -> T) async throws -> T {
-        return try await EntryRepositoryBackgroundQueue.shared.run(container: container, work)
+    init(container: ModelContainer? = nil) {
+        self.container = container ?? PersistenceController.shared.container
+    }
+    
+    /// Executes work on a background ModelContext to avoid blocking the main actor.
+    /// - Parameter work: Closure that performs the work using the provided background context.
+    /// - Returns: The result of the work.
+    private func performBackgroundTask<T>(_ work: (ModelContext) throws -> T) async throws -> T {
+        let backgroundContext = ModelContext(container)
+        return try work(backgroundContext)
     }
 
     // MARK: - CRUD
@@ -71,25 +83,51 @@ final class EntryRepository: EntryRepositoryProtocol {
 
     /// Saves a new entry to the local data store.
     /// - Parameter entry: The Entry object to save.
-    func saveEntry(_ entry: Entry) async throws {
+    func saveEntry(_ entry: Entry) async throws { // swiftlint:disable:this function_body_length
         // Extract all data from entry before crossing actor boundary
         let id = entry.id
         let accountId = entry.accountId
         let entryTimestamp = entry.entryTimestamp
         let serverTimestamp = entry.serverTimestamp
         let operationType = entry.operationType
-        let deviceType = entry.deviceType
+        let entryType = entry.entryType ?? EntryType.scale.rawValue
         let isSynced = entry.isSynced
         let isFailedToSync = entry.isFailedToSync
         let attempts = entry.attempts
 
         // Extract relationship data
-        let scaleEntryData = entry.scaleEntry.map { scaleEntry -> (weight: Int?, bodyFat: Int?, muscleMass: Int?, water: Int?, bmi: Int?, source: String?) in
-            (scaleEntry.weight, scaleEntry.bodyFat, scaleEntry.muscleMass, scaleEntry.water, scaleEntry.bmi, scaleEntry.source)
+        let scaleEntryData = entry.scaleEntry.map { scaleEntry in
+            DeviceEntryData(
+                weight: scaleEntry.weight,
+                bodyFat: scaleEntry.bodyFat,
+                muscleMass: scaleEntry.muscleMass,
+                water: scaleEntry.water,
+                bmi: scaleEntry.bmi,
+                source: scaleEntry.source
+            )
         }
-        let scaleEntryMetricData = entry.scaleEntryMetric.map { metric -> (bmr: Int?, metabolicAge: Int?, proteinPercent: Int?, pulse: Int?, skeletalMusclePercent: Int?, subcutaneousFatPercent: Int?, visceralFatLevel: Int?, boneMass: Int?, impedance: Int?, unit: String?) in
-            (metric.bmr, metric.metabolicAge, metric.proteinPercent, metric.pulse, metric.skeletalMusclePercent, metric.subcutaneousFatPercent, metric.visceralFatLevel, metric.boneMass, metric.impedance, metric.unit)
+        let scaleEntryMetricData = entry.scaleEntryMetric.map { metric in
+            DeviceMetricData(
+                bmr: metric.bmr,
+                metabolicAge: metric.metabolicAge,
+                proteinPercent: metric.proteinPercent,
+                pulse: metric.pulse,
+                skeletalMusclePercent: metric.skeletalMusclePercent,
+                subcutaneousFatPercent: metric.subcutaneousFatPercent,
+                visceralFatLevel: metric.visceralFatLevel,
+                boneMass: metric.boneMass,
+                impedance: metric.impedance,
+                unit: metric.unit
+            )
         }
+        let bpmSystolic = entry.bpmEntry?.systolic
+        let bpmDiastolic = entry.bpmEntry?.diastolic
+        let bpmMeanArterial = entry.bpmEntry?.meanArterial
+        let bpmPulse = entry.bpmEntry?.pulse
+        let entryNote = entry.note
+        let babyEntryBabyId = entry.babyEntry?.babyId
+        let babyEntryLength = entry.babyEntry?.length
+        let babyEntryWeight = entry.babyEntry?.weight
 
         try await performBackgroundTask { ctx in
             let newEntry = Entry(
@@ -98,7 +136,7 @@ final class EntryRepository: EntryRepositoryProtocol {
                 accountId: accountId,
                 operationType: operationType,
                 serverTimestamp: serverTimestamp,
-                deviceType: deviceType,
+                entryType: entryType,
                 isSynced: isSynced
             )
             newEntry.isFailedToSync = isFailedToSync
@@ -131,6 +169,27 @@ final class EntryRepository: EntryRepositoryProtocol {
                 )
             }
 
+            if let systolic = bpmSystolic, let diastolic = bpmDiastolic,
+               let meanArterial = bpmMeanArterial, let pulse = bpmPulse {
+                newEntry.bpmEntry = BPMEntry(
+                    systolic: systolic,
+                    diastolic: diastolic,
+                    meanArterial: meanArterial,
+                    pulse: pulse
+                )
+            }
+
+            if let entryBabyId = babyEntryBabyId, let length = babyEntryLength,
+               let weight = babyEntryWeight {
+                newEntry.babyEntry = BabyEntry(
+                    babyId: entryBabyId,
+                    length: length,
+                    weight: weight
+                )
+            }
+
+            newEntry.note = entryNote
+
             ctx.insert(newEntry)
             try ctx.save()
             return ()
@@ -147,7 +206,7 @@ final class EntryRepository: EntryRepositoryProtocol {
         let entryTimestamp = entry.entryTimestamp
         let serverTimestamp = entry.serverTimestamp
         let operationType = entry.operationType
-        let deviceType = entry.deviceType
+        let entryType = entry.entryType ?? EntryType.scale.rawValue
         let isSynced = entry.isSynced
         let isFailedToSync = entry.isFailedToSync
         let attempts = entry.attempts
@@ -159,7 +218,7 @@ final class EntryRepository: EntryRepositoryProtocol {
                 existing.entryTimestamp = entryTimestamp
                 existing.serverTimestamp = serverTimestamp
                 existing.operationType = operationType
-                existing.deviceType = deviceType
+                existing.entryType = entryType
                 existing.isSynced = isSynced
                 existing.isFailedToSync = isFailedToSync
                 existing.attempts = attempts
@@ -199,6 +258,19 @@ final class EntryRepository: EntryRepositoryProtocol {
                     ctx.rollback()
                     throw error
                 }
+            }
+            return ()
+        }
+    }
+
+    /// Stores the server-assigned entryId after a successful create sync.
+    func updateEntryServerEntryId(entryId: String, serverEntryId: String) async throws {
+        guard let uuid = UUID(uuidString: entryId) else { return }
+        try await performBackgroundTask { ctx in
+            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == uuid })
+            if let existing = try ctx.fetch(descriptor).first {
+                existing.serverEntryId = serverEntryId
+                try ctx.save()
             }
             return ()
         }
@@ -335,7 +407,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     func fetchUnsyncedEntriesAsSnapshots(forUserId userId: String) async throws -> [(EntrySnapshot, BathScaleOperationDTO)] {
         return try await performBackgroundTask { ctx in
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.isSynced == false })
-            return try ctx.fetch(descriptor).map { (EntrySnapshot(from: $0), $0.toOperationDTO()) }
+            return try ctx.fetch(descriptor).map { ($0.toSnapshot(), $0.toOperationDTO()) }
         }
     }
 
@@ -432,6 +504,34 @@ final class EntryRepository: EntryRepositoryProtocol {
         }
     }
 
+    /// Fetches BPM entries and returns BpmOperationDTOs with all relationship data extracted.
+    func fetchEntriesAsBpmDTO(forUserId userId: String, operationType: String? = nil) async throws -> [BpmOperationDTO] {
+        // entryType is optional in storage so SwiftData migration can synthesize nil
+        // for legacy rows. Wrap the comparison constant in Optional to keep the
+        // #Predicate types aligned.
+        let bpmEntryType: String? = EntryType.bpm.rawValue
+        return try await performBackgroundTask { backgroundContext in
+            let descriptor: FetchDescriptor<Entry>
+            if let opType = operationType {
+                descriptor = FetchDescriptor<Entry>(
+                    predicate: #Predicate {
+                        $0.accountId == userId && $0.operationType == opType && $0.entryType == bpmEntryType
+                    },
+                    sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
+                )
+            } else {
+                descriptor = FetchDescriptor<Entry>(
+                    predicate: #Predicate {
+                        $0.accountId == userId && $0.entryType == bpmEntryType
+                    },
+                    sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
+                )
+            }
+            let entries = try backgroundContext.fetch(descriptor)
+            return entries.map { $0.toBpmOperationDTO() }
+        }
+    }
+
     /// Fetches entry identifiers only for later MainActor refetch.
     /// Use this when you need to modify entries after fetching.
     /// - Parameters:
@@ -492,64 +592,6 @@ final class EntryRepository: EntryRepositoryProtocol {
         }
     }
 
-    /// Fetches entries for a given month as Sendable snapshots.
-    /// Mirrors `fetchEntries(forMonth:userId:)` but extracts every needed field
-    /// inside the background context so callers never touch a dead `Entry`
-    /// across an `await`.  See MA-3898.
-    func fetchEntriesAsSnapshots(forMonth month: String, userId: String) async throws -> [EntrySnapshot] {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM"
-        guard let startDate = dateFormatter.date(from: month) else { return [] }
-        var comps = DateComponents()
-        comps.month = 1
-        guard let endDate = Calendar.current.date(byAdding: comps, to: startDate) else { return [] }
-        let isoFormatter = ISO8601DateFormatter()
-        let startString = isoFormatter.string(from: startDate)
-        let endString = isoFormatter.string(from: endDate)
-        return try await performBackgroundTask { ctx in
-            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
-                $0.accountId == userId &&
-                $0.entryTimestamp >= startString &&
-                $0.entryTimestamp < endString
-            })
-            return try ctx.fetch(descriptor).map { EntrySnapshot(from: $0) }
-        }
-    }
-
-    /// Fetches the latest entry for a user as a Sendable snapshot.
-    /// Prefer this over `fetchLatestEntry` whenever the caller will read fields
-    /// after an `await` boundary — see MA-3898.
-    func fetchLatestEntryAsSnapshot(forUserId userId: String) async throws -> EntrySnapshot? {
-        return try await performBackgroundTask { ctx in
-            let descriptor = FetchDescriptor<Entry>(
-                predicate: #Predicate { $0.accountId == userId },
-                sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
-            )
-            return try ctx.fetch(descriptor).first.map { EntrySnapshot(from: $0) }
-        }
-    }
-
-    func fetchEntriesOfTimestampAsSnapshots(forUserId userId: String, timestamp: String) async throws -> [EntrySnapshot] {
-        return try await performBackgroundTask { ctx in
-            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.entryTimestamp == timestamp })
-            return try ctx.fetch(descriptor).map { EntrySnapshot(from: $0) }
-        }
-    }
-
-    func fetchEntriesAsSnapshots(forUserId userId: String, operationType: String? = nil) async throws -> [EntrySnapshot] {
-        return try await performBackgroundTask { ctx in
-            let descriptor: FetchDescriptor<Entry>
-            if let opType = operationType {
-                descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
-                    $0.accountId == userId && $0.operationType == opType
-                })
-            } else {
-                descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId })
-            }
-            return try ctx.fetch(descriptor).map { EntrySnapshot(from: $0) }
-        }
-    }
-
     /// Fetches an entry by PersistentIdentifier on the MainActor context.
     /// Use this after fetching identifiers to get live, modifiable models.
     /// - Parameter id: The PersistentIdentifier of the entry.
@@ -574,33 +616,31 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// - Parameter entryIds: Array of entry UUIDs to refetch.
     /// - Returns: Dictionary mapping entry IDs to their Entry objects (or nil if not found).
     func refetchEntriesOnMainActor(entryIds: [UUID]) async throws -> [UUID: Entry] {
-        return try await MainActor.run {
-            let mainContext = PersistenceController.shared.context
-            
-            // Return empty dictionary if no IDs provided
-            guard !entryIds.isEmpty else { return [:] }
-            
-            // Convert to Set for efficient membership checking
-            let entryIdsSet = Set(entryIds)
-            
-            // Use a single query with Set membership check for better performance
-            // SwiftData Predicate supports checking if a value is in a Set
-            let descriptor = FetchDescriptor<Entry>(
-                predicate: #Predicate<Entry> { entry in
-                    entryIdsSet.contains(entry.id)
-                }
-            )
-            
-            let entries = try mainContext.fetch(descriptor)
-            
-            // Map entries to dictionary by ID
-            var result: [UUID: Entry] = [:]
-            for entry in entries {
-                result[entry.id] = entry
+        let mainContext = PersistenceController.shared.context
+
+        // Return empty dictionary if no IDs provided
+        guard !entryIds.isEmpty else { return [:] }
+
+        // Convert to Set for efficient membership checking
+        let entryIdsSet = Set(entryIds)
+
+        // Use a single query with Set membership check for better performance
+        // SwiftData Predicate supports checking if a value is in a Set
+        let descriptor = FetchDescriptor<Entry>(
+            predicate: #Predicate<Entry> { entry in
+                entryIdsSet.contains(entry.id)
             }
-            
-            return result
+        )
+
+        let entries = try mainContext.fetch(descriptor)
+
+        // Map entries to dictionary by ID
+        var result: [UUID: Entry] = [:]
+        for entry in entries {
+            result[entry.id] = entry
         }
+
+        return result
     }
     
     // MARK: - Data Extraction Helpers
@@ -630,97 +670,136 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// - Parameters:
     ///   - newEntries: Entries to create.
     func syncEntries(newEntries: [Entry]) async throws {
-        // Extract all entry data before crossing actor boundary
-        struct EntryData: Sendable {
-            let id: UUID
-            let accountId: String
-            let entryTimestamp: String
-            let serverTimestamp: String?
-            let operationType: String
-            let deviceType: String
-            let isSynced: Bool
-            let isFailedToSync: Bool
-            let attempts: Int
-            let scaleEntry: ScaleEntryData?
-            let scaleEntryMetric: ScaleMetricData?
-        }
+        let entriesData = extractEntryData(from: newEntries)
+        try await createEntriesInBackground(entriesData: entriesData)
+    }
+    
+    // MARK: - Sync Helpers
 
-        struct ScaleEntryData: Sendable {
-            let weight: Int?
-            let bodyFat: Int?
-            let muscleMass: Int?
-            let water: Int?
-            let bmi: Int?
-            let source: String?
-        }
-
-        struct ScaleMetricData: Sendable {
-            let bmr: Int?
-            let metabolicAge: Int?
-            let proteinPercent: Int?
-            let pulse: Int?
-            let skeletalMusclePercent: Int?
-            let subcutaneousFatPercent: Int?
-            let visceralFatLevel: Int?
-            let boneMass: Int?
-            let impedance: Int?
-            let unit: String?
-        }
-
-        let entriesData: [EntryData] = newEntries.map { entry in
-            let scaleEntryData = entry.scaleEntry.map { se in
-                ScaleEntryData(weight: se.weight, bodyFat: se.bodyFat, muscleMass: se.muscleMass, water: se.water, bmi: se.bmi, source: se.source)
-            }
-            let metricData = entry.scaleEntryMetric.map { m in
-                ScaleMetricData(bmr: m.bmr, metabolicAge: m.metabolicAge, proteinPercent: m.proteinPercent, pulse: m.pulse, skeletalMusclePercent: m.skeletalMusclePercent, subcutaneousFatPercent: m.subcutaneousFatPercent, visceralFatLevel: m.visceralFatLevel, boneMass: m.boneMass, impedance: m.impedance, unit: m.unit)
-            }
-            return EntryData(id: entry.id, accountId: entry.accountId, entryTimestamp: entry.entryTimestamp, serverTimestamp: entry.serverTimestamp, operationType: entry.operationType, deviceType: entry.deviceType, isSynced: entry.isSynced, isFailedToSync: entry.isFailedToSync, attempts: entry.attempts, scaleEntry: scaleEntryData, scaleEntryMetric: metricData)
-        }
-
-        try await performBackgroundTask { ctx in
-            for data in entriesData {
-                let newEntry = Entry(
-                    id: data.id,
-                    entryTimestamp: data.entryTimestamp,
-                    accountId: data.accountId,
-                    operationType: data.operationType,
-                    serverTimestamp: data.serverTimestamp,
-                    deviceType: data.deviceType,
-                    isSynced: data.isSynced
+    /// Extracts entry data into Sendable structures before crossing actor boundary
+    private func extractEntryData(from entries: [Entry]) -> [EntrySyncData] {
+        return entries.map { entry in
+            let scaleEntryData = entry.scaleEntry.map { scaleEntry in
+                DeviceEntryData(
+                    weight: scaleEntry.weight,
+                    bodyFat: scaleEntry.bodyFat,
+                    muscleMass: scaleEntry.muscleMass,
+                    water: scaleEntry.water,
+                    bmi: scaleEntry.bmi,
+                    source: scaleEntry.source
                 )
-                newEntry.isFailedToSync = data.isFailedToSync
-                newEntry.attempts = data.attempts
-
-                if let seData = data.scaleEntry {
-                    newEntry.scaleEntry = BathScaleEntry(
-                        weight: seData.weight,
-                        bodyFat: seData.bodyFat,
-                        muscleMass: seData.muscleMass,
-                        water: seData.water,
-                        bmi: seData.bmi,
-                        source: seData.source
-                    )
-                }
-
-                if let mData = data.scaleEntryMetric {
-                    newEntry.scaleEntryMetric = BathScaleMetric(
-                        bmr: mData.bmr,
-                        metabolicAge: mData.metabolicAge,
-                        proteinPercent: mData.proteinPercent,
-                        pulse: mData.pulse,
-                        skeletalMusclePercent: mData.skeletalMusclePercent,
-                        subcutaneousFatPercent: mData.subcutaneousFatPercent,
-                        visceralFatLevel: mData.visceralFatLevel,
-                        boneMass: mData.boneMass,
-                        impedance: mData.impedance,
-                        unit: mData.unit
-                    )
-                }
-
+            }
+            let metricData = entry.scaleEntryMetric.map { metric in
+                DeviceMetricData(
+                    bmr: metric.bmr,
+                    metabolicAge: metric.metabolicAge,
+                    proteinPercent: metric.proteinPercent,
+                    pulse: metric.pulse,
+                    skeletalMusclePercent: metric.skeletalMusclePercent,
+                    subcutaneousFatPercent: metric.subcutaneousFatPercent,
+                    visceralFatLevel: metric.visceralFatLevel,
+                    boneMass: metric.boneMass,
+                    impedance: metric.impedance,
+                    unit: metric.unit
+                )
+            }
+            return EntrySyncData(
+                id: entry.id,
+                accountId: entry.accountId,
+                entryTimestamp: entry.entryTimestamp,
+                serverTimestamp: entry.serverTimestamp,
+                operationType: entry.operationType,
+                entryType: entry.entryType ?? EntryType.scale.rawValue,
+                isSynced: entry.isSynced,
+                isFailedToSync: entry.isFailedToSync,
+                attempts: entry.attempts,
+                scaleEntry: scaleEntryData,
+                scaleEntryMetric: metricData,
+                bpmSystolic: entry.bpmEntry?.systolic,
+                bpmDiastolic: entry.bpmEntry?.diastolic,
+                bpmMeanArterial: entry.bpmEntry?.meanArterial,
+                bpmPulse: entry.bpmEntry?.pulse,
+                note: entry.note,
+                babyEntryBabyId: entry.babyEntry?.babyId,
+                babyEntryLength: entry.babyEntry?.length,
+                babyEntryWeight: entry.babyEntry?.weight
+            )
+        }
+    }
+    
+    /// Creates entries in background context from extracted data
+    private func createEntriesInBackground(entriesData: [EntrySyncData]) async throws {
+        try await performBackgroundTask { [self] ctx in
+            for data in entriesData {
+                let newEntry = self.createEntry(from: data)
                 ctx.insert(newEntry)
             }
             try ctx.save()
             return ()
         }
+    }
+    
+    /// Creates an Entry instance from EntrySyncData
+    private func createEntry(from data: EntrySyncData) -> Entry { // swiftlint:disable:this function_body_length
+        let newEntry = Entry(
+            id: data.id,
+            entryTimestamp: data.entryTimestamp,
+            accountId: data.accountId,
+            operationType: data.operationType,
+            serverTimestamp: data.serverTimestamp,
+            entryType: data.entryType,
+            isSynced: data.isSynced
+        )
+        newEntry.isFailedToSync = data.isFailedToSync
+        newEntry.attempts = data.attempts
+
+        if let seData = data.scaleEntry {
+            newEntry.scaleEntry = BathScaleEntry(
+                weight: seData.weight,
+                bodyFat: seData.bodyFat,
+                muscleMass: seData.muscleMass,
+                water: seData.water,
+                bmi: seData.bmi,
+                source: seData.source
+            )
+        }
+
+        if let mData = data.scaleEntryMetric {
+            newEntry.scaleEntryMetric = BathScaleMetric(
+                bmr: mData.bmr,
+                metabolicAge: mData.metabolicAge,
+                proteinPercent: mData.proteinPercent,
+                pulse: mData.pulse,
+                skeletalMusclePercent: mData.skeletalMusclePercent,
+                subcutaneousFatPercent: mData.subcutaneousFatPercent,
+                visceralFatLevel: mData.visceralFatLevel,
+                boneMass: mData.boneMass,
+                impedance: mData.impedance,
+                unit: mData.unit
+            )
+        }
+
+        if let systolic = data.bpmSystolic, let diastolic = data.bpmDiastolic,
+           let meanArterial = data.bpmMeanArterial, let pulse = data.bpmPulse {
+            newEntry.bpmEntry = BPMEntry(
+                systolic: systolic,
+                diastolic: diastolic,
+                meanArterial: meanArterial,
+                pulse: pulse
+            )
+        }
+
+        if let entryBabyId = data.babyEntryBabyId, let length = data.babyEntryLength,
+           let weight = data.babyEntryWeight {
+            newEntry.babyEntry = BabyEntry(
+                babyId: entryBabyId,
+                length: length,
+                weight: weight
+            )
+        }
+
+        newEntry.note = data.note
+
+        return newEntry
     }
 }

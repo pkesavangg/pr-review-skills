@@ -126,7 +126,7 @@ constructor(
     action: ActionButton?,
   ) {
     dialogQueueService.showToast(
-      Toast(
+      Toast.Simple(
         message = message,
         title = title,
         action = action,

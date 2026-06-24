@@ -84,15 +84,13 @@ struct EditModeOverlay: ViewModifier {
     }
 }
 
-
-
 #Preview {
     VStack(spacing: 20) {
         RoundedRectangle(cornerRadius: 8)
             .fill(Color.blue.opacity(0.2))
             .frame(width: 200, height: 100)
             .overlay(Text("Normal Item"))
-            .editModeOverlay(isEditMode: false, isRemoved: false, onToggleRemoval: {})
+            .editModeOverlay(isEditMode: false, isRemoved: false) {}
         
         // Edit mode - not removed (should wiggle with row timing)
         RoundedRectangle(cornerRadius: 8)

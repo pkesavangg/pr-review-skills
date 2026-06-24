@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.core.navigation
 import androidx.navigation3.runtime.NavKey
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
+import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BabyScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
@@ -42,6 +43,9 @@ sealed class AppRoute : NavKey {
     data object Dashboard : Main()
 
     @Serializable
+    data object DashboardSnapshot : Main()
+
+    @Serializable
     data object Entry : Main()
 
     @Serializable
@@ -60,6 +64,8 @@ sealed class AppRoute : NavKey {
 
     data class MonthDetails(
       val month: String,
+      val productType: com.dmdbrands.gurus.weight.domain.enums.ProductType =
+        com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
     ) : AppRoute()
   }
 
@@ -102,7 +108,7 @@ sealed class AppRoute : NavKey {
     data object Weightless : AccountSettings()
 
     @Serializable
-    data object AddEditScales : AccountSettings()
+    data object MyDevices : AccountSettings()
 
     @Serializable
     data object ChooseScale : AccountSettings()
@@ -122,6 +128,12 @@ sealed class AppRoute : NavKey {
 
     @Serializable
     data object AppPermissions : AccountSettings()
+
+    @Serializable
+    data object MyKids : AccountSettings()
+
+    @Serializable
+    data object AddBaby : AccountSettings()
 
     @Serializable
     data class ScaleDetails(
@@ -205,6 +217,19 @@ sealed class AppRoute : NavKey {
     @Serializable
     data class AppsyncScaleSetup(
       val sku: String
+    ) : ScaleSetup()
+
+    @Serializable
+    data class BpmSetup(
+      val sku: String
+    ) : ScaleSetup()
+
+    @Serializable
+    data class BabyScaleSetup(
+      val sku: String,
+      val initialStep: BabyScaleSetupStep = BabyScaleSetupStep.SCALE_INFO,
+      val broadcastId: String? = null,
+      val scaleInfo: ScaleInfo? = null,
     ) : ScaleSetup()
   }
 

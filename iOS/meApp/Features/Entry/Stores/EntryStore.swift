@@ -1,15 +1,18 @@
+// swiftlint:disable file_length
+import Combine
 import Foundation
 import SwiftUI
-import Combine
 
 @MainActor
+// swiftlint:disable:next type_body_length
 final class EntryStore: ObservableObject {
     // Dependencies
     @Injector var accountService: AccountServiceProtocol
-    @Injector var notificationService: NotificationHelperService
+    @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var entryService: EntryServiceProtocol
     @Injector var logger: LoggerServiceProtocol
-    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var deviceService: PairedDeviceServiceProtocol
+    @Injector var productTypeStore: ProductTypeStoreProtocol
 
     // Strings
     private let toastLang = ToastStrings.self
@@ -17,8 +20,14 @@ final class EntryStore: ObservableObject {
     private let alertLang = AlertStrings.ManualEntryExitAlert.self
     private let loaderLang = LoaderStrings.self
 
+    // Product type injected via DI; drives which entry view is shown
+
     // Form & UI state
     @Published var manualEntryForm = ManualEntryForm()
+    @Published var bpForm = BloodPressureEntryForm()
+    @Published var babyForm = BabyEntryForm()
+    @Published var babyWeightUnit: BabyWeightUnit = .lbsOz
+    @Published var babyLengthUnit: BabyLengthUnit = .inches
     @Published var weightUnit: WeightUnit = .lb
     @Published var canShowOtherBodyMetrics = false
     @Published var showMetrics = false
@@ -40,6 +49,23 @@ final class EntryStore: ObservableObject {
 
     let tag = "EntryStore"
 
+    var isBabyFormValid: Bool {
+        let weightValid: Bool
+        switch babyWeightUnit {
+        case .kg: weightValid = !babyForm.kg.value.isEmpty && babyForm.kg.isValid
+        case .lb: weightValid = !babyForm.lb.value.isEmpty && babyForm.lb.isValid
+        case .lbsOz: weightValid = !babyForm.pounds.value.isEmpty && babyForm.pounds.isValid && babyForm.ounces.isValid
+        }
+
+        let lengthValid: Bool
+        switch babyLengthUnit {
+        case .inches: lengthValid = !babyForm.inches.value.isEmpty && babyForm.inches.isValid
+        case .cm: lengthValid = !babyForm.cm.value.isEmpty && babyForm.cm.isValid
+        }
+
+        return weightValid && lengthValid && babyForm.date.isValid
+    }
+
     var maxSelectableTime: Date {
         if Calendar.current.isDateInToday(manualEntryForm.date.value) {
             let now = Date()
@@ -55,8 +81,9 @@ final class EntryStore: ObservableObject {
 
     // MARK: - Init
     init() {
-        scaleService.scalesPublisher
-            .map { $0.contains { $0.bathScale?.scaleType == ScaleSourceType.btWifiR4.rawValue } }
+        deviceService.scalesPublisher
+            .map { $0.contains { $0.bathScale?.scaleType == DeviceSourceType.btWifiR4.rawValue } }
+            .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .assign(to: \.canShowOtherBodyMetrics, on: self)
             .store(in: &cancellables)
@@ -65,6 +92,25 @@ final class EntryStore: ObservableObject {
         setupBmiObservers()
         updateWeightValidators()
         setupDateTimeObservers()
+        subscribeToProductTypeChanges()
+    }
+
+    private func subscribeToProductTypeChanges() {
+        productTypeStore.selectedItemPublisher
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] newItem in
+                guard let self = self else { return }
+                self.logger.log(
+                      level: .info,
+                      tag: self.tag,
+                      message: "Product type changed to \(newItem.displayName)"
+                  )
+                self.resetBPForm()
+                self.resetBabyForm()
+                self.resetWeightForm()
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Public helpers
@@ -87,7 +133,7 @@ final class EntryStore: ObservableObject {
     /// Returns `true` only when the entry was persisted successfully; callers should
     /// gate post-save navigation on this result.
     @discardableResult
-    func saveEntry() async -> Bool {
+    func saveEntry() async -> Bool { // swiftlint:disable:this function_body_length
         guard !isSaving else { return false }
         isSaving = true
         notificationService.showLoader(LoaderModel(text: loaderLang.savingEntry))
@@ -156,7 +202,7 @@ final class EntryStore: ObservableObject {
             entryTimestamp: entryTimestamp,
             accountId: accountId,
             operationType: OperationType.create.rawValue,
-            deviceType: DeviceType.scale.rawValue,
+            entryType: EntryType.scale.rawValue,
             isSynced: false
         )
         entry.scaleEntry = scaleEntry
@@ -169,7 +215,6 @@ final class EntryStore: ObservableObject {
             // Let event streams (entrySaved) trigger downstream reloads
             resetForm()
             logger.log(level: .success, tag: self.tag, message: "Manual entry save succeeded. accountId=\(accountId), timestamp=\(entryTimestamp)")
-            notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
             return true
         } catch {
             logger.log(
@@ -195,7 +240,7 @@ final class EntryStore: ObservableObject {
             }
         }
     }
-    
+
     /// Refreshes the weight unit from the active account.
     /// Call this when the view appears to ensure the unit is up-to-date after sync.
     func refreshWeightUnit() {
@@ -288,7 +333,7 @@ final class EntryStore: ObservableObject {
                 self.updateWeightUnitFromAccount(account)
             }
             .store(in: &cancellables)
-        
+
         // Observe NotificationCenter for weightUnit changes (catches cases where @Published doesn't emit)
         NotificationCenter.default.publisher(for: .accountWeightUnitChanged)
             .receive(on: DispatchQueue.main)
@@ -299,18 +344,39 @@ final class EntryStore: ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
-    private func updateWeightUnitFromAccount(_ account: Account?) {
-        let unit = account?.weightSettings?.weightUnit ?? .lb
-        
+
+    @MainActor private func updateWeightUnitFromAccount(_ account: AccountSnapshot?) {
+        let unit = account?.weightUnit ?? .lb
+        let newBabyWeightUnit = babyWeightUnitFor(account)
+        let newBabyLengthUnit: BabyLengthUnit = newBabyWeightUnit == .kg ? .cm : .inches
+
+        var didChange = false
         if self.weightUnit != unit {
             self.weightUnit = unit
+            didChange = true
+        }
+        if self.babyWeightUnit != newBabyWeightUnit {
+            self.babyWeightUnit = newBabyWeightUnit
+            didChange = true
+        }
+        if self.babyLengthUnit != newBabyLengthUnit {
+            self.babyLengthUnit = newBabyLengthUnit
+            didChange = true
+        }
+        if didChange {
             self.updateWeightValidators()
             self.calculateBMI()
-            // Force UI update
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-            }
+            self.objectWillChange.send()
+        }
+    }
+
+    private func babyWeightUnitFor(_ account: AccountSnapshot?) -> BabyWeightUnit {
+        guard let raw = account?.measurementUnits,
+              let units = MeasurementUnits(rawValue: raw) else { return .lbsOz }
+        switch units {
+        case .metric:            return .kg
+        case .imperialLbDecimal: return .lb
+        case .imperialLbOz:      return .lbsOz
         }
     }
 
@@ -326,17 +392,15 @@ final class EntryStore: ObservableObject {
             .store(in: &cancellables)
     }
 
-    private func calculateBMI() {
+    @MainActor private func calculateBMI() {
         guard isBmiAutoCalculationEnabled else { return }
         guard let weightDouble = Double(manualEntryForm.weight.value), weightDouble > 0 else {
             manualEntryForm.bmi.value = ""
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-            }
+            self.objectWillChange.send()
             return
         }
 
-        let heightString = accountService.activeAccount?.weightSettings?.height ?? "0"
+        let heightString = accountService.activeAccount?.weightHeight ?? "0"
         let storedHeight = ConversionTools.convertStoredHeightToCm(Int(round(Double(heightString) ?? 0)))
 
         let storedWeight: Double = {
@@ -344,7 +408,7 @@ final class EntryStore: ObservableObject {
             case .kg:
                 return weightDouble
             case .lb:
-                return ConversionTools.convertStoredToKg((ConversionTools.convertDisplayToStored(weightDouble))) 
+                return ConversionTools.convertStoredToKg((ConversionTools.convertDisplayToStored(weightDouble)))
             }
         }()
 
@@ -355,11 +419,9 @@ final class EntryStore: ObservableObject {
         manualEntryForm.bmi.value = bmi == 0 ? "" : bmi > maxBmiValue ? String(99.9) : String(bmi)
         if bmi < maxBmiValue { manualEntryForm.bmi.markAsPristine() }
         manualEntryForm.bmi.validate()
-        
+
         // Force UI update to ensure MetricInputField reflects the new BMI value immediately
-        DispatchQueue.main.async {
-            self.objectWillChange.send()
-        }
+        self.objectWillChange.send()
     }
 
     private func updateWeightValidators() {
@@ -373,7 +435,7 @@ final class EntryStore: ObservableObject {
         return Int(floor(value * 10))
     }
 
-    func resetForm() {
+    @MainActor func resetForm() {
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
         stopAutoTimeSync()
@@ -391,6 +453,180 @@ final class EntryStore: ObservableObject {
         setupBmiObservers()
         updateWeightValidators()
         setupDateTimeObservers()
+    }
+
+    func saveBPEntry() async {
+        guard !isSaving else { return }
+        isSaving = true
+        notificationService.showLoader(LoaderModel(text: loaderLang.savingEntry))
+        defer {
+            notificationService.dismissLoader()
+            isSaving = false
+        }
+
+        guard bpForm.isValid else { return }
+
+        let entryTimestamp = DateTimeTools.isoString(
+            date: bpForm.date.value,
+            time: bpForm.time.value,
+            useUTC: true,
+            randomizeSubMinute: true
+        )
+
+        let systolic = Double(bpForm.systolic.value) ?? 0
+        let diastolic = Double(bpForm.diastolic.value) ?? 0
+        let pulse = Double(bpForm.pulse.value) ?? 0
+        let meanArterial = String(Int(round(diastolic + (systolic - diastolic) / 3.0)))
+
+        let dto = BpmOperationDTO(
+            accountId: nil,
+            systolic: systolic,
+            diastolic: diastolic,
+            pulse: pulse,
+            meanArterial: meanArterial,
+            note: bpForm.notes.value.isEmpty ? nil : bpForm.notes.value,
+            source: EntrySource.manual.rawValue,
+            unit: nil,
+            entryTimestamp: entryTimestamp,
+            operationType: nil,
+            serverTimestamp: nil
+        )
+
+        do {
+            logger.log(level: .info, tag: tag, message: "BPM entry save started. timestamp=\(entryTimestamp)")
+            try await entryService.createBpmEntry(dto)
+            resetBPForm()
+            logger.log(level: .success, tag: tag, message: "BPM entry save succeeded. timestamp=\(entryTimestamp)")
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to save BPM entry. error=\(error.localizedDescription)")
+            notificationService.showToast(ToastModel(title: toastLang.errorSavingEntry, message: toastLang.pleaseTryAgain))
+        }
+    }
+
+    // swiftlint:disable:next function_body_length
+    func saveBabyEntry() async {
+        guard !isSaving else { return }
+        isSaving = true
+        notificationService.showLoader(LoaderModel(text: loaderLang.savingEntry))
+        defer {
+            notificationService.dismissLoader()
+            isSaving = false
+        }
+
+        guard isBabyFormValid else { return }
+
+        guard case .baby(let profile) = productTypeStore.selectedItem,
+              !profile.isPendingSelection else { return }
+
+        let entryTimestamp = DateTimeTools.isoString(
+            date: babyForm.date.value,
+            time: babyForm.time.value,
+            useUTC: true,
+            randomizeSubMinute: true
+        )
+
+        let weight: Int
+        switch babyWeightUnit {
+        case .kg:
+            let kgValue = Double(babyForm.kg.value) ?? 0
+            weight = ConversionTools.convertBabyKgToDecigrams(kgValue)
+        case .lb:
+            let lbValue = Double(babyForm.lb.value) ?? 0
+            weight = ConversionTools.convertBabyLbToDecigrams(lbValue)
+        case .lbsOz:
+            let pounds = Int(Double(babyForm.pounds.value) ?? 0)
+            let ounces = Double(babyForm.ounces.value) ?? 0
+            weight = ConversionTools.convertBabyLbsOzToDecigrams(lbs: pounds, oz: ounces)
+        }
+
+        guard weight > 0 else {
+            logger.log(level: .info, tag: tag, message: "Baby entry save skipped: weight is zero")
+            return
+        }
+
+        let length: Int
+        switch babyLengthUnit {
+        case .cm:
+            let cmValue = Double(babyForm.cm.value) ?? 0
+            length = ConversionTools.convertBabyCmToMm(cmValue)
+        case .inches:
+            let inchesValue = Double(babyForm.inches.value) ?? 0
+            length = ConversionTools.convertBabyInchesToMm(inchesValue)
+        }
+        let note = babyForm.notes.value
+
+        do {
+            logger.log(level: .info, tag: tag, message: "Baby entry save started. babyId=\(profile.id), timestamp=\(entryTimestamp)")
+            try await entryService.createBabyEntry(
+                babyId: profile.id,
+                weight: weight,
+                length: length,
+                note: note,
+                entryTimestamp: entryTimestamp
+            )
+            resetBabyForm()
+            logger.log(level: .success, tag: tag, message: "Baby entry save succeeded. babyId=\(profile.id), timestamp=\(entryTimestamp)")
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to save baby entry. error=\(error.localizedDescription)")
+            notificationService.showToast(ToastModel(title: toastLang.errorSavingEntry, message: toastLang.pleaseTryAgain))
+        }
+    }
+
+    func getBPError<T>(for control: FormControl<T>) -> String? {
+        bpForm.getError(for: control)
+    }
+
+    func getBPWarning<T>(for control: FormControl<T>) -> String? {
+        bpForm.getWarning(for: control)
+    }
+
+    @MainActor func resetBPForm() {
+        bpForm = BloodPressureEntryForm()
+        bpForm.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+    }
+
+    func getBabyError<T>(for control: FormControl<T>) -> String? {
+        babyForm.getError(for: control)
+    }
+
+    var babyWeightError: String? {
+        switch babyWeightUnit {
+        case .kg: return babyForm.weightErrorMetric
+        case .lb: return babyForm.weightErrorLb
+        case .lbsOz: return babyForm.weightError
+        }
+    }
+
+    var babyLengthError: String? {
+        switch babyLengthUnit {
+        case .cm: return babyForm.lengthErrorCm
+        case .inches: return babyForm.lengthError
+        }
+    }
+
+    @MainActor func resetBabyForm() {
+        let newBabyWeightUnit = babyWeightUnitFor(accountService.activeAccount)
+        babyWeightUnit = newBabyWeightUnit
+        babyLengthUnit = newBabyWeightUnit == .kg ? .cm : .inches
+        babyForm = BabyEntryForm()
+        babyForm.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+    }
+
+    @MainActor func resetWeightForm() {
+        isBmiAutoCalculationEnabled = true
+        manualEntryForm = ManualEntryForm()
+        manualEntryForm.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+        showMetrics = false
+        showDatePicker = false
+        showTimePicker = false
+        hasUserAdjustedTime = false
+        updateWeightValidators()
     }
 
     func showExitAlert(onConfirm: @escaping () -> Void, onCancel: (() -> Void)? = nil) {
@@ -447,7 +683,7 @@ final class EntryStore: ObservableObject {
         timeSyncCancellable = nil
     }
 
-    private func performAutoTimeTick() {
+    @MainActor private func performAutoTimeTick() {
         guard isTimeSyncActive else { return }
         // Only auto-update when selected date is today, picker is not open, and user hasn't adjusted time
         guard Calendar.current.isDateInToday(manualEntryForm.date.value) else { return }
@@ -466,9 +702,7 @@ final class EntryStore: ObservableObject {
             manualEntryForm.time.value = clamped
             manualEntryForm.time.markAsPristine()
             // Ensure SwiftUI sees the nested change
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-            }
+            self.objectWillChange.send()
         }
     }
 }

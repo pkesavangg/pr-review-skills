@@ -21,15 +21,21 @@ struct ErrorCodeButtonGrid: View {
                             onErrorSelected?(code)
                         } label: {
                             VStack(spacing: 4) {
-                                // Error code image
                                 Image(getImageName(for: code, isSelected: selectedError == code))
                                     .resizable()
                                     .aspectRatio(contentMode: .fit)
                                     .frame(width: buttonSize, height: sku == sku0384 ? buttonSize * 0.6 : buttonSize)
+                                    .accessibilityHidden(true)
                             }
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, .spacingXS)
+                        .accessibilityLabel(
+                            selectedError == code
+                                ? WifiScaleSetupStrings.A11y.errorCodeButtonSelectedLabel(code.rawValue)
+                                : WifiScaleSetupStrings.A11y.errorCodeButtonLabel(code.rawValue)
+                        )
+                        .accessibilityHint(WifiScaleSetupStrings.A11y.errorCodeButtonHint)
                     }
                 }
             }

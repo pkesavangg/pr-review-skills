@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 14/07/25.
 //
 
-
 import SwiftUI
 
 struct WifiPasswordEntryView: View {
@@ -16,7 +15,7 @@ struct WifiPasswordEntryView: View {
     @State private var keyboardHeight: CGFloat = 0
     let lang = BtWifiScaleSetupStrings.WifiScreenStrings.self
     let commonLang = CommonStrings.self
-    let isScaleSetup: Bool
+    let isDeviceSetup: Bool
     var labels = InputFieldLabels.self
     
     /// Bottom padding to keep ScrollView content visible above footer and keyboard
@@ -29,8 +28,8 @@ struct WifiPasswordEntryView: View {
         VStack(spacing: 0) {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
-                    VStack(alignment: .leading){
-                        VStack(alignment: .leading, spacing: .spacingXS){
+                    VStack(alignment: .leading) {
+                        VStack(alignment: .leading, spacing: .spacingXS) {
                             Text(lang.enterPasswordTitle)
                                 .fontOpenSans(.heading4)
                                 .fontWeight(.bold)
@@ -86,7 +85,7 @@ struct WifiPasswordEntryView: View {
             
             // Show Back and Connect buttons only when reconfiguring WiFi from Settings screen
             // Do not show during initial scale setup flow
-            if store.isSettingsContext  {
+            if store.isSettingsContext {
                 settingsFooterButtons
                     .padding(.vertical, .spacingSM)
             }
@@ -100,14 +99,13 @@ struct WifiPasswordEntryView: View {
                 text: commonLang.back,
                 type: .inlineTextPrimary,
                 size: .small,
-                isDisabled: false,
-                action: {
+                isDisabled: false
+            ) {
                     withAnimation {
                         hideKeyboard()
                         store.handleBackButtonClick()
                     }
                 }
-            )
             
             Spacer()
             
@@ -115,14 +113,13 @@ struct WifiPasswordEntryView: View {
                 text: lang.connectButtonTitle,
                 type: .filledPrimary,
                 size: .small,
-                isDisabled: !store.isFormValid,
-                action: {
+                isDisabled: !store.isFormValid
+            ) {
                     withAnimation {
                         hideKeyboard()
                         store.handleNextButtonClick()
                     }
                 }
-            )
         }
     }
     
@@ -133,7 +130,7 @@ struct WifiPasswordEntryView: View {
     store.configure(with: "0412", isWifiSetupOnly: true)
     return WifiPasswordEntryView(
         wifiDetail: WifiDetails(macAddress: "aa:bb:cc:dd:ee:ff", ssid: "Home WiFi"),
-        isScaleSetup: true
+        isDeviceSetup: true
     )
     .environmentObject(store)
 }

@@ -4,6 +4,7 @@ import com.dmdbrands.gurus.weight.core.network.HttpClient
 import com.dmdbrands.gurus.weight.data.api.EntryApi
 import com.dmdbrands.gurus.weight.data.api.IAccountFlagAPI
 import com.dmdbrands.gurus.weight.data.api.IAuthAPI
+import com.dmdbrands.gurus.weight.data.api.IBabyAPI
 import com.dmdbrands.gurus.weight.data.api.IBodyCompAPI
 import com.dmdbrands.gurus.weight.data.api.IDeviceAPI
 import com.dmdbrands.gurus.weight.data.api.IDeviceInfoAPI
@@ -13,6 +14,7 @@ import com.dmdbrands.gurus.weight.data.api.IGoalAPI
 import com.dmdbrands.gurus.weight.data.api.IHealthConnectAPI
 import com.dmdbrands.gurus.weight.data.api.IIntegrationAPI
 import com.dmdbrands.gurus.weight.data.api.INotificationAPI
+import com.dmdbrands.gurus.weight.data.api.IReviewAPI
 import com.dmdbrands.gurus.weight.data.api.ISupportAPI
 import com.dmdbrands.gurus.weight.data.api.IUserAPI
 import com.dmdbrands.gurus.weight.data.api.IUserSettingsAPI
@@ -38,6 +40,13 @@ object ApiModule {
     @Provides
     @Singleton
     fun provideAuthAPI(httpClient: HttpClient): IAuthAPI = httpClient.createService(IAuthAPI::class.java)
+
+    /**
+     * Provides a singleton instance of [IBabyAPI] for Baby Profile CRUD.
+     */
+    @Provides
+    @Singleton
+    fun provideBabyAPI(httpClient: HttpClient): IBabyAPI = httpClient.createService(IBabyAPI::class.java)
 
     /**
      * Provides a singleton instance of [IUserAPI] using the provided [HttpClient].
@@ -117,6 +126,11 @@ object ApiModule {
     @Provides
     @Singleton
     fun provideScaleAPI(httpClient: HttpClient): IDeviceAPI = httpClient.createService(IDeviceAPI::class.java)
+
+    /** Provides the [IReviewAPI] for `POST /v3/review/` (MOB-378). */
+    @Provides
+    @Singleton
+    fun provideReviewAPI(httpClient: HttpClient): IReviewAPI = httpClient.createService(IReviewAPI::class.java)
 
     /**
      * Provides the ISupportAPI implementation using Retrofit.

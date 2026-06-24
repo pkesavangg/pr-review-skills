@@ -1,76 +1,318 @@
 package com.dmdbrands.gurus.weight.core.service
 
+import com.dmdbrands.gurus.weight.core.helpers.httpException
+import com.dmdbrands.gurus.weight.core.helpers.stubNetworkAvailable
+import com.dmdbrands.gurus.weight.core.helpers.stubNetworkUnavailable
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
+import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeUtil
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
+import com.dmdbrands.gurus.weight.domain.model.api.metrics.StreakRequest
+import com.dmdbrands.gurus.weight.domain.model.api.metrics.WeightlessRequest
 import com.dmdbrands.gurus.weight.domain.repository.IUserSettingsRepository
-import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import io.mockk.clearAllMocks
 import io.mockk.coEvery
+import io.mockk.coJustRun
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.runBlocking
-import org.junit.Assert.assertTrue
-import org.junit.Assert.fail
-import org.junit.Test
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.RegisterExtension
+import retrofit2.HttpException
+import kotlin.test.assertFailsWith
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class UserSettingsServiceTest {
 
-  private fun makeService(
-    repository: IUserSettingsRepository,
-  ): UserSettingsService = UserSettingsService(
-    userSettingsRepository = repository,
-    connectivityObserver = mockk<IConnectivityObserver>(relaxed = true),
-    dialogQueueService = mockk<IDialogQueueService>(relaxed = true),
-    appNavigationService = mockk<IAppNavigationService>(relaxed = true),
-  )
+    @JvmField
+    @RegisterExtension
+    val mainDispatcherRule = MainDispatcherRule()
 
-  @Test
-  fun `setDefaultGraphSegment delegates to repository`() {
-    val repository = mockk<IUserSettingsRepository>(relaxed = true) {
-      coEvery { setDefaultGraphSegment(any()) } returns Unit
+    // --- Mocks ---
+    private val userSettingsRepository: IUserSettingsRepository = mockk()
+    private val connectivityObserver: IConnectivityObserver = mockk()
+    private val dialogQueueService: IDialogQueueService = mockk(relaxed = true)
+    private val appNavigationService: IAppNavigationService = mockk(relaxed = true)
+
+    private lateinit var service: UserSettingsService
+
+    // --- Test Fixtures ---
+    private val fakeTimestamp = "2026-03-17 10:00:00.000000+00:00"
+
+    @BeforeEach
+    fun setUp() {
+        mockkObject(DateTimeUtil)
+        every { DateTimeUtil.getCurrentTimestamp() } returns fakeTimestamp
+        stubNetworkAvailable()
+        service = createService()
     }
 
-    val service = makeService(repository)
-
-    runBlocking { service.setDefaultGraphSegment(GraphSegment.YEAR) }
-
-    coVerify(exactly = 1) { repository.setDefaultGraphSegment(GraphSegment.YEAR) }
-  }
-
-  @Test
-  fun `setDefaultGraphSegment rethrows when repository throws`() {
-    // The ViewModel relies on the rethrow to drive its catch path (loader dismiss + toast).
-    // If the service ever swallows the exception silently, the UI would lie about success.
-    val repository = mockk<IUserSettingsRepository>(relaxed = true) {
-      coEvery { setDefaultGraphSegment(any()) } throws RuntimeException("boom")
+    @AfterEach
+    fun tearDown() {
+        unmockkObject(DateTimeUtil)
+        clearAllMocks()
     }
 
-    val service = makeService(repository)
+    private fun createService() = UserSettingsService(
+        userSettingsRepository,
+        connectivityObserver,
+        dialogQueueService,
+        appNavigationService,
+    )
 
-    try {
-      runBlocking { service.setDefaultGraphSegment(GraphSegment.WEEK) }
-      fail("Expected RuntimeException to propagate from repository through service")
-    } catch (e: RuntimeException) {
-      assertTrue("Expected original exception message preserved", e.message == "boom")
+    // -------------------------------------------------------------------------
+    // Shared Helpers
+    // -------------------------------------------------------------------------
+
+    private fun stubNetworkAvailable() = connectivityObserver.stubNetworkAvailable()
+    private fun stubNetworkUnavailable() = connectivityObserver.stubNetworkUnavailable()
+
+    private fun stubUpdateStreakSettingSuccess() {
+        coJustRun { userSettingsRepository.updateStreakSetting(any()) }
     }
-  }
 
-  @Test
-  fun `setDefaultGraphSegment rethrows CancellationException without logging — structured concurrency contract`() {
-    // The catch block must re-throw CancellationException BEFORE AppLog.e so that:
-    // (a) structured concurrency is preserved for the caller's scope, and
-    // (b) normal scope cancellation is not misreported as an error.
-    val repository = mockk<IUserSettingsRepository>(relaxed = true) {
-      coEvery { setDefaultGraphSegment(any()) } throws CancellationException("scope cancelled")
+    private fun stubUpdateStreakSettingOfflineSuccess() {
+        coEvery { userSettingsRepository.updateStreakSettingOffline(any()) } returns null
     }
 
-    val service = makeService(repository)
-
-    try {
-      runBlocking { service.setDefaultGraphSegment(GraphSegment.MONTH) }
-      fail("Expected CancellationException to propagate from repository through service")
-    } catch (e: CancellationException) {
-      assertTrue("CancellationException message preserved", e.message == "scope cancelled")
+    private fun stubUpdateStreakSettingThrows(exception: Throwable) {
+        coEvery { userSettingsRepository.updateStreakSetting(any()) } throws exception
     }
-  }
+
+    private fun stubUpdateWeightlessSettingSuccess() {
+        coJustRun { userSettingsRepository.updateWeightlessSetting(any()) }
+    }
+
+    private fun stubUpdateWeightlessSettingOfflineSuccess() {
+        coEvery { userSettingsRepository.updateWeightlessSettingOffline(any()) } returns null
+    }
+
+    private fun stubUpdateWeightlessSettingThrows(exception: Throwable) {
+        coEvery { userSettingsRepository.updateWeightlessSetting(any()) } throws exception
+    }
+
+    // -------------------------------------------------------------------------
+    // toggleStreakSetting
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `toggleStreakSetting calls online repository when network available and streak on`() = runTest {
+        // Arrange
+        stubUpdateStreakSettingSuccess()
+
+        // Act
+        service.toggleStreakSetting(isStreakOn = true)
+
+        // Assert
+        coVerify(exactly = 1) {
+            userSettingsRepository.updateStreakSetting(
+                StreakRequest(isStreakOn = true, streakTimestamp = fakeTimestamp)
+            )
+        }
+        coVerify(exactly = 0) { userSettingsRepository.updateStreakSettingOffline(any()) }
+    }
+
+    @Test
+    fun `toggleStreakSetting calls online repository when network available and streak off`() = runTest {
+        // Arrange
+        stubUpdateStreakSettingSuccess()
+
+        // Act
+        service.toggleStreakSetting(isStreakOn = false)
+
+        // Assert
+        coVerify(exactly = 1) {
+            userSettingsRepository.updateStreakSetting(
+                StreakRequest(isStreakOn = false, streakTimestamp = fakeTimestamp)
+            )
+        }
+    }
+
+    @Test
+    fun `toggleStreakSetting calls offline repository when network unavailable`() = runTest {
+        // Arrange
+        stubNetworkUnavailable()
+        stubUpdateStreakSettingOfflineSuccess()
+
+        // Act
+        service.toggleStreakSetting(isStreakOn = true)
+
+        // Assert
+        coVerify(exactly = 1) {
+            userSettingsRepository.updateStreakSettingOffline(
+                StreakRequest(isStreakOn = true, streakTimestamp = fakeTimestamp)
+            )
+        }
+        coVerify(exactly = 0) { userSettingsRepository.updateStreakSetting(any()) }
+    }
+
+    @Test
+    fun `toggleStreakSetting rethrows HttpException from online call`() = runTest {
+        // Arrange
+        stubUpdateStreakSettingThrows(httpException(500))
+
+        // Act & Assert
+        assertFailsWith<HttpException> { service.toggleStreakSetting(isStreakOn = true) }
+    }
+
+    @Test
+    fun `toggleStreakSetting rethrows RuntimeException from online call`() = runTest {
+        // Arrange
+        stubUpdateStreakSettingThrows(RuntimeException("DB error"))
+
+        // Act & Assert
+        assertFailsWith<RuntimeException> { service.toggleStreakSetting(isStreakOn = true) }
+    }
+
+    @Test
+    fun `toggleStreakSetting rethrows exception from offline call`() = runTest {
+        // Arrange
+        stubNetworkUnavailable()
+        coEvery { userSettingsRepository.updateStreakSettingOffline(any()) } throws RuntimeException("DB write failed")
+
+        // Act & Assert
+        assertFailsWith<RuntimeException> { service.toggleStreakSetting(isStreakOn = false) }
+    }
+
+    // -------------------------------------------------------------------------
+    // toggleWeightlessSetting
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `toggleWeightlessSetting calls online repository when network available and weightless on`() = runTest {
+        // Arrange
+        stubUpdateWeightlessSettingSuccess()
+
+        // Act
+        service.toggleWeightlessSetting(isWeightlessOn = true, weightlessWeight = 150.0)
+
+        // Assert
+        coVerify(exactly = 1) {
+            userSettingsRepository.updateWeightlessSetting(
+                WeightlessRequest(
+                    isWeightlessOn = true,
+                    weightlessTimestamp = fakeTimestamp,
+                    weightlessWeight = 150.0,
+                )
+            )
+        }
+        coVerify(exactly = 0) { userSettingsRepository.updateWeightlessSettingOffline(any()) }
+    }
+
+    @Test
+    fun `toggleWeightlessSetting nulls timestamp and weight when weightless off`() = runTest {
+        // Arrange
+        stubUpdateWeightlessSettingSuccess()
+
+        // Act
+        service.toggleWeightlessSetting(isWeightlessOn = false, weightlessWeight = 150.0)
+
+        // Assert
+        coVerify(exactly = 1) {
+            userSettingsRepository.updateWeightlessSetting(
+                WeightlessRequest(
+                    isWeightlessOn = false,
+                    weightlessTimestamp = null,
+                    weightlessWeight = null,
+                )
+            )
+        }
+    }
+
+    @Test
+    fun `toggleWeightlessSetting passes null weight when weightless on and weight is null`() = runTest {
+        // Arrange
+        stubUpdateWeightlessSettingSuccess()
+
+        // Act
+        service.toggleWeightlessSetting(isWeightlessOn = true, weightlessWeight = null)
+
+        // Assert
+        coVerify(exactly = 1) {
+            userSettingsRepository.updateWeightlessSetting(
+                WeightlessRequest(
+                    isWeightlessOn = true,
+                    weightlessTimestamp = fakeTimestamp,
+                    weightlessWeight = null,
+                )
+            )
+        }
+    }
+
+    @Test
+    fun `toggleWeightlessSetting calls offline repository when network unavailable`() = runTest {
+        // Arrange
+        stubNetworkUnavailable()
+        stubUpdateWeightlessSettingOfflineSuccess()
+
+        // Act
+        service.toggleWeightlessSetting(isWeightlessOn = true, weightlessWeight = 200.0)
+
+        // Assert
+        coVerify(exactly = 1) {
+            userSettingsRepository.updateWeightlessSettingOffline(
+                WeightlessRequest(
+                    isWeightlessOn = true,
+                    weightlessTimestamp = fakeTimestamp,
+                    weightlessWeight = 200.0,
+                )
+            )
+        }
+        coVerify(exactly = 0) { userSettingsRepository.updateWeightlessSetting(any()) }
+    }
+
+    @Test
+    fun `toggleWeightlessSetting offline with weightless off nulls timestamp and weight`() = runTest {
+        // Arrange
+        stubNetworkUnavailable()
+        stubUpdateWeightlessSettingOfflineSuccess()
+
+        // Act
+        service.toggleWeightlessSetting(isWeightlessOn = false, weightlessWeight = 100.0)
+
+        // Assert
+        coVerify(exactly = 1) {
+            userSettingsRepository.updateWeightlessSettingOffline(
+                WeightlessRequest(
+                    isWeightlessOn = false,
+                    weightlessTimestamp = null,
+                    weightlessWeight = null,
+                )
+            )
+        }
+    }
+
+    @Test
+    fun `toggleWeightlessSetting rethrows HttpException from online call`() = runTest {
+        // Arrange
+        stubUpdateWeightlessSettingThrows(httpException(500))
+
+        // Act & Assert
+        assertFailsWith<HttpException> { service.toggleWeightlessSetting(isWeightlessOn = true, weightlessWeight = 150.0) }
+    }
+
+    @Test
+    fun `toggleWeightlessSetting rethrows RuntimeException from online call`() = runTest {
+        // Arrange
+        stubUpdateWeightlessSettingThrows(RuntimeException("Server error"))
+
+        // Act & Assert
+        assertFailsWith<RuntimeException> { service.toggleWeightlessSetting(isWeightlessOn = false) }
+    }
+
+    @Test
+    fun `toggleWeightlessSetting rethrows exception from offline call`() = runTest {
+        // Arrange
+        stubNetworkUnavailable()
+        coEvery { userSettingsRepository.updateWeightlessSettingOffline(any()) } throws RuntimeException("DB write failed")
+
+        // Act & Assert
+        assertFailsWith<RuntimeException> { service.toggleWeightlessSetting(isWeightlessOn = true, weightlessWeight = 75.0) }
+    }
 }

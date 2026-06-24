@@ -29,8 +29,17 @@ struct WeightUnitModifier: ViewModifier {
     @EnvironmentObject private var accountService: AccountService
 
     func body(content: Content) -> some View {
-        let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .kg
-        let weightless = accountService.activeAccount?.weightlessSettings
+        let account = accountService.activeAccount
+        let unit = account?.weightUnit ?? .kg
+        let weightless: WeightlessSettings? = {
+            guard let account else { return nil }
+            return WeightlessSettings(
+                accountId: account.accountId,
+                isWeightlessOn: account.isWeightlessOn,
+                weightlessTimestamp: account.weightlessTimestamp,
+                weightlessWeight: account.weightlessWeight
+            )
+        }()
 
         content
             .environment(\.weightUnit, unit)

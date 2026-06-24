@@ -116,14 +116,8 @@ private extension ObservableForm {
     }
 } 
 
-
-
 // MARK: Example Usage
 
-import SwiftUI
-import Combine
-
-// Add Profile Data Model
 struct ProfileData {
     let name: String
     let email: String
@@ -193,7 +187,7 @@ class BasicProfileForm: ObservableForm {
         validate()
     }
     
-    
+// swiftlint:disable:next cyclomatic_complexity
     func getError<T>(for control: FormControl<T>) -> String? {
         guard control.isDirty else { return nil }
         
@@ -242,7 +236,6 @@ struct BasicFormControlView: View {
                 focusedField: $focusedField) {
                     focusedField = .email
                 }
-            
             
             AppInputField(
                 config: TextInputConfig(
@@ -308,9 +301,14 @@ struct BasicFormControlView: View {
             
             Button("Submit") {
                 if form.isValid {
-                    print("Form submitted with:")
-                    print("Name:", form.name.value)
-                    print("Email:", form.email.value)
+                    Task { @MainActor in
+                        LoggerService.shared.log(
+                            level: .debug,
+                            tag: "ObservableForm",
+                            message: "Form submitted",
+                            data: ["name": form.name.value, "email": form.email.value]
+                        )
+                    }
                 }
             }
             .disabled(!form.isValid)
@@ -336,4 +334,3 @@ struct BasicFormControlView: View {
 #Preview {
     BasicFormControlView()
 }
-

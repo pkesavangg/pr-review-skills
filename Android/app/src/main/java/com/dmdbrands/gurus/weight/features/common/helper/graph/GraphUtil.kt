@@ -26,7 +26,6 @@ import java.time.temporal.TemporalAdjusters
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import kotlin.reflect.KProperty1
 
 val dateTimeRangeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy ")
 val yearFormatter = DateTimeFormatter.ofPattern("yyyy")
@@ -87,7 +86,7 @@ object GraphUtil {
     return GraphLine(
       name = metricKey.name,
       points = this.mapNotNull { summary ->
-        val value = (prop.get(summary) as? Number)?.toFloat()
+        val value = (prop(summary) as? Number)?.toFloat()
         if (value == null || value == 0f) return@mapNotNull null
         value.let {
           GraphPoint(
@@ -109,19 +108,19 @@ object GraphUtil {
     GraphSegment.TOTAL -> MetricInfoSource.TOTAL
   }
 
-  private val metricKeyPropertyMap: Map<MetricKey, KProperty1<PeriodBodyScaleSummary, *>> = mapOf(
-    MetricKey.BMI to PeriodBodyScaleSummary::bmi,
-    MetricKey.BODY_FAT to PeriodBodyScaleSummary::bodyFat,
-    MetricKey.MUSCLE_MASS to PeriodBodyScaleSummary::muscleMass,
-    MetricKey.BODY_WATER to PeriodBodyScaleSummary::water,
-    MetricKey.HEART_RATE to PeriodBodyScaleSummary::pulse,
-    MetricKey.BONE_MASS to PeriodBodyScaleSummary::boneMass,
-    MetricKey.VISCERAL_FAT to PeriodBodyScaleSummary::visceralFatLevel,
-    MetricKey.SUBCUTANEOUS_FAT to PeriodBodyScaleSummary::subcutaneousFatPercent,
-    MetricKey.PROTEIN to PeriodBodyScaleSummary::proteinPercent,
-    MetricKey.SKELETAL_MUSCLE to PeriodBodyScaleSummary::skeletalMusclePercent,
-    MetricKey.BMR to PeriodBodyScaleSummary::bmr,
-    MetricKey.METABOLIC_AGE to PeriodBodyScaleSummary::metabolicAge,
+  private val metricKeyPropertyMap: Map<MetricKey, (PeriodBodyScaleSummary) -> Any?> = mapOf(
+    MetricKey.BMI to { it.bmi },
+    MetricKey.BODY_FAT to { it.bodyFat },
+    MetricKey.MUSCLE_MASS to { it.muscleMass },
+    MetricKey.BODY_WATER to { it.water },
+    MetricKey.HEART_RATE to { it.pulse },
+    MetricKey.BONE_MASS to { it.boneMass },
+    MetricKey.VISCERAL_FAT to { it.visceralFatLevel },
+    MetricKey.SUBCUTANEOUS_FAT to { it.subcutaneousFatPercent },
+    MetricKey.PROTEIN to { it.proteinPercent },
+    MetricKey.SKELETAL_MUSCLE to { it.skeletalMusclePercent },
+    MetricKey.BMR to { it.bmr },
+    MetricKey.METABOLIC_AGE to { it.metabolicAge },
   )
 
   /**
@@ -371,6 +370,85 @@ object GraphUtil {
     }
 
     return metricGraphLine.copy(points = normalizedPoints)
+  }
+
+  /**
+   * Render-time normalization for yTransform callback.
+   * Same logic as normalizeMetricToWeightRange but works on LineCartesianLayerModel.Entry
+   * and returns DoubleArray (zero boxing, reusable by vico cache).
+   */
+  fun normalizeYValues(
+    series: List<com.patrykandpatrick.vico.compose.cartesian.data.LineCartesianLayerModel.Entry>,
+    weightMin: Double,
+    weightMax: Double,
+    minX: Long,
+    maxX: Long,
+  ): DoubleArray? {
+    if (series.isEmpty() || !weightMin.isFinite() || !weightMax.isFinite() || weightMin >= weightMax) {
+      return null
+    }
+
+    val yAxisSpan = weightMax - weightMin
+
+    // Filter visible + bracketing entries for metric range
+    val visibleY = mutableListOf<Double>()
+    var prevY: Double? = null
+    var nextY: Double? = null
+    for (entry in series) {
+      val x = entry.x.toLong()
+      val y = entry.y
+      if (!y.isFinite()) continue
+      when {
+        x < minX -> prevY = y
+        x > maxX -> { if (nextY == null) nextY = y }
+        else -> visibleY.add(y)
+      }
+    }
+    val metricValuesForRange = buildList {
+      prevY?.let { add(it) }
+      addAll(visibleY)
+      nextY?.let { add(it) }
+    }
+    if (metricValuesForRange.isEmpty()) return null
+
+    val metricMin = metricValuesForRange.min()
+    val metricMax = metricValuesForRange.max()
+    val metricRange = metricMax - metricMin
+    val isSingle = metricRange < 0.01
+    val effMin: Double
+    val effMax: Double
+    if (isSingle) {
+      effMin = metricMin - 1.0
+      effMax = metricMax + 1.0
+    } else {
+      val padding = metricRange * 0.05
+      effMin = metricMin - padding
+      effMax = metricMax + padding
+    }
+    val metricSpan = effMax - effMin
+    if (metricSpan <= 0) return null
+
+    val epsilon = yAxisSpan * 0.001
+    val safeMin = weightMin + epsilon
+    val safeMax = weightMax - epsilon
+    val fallback = (weightMin + weightMax) / 2.0
+
+    val result = DoubleArray(series.size)
+    for (i in series.indices) {
+      val y = series[i].y
+      if (!y.isFinite()) {
+        result[i] = if (fallback.isFinite()) fallback else weightMin
+        continue
+      }
+      if (isSingle) {
+        result[i] = weightMin + yAxisSpan * 0.7
+      } else {
+        val clamped = y.coerceIn(effMin, effMax)
+        val normalized = weightMin + (clamped - effMin) * yAxisSpan / metricSpan
+        result[i] = normalized.coerceIn(safeMin, safeMax)
+      }
+    }
+    return result
   }
 
   fun averageYValuesInRange(

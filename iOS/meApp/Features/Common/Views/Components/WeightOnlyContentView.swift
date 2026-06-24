@@ -9,7 +9,7 @@ import SwiftUI
 /// Extracted content view for Weight Only
 struct WeightOnlyContentView: View {
     @Environment(\.appTheme) private var theme
-    private let lang = ScaleModesStrings.self
+    private let lang = DeviceModesStrings.self
     
     var body: some View {
         VStack {

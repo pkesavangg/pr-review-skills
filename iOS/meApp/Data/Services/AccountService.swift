@@ -1,78 +1,122 @@
-import Foundation
 import Combine
+import Foundation
+
+/*
+ SwiftLint exception:
+ This service intentionally aggregates account lifecycle, auth, sync, and settings in one place. Splitting would add indirection during critical auth/data flows. We therefore disable type_body_length, file_length, and function_body_length for this file.
+ */
 
 @MainActor
-final class AccountService: AccountServiceProtocol, ObservableObject {
-    static let shared: AccountService = AccountService()
-    @Injector var notificationService: NotificationHelperService
+final class AccountService: AccountServiceProtocol, ObservableObject { // swiftlint:disable:this type_body_length
+    static let shared = AccountService()
+    @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var logger: LoggerServiceProtocol
-    @Injector var bluetoothService: BluetoothService
+    @Injector var bluetoothService: BluetoothServiceProtocol
+    @Injector var keychainService: KeychainServiceProtocol
+    @Injector var kvStorage: KvStorageService
 
     private let apiRepo: AccountRepositoryAPIProtocol
     private let localRepo: AccountRepositoryProtocol
-    private let networkMonitor: NetworkMonitor = NetworkMonitor.shared
+    private let networkMonitor: NetworkMonitoring
     /// API repository for integration-related network calls
-    private let integrationApiRepo: IntegrationRepositoryAPIProtocol = IntegrationAPIRepository()
+    private let integrationApiRepo: IntegrationRepositoryAPIProtocol
     /// Migration service for Ionic app data
-    private let migrationService = AccountMigrationService()
+    private let migrationService: AccountMigrationService
+    private let scaleRepo: DeviceRepositoryProtocol
+    @Published private(set) var isIonicMigrationInProgress: Bool = false
+    @Published private(set) var isSignupInProgress: Bool = false
+    var isSignupInProgressPublisher: Published<Bool>.Publisher { $isSignupInProgress }
+    func markSignupInProgress(_ inProgress: Bool) { isSignupInProgress = inProgress }
+    @Published var activeAccount: AccountSnapshot?
+    @Published var allAccounts: [AccountSnapshot] = []
+    var activeAccountPublisher: Published<AccountSnapshot?>.Publisher { $activeAccount }
+    var allAccountsPublisher: Published<[AccountSnapshot]>.Publisher { $allAccounts }
 
-    @Published var activeAccount: Account? = nil
-    @Published var allAccounts: [Account] = []
-
-    var activeAccountPublisher: AnyPublisher<Account?, Never> {
-        $activeAccount.eraseToAnyPublisher()
-    }
-
-    var alertLang =  AlertStrings.self.ExpiredUserLogOutAlert
+    var alertLang = AlertStrings.self.ExpiredUserLogOutAlert
     var cancellables = Set<AnyCancellable>()
-    private let tag = "AccountService"
+    let tag = "AccountService"
 
-    /// Testable initializer that accepts injected repositories.
-    /// Skips the heavy startup Tasks (migration, refresh, sync) to enable unit testing.
-    init(apiRepo: AccountRepositoryAPIProtocol, localRepo: AccountRepositoryProtocol) {
-        self.apiRepo = apiRepo
-        self.localRepo = localRepo
-    }
+    init(
+        apiRepo: AccountRepositoryAPIProtocol? = nil,
+        localRepo: AccountRepositoryProtocol? = nil,
+        integrationApiRepo: IntegrationRepositoryAPIProtocol? = nil,
+        networkMonitor: NetworkMonitoring? = nil,
+        migrationService: AccountMigrationService? = nil,
+        scaleRepo: DeviceRepositoryProtocol? = nil,
+        performInitialLoad: Bool = true
+    ) {
+        self.apiRepo = apiRepo ?? AccountRepositoryAPI()
+        self.localRepo = localRepo ?? AccountRepository()
+        self.integrationApiRepo = integrationApiRepo ?? IntegrationAPIRepository()
+        self.networkMonitor = networkMonitor ?? NetworkMonitor.shared
+        self.migrationService = migrationService ?? AccountMigrationService()
+        self.scaleRepo = scaleRepo ?? DeviceRepository()
+        
+        $activeAccount
+            .dropFirst()
+            .sink { [weak self] snapshot in
+                if snapshot == nil {
+                    ServiceRegistry.shared.deregisterSessionServices()
+                } else {
+                    ServiceRegistry.shared.registerSessionServices()
+                    Theme.shared.setActiveAccount(snapshot?.accountId)
+                    // One-time migration: ensure productTypes is populated
+                    if let accountId = snapshot?.accountId {
+                        Task { @MainActor [weak self] in
+                            guard let self else { return }
+                            do {
+                                guard let account = try await self.localRepo.fetchAccount(byId: accountId) else { return }
+                                let devices = try await self.scaleRepo.listScales(forAccountId: accountId)
+                                self.migrationService.migrateProductTypesIfNeeded(for: account, devices: devices)
+                            } catch {
+                                self.logger.log(
+                                    level: .error,
+                                    tag: self.tag,
+                                    message: "productTypes migration skipped: \(error)"
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            .store(in: &cancellables)
 
-    init() {
-        self.apiRepo = AccountRepositoryAPI()
-        self.localRepo = AccountRepository()
+        guard performInitialLoad else { return }
+
         // Asynchronously load active account from local storage to set theme early
         Task {
             do {
-                if let activeAcct = try localRepo.fetchAllAccountsSync()
+                if let activeAcct = try localRepo?.fetchAllAccountsSync()
                     .first(where: { $0.isActiveAccount == true }) {
-                    self.activeAccount = activeAcct
+                    let tokens = keychainService.getTokens(for: activeAcct.accountId)
+                    self.activeAccount = activeAcct.toSnapshot(
+                        accessToken: tokens?.accessToken,
+                        refreshToken: tokens?.refreshToken,
+                        expiresAt: tokens?.expiresAt
+                    )
                     Theme.shared.setActiveAccount(activeAcct.accountId)
                 }
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to fetch accounts on startup: \(error.localizedDescription)")
             }
         }
-        
+
         // Load initial accounts from local storage
         Task {
             do {
+                try await migrateTokensToKeychainIfNeeded()
                 try await syncUnsyncedAccounts() // Try to sync any offline changes
                 try await updatePublishedState()
-                let _ = try await refreshAllAccounts()
+                try await refreshAllAccounts()
                 if activeAccount == nil {
                     /// migrate from ionic app if needed
+                    isIonicMigrationInProgress = true
+                    defer { isIonicMigrationInProgress = false }
                     try await migrateFromIonicAppIfNeeded()
                 }
             } catch {
                 logger.log(level: .error, tag: tag, message: "Error: \(error.localizedDescription)")
             }
-            $activeAccount
-                .sink(receiveValue: { data in
-                    if data == nil {
-                        ServiceRegistry.shared.deregisterSessionServices()
-                    } else {
-                        ServiceRegistry.shared.registerSessionServices()
-                        Theme.shared.setActiveAccount(data?.accountId)
-                    }
-                })
-                .store(in: &cancellables)
             try await updatePublishedState()
         }
     }
@@ -80,61 +124,36 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     // MARK: - Account Lifecycle
 
     /// Signs up a new account with the provided email, password, and profile.
-    func signUp(email: String, password: String, profile: Profile) async throws -> Account {
+    func signUp(email: String, password: String, profile: Profile) async throws {
         do {
             logger.log(level: .info, tag: tag, message: "Sign up requested for email=\(maskedEmail(email))")
             // Check if maximum accounts reached
             try await checkIfMaxAccountsReached(email: email)
             let response = try await apiRepo.createAccount(email: email, password: password, profile: profile)
-            
+
             // Check if account somehow already exists
             let existingAccount = try await localRepo.fetchAccount(byId: response.account.id)
             let isSameAccount = existingAccount?.accountId == activeAccount?.accountId
-            
+
             // Disconnect connected scales if switching to a different account
             if !isSameAccount, activeAccount != nil {
                 await bluetoothService.disconnectConnectedScales()
             }
-            
+
             // Break reference to old object BEFORE any context changes
             if isSameAccount {
                 activeAccount = nil
             }
             
-            // TODO: Extract duplicated account preparation logic into private helper method
-            // This logic is duplicated in signUp() and logIn() - consider refactoring into
-            // prepareAuthenticatedAccount(from:existingAccount:) during future code quality improvements
-            let account: Account
-            if let existing = existingAccount {
-                // Update existing account in place
-                existing.update(from: response)
-                existing.isLoggedIn = true
-                existing.isActiveAccount = true
-                existing.isExpired = false
-                existing.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
-                account = existing
-            } else {
-                // Create new account
-                account = Account(from: response.account)
-                account.accessToken = response.accessToken
-                account.refreshToken = response.refreshToken
-                account.expiresAt = response.expiresAt
-                account.isSynced = true
-                account.isLoggedIn = true
-                account.isActiveAccount = true
-                account.isExpired = false
-                account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
-            }
-            
+            let account = try await prepareAuthenticatedAccount(from: response, existingAccount: existingAccount)
             try await makeOtherAccountsInactive(except: account)
             if existingAccount == nil {
-                try await localRepo.saveAccount(account)
+                try await saveAccountClearingTokens(account)
             } else {
-                try await localRepo.updateAccount(account)
+                try await updateAccountClearingTokens(account)
             }
             try await updatePublishedState()
             logger.log(level: .success, tag: tag, message: "Sign up successful for accountId=\(account.accountId), email=\(maskedEmail(email))")
-            return account
         } catch {
             logger.log(level: .error, tag: tag, message: "Sign up failed for email=\(maskedEmail(email)): \(error.localizedDescription)")
             throw error // No offline fallback for signup
@@ -142,62 +161,37 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     /// Logs in an existing account with the provided email and password.
-    func logIn(email: String, password: String) async throws -> Account {
+    func logIn(email: String, password: String) async throws {
         do {
             logger.log(level: .info, tag: tag, message: "Login requested for email=\(maskedEmail(email))")
             // Check if maximum accounts reached
             try await checkIfMaxAccountsReached(email: email)
             let response = try await apiRepo.logIn(email: email, password: password)
-            
+
             // Check if logging in with same account
             let existingAccount = try await localRepo.fetchAccount(byId: response.account.id)
             let isSameAccount = existingAccount?.accountId == activeAccount?.accountId
-            
+
             // Disconnect connected scales if switching to a different account
             if !isSameAccount, activeAccount != nil {
                 await bluetoothService.disconnectConnectedScales()
             }
-            
+
             // Break reference to old object BEFORE any context changes
             if isSameAccount {
                 activeAccount = nil
             }
             
-            // TODO: Extract duplicated account preparation logic into private helper method
-            // This logic is duplicated in signUp() and logIn() - consider refactoring into
-            // prepareAuthenticatedAccount(from:existingAccount:) during future code quality improvements
-            let account: Account
-            if let existing = existingAccount {
-                // Update existing account in place
-                existing.update(from: response)
-                existing.isLoggedIn = true
-                existing.isActiveAccount = true
-                existing.isExpired = false
-                existing.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
-                account = existing
-            } else {
-                // Create new account
-                account = Account(from: response.account)
-                account.accessToken = response.accessToken
-                account.refreshToken = response.refreshToken
-                account.expiresAt = response.expiresAt
-                account.isSynced = true
-                account.isLoggedIn = true
-                account.isActiveAccount = true
-                account.isExpired = false
-                account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
-            }
-            
+            let account = try await prepareAuthenticatedAccount(from: response, existingAccount: existingAccount)
             try await makeOtherAccountsInactive(except: account)
             if existingAccount == nil {
-                try await localRepo.saveAccount(account)
+                try await saveAccountClearingTokens(account)
             } else {
-                try await localRepo.updateAccount(account)
+                try await updateAccountClearingTokens(account)
             }
             try await updatePublishedState()
             try await refreshAccount()
             logger.log(level: .success, tag: tag, message: "Login successful for accountId=\(account.accountId), email=\(maskedEmail(email))")
-            return account
         } catch {
             logger.log(level: .error, tag: tag, message: "Login failed for email=\(maskedEmail(email)): \(error.localizedDescription)")
             throw error // No offline fallback for login
@@ -218,7 +212,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
 
         // Helper to perform the actual logout work (API + local updates)
-        let performLogout: @Sendable () async throws -> Void = { [weak self] in
+        let performLogout: () async throws -> Void = { [weak self] in
             guard let self else { return }
             try await self.executeLogout(on: localAccount, isAutoLogout: isAutoLogout, skipStateUpdate: false)
         }
@@ -233,7 +227,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 message: alertLang.message,
                 buttons: [
                     AlertButtonModel(title: alertLang.okButton, type: .primary) { _ in
-                        
                     }
                 ]
             )
@@ -253,6 +246,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         do {
             logger.log(level: .info, tag: tag, message: "Delete account requested for accountId=\(accountId)")
             try await apiRepo.deleteAccount(accountId: accountId)
+            keychainService.deleteTokens(for: accountId)
+            keychainService.deleteFCMToken(for: accountId)
             try await localRepo.deleteAccount(byId: accountId)
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "Account deleted for accountId=\(accountId)")
@@ -266,6 +261,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     func deleteAllAccounts() async throws {
         do {
             logger.log(level: .info, tag: tag, message: "Delete all accounts requested")
+            let accounts = try await localRepo.fetchAllAccounts()
+            for account in accounts {
+                keychainService.deleteTokens(for: account.accountId)
+                keychainService.deleteFCMToken(for: account.accountId)
+            }
             try await localRepo.deleteAllAccounts()
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "All accounts deleted locally")
@@ -275,104 +275,146 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
     }
 
+    /// Removes an account from this device without deleting it server-side.
+    /// If the account is still logged in, the API logout call is attempted first
+    /// (errors are ignored). Keychain tokens and the local SwiftData record are
+    /// always deleted so the account no longer appears in any account list.
+    func removeAccountFromDevice(accountId: String) async throws {
+        logger.log(level: .info, tag: tag, message: "Remove account from device requested for accountId=\(accountId)")
+        guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
+            logger.log(level: .error, tag: tag, message: "Account not found for removal: \(accountId)")
+            return
+        }
+
+        // Only attempt API logout if the account is currently logged in.
+        if localAccount.isLoggedIn == true {
+            let fcmToken = PushNotificationService.shared.getStoredFCMToken(for: accountId)
+            do {
+                try await apiRepo.logOut(fcmToken: fcmToken, accountId: accountId)
+            } catch {
+                // API errors during removal are non-fatal — we still clean up locally.
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "API logout during remove failed (ignored) for accountId=\(accountId): \(error.localizedDescription)"
+                )
+            }
+        }
+
+        // If this was the active account, clear the reference before deletion.
+        if activeAccount?.accountId == accountId {
+            activeAccount = nil
+        }
+
+        keychainService.deleteTokens(for: accountId)
+        keychainService.deleteFCMToken(for: accountId)
+        try await localRepo.deleteAccount(byId: accountId)
+        try await updatePublishedState()
+        logger.log(level: .info, tag: tag, message: "Account removed from device: \(accountId)")
+    }
+
     // MARK: - Account Switching
+
     /// Switches to a different account by setting it as the active account.
-    func switchAccount(to account: Account) async throws {
+    func switchAccount(to accountId: String) async throws {
         let fromAccountId = activeAccount?.accountId ?? "nil"
-        let targetAccountId = account.accountId
+        let targetAccountId = accountId
         // Check network connectivity before switching
         guard networkMonitor.getCurrentConnectionStatus(),
               await networkMonitor.verifyNetworkAvailability(baseURL: AppEnvironment.apiBaseURL) else {
-            logger.log(level: .error, tag: tag, message: "Switch account blocked: no internet. fromAccountId=\(fromAccountId), targetAccountId=\(targetAccountId)")
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Switch account blocked: no internet. " +
+                    "fromAccountId=\(fromAccountId), targetAccountId=\(targetAccountId)"
+            )
             throw HTTPError.noInternet
         }
-        // Save current active account to restore if switching fails mid-process,
-        let previousActiveAccount = activeAccount
         do {
-            logger.log(level: .info, tag: tag, message: "Switch account requested. fromAccountId=\(fromAccountId), targetAccountId=\(targetAccountId)")
-            let responseAccount = try await refreshAccount(accountId: account.accountId)
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Switch account requested. fromAccountId=\(fromAccountId), targetAccountId=\(targetAccountId)"
+            )
+            try await refreshAccount(accountId: accountId)
             await bluetoothService.disconnectConnectedScales()
             activeAccount = nil
-            try await setActiveAccount(responseAccount)
-            logger.log(level: .success, tag: tag, message: "Switched active account successfully. fromAccountId=\(fromAccountId), targetAccountId=\(responseAccount.accountId)")
+            try await setActiveAccount(accountId: accountId)
+            logger.log(
+                level: .success,
+                tag: tag,
+                message: "Switched active account successfully. fromAccountId=\(fromAccountId), targetAccountId=\(targetAccountId)"
+            )
         } catch {
-            logger.log(level: .error, tag: tag, message: "Switch account failed. fromAccountId=\(fromAccountId), targetAccountId=\(targetAccountId), error=\(error.localizedDescription)")
-            // Restore previous active account to keep session and UI state intact on failure.
-            if activeAccount == nil {
-                activeAccount = previousActiveAccount
-            }
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Switch account failed. fromAccountId=\(fromAccountId), targetAccountId=\(targetAccountId), "
+                    + "error=\(error.localizedDescription)"
+            )
             throw error
         }
     }
 
     /// Sets the specified account as the active account and makes other accounts inactive.
-    func setActiveAccount(_ account: Account) async throws {
+    func setActiveAccount(accountId: String) async throws {
+        guard let account = try await localRepo.fetchAccount(byId: accountId) else {
+            throw AccountError.accountNotFound(id: accountId)
+        }
         account.isActiveAccount = true
         account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
         try await makeOtherAccountsInactive(except: account)
-        try await localRepo.updateAccount(account)
+        try await updateAccountClearingTokens(account)
         try await updatePublishedState()
-
-        // Update theme with new active account
         Theme.shared.setActiveAccount(account.accountId)
-
         logger.log(level: .info, tag: tag, message: "Active account set to accountId=\(account.accountId)")
     }
 
     // MARK: - Account State
-    /// Returns the currently active account, updating the published state first.
-    func getActiveAccount() async throws -> Account? {
+
+    /// Returns the currently active account snapshot, updating the published state first.
+    func getActiveAccount() async throws -> AccountSnapshot? {
         return activeAccount
     }
 
     /// Returns all logged-in accounts, filtering out inactive or expired accounts.
-    func getAllLoggedInAccounts() async throws -> [Account] {
+    func getAllLoggedInAccounts() async throws -> [AccountSnapshot] {
         let all = try await localRepo.fetchAllAccounts()
-        return all.filter { $0.isLoggedIn == true }
-    }
-
-    /// Fetches an account by its unique ID.
-    func fetchAccount(byId id: String) async throws -> Account? {
-        return try await localRepo.fetchAccount(byId: id)
-    }
-
-    /// Fetches all accounts stored locally.
-    func fetchAllAccounts() async throws -> [Account] {
-        return try await localRepo.fetchAllAccounts()
-    }
-
-    // MARK: - Account Updates
-    /// Updates the active account with the provided updated account data.
-    func updateAccount(_ updatedAccount: Account) async throws -> Account {
-        guard let localAccount = try await localRepo.fetchAccount(byId: updatedAccount.accountId) else {
-            throw AccountError.accountNotFound(id: updatedAccount.accountId)
-        }
-
-        do {
-            logger.log(level: .info, tag: tag, message: "Update account requested for accountId=\(updatedAccount.accountId)")
-            let response = try await apiRepo.editAccount(updatedAccount)
-            localAccount.update(from: response)
-            localAccount.isSynced = true
-            try await localRepo.updateAccount(localAccount)
-            try await updatePublishedState()
-            logger.log(level: .info, tag: tag, message: "Update account successful for accountId=\(updatedAccount.accountId)")
-            return localAccount
-        } catch {
-            if HTTPError.isNetworkError(error) {
-                localAccount.update(from: updatedAccount.toAccountDTO())
-                localAccount.isSynced = false
-                try await localRepo.updateAccount(updatedAccount)
-                try await updatePublishedState()
-                logger.log(level: .error, tag: tag, message: "Update account saved offline for accountId=\(updatedAccount.accountId), offline=true, reason=network_error")
-                return updatedAccount
-            }
-            logger.log(level: .error, tag: tag, message: "Update account failed for accountId=\(updatedAccount.accountId): \(error.localizedDescription)")
-            throw error
+        return all.filter { $0.isLoggedIn == true }.map { account in
+            let tokens = keychainService.getTokens(for: account.accountId)
+            return account.toSnapshot(
+                accessToken: tokens?.accessToken,
+                refreshToken: tokens?.refreshToken,
+                expiresAt: tokens?.expiresAt
+            )
         }
     }
 
-    @discardableResult
-    func createGoal(_ goal: Goal) async throws -> Account {
+    /// Fetches an account snapshot by its unique ID.
+    func fetchAccount(byId id: String) async throws -> AccountSnapshot? {
+        guard let account = try await localRepo.fetchAccount(byId: id) else { return nil }
+        let tokens = keychainService.getTokens(for: account.accountId)
+        return account.toSnapshot(
+            accessToken: tokens?.accessToken,
+            refreshToken: tokens?.refreshToken,
+            expiresAt: tokens?.expiresAt
+        )
+    }
+
+    /// Fetches all account snapshots stored locally.
+    func fetchAllAccounts() async throws -> [AccountSnapshot] {
+        let accounts = try await localRepo.fetchAllAccounts()
+        return accounts.map { account in
+            let tokens = keychainService.getTokens(for: account.accountId)
+            return account.toSnapshot(
+                accessToken: tokens?.accessToken,
+                refreshToken: tokens?.refreshToken,
+                expiresAt: tokens?.expiresAt
+            )
+        }
+    }
+
+    func createGoal(_ goal: Goal) async throws {
         guard let accountId = activeAccount?.accountId, let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
             throw AccountError.noActiveAccount
         }
@@ -380,22 +422,23 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             logger.log(level: .info, tag: tag, message: "Create goal requested for accountId=\(accountId)")
             let response = try await apiRepo.createGoal(goal)
             localAccount.update(from: response)
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
-            notifyActiveAccountChanged()
             logger.log(level: .info, tag: tag, message: "Create goal successful for accountId=\(accountId)")
-            return localAccount
         } catch {
             if HTTPError.isNetworkError(error) {
                 localAccount.goalSettings?.goalType = goal.type
                 localAccount.goalSettings?.goalWeight = Double(goal.goalWeight)
                 localAccount.goalSettings?.isSynced = false
                 localAccount.goalSettings?.initialWeight = Double(goal.initialWeight)
-                try await localRepo.updateAccount(localAccount)
+                try await updateAccountClearingTokens(localAccount)
                 try await updatePublishedState()
-                notifyActiveAccountChanged()
-                logger.log(level: .error, tag: tag, message: "Create goal saved offline for accountId=\(accountId), offline=true, reason=network_error, goalType=\(goal.goalType.rawValue), goalWeight=\(goal.goalWeight), initialWeight=\(goal.initialWeight)")
-                return localAccount
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Create goal saved offline for accountId=\(accountId), offline=true, reason=network_error, "
+                        + "goalType=\(goal.goalType.rawValue), goalWeight=\(goal.goalWeight), initialWeight=\(goal.initialWeight)"
+                )
             } else {
                 logger.log(level: .error, tag: tag, message: "Create goal failed for accountId=\(accountId): \(error.localizedDescription)")
                 throw error
@@ -404,8 +447,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     /// Updates the profile of the active account with the provided profile data.
-    @discardableResult
-    func updateProfile(_ profile: Profile, canSaveOffline: Bool = false) async throws -> Account {
+    func updateProfile(_ profile: Profile, canSaveOffline: Bool = false) async throws {
         guard let accountId = activeAccount?.accountId, let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
             throw AccountError.noActiveAccount
         }
@@ -414,30 +456,29 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             let response = try await apiRepo.patchProfile(profile)
             localAccount.update(from: response)
             localAccount.isSynced = true
-            try await localRepo.updateAccount(localAccount)
-            notifyActiveAccountChanged()
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "Update profile successful for accountId=\(accountId)")
-            return localAccount
         } catch {
             if canSaveOffline && HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
                 localAccount.update(from: profile)
-                try await localRepo.updateAccount(localAccount)
-                notifyActiveAccountChanged()
-
+                try await updateAccountClearingTokens(localAccount)
                 try await updatePublishedState()
-                logger.log(level: .error, tag: tag, message: "Update profile saved offline for accountId=\(accountId), offline=true, reason=network_error")
-                return localAccount
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Update profile saved offline for accountId=\(accountId), offline=true, reason=network_error"
+                )
+            } else {
+                logger.log(level: .error, tag: tag, message: "Update profile failed for accountId=\(accountId): \(error.localizedDescription)")
+                throw error
             }
-            logger.log(level: .error, tag: tag, message: "Update profile failed for accountId=\(accountId): \(error.localizedDescription)")
-            throw error
         }
     }
 
     /// Updates the body composition of the active account with the provided bodyComp data.
-    @discardableResult
-    func updateBodyComp(_ bodyComp: BodyComp) async throws -> Account {
+    func updateBodyComp(_ bodyComp: BodyComp) async throws {
         guard let accountId = activeAccount?.accountId, let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
             throw AccountError.noActiveAccount
         }
@@ -446,39 +487,34 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             let response = try await apiRepo.patchBodyComp(bodyComp)
             localAccount.update(from: response)
             localAccount.isSynced = true
-            try await localRepo.updateAccount(localAccount)
-            if let freshAccount = try await localRepo.fetchAccount(byId: localAccount.accountId) {
-                if activeAccount?.accountId == freshAccount.accountId {
-                    activeAccount = freshAccount
-                }
-            }
-            try await updatePublishedState(forceRefresh: true)
-            let finalWeightUnit = activeAccount?.weightSettings?.weightUnit?.rawValue ?? "nil"
-            
+            try await updateAccountClearingTokens(localAccount)
+            try await updatePublishedState()
+            let finalWeightUnit = activeAccount?.weightUnit.rawValue ?? "nil"
+
             await MainActor.run {
                 NotificationCenter.default.post(name: .accountWeightUnitChanged, object: nil, userInfo: ["weightUnit": finalWeightUnit])
             }
-            
+
             logger.log(level: .info, tag: tag, message: "Update bodyComp successful for accountId=\(accountId)")
-            return localAccount
         } catch {
             if HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
                 localAccount.weightSettings?.weightUnit = bodyComp.weightUnit
                 localAccount.weightSettings?.height = String(bodyComp.height)
                 localAccount.weightSettings?.activityLevel = bodyComp.activityLevel
-                try await localRepo.updateAccount(localAccount)
-                if activeAccount?.accountId == localAccount.accountId {
-                    activeAccount = localAccount
-                }
-                try await updatePublishedState(forceRefresh: true)
-                let finalWeightUnit = activeAccount?.weightSettings?.weightUnit?.rawValue ?? "nil"
-                
+                try await updateAccountClearingTokens(localAccount)
+                try await updatePublishedState()
+                let finalWeightUnit = activeAccount?.weightUnit.rawValue ?? "nil"
+
                 await MainActor.run {
                     NotificationCenter.default.post(name: .accountWeightUnitChanged, object: nil, userInfo: ["weightUnit": finalWeightUnit])
                 }
-                logger.log(level: .error, tag: tag, message: "Update bodyComp saved offline for accountId=\(accountId), offline=true, reason=network_error, weightUnit=\(bodyComp.weightUnit.rawValue), height=\(bodyComp.height), activityLevel=\(bodyComp.activityLevel.rawValue)")
-                return localAccount
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Update bodyComp saved offline for accountId=\(accountId), offline=true, reason=network_error, "
+                        + "weightUnit=\(bodyComp.weightUnit.rawValue), height=\(bodyComp.height), activityLevel=\(bodyComp.activityLevel.rawValue)"
+                )
             } else {
                 logger.log(level: .error, tag: tag, message: "Update bodyComp failed for accountId=\(accountId): \(error.localizedDescription)")
                 throw error
@@ -486,8 +522,62 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
     }
 
+    func updateProductTypes(_ productTypes: [String]) async throws {
+        guard let accountId = activeAccount?.accountId,
+              let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
+            throw AccountError.noActiveAccount
+        }
+
+        let response = try await apiRepo.patchProductTypes(productTypes)
+        // Merge what we sent with what the server returned — never reduce product types.
+        // A server PATCH response may return a device-only subset (e.g. ["weight"]), which
+        // would drop types earned via manual entries (e.g. "blood_pressure") after relaunch.
+        let serverTypes = response.account.productTypes ?? productTypes
+        localAccount.productTypes = Array(Set(productTypes).union(Set(serverTypes)))
+        try await updateAccountClearingTokens(localAccount)
+        try await updatePublishedState()
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Updated productTypes=\(productTypes) for accountId=\(accountId)"
+        )
+    }
+
+    /// Updates the active account's preferred measurement units via the server,
+    /// then persists the returned account locally.
+    func updateMeasurementUnits(_ measurementUnits: MeasurementUnits) async throws {
+        guard let accountId = activeAccount?.accountId,
+              let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
+            throw AccountError.noActiveAccount
+        }
+        do {
+            logger.log(level: .info, tag: tag, message: "Update measurementUnits requested for accountId=\(accountId)")
+            let response = try await apiRepo.updateMeasurementUnits(measurementUnits.rawValue)
+            localAccount.update(from: response)
+            // Ensure the value is stored even if the server response omits it.
+            localAccount.measurementUnits = measurementUnits.rawValue
+            localAccount.isSynced = true
+            try await updateAccountClearingTokens(localAccount)
+            try await updatePublishedState()
+            logger.log(level: .info, tag: tag, message: "Update measurementUnits successful for accountId=\(accountId)")
+        } catch {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Update measurementUnits failed for accountId=\(accountId): \(error.localizedDescription)"
+            )
+            throw error
+        }
+    }
+
+    /// Checks whether an email is available for registration. No auth required.
+    func checkEmailAvailability(email: String) async throws -> Bool {
+        logger.log(level: .info, tag: tag, message: "Email availability check requested for email=\(maskedEmail(email))")
+        return try await apiRepo.checkEmailAvailability(email: email)
+    }
+
     /// Updates the tokens for the active account or a specific account by ID.
-    func updateTokens( _ tokens: Tokens, _ accountId: String? = nil) async throws {
+    func updateTokens(_ tokens: Tokens, _ accountId: String? = nil) async throws {
         // Update tokens for the active account if accountId is nil
         guard let accountId = accountId ?? activeAccount?.accountId else {
             throw AccountError.noActiveAccount
@@ -497,15 +587,15 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             throw AccountError.accountNotFound(id: accountId)
         }
 
+        keychainService.setTokens(tokens, for: accountId)
         localAccount.update(from: tokens)
-        try await localRepo.updateAccount(localAccount)
+        try await updateAccountClearingTokens(localAccount)
         try await updatePublishedState()
         logger.log(level: .info, tag: tag, message: "Tokens updated for accountId=\(accountId)")
     }
 
     /// Updates the dashboard type for the active account or a specific account by ID.
-    @discardableResult
-    func updateDashboardType(type: DashboardType) async throws -> Account {
+    func updateDashboardType(type: DashboardType) async throws {
         // use current logged in account
         guard let accountId = activeAccount?.accountId else {
             throw AccountError.noActiveAccount
@@ -515,17 +605,15 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             // Persist canonical rawValue (e.g., "dashboard_12_metrics")
             localAccount.dashboardSettings?.dashboardType = type.rawValue
             localAccount.isSynced = true
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "Dashboard type updated for accountId=\(accountId) to \(type.rawValue)")
-            return localAccount
         } catch {
             if HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
-                try await localRepo.updateAccount(localAccount)
+                try await updateAccountClearingTokens(localAccount)
                 try await updatePublishedState()
                 logger.log(level: .error, tag: tag, message: "Dashboard type saved offline for accountId=\(accountId)")
-                return localAccount
             } else {
                 logger.log(level: .error, tag: tag, message: "Dashboard type update failed for accountId=\(accountId): \(error.localizedDescription)")
                 throw error
@@ -541,16 +629,16 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     /// For the initial implementation we forward an **empty** preferences dictionary.
     /// - Parameter deviceId: The HealthKit pseudo-device identifier.
     /// - Returns: The `HealthIntegrationResponse` returned by the backend.
-    @discardableResult
-    func updateIntegrations(integrationType: IntegrationType, preferences: [String: AnyCodable] = [:]) async throws -> Account {
+    func updateIntegrations(integrationType: IntegrationType, preferences: [String: AnyCodable] = [:]) async throws { // swiftlint:disable:this function_body_length
         guard let accountId = activeAccount?.accountId,
-              let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
+              let localAccount = try await localRepo.fetchAccount(byId: accountId)
+        else {
             throw AccountError.noActiveAccount
         }
         let deviceId = DeviceInfoHelper.getDeviceId()
         do {
             logger.log(level: .info, tag: tag, message: "Update integration requested for accountId=\(accountId), type=\(integrationType.rawValue)")
-            let _ = try await integrationApiRepo.createHealthIntegration(
+            _ = try await integrationApiRepo.createHealthIntegration(
                 deviceId: deviceId,
                 type: integrationType,
                 preferences: preferences
@@ -565,10 +653,9 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             } else {
                 localAccount.integrationSettings?.isHealthKitOn = true
             }
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "Integration updated for accountId=\(accountId), type=\(integrationType.rawValue)")
-            return localAccount
         } catch {
             if HTTPError.isNetworkError(error) {
                 if localAccount.integrationSettings == nil {
@@ -581,19 +668,27 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                     localAccount.integrationSettings?.isHealthKitOn = true
                     localAccount.isSynced = false
                 }
-                try? await localRepo.updateAccount(localAccount)
+                try? await updateAccountClearingTokens(localAccount)
                 try? await updatePublishedState()
-                logger.log(level: .error, tag: tag, message: "Integration update saved offline for accountId=\(accountId), type=\(integrationType.rawValue), offline=true, reason=network_error")
-                return localAccount
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Integration update saved offline for accountId=\(accountId), type=\(integrationType.rawValue), "
+                        + "offline=true, reason=network_error"
+                )
+            } else {
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Integration update failed for accountId=\(accountId), type=\(integrationType.rawValue): \(error.localizedDescription)"
+                )
+                throw error
             }
-            logger.log(level: .error, tag: tag, message: "Integration update failed for accountId=\(accountId), type=\(integrationType.rawValue): \(error.localizedDescription)")
-            throw error
         }
     }
 
     /// Updates the notification settings for the active account or a specific account by ID.
-    @discardableResult
-    func updateNotifications(notifications: Notifications) async throws -> Account {
+    func updateNotifications(notifications: Notifications) async throws {
         // use current logged in account
         guard let accountId = activeAccount?.accountId else {
             throw AccountError.noActiveAccount
@@ -604,21 +699,23 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             let response = try await apiRepo.patchNotification(notifications)
             localAccount.update(from: response)
             localAccount.isSynced = true
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
-            notifyActiveAccountChanged()
             logger.log(level: .info, tag: tag, message: "Update notifications successful for accountId=\(accountId)")
-            return localAccount
         } catch {
             if HTTPError.isNetworkError(error) {
                 localAccount.notificationSettings?.shouldSendEntryNotifications = notifications.shouldSendEntryNotifications
                 localAccount.notificationSettings?.shouldSendWeightInEntryNotifications = notifications.shouldSendWeightInEntryNotifications
                 localAccount.isSynced = false
-                try await localRepo.updateAccount(localAccount)
+                try await updateAccountClearingTokens(localAccount)
                 try await updatePublishedState()
-                notifyActiveAccountChanged()
-                logger.log(level: .error, tag: tag, message: "Update notifications saved offline for accountId=\(accountId), offline=true, reason=network_error, shouldSendEntry=\(notifications.shouldSendEntryNotifications), shouldSendWeight=\(notifications.shouldSendWeightInEntryNotifications)")
-                return localAccount
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Update notifications saved offline for accountId=\(accountId), offline=true, reason=network_error, "
+                        + "shouldSendEntry=\(notifications.shouldSendEntryNotifications), "
+                        + "shouldSendWeight=\(notifications.shouldSendWeightInEntryNotifications)"
+                )
             } else {
                 logger.log(level: .error, tag: tag, message: "Update notifications failed for accountId=\(accountId): \(error.localizedDescription)")
                 throw error
@@ -627,6 +724,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     // MARK: - Password & Security
+
     /// Requests a password reset for the specified email.
     func requestPasswordReset(email: String) async throws {
         logger.log(level: .info, tag: tag, message: "Password reset requested")
@@ -637,7 +735,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     func updatePassword(oldPassword: String, newPassword: String) async throws {
         do {
             let tokens = try await apiRepo.updatePassword(oldPassword: oldPassword, newPassword: newPassword)
-            try await self.updateTokens(tokens)
+            try await updateTokens(tokens)
             logger.log(level: .info, tag: tag, message: "Password updated successfully")
         } catch {
             logger.log(level: .error, tag: tag, message: "Password update failed: \(error.localizedDescription)")
@@ -646,13 +744,14 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     // MARK: - Sync & Offline
+
     /// Refreshes all accounts by fetching from API and updating local storage.
     func refreshAllAccounts() async throws {
         logger.log(level: .info, tag: tag, message: "Refresh all accounts requested")
         let accounts = try await localRepo.fetchAllAccounts()
         for account in accounts {
             do {
-                _ = try await refreshAccount(accountId: account.accountId)
+                try await refreshAccount(accountId: account.accountId)
             } catch {
                 if HTTPError.isNetworkError(error) {
                     continue
@@ -661,7 +760,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                         // Mark account as expired for error
                         if let expiredAccount = try await localRepo.fetchAccount(byId: account.accountId) {
                             expiredAccount.isExpired = true
-                            try await localRepo.updateAccount(expiredAccount)
+                            try await updateAccountClearingTokens(expiredAccount)
                         }
                     } catch {
                         // Ignore errors during logout
@@ -675,8 +774,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     /// Refreshes a specific account by fetching from API and updating local storage.
-    @discardableResult
-    func refreshAccount(accountId: String? = nil) async throws -> Account {
+    func refreshAccount(accountId: String? = nil) async throws {
         guard let accountId = accountId ?? activeAccount?.accountId else {
             throw AccountError.noActiveAccount
         }
@@ -687,31 +785,26 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
 
         do {
             logger.log(level: .debug, tag: tag, message: "Refresh account requested for accountId=\(accountId)")
-            
+
             // Try to fetch from API
             let dto = try await apiRepo.fetchAccount(accountId: localAccount.accountId)
-            
+
             // Update account from API response
             localAccount.update(from: dto)
-            
+
             localAccount.isSynced = true
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
             logger.log(level: .debug, tag: tag, message: "Refresh account successful for accountId=\(accountId)")
-            return localAccount
         } catch {
             if HTTPError.isNetworkError(error) {
-                // On network error, return local account
-                logger.log(level: .error, tag: tag, message: "Refresh account network error, returning local copy for accountId=\(accountId)")
-                return localAccount
+                // On network error, silently continue with local data
+                logger.log(level: .error, tag: tag, message: "Refresh account network error, using local copy for accountId=\(accountId)")
+                return
             }
             logger.log(level: .error, tag: tag, message: "Refresh account failed for accountId=\(accountId): \(error.localizedDescription)")
             throw error
         }
-    }
-
-    func clearOfflineData(for account: Account) async throws {
-        throw AccountError.notImplemented
     }
 
     /// Deletes all accounts locally, logging out each account first.
@@ -722,11 +815,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         do {
             logger.log(level: .info, tag: tag, message: "Logout all accounts requested")
             let allAccounts = try await localRepo.fetchAllAccounts()
-            
+
             // Separate accounts into active and non-active using isActiveAccount property
             let nonActiveAccounts = allAccounts.filter { $0.isActiveAccount != true }
             let activeAccountToLogout = allAccounts.first { $0.isActiveAccount == true }
-            
+
             // Log out non-active accounts first (skip state updates to prevent navigation)
             for account in nonActiveAccounts {
                 do {
@@ -735,36 +828,44 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                     }
                     try await executeLogout(on: localAccount, isAutoLogout: false, skipStateUpdate: true)
                 } catch {
-                    logger.log(level: .error, tag: tag, message: "Failed to logout non-active account \(account.accountId): \(error.localizedDescription)")
+                    logger.log(
+                        level: .error,
+                        tag: tag,
+                        message: "Failed to logout non-active account \(account.accountId): \(error.localizedDescription)"
+                    )
                     continue // Ignore errors during logout
                 }
             }
-            
+
             // Log out the active account last (skip state update to prevent navigation)
             if let activeAccount = activeAccountToLogout {
                 do {
                     guard let localAccount = try await localRepo.fetchAccount(byId: activeAccount.accountId) else {
                         // If account not found, just update state
-                        try await self.updatePublishedState()
+                        try await updatePublishedState()
                         return
                     }
                     try await executeLogout(on: localAccount, isAutoLogout: false, skipStateUpdate: true)
                 } catch {
-                    logger.log(level: .error, tag: tag, message: "Failed to logout active account \(activeAccount.accountId): \(error.localizedDescription)")
+                    logger.log(
+                        level: .error,
+                        tag: tag,
+                        message: "Failed to logout active account \(activeAccount.accountId): \(error.localizedDescription)"
+                    )
                     // Continue even if active account logout fails
                 }
             }
         } catch {
             logger.log(level: .error, tag: tag, message: "Error during logout all accounts: \(error.localizedDescription)")
         }
-        
+
         // Update state only once at the end to prevent premature navigation
-        try await self.updatePublishedState()
+        try await updatePublishedState()
         logger.log(level: .info, tag: tag, message: "Logout all accounts completed")
     }
 
     /// Synchronizes any unsynced accounts with the server.
-    func syncUnsyncedAccounts() async throws {
+    func syncUnsyncedAccounts() async throws { // swiftlint:disable:this cyclomatic_complexity function_body_length
         // Ensure we have connectivity before attempting to sync
         guard networkMonitor.isConnected else { return }
         logger.log(level: .info, tag: tag, message: "Sync unsynced account data requested")
@@ -772,12 +873,13 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         // Always fetch the account flagged as active from local storage. This avoids
         // relying on a potentially stale `activeAccount` reference.
         guard let localAccount = try await localRepo.fetchAllAccounts()
-            .first(where: { $0.isActiveAccount == true }) else {
+            .first(where: { $0.isActiveAccount == true })
+        else {
             return // No active account found locally – nothing to sync
         }
 
-                // Keep the published `activeAccount` in sync with the freshly-fetched model
-        self.activeAccount = localAccount
+        // Refresh published state from local storage before syncing
+        try await updatePublishedState()
         let isSynced = localAccount.isSynced ?? true
         // Take an immutable snapshot of offline values BEFORE any network calls can mutate `localAccount`
         // Profile-related
@@ -848,7 +950,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 )
                 try await updateBodyComp(bodyComp)
             }
-            
+
             // Handle Notification Settings
             if let shouldSendEntry = offlineShouldSendEntry,
                let shouldSendWeightIn = offlineShouldSendWeightIn,
@@ -860,7 +962,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 try await updateNotifications(notifications: notifications)
             }
 
-            
             // Handle Dashboard Type
             if let dashboardType = offlineDashboardTypeRaw,
                !isSynced {
@@ -886,7 +987,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                let weightlessTimestamp = offlineWeightlessTimestamp,
                let weightlessWeight = offlineWeightlessWeight,
                !isSynced {
-                try await updateWeightless(isWeightlessOn: isWeightlessOn, weightlessTimestamp: weightlessTimestamp, weightlessWeight: Double(weightlessWeight))
+                try await updateWeightless(
+                    isWeightlessOn: isWeightlessOn,
+                    weightlessTimestamp: weightlessTimestamp,
+                    weightlessWeight: Double(weightlessWeight)
+                )
             }
 
             // Handle Goal Settings
@@ -903,25 +1008,24 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 try await createGoal(goal)
             }
 
-
             // Handle Integration Settings
             if localAccount.integrationSettings != nil,
                !isSynced {
                 // • Apple Health (HealthKit)
                 if offlineIsHealthKitOn == true {
                     // Fire-and-forget; the helper already updates the local store & published state.
-                    _ = try await updateIntegrations(
+                    try await updateIntegrations(
                         integrationType: .healthKit
                     )
                 } else {
                     // If HealthKit is off, ensure it's marked as unsynced
-                    _ = try await deleteHealthIntegration(.healthKit)
+                    try await deleteHealthIntegration(.healthKit)
                 }
             }
 
             // Mark **local** account (the one in persistence) as synced
             localAccount.isSynced = true
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "Sync unsynced account data completed for accountId=\(localAccount.accountId)")
 
@@ -935,6 +1039,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     // MARK: - Delete Health Integration
+
     /// Deletes the health integration for the active account or a specific account by ID.
     /// - Parameter type: The type of integration to delete (e.g., HealthKit).
     /// - Throws: An error if the deletion fails or if the account is not found.
@@ -952,7 +1057,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             try await integrationApiRepo.deleteHealthIntegration(deviceId: deviceId)
             try await refreshAccount()
             localAccount.isSynced = true
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "Integration deleted for accountId=\(accountId), type=\(type.rawValue)")
         } catch {
@@ -961,47 +1066,53 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                     localAccount.integrationSettings?.isHealthKitOn = false
                     localAccount.isSynced = false
                 }
-                try await localRepo.updateAccount(localAccount)
+                try await updateAccountClearingTokens(localAccount)
                 try await updatePublishedState()
-                logger.log(level: .error, tag: tag, message: "Delete integration saved offline for accountId=\(accountId), type=\(type.rawValue), offline=true, reason=network_error")
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Delete integration saved offline for accountId=\(accountId), type=\(type.rawValue), offline=true, reason=network_error"
+                )
             }
-            logger.log(level: .error, tag: tag, message: "Delete integration failed for accountId=\(accountId), type=\(type.rawValue): \(error.localizedDescription)")
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Delete integration failed for accountId=\(accountId), type=\(type.rawValue): \(error.localizedDescription)"
+            )
             throw error
         }
     }
 
-    @discardableResult
-    func updateDashboardMetrics(metrics: [String]) async throws -> Account {
-        return try await updateMetrics(metrics, type: "dashboard", apiCall: apiRepo.patchDashboardMetrics)
+    func updateDashboardMetrics(metrics: [String]) async throws {
+        try await updateMetrics(metrics, type: "dashboard", apiCall: apiRepo.patchDashboardMetrics)
     }
-    
-    @discardableResult
-    func updateProgressMetrics(metrics: [String]) async throws -> Account {
-        return try await updateMetrics(metrics, type: "progress", apiCall: apiRepo.patchProgressMetrics)
+
+    func updateProgressMetrics(metrics: [String]) async throws {
+        try await updateMetrics(metrics, type: "progress", apiCall: apiRepo.patchProgressMetrics)
     }
-    
+
     private func updateMetrics(
         _ metrics: [String],
         type: String,
         apiCall: ([String]) async throws -> AccountResponse
-    ) async throws -> Account {
+    ) async throws {
         guard let accountId = activeAccount?.accountId else {
             throw AccountError.noActiveAccount
         }
-        
+
         guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
             throw AccountError.accountNotFound(id: accountId)
         }
-        
+
         do {
             let response = try await apiCall(metrics)
-            
+
             // Store the sent order before updating from response to prevent order loss
             let sentOrderString = metrics.joined(separator: ",")
-            
+
             // Update other account fields from response
             localAccount.update(from: response)
-            
+
             // Preserve the order we sent instead of using API response order
             // This matches Android behavior where the sent order is stored directly
             if type == "dashboard", let dashboardSettings = localAccount.dashboardSettings {
@@ -1009,16 +1120,19 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             } else if type == "progress", let dashboardSettings = localAccount.dashboardSettings {
                 dashboardSettings.progressMetrics = sentOrderString
             }
-            
-            try await localRepo.updateAccount(localAccount)
+
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "Update \(type) metrics successful: accountId=\(accountId)")
-            return localAccount
         } catch {
             if HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
-                try? await localRepo.updateAccount(localAccount)
-                logger.log(level: .error, tag: tag, message: "Update \(type) metrics saved offline for accountId=\(accountId), offline=true, reason=network_error, metrics=\(metrics)")
+                try? await updateAccountClearingTokens(localAccount)
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Update \(type) metrics saved offline for accountId=\(accountId), offline=true, reason=network_error, metrics=\(metrics)"
+                )
             }
             logger.log(level: .error, tag: tag, message: "Failed to update \(type) metrics: \(error)")
             throw error
@@ -1026,8 +1140,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     /// Updates the streak status for the active account or a specific account by ID.
-    @discardableResult
-    func updateStreak(isStreakOn: Bool, streakTimestamp: String) async throws -> Account {
+    func updateStreak(isStreakOn: Bool, streakTimestamp: String) async throws {
         guard let accountId = activeAccount?.accountId else {
             throw AccountError.noActiveAccount
         }
@@ -1038,10 +1151,9 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             logger.log(level: .info, tag: tag, message: "Update streak requested for accountId=\(accountId), isOn=\(isStreakOn)")
             let response = try await apiRepo.patchStreak(isStreakOn, streakTimestamp)
             localAccount.update(from: response)
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "Update streak successful for accountId=\(accountId)")
-            return localAccount
         } catch {
             if HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
@@ -1058,10 +1170,13 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                     )
                 }
                 localAccount.isSynced = false
-                try await localRepo.updateAccount(localAccount)
+                try await updateAccountClearingTokens(localAccount)
                 try await updatePublishedState()
-                logger.log(level: .error, tag: tag, message: "Update streak saved offline for accountId=\(accountId), offline=true, reason=network_error, isStreakOn=\(isStreakOn)")
-                return localAccount
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Update streak saved offline for accountId=\(accountId), offline=true, reason=network_error, isStreakOn=\(isStreakOn)"
+                )
             } else {
                 logger.log(level: .error, tag: tag, message: "Update streak failed for accountId=\(accountId): \(error.localizedDescription)")
                 throw error
@@ -1070,8 +1185,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     /// Updates the weightless mode for the active account or a specific account by ID.
-    @discardableResult
-    func updateWeightless(isWeightlessOn: Bool, weightlessTimestamp: String, weightlessWeight: Double) async throws -> Account {
+    func updateWeightless(isWeightlessOn: Bool, weightlessTimestamp: String, weightlessWeight: Double) async throws {
         // use current logged in account
         guard let accountId = activeAccount?.accountId else {
             throw AccountError.noActiveAccount
@@ -1084,22 +1198,23 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             let response = try await apiRepo.patchWeightless(isWeightlessOn, weightlessTimestamp, Int(weightlessWeight))
             localAccount.update(from: response)
             localAccount.isSynced = true
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
-            notifyActiveAccountChanged()
             logger.log(level: .info, tag: tag, message: "Update weightless successful for accountId=\(accountId)")
-            return localAccount
         } catch {
             if HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
                 localAccount.weightlessSettings?.isWeightlessOn = isWeightlessOn
                 localAccount.weightlessSettings?.weightlessTimestamp = weightlessTimestamp
                 localAccount.weightlessSettings?.weightlessWeight = isWeightlessOn ? weightlessWeight : nil
-                try await localRepo.updateAccount(localAccount)
+                try await updateAccountClearingTokens(localAccount)
                 try await updatePublishedState()
-                notifyActiveAccountChanged()
-                logger.log(level: .error, tag: tag, message: "Update weightless saved offline for accountId=\(accountId), offline=true, reason=network_error, isWeightlessOn=\(isWeightlessOn), weightlessWeight=\(weightlessWeight)")
-                return localAccount
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Update weightless saved offline for accountId=\(accountId), offline=true, reason=network_error, "
+                        + "isWeightlessOn=\(isWeightlessOn), weightlessWeight=\(weightlessWeight)"
+                )
             } else {
                 logger.log(level: .error, tag: tag, message: "Update weightless failed for accountId=\(accountId): \(error.localizedDescription)")
                 throw error
@@ -1108,35 +1223,39 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     // MARK: - Token Management
+
     /// Refreshes the access token using the refresh token of the active account or a specific account by ID.
     func refreshTokens(accountId: String? = nil) async throws -> Tokens {
-        let account = accountId != nil ?
-        try await fetchAccount(byId: accountId!) :
-        activeAccount
-
-        guard let account = account,
-              let refreshToken = account.refreshToken else {
+        guard let resolvedAccountId = accountId ?? activeAccount?.accountId else {
+            throw AccountError.noActiveAccount
+        }
+        let refreshToken = keychainService.getTokens(for: resolvedAccountId)?.refreshToken
+        guard let refreshToken = refreshToken else {
             throw AccountError.noActiveAccount
         }
 
-        logger.log(level: .info, tag: tag, message: "Refresh tokens requested for accountId=\(account.accountId)")
+        logger.log(level: .info, tag: tag, message: "Refresh tokens requested for accountId=\(resolvedAccountId)")
         return try await apiRepo.refreshToken(
             refreshToken: refreshToken,
-            accountId: account.accountId
+            accountId: resolvedAccountId
         )
     }
 
     /// Gets the active tokens (access and refresh) for the current active account.
+    /// Prefers Keychain; falls back to account fields for migration.
     func getActiveTokens() async throws -> Tokens {
         guard let account = activeAccount else {
             throw AccountError.noActiveAccount
         }
-        // Extract primitives from @Model before crossing async boundaries
         let accountId = account.accountId
+        if let tokens = keychainService.getTokens(for: accountId) {
+            logger.log(level: .info, tag: tag, message: "Get active tokens requested for accountId=\(accountId)")
+            return tokens
+        }
         let accessToken = account.accessToken ?? ""
         let refreshToken = account.refreshToken ?? ""
         let expiresAt = account.expiresAt ?? ""
-        logger.log(level: .info, tag: tag, message: "Get active tokens requested for accountId=\(accountId)")
+        logger.log(level: .info, tag: tag, message: "Get active tokens requested for accountId=\(accountId) (fallback from account)")
         return Tokens(
             accessToken: accessToken,
             refreshToken: refreshToken,
@@ -1145,29 +1264,96 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     /// Updates the published state of active and all accounts.
-    /// - Parameter forceRefresh: If true, always assign activeAccount even if accountId hasn't changed
-    func updatePublishedState(forceRefresh: Bool = false) async throws {
-        allAccounts = try await localRepo.fetchAllAccounts()
-        let nextActive = allAccounts.first { $0.isActiveAccount == true }
+    func updatePublishedState() async throws {
+        let rawAccounts = try await localRepo.fetchAllAccounts()
 
-        
-        if forceRefresh || activeAccount?.accountId != nextActive?.accountId {
+        let snapshots: [AccountSnapshot] = rawAccounts.map { account in
+            let tokens = keychainService.getTokens(for: account.accountId)
+            return account.toSnapshot(
+                accessToken: tokens?.accessToken,
+                refreshToken: tokens?.refreshToken,
+                expiresAt: tokens?.expiresAt
+            )
+        }
+
+        allAccounts = snapshots
+
+        let nextActive = snapshots.first { $0.isActiveAccount }
+        if activeAccount != nextActive {
             activeAccount = nextActive
-            // Always update theme when active account changes (including logout)
             Theme.shared.setActiveAccount(nextActive?.accountId)
         }
-        logger.log(level: .debug, tag: tag, message: "Published state updated. total=\(allAccounts.count), active=\(activeAccount?.accountId ?? "nil"), forceRefresh=\(forceRefresh)")
+        logger.log(
+            level: .debug,
+            tag: tag,
+            message: "Published state updated. total=\(allAccounts.count), active=\(activeAccount?.accountId ?? "nil")"
+        )
     }
-    
-    /// Forces the activeAccount publisher to notify subscribers of changes to account properties.
-    /// Call this after updating account properties that don't trigger automatic @Published notifications.
-    func notifyActiveAccountChanged() {
-        Task {
-            try await updatePublishedState(forceRefresh: true)
+
+    /// Returns true when app startup should keep showing loading instead of landing.
+    /// This prevents a landing-screen flash while Ionic migration is still pending/running.
+    func shouldDeferUnauthenticatedLanding() -> Bool {
+        if isIonicMigrationInProgress {
+            return true
         }
+        if activeAccount != nil {
+            return false
+        }
+        return migrationService.isMigrationNeeded()
     }
 
     // MARK: - Private Helpers
+
+    /// Prepares an authenticated account from API response, either updating an existing account or creating a new one.
+    /// - Parameters:
+    ///   - response: The API response containing account and token information
+    ///   - existingAccount: An optional existing account to update, or nil to create a new account
+    /// - Returns: The prepared account with authentication state set
+    private func prepareAuthenticatedAccount(from response: AccountResponse, existingAccount: Account?) async throws -> Account {
+        guard let accessToken = response.accessToken,
+              let refreshToken = response.refreshToken,
+              let expiresAt = response.expiresAt,
+              !accessToken.isEmpty,
+              !refreshToken.isEmpty,
+              !expiresAt.isEmpty else {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Auth response missing required tokens for accountId=\(response.account.id). "
+                    + "hasAccess=\(response.accessToken?.isEmpty == false), hasRefresh=\(response.refreshToken?.isEmpty == false), "
+                    + "hasExpiresAt=\(response.expiresAt?.isEmpty == false)"
+            )
+            throw HTTPError.serverError
+        }
+
+        // Persist tokens before Account model fields are cleared for SwiftData writes.
+        let tokens = Tokens(accessToken: accessToken, refreshToken: refreshToken, expiresAt: expiresAt)
+        keychainService.setTokens(tokens, for: response.account.id)
+
+        let account: Account
+        if let existing = existingAccount {
+            // Update existing account in place
+            existing.update(from: response)
+            existing.isLoggedIn = true
+            existing.isActiveAccount = true
+            existing.isExpired = false
+            existing.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
+            account = existing
+        } else {
+            // Create new account
+            account = Account(from: response.account)
+            account.accessToken = response.accessToken
+            account.refreshToken = response.refreshToken
+            account.expiresAt = response.expiresAt
+            account.isSynced = true
+            account.isLoggedIn = true
+            account.isActiveAccount = true
+            account.isExpired = false
+            account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
+        }
+        return account
+    }
+
     /// Deletes the account locally by ID and updates the published state.
     private func deleteAccountLocally(accountId: String) async throws {
         do {
@@ -1186,12 +1372,55 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     /// it throws a `maxAccountsReached` error to prevent adding a new account.
     private func checkIfMaxAccountsReached(email: String) async throws {
         if try await hasReachedMaxAccounts() {
-            allAccounts = try await localRepo.fetchAllAccounts().filter { $0.isLoggedIn == true }
-            if !(allAccounts.contains { $0.email == email } ) {
+            try await updatePublishedState()
+            let loggedInAccounts = allAccounts.filter { $0.isLoggedIn == true }
+            if !(loggedInAccounts.contains { $0.email == email }) {
                 logger.log(level: .error, tag: tag, message: "Max accounts reached. Blocking new account creation for email=\(maskedEmail(email))")
                 throw AccountError.maxAccountsReached
             }
         }
+    }
+
+    /// One-time migration: copy tokens from SwiftData to Keychain, then clear on Account so SwiftData never persists them again.
+    private func migrateTokensToKeychainIfNeeded() async throws {
+        let key = KvStorageKeys.tokensMigratedToKeychain.rawValue
+        if kvStorage.getValue(forKey: key) as? Bool == true {
+            return
+        }
+        let accounts = try await localRepo.fetchAllAccounts()
+        for account in accounts {
+            guard let accessTok = account.accessToken, let refreshTok = account.refreshToken,
+                  let expiresAtVal = account.expiresAt, !accessTok.isEmpty, !refreshTok.isEmpty else { continue }
+            keychainService.setTokens(
+                Tokens(accessToken: accessTok, refreshToken: refreshTok, expiresAt: expiresAtVal),
+                for: account.accountId
+            )
+            account.accessToken = nil
+            account.refreshToken = nil
+            account.expiresAt = nil
+            try await updateAccountClearingTokens(account)
+        }
+        kvStorage.setValue(true, forKey: key)
+        logger.log(level: .info, tag: tag, message: "Tokens migrated from SwiftData to Keychain for \(accounts.count) account(s)")
+    }
+
+    /// Clears token fields on account before persist so tokens are never stored in SwiftData (Keychain only).
+    private func clearTokenFieldsBeforeSave(_ account: Account) {
+        account.accessToken = nil
+        account.refreshToken = nil
+        account.expiresAt = nil
+    }
+
+    /// Saves account to local store without persisting token fields (Keychain is source of truth).
+    private func saveAccountClearingTokens(_ account: Account) async throws {
+        clearTokenFieldsBeforeSave(account)
+        try await localRepo.saveAccount(account)
+    }
+
+    /// Updates account in local store without persisting token fields (Keychain is source of truth).
+    private func updateAccountClearingTokens(_ account: Account) async throws {
+        clearTokenFieldsBeforeSave(account)
+        try await localRepo.updateAccount(account)
     }
 
     private func maskedEmail(_ email: String) -> String {
@@ -1221,11 +1450,12 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         let allAccounts = try await localRepo.fetchAllAccounts()
         for acc in allAccounts where acc.accountId != account.accountId {
             acc.isActiveAccount = false
-            try await localRepo.updateAccount(acc)
+            try await updateAccountClearingTokens(acc)
         }
     }
 
     // MARK: - Private Helpers
+
     /// Performs the actual logout logic: API call (ignored if it fails) + local flag updates + state refresh.
     /// - Parameter skipStateUpdate: If true, skips the state update to allow batch operations. Defaults to false.
     private func executeLogout(on localAccount: Account, isAutoLogout: Bool, skipStateUpdate: Bool = false) async throws {
@@ -1235,19 +1465,29 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             try await apiRepo.logOut(fcmToken: fcmToken, accountId: localAccount.accountId)
         } catch {
             // Ignore API errors during logout
-            logger.log(level: .error, tag: tag, message: "Logout API call failed for accountId=\(localAccount.accountId): \(error.localizedDescription)")
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Logout API call failed for accountId=\(localAccount.accountId): \(error.localizedDescription)"
+            )
         }
 
         do {
+            keychainService.deleteTokens(for: localAccount.accountId)
+            keychainService.deleteFCMToken(for: localAccount.accountId)
             // Logout the account locally (happens regardless of API success/failure)
             localAccount.isLoggedIn = (localAccount.isLoggedIn ?? false) ? isAutoLogout : false
             localAccount.isActiveAccount = false
             localAccount.isExpired = isAutoLogout
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             logger.log(level: .info, tag: tag, message: "Local logout flags updated for accountId=\(localAccount.accountId)")
         } catch {
             // Ignore local persistence errors during logout
-            logger.log(level: .error, tag: tag, message: "Local logout flag update failed for accountId=\(localAccount.accountId): \(error.localizedDescription)")
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Local logout flag update failed for accountId=\(localAccount.accountId): \(error.localizedDescription)"
+            )
         }
 
         // Attempt to refresh published state; propagate any errors to the caller
@@ -1258,6 +1498,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     // MARK: - Migration
+
     /// Migrates account data from Ionic app if needed
     /// Should be called once on app startup before other operations
     private func migrateFromIonicAppIfNeeded() async throws {
@@ -1272,7 +1513,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             let (migratedAccount, scalesCount) = try await migrationService.migrateAccountAndScaleData()
 
             if let migratedAccount = migratedAccount {
-                LoggerService.shared.log(level: .info, tag: tag, message: "Ionic app migration completed for account: \(migratedAccount.email) with \(scalesCount) scales")
+                LoggerService.shared.log(
+                    level: .info,
+                    tag: tag,
+                    message: "Ionic app migration completed for account: \(migratedAccount.email) with \(scalesCount) scales"
+                )
 
                 // Update published state to reflect the migrated account
                 try await updatePublishedState()
@@ -1289,7 +1534,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     deinit {
-      cancellables.forEach { $0.cancel() }
-      cancellables.removeAll()
+        cancellables.forEach { $0.cancel() }
+        cancellables.removeAll()
     }
-}
+} // swiftlint:disable:this file_length

@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
@@ -71,6 +72,9 @@ constructor(
 
   override fun provideInitialState(): BtScaleSetupState = BtScaleSetupState()
 
+  /** Surface the My Weight dashboard after adding a scale (MOB-422). */
+  override fun productSelectionAfterSetup(): ProductSelection = ProductSelection.MyWeight
+
   override suspend fun onSetupFinished() {
     dialogQueueService.showLoader(ScaleSetupStrings.SaveScaleLoader)
     try {
@@ -136,8 +140,7 @@ constructor(
       }
     } else {
       AppLog.d(TAG, "After Next intent - new currentStep: ${currentState.step}")
-      if (currentState.nextStep != null)
-        handleIntent(ScaleSetupIntent.SetNewStep(currentState.nextStep!!))
+      currentState.nextStep?.let { handleIntent(ScaleSetupIntent.SetNewStep(it)) }
     }
   }
 
@@ -146,18 +149,19 @@ constructor(
     AppLog.d(TAG, "Moving to previous step from: ${currentState.step}")
 
     if (currentState.isFirstStep) {
-      AppLog.d(TAG, "At first step, navigating back to add/edit scales")
-      navigateTo(AppRoute.AccountSettings.AddEditScales)
+      AppLog.d(TAG, "At first step, navigating back to My Devices")
+      navigateTo(AppRoute.AccountSettings.MyDevices)
     } else if (currentState.step == BtScaleSetupStep.SELECT_USER && isPermissionGranted) {
       AppLog.d(TAG, "Moving from select user back to scale info")
       handleIntent(ScaleSetupIntent.SetNewStep(BtScaleSetupStep.SCALE_INFO))
     } else {
-      if (currentState.previousStep != null)
+      currentState.previousStep?.let { previousStep ->
         if (currentState.step == BtScaleSetupStep.PAIRING_MODE) {
           stopPairingDevices()
         }
-      handleIntent(ScaleSetupIntent.SetNewStep(currentState.previousStep!!))
-      AppLog.d(TAG, "After Back intent - new currentStep: ${currentState.step}")
+        handleIntent(ScaleSetupIntent.SetNewStep(previousStep))
+        AppLog.d(TAG, "After Back intent - new currentStep: ${currentState.step}")
+      }
     }
   }
 
@@ -248,8 +252,9 @@ constructor(
         // Clear timeout when device is found
         clearBluetoothTimeout()
 
-        AppLog.d(TAG, "Pairing device: ${discoveredScale!!.id}")
-        ggDeviceService.pairDevice(discoveredScale!!.toGGBTDevice()) {
+        val pairedScale = discoveredScale ?: return@startObservingDevices
+        AppLog.d(TAG, "Pairing device: ${pairedScale.id}")
+        ggDeviceService.pairDevice(pairedScale.toGGBTDevice()) {
           when (it) {
             GGUserActionResponseType.CREATION_COMPLETED -> {
               AppLog.d(TAG, "Device pairing completed successfully")
@@ -287,7 +292,8 @@ constructor(
       // Check if scale with same peripheral identifier already exists
       viewModelScope.launch {
         try {
-          ggDeviceService.getDeviceInfo(discoveredScale!!.toGGBTDevice()) { deviceDetails ->
+          val scaleForInfo = discoveredScale ?: return@launch
+          ggDeviceService.getDeviceInfo(scaleForInfo.toGGBTDevice()) { deviceDetails ->
             if (deviceDetails != null) {
               deviceInfo = deviceDetails
             }
@@ -295,8 +301,9 @@ constructor(
             scaleToDelete = existingScales.find { scale ->
               scale.device?.macAddress == deviceInfo?.macAddress
             }
-            if (scaleToDelete != null) {
-              AppLog.d(TAG, "Found existing scale with same peripheral identifier: ${scaleToDelete!!.id}")
+            val deleteTarget = scaleToDelete
+            if (deleteTarget != null) {
+              AppLog.d(TAG, "Found existing scale with same peripheral identifier: ${deleteTarget.id}")
               confirmUserAndPair()
             } else {
               AppLog.d(TAG, "No existing scale found, proceeding with new pairing")
@@ -342,13 +349,14 @@ constructor(
   private fun successfullyPaired() {
     viewModelScope.launch {
       try {
-        AppLog.d(TAG, "Getting device info for: ${discoveredScale!!.id}")
-        discoveredScale = discoveredScale!!
-          .copy(connectionStatus = BLEStatus.CONNECTED,
-                nickname = discoveredScale?.nickname ?: BtScaleSetupStrings.DefaultScaleNickname,
-                userNumber = _state.value.user,
-                device = deviceInfo
-          )
+        val scale = discoveredScale ?: return@launch
+        AppLog.d(TAG, "Getting device info for: ${scale.id}")
+        discoveredScale = scale.copy(
+          connectionStatus = BLEStatus.CONNECTED,
+          nickname = scale.nickname ?: BtScaleSetupStrings.DefaultScaleNickname,
+          userNumber = _state.value.user,
+          device = deviceInfo,
+        )
         handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
         AppLog.d(TAG, "Syncing devices after successful pairing $discoveredScale")
         ggDeviceService.resumeScan()
@@ -366,8 +374,9 @@ constructor(
       if (scales.isEmpty()) {
         return ggDeviceService.stopScan(true)
       }
+      val scale = discoveredScale ?: return
       AppLog.d(TAG, "Syncing new scale")
-      ggDeviceService.syncDevices(listOf(discoveredScale!!.toGGBTDevice()))
+      ggDeviceService.syncDevices(listOf(scale.toGGBTDevice()))
     } catch (e: Exception) {
       AppLog.d(TAG, "Failed while syncing a new scale")
     }
@@ -389,7 +398,8 @@ constructor(
           sku = scaleInit.sku,
           createdAt = currentTime,
         )
-        deviceService.saveScale(discoveredScale!!)
+        val updatedScale = discoveredScale ?: return
+        deviceService.saveScale(updatedScale)
       AppLog.d(TAG, "Scale gets saved successfully")
     } catch (e: Exception) {
       AppLog.d(TAG, "Failed while scale gets saving")
@@ -419,7 +429,7 @@ constructor(
   private fun showRetryToast() {
     AppLog.d(TAG, "Showing retry toast")
     dialogQueueService.showToast(
-      Toast(
+      Toast.Simple(
         title = BtScaleSetupStrings.PairingMode.RetryToast.Title,
         message = BtScaleSetupStrings.PairingMode.RetryToast.Message,
         action = null,

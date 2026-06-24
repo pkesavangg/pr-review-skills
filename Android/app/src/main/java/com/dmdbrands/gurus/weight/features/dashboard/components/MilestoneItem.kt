@@ -14,7 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,7 +46,7 @@ private fun ProgressShimmerOverlay(
 /**
  * Single component for milestone items that handles both draggable and static cases.
  *
- * @param progress Progress data containing weight information
+ * @param progress Progress snapshot containing weight information
  * @param milestone The milestone stat
  * @param inEditMode Whether the dashboard is in edit mode
  * @param isFromSetup Whether the item is from setup flow
@@ -59,7 +59,7 @@ private fun ProgressShimmerOverlay(
  */
 @Composable
 fun MilestoneItem(
-  progress: Progress,
+  progress: WeightProgress,
   isProgressUpdating: Boolean = false,
   milestone: Stat,
   inEditMode: Boolean,
@@ -70,7 +70,7 @@ fun MilestoneItem(
   modifier: Modifier = Modifier,
   onMilestoneMoved: (isAdded: Boolean, milestone: Stat) -> Unit,
   onNavigateToGoal: () -> Unit = {},
-  onLongClick: (Stat?, Progress?) -> Unit = { _, _ -> },
+  onLongClick: (Stat?, WeightProgress?) -> Unit = { _, _ -> },
 ) {
   if (isGoalProgressMilestone(milestone)) {
     // Goal Progress Milestone Card

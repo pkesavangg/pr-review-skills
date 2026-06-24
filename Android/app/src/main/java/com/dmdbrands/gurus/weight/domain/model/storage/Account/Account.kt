@@ -8,7 +8,9 @@ import com.dmdbrands.gurus.weight.domain.enums.ActivityLevel
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountInfo
+import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
@@ -23,17 +25,20 @@ data class Account(
   val id: String,
   val firstName: String,
   val lastName: String,
-  val dob: String,
+  val dob: String? = null,
   val email: String,
   val expiresAt: String? = null,
   val fcmToken: String? = null,
-  val gender: String,
+  val gender: String? = null,
   val isActiveAccount: Boolean = false,
   val isLoggedIn: Boolean = false,
   val isExpired: Boolean = false,
   val isSynced: Boolean = false,
   val lastActiveTime: String? = null,
   val zipcode: String,
+  // Phase 2 (MOB-377): account-level product list + measurement system.
+  val productTypes: List<String> = listOf(ProductType.MY_WEIGHT.apiValue),
+  val measurementUnits: MeasurementUnits = MeasurementUnits.METRIC,
   // Add other settings as needed, or use separate domain models
   val weightUnit: WeightUnit,
   val isWeightlessOn: Boolean? = false,
@@ -100,7 +105,7 @@ data class Account(
       }
     return GGBTUserProfile(
       name = firstName,
-      age = calculateAge(dob),
+      age = dob?.let { calculateAge(it) },
       sex = gender,
       unit = weightUnit.value,
       weight = initialWeight,
