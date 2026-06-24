@@ -18,10 +18,10 @@ import com.greatergoods.ggInAppMessaging.domain.models.FeedActionType
 import com.greatergoods.ggInAppMessaging.domain.models.FeedSetting
 import com.greatergoods.ggInAppMessaging.domain.models.FeedTypes
 import com.greatergoods.ggInAppMessaging.domain.models.LandingPage
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,11 +42,10 @@ class FeedService @Inject constructor(
   dialogQueueService: IDialogQueueService,
   appNavigationService: IAppNavigationService,
   private val selectedFeedItemHolder: SelectedFeedItemHolder,
-  @ApplicationContext private val context: Context
+  @ApplicationContext private val context: Context,
+  @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService),
   IFeedService {
-
-  private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
   private val TAG = "FeedService"
 
@@ -69,7 +68,7 @@ class FeedService @Inject constructor(
 
   init {
 
-    serviceScope.launch {
+    appScope.launch {
       getFeedSettings()
       ggIAMService.feedNotificationChangedSubject.collect {
         launch {
@@ -80,7 +79,7 @@ class FeedService @Inject constructor(
       }
     }
 
-    serviceScope.launch {
+    appScope.launch {
       ggIAMService.sendUpdateFeed.collect { updateEvent ->
         launch {
           val feedActionType = convertStringToFeedActionType(updateEvent.actionType)
@@ -281,7 +280,7 @@ class FeedService @Inject constructor(
           dialogQueueService.dismissCurrent()
         },
         onConfirm = { actionType: Any ->
-          serviceScope.launch {
+          appScope.launch {
             handleFeedModalAction(feedItem, actionType.toString())
           }
         },
@@ -291,7 +290,7 @@ class FeedService @Inject constructor(
       AppLog.d(TAG, "Display IAM feed modal for item: ${feedItem.elementId}")
 
       // Track feed modal open event
-      serviceScope.launch {
+      appScope.launch {
         updateFeedItem(feedItem, FeedActionType.trigger, null)
       }
     } catch (e: Exception) {
@@ -411,7 +410,7 @@ class FeedService @Inject constructor(
    * If local items already exist, this adds mock items only if local storage is empty.
    */
   fun setMockFeedItems() {
-    serviceScope.launch {
+    appScope.launch {
       try {
         val currentLocalItems = _localFeedItems.value
 

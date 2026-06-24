@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.loading
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
@@ -14,7 +15,15 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
+import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
+import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -35,10 +44,12 @@ constructor(
   private val entryService: IEntryService,
   private val dashboardService: IDashboardService,
   private val deviceService: IDeviceService,
-  private val deviceInfoService: IDeviceInfoService
+  private val deviceInfoService: IDeviceInfoService,
+  private val productSelectionManager: IProductSelectionManager,
+  private val entryReadService: IEntryReadService,
+  @ApplicationContext private val applicationContext: Context,
 ) : ViewModel() {
   private val TAG = "Loadingscreenviewmodel"
-
   init {
     start()
   }
@@ -114,14 +125,25 @@ constructor(
 
   /**
    * loadData (same as Angular): subscribeAccount, entry sync (via updateAllData), setAccountId on dashboard/device, syncScales.
+   *
+   * Also preloads the CDC percentile tables on IO in parallel so the Baby dashboard
+   * sheet has them ready on first open — avoids the first-launch race where tapping
+   * the chart header before ~200ms of CSV parsing completed would show "--".
    */
   private suspend fun loadData(account: Account) {
     accountService.subscribeAccount()
-    entryService.updateAllData(accountId = account.id)
-    dashboardService.setAccountId(account.id)
-    deviceService.setAccountId(account.id)
     deviceInfoService.updateDeviceInfo()
-    deviceInfoService.updateLocalIntegrationInfo()
+    coroutineScope {
+      awaitAll(
+        async { entryService.updateAllData(accountId = account.id) },
+        async { dashboardService.setAccountId(account.id) },
+        async { deviceService.setAccountId(account.id) },
+        async { deviceInfoService.updateLocalIntegrationInfo() },
+        async { productSelectionManager.loadAvailableProducts(account.id) },
+        async(Dispatchers.IO) { BabyPercentileHelper.loadIfNeeded(applicationContext) },
+      )
+      entryReadService.setAccountId(account.id)
+    }
   }
 
   /**

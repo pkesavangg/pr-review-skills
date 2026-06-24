@@ -5,6 +5,8 @@ import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
+import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
@@ -13,6 +15,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.toAccountInfo
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.services.AuthState
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
+import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IOfflineHandlerService
 import com.dmdbrands.gurus.weight.domain.services.MaxAccountsReachedException
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
@@ -22,10 +25,13 @@ import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings.Error.LoginError
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import com.dmdbrands.gurus.weight.proto.ThemeMode
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,24 +40,24 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
-import javax.inject.Inject
 import javax.inject.Singleton
+import android.os.Bundle
 
 /**
  * Service for managing account authentication and session state.
  * Handles login, logout, account switching, and token management.
  */
 @Singleton
-class AccountService
-@Inject
-constructor(
+class AccountService(
   private val accountRepository: IAccountRepository,
   private val offlineHandlerService: IOfflineHandlerService,
   connectivityObserver: IConnectivityObserver,
   dialogQueueService: IDialogQueueService,
   appNavigationService: IAppNavigationService,
   private val storageClearService: StorageClearService,
+  private val analyticsService: IAnalyticsService,
   private val userDataStore: UserDataStore,
+  @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService),
   IAccountService {
   companion object {
@@ -135,15 +141,16 @@ constructor(
     password: String,
   ): Account? =
     try {
-      AppLog.d(TAG, "login() called for email: $email")
+      AppLog.d(TAG, "login() called")
       val isExistingAccount = getLoggedInAccounts().any { it.email == email }
       if (hasReachedMaxAccounts.first() && !isExistingAccount) {
-        AppLog.w(TAG, "Max accounts reached. Cannot login new account: $email")
+        AppLog.w(TAG, "Max accounts reached. Cannot login new account")
         throw MaxAccountsReachedException()
       }
       val savedAccount = accountRepository.login(email, password)
 
-      AppLog.d(TAG, "login() successful for email: $email")
+      analyticsService.logEvent(IAnalyticsService.Events.LOGIN_SUCCESS)
+      AppLog.d(TAG, "login() successful")
       savedAccount
     } catch (e: HttpException) {
       val msg =
@@ -154,6 +161,10 @@ constructor(
           else -> LoginError.MessageGeneric
         }
       showErrorToast(title = LoginError.Header, message = msg)
+      analyticsService.logEvent(
+        IAnalyticsService.Events.LOGIN_FAILURE,
+        Bundle().apply { putString(IAnalyticsService.Params.ERROR_TYPE, "http_${e.code()}") },
+      )
       AppLog.e(TAG, "Login failed", e)
       appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Login failed"))
       null
@@ -166,16 +177,17 @@ constructor(
    * @throws MaxAccountsReachedException if the maximum number of accounts is reached
    */
   override suspend fun signup(request: SignupRequest): Account? {
-    AppLog.d(TAG, "signup() called for email: ${request.email}")
+    AppLog.d(TAG, "signup() called")
     if (hasReachedMaxAccounts.first()) {
-      AppLog.w(TAG, "Max accounts reached. Cannot signup new account: ${request.email}")
+      AppLog.w(TAG, "Max accounts reached. Cannot signup new account")
       appNavigationService.emitAuthEvent(AuthState.Error("Maximum account limit reached"))
       throw MaxAccountsReachedException()
     }
     return try {
       val savedAccount = accountRepository.signup(request)
       appNavigationService.emitAuthEvent(AuthState.AccountAdded(savedAccount))
-      AppLog.d(TAG, "signup() successful for email: ${request.email}")
+      analyticsService.logEvent(IAnalyticsService.Events.SIGNUP_COMPLETED)
+      AppLog.d(TAG, "signup() successful")
       savedAccount
     } catch (e: Exception) {
       if (e is HttpException) {
@@ -205,7 +217,7 @@ constructor(
    * @param email The email address to reset the password for
    */
   override suspend fun resetPassword(email: String) {
-    AppLog.d(TAG, "resetPassword() called for email: $email")
+    AppLog.d(TAG, "resetPassword() called")
     try {
       AppLog.d(TAG, "Checking network availability for resetPassword()")
       val email = email.trim()
@@ -257,9 +269,10 @@ constructor(
         AppLog.w(TAG, "No active account found for changePassword(). Returning false.")
         return false
       }
-      accountRepository.updatePassword(activeAccountFlow.first()!!.id, currentPassword, newPassword)
+      val accountId = activeAccountFlow.first()?.id ?: return false
+      accountRepository.updatePassword(accountId, currentPassword, newPassword)
       AppLog.d(TAG, "Password changed successfully")
-      dialogQueueService.showToast(Toast(ToastStrings.Success.ChangePasswordSuccess.Message))
+      dialogQueueService.showToast(Toast.Simple(ToastStrings.Success.ChangePasswordSuccess.Message))
       true
     } catch (e: Exception) {
       AppLog.e(TAG, "Password change failed", e)
@@ -317,7 +330,7 @@ constructor(
             else -> ToastStrings.Error.UpdateProfileError.MessageGeneric
           }
           val header = when (e.code()) {
-             HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.Header
+            HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.Header
             HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.errorUpdatingProfileHeader
 
             else -> ToastStrings.Error.UpdateProfileError.HeaderGeneric
@@ -333,12 +346,35 @@ constructor(
   override suspend fun updateDashboardType(type: DashboardType) {
     AppLog.d(TAG, "Update Dashboard Type")
     try {
-      val accountId = activeAccountFlow.first()!!.id
+      val accountId = activeAccountFlow.first()?.id ?: return
       accountRepository.updateDashboardType(type.value)
       accountRepository.updateLocalDashboardType(accountId, dashboardType = type)
     } catch (e: Exception) {
       AppLog.d(TAG, "Error updating Dashboard Type", e.toString())
     }
+  }
+
+  override suspend fun emailCheck(email: String): Boolean {
+    AppLog.d(TAG, "emailCheck")
+    return accountRepository.emailCheck(email)
+  }
+
+  override suspend fun updateMeasurementUnits(measurementUnits: MeasurementUnits) {
+    AppLog.d(TAG, "Update Measurement Units: ${measurementUnits.value}")
+    requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
+    accountRepository.updateMeasurementUnits(measurementUnits)
+  }
+
+  override suspend fun addProduct(productType: ProductType) {
+    val apiValue = productType.apiValue
+    val current = getCurrentAccount()?.productTypes ?: listOf(ProductType.MY_WEIGHT.apiValue)
+    if (apiValue in current) {
+      AppLog.d(TAG, "addProduct: $apiValue already present, skipping")
+      return
+    }
+    AppLog.d(TAG, "addProduct: $apiValue")
+    requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
+    accountRepository.updateProducts(current + apiValue)
   }
 
   /**
@@ -367,19 +403,22 @@ constructor(
       accountRepository.syncAccountSettingsWithServer(accountInfo, isOnline = true)
       AppLog.d(TAG, "Active account login status check successful")
       true
-    } catch (e: java.net.UnknownHostException){
-      AppLog.w(TAG, "UnknownHostException failure during login status check, falling back to local DB ${e.toString()}" )
+    } catch (e: java.net.UnknownHostException) {
+      AppLog.w(TAG, "UnknownHostException failure during login status check, falling back to local DB ${e.toString()}")
       checkActiveAccountLocalValidity()
-    }
-    catch (e: java.io.InterruptedIOException){
-      AppLog.w(TAG, "InterruptedIOException failure during login status check, falling back to local DB ${e.toString()}" )
+    } catch (e: java.io.InterruptedIOException) {
+      AppLog.w(
+        TAG,
+        "InterruptedIOException failure during login status check, falling back to local DB ${e.toString()}",
+      )
       checkActiveAccountLocalValidity()
-    }
-    catch (e: java.net.SocketTimeoutException) {
-      AppLog.w(TAG, "SocketTimeoutException failure during login status check, falling back to local DB ${e.toString()}" )
+    } catch (e: java.net.SocketTimeoutException) {
+      AppLog.w(
+        TAG,
+        "SocketTimeoutException failure during login status check, falling back to local DB ${e.toString()}",
+      )
       checkActiveAccountLocalValidity()
-    }
-    catch (e: IOException) {
+    } catch (e: IOException) {
       AppLog.w(TAG, "Network failure during login status check, falling back to local DB ${e.toString()}")
       checkActiveAccountLocalValidity()
     } catch (e: HttpException) {
@@ -467,42 +506,51 @@ constructor(
       }
       val filterLoggedInAccounts = loggedInAccounts.filter { !it.isExpired }
 
-      // Run account checks - network failures don't mark accounts as expired
-      for (account in filterLoggedInAccounts) {
-        try {
-          AppLog.d(TAG, "Checking login status for account: ${account.id}")
-          // Get account info from API and update tokens for background operations
-          val accountInfo = accountRepository.getAccountFromAPI(account.id)
-          // Update account data with API response
-          accountRepository.updateAccountInfo(account.id, accountInfo)
-          AppLog.d(TAG, "Account ${account.id} login status check successful")
-        } catch (e: IOException) {
-          // Network failure - don't mark account as expired, just log and continue
-          AppLog.w(TAG, "Network failure while checking account ${account.id}, skipping (not marking as expired)", e.toString())
-          // Continue to next account - network failures shouldn't invalidate accounts
-        } catch (e: HttpException) {
-          // Only mark as expired on 401 Unauthorized errors
-          if (e.code() == HttpErrorConfig.ResponseCode.UNAUTHORIZED) {
-            AppLog.w(TAG, "Account is unauthorized (401). Marking as expired: ${account.id}")
-            accountRepository.markAccountExpired(account.id)
-            accountRepository.removeAccount(account.id)
-          } else {
-            // Other HTTP errors (500, 404, etc.) - don't mark as expired, just log
-            AppLog.w(TAG, "HTTP error ${e.code()} while checking account ${account.id}, not marking as expired")
+      // Run account checks in parallel - network failures don't mark accounts as expired
+      coroutineScope {
+        filterLoggedInAccounts.forEach { account ->
+          launch {
+            try {
+              AppLog.d(TAG, "Checking login status for account: ${account.id}")
+              // Get account info from API and update tokens for background operations
+              val accountInfo = accountRepository.getAccountFromAPI(account.id)
+              // Update account data with API response
+              accountRepository.updateAccountInfo(account.id, accountInfo)
+              AppLog.d(TAG, "Account ${account.id} login status check successful")
+            } catch (e: IOException) {
+              // Network failure - don't mark account as expired, just log and continue
+              AppLog.w(
+                TAG,
+                "Network failure while checking account ${account.id}, skipping (not marking as expired)",
+                e.toString(),
+              )
+            } catch (e: HttpException) {
+              // Only mark as expired on 401 Unauthorized errors
+              if (e.code() == HttpErrorConfig.ResponseCode.UNAUTHORIZED) {
+                AppLog.w(TAG, "Account is unauthorized (401). Marking as expired: ${account.id}")
+                accountRepository.markAccountExpired(account.id)
+                accountRepository.removeAccount(account.id)
+              } else {
+                // Other HTTP errors (500, 404, etc.) - don't mark as expired, just log
+                AppLog.w(TAG, "HTTP error ${e.code()} while checking account ${account.id}, not marking as expired")
+              }
+            } catch (e: java.net.UnknownHostException) {
+              AppLog.w(TAG, "UnknownHostException failure during logged accounts check ${e.toString()}")
+            } catch (e: java.io.InterruptedIOException) {
+              AppLog.w(
+                TAG,
+                "InterruptedIOException failure during logged accounts check, falling back to local DB ${e.toString()}",
+              )
+            } catch (e: java.net.SocketTimeoutException) {
+              AppLog.w(
+                TAG,
+                "SocketTimeoutException failure during logged accounts check, falling back to local DB ${e.toString()}",
+              )
+            } catch (e: Exception) {
+              // Other exceptions - log but don't mark as expired
+              AppLog.e(TAG, "Account ${account.id} login status check failed (not marking as expired)", e)
+            }
           }
-        }
-        catch (e: java.net.UnknownHostException){
-          AppLog.w(TAG, "UnknownHostException failure during logged accounts check ${e.toString()}", )
-        }
-        catch (e: java.io.InterruptedIOException){
-          AppLog.w(TAG, "InterruptedIOException failure during logged accounts check, falling back to local DB ${e.toString()}", )
-        }
-        catch (e: java.net.SocketTimeoutException) {
-          AppLog.w(TAG, "SocketTimeoutException failure during logged accounts check, falling back to local DB ${e.toString()}")
-        }
-        catch (e: Exception) {
-          // Other exceptions - log but don't mark as expired
-          AppLog.e(TAG, "Account ${account.id} login status check failed (not marking as expired)", e)
         }
       }
       AppLog.d(TAG, "Logged-in accounts status check completed.")
@@ -563,7 +611,7 @@ constructor(
     fcmToken: String?,
   ): Boolean =
     try {
-      if (!isNetworkAvailable()){
+      if (!isNetworkAvailable()) {
         showNoNetworkErrorToast()
       }
       AppLog.v(TAG, "logout() called for accountId: $accountId")
@@ -572,7 +620,12 @@ constructor(
       val result = accountRepository.logoutAccount(accountId, fcmToken, isActiveAccount)
       accountRepository.setNotificationAlertShownForAccount(accountId, false)
       AppLog.d(TAG, "Logout successful")
-      appNavigationService.emitAuthEvent(AuthState.LoggedOut(isActiveAccount = isActiveAccount, isLastAccount = wasLastAccount))
+      appNavigationService.emitAuthEvent(
+        AuthState.LoggedOut(
+          isActiveAccount = isActiveAccount,
+          isLastAccount = wasLastAccount,
+        ),
+      )
       result
     } catch (e: Exception) {
       AppLog.e(TAG, "Logout failed", e)
@@ -587,7 +640,7 @@ constructor(
   override suspend fun logoutAll(): Boolean =
     try {
       AppLog.d(TAG, "logoutAll() called")
-      if (!isNetworkAvailable()){
+      if (!isNetworkAvailable()) {
         showNoNetworkErrorToast()
       }
       // Get all logged-in accounts before logging out to reset their notification alert settings
@@ -609,6 +662,32 @@ constructor(
     } catch (e: Exception) {
       AppLog.e(TAG, "Logout all failed", e)
       appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Logout all failed"))
+      false
+    }
+
+  /**
+   * Removes the specified account from this device only ("Removed = gone", MA-2672 / MOB-424).
+   * Fully deletes the local account; the server account is not deleted. Navigation away from an
+   * emptied list is handled by the (Multi-)Landing screen observing [loggedInAccountsFlow].
+   * @param accountId ID of the account to remove
+   * @param fcmToken FCM token for push notifications (optional)
+   * @return true if the account was removed successfully, false otherwise
+   */
+  override suspend fun removeAccountFromDevice(
+    accountId: String,
+    fcmToken: String?,
+  ): Boolean =
+    try {
+      if (!isNetworkAvailable()) {
+        showNoNetworkErrorToast()
+      }
+      AppLog.v(TAG, "removeAccountFromDevice() called for accountId: $accountId")
+      val isActiveAccount = getCurrentAccount()?.id == accountId
+      accountRepository.removeAccountFromDevice(accountId, fcmToken, isActiveAccount)
+      AppLog.d(TAG, "Account removed from device")
+      true
+    } catch (e: Exception) {
+      AppLog.e(TAG, "removeAccountFromDevice failed", e)
       false
     }
 
@@ -655,26 +734,23 @@ constructor(
       accountRepository.getAccountFromAPI(account.id)
       // Switch to the account using the repository method
       accountRepository.switchToAccount(account.id)
-      AppLog.d(TAG, "Successfully switched to account: ${account.email}")
+      AppLog.d(TAG, "Successfully switched account")
+      analyticsService.logEvent(IAnalyticsService.Events.ACCOUNT_SWITCHED)
       appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
       true
-    }
-    catch (e: java.net.UnknownHostException){
+    } catch (e: java.net.UnknownHostException) {
       AppLog.w(TAG, "UnknownHostException failure during account switch ${e.toString()}")
       showNetworkErrorAndThrow()
       false
-    }
-    catch (e: java.io.InterruptedIOException){
+    } catch (e: java.io.InterruptedIOException) {
       AppLog.w(TAG, "InterruptedIOException failure failure during account switch ${e.toString()}")
       showNetworkErrorAndThrow()
       false
-    }
-    catch (e: java.net.SocketTimeoutException) {
+    } catch (e: java.net.SocketTimeoutException) {
       AppLog.w(TAG, "SocketTimeoutException e.toString() ${e.toString()}")
       showNetworkErrorAndThrow()
       false
-    }
-    catch (e: IOException) {
+    } catch (e: IOException) {
       // Network failed during API call - check if account is valid locally
       AppLog.w(TAG, "Network failed during account switch, checking local validity", e.toString())
       val localAccount = getLoggedInAccounts().find { it.id == account.id }
@@ -697,8 +773,7 @@ constructor(
       // Optional: handle unexpected exceptions
       AppLog.e(TAG, "Unexpected error while switching account", e)
       false
-    }
-    finally {
+    } finally {
       dialogQueueService.dismissLoader()
     }
   }
@@ -751,7 +826,7 @@ constructor(
     } catch (e: Exception) {
       AppLog.e(TAG, "reset() failed during storage clear", e)
       dialogQueueService.showToast(
-        Toast(
+        Toast.Simple(
           title = null,
           message = LoginError.MessageGeneric,
         ),
@@ -876,9 +951,9 @@ constructor(
     AppLog.d(TAG, "Emitted NavigateBackFromMyAccounts event")
   }
 
-  private fun showNoNetworkErrorToast(){
+  private fun showNoNetworkErrorToast() {
     dialogQueueService.showToast(
-      Toast(
+      Toast.Simple(
         title = null,
         message = ToastStrings.Error.NetworkError.Message,
         action = null,

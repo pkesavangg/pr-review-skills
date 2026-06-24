@@ -61,4 +61,15 @@ interface IIntegrationService {
      * @return Formatted string of provider names
      */
     fun getInvalidIntegrationNames(providers: List<IntegrationProvider>): String
+
+    /**
+     * Submits a user-suggested integration as free-text feedback via
+     * `POST integrations/request` with body `{ "request": "<text>" }`
+     * (see [com.dmdbrands.gurus.weight.data.api.IIntegrationAPI.requestIntegration]).
+     *
+     * @param suggestion The user-entered integration name / description.
+     * @throws IllegalArgumentException if the suggestion is blank.
+     * @throws Exception on network or non-2xx server response; callers should report it.
+     */
+    suspend fun submitIntegrationRequest(suggestion: String)
 }

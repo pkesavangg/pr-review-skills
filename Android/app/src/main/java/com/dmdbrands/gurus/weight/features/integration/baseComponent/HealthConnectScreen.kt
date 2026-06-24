@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.integration.baseComponent
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,6 +20,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AnnotationPosition
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
+import com.dmdbrands.gurus.weight.features.common.components.AppIcon
+import com.dmdbrands.gurus.weight.features.common.components.AppIconType
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
@@ -45,6 +48,8 @@ data class HealthConnectScreenContent(
  * @param content The content to display on the screen
  * @param onPrimaryAction Callback when the primary button is clicked
  * @param onSecondaryAction Callback when the secondary button is clicked, null if no secondary action
+ * @param dataTypes Optional list of data-type labels rendered as checkmark rows between the
+ *                  description and the primary button (empty list renders nothing)
  * @param modifier The modifier to be applied to the composable
  */
 @Composable
@@ -52,7 +57,8 @@ fun HealthConnectScreen(
   modifier: Modifier = Modifier,
   content: HealthConnectScreenContent,
   onPrimaryAction: () -> Unit,
-  onSecondaryAction: (() -> Unit)? = null
+  onSecondaryAction: (() -> Unit)? = null,
+  dataTypes: List<String> = emptyList()
 ) {
   Column(
     modifier = modifier
@@ -83,6 +89,10 @@ fun HealthConnectScreen(
       annotationPosition = AnnotationPosition.End,
       spanStyle = if(content.annotatedString != null) SpanStyle(fontWeight = FontWeight.Bold) else null
     )
+    if (dataTypes.isNotEmpty()) {
+      Spacer(Modifier.padding(top = MeTheme.spacing.sm))
+      dataTypes.forEach { DataTypeRow(it) }
+    }
     Spacer(
       Modifier.padding(
         bottom = if (onSecondaryAction != null) MeTheme.spacing.lg else MeTheme.spacing.x6l,
@@ -103,6 +113,27 @@ fun HealthConnectScreen(
         modifier = Modifier.padding(top = MeTheme.spacing.sm),
       )
     }
+  }
+}
+
+@Composable
+private fun DataTypeRow(label: String) {
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .padding(vertical = MeTheme.spacing.x2s),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    AppIcon(
+      id = AppIcons.Outlined.CheckedCircle,
+      contentDescription = null,
+      type = AppIconType.Primary,
+    )
+    Spacer(modifier = Modifier.width(MeTheme.spacing.sm))
+    AppText(
+      text = label,
+      textType = TextType.Body,
+    )
   }
 }
 

@@ -1,8 +1,7 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.components
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -112,7 +111,6 @@ fun <T> SetupForm(
     formControl.validate()
   }
   val focusManager = LocalFocusManager.current
-  val interactionSource = remember { MutableInteractionSource() }
 
   Column(
     modifier = modifier
@@ -129,11 +127,7 @@ fun <T> SetupForm(
             .padding(horizontal = 0.dp, vertical = 0.dp)
         },
       )
-      .clickable(
-        interactionSource = interactionSource,
-        indication = null,
-        onClick = { focusManager.clearFocus() },
-      ),
+      .dismissKeyboardOnTap(),
   ) {
     AppText(
       text = title,

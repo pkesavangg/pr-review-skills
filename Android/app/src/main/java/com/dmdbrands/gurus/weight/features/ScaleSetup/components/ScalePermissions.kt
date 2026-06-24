@@ -27,8 +27,8 @@ fun ScalePermissions(
     onRequestPermission: (String) -> Unit,
     wifiName: String? = null,
 ) {
-    val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku)
-    val scaleSetupType = scaleInfo!!.setupType
+    val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku) ?: return
+    val scaleSetupType = scaleInfo.setupType
     val permissionGroups = AppPermissionsHelper.getRequiredPermissionsForSetupType(sku, permissions, null, wifiName)
     Column(
         modifier = modifier

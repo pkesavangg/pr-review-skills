@@ -1,92 +1,79 @@
-//
-//  MockAccountRepository.swift
-//  meAppTests
-//
-
 import Foundation
 @testable import meApp
 
-/// Mock for AccountRepositoryProtocol used in AccountService unit tests.
 @MainActor
 final class MockAccountRepository: AccountRepositoryProtocol {
+    private var accountsById: [String: Account] = [:]
 
-    // MARK: - In-memory store
-    var storedAccounts: [Account] = []
+    private(set) var fetchAccountCalls = 0
+    private(set) var fetchAllAccountsCalls = 0
+    private(set) var saveAccountCalls = 0
+    private(set) var updateAccountCalls = 0
+    private(set) var deleteAccountCalls = 0
+    private(set) var deleteAllAccountsCalls = 0
 
-    // MARK: - Configurable errors
-    var fetchAccountByIdError: Error?
-    var fetchAllAccountsError: Error?
     var saveAccountError: Error?
     var updateAccountError: Error?
     var deleteAccountError: Error?
     var deleteAllAccountsError: Error?
 
-    // MARK: - Call tracking
-    var saveAccountCallCount = 0
-    var updateAccountCallCount = 0
-    var deleteAccountCallCount = 0
-    var deleteAllAccountsCallCount = 0
-
-    // MARK: - AccountRepositoryProtocol
-
     func fetchAccount(byId id: String) async throws -> Account? {
-        if let error = fetchAccountByIdError { throw error }
-        return storedAccounts.first { $0.accountId == id }
+        fetchAccountCalls += 1
+        return accountsById[id]
     }
 
     func fetchAllAccounts() async throws -> [Account] {
-        if let error = fetchAllAccountsError { throw error }
-        return storedAccounts
+        fetchAllAccountsCalls += 1
+        return Array(accountsById.values)
     }
 
     func fetchAllAccountsSync() throws -> [Account] {
-        if let error = fetchAllAccountsError { throw error }
-        return storedAccounts
+        Array(accountsById.values)
     }
 
     func saveAccount(_ account: Account) async throws {
-        saveAccountCallCount += 1
-        if let error = saveAccountError { throw error }
-        storedAccounts.append(account)
+        saveAccountCalls += 1
+        if let saveAccountError {
+            throw saveAccountError
+        }
+        accountsById[account.accountId] = account
     }
 
     func updateAccount(_ account: Account) async throws {
-        updateAccountCallCount += 1
-        if let error = updateAccountError { throw error }
-        if let index = storedAccounts.firstIndex(where: { $0.accountId == account.accountId }) {
-            storedAccounts[index] = account
+        updateAccountCalls += 1
+        if let updateAccountError {
+            throw updateAccountError
         }
+        accountsById[account.accountId] = account
     }
 
     func deleteAccount(byId id: String) async throws {
-        deleteAccountCallCount += 1
-        if let error = deleteAccountError { throw error }
-        storedAccounts.removeAll { $0.accountId == id }
+        deleteAccountCalls += 1
+        if let deleteAccountError {
+            throw deleteAccountError
+        }
+        accountsById.removeValue(forKey: id)
     }
 
     func deleteAllAccounts() async throws {
-        deleteAllAccountsCallCount += 1
-        if let error = deleteAllAccountsError { throw error }
-        storedAccounts.removeAll()
+        deleteAllAccountsCalls += 1
+        if let deleteAllAccountsError {
+            throw deleteAllAccountsError
+        }
+        accountsById.removeAll()
     }
 
-    // MARK: - Helpers
-
-    func seed(_ account: Account) {
-        storedAccounts.append(account)
+    func seed(_ accounts: [Account]) {
+        for account in accounts {
+            accountsById[account.accountId] = account
+        }
     }
 
-    func reset() {
-        storedAccounts.removeAll()
-        fetchAccountByIdError = nil
-        fetchAllAccountsError = nil
-        saveAccountError = nil
-        updateAccountError = nil
-        deleteAccountError = nil
-        deleteAllAccountsError = nil
-        saveAccountCallCount = 0
-        updateAccountCallCount = 0
-        deleteAccountCallCount = 0
-        deleteAllAccountsCallCount = 0
+    func containsAccount(id: String) -> Bool {
+        accountsById[id] != nil
+    }
+
+    func all() -> [Account] {
+        Array(accountsById.values)
     }
 }

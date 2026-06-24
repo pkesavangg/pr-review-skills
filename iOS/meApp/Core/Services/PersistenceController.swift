@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 03/06/25.
 //
 
-
 import SwiftData
 
 /// `PersistenceController` is a singleton class that provides a shared SwiftData `ModelContainer` and `ModelContext`
@@ -51,6 +50,8 @@ final class PersistenceController {
                 BathScaleMetric.self,
                 DeviceMetaData.self,
                 BathScaleEntry.self,
+                BPMEntry.self,
+                BabyEntry.self,
                 LogEntry.self,
                 WeightCompSettings.self,
                 GoalSettings.self,
@@ -58,7 +59,8 @@ final class PersistenceController {
                 NotificationSettings.self,
                 StreaksSettings.self,
                 WeightlessSettings.self,
-                DashboardSettings.self
+                DashboardSettings.self,
+                Baby.self
             ]
         )
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)

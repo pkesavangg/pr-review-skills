@@ -102,10 +102,10 @@ struct ListItemView<Trailing: View>: View {
             Spacer()
             if let trailing {
                 trailing
-                    .onTapGesture(perform: {onTap?()})
+                    .onTapGesture { onTap?() }
             }
         }
-        .onTapGesture(perform: {onTap?()})
+        .onTapGesture { onTap?() }
         .padding(.vertical, verticalPadding)
         .padding(.horizontal, .spacingSM)
         .background(theme.backgroundPrimary)
@@ -115,7 +115,7 @@ struct ListItemView<Trailing: View>: View {
 
 struct GenericListRow_Previews: PreviewProvider {
     static var previews: some View {
-        VStack() {
+        VStack {
             ListItemView<EmptyView>(
                 title: "Title"
             )

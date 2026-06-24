@@ -11,15 +11,15 @@ import SwiftUI
 /// Configuration for a settings item in the settings list.
 struct ActionListItemConfig {
     let title: String
-    var value: String? = nil
+    var value: String?
     var chevronType: ChevronType = .right
     var isDestructive: Bool = false
-    var toggleBinding: Binding<Bool>? = nil
+    var toggleBinding: Binding<Bool>?
     var showDot: Bool = false
-    var dotColor: Color? = nil
+    var dotColor: Color?
     var isDisabled: Bool = false
     /// Optional leading icon shown before the title (e.g., status indicator).
     /// If provided, `showDot` will be ignored.
-    var leadingIcon: AnyView? = nil
-    var onTap: (() -> Void)? = nil
+    var leadingIcon: AnyView?
+    var onTap: (() -> Void)?
 }

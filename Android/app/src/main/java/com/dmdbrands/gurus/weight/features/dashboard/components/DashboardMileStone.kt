@@ -9,7 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.StatHelper
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
@@ -32,7 +32,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  */
 @Composable
 fun DashboardMilestone(
-  progress: Progress,
+  progress: WeightProgress,
   isProgressUpdating: Boolean = false,
   latestWeight: Double? = null,
   inEditMode: Boolean = false,
@@ -41,7 +41,7 @@ fun DashboardMilestone(
   visibleKeys: List<DashboardKey> = listOf(),
   onMilestonesChanged: (List<DashboardKey>) -> Unit = { },
   onNavigateToGoal: () -> Unit = {},
-  onLongClick: (Stat?, Progress?) -> Unit = { _, _ -> },
+  onLongClick: (Stat?, WeightProgress?) -> Unit = { _, _ -> },
   modifier: Modifier = Modifier
 ) {
   val currentDeviceType = getDeviceType()

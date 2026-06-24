@@ -16,6 +16,11 @@ struct MonthSummaryItem: View {
 
     let month: HistoryMonth
     /// Localized date formatter: "MMM yyyy"
+    private var combinedAccessibilityLabel: String {
+        let count = month.count ?? 0
+        return "\(monthYearText), \(count) \(HistoryListStrings.entries), \(HistoryListStrings.average) \(avgWeightText)"
+    }
+
     private var monthYearText: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM"
@@ -25,24 +30,24 @@ struct MonthSummaryItem: View {
     }
 
     private var avgWeightText: String {
-        guard let w = month.weight else { return "--" }
-        let weight = WeightValueConvertor.formatWeight(w, showSymbol: false, weightUnit: weightUnit, weightless: weightlessSettings)
-        let displayValue = ConversionTools.convertStoredToDisplay(Int(w), isMetric: weightUnit == .kg)
+        guard let weightValue = month.weight else { return "--" }
+        let weight = WeightValueConvertor.formatWeight(weightValue, showSymbol: false, weightUnit: weightUnit, weightless: weightlessSettings)
+        let displayValue = ConversionTools.convertStoredToDisplay(weightValue, isMetric: weightUnit == .kg)
         let unitLabel = WeightValueConvertor.unitForDisplay(value: displayValue, unit: weightUnit)
         return String(format: "%@ %@", weight, unitLabel)
     }
 
     private var changeText: String {
-        guard let cStr = month.change, let c = Double(cStr) else { return "--" }
-        let change = WeightValueConvertor.formatWeight(c, showSymbol: true, weightUnit: weightUnit)
-        let displayValue = ConversionTools.convertStoredToDisplay(Int(c), isMetric: weightUnit == .kg)
+        guard let changeStr = month.change, let changeValue = Double(changeStr) else { return "--" }
+        let change = WeightValueConvertor.formatWeight(changeValue, showSymbol: true, weightUnit: weightUnit)
+        let displayValue = ConversionTools.convertStoredToDisplay(changeValue, isMetric: weightUnit == .kg)
         let unitLabel = WeightValueConvertor.unitForDisplay(value: displayValue, unit: weightUnit)
         return String(format: "%@ %@", change, unitLabel)
     }
 
     var body: some View {
       VStack(spacing: 0) {
-        HStack() {
+        HStack {
             // Month & entry count
             VStack(alignment: .leading) {
                 Text(monthYearText)
@@ -90,6 +95,10 @@ struct MonthSummaryItem: View {
         }
         .padding(.vertical, .spacingMD)
         .padding(.horizontal, .spacingSM)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(combinedAccessibilityLabel)
+        .accessibilityHint(HistoryListStrings.accMonthRowHint)
+        .accessibilityAddTraits(.isButton)
         Divider()
             .foregroundColor(theme.actionPrimary)
       }
@@ -125,5 +134,3 @@ struct MonthSummaryItem_Previews: PreviewProvider {
     }
 }
 #endif
-
-

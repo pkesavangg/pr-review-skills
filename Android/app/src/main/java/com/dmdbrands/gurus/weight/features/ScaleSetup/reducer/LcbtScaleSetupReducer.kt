@@ -1,8 +1,11 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.reducer
 
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
-val initialSteps: List<LcbtScaleSetupStep> = listOf(
+val initialSteps: ImmutableList<LcbtScaleSetupStep> = persistentListOf(
   LcbtScaleSetupStep.SCALE_INFO,
   LcbtScaleSetupStep.PERMISSIONS,
   LcbtScaleSetupStep.WAKEUP,
@@ -13,6 +16,7 @@ val initialSteps: List<LcbtScaleSetupStep> = listOf(
 /**
  * State for LcbtScaleSetupScreen.
  */
+@Stable
 data class LCBTScaleSetupState(
   override val scaleSetupState: ScaleSetupState<LcbtScaleSetupStep> = ScaleSetupState(
     setupState = SetupState(

@@ -5,23 +5,20 @@
 //  Created by Assistant on 04/07/25.
 //
 
-import SwiftUI
 import Charts
+import SwiftUI
 
 /// Dedicated view for rendering the Week time period chart
 /// Uses BaseGraphView for common chart rendering functionality
 struct WeekGraphView: View {
-    
+
     // MARK: - Dependencies
     @ObservedObject var viewModel: WeekSectionViewModel
     @ObservedObject var dashboardStore: DashboardStore
-    
+    var isActive: Bool = true
+
     var body: some View {
-        BaseGraphView(
-            viewModel: viewModel,
-            dashboardStore: dashboardStore
-        )
-        .equatable()
+        BaseGraphView(viewModel: viewModel, dashboardStore: dashboardStore, isActive: isActive)
     }
 }
 

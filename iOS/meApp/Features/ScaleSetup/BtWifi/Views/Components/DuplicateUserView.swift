@@ -15,6 +15,7 @@ struct DuplicateUserView: View {
     let scaleSetupLang = ScaleSetupStrings.self
     
     @State var focusedField: FocusField?
+    @State private var keyboardHeight: CGFloat = 0
     let labels = InputFieldLabels.self
     
     private let lang = BtWifiScaleSetupStrings.DuplicateUserViewStrings.self
@@ -22,7 +23,7 @@ struct DuplicateUserView: View {
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
-                VStack(spacing: .spacingXS) {
+                VStack(alignment: .leading, spacing: .spacingXS) {
                     VStack(alignment: .leading, spacing: .spacingXS) {
                         Text(lang.title(isFromCustomizeSettings))
                             .fontOpenSans(.heading4)
@@ -40,11 +41,10 @@ struct DuplicateUserView: View {
                                 focusField: .userName
                             ),
                             value: $store.userNameForm.displayName.value,
-                            focusedField: $focusedField,
-                            onCommit: {
+                            focusedField: $focusedField
+                        ) {
                                 focusedField = .userName
                             }
-                        )
                         .onChange(of: store.userNameForm.displayName.value) {
                             // Trigger validation and update Next button state when username changes
                             store.userNameForm.displayName.markAsDirty()
@@ -75,12 +75,14 @@ struct DuplicateUserView: View {
                         
                     }
                     .padding(.top, .spacingLG)
+                    .padding(.bottom, .spacingLG + keyboardHeight)
                 }
             }
         }
         .scrollDismissesKeyboard(.interactively)
         .background(theme.backgroundSecondary)
         .navigationBarBackButtonHidden(true)
+        .keyboardObserver(keyboardHeight: $keyboardHeight)
     }
 }
 

@@ -9,7 +9,6 @@ import Foundation
 
 enum AppEnvironment: String {
     case dev = "DEV"
-    case staging = "STAGING"
     case production = "PRODUCTION"
 
     static var current: AppEnvironment {
@@ -27,8 +26,8 @@ enum AppEnvironment: String {
         switch current {
         case .production:
             scheme = "https://"
-        case .dev, .staging:
-            scheme = "http://"
+        case .dev:
+            scheme = "https://"
         }
         return scheme + baseDomain
     }

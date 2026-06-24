@@ -1,6 +1,6 @@
 import Foundation
 
-class KvStorageService {
+class KvStorageService: KvStorageServiceProtocol {
     static let shared = KvStorageService()
 
     init() {}
@@ -21,6 +21,14 @@ class KvStorageService {
         if let appDomain = Bundle.main.bundleIdentifier {
             UserDefaults.standard.removePersistentDomain(forName: appDomain)
         }
+    }
+
+    func getAllKeys() -> [String] {
+        guard let domain = Bundle.main.bundleIdentifier,
+              let dict = UserDefaults.standard.persistentDomain(forName: domain) else {
+            return []
+        }
+        return Array(dict.keys)
     }
 }
 

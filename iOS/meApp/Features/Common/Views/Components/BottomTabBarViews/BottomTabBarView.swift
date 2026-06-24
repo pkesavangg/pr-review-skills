@@ -26,7 +26,7 @@ struct BottomTabBarView: View {
     /// A dictionary to hold deactivation handlers for each tab.
     @State private var deactivationHandlers: [BottomTab: () async -> Bool] = [:]
     @Environment(\.appTheme) private var theme
-    
+
     var body: some View {
         VStack(spacing: 0) {
             ZStack {
@@ -45,7 +45,7 @@ struct BottomTabBarView: View {
                         .onDisappear { viewModel.removeDeactivationHandler(for: tab) }
                 }
             }
-            
+
             if viewModel.showTabBar {
                 HStack {
                     ForEach(Array(viewModel.visibleTabs.enumerated()), id: \.element) { index, tab in
@@ -90,13 +90,17 @@ struct BottomTabBarView: View {
         .withWeightOnlyModeIndicator()
         .environmentObject(viewModel)
         .edgesIgnoringSafeArea(.bottom)
+        .onDisappear {
+            // Clears goal-alert callbacks to prevent stale alerts during account switching.
+            viewModel.clearGoalAlertCallbacks()
+        }
         // Show scale discovered sheet: modal on iPad < iOS18 and sheet otherwise
         .if(DeviceUtils.useModalPicker) { view in
             view
                 .onChange(of: viewModel.discoveredScale) { _, scale in
                     if let scale = scale {
                         let sheetView = ScaleDiscoveredSheetView(
-                            device: scale,
+                            device: scale.toDevice(),
                             discoveryEvent: viewModel.discoveryEvent,
                             onClose: {
                                 viewModel.notificationService.dismissModal()
@@ -104,11 +108,11 @@ struct BottomTabBarView: View {
                             },
                             onConnect: {
                                 viewModel.notificationService.dismissModal()
-                                viewModel.openScaleSetup(scale: scale, event: viewModel.discoveryEvent)
+                                viewModel.openDeviceSetup(scale: scale, event: viewModel.discoveryEvent)
                             }
                         )
                         .cornerRadius(.radiusSM)
-                        
+
                         viewModel.notificationService.showModal(
                             ModalData(
                                 presentedView: AnyView(sheetView),
@@ -122,67 +126,72 @@ struct BottomTabBarView: View {
             view
                 .sheet(item: $viewModel.discoveredScale) { scale in
                     ScaleDiscoveredSheetView(
-                        device: scale,
+                        device: scale.toDevice(),
                         discoveryEvent: viewModel.discoveryEvent,
                         onClose: {
                             viewModel.dismissDiscoveredScaleSheet()
                         },
                         onConnect: {
-                            viewModel.openScaleSetup(scale: scale, event: viewModel.discoveryEvent)
+                            viewModel.openDeviceSetup(scale: scale, event: viewModel.discoveryEvent)
                         }
                     )
                     .deviceDiscoverSheetStyle()
                 }
         }
         // Setup flow presentation
-        .sheet(item: $viewModel.setupPayload, onDismiss: {
-            viewModel.bluetoothService.isSetupInProgress = false
-        }) { payload in
+        .sheet(
+            item: $viewModel.setupPayload,
+            onDismiss: {
+                viewModel.bluetoothService.isSetupInProgress = false
+            },
+            content: { payload in
             // Determine setup type from the scale item info
             let setupType = payload.event?.deviceInfo.setupType ?? .lcbt
-            // This sheet is presented immediately after the ScaleDiscoveredSheet
-            // is dismissed. SwiftUI loses the SceneDelegate-level
-            // `AppDefaultButtonStyle` env value across that back-to-back sheet
-            // transition, which lets iOS paint Show Borders decoration on the
-            // setup-screen navbar X / help icons. Re-applying it here closes
-            // the gap for every setup-flow variant in one place.
-            Group {
-                switch setupType {
-                case .lcbt:
-                    A6ScaleSetupScreen(sku: payload.sku,
-                                       discoveredScale: payload.scale,
-                                       discoveryEvent: payload.event)
-                    .interactiveDismissDisabled(true)
-                case .btWifiR4:
-                    BtWifiScaleSetupScreen(sku: payload.sku,
-                                           discoveredScale: payload.scale,
-                                           discoveryEvent: payload.event,
-                                           isReconnect: payload.isReconnect,
-                                           isDuplicated: payload.isDuplicated)
-                    .interactiveDismissDisabled(true)
-                default:
-                    // Fallback to A6 setup for other types
-                    A6ScaleSetupScreen(sku: payload.sku,
-                                       discoveredScale: payload.scale,
-                                       discoveryEvent: payload.event)
-                    .interactiveDismissDisabled(true)
-                }
+            switch setupType {
+            case .lcbt:
+                A6ScaleSetupScreen(sku: payload.sku,
+                                   discoveredScale: payload.scale.toDevice(),
+                                   discoveryEvent: payload.event)
+                .interactiveDismissDisabled(true)
+            case .btWifiR4:
+                BtWifiScaleSetupScreen(sku: payload.sku,
+                                       discoveredScale: payload.scale.toDevice(),
+                                       discoveryEvent: payload.event,
+                                       isReconnect: payload.isReconnect,
+                                       isDuplicated: payload.isDuplicated)
+                .interactiveDismissDisabled(true)
+            case .babyScale:
+                BabyScaleSetupScreen(sku: payload.sku,
+                                     discoveredScale: payload.scale.toDevice(),
+                                     discoveryEvent: payload.event)
+                .interactiveDismissDisabled(true)
+            case .bpm:
+                BpmSetupScreen(sku: payload.sku,
+                               discoveredScale: payload.scale.toDevice(),
+                               discoveryEvent: payload.event)
+                .interactiveDismissDisabled(true)
+            default:
+                // Fallback to A6 setup for other types
+                A6ScaleSetupScreen(sku: payload.sku,
+                                   discoveredScale: payload.scale.toDevice(),
+                                   discoveryEvent: payload.event)
+                .interactiveDismissDisabled(true)
             }
-            .buttonStyle(AppDefaultButtonStyle())
-        }
+            }
+        )
     }
-    
+
     // MARK: - Helpers
     private func handleTabSelection(_ tab: BottomTab) {
         guard viewModel.selectedTab != tab else { return }
-        
+
         Task {
             // Check camera permission for AppSync tab
             if tab == .appsync {
                 let permissionState = await viewModel.handleCameraPermission()
                 guard permissionState == .ENABLED else { return }
             }
-            
+
             // Check if there is a deactivation handler for the selected tab
             // If there is, call it and await the result
             // If it returns true, switch to the new tab
@@ -201,7 +210,6 @@ struct BottomTabBarView: View {
         }
     }
 }
-
 
 #Preview {
     BottomTabBarView()

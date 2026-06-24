@@ -1,0 +1,59 @@
+{
+  "enabledPlugins": {
+    "code-simplifier@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "claude-code-setup@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": true
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CMD=$(echo \"$CLAUDE_TOOL_INPUT\" | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d.get('command',''))\" 2>/dev/null); if echo \"$CMD\" | grep -q 'git commit'; then echo 'Pre-commit reminder: /self-review runs lint, regression, security, and issue-coverage checks. Confirm it has been run before committing.'; fi"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d.get('file_path',''))\" 2>/dev/null); if [[ \"$FILE\" == *'Info.plist' ]] || [[ \"$FILE\" == *'GoogleService-Info.plist' ]] || [[ \"$FILE\" == *'.env' ]] || [[ \"$FILE\" == *'Secrets' ]] || [[ \"$FILE\" == *'keys.plist' ]]; then echo '🔒 SENSITIVE CONFIG FILE: This file may contain secrets (API keys, Firebase config, app IDs, tokens). Verify you are intentionally editing this and not committing sensitive values.'; fi"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d.get('file_path',''))\" 2>/dev/null); ROOT=$(git rev-parse --show-toplevel 2>/dev/null); if [[ -n \"$ROOT\" ]] && [[ \"$FILE\" == *.swift ]] && [[ \"$FILE\" != *DerivedData* ]] && [[ \"$FILE\" != *SourcePackages* ]]; then cd \"$ROOT\" && OUTPUT=$(swiftlint lint --config .swiftlint.yml --reporter xcode --quiet \"$FILE\" 2>&1); TOTAL=$(echo \"$OUTPUT\" | wc -l | tr -d ' '); echo \"$OUTPUT\" | head -50; if [ \"$TOTAL\" -gt 50 ]; then echo \"... and $((TOTAL - 50)) more violations\"; fi; fi"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d.get('file_path',''))\" 2>/dev/null); if [[ \"$FILE\" == *Tests/*.swift ]] && [[ \"$FILE\" != *UITests* ]]; then echo '✅ Test file modified. Remember: Tests must run on a connected physical device (not simulator). Use: xcodebuild test -project meApp.xcodeproj -scheme meAppTests -destination \"id={DEVICE_ID}\"'; fi"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d.get('file_path',''))\" 2>/dev/null); if [[ \"$FILE\" == *.swift ]] && [[ \"$FILE\" != *DerivedData* ]] && [[ \"$FILE\" != *SourcePackages* ]]; then STAMP=$(date +%Y%m%d); CF=\"/tmp/meapp_edits_${STAMP}.txt\"; N=$(cat \"$CF\" 2>/dev/null || echo 0); N=$((N + 1)); echo \"$N\" > \"$CF\"; if [ \"$N\" -eq 5 ] || { [ \"$N\" -gt 5 ] && [ \"$((N % 10))\" -eq 0 ]; }; then echo \"[post-change-guard] ${N} Swift files edited this session. Run /post-change-guard to auto-fix lint, accessibility, and concurrency issues before self-review.\"; fi; fi"
+          }
+        ]
+      }
+    ]
+  }
+}

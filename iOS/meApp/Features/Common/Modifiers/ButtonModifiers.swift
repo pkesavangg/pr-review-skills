@@ -32,7 +32,7 @@ struct AppDefaultButtonStyle: ButtonStyle {
 
 struct BasicButtonStyle: ViewModifier {
     var foreGroundColor: Color
-    var buttonSize: ButtonSize? = nil
+    var buttonSize: ButtonSize?
     var padding: Bool = false
     @Environment(\.appTheme) var theme
     func body(content: Content) -> some View {
@@ -46,8 +46,8 @@ struct BorderedButtonStyle: ViewModifier {
     var backgroundColor: Color
     var borderColor: Color
     var buttonSize: ButtonSize
-    var foregroundColor: Color? = nil
-    func body(content: Content) -> some View{
+    var foregroundColor: Color?
+    func body(content: Content) -> some View {
         content
             .padding(.horizontal, buttonSize == .small ? .spacingXS : .spacingLG)
             .foregroundColor(foregroundColor ?? borderColor)
@@ -65,8 +65,8 @@ struct FlatButtonStyle: ViewModifier {
     var foregroundColor: Color
     var backgroundColor: Color
     var buttonSize: ButtonSize
-    var customHorizontalPadding: CGFloat? = nil
-    var customVerticalPadding: CGFloat? = nil
+    var customHorizontalPadding: CGFloat?
+    var customVerticalPadding: CGFloat?
     
     func body(content: Content) -> some View {
         content
@@ -78,7 +78,6 @@ struct FlatButtonStyle: ViewModifier {
             .contentShape(Rectangle())
     }
 }
-
 
 // MARK: - Pressed-state aware ButtonStyle
 
@@ -104,6 +103,7 @@ struct AppPressableButtonStyle: ButtonStyle {
         self.customVerticalPadding = customVerticalPadding
     }
 
+// swiftlint:disable:next function_body_length
     func makeBody(configuration: Configuration) -> some View {
         let isPressed = configuration.isPressed
 

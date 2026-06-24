@@ -53,5 +53,3 @@ struct MetricResource: Hashable {
     let title: String
     let link: String
 }
-
-

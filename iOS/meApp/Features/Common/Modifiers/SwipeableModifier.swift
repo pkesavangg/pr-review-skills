@@ -6,7 +6,6 @@
 //
 import SwiftUI
 
-
 // MARK: - SwipeState
 /// The swipe gesture's current state
 enum SwipeState {
@@ -64,6 +63,7 @@ struct SwipeableModifier: ViewModifier {
     var openItemID: Binding<UUID?>?
     let openThresholdFraction: CGFloat
     let closeWithoutAnimationOnAction: Bool
+    var trailingCornerRadius: CGFloat
 
     // MARK: - Configuration
     private let swipeMinimumDistance: CGFloat = 20 // Increased to avoid conflicts with scrolling
@@ -98,12 +98,13 @@ struct SwipeableModifier: ViewModifier {
     }
 
     private var maxSwipeDistance: CGFloat {
-        totalButtonWidth + 20 // Small padding for overscroll
+        totalButtonWidth
     }
 
+// swiftlint:disable:next function_body_length
     func body(content: Content) -> some View {
         let dragGesture = DragGesture(minimumDistance: swipeMinimumDistance)
-            .updating($isDragging) { value, state, _ in
+            .updating($isDragging) { _, state, _ in
                 state = true
             }
             .onChanged(onDragChanged)
@@ -136,22 +137,32 @@ struct SwipeableModifier: ViewModifier {
                                     swipeState = .closed
                                     isSwipedOpen = false
                                 }
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                Task { @MainActor in
+                                    try? await Task.sleep(nanoseconds: 100_000_000)
                                     button.action()
                                 }
                             }
                         }
-                    }) {
+                    }, label: {
                         button.label()
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
+                    })
                     .frame(width: buttonWidth)
                     .background(button.tint)
                     .contentShape(Rectangle())
                     .allowsHitTesting(isSwipedOpen)
                 }
             }
-            .frame(width: totalButtonWidth)
+            .frame(width: totalButtonWidth, alignment: .trailing)
+            .frame(minHeight: 0, maxHeight: .infinity)
+            .clipShape(
+                UnevenRoundedRectangle(
+                    topLeadingRadius: 0,
+                    bottomLeadingRadius: 0,
+                    bottomTrailingRadius: trailingCornerRadius,
+                    topTrailingRadius: trailingCornerRadius
+                )
+            )
             .opacity(swipeState == .closed ? 0 : 1)
 
             // Main content
@@ -274,7 +285,7 @@ struct SwipeableModifier: ViewModifier {
 
         // Determine final state based on position and velocity
         let absOffset = abs(totalTranslation)
-        let _ = abs(gestureVelocity) > velocityThreshold
+        _ = abs(gestureVelocity) > velocityThreshold
         let velocityTowardsOpen = gestureVelocity < -velocityThreshold
         let velocityTowardsClose = gestureVelocity > velocityThreshold
 

@@ -1,184 +1,195 @@
-//
-//  MockAccountAPIRepository.swift
-//  meAppTests
-//
-
 import Foundation
 @testable import meApp
 
-/// Mock for AccountRepositoryAPIProtocol. Configure stubs before each test.
 @MainActor
 final class MockAccountAPIRepository: AccountRepositoryAPIProtocol {
+    var createAccountResult: Result<AccountResponse, Error> = .success(AccountTestFixtures.makeAccountResponse())
+    var logInResult: Result<AccountResponse, Error> = .success(AccountTestFixtures.makeAccountResponse())
+    var logOutResult: Result<Void, Error> = .success(())
+    var fetchAccountResult: Result<AccountDTO, Error> = .success(AccountTestFixtures.makeAccountDTO())
+    var editAccountResult: Result<AccountResponse, Error> = .success(AccountTestFixtures.makeAccountResponse())
+    var createGoalResult: Result<GoalResponse, Error> = .success(AccountTestFixtures.makeGoalResponse())
+    var patchProfileResult: Result<AccountResponse, Error> = .success(AccountTestFixtures.makeAccountResponse())
+    var patchBodyCompResult: Result<AccountResponse, Error> = .success(AccountTestFixtures.makeAccountResponse())
+    var patchNotificationResult: Result<AccountResponse, Error> = .success(AccountTestFixtures.makeAccountResponse())
+    var patchDashboardMetricsResult: Result<AccountResponse, Error> = .success(AccountTestFixtures.makeAccountResponse())
+    var patchProgressMetricsResult: Result<AccountResponse, Error> = .success(AccountTestFixtures.makeAccountResponse())
+    var patchStreakResult: Result<AccountResponse, Error> = .success(AccountTestFixtures.makeAccountResponse())
+    var patchWeightlessResult: Result<AccountResponse, Error> = .success(AccountTestFixtures.makeAccountResponse())
+    var deleteAccountResult: Result<Void, Error> = .success(())
+    var requestPasswordResetResult: Result<Void, Error> = .success(())
+    var updatePasswordResult: Result<Tokens, Error> = .success(AccountTestFixtures.makeTokens())
+    var refreshTokenResult: Result<Tokens, Error> = .success(AccountTestFixtures.makeTokens())
+    var checkEmailAvailabilityResult: Result<Bool, Error> = .success(true)
+    var updateMeasurementUnitsResult: Result<AccountResponse, Error> = .success(AccountTestFixtures.makeAccountResponse())
+    var patchProductTypesResult: Result<AccountResponse, Error> = .success(AccountTestFixtures.makeAccountResponse())
 
-    // MARK: - createAccount
-    var createAccountResult: AccountResponse?
-    var createAccountError: Error?
-    var createAccountCallCount = 0
-    var lastCreateAccountEmail: String?
-    var lastCreateAccountPassword: String?
-    var lastCreateAccountProfile: Profile?
+    private(set) var createAccountCalls = 0
+    private(set) var logInCalls = 0
+    private(set) var logOutCalls = 0
+    private(set) var fetchAccountCalls = 0
+    private(set) var editAccountCalls = 0
+    private(set) var createGoalCalls = 0
+    private(set) var patchProfileCalls = 0
+    private(set) var patchBodyCompCalls = 0
+    private(set) var patchNotificationCalls = 0
+    private(set) var patchDashboardMetricsCalls = 0
+    private(set) var patchProgressMetricsCalls = 0
+    private(set) var patchStreakCalls = 0
+    private(set) var patchWeightlessCalls = 0
+    private(set) var deleteAccountCalls = 0
+    private(set) var requestPasswordResetCalls = 0
+    private(set) var updatePasswordCalls = 0
+    private(set) var refreshTokenCalls = 0
+    private(set) var checkEmailAvailabilityCalls = 0
+    private(set) var updateMeasurementUnitsCalls = 0
+    private(set) var patchProductTypesCalls = 0
+    private(set) var lastPatchProductTypes: [String]?
+
+    private(set) var lastCheckEmailAvailabilityEmail: String?
+    private(set) var lastUpdatedMeasurementUnits: String?
+    private(set) var lastCreateAccountEmail: String?
+    private(set) var lastCreateAccountPassword: String?
+    private(set) var lastCreateAccountProfile: Profile?
+    private(set) var lastLogInEmail: String?
+    private(set) var lastLogInPassword: String?
+    private(set) var lastLogOutAccountId: String?
+    private(set) var lastDeleteAccountId: String?
+    private(set) var lastRequestPasswordResetEmail: String?
+    private(set) var lastRefreshToken: String?
+    private(set) var lastPatchDashboardMetrics: [String]?
+    private(set) var lastPatchProgressMetrics: [String]?
+
+    func resetCapturedMetrics() {
+        lastPatchDashboardMetrics = nil
+        lastPatchProgressMetrics = nil
+    }
 
     func createAccount(email: String, password: String, profile: Profile) async throws -> AccountResponse {
-        createAccountCallCount += 1
+        createAccountCalls += 1
         lastCreateAccountEmail = email
         lastCreateAccountPassword = password
         lastCreateAccountProfile = profile
-        if let error = createAccountError { throw error }
-        return createAccountResult ?? AccountTestFixtures.makeAccountResponse()
+        return try createAccountResult.get()
     }
 
-    // MARK: - logIn
-    var logInResult: AccountResponse?
-    var logInError: Error?
-    var logInCallCount = 0
-    var lastLogInEmail: String?
-    var lastLogInPassword: String?
+    func checkEmailAvailability(email: String) async throws -> Bool {
+        checkEmailAvailabilityCalls += 1
+        lastCheckEmailAvailabilityEmail = email
+        return try checkEmailAvailabilityResult.get()
+    }
+
+    func updateMeasurementUnits(_ measurementUnits: String) async throws -> AccountResponse {
+        updateMeasurementUnitsCalls += 1
+        lastUpdatedMeasurementUnits = measurementUnits
+        return try updateMeasurementUnitsResult.get()
+    }
+
+    func patchProductTypes(_ productTypes: [String]) async throws -> AccountResponse {
+        patchProductTypesCalls += 1
+        lastPatchProductTypes = productTypes
+        return try patchProductTypesResult.get()
+    }
 
     func logIn(email: String, password: String) async throws -> AccountResponse {
-        logInCallCount += 1
+        logInCalls += 1
         lastLogInEmail = email
         lastLogInPassword = password
-        if let error = logInError { throw error }
-        return logInResult ?? AccountTestFixtures.makeAccountResponse()
+        return try logInResult.get()
     }
-
-    // MARK: - logOut
-    var logOutError: Error?
 
     func logOut(fcmToken: String?, accountId: String?) async throws {
-        if let error = logOutError { throw error }
+        logOutCalls += 1
+        lastLogOutAccountId = accountId
+        _ = try logOutResult.get()
     }
-
-    // MARK: - fetchAccount
-    var fetchAccountResult: AccountDTO?
-    var fetchAccountError: Error?
 
     func fetchAccount(accountId: String?) async throws -> AccountDTO {
-        if let error = fetchAccountError { throw error }
-        return fetchAccountResult ?? AccountTestFixtures.makeAccountDTO()
+        fetchAccountCalls += 1
+        return try fetchAccountResult.get()
     }
-
-    // MARK: - editAccount
-    var editAccountResult: AccountResponse?
-    var editAccountError: Error?
 
     func editAccount(_ updatedAccount: Account) async throws -> AccountResponse {
-        if let error = editAccountError { throw error }
-        return editAccountResult ?? AccountTestFixtures.makeAccountResponse()
+        editAccountCalls += 1
+        return try editAccountResult.get()
     }
-
-    // MARK: - createGoal
-    var createGoalResult: GoalResponse?
-    var createGoalError: Error?
-    var createGoalCallCount = 0
 
     func createGoal(_ goal: Goal) async throws -> GoalResponse {
-        createGoalCallCount += 1
-        if let error = createGoalError { throw error }
-        return createGoalResult ?? AccountTestFixtures.makeGoalResponse()
+        createGoalCalls += 1
+        return try createGoalResult.get()
     }
-
-    // MARK: - patchProfile
-    var patchProfileResult: AccountResponse?
-    var patchProfileError: Error?
 
     func patchProfile(_ profile: Profile) async throws -> AccountResponse {
-        if let error = patchProfileError { throw error }
-        return patchProfileResult ?? AccountTestFixtures.makeAccountResponse()
+        patchProfileCalls += 1
+        return try patchProfileResult.get()
     }
-
-    // MARK: - patchBodyComp
-    var patchBodyCompResult: AccountResponse?
-    var patchBodyCompError: Error?
 
     func patchBodyComp(_ bodyComp: BodyComp) async throws -> AccountResponse {
-        if let error = patchBodyCompError { throw error }
-        return patchBodyCompResult ?? AccountTestFixtures.makeAccountResponse()
+        patchBodyCompCalls += 1
+        return try patchBodyCompResult.get()
     }
-
-    // MARK: - patchNotification
-    var patchNotificationResult: AccountResponse?
-    var patchNotificationError: Error?
 
     func patchNotification(_ notifications: Notifications) async throws -> AccountResponse {
-        if let error = patchNotificationError { throw error }
-        return patchNotificationResult ?? AccountTestFixtures.makeAccountResponse()
+        patchNotificationCalls += 1
+        return try patchNotificationResult.get()
     }
-
-    // MARK: - patchDashboardType
-    var patchDashboardTypeResult: AccountResponse?
-    var patchDashboardTypeError: Error?
 
     func patchDashboardType(_ type: DashboardType) async throws -> AccountResponse {
-        if let error = patchDashboardTypeError { throw error }
-        return patchDashboardTypeResult ?? AccountTestFixtures.makeAccountResponse()
+        throw UnexpectedCallError.methodCalled("patchDashboardType")
     }
-
-    // MARK: - patchDashboardMetrics
-    var patchDashboardMetricsResult: AccountResponse?
-    var patchDashboardMetricsError: Error?
 
     func patchDashboardMetrics(_ metrics: [String]) async throws -> AccountResponse {
-        if let error = patchDashboardMetricsError { throw error }
-        return patchDashboardMetricsResult ?? AccountTestFixtures.makeAccountResponse()
+        patchDashboardMetricsCalls += 1
+        lastPatchDashboardMetrics = metrics
+        return try patchDashboardMetricsResult.get()
     }
-
-    // MARK: - patchProgressMetrics
-    var patchProgressMetricsResult: AccountResponse?
-    var patchProgressMetricsError: Error?
 
     func patchProgressMetrics(_ metrics: [String]) async throws -> AccountResponse {
-        if let error = patchProgressMetricsError { throw error }
-        return patchProgressMetricsResult ?? AccountTestFixtures.makeAccountResponse()
+        patchProgressMetricsCalls += 1
+        lastPatchProgressMetrics = metrics
+        return try patchProgressMetricsResult.get()
     }
-
-    // MARK: - patchStreak
-    var patchStreakResult: AccountResponse?
-    var patchStreakError: Error?
 
     func patchStreak(_ isStreakOn: Bool, _ streakTimestamp: String) async throws -> AccountResponse {
-        if let error = patchStreakError { throw error }
-        return patchStreakResult ?? AccountTestFixtures.makeAccountResponse()
+        patchStreakCalls += 1
+        return try patchStreakResult.get()
     }
-
-    // MARK: - patchWeightless
-    var patchWeightlessResult: AccountResponse?
-    var patchWeightlessError: Error?
 
     func patchWeightless(_ isWeightlessOn: Bool, _ weightlessTimestamp: String, _ weightlessWeight: Int) async throws -> AccountResponse {
-        if let error = patchWeightlessError { throw error }
-        return patchWeightlessResult ?? AccountTestFixtures.makeAccountResponse()
+        patchWeightlessCalls += 1
+        return try patchWeightlessResult.get()
     }
-
-    // MARK: - deleteAccount
-    var deleteAccountError: Error?
 
     func deleteAccount(accountId: String) async throws {
-        if let error = deleteAccountError { throw error }
+        deleteAccountCalls += 1
+        lastDeleteAccountId = accountId
+        _ = try deleteAccountResult.get()
     }
-
-    // MARK: - requestPasswordReset
-    var requestPasswordResetError: Error?
 
     func requestPasswordReset(email: String) async throws {
-        if let error = requestPasswordResetError { throw error }
+        requestPasswordResetCalls += 1
+        lastRequestPasswordResetEmail = email
+        _ = try requestPasswordResetResult.get()
     }
-
-    // MARK: - updatePassword
-    var updatePasswordResult: Tokens?
-    var updatePasswordError: Error?
 
     func updatePassword(oldPassword: String, newPassword: String) async throws -> Tokens {
-        if let error = updatePasswordError { throw error }
-        return updatePasswordResult ?? Tokens(accessToken: "new-token", refreshToken: "new-refresh", expiresAt: "2099-01-01")
+        updatePasswordCalls += 1
+        return try updatePasswordResult.get()
     }
 
-    // MARK: - refreshToken
-    var refreshTokenResult: Tokens?
-    var refreshTokenError: Error?
-
     func refreshToken(refreshToken: String, accountId: String?) async throws -> Tokens {
-        if let error = refreshTokenError { throw error }
-        return refreshTokenResult ?? Tokens(accessToken: "refreshed-token", refreshToken: "refreshed-refresh", expiresAt: "2099-01-01")
+        refreshTokenCalls += 1
+        lastRefreshToken = refreshToken
+        return try refreshTokenResult.get()
+    }
+
+    var patchProductTypesResult: Result<AccountResponse, Error> = .success(AccountTestFixtures.makeAccountResponse())
+    private(set) var patchProductTypesCalls = 0
+    private(set) var lastPatchProductTypes: [String]?
+
+    func patchProductTypes(_ productTypes: [String]) async throws -> AccountResponse {
+        patchProductTypesCalls += 1
+        lastPatchProductTypes = productTypes
+        return try patchProductTypesResult.get()
     }
 }

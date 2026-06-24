@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
+import android.util.Log
 
 interface GGCacheDevice
 
@@ -28,6 +29,14 @@ interface GGCacheDevice
  * Service for managing BLE device operations.
  * Uses a dynamic getter for ggBluetooth to ensure it always uses the latest instance
  * bound to the current Activity, preventing unregistered ActivityResultLauncher crashes.
+ *
+ * Device-type agnostic: All methods (pairDevice, subscribeToLiveData, getDeviceInfo,
+ * getUsers, disconnectDevice, etc.) work generically across device types including
+ * scales and BPM monitors. The GGBluetooth SDK routes internally based on device type
+ * via GGAppType resolution (CommonHelper.getAppType).
+ *
+ * For BPM: pass GGAppType.BALANCE_HEALTH to startScan(), then filter GGScanResponse by device type
+ * at the app layer. No new bleWrapper methods are needed.
  */
 class GGDeviceService @Inject constructor(
   private val ggBleService: GGBLEService
@@ -79,6 +88,8 @@ class GGDeviceService @Inject constructor(
    */
   fun pairDevice(
     device: GGBTDevice,
+    replaceUser: Boolean = false,
+    pairedSKUMonitors: MutableList<GGBTDevice> = mutableListOf(),
     callback: (GGUserActionResponseType) -> Unit
   ) {
     ggBluetooth.confirmPair(device) {
@@ -159,10 +170,16 @@ class GGDeviceService @Inject constructor(
   }
 
   /**
-   * Starts the scan for pairing process for the devices that have protocol type A6
+   * Starts the scan for pairing process.
+   * Guards against calling the library before BLE is initialized (which would crash
+   * due to an uninitialized bleHandler in GlobalScope inside the SDK).
    */
   fun scanForPairing() {
-    ggBluetooth.scanForPairing()
+    try {
+      ggBluetooth.scanForPairing()
+    } catch (e: UninitializedPropertyAccessException) {
+      Log.w("GGDeviceService", "scanForPairing called before BLE initialized — skipping")
+    }
   }
 
   /**

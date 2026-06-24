@@ -1,0 +1,61 @@
+package com.dmdbrands.gurus.weight.features.common.strings
+
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
+import com.google.common.truth.Truth.assertThat
+import org.junit.jupiter.api.Test
+
+/**
+ * Covers [ReadingToastStrings], including the MOB-426 no-baby-profile copy
+ * shown when a baby reading arrives with no baby to save it to.
+ */
+class ReadingToastStringsTest {
+
+  @Test
+  fun `title is product-specific for every type`() {
+    assertThat(ReadingToastStrings.title(ProductType.MY_WEIGHT)).isEqualTo("New Weight Scale Reading Received")
+    assertThat(ReadingToastStrings.title(ProductType.BLOOD_PRESSURE)).isEqualTo("New BPM Reading Received")
+    assertThat(ReadingToastStrings.title(ProductType.BABY)).isEqualTo("New Baby Scale Reading Received")
+  }
+
+  @Test
+  fun `baby uses ASSIGN as the primary action, others use SAVE`() {
+    assertThat(ReadingToastStrings.primaryAction(ProductType.BABY)).isEqualTo("ASSIGN")
+    assertThat(ReadingToastStrings.primaryAction(ProductType.MY_WEIGHT)).isEqualTo("SAVE")
+    assertThat(ReadingToastStrings.primaryAction(ProductType.BLOOD_PRESSURE)).isEqualTo("SAVE")
+  }
+
+  @Test
+  fun `baby uses DON'T ASSIGN as the secondary action, others use DISCARD`() {
+    assertThat(ReadingToastStrings.secondaryAction(ProductType.BABY)).isEqualTo("DON'T ASSIGN")
+    assertThat(ReadingToastStrings.secondaryAction(ProductType.MY_WEIGHT)).isEqualTo("DISCARD")
+    assertThat(ReadingToastStrings.secondaryAction(ProductType.BLOOD_PRESSURE)).isEqualTo("DISCARD")
+  }
+
+  @Test
+  fun `no-baby copy matches the MOB-426 design`() {
+    assertThat(ReadingToastStrings.NoBabyTitle).isEqualTo("New Reading Received")
+    assertThat(ReadingToastStrings.NoBabySubtitle).isEqualTo("Add a baby to save this reading.")
+    assertThat(ReadingToastStrings.AddBaby).isEqualTo("ADD A BABY")
+    assertThat(ReadingToastStrings.Discard).isEqualTo("DISCARD")
+  }
+
+  @Test
+  fun `assignedTo uppercases the baby name`() {
+    assertThat(ReadingToastStrings.assignedTo("Emma")).isEqualTo("Reading assigned to EMMA")
+  }
+
+  @Test
+  fun `save-failed copy is the user-facing retry message`() {
+    assertThat(ReadingToastStrings.SaveFailed).isEqualTo("Couldn't save the reading. Please try again.")
+  }
+
+  @Test
+  fun `no-baby strings are non-blank`() {
+    listOf(
+      ReadingToastStrings.NoBabyTitle,
+      ReadingToastStrings.NoBabySubtitle,
+      ReadingToastStrings.AddBaby,
+      ReadingToastStrings.Discard,
+    ).forEach { assertThat(it).isNotEmpty() }
+  }
+}

@@ -13,7 +13,7 @@ struct LandingScreen: View {
     @Environment(\.colorScheme) private var colorScheme
     @StateObject private var router = Router<AuthRoute>()
     @StateObject private var landingStore = LandingStore()
-    @State private var openItemID: UUID? = nil
+    @State private var openItemID: UUID?
     let lang = LandingScreenStrings.self
     let commonLang = CommonStrings.self
     let itemHeight = 72
@@ -22,36 +22,36 @@ struct LandingScreen: View {
         CGFloat(min(itemHeight * landingStore.userItems.count, itemHeight * 5))
     }
 
-    // Check if there are any logged-in users
-    var hasLoggedInUsers: Bool {
-        !landingStore.accounts.isEmpty
+    // Show the multi-account layout whenever any saved account exists.
+    var hasAnyAccounts: Bool {
+        !landingStore.userItems.isEmpty
     }
 
     var body: some View {
         RoutingView(stack: $router.stack) {
             ZStack {
                 Group {
-                    // Show empty landing screen if no logged-in users exist
-                    (hasLoggedInUsers && landingStore.userItems.count > 0) ? theme.backgroundSecondary : theme.actionPrimary
+                    hasAnyAccounts ? theme.backgroundSecondary : theme.actionPrimary
                 }
                 .ignoresSafeArea()
-                // Show empty landing screen if no logged-in users exist (even if there are logged-out accounts)
-                if !hasLoggedInUsers || landingStore.userItems.isEmpty {
+                if !hasAnyAccounts {
                     VStack(alignment: .center) {
                         Spacer()
                             .frame(minHeight: .spacing6XL)
 
                         LogoView()
                             .padding(.bottom, 55)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(lang.accLogoLabel)
 
-                        VStack(alignment: .center, spacing: .spacingSM){
+                        VStack(alignment: .center, spacing: .spacingSM) {
 
                             Button(action: {
                                 if landingStore.canAddMoreAccounts() {
                                     router.navigate(to: .login(nil))
                                 }
 
-                            }, label:{
+                            }, label: {
                                 Text(commonLang.logIn.uppercased())
                                     .fontWeight(.bold)
                                     .fontOpenSans(.button1)
@@ -59,6 +59,8 @@ struct LandingScreen: View {
                                     .padding(.vertical, .spacingXS)
                             })
                             .buttonStyle(AppPressableButtonStyle(type: .filledSecondary, size: .large, backgroundColorOverride: nil))
+                            .accessibilityIdentifier(AccessibilityID.landingLogInButton)
+                            .accessibilityHint(lang.accLogInHint)
 
                             ButtonView(text: lang.signUp, type: .outlinedSecondary, size: .large, isDisabled: false) {
                                 if landingStore.canAddMoreAccounts() {
@@ -66,6 +68,8 @@ struct LandingScreen: View {
                                 }
                             }
                             .frame(width: 96)
+                            .accessibilityIdentifier(AccessibilityID.landingSignUpButton)
+                            .accessibilityHint(lang.accSignUpHint)
                         }
                         .padding(.bottom, .spacing6XL)
 
@@ -98,12 +102,13 @@ struct LandingScreen: View {
                                                         openItemID: $openItemID,
                                                         onTap: { id, needsLogin in
                                                             if needsLogin {
-                                                                // If the user is expired or logged out, allow login with the same email.
-                                                                // If the user modifies the email and the account limit has been reached, show the max accounts alert.
                                                                 router.navigate(to: .login(item.email))
                                                             } else {
                                                                 landingStore.switchAccount(to: id)
                                                             }
+                                                        },
+                                                        onDelete: { _ in
+                                                            landingStore.removeAccount(user: item)
                                                         }
                                                     )
                                                     if index < landingStore.userItems.count - 1 {
@@ -131,6 +136,7 @@ struct LandingScreen: View {
                                     }
                                 }
                                 .padding(.vertical, .spacingSM)
+                                .accessibilityIdentifier(AccessibilityID.landingLogInToExistingAccountButton)
 
                                 ButtonView(text: lang.createNewAccount, type: .inlineTextPrimary, size: .large, isDisabled: false) {
                                     if landingStore.canAddMoreAccounts() {
@@ -138,6 +144,7 @@ struct LandingScreen: View {
                                     }
                                 }
                                 .padding(.bottom, .spacing6XL)
+                                .accessibilityIdentifier(AccessibilityID.landingCreateNewAccountButton)
                             }
 
                         }
@@ -148,6 +155,7 @@ struct LandingScreen: View {
             }
         }
         .environmentObject(router)
+        .accessibilityIdentifier(AccessibilityID.landingScreenRoot)
     }
 }
 

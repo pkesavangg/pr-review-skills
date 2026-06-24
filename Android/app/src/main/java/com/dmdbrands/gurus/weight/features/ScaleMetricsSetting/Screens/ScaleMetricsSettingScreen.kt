@@ -220,6 +220,7 @@ fun ScaleMetricsSettingScreen(
       modifier = Modifier
         .clip(shape = RoundedCornerShape(borderRadius.sm))
         .heightIn(max = 200.dp),
+      scrollState = scrollState,
       items = otherMetricsState,
       onMove = { from, to ->
         val newList = otherMetricsState.toMutableList()
@@ -274,9 +275,7 @@ fun DisplayMetricsScreenPreview() {
         ScaleMetricKeys.WEEKLY_AVERAGE,
         ScaleMetricKeys.MONTHLY_AVERAGE,
       ),
-      onMetricsChanged = { enabledKeys ->
-        println("Enabled metrics: $enabledKeys")
-      },
+      onMetricsChanged = { _ -> },
       includeHeartRate = false,
     )
   }

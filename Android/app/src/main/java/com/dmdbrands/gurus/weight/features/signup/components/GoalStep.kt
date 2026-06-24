@@ -1,12 +1,18 @@
 package com.dmdbrands.gurus.weight.features.signup.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -14,6 +20,7 @@ import androidx.compose.ui.text.input.ImeAction
 import com.dmdbrands.gurus.weight.domain.enums.GoalType
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
+import com.dmdbrands.gurus.weight.features.common.components.AppInputDefaults
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
 import com.dmdbrands.gurus.weight.features.common.components.AppStyledCard
 import com.dmdbrands.gurus.weight.features.common.components.AppText
@@ -44,7 +51,9 @@ fun GoalStep(
   isMetric: Boolean = false,
   onGoalTypeChange: (GoalType) -> Unit = {},
   onNext: () -> Unit = {},
+  onMetricToggle: (Boolean) -> Unit = {},
   showCurrentWeightForMaintain: Boolean = true,
+  showUnitSegment: Boolean = false,
   initialWeightUnit: WeightUnit? = null,
 ) {
   val currentWeightFocusRequester = remember { FocusRequester() }
@@ -98,35 +107,64 @@ fun GoalStep(
         true // Always show for lose/gain
       }
 
-    if (shouldShowCurrentWeight) {
-      AppInput(
-        formControl = currentWeightControl,
-        type = AppInputType.BODY_COMP,
-        label = SignupStrings.goalStepCurrentWeightDynamic.format(weightUnit),
-        imeAction = ImeAction.Next,
-        nextFocusRequester = goalWeightFocusRequester,
-        modifier = Modifier.focusRequester(currentWeightFocusRequester),
-        // Enable for any non-maintain variant (lose, gain, lose_gain)
-        enabled = goalTypeControl.value != GoalType.MAINTAIN.value,
-        maxLength = 4,
-      )
+    AnimatedVisibility(visible = shouldShowCurrentWeight) {
+      Column {
+        AppInput(
+          formControl = currentWeightControl,
+          type = AppInputType.BODY_COMP,
+          label = SignupStrings.goalStepCurrentWeightLabel,
+          trailingText = weightUnit,
+          showTrailingIcon = false,
+          imeAction = ImeAction.Next,
+          nextFocusRequester = goalWeightFocusRequester,
+          testTag = "starting_weight_input",
+          modifier = Modifier.focusRequester(currentWeightFocusRequester),
+          enabled = goalTypeControl.value != GoalType.MAINTAIN.value,
+          maxLength = 4,
+        )
+        Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
+      }
     }
 
     AppInput(
       formControl = goalWeightControl,
       maxLength = 4,
       type = AppInputType.BODY_COMP,
-      label = SignupStrings.goalStepGoalWeightDynamic.format(weightUnit),
+      label = SignupStrings.goalStepGoalWeightLabel,
+      trailingText = weightUnit,
+      showTrailingIcon = false,
       imeAction = ImeAction.Next,
       onImeAction = onNext,
+      testTag = "goal_weight_input",
       modifier =
         if (shouldShowCurrentWeight) {
           Modifier.focusRequester(goalWeightFocusRequester)
         } else {
-          // If current weight is hidden, goal weight becomes the first input
           Modifier.focusRequester(currentWeightFocusRequester)
         },
     )
+
+    if (showUnitSegment) {
+      val weightUnitOptions = listOf(
+        SegmentButtonData(id = 0, label = SignupStrings.weightUnitLbs),
+        SegmentButtonData(id = 1, label = SignupStrings.weightUnitKg),
+      )
+      val selectedUnitOption = if (isMetric) weightUnitOptions[1] else weightUnitOptions[0]
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+      ) {
+        SegmentButtonGroup(
+          data = weightUnitOptions,
+          selectedData = selectedUnitOption,
+          key = SegmentButtonData::label,
+          onSelected = { option -> onMetricToggle(option.id == 1) },
+          size = SegmentButtonSize.Small,
+          type = SegmentButtonType.Scrollable,
+          spacedBy = MeTheme.spacing.xs,
+        )
+      }
+    }
     Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.sm))
 
   }

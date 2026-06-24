@@ -2,12 +2,17 @@ package com.dmdbrands.gurus.weight.features.MyAccounts.reducer
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * State for MyAccountsScreen.
  */
+@Stable
 data class MyAccountsState(
-    val accounts: List<Account> = emptyList(),
+    val accounts: ImmutableList<Account> = persistentListOf(),
     val showMaxAccountsDialog: Boolean = false,
     val accountToRemove: Account? = null,
     val hasReachedMaxAccounts: Boolean = false,
@@ -35,7 +40,7 @@ sealed interface MyAccountsIntent : IReducer.Intent {
 class MyAccountsReducer : IReducer<MyAccountsState, MyAccountsIntent> {
     override fun reduce(state: MyAccountsState, intent: MyAccountsIntent): MyAccountsState? = when (intent) {
         is MyAccountsIntent.SetAccounts -> state.copy(
-            accounts = intent.accounts,
+            accounts = intent.accounts.toImmutableList(),
             hasReachedMaxAccounts = intent.hasReachedMaxAccounts,
         )
 

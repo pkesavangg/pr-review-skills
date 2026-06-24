@@ -45,7 +45,6 @@ struct WifiErrorCodeDetailView: View {
                     noteSection(text: detail.note)
                         .padding(.bottom, .spacingXS)
 
-
                     ForEach(Array(detail.messages.enumerated()), id: \.offset) { index, message in
                         if code.shouldUseNumberedMessages && index < maxNumberedMessages {
                             textView(text: "\(index + 1). \(message)")

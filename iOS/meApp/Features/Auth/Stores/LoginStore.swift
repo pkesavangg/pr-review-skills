@@ -5,39 +5,43 @@
 //  Created by Lakshmi Priya on 16/06/25.
 //
 
+import Combine
 import Foundation
 import SwiftUI
-import Combine
 
 // MARK: LoginStore
+
 /// This store is responsible for managing the Login process.
 @MainActor
 final class LoginStore: ObservableObject {
     @Published var showPassword: Bool = false
     @Published var isFormSubmitting: Bool = false
-    @Published var errorMessage: String? = nil
+    @Published var errorMessage: String?
     @Published var showResetPrompt: Bool = false
     @Published var resetEmail: String = ""
-    @Published var resetError: String? = nil
+    @Published var resetError: String?
     @Published var showSuccessToast: Bool = false
     @Published var successToastMessage: String = ""
     @Published var showErrorToast: Bool = false
     @Published var errorToastMessage: String = ""
     @Published var isLoading: Bool = false
-    @Published var alertData: AlertModel? = nil
-    @Published var loaderOverride: LoaderModel? = nil
+    @Published var alertData: AlertModel?
+    @Published var loaderOverride: LoaderModel?
     @Published var isPasswordResetAlertVisible: Bool = false
 
     // MARK: - In-App Browser State
+
     @Published var showPrivacyBrowser: Bool = false
     @Published var showTermsBrowser: Bool = false
     @Published var showHelpBrowser: Bool = false
-    @Published var browserURL: URL? = nil
-    
+    @Published var browserURL: URL?
+
     // MARK: - Account Management State
+
     @Published var isFromAccountSwitching: Bool = false
 
     // MARK: - Common Strings/Labels as variables
+
     let lang = LoaderStrings.self
     let alertLang = AlertStrings.self
     let errorLang = FormErrorMessages.self
@@ -64,7 +68,9 @@ final class LoginStore: ObservableObject {
 
     /// Main browser URL for the view
     var presentingBrowserURL: URL {
-        browserURL ?? URL(string: urlStrings.baseUrl)!
+        browserURL
+            ?? URL(string: urlStrings.baseUrl)
+            ?? URL(fileURLWithPath: "/")
     }
 
     // Navigation
@@ -81,9 +87,10 @@ final class LoginStore: ObservableObject {
     // Services (inject as needed)
     @Injector var accountService: AccountServiceProtocol
     @Injector var logger: LoggerServiceProtocol
-    @Injector var notificationService: NotificationHelperService
+    @Injector var notificationService: NotificationHelperServiceProtocol
 
     // MARK: - Login Form
+
     @Published var loginForm = LoginForm()
     private var cancellables = Set<AnyCancellable>()
 
@@ -92,6 +99,7 @@ final class LoginStore: ObservableObject {
     }
 
     // MARK: - Derived Properties from LoginForm
+
     var isFormValid: Bool { loginForm.isValid }
     var emailError: String? { loginForm.getError(for: loginForm.email) }
     var passwordError: String? { loginForm.getError(for: loginForm.password) }
@@ -116,11 +124,13 @@ final class LoginStore: ObservableObject {
     }
 
     // MARK: - Helper for email trimming
+
     private func trimmedEmail(_ email: String) -> String {
         email.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Prefill Logic
+
     /// Prefills the e-mail field when a value is supplied from navigation.
     /// - Parameter email: The e-mail address to prefill.
     /// If `nil` or empty, the call is ignored.
@@ -136,6 +146,7 @@ final class LoginStore: ObservableObject {
     }
 
     // MARK: - Login Logic
+
     func logIn() async {
         loginForm.email.markAsDirty()
         loginForm.password.markAsDirty()
@@ -145,7 +156,7 @@ final class LoginStore: ObservableObject {
         logger.log(level: .info, tag: logTag, message: "Login flow started. accountSwitching=\(isFromAccountSwitching)")
 
         isFormSubmitting = true
-        notificationService.showLoader(LoaderModel(text: self.lang.loggingAccount))
+        notificationService.showLoader(LoaderModel(text: lang.loggingAccount))
         errorMessage = nil
 
         defer {
@@ -154,21 +165,25 @@ final class LoginStore: ObservableObject {
         }
 
         do {
-            let _ = try await accountService.logIn(
+            _ = try await accountService.logIn(
                 email: normalizedEmail,
                 password: loginForm.password.value
             )
             logger.log(level: .success, tag: logTag, message: "Login flow succeeded. accountSwitching=\(isFromAccountSwitching)")
-            // If the login is from account switching, dismiss the login screen
-            if isFromAccountSwitching {
+            if let onLoginSuccess {
+                onLoginSuccess()
+            } else if isFromAccountSwitching {
                 dismissAction?()
-            } else {
-                onLoginSuccess?()
             }
         } catch {
-            logger.log(level: .error, tag: logTag, message: "Login flow failed. error=\(error.localizedDescription), errorType=\(String(describing: type(of: error)))")
+            logger.log(
+                level: .error,
+                tag: logTag,
+                message: "Login flow failed. error=\(error.localizedDescription), errorType=\(String(describing: type(of: error)))"
+            )
             if case AccountError.maxAccountsReached = error {
                 showMaxUserAccountsAlert()
+                notificationService.dismissLoader()
                 return
             }
             handleLoginError(error)
@@ -193,6 +208,7 @@ final class LoginStore: ObservableObject {
     }
 
     // MARK: - Password Reset
+
     func showPasswordResetPrompt() {
         let emailValue = trimmedEmail(loginForm.email.value)
         resetEmail = emailValue
@@ -254,7 +270,11 @@ final class LoginStore: ObservableObject {
                 )
             )
         } catch {
-            logger.log(level: .error, tag: logTag, message: "Password reset request failed. error=\(error.localizedDescription), errorType=\(String(describing: type(of: error)))")
+            logger.log(
+                level: .error,
+                tag: logTag,
+                message: "Password reset request failed. error=\(error.localizedDescription), errorType=\(String(describing: type(of: error)))"
+            )
             resetError = errorLang.passwordResetFailed
         }
         loaderOverride = nil
@@ -264,11 +284,13 @@ final class LoginStore: ObservableObject {
     }
 
     // MARK: - Show/Hide Password
+
     func toggleShowPassword() {
         showPassword.toggle()
     }
 
     // MARK: - Navigation
+
     func openPrivacy() {
         browserURL = URLHelper.getURL(for: .privacyPolicy)
         showPrivacyBrowser = true
@@ -283,12 +305,12 @@ final class LoginStore: ObservableObject {
 
     func openHelp() {
         notificationService.showModal(ModalData(
-            presentedView: AnyView(HelpModalView(){
+            presentedView: AnyView(HelpModalView {
                 self.notificationService.dismissModal()
             })
         ))
     }
-    
+
     func handleExit(router: Router<AuthRoute>? = nil) {
         if !loginForm.isDirty {
             if isFromAccountSwitching {
@@ -324,7 +346,7 @@ final class LoginStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-    
+
     /// Presents an alert informing the user that the maximum number of accounts
     /// has been reached.
     private func showMaxUserAccountsAlert() {
