@@ -3,6 +3,38 @@ version: 2.1
 orbs:
   macos: circleci/macos@2.0.0
 
+commands:
+  restore_google_services:
+    description: Decode the google-services.json secret into the Android app module.
+    steps:
+      - run:
+          name: Restore google-services.json
+          command: |
+            if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+              echo "Error: GOOGLE_SERVICES_JSON_BASE64 is not set. Add it as a CircleCI project/context secret."
+              exit 1
+            fi
+            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > Android/app/google-services.json
+            echo "google-services.json restored."
+
+  setup_github_packages_auth:
+    description: >
+      Map the GitHub Packages token into GITHUB_TOKEN so Gradle can resolve the
+      private com.dmdbrands.lib:* artifacts hosted on maven.pkg.github.com.
+      settings.gradle.kts reads GITHUB_USERNAME / GITHUB_TOKEN. GITHUB_USERNAME
+      is a CircleCI env var (read natively by Gradle); the token comes from
+      GITHUB_PACKAGES_TOKEN (the read:packages token, shared with iOS SPM auth).
+    steps:
+      - run:
+          name: Configure GitHub Packages credentials
+          command: |
+            if [ -z "$GITHUB_USERNAME" ] || [ -z "$GITHUB_PACKAGES_TOKEN" ]; then
+              echo "Error: GITHUB_USERNAME and/or GITHUB_PACKAGES_TOKEN is not set. Add them as CircleCI project/context env vars — the GitHub username and a token with read:packages access to the private dmdbrands / gg-engineering Maven packages."
+              exit 1
+            fi
+            echo "export GITHUB_TOKEN=\"$GITHUB_PACKAGES_TOKEN\"" >> "$BASH_ENV"
+            echo "GitHub Packages credentials configured for Gradle."
+
 jobs:
   # ===========================================================
   # Job 1: Gitleaks Secrets Scan
@@ -253,15 +285,8 @@ jobs:
             - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-{{ checksum "Android/app/build.gradle.kts" }}
             - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-
             - gradle-v1-
-      - run:
-          name: Restore google-services.json
-          command: |
-            if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
-              echo "Error: GOOGLE_SERVICES_JSON_BASE64 is not set. Add it as a CircleCI project/context secret."
-              exit 1
-            fi
-            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > Android/app/google-services.json
-            echo "google-services.json restored."
+      - restore_google_services
+      - setup_github_packages_auth
       - run:
           name: Build Android debug APK
           working_directory: Android
@@ -295,15 +320,8 @@ jobs:
             - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-{{ checksum "Android/app/build.gradle.kts" }}
             - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-
             - gradle-v1-
-      - run:
-          name: Restore google-services.json
-          command: |
-            if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
-              echo "Error: GOOGLE_SERVICES_JSON_BASE64 is not set. Add it as a CircleCI project/context secret."
-              exit 1
-            fi
-            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > Android/app/google-services.json
-            echo "google-services.json restored."
+      - restore_google_services
+      - setup_github_packages_auth
       - run:
           name: Run Android lint
           working_directory: Android
@@ -341,15 +359,8 @@ jobs:
             - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-{{ checksum "Android/app/build.gradle.kts" }}
             - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-
             - gradle-v1-
-      - run:
-          name: Restore google-services.json
-          command: |
-            if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
-              echo "Error: GOOGLE_SERVICES_JSON_BASE64 is not set. Add it as a CircleCI project/context secret."
-              exit 1
-            fi
-            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > Android/app/google-services.json
-            echo "google-services.json restored."
+      - restore_google_services
+      - setup_github_packages_auth
       - run:
           name: Run Android unit tests with coverage verification
           working_directory: Android
@@ -370,15 +381,8 @@ jobs:
     resource_class: large
     steps:
       - checkout
-      - run:
-          name: Restore google-services.json
-          command: |
-            if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
-              echo "Error: GOOGLE_SERVICES_JSON_BASE64 is not set. Add it as a CircleCI project/context secret."
-              exit 1
-            fi
-            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > Android/app/google-services.json
-            echo "google-services.json restored."
+      - restore_google_services
+      - setup_github_packages_auth
       - run:
           name: Run OWASP Dependency Check
           working_directory: Android

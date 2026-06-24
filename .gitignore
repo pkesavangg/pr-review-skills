@@ -10,6 +10,17 @@
 *.xcuserdata
 *.xcodeproj/project.xcworkspace/
 *.xcodeproj/xcuserdata/
+
+# ...but keep SPM Package.resolved committed so CI resolves the exact same
+# dependency versions as local. Without it, CI re-resolves to latest and can
+# pull broken upstream package manifests (e.g. swiftui-cached-async-image 2.1.2).
+!**/*.xcodeproj/project.xcworkspace/
+**/*.xcodeproj/project.xcworkspace/*
+!**/*.xcodeproj/project.xcworkspace/xcshareddata/
+**/*.xcodeproj/project.xcworkspace/xcshareddata/*
+!**/*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+**/*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/*
+!**/*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 .derived-data-log-*
 DerivedData/
 .build/
