@@ -380,16 +380,18 @@ workflows:
           filters:
             branches:
               only:
-                - dev
+                - develop
                 - main
                 - /^MA-.*$/
+                - /^MOB-.*$/
       - build:
           filters:
             branches:
               only:
-                - dev
+                - develop
                 - main
                 - /^MA-.*$/
+                - /^MOB-.*$/
       # Uncomment when simulator support is restored:
       # - unit-tests:
       #     requires:
@@ -398,31 +400,35 @@ workflows:
           filters:
             branches:
               only:
-                - dev
+                - develop
                 - main
                 - /^MA-.*$/
+                - /^MOB-.*$/
       # --- Android jobs ---
       - android-build:
           filters:
             branches:
               only:
-                - dev
+                - develop
                 - main
                 - /^MA-.*$/
+                - /^MOB-.*$/
       - android-lint:
           filters:
             branches:
               only:
-                - dev
+                - develop
                 - main
                 - /^MA-.*$/
+                - /^MOB-.*$/
       - android-test:
           filters:
             branches:
               only:
-                - dev
+                - develop
                 - main
                 - /^MA-.*$/
+                - /^MOB-.*$/
 
   scheduled-security:
     triggers:
