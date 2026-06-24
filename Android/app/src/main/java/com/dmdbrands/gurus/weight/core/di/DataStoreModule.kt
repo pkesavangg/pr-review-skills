@@ -49,4 +49,5 @@ object DataStoreModule {
   fun provideGoalAlertDataStore(
     @ApplicationContext context: Context,
   ): GoalAlertDataStore = GoalAlertDataStore(context)
+
 }

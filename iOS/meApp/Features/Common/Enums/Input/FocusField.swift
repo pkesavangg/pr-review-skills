@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 11/06/25.
 //
 
-
 enum FocusField: Hashable {
     case firstName
     case lastName
@@ -32,8 +31,22 @@ enum FocusField: Hashable {
     case skeletalMuscles
     case bmr
     case metabolicAge
+    case systolic
+    case diastolic
+    case pulse
+    case notes
+    case pounds
+    case ounces
+    case inches
     case none
     case modelNumber
     case scaleName
     case networkName
+    case babyName
+    case babyBirthLength
+    case babyBirthWeight
+    case babyBirthWeightOz
+    case babyKg
+    case babyLb
+    case babyCm
 }

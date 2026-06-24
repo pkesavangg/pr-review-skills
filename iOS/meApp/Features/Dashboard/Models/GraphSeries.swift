@@ -29,9 +29,17 @@ struct GraphSeries: Identifiable, Equatable, Hashable {
     }
 }
 
-// Enhanced point with precomputed xDate
-struct PlottedGraphSeries: Identifiable {
-    let id = UUID()
+// Enhanced point with precomputed xDate and stable identity.
+struct PlottedGraphSeries: Identifiable, Equatable, Hashable {
+    let id: String
     let original: GraphSeries
     let xDate: Date
+
+    init(original: GraphSeries, xDate: Date) {
+        self.id = original.id
+        self.original = original
+        self.xDate = xDate
+    }
+
+    var date: Date { original.date }
 }

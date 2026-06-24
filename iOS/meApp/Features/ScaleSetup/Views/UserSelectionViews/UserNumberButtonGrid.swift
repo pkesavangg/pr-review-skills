@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 19/07/25.
 //
 
-
 import SwiftUI
 
 /// A grid of circular buttons displaying user numbers
@@ -37,7 +36,7 @@ struct UserNumberButtonGrid: View {
                                     Circle()
                                         .stroke(theme.actionPrimary, lineWidth: 2)
                                 )
-                            
+
                             Text("U\(number)")
                                 .fontOpenSans(.button1)
                                 .foregroundColor(isSelected ? theme.actionInverse : theme.actionPrimary)
@@ -50,6 +49,11 @@ struct UserNumberButtonGrid: View {
                                 onNumberSelected?(number)
                             }
                         }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(ScaleSetupStrings.A11y.userNumberLabel(number))
+                        .accessibilityHint(ScaleSetupStrings.A11y.userNumberHint)
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityAddTraits(isSelected ? .isSelected : [])
                     }
                 }
             }
@@ -60,11 +64,8 @@ struct UserNumberButtonGrid: View {
 #Preview("Button Grid Only") {
     UserNumberButtonGrid(
         numbers: Array(1...8),
-        selectedNumber: .constant(3),
-        onNumberSelected: { number in
-            print("Selected U\(number)")
-        }
-    )
+        selectedNumber: .constant(3)
+    ) { _ in }
     .environmentObject(Theme.shared)
     .padding()
 }

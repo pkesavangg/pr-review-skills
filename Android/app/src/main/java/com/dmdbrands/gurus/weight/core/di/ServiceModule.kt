@@ -2,12 +2,24 @@ package com.dmdbrands.gurus.weight.core.di
 
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.service.AccountFlagService
+import com.dmdbrands.gurus.weight.core.service.ReviewService
+import com.dmdbrands.gurus.weight.domain.repository.IReviewRepository
+import com.dmdbrands.gurus.weight.domain.services.IReviewService
 import com.dmdbrands.gurus.weight.core.service.AccountService
+import com.dmdbrands.gurus.weight.core.service.BabyProfileService
+import com.dmdbrands.gurus.weight.core.service.ProductSelectionManager
+import com.dmdbrands.gurus.weight.domain.services.IBabyProfileService
+import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
+import com.dmdbrands.gurus.weight.core.service.AnalyticsService
+import com.dmdbrands.gurus.weight.data.services.EntryReadService
+import com.dmdbrands.gurus.weight.domain.repository.IEntryReadRepository
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.core.service.AppNavigationService
 import com.dmdbrands.gurus.weight.core.service.AppStatusService
 import com.dmdbrands.gurus.weight.core.service.AppSyncService
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.service.BodyCompositionService
+import com.dmdbrands.gurus.weight.core.service.CrashReportingService
 import com.dmdbrands.gurus.weight.core.service.DashboardService
 import com.dmdbrands.gurus.weight.core.service.DeviceInfoService
 import com.dmdbrands.gurus.weight.core.service.DeviceService
@@ -52,8 +64,10 @@ import com.dmdbrands.gurus.weight.domain.repository.INotificationRepository
 import com.dmdbrands.gurus.weight.domain.repository.IUserSettingsRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountFlagService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
+import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
 import com.dmdbrands.gurus.weight.domain.services.IBodyCompositionService
+import com.dmdbrands.gurus.weight.domain.services.ICrashReportingService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
@@ -68,6 +82,7 @@ import com.dmdbrands.gurus.weight.domain.services.IUserSettingsService
 import com.dmdbrands.gurus.weight.features.common.service.DialogQueueService
 import com.dmdbrands.gurus.weight.features.common.service.DialogUtility
 import com.dmdbrands.gurus.weight.features.feed.shared.SelectedFeedItemHolder
+import com.google.firebase.analytics.FirebaseAnalytics
 import com.greatergoods.ggInAppMessaging.core.service.GGInAppMessagingService
 import com.greatergoods.lib.wificonnect.WifiSmartConnectManager
 import com.greatergoods.notification.NotificationService as GGNotificationService
@@ -76,6 +91,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
 import javax.inject.Singleton
 import android.content.Context
 
@@ -99,7 +115,9 @@ object ServiceModule {
       appNavigationService: IAppNavigationService,
       storageClearService: StorageClearService,
       offlineHandlerService: IOfflineHandlerService,
-      userDataStore: UserDataStore
+      analyticsService: IAnalyticsService,
+      userDataStore: UserDataStore,
+      @ApplicationScope appScope: CoroutineScope,
     ): IAccountService =
       AccountService(
         accountRepository,
@@ -108,7 +126,9 @@ object ServiceModule {
         dialogQueueService,
         appNavigationService,
         storageClearService,
+        analyticsService,
         userDataStore,
+        appScope,
       )
 
     /**
@@ -151,11 +171,13 @@ object ServiceModule {
   fun provideWifiScaleService(
     @ApplicationContext context: Context,
     wifiSmartConnectManager: WifiSmartConnectManager,
-    deviceService: IDeviceService
+    deviceService: IDeviceService,
+    @ApplicationScope appScope: CoroutineScope,
   ) = WifiScaleService(
     wifiSmartConnectManager,
     deviceService,
     context,
+    appScope,
   )
 
   /**
@@ -170,8 +192,9 @@ object ServiceModule {
     @ApplicationContext context: Context,
     notificationService: GGNotificationService,
     appRepository: IAppRepository,
-    entryService: IEntryService
-  ): GGNotificationManager = GGNotificationManager(context, notificationService, appRepository, entryService)
+    entryService: IEntryService,
+    @ApplicationScope appScope: CoroutineScope,
+  ): GGNotificationManager = GGNotificationManager(context, notificationService, appRepository, entryService, appScope)
 
   /**
    * Provides a singleton instance of [LogManager] for logging operations.
@@ -195,7 +218,9 @@ object ServiceModule {
    */
   @Provides
   @Singleton
-  fun provideDialogQueueService(): IDialogQueueService = DialogQueueService()
+  fun provideDialogQueueService(
+    @ApplicationScope appScope: CoroutineScope,
+  ): IDialogQueueService = DialogQueueService(appScope)
 
   /**
    * Provides a singleton instance of [IDialogUtility] for common dialog operations.
@@ -211,12 +236,21 @@ object ServiceModule {
   @Singleton
   fun provideEntryService(
     entryRepository: IEntryRepository,
-    goalRepository: IGoalRepository,
     accountRepository: IAccountRepository,
+    goalService: IGoalService,
     healthConnectService: IHealthConnectService,
     healthConnectRepository: IHealthConnectRepository,
-    goalService: IGoalService
-  ): IEntryService = EntryService(entryRepository, goalRepository, accountRepository, goalService, healthConnectService, healthConnectRepository)
+    analyticsService: IAnalyticsService,
+    @ApplicationScope appScope: CoroutineScope,
+  ): IEntryService = EntryService(
+    entryRepository = entryRepository,
+    accountRepository = accountRepository,
+    goalService = goalService,
+    healthConnectService = healthConnectService,
+    healthConnectRepository = healthConnectRepository,
+    analyticsService = analyticsService,
+    appScope = appScope,
+  )
 
   @Provides
   @Singleton
@@ -231,7 +265,8 @@ object ServiceModule {
     accountRepository: IAccountRepository,
     healthConnectRepository: IHealthConnectRepository,
     integrationRepository: IIntegrationRepository,
-    entryService: IEntryService
+    entryService: IEntryService,
+    @ApplicationScope appScope: CoroutineScope,
   ): IDeviceInfoService =
     DeviceInfoService(
       context,
@@ -244,7 +279,8 @@ object ServiceModule {
       accountRepository,
       healthConnectRepository,
       integrationRepository,
-      entryService
+      entryService,
+      appScope,
     )
 
     /**
@@ -262,6 +298,7 @@ object ServiceModule {
       integrationRepository: IIntegrationRepository,
       appNavigationService: IAppNavigationService,
       healthConnectRepository: IHealthConnectRepository,
+      @ApplicationScope appScope: CoroutineScope,
     ): IIntegrationService =
       IntegrationService(
         connectivityObserver,
@@ -270,6 +307,7 @@ object ServiceModule {
         accountService,
         integrationRepository,
         healthConnectRepository,
+        appScope,
       )
 
     /**
@@ -283,7 +321,9 @@ object ServiceModule {
       dialogQueueService: IDialogQueueService,
       deviceService: com.greatergoods.blewrapper.GGDeviceService,
       logRepository: ILogRepository,
-    ): IExportService = ExportService(exportAPI, accountService, dialogQueueService, deviceService, logRepository)
+      entryRepository: IEntryRepository,
+      @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
+    ): IExportService = ExportService(exportAPI, accountService, dialogQueueService, deviceService, logRepository, entryRepository, context)
 
     /**
      * Provides the offline handler service implementation.
@@ -375,7 +415,8 @@ object ServiceModule {
       appNavigationService: IAppNavigationService,
       goalAlertDataStore: GoalAlertDataStore,
       accountRepository: IAccountRepository,
-      deviceService: IDeviceService
+      deviceService: IDeviceService,
+      @ApplicationScope appScope: CoroutineScope,
     ): IGoalService =
       GoalService(
         goalRepository,
@@ -384,7 +425,8 @@ object ServiceModule {
         appNavigationService,
         goalAlertDataStore,
         accountRepository,
-        deviceService
+        deviceService,
+        appScope,
       )
 
     @Provides
@@ -395,6 +437,7 @@ object ServiceModule {
       connectivityObserver: IConnectivityObserver,
       dialogQueueService: IDialogQueueService,
       appNavigationService: IAppNavigationService,
+      @ApplicationScope appScope: CoroutineScope,
     ): IDashboardService =
       DashboardService(
         dashboardRepository,
@@ -402,6 +445,7 @@ object ServiceModule {
         connectivityObserver,
         dialogQueueService,
         appNavigationService,
+        appScope,
       )
 
     @Provides
@@ -418,8 +462,9 @@ object ServiceModule {
       dialogQueueService: IDialogQueueService,
       appNavigationService: IAppNavigationService,
       selectedFeedItemHolder: SelectedFeedItemHolder,
-      @ApplicationContext context: Context
-    ): IFeedService = FeedService(feedRepository, accountService, ggIAMService, connectivityObserver, dialogQueueService, appNavigationService, selectedFeedItemHolder, context)
+      @ApplicationContext context: Context,
+      @ApplicationScope appScope: CoroutineScope,
+    ): IFeedService = FeedService(feedRepository, accountService, ggIAMService, connectivityObserver, dialogQueueService, appNavigationService, selectedFeedItemHolder, context, appScope)
 
     /**
      * Provides the device service implementation.
@@ -433,8 +478,9 @@ object ServiceModule {
       connectivityObserver: IConnectivityObserver,
       dialogQueueService: IDialogQueueService,
       appNavigationService: IAppNavigationService,
+      @ApplicationScope appScope: CoroutineScope,
     ): IDeviceService =
-      DeviceService(deviceRepository, connectivityObserver, dialogQueueService, appNavigationService, context)
+      DeviceService(deviceRepository, connectivityObserver, dialogQueueService, appNavigationService, context, appScope)
 
     @Provides
     @Singleton
@@ -487,10 +533,61 @@ object ServiceModule {
    */
   @Provides
   @Singleton
+  fun provideReviewService(
+    reviewRepository: IReviewRepository,
+    accountFlagRepository: IAccountFlagRepository,
+  ): IReviewService = ReviewService(reviewRepository, accountFlagRepository)
+
+  @Provides
+  @Singleton
   fun provideAccountFlagService(
     @ApplicationContext context: Context,
     accountFlagRepository: IAccountFlagRepository,
     appReviewManager: com.dmdbrands.gurus.weight.core.shared.utilities.IAppReviewManager,
-  ): IAccountFlagService = AccountFlagService(context, accountFlagRepository, appReviewManager)
+    reviewService: IReviewService,
+  ): IAccountFlagService = AccountFlagService(context, accountFlagRepository, appReviewManager, reviewService)
 
+  @Provides
+  @Singleton
+  fun provideFirebaseAnalytics(
+    @ApplicationContext context: Context,
+  ): FirebaseAnalytics = FirebaseAnalytics.getInstance(context)
+
+  @Provides
+  @Singleton
+  fun provideAnalyticsService(
+    analyticsService: AnalyticsService,
+  ): IAnalyticsService = analyticsService
+
+  @Provides
+  @Singleton
+  fun provideCrashReportingService(
+    crashReportingService: CrashReportingService,
+  ): ICrashReportingService = crashReportingService
+
+  @Provides
+  @Singleton
+  fun provideBabyProfileService(
+    babyProfileService: BabyProfileService,
+  ): IBabyProfileService = babyProfileService
+
+  @Provides
+  @Singleton
+  fun provideProductSelectionManager(
+    productSelectionManager: ProductSelectionManager,
+  ): IProductSelectionManager = productSelectionManager
+
+  @Provides
+  @Singleton
+  fun provideEntryReadService(
+    entryReadRepository: IEntryReadRepository,
+    accountRepository: IAccountRepository,
+    goalRepository: IGoalRepository,
+    @ApplicationScope appScope: CoroutineScope,
+  ): IEntryReadService = EntryReadService(
+    entryReadRepository = entryReadRepository,
+    accountRepository = accountRepository,
+    goalRepository = goalRepository,
+    appScope = appScope,
+  )
 }

@@ -1,6 +1,6 @@
+import Combine
 import Foundation
 import SwiftUI
-import Combine
 
 /// ViewModel responsible for supplying data for `GoalProgressView`.
 /// It observes the `AccountService` for changes to the active account and
@@ -20,8 +20,8 @@ final class GoalProgressViewModel: ObservableObject {
     @Published var isLoaded: Bool = false               // Prevents transient UI during async load
     
     // MARK: - Dependencies
-    @Injector private var accountService: AccountService
-    @Injector private var entryService: EntryService
+    @Injector private var accountService: AccountServiceProtocol
+    @Injector private var entryService: EntryServiceProtocol
     
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
@@ -30,7 +30,7 @@ final class GoalProgressViewModel: ObservableObject {
     // MARK: - Init
     init() {
         // Recalculate whenever active account changes.
-        accountService.$activeAccount
+        accountService.activeAccountPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 Task { await self?.loadData() }
@@ -49,6 +49,7 @@ final class GoalProgressViewModel: ObservableObject {
     }
     
     // MARK: - Data Loading
+// swiftlint:disable:next function_body_length
     private func loadData() async {
         // Keep last-rendered UI visible after initial load to avoid flicker.
         // Only gate the UI (isLoaded = false) before the very first load.
@@ -56,28 +57,27 @@ final class GoalProgressViewModel: ObservableObject {
             isLoaded = false
         }
         guard let account = accountService.activeAccount else { return }
-        guard let goalSettings = account.goalSettings else {
+        guard account.goalType != nil else {
             // No goal configured
             goalType = .none
             delta = 0
             startWeight = 0
             goalWeight = 0
             progress = 0
-            weightlessOn = account.weightlessSettings?.isWeightlessOn ?? false
-            let weightUnit = account.weightSettings?.weightUnit ?? .lb
+            weightlessOn = account.isWeightlessOn
+            let weightUnit = account.weightUnit
             unit = weightUnit.rawValue
             isLoaded = true
             return
         }
-        
-        // Extract all account relationship data BEFORE any async operations
-        // to avoid SwiftData concurrency issues
-        let weightUnit = account.weightSettings?.weightUnit ?? .lb
-        let goalTypeValue = goalSettings.goalType ?? .none
-        let initialWeightStored = Int(goalSettings.initialWeight ?? 0)
-        let goalWeightStored = Int(goalSettings.goalWeight ?? 0)
-        let isWeightlessOn = account.weightlessSettings?.isWeightlessOn ?? false
-        let weightlessWeight = account.weightlessSettings?.weightlessWeight
+
+        // Extract all account data BEFORE any async operations
+        let weightUnit = account.weightUnit
+        let goalTypeValue = account.goalType ?? .none
+        let initialWeightStored = Int(account.initialWeight ?? 0)
+        let goalWeightStored = Int(account.goalWeight ?? 0)
+        let isWeightlessOn = account.isWeightlessOn
+        let weightlessWeight = account.weightlessWeight
 
         unit = weightUnit.rawValue
         goalType = goalTypeValue
@@ -100,9 +100,9 @@ final class GoalProgressViewModel: ObservableObject {
         }()
         
         // Convert stored (tenths-lb) values to display units, applying weightless offset.
-        let initialDisplay  = convertStoredWeight(initialWeightStored - baselineStored,  unit: weightUnit)
-        let goalDisplay     = convertStoredWeight(goalWeightStored    - baselineStored,  unit: weightUnit)
-        let currentDisplay  = convertStoredWeight(currentWeightStored - baselineStored,  unit: weightUnit)
+        let initialDisplay  = convertStoredWeight(initialWeightStored - baselineStored, unit: weightUnit)
+        let goalDisplay     = convertStoredWeight(goalWeightStored - baselineStored, unit: weightUnit)
+        let currentDisplay  = convertStoredWeight(currentWeightStored - baselineStored, unit: weightUnit)
         
         // Populate published properties
         startWeight = initialDisplay

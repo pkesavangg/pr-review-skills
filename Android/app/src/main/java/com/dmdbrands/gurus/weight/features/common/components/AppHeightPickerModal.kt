@@ -41,22 +41,71 @@ sealed class HeightInput {
    */
   fun toStoredHeight(): Int =
     when (this) {
-      is Cm -> {
-        // Convert cm to stored height format
-        val CM_TO_INCH_FACTOR = 0.254
-        kotlin.math.round(value / CM_TO_INCH_FACTOR).toInt()
-      }
+      is Cm -> kotlin.math.round(value / CM_PER_STORED_UNIT).toInt()
 
       is FtIn -> {
-        // Convert feet/inches to stored height format
-        val INCHES_PER_FOOT = 12
-        val STORED_HEIGHT_TO_INCHES_FACTOR = 10
         val totalInches = (feet * INCHES_PER_FOOT) + inches
-        (totalInches * STORED_HEIGHT_TO_INCHES_FACTOR).toInt()
+        totalInches * STORED_HEIGHT_TO_INCHES_FACTOR
       }
     }
 
   companion object {
+    /**
+     * Imperial height bounds. The ft/in picker tops out at 7'11", which is the
+     * realistic maximum; any taller metric value (the cm picker allows up to
+     * 299 cm) is capped to 7'11" when converting to imperial so the displayed
+     * value and the picker always agree (MOB-172). Clamp on the TOTAL inches
+     * rather than feet/inches independently, otherwise an out-of-range value
+     * like 9'10" would clamp to a nonsensical 7'10".
+     */
+    const val MIN_FEET = 2
+    const val MAX_FEET = 7
+    private const val INCHES_PER_FOOT = 12
+    const val MIN_TOTAL_INCHES = MIN_FEET * INCHES_PER_FOOT // 2'0"
+    const val MAX_TOTAL_INCHES = MAX_FEET * INCHES_PER_FOOT + 11 // 7'11"
+
+    /**
+     * Metric (cm) picker bounds. The cm picker shows 100..299 cm, so any
+     * converted metric height is coerced into this range before display.
+     */
+    const val MIN_CM = 100
+    const val MAX_CM = 299
+
+    /** Centimetres per inch — the metric/imperial conversion factor. */
+    private const val CM_PER_INCH = 2.54
+
+    /** Stored height is expressed in tenths of an inch. */
+    private const val STORED_HEIGHT_TO_INCHES_FACTOR = 10
+
+    /** Centimetres per stored-height unit (= [CM_PER_INCH] / [STORED_HEIGHT_TO_INCHES_FACTOR]). */
+    private const val CM_PER_STORED_UNIT = 0.254
+
+    /** Converts a total-inches value into a feet/inches pair, capped to [2'0", 7'11"]. */
+    private fun totalInchesToFtIn(totalInches: Int): FtIn {
+      val capped = totalInches.coerceIn(MIN_TOTAL_INCHES, MAX_TOTAL_INCHES)
+      return FtIn(feet = capped / INCHES_PER_FOOT, inches = capped % INCHES_PER_FOOT)
+    }
+
+    /**
+     * Converts a centimetre value to feet/inches, capped to 7'11". Used when the
+     * user toggles units so a tall metric height (the cm picker allows up to
+     * 299 cm) is shown as the 7'11" maximum rather than an out-of-range value.
+     */
+    fun cmToFtIn(cm: Int): FtIn = totalInchesToFtIn(kotlin.math.round(cm / CM_PER_INCH).toInt())
+
+    /**
+     * Converts a feet/inches value to centimetres, coerced into the cm picker's
+     * displayable range [[MIN_CM], [MAX_CM]]. Symmetric to [cmToFtIn]; used when
+     * the user toggles to metric so a short imperial height (the ft/in picker
+     * allows down to 2'0" ≈ 61 cm) is shown as the 100 cm minimum rather than an
+     * out-of-range value the cm picker can't display (MOB-172).
+     */
+    fun ftInToCm(feet: Int, inches: Int): Cm {
+      val totalInches = (feet * INCHES_PER_FOOT) + inches
+      val cm = kotlin.math.round(totalInches * CM_PER_INCH).toInt()
+      return Cm(cm.coerceIn(MIN_CM, MAX_CM))
+    }
+
     /**
      * Creates a HeightInput from stored height format based on unit preference.
      * @param storedHeight Height in stored format (tenths of inches)
@@ -65,21 +114,12 @@ sealed class HeightInput {
      */
     fun fromStoredHeight(storedHeight: Int, isMetric: Boolean): HeightInput {
       return if (isMetric) {
-        // Convert stored height to cm
-        val CM_TO_INCH_FACTOR = 0.254
-        val heightInCm = kotlin.math.round(storedHeight * CM_TO_INCH_FACTOR).toInt()
-        Cm(heightInCm.coerceIn(100, 299)) // Ensure within valid range
+        // Convert stored height to cm, coerced into the cm picker's range.
+        val heightInCm = kotlin.math.round(storedHeight * CM_PER_STORED_UNIT).toInt()
+        Cm(heightInCm.coerceIn(MIN_CM, MAX_CM))
       } else {
-        // Convert stored height to feet/inches
-        val STORED_HEIGHT_TO_INCHES_FACTOR = 10
-        val INCHES_PER_FOOT = 12
-        val totalInches = storedHeight / STORED_HEIGHT_TO_INCHES_FACTOR
-        val feet = totalInches / INCHES_PER_FOOT
-        val inches = totalInches % INCHES_PER_FOOT
-        FtIn(
-          feet = feet.coerceIn(2, 7), // Ensure within valid range
-          inches = inches.coerceIn(0, 11),
-        )
+        // Convert stored height to feet/inches, capped to [2'0", 7'11"].
+        totalInchesToFtIn(storedHeight / STORED_HEIGHT_TO_INCHES_FACTOR)
       }
     }
 
@@ -92,18 +132,13 @@ sealed class HeightInput {
     fun formatHeightDisplay(height: Int?, isMetric: Boolean): String {
       if (height == null) return "Not Set"
       return if (isMetric) {
-        // Convert stored height to cm
-        val CM_TO_INCH_FACTOR = 0.254
-        val heightInCm = kotlin.math.round(height * CM_TO_INCH_FACTOR).toInt()
-        heightInCm.coerceIn(100, 299).toString() + " cm"
+        // Convert stored height to cm, coerced into the cm picker's range.
+        val heightInCm = kotlin.math.round(height * CM_PER_STORED_UNIT).toInt()
+        heightInCm.coerceIn(MIN_CM, MAX_CM).toString() + " cm"
       } else {
-        // Convert stored height to feet/inches
-        val STORED_HEIGHT_TO_INCHES_FACTOR = 10
-        val INCHES_PER_FOOT = 12
-        val totalInches = height / STORED_HEIGHT_TO_INCHES_FACTOR
-        val feet = totalInches / INCHES_PER_FOOT
-        val inches = totalInches % INCHES_PER_FOOT
-        "$feet' $inches\""
+        // Convert stored height to feet/inches, capped to [2'0", 7'11"].
+        val ftIn = totalInchesToFtIn(height / STORED_HEIGHT_TO_INCHES_FACTOR)
+        "${ftIn.feet}' ${ftIn.inches}\""
       }
     }
   }
@@ -114,15 +149,17 @@ sealed class HeightInput {
  */
 object AppPickerDefaults {
   /**
-   * List of height values in centimeters (150 to 200 cm).
+   * List of height values in centimeters (100 to 299 cm).
    */
-  val cmHeights: List<HeightInput.Cm> = (100..299).map { HeightInput.Cm(it) }.toList()
+  val cmHeights: List<HeightInput.Cm> =
+    (HeightInput.MIN_CM..HeightInput.MAX_CM).map { HeightInput.Cm(it) }.toList()
 
   /**
-   * List of height values in feet/inches (4'0" to 7'0").
-   * Each entry is a Pair of feet to inches (0-11).
+   * List of feet values (2'..7'). Taller metric heights are capped to 7'11"
+   * on conversion so the picker never receives an out-of-range feet value
+   * (MOB-172).
    */
-  val feetHeights: List<Int> = (2..7).toList()
+  val feetHeights: List<Int> = (HeightInput.MIN_FEET..HeightInput.MAX_FEET).toList()
   val inchHeights: List<Int> = (0..11).toList()
 }
 

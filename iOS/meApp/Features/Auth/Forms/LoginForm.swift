@@ -1,5 +1,5 @@
-import Foundation
 import Combine
+import Foundation
 
 class LoginForm: ObservableForm {
     var email = FormControl("", validators: [.required, .email, .maxLength(100)])
@@ -9,7 +9,7 @@ class LoginForm: ObservableForm {
     var formDidChange: AnyPublisher<Void, Never> {
         Publishers.MergeMany([
             email.$value.map { _ in () }.eraseToAnyPublisher(),
-            password.$value.map { _ in () }.eraseToAnyPublisher(),
+            password.$value.map { _ in () }.eraseToAnyPublisher()
         ]).eraseToAnyPublisher()
     }
     

@@ -12,6 +12,7 @@ import com.dmdbrands.gurus.weight.core.service.WifiStatus
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enum.CustomPermissionType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.ScaleSetup.ScaleSetupConstants
@@ -25,11 +26,12 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.WifiScaleSetupStat
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
+import com.dmdbrands.gurus.weight.features.ScaleSetup.helper.switchActiveProductAfterSetup
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.gurus.weight.features.common.model.DEVICES
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
@@ -43,7 +45,9 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -107,12 +111,15 @@ constructor(
     monitorNetworkStatus()
     // Observe selectedWifiMode changes and update canProceedToNext in WIFI_MODE step
     viewModelScope.launch {
-      state.collect { currentState ->
-        if (currentState.currentStep == WifiScaleSetupStep.WIFI_MODE) {
-          val canProceed = isWifiModeSelected()
-          handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
+      state
+        .map { it.currentStep to it.selectedWifiMode }
+        .distinctUntilChanged()
+        .collect { (step, _) ->
+          if (step == WifiScaleSetupStep.WIFI_MODE) {
+            val canProceed = isWifiModeSelected()
+            handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
+          }
         }
-      }
     }
   }
 
@@ -456,7 +463,7 @@ constructor(
       try {
         val token = wifiScaleService.getScaleToken()
         scaleToken = token
-        AppLog.d(TAG, "getScaleToken - token retrieved: $token")
+        AppLog.d(TAG, "getScaleToken - token retrieved successfully")
       } catch (e: Exception) {
         AppLog.e(TAG, "getScaleToken - Error getting scale token", e)
       }
@@ -477,6 +484,10 @@ constructor(
         if (status.ssid.isNotEmpty()) {
           lastSsid = status.ssid
           handleIntent(WifiScaleSetupIntent.SetWifiSsid(status.ssid))
+          val hasLocationPermission = isAllLocationPermissionGranted()
+          if (hasLocationPermission) {
+            handleIntent(WifiScaleSetupIntent.SetWifiAutoPopulated(true))
+          }
           updateFormValuesWithSsid(status.ssid)
         }
 
@@ -491,7 +502,12 @@ constructor(
   /**
    * Updates the network status.
    * Equivalent to TypeScript updateNetworkStatus()
-   * When any required permission is revoked, preserves the last known SSID so the network field is not cleared.
+   *
+   * Permission-state transitions are handled explicitly:
+   * - Permission granted + live SSID available → auto-populate mode (isWifiAutoPopulated = true).
+   * - Permission revoked (or denied) → clear lastSsid, clear form, revert to manual-entry mode
+   *   (isWifiAutoPopulated = false) so the field is editable again.
+   * - Permission granted but no SSID yet → keep current state, do not force manual mode.
    */
   private fun updateNetworkStatus() {
     viewModelScope.launch {
@@ -499,30 +515,57 @@ constructor(
         val hasLocationPermission = isAllLocationPermissionGranted()
         val status = wifiScaleService.getConnectedWifiInfo(hasLocationPermission)
         wifiStatus = status
-        if (status.ssid.isNotEmpty()) {
-          lastSsid = status.ssid
-        }
         val currentState = state.value
         val hasAllRequiredPermissions = AppPermissionsHelper
           .areRequiredPermissionsEnabled(currentState.permissions, setupType = ScaleSetupType.Wifi)
-        // When any required permission is off, status.ssid may be empty; preserve last known SSID so we don't clear the field
-        val effectiveSsid =
-          if (status.ssid.isNotEmpty()) {
-            status.ssid
-          } else if (!hasAllRequiredPermissions) {
-            lastSsid ?: ""
+
+        if (!hasAllRequiredPermissions) {
+          handleIntent(WifiScaleSetupIntent.SetWifiStatus(status))
+          return@launch
+        }
+
+        // Permissions are granted from here on.
+        if (status.ssid.isNotEmpty()) {
+          val previousAutoFilledSsid = lastSsid
+          lastSsid = status.ssid
+          if (currentState.permissionsSkipped) {
+            // User skipped the permission screen but permissions are active.
+            // Auto-populate the field so they see the network name pre-filled,
+            // but only if they haven't already started typing their own value.
+            // Never set isWifiAutoPopulated=true here — the field must stay editable.
+            val ssidField = currentState.wifiPasswordForm.ssid
+            // dirty/touched alone is not reliable because SetWifiPasswordFormSsid
+            // marks the control dirty/touched programmatically during auto-fill.
+            // Compare the field value against the *previous* auto-filled SSID:
+            // if the user hasn't touched it, the field still holds the old auto-filled
+            // value (or is empty), so we can safely overwrite with the new SSID.
+            val userIsEditing = ssidField.value.isNotEmpty() &&
+              ssidField.value != previousAutoFilledSsid &&
+              ssidField.value != status.ssid
+            if (!userIsEditing) {
+              AppLog.d(TAG, "updateNetworkStatus - permissionsSkipped + untouched field; pre-filling SSID as editable")
+              updateFormValuesWithSsid(status.ssid)
+            } else {
+              AppLog.d(TAG, "updateNetworkStatus - permissionsSkipped + user is editing; not overriding input")
+            }
           } else {
-            ""
+            handleIntent(WifiScaleSetupIntent.SetWifiSsid(status.ssid))
+            handleIntent(WifiScaleSetupIntent.SetWifiAutoPopulated(true))
+            updateFormValuesWithSsid(status.ssid)
           }
-        handleIntent(WifiScaleSetupIntent.SetWifiSsid(effectiveSsid))
-        updateFormValuesWithSsid(effectiveSsid)
-        val displayStatus =
-          if (!hasAllRequiredPermissions && status.ssid.isEmpty() && lastSsid != null) {
-            status.copy(ssid = lastSsid!!, bssid = currentState.wifiStatus?.bssid ?: "")
-          } else {
-            status
+        } else {
+          // Permissions granted but no SSID yet — do not flip back to manual mode,
+          // just reflect the empty status so the user is not confused.
+          handleIntent(WifiScaleSetupIntent.SetWifiSsid(""))
+          if (currentState.isWifiAutoPopulated) {
+            // Lost the network momentarily; keep lastSsid but switch to manual so the field
+            // is editable in case the network change is intentional.
+            AppLog.d(TAG, "updateNetworkStatus - Permission granted but SSID lost; switching to manual entry")
+            handleIntent(WifiScaleSetupIntent.SetWifiAutoPopulated(false))
+            clearWifiPasswordFormSsid()
           }
-        handleIntent(WifiScaleSetupIntent.SetWifiStatus(displayStatus))
+        }
+        handleIntent(WifiScaleSetupIntent.SetWifiStatus(status))
       } catch (e: Exception) {
         AppLog.e(TAG, "updateNetworkStatus - Error updating network status", e)
       }
@@ -708,7 +751,7 @@ constructor(
     if (scaleToken.isNullOrEmpty()) {
       AppLog.w(TAG, "checkScaleToken - No scale token available")
       dialogQueueService.showToast(
-        Toast(
+        Toast.Simple(
           title = ScaleSetupStrings.PermissionAlerts.InternetRequired.Title,
           message = ScaleSetupStrings.PermissionAlerts.InternetRequired.Message,
           action = null,
@@ -736,10 +779,13 @@ constructor(
     val arePermissionsCurrentlyEnabled = AppPermissionsHelper
       .areRequiredPermissionsEnabled(currentState.permissions, setupType = ScaleSetupType.Wifi)
     val shouldAutoPopulate = !currentState.permissionsSkipped || currentState.isGetMACSetup || arePermissionsCurrentlyEnabled
-    // Skip flow with permissions on: respect user's clear - don't refill if they cleared the field
-    // Treat as "user cleared" only when the SSID control is empty *and* has been interacted with.
+    // Skip flow with permissions on: respect user's clear - don't refill if they cleared the field.
+    // We cannot rely on dirty/touched because SetWifiPasswordFormSsid marks the control
+    // dirty/touched programmatically during auto-fill. Instead, treat the field as
+    // "user cleared" when it is empty and lastSsid is non-null (meaning we previously
+    // auto-filled a value that the user then removed).
     val ssidControl = currentState.wifiPasswordForm.ssid
-    val userClearedSsid = ssidControl.value.isEmpty() && (ssidControl.dirty || ssidControl.touched)
+    val userClearedSsid = ssidControl.value.isEmpty() && lastSsid != null
     if (currentState.permissionsSkipped && arePermissionsCurrentlyEnabled &&
       userClearedSsid &&
       currentState.wifiPasswordForm.ssid.value.isEmpty() && ssid.isNotEmpty() && currentStepIndex < 3
@@ -801,6 +847,27 @@ constructor(
     AppLog.d(TAG, "Cleared WiFi password form - reset all form controls to initial state")
   }
 
+  /**
+   * Clears only the SSID field of the WiFi password form, leaving password and toggle untouched.
+   * Used when reverting from auto-populated mode to manual-entry mode after permission revocation.
+   */
+  private fun clearWifiPasswordFormSsid() {
+    val emptySsid = FormControl.create(
+      initialValue = "",
+      validators = listOf(FormValidations.required()),
+    )
+    val currentForm = state.value.wifiPasswordForm
+    handleIntent(
+      WifiScaleSetupIntent.SetWifiPasswordForm(
+        WifiScalePasswordFormControls(
+          ssid = emptySsid,
+          password = currentForm.password,
+          noPasswordNetwork = currentForm.noPasswordNetwork,
+        ),
+      ),
+    )
+    AppLog.d(TAG, "clearWifiPasswordFormSsid - reset SSID form control to empty for manual entry")
+  }
 
   /**
    * Checks if all location permissions are granted.
@@ -931,6 +998,10 @@ constructor(
         handleIntent(WifiScaleSetupIntent.SetCurrentStep(WifiScaleSetupStep.SCALE_INFO))
       }
       handleIntent(WifiScaleSetupIntent.SetPermissionsSkipped(false))
+      // Reset auto-populated flag so when the user returns, the SSID detection runs fresh
+      // via updateNetworkStatus() rather than showing a stale auto-populated chip.
+      handleIntent(WifiScaleSetupIntent.SetWifiAutoPopulated(false))
+      clearWifiPasswordFormSsid()
     }
 
     AppLog.d(TAG, "Moving back from step: ${currentState.currentStep}")
@@ -946,7 +1017,7 @@ constructor(
       AppLog.e(TAG, "SKU is blank, cannot save scale")
       return
     }
-    val scaleInfo = SCALES.find { it.sku == currentSku }
+    val scaleInfo = DEVICES.find { it.sku == currentSku }
     val wifiDevice = Device(
       device = GGDeviceDetail(
         deviceName = scaleInfo?.productName ?: "",
@@ -961,6 +1032,8 @@ constructor(
     )
     val savedDevice = deviceService.saveScale(wifiDevice)
     waitForScaleInPairedList(savedDevice, currentSku)
+    // Auto-switch the dashboard header to the newly added scale (MOB-422).
+    productSelectionManager.switchActiveProductAfterSetup(ProductSelection.MyWeight)
   }
 
   /**

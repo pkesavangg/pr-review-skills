@@ -8,8 +8,12 @@
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
 .DS_Store
+.claude/cache/
 /build
+/.claude/cache
 /captures
 .externalNativeBuild
 .cxx
 local.properties
+app/google-services.json
+.kotlin/

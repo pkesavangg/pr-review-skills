@@ -20,7 +20,6 @@ public struct WifiConfig: Sendable, Equatable {
     public let ssid: String
     public let password: String?
 
-
     public init(ssid: String, password: String? = nil) {
         self.ssid = ssid
         self.password = password
@@ -69,13 +68,12 @@ public enum DeviceSettingValue: Sendable, Equatable {
 
   public func toGGBTSettingValue() -> GGBTSettingValue {
         switch self {
-        case .bool(let b): return .bool(b)
-        case .int(let i): return .int(i)
-        case .string(let s): return .string(s)
+        case .bool(let boolValue): return .bool(boolValue)
+        case .int(let intValue): return .int(intValue)
+        case .string(let stringValue): return .string(stringValue)
         }
     }
 }
-
 
 /// Enumeration describing which data set should be cleared on the scale.
 public enum DeviceClearType: String, Sendable, CaseIterable {
@@ -288,12 +286,52 @@ public enum UserDeletionResponse: String, Sendable, Codable, Equatable, CaseIter
 }
 
 /// Scale type enumeration
-public enum BluetoothScaleType: String, Sendable, CaseIterable {
-    case bluetooth = "bluetooth"
-    case bluetoothScale = "bluetoothScale"
-    case lcbt = "lcbt"
-    case lcbtScale = "lcbtScale"
-    case btWifiR4 = "btWifiR4"
+public enum BluetoothDeviceModelType: String, Sendable, CaseIterable {
+    case bluetooth
+    case bluetoothScale
+    case lcbt
+    case lcbtScale
+    case btWifiR4
+}
+
+/// BPM device type enumeration
+public enum BluetoothBpmType: String, Sendable, CaseIterable {
+    case bpm
+}
+
+/// Represents a blood pressure measurement received from a BPM device.
+public struct BpmMeasurement: Sendable, Equatable {
+    public let systolic: Int
+    public let diastolic: Int
+    public let pulse: Int
+    public let meanArterial: String?
+    public let irregularHb: Bool
+    public let timestamp: Date
+    public let broadcastId: String?
+
+    public init(
+        systolic: Int,
+        diastolic: Int,
+        pulse: Int,
+        meanArterial: String? = nil,
+        irregularHb: Bool = false,
+        timestamp: Date = Date(),
+        broadcastId: String? = nil
+    ) {
+        self.systolic = systolic
+        self.diastolic = diastolic
+        self.pulse = pulse
+        self.meanArterial = meanArterial
+        self.irregularHb = irregularHb
+        self.timestamp = timestamp
+        self.broadcastId = broadcastId
+    }
+}
+
+/// Category of device discovered via Bluetooth.
+public enum DeviceCategory: String, Sendable, Equatable {
+    case scale
+    case bpm
 }
 
 /// Unified device discovery event
@@ -324,20 +362,27 @@ public enum BluetoothScaleType: String, Sendable, CaseIterable {
 ///     }
 ///     .store(in: &cancellables)
 /// ```
-// NOTE: @unchecked Sendable because Device is @Model (not thread-safe).
-// This is safe ONLY because all creation (BluetoothService) and consumption
-// (stores/ViewModels) happen on @MainActor. Do NOT send across actor boundaries.
-public struct DeviceDiscoveryEvent: @unchecked Sendable, Equatable {
-    let device: Device
-    let deviceInfo: ScaleItemInfo
+/// Unified device discovery event. All fields are `Sendable`, so this struct is properly
+/// `Sendable` — no `@unchecked` marker needed.
+public struct DeviceDiscoveryEvent: Sendable, Equatable {
+    let device: DeviceSnapshot
+    let deviceInfo: DeviceItemInfo
     let protocolType: ProtocolType
     let isNew: Bool
+    let deviceCategory: DeviceCategory
 
-    init(device: Device, deviceInfo: ScaleItemInfo, protocolType: ProtocolType, isNew: Bool) {
+    init(
+        device: DeviceSnapshot,
+        deviceInfo: DeviceItemInfo,
+        protocolType: ProtocolType,
+        isNew: Bool,
+        deviceCategory: DeviceCategory = .scale
+    ) {
         self.device = device
         self.deviceInfo = deviceInfo
         self.protocolType = protocolType
         self.isNew = isNew
+        self.deviceCategory = deviceCategory
     }
 }
 
@@ -367,7 +412,3 @@ public struct DeviceLogEntry {
     /// The log content
     let log: String?
 }
-
-
-
-

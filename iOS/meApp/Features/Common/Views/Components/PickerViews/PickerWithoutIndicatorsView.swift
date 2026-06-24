@@ -14,7 +14,7 @@ struct PickerWithoutIndicatorsView<Content: View, Selection: Hashable>: View {
     var body: some View {
         Picker("", selection: $selection) {
             if !isHidden {
-                RemovePickerIndicator() {
+                RemovePickerIndicator {
                     isHidden = true
                 }
             } else {
@@ -26,12 +26,12 @@ struct PickerWithoutIndicatorsView<Content: View, Selection: Hashable>: View {
 }
 
 struct RemovePickerIndicator: UIViewRepresentable {
-    var result: () -> ()
+    var result: () -> Void
     
     func makeUIView(context: Context) -> UIView {
         let view = UIView()
         view.backgroundColor = .clear
-        DispatchQueue.main.async {
+        Task { @MainActor in
             if let pickerView = view.pickerView {
                 pickerView.backgroundColor = .clear
                 if pickerView.subviews.count >= 2 {

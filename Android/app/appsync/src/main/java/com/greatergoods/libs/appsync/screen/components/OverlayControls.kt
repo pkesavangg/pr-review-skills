@@ -147,13 +147,6 @@ fun OverlayControls(
           modifier = Modifier.size(50.dp),
         )
 
-        // Optional warning text (commented out)
-        // Text(
-        //     text = AppSyncStrings.LowLightMessage,
-        //     color = Color.White,
-        //     style = MaterialTheme.typography.bodyMedium,
-        //     modifier = Modifier.padding(top = 8.dp),
-        // )
       }
     }
 

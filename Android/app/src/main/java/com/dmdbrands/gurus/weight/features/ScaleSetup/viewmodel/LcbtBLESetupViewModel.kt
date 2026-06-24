@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.ScaleSetupStep
@@ -12,6 +13,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.LCBTScaleSetupStat
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.LcbtScaleSetupReducer
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.ScaleSetupIntent
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
+import com.dmdbrands.gurus.weight.features.common.components.SetupLoaderTimings
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
@@ -19,7 +21,10 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import java.time.Instant
 
@@ -61,19 +66,21 @@ constructor(
 
   suspend fun saveScale(){
     try {
-      if (discoveredScale != null) {
+      val scale = discoveredScale
+      if (scale != null) {
         val scaleInfo = state.value.scaleSetupState.scaleInfo
         val currentTime = Instant.now().toString()
-        discoveredScale = discoveredScale!!.copy(
+        val updatedScale = scale.copy(
           nickname = scaleInfo?.productName ?: "Bluetooth Smart Scale",
           deviceType = ScaleSetupType.Lcbt.value,
           sku = sku,
           createdAt = currentTime,
-          device = discoveredScale!!.device?.copy(
-            deviceName = discoveredScale!!.device?.deviceName ?: scaleInfo?.productName ?: "",
+          device = scale.device?.copy(
+            deviceName = scale.device.deviceName.ifEmpty { scaleInfo?.productName ?: "" },
           ),
         )
-        deviceService.saveScale(discoveredScale!!)
+        discoveredScale = updatedScale
+        deviceService.saveScale(updatedScale)
         AppLog.i(TAG, "Successfully saved LCBT scale with SKU: $sku")
       } else {
         AppLog.w(TAG, "No discovered LCBT scale to save")
@@ -101,10 +108,12 @@ constructor(
       }
     } else {
       AppLog.d(TAG, "After Next intent - new currentStep: ${currentState.step}")
-      if (currentState.nextStep != null)
-        handleIntent(ScaleSetupIntent.SetNewStep(currentState.nextStep!!))
+      currentState.nextStep?.let { handleIntent(ScaleSetupIntent.SetNewStep(it)) }
     }
   }
+
+  /** Surface the My Weight dashboard after adding a scale (MOB-422). */
+  override fun productSelectionAfterSetup(): ProductSelection = ProductSelection.MyWeight
 
   override suspend fun onSetupFinished() {
   }
@@ -115,8 +124,8 @@ constructor(
     AppLog.d(TAG, "Moving to previous step from: $currentStep")
 
     if (currentState.isFirstStep) {
-      AppLog.d(TAG, "At first step, navigating back to add/edit scales")
-      navigateTo(AppRoute.AccountSettings.AddEditScales)
+      AppLog.d(TAG, "At first step, navigating back to My Devices")
+      navigateTo(AppRoute.AccountSettings.MyDevices)
       return
     }
 
@@ -126,8 +135,8 @@ constructor(
       AppLog.d(TAG, "Navigating to previous step: $previousStep")
       handleIntent(ScaleSetupIntent.SetNewStep(previousStep))
     } else {
-      AppLog.d(TAG, "No previous step available, navigating back to add/edit scales")
-      navigateTo(AppRoute.AccountSettings.AddEditScales)
+      AppLog.d(TAG, "No previous step available, navigating back to My Devices")
+      navigateTo(AppRoute.AccountSettings.MyDevices)
     }
   }
 
@@ -243,15 +252,28 @@ constructor(
     }
     viewModelScope.launch {
       try {
-        AppLog.d(TAG, "Updating device connection status")
-        delay(3000)
+        AppLog.d(TAG, "Waiting ${CONNECTION_SETUP_DELAY_MS}ms for bluetooth connection to settle")
+        delay(CONNECTION_SETUP_DELAY_MS)
         clearBluetoothTimeout() // Cancel timeout on success
-        AppLog.d(TAG, "Waiting 3 seconds after connection")
+        AppLog.d(TAG, "Bluetooth setup delay elapsed without timeout, saving scale")
         saveScale()
         handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
-        delay(1000)
-        AppLog.d(TAG, "Waiting 2 seconds before proceeding")
+        AppLog.d(TAG, "Holding success state for ${SetupLoaderTimings.SUCCESS_DISPLAY_MS}ms to let loader animation complete")
+        delay(SetupLoaderTimings.SUCCESS_DISPLAY_MS)
+        // Honour cancellation if the user backed out during the success hold.
+        currentCoroutineContext().ensureActive()
+        // Guard against a late BLE callback flipping the state to Failed during
+        // the success hold — only auto-advance if we're still in Success.
+        val finalState = state.value.scaleSetupState.setupState.connectionState
+        if (finalState !is ConnectionState.Success) {
+          AppLog.w(TAG, "Connection state changed during success hold to $finalState — skipping auto-advance")
+          return@launch
+        }
+        AppLog.d(TAG, "Success state displayed, advancing to next step")
         onNext()
+      } catch (e: CancellationException) {
+        // Never swallow cancellation — let viewModelScope unwind cleanly.
+        throw e
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during bluetooth connection", e)
         clearBluetoothTimeout()
@@ -289,5 +311,12 @@ constructor(
 
   companion object {
     private const val TAG = "LcbtBLESetupViewModel"
+
+    /**
+     * Delay between starting the BLE connection flow and marking it successful.
+     * Gives the underlying stack time to settle before we save the scale and
+     * transition the UI to Success.
+     */
+    private const val CONNECTION_SETUP_DELAY_MS = 3000L
   }
 }

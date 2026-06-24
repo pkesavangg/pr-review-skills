@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.goal.model
 
+import androidx.compose.runtime.Stable
 import com.dmdbrands.gurus.weight.domain.enums.GoalType
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
@@ -141,6 +142,7 @@ data class GoalFormControls(
  * @property account The current account with all goal information and weight conversions via AccountHelper.
  * @property latestWeight The latest weight reading for milestone display.
  */
+@Stable
 data class GoalState(
   val form: FormGroup<GoalFormControls>,
   val isLoading: Boolean = false,
@@ -220,17 +222,31 @@ class GoalReducer : IReducer<GoalState, GoalIntent> {
       is GoalIntent.ChangeGoalType -> {
         // Update goal type and validators IN-PLACE so form remains dirty and Save stays enabled
         val controls = state.form.controls
-        // Mark goalType as changed (dirty) and set new value
-        controls.goalType.onValueChange(intent.goalType.value)
-        // Update startingWeight validators based on new goal type BEFORE changing goal type
-        // This prevents validation errors from showing when switching
+        // Update startingWeight validators based on new goal type BEFORE changing goal type value
         if (intent.goalType == GoalType.MAINTAIN) {
           // Remove required validator for maintain mode
           controls.startingWeight.removeValidator("required")
         } else {
           // Add required validator for lose/gain mode
           controls.startingWeight.addValidator(FormValidations.required())
+          when {
+            controls.startingWeight.value.isNotEmpty() ->
+              // Pre-filled: mark dirty so weightMatchValidator fires immediately (MA-3776)
+              controls.startingWeight.markAsDirty()
+            !controls.startingWeight.dirty ->
+              // Empty and untouched: reset clears any stale touched state from Compose
+              // focus/blur events when the field re-enters composition after MAINTAIN mode.
+              // reset() also sets suppressNextBlurTouch=true to absorb the re-composition
+              // focus noise, and leaves validators intact (MA-3776).
+              controls.startingWeight.reset()
+            // else: empty AND dirty (user cleared the field) — leave as-is; error shows correctly
+          }
+          // Only mark dirty when a value exists — empty fields must stay clean (MA-3776)
+          if (controls.goalWeight.value.isNotEmpty()) controls.goalWeight.markAsDirty()
         }
+        // Change goal type value last — this triggers the onValueChangeListener which
+        // re-validates both weight controls (now marked dirty, so validation won't skip)
+        controls.goalType.onValueChange(intent.goalType.value)
         state.copy() // same form reference; UI observes updated controls
       }
 

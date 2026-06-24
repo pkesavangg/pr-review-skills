@@ -1,7 +1,6 @@
 package com.dmdbrands.gurus.weight.core.service
 
 import com.dmdbrands.gurus.weight.BuildConfig
-import com.dmdbrands.gurus.weight.core.config.AppConfig
 import java.text.SimpleDateFormat
 import java.time.ZoneId
 import java.util.Date
@@ -17,13 +16,11 @@ object AppStatusService {
 
   val version: String = BuildConfig.VERSION_NAME
 
-  val apiUrl: String = AppConfig.BASE_URL
+  val apiUrl: String = BuildConfig.BASE_URL
 
   val isNative: Boolean = true // Android is always native
 
   val isAndroid: Boolean = true
-
-  val isMetric: Boolean = false // TODO: Get from user preferences
 
   val enableTestingFeatures: Boolean = BuildConfig.DEBUG
 

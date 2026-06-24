@@ -5,12 +5,11 @@
 //  Created by Kesavan Panchabakesan on 04/06/25.
 //
 
-
 struct AlertModel {
     var title: String
     var message: String?
     var buttons: [AlertButtonModel]
-    var inputField: AlertInputField? = nil
+    var inputField: AlertInputField?
     
     init(title: String, 
          message: String? = nil, 

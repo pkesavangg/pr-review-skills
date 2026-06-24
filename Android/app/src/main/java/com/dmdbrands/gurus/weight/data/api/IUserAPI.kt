@@ -6,6 +6,8 @@ import com.dmdbrands.gurus.weight.domain.model.api.dashboard.DashboardMetricsReq
 import com.dmdbrands.gurus.weight.domain.model.api.dashboard.DashboardTypeRequest
 import com.dmdbrands.gurus.weight.domain.model.api.dashboard.ProgressMetricsRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountResponse
+import com.dmdbrands.gurus.weight.domain.model.api.user.MeasurementUnitsRequest
+import com.dmdbrands.gurus.weight.domain.model.api.user.ProductsRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -22,7 +24,21 @@ interface IUserAPI {
         private const val DASHBOARD_METRICS = "dashboard-metrics"
         private const val PROGRESS_METRICS = "progress-metrics"
         private const val PASSWORD = "password"
+        private const val MEASUREMENT_UNITS = "measurement-units"
+        private const val PRODUCTS = "products"
     }
+
+    /** Updates the account-level measurement system. MOB-377. */
+    @PATCH(ACCOUNT + MEASUREMENT_UNITS)
+    suspend fun updateMeasurementUnits(
+        @Body request: MeasurementUnitsRequest,
+    ): AccountResponse
+
+    /** Sets the account's product types directly (spec §2.19). */
+    @PATCH(ACCOUNT + PRODUCTS)
+    suspend fun updateProducts(
+        @Body request: ProductsRequest,
+    ): AccountResponse
 
     @PATCH(ACCOUNT + PROFILE)
     suspend fun updateProfile(

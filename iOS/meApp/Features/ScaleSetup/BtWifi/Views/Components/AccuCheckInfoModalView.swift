@@ -21,13 +21,16 @@ struct AccuCheckInfoModalView: View {
                     AppIconView(icon: appAssets.xmarkSmall, size: IconSize(width: 24, height: 24))
                         .foregroundColor(theme.statusIconPrimary)
                 }
+                .accessibilityLabel(BtWifiScaleSetupStrings.A11y.closeAccuCheckLabel)
+                .accessibilityHint(BtWifiScaleSetupStrings.A11y.closeAccuCheckHint)
             }
             .padding(.bottom, .spacingXS)
-            
+
             VStack(spacing: .spacingSM) {
                 Image(colorScheme == .dark ? appAssets.accuCheckTickLargeDark : appAssets.accuCheckTickLarge)
                     .resizable()
                     .frame(width: 100, height: 100)
+                    .accessibilityHidden(true)
                 
                 Text(lang.title)
                     .fontOpenSans(.heading4)

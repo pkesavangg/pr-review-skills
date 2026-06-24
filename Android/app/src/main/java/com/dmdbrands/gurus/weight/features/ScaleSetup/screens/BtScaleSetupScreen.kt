@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
@@ -47,7 +47,7 @@ fun BtScaleSetupScreen(
     hiltViewModel<BtScaleSetupViewModel, BtScaleSetupViewModel.Factory> { factory ->
       factory.create(setupInit)
     }
-  val state by viewModel.state.collectAsState()
+  val state by viewModel.state.collectAsStateWithLifecycle()
   BtScaleSetupScreenContent(
     state = state,
     onIntent = viewModel::handleIntent,

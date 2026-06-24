@@ -67,6 +67,7 @@ fun AppDialog(
           primaryAction = confirmAction,
           secondaryAction = dismissAction,
           onDismiss = dismissActionEvent,
+          testTag = "dialog_card",
         ) { }
       }
     }

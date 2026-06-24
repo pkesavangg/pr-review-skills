@@ -6,6 +6,8 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -111,22 +113,54 @@ fun HomeNavHost(topLevelBackStack: TopLevelBackStack<NavKey>) {
         topLevelEntries()
       },
     transitionSpec = {
-      ContentTransform(
-        fadeIn(animationSpec = tween(0)),
-        fadeOut(animationSpec = tween(0)),
-      )
+      val isSnapshotToDashboard = initialState is AppRoute.Main.DashboardSnapshot &&
+        targetState is AppRoute.Main.Dashboard
+      if (isSnapshotToDashboard) {
+        // Snapshot → Dashboard: scale up + fade in
+        scaleIn(
+          initialScale = 0.92f,
+          animationSpec = tween(350, easing = FastOutSlowInEasing),
+        ) + fadeIn(animationSpec = tween(250, delayMillis = 100)) togetherWith
+          fadeOut(animationSpec = tween(200))
+      } else {
+        ContentTransform(
+          fadeIn(animationSpec = tween(0)),
+          fadeOut(animationSpec = tween(0)),
+        )
+      }
     },
     popTransitionSpec = {
-      ContentTransform(
-        fadeIn(animationSpec = tween(0)),
-        fadeOut(animationSpec = tween(0)),
-      )
+      val isDashboardToSnapshot = initialState is AppRoute.Main.Dashboard &&
+        targetState is AppRoute.Main.DashboardSnapshot
+      if (isDashboardToSnapshot) {
+        // Dashboard → Snapshot: fade in + scale down exit
+        fadeIn(animationSpec = tween(250)) togetherWith
+          scaleOut(
+            targetScale = 0.92f,
+            animationSpec = tween(350, easing = FastOutSlowInEasing),
+          ) + fadeOut(animationSpec = tween(200))
+      } else {
+        ContentTransform(
+          fadeIn(animationSpec = tween(0)),
+          fadeOut(animationSpec = tween(0)),
+        )
+      }
     },
     predictivePopTransitionSpec = {
-      ContentTransform(
-        fadeIn(animationSpec = tween(0)),
-        fadeOut(animationSpec = tween(0)),
-      )
+      val isDashboardToSnapshot = initialState is AppRoute.Main.Dashboard &&
+        targetState is AppRoute.Main.DashboardSnapshot
+      if (isDashboardToSnapshot) {
+        fadeIn(animationSpec = tween(200)) togetherWith
+          scaleOut(
+            targetScale = 0.92f,
+            animationSpec = tween(300, easing = FastOutSlowInEasing),
+          ) + fadeOut(animationSpec = tween(150))
+      } else {
+        ContentTransform(
+          fadeIn(animationSpec = tween(0)),
+          fadeOut(animationSpec = tween(0)),
+        )
+      }
     },
   )
 }

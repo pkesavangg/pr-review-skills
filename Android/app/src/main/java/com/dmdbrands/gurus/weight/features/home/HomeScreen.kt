@@ -12,7 +12,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color.Companion.Red
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.activity.compose.LocalActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.app.components.HomeNavHost
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
@@ -40,19 +41,21 @@ import com.greatergoods.libs.appsync.AppSyncResultHolder
 import com.greatergoods.libs.appsync.startAppSyncScan
 import com.greatergoods.libs.appsync.utility.AppSyncResultFactory
 import kotlinx.coroutines.launch
-import android.app.Activity
 
 /**
  * Home screen displaying current user data, logout option, and switch account section.
  */
 @Composable
 fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
-  val state by viewModel.state.collectAsState()
+  val state by viewModel.state.collectAsStateWithLifecycle()
+
+  val isSnapshotMode by viewModel.productSelectionManager.isSnapshotMode.collectAsStateWithLifecycle()
 
   HomeScreenContent(
     state = state,
     handleIntent = viewModel::handleIntent,
     showUnreadFeedIndicator = state.showUnreadFeedIndicator,
+    isSnapshotMode = isSnapshotMode,
   )
 }
 
@@ -61,16 +64,18 @@ fun HomeScreenContent(
   state: HomeState,
   handleIntent: (HomeIntent) -> Unit,
   showUnreadFeedIndicator: Boolean = false,
+  isSnapshotMode: Boolean = false,
 ) {
   val topLevelBackStack = LocalNavBackStack.current
   val context = LocalContext.current
+  val activity = LocalActivity.current
   var isScanning by remember { mutableStateOf(false) }
   val coroutineScope = rememberCoroutineScope()
   LocalSoftwareKeyboardController.current
   // Observe shouldAskForReview state and launch review when true
   LaunchedEffect(state.shouldAskForReview) {
     if (state.shouldAskForReview) {
-      handleIntent(HomeIntent.LaunchAppReview(context as Activity))
+      activity?.let { handleIntent(HomeIntent.LaunchAppReview(it)) }
     }
   }
 
@@ -80,6 +85,7 @@ fun HomeScreenContent(
         MainBottomNav(
           showAppsync = state.showAppsync,
           showUnreadFeedIndicator = showUnreadFeedIndicator,
+          isSnapshotMode = isSnapshotMode,
           onOpenAppSync = {
             handleIntent(
               HomeIntent.CheckAndRequestPermission { isEnabled ->

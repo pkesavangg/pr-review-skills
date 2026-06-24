@@ -68,8 +68,9 @@ object GoalHelper {
   fun convertWeight(value: Double, from: WeightUnit, to: WeightUnit): Double {
     return when {
       from == to -> value
-      from == WeightUnit.KG && to == WeightUnit.LB -> value * 2.20462
-      from == WeightUnit.LB && to == WeightUnit.KG -> value / 2.20462
+      from == WeightUnit.KG && (to == WeightUnit.LB || to == WeightUnit.LB_OZ) -> value * 2.20462
+      (from == WeightUnit.LB || from == WeightUnit.LB_OZ) && to == WeightUnit.KG -> value / 2.20462
+      // LB <-> LB_OZ share the same underlying pounds scale — no numeric conversion
       else -> value
     }
   }

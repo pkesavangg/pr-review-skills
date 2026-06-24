@@ -61,7 +61,6 @@ final class Device {
     @Relationship(deleteRule: .cascade, inverse: \R4ScalePreference.device) var r4ScalePreference: R4ScalePreference?
     @Relationship(deleteRule: .cascade, inverse: \DeviceMetaData.device) var metaData: DeviceMetaData?
 
-
     init(id: String,
          accountId: String,
          peripheralIdentifier: String? = nil,
@@ -115,14 +114,19 @@ final class Device {
         self.r4ScalePreference = r4ScalePreference
         self.metaData = metaData
 
-        if let broadcastId = broadcastId {
-            let scaleSource = ScaleSourceType(rawValue: bathScale?.scaleType ?? "") ?? .bluetoothScale
-            let protocolType = ProtocolConversionTools.getProtocolTypeFromScaleType(scaleType: scaleSource)
+        // Only recompute broadcastIdString from broadcastId when we have a real value (> 0).
+        // For A3 BPM devices during discovery, broadcastId may be 0 (SDK provides a CoreBluetooth UUID
+        // that can't be converted to a valid hex broadcast ID). In that case, keep the SDK-provided
+        // broadcastIdString as-is.
+        if let broadcastId = broadcastId, broadcastId > 0 {
+            let scaleSource = DeviceSourceType(rawValue: bathScale?.scaleType ?? "") ?? .bluetoothScale
+            let protocolType = ProtocolConversionTools.getProtocolTypeFromDeviceModelType(scaleType: scaleSource)
             self.broadcastIdString = ProtocolConversionTools.convertIntToHex(Int(broadcastId), protocolType: protocolType)
         }
 
     }
-    convenience init(from dto: ScaleDTO,
+    // swiftlint:disable:next function_body_length
+    convenience init(from dto: DeviceDTO,
                      accountId: String? = nil,
                      protocolType: String? = nil,
                      isSynced: Bool? = nil,
@@ -134,12 +138,12 @@ final class Device {
         let id = dto.id ?? UUID().uuidString
 
         // Create R4ScalePreference first if needed
-        var r4Preference: R4ScalePreference? = nil
+        var r4Preference: R4ScalePreference?
         if let preference = dto.preference {
             r4Preference = R4ScalePreference(from: preference, scaleId: id)
         }
 
-        var metaData: DeviceMetaData? = nil
+        var metaData: DeviceMetaData?
         if let metaDataDto = dto.metaData {
             metaData = DeviceMetaData(from: metaDataDto)
         }
@@ -152,11 +156,15 @@ final class Device {
             }
         }
 
-        var bathScale: BathScale? = nil
-        let resolvedScaleType = scaleType ?? dto.type
-        if let resolvedScaleType {
-            bathScale = BathScale(scaleType: resolvedScaleType, bodyComp: bodyComp)
+        var bathScale: BathScale?
+        let resolvedDeviceModelType = scaleType ?? dto.type
+        if let resolvedDeviceModelType {
+            bathScale = BathScale(scaleType: resolvedDeviceModelType, bodyComp: bodyComp)
         }
+
+        // Prefer the server-provided deviceType when present (Me App 2.0), mapping the server's
+        // snake-case value back to the local DeviceType raw value. Fall back to SKU derivation.
+        let resolvedDeviceType = (DeviceType.fromServerValue(dto.deviceType) ?? DeviceType.fromSku(dto.sku)).rawValue
 
         self.init(
             id: id,
@@ -168,7 +176,7 @@ final class Device {
             password: dto.password.map { Int64($0) },
             isSoftDeleted: dto.isDeleted,
             deviceName: dto.name,
-            deviceType: "scale",
+            deviceType: resolvedDeviceType,
             broadcastId: dto.broadcastId.map { Int64($0) },
             broadcastIdString: dto.broadcastIdString,
             userNumber: dto.userNumber.map { String($0) },
@@ -198,22 +206,22 @@ final class Device {
 //            metaData.device = self
 //        }
 
-
         // Note: Relationship setup (device references) will be handled when the object is
         // inserted into a SwiftData ModelContext to avoid crashes with non-persisted instances
 
-        if let broadcastId = self.broadcastId {
-            let scaleSource = ScaleSourceType(rawValue: resolvedScaleType ?? "") ?? .bluetoothScale
-            let protocolType = ProtocolConversionTools.getProtocolTypeFromScaleType(scaleType: scaleSource)
+        if let broadcastId = self.broadcastId, broadcastId > 0 {
+            let scaleSource = DeviceSourceType(rawValue: resolvedDeviceModelType ?? "") ?? .bluetoothScale
+            let protocolType = ProtocolConversionTools.getProtocolTypeFromDeviceModelType(scaleType: scaleSource)
             self.broadcastIdString = ProtocolConversionTools.convertIntToHex(Int(broadcastId), protocolType: protocolType)
         }
     }
 
-    func toDTO() -> ScaleDTO {
-        return ScaleDTO(
-            broadcastId: self.broadcastId != nil ? Int(self.broadcastId!) : nil,
+    func toDTO() -> DeviceDTO {
+        return DeviceDTO(
+            broadcastId: self.broadcastId.map { Int($0) },
             broadcastIdString: self.broadcastIdString,
             createdAt: self.createdAt,
+            deviceType: self.deviceType.flatMap { DeviceType(rawValue: $0)?.serverValue },
             id: self.id,
             isConnected: self.isConnected,
             isDeleted: self.isSoftDeleted,
@@ -225,14 +233,14 @@ final class Device {
             metaData: self.metaData?.toDTO(),
             name: self.deviceName,
             nickname: self.nickname,
-            password: self.password != nil ? Int(self.password!) : nil,
+            password: self.password.map { Int($0) },
             peripheralIdentifier: self.peripheralIdentifier,
             preference: self.r4ScalePreference?.toDTO(),
             scaleToken: self.token,
             sku: self.sku,
             type: self.bathScale?.scaleType,
             userId: self.accountId,
-            userNumber: self.userNumber != nil ? Int(self.userNumber!) : nil
+            userNumber: self.userNumber.flatMap { Int($0) }
         )
     }
 }
@@ -243,8 +251,8 @@ final class Device {
 extension Device: Identifiable {}
 
 extension Device {
-    var connectionStatus: ScaleConnectionStatus {
-        let type = ScaleTypeHelper.determineScaleType(for: self)
+    var connectionStatus: DeviceConnectionStatus {
+        let type = DeviceTypeHelper.determineDeviceModelType(for: self)
         if type == .appsync || type == .wifi { return .noStatus }
         
         // Only check for setupIncomplete if scale is actually connected

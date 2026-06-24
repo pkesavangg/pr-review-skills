@@ -1,12 +1,13 @@
 import Foundation
 
-struct BathScaleOperationDTO: Codable, Sendable {
+struct BathScaleOperationDTO: Codable, Sendable, Equatable {
     let accountId: String?
     let bmr: Double?
     let bmi: Double?
     let bodyFat: Double?
     let boneMass: Double?
     let entryTimestamp: String?
+    let entryType: String?
     let impedance: Double?
     let metabolicAge: Double?
     let muscleMass: Double?
@@ -17,10 +18,20 @@ struct BathScaleOperationDTO: Codable, Sendable {
     let skeletalMusclePercent: Double?
     let source: String?
     let subcutaneousFatPercent: Double?
+    let systolic: Double?
+    let diastolic: Double?
+    let meanArterial: Double?
     let unit: String?
     let visceralFatLevel: Double?
     let water: Double?
     let weight: Double?
+    // Baby scale fields
+    var babyId: String? = nil
+    var babyWeight: Double? = nil
+    var babyLength: Double? = nil
+    // BP free-text note. Carried so the unified read path (MOB-385) can round-trip the
+    // BP `note` field through the sync/merge engine into the local entry.
+    var note: String? = nil
 }
 
 // Extend BathScaleOperationDTO to conform to Identifiable and provide a computed date property
@@ -42,6 +53,7 @@ extension BathScaleOperationDTO: Identifiable {
             bodyFat: bodyFat,
             boneMass: boneMass,
             entryTimestamp: newTimestamp,
+            entryType: entryType,
             impedance: impedance,
             metabolicAge: metabolicAge,
             muscleMass: muscleMass,
@@ -52,38 +64,22 @@ extension BathScaleOperationDTO: Identifiable {
             skeletalMusclePercent: skeletalMusclePercent,
             source: source,
             subcutaneousFatPercent: subcutaneousFatPercent,
+            systolic: systolic,
+            diastolic: diastolic,
+            meanArterial: meanArterial,
             unit: unit,
             visceralFatLevel: visceralFatLevel,
             water: water,
-            weight: weight
+            weight: weight,
+            babyId: babyId,
+            babyWeight: babyWeight,
+            babyLength: babyLength,
+            note: note
         )
-    }    
+    }
 }
 
 extension BathScaleOperationDTO {
-    func toAPIRequest() -> BathScaleOperationRequest {
-        return BathScaleOperationRequest(
-            userId: self.accountId, // Mapping accountId -> userId
-            bmr: self.bmr,
-            bmi: self.bmi,
-            bodyFat: self.bodyFat,
-            boneMass: self.boneMass,
-            entryTimestamp: self.entryTimestamp,
-            metabolicAge: self.metabolicAge,
-            muscleMass: self.muscleMass,
-            operationType: self.operationType,
-            proteinPercent: self.proteinPercent,
-            pulse: self.pulse,
-            skeletalMusclePercent: self.skeletalMusclePercent,
-            source: self.source,
-            subcutaneousFatPercent: self.subcutaneousFatPercent,
-            unit: self.unit,
-            visceralFatLevel: self.visceralFatLevel,
-            water: self.water,
-            weight: self.weight
-        )
-    }
-
     /// Initialize from BathScaleWeightSummary
     init(from summary: BathScaleWeightSummary) {
         self.accountId = summary.accountId
@@ -92,6 +88,7 @@ extension BathScaleOperationDTO {
         self.bodyFat = summary.bodyFat
         self.boneMass = summary.boneMass
         self.entryTimestamp = summary.entryTimestamp
+        self.entryType = summary.entryType
         self.impedance = summary.impedance
         self.metabolicAge = summary.metabolicAge
         self.muscleMass = summary.muscleMass
@@ -102,9 +99,16 @@ extension BathScaleOperationDTO {
         self.skeletalMusclePercent = summary.skeletalMusclePercent
         self.source = nil
         self.subcutaneousFatPercent = summary.subcutaneousFatPercent
+        self.systolic = summary.systolic
+        self.diastolic = summary.diastolic
+        self.meanArterial = summary.meanArterial
         self.unit = nil
         self.visceralFatLevel = summary.visceralFatLevel
         self.water = summary.water
         self.weight = summary.weight
+        self.babyId = nil
+        self.babyWeight = nil
+        self.babyLength = nil
+        self.note = nil
     }
 }

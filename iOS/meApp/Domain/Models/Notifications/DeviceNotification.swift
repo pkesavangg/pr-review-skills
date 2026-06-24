@@ -14,12 +14,12 @@ import SwiftData
 ///
 /// ## Usage
 /// ```swift
-/// // In ScaleService (MainActor context):
+/// // In DeviceService (MainActor context):
 /// let notification = DeviceNotification(from: device)
 /// deviceUpdated.send(notification)
 ///
 /// // In subscriber:
-/// scaleService.deviceUpdated.sink { notification in
+/// deviceService.deviceUpdated.sink { notification in
 ///     // Safe to use notification.deviceName, notification.isConnected, etc.
 /// }
 /// ```
@@ -111,8 +111,8 @@ struct DeviceNotification: Sendable, Identifiable, Equatable {
         }
     }
 
-    /// Creates a notification from a ScaleDTO (for cases where Device is not available).
-    init(from dto: ScaleDTO, persistentId: PersistentIdentifier? = nil) {
+    /// Creates a notification from a DeviceDTO (for cases where Device is not available).
+    init(from dto: DeviceDTO, persistentId: PersistentIdentifier? = nil) {
         self.id = dto.id ?? UUID().uuidString
         self.persistentId = persistentId
         self.accountId = dto.userId ?? ""

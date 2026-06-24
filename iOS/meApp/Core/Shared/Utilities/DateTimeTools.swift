@@ -1,5 +1,9 @@
 // DateTimeTools.swift
 
+// This utility class intentionally aggregates all date/time formatting operations
+// to provide a centralized, thread-safe API. Splitting would fragment related functionality
+// and reduce discoverability of date/time utilities.
+
 import Foundation
 
 /// A utility class for date and time formatting, parsing, and timezone operations.
@@ -9,18 +13,15 @@ final class DateTimeTools {
     static let invalidString: String = "---"
     static let invalidInt: Int? = nil
 
-    // MARK: - Cached Calendars (hot-path reuse)
+    // MARK: - Cached Calendars (MA-3845 hot-path reuse)
     /// User's current calendar, cached once. Reading `Calendar.current` per call
     /// triggers `_LocaleICU.minimumDaysInFirstWeek.getter` — a leaf that surfaced in
-    /// the dashboard scroll-hang traces (history doc §3.10 / §3.11). Reuse this
-    /// instance for any read-only Calendar operation that doesn't need a custom
-    /// timezone / locale / firstWeekday.
+    /// the dashboard scroll-hang traces. Reuse this instance for any read-only
+    /// Calendar operation that doesn't need a custom timezone / locale / firstWeekday.
     static let currentCalendar: Calendar = Calendar.current
 
     /// Gregorian calendar aligned with the user's current timezone and locale.
-    /// Used by `parseCalendarDate` and `sundayTicksForMonth` instead of constructing
-    /// a fresh `Calendar(identifier: .gregorian)` per call (which triggers
-    /// `Calendar.locale.setter`).
+    /// Used instead of constructing a fresh `Calendar(identifier: .gregorian)` per call.
     static let gregorianCalendar: Calendar = {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = .current
@@ -28,8 +29,7 @@ final class DateTimeTools {
         return cal
     }()
 
-    /// UTC Gregorian calendar — used by `parseCalendarDate` for the UTC date-component
-    /// extraction step.
+    /// UTC Gregorian calendar — used for UTC date-component extraction.
     static let gregorianUTCCalendar: Calendar = {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = TimeZone(identifier: "UTC") ?? .current
@@ -38,13 +38,31 @@ final class DateTimeTools {
     }()
 
     /// Sunday-start Gregorian calendar aligned with the user's current locale and
-    /// timezone. Used by `sundayTicksForMonth` instead of constructing per call.
+    /// timezone. Used by Sunday-tick computations instead of constructing per call.
     static let sundayStartCalendar: Calendar = {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = .current
         cal.locale = .current
         cal.firstWeekday = 1 // Sunday
         return cal
+    }()
+
+    private static let parsedDateCache: NSCache<NSString, NSDate> = {
+        let cache = NSCache<NSString, NSDate>()
+        cache.countLimit = 20_000
+        return cache
+    }()
+
+    private static let localDateKeyCache: NSCache<NSString, NSString> = {
+        let cache = NSCache<NSString, NSString>()
+        cache.countLimit = 20_000
+        return cache
+    }()
+
+    private static let localMonthKeyCache: NSCache<NSString, NSString> = {
+        let cache = NSCache<NSString, NSString>()
+        cache.countLimit = 20_000
+        return cache
     }()
 
     // MARK: - DateFormatter Cache (Thread-Local)
@@ -161,7 +179,7 @@ final class DateTimeTools {
     /// Returns the weekday (1 = Sunday, 7 = Saturday) from a date string. Returns nil if invalid.
     static func getDay(_ dateString: String) -> Int? {
         guard let date = parse(dateString) else { return invalidInt }
-        return currentCalendar.component(.weekday, from: date)
+        return Calendar.current.component(.weekday, from: date)
     }
 
     static func getDateStringFromDate(_ dateString: String) -> String {
@@ -173,16 +191,28 @@ final class DateTimeTools {
     /// - Parameter dateString: The UTC date string to format.
     /// - Returns: The formatted date string in local timezone.
     static func getLocalDateStringFromUTCDate(_ dateString: String) -> String {
+        let cacheKey = dateString as NSString
+        if let cached = localDateKeyCache.object(forKey: cacheKey) {
+            return cached as String
+        }
         guard let date = parse(dateString) else { return invalidString }
-        return ephemeralFormatter("yyyy-MM-dd", timeZone: TimeZone.current).string(from: date)
+        let localDate = ephemeralFormatter("yyyy-MM-dd", timeZone: TimeZone.current).string(from: date)
+        localDateKeyCache.setObject(localDate as NSString, forKey: cacheKey)
+        return localDate
     }
 
     /// Formats a UTC date string to 'yyyy-MM' in the local timezone.
     /// - Parameter dateString: The UTC date string to format.
     /// - Returns: The formatted month string in local timezone.
     static func getLocalMonthStringFromUTCDate(_ dateString: String) -> String {
+        let cacheKey = dateString as NSString
+        if let cached = localMonthKeyCache.object(forKey: cacheKey) {
+            return cached as String
+        }
         guard let date = parse(dateString) else { return invalidString }
-        return ephemeralFormatter("yyyy-MM", timeZone: TimeZone.current).string(from: date)
+        let localMonth = ephemeralFormatter("yyyy-MM", timeZone: TimeZone.current).string(from: date)
+        localMonthKeyCache.setObject(localMonth as NSString, forKey: cacheKey)
+        return localMonth
     }
 
     static func getDateFromDateString(_ dateString: String, format: String) -> Date {
@@ -203,10 +233,44 @@ final class DateTimeTools {
         return Date()
     }
 
-
     static func getMonthStringFromDate(_ dateString: String) -> String {
         guard let date = parse(dateString) else { return invalidString }
         return formatter("yyyy-MM").string(from: date)
+    }
+
+    // MARK: - Arrival Relative Time
+
+    /// Formats a date as a relative-to-absolute timestamp for the dashboard reading-arrival CTAs.
+    /// Anchored to `now` (defaults to `Date()`). Returns `Just now` when `date` is in the future or within 60 seconds.
+    static func getArrivalRelativeTime(_ date: Date, now: Date = Date()) -> String {
+        let delta = now.timeIntervalSince(date)
+        if delta < 60 {
+            return DashboardStrings.justNow
+        }
+        if delta < 3600 {
+            let minutes = Int(delta / 60)
+            return minutes == 1
+                ? DashboardStrings.oneMinuteAgo
+                : String(format: DashboardStrings.minutesAgoFormat, minutes)
+        }
+        let cal = Calendar.current
+        if cal.isDate(date, inSameDayAs: now) {
+            return formatter("h:mm a").string(from: date)
+        }
+        if cal.isDateInYesterday(date) {
+            return String(format: DashboardStrings.yesterdayAtFormat, formatter("h:mm a").string(from: date))
+        }
+        if cal.component(.year, from: date) == cal.component(.year, from: now) {
+            return formatter("MMM d, h:mm a").string(from: date)
+        }
+        return formatter("MMM d, yyyy").string(from: date)
+    }
+
+    /// Convenience: parses an ISO8601 entry timestamp and formats it via `getArrivalRelativeTime`.
+    /// Returns nil when the string is empty or unparseable.
+    static func getArrivalRelativeTime(fromISOString iso: String, now: Date = Date()) -> String? {
+        guard !iso.isEmpty, let date = parse(iso) else { return nil }
+        return getArrivalRelativeTime(date, now: now)
     }
 
     // MARK: - ISO String
@@ -231,10 +295,10 @@ final class DateTimeTools {
     /// Returns an ISO8601 string for the date 'interval' days before the given start date (or today if nil), zeroed to midnight.
     static func getIntervalDatetimeIsoString(interval: Int, start: String? = nil) -> String {
         let startDate = start.flatMap { parse($0) } ?? Date()
-        guard let intervalDate = currentCalendar.date(byAdding: .day, value: -interval, to: startDate) else {
+        guard let intervalDate = Calendar.current.date(byAdding: .day, value: -interval, to: startDate) else {
             return invalidString
         }
-        let zeroed = currentCalendar.date(bySettingHour: 0, minute: 0, second: 0, of: intervalDate) ?? intervalDate
+        let zeroed = Calendar.current.date(bySettingHour: 0, minute: 0, second: 0, of: intervalDate) ?? intervalDate
         return isoFormatter().string(from: zeroed)
     }
 
@@ -246,8 +310,8 @@ final class DateTimeTools {
 
     /// Returns the `Date` representing the max birthday allowed (13 years ago, zeroed to midnight).
     static func minAllowedBirthdayDate(yearsAgo: Int = 13) -> Date {
-        let minDate = currentCalendar.date(byAdding: .year, value: -yearsAgo, to: Date()) ?? Date()
-        let zeroed = currentCalendar.date(bySettingHour: 0, minute: 0, second: 0, of: minDate) ?? minDate
+        let minDate = Calendar.current.date(byAdding: .year, value: -yearsAgo, to: Date()) ?? Date()
+        let zeroed = Calendar.current.date(bySettingHour: 0, minute: 0, second: 0, of: minDate) ?? minDate
         return zeroed
     }
 
@@ -280,7 +344,6 @@ final class DateTimeTools {
         return TimeZone.current.secondsFromGMT() / 60
     }
 
-
     // MARK: - Helpers
 
     /// Parses a stored date-of-birth (or similar calendar-only) string into a local-midnight `Date`
@@ -296,18 +359,25 @@ final class DateTimeTools {
             return date
         }
         guard let instant = parse(dateString) else { return nil }
-        // Reuse cached Gregorian calendars; previously this constructed two fresh
-        // `Calendar(identifier: .gregorian)` per call, each triggering
-        // `Calendar.locale.setter` that surfaces in scroll-hang stacks.
-        let comps = gregorianUTCCalendar.dateComponents([.year, .month, .day], from: instant)
-        return gregorianCalendar.date(from: DateComponents(year: comps.year, month: comps.month, day: comps.day))
+        var utcCal = Calendar(identifier: .gregorian)
+        utcCal.timeZone = TimeZone(secondsFromGMT: 0) ?? .current
+        let comps = utcCal.dateComponents([.year, .month, .day], from: instant)
+        var localCal = Calendar(identifier: .gregorian)
+        localCal.timeZone = .current
+        return localCal.date(from: DateComponents(year: comps.year, month: comps.month, day: comps.day))
     }
 
     /// Attempts to parse a date string using ISO8601 and several common formats.
     /// Returns a Date if successful, or nil if parsing fails.
     static func parse(_ dateString: String) -> Date? {
+        let cacheKey = dateString as NSString
+        if let cached = parsedDateCache.object(forKey: cacheKey) {
+            return cached as Date
+        }
+
         // Try ISO8601 first
         if let date = isoFormatter().date(from: dateString) {
+            parsedDateCache.setObject(date as NSDate, forKey: cacheKey)
             return date
         }
         // Try common formats
@@ -320,6 +390,7 @@ final class DateTimeTools {
         for format in formats {
             let df = formatter(format)
             if let date = df.date(from: dateString) {
+                parsedDateCache.setObject(date as NSDate, forKey: cacheKey)
                 return date
             }
         }
@@ -334,7 +405,7 @@ final class DateTimeTools {
     /// Returns a timestamp (in ms) representing the date `days` ago from now.
     /// Useful for log cleanup cutoff comparison.
     static func getTimestampDaysAgo(_ days: Int) -> Int64 {
-        let cutoffDate = currentCalendar.date(byAdding: .day, value: -days, to: Date()) ?? Date()
+        let cutoffDate = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
         return Int64(cutoffDate.timeIntervalSince1970 * 1000)
     }
 
@@ -356,7 +427,7 @@ final class DateTimeTools {
     ///   - time: Date whose H-M-S (and nanoseconds) components will be applied.
     /// - Returns: Combined `Date` in the user's current timezone (falls back to `date` on failure).
     static func combineDate(_ date: Date, withTime time: Date) -> Date {
-        let calendar = currentCalendar
+        let calendar = Calendar.current
         var components = calendar.dateComponents([.year, .month, .day], from: date)
         let timeComponents = calendar.dateComponents([.hour, .minute, .second, .nanosecond], from: time)
         components.hour = timeComponents.hour
@@ -380,7 +451,7 @@ final class DateTimeTools {
         var combined = combineDate(date, withTime: time)
 
         if randomizeSubMinute {
-            let calendar = currentCalendar
+            let calendar = Calendar.current
             var comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: combined)
             // Use current time's milliseconds to ensure unique timestamps that preserve creation order
             let now = Date()
@@ -459,9 +530,9 @@ final class DateTimeTools {
     /// Formats X-axis labels for different time periods.
     /// Called per Mark per chart body recompute on the dashboard hot path —
     /// see `BaseSectionViewModel.formatXAxisLabel` and history doc §3.11.
-    /// Reuse `currentCalendar` to avoid `_LocaleICU` reads per call.
+    /// Reuse `Calendar.current` to avoid `_LocaleICU` reads per call.
     static func formatXAxisLabel(for date: Date, period: TimePeriod, operations: [BathScaleWeightSummary]) -> String? {
-        let calendar = currentCalendar
+        let calendar = Calendar.current
 
         switch period {
         case .week:
@@ -501,10 +572,10 @@ final class DateTimeTools {
         baseCalendar: Calendar,
         includeTrailingPhantom: Bool
     ) -> [Date] {
-        // Reuse cached Sunday-start Gregorian calendar. `baseCalendar`'s timezone
-        // and locale come from `Calendar.current` upstream, so the cached value
-        // is equivalent. Previously this constructed a fresh calendar per call.
-        let cal = sundayStartCalendar
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = baseCalendar.timeZone
+        cal.locale = baseCalendar.locale
+        cal.firstWeekday = 1 // Sunday
 
         let monthStart = monthInterval.start
         let monthEnd = monthInterval.end
@@ -541,7 +612,7 @@ final class DateTimeTools {
     /// Checks if entries are in the same era (same year)
     static func areEntriesInSameEra(_ summaries: [BathScaleWeightSummary]) -> Bool {
         guard !summaries.isEmpty else { return true }
-        let calendar = currentCalendar
+        let calendar = Calendar.current
 
         // Validate that all summaries have valid dates
         let validSummaries = summaries.filter { summary in
@@ -573,7 +644,7 @@ final class DateTimeTools {
     // MARK: - X-Axis Generation Methods
 
     private static func generateWeeklyXAxis(minDate: Date, maxDate: Date, shouldRepeat: Bool, entryCount: Int) -> [Date] {
-        let calendar = currentCalendar
+        let calendar = Calendar.current
         var dates: [Date] = []
 
         if !shouldRepeat {
@@ -605,7 +676,7 @@ final class DateTimeTools {
     }
 
     private static func generateMonthlyXAxis(minDate: Date, maxDate: Date, shouldRepeat: Bool, entryCount: Int) -> [Date] {
-        let calendar = currentCalendar
+        let calendar = Calendar.current
         var dates: [Date] = []
 
         if !shouldRepeat {
@@ -637,7 +708,7 @@ final class DateTimeTools {
     }
 
     private static func generateYearlyXAxis(minDate: Date, maxDate: Date, shouldRepeat: Bool, entryCount: Int) -> [Date] {
-        let calendar = currentCalendar
+        let calendar = Calendar.current
         var dates: [Date] = []
 
         if !shouldRepeat {
@@ -669,7 +740,7 @@ final class DateTimeTools {
     }
 
     private static func generateTotalXAxis(minDate: Date, maxDate: Date, operations: [BathScaleWeightSummary], shouldRepeat: Bool, entryCount: Int) -> [Date] {
-        let calendar = currentCalendar
+        let calendar = Calendar.current
 
         if areEntriesInSameEra(operations) {
             // For same era, treat like year view

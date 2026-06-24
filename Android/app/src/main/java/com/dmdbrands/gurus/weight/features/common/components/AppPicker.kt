@@ -123,7 +123,7 @@ fun <T> AppPicker(
             contentPadding = PaddingValues(vertical = itemHeight * (visibleItemsCount / 2)),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            items(items.size) { index ->
+            items(items.size, key = { index -> index }) { index ->
                 val item = items[index]
                 val isSelected = index == currentCenteredIndex
                 Box(

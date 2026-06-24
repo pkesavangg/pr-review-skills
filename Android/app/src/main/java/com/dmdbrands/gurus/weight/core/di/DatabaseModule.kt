@@ -2,8 +2,11 @@ package com.dmdbrands.gurus.weight.core.di
 
 import com.dmdbrands.gurus.weight.data.storage.db.AppDatabase
 import com.dmdbrands.gurus.weight.data.storage.db.dao.AccountDao
+import com.dmdbrands.gurus.weight.data.storage.db.dao.BabyEntryDao
+import com.dmdbrands.gurus.weight.data.storage.db.dao.BabyProfileDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.DeviceDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryDao
+import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryReadDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.LogDao
 import dagger.Module
 import dagger.Provides
@@ -65,4 +68,17 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideLogDao(database: AppDatabase): LogDao = database.logDao()
+
+    @Provides
+    @Singleton
+    fun provideBabyProfileDao(database: AppDatabase): BabyProfileDao = database.babyProfileDao()
+
+    @Provides
+    @Singleton
+    fun provideBabyEntryDao(database: AppDatabase): BabyEntryDao = database.babyEntryDao()
+
+    @Provides
+    @Singleton
+    fun provideEntryReadDao(database: AppDatabase): EntryReadDao = database.entryReadDao()
+
 }

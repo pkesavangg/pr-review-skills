@@ -4,76 +4,60 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
-import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
+import com.dmdbrands.gurus.weight.features.common.components.chart.config.ChartConfig
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphSnapHelper
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
-import com.patrykandpatrick.vico.compose.cartesian.ChartInteractionEvent
+import com.patrykandpatrick.vico.compose.cartesian.InterpolationType
+import com.patrykandpatrick.vico.compose.cartesian.Scroll
 import com.patrykandpatrick.vico.compose.cartesian.SnapBehaviorConfig
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.compose.cartesian.marker.rememberScrubMarkerController
+import com.patrykandpatrick.vico.compose.cartesian.rememberChartSnapFlingBehavior
 import com.patrykandpatrick.vico.compose.cartesian.rememberFadingEdges
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
-import com.patrykandpatrick.vico.core.cartesian.InterpolationType
-import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
 /**
- * Composable for displaying a graph/chart with interactive features.
- * Uses GraphViewModel for state management following MVI pattern.
- *
- * @param modifier Modifier for styling.
- * @param segment The segment of the graph (e.g., WEEK, MONTH).
- * @param isCurrentPage True when this page is the one currently visible in the pager;
- *   used to trigger a reset-to-latest (scroll to default range + auto-select latest entry) on every tab switch.
- * @param state The current [GraphState] from the view model.
- * @param placeHolder Optional placeholder text if no data is present.
- * @param viewModel The GraphViewModel instance (injected via Hilt).
- * @param onChartConsuming Invoked while the chart is internally settling after a tab switch.
+ * Composable for displaying a chart with interactive scroll/snap/marker features.
+ * Product-agnostic: driven by [ChartConfig] and [SegmentState].
  */
 @OptIn(FlowPreview::class)
 @Composable
 fun GraphView(
   modifier: Modifier = Modifier,
-  state: GraphState,
+  state: BaseDashboardState,
+  segmentState: SegmentState,
+  chartConfig: ChartConfig,
+  modelProducer: CartesianChartModelProducer,
   segment: GraphSegment = GraphSegment.WEEK,
-  isCurrentPage: Boolean = false,
-  placeHolder: String? = null,
-  viewModel: GraphViewModel = hiltViewModel(),
-  onChartConsuming: (Boolean) -> Unit = {},
-  /**
-   * Hot flow emitting the segment that was just tapped on the segment-button row. The page
-   * whose [segment] matches the emission re-arms `initialScrollHandled = false` so its
-   * next measure snaps to the segment-appropriate initial scroll. Default is a no-op flow
-   * for previews / standalone callers that don't have a pager. The signal is intentionally
-   * scoped to user taps; rotation, history-screen return, and app resume preserve scroll.
-   */
-  segmentResetSignal: MutableSharedFlow<GraphSegment> = remember { MutableSharedFlow() },
+  scrollTarget: Double? = null,
+  canScrollToAnchor: Boolean = false,
+  handleGraphIntent: (BaseGraphIntent) -> Unit,
+  createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
+  onScrollTargetConsumed: (Boolean) -> Unit = {},
+  chartFillsHeight: Boolean = false,
 ) {
-
   val scope = rememberCoroutineScope()
   val currentDeviceType = getDeviceType()
-  val chartHeight = remember(state.markerIndex) {
+  val chartHeight = remember(currentDeviceType) {
     when (currentDeviceType) {
       DeviceType.Tablet -> 400.dp
       DeviceType.Phone -> 300.dp
@@ -81,23 +65,13 @@ fun GraphView(
     }
   }
 
-  // `state` and `isCurrentPage` are read from a long-running collector below, so we wrap
-  // them in `rememberUpdatedState` to avoid reading the snapshot captured when the effect
-  // first launched.
-  val currentState by rememberUpdatedState(state)
-  val currentIsCurrentPage by rememberUpdatedState(isCurrentPage)
+  val endTs = segmentState.endTimestamp
+  val initialStartX = GraphUtil.getRollingWindowStart(segment, endTs)?.toDouble()
+    ?: GraphUtil.getStartRange(segment, endTs)?.toDouble()
+    ?: Calendar.getInstance().timeInMillis.toDouble()
 
-  // Reactive so the merged effect below can observe changes via snapshotFlow.
-  val initialStartX by remember(segment) {
-    derivedStateOf {
-      GraphUtil.getRollingWindowStart(segment, currentState.getEndTimestamp())?.toDouble()
-        ?: GraphUtil.getStartRange(segment, currentState.getEndTimestamp())?.toDouble()
-        ?: Calendar.getInstance().timeInMillis.toDouble()
-    }
-  }
-
-  val (startPaddingXStep, _) = remember(state.isEmptyGraph, segment) {
-    if (!state.isEmptyGraph || segment != GraphSegment.TOTAL)
+  val (startPaddingXStep, _) = remember(segmentState.isEmptyGraph, segment) {
+    if (!segmentState.isEmptyGraph || segment != GraphSegment.TOTAL)
       GraphSnapHelper.getVisiblePaddingXStepForSegment(segment)
     else
       0.0 to 0.0
@@ -112,331 +86,262 @@ fun GraphView(
     Scroll.Absolute.xWithPadding(initialStartX, startPaddingXStep)
   }
 
-  val snapToLabelFunction: ((Double?, Boolean, Boolean) -> Double)? = remember {
-    { scrolledX, isDrag, isForward ->
-      if (isDrag) {
-        GraphSnapHelper.getSnappedPositionOnDrag(xLabel = scrolledX, segment = segment)
-      } else {
-        GraphSnapHelper.getSnapPositionOnFling(timeStamp = scrolledX, segment = segment, isForward = isForward)
-      }
-    }
-  }
-
   val scrollState = rememberVicoScrollState(
-    scrollEnabled = segment != GraphSegment.TOTAL && !state.isSingleWindow,
+    scrollEnabled = segment != GraphSegment.TOTAL && !segmentState.isSingleWindow,
     initialScroll = initialScroll,
-    snapBehaviorConfig = SnapBehaviorConfig(
-      snapToLabelFunction = snapToLabelFunction,
-      animation = SnapBehaviorConfig.SnapAnimation(
-        snapDurationMillis = 500,
-      ),
-    ),
-    scrollStartPaddingXStep = startPaddingXStep,
-    // Bind scroll-state lifetime to segment identity rather than the per-recomposition
-    // identity churn of `initialScroll` / `snapBehaviorConfig`, so segment switches rebuild
-    // a fresh scroll state but recomposition within the same segment preserves it.
     key = segment,
   )
-  val horizontalItemPlacer =
-    rememberHorizontalAxisItemPlacer(
-      segment = segment,
+
+  val snapConfig = remember(segment, startPaddingXStep) {
+    SnapBehaviorConfig(
+      snapToLabel = { currentXLabel, projectedXLabel, isDrag, isForward ->
+        if (isDrag) {
+          GraphSnapHelper.getSnappedPositionOnDrag(xLabel = currentXLabel, segment = segment)
+        } else {
+          GraphSnapHelper.getSnapPositionOnFling(
+            timeStamp = projectedXLabel,
+            segment = segment,
+            isForward = isForward,
+          )
+        }
+      },
+      scrollPaddingXStep = startPaddingXStep,
+      animation = SnapBehaviorConfig.SnapAnimation(snapDurationMillis = 500),
     )
+  }
+  val flingBehavior = rememberChartSnapFlingBehavior(scrollState = scrollState, config = snapConfig)
+  val horizontalItemPlacer = rememberHorizontalAxisItemPlacer(segment = segment)
 
   fun onScrollUpdate(min: Long, max: Long) {
     scope.launch {
-      viewModel.handleIntent(
-        GraphIntent.SetScrollRange(min, max) {
+      handleGraphIntent(
+        BaseGraphIntent.ScrollRange(segment, min, max) {
+          // Fallback: no data in visible range — interpolate from chart lines
+          val dataStart = segmentState.startTimestamp
+          val dataEnd = segmentState.endTimestamp
+          val visibleRange = scrollState.visibleXRange
+
+          // Outside data range entirely → empty, no interpolation needed
+          if (dataStart == null || dataEnd == null || visibleRange == null ||
+            visibleRange.endInclusive < dataStart.toDouble() || visibleRange.start > dataEnd.toDouble()
+          ) {
+            handleGraphIntent(BaseGraphIntent.UpdateSegmentTarget(segment, emptyList()))
+            return@ScrollRange
+          }
+
+          // Within data range — interpolate
           val visibleLabels = scrollState.getVisibleAxisLabels(horizontalItemPlacer).filter {
-            it.toLong() in min..max
+            it in visibleRange && it in dataStart.toDouble()..dataEnd.toDouble()
           }
           if (visibleLabels.isNotEmpty()) {
             val fallbackValues = scrollState.getInterpolatedYValues(
               xValues = visibleLabels,
               interpolationType = InterpolationType.MONOTONE,
             )
-            val fallbackData = currentState.createFallBackData(
-              segment = segment,
-              timeStamps = visibleLabels.map { it.toLong() },
-              fallbackValues = fallbackValues.map { it.map { it.toDouble() } },
-            )
-            viewModel.handleIntent(GraphIntent.UpdateTarget(fallbackData))
+            val fallbackData = visibleLabels.mapIndexedNotNull { index, x ->
+              val ts = x.toLong()
+              val yValues = fallbackValues.mapNotNull { series -> series.getOrNull(index)?.toDouble() }
+              if (yValues.isEmpty()) return@mapIndexedNotNull null
+              createFallbackEntry(ts, yValues, segment)
+            }
+            handleGraphIntent(BaseGraphIntent.UpdateSegmentTarget(segment, fallbackData))
           }
         },
       )
     }
   }
 
-  // Scrolls to the segment-appropriate initial range and selects the latest entry.
-  // Reads `currentState` / `currentIsCurrentPage` so callers in long-running collectors
-  // see live composition values rather than launch-time snapshots.
-  suspend fun performInitialReset() {
-    val s = currentState
-    if (!currentIsCurrentPage || s.isEmptyGraph || s.data.isEmpty()) {
-      AppLog.d("GraphView", "performInitialReset early-return: segment=$segment")
-      return
-    }
-    val latestEntry = s.data.maxByOrNull { it.getTimeStamp() } ?: return
-    val latestTimeStamp = latestEntry.getTimeStamp()
-    if (segment != GraphSegment.TOTAL) {
-      val windowStart = GraphUtil.getRollingWindowStart(segment, latestTimeStamp)
-        ?: GraphUtil.getStartRange(segment, latestTimeStamp)
-      if (windowStart != null) {
-        onScrollUpdate(windowStart, latestTimeStamp)
-      }
-    }
-    viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(latestTimeStamp.toDouble()))
-    viewModel.handleIntent(GraphIntent.UpdateTarget(listOf(latestEntry)))
-    onChartConsuming(false)
-  }
-
-  // Re-arm vico's initial scroll and re-select the latest entry on two triggers:
-  //   1. Initial-scroll anchor changes (i.e., new data lands and `state.getEndTimestamp()`
-  //      shifts) — fixes the Week-tab marker not following the latest entry on add/delete.
-  //   2. Explicit segment-button tap from the pager parent (`segmentResetSignal`).
-  // `snapshotFlow` also emits the current value on subscription, so cold-start composition
-  // immediately runs through `performInitialReset()` (which is a no-op when data is empty
-  // or the page is not current).
-  // Re-key on `data.isEmpty()` so the empty→first-entry transition forces a relaunch and
-  // re-triggers performInitialReset. Without this, TOTAL never fires the reset on first
-  // entry: `initialStartX` uses `yearStart(endTs)` which collapses to the same value for
-  // the empty state (endTs=now) and the first-entry state (endTs≈now in same year), so
-  // `snapshotFlow { initialStartX }` doesn't emit. Other segments use rolling windows that
-  // differ by milliseconds, so they emit naturally.
-  LaunchedEffect(scrollState, segment, state.data.isEmpty()) {
-    merge(
-      snapshotFlow { initialStartX },
-      segmentResetSignal.filter { it == segment },
-    ).collect {
-      scrollState.initialScrollHandled = false
-      performInitialReset()
-    }
-  }
-
-  LaunchedEffect(state.markerIndex == null) {
-    if (state.markerIndex == null && state.minTarget != null && state.maxTarget != null) {
-      onScrollUpdate(state.minTarget, state.maxTarget)
-    }
-  }
-
-  // Suppress the trailing click that vico emits when a finger-down → drift → finger-up
-  // gesture also looks like a tap. Watch for the explicit `DragEnded` event and gate
-  // clicks within a short window after it. An earlier version flipped the timestamp on
-  // any non-DragStarted event, but vico emits `Dragging` mid-drag — that fired the flag
-  // ~10ms after drag start, well before the user actually lifted their finger, so the
-  // 50ms guard expired before the trailing click arrived.
-  val lastDragEndMs = remember { mutableLongStateOf(0L) }
-  LaunchedEffect(scrollState) {
-    scrollState.interactionEvents
-      .filter { it is ChartInteractionEvent.DragStarted || it is ChartInteractionEvent.DragEnded }
-      .collect { event ->
-        when (event) {
-          is ChartInteractionEvent.DragStarted ->
-            viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
-
-          is ChartInteractionEvent.DragEnded ->
-            lastDragEndMs.longValue = System.currentTimeMillis()
-
-          else -> Unit
-        }
-      }
+  // Scroll-to-anchor is now handled by Vico's initialScroll + scrollState key = segment.
+  // We only need to acknowledge the consumed target so the caller doesn't re-dispatch it.
+  LaunchedEffect(segment) {
+    if (scrollTarget == null || !canScrollToAnchor || segmentState.isEmptyGraph) return@LaunchedEffect
+    onScrollTargetConsumed(true)
   }
 
   val defaultMarker = rememberDefaultMarker(
     state = state,
+    segmentState = segmentState,
     segment = segment,
-    onTargetsUpdate = {
-      if (it.isNotEmpty())
-        viewModel.handleIntent(GraphIntent.UpdateTarget(it))
+    markerIndex = state.markerIndex,
+    createFallbackEntry = createFallbackEntry,
+    onTargetsUpdate = { entries ->
+      // Skip dispatch if target hasn't changed — prevents redundant recomposition
+      // when marker stays on the same data point across frames during slow scrub.
+      val changed = entries.firstOrNull()?.getTimeStamp() != segmentState.target.firstOrNull()?.getTimeStamp()
+      if (entries.isNotEmpty() && changed) {
+        handleGraphIntent(BaseGraphIntent.UpdateSegmentTarget(segment, entries))
+      }
     },
   )
 
-  val chart = rememberGraphChart(
-    state = state,
-    defaultMarker = defaultMarker,
-    segment = segment,
-    horizontalItemPlacer = horizontalItemPlacer,
-    fadingEdges = fadingEdges,
-    onChartClick = { targets, click ->
-      if (click == null || state.isEmptyGraph) {
-        return@rememberGraphChart
+  val scrubController = rememberScrubMarkerController(
+    scrollState = scrollState,
+    onMarkerIndexChanged = { clickX, targets ->
+      if (clickX == null || segmentState.isEmptyGraph) {
+        handleGraphIntent(BaseGraphIntent.UpdateMarkerIndex(null))
+        return@rememberScrubMarkerController null
       }
-      // Suppress the trailing click that vico emits as part of a drag gesture. We measure
-      // from drag-END with a tight window so a deliberate tap shortly after a short drag
-      // is not suppressed.
-      if (System.currentTimeMillis() - lastDragEndMs.longValue < 50L) {
-        return@rememberGraphChart
+      val visibleRange = scrollState.visibleXRange
+      val visibleLabels = scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer).filter {
+        visibleRange != null && it in visibleRange
       }
-      val currentInteractionEvent = scrollState.interactionEvents.value
-      if (currentInteractionEvent is ChartInteractionEvent.MarkerScrubbing || currentInteractionEvent is ChartInteractionEvent.MarkerSelectionStarted || currentInteractionEvent is ChartInteractionEvent.Stable) {
-        val visibleLabels =
-          scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer).filter {
-            if (state.minTarget != null && state.maxTarget != null)
-              it.toLong() in state.minTarget..state.maxTarget
-            else
-              true
-          }
-        var markerIndex: Double? = null
-        val paddedMinCondition = state.getStartTimestamp() - GraphUtil.calculateXStep(segment = segment)
-        val paddedMaxCondition = state.getEndTimestamp() + GraphUtil.calculateXStep(segment = segment)
-        val outOfBoundaryCondition = click !in paddedMinCondition..paddedMaxCondition
+      var markerIndex: Double? = null
+      val startTs = segmentState.startTimestamp
+      val endTs = segmentState.endTimestamp
+      if (startTs != null && endTs != null) {
+        val paddedMinCondition = startTs - GraphUtil.calculateXStep(segment = segment).div(2)
+        val paddedMaxCondition = endTs + GraphUtil.calculateXStep(segment = segment).div(2)
+        val outOfBoundaryCondition = clickX !in paddedMinCondition..paddedMaxCondition
         if (!outOfBoundaryCondition) {
-          val targetMarkerIndex =
-            getTargetPoints(
-              visibleLabels,
-              targets,
-              click,
-              segment,
-              paddedMinCondition,
-              paddedMaxCondition,
-            )
+          val targetMarkerIndex = getTargetPoints(
+            visibleLabels, targets, clickX, segment, paddedMinCondition, paddedMaxCondition,
+          )
           if (targetMarkerIndex.isNotEmpty()) {
             val targetIndex = targetMarkerIndex.first().toLong()
             markerIndex = when {
-              targetIndex in state.getStartTimestamp()..state.getEndTimestamp() -> targetMarkerIndex.first()
-              targetIndex < state.getStartTimestamp() -> state.getStartTimestamp().toDouble()
-              targetIndex > state.getEndTimestamp() -> state.getEndTimestamp().toDouble()
+              targetIndex in startTs..endTs -> targetMarkerIndex.first()
+              targetIndex < startTs -> startTs.toDouble()
+              targetIndex > endTs -> endTs.toDouble()
               else -> null
             }
           }
         }
-        if (state.markerIndex != markerIndex) {
-          viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
-        }
       }
+      if (state.markerIndex != markerIndex) handleGraphIntent(BaseGraphIntent.UpdateMarkerIndex(markerIndex))
+      markerIndex
     },
   )
 
-  CartesianChartHost(
-    chart = chart,
-    modelProducer = state.modelProducer,
-    modifier = modifier.height(chartHeight),
-    scrollState = scrollState,
-    consumeMoveEvents = true,
-    zoomState = rememberVicoZoomState(zoomEnabled = false),
-    onScrollStopped = { range ->
-      if (range != null && segment != GraphSegment.TOTAL) {
-        val min = range.visibleXRange.start.toLong()
-        val max = range.visibleXRange.endInclusive.toLong()
+  LaunchedEffect(state.markerIndex == null) {
+    val vMin = segmentState.visibleMin
+    val vMax = segmentState.visibleMax
+    if (state.markerIndex == null && vMin != null && vMax != null) {
+      delay(50)
+
+      if (!scrollState.isUserScrolling) onScrollUpdate(vMin, vMax)
+    }
+  }
+
+  // Auto-focus the latest entry when this (active) segment first has data, so the
+  // marker + "latest entry" label appear without a tap. Segment switches are focused
+  // by the SetSelectedSegment reducer; this covers the initial load and data refreshes.
+  // Released on user interaction by the scroll/scrub handlers below.
+  LaunchedEffect(segment, canScrollToAnchor, segmentState.isEmptyGraph, segmentState.data) {
+    if (!canScrollToAnchor || segmentState.isEmptyGraph || segmentState.data.isEmpty()) return@LaunchedEffect
+    if (state.markerIndex != null) return@LaunchedEffect
+    val latestTs = segmentState.data.maxOfOrNull { it.getTimeStamp() } ?: return@LaunchedEffect
+    handleGraphIntent(BaseGraphIntent.UpdateMarkerIndex(latestTs.toDouble()))
+  }
+
+  // Release the auto-focus marker the moment the user scrolls, so normal scroll-range
+  // updates resume (ScrollRange is gated on markerIndex == null in BaseDashboardViewModel).
+  LaunchedEffect(scrollState.isUserScrolling) {
+    if (scrollState.isUserScrolling && state.markerIndex != null) {
+      handleGraphIntent(BaseGraphIntent.UpdateMarkerIndex(null))
+    }
+  }
+
+  val chart = rememberProductChart(
+    config = chartConfig,
+    graphState = state,
+    segmentState = segmentState,
+    defaultMarker = defaultMarker,
+    segment = segment,
+    horizontalItemPlacer = horizontalItemPlacer,
+    fadingEdges = fadingEdges,
+    scrubController = scrubController,
+    onYRangeSettled = { minY, maxY ->
+      handleGraphIntent(BaseGraphIntent.UpdateSeedYRange(segment, minY, maxY))
+    },
+  )
+
+  LaunchedEffect(scrollState) {
+    snapshotFlow { scrollState.value }
+      .debounce(100)
+      .collect {
+        if (segment == GraphSegment.TOTAL) return@collect
+        val range = scrollState.visibleXRange ?: return@collect
+        val min = range.start.toLong()
+        val max = range.endInclusive.toLong()
         val relativeMin = GraphUtil.getRelativeStart(segment, min)
         val relativeMax = GraphUtil.getRelativeEnd(segment, max)
         val clipRange = GraphUtil.clipRangeForGraph(segment, relativeMin, relativeMax)
         onScrollUpdate(clipRange.startMillis, clipRange.endMillis)
-        if (!state.isEmptyGraph)
-          viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(relativeMin > state.getEndTimestamp()))
+        if (!segmentState.isEmptyGraph) {
+          val endTs = segmentState.endTimestamp
+          if (endTs != null) handleGraphIntent(BaseGraphIntent.UpdateIsEmptyGraph(segment, relativeMin > endTs))
+        }
       }
-      onChartConsuming(false)
-    },
+  }
+
+  CartesianChartHost(
+    chart = chart,
+    modelProducer = modelProducer,
+    modifier = if (chartFillsHeight) modifier else modifier.height(chartHeight),
+    scrollState = scrollState,
+    animateIn = false,
+    zoomState = rememberVicoZoomState(zoomEnabled = false),
+    flingBehavior = flingBehavior,
+    initialMarkerX = state.markerIndex,
   )
 }
 
-/**
- * Gets target points based on visible labels, available points, and current window bounds.
- *
- * @param fullList List of visible axis labels (from scrollState).
- * @param points List of all available target points.
- * @param input The clicked position value.
- * @param segment The graph segment type.
- * @param minWindow Optional minimum x value of current window from state.
- * @param maxWindow Optional maximum x value of current window from state.
- * @return List of target points that match the criteria.
- */
-fun getTargetPoints(
-  fullList: List<Double>,
-  points: List<Double>,
-  input: Double,
-  segment: GraphSegment,
-  minWindow: Double? = null,
-  maxWindow: Double? = null,
-): List<Double> {
+// ── getTargetPoints (optimised — single-pass nearest lookup) ──
 
-  // For TOTAL segment, find nearest targets from click without considering visible labels
+fun getTargetPoints(
+  fullList: List<Double>, points: List<Double>, input: Double, segment: GraphSegment,
+  minWindow: Double? = null, maxWindow: Double? = null,
+): List<Double> {
+  // TOTAL: simple nearest-point (single O(n) pass — list is typically small).
+  // points may be empty here — minByOrNull returns null → listOfNotNull yields emptyList().
   if (segment == GraphSegment.TOTAL) {
-    val nearestTarget = points.minByOrNull { kotlin.math.abs(it - input) }
-    return listOfNotNull(nearestTarget)
+    return listOfNotNull(points.minByOrNull { kotlin.math.abs(it - input) })
   }
 
-  // For other segments, use the original logic with visible labels
   if (fullList.isEmpty()) return emptyList()
 
-  // find lower and upper bound from full list (visible labels)
-  val lower = fullList.filter { it <= input }.maxOrNull()
-  val upper = fullList.filter { it >= input }.minOrNull()
+  // Find lower/upper bounds in fullList using binary search on sorted labels.
+  // fullList = visible axis labels, always sorted ascending.
+  val insertionIdx = fullList.binarySearch { it.compareTo(input) }.let { if (it < 0) -(it + 1) else it }
+  val lower = if (insertionIdx > 0) fullList[insertionIdx - 1] else null
+  val upper = if (insertionIdx < fullList.size) fullList[insertionIdx] else null
 
-  // Handle edge cases where input is outside fullList range
-  // Use window bounds from state to find points within current window
-  if (lower == null) {
-    // Input is below fullList range, find points within window bounds
-    val pointsInRange = if (minWindow != null && upper != null) {
-      points.filter { it in minWindow..upper }
-    } else {
-      points.filter { it <= input }
-    }
-    return if (pointsInRange.isNotEmpty()) {
-      // Return the nearest point to input, not just the max
-      val nearestTarget = pointsInRange.minByOrNull { kotlin.math.abs(it - input) }
-      listOfNotNull(nearestTarget)
-    } else {
-      emptyList()
-    }
-  }
+  // Determine search range
+  val rangeMin = lower ?: minWindow ?: (upper ?: return emptyList())
+  val rangeMax = upper ?: maxWindow ?: (lower ?: return emptyList())
+  val effectiveMin = if (minWindow != null) kotlin.math.max(minWindow, rangeMin) else rangeMin
+  val effectiveMax = if (maxWindow != null) kotlin.math.min(maxWindow, rangeMax) else rangeMax
 
-  if (upper == null) {
-    // Input is above fullList range, find points within window bounds
-    val pointsInRange = if (maxWindow != null) {
-      points.filter { it in lower..maxWindow }
-    } else {
-      points.filter { it >= input }
-    }
-    return if (pointsInRange.isNotEmpty()) {
-      // Return the nearest point to input, not just the min
-      val nearestTarget = pointsInRange.minByOrNull { kotlin.math.abs(it - input) }
-      listOfNotNull(nearestTarget)
-    } else {
-      emptyList()
+  // Single pass: find nearest point within range
+  var nearest: Double? = null
+  var nearestDist = Double.MAX_VALUE
+  for (p in points) {
+    if (p < effectiveMin || p > effectiveMax) continue
+    val dist = kotlin.math.abs(p - input)
+    if (dist < nearestDist) {
+      nearestDist = dist
+      nearest = p
     }
   }
 
-  // Both lower and upper exist, proceed with original logic
-  // Filter targets within the window bounds if available, otherwise use lower..upper
-  val searchRange = if (minWindow != null && maxWindow != null) {
-    // Use intersection of visible labels range and window bounds
-    kotlin.math.max(minWindow, lower)..kotlin.math.min(maxWindow, upper)
-  } else {
-    lower..upper
-  }
-
-  val filteredTargets = points.filter { it in searchRange }
-
-  return when {
-    filteredTargets.isEmpty() -> {
-      val halfway = (lower + upper) / 2.0
-
-      // check halfway condition to return lower or upper
-      if (input < halfway) {
-        listOf(lower)
-      } else {
-        listOf(upper)
-      }
-    }
-
-    filteredTargets.size == 1 -> {
-      val target = filteredTargets.first()
+  return if (nearest != null) {
+    // Snap to lower/upper if nearest is further than halfway between them
+    if (lower != null && upper != null) {
       val halfway = (upper - lower) / 2.0
-
-      // check if rounding of the point meets the target
-      if (kotlin.math.abs(target - input) < halfway) {
-        listOf(target)
-      } else if (target > input) {
-        listOf(lower)
+      if (nearestDist > halfway) {
+        listOf(if (input < (lower + upper) / 2.0) lower else upper)
       } else {
-        listOf(upper)
+        listOf(nearest)
       }
+    } else {
+      listOf(nearest)
     }
-
-    else -> {
-      // return the nearest target to the point
-      val nearestTarget = filteredTargets.minByOrNull { kotlin.math.abs(it - input) }
-      listOfNotNull(nearestTarget)
+  } else {
+    // No point in range — snap to nearest bound
+    if (lower != null && upper != null) {
+      listOf(if (input < (lower + upper) / 2.0) lower else upper)
+    } else {
+      listOfNotNull(lower ?: upper)
     }
   }
 }

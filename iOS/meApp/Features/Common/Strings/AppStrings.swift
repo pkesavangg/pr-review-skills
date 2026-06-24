@@ -18,6 +18,7 @@ struct CommonStrings {
     static let save = "Save"
     static let skip = "Skip"
     static let logIn = "Log in"
+    static let loggedOut = "Logged out"
     static let signUp = "Sign up"
     static let complete = "Complete"
     static let edit = "Edit"
@@ -71,14 +72,15 @@ struct EntryStrings {
 
 /// Constants for scale discovered sheet strings used in the app
 struct ScaleDiscoveredSheetStrings {
-    static let title = "New Scale Discovered"
+    static let scaleTitle = "New Scale Discovered"
+    static let bpmTitle = "New Device Discovered"
 }
 
 struct WeightOnlyModeAlertStrings {
     static let title = "A User has Weight Only Mode on"
-    static let enableAllBodyMetrics = "You can enable All Body Metrics for one session. This will temporarily disable Weight Only mode, and all body metrics will be collected."
+    static let enableAllBodyMetrics = "You can enable All Body Metrics for one session. "
+        + "This will temporarily disable Weight Only mode, and all body metrics will be collected."
 }
-
 
 /// Constants for toast messages used in the app
 struct ToastStrings {
@@ -87,12 +89,13 @@ struct ToastStrings {
     static let networkError = "Network Error"
     static let unableToConnect = "Unable to find a network connection at this time. Please try again later."
     static let somethingWentWrong = "Something went wrong. Please try again. If the problem continues, contact customer service."
-    static let serverError = "Unable to reach the Greater Goods servers. The issue is probably on our end. Try again later, but if the problem continues, contact customer service."
+    static let serverError = "Unable to reach the Greater Goods servers. The issue is probably on our end. "
+        + "Try again later, but if the problem continues, contact customer service."
     static let emailInUse = "Email address is already in use"
     static let errorCreatingAccount = "Error creating account."
     static let invalidEmailTitle = "Invalid Email ID!"
     static let invalidEmailMessage = "Enter a valid email address."
-    static let invalidCredentials = "Your Email or password is incorrect. Please try again."
+    static let invalidCredentials = "Your email or password is incorrect. Please try again."
     static let passwordResetSuccessMessage = { (email: String) in
         "An email with a link to reset your password has been sent to \(email). The link will be valid for the next 30 minutes."
     }
@@ -113,6 +116,7 @@ struct ToastStrings {
     static let errorUpdatingWeightless = "Error updating Weightless Settings."
     static let restartAndTryAgain = "Restart the app and try again."
     static let csvExportError = "Error sending .CSV file. Please try again."
+    static let errorDeletingEntry = "Error deleting entry. Please try again."
     static let unitSettingUpdated = "Unit settings updated."
     static let notificationSettingUpdated = "Notification settings updated."
     static let streakSettingUpdated = "Streak settings updated."
@@ -129,7 +133,7 @@ struct ToastStrings {
     static let weightHistorySynced = "Weight history successfully synced."
     static let hkIntegrationRemoved = "Apple Health integration removed."
     static let hkIntegrationSynced = "Apple Health is synced!"
-    static let saveScaleError = "Error saving scale. Please restart the app and try again."
+    static let saveDeviceError = "Error saving scale. Please restart the app and try again."
     static let restartApp = "Please restart your app and try again."
     static let displayMetricsSaved = "Display metrics saved successfully."
     static let errorSavingDisplayMetrics = "Failed to save display metrics."
@@ -173,14 +177,16 @@ struct HKIntegrationHealthAccessStrings {
     static let notConnected = HKIntegrationHealthAccessContent(
         imageName: AppAssets.hkPermissionsNotAllowedSS,
         title: "Integrate Apple Health",
-        description: "Personalize your experience and control which information is shared between Weight Gurus and Apple Health. Your privacy and data security are top priorities.",
+        description: "Personalize your experience and control which information is shared between Weight Gurus and Apple Health. "
+            + "Your privacy and data security are top priorities.",
         buttonTitle: "CONNECT"
     )
 
     static let permissionsAllowed = HKIntegrationHealthAccessContent(
         imageName: AppAssets.hkPermissionsAllowedSS,
         title: "Integrate Apple Health",
-        description: "Personalize your experience and control which information is shared between Weight Gurus and Apple Health. Your privacy and data security are top priorities.",
+        description: "Personalize your experience and control which information is shared between Weight Gurus and Apple Health. "
+            + "Your privacy and data security are top priorities.",
         buttonTitle: "CONNECT"
     )
 
@@ -198,14 +204,16 @@ struct HKIntegrationHealthAccessStrings {
     static let integrationFailed = HKIntegrationHealthAccessContent(
         imageName: AppAssets.hkPermissionsNotAllowedSS,
         title: "Integration Failed",
-        description: "To troubleshoot, open Apple Health and turn on Weight Gurus permissions. Then, come back to Weight Gurus and finish connecting.",
+        description: "To troubleshoot, open Apple Health and turn on Weight Gurus permissions. "
+            + "Then, come back to Weight Gurus and finish connecting.",
         buttonTitle: "OPEN APPLE HEALTH"
     )
 
     static let userConflict = HKIntegrationHealthAccessContent(
         imageName: AppAssets.hkPermissionsAllowedSS,
         title: "User Conflict",
-        description: "Another user has already connected to Apple Health on this device. Please ask them to log in to their account and disconnect the integration.",
+        description: "Another user has already connected to Apple Health on this device. "
+            + "Please ask them to log in to their account and disconnect the integration.",
         buttonTitle: "EXIT"
     )
 }
@@ -218,13 +226,12 @@ struct HKIntegrationModalStrings {
         message: nil,
         primaryButtonTitle: "OPEN APPLE HEALTH",
         secondaryButtonTitle: "REMOVE INTEGRATION",
-        attributedParts: (
+        attributedParts: .init(
             prefix: "Enable settings in Apple Health by navigating to ",
             highlight: "Profile → Privacy → Apps → Weight Gurus",
             suffix: ". Or remove the integration in Weight Gurus."
         )
     )
-
 
     static let finishAdding = HKIntegrationModalContent(
         imageName: AppAssets.hkLogoLarge,
@@ -242,8 +249,6 @@ struct HKIntegrationModalStrings {
         secondaryButtonTitle: nil
     )
 }
-
-
 
 /// Constants for form validation error messages
 struct FormErrorMessages {
@@ -268,7 +273,7 @@ struct FormErrorMessages {
     static let maxWeightLb = "value should be less than 999 lbs"
     static let minValue = "value should be greater than 0"
     static let maxValue99 = "value should be less than 99"
-    static let maxValue = {(value: Int) in "value should be less than \(value)"}
+    static let maxValue = { (value: Int) in "value should be less than \(value)" }
     static let passwordResetFailed = "Failed to send password reset email."
     static let newPasswordDifferent = "New password must be different from old password"
     static let modelNumberInvalid = "model number invalid"
@@ -276,6 +281,7 @@ struct FormErrorMessages {
     static let namePattern = "please enter a valid name"
     static let validInput = "please enter valid input"
     static let userNameUnavailable = "user name unavailable"
+    static let numericOnly = "only numbers are allowed"
 }
 
 /// Constants for input field labels used in the app
@@ -290,6 +296,7 @@ struct InputFieldLabels {
     static let confirmPassword = "confirm password"
     static let confirmNewPassword = "confirm new password"
     static let currentPassword = "current password"
+    static let height = "height"
     static let startingWeight = "starting weight"
     static let startingWeightLabel: (Bool) -> String = { isKg in
         return isKg ? "starting weight (kg)" : "starting weight (lbs)"
@@ -299,6 +306,10 @@ struct InputFieldLabels {
     }
     static let goalWeight = "goal weight"
     static let useMetric = "Use Metric Units"
+    /// Unit suffix shown on the right of a unit-value input field, e.g. "(kg)" / "(lbs)".
+    static let weightUnitSuffix: (Bool) -> String = { isKg in
+        return isKg ? "(kg)" : "(lbs)"
+    }
     static let zipCode = "zipcode"
     static let birthday = "birthday"
     static let weightLabel: (Bool) -> String = { isKg in
@@ -320,9 +331,13 @@ struct InputFieldLabels {
     static let skeletalMuscles = "skeletal muscles (%)"
     static let basalMetabolicRate = "basal metabolic rate (kcal)"
     static let metabolicAge = "metabolic age (yrs)"
+    static let babyName = "name"
+    static let babyBirthLength = "birth length"
+    static let babyBirthWeight = "birth weight"
+    static let biologicalSex = "Biological sex"
 }
 
-/// Constants for Alert strings used in the app
+// Constants for Alert strings used in the app
 struct AlertStrings {
     struct SignupExitAlert {
         static let title = "Confirm"
@@ -579,26 +594,31 @@ struct AlertStrings {
         static let yes = "YES"
     }
 
-    struct knownScaleDiscoveredAlert {
+    struct KnownScaleDiscoveredAlert {
         static let title = "Known Scale Discovered"
-        static let message = "Weight Gurus sees a scale that is already set up. If you are trying to set up a second scale, make sure only one is turned on at a time."
+        static let message = "Weight Gurus sees a scale that is already set up. " +
+            "If you are trying to set up a second scale, make sure only one is turned on at a time."
         static let exitButton = "Exit"
     }
 
     struct PermissionAlerts {
         // MARK: - Bluetooth
         static let bluetoothDisabledTitle = "To turn on Bluetooth"
-        static let bluetoothDisabledMessage = "1. Open Settings on your phone\n2. Tap Bluetooth\n3. Toggle Bluetooth on\n4. Tap Allow New Connections\n5. Return to this app"
+        static let bluetoothDisabledMessage = "1. Open Settings on your phone\n2. Tap Bluetooth\n3. Toggle Bluetooth on\n"
+            + "4. Tap Allow New Connections\n5. Return to this app"
         static let bluetoothAuthDisabledTitle = "Bluetooth Access is Disabled"
         static let bluetoothAuthDisabledMessage = "To sync with your device, please enable Bluetooth access."
 
         // MARK: - Location
         static let locationDisabledTitle = "To turn on Location Services"
-        static let locationDisabledMessage = "1. Open your iPhone Settings\n2. Tap Privacy & Security\n3. Tap Location Settings\n4. Toggle Location Services on\n5. Return to this app"
+        static let locationDisabledMessage = "1. Open your iPhone Settings\n2. Tap Privacy & Security\n3. Tap Location Settings\n"
+            + "4. Toggle Location Services on\n5. Return to this app"
         static let locationAuthTitle = "Weight Gurus needs location permissions."
-        static let locationAuthMessage = "Apple requires this for Wi-Fi connections. Weight Gurus doesn't store this data. On the next screen, select 'Allow while using app.' Choosing 'Allow once' will block future connections with the scale."
+        static let locationAuthMessage = "Apple requires this for Wi-Fi connections. Weight Gurus doesn't store this data. " +
+            "On the next screen, select 'Allow while using app.' Choosing 'Allow once' will block future connections with the scale."
         static let locationWhyTitle = "Why are we asking your location permission?"
-        static let locationWhyMessage = "iOS requires location permission to connect with nearby Bluetooth devices. We don't track or store your location—it's just an Apple requirement for device setup."
+        static let locationWhyMessage = "iOS requires location permission to connect with nearby Bluetooth devices. " +
+            "We don't track or store your location—it's just an Apple requirement for device setup."
 
         // MARK: - WiFi
         static let wifiDisabledTitle = "To turn on Wi-Fi"
@@ -606,11 +626,13 @@ struct AlertStrings {
 
         // MARK: - Camera
         static let cameraDisabledTitle = "You have not given permission to access camera!"
-        static let cameraDisabledMessage = "You will not be able to pair or sync with your App sync scale. Please enable it from your app permissions."
+        static let cameraDisabledMessage = "You will not be able to pair or sync with your App sync scale. "
+            + "Please enable it from your app permissions."
 
         // MARK: - Notification
         static let notificationDisabledTitle = "Notifications are disabled!"
-        static let notificationDisabledMessage = "Notification permissions have been turned off. Enable notifications to receive updates from your Wi-Fi scale."
+        static let notificationDisabledMessage = "Notification permissions have been turned off. "
+            + "Enable notifications to receive updates from your Wi-Fi scale."
     }
 
     struct ConfirmRestoreAlert {
@@ -652,7 +674,8 @@ struct AlertStrings {
 
     struct PermissionDisabledAlert {
         static let title = "Unable to scan devices!"
-        static let message = "One or more required permissions or device services may be disabled. Visit the App Permissions screen in the Settings tab to check and enable the app’s permissions access."
+        static let message = "One or more required permissions or device services may be disabled. " +
+            "Visit the App Permissions screen in the Settings tab to check and enable the app's permissions access."
         static let dismissButton = "DISMISS"
         static let appPermissionButton = "APP PERMISSION"
     }
@@ -685,22 +708,45 @@ struct AlertStrings {
     }
     struct ReconnectDeviceAlert {
         static let header = "Scale is at Its User Limit"
-        static let message = "Your connection was deactivated by another user. Reconnect now or delete the scale from your account by visiting scale settings."
+        static let message = "Your connection was deactivated by another user. "
+            + "Reconnect now or delete the scale from your account by visiting scale settings."
         static let reconnectButton = "Reconnect"
         static let cancelButton = "Cancel"
     }
-    
+
     struct DuplicateUserAlert {
         static let header = "Duplicate Scale User Name"
         static let message = "Reconnect the scale with a new user name."
         static let reconnectButton = "Reconnect"
         static let cancelButton = "Cancel"
     }
-    
+
     struct UpdatesPendingAlert {
         static let title = "Updates Pending..."
-        static let message = "Scale settings can't be updated at this time. Weight Gurus will save changes and update the scale next time it connects."
+        static let message = "Scale settings can't be updated at this time. "
+            + "Weight Gurus will save changes and update the scale next time it connects."
         static let okButton = "OK"
+    }
+
+    struct RemoveBabyAlert {
+        static let title = "Remove Baby?"
+        static let message = "Are you sure you want to remove this baby? You will not be able to get it back."
+        static let deleteButton = "DELETE"
+        static let cancelButton = "CANCEL"
+    }
+
+    struct SkipAddBabyAlert {
+        static let title = "Skip Baby Profile?"
+        static let message = "Your baby profile won't be created. You can add it anytime from profile settings."
+        static let goBackButton = "GO BACK"
+        static let skipButton = "YES, SKIP"
+    }
+
+    struct SkipEditBabyAlert {
+        static let title = "Skip editing?"
+        static let message = "Your changes won't be saved. You can edit this anytime from my kids profile settings."
+        static let goBackButton = "GO BACK"
+        static let skipButton = "YES, SKIP"
     }
 }
 
@@ -726,10 +772,11 @@ struct LoaderStrings {
     /// Loader shown while retrieving the scale's MAC address.
     static let gettingMacAddress = "Getting MAC address..."
     static let updatingMode = "Updating Mode..."
+    static let sendingRequest = "Sending Request..."
 }
 
 struct URLStrings {
-    static let baseUrl =  "https://greatergoods.com/"
+    static let baseUrl = "https://greatergoods.com/"
 }
 
 /// Constants for legal text used in the app
@@ -756,8 +803,6 @@ struct FirmwareUpdateStrings {
     static let updateTriggered = "Firmware update requested"
     static let date = "Date"
 }
-
-
 
 /// Constants for App Assets used in the app
 struct AppAssets {
@@ -843,6 +888,7 @@ struct AppAssets {
     static let scale = "scale"
     static let metric = "metric"
     static let export = "export"
+    static let editIcon = "edit"
 
     // MARK: - Scale images
     // MARK: - AppSync series
@@ -871,10 +917,35 @@ struct AppAssets {
     // MARK: - WiFi series
     static let scale0384 = "0384"
     static let scale0385 = "0385"
-    static let scale0396_0397 = "0396_0397" // Wi-Fi Smart Scale (0396 & 0397 share artwork)
+    static let scale0396And0397 = "0396_0397" // Wi-Fi Smart Scale (0396 & 0397 share artwork)
 
     // MARK: - Bluetooth wifi series
     static let scale0412 = "0412"
+
+    // MARK: - Signup device icons
+    static let babyAppIcon = "babyAppIcon"
+    static let bpmIcon = "bpmIcon"
+    static let weightScaleIcon = "weightScaleIcon"
+
+    // MARK: - Baby scale series
+    static let scale0220 = "0220"
+    static let scale0222 = "0222"
+    static let babyAppLoaderGif = "BabyAppLoader"
+    static let checkmarkSuccessGif = "gg_checkmark_success"
+    // MARK: - BPM series
+    static let bpm0603 = "0603"
+    static let bpm0604 = "0604"
+    static let bpm0634 = "0634"
+    static let bpm0636 = "0636"
+    static let bpm0661 = "0661"
+    static let bpm0663 = "0663"
+    static let bpm0664 = "0664"
+    static let bpm0665 = "0665"
+    static let bpm0667 = "0667"
+    static let a3BpmUser1 = "A3bpmUser1"
+    static let a3BpmUser2 = "A3bpmUser2"
+    static let a6BpmUserA = "A6bpmUserA"
+    static let a6BpmUserB = "A6bpmUserB"
     static let streak = "streak"
     static let longestStreak = "longestStreak"
     static let plusCircle = "plusCircle"
@@ -892,7 +963,6 @@ struct AppAssets {
     static let accuCheckTickLarge = "accuCheckTickLarge"
     static let accuCheckTickLargeDark = "accuCheckTickLargeDark"
 
-    
     // MARK: - Error Code Images
     /// Generates error code image asset names based on SKU, error code, filled state, and theme
     /// - Parameters:
@@ -906,7 +976,7 @@ struct AppAssets {
         let themeVariant = isDarkMode ? "_dark" : ""
         return "\(sku)_Err_\(errorCode)_\(fillType)\(themeVariant)"
     }
-    
+
     /// Generates AP mode image asset names based on SKU, filled state, and theme
     /// - Parameters:
     ///   - sku: Scale SKU (e.g., "0384", "0396")
@@ -918,7 +988,7 @@ struct AppAssets {
         let themeVariant = isDarkMode ? "_dark" : ""
         return "\(sku)_AP_\(fillType)\(themeVariant)"
     }
-    
+
     /// Generates complete setup image asset names based on SKU, filled state, and theme
     /// - Parameters:
     ///   - isFilled: Whether to use filled or outlined version
@@ -929,7 +999,7 @@ struct AppAssets {
         let themeVariant = isDarkMode ? "_dark" : ""
         return "0396_Complete_\(fillType)\(themeVariant)"
     }
-    
+
     /// Generates step on image asset names based on SKU, filled state, and theme
     /// - Parameters:
     ///   - sku: Scale SKU (e.g., "0396")
@@ -941,7 +1011,7 @@ struct AppAssets {
         let themeVariant = isDarkMode ? "_dark" : ""
         return "\(sku)_StepOn_\(fillType)\(themeVariant)"
     }
-    
+
     // MARK: - Bluetooth Setup
     static let setupPressUnitButtonGifName: (String) -> String = { sku in
         "\(sku)-Setup-PressUnitButton"
@@ -969,7 +1039,7 @@ struct AppAssets {
         let themeVariant = isDarkMode ? "_dark" : ""
         return "0384_U\(user)_\(fillType)\(themeVariant)"
     }
-    
+
     /// Legacy function for backward compatibility - generates step on GIF name
     /// Parameters:
     ///   - isFilled: Whether to use filled or outlined version
@@ -991,6 +1061,12 @@ struct AppSyncEntryCardStrings {
     static let muscleMass = "Muscle Mass"
     static let waterWeight = "Water Weight"
     static let bmi = "BMI"
+
+    struct A11y {
+        static let metricsGroupLabel = "Scan results"
+        static let saveHint = "Double tap to save this entry"
+        static let editHint = "Double tap to edit this entry before saving"
+    }
 }
 
 /// Constants used in the Set A Goal card
@@ -998,5 +1074,5 @@ struct SetGoalCardStrings {
     static let title = "Set a Goal"
     static let description = "A great tool for tracking your journey that can always be changed in the app settings."
     static let buttonTitle = "LET'S DO IT"
+// swiftlint:disable:next file_length
 }
-
