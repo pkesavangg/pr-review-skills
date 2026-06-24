@@ -87,6 +87,20 @@ jobs:
           name: Show Xcode version
           command: xcodebuild -version
       - run:
+          name: Authenticate to private gg-engineering Swift packages
+          command: |
+            # The app depends on private SPM packages (ggAppSyncPackage,
+            # ggBluetoothNativeLibrary, ggHealthKitPackage,
+            # ggInAppMessagingPackage, ggWifiScalePackage). CI has no GitHub
+            # credentials by default, so SPM clones return "Repository not
+            # found". Inject a read-only token for all github.com HTTPS clones.
+            if [ -z "$GITHUB_PACKAGES_TOKEN" ]; then
+              echo "Error: GITHUB_PACKAGES_TOKEN is not set. Add it as a CircleCI project/context secret — a GitHub token with read access to the private gg-engineering Swift packages."
+              exit 1
+            fi
+            git config --global url."https://x-access-token:${GITHUB_PACKAGES_TOKEN}@github.com/".insteadOf "https://github.com/"
+            echo "Configured git to authenticate github.com HTTPS clones."
+      - run:
           name: Resolve Swift Package Dependencies
           working_directory: iOS
           command: |
