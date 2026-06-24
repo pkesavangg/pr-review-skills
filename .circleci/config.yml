@@ -38,7 +38,7 @@ commands:
           name: Probe GitHub Packages access (diagnostic)
           command: |
             # Non-fatal probe so opaque 401s self-explain. Gradle remains the gate.
-            URL="https://maven.pkg.github.com/gg-engineering/ggBluetoothNativeLibrary/com/dmdbrands/lib/gg-bluetooth-android/1.6.10/gg-bluetooth-android-1.6.10.pom"
+            URL="https://maven.pkg.github.com/gg-engineering/ggBluetoothNativeLibrary/com/dmdbrands/lib/gg-bluetooth-android/1.6.9/gg-bluetooth-android-1.6.9.pom"
             CODE=$(curl -s -o /dev/null -w "%{http_code}" -u "$GITHUB_USERNAME:$GITHUB_PACKAGES_TOKEN" "$URL" || echo "000")
             echo "GitHub Packages probe -> HTTP $CODE"
             case "$CODE" in
