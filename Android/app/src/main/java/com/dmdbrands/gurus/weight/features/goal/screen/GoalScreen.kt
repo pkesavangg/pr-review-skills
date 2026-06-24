@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,6 +25,7 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.helper.AccountHelper.isMetricUnit
+import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.goal.components.GoalMilestoneDisplay
@@ -45,7 +46,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 @Composable
 fun GoalScreen() {
   val viewmodel: GoalViewModel = hiltViewModel()
-  val state by viewmodel.state.collectAsState()
+  val state by viewmodel.state.collectAsStateWithLifecycle()
   BackHandler {
     viewmodel.handleIntent(GoalIntent.OnBack)
   }
@@ -78,7 +79,8 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
     Column(
       modifier = Modifier
         .fillMaxSize()
-        .verticalScroll(scrollState),
+        .verticalScroll(scrollState)
+        .dismissKeyboardOnTap(),
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.Top,
     ) {

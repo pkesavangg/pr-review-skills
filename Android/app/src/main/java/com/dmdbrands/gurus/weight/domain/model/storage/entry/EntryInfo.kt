@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.ActiveEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BaseEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertToDisplay
@@ -15,6 +16,7 @@ interface EntryInfo<T : BaseEntryEntity> {
   val bpmEntry: BpmEntryEntity?
   val scaleEntry: BodyScaleEntryEntity?
   val scaleEntryMetric: BodyScaleEntryMetricEntity?
+  val babyEntry: BabyEntryEntity?
   fun toEntry(convertToDisplay: Boolean = true): Entry? {
     val entryEntity = EntryEntity(
       id = entry.id,
@@ -33,10 +35,16 @@ interface EntryInfo<T : BaseEntryEntity> {
     val bpmEntry = this.bpmEntry
     val scaleEntry = this.scaleEntry
     val scaleEntryMetric = this.scaleEntryMetric
+    val babyEntry = this.babyEntry
     return when {
       bpmEntry != null -> BpmEntry(
         entry = entryEntity,
         bpmEntry = bpmEntry,
+      )
+
+      babyEntry != null -> BabyEntry(
+        entry = entryEntity,
+        babyEntry = babyEntry,
       )
 
       scaleEntry != null -> ScaleEntry(
@@ -48,10 +56,9 @@ interface EntryInfo<T : BaseEntryEntity> {
       )
 
       else -> {
-        // Log a warning for debugging
         com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog.w(
           "EntryInfo",
-          "toEntry: both bpmEntry and scaleEntry are null for id=${entry.id}",
+          "toEntry: no typed entry found for id=${entry.id}",
         )
         null
       }
@@ -69,7 +76,9 @@ data class PopulatedEntry(
   @Relation(parentColumn = "id", entityColumn = "id")
   override val scaleEntry: BodyScaleEntryEntity?,
   @Relation(parentColumn = "id", entityColumn = "id")
-  override val scaleEntryMetric: BodyScaleEntryMetricEntity?
+  override val scaleEntryMetric: BodyScaleEntryMetricEntity?,
+  @Relation(parentColumn = "id", entityColumn = "id")
+  override val babyEntry: BabyEntryEntity?,
 ) : EntryInfo<EntryEntity>
 
 /**
@@ -82,5 +91,7 @@ data class PopulatedActiveEntry(
   @Relation(parentColumn = "id", entityColumn = "id")
   override val scaleEntry: BodyScaleEntryEntity?,
   @Relation(parentColumn = "id", entityColumn = "id")
-  override val scaleEntryMetric: BodyScaleEntryMetricEntity?
+  override val scaleEntryMetric: BodyScaleEntryMetricEntity?,
+  @Relation(parentColumn = "id", entityColumn = "id")
+  override val babyEntry: BabyEntryEntity?,
 ) : EntryInfo<ActiveEntryEntity>

@@ -12,21 +12,31 @@ import SwiftData
 final class LoggerService: LoggerServiceProtocol {
     public static let shared = LoggerService()
     
-    @Injector var accountService: AccountService
+    @Injector var accountService: AccountServiceProtocol
     
-    private let loggerRepository: LoggerRepositoryProtocol = LoggerRepository.shared
-    private let loggerApiRepository: LoggerApiRepositoryProtocol = LoggerApiRepository()
-    private let sessionId: String = UUID().uuidString
-    private let systemLogger: AppLogger = AppLogger(tag: "GGMeAppLogger")
+    let loggerRepository: LoggerRepositoryProtocol
+    let loggerApiRepository: LoggerApiRepositoryProtocol
+    private let sessionId: String
+    private let systemLogger = AppLogger(tag: "GGMeAppLogger")
     private let logQueue = DispatchQueue(label: "com.greatergoods.loggerServiceQueue", attributes: .concurrent)
     private var consoleMinimumLogLevel: LogLevel = .info
-    private let kv = KvStorageService.shared
+    private let kv: KvStorageService
     private static let lastCleanupKey = "logger_last_cleanup_ts"
     
-    init() {
-        // Run log retention cleanup off the main actor to avoid blocking launch.
-        // We add a short delay so it doesn't contend with initial UI work.
-        Self.scheduleDeleteOldLogsBackground(service: self)
+    init(
+        loggerRepository: LoggerRepositoryProtocol? = nil,
+        loggerApiRepository: LoggerApiRepositoryProtocol? = nil,
+        sessionId: String? = nil,
+        kv: KvStorageService? = nil,
+        skipCleanup: Bool = false
+    ) {
+        self.loggerRepository = loggerRepository ?? LoggerRepository()
+        self.loggerApiRepository = loggerApiRepository ?? LoggerApiRepository()
+        self.sessionId = sessionId ?? UUID().uuidString
+        self.kv = kv ?? KvStorageService.shared
+        if !skipCleanup {
+            Self.scheduleDeleteOldLogsBackground(service: self)
+        }
     }
     
     public func log(level: LogLevel,
@@ -61,10 +71,10 @@ final class LoggerService: LoggerServiceProtocol {
             let tagIdString = String(describing: function)
             let logType = level.toLogType
 
-            // Bounce to the main actor to create and save the SwiftData model.
-            // Use LoggerRepository.shared so all saves are serialised through one
-            // LoggerWriteActor — never creating competing background ModelContexts.
+            // Bounce to the main actor to create and save the SwiftData model
+            // without capturing main-actor properties from a @Sendable closure.
             Task { @MainActor in
+                let repo: LoggerRepositoryProtocol = LoggerRepository()
                 let entryToSave = LogEntry(
                     accountId: resolvedAccountId,
                     sessionId: currentSessionId,
@@ -74,7 +84,7 @@ final class LoggerService: LoggerServiceProtocol {
                     message: message,
                     data: stringifiedData
                 )
-                await LoggerRepository.shared.saveLogEntry(entryToSave)
+                await repo.saveLogEntry(entryToSave)
             }
         }
     }
@@ -131,7 +141,11 @@ final class LoggerService: LoggerServiceProtocol {
             
             // Clear logs for the account after successful upload
             try await loggerRepository.deleteLogs(forAccount: resolvedAccountId)
-            systemLogger.log(level: .info, tag: "LoggerService", message: "Uploaded logs successfully and cleared local for accountId=\(resolvedAccountId)")
+            systemLogger.log(
+                level: .info,
+                tag: "LoggerService",
+                message: "Uploaded logs successfully and cleared local for accountId=\(resolvedAccountId)"
+            )
         } catch {
             systemLogger.log(level: .error, tag: "LoggerService", message: "Failed to upload logs: \(error.localizedDescription)")
             throw error

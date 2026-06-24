@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew assembleRelease)",
+      "Bash(./gradlew ktlintCheck)",
+      "Bash(find Android/app/src/main/java/com/dmdbrands/gurus/weight/features -name \"*.kt\" -type f -exec grep -l \"remember\\\\|rememberCoroutineScope\" {})",
+      "Bash(git fetch:*)",
+      "Bash(git checkout:*)",
+      "Bash(grep -r detekt /Users/rengadevi/work/meApp/Android/build.gradle.kts --include=*.kts -l)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "mcp__atlassian__getJiraIssueRemoteIssueLinks",
+      "mcp__atlassian__addCommentToJiraIssue",
+      "mcp__atlassian__addWorklogToJiraIssue",
+      "mcp__claude_ai_Atlassian__getAccessibleAtlassianResources",
+      "mcp__claude_ai_Atlassian__getJiraIssue",
+      "Bash(find /Users/rengadevi/work/meApp/Android/app/src/test -name *Signup* -o -name *FormValidation*)",
+      "Bash(./gradlew :app:testDebugUnitTest --tests \"com.dmdbrands.gurus.weight.features.common.helper.FormValidationsTest\")",
+      "Bash(./gradlew :app:testDebugUnitTest --tests \"com.dmdbrands.gurus.weight.features.common.helper.FormValidationsTest\" -x :app:compileDebugUnitTestKotlin)",
+      "Read(//Users/rengadevi/.claude/**)",
+      "Bash(wc -l /Users/rengadevi/.claude/plugins/marketplaces/android-claude-plugin/skills/procedures/*.md)"
+    ]
+  }
+}

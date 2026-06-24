@@ -55,7 +55,6 @@ fun OfferHeader(
       .fillMaxWidth()
       .padding(horizontal = 16.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
-    // verticalArrangement = Arrangement.spacedBy(24.dp),
   ) {
     // Main offer title
     IAMText(
@@ -107,7 +106,6 @@ private fun PromoCodeSection(
       annotatedText = FeedLandingScreenStrings.PromoCode,
       annotationPosition = AnnotationPosition.Middle,
       spanStyle = SpanStyle(fontWeight = FontWeight.Bold, color = marketingColors.primaryAction ),
-      // color = marketingColors.primary
     )
 
     // Promo code container
@@ -191,7 +189,6 @@ private fun ShopNowSection(
         IAMText(
           text = promoCode,
           textType = TextType.Body,
-          // color = marketingColors.primaryAction, // Dynamic marketing primary action color for text
         )
       }
 

@@ -212,30 +212,27 @@ struct WeightOnlyModeIndicator: View {
 /// Equivalent to Angular's MetricDisplayService position storage
 @MainActor
 class FloatingButtonPositionStore: ObservableObject {
-    private let userDefaults = UserDefaults.standard
+    private let kvStorage = KvStorageService.shared
     private let topKey = "weight_only_indicator_top"
     private let leftKey = "weight_only_indicator_left"
 
     func savePosition(_ position: CGPoint) {
-        userDefaults.set(position.x, forKey: leftKey)
-        userDefaults.set(position.y, forKey: topKey)
+        kvStorage.setValue(position.x, forKey: leftKey)
+        kvStorage.setValue(position.y, forKey: topKey)
     }
 
     func getSavedPosition() -> CGPoint? {
-        let x = userDefaults.double(forKey: leftKey)
-        let y = userDefaults.double(forKey: topKey)
-
         // Check if values exist (0 is a valid position)
-        if userDefaults.object(forKey: leftKey) != nil && userDefaults.object(forKey: topKey) != nil {
-            return CGPoint(x: x, y: y)
+        guard let xValue = kvStorage.getValue(forKey: leftKey) as? Double,
+              let yValue = kvStorage.getValue(forKey: topKey) as? Double else {
+            return nil
         }
-
-        return nil
+        return CGPoint(x: xValue, y: yValue)
     }
 
     func clearSavedPosition() {
-        userDefaults.removeObject(forKey: leftKey)
-        userDefaults.removeObject(forKey: topKey)
+        kvStorage.clearValue(forKey: leftKey)
+        kvStorage.clearValue(forKey: topKey)
     }
 }
 

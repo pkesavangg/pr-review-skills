@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 03/06/25.
 //
 
-
 public enum LogLevel: Int, Sendable {
     case debug = 1
     case info = 2

@@ -71,7 +71,6 @@ public class GridBoundaryDetector {
     private var lastContentSize: CGSize = .zero
     private var lastConstraintsHash: Int = 0
     
-    
     // MARK: - Initialization
     
     public init() {
@@ -149,10 +148,8 @@ public class GridBoundaryDetector {
         // If within basic bounds, check exclude zones
         if isWithinPreciseBounds {
             // Check if location is in any exclude zone
-            for excludeZone in currentConstraints.excludeZones {
-                if excludeZone.contains(locationInSuperview) {
-                    return false // Location is in an excluded area
-                }
+            for excludeZone in currentConstraints.excludeZones where excludeZone.contains(locationInSuperview) {
+                return false // Location is in an excluded area
             }
             return true // Within bounds and not in any exclude zone
         }
@@ -335,5 +332,3 @@ public class GridBoundaryDetector {
         return gridBounds
     }
 }
-
-

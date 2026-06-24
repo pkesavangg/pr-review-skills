@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 27/05/25.
 //
 
-
 import SwiftUI
 
 struct ColorTokens {
@@ -23,6 +22,7 @@ struct ColorTokens {
     
     // Brand colors
     static let teal100 = Color("teal-100")
+    static let babyPrimary = Color("babyPrimary")
     static let blue100 = Color("blue-100")
     static let blue500 = Color("blue-500")
     static let blue900 = Color("blue-900")
@@ -58,6 +58,11 @@ struct ColorTokens {
     static let promoRed200 = Color("promoRed200")
     static let promoRed800 = Color("promoRed800")
     static let promoRed900 = Color("promoRed900")
+
+    // Device / scale accent colors
+    static let weightScale = Color("weightScale")
+    static let bpm = Color("bpm")
+    static let babyScale = Color("babyScale")
     // MARK: - App Palette Definitions
     struct Palette {
         static let primary = AppColors.Palette(
@@ -70,6 +75,7 @@ struct ColorTokens {
             textHeading: neutral800,
             textBody: neutral800,
             textSubheading: neutral700,
+            textDisabled: neutral400,
             textError: red800,
             textErrorDisabled: red100,
             textInverse: neutral100,
@@ -81,12 +87,12 @@ struct ColorTokens {
             glow: neutral500,
             
             // Action
-            actionPrimary: blue800,
-            actionPrimaryPressed: blue900,
-            actionPrimaryDisabled: blue500,
-            actionSecondary: neutral800,
-            actionSecondaryPressed: neutral900,
-            actionSecondaryDisabled: neutral400,
+            actionPrimary: neutral800,
+            actionPrimaryPressed: neutral900,
+            actionPrimaryDisabled: neutral400,
+            actionSecondary: neutral100,
+            actionSecondaryPressed: neutral200,
+            actionSecondaryDisabled: neutral300,
             actionTertiary: neutral700,
             actionTertiaryPressed: neutral750,
             actionTertiaryDisabled: neutral400,
@@ -106,6 +112,7 @@ struct ColorTokens {
             // Brand
             brandMeAppPrimary: teal100,
             brandWgPrimary: blue800,
+            babyPrimary: babyPrimary,
             
             // Status
             statusSuccess: green800,
@@ -113,16 +120,16 @@ struct ColorTokens {
             statusStreak: yellow100,
             statusUtilityPrimary: neutral400,
             statusUtilitySecondary: neutral800,
-            statusIconPrimary: blue800,
+            statusIconPrimary: neutral800,
             statusIconSecondary: neutral700,
-            statusIconPrimaryDisabled: blue500,
+            statusIconPrimaryDisabled: neutral400,
             statusIconSecondaryDisabled: neutral400,
-            statusIconLoading: blue500,
+            statusIconLoading: neutral700,
             statusIconLoadingError: red100,
             
             // Logos
-            logoPrimary: neutral100,
-            logoSecondary: neutral800,
+            logoPrimary: neutral800,
+            logoSecondary: neutral100,
             
             ggBackground: ggBackground,
             ggPrimary: ggPrimary,

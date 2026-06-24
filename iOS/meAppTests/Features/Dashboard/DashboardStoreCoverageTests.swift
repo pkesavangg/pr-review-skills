@@ -179,25 +179,25 @@ struct DashboardStoreDisplayTests {
         #expect(store.streakItemsToShow.count == store.streakManager.state.streakItems.count)
     }
 
-    @Test func streakItemsToShowFiltersRemovedInNonEditMode() {
+    @Test func streakItemsToShowFiltersRemovedInNonEditMode() throws {
         let store = DashboardStore(lightweight: true)
         store.streakManager.setupInitialStreakItems()
         store.streak = store.streakManager.state
         store.ui.hasLoadedProgressMetrics = true
         store.ui.isEditMode = false
-        let firstLabel = store.streakManager.state.streakItems.first!.label
+        let firstLabel = try #require(store.streakManager.state.streakItems.first).label
         store.ui.removedStreaks = [firstLabel]
         let shown = store.streakItemsToShow
         #expect(!shown.contains { $0.label == firstLabel })
     }
 
-    @Test func streakItemsToShowAllInEditMode() {
+    @Test func streakItemsToShowAllInEditMode() throws {
         let store = DashboardStore(lightweight: true)
         store.streakManager.setupInitialStreakItems()
         store.streak = store.streakManager.state
         store.ui.hasLoadedProgressMetrics = true
         store.ui.isEditMode = true
-        let firstLabel = store.streakManager.state.streakItems.first!.label
+        let firstLabel = try #require(store.streakManager.state.streakItems.first).label
         store.ui.removedStreaks = [firstLabel]
         // In edit mode: nonRemoved + removed (all shown)
         #expect(store.streakItemsToShow.count == store.streakManager.state.streakItems.count)
@@ -770,7 +770,7 @@ struct DashboardStoreWeightLabelTests {
         store.graph.selectedPeriod = .week
         let label = store.weightLabel
         // Week label has " - " separating start and end
-        #expect(label.contains(" - ") || !label.isEmpty)
+        #expect(label.contains(" - "))
     }
 }
 

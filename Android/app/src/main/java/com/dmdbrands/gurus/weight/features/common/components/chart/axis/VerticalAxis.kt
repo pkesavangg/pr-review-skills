@@ -1,36 +1,35 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart.axis
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dmdbrands.gurus.weight.R
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertWeight
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import com.patrykandpatrick.vico.compose.cartesian.axis.Axis
+import com.patrykandpatrick.vico.compose.cartesian.axis.BaseAxis
 import com.patrykandpatrick.vico.compose.cartesian.axis.ListItemPlacer
-import com.patrykandpatrick.vico.compose.cartesian.axis.fixed
+import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisLineComponent
-import com.patrykandpatrick.vico.compose.cartesian.axis.rememberEnd
-import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStart
-import com.patrykandpatrick.vico.compose.cartesian.axis.scroll
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
+import com.patrykandpatrick.vico.compose.common.Fill
 import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
-import com.patrykandpatrick.vico.compose.common.fill
-import com.patrykandpatrick.vico.core.cartesian.axis.Axis
-import com.patrykandpatrick.vico.core.cartesian.axis.BaseAxis
-import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
-import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
 import kotlin.math.roundToInt
-import android.graphics.Typeface
 
 @Composable
 fun startAxis(segment: GraphSegment, isSingleWindow: Boolean) = VerticalAxis.rememberStart(
   label = null,
-  size = if (segment == GraphSegment.TOTAL || isSingleWindow) BaseAxis.Size.fixed(8.dp) else BaseAxis.Size.scroll(
+  size = if (segment == GraphSegment.TOTAL || isSingleWindow) BaseAxis.Size.Fixed(8.dp) else BaseAxis.Size.Scroll(
     8.dp,
     isLabelsScrollable = true,
   ),
   line = rememberAxisLineComponent(
-    fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
+    fill = Fill(MeTheme.colorScheme.iconSecondaryDisabled),
     thickness = 1.dp,
   ),
   guideline = null,
@@ -40,38 +39,48 @@ fun startAxis(segment: GraphSegment, isSingleWindow: Boolean) = VerticalAxis.rem
 
 @Composable
 fun endAxis(
-  ticksProvider: () -> List<Double>,
   isEmptyGraph: Boolean,
-  markerDecoration: VerticalAxis.MarkerDecoration? = null
+  markerDecoration: VerticalAxis.MarkerDecoration? = null,
+  ticksProvider: (() -> List<Double>)? = null,
+  weightUnit: WeightUnit? = null,
+  weightlessOffset: Double = 0.0,
 ): VerticalAxis<Axis.Position.Vertical.End> {
-  val resources = LocalResources.current
-  val openSans: Typeface = resources.getFont(R.font.open_sans_semi_bold)
+  val openSansFamily = FontFamily(Font(R.font.open_sans_semi_bold))
 
   return VerticalAxis.rememberEnd(
+    // Note: convertWeight is cheap (single multiplication) and called per-frame
+    // by Vico during scroll/animation. The roundToInt() is intentional — axis
+    // labels display whole numbers only for readability.
     valueFormatter = CartesianValueFormatter { _, value, _ ->
-      if (isEmptyGraph && markerDecoration == null || !value.isFinite()) " " else
-        value.roundToInt().toString()
+      if (isEmptyGraph && markerDecoration == null) "–"
+      else {
+        val adjusted = value - weightlessOffset
+        val display = if (weightUnit == WeightUnit.KG)
+          convertWeight(adjusted, WeightUnit.LB, WeightUnit.KG)
+        else adjusted
+        display.roundToInt().toString()
+      }
     },
-    // ListItemPlacer reads [ticksProvider] on every measure/draw — pair it with
-    // ScrollAwareRangeProvider.currentTicks so axis labels track the live range exactly.
-    itemPlacer = ListItemPlacer(ticks = ticksProvider),
-    size = BaseAxis.Size.scroll(50.dp),
+    itemPlacer = if (ticksProvider != null) ListItemPlacer(ticksProvider) else VerticalAxis.ItemPlacer.step({ 1.0 }),
+    size = BaseAxis.Size.Scroll(50.dp),
     line =
       rememberAxisLineComponent(
-        fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
+        fill = Fill(MeTheme.colorScheme.iconSecondaryDisabled),
         thickness = 1.dp,
       ),
     markerDecoration = markerDecoration,
     guideline = if (isEmptyGraph && markerDecoration == null) null else
       rememberAxisLineComponent(
-        fill = fill(MeTheme.colorScheme.utility.copy(0.5f)),
+        fill = Fill(MeTheme.colorScheme.utility.copy(0.5f)),
         thickness = 1.dp,
       ),
     label =
       rememberTextComponent(
-        typeface = openSans,
-        color = MeTheme.colorScheme.textSubheading,
-        textSize = 14.sp,
+        style = TextStyle(
+          fontFamily = openSansFamily,
+          color = MeTheme.colorScheme.textSubheading,
+          fontSize = 14.sp,
+        ),
       ),
     tickLength = 0.dp,
   )

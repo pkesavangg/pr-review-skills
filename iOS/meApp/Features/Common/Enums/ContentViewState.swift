@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 18/06/25.
 //
 
-
 /// Represents the different UI states that the root `ContentView` can be in.
 ///
 /// - initializing:   The app is performing start-up tasks.

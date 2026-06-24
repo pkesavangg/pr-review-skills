@@ -1,76 +1,51 @@
 package com.dmdbrands.gurus.weight.data.storage.db.converter
 
 import androidx.room.TypeConverter
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.nullable
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
 
 /**
  * Type converter for handling JSON data in Room database.
+ *
+ * Uses kotlinx.serialization (compile-time codegen) instead of Gson to avoid
+ * reflective TypeVariable resolution, which NPEs on Android 16 (SDK 36) ART. See MOB-394.
  */
 class JsonConverter {
-  private val gson = Gson()
+  private val json = Json { ignoreUnknownKeys = true }
 
-  /**
-   * Convert a JSON string to a List of objects.
-   *
-   * @param value The JSON string to convert
-   * @return The List of objects, or null if the string is null
-   */
+  // Decode with a nullable element serializer so legacy Gson-written rows that contain
+  // null elements (e.g. ["a", null, "b"]) parse instead of throwing — we then drop the
+  // nulls via filterNotNull() rather than collapsing the whole list to empty. See MOB-394.
+  // A List<String> is a valid List<String?> for encoding, and the output format is
+  // unchanged (["a","b"]), so the same serializer covers both read and write paths.
+  private val stringListSerializer = ListSerializer(String.serializer().nullable)
+
   @TypeConverter
   fun fromString(value: String?): List<String>? {
-    if (value == null) {
-      return null
-    }
-    val listType = object : TypeToken<List<String>>() {}.type
-    return gson.fromJson(value, listType)
+    if (value == null) return null
+    return decode(value, "fromString")
   }
 
-  /**
-   * Convert a List of objects to a JSON string.
-   *
-   * @param list The List to convert
-   * @return The JSON string, or null if the list is null
-   */
   @TypeConverter
   fun fromList(list: List<String>?): String? {
-    if (list == null) {
-      return null
-    }
-    return gson.toJson(list)
+    if (list == null) return null
+    return json.encodeToString(stringListSerializer, list)
   }
 
   @TypeConverter
-  fun toList(json: String): List<String> {
-    val type = object : TypeToken<List<String>>() {}.type
-    return gson.fromJson(json, type)
-  }
+  fun toList(jsonString: String): List<String> = decode(jsonString, "toList")
 
-  /**
-   * Convert a JSON string to a Map of objects.
-   *
-   * @param value The JSON string to convert
-   * @return The Map of objects, or null if the string is null
-   */
-  @TypeConverter
-  fun fromMapString(value: String?): Map<String, Any>? {
-    if (value == null) {
-      return null
-    }
-    val mapType = object : TypeToken<Map<String, Any>>() {}.type
-    return gson.fromJson(value, mapType)
-  }
+  private fun decode(value: String, caller: String): List<String> =
+    runCatching { json.decodeFromString(stringListSerializer, value).filterNotNull() }
+      .getOrElse {
+        AppLog.e(TAG, "$caller deserialize failed; returning empty list", it)
+        emptyList()
+      }
 
-  /**
-   * Convert a Map of objects to a JSON string.
-   *
-   * @param map The Map to convert
-   * @return The JSON string, or null if the map is null
-   */
-  @TypeConverter
-  fun fromMap(map: Map<String, Any>?): String? {
-    if (map == null) {
-      return null
-    }
-    return gson.toJson(map)
+  private companion object {
+    const val TAG = "JsonConverter"
   }
 }

@@ -5,8 +5,8 @@
 //  Created by AI Assistant on 17/01/25.
 //
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 /// A view modifier that conditionally shows the WeightOnlyModeIndicator
 /// based on whether any connected scales have weight-only mode enabled by others

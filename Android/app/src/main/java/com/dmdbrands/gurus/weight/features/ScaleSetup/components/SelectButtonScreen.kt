@@ -20,6 +20,8 @@ import com.dmdbrands.gurus.weight.features.common.components.AppNote
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.SelectButtonGrid
 import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.common.helper.SelectButtonHelper
@@ -41,6 +43,8 @@ fun  SelectButton(
   content: (@Composable () -> Unit)? = null,
   onSupportingButtonClick: (() -> Unit)? = null,
   sku: String? = null,
+  imageWidth: Dp? = null,
+  imageHeight: Dp? = null,
 ) {
   Column(
     modifier = modifier
@@ -73,6 +77,8 @@ fun  SelectButton(
         onItemSelected = onItemSelected,
         modifier = Modifier.fillMaxWidth(),
         sku = sku,
+        imageWidth = imageWidth ?: 150.dp,
+        imageHeight = imageHeight ?: 84.dp,
       )
     }
 
@@ -80,7 +86,7 @@ fun  SelectButton(
       AppNote(
         message = noteMessage,
         showNote = true,
-        modifier = Modifier.padding(horizontal = spacing.sm)
+        modifier = Modifier.padding(horizontal = spacing.sm),
       )
     }
 
@@ -98,27 +104,6 @@ fun  SelectButton(
 
   }
 }
-
-// @PreviewTheme
-// @Composable
-// private fun SelectButtonWithUserNumbersPreview() {
-//   MeAppTheme {
-//     val userNumbers = (1..8).toList()
-//     var selectedUser by remember { mutableStateOf<Int?>(0) }
-//     val userButtons = SelectButtonHelper.createUserNumberButtons(userNumbers, selectedNumber = selectedUser)
-//
-//     SelectButton(
-//       title = WifiScaleSetupStrings.ChooseUser.Title,
-//       subtitle = WifiScaleSetupStrings.ChooseUser.Message,
-//       selectButtonItems = userButtons,
-//       isSelectable = true,
-//       onItemSelected = { value ->
-//         // Handle user selection
-//         selectedUser = value.toInt()
-//       },
-//     )
-//   }
-// }
 
 @PreviewTheme
 @Composable
@@ -142,25 +127,3 @@ private fun SelectButtonWithWifiModesPreview() {
   }
 }
 
-// @PreviewTheme
-// @Composable
-// private fun SelectButtonWithErrorCodesPreview() {
-//   MeAppTheme {
-//     var selectedErrorCode by remember { mutableStateOf<String?>(null) }
-//
-//     val errorButtons = SelectButtonHelper.createDefaultErrorCodeButtons(selectedErrorCode = selectedErrorCode)
-//
-//     SelectButton(
-//       title = WifiScaleSetupStrings.Error.Title,
-//       subtitle = WifiScaleSetupStrings.Error.Message,
-//       selectButtonItems = errorButtons,
-//       isSelectable = true,
-//       onItemSelected = { value ->
-//         selectedErrorCode = value
-//         // Handle error code selection
-//       },
-//       supportingButtonLabel = ScaleSetupStrings.SetupButtons.SomethingElse,
-//       onSupportingButtonClick = {},
-//     )
-//   }
-// }

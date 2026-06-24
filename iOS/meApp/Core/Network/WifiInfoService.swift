@@ -1,6 +1,6 @@
 import Foundation
-import SystemConfiguration.CaptiveNetwork
 import NetworkExtension
+import SystemConfiguration.CaptiveNetwork
 
 /// Lightweight helper for retrieving the phone's currently connected Wi-Fi SSID.
 ///
@@ -11,8 +11,7 @@ enum WifiInfoService {
     static func currentSSID() async -> String? {
         // iOS 14+: Use the modern NetworkExtension API when possible.
         if #available(iOS 14.0, *) {
-            if let hotspotNetwork =  await NEHotspotNetwork.fetchCurrent()
-                {
+            if let hotspotNetwork = await NEHotspotNetwork.fetchCurrent() {
                 return hotspotNetwork.ssid
             }
         }

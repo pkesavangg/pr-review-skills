@@ -70,11 +70,9 @@ struct PasswordStepView: View {
                     onCommit: {
                         signupStore.touchAndValidate(field: .zipCode)
                         focusedField = nil // Clear focus
-                        
+
                         if signupStore.isNextEnabled {
-                            Task {
-                                await signupStore.createUser()
-                            }
+                            signupStore.moveToNextStep()
                         }
                     },
                     onEditingChanged: { isEditing in

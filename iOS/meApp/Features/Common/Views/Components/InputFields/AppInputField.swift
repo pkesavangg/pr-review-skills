@@ -25,99 +25,214 @@ struct AppInputField: View {
     // Bindings
     @Binding var value: String
     @Binding var focusedField: FocusField?
-    
+
+    // Accessibility
+    var accessibilityIdentifier: String?
+
     // Callbacks
-    var onCommit: (() -> Void)? = nil
-    var onEditingChanged: ((Bool) -> Void)? = nil
-    
+    var onCommit: (() -> Void)?
+    var onEditingChanged: ((Bool) -> Void)?
+
     // Internal state
     @FocusState private var fieldIsFocused: Bool
-    
+
     var body: some View {
+        if config.inputType == .notes {
+            textareaBody
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                inputBox
+                Text(config.errorMessage ?? "")
+                    .fontOpenSans(.body4)
+                    .foregroundColor(theme.textError)
+                    .padding(.leading, .spacingSM)
+                    .frame(height: 20, alignment: .center)
+                Spacer()
+            }
+            .frame(height: 76)
+        }
+    }
+
+    private let notesMaxCharacters = AppConstants.Input.notesMaxCharacters
+
+    private var isTextareaLabelActive: Bool {
+        focusedField == config.focusField || !value.isEmpty
+    }
+
+    private var textareaBody: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 4) {
-                // Main input container
-                ZStack(alignment: .leading) {
-                    // Floating label
-                    Text(config.label)
-                        .fontOpenSans((fieldIsFocused || !value.isEmpty) ? .subHeading2 : .subHeading1)
-                        .foregroundColor(config.isDisabled ? theme.textBody.opacity(0.38) : (config.errorMessage != nil ? theme.textError : theme.textSubheading))
-                        .offset(y: (fieldIsFocused || !value.isEmpty) ? -15 : 0)
-                        .offset(x: 16)
-                        .animation(.easeInOut(duration: 0.1), value: !value.isEmpty)
-                        .disabled(config.isDisabled)
-                    
-                    // Base input field
-                    BaseInputField(
-                        inputType: config.inputType,
-                        keyboardType: keyboardTypeForInput,
-                        submitLabel: config.submitLabel,
-                        isDisabled: config.isDisabled,
-                        fieldType: config.focusField,
-                        value: $value,
-                        focusedField: $focusedField,
-                        onCommit: onCommit,
-                        onEditingChanged: { focused in
-                            fieldIsFocused = focused
-                            onEditingChanged?(focused)
-                            if focused {
-                                focusedField = config.focusField
+            VStack(alignment: .leading, spacing: 0) {
+                ZStack(alignment: .topLeading) {
+                    TextEditor(text: $value)
+                        .font(.custom("OpenSans-Regular", size: CustomTextStyle.body3.size))
+                        .foregroundColor(theme.textSubheading)
+                        .scrollContentBackground(.hidden)
+                        .padding(.horizontal, CGFloat.spacingXS)
+                        .padding(.top, isTextareaLabelActive ? CGFloat.spacingLG : CGFloat.spacingXS)
+                        .frame(height: 100)
+                        .focused($fieldIsFocused)
+                        .accessibilityLabel(config.label)
+                        .onTapGesture {
+                            focusedField = config.focusField
+                        }
+                        .onChange(of: value) { _, newValue in
+                            if newValue.count > notesMaxCharacters {
+                                value = String(newValue.prefix(notesMaxCharacters))
                             }
                         }
-                    )
-                    .focused($fieldIsFocused)
-                    .padding(.leading, .spacingSM)
+
+                    Text(config.label)
+                        .fontOpenSans(isTextareaLabelActive ? .subHeading2 : .subHeading1)
+                        .foregroundColor(floatingLabelColor)
+                        .padding(.horizontal, CGFloat.spacingXS + 4)
+                        .padding(.vertical, CGFloat.spacingXS + 8)
+                        .offset(y: isTextareaLabelActive ? -8 : 0)
+                        .animation(.easeInOut(duration: 0.1), value: isTextareaLabelActive)
+                        .allowsHitTesting(false)
                 }
-                .padding(.vertical, .spacingXS)
-                .accentColor((config.errorMessage != nil ? theme.textError : theme.actionPrimary))
-            }
-            .frame(height: 56)
-            .background(theme.backgroundPrimary)
-            .cornerRadius(.radiusSM)
-            .overlay(
+
+                // Underline separating the text area from the counter row
+                Rectangle()
+                    .fill(theme.statusUtilityPrimary)
+                    .frame(height: 1)
+
+                // Counter row — three states: default/filled → subdued; 280/280 → error red (MOB-437)
                 HStack {
                     Spacer()
-                    trailingIconView
-                }
-            )
-            .overlay(content: {
-                theme.supportOverlay.opacity(config.isDisabled ? (colorScheme == .dark ? 0.5 : 0.2) : 0)
-                    .cornerRadius(.radiusSM)
-            })
-            .onTapGesture {
-                if !config.isDisabled {
-                    fieldIsFocused = true
-                    focusedField = config.focusField
+                    Text("\(value.count)/\(notesMaxCharacters)")
+                        .fontOpenSans(.body4)
+                        .foregroundStyle(
+                            value.count >= notesMaxCharacters
+                                ? theme.textError
+                                : theme.textSubheading
+                        )
+                        .padding(.trailing, CGFloat.spacingXS + 4)
+                        .padding(.vertical, CGFloat.spacingXS - 2)
                 }
             }
-            .onChange(of: focusedField) { oldValue, newValue in
-                if newValue == config.focusField {
-                    fieldIsFocused = true
-                } else if newValue == nil && fieldIsFocused {
-                    fieldIsFocused = false
-                }
+            .background(theme.backgroundPrimary)
+            .cornerRadius(BorderRadius.sm)
+
+            if let errorMessage = config.errorMessage {
+                Text(errorMessage)
+                    .fontOpenSans(.body4)
+                    .foregroundColor(theme.textError)
+                    .padding(.leading, .spacingSM)
+                    .padding(.top, 4)
             }
-            .onChange(of: fieldIsFocused) { oldValue, newValue in
-                if !newValue && focusedField == config.focusField {
-                    focusedField = nil
-                }
-            }
-            .onAppear {
-                if focusedField == config.focusField {
-                    fieldIsFocused = true
-                }
-            }
-            
-            Text(config.errorMessage ?? "")
-                .fontOpenSans(.subHeading2)
-                .foregroundColor(theme.textError)
-                .padding(.leading, .spacingSM)
-                .frame(height: 20, alignment: .center)
-            Spacer()
         }
-        .frame(height: 76)
+        .onChange(of: focusedField) { _, newValue in
+            if newValue == config.focusField {
+                fieldIsFocused = true
+            } else if newValue == nil && fieldIsFocused {
+                fieldIsFocused = false
+            }
+        }
+        .onChange(of: fieldIsFocused) { _, newValue in
+            if !newValue && focusedField == config.focusField {
+                focusedField = nil
+            }
+        }
     }
-    
+
+    private var inputBox: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            inputContent
+            .padding(.vertical, .spacingXS)
+            .accentColor(accentColor)
+        }
+        .frame(height: 56)
+        .background(theme.backgroundPrimary)
+        .cornerRadius(.radiusSM)
+        .overlay(alignment: .trailing) { trailingIconView }
+        .overlay { disabledOverlay }
+        .onTapGesture {
+            if !config.isDisabled {
+                fieldIsFocused = true
+                focusedField = config.focusField
+            }
+        }
+        .onChange(of: focusedField) { _, newValue in
+            if newValue == config.focusField {
+                fieldIsFocused = true
+            } else if newValue == nil && fieldIsFocused {
+                fieldIsFocused = false
+            }
+        }
+        .onChange(of: fieldIsFocused) { _, newValue in
+            if !newValue && focusedField == config.focusField {
+                focusedField = nil
+            }
+        }
+        .onAppear {
+            if focusedField == config.focusField { fieldIsFocused = true }
+        }
+    }
+
+    private var inputContent: some View {
+        HStack(spacing: 0) {
+            ZStack(alignment: .leading) {
+                floatingLabelView
+                baseInputView
+            }
+        }
+    }
+
+    private var floatingLabelView: some View {
+        Text(config.label)
+            .fontOpenSans(isFloatingLabelActive ? .subHeading2 : .subHeading1)
+            .foregroundColor(floatingLabelColor)
+            .offset(y: isFloatingLabelActive ? -15 : 0)
+            .offset(x: 16)
+            .animation(.easeInOut(duration: 0.1), value: isFloatingLabelActive)
+            .disabled(config.isDisabled)
+    }
+
+    private var baseInputView: some View {
+        BaseInputField(
+            inputType: config.inputType,
+            keyboardType: keyboardTypeForInput,
+            submitLabel: config.submitLabel,
+            isDisabled: config.isDisabled,
+            fieldType: config.focusField,
+            value: $value,
+            focusedField: $focusedField,
+            onCommit: onCommit,
+            onEditingChanged: { focused in
+            fieldIsFocused = focused
+            onEditingChanged?(focused)
+            if focused { focusedField = config.focusField }
+            },
+            accessibilityIdentifier: accessibilityIdentifier
+        )
+        .focused($fieldIsFocused)
+        .padding(.leading, .spacingSM)
+        .accessibilityLabel(config.label)
+    }
+
+    private var disabledOverlay: some View {
+        theme.supportOverlay
+            .opacity(config.isDisabled ? disabledOverlayOpacity : 0)
+            .cornerRadius(.radiusSM)
+    }
+
+    private var floatingLabelColor: Color {
+        if config.isDisabled { return theme.textBody.opacity(0.38) }
+        return config.errorMessage != nil ? theme.textError : theme.textSubheading
+    }
+
+    private var isFloatingLabelActive: Bool {
+        fieldIsFocused || !value.isEmpty
+    }
+
+    private var accentColor: Color {
+        config.errorMessage != nil ? theme.textError : theme.actionPrimary
+    }
+
+    private var disabledOverlayOpacity: Double {
+        colorScheme == .dark ? 0.5 : 0.2
+    }
+
     private var keyboardTypeForInput: UIKeyboardType {
         switch config.inputType {
         case .number, .metric:
@@ -128,16 +243,21 @@ struct AppInputField: View {
             return .default
         }
     }
-    
+
     private var trailingIconView: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
+            if let trailingLabel = config.trailingLabel {
+                Text(trailingLabel)
+                    .fontOpenSans(.subHeading1)
+                    .foregroundColor(theme.textSubheading)
+            }
             if let customIcon = config.customIcon {
                 Button(action: {
                     config.onCustomIconTap?()
-                }) {
+                }, label: {
                     AppIconView(icon: customIcon, size: IconSize(width: 35, height: 35))
                         .foregroundColor(theme.actionPrimary)
-                }
+                })
             } else {
                 if config.isDisabled && !value.isEmpty {
                     disabledIcon
@@ -159,15 +279,15 @@ struct AppInputField: View {
             withAnimation {
                 value = ""
             }
-        }) {
+        }, label: {
             AppIconView(icon: AppAssets.closeCircle)
                 .foregroundColor(config.errorMessage != nil ? theme.textError : theme.actionPrimary)
-        }
+        })
     }
 }
 
 // MARK: - APP Input Field Testing View
-struct AppInputTestingField : View {
+struct AppInputTestingField: View {
     @EnvironmentObject var themeManager: Theme
     @Environment(\.appTheme) private var theme
     @State var text: String = "Enter text here"
@@ -177,7 +297,7 @@ struct AppInputTestingField : View {
     @State var disabledText: String = "Enter text here"
     @State var modelNumber: String = ""
     @State var focusedField: FocusField?
-    
+
     var body: some View {
         VStack {
             AppInputField(
@@ -191,7 +311,7 @@ struct AppInputTestingField : View {
                 focusedField: $focusedField) {
                     focusedField = .email
                 }
-            
+
             AppInputField(
                 config: TextInputConfig(
                     label: "Email",
@@ -203,14 +323,14 @@ struct AppInputTestingField : View {
                 focusedField: $focusedField) {
                     focusedField = .password
                 }
-            
-            
+
             AppInputField(
                 config: TextInputConfig(
                     label: "Password",
                     placeholder: "Enter your password",
                     inputType: .password,
                     submitLabel: .done,
+// swiftlint:disable:next multiline_arguments
                     errorMessage: password.count < 6 && !password.isEmpty ? "Password is too short" : nil, focusField: .password
                 ),
                 value: $password,
@@ -218,7 +338,7 @@ struct AppInputTestingField : View {
             ) {
                 focusedField = .bodyFat
             }
-            
+
             AppInputField(
                 config: TextInputConfig(
                     label: "Phone Number",
@@ -229,7 +349,7 @@ struct AppInputTestingField : View {
                 value: $number,
                 focusedField: $focusedField
             )
-            
+
             AppInputField(
                 config: TextInputConfig(
                     label: "Disabled Input",
@@ -242,17 +362,14 @@ struct AppInputTestingField : View {
             ) {
                 focusedField = .password
             }
-            
+
             AppInputField(
                 config: TextInputConfig(
                     label: "Model Number",
                     placeholder: "Enter model number",
                     inputType: .text,
-                    customIcon: AppAssets.helpCircle,
-                    onCustomIconTap: {
-                        print("Custom icon tapped")
-                    }
-                ),
+                    customIcon: AppAssets.helpCircle
+                ) { },
                 value: $modelNumber,
                 focusedField: $focusedField
             ) {

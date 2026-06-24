@@ -16,12 +16,19 @@ protocol HealthKitServiceProtocol {
     /// - Parameter entry: The entry to sync.
     func syncNewData(entry: Entry) async throws
 
+    /// Syncs new HealthKit data using a notification payload.
+    /// - Parameter notification: The entry notification to sync.
+    func syncNewData(notification: EntryNotification) async throws
+
     /// Opens the Apple Health application. Useful for directing the user to Health app settings.
     func openAppleHealth()
 
     /// Checks whether the user has granted the required HealthKit permissions.
     /// - Returns: `true` if authorization has been granted for at least one required permission, `false` otherwise.
     func checkAuthorizationStatus() -> Bool
+
+    /// Returns whether stored HealthKit integration is currently out of sync with granted permissions.
+    func isHKOutOfSync() async -> Bool
 
     /// Retrieves the list of approved HealthKit permission identifiers.
     /// - Returns: An array of permission identifiers that have been granted.
@@ -31,6 +38,11 @@ protocol HealthKitServiceProtocol {
     /// - Parameter entry: The entry to delete.
     /// - Returns: True if deletion was successful, false otherwise.
     func deleteEntry(entry: Entry) async throws -> Bool
+
+    /// Deletes a specific notification payload from HealthKit.
+    /// - Parameter notification: The entry notification to delete.
+    /// - Returns: True if deletion was successful, false otherwise.
+    func deleteEntry(notification: EntryNotification) async throws -> Bool
 
     /// Clears all HealthKit data for the current user (if integrated).
     func clearHealthKit() async throws
@@ -51,4 +63,9 @@ protocol HealthKitServiceProtocol {
     /// Returns `true` if we were waiting for permissions and they are now restored.
     /// This should be called on app launch to show the success toast.
     func checkIfPermissionsRestoredAfterOutOfSync() async -> Bool
+
+    /// Returns the expected permission count used to decide whether the user has granted the
+    /// full Apple Health permission set. (MOB-405)
+    func expectedPermissionCount() async -> Int
+
 }

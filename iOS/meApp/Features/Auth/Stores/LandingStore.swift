@@ -1,5 +1,5 @@
-import Foundation
 import Combine
+import Foundation
 import SwiftUI
 
 //  LandingStore.swift
@@ -12,68 +12,78 @@ import SwiftUI
 @MainActor
 final class LandingStore: ObservableObject {
     // MARK: Dependencies
-    @Injector private var accountService: AccountService
-    @Injector private var notificationService: NotificationHelperService
-    @Injector private var logger: LoggerService
-    
+    @Injector private var accountService: AccountServiceProtocol
+    @Injector private var notificationService: NotificationHelperServiceProtocol
+    @Injector private var logger: LoggerServiceProtocol
+
     private let networkMonitor = NetworkMonitor.shared
-    
+
     // MARK: Published State
-    @Published var accounts: [Account] = []
+    @Published var accounts: [AccountSnapshot] = []
     @Published var userItems: [UserItemInfo] = []
-    
+
     let loadingLang = LoaderStrings.self
-    private let alertStrings = AlertStrings.self
+    let alertStrings = AlertStrings.self
     private let appConstants = AppConstants.self
     private let toastLang = ToastStrings.self
-    
+
     // MARK: Private
     private var cancellables: Set<AnyCancellable> = []
     private var connectionCheckTimeout: DispatchWorkItem?
     private let tag = "LandingStore"
-    
+
     // MARK: Init
     init() {
         setupAccountObservation()
         setupNetworkMonitoring()
     }
-    
+
     // MARK: - Setup Methods
-    
+
     /// Observes account changes and updates the local account list.
+    /// All saved accounts are shown — logged-in, expired, and manually logged-out.
+    /// Accounts disappear only when explicitly removed from the device.
     private func setupAccountObservation() {
-        accountService.$allAccounts
+        accountService.allAccountsPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] all in
                 guard let self = self else { return }
-                //Only show logged-in accounts
-                let loggedInAccounts = all.filter { 
+
+                // Only active accounts (isLoggedIn=true, isExpired=false) appear on the
+                // landing screen. Manually logged-out accounts (isLoggedIn=false) and
+                // auto-logged-out accounts (isExpired=true) are excluded — they should
+                // not be selectable from landing.
+                let activeAccounts = all.filter {
                     $0.isLoggedIn == true && ($0.isExpired ?? false) == false
                 }
-                
-                // Sort logged-in accounts by last active time
-                let sortedLoggedInAccounts = loggedInAccounts.sorted { lhs, rhs in
+
+                let sortByLastActive: (AccountSnapshot, AccountSnapshot) -> Bool = { lhs, rhs in
                     let lhsDate = DateTimeTools.parse(lhs.lastActiveTime ?? "") ?? .distantPast
                     let rhsDate = DateTimeTools.parse(rhs.lastActiveTime ?? "") ?? .distantPast
                     return lhsDate > rhsDate
                 }
-                
-                self.accounts = sortedLoggedInAccounts
-                
-                self.userItems = sortedLoggedInAccounts.map { account in
+
+                let sorted = activeAccounts.sorted(by: sortByLastActive)
+
+                self.accounts = sorted
+
+                self.userItems = sorted.map { account in
+                    let displayName = account.firstName?.isEmpty == false
+                        ? (account.firstName ?? account.email)
+                        : account.email
                     return UserItemInfo(
                         accountID: account.accountId,
-                        name: account.firstName?.isEmpty == false ? account.firstName! : account.email,
+                        name: displayName,
                         email: account.email,
                         isSelected: false,
-                        isExpired: false, // Only logged-in accounts are shown
+                        isExpired: false,
                         canShowSelection: false
                     )
                 }
             }
             .store(in: &cancellables)
     }
-    
+
     /// Observes network connectivity changes and shows toast when connection is lost.
     /// Implements a delay mechanism to avoid false alerts during quick network toggles.
     private func setupNetworkMonitoring() {
@@ -84,16 +94,16 @@ final class LandingStore: ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
+
     // MARK: - Network Monitoring
-    
+
     /// Handles network status changes and shows toast when network disconnects.
     /// - Parameter isConnected: Current network connection status.
     private func handleNetworkStatusChange(isConnected: Bool) {
         connectionCheckTimeout?.cancel()
-        
+
         guard !isConnected else { return }
-        
+
         // Delay the toast to avoid false alerts during quick toggles (similar to weightGurus)
         let workItem = DispatchWorkItem { [weak self] in
             guard let self = self, !self.networkMonitor.isConnected else { return }
@@ -102,7 +112,7 @@ final class LandingStore: ObservableObject {
         connectionCheckTimeout = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
     }
-    
+
     /// Shows a toast notification when network connection is lost.
     private func showNoConnectionToast() {
         let toast = ToastModel(
@@ -111,7 +121,7 @@ final class LandingStore: ObservableObject {
         )
         notificationService.showToast(toast)
     }
-    
+
     // MARK: Intent(s)
     /// Attempts to make the supplied account active.
     func switchAccount(to accountID: String) {
@@ -119,7 +129,7 @@ final class LandingStore: ObservableObject {
             logger.log(level: .error, tag: tag, message: "Account with ID \(accountID) not found")
             return
         }
-        
+
         // R1: Extract @Model data before async boundary
         let userName = account.firstName?.isEmpty == false ? account.firstName ?? account.email : account.email
 
@@ -129,7 +139,7 @@ final class LandingStore: ObservableObject {
                 notificationService.dismissLoader()
             }
             do {
-                try await accountService.switchAccount(to: account)
+                try await accountService.switchAccount(to: account.accountId)
                 notificationService.showToast(ToastModel(message: toastLang.switchingAccount(userName)))
                 logger.log(level: .info, tag: tag, message: "Switched active account to \(accountID)")
             } catch {
@@ -143,19 +153,72 @@ final class LandingStore: ObservableObject {
             }
         }
     }
-    
-    // MARK: Max Accounts Handling
+
+    // MARK: - Remove Account
+
+    /// Removes an account from this device. Prompts for confirmation first.
+    func removeAccount(user: UserItemInfo) {
+        let alertLang = alertStrings.DeleteUserAlert
+        let alert = AlertModel(
+            title: alertLang.title(user.name),
+            message: alertLang.message(user.name),
+            buttons: [
+                AlertButtonModel(title: alertLang.removeButton, type: .danger) { [weak self] _ in
+                    self?.performRemoveAccount(user: user)
+                },
+                AlertButtonModel(title: alertLang.cancelButton, type: .secondary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+
+    private func performRemoveAccount(user: UserItemInfo) {
+        guard let account = accounts.first(where: { $0.accountId == user.accountID }) else {
+            logger.log(level: .error, tag: tag, message: "Account with ID \(user.accountID) not found for removal")
+            return
+        }
+
+        // Only require connectivity when the account is still logged in.
+        let isLoggedIn = account.isLoggedIn == true && (account.isExpired ?? false) == false
+        if isLoggedIn && !networkMonitor.isConnected {
+            notificationService.showToast(ToastModel(message: toastLang.unableToConnect))
+            return
+        }
+
+        let accountId = account.accountId
+        Task {
+            notificationService.showLoader(LoaderModel(text: "Removing user..."))
+            defer { notificationService.dismissLoader() }
+            do {
+                try await accountService.removeAccountFromDevice(accountId: accountId)
+                logger.log(level: .info, tag: tag, message: "Removed account \(accountId) from device")
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to remove account \(accountId)", data: error.localizedDescription)
+                switch error {
+                case HTTPError.noInternet, HTTPError.timeout:
+                    notificationService.showToast(ToastModel(message: toastLang.unableToConnect))
+                default:
+                    notificationService.showToast(ToastModel(message: toastLang.somethingWentWrong))
+                }
+            }
+        }
+    }
+
+    // MARK: - Max Accounts Handling
     /// Returns `true` if another account can be added. If the maximum number of
     /// accounts has already been reached, shows an alert and returns `false`.
     func canAddMoreAccounts() -> Bool {
-        // accounts array already contains only logged-in, non-expired accounts
-        if accounts.count >= appConstants.Account.maxAccounts {
+        // Only count fully logged-in accounts toward the limit.
+        let loggedInCount = accounts.filter {
+            $0.isLoggedIn == true && ($0.isExpired ?? false) == false
+        }.count
+        if loggedInCount >= appConstants.Account.maxAccounts {
             showMaxUserAccountsAlert()
             return false
         }
         return true
     }
-    
+
     /// Presents an alert informing the user that the maximum number of accounts
     /// has been reached.
     private func showMaxUserAccountsAlert() {
@@ -169,7 +232,7 @@ final class LandingStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-    
+
     deinit {
       cancellables.forEach { $0.cancel() }
       cancellables.removeAll()

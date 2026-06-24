@@ -9,7 +9,7 @@ import SwiftUI
 struct MaxUserListView: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var store: BtWifiScaleSetupStore
-    let userList : [DeviceUser]
+    let userList: [DeviceUser]
     private let lang = BtWifiScaleSetupStrings.MaxUserListViewStrings.self
     var body: some View {
         VStack {
@@ -26,11 +26,10 @@ struct MaxUserListView: View {
                                 .foregroundColor(theme.textHeading)
                             
                             DeviceUserListView(
-                                users: userList,
-                                onDeleteUser: { user in
+                                users: userList
+                            ) { user in
                                     store.handleDeleteUser(user)
                                 }
-                            )
                             .padding(.top, .spacingLG)
                             
                         }

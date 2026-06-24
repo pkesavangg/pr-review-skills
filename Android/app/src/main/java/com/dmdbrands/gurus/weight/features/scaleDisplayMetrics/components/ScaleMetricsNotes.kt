@@ -39,7 +39,7 @@ fun ScaleMetricsNotes(
             icon = AppIcons.Default.WeightOnlyMode,
             buttonText = ScaleMetricsSettingStrings.WeightOnlyNotes.UpdateButton,
             onButtonClick = onUpdateScaleMode,
-            messageType = TextType.Body,
+
           )
         }
 
@@ -48,7 +48,7 @@ fun ScaleMetricsNotes(
             title = ScaleMetricsSettingStrings.OtherUserWeightOnlyModeNote.Title,
             message = ScaleMetricsSettingStrings.OtherUserWeightOnlyModeNote.Message,
             icon = AppIcons.Default.WeightOnlyMode,
-            messageType = TextType.Body,
+
           )
         }
 
@@ -64,7 +64,6 @@ fun ScaleMetricsNotes(
           iconType = AppIconType.Tertiary,
           buttonText = ScaleMetricsSettingStrings.HeartRateOffNotes.UpdateButton,
           onButtonClick = onUpdateScaleMode,
-          messageType = TextType.Body,
         )
       }
     }

@@ -54,6 +54,8 @@ object ColorPalette {
   val Teal100 = Color(0xFF65CEC8)
   val Teal200 = Color(0xFF00B3A6)
 
+  val Purple300 = Color(0xFF8841A4) // baby brand color
+
   val Yellow100 = Color(0xFFFDD663)
   val Yellow200 = Color(0xFFEDB53A)
 

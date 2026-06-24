@@ -11,6 +11,8 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DatePickerFormatter
 import androidx.compose.material3.DisplayMode
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
@@ -176,11 +178,13 @@ fun DatePickerDialogContent(
     )
   ) {
     val pickerColor = DateTimeInputDefaults.getDatePickerColor()
-    DatePicker(
-      state = datePickerState,
-      colors = pickerColor,
-      dateFormatter = datePickerFormatter,
-    )
+    CompositionLocalProvider(LocalContentColor provides MeTheme.colorScheme.primaryAction) {
+      DatePicker(
+        state = datePickerState,
+        colors = pickerColor,
+        dateFormatter = datePickerFormatter,
+      )
+    }
   }
 }
 

@@ -28,21 +28,9 @@ data class BodyScaleEntryEntity(
   val muscleMass: Double?,
   val water: Double?,
   val bmi: Double?,
-  val source: String?
+  val source: String?,
+  val note: String? = null,
 ) {
   @Ignore
   var prefix: String? = null
-
-  constructor(
-    id: Long,
-    weight: Double,
-    bodyFat: Double?,
-    muscleMass: Double?,
-    water: Double?,
-    bmi: Double?,
-    source: String?,
-    prefix: String?
-  ) : this(id, weight, bodyFat, muscleMass, water, bmi, source) {
-    this.prefix = prefix
-  }
 }

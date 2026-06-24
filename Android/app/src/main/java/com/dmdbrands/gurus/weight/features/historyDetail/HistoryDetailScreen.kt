@@ -1,10 +1,14 @@
 package com.dmdbrands.gurus.weight.features.historyDetail
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -15,31 +19,50 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEnt
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntryWithMetrics
+import com.dmdbrands.gurus.weight.features.common.components.AppBottomSheet
+import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
+import com.dmdbrands.gurus.weight.features.common.components.AppTextArea
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
-import com.dmdbrands.gurus.weight.features.historyDetail.components.HistoryDetailList
+import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
+import com.dmdbrands.gurus.weight.features.historyDetail.strings.HistoryDetailScreenStrings
+import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
+import com.dmdbrands.gurus.weight.theme.MeTheme
+import com.dmdbrands.gurus.weight.features.historyDetail.components.BabyDayHistoryList
+import com.dmdbrands.gurus.weight.features.historyDetail.components.BpHistoryDetailList
+import com.dmdbrands.gurus.weight.features.historyDetail.components.WeightHistoryDetailList
 import com.dmdbrands.gurus.weight.features.historyDetail.viewmodel.HistoryDetailIntent
 import com.dmdbrands.gurus.weight.features.historyDetail.viewmodel.HistoryDetailState
 import com.dmdbrands.gurus.weight.features.historyDetail.viewmodel.HistoryDetailViewModel
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
 
 @Composable
-fun HistoryDetailScreen(monthKey: String) {
+fun HistoryDetailScreen(
+    monthKey: String,
+    productType: ProductType =
+        ProductType.MY_WEIGHT,
+) {
     val viewModel: HistoryDetailViewModel = hiltViewModel<HistoryDetailViewModel, HistoryDetailViewModel.Factory>(
         creationCallback = { factory ->
-            factory.create(monthKey)
+            factory.create(monthKey, productType)
         },
     )
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val isRefreshing = state.isLoading
 
     HistoryDetailScreenContent(
         state = state,
+        productType = productType,
         isRefreshing = isRefreshing,
         onRefresh = { viewModel.handleIntent(HistoryDetailIntent.Refresh) },
         handleIntent = viewModel::handleIntent,
@@ -49,6 +72,8 @@ fun HistoryDetailScreen(monthKey: String) {
 @Composable
 fun HistoryDetailScreenContent(
     state: HistoryDetailState,
+    productType: ProductType =
+        ProductType.MY_WEIGHT,
     isRefreshing: Boolean = false,
     onRefresh: (() -> Unit)? = null,
     handleIntent: (HistoryDetailIntent) -> Unit,
@@ -74,19 +99,87 @@ fun HistoryDetailScreenContent(
                 }
 
                 else -> {
-                    HistoryDetailList(
-                        historyDetails = state.historyItems,
-                        itemsOpened = state.itemsOpened,
-                        onItemsOpen = {
-                            handleIntent(HistoryDetailIntent.SetItemsOpened(it))
-                        },
-                        onItemDelete = {
-                            handleIntent(HistoryDetailIntent.DeleteEntry(it))
+                    when (productType) {
+                        ProductType.BLOOD_PRESSURE -> {
+                            BpHistoryDetailList(
+                                entries = state.historyItems.filterIsInstance<BpmEntry>(),
+                                expandedIds = state.itemsOpened,
+                                onToggleExpand = { id ->
+                                    val newIds = if (state.itemsOpened.contains(id)) {
+                                        state.itemsOpened.filter { it != id }
+                                    } else {
+                                        state.itemsOpened + id
+                                    }
+                                    handleIntent(HistoryDetailIntent.SetItemsOpened(newIds))
+                                },
+                                onEditEntry = { handleIntent(HistoryDetailIntent.EditEntry(it)) },
+                            )
                         }
-                    )
+                        ProductType.BABY -> {
+                            BabyDayHistoryList(
+                                entries = state.historyItems.filterIsInstance<BabyEntry>(),
+                                isMetric = state.isMetric,
+                                onEditEntry = { handleIntent(HistoryDetailIntent.EditEntry(it)) },
+                            )
+                        }
+                        else -> {
+                            WeightHistoryDetailList(
+                                historyDetails = state.historyItems.filterIsInstance<ScaleEntry>(),
+                                itemsOpened = state.itemsOpened,
+                                onItemsOpen = {
+                                    handleIntent(HistoryDetailIntent.SetItemsOpened(it))
+                                },
+                                onItemDelete = {
+                                    handleIntent(HistoryDetailIntent.DeleteEntry(it))
+                                },
+                                onEditEntry = { handleIntent(HistoryDetailIntent.EditEntry(it)) },
+                            )
+                        }
+                    }
                 }
             }
         }
+    }
+
+    state.noteEditEntry?.let { entry ->
+        NoteEditBottomSheet(
+            entry = entry,
+            onSave = { note -> handleIntent(HistoryDetailIntent.SaveNote(entry, note)) },
+            onDismiss = { handleIntent(HistoryDetailIntent.DismissNoteEditor) },
+        )
+    }
+}
+
+/**
+ * Bottom-sheet modal for adding/editing an entry's note (MOB-438). Seeds the field with
+ * the entry's current note and enforces the shared 280-char limit + counter.
+ */
+@Composable
+private fun NoteEditBottomSheet(
+    entry: Entry,
+    onSave: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val noteControl = remember(entry.entry.id) {
+        FormControl.create(entry.noteText().orEmpty(), emptyList())
+    }
+    AppBottomSheet(
+        title = EntryScreenStrings.NOTES_LABEL,
+        onDismiss = onDismiss,
+    ) {
+        AppTextArea(
+            formControl = noteControl,
+            label = EntryScreenStrings.NOTES_LABEL,
+            maxLength = EntryScreenStrings.NOTES_MAX_LENGTH,
+            showCharacterCounter = true,
+        )
+        Spacer(modifier = Modifier.height(MeTheme.spacing.md))
+        AppButton(
+            label = HistoryDetailScreenStrings.SaveButton,
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { onSave(noteControl.value) },
+        )
+        Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
     }
 }
 
@@ -177,7 +270,7 @@ fun HistoryDetailScreenPreview() {
             state =
                 HistoryDetailState(
                     month = "Dec 2022",
-                    historyItems = sampleItems,
+                    historyItems = sampleItems.toImmutableList(),
                 ),
             isRefreshing = false,
             onRefresh = {},

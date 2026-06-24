@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
@@ -29,7 +30,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +38,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
+import com.dmdbrands.gurus.weight.features.common.helper.isPhoneLike
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.flow.collectLatest
@@ -58,22 +61,17 @@ enum class ButtonType {
   SuccessFilled
 }
 
-internal val ButtonType.isInlineText: Boolean
-  get() = when (this) {
-    ButtonType.InlineTextPrimary,
-    ButtonType.InlineTextSecondary,
-    ButtonType.ErrorText,
-    ButtonType.InlineTextTertiary,  -> true
-
-    ButtonType.PrimaryFilled,
-    ButtonType.SecondaryFilled,
-    ButtonType.PrimaryOutlined,
-    ButtonType.SecondaryOutlined,
-    ButtonType.TextPrimary,
-    ButtonType.TextSecondary,
-    ButtonType.TextTertiary,
-    ButtonType.SuccessFilled -> false
-  }
+/**
+ * True for the three `InlineText*` variants and `ErrorText`. Inline-text buttons
+ * opt out of fixed height and horizontal padding so they sit flush in surrounding
+ * text. Centralising the predicate ensures any future inline variant only needs to
+ * be added here — no `==` chain at call sites can fall out of sync.
+ */
+val ButtonType.isInlineText: Boolean
+  get() = this == ButtonType.InlineTextPrimary ||
+    this == ButtonType.InlineTextSecondary ||
+    this == ButtonType.InlineTextTertiary ||
+    this == ButtonType.ErrorText
 
 // Color
 // Type - outline/filled/text
@@ -255,6 +253,30 @@ object AppButtonDefaults {
       ButtonSize.Small, ButtonSize.XSmall -> MeTheme.typography.button2
     }
 
+  // Smallest font the label may shrink to before the button gives up width.
+  // Lets long labels (or large system font scales) fit on one line instead of
+  // truncating, e.g. "App Permission" clipping to "App" (MOB-174).
+  // This is an intentional readable layout floor (not a theme token): kept close
+  // to the design sizes (button1 16sp / button2 14sp) so a user who deliberately
+  // chose a large system font scale never has the label shrunk below a legible
+  // size — shrinking past this would itself be an accessibility regression
+  // (WCAG 1.4.4). The 0.5sp step is the auto-size granularity, also a layout
+  // constant rather than a typographic token.
+  private val MIN_AUTO_FONT_SIZE = 12.sp
+  private val AUTO_FONT_STEP = 0.5.sp
+
+  /**
+   * Auto-size config that caps the label at the design font size for [size] and
+   * shrinks it down to [MIN_AUTO_FONT_SIZE] when the available width is tight.
+   * Caps at the design size so default-scale buttons render unchanged.
+   */
+  fun autoSize(textStyle: TextStyle): TextAutoSize =
+    TextAutoSize.StepBased(
+      minFontSize = MIN_AUTO_FONT_SIZE,
+      maxFontSize = textStyle.fontSize,
+      stepSize = AUTO_FONT_STEP,
+    )
+
   // Applies text transformation
   fun transformText(
     text: String,
@@ -277,16 +299,16 @@ private fun rememberThrottledClick(
   throttleTime: Long = 700L,
   onClick: () -> Unit,
 ): () -> Unit {
-  // Persist across recompositions and process death safe defaults
-  var lastEmitTime by rememberSaveable { mutableStateOf(0L) }
+  var lastEmitTime by remember { mutableStateOf(0L) }
   val onClickState = rememberUpdatedState(onClick)
 
-  return {
-    // Use monotonic clock to avoid time changes affecting logic
-    val currentTime = android.os.SystemClock.elapsedRealtime()
-    if (currentTime - lastEmitTime >= throttleTime) {
-      lastEmitTime = currentTime
-      onClickState.value()
+  return remember {
+    {
+      val currentTime = android.os.SystemClock.elapsedRealtime()
+      if (currentTime - lastEmitTime >= throttleTime) {
+        lastEmitTime = currentTime
+        onClickState.value()
+      }
     }
   }
 }
@@ -324,17 +346,23 @@ fun AppButton(
   val height = AppButtonDefaults.height(size)
   val hPadding = AppButtonDefaults.horizontalPadding(size, type)
   val textStyle = AppButtonDefaults.textStyle(size)
+  // Stable across recompositions — only rebuilt when the design font size changes.
+  val autoSize = remember(textStyle.fontSize) { AppButtonDefaults.autoSize(textStyle) }
   val text = AppButtonDefaults.transformText(label, textTransform)
   val minWidth = AppButtonDefaults.minWidth(size)
   val shape = RoundedCornerShape(50)
   val vPadding = 0.dp
   val maxLines = 1
+  // Phones / folded displays keep pixel-parity fixed height; tablets use
+  // heightIn so the button can grow with the label instead of clipping the
+  // text under tablet density (MA-3713).
+  val isPhoneLike = getDeviceType().isPhoneLike
   val buttonModifier = modifier
     .then(
-      if (!type.isInlineText) {
-        Modifier.heightIn(min = height)
-      } else {
-        Modifier
+      when {
+        type.isInlineText -> Modifier
+        isPhoneLike -> Modifier.height(height)
+        else -> Modifier.heightIn(min = height)
       },
     )
     .defaultMinSize(minWidth = minWidth)
@@ -382,6 +410,7 @@ fun AppButton(
         style = textStyle,
         color = finalContentColor,
         maxLines = maxLines,
+        autoSize = autoSize,
         modifier = Modifier.padding(
           horizontal = hPadding,
           vertical = vPadding
@@ -407,7 +436,7 @@ fun AppButton(
       contentPadding = PaddingValues(vertical = vPadding, horizontal = hPadding),
       interactionSource = interactionSource,
     ) {
-      Text(text = text, style = textStyle, maxLines = maxLines)
+      Text(text = text, style = textStyle, maxLines = maxLines, autoSize = autoSize)
     }
   }
 }

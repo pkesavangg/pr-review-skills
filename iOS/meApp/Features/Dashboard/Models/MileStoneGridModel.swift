@@ -28,7 +28,7 @@ struct MileStoneGridModel {
             
         case .streak:
             // Find goal card position if it exists
-            let goalCardIndex = mileStones.firstIndex(where: { $0 == .goalCard })
+            let goalCardIndex = mileStones.firstIndex { $0 == .goalCard }
             
             if let goalPos = goalCardIndex {
                 // Check if this is a swap between immediate neighbors of goal card
@@ -72,8 +72,9 @@ struct MileStoneGridModel {
         
     }
     
-    /// Reorders the grid so goal cards start on new rows when they wouldn't fit
-    /// Similar to Android's reorderGrid function
+    // Reorders the grid so goal cards start on new rows when they wouldn't fit
+    // Similar to Android's reorderGrid function
+// swiftlint:disable:next cyclomatic_complexity
     mutating func reorderGrid(spanCount: Int, hasRemovedStreaks: Bool = false) {
         if mileStones.isEmpty { return }
         

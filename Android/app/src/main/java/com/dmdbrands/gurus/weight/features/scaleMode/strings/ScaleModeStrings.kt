@@ -4,7 +4,7 @@ object ScaleModeStrings {
   const val Title = "Mode"
   const val BioimpedanceTitle = "bioelectrical impedance analysis"
   const val BioimpedanceDescription =
-    "This scale utilizes %s (BIA) to measure all body metrics beyond weight. Selecting Weight Only disables the scale’s BIA function for all users."
+    "This scale utilizes %s (BIA) to measure all body metrics beyond weight. Selecting Weight Only disables the scale's BIA function for all users."
   const val AllBodyMetrics = "ALL BODY METRICS"
   const val WeightOnly = "WEIGHT ONLY"
 
@@ -26,11 +26,11 @@ object ScaleModeStrings {
   }
 
   object BiaModalStrings {
-    const val Title = "What’s BIA?"
+    const val Title = "What's BIA?"
     const val Messsage =
       "Bioelectrical impedance analysis (BIA) is a commonly used method for measuring key metrics beyond weight—such as body fat, muscle mass, and body water. " +
         "\n\n To accomplish this, the scale sends a small, non-invasive electric current through your body and then compares the current to your height and weight. " +
-        "\n\n If you have a cardiac pacemaker, implantable cardioverter-defibrillator (ICD), other implanted electronic devices, are pregnant, or you just aren’t sure whether BIA is right for you, consult with your doctor before using All Body Metrics Mode."
+        "\n\n If you have a cardiac pacemaker, implantable cardioverter-defibrillator (ICD), other implanted electronic devices, are pregnant, or you just aren't sure whether BIA is right for you, consult with your doctor before using All Body Metrics Mode."
   }
 
   object UnsavedChanges {
@@ -45,6 +45,12 @@ object ScaleModeStrings {
     const val Message = "Failed to update scale settings. Please try again."
     const val Retry = "Retry"
     const val Cancel = "Cancel"
+  }
+
+  object ScaleBusyAlert {
+    const val Title = "Update Can't Be Saved"
+    const val Message = "The scale is currently busy. Wait a few moments and try again."
+    const val Dismiss = "Ok"
   }
 
   object WeightOnlyModeNotes {

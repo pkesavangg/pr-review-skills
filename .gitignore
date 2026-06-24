@@ -1,12 +1,18 @@
 # macOS
 .DS_Store
 
+# VS Code
+*.code-workspace
+
 # Xcode
 *.xcworkspace
 *.xcuserstate
 *.xcuserdata
 *.xcodeproj/project.xcworkspace/
 *.xcodeproj/xcuserdata/
+.derived-data-log-*
+DerivedData/
+.build/
 
 # Android
 *.iml
@@ -29,4 +35,23 @@ local.properties
 *.key
 credentials.json
 secrets.json
-.worktrees
+GoogleService-Info.plist
+**/GoogleService-Info.plist
+
+# Refact.ai extension state
+.refact/
+
+# Claude skill transient state
+Android/.claude/*.json
+# Lefthook local overrides (developer-specific)
+lefthook-local.yml
+
+# Developer-local Claude Code settings (user config, cache, transcripts)
+.claude/
+Android/.claude/
+# But commit shared skills so the whole team benefits from them
+!.claude/skills/
+
+# Developer convenience scripts
+Android/run.sh
+.refact/

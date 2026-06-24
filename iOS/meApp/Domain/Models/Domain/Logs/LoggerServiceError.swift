@@ -6,7 +6,6 @@
 //
 import Foundation
 
-
 /// Errors that can occur in LoggerService
 enum LoggerServiceError: LocalizedError {
     case noActiveAccount

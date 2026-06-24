@@ -11,12 +11,12 @@ struct ChipView: View {
     let text: String
     var style: ChipStyle = .normal
     var isSelected: Bool = false
-    var onTap: (() -> Void)? = nil
+    var onTap: (() -> Void)?
     
     var body: some View {
         Button(action: {
             onTap?()
-        }) {
+        }, label: {
             Text(text)
                 .fontWeight(.bold)
                 .fontOpenSans(.link1)
@@ -35,7 +35,7 @@ struct ChipView: View {
                         }
                     }
                 )
-        }
+        })
     }
 }
 
@@ -43,17 +43,11 @@ struct ChipView: View {
     VStack(spacing: 20) {
         ChipView(text: "Normal Chip") // Uses .normal style
         
-        ChipView(text: "Bordered Chip (Always)", style: .bordered) {
-            print("Tapped!")
-        }
+        ChipView(text: "Bordered Chip (Always)", style: .bordered) { }
         
-        ChipView(text: "Selected Chip", style: .bordered, isSelected: true) {
-            print("Tapped!")
-        }
+        ChipView(text: "Selected Chip", style: .bordered, isSelected: true) { }
         
-        ChipView(text: "Unselected Chip", style: .bordered, isSelected: false) {
-            print("Tapped!")
-        }
+        ChipView(text: "Unselected Chip", style: .bordered, isSelected: false) { }
     }
     .background(.gray)
 }

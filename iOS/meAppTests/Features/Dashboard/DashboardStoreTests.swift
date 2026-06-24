@@ -452,8 +452,9 @@ private func makeStore(
         // Wait for the async Combine sink to deliver data and fire metric refresh
         try? await waitUntil(timeout: 2.0) { store.state.ui.hasLoadedMetricValues }
     } else {
-        // With no data hasLoadedMetricValues never fires — just yield for bindings to settle
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        // With no data hasLoadedMetricValues never fires — yield deterministically
+        // so queued bindings settle without a fixed wall-clock wait.
+        await Task.yield()
     }
     return store
 }

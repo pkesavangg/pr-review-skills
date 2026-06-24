@@ -25,6 +25,12 @@ final class BathScaleWeightSummary: Identifiable, Equatable {
     var boneMass: Double?
     var impedance: Double?
 
+    // MARK: - BP fields
+    var systolic: Double?
+    var diastolic: Double?
+    var meanArterial: Double?
+    var entryType: String?
+
     init(
         id: UUID = UUID(),
         accountId: String,
@@ -45,7 +51,11 @@ final class BathScaleWeightSummary: Identifiable, Equatable {
         subcutaneousFatPercent: Double? = nil,
         visceralFatLevel: Double? = nil,
         boneMass: Double? = nil,
-        impedance: Double? = nil
+        impedance: Double? = nil,
+        systolic: Double? = nil,
+        diastolic: Double? = nil,
+        meanArterial: Double? = nil,
+        entryType: String? = nil
     ) {
         self.id = id
         self.accountId = accountId
@@ -67,6 +77,10 @@ final class BathScaleWeightSummary: Identifiable, Equatable {
         self.visceralFatLevel = visceralFatLevel
         self.boneMass = boneMass
         self.impedance = impedance
+        self.systolic = systolic
+        self.diastolic = diastolic
+        self.meanArterial = meanArterial
+        self.entryType = entryType
     }
     
     // MARK: - Equatable
@@ -90,8 +104,10 @@ final class BathScaleWeightSummary: Identifiable, Equatable {
                lhs.subcutaneousFatPercent == rhs.subcutaneousFatPercent &&
                lhs.visceralFatLevel == rhs.visceralFatLevel &&
                lhs.boneMass == rhs.boneMass &&
-               lhs.impedance == rhs.impedance
+               lhs.impedance == rhs.impedance &&
+               lhs.systolic == rhs.systolic &&
+               lhs.diastolic == rhs.diastolic &&
+               lhs.meanArterial == rhs.meanArterial &&
+               lhs.entryType == rhs.entryType
     }
 }
-
-

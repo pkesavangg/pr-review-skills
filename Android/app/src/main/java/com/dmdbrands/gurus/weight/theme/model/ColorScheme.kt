@@ -42,6 +42,7 @@ data class ColorScheme(
   val streak: Color,
   val utility: Color,
   val glow: Color,
+  val baby: Color,
   // Icon
   val iconPrimary: Color,
   val iconPrimaryDisabled: Color,

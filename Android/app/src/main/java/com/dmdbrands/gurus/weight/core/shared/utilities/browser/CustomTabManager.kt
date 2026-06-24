@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.core.shared.utilities.browser
 import androidx.browser.customtabs.CustomTabsCallback
 import androidx.core.net.toUri
 import com.dmdbrands.gurus.weight.core.shared.utilities.webview.WebViewLauncher
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -10,6 +11,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import android.content.Context
@@ -35,6 +38,7 @@ class CustomTabManager
     @Inject
     constructor(
         private val context: Context,
+        @ApplicationScope private val appScope: CoroutineScope,
     ) : ICustomTabManager {
         private var navigationEvent = MutableStateFlow<ChromeTabState?>(null)
         private val packageResolver = CustomTabPackageResolver(context)
@@ -72,6 +76,7 @@ class CustomTabManager
                 }
             }
 
+        private val bindMutex = Mutex()
         private var binder: CustomTabServiceBinder? = null
         private var intentBuilder: CustomTabIntentBuilder =
             CustomTabIntentBuilder(context)
@@ -79,14 +84,18 @@ class CustomTabManager
         private var packageName: String? = null
 
         override suspend fun bindService(): Boolean =
-            withContext(Dispatchers.IO) {
-                packageName = packageResolver.resolve()
-                if (packageName == null) return@withContext false
-                binder =
-                    CustomTabServiceBinder(context, packageName!!, callback).also {
-                        it.bind()
-                    }
-                return@withContext true
+            bindMutex.withLock {
+                if (binder?.session != null) return@withLock true
+                withContext(Dispatchers.IO) {
+                    packageName = packageResolver.resolve()
+                    if (packageName == null) return@withContext false
+                    val resolvedPackage = packageName ?: return@withContext false
+                    binder =
+                        CustomTabServiceBinder(context, resolvedPackage, callback).also {
+                            it.bind()
+                        }
+                    true
+                }
             }
 
         override fun unbind() {
@@ -108,8 +117,9 @@ class CustomTabManager
             }
             val uri = url.toUri()
             try {
-                if (binder?.session != null && packageName != null) {
-                    val intent = intentBuilder.build(binder!!.session, packageName, url, showBack, showShare)
+                val session = binder?.session
+                if (session != null && packageName != null) {
+                    val intent = intentBuilder.build(session, packageName, url, showBack, showShare)
                     context.let {
                         intent.launchUrl(it, uri)
                     }
@@ -126,7 +136,8 @@ class CustomTabManager
         }
 
         override fun openChromeTab(url: String) {
-            CoroutineScope(Dispatchers.IO).launch {
+            appScope.launch {
+                navigationEvent.value = null
                 val isBound = bindService()
                 delay(300)
                 if (isBound) {

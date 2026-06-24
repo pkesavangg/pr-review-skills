@@ -2,10 +2,12 @@ package com.dmdbrands.gurus.weight.features.feed.model
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
+import androidx.compose.runtime.Stable
 
 /**
  * State for Feed Landing screen
  */
+@Stable
 data class FeedLandingState(
   val feedItem: FeedItem? = null,
   val isLoading: Boolean = true,

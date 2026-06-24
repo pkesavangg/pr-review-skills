@@ -1,429 +1,536 @@
-//
-//  LoginStoreTests.swift
-//  meAppTests
-//
-
-import Testing
 import Foundation
+import SwiftUI
+import Testing
 @testable import meApp
 
 @Suite(.serialized)
 @MainActor
 struct LoginStoreTests {
-
-    // MARK: - Helpers
-
-    private func makeSUT(
-        logInResult: Account? = nil,
-        logInError: Error? = nil,
-        resetPasswordError: Error? = nil
-    ) -> (LoginStore, MockAccountService, MockNotificationHelperService, MockLoggerService) {
-        let accountService = MockAccountService()
-        let notificationService = MockNotificationHelperService()
-        let logger = MockLoggerService()
-
-        if let result = logInResult { accountService.logInResult = result }
-        if let error = logInError { accountService.logInError = error }
-        if let error = resetPasswordError { accountService.requestPasswordResetError = error }
-
-        DependencyContainer.shared.register(accountService as AccountServiceProtocol)
-        DependencyContainer.shared.register(notificationService as NotificationHelperService)
-        DependencyContainer.shared.register(logger as LoggerServiceProtocol)
-
-        let store = LoginStore()
-        _ = store.accountService
-        _ = store.notificationService
-        _ = store.logger
-        return (store, accountService, notificationService, logger)
-    }
-
-    private func fillValidForm(_ store: LoginStore,
-                               email: String = "test@example.com",
-                               password: String = "password123") {
-        store.loginForm.email.value = email
-        store.loginForm.password.value = password
-    }
-
-    // MARK: - Initial state
-
-    @Test("initial showPassword is false")
-    func initialShowPasswordIsFalse() {
+    @Test("initial state")
+    func initialState() {
         let (store, _, _, _) = makeSUT()
+
         #expect(store.showPassword == false)
-    }
-
-    @Test("initial isFormSubmitting is false")
-    func initialIsFormSubmittingIsFalse() {
-        let (store, _, _, _) = makeSUT()
         #expect(store.isFormSubmitting == false)
-    }
-
-    @Test("initial errorMessage is nil")
-    func initialErrorMessageIsNil() {
-        let (store, _, _, _) = makeSUT()
         #expect(store.errorMessage == nil)
-    }
-
-    @Test("initial isFromAccountSwitching is false")
-    func initialIsFromAccountSwitchingIsFalse() {
-        let (store, _, _, _) = makeSUT()
+        #expect(store.isLoading == false)
+        #expect(store.loginForm.email.value == "")
+        #expect(store.loginForm.password.value == "")
         #expect(store.isFromAccountSwitching == false)
+        #expect(store.isFormValid == false)
     }
 
-    @Test("initial form is invalid (both fields empty)")
-    func initialFormIsInvalid() {
+    @Test("prefill email updates value and keeps control pristine")
+    func prefillEmail() {
         let (store, _, _, _) = makeSUT()
-        #expect(!store.isFormValid)
-    }
 
-    // MARK: - prefillEmailIfNeeded
-
-    @Test("prefillEmailIfNeeded with nil email does nothing")
-    func prefillNilEmailDoesNothing() {
-        let (store, _, _, _) = makeSUT()
-        store.prefillEmailIfNeeded(nil)
-        #expect(store.loginForm.email.value == "")
-    }
-
-    @Test("prefillEmailIfNeeded with empty string does nothing")
-    func prefillEmptyEmailDoesNothing() {
-        let (store, _, _, _) = makeSUT()
-        store.prefillEmailIfNeeded("")
-        #expect(store.loginForm.email.value == "")
-    }
-
-    @Test("prefillEmailIfNeeded sets email value without marking dirty")
-    func prefillEmailSetValueNotDirty() {
-        let (store, _, _, _) = makeSUT()
         store.prefillEmailIfNeeded("prefilled@example.com")
+
         #expect(store.loginForm.email.value == "prefilled@example.com")
-        #expect(!store.loginForm.email.isDirty)
+        #expect(store.loginForm.email.isDirty == false)
+
+        store.prefillEmailIfNeeded(nil)
+        #expect(store.loginForm.email.value == "prefilled@example.com")
+
+        store.prefillEmailIfNeeded("")
+        #expect(store.loginForm.email.value == "prefilled@example.com")
     }
 
-    // MARK: - setEmailTouched / setPasswordTouched
-
-    @Test("setEmailTouched marks email control as touched")
-    func setEmailTouchedMarksTouched() {
+    @Test("touch helpers mark controls touched")
+    func touchHelpers() {
         let (store, _, _, _) = makeSUT()
-        #expect(!store.loginForm.email.isTouched)
+
+        #expect(store.loginForm.email.isTouched == false)
+        #expect(store.loginForm.password.isTouched == false)
+
         store.setEmailTouched()
-        #expect(store.loginForm.email.isTouched)
-    }
-
-    @Test("setPasswordTouched marks password control as touched")
-    func setPasswordTouchedMarksTouched() {
-        let (store, _, _, _) = makeSUT()
-        #expect(!store.loginForm.password.isTouched)
         store.setPasswordTouched()
-        #expect(store.loginForm.password.isTouched)
+
+        #expect(store.loginForm.email.isTouched == true)
+        #expect(store.loginForm.password.isTouched == true)
     }
 
-    // MARK: - toggleShowPassword
-
-    @Test("toggleShowPassword flips showPassword from false to true")
-    func toggleShowPasswordFlips() {
+    @Test("toggle show password")
+    func toggleShowPassword() {
         let (store, _, _, _) = makeSUT()
+
         #expect(store.showPassword == false)
         store.toggleShowPassword()
         #expect(store.showPassword == true)
-    }
-
-    @Test("toggleShowPassword flips showPassword back to false")
-    func toggleShowPasswordFlipsBack() {
-        let (store, _, _, _) = makeSUT()
-        store.toggleShowPassword()
         store.toggleShowPassword()
         #expect(store.showPassword == false)
     }
 
-    // MARK: - logIn: guard on invalid form
-
-    @Test("logIn with empty form does not call accountService")
-    func loginWithInvalidFormSkipsAccountService() async {
-        let (store, accountService, _, _) = makeSUT()
-        await store.logIn()
-        #expect(accountService.logInCallCount == 0)
-    }
-
-    @Test("logIn with invalid email does not call accountService")
-    func loginWithInvalidEmailSkipsAccountService() async {
-        let (store, accountService, _, _) = makeSUT()
-        store.loginForm.email.value = "not-an-email"
-        store.loginForm.password.value = "password123"
-        await store.logIn()
-        #expect(accountService.logInCallCount == 0)
-    }
-
-    @Test("logIn with short password does not call accountService")
-    func loginWithShortPasswordSkipsAccountService() async {
-        let (store, accountService, _, _) = makeSUT()
-        store.loginForm.email.value = "user@example.com"
-        store.loginForm.password.value = "abc"
-        await store.logIn()
-        #expect(accountService.logInCallCount == 0)
-    }
-
-    // MARK: - logIn: success
-
-    @Test("logIn success calls accountService.logIn once")
-    func loginSuccessCallsAccountService() async {
-        let (store, accountService, _, _) = makeSUT()
-        fillValidForm(store)
-        await store.logIn()
-        #expect(accountService.logInCallCount == 1)
-    }
-
-    @Test("logIn passes normalized (trimmed) email to accountService")
-    func loginPassesTrimmedEmailToAccountService() async {
-        let (store, accountService, _, _) = makeSUT()
-        fillValidForm(store, email: "  user@example.com  ")
-        await store.logIn()
-        #expect(accountService.lastLogInEmail == "user@example.com")
-    }
-
-    @Test("logIn passes password to accountService")
-    func loginPassesPasswordToAccountService() async {
-        let (store, accountService, _, _) = makeSUT()
-        fillValidForm(store, password: "mypassword")
-        await store.logIn()
-        #expect(accountService.lastLogInPassword == "mypassword")
-    }
-
-    @Test("logIn success triggers onLoginSuccess callback")
-    func loginSuccessTriggersOnLoginSuccess() async {
+    @Test("browser binding clears all browser states")
+    func browserBindingClearsState() {
         let (store, _, _, _) = makeSUT()
-        var loginSuccessCalled = false
-        store.onLoginSuccess = { loginSuccessCalled = true }
-        fillValidForm(store)
-        await store.logIn()
-        #expect(loginSuccessCalled)
+
+        store.showPrivacyBrowser = true
+        store.showTermsBrowser = true
+        store.showHelpBrowser = true
+        store.browserURL = URL(string: "https://example.com")
+
+        #expect(store.isBrowserPresented.wrappedValue == true)
+
+        store.isBrowserPresented.wrappedValue = false
+
+        #expect(store.showPrivacyBrowser == false)
+        #expect(store.showTermsBrowser == false)
+        #expect(store.showHelpBrowser == false)
+        #expect(store.browserURL == nil)
+        #expect(store.isBrowserPresented.wrappedValue == false)
     }
 
-    @Test("logIn success with account switching triggers dismissAction")
-    func loginSuccessWithAccountSwitchingTriggersDismiss() async {
-        let (store, _, _, _) = makeSUT()
-        var loginSuccessCalled = false
-        var dismissCalled = false
-        store.onLoginSuccess = { loginSuccessCalled = true }
+    @Test("logIn invalid form: exits early")
+    func logInInvalidForm() async {
+        let (store, accountService, _, notificationService) = makeSUT()
+
+        await store.logIn()
+
+        #expect(accountService.logInCalls == 0)
+        #expect(notificationService.isLoaderVisible == false)
+        #expect(store.isFormSubmitting == false)
+    }
+
+    @Test("logIn success: calls account service and fires success callback")
+    func logInSuccess() async {
+        let (store, accountService, _, notificationService) = makeSUT()
+        accountService.logInResult = .success(())
+
+        var didSucceed = false
+        store.onLoginSuccess = { didSucceed = true }
+        store.loginForm.email.value = " user@example.com "
+        store.loginForm.password.value = "secret123"
+
+        await store.logIn()
+
+        #expect(accountService.logInCalls == 1)
+        #expect(accountService.lastLoginEmail == "user@example.com")
+        #expect(accountService.lastLoginPassword == "secret123")
+        #expect(didSucceed == true)
+        #expect(store.isFormSubmitting == false)
+        #expect(notificationService.isLoaderVisible == false)
+    }
+
+    @Test("logIn trims email before API call")
+    func logInTrimsEmailBeforeAPICall() async {
+        let (store, accountService, _, _) = makeSUT()
+        accountService.logInResult = .success(())
+
+        store.loginForm.email.value = "  user@example.com  "
+        store.loginForm.password.value = "secret123"
+
+        await store.logIn()
+
+        #expect(accountService.logInCalls == 1)
+        #expect(accountService.lastLoginEmail == "user@example.com")
+    }
+
+    @Test("logIn account switching: does not fire onLoginSuccess")
+    func logInAccountSwitchingSkipsSuccessCallback() async {
+        let (store, accountService, _, _) = makeSUT()
+        accountService.logInResult = .success(())
         store.isFromAccountSwitching = true
-        fillValidForm(store)
+
+        var didSucceed = false
+        store.onLoginSuccess = { didSucceed = true }
+        store.loginForm.email.value = "user@example.com"
+        store.loginForm.password.value = "secret123"
+
         await store.logIn()
-        #expect(!loginSuccessCalled)
-        #expect(!dismissCalled)  // dismissAction is nil by default — no crash
-        _ = dismissCalled  // suppress unused warning
+
+        #expect(accountService.logInCalls == 1)
+        #expect(didSucceed == false)
     }
 
-    @Test("logIn success resets isFormSubmitting to false")
-    func loginSuccessResetsFormSubmitting() async {
-        let (store, _, _, _) = makeSUT()
-        fillValidForm(store)
+    @Test("logIn unauthorized: shows invalid credentials toast")
+    func logInUnauthorizedError() async {
+        let (store, accountService, _, notificationService) = makeSUT()
+        accountService.logInResult = .failure(HTTPError.unauthorized)
+
+        store.loginForm.email.value = "user@example.com"
+        store.loginForm.password.value = "secret123"
+
         await store.logIn()
-        #expect(store.isFormSubmitting == false)
+
+        #expect(accountService.logInCalls == 1)
+        #expect(notificationService.isToastVisible == true)
+        #expect(notificationService.toastData?.title == LoginStoreTestText.loginErrorTitle)
     }
 
-    @Test("logIn success shows then dismisses loader")
-    func loginSuccessShowsThenDismissesLoader() async {
-        let (store, _, notificationService, _) = makeSUT()
-        fillValidForm(store)
+    @Test("logIn network timeout: shows network toast")
+    func logInTimeoutError() async {
+        let (store, accountService, _, notificationService) = makeSUT()
+        accountService.logInResult = .failure(HTTPError.timeout)
+
+        store.loginForm.email.value = "user@example.com"
+        store.loginForm.password.value = "secret123"
+
         await store.logIn()
-        #expect(notificationService.showLoaderCallCount == 1)
-        #expect(notificationService.dismissLoaderCallCount == 1)
+
+        #expect(notificationService.isToastVisible == true)
+        #expect(notificationService.toastData?.title == LoginStoreTestText.networkErrorTitle)
     }
 
-    // MARK: - logIn: error handling
+    @Test("logIn unknown failure: shows generic toast")
+    func logInUnknownError() async {
+        let (store, accountService, _, notificationService) = makeSUT()
+        accountService.logInResult = .failure(AuthStoreTestError.generic)
 
-    @Test("logIn unauthorized error shows invalidCredentials toast")
-    func loginUnauthorizedShowsInvalidCredentialsToast() async {
-        let (store, _, notificationService, _) = makeSUT(logInError: HTTPError.unauthorized)
-        fillValidForm(store)
+        store.loginForm.email.value = "user@example.com"
+        store.loginForm.password.value = "secret123"
+
         await store.logIn()
-        #expect(notificationService.showToastCallCount == 1)
-        #expect(notificationService.lastShownToast?.message == ToastStrings.invalidCredentials)
+
+        #expect(notificationService.isToastVisible == true)
+        #expect(notificationService.toastData?.title == LoginStoreTestText.loginErrorTitle)
     }
 
-    @Test("logIn noInternet error shows unableToConnect toast")
-    func loginNoInternetShowsUnableToConnectToast() async {
-        let (store, _, notificationService, _) = makeSUT(logInError: HTTPError.noInternet)
-        fillValidForm(store)
+    @Test("logIn max accounts reached: shows max users alert")
+    func logInMaxAccountsReached() async {
+        let (store, accountService, _, notificationService) = makeSUT()
+        accountService.logInResult = .failure(AccountError.maxAccountsReached)
+
+        store.loginForm.email.value = "user@example.com"
+        store.loginForm.password.value = "secret123"
+
         await store.logIn()
-        #expect(notificationService.lastShownToast?.message == ToastStrings.unableToConnect)
+
+        #expect(accountService.logInCalls == 1)
+        #expect(notificationService.isAlertVisible == true)
+        #expect(notificationService.alertData?.title == LoginStoreTestText.maxUsersAlertTitle)
+        #expect(notificationService.alertData?.message == LoginStoreTestText.maxUsersLoginAndRemoveMessage)
+        #expect(notificationService.isLoaderVisible == false)
     }
 
-    @Test("logIn timeout error shows unableToConnect toast")
-    func loginTimeoutShowsUnableToConnectToast() async {
-        let (store, _, notificationService, _) = makeSUT(logInError: HTTPError.timeout)
-        fillValidForm(store)
-        await store.logIn()
-        #expect(notificationService.lastShownToast?.message == ToastStrings.unableToConnect)
-    }
+    @Test("showPasswordResetPrompt sets reset state and shows alert")
+    func showPasswordResetPrompt() {
+        let (store, _, _, notificationService) = makeSUT()
+        store.loginForm.email.value = "  user@example.com  "
 
-    @Test("logIn serverError shows somethingWentWrong toast")
-    func loginServerErrorShowsSomethingWentWrongToast() async {
-        let (store, _, notificationService, _) = makeSUT(logInError: HTTPError.serverError)
-        fillValidForm(store)
-        await store.logIn()
-        #expect(notificationService.lastShownToast?.message == ToastStrings.somethingWentWrong)
-    }
-
-    @Test("logIn unknown error shows somethingWentWrong toast")
-    func loginUnknownErrorShowsSomethingWentWrongToast() async {
-        let unknownError = NSError(domain: "Unknown", code: 999)
-        let (store, _, notificationService, _) = makeSUT(logInError: unknownError)
-        fillValidForm(store)
-        await store.logIn()
-        #expect(notificationService.lastShownToast?.message == ToastStrings.somethingWentWrong)
-    }
-
-    @Test("logIn maxAccountsReached shows alert not toast")
-    func loginMaxAccountsReachedShowsAlert() async {
-        let (store, _, notificationService, _) = makeSUT(logInError: AccountError.maxAccountsReached)
-        fillValidForm(store)
-        await store.logIn()
-        #expect(notificationService.showAlertCallCount == 1)
-        #expect(notificationService.showToastCallCount == 0)
-    }
-
-    @Test("logIn error resets isFormSubmitting to false")
-    func loginErrorResetsFormSubmitting() async {
-        let (store, _, _, _) = makeSUT(logInError: HTTPError.serverError)
-        fillValidForm(store)
-        await store.logIn()
-        #expect(store.isFormSubmitting == false)
-    }
-
-    @Test("logIn error shows then dismisses loader")
-    func loginErrorShowsThenDismissesLoader() async {
-        let (store, _, notificationService, _) = makeSUT(logInError: HTTPError.serverError)
-        fillValidForm(store)
-        await store.logIn()
-        #expect(notificationService.showLoaderCallCount == 1)
-        #expect(notificationService.dismissLoaderCallCount == 1)
-    }
-
-    @Test("logIn clears errorMessage at start")
-    func loginClearsErrorMessageAtStart() async {
-        let (store, _, _, _) = makeSUT()
-        store.errorMessage = "old error"
-        fillValidForm(store)
-        await store.logIn()
-        #expect(store.errorMessage == nil)
-    }
-
-    // MARK: - isFormValid / emailError / passwordError
-
-    @Test("isFormValid reflects form validity")
-    func isFormValidReflectsFormValidity() {
-        let (store, _, _, _) = makeSUT()
-        #expect(!store.isFormValid)
-        fillValidForm(store)
-        #expect(store.isFormValid)
-    }
-
-    @Test("emailError is nil when email not touched or dirty")
-    func emailErrorIsNilWhenNotTouched() {
-        let (store, _, _, _) = makeSUT()
-        #expect(store.emailError == nil)
-    }
-
-    @Test("passwordError is nil when password not touched or dirty")
-    func passwordErrorIsNilWhenNotTouched() {
-        let (store, _, _, _) = makeSUT()
-        #expect(store.passwordError == nil)
-    }
-
-    @Test("emailError shows error after email marked dirty with empty value")
-    func emailErrorAfterDirty() {
-        let (store, _, _, _) = makeSUT()
-        store.loginForm.email.markAsDirty()
-        store.loginForm.email.validate()
-        #expect(store.emailError != nil)
-    }
-
-    @Test("passwordError shows error after password marked dirty with empty value")
-    func passwordErrorAfterDirty() {
-        let (store, _, _, _) = makeSUT()
-        store.loginForm.password.markAsDirty()
-        store.loginForm.password.validate()
-        #expect(store.passwordError != nil)
-    }
-
-    // MARK: - Password reset
-
-    @Test("showPasswordResetPrompt sets showResetPrompt to true")
-    func showPasswordResetPromptSetsFlag() {
-        let (store, _, _, _) = makeSUT()
         store.showPasswordResetPrompt()
+
         #expect(store.showResetPrompt == true)
+        #expect(store.resetEmail == "user@example.com")
+        #expect(store.isPasswordResetAlertVisible == true)
+        #expect(notificationService.isAlertVisible == true)
+        #expect(notificationService.alertData?.title == LoginStoreTestText.passwordResetAlertTitle)
+        #expect(notificationService.alertData?.message == LoginStoreTestText.passwordResetAlertMessage)
+        #expect(notificationService.alertData?.inputField?.value == "user@example.com")
     }
 
-    @Test("showPasswordResetPrompt prefills resetEmail from form email value")
-    func showPasswordResetPromptPrefillsEmail() {
-        let (store, _, _, _) = makeSUT()
-        store.loginForm.email.value = "reset@example.com"
+    @Test("password reset cancel: hides alert state and triggers dismiss callback")
+    func passwordResetCancelAction() {
+        let (store, accountService, _, notificationService) = makeSUT()
+        store.loginForm.email.value = "user@example.com"
+
+        var dismissCalled = false
+        store.onPasswordResetAlertDismissed = { dismissCalled = true }
         store.showPasswordResetPrompt()
-        #expect(store.resetEmail == "reset@example.com")
+
+        guard let cancelButton = notificationService.alertData?.buttons.first else {
+            Issue.record("Expected reset alert cancel button")
+            return
+        }
+
+        cancelButton.action(nil)
+
+        #expect(dismissCalled == true)
+        #expect(store.isPasswordResetAlertVisible == false)
+        #expect(accountService.requestPasswordResetCalls == 0)
     }
 
-    @Test("showPasswordResetPrompt clears resetError")
-    func showPasswordResetPromptClearsError() {
-        let (store, _, _, _) = makeSUT()
-        store.resetError = "previous error"
+    @Test("password reset submit: triggers dismiss callback")
+    func passwordResetSubmitDismissCallback() async {
+        let (store, accountService, _, notificationService) = makeSUT()
+        accountService.requestPasswordResetResult = .success(())
+        store.loginForm.email.value = "user@example.com"
+
+        var dismissCalled = false
+        store.onPasswordResetAlertDismissed = { dismissCalled = true }
         store.showPasswordResetPrompt()
+
+        guard let submitButton = notificationService.alertData?.buttons.last else {
+            Issue.record("Expected reset alert submit button")
+            return
+        }
+
+        submitButton.action(nil)
+        await waitUntil { accountService.requestPasswordResetCalls == 1 }
+
+        #expect(dismissCalled == true)
+        #expect(store.isPasswordResetAlertVisible == false)
+    }
+
+    @Test("password reset invalid email: does not call API and shows validation error")
+    func passwordResetInvalidEmailFromAlertSubmit() async {
+        let (store, accountService, _, notificationService) = makeSUT()
+        store.loginForm.email.value = "bad-email"
+        store.showPasswordResetPrompt()
+
+        guard let submitButton = notificationService.alertData?.buttons.last else {
+            Issue.record("Expected reset alert submit button")
+            return
+        }
+
+        submitButton.action("bad-email")
+        await drainMainActorTasks()
+
+        #expect(accountService.requestPasswordResetCalls == 0)
+        #expect(store.resetError != nil)
+        #expect(notificationService.isToastVisible == true)
+    }
+
+    @Test("password reset success: calls API and clears prompt")
+    func passwordResetSuccessFromAlertSubmit() async {
+        let (store, accountService, _, notificationService) = makeSUT()
+        accountService.requestPasswordResetResult = .success(())
+        store.loginForm.email.value = "user@example.com"
+        store.showPasswordResetPrompt()
+
+        guard let submitButton = notificationService.alertData?.buttons.last else {
+            Issue.record("Expected reset alert submit button")
+            return
+        }
+
+        submitButton.action(nil)
+        await waitUntil {
+            accountService.requestPasswordResetCalls == 1
+        }
+
+        #expect(accountService.requestPasswordResetCalls == 1)
+        #expect(accountService.lastPasswordResetEmail == "user@example.com")
+        #expect(store.showResetPrompt == false)
         #expect(store.resetError == nil)
+        #expect(notificationService.isLoaderVisible == false)
     }
 
-    @Test("handlePasswordReset success via mock account service")
-    func passwordResetRequestSucceeds() async {
-        let (store, accountService, notificationService, _) = makeSUT()
+    @Test("password reset failure: sets resetError")
+    func passwordResetFailureFromAlertSubmit() async {
+        let (store, accountService, _, notificationService) = makeSUT()
+        accountService.requestPasswordResetResult = .failure(AuthStoreTestError.generic)
         store.loginForm.email.value = "user@example.com"
         store.showPasswordResetPrompt()
 
-        // Simulate the alert submit callback by calling handlePasswordReset directly via reflection
-        // Instead, test via accountService stubbing + resetError observation
-        accountService.requestPasswordResetError = nil
-        // We can't call private handlePasswordReset directly; verify via showPasswordResetPrompt state
-        #expect(store.showResetPrompt == true)
-        #expect(accountService.requestPasswordResetCallCount == 0)  // not called yet (alert not submitted)
-        _ = notificationService  // alert was shown
+        guard let submitButton = notificationService.alertData?.buttons.last else {
+            Issue.record("Expected reset alert submit button")
+            return
+        }
+
+        submitButton.action("user@example.com")
+        await waitUntil {
+            accountService.requestPasswordResetCalls == 1 || store.resetError != nil
+        }
+
+        #expect(accountService.requestPasswordResetCalls == 1)
+        #expect(store.resetError == LoginStoreTestText.passwordResetFailed)
     }
 
-    @Test("showPasswordResetPrompt shows alert notification")
-    func showPasswordResetPromptShowsAlert() {
-        let (store, _, notificationService, _) = makeSUT()
-        store.showPasswordResetPrompt()
-        #expect(notificationService.showAlertCallCount == 1)
-    }
-
-    // MARK: - handleExit: clean form
-
-    @Test("handleExit with clean form and not account switching navigates back via router")
-    func handleExitCleanFormNavigatesBack() {
+    @Test("openPrivacy sets URL and browser flag")
+    func openPrivacy() {
         let (store, _, _, _) = makeSUT()
-        var navigateBackCalled = false
-        store.onNavigateBack = { navigateBackCalled = true }
-        // Since we can't pass a real Router, test the flag-based path:
-        // handleExit with dirty=false, isFromAccountSwitching=false, router=nil → no crash
-        store.handleExit(router: nil)
-        _ = navigateBackCalled  // router.navigateBack() is nil, so no crash expected
-        #expect(!store.isFromAccountSwitching)
+
+        store.openPrivacy()
+
+        #expect(store.showPrivacyBrowser == true)
+        #expect(store.browserURL != nil)
     }
 
-    @Test("handleExit with clean form and account switching calls dismissAction")
-    func handleExitCleanFormAccountSwitchingCallsDismiss() {
+    @Test("openTerms sets URL and browser flag")
+    func openTerms() {
         let (store, _, _, _) = makeSUT()
-        var dismissCalled = false
+
+        store.openTerms()
+
+        #expect(store.showTermsBrowser == true)
+        #expect(store.browserURL != nil)
+    }
+
+    @Test("openHelp shows modal")
+    func openHelp() {
+        let (store, _, _, notificationService) = makeSUT()
+
+        store.openHelp()
+
+        #expect(notificationService.isModalVisible == true)
+        #expect(notificationService.modalViewData.count == 1)
+    }
+
+    @Test("handleExit pristine from account switching: calls exit handler")
+    func handleExitPristineAccountSwitching() {
+        let (store, _, _, _) = makeSUT()
         store.isFromAccountSwitching = true
-        store.onAccountSwitchingExit = { dismissCalled = true }
-        store.handleExit(router: nil)
-        #expect(dismissCalled)
+
+        var exitCalled = false
+        store.onAccountSwitchingExit = { exitCalled = true }
+
+        store.handleExit()
+
+        #expect(exitCalled == true)
     }
 
-    @Test("handleExit with dirty form shows alert")
-    func handleExitDirtyFormShowsAlert() {
-        let (store, _, notificationService, _) = makeSUT()
-        // Mark form dirty
-        store.loginForm.email.value = "partial@example.com"
-        store.handleExit(router: nil)
-        #expect(notificationService.showAlertCallCount == 1)
+    @Test("handleExit pristine from account switching with no handlers does not show alert")
+    func handleExitPristineAccountSwitchingNoHandlers() {
+        let (store, _, _, notificationService) = makeSUT()
+        store.isFromAccountSwitching = true
+
+        store.handleExit()
+
+        #expect(notificationService.isAlertVisible == false)
     }
+
+    @Test("handleExit pristine non-switching: navigates back")
+    func handleExitPristineNavigatesBack() {
+        let (store, _, _, notificationService) = makeSUT()
+        let router = Router<AuthRoute>()
+        router.navigate(to: .login(nil))
+
+        #expect(router.stack.count == 1)
+
+        store.handleExit(router: router)
+
+        #expect(router.stack.isEmpty == true)
+        #expect(notificationService.isAlertVisible == false)
+    }
+
+    @Test("handleExit dirty form: shows exit confirmation alert")
+    func handleExitDirtyShowsAlert() {
+        let (store, _, _, notificationService) = makeSUT()
+        store.loginForm.email.value = "user@example.com"
+
+        store.handleExit()
+
+        #expect(notificationService.isAlertVisible == true)
+        #expect(notificationService.alertData?.buttons.count == 2)
+    }
+
+    @Test("handleExit dirty primary action navigates back")
+    func handleExitDirtyPrimaryAction() {
+        let (store, _, _, notificationService) = makeSUT()
+        let router = Router<AuthRoute>()
+        router.navigate(to: .login(nil))
+        store.loginForm.email.value = "user@example.com"
+
+        store.handleExit(router: router)
+        notificationService.alertData?.buttons.first?.action(nil)
+
+        #expect(router.stack.isEmpty == true)
+    }
+
+    @Test("handleExit dirty secondary action keeps screen state")
+    func handleExitDirtySecondaryAction() {
+        let (store, _, _, notificationService) = makeSUT()
+        let router = Router<AuthRoute>()
+        router.navigate(to: .login(nil))
+        store.loginForm.email.value = "user@example.com"
+
+        store.handleExit(router: router)
+        notificationService.alertData?.buttons.last?.action(nil)
+
+        #expect(router.stack.count == 1)
+        #expect(store.loginForm.email.value == "user@example.com")
+    }
+
+    @Test("logIn account switching with no callbacks does not trigger login success callback")
+    func logInAccountSwitchingNoCallbacks() async {
+        let (store, accountService, _, _) = makeSUT()
+        accountService.logInResult = .success(())
+        store.isFromAccountSwitching = true
+        store.loginForm.email.value = "user@example.com"
+        store.loginForm.password.value = "secret123"
+
+        var successCalled = false
+        store.onLoginSuccess = { successCalled = true }
+
+        await store.logIn()
+
+        #expect(successCalled == false)
+    }
+
+    @Test("presentingBrowserURL uses fallback when browserURL is nil")
+    func presentingBrowserURLFallback() {
+        let (store, _, _, _) = makeSUT()
+        store.browserURL = nil
+
+        #expect(store.presentingBrowserURL.absoluteString == LoginStoreTestText.baseURL)
+    }
+
+    @Test("callbacks can be assigned and executed")
+    func callbacksCanBeAssigned() {
+        let (store, _, _, _) = makeSUT()
+
+        var loginSuccessCalled = false
+        var navigateBackCalled = false
+
+        store.onLoginSuccess = { loginSuccessCalled = true }
+        store.onNavigateBack = { navigateBackCalled = true }
+
+        store.onLoginSuccess?()
+        store.onNavigateBack?()
+
+        #expect(loginSuccessCalled == true)
+        #expect(navigateBackCalled == true)
+    }
+}
+
+@MainActor
+private func makeSUT() -> (LoginStore, MockAccountService, MockLoggerService, MockNotificationHelperService) { // swiftlint:disable:this large_tuple
+    TestDependencyContainer.reset()
+
+    let accountService = MockAccountService()
+    let logger = MockLoggerService()
+    let keychain = MockKeychainService()
+    let bluetooth = MockBluetoothService()
+    let notificationService = MockNotificationHelperService()
+
+    TestDependencyContainer.registerBase(
+        logger: logger,
+        keychain: keychain,
+        bluetooth: bluetooth
+    )
+    DependencyContainer.shared.register(accountService as AccountServiceProtocol)
+    DependencyContainer.shared.register(notificationService as NotificationHelperServiceProtocol)
+
+    notificationService.dismissAllNotifications()
+    let store = LoginStore()
+    // Pin dependencies on the store instance so async tasks don't re-resolve from global container.
+    store.accountService = accountService
+    store.logger = logger
+    store.notificationService = notificationService
+    return (store, accountService, logger, notificationService)
+}
+
+@MainActor
+private func drainMainActorTasks(iterations: Int = 5) async {
+    for _ in 0..<iterations {
+        await Task.yield()
+    }
+}
+
+@MainActor
+private func waitUntil(
+    timeoutIterations: Int = 200,
+    condition: @MainActor () -> Bool
+) async {
+    for _ in 0..<timeoutIterations {
+        if condition() {
+            return
+        }
+        await Task.yield()
+    }
+}
+
+private enum AuthStoreTestError: Error {
+    case generic
+}
+
+private enum LoginStoreTestText {
+    static let loginErrorTitle = "Login Error"
+    static let networkErrorTitle = "Network Error"
+    static let passwordResetFailed = "Failed to send password reset email."
+    static let passwordResetAlertTitle = "Password Reset"
+    static let passwordResetAlertMessage = "Enter your email"
+    static let maxUsersAlertTitle = "Maximum Users Reached"
+    static let maxUsersLoginAndRemoveMessage = "Log in to a saved account, then open Settings and tap Switch Accounts to remove users."
+    static let baseURL = "https://greatergoods.com/"
 }

@@ -1,9 +1,17 @@
 package com.dmdbrands.gurus.weight.core.di
 
+import com.dmdbrands.gurus.weight.core.network.ISecureTokenStore
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.data.api.EntryApi
+import com.dmdbrands.gurus.weight.data.repository.EntryReadRepository
+import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryReadDao
+import com.dmdbrands.gurus.weight.domain.repository.IEntryReadRepository
 import com.dmdbrands.gurus.weight.data.api.IAccountFlagAPI
+import com.dmdbrands.gurus.weight.data.api.IReviewAPI
+import com.dmdbrands.gurus.weight.data.repository.ReviewRepository
+import com.dmdbrands.gurus.weight.domain.repository.IReviewRepository
 import com.dmdbrands.gurus.weight.data.api.IAuthAPI
+import com.dmdbrands.gurus.weight.data.api.IBabyAPI
 import com.dmdbrands.gurus.weight.data.api.IBodyCompAPI
 import com.dmdbrands.gurus.weight.data.api.IDeviceAPI
 import com.dmdbrands.gurus.weight.data.api.IDeviceInfoAPI
@@ -17,6 +25,11 @@ import com.dmdbrands.gurus.weight.data.api.IUserAPI
 import com.dmdbrands.gurus.weight.data.api.IUserSettingsAPI
 import com.dmdbrands.gurus.weight.data.repository.AccountFlagRepository
 import com.dmdbrands.gurus.weight.data.repository.AccountRepository
+import com.dmdbrands.gurus.weight.data.repository.BabyProfileRepository
+import com.dmdbrands.gurus.weight.data.repository.ProductSelectionRepository
+import com.dmdbrands.gurus.weight.data.storage.db.dao.BabyProfileDao
+import com.dmdbrands.gurus.weight.domain.repository.IBabyProfileRepository
+import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
 import com.dmdbrands.gurus.weight.data.repository.AppRepository
 import com.dmdbrands.gurus.weight.data.repository.BodyCompositionRepository
 import com.dmdbrands.gurus.weight.data.repository.DashboardRepository
@@ -57,6 +70,7 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
 import javax.inject.Singleton
 
 @Module
@@ -82,12 +96,14 @@ object RepositoryModule {
     @Singleton
     fun provideAccountRepository(
       accountDao: AccountDao,
+      babyProfileDao: BabyProfileDao,
       userDataStore: UserDataStore,
       tokenManager: ITokenManager,
+      secureTokenStore: ISecureTokenStore,
       authAPI: IAuthAPI,
       userAPI: IUserAPI,
     ): IAccountRepository =
-      AccountRepository(accountDao, userDataStore, tokenManager, authAPI, userAPI)
+      AccountRepository(accountDao, babyProfileDao, userDataStore, tokenManager, secureTokenStore, authAPI, userAPI)
 
     @Provides
     @Singleton
@@ -96,8 +112,9 @@ object RepositoryModule {
       accountDao: AccountDao,
       accountRepository: IAccountRepository,
       userAPI: IAuthAPI,
-      healthConnectRepository: IHealthConnectRepository
-    ): IIntegrationRepository = IntegrationRepository(accountRepository, userAPI, integrationAPI, accountDao,healthConnectRepository)
+      healthConnectRepository: IHealthConnectRepository,
+      @ApplicationScope appScope: CoroutineScope,
+    ): IIntegrationRepository = IntegrationRepository(accountRepository, userAPI, integrationAPI, accountDao, healthConnectRepository, appScope)
 
     @Provides
     @Singleton
@@ -121,7 +138,8 @@ object RepositoryModule {
       logDao: LogDao,
       supportAPI: ISupportAPI,
       accountService: IAccountService,
-    ): ILogRepository = LogRepository(logDao, supportAPI, accountService)
+      @ApplicationScope appScope: CoroutineScope,
+    ): ILogRepository = LogRepository(logDao, supportAPI, accountService, appScope)
 
     @Provides
     @Singleton
@@ -180,4 +198,32 @@ object RepositoryModule {
     fun provideAccountFlagRepository(
         accountFlagAPI: IAccountFlagAPI,
     ): IAccountFlagRepository = AccountFlagRepository(accountFlagAPI)
+
+    /** Provides the [IReviewRepository] for the unified review endpoint (MOB-378). */
+    @Provides
+    @Singleton
+    fun provideReviewRepository(
+        reviewAPI: IReviewAPI,
+    ): IReviewRepository = ReviewRepository(reviewAPI)
+
+    @Provides
+    @Singleton
+    fun provideBabyProfileRepository(
+        babyProfileDao: BabyProfileDao,
+        babyApi: IBabyAPI,
+    ): IBabyProfileRepository = BabyProfileRepository(babyProfileDao, babyApi)
+
+    @Provides
+    @Singleton
+    fun provideProductSelectionRepository(
+        userDataStore: com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore,
+        babyProfileDao: BabyProfileDao,
+        deviceDao: DeviceDao,
+    ): IProductSelectionRepository = ProductSelectionRepository(userDataStore, babyProfileDao, deviceDao)
+
+    @Provides
+    @Singleton
+    fun provideEntryReadRepository(
+        entryReadDao: EntryReadDao,
+    ): IEntryReadRepository = EntryReadRepository(entryReadDao)
 }

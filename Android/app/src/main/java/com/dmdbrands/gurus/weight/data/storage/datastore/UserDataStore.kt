@@ -4,6 +4,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.core.Serializer
 import androidx.datastore.dataStore
 import com.dmdbrands.gurus.weight.core.config.AppSyncConfig
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.proto.BabyWeightUnit
 import com.dmdbrands.gurus.weight.proto.DefaultGraphSegment
 import com.dmdbrands.gurus.weight.proto.ThemeMode
 import com.dmdbrands.gurus.weight.proto.UserAccount
@@ -148,6 +150,11 @@ class UserDataStore @Inject constructor(
    * @param expiresAt The expiration timestamp for the access token.
    * @param isActive Whether the account is active.
    */
+  @Deprecated(
+    message = "Use SecureTokenStore for token storage and updateAccount() for account fields. " +
+      "Tokens must not be stored in plain DataStore.",
+    replaceWith = ReplaceWith("updateAccount(accountId, isActive = isActive)")
+  )
   suspend fun updateAccountTokens(
     accountId: String,
     refreshToken: String,
@@ -171,8 +178,7 @@ class UserDataStore @Inject constructor(
 
     // Otherwise, update the existing account
     val updated = current.toBuilder().apply {
-      val existingAccount = current.accountsMap[accountId]
-        ?: error("Account $accountId not found when updating tokens")
+      val existingAccount = requireNotNull(current.accountsMap[accountId]) { "Account not found for id: $accountId" }
 
       val updatedAccount = existingAccount.toBuilder()
         .setRefreshToken(refreshToken)
@@ -284,7 +290,20 @@ class UserDataStore @Inject constructor(
   ) {
     val current = getData()
     val existingAccount = current.accountsMap[accountId]
-      ?: throw IllegalStateException("No account found with ID $accountId")
+
+    // If the account does not exist yet, create it with the provided values
+    if (existingAccount == null) {
+      addAccount(
+        accountId = accountId,
+        isActive = isActive ?: false,
+        syncTimestamp = syncTimestamp ?: "",
+        refreshToken = refreshToken ?: "",
+        accessToken = accessToken ?: "",
+        expiresAt = expiresAt ?: "",
+        themeMode = themeMode ?: ThemeMode.SYSTEM,
+      )
+      return
+    }
 
     val updated = current.toBuilder().apply {
       val accountBuilder = existingAccount.toBuilder()
@@ -469,6 +488,68 @@ class UserDataStore @Inject constructor(
    */
   suspend fun hasShownNotificationAlertForAccount(accountId: String): Boolean =
     getData().accountsMap[accountId]?.notificationAlertShown ?: false
+
+  /**
+   * Emits the saved selected product type (raw string) for the active account.
+   * Empty string means the user has never explicitly picked.
+   */
+  val selectedProductTypeForCurrentAccountFlow: Flow<String> = dataFlow.map { prefs ->
+    prefs.accountsMap.values.firstOrNull { it.isActive }?.selectedProductType.orEmpty()
+  }
+
+  /** Emits the saved baby profile id for the active account, or null if blank. */
+  val selectedBabyProfileIdForCurrentAccountFlow: Flow<String?> = dataFlow.map { prefs ->
+    prefs.accountsMap.values.firstOrNull { it.isActive }
+      ?.selectedBabyProfileId
+      ?.ifBlank { null }
+  }
+
+  /** Persist the picked product type against [accountId]. */
+  suspend fun setSelectedProductType(accountId: String, productType: String) {
+    val current = getData()
+    val account = current.accountsMap[accountId] ?: return
+    val updated = current.toBuilder()
+      .putAccounts(accountId, account.toBuilder().setSelectedProductType(productType).build())
+      .build()
+    updateData { updated }
+  }
+
+  /**
+   * Emits the My Kids (baby) weight unit for the active account.
+   * UNSPECIFIED → LB_OZ (the canonical baby scale unit) so unmigrated
+   * accounts default to lbs & oz / in.
+   */
+  val babyWeightUnitForCurrentAccountFlow: Flow<WeightUnit> = currentAccountFlow.map { account ->
+    account?.babyWeightUnit.toWeightUnit()
+  }
+
+  /**
+   * Gets the persisted My Kids weight unit for [accountId].
+   * UNSPECIFIED / missing accounts → LB_OZ.
+   */
+  suspend fun getBabyWeightUnit(accountId: String): WeightUnit =
+    getData().accountsMap[accountId]?.babyWeightUnit.toWeightUnit()
+
+  /** Persist the My Kids weight unit for [accountId]. */
+  suspend fun setBabyWeightUnit(accountId: String, unit: WeightUnit) {
+    val protoUnit = unit.toProto()
+    updateData { current ->
+      val account = current.accountsMap[accountId] ?: return@updateData current
+      current.toBuilder()
+        .putAccounts(accountId, account.toBuilder().setBabyWeightUnit(protoUnit).build())
+        .build()
+    }
+  }
+
+  /** Persist the baby profile id against [accountId]. Pass empty string to clear. */
+  suspend fun setSelectedBabyProfileId(accountId: String, profileId: String) {
+    val current = getData()
+    val account = current.accountsMap[accountId] ?: return
+    val updated = current.toBuilder()
+      .putAccounts(accountId, account.toBuilder().setSelectedBabyProfileId(profileId).build())
+      .build()
+    updateData { updated }
+  }
 
   /**
    * Sets whether the notification alert has been shown for the specified account.
