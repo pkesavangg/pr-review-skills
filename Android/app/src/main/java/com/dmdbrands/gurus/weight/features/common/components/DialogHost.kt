@@ -301,6 +301,7 @@ fun DialogHost() {
         val reading = dialog.params["reading"] as String
         val timestamp = dialog.params["timestamp"] as String
         val preSelectedBabyId = dialog.params["preSelectedBabyId"] as? String
+        val onAssignNewBaby = dialog.params["onAssignNewBaby"] as? (() -> Unit)
 
         AssignMeasurementDialog(
           reading = reading,
@@ -309,6 +310,10 @@ fun DialogHost() {
           preSelectedBabyId = preSelectedBabyId,
           onAssign = { babyId ->
             dialog.onConfirm?.invoke(babyId)
+            dialogQueueViewModel.dismissCurrent()
+          },
+          onAssignNewBaby = {
+            onAssignNewBaby?.invoke()
             dialogQueueViewModel.dismissCurrent()
           },
           onDismiss = {

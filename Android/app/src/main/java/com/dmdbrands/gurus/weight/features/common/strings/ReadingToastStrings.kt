@@ -6,8 +6,11 @@ object ReadingToastStrings {
     fun title(type: ProductType): String = when (type) {
         ProductType.MY_WEIGHT -> "New Weight Scale Reading Received"
         ProductType.BLOOD_PRESSURE -> "New BPM Reading Received"
-        ProductType.BABY -> "New Baby Scale Reading Received"
+        ProductType.BABY -> "New Reading Received"
     }
+
+    /** Single-baby arrival card title, e.g. "New Reading Received for PRINCY". */
+    fun titleForBaby(name: String): String = "New Reading Received for ${name.uppercase()}"
 
     fun primaryAction(type: ProductType): String = when (type) {
         ProductType.BABY -> "ASSIGN"
@@ -23,6 +26,11 @@ object ReadingToastStrings {
 
     const val WrongBaby = "Have you assigned to Wrong baby?"
     const val Reassign = "Reassign"
+    const val Save = "SAVE"
+
+    /** Count-pill copy shown when multiple readings were buffered this session. */
+    fun moreReadings(count: Int): String = "$count more readings received for this session"
+    const val View = "VIEW"
 
     /** Shown when a baby scale reading arrives but no baby profile exists to save it to. */
     const val NoBabyTitle = "New Reading Received"
@@ -39,5 +47,9 @@ object ReadingToastStrings {
         const val Assign = "ASSIGN"
         const val DontAssign = "DON'T ASSIGN"
         fun age(months: Int): String = "$months months old"
+
+        /** Last row of the picker — routes into the Add-a-Baby flow instead of assigning. */
+        const val AssignNewBaby = "Assign to new baby"
+        const val AssignNewBabySubtitle = "create new baby profile"
     }
 }

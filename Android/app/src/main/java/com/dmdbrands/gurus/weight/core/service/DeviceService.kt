@@ -257,7 +257,10 @@ constructor(
       // 4. Sync new/updated devices
       for (device in devicesToSync) {
         try {
-          var savedDevice = deviceRepository.saveDeviceToApi(device, accountId)
+          // Save via the unified POST /v3/paired-device/ (§2.3) — the legacy /v3/paired-scale/
+          // POST is rejected (400) on the 2.0 backend, and paired-device is required for
+          // baby/BPM device types (MOB-598).
+          var savedDevice = deviceRepository.createPairedDevice(device, accountId)
           savedDevice = savedDevice.copy(isSynced = true)
 
           // Sync preference if needed
@@ -335,6 +338,12 @@ constructor(
             isSynced = true,
             device = apiDev.device?.copy(
               macAddress = localMatch.device?.macAddress ?: apiDev.device?.macAddress ?: "",
+              // Preserve the locally-paired broadcastId/password: the unified GET /v3/paired-device/
+              // (§2.4) omits them, so the API copy would be null and break the broadcastId match
+              // that routes a scale reading to its device (MOB-598).
+              broadcastId = apiDev.device?.broadcastId ?: localMatch.device?.broadcastId,
+              broadcastIdString = apiDev.device?.broadcastIdString ?: localMatch.device?.broadcastIdString,
+              password = apiDev.device?.password ?: localMatch.device?.password,
               isWifiConfigured = localMatch.device?.isWifiConfigured ?: apiDev.device?.isWifiConfigured ?: false,
             ),
           )
@@ -342,7 +351,12 @@ constructor(
           apiDev.copy(isSynced = true)
         }
       }
-      mergeSyncedWithUnsyncedById(syncedList, unsyncedDevices)
+      // Keep locally-synced devices the API didn't return (backend returns empty, or a device
+      // saved via paired-device isn't echoed by this GET) so a paired device never disappears
+      // from the local list and its readings keep matching (MOB-598).
+      val apiIds = syncedList.map { it.id }.toSet()
+      val localOnlySynced = syncedDevicesToStore.filter { it.id !in apiIds }
+      mergeSyncedWithUnsyncedById(syncedList + localOnlySynced, unsyncedDevices)
     } catch (e: Exception) {
       AppLog.e(tag, "Error fetching devices from API $e", )
       // Use syncedDevicesToStore (contains both already synced and newly synced devices) as fallback
@@ -382,8 +396,9 @@ constructor(
 
 
     return try {
-      // Attempt API save (online path). If offline, this throws and we fall back.
-      val savedDevice = deviceRepository.saveDeviceToApi(updatedDevice, currentAccountId ?: "")
+      // Attempt API save (online path) via the unified POST /v3/paired-device/ (§2.3).
+      // If offline, this throws and we fall back.
+      val savedDevice = deviceRepository.createPairedDevice(updatedDevice, currentAccountId ?: "")
       if (updatedPrefs?.toR4ScalePreferenceApiModel() != null) {
         deviceRepository.saveScalePreferencesToApi(
           updatedPrefs.toR4ScalePreferenceApiModel().copy(

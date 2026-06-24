@@ -27,6 +27,7 @@ import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
+import com.dmdbrands.gurus.weight.features.common.model.ReadingToast
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.strings.ReadingToastStrings
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
@@ -540,7 +541,8 @@ class AppViewModelTest {
     ) {
         val fn = AppViewModel::class.declaredMemberFunctions.first { it.name == "assignReadingToBaby" }
         fn.isAccessible = true
-        fn.callSuspend(this, "75.0 lbs", entry, babyId, babies, previousEntryIds)
+        // Trailing sourceSku (the originating scale SKU) carried into BabyEntry.source for sync.
+        fn.callSuspend(this, "75.0 lbs", entry, babyId, babies, previousEntryIds, "0220")
     }
 
     private fun aBaby(id: String = "baby1") =
@@ -566,7 +568,7 @@ class AppViewModelTest {
         assertThat(toasts.any { it is Toast.Simple && it.message == ReadingToastStrings.SaveFailed }).isTrue()
         assertThat(toasts.any { it is Toast.Custom }).isFalse()
         // A failed save must not delete the previously-assigned entries.
-        coVerify(exactly = 0) { entryService.deleteBabyEntryLocally(any()) }
+        coVerify(exactly = 0) { entryService.deleteBabyEntry(any()) }
     }
 
     @Test
@@ -584,10 +586,14 @@ class AppViewModelTest {
         advanceUntilIdle()
 
         // Reassign only removes the old entry after the new one is safely persisted.
-        coVerify { entryService.deleteBabyEntryLocally(99L) }
+        coVerify { entryService.deleteBabyEntry(99L) }
         val toasts = mutableListOf<Toast>()
         verify { dialogQueueService.showToast(capture(toasts)) }
         assertThat(toasts.any { it is Toast.Simple && it.message == ReadingToastStrings.SaveFailed }).isFalse()
-        assertThat(toasts.any { it is Toast.Custom }).isTrue()
+        // The post-assignment card confirms the baby; with no other baby its action is
+        // "Assign to new baby" rather than Reassign (MOB-598).
+        val confirmed = toasts.filterIsInstance<Toast.Custom>().map { it.content }.filterIsInstance<ReadingToast>().last()
+        assertThat(confirmed.assignedTo).isEqualTo("Emma")
+        assertThat(confirmed.assignToNewBaby).isTrue()
     }
 }

@@ -64,12 +64,17 @@ interface EntryDao {
   suspend fun insert(entry: Entry): Long {
     val entryId = insertEntryEntity(entry.entry)
 
-    if (entry is BpmEntry) insertBpm(entry.bpmEntry.copy(id = entryId))
-    else if (entry is ScaleEntry) {
-      insertBodyScale(entry.scale.scaleEntry.copy(id = entryId))
-      if (entry.scale.scaleEntryMetric != null) {
-        insertBodyScaleMetric(entry.scale.scaleEntryMetric.copy(id = entryId))
+    when (entry) {
+      is BpmEntry -> insertBpm(entry.bpmEntry.copy(id = entryId))
+      is ScaleEntry -> {
+        insertBodyScale(entry.scale.scaleEntry.copy(id = entryId))
+        if (entry.scale.scaleEntryMetric != null) {
+          insertBodyScaleMetric(entry.scale.scaleEntryMetric.copy(id = entryId))
+        }
       }
+      // Without this branch the parent entry row was written but the baby_entry child row was
+      // dropped, losing babyId/weight for scale-assigned readings (MOB-598).
+      is BabyEntry -> insertBabyEntry(entry.babyEntry.copy(id = entryId))
     }
     return entryId
   }
@@ -104,13 +109,16 @@ interface EntryDao {
     update(entry.entry)
     val id = entry.entry.id
 
-    if (entry is BpmEntry) {
-      updateBpm(entry.bpmEntry.copy(id = id))
-    } else if (entry is ScaleEntry) {
-      updateBodyScale(entry.scale.scaleEntry.copy(id = id))
-      if (entry.scale.scaleEntryMetric != null) {
-        updateBodyScaleMetric(entry.scale.scaleEntryMetric.copy(id = id))
+    when (entry) {
+      is BpmEntry -> updateBpm(entry.bpmEntry.copy(id = id))
+      is ScaleEntry -> {
+        updateBodyScale(entry.scale.scaleEntry.copy(id = id))
+        if (entry.scale.scaleEntryMetric != null) {
+          updateBodyScaleMetric(entry.scale.scaleEntryMetric.copy(id = id))
+        }
       }
+      // insertBabyEntry is a REPLACE upsert keyed by id, so it doubles as the update path (MOB-598).
+      is BabyEntry -> insertBabyEntry(entry.babyEntry.copy(id = id))
     }
     return id
   }

@@ -48,6 +48,7 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.repository.IAccountFlagRepository
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
+import com.dmdbrands.gurus.weight.domain.repository.IBabyProfileRepository
 import com.dmdbrands.gurus.weight.domain.repository.IAppRepository
 import com.dmdbrands.gurus.weight.domain.repository.IBodyCompositionRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDashboardRepository
@@ -237,6 +238,7 @@ object ServiceModule {
   fun provideEntryService(
     entryRepository: IEntryRepository,
     accountRepository: IAccountRepository,
+    babyProfileRepository: IBabyProfileRepository,
     goalService: IGoalService,
     healthConnectService: IHealthConnectService,
     healthConnectRepository: IHealthConnectRepository,
@@ -245,6 +247,7 @@ object ServiceModule {
   ): IEntryService = EntryService(
     entryRepository = entryRepository,
     accountRepository = accountRepository,
+    babyProfileRepository = babyProfileRepository,
     goalService = goalService,
     healthConnectService = healthConnectService,
     healthConnectRepository = healthConnectRepository,

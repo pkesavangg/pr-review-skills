@@ -136,7 +136,8 @@ fun UnifiedEntry.toDomainEntry(accountId: String): Entry? =
         // than persisting it as a 0-weight reading.
         EntryCategory.WEIGHT -> weight?.let { ScaleEntry.fromScaleApiEntry(toScaleApiEntry(), accountId = accountId) }
         EntryCategory.BP -> toBpmEntry(accountId)
-        EntryCategory.BABY -> toBabyEntry(accountId)
+        // Drop a baby row with no babyId — it can't satisfy the baby_entry → baby_profile FK.
+        EntryCategory.BABY -> babyId?.let { toBabyEntry(accountId) }
         else -> null
     }
 

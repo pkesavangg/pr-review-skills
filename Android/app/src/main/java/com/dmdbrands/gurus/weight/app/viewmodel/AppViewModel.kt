@@ -24,6 +24,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.data.services.OperationType
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
+import com.dmdbrands.gurus.weight.domain.enums.BabyEntryType
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
@@ -949,15 +950,25 @@ constructor(
           }
         } ?: ProductType.MY_WEIGHT
 
-        val firstEntry = entry.firstOrNull() ?: return@launch
-        val reading = formatReadingForDisplay(firstEntry, readingType)
+        // Show the latest reading in the card; any extra buffered readings (taken while
+        // disconnected) surface as a "+N more… VIEW" count pill (MOB-598).
+        val latestEntry = entry.maxByOrNull { it.entry.entryTimestamp } ?: return@launch
+        val reading = formatReadingForDisplay(latestEntry, readingType)
+        val additionalCount = (entry.size - 1).coerceAtLeast(0)
+
+        // Snapshot of baby profiles at arrival — drives the single-baby card and timeout auto-assign.
+        val babiesAtArrival = if (readingType == ProductType.BABY) availableBabyProfiles() else emptyList()
+        val singleBabyName = babiesAtArrival.singleOrNull()?.name
 
         // A baby scale reading with no baby profile has nowhere to be saved —
         // surface an "ADD A BABY" CTA instead of the assign flow (MOB-426).
-        val hasNoBabyProfile = readingType == ProductType.BABY &&
-          productSelectionManager.availableProducts.value
-            .filterIsInstance<ProductSelection.Baby>()
-            .isEmpty()
+        val hasNoBabyProfile = readingType == ProductType.BABY && babiesAtArrival.isEmpty()
+
+        // Multi-baby readings auto-assign to the last-assigned baby on timeout, if it still
+        // exists; single-baby/no-baby readings have no auto-assign target (MOB-598).
+        val autoAssignBabyId = lastAssignedBabyId
+          ?.takeIf { readingType == ProductType.BABY && babiesAtArrival.size > 1 }
+          ?.takeIf { id -> babiesAtArrival.any { it.id == id } }
 
         dialogQueueService.showToast(
           Toast.Custom(
@@ -966,20 +977,21 @@ constructor(
               type = readingType,
               timestamp = "Just now",
               noBabyProfile = hasNoBabyProfile,
+              assignTargetName = singleBabyName,
+              additionalCount = additionalCount,
               primaryAction = {
                 if (hasNoBabyProfile) {
                   viewModelScope.launch {
                     navigationService.navigateTo(AppRoute.AccountSettings.AddBaby())
                   }
                 } else if (readingType == ProductType.BABY) {
-                  val babies = availableBabyProfiles()
-                  if (babies.size == 1) {
-                    // Single baby — skip the picker and assign straight to that baby (MOB-428).
+                  if (babiesAtArrival.size == 1) {
+                    // Single baby — SAVE persists straight to that baby (no picker) (MOB-598).
                     viewModelScope.launch {
-                      assignReadingToBaby(reading, entry, babies.first().id, babies, emptyList())
+                      assignReadingToBaby(reading, entry, babiesAtArrival.first().id, babiesAtArrival, emptyList(), device?.sku)
                     }
                   } else {
-                    showAssignMeasurementDialog(reading, entry)
+                    showAssignMeasurementDialog(reading, entry, sourceSku = device?.sku)
                   }
                 } else {
                   viewModelScope.launch {
@@ -999,6 +1011,17 @@ constructor(
                 dialogQueueService.dismissToast()
                 AppLog.i(TAG, "Entry discarded via reading toast")
               },
+              onView = {
+                // "VIEW" opens History so all buffered readings can be seen (MOB-598).
+                viewModelScope.launch { navigationService.navigateTo(AppRoute.Main.History) }
+              },
+              onTimeout = autoAssignBabyId?.let { babyId ->
+                {
+                  viewModelScope.launch {
+                    assignReadingToBaby(reading, entry, babyId, babiesAtArrival, emptyList(), device?.sku)
+                  }
+                }
+              },
             ),
           ),
         )
@@ -1011,6 +1034,9 @@ constructor(
       .filterIsInstance<ProductSelection.Baby>()
       .map { it.profile }
 
+  /** Most-recently-assigned baby; the timeout auto-assign target for multi-baby readings (MOB-598). */
+  private var lastAssignedBabyId: String? = null
+
   /**
    * Shows the baby picker. On confirm, assigns the reading to the chosen baby.
    * [preSelectedBabyId] pre-selects a baby (used by Reassign); [previousEntryIds] are the
@@ -1021,6 +1047,7 @@ constructor(
     entry: List<ScaleEntry>,
     preSelectedBabyId: String? = null,
     previousEntryIds: List<Long> = emptyList(),
+    sourceSku: String? = null,
   ) {
     val babies = availableBabyProfiles()
     dialogQueueService.showDialog(
@@ -1031,11 +1058,13 @@ constructor(
           put("reading", reading)
           put("timestamp", "Just now")
           preSelectedBabyId?.let { put("preSelectedBabyId", it) }
+          // "Assign to new baby" row → leave the picker for the Add-a-Baby flow (MOB-598).
+          put("onAssignNewBaby", { viewModelScope.launch { navigationService.navigateTo(AppRoute.AccountSettings.AddBaby()) } })
         },
         onConfirm = { result ->
           val babyId = result as? String ?: return@Custom
           viewModelScope.launch {
-            assignReadingToBaby(reading, entry, babyId, babies, previousEntryIds)
+            assignReadingToBaby(reading, entry, babyId, babies, previousEntryIds, sourceSku)
           }
         },
         dismissOnBackPress = true,
@@ -1045,9 +1074,9 @@ constructor(
   }
 
   /**
-   * Persists the reading to the selected baby (local-only — MOB-428) and surfaces the
-   * post-assignment card with a Reassign affordance. When reassigning, the entries from the
-   * previously chosen baby are deleted first so the reading lands on exactly one baby.
+   * Persists the reading to the selected baby (synced to /v3/entries, category=baby — §2.16) and
+   * surfaces the post-assignment card with a Reassign affordance. When reassigning, the entries
+   * from the previously chosen baby are deleted first so the reading lands on exactly one baby.
    */
   private suspend fun assignReadingToBaby(
     reading: String,
@@ -1055,6 +1084,7 @@ constructor(
     babyId: String,
     babies: List<BabyProfile>,
     previousEntryIds: List<Long>,
+    sourceSku: String? = null,
   ) {
     try {
       val accountId = currentAccountId ?: return
@@ -1062,30 +1092,42 @@ constructor(
       // DB-insert exception. Bail before touching the previous baby's entries or claiming success,
       // so a failed write never surfaces as "Reading assigned to X" (and a later Reassign never
       // deletes a bogus -1 id, which would leave a duplicate behind).
-      val savedIds = entry.map { entryService.addBabyEntry(it.toBabyEntry(babyId, accountId)) }
+      val savedIds = entry.map { entryService.addBabyEntry(it.toBabyEntry(babyId, accountId, sourceSku)) }
       if (savedIds.any { it <= 0L }) {
         AppLog.e(TAG, "Baby entry save failed for $babyId (savedIds=$savedIds)")
         dialogQueueService.showToast(Toast.Simple(message = ReadingToastStrings.SaveFailed))
         return
       }
       // Save succeeded — now it's safe to remove the entries from the previously chosen baby.
-      previousEntryIds.forEach { entryService.deleteBabyEntryLocally(it) }
+      // deleteBabyEntry syncs the deletion to the server (operationType=delete), so a reassign
+      // never leaves the reading on both babies locally or server-side.
+      previousEntryIds.forEach { entryService.deleteBabyEntry(it) }
+      // Remember the target so a later multi-baby reading can auto-assign here on timeout (MOB-598).
+      lastAssignedBabyId = babyId
       checkAccountFlags("entry")
       AppLog.i(TAG, "Baby entry assigned to $babyId")
       babies.firstOrNull { it.id == babyId }?.let { baby ->
-        showBabyAssignedToast(reading, entry, baby, savedIds)
+        // No other baby in this snapshot → the post-assign card offers "Assign to new baby".
+        val noOtherBaby = babies.none { it.id != babyId }
+        showBabyAssignedToast(reading, entry, baby, savedIds, sourceSku, noOtherBaby)
       }
     } catch (e: Exception) {
       AppLog.e(TAG, "Error saving baby entry", e)
     }
   }
 
-  /** Post-assignment card ("Reading assigned to X") whose Reassign re-opens the picker. */
+  /**
+   * Post-assignment card ("Reading assigned to X"). Its action re-opens the picker for Reassign,
+   * or — when this is the only baby, so there's nothing to reassign to — becomes "Assign to new
+   * baby" and routes into the Add-a-Baby flow (MOB-598).
+   */
   private fun showBabyAssignedToast(
     reading: String,
     entry: List<ScaleEntry>,
     baby: BabyProfile,
     savedIds: List<Long>,
+    sourceSku: String? = null,
+    noOtherBaby: Boolean = false,
   ) {
     dialogQueueService.showToast(
       Toast.Custom(
@@ -1094,14 +1136,20 @@ constructor(
           type = ProductType.BABY,
           timestamp = "Just now",
           assignedTo = baby.name,
+          assignToNewBaby = noOtherBaby,
           primaryAction = {
             dialogQueueService.dismissToast()
-            showAssignMeasurementDialog(
-              reading = reading,
-              entry = entry,
-              preSelectedBabyId = baby.id,
-              previousEntryIds = savedIds,
-            )
+            if (noOtherBaby) {
+              viewModelScope.launch { navigationService.navigateTo(AppRoute.AccountSettings.AddBaby()) }
+            } else {
+              showAssignMeasurementDialog(
+                reading = reading,
+                entry = entry,
+                preSelectedBabyId = baby.id,
+                previousEntryIds = savedIds,
+                sourceSku = sourceSku,
+              )
+            }
           },
         ),
       ),
@@ -1109,25 +1157,29 @@ constructor(
   }
 
   /**
-   * Builds a local [BabyEntry] from an incoming scale reading. The reading weight is stored
+   * Builds a [BabyEntry] from an incoming scale reading. The reading weight is stored
    * in tenths-of-lb; the baby graph reads decigrams, so convert lb → decigrams to keep
-   * storage and display consistent. Marked CREATE; [IEntryService.addBabyEntry] persists it
-   * locally without queuing it for sync (MOB-428).
+   * storage and display consistent. [entryType] is `weight` and [source] is the originating
+   * scale SKU (e.g. "0220"), so [BabyEntry.toUnifiedRequest] POSTs it to /v3/entries/ as a
+   * baby-weight reading. Marked CREATE/unsynced; [IEntryService.addBabyEntry] persists and
+   * syncs it (§2.16).
    */
-  private fun ScaleEntry.toBabyEntry(babyId: String, accountId: String): BabyEntry {
+  private fun ScaleEntry.toBabyEntry(babyId: String, accountId: String, sourceSku: String?): BabyEntry {
     val lbs = ConversionTools.convertStoredToLbs(scale.scaleEntry.weight)
     return BabyEntry(
       entry = entry.copy(
         id = 0L,
         accountId = accountId,
         operationType = OperationType.CREATE.name,
-        isSynced = true,
+        isSynced = false,
       ),
       babyEntry = BabyEntryEntity(
         id = 0L,
         babyId = babyId,
         babyWeightDecigrams = ConversionTools.convertLbToDecigrams(lbs),
         entryNote = scale.scaleEntry.note,
+        entryType = BabyEntryType.WEIGHT.value,
+        source = sourceSku,
       ),
     )
   }
