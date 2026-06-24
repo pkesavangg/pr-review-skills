@@ -422,6 +422,15 @@ constructor(
     viewModelScope.launch {
       val accountId = accountService.activeAccountFlow.first()?.id
       if (accountId == null) {
+        // Practically unreachable for a logged-in user, but surface it like the other save
+        // paths rather than dismissing the loader with no feedback. (MOB-592)
+        AppLog.w(TAG, "No active account; cannot save baby entry")
+        dialogQueueService.showToast(
+          Toast.Simple(
+            title = EntryScreenStrings.EntryErrorTitle,
+            message = EntryScreenStrings.EntryErrorMessage,
+          ),
+        )
         dialogQueueService.dismissLoader()
         return@launch
       }

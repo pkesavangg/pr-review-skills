@@ -59,7 +59,11 @@ class ProductSelectionManager @Inject constructor(
     // account owns. A fresh baby-scale (or BP) signup has the product on the account before
     // any baby profile or paired device exists locally, so derive availability from it too —
     // otherwise the dashboard wrongly falls back to weight-only. (MOB-592)
+    // Log a fetch failure so this fallback is observable: a thrown fetch also yields an empty
+    // list, which defaults to weight-only — wrong for a baby/BP-only account — and without the
+    // log there is no signal the account read failed. (MOB-592)
     val productTypes = runCatching { accountService.get().getCurrentAccount()?.productTypes }
+      .onFailure { AppLog.w(TAG, "Failed to read account productTypes; defaulting to weight-only", it.stackTraceToString()) }
       .getOrNull().orEmpty()
     // productTypes is the account's owned-product list (MOB-377). Surface a product only
     // when the account owns it — a baby-only (or BP-only) account must NOT show My Weight.
