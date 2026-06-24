@@ -257,4 +257,58 @@ class HomeReducerTest {
 
         assertThat(result?.shouldAskForReview).isTrue()
     }
+
+    // -------------------------------------------------------------------------
+    // SetScanning (MOB-710 — AppSync scan guard hoisted into state)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `default HomeState has isScanning false`() {
+        assertThat(HomeState().isScanning).isFalse()
+    }
+
+    @Test
+    fun `SetScanning true sets isScanning to true`() {
+        val result = reducer.reduce(HomeState(), HomeIntent.SetScanning(true))
+
+        assertThat(result?.isScanning).isTrue()
+    }
+
+    @Test
+    fun `SetScanning false resets isScanning to false`() {
+        val state = HomeState(isScanning = true)
+
+        val result = reducer.reduce(state, HomeIntent.SetScanning(false))
+
+        assertThat(result?.isScanning).isFalse()
+    }
+
+    @Test
+    fun `SetScanning preserves all other fields`() {
+        val state = HomeState(showAppsync = true, appSyncZoomLevel = 3)
+
+        val result = reducer.reduce(state, HomeIntent.SetScanning(true))
+
+        assertThat(result?.showAppsync).isTrue()
+        assertThat(result?.appSyncZoomLevel).isEqualTo(3)
+    }
+
+    @Test
+    fun `unrelated intent preserves isScanning`() {
+        val state = HomeState(isScanning = true)
+
+        val result = reducer.reduce(state, HomeIntent.SetShowAppsync(false))
+
+        assertThat(result?.isScanning).isTrue()
+    }
+
+    @Test
+    fun `StartAppSyncScan returns state unchanged`() {
+        val state = HomeState(showAppsync = true, isScanning = true)
+
+        val result = reducer.reduce(state, HomeIntent.StartAppSyncScan(mockk(relaxed = true)))
+
+        assertThat(result?.showAppsync).isTrue()
+        assertThat(result?.isScanning).isTrue()
+    }
 }

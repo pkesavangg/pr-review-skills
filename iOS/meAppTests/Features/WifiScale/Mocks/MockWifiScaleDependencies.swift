@@ -6,7 +6,7 @@ import ggWifiScalePackage
 @testable import meApp
 
 @MainActor
-final class MockWifiScaleRepositoryAPI: WifiScaleRepositoryAPIProtocol {
+final class MockWifiScaleRepositoryAPI: WifiDeviceRepositoryAPIProtocol {
     var getScaleTokenResult: Result<WifiScaleTokenResponse, Error> = .success(WifiScaleTestFixtures.makeTokenResponse())
     private(set) var getScaleTokenCalls = 0
     private(set) var lastRequest: String?

@@ -21,9 +21,9 @@ final class MockPushNotificationService: PushNotificationServiceProtocol {
         updateDeviceInfoCalls += 1
     }
 
-    func setupPushNotifications(isFromScaleSetup: Bool) async {
+    func setupPushNotifications(isFromDeviceSetup: Bool) async {
         setupPushNotificationsCalls += 1
-        lastIsFromScaleSetup = isFromScaleSetup
+        lastIsFromScaleSetup = isFromDeviceSetup
     }
 
     func handleNotificationTap(_ userInfo: [AnyHashable: Any]) {

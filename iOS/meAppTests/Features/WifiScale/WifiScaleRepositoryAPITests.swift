@@ -8,9 +8,9 @@ struct WifiScaleRepositoryAPITests {
 
     // MARK: - SUT Factory
 
-    private func makeSUT() -> (sut: WifiScaleRepositoryAPI, http: MockHTTPClient) {
+    private func makeSUT() -> (sut: WifiDeviceRepositoryAPI, http: MockHTTPClient) {
         let http = MockHTTPClient()
-        let sut = WifiScaleRepositoryAPI(httpClient: http)
+        let sut = WifiDeviceRepositoryAPI(httpClient: http)
         return (sut, http)
     }
 

@@ -42,7 +42,7 @@ struct EntryStoreTests {
         #expect(store.manualEntryForm.date.isValid == false)
     }
 
-    @Test("saveEntry success: saves entry, converts weight, resets form, shows success toast")
+    @Test("saveEntry success: saves entry, converts weight, resets form")
     func saveEntrySuccess() async {
         let (store, entryService, notificationService, accountService) = makeSUT()
         accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "entry-account", email: "entry@example.com", isActiveAccount: true, weightUnit: .kg)
@@ -53,9 +53,9 @@ struct EntryStoreTests {
         store.manualEntryForm.date.value = Date()
         store.manualEntryForm.time.value = Date()
 
-        await store.saveEntry()
-        let toastShown = await waitUntil { notificationService.toastData != nil }
+        let didSave = await store.saveEntry()
 
+        #expect(didSave == true)
         #expect(entryService.saveNewEntryCalls == 1)
         guard let saved = entryService.lastSavedEntry else {
             Issue.record("Expected saved entry")
@@ -74,9 +74,7 @@ struct EntryStoreTests {
 
         #expect(store.manualEntryForm.weight.value == "")
         #expect(store.showMetrics == false)
-        #expect(toastShown == true)
-        #expect(notificationService.toastData?.title == ToastStrings.success)
-        #expect(notificationService.toastData?.message == ToastStrings.entryAdded)
+        // Success path no longer shows a toast; it relies on entrySaved event streams.
         #expect(notificationService.dismissLoaderCalls == 1)
     }
 
@@ -128,8 +126,8 @@ struct EntryStoreTests {
         store.manualEntryForm.validate()
         #expect(store.manualEntryForm.isValid == true)
 
-        async let first: Void = store.saveEntry()
-        async let second: Void = store.saveEntry()
+        async let first: Bool = store.saveEntry()
+        async let second: Bool = store.saveEntry()
         _ = await (first, second)
 
         #expect(store.isSaving == false)
@@ -406,7 +404,7 @@ private func makeSUT() -> (EntryStore, MockEntryStoreEntryService, TestNotificat
     DependencyContainer.shared.register(notificationService)
     DependencyContainer.shared.register(notificationService as NotificationHelperServiceProtocol)
     DependencyContainer.shared.register(entryService as EntryServiceProtocol)
-    DependencyContainer.shared.register(scaleService as ScaleServiceProtocol)
+    DependencyContainer.shared.register(scaleService as PairedDeviceServiceProtocol)
 
     let store = EntryStore()
     // Pin dependencies on store to avoid later global re-resolution.
@@ -414,7 +412,7 @@ private func makeSUT() -> (EntryStore, MockEntryStoreEntryService, TestNotificat
     store.notificationService = notificationService
     store.entryService = entryService
     store.logger = logger
-    store.scaleService = scaleService
+    store.deviceService = scaleService
     return (store, entryService, notificationService, accountService)
 }
 

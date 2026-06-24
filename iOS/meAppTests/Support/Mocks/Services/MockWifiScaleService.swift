@@ -2,7 +2,7 @@ import Foundation
 @testable import meApp
 
 @MainActor
-final class MockWifiScaleService: WifiScaleServiceProtocol {
+final class MockWifiScaleService: WifiPairedDeviceServiceProtocol {
     var getScaleTokenResult: Result<WifiScaleTokenResponse, Error> = .success(
         WifiScaleTokenResponse(token: "scale-token")
     )
