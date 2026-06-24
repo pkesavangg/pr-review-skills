@@ -200,18 +200,28 @@ Security and privacy live in their own sections (4a.0 and 4a.0.5). The remaining
 
 - **P1** — `print` / `NSLog` (Swift) or `Log.d/i/w/e` / `println` (Kotlin) outside an explicit logger wrapper
 - **P1** — non-trivial production code added without any test file added
-- **P2** — empty / one-line / Jira-ID-only PR description
-- **P2** — **Missing Jira / issue reference.** Match `[A-Z]{2,6}-\d+` (e.g. `MA-1234`, `KITC-567`, `JIRA-42`) against the PR title, body, and head branch name. Also accept `#\d+` GitHub issue links when the repo uses that convention. If no match in any of those three places, post one top-level comment: `P2 — Missing Jira/issue reference · Add the ticket ID (e.g., MA-1234) to the PR title, body, or branch name so the change is traceable.`
-- **P2** — **PR description doesn't match the actual code changes.** Read the PR `title` + `body` and compare against the file list and diff content from Step 1. Flag if any of these hold:
+- **Jira issue link — REQUIRED.** Every PR must be traceable to a ticket, and the PR **body** must carry that ticket as a clickable link — a bare ID in the branch name is not enough, because the link is what a reader clicks from GitHub. Decide as follows:
+  1. **Find a ticket ID.** Match `[A-Z]{2,6}-\d+` (e.g. `MA-1234`, `KITC-567`, `JIRA-42`) in the PR `title`, `body`, and head branch name. Repos that track work in GitHub issues may use `#\d+` instead — accept that **only** when the repo clearly uses that convention (no Jira-style IDs anywhere in the PR or recent history); for those, "linked" means a GitHub `#\d+` auto-link in the body.
+  2. **Check the body for a link to it.** The body satisfies the requirement when it contains the ID rendered as a Markdown link whose URL is a tracker URL — `[MA-1234](https://<jira-host>/browse/MA-1234)` (Jira `…/browse/<ID>`), or a bare `#\d+` for GitHub-issue repos. A plain ID typed in the body with no link does **not** satisfy it.
+  3. **Flag the gap:**
+     - **No ticket reference anywhere** → **P1** (untraceable change): `P1 — Missing Jira issue link · This PR has no ticket reference. Add the Jira ID as a link in the description, e.g. \`[MA-1234](https://<jira-host>/browse/MA-1234)\`, so the change is traceable.`
+     - **ID present in the branch/title but the body has no link to it** → **P1**: `P1 — Jira issue not linked in the description · Ticket <ID> appears in the <branch/title> but the PR body has no link. Add \`[<ID>](https://<jira-host>/browse/<ID>)\` to the description.`
+     - **Body has the ID but as plain text (no link)** → **P1**: `P1 — Jira ID is not a clickable link · The body mentions <ID> but doesn't link it. Wrap it as \`[<ID>](https://<jira-host>/browse/<ID>)\`.`
+  4. Use the project's Jira host when known (default `https://dmdbrands.atlassian.net/browse/<ID>` for DMD-brands repos; otherwise leave the host as a placeholder in the suggestion). If a repo-local `CLAUDE.md`/`README` documents a different tracker convention, prefer it and adjust the required link form accordingly.
+- **P1** — **PR description must be present, current, and match the actual code changes.** The body has to describe what this PR actually does — an empty, stale, or contradicting description is a blocker for merge because reviewers and future readers rely on it. Read the PR `title` + `body` and compare against the file list and diff content from Step 1. There are two failure modes:
+
+  **(a) Missing or empty description.** The body is empty, a single line, only the Jira ID, or a bare title with no explanation of *what changed and why*. Post one top-level comment: `P1 — PR description is missing · Add a description covering what this PR changes and why (a Summary + Changes list). The pr-description skill can generate one.`
+
+  **(b) Description doesn't match the diff.** The body has content but it contradicts or overstates the actual change. Flag if any of these hold:
   - Body claims "added tests" / "covered by tests" but no `*Test*.kt`, `*Tests.swift`, `__tests__/*`, or `*_test.go`-style files appear in `files[]`.
   - Body claims a migration / schema change but no `.proto`, migration file, or `schema.sql`-style file in `files[]`.
   - Body lists N specific bullets but the diff touches files unrelated to any of them (e.g., body says "fix WiFi field" but the diff only changes a `Logger.kt`).
   - Body claims a feature flag / new endpoint / new permission that doesn't appear in the diff.
   - Body is generic ("fix bug", "updates", "WIP", "address feedback") with no concrete linkage to the diff's content.
 
-  When flagging, quote the specific gap. Post one top-level comment: `P2 — PR description doesn't fully match the changes · <concrete gap — e.g., "Body lists 'added unit tests for X' but no test files appear in the diff. Either add the tests or remove that bullet.">`.
+  When flagging (b), quote the specific gap. Post one top-level comment: `P1 — PR description doesn't match the changes · <concrete gap — e.g., "Body lists 'added unit tests for X' but no test files appear in the diff. Either add the tests or remove that bullet.">`.
 
-  This check is intentionally judgment-based — do not flag for minor wording drift, only when there's a material disconnect.
+  Failure mode (b) is judgment-based — do not flag for minor wording drift, only when there's a material disconnect. Post **one** description comment per PR (either (a) or (b), not both).
 
 - **P2** — **Missing screenshot / screen recording for a user-facing change.** A PR that changes what the user sees or does should prove it with a screenshot (static UI) or a screen recording (interactive flow), so reviewers and QA can verify the result without checking out and building the branch. Decide in three steps:
 
@@ -290,9 +300,12 @@ gh api repos/{owner}/{repo}/pulls/<PR>/comments/<original_comment_id>/replies \
   -f body="✅ Resolved — <one sentence>"
 ```
 
-### 4b.2 — Re-check PR description
+### 4b.2 — Re-check PR description and Jira link
 
-If the first-round review flagged the PR description, check whether the current body now explains the work. If still thin, leave a `P2` top-level comment. If improved, post `✅ PR description updated.`
+If the first-round review flagged the PR description (missing / mismatched) or the Jira issue link:
+
+- **Description** — re-read the current `body` against § 4a.3's two failure modes. If it now explains the work and matches the diff, post `✅ PR description updated.`; if still missing or still contradicting the diff, re-post the `P1` top-level comment quoting what's still wrong.
+- **Jira link** — re-check whether the body now contains the ticket as a clickable link per § 4a.3. If yes, post `✅ Jira issue now linked in the description.`; if still absent or still unlinked, re-post the `P1` comment.
 
 ### 4b.3 — Review the NEW code
 
@@ -352,8 +365,8 @@ The verdict column is `APPROVE` only when Step 5's approval conditions are met, 
 Use these prefixes verbatim — they are the structural marker re-review uses to find this skill's prior comments.
 
 - **`P0` — Blocker.** Crash risk, hardcoded secret, data loss, PII/PHI leak, completely broken accessibility (control unreachable to VoiceOver/TalkBack), broken auth.
-- **`P1` — High.** Correctness bugs, missing error handling at system boundaries, accessibility regressions (missing labels, broken font scaling, hit target too small), missing tests for non-trivial logic, concurrency footguns, performance hazards.
-- **`P2` — Medium.** Clarity, duplication, naming, deprecated APIs, hardcoded strings, raw values where a token system exists, missing previews/PR description.
+- **`P1` — High.** Correctness bugs, missing error handling at system boundaries, accessibility regressions (missing labels, broken font scaling, hit target too small), missing tests for non-trivial logic, concurrency footguns, performance hazards, missing/contradicting PR description, missing or unlinked Jira issue (required).
+- **`P2` — Medium.** Clarity, duplication, naming, deprecated APIs, hardcoded strings, raw values where a token system exists, missing previews, missing screenshot/recording on a user-facing change.
 - **`Nit` — Style/preference.** Subjective polish. Never blocking.
 
 ## § Re-review verdicts

@@ -48,8 +48,8 @@ test-fixtures/            ← sample files to sanity-check rules against
 Every finding is tagged with one of these, and the prefix string is **structural**, not cosmetic:
 
 - **`P0` — Blocker.** Crash risk, hardcoded secret, data loss, PII/PHI leak, completely broken accessibility, broken auth.
-- **`P1` — High.** Correctness bugs, missing error handling at boundaries, accessibility regressions, missing tests for non-trivial logic, concurrency footguns, performance hazards.
-- **`P2` — Medium.** Clarity, duplication, naming, deprecated APIs, missing previews/PR description, missing screenshot/recording.
+- **`P1` — High.** Correctness bugs, missing error handling at boundaries, accessibility regressions, missing tests for non-trivial logic, concurrency footguns, performance hazards, missing/contradicting PR description, missing or unlinked Jira issue (required).
+- **`P2` — Medium.** Clarity, duplication, naming, deprecated APIs, missing previews, missing screenshot/recording on a user-facing change.
 - **`Nit` — Style/preference.** Never blocking.
 
 **The comment prefix format `P0 — ` / `P1 — ` / `P2 — ` / `Nit — ` (priority, space, em-dash `—`, space) is mandatory.** `/review-pr` re-review (Step 3 + 4b.1) finds the skill's own prior comments by matching exactly this format from the authenticated `gh` user. If you change the prefix, you silently break re-review's self-detection. Don't.
