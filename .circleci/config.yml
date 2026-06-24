@@ -146,13 +146,42 @@ jobs:
             fi
             git config --global url."https://x-access-token:${GITHUB_PACKAGES_TOKEN}@github.com/".insteadOf "https://github.com/"
             echo "Configured git to authenticate github.com HTTPS clones."
+      # Restore previously cloned/resolved SPM packages. Keyed on the committed
+      # Package.resolved so it's reused exactly until dependencies change; the
+      # partial-key fallback reuses most clones even across dep bumps.
+      - restore_cache:
+          name: Restore SPM cache
+          keys:
+            - spm-v2-{{ checksum "iOS/meApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved" }}
+            - spm-v2-
       - run:
           name: Resolve Swift Package Dependencies
           working_directory: iOS
-          no_output_timeout: 30m
+          no_output_timeout: 45m
           command: |
+            # xcodebuild emits NO output while cloning large packages
+            # (firebase-ios-sdk, swift-syntax), so CI's no-output timer can kill
+            # a clone that is still progressing. Emit a heartbeat so only a
+            # genuine stall is caught, and clone into a cacheable directory.
+            ( while true; do sleep 60; echo "… still resolving $(date -u +%H:%M:%S)"; done ) &
+            HEARTBEAT=$!
+            trap 'kill $HEARTBEAT 2>/dev/null || true' EXIT
             xcodebuild -resolvePackageDependencies \
-              -project meApp.xcodeproj
+              -project meApp.xcodeproj \
+              -clonedSourcePackagesDirPath SourcePackages
+      # Save right after resolve so the expensive clone is preserved even if the
+      # build step later fails (no-op once the exact key already exists).
+      - save_cache:
+          name: Save SPM cache
+          key: spm-v2-{{ checksum "iOS/meApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved" }}
+          paths:
+            - iOS/SourcePackages
+            - ~/Library/Caches/org.swift.swiftpm
+      - restore_cache:
+          name: Restore DerivedData
+          keys:
+            - dd-v2-{{ .Branch }}-
+            - dd-v2-
       - run:
           name: Build project
           working_directory: iOS
@@ -163,10 +192,17 @@ jobs:
               -scheme meApp \
               -destination 'generic/platform=iOS' \
               -configuration Debug \
+              -clonedSourcePackagesDirPath SourcePackages \
+              -derivedDataPath DerivedData \
               CODE_SIGN_IDENTITY="" \
               CODE_SIGNING_REQUIRED=NO \
               CODE_SIGNING_ALLOWED=NO \
               ENABLE_USER_SCRIPT_SANDBOXING=NO
+      - save_cache:
+          name: Save DerivedData
+          key: dd-v2-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - iOS/DerivedData
 
   # ===========================================================
   # Job 4: Unit Tests with Code Coverage
