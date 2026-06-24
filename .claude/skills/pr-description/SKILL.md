@@ -62,6 +62,9 @@ Always emit **two clearly labeled blocks**: the title and the body. Both render-
 - [ ] <concrete verification step a reviewer can run>
 - [ ] <edge case / regression check>
 
+## Screenshots / Recording
+- <screenshot for a static UI change, or a screen recording for an interactive/flow change — placeholder for the author to attach>
+
 ## Jira
 - [<JIRA-ID>](https://<jira-host>/browse/<JIRA-ID>)
 ```
@@ -70,6 +73,7 @@ Rules for the body:
 - **Summary** explains intent (the *why*), not a restatement of the diff.
 - **Changes** is the *what* — group related edits, name files, but don't paste code.
 - **Test plan** is a checklist a reviewer or QA can actually execute. Skip it only if the change is doc-only or a pure rename — say so explicitly in that case.
+- **Screenshots / Recording** — include this section only when the change is **user-facing** (touches a view/screen, navigation, a visible string, layout, styling, an animation, or any flow the user interacts with). Leave a clear placeholder for the author to attach the media (you can't capture it for them) and tell them in your reply that it still needs a screenshot or recording. Pick the medium by the kind of change: a **screenshot** for a static UI change, a **screen recording** for an interactive or multi-step flow — and for a flow change (e.g. entry/onboarding), the recording should walk through that actual flow end-to-end. **Omit the section entirely** for non-visual PRs — docs-only, build/version-number bumps, CI/config-only, test-only, pure refactors, or backend/data-layer changes with no UI surface. (This mirrors the `/review-pr` reviewer check, which flags a missing screenshot/recording on user-facing PRs — adding the section here heads that comment off.)
 - **Jira** section uses a Markdown link. If the Jira host is unknown, leave a plain `<JIRA-ID>` reference and note that the host should be filled in.
 - If the user has set a Jira host preference in conversation or memory, use it. Otherwise default to `https://dmdbrands.atlassian.net/browse/<JIRA-ID>` only if the branch/repo clearly belongs to that org; otherwise use the bare ID.
 - Omit any section that genuinely has no content rather than padding with "N/A".

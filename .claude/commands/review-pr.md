@@ -192,7 +192,7 @@ Each rule states its own severity, a **Sniff** pattern (grep/`rg` over `.ts`), a
 
 **De-duplicate** Appium findings against each other by `file:line` before posting (e.g. a missing-`await` and an action-without-wait on the same line → one comment). The full de-dup against prior reviewer comments still happens at Step 4a.4.
 
-Note on § 4a.3 below for Appium repos: the "non-trivial production code without tests" rule does **not** apply (the diff *is* tests). The Jira/issue-reference and PR-description rules still apply normally.
+Note on § 4a.3 below for Appium repos: the "non-trivial production code without tests" rule does **not** apply (the diff *is* tests), and the "missing screenshot/screen recording" rule does **not** apply either — E2E test code is non-visual, and its visual evidence is the Allure/video run report, not the PR body. The Jira/issue-reference and PR-description-match rules still apply normally.
 
 ### 4a.3 — Cross-cutting (both platforms)
 
@@ -200,18 +200,48 @@ Security and privacy live in their own sections (4a.0 and 4a.0.5). The remaining
 
 - **P1** — `print` / `NSLog` (Swift) or `Log.d/i/w/e` / `println` (Kotlin) outside an explicit logger wrapper
 - **P1** — non-trivial production code added without any test file added
-- **P2** — empty / one-line / Jira-ID-only PR description
-- **P2** — **Missing Jira / issue reference.** Match `[A-Z]{2,6}-\d+` (e.g. `MA-1234`, `KITC-567`, `JIRA-42`) against the PR title, body, and head branch name. Also accept `#\d+` GitHub issue links when the repo uses that convention. If no match in any of those three places, post one top-level comment: `P2 — Missing Jira/issue reference · Add the ticket ID (e.g., MA-1234) to the PR title, body, or branch name so the change is traceable.`
-- **P2** — **PR description doesn't match the actual code changes.** Read the PR `title` + `body` and compare against the file list and diff content from Step 1. Flag if any of these hold:
+- **Jira issue link — REQUIRED.** Every PR must be traceable to a ticket, and the PR **body** must carry that ticket as a clickable link — a bare ID in the branch name is not enough, because the link is what a reader clicks from GitHub. Decide as follows:
+  1. **Find a ticket ID.** Match `[A-Z]{2,6}-\d+` (e.g. `MA-1234`, `KITC-567`, `JIRA-42`) in the PR `title`, `body`, and head branch name. Repos that track work in GitHub issues may use `#\d+` instead — accept that **only** when the repo clearly uses that convention (no Jira-style IDs anywhere in the PR or recent history); for those, "linked" means a GitHub `#\d+` auto-link in the body.
+  2. **Check the body for a link to it.** The body satisfies the requirement when it contains the ID rendered as a Markdown link whose URL is a tracker URL — `[MA-1234](https://<jira-host>/browse/MA-1234)` (Jira `…/browse/<ID>`), or a bare `#\d+` for GitHub-issue repos. A plain ID typed in the body with no link does **not** satisfy it.
+  3. **Flag the gap:**
+     - **No ticket reference anywhere** → **P1** (untraceable change): `P1 — Missing Jira issue link · This PR has no ticket reference. Add the Jira ID as a link in the description, e.g. \`[MA-1234](https://<jira-host>/browse/MA-1234)\`, so the change is traceable.`
+     - **ID present in the branch/title but the body has no link to it** → **P1**: `P1 — Jira issue not linked in the description · Ticket <ID> appears in the <branch/title> but the PR body has no link. Add \`[<ID>](https://<jira-host>/browse/<ID>)\` to the description.`
+     - **Body has the ID but as plain text (no link)** → **P1**: `P1 — Jira ID is not a clickable link · The body mentions <ID> but doesn't link it. Wrap it as \`[<ID>](https://<jira-host>/browse/<ID>)\`.`
+  4. Use the project's Jira host when known (default `https://dmdbrands.atlassian.net/browse/<ID>` for DMD-brands repos; otherwise leave the host as a placeholder in the suggestion). If a repo-local `CLAUDE.md`/`README` documents a different tracker convention, prefer it and adjust the required link form accordingly.
+- **P1** — **PR description must be present, current, and match the actual code changes.** The body has to describe what this PR actually does — an empty, stale, or contradicting description is a blocker for merge because reviewers and future readers rely on it. Read the PR `title` + `body` and compare against the file list and diff content from Step 1. There are two failure modes:
+
+  **(a) Missing or empty description.** The body is empty, a single line, only the Jira ID, or a bare title with no explanation of *what changed and why*. Post one top-level comment: `P1 — PR description is missing · Add a description covering what this PR changes and why (a Summary + Changes list). The pr-description skill can generate one.`
+
+  **(b) Description doesn't match the diff.** The body has content but it contradicts or overstates the actual change. Flag if any of these hold:
   - Body claims "added tests" / "covered by tests" but no `*Test*.kt`, `*Tests.swift`, `__tests__/*`, or `*_test.go`-style files appear in `files[]`.
   - Body claims a migration / schema change but no `.proto`, migration file, or `schema.sql`-style file in `files[]`.
   - Body lists N specific bullets but the diff touches files unrelated to any of them (e.g., body says "fix WiFi field" but the diff only changes a `Logger.kt`).
   - Body claims a feature flag / new endpoint / new permission that doesn't appear in the diff.
   - Body is generic ("fix bug", "updates", "WIP", "address feedback") with no concrete linkage to the diff's content.
 
-  When flagging, quote the specific gap. Post one top-level comment: `P2 — PR description doesn't fully match the changes · <concrete gap — e.g., "Body lists 'added unit tests for X' but no test files appear in the diff. Either add the tests or remove that bullet.">`.
+  When flagging (b), quote the specific gap. Post one top-level comment: `P1 — PR description doesn't match the changes · <concrete gap — e.g., "Body lists 'added unit tests for X' but no test files appear in the diff. Either add the tests or remove that bullet.">`.
 
-  This check is intentionally judgment-based — do not flag for minor wording drift, only when there's a material disconnect.
+  Failure mode (b) is judgment-based — do not flag for minor wording drift, only when there's a material disconnect. Post **one** description comment per PR (either (a) or (b), not both).
+
+- **P2** — **Missing screenshot / screen recording for a user-facing change.** A PR that changes what the user sees or does should prove it with a screenshot (static UI) or a screen recording (interactive flow), so reviewers and QA can verify the result without checking out and building the branch. Decide in three steps:
+
+  1. **Does this PR even need visual evidence?** It does **not** when the diff is *entirely* non-visual. Waive the requirement (and say so in the Step 5 summary with the reason) when every changed file falls into one of:
+     - **Docs / text only** — `*.md`, `README*`, `LICENSE`, `docs/**`, `CHANGELOG*`, comments-only edits.
+     - **Build / version metadata only** — build number or version bump: `versionCode` / `versionName` (Gradle), `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` / `CFBundleShortVersionString` / `CFBundleVersion` (`Info.plist`, `*.xcconfig`, pbxproj), `version` in `package.json`.
+     - **CI / tooling / config only** — `.github/**`, lint/formatter config, `.gitignore`, dependency-lockfile bumps, with no UI code touched.
+     - **Test-only, pure refactor/rename with no behavioral change, or backend/data-layer change with no UI surface.**
+
+  2. **Otherwise it's user-facing** — it touches a `View` / `Composable` / screen, navigation, a visible string or layout, styling, an animation, or any flow the user interacts with. Look for embedded media in the PR `body` by scanning for any of:
+     - Markdown image embeds — `![...](...)`.
+     - HTML media tags — `<img ...>`, `<video ...>`.
+     - GitHub attachment URLs — `https://github.com/user-attachments/assets/...`, `https://user-images.githubusercontent.com/...`, `.../assets/<uuid>`.
+     - Direct media links ending in `.png` / `.jpg` / `.jpeg` / `.gif` / `.webp` / `.mp4` / `.mov` / `.webm`.
+
+     If **none** are present, post one top-level comment that names the changed surface and says *why* evidence is needed: `P2 — Missing screenshot/screen recording · This PR changes user-facing UI (<name the changed screen/view/flow, e.g. "the Entry screen in EntryView.swift">). Add a screenshot for a static change, or a screen recording for an interactive/flow change, so reviewers can verify it without building the branch. (Not needed for docs-only or version/build-number bumps.)`
+
+  3. **If media is present, does it actually cover the change?** When the PR modifies an *interactive flow* (navigation, entry/onboarding, a multi-step form, a gesture, an animation) but the body only attaches a single static screenshot — or the attached media plainly shows a different screen than the one changed — the evidence doesn't demonstrate the behavior. Flag it: `P2 — Screen recording needed for a flow change · The PR changes the <name> flow but the body only shows <a static screenshot / an unrelated screen>. Attach a screen recording that walks through the actual <name> flow end-to-end.` For example, if the change touches entry functionality, the recording must show the entry flow itself, not an adjacent screen.
+
+  Judgment-based and one flag per PR: a one-line color-token tweak does not need a 30-second video; a new screen or a changed entry/onboarding flow does. For borderline cases (a small but visible tweak) prefer a gentle nudge over a hard flag.
 
 ### 4a.4 — De-duplicate against prior reviewers
 
@@ -243,7 +273,7 @@ gh api repos/{owner}/{repo}/pulls/<PR>/comments \
   -f side=RIGHT
 ```
 
-For findings without a single line (missing tests, missing Jira reference, description mismatch, weak PR description), use `gh pr comment <PR> -b "P2 — …"`. Prefix every finding with the exact priority string — the format `P0 — ` / `P1 — ` / `P2 — ` / `Nit — ` (priority, space, em-dash, space) is **mandatory** so Step 3 can identify these on future runs.
+For findings without a single line (missing tests, missing Jira reference, description mismatch, weak PR description, missing screenshot/recording), use `gh pr comment <PR> -b "P2 — …"`. Prefix every finding with the exact priority string — the format `P0 — ` / `P1 — ` / `P2 — ` / `Nit — ` (priority, space, em-dash, space) is **mandatory** so Step 3 can identify these on future runs.
 
 If `--dry-run` was passed, **skip this step entirely**: instead print the findings to chat as a numbered table — `# | priority | file:line | one-line issue` — followed by `(dry-run; nothing posted)`. Wait for the user's reply. Only post if they explicitly say to publish.
 
@@ -270,9 +300,12 @@ gh api repos/{owner}/{repo}/pulls/<PR>/comments/<original_comment_id>/replies \
   -f body="✅ Resolved — <one sentence>"
 ```
 
-### 4b.2 — Re-check PR description
+### 4b.2 — Re-check PR description and Jira link
 
-If the first-round review flagged the PR description, check whether the current body now explains the work. If still thin, leave a `P2` top-level comment. If improved, post `✅ PR description updated.`
+If the first-round review flagged the PR description (missing / mismatched) or the Jira issue link:
+
+- **Description** — re-read the current `body` against § 4a.3's two failure modes. If it now explains the work and matches the diff, post `✅ PR description updated.`; if still missing or still contradicting the diff, re-post the `P1` top-level comment quoting what's still wrong.
+- **Jira link** — re-check whether the body now contains the ticket as a clickable link per § 4a.3. If yes, post `✅ Jira issue now linked in the description.`; if still absent or still unlinked, re-post the `P1` comment.
 
 ### 4b.3 — Review the NEW code
 
@@ -332,8 +365,8 @@ The verdict column is `APPROVE` only when Step 5's approval conditions are met, 
 Use these prefixes verbatim — they are the structural marker re-review uses to find this skill's prior comments.
 
 - **`P0` — Blocker.** Crash risk, hardcoded secret, data loss, PII/PHI leak, completely broken accessibility (control unreachable to VoiceOver/TalkBack), broken auth.
-- **`P1` — High.** Correctness bugs, missing error handling at system boundaries, accessibility regressions (missing labels, broken font scaling, hit target too small), missing tests for non-trivial logic, concurrency footguns, performance hazards.
-- **`P2` — Medium.** Clarity, duplication, naming, deprecated APIs, hardcoded strings, raw values where a token system exists, missing previews/PR description.
+- **`P1` — High.** Correctness bugs, missing error handling at system boundaries, accessibility regressions (missing labels, broken font scaling, hit target too small), missing tests for non-trivial logic, concurrency footguns, performance hazards, missing/contradicting PR description, missing or unlinked Jira issue (required).
+- **`P2` — Medium.** Clarity, duplication, naming, deprecated APIs, hardcoded strings, raw values where a token system exists, missing previews, missing screenshot/recording on a user-facing change.
 - **`Nit` — Style/preference.** Subjective polish. Never blocking.
 
 ## § Re-review verdicts
