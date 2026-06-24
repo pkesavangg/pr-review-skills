@@ -49,6 +49,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import android.app.Activity
+import java.lang.ref.WeakReference
 
 @HiltViewModel
 class HomeViewModel
@@ -308,10 +309,20 @@ constructor(
       return
     }
     handleIntent(HomeIntent.SetScanning(true))
+    // Hold the Activity weakly: the scan runs on viewModelScope, which outlives the Activity, and
+    // the exact scenario this targets (idle → Android recreates the Activity) is when a captured
+    // strong reference would leak/go stale for the scan duration. Deref at launch and abort if the
+    // Activity is already gone (the finally below still resets isScanning). (PR #2093 review)
+    val activityRef = WeakReference(activity)
     viewModelScope.launch {
       try {
+        val scanActivity = activityRef.get()
+        if (scanActivity == null) {
+          AppLog.w(TAG, "AppSync scan aborted — Activity no longer available")
+          return@launch
+        }
         val result = startAppSyncScan(
-          context = activity,
+          context = scanActivity,
           zoom = state.value.appSyncZoomLevel,
           showManualEntryButton = true,
           onBack = {
