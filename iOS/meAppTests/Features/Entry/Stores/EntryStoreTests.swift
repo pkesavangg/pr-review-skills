@@ -5,11 +5,26 @@
 
 import Testing
 import Foundation
+import Combine
 @testable import meApp
 
 @Suite("EntryStore", .serialized)
 @MainActor
 struct EntryStoreTests {
+
+    // MARK: - Polling helper
+
+    private func waitUntil(
+        timeoutNanoseconds: UInt64 = 2_000_000_000,
+        pollNanoseconds: UInt64 = 5_000_000,
+        condition: @MainActor () -> Bool
+    ) async {
+        let deadline = ContinuousClock.now + .nanoseconds(Int64(timeoutNanoseconds))
+        while ContinuousClock.now < deadline {
+            if condition() { return }
+            try? await Task.sleep(nanoseconds: pollNanoseconds)
+        }
+    }
 
     // MARK: - SUT
 
@@ -323,5 +338,168 @@ struct EntryStoreTests {
         store.showDatePicker = true
         store.resetForm()
         #expect(!store.showDatePicker)
+    }
+
+    // MARK: - maxSelectableTime
+
+    @Test("maxSelectableTime stays within today when date is today")
+    func maxSelectableTimeToday() {
+        let (store, _, _, _, _) = makeSUT()
+        store.manualEntryForm.date.value = Date()
+        #expect(Calendar.current.isDateInToday(store.maxSelectableTime))
+    }
+
+    @Test("maxSelectableTime is end-of-day (23:59) when date is in the past")
+    func maxSelectableTimePast() {
+        let (store, _, _, _, _) = makeSUT()
+        let past = Calendar.current.date(byAdding: .day, value: -3, to: Date())!
+        store.manualEntryForm.date.value = past
+        let comps = Calendar.current.dateComponents([.hour, .minute], from: store.maxSelectableTime)
+        #expect(comps.hour == 23)
+        #expect(comps.minute == 59)
+    }
+
+    // MARK: - getError
+
+    @Test("getError returns nil for a pristine control")
+    func getErrorPristine() {
+        let (store, _, _, _, _) = makeSUT()
+        #expect(store.getError(for: store.manualEntryForm.weight) == nil)
+    }
+
+    // MARK: - refreshTimeOnTabSelected
+
+    @Test("refreshTimeOnTabSelected sets time to today when the date is today")
+    func refreshTimeTodaySetsNow() {
+        let (store, _, _, _, _) = makeSUT()
+        store.manualEntryForm.date.value = Date()
+        store.refreshTimeOnTabSelected()
+        #expect(Calendar.current.isDateInToday(store.manualEntryForm.time.value))
+    }
+
+    @Test("refreshTimeOnTabSelected clamps time to max for a past date")
+    func refreshTimePastClamps() {
+        let (store, _, _, _, _) = makeSUT()
+        let past = Calendar.current.date(byAdding: .day, value: -2, to: Date())!
+        store.manualEntryForm.date.value = past
+        store.manualEntryForm.time.value = Date() // now > end of the past day
+        store.refreshTimeOnTabSelected()
+        #expect(store.manualEntryForm.time.value <= store.maxSelectableTime)
+    }
+
+    // MARK: - populateFromAppSync
+
+    @Test("populateFromAppSync fills the form and reveals the metrics panel")
+    func populateFromAppSyncPopulates() {
+        let (store, _, _, _, _) = makeSUT()
+        let metrics = AppSyncEntryMetrics(
+            storedWeight: 1500,
+            storedBMI: 235,
+            storedBodyFat: 200,
+            storedWaterWeight: 500,
+            storedMuscleMass: 300,
+            isMetric: false
+        )
+
+        store.populateFromAppSync(metrics: metrics)
+
+        #expect(store.showMetrics)
+        #expect(!store.manualEntryForm.weight.value.isEmpty)
+        #expect(!store.manualEntryForm.bodyFat.value.isEmpty)
+    }
+
+    // MARK: - showExitAlert
+
+    @Test("showExitAlert exit button resets the form and calls onConfirm")
+    func showExitAlertExitButton() {
+        let (store, _, _, notificationService, _) = makeSUT()
+        var confirmed = false
+        store.manualEntryForm.weight.value = "150"
+
+        store.showExitAlert(onConfirm: { confirmed = true })
+        notificationService.lastShownAlert?.buttons.first?.action(nil)
+
+        #expect(confirmed)
+        #expect(store.manualEntryForm.weight.value == "")
+    }
+
+    @Test("showExitAlert return button calls onCancel")
+    func showExitAlertReturnButton() {
+        let (store, _, _, notificationService, _) = makeSUT()
+        var cancelled = false
+
+        store.showExitAlert(onConfirm: {}, onCancel: { cancelled = true })
+        notificationService.lastShownAlert?.buttons.last?.action(nil)
+
+        #expect(cancelled)
+    }
+
+    // MARK: - confirmDiscardChanges
+
+    @Test("confirmDiscardChanges returns true when the user confirms exit")
+    func confirmDiscardChangesConfirmed() async {
+        let (store, _, _, notificationService, _) = makeSUT()
+
+        async let result = store.confirmDiscardChanges()
+        await waitUntil { notificationService.lastShownAlert != nil }
+        notificationService.lastShownAlert?.buttons.first?.action(nil)
+
+        let confirmed = await result
+        #expect(confirmed)
+    }
+
+    @Test("confirmDiscardChanges returns false when the user cancels")
+    func confirmDiscardChangesCancelled() async {
+        let (store, _, _, notificationService, _) = makeSUT()
+
+        async let result = store.confirmDiscardChanges()
+        await waitUntil { notificationService.lastShownAlert != nil }
+        notificationService.lastShownAlert?.buttons.last?.action(nil)
+
+        let confirmed = await result
+        #expect(!confirmed)
+    }
+
+    // MARK: - Auto time sync
+
+    @Test("startAutoTimeSync performs an immediate tick on today's date")
+    func startAutoTimeSyncTicks() {
+        let (store, _, _, _, _) = makeSUT()
+        store.manualEntryForm.date.value = Date()
+
+        store.startAutoTimeSync(intervalSeconds: 60)
+        store.stopAutoTimeSync()
+
+        #expect(Calendar.current.isDateInToday(store.manualEntryForm.time.value))
+    }
+
+    // MARK: - weightUnit from account
+
+    @Test("refreshWeightUnit adopts kg from the active account and recalculates BMI")
+    func refreshWeightUnitAdoptsKg() {
+        let (store, accountService, _, _, _) = makeSUT()
+        let account = Account(from: AccountTestFixtures.makeAccountDTO(weightUnit: .kg))
+        account.isActiveAccount = true
+        accountService.activeAccount = account
+        store.manualEntryForm.weight.value = "70"
+
+        store.refreshWeightUnit()
+
+        #expect(store.weightUnit == .kg)
+    }
+
+    // MARK: - formDidChange
+
+    @Test("formDidChange emits when a field value changes")
+    func formDidChangeEmits() async {
+        let (store, _, _, _, _) = makeSUT()
+        var received = false
+        let cancellable = store.manualEntryForm.formDidChange.sink { received = true }
+
+        store.manualEntryForm.weight.value = "123"
+
+        await waitUntil { received }
+        #expect(received)
+        cancellable.cancel()
     }
 }
