@@ -5,9 +5,11 @@
 //  Created by Assistant on 04/07/25.
 //
 
-import Foundation
-import SwiftUI
 import Charts
+// swiftlint:disable type_body_length
+// This file intentionally aggregates common functionality for all section view models.
+// Breaking it into smaller files would fragment related chart logic and reduce maintainability.import Foundation
+import SwiftUI
 
 /// Base class implementing common functionality for all section view models
 @MainActor
@@ -17,21 +19,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     @Published var selectedPoint: BathScaleWeightSummary?
     @Published var selectedDate: Date?
     @Published var showCrosshair: Bool = false
-    /// Per-tick scroll position. Must be `@Published` so `BaseGraphView.body`
-    /// re-evaluates as the user pans — SwiftUI Charts re-issues its content
-    /// closure against the new viewport from this body recompute, which is
-    /// what keeps `PointMark`s rendered for dates that scroll INTO view
-    /// during a gesture. Suppressing the publish (MA-3845, "Fix 1a" in
-    /// `docs/tasks/ios-graph-hang-investigation.md`) was originally intended
-    /// to avoid per-tick body invalidations, but in practice it left dots
-    /// missing during scroll until the gesture ended and the Y-axis snapped
-    /// the points back into view — the 5.0.0 vs current regression users
-    /// describe as "no points while scrolling, only appears after stop".
-    /// The original hang concern is now mitigated by other optimizations
-    /// that have since landed: cached chart data in BaseGraphView and the
-    /// VM, `.equatable()` on the period wrapper views, cached calendars,
-    /// and cached axis labels — body recompute is cheap.
-    @Published var scrollPosition: Date = Date()
+    @Published var scrollPosition = Date()
     @Published var isScrolling: Bool = false
     
     /// Default implementation simply returns the current `selectedDate`.
@@ -44,6 +32,16 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     var yAxisDomain: ClosedRange<Double> = 0...100
     var yAxisTicks: [Double] = []
     
+    // MARK: - Shared Calendar (Performance Optimization)
+    /// Pre-configured Gregorian calendar with the device's local timezone and locale.
+    /// Stored once to avoid per-call construction in plotXDate and other date calculations.
+    lazy var localCalendar: Calendar = {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = Calendar.current.timeZone
+        cal.locale = Calendar.current.locale
+        return cal
+    }()
+
     // MARK: - X-Axis Caching (Performance Optimization)
     /// Cached X-axis values to avoid regeneration during scroll
     private var _cachedXAxisValues: [Date] = []
@@ -62,6 +60,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     // MARK: - Dependencies (injected from parent)
     var dashboardStore: DashboardStore?
+    private var chartManager: DashboardChartManaging?
+    private var displayManager: DashboardDisplayManaging?
     
     // MARK: - Period-specific properties (to be overridden)
     var timePeriod: TimePeriod {
@@ -69,9 +69,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     }
     
     var visibleDomainLength: TimeInterval {
-        return dashboardStore?.visibleDomainLength(for: timePeriod) ?? (7 * 24 * 60 * 60)
+        return dashboardStore?.graphManager.visibleDomainLength(for: timePeriod, at: scrollPosition)
+            ?? DateTimeTools.visibleDomainLength(for: timePeriod)
     }
-    
     
     var pointSize: CGFloat {
         return 64 // Default point size
@@ -120,8 +120,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// Converts a circle diameter (in pt) to the area value expected by Charts' `symbolSize`
     func symbolArea(forDiameter diameter: CGFloat) -> CGFloat {
-        let r = diameter / 2
-        return .pi * r * r
+        let radius = diameter / 2
+        return .pi * radius * radius
     }
     
     var dateRange: ClosedRange<Date> {
@@ -137,7 +137,11 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     }
     
     // MARK: - Common Computed Properties
-    
+
+    /// Cached flag for whether the current chart has data.
+    /// Updated on data/configuration changes so SwiftUI body checks stay cheap.
+    private(set) var hasChartOperations: Bool = false
+
     /// All operations for the view
     var chartOperations: [BathScaleWeightSummary] {
         return dashboardStore?.continuousOperations ?? []
@@ -147,7 +151,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     var chartSeriesData: [GraphSeries] {
         guard let store = dashboardStore else { return [] }
         
-        let currentMetric = store.ui.selectedMetricLabel
+        let currentMetric = store.state.ui.selectedMetricLabel
         
         // During scrolling, use cached data ONLY if the metric selection hasn't changed
         // If metric changed (selection or deselection), get fresh data from store
@@ -175,14 +179,25 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     // Cache for chart series data during scrolling
     private var cachedChartSeriesData: [GraphSeries] = []
     // Track which metric was used when caching to detect metric changes during scrolling
-    private var cachedChartSeriesMetric: String? = nil
+    private var cachedChartSeriesMetric: String?
     
     // MARK: - Persistent Cache (survives view recreation)
     private var cachedSeriesData: [GraphSeries] = []
     private var cachedGroupedSeries: [String: [GraphSeries]] = [:]
     private var lastCacheUpdateHash: Int = 0
 
-    /// Visible series filtered by the current scroll position and visible domain
+    // MARK: - plotXDate Cache (Performance Optimization)
+    /// Pre-computed plotXDate values keyed by original Date, rebuilt when series data changes.
+    private var cachedPlotXDates: [Date: Date] = [:]
+
+    // MARK: - Visible Series Cache (Performance Optimization)
+    /// Cached result of visibleChartSeriesData, keyed by scroll position + data hash.
+    private var cachedVisibleSeriesData: [GraphSeries] = []
+    private var lastVisibleScrollPosition: Date = .distantPast
+    private var lastVisibleDataHash: Int = 0
+
+    /// Visible series filtered by the current scroll position and visible domain.
+    /// Result is cached by (scrollPosition, dataHash) to avoid re-filtering on every render pass.
     var visibleChartSeriesData: [GraphSeries] {
         guard hasXAxis else {
             return chartSeriesData
@@ -191,16 +206,27 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         guard domainLength.isFinite && domainLength > 0 else {
             return chartSeriesData
         }
+
+        // Return cached result if neither scroll position nor underlying data changed
+        if scrollPosition == lastVisibleScrollPosition &&
+           lastCacheUpdateHash == lastVisibleDataHash &&
+           !cachedVisibleSeriesData.isEmpty {
+            return cachedVisibleSeriesData
+        }
+
         let left = scrollPosition.addingTimeInterval(-domainLength / 2)
         let right = scrollPosition.addingTimeInterval(domainLength / 2)
         let data = chartSeriesData
-        
-        // Keep only points whose plotted X-date is within visible window
+
+        // Use pre-computed plotXDate cache; fall back to live call for any cache miss
         let filtered = data.filter { point in
-            let xDate = plotXDate(for: point.date)
+            let xDate = cachedPlotXDates[point.date] ?? plotXDate(for: point.date)
             return xDate >= left && xDate <= right
         }
-        
+
+        cachedVisibleSeriesData = filtered
+        lastVisibleScrollPosition = scrollPosition
+        lastVisibleDataHash = lastCacheUpdateHash
         return filtered
     }
     
@@ -211,12 +237,12 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// Current display weight
     var displayWeight: Double? {
-        return dashboardStore?.displayWeight
+        return displayManager?.displayWeight
     }
     
     /// Weight label for current selection or period
     var weightLabel: String {
-        return dashboardStore?.weightLabel ?? ""
+        return displayManager?.weightLabel ?? ""
     }
     
     /// X-axis values with buffer.
@@ -275,36 +301,45 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     var isAtLeftBoundary: Bool {
         guard let store = dashboardStore else { return true }
         
-        // Use cached bounds from DataManager for O(1) lookup
-        guard let bounds = store.dataManager.getDateBounds(for: timePeriod) else { return true }
+        let minDate: Date
+        if let bounds = store.dataManager.getDateBounds(for: timePeriod) {
+            minDate = bounds.min
+        } else if let fallbackMin = chartOperations.min(by: { $0.date < $1.date })?.date {
+            minDate = fallbackMin
+        } else {
+            return true
+        }
         
         let domainLength = visibleDomainLength
         let visibleStart = scrollPosition.addingTimeInterval(-domainLength / 2)
         
         // Consider at boundary if visible start is at or before the minimum data date
         let boundaryThreshold: TimeInterval = 24 * 60 * 60 // 1 day
-        return visibleStart <= bounds.min.addingTimeInterval(boundaryThreshold)
+        return visibleStart <= minDate.addingTimeInterval(boundaryThreshold)
     }
     
     // MARK: - Initialization and Configuration
     func configure(with store: DashboardStore) {
         self.dashboardStore = store
-        
+        self.chartManager = store.chartManager
+        self.displayManager = store.displayManager
+
         // For scrollable periods, sync with the store's current scroll position
         // The scroll position should already be set by updateSelectedPeriod (with anchor if applicable)
         // We should NOT recalculate here as it would overwrite anchor-based positioning
         if hasXAxis {
             // Use the store's already-calculated scroll position
-            self.scrollPosition = store.graph.xScrollPosition
+            self.scrollPosition = store.state.graph.xScrollPosition
         } else {
             // Non-scrollable periods (Total) don't need scroll positioning
-            self.scrollPosition = store.graph.xScrollPosition
+            self.scrollPosition = store.state.graph.xScrollPosition
         }
-        
-        self.isScrolling = store.graph.isScrolling
+
+        self.isScrolling = store.state.graph.isScrolling
         updateYAxisConfiguration()
         // Sync with any existing cached Y-axis values from the store
         syncYAxisFromStore()
+        refreshChartOperationState()
         // Initialize cache with current data (safe during configuration)
         updateCachedSeriesData()
     }
@@ -355,14 +390,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         }
         
         // Get Y-axis scale from graph manager using the calculated operations (visible + bracketing)
-        let yAxisScale = store.graphManager.getYAxisScale(
-            from: operations,
-            goalWeight: goalWeight,
-            isWeightlessMode: store.isWeightlessModeEnabled,
-            anchorWeight: store.weightlessAnchorWeight,
-            convertWeight: store.goalManager.convertWeightToDisplay,
-            chartHeight: chartFrame.height
-        )
+        let yAxisScale = store.yAxisScale(for: operations, chartHeight: chartFrame.height)
         
         // Animate domain changes smoothly
         self.yAxisDomain = yAxisScale.domain
@@ -384,14 +412,17 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     // MARK: - Scroll Management
 
-    /// Handles scroll position changes. Originally throttled at 16ms to defend
-    /// against `@Published` invalidation cascades — that defense is no longer
-    /// needed since `scrollPosition` is a plain `var` (April 2026 Fix 1a) and
-    /// the chart binding's setter is cheap. We keep the 0.1s dedup guard so
-    /// identical writes still short-circuit, but no longer drop ~half the
-    /// drag ticks under a fast flick.
+    /// Handles scroll position changes with throttling to prevent multiple updates per frame
     func handleScrollPositionChange(_ newPosition: Date?) {
         guard let newPosition = newPosition else {
+            return
+        }
+
+        let now = Date()
+        let timeSinceLastUpdate = now.timeIntervalSince(lastScrollUpdateTime)
+
+        // Throttle updates to prevent multiple updates per frame (SwiftUI warning fix)
+        guard timeSinceLastUpdate >= scrollUpdateThrottleInterval else {
             return
         }
 
@@ -402,11 +433,11 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             return
         }
 
-        lastScrollUpdateTime = Date()
+        lastScrollUpdateTime = now
         self.scrollPosition = newPosition
 
         // Update dashboard store scroll position
-        dashboardStore?.handleScrollPositionChange(newPosition)
+        chartManager?.handleScrollPositionChange(newPosition)
     }
     
     /// Handles scroll start
@@ -417,12 +448,12 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         // Cache current data and metric for use during scrolling
         if let store = dashboardStore {
             cachedChartSeriesData = store.chartSeriesData
-            cachedChartSeriesMetric = store.ui.selectedMetricLabel
+            cachedChartSeriesMetric = store.state.ui.selectedMetricLabel
         } else {
             cachedChartSeriesData = []
             cachedChartSeriesMetric = nil
         }
-        dashboardStore?.handleScrollStart()
+        chartManager?.handleScrollStart()
     }
     
     /// Handles scroll end
@@ -431,14 +462,19 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         // Clear cached data to ensure fresh data is generated
         cachedChartSeriesData = []
         cachedChartSeriesMetric = nil
-        dashboardStore?.handleScrollEndOptimized()
+        chartManager?.handleScrollEndOptimized()
+        
+        // Sync Y-axis values from store cache after scroll end (200ms matches GraphAnimationManager.schedulePeriodTransition default)
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            self.syncYAxisFromStore()
+        }
+    }
 
-        // P1-6 / P2-3: The previous +0.7s `syncYAxisFromStore` here duplicated
-        // the path already triggered by `BaseGraphView.onChange(of: YAxisCacheSignature)`,
-        // which fires `syncYAxisFromStore` as soon as `handleScrollEndOptimized`'s
-        // staggered `updateYAxisCache()` publishes the new domain/ticks at +300ms.
-        // Removing this extra timer eliminates one source of the post-scroll
-        // "double-update" Y-axis stutter.
+    /// Refreshes the cached empty/non-empty flag without forcing repeated store scans
+    /// from the SwiftUI body.
+    func refreshChartOperationState() {
+        hasChartOperations = !chartOperations.isEmpty
     }
     
     // MARK: - Selection Management
@@ -453,33 +489,27 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         
         selectedDate = date
         showCrosshair = true
-        selectedPoint = closestOperation(to: date)
-    }
-
-    /// Applies a selection driven by dashboard store state.
-    /// Uses the same selection path as user interactions so period-specific snapping
-    /// stays consistent between manual and programmatic selection.
-    func applyProgrammaticSelection(at date: Date?) {
-        guard let date else {
-            clearSelection()
-            return
+        
+        // Find the closest operation to the selected date
+        let operations = chartOperations
+        selectedPoint = operations.min { op1, op2 in
+            abs(op1.date.timeIntervalSince(date)) < abs(op2.date.timeIntervalSince(date))
         }
-
+    }
+    
+    /// MA-3837: applies a programmatic selection (e.g. auto-select latest) through the same
+    /// plotted-X snapping used for taps, so the crosshair lands on the chart's plotted position.
+    func applyProgrammaticSelection(at date: Date?) {
+        guard let date else { return }
         handleChartSelection(at: plotXDate(for: date))
     }
 
-    /// Applies a selection that has already been validated against the store's
-    /// operations (e.g. by `DashboardStore.updateSelectedPeriod`'s
-    /// `applyChartSelectionSync`). Deliberately bypasses the section-specific
-    /// `handleChartSelection` snap/range guards: those guards are designed for
-    /// user input and can silently clear a perfectly valid programmatic
-    /// selection on the first frame after a tab switch (xAxisValues empty,
-    /// chartOperations not yet bracketed, etc.) — see MA-3977.
-    ///
-    /// `showCrosshair = true` is intentional even when `point == nil` to match
-    /// the established contract in `DashboardGraphManager.handleCompleteChartSelection`,
-    /// which shows the crosshair at the selected X position even when the
-    /// chart is interpolating between data points.
+    /// MA-3977: applies a selection already validated against the store's operations
+    /// (by `DashboardChartManager`'s `applyChartSelectionSync`). Deliberately bypasses the
+    /// section-specific `handleChartSelection` snap/range guards: those guards are designed for
+    /// user input and can silently clear a valid programmatic selection on the first frame after a
+    /// tab switch (xAxisValues empty, chartOperations not yet bracketed, etc.). `showCrosshair = true`
+    /// is intentional even when `point == nil`, matching the crosshair-at-interpolated-X contract.
     func applyStoreValidatedSelection(date: Date, point: BathScaleWeightSummary?) {
         selectedDate = date
         selectedPoint = point
@@ -492,15 +522,6 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         selectedDate = nil
         showCrosshair = false
     }
-
-    /// Finds the operation nearest to the given X position.
-    /// Subclasses can reuse this when they snap the selection before resolving the point.
-    func closestOperation(to date: Date) -> BathScaleWeightSummary? {
-        let operations = chartOperations
-        return operations.min { op1, op2 in
-            abs(plotXDate(for: op1.date).timeIntervalSince(date)) < abs(plotXDate(for: op2.date).timeIntervalSince(date))
-        }
-    }
     
     // MARK: - Goal Chip Positioning
     
@@ -512,7 +533,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         }
         // Use rounded goal weight in display space for positioning, matching label rounding.
         // In weightless mode this is the rounded goal delta (goal - anchor).
-        let goalWeight = self.dashboardStore?.roundedGoalWeight(goalWeightValue) ?? goalWeightValue
+        let goalWeight = self.displayManager?.roundedGoalWeight(goalWeightValue) ?? goalWeightValue
         let domain = yAxisDomain
         
         // Calculate proportional position within the chart
@@ -550,7 +571,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     func getGoalChipXOffset() -> CGFloat {
         guard let store = dashboardStore, let goalWeightValue = goalWeight else { return 28 }
         
-        let formattedText = store.formatYAxisTickLabel(goalWeightValue)
+        let formattedText = store.displayManager.formatYAxisTickLabel(goalWeightValue)
         
         // Check if it's a 3-digit value or longer
         if formattedText.count >= 3 {
@@ -594,8 +615,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         // Calculate position within the available chart area (excluding X-axis)
         let yPosition = (availableChartHeight * (1 - yRatio)) // Invert because chart y grows downward
         
-        // Compensate for the leading .spacingXS padding applied unconditionally
-        // by `chartPlotStyle` in BaseGraphView (half of 8 ≈ visual centerline).
+        // Always offset by the leading plot-area padding (spacingXS ≈ 4pt)
         let adjustedX = xPosition + 4
         let adjustedY = yPosition
         
@@ -606,7 +626,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     func plotXDate(for original: Date) -> Date {
         return original
     }
-    
+
     // MARK: - X-Axis Label Generation
     
     /// Formats X-axis label (to be overridden by subclasses if needed)
@@ -620,11 +640,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
                 // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call
                 return DateTimeTools.formatter("EEE").string(from: date).lowercased()
             case .month:
-                guard let monthInterval = calendar.dateInterval(of: .month, for: scrollPosition),
-                      date >= monthInterval.start,
-                      date < monthInterval.end else {
-                    return nil
-                }
+                // Show day-of-month for each weekly tick (1, 8, 15, 22, 29)
                 return String(calendar.component(.day, from: date))
             case .year:
                 // Single-letter month initials (j, f, m, a, m, j, j, a, s, o, n, d)
@@ -634,15 +650,15 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
                 break
             }
         }
-        return dashboardStore?.xLabelString(for: date, period: timePeriod)?.lowercased()
+        return chartManager?.xLabelString(for: date, period: timePeriod)?.lowercased()
     }
     
     func formatSelectedXAxisLabel() -> String? {
         guard let store = dashboardStore else { return nil }
         // Prefer the view model's snapped selection first for immediate UI sync
-        let date: Date? = self.selectedDate ?? store.graph.selectedXValue ?? store.graph.selectedPoint?.date
+        let date: Date? = self.selectedDate ?? store.state.graph.selectedXValue ?? store.state.graph.selectedPoint?.date
         guard let date else { return nil }
-        return store.graphManager.formatSelectedDate(date, for: store.graph.selectedPeriod)
+        return store.graphManager.formatSelectedDate(date, for: store.state.graph.selectedPeriod)
     }
     
     // MARK: - Chart Content Helpers
@@ -657,6 +673,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     /// Called when data changes to update chart state
     func refreshData() {
         // Invalidate cache since underlying data changed
+        refreshChartOperationState()
         invalidateCache()
         updateYAxisConfiguration()
         // Maintain selection if still valid
@@ -668,18 +685,19 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     /// Called when settings change (unit, weightless mode, etc.)
     func handleSettingsChange() {
         // Update store's Y-axis cache FIRST before invalidating local cache
-        dashboardStore?.updateYAxisCache(force: true)
+        chartManager?.updateYAxisCache(force: true)
 
+        refreshChartOperationState()
         invalidateCache()
         updateYAxisConfiguration()
         syncYAxisFromStore()
 
-        // Preserve selection: unit / weightless toggles change displayed values
-        // but not which date is selected. Fall back to the store's preserved
-        // selection in case the VM-side selection was cleared elsewhere.
+        // MA-3891: preserve selection — unit / weightless toggles change displayed values
+        // but not which date is selected. Re-select the preserved date instead of clearing,
+        // falling back to the store's selection in case the VM-side selection was cleared.
         let preservedDate = selectedDate
-            ?? dashboardStore?.graph.selectedXValue
-            ?? dashboardStore?.graph.selectedPoint?.date
+            ?? dashboardStore?.state.graph.selectedXValue
+            ?? dashboardStore?.state.graph.selectedPoint?.date
         if let preservedDate {
             handleChartSelection(at: preservedDate)
         }
@@ -695,14 +713,14 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         // Force a small change to trigger binding update
         let temp = position.addingTimeInterval(0.001)
         self.scrollPosition = temp
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.scrollPosition = position
         }
     }
     
     /// Initialize chart
     func initializeChart() {
-        dashboardStore?.initializeChart()
+        chartManager?.initializeChart()
     }
     
     /// Sync Y-axis domain and ticks from dashboard store cache
@@ -710,15 +728,22 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     func syncYAxisFromStore() {
         guard let store = dashboardStore else { return }
 
+        let cachedDomain = store.state.graph.cachedYAxisDomain
+        let cachedTicks = store.state.graph.cachedYAxisTicks
+        let hasDomainChange = cachedDomain != nil && cachedDomain != yAxisDomain
+        let hasTickChange = cachedTicks != nil && cachedTicks != yAxisTicks
+
+        guard hasDomainChange || hasTickChange else { return }
+
         // Read cached values from dashboard store
-        if let cachedDomain = store.graph.cachedYAxisDomain {
+        if let cachedDomain, hasDomainChange {
             // Animate domain changes smoothly
             withAnimation(.easeInOut(duration: 0.15)) {
                 self.yAxisDomain = cachedDomain
             }
         }
 
-        if let cachedTicks = store.graph.cachedYAxisTicks {
+        if let cachedTicks, hasTickChange {
             // Suppress animation for tick changes
             withTransaction(Transaction(animation: nil)) {
                 self.yAxisTicks = cachedTicks
@@ -768,7 +793,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         hasher.combine(newData.count)
         if !newData.isEmpty {
             // Sample a few points to create a lightweight hash
-            let indices = newData.count <= 3 ? Array(0..<newData.count) : [0, newData.count/2, newData.count-1]
+            let indices = newData.count <= 3 ? Array(0..<newData.count) : [0, newData.count / 2, newData.count - 1]
             for i in indices {
                 let point = newData[i]
                 hasher.combine(point.date.timeIntervalSince1970.bitPattern)
@@ -782,13 +807,28 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         if newHash != lastCacheUpdateHash || cachedSeriesData.isEmpty {
             // Update cache synchronously since these are no longer @Published
             cachedSeriesData = newData
-            
+
             // Group series and pre-sort each series by date
             let grouped = Dictionary(grouping: cachedSeriesData) { $0.series }
             cachedGroupedSeries = grouped.mapValues { seriesPoints in
                 seriesPoints.sorted { $0.date < $1.date }
             }
-            
+
+            // Pre-compute plotXDate for every point so visibleChartSeriesData avoids per-filter calls
+            var plotXMap: [Date: Date] = [:]
+            plotXMap.reserveCapacity(cachedSeriesData.count)
+            for point in cachedSeriesData {
+                if plotXMap[point.date] == nil {
+                    plotXMap[point.date] = plotXDate(for: point.date)
+                }
+            }
+            cachedPlotXDates = plotXMap
+
+            // Invalidate visible-series cache since underlying data changed
+            cachedVisibleSeriesData = []
+            lastVisibleScrollPosition = .distantPast
+            lastVisibleDataHash = 0
+
             lastCacheUpdateHash = newHash
         }
     }
@@ -818,6 +858,28 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         cachedSeriesData = []
         cachedGroupedSeries = [:]
         lastCacheUpdateHash = 0
+        cachedPlotXDates = [:]
+        cachedVisibleSeriesData = []
+        lastVisibleScrollPosition = .distantPast
+        lastVisibleDataHash = 0
+    }
+
+    /// Releases all cached data for this view model.
+    /// Call on inactive view models when the selected period changes to reclaim memory.
+    func tearDown() {
+        hasChartOperations = false
+        cachedSeriesData = []
+        cachedGroupedSeries = [:]
+        lastCacheUpdateHash = 0
+        cachedChartSeriesData = []
+        cachedChartSeriesMetric = nil
+        _cachedXAxisValues = []
+        _lastXAxisScrollPosition = nil
+        _lastXAxisPeriod = nil
+        cachedPlotXDates = [:]
+        cachedVisibleSeriesData = []
+        lastVisibleScrollPosition = .distantPast
+        lastVisibleDataHash = 0
     }
     
     /// Returns cached series data, updating cache if needed
@@ -830,8 +892,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     }
 
     // MARK: - Fallback X-Axis Ticks (for empty data)
-    /// Generates calendar-based X-axis ticks for current period when there are no entries.
-    /// Ensures week/month/year views still show X-axis labels with a trailing phantom tick.
+    // Generates calendar-based X-axis ticks for current period when there are no entries.
+    // Ensures week/month/year views still show X-axis labels with a trailing phantom tick.
+    // swiftlint:disable:next cyclomatic_complexity
     private func fallbackXAxisValues() -> [Date] {
         guard hasXAxis else { return [] }
         let calendar = Calendar.current
@@ -857,6 +920,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             }
             return ticks
         case .month:
+            // Weekly ticks within the current month, starting at the 1st: 1, 8, 15, 22, 29.
             guard let monthInterval = calendar.dateInterval(of: .month, for: position) else { return [] }
             var ticks: [Date] = []
             var current = monthInterval.start
@@ -865,7 +929,11 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
                 guard let next = calendar.date(byAdding: .day, value: 7, to: current) else { break }
                 current = next
             }
-            ticks.append(midday(monthInterval.end))
+            let lastDay = monthInterval.end.addingTimeInterval(-1)
+            let lastDayNoon = midday(lastDay)
+            if let last = ticks.last, lastDayNoon > last {
+                ticks.append(lastDayNoon)
+            }
             return ticks
         case .year:
             // Start at Jan 1 of current year
@@ -875,8 +943,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             guard let yearStart = calendar.date(from: comps) else { return [] }
             var ticks: [Date] = []
             // 13 ticks: each month start plus phantom at next year's Jan 1
-            for m in 0...12 {
-                if let monthStart = calendar.date(byAdding: DateComponents(month: m), to: yearStart) {
+            for monthOffset in 0...12 {
+                if let monthStart = calendar.date(byAdding: DateComponents(month: monthOffset), to: yearStart) {
                     let monthComps = calendar.dateComponents([.year, .month], from: monthStart)
                     let firstOfMonth = calendar.date(from: monthComps) ?? monthStart
                     ticks.append(midday(firstOfMonth))
@@ -888,6 +956,25 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         }
     }
 
+    // MARK: - Pre-computed X-Axis Grid Ticks
+
+    /// Grid tick dates for the chart X-axis (excludes the phantom trailing tick).
+    /// The baby-profile drop-last adjustment is intentionally left to the view, as it depends on the store.
+    var gridTicks: [Date] {
+        Array(xAxisValues.dropLast())
+    }
+
+    /// Label tick dates for the chart X-axis.
+    /// Week/month/year views exclude the trailing phantom tick so labels stop at the
+    /// last real visible unit.
+    var adjustedLabelTicks: [Date] {
+        let allTicks = xAxisValues
+        if timePeriod == .week || timePeriod == .month || timePeriod == .year {
+            return Array(allTicks.dropLast())
+        }
+        return allTicks
+    }
+
     /// Returns a fixed X-axis domain for empty-state rendering so labels appear left-to-right.
     func fallbackXAxisDomain() -> ClosedRange<Date>? {
         var ticks = fallbackXAxisValues()
@@ -897,3 +984,5 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         return first...last
     }
 }
+// swiftlint:disable:next file_length
+// swiftlint:enable type_body_length

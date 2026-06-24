@@ -29,7 +29,7 @@ final class DeviceMetaData {
     // Inverse relationship to Device
     var device: Device?
 
-    init(from dto: ScaleMetaDataDTO, device: Device? = nil) {
+    init(from dto: DeviceMetaDataDTO, device: Device? = nil) {
         self.modelNumber = dto.modelNumber
         self.serialNumber = dto.serialNumber
         self.firmwareRevision = dto.firmwareRevision
@@ -53,8 +53,8 @@ final class DeviceMetaData {
         self.device = device
     }
 
-    func toDTO() -> ScaleMetaDataDTO {
-        return ScaleMetaDataDTO(
+    func toDTO() -> DeviceMetaDataDTO {
+        return DeviceMetaDataDTO(
             firmwareRevision: self.firmwareRevision,
             hardwareRevision: self.hardwareRevision,
             latestFirmwareVersion: self.latestVersion,

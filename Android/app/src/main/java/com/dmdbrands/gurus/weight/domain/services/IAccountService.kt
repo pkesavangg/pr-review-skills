@@ -2,6 +2,8 @@ package com.dmdbrands.gurus.weight.domain.services
 
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
+import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.proto.ThemeMode
@@ -147,6 +149,18 @@ interface IAccountService {
 
   suspend fun updateDashboardType(type: DashboardType)
 
+  /** Checks email availability for signup (no auth). MOB-377. */
+  suspend fun emailCheck(email: String): Boolean
+
+  /** Updates the account-level measurement system. MOB-377. */
+  suspend fun updateMeasurementUnits(measurementUnits: MeasurementUnits)
+
+  /**
+   * Adds [productType] to the account's `productTypes` on the server (spec §2.19) and
+   * persists the result locally. No-op if the product is already present.
+   */
+  suspend fun addProduct(productType: ProductType)
+
   /**
    * Handles unauthorized logout when token refresh fails. Marks account as expired, removes from storage, and triggers unauthorized logout event.
    * @param accountId The ID of the account to logout
@@ -170,6 +184,19 @@ interface IAccountService {
    * @return true if all accounts were logged out successfully, false otherwise
    */
   suspend fun logoutAll(): Boolean
+
+  /**
+   * Removes the specified account from this device only ("Removed = gone", MA-2672 / MOB-424).
+   * Fully deletes the local account; the server account is not deleted. Use [logout] to keep
+   * the account listed as "Logged out".
+   * @param accountId ID of the account to remove
+   * @param fcmToken FCM token for push notifications (optional)
+   * @return true if the account was removed successfully, false otherwise
+   */
+  suspend fun removeAccountFromDevice(
+    accountId: String,
+    fcmToken: String?,
+  ): Boolean
 
   // Theme Mode Operations
   /**
@@ -249,6 +276,14 @@ sealed class AuthState {
 
   data class UnauthorizedLogout(
     val accountId: String,
+  ) : AuthState()
+
+  /**
+   * Emitted when EncryptedSharedPreferences fails (MasterKey creation failure,
+   * key invalidation after lock screen change, etc.). Forces re-login for all accounts.
+   */
+  data class EncryptionFailure(
+    val accountId: String?,
   ) : AuthState()
 
   data class AccountAdded(

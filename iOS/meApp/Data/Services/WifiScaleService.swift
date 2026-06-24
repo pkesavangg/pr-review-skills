@@ -1,29 +1,47 @@
 import Foundation
-import Network
 import GGBluetoothSwiftPackage
 import ggWifiScalePackage
+import Network
 
 @MainActor
-final class WifiScaleService: WifiScaleServiceProtocol {
+final class WifiScaleService: WifiPairedDeviceServiceProtocol {
     static let shared = WifiScaleService()
-    
-    private let apiRepo: WifiScaleRepositoryAPIProtocol = WifiScaleRepositoryAPI()
-    private let logger = LoggerService.shared
-    private let tag = "WifiScaleService"
-    private let wifiScale = BasicWifiScale()
-    @Injector private var permissionsService: PermissionsService
 
-    init() {}
+    private let apiRepo: WifiDeviceRepositoryAPIProtocol
+    private let logger: LoggerServiceProtocol
+    private let tag = "WifiScaleService"
+    private let setupClient: WifiScaleSetupClientProtocol
+    private let networkProvider: WifiNetworkStatusProviding
+    private let wifiInfoProvider: WifiInfoProviding
+    @Injector private var permissionsService: PermissionsServiceProtocol
+
+    init(
+        apiRepo: WifiDeviceRepositoryAPIProtocol? = nil,
+        logger: LoggerServiceProtocol? = nil,
+        setupClient: WifiScaleSetupClientProtocol? = nil,
+        networkProvider: WifiNetworkStatusProviding? = nil,
+        wifiInfoProvider: WifiInfoProviding? = nil,
+        permissionsService: PermissionsServiceProtocol? = nil
+    ) {
+        self.apiRepo = apiRepo ?? WifiDeviceRepositoryAPI()
+        self.logger = logger ?? LoggerService.shared
+        self.setupClient = setupClient ?? BasicWifiScaleSetupClient()
+        self.networkProvider = networkProvider ?? NetworkMonitorStatusProvider()
+        self.wifiInfoProvider = wifiInfoProvider ?? SystemWifiInfoProvider()
+        if let permissionsService {
+            self.permissionsService = permissionsService
+        }
+    }
     
     /// Fetches the scale token for WiFi scale operations.
-    /// - Parameter r: Optional parameter for the scale token request.
+    /// - Parameter request: Optional parameter for the scale token request.
     /// - Returns: A WifiScaleTokenResponse containing the scale token.
-    func getScaleToken(r: String?) async throws -> WifiScaleTokenResponse {
-        logger.log(level: .info, tag: tag, message: "WiFi scale token request started. requestType=\(r ?? "nil")")
+    func getScaleToken(request: String?) async throws -> WifiScaleTokenResponse {
+        logger.log(level: .info, tag: tag, message: "getScaleToken called with request: \(request ?? "nil")")
         
         do {
-            let result = try await apiRepo.getScaleToken(r: r)
-            logger.log(level: .info, tag: tag, message: "WiFi scale token request succeeded")
+            let result = try await apiRepo.getScaleToken(request: request)
+            logger.log(level: .info, tag: tag, message: "Successfully fetched scale token")
             return result
         } catch {
             logger.log(level: .error, tag: tag, message: "WiFi scale token request failed: \(error.localizedDescription)")
@@ -45,7 +63,7 @@ final class WifiScaleService: WifiScaleServiceProtocol {
         locationStatus = permissionsService.getPermissionState(.LOCATION_SWITCH) ?? .NOT_REQUESTED
 
         // Determine if Wi-Fi is enabled by inspecting the current interface type.
-        let isWifiEnabled = NetworkMonitor.shared.isConnected && NetworkMonitor.shared.connectionType == .wifi
+        let isWifiEnabled = networkProvider.isConnected && networkProvider.connectionType == .wifi
 
         if isWifiEnabled {
             status = .enabled
@@ -54,10 +72,10 @@ final class WifiScaleService: WifiScaleServiceProtocol {
             let locationGranted = (permissionsService.getPermissionState(.LOCATION_SWITCH) == .ENABLED &&
                                    permissionsService.getPermissionState(.LOCATION) == .ENABLED)
             if locationGranted {
-                if let currentSsid = await WifiInfoService.currentSSID(), currentSsid != "<unknown ssid>" {
+                if let currentSsid = await wifiInfoProvider.currentSSID(), currentSsid != "<unknown ssid>" {
                     ssid = currentSsid
                 }
-                if let currentBssid = await WifiInfoService.currentBSSID() {
+                if let currentBssid = await wifiInfoProvider.currentBSSID() {
                     bssid = currentBssid
                 }
                 if !ssid.isEmpty { status = .connected }
@@ -72,17 +90,18 @@ final class WifiScaleService: WifiScaleServiceProtocol {
     /// Stops any ongoing Wi-Fi smart-connect session.
     func stop() async {
         logger.log(level: .info, tag: tag, message: "Cancelling any ongoing Wi-Fi scale operations")
-        wifiScale.cancel()
+        setupClient.cancel()
     }
  
     /// Performs a SmartConfig Wi-Fi setup sequence.
     /// - Parameters:
     ///   - info:      The parameters required for the operation (SSID, password, token, etc.).
     func smartConnect(_ info: WifiSetupInfo) async throws {
+        
         let config = makeConfig(from: info)
         logger.log(level: .info, tag: tag, message: "SmartConfig WiFi setup started")
         do {
-            try await wifiScale.connect(config: config, mode: .smartConfig, timeout: 120)
+            try await setupClient.smartConnect(config: config)
             logger.log(level: .info, tag: tag, message: "SmartConfig WiFi setup succeeded")
         } catch {
             logger.log(level: .error, tag: tag, message: "SmartConfig WiFi setup failed: \(error.localizedDescription)")
@@ -97,7 +116,7 @@ final class WifiScaleService: WifiScaleServiceProtocol {
         let config = makeConfig(from: info)
         logger.log(level: .info, tag: tag, message: "ESPTouch WiFi setup started")
         do {
-            try await wifiScale.connect(config: config, mode: .esptouch, timeout: 60)
+            try await setupClient.espSmartConnect(config: config)
             logger.log(level: .info, tag: tag, message: "ESPTouch WiFi setup succeeded")
         } catch {
             logger.log(level: .error, tag: tag, message: "ESPTouch WiFi setup failed: \(error.localizedDescription)")
@@ -109,10 +128,11 @@ final class WifiScaleService: WifiScaleServiceProtocol {
     /// - Parameters:
     ///   - info:       The setup parameters (SSID, password, token, etc.).
     func apMode(_ info: WifiSetupInfo) async throws {
+        
         let config = makeConfig(from: info)
         logger.log(level: .info, tag: tag, message: "AP-mode WiFi setup started")
         do {
-            try await wifiScale.connect(config: config, mode: .apMode, timeout: 90)
+            try await setupClient.apMode(config: config)
             logger.log(level: .info, tag: tag, message: "AP-mode WiFi setup succeeded")
         } catch {
             logger.log(level: .error, tag: tag, message: "AP-mode WiFi setup failed: \(error.localizedDescription)")

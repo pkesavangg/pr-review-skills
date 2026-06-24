@@ -8,7 +8,7 @@
 import Foundation
 
 struct GraphViewStrings {
-   static let noEntriesThisWeek  = "You haven't added any entries this week."
-    static let yGrid =  "Y Grid"
-    static let xGrid =  "X Grid"
+   static let noEntriesThisWeek = "You haven't added any entries this week."
+    static let yGrid = "Y Grid"
+    static let xGrid = "X Grid"
 }

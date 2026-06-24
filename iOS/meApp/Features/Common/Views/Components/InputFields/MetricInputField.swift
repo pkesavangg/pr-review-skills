@@ -1,3 +1,4 @@
+import Combine
 //
 //  MetricInputField.swift
 //  meApp
@@ -5,7 +6,6 @@
 //  Created by Kesavan Panchabakesan on 10/06/25.
 //
 import SwiftUI
-import Combine
 
 // MARK: - Metric Input Field (Wrapper over AppInputField)
 
@@ -18,39 +18,45 @@ struct MetricInputField: View {
     @Binding var focusedField: FocusField?
     
     // Callbacks
-    var onCommit: (() -> Void)? = nil
-    var onEditingChanged: ((Bool) -> Void)? = nil
-    
+    var onCommit: (() -> Void)?
+    var onEditingChanged: ((Bool) -> Void)?
+
+    // Accessibility
+    var accessibilityIdentifier: String?
+
     // Internal state and formatter
     @State private var displayValue: String = ""
     @State private var isInitialState: Bool = true
     @StateObject private var formatter: MetricFieldFormatter
-    
+
     init(
         config: TextInputConfig,
         value: Binding<String>,
         focusedField: Binding<FocusField?>,
+        accessibilityIdentifier: String? = nil,
         onCommit: (() -> Void)? = nil,
         onEditingChanged: ((Bool) -> Void)? = nil
     ) {
         self.config = config
         self._value = value
         self._focusedField = focusedField
+        self.accessibilityIdentifier = accessibilityIdentifier
         self.onCommit = onCommit
         self.onEditingChanged = onEditingChanged
         self._formatter = StateObject(wrappedValue: MetricFieldFormatter(config: config))
     }
-    
+
     var body: some View {
         AppInputField(
             config: modifiedConfig,
             value: $displayValue,
             focusedField: $focusedField,
+            accessibilityIdentifier: accessibilityIdentifier,
             onCommit: onCommit,
             onEditingChanged: onEditingChanged
         )
         .onChange(of: displayValue) { oldValue, newValue in
-            handleValueChange(newValue)
+            handleValueChange(oldValue: oldValue, newValue: newValue)
         }
         .onChange(of: value) { oldValue, newValue in
             if oldValue != newValue {
@@ -88,38 +94,39 @@ struct MetricInputField: View {
         }
     }
     
-    private func handleValueChange(_ newValue: String) {
+    private func handleValueChange(oldValue: String, newValue: String) {
         // If user has entered text for the first time, we're no longer in initial state
         if !newValue.isEmpty && isInitialState {
             isInitialState = false
         }
-        
+
         // Allow empty values
         if newValue.isEmpty {
             displayValue = ""
             value = ""
             return
         }
-        
+
         let formatted = formatter.formatInput(newValue)
-        
+
         // Check if the new value is valid (doesn't exceed max)
-        guard formatter.shouldUpdateValue(from: displayValue, to: newValue) else {
+        guard formatter.shouldUpdateValue(from: oldValue, to: newValue) else {
+            // Revert displayValue to prevent unlimited text growth
+            displayValue = oldValue
             return
         }
-        
+
         // Update display value if it changed
         if displayValue != formatted {
             displayValue = formatted
         }
-        
+
         // Only update bound value if it's different
         if value != formatted {
             value = formatted
         }
     }
 }
-
 
 // MARK: - Metric Input TestingView (for testing the MetricInputField)
 

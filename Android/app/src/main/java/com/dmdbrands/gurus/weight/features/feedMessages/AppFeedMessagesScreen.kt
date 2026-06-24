@@ -4,7 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -30,7 +30,7 @@ fun AppFeedMessagesScreen(
   modifier: Modifier = Modifier,
 ) {
   val viewModel: FeedMessagesViewModel = hiltViewModel()
-  val state by viewModel.state.collectAsState()
+  val state by viewModel.state.collectAsStateWithLifecycle()
 
   // Handle back button press
   BackHandler {

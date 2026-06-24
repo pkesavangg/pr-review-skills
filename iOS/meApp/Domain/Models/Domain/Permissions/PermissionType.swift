@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 08/07/25.
 //
 
-
 enum PermissionType: String {
     case notification = "NOTIFICATION"
     case bluetoothSwitch = "BLUETOOTH_SWITCH"

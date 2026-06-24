@@ -4,6 +4,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper.toScaleInfo
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * Reducer for Debug Menu screen state transitions.
@@ -56,8 +57,8 @@ class DebugMenuReducer : IReducer<DebugMenuState, DebugMenuIntent> {
                     si.scaleId?.let { scaleId -> devicesById[scaleId] }
                 }
                 state.copy(
-                    scaleList = devicesInOrder,
-                    scaleListScaleInfo = scaleInfos,
+                    scaleList = devicesInOrder.toImmutableList(),
+                    scaleListScaleInfo = scaleInfos.toImmutableList(),
                     hasScales = intent.scales.isNotEmpty(),
                     isSendScaleLogEnabled = intent.scales.isNotEmpty() &&
                         (intent.scales.size > 1 ||

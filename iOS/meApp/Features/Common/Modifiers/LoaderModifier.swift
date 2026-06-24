@@ -35,7 +35,6 @@ import SwiftUI
 /// - Loader will only appear when `loaderData` is not `nil`
 /// - Recommended to use with `.animation` for transition smoothness
 
-
 struct LoaderModifier: ViewModifier {
     @Environment(\.appTheme) private var theme
     @Binding var loaderData: LoaderModel?

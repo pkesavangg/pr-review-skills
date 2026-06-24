@@ -60,21 +60,17 @@ class NotificationHandler(
             sageChannels += channel
         }
         val notificationChannel =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                NotificationChannel(
-                    channel.channelConfig.id,
-                    channel.channelConfig.name,
-                    channel.channelConfig.importance,
-                )
-            } else {
-                TODO("VERSION.SDK_INT < O")
-            }
+            NotificationChannel(
+                channel.channelConfig.id,
+                channel.channelConfig.name,
+                channel.channelConfig.importance,
+            )
         notificationChannel.description = channel.channelConfig.description
         notificationManager.createNotificationChannel(notificationChannel)
     }
 
     fun getBuilder(channelId: String): NotificationCompat.Builder {
-        val requiredConfig = sageChannels.find { it.channelConfig.id == channelId }!!
+        val requiredConfig = requireNotNull(sageChannels.find { it.channelConfig.id == channelId }) { "No channel config found for id: $channelId" }
         return NotificationCompat
             .Builder(context, channelId)
             .setColorized(true)
@@ -137,7 +133,7 @@ class NotificationHandler(
         textContent: String,
         priority: Int = NotificationCompat.PRIORITY_DEFAULT,
     ) {
-        val requiredConfig = sageChannels.find { it.channelConfig.id == channelId }!!
+        val requiredConfig = requireNotNull(sageChannels.find { it.channelConfig.id == channelId }) { "No channel config found for id: $channelId" }
 
         val builder =
             NotificationCompat
@@ -158,7 +154,7 @@ class NotificationHandler(
         contentIntent: PendingIntent,
         priority: Int = NotificationCompat.PRIORITY_DEFAULT,
     ) {
-        val requiredConfig = sageChannels.find { it.channelConfig.id == channelId }!!
+        val requiredConfig = requireNotNull(sageChannels.find { it.channelConfig.id == channelId }) { "No channel config found for id: $channelId" }
 
         val builder =
             NotificationCompat
@@ -173,6 +169,62 @@ class NotificationHandler(
         notificationManager.notify(notificationName, notificationName.hashCode(), builder.build())
     }
 
+    /**
+     * Shows a branded, grouped notification with a tap action and lock-screen visibility
+     * control (MOB-434). All notifications sharing [groupKey] are collapsed by the OS under
+     * a single summary; [visibility] governs what is shown on a secure lock screen.
+     *
+     * @param channelId The channel ID.
+     * @param notificationName The notification name/tag (also used as the integer id).
+     * @param textTitle The constant brand title.
+     * @param textContent The body text (shown expanded via BigTextStyle).
+     * @param smallIcon The brand small-icon resource id.
+     * @param contentIntent The PendingIntent for the tap action.
+     * @param groupKey The group key used to collapse related notifications.
+     * @param visibility Lock-screen visibility (defaults to VISIBILITY_PRIVATE).
+     * @param priority The notification priority.
+     */
+    fun showBrandedNotification(
+        channelId: String,
+        notificationName: String,
+        textTitle: String,
+        textContent: String,
+        smallIcon: Int,
+        contentIntent: PendingIntent,
+        groupKey: String,
+        visibility: Int = NotificationCompat.VISIBILITY_PRIVATE,
+        priority: Int = NotificationCompat.PRIORITY_DEFAULT,
+    ) {
+        requireNotNull(sageChannels.find { it.channelConfig.id == channelId }) { "No channel config found for id: $channelId" }
+
+        val notification =
+            NotificationCompat
+                .Builder(context, channelId)
+                .setSmallIcon(smallIcon)
+                .setContentTitle(textTitle)
+                .setContentText(textContent)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(textContent))
+                .setContentIntent(contentIntent)
+                .setGroup(groupKey)
+                .setVisibility(visibility)
+                .setPriority(priority)
+                .setAutoCancel(true)
+                .build()
+        notificationManager.notify(notificationName, notificationName.hashCode(), notification)
+
+        val summary =
+            NotificationCompat
+                .Builder(context, channelId)
+                .setSmallIcon(smallIcon)
+                .setContentTitle(textTitle)
+                .setGroup(groupKey)
+                .setGroupSummary(true)
+                .setVisibility(visibility)
+                .setAutoCancel(true)
+                .build()
+        notificationManager.notify(groupKey, groupKey.hashCode(), summary)
+    }
+
     fun showTextWithButtons(
         channelId: String,
         notificationName: String,
@@ -181,7 +233,7 @@ class NotificationHandler(
         action: NotificationCompat.Action,
         priority: Int = NotificationCompat.PRIORITY_DEFAULT,
     ) {
-        val requiredConfig = sageChannels.find { it.channelConfig.id == channelId }!!
+        val requiredConfig = requireNotNull(sageChannels.find { it.channelConfig.id == channelId }) { "No channel config found for id: $channelId" }
 
         val builder =
             NotificationCompat
@@ -203,7 +255,7 @@ class NotificationHandler(
         textContent: String,
         priority: Int = NotificationCompat.PRIORITY_DEFAULT,
     ) {
-        val requiredConfig = sageChannels.find { it.channelConfig.id == channelId }!!
+        val requiredConfig = requireNotNull(sageChannels.find { it.channelConfig.id == channelId }) { "No channel config found for id: $channelId" }
 
         val builder =
             NotificationCompat
@@ -235,7 +287,7 @@ class NotificationHandler(
             Timber.e("Failed to load bitmap image from resource ID: $icon")
             return
         }
-        val requiredConfig = sageChannels.find { it.channelConfig.id == channelId }!!
+        val requiredConfig = requireNotNull(sageChannels.find { it.channelConfig.id == channelId }) { "No channel config found for id: $channelId" }
 
         val builder =
             NotificationCompat
@@ -266,7 +318,7 @@ class NotificationHandler(
             return
         }
 
-        val requiredConfig = sageChannels.find { it.channelConfig.id == channelId }!!
+        val requiredConfig = requireNotNull(sageChannels.find { it.channelConfig.id == channelId }) { "No channel config found for id: $channelId" }
 
         val builder =
             NotificationCompat

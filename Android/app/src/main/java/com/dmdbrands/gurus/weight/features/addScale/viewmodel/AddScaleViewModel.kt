@@ -114,7 +114,7 @@ constructor(
           cancelText = PairedScaleExistsAlert.Return,
           onConfirm = {
             AppLog.d(TAG, "User confirmed pairing existing scale")
-            navigateToSelectedScaleSetup(sku)
+            navigateToSelectedScaleSetup(sku, replaceLast)
             dialogQueueService.dismissCurrent()
           },
         ),
@@ -125,7 +125,7 @@ constructor(
     }
   }
 
-  private fun navigateToSelectedScaleSetup(sku: String, replaceLast: Boolean = true) {
+  private fun navigateToSelectedScaleSetup(sku: String, replaceLast: Boolean) {
     AppLog.d(TAG, "Navigating to selected scale setup for SKU: $sku")
     val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku)
     if (scaleInfo != null) {
@@ -147,6 +147,11 @@ constructor(
           AppRoute.ScaleSetup.LcbtScaleSetup(sku, scaleInfo = scaleInfo)
         }
 
+        ScaleSetupType.BabyScale -> {
+          AppLog.d(TAG, "Navigating to Baby Scale setup")
+          AppRoute.ScaleSetup.BabyScaleSetup(sku)
+        }
+
         ScaleSetupType.BtWifiR4 -> {
           AppLog.d(TAG, "Navigating to BtWifiR4 scale setup")
           AppRoute.ScaleSetup.BtWifiScaleSetup(sku)
@@ -160,6 +165,10 @@ constructor(
           route
         }
 
+        ScaleSetupType.BpmBluetooth, ScaleSetupType.BpmA6Bluetooth -> {
+          AppLog.d(TAG, "Navigating to BPM monitor setup")
+          AppRoute.ScaleSetup.BpmSetup(sku)
+        }
       }
       replaceLastAndNavigate(route, replaceLast)
     } else {

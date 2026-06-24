@@ -9,6 +9,7 @@ import com.dmdbrands.gurus.weight.domain.model.api.user.AccountInfo
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountToken
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.Token
+import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
@@ -65,6 +66,23 @@ interface IAccountRepository {
    * @return The updated Account
    */
   suspend fun updateProfile(profileData: ProfileUpdateRequest)
+
+  /**
+   * Checks whether an email is available for signup (no auth). MOB-377.
+   * @return true if the email is not already registered.
+   */
+  suspend fun emailCheck(email: String): Boolean
+
+  /**
+   * Updates the account-level measurement system and persists the result. MOB-377.
+   */
+  suspend fun updateMeasurementUnits(measurementUnits: MeasurementUnits)
+
+  /**
+   * Sets the account's product types on the server (spec §2.19) and persists the
+   * server-confirmed account state locally.
+   */
+  suspend fun updateProducts(productTypes: List<String>)
 
   /**
    * Updates the dashboard metrics for the active account.
@@ -225,6 +243,16 @@ interface IAccountRepository {
    */
   suspend fun removeAccount(accountId: String)
 
+  /**
+   * Removes the account from this device only: deletes the local account row and related
+   * settings and clears tokens, after a best-effort server session logout. The server
+   * account is not deleted. "Removed = gone" (MA-2672 / MOB-424).
+   * @param accountId The account ID to remove
+   * @param fcmToken The FCM token for push notifications (optional)
+   * @param isActiveAccount Whether this is the active account
+   */
+  suspend fun removeAccountFromDevice(accountId: String, fcmToken: String?, isActiveAccount: Boolean)
+
   fun getActiveAccountWeightUnitFlow(): Flow<WeightUnit?>
   fun getActiveAccountWeightlessFlow(): Flow<Weightless>
   // Theme Mode Operations
@@ -283,4 +311,8 @@ interface IAccountRepository {
     dashboardType: DashboardType,
     isSynced: Boolean = true
   )
+
+  suspend fun setActiveBabyId(accountId: String, babyId: String)
+  suspend fun getActiveBabyId(): String?
+  suspend fun clearActiveBabyId(accountId: String)
 }

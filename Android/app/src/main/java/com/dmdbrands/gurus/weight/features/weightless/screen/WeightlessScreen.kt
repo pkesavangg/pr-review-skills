@@ -1,8 +1,6 @@
 package com.dmdbrands.gurus.weight.features.weightless.screen
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,7 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -25,6 +23,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.features.changePassword.strings.ChangePasswordStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
+import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
@@ -54,7 +53,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 @Composable
 fun WeightlessScreen() {
   val viewmodel: WeightlessViewModel = hiltViewModel()
-  val state by viewmodel.state.collectAsState()
+  val state by viewmodel.state.collectAsStateWithLifecycle()
   BackHandler {
     viewmodel.handleIntent(WeightlessIntent.OnBack)
   }
@@ -65,7 +64,6 @@ fun WeightlessScreen() {
 private fun WeightlessContent(state: WeightlessState, handleIntent: (WeightlessIntent) -> Unit) {
   val keyboardController = LocalSoftwareKeyboardController.current
   val focusManager = LocalFocusManager.current
-  val interactionSource = remember { MutableInteractionSource() }
   val weightFocusRequester = remember { FocusRequester() }
   val scrollState = rememberScrollState()
 
@@ -109,11 +107,7 @@ private fun WeightlessContent(state: WeightlessState, handleIntent: (WeightlessI
           modifier =
             Modifier
               .fillMaxWidth()
-              .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = { focusManager.clearFocus() },
-              ),
+              .dismissKeyboardOnTap(),
           horizontalAlignment = Alignment.Start,
         ) {
           AppText(

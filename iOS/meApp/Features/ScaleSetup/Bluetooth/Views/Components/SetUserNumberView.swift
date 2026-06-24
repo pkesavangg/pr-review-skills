@@ -36,6 +36,7 @@ struct SetUserNumberView: View {
                         .frame(width: DevicePlatform.isMiniPhone ? 350 : 370,
                                height: DevicePlatform.isMiniPhone ? 200 : 250)
                         .scaleEffect(DevicePlatform.isMiniPhone ? 0.8 : 0.81)
+                        .accessibilityHidden(true)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
                 

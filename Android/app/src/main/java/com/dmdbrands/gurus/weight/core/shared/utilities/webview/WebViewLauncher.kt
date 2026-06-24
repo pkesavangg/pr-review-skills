@@ -41,17 +41,11 @@ object WebViewLauncher {
         }
     }
 
-    /**
-     * Validates if the given URL is safe to open in the WebView.
-     * Only allows http and https URLs.
-     *
-     * @param url The URL to validate
-     * @return true if the URL is valid and safe, false otherwise
-     */
     private fun isValidUrl(url: String): Boolean =
         try {
             val uri = url.toUri()
-            uri.scheme == "http" || uri.scheme == "https"
+            val host = uri.host ?: return false
+            SafeWebViewClient.isUrlAllowed(uri.scheme, host)
         } catch (e: Exception) {
             false
         }

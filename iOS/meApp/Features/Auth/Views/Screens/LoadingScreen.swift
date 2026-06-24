@@ -22,16 +22,21 @@ struct LoadingScreen: View {
                 
                 LogoView()
                     .frame(width: 214, height: 25)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(lang.accLogoLabel)
 
                 HStack(alignment: .center) {
                     Text(lang.loading.lowercased())
                         .fontOpenSans(.subHeading1)
                         .foregroundColor(theme.backgroundPrimary)
-                    
+
                     LoadingDotsView(color: theme.backgroundPrimary)
                         .offset(y: 1)
-                    
+                        .accessibilityHidden(true)
+
                 }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(lang.accLoadingLabel)
                 .padding(.top, .spacing3XL)
 
                 Spacer()

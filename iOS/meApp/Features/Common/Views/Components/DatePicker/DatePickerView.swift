@@ -14,9 +14,9 @@ struct DatePickerView: View {
     /// The currently selected date.
     @Binding var date: Date
     /// The earliest selectable date (default: Jan 1, 1922).
-    var startDate: Date = Date(timeIntervalSince1970: -1514764800) // Jan 1, 1922
+    var startDate = Date(timeIntervalSince1970: -1514764800) // Jan 1, 1922
     /// The latest selectable date (default: today).
-    var endDate: Date = Date() // Current Date
+    var endDate = Date() // Current Date
     @Environment(\.appTheme) var theme
 
     var body: some View {
@@ -43,7 +43,6 @@ struct DatePickerView: View {
 #Preview {
     DatePickerView(isPresented: .constant(true), date: .constant(Date()))
 }
-
 
 /*
  // Example usage of DatePickerView and DateLabelView in a parent view.

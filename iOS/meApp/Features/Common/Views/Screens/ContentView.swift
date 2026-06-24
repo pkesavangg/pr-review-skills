@@ -25,9 +25,9 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(themeManager.getPreferredAppearanceMode())
-        .onChange(of: colorScheme, { oldValue, newValue in
+        .onChange(of: colorScheme) { _, newValue in
             themeManager.syncWithSystemColorScheme(newValue)
-        })
+        }
         .onAppear {
             viewModel.performAppInitialization()
             themeManager.syncWithSystemColorScheme(colorScheme)

@@ -30,4 +30,3 @@ struct CallButtonView: View {
 #Preview(body: {
     CallButtonView()
 })
-

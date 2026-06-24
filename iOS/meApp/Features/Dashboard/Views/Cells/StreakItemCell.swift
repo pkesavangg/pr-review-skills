@@ -1,8 +1,12 @@
 // MARK: - Enhanced StreakCardCell with Wiggle Animation
 
-import UIKit
-import SwiftUI
+// This UICollectionViewCell intentionally aggregates all cell configuration logic
+// to maintain proper state synchronization between UIKit and SwiftUI components.
+// Splitting would fragment the drag/drop, wiggle animation, and overlay management logic.
+
 import ObjectiveC
+import SwiftUI
+import UIKit
 
 class StreakCardCell: UICollectionViewCell {
     private static let overlayButtonSize: CGFloat = 48
@@ -50,7 +54,7 @@ class StreakCardCell: UICollectionViewCell {
     private var suppressOverlay: Bool = false
     private var overlayButtonAction: (() -> Void)?
     private var overlayButtonVisible: Bool = false
-    private var overlayButtonOffset: CGSize = CGSize(width: 22, height: -32)
+    private var overlayButtonOffset = CGSize(width: 22, height: -32)
     
     // Parent context for rendering rules
     var parentView: DashboardMetricsParentView = .dashboard
@@ -58,77 +62,85 @@ class StreakCardCell: UICollectionViewCell {
     // MARK: - Configuration
     
     func configure(with item: MetricItem, store: DashboardStore, onMetricLongPress: ((String) -> Void)? = nil, onSelectMetric: ((String) -> Void)? = nil) {
-        // Always reconfigure to ensure proper state synchronization
-        let needsReconfiguration = true
-        
-        if !needsReconfiguration {
-            return
-        }
-        
+        setupBasicState(item: item, store: store)
+        let swiftUIView = createSwiftUIView(item: item, store: store)
+        setupHostingController(with: swiftUIView)
+        setupGestureRecognizers(store: store, item: item, onMetricLongPress: onMetricLongPress, onSelectMetric: onSelectMetric)
+        setupOverlayButton()
+        finalizeLayout()
+    }
+    
+    // MARK: - Configuration Helpers
+    
+    private func setupBasicState(item: MetricItem, store: DashboardStore) {
         representedItem = item
         currentStore = store
-        
-        // Set the removal state
-        isRemoved = store.isStreakRemoved(item.label)
-        
-        let streakValue: String
-        if parentView == .R4ScaleSetup {
+        isRemoved = store.gridEditingManager.isStreakRemoved(item.label)
+    }
+    
+    private func getStreakValue(for item: MetricItem) -> String {
+        if parentView == .r4DeviceSetup {
             let lower = item.label.lowercased()
             if lower.contains("current streak") || lower.contains("longest streak") {
-                streakValue = "0"
+                return "0"
             } else {
-                streakValue = "+/-"
+                return "+/-"
             }
         } else {
-            streakValue = item.value
+            return item.value
         }
-
-        let streakCardView = StreakCardView(
+    }
+    
+    private func createStreakCardView(item: MetricItem, store: DashboardStore) -> StreakCardView {
+        let streakValue = getStreakValue(for: item)
+        return StreakCardView(
             value: streakValue,
             label: item.label,
             icon: item.icon,
-            isEditMode: store.ui.isEditMode,
+            isEditMode: store.state.ui.isEditMode,
             isRemoved: isRemoved,
-            isDropTarget: store.ui.dropHoverId == item.id.uuidString,
+            isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
             onToggleRemoval: {
-                store.toggleStreakRemoval(item.label)
+                store.gridEditingManager.toggleStreakRemoval(item.label)
             },
             onDrop: { _, _ in false },
             onDropTargetChanged: { _ in },
             parentView: parentView
         )
-        
-        // Apply EditModeOverlay to the StreakCardView only when appropriate
-        let shouldShowOverlay = store.ui.isEditMode && 
+    }
+    
+    private func createSwiftUIView(item: MetricItem, store: DashboardStore) -> AnyView {
+        let streakCardView = createStreakCardView(item: item, store: store)
+        let shouldShowOverlay = store.state.ui.isEditMode && 
                                !(currentIsBeingDragged || isLongPressed || suppressOverlay)
         
-        let viewWithOverlay: AnyView
         if shouldShowOverlay {
-            viewWithOverlay = AnyView(
+            let viewWithOverlay = AnyView(
                 streakCardView
                     .editModeOverlay(
-                        isEditMode: true, // Always true when we want to show overlay
+                        isEditMode: true,
                         isRemoved: isRemoved,
                         onToggleRemoval: {
-                            store.toggleStreakRemoval(item.label)
+                            store.gridEditingManager.toggleStreakRemoval(item.label)
                         },
-                        isBeingDragged: currentIsBeingDragged || isLongPressed, // Use actual drag state
-                        isDropTarget: store.ui.dropHoverId == item.id.uuidString,
+                        isBeingDragged: currentIsBeingDragged || isLongPressed,
+                        isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
                         rowIndex: rowIndex,
-                        disableWiggle: isRemoved, 
+                        disableWiggle: isRemoved,
                         iconOffset: CGSize(width: 22, height: -32)
                     )
             )
-            overlayButtonVisible = store.ui.dropHoverId != item.id.uuidString
-            overlayButtonAction = { store.toggleStreakRemoval(item.label) }
+            overlayButtonVisible = store.state.ui.dropHoverId != item.id.uuidString
+            overlayButtonAction = { store.gridEditingManager.toggleStreakRemoval(item.label) }
+            return viewWithOverlay
         } else {
-            viewWithOverlay = AnyView(streakCardView)
             overlayButtonVisible = false
             overlayButtonAction = nil
+            return AnyView(streakCardView)
         }
-
-        let swiftUIView = viewWithOverlay
-        
+    }
+    
+    private func setupHostingController(with swiftUIView: AnyView) {
         if hostingController == nil {
             let hc = UIHostingController(rootView: swiftUIView)
             hc.view.backgroundColor = .clear
@@ -141,48 +153,51 @@ class StreakCardCell: UICollectionViewCell {
                 hc.view.topAnchor.constraint(equalTo: contentView.topAnchor),
                 hc.view.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
                 hc.view.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-                hc.view.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+                hc.view.bottomAnchor.constraint(equalTo: contentView.bottomAnchor)
             ])
             hostingController = hc
         } else {
-            // Update root view with animation disabled to prevent visual glitches during cell configuration
-            // This prevents icon flickering when configure is called multiple times
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             hostingController?.rootView = swiftUIView
             hostingController?.view.setNeedsLayout()
             CATransaction.commit()
         }
-
-        // Set up gesture recognizers based on edit mode
+    }
+    
+    private func setupGestureRecognizers(store: DashboardStore, item: MetricItem, onMetricLongPress: ((String) -> Void)?, onSelectMetric: ((String) -> Void)?) {
         gestureRecognizers?.forEach { self.removeGestureRecognizer($0) }
         
-        if store.ui.isEditMode {
+        if store.state.ui.isEditMode {
             // In edit mode, rely on SwiftUI overlay buttons for add/remove
-            // No custom gesture recognizers needed
-        } else {
-            let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleMetricLongPressForInfo(_:)))
-            longPress.minimumPressDuration = 0.5
-            longPress.cancelsTouchesInView = false
-            longPress.delaysTouchesBegan = false
-            self.addGestureRecognizer(longPress)
-
-            let selectTap = UITapGestureRecognizer(target: self, action: #selector(handleNonEditSelectTap(_:)))
-            selectTap.cancelsTouchesInView = true
-            self.addGestureRecognizer(selectTap)
-
-            self.tag = item.id.hashValue
-            self.onMetricLongPressCallback = onMetricLongPress
-            self.onSelectMetricCallback = onSelectMetric
+            return
         }
+        
+        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleMetricLongPressForInfo(_:)))
+        longPress.minimumPressDuration = 0.5
+        longPress.cancelsTouchesInView = false
+        longPress.delaysTouchesBegan = false
+        self.addGestureRecognizer(longPress)
 
+        let selectTap = UITapGestureRecognizer(target: self, action: #selector(handleNonEditSelectTap(_:)))
+        selectTap.cancelsTouchesInView = true
+        self.addGestureRecognizer(selectTap)
+
+        self.tag = item.id.hashValue
+        self.onMetricLongPressCallback = onMetricLongPress
+        self.onSelectMetricCallback = onSelectMetric
+    }
+    
+    private func setupOverlayButton() {
         if overlayTapButton.superview == nil {
             overlayTapButton.backgroundColor = .clear
             overlayTapButton.isHidden = true
             overlayTapButton.addTarget(self, action: #selector(handleOverlayTap), for: .touchUpInside)
             addSubview(overlayTapButton)
         }
-
+    }
+    
+    private func finalizeLayout() {
         setNeedsLayout()
         layoutIfNeeded()
 
@@ -265,9 +280,9 @@ class StreakCardCell: UICollectionViewCell {
             layer.shadowOpacity = 0.3
             layer.shadowRadius = 8
             layer.shadowOffset = CGSize(width: 0, height: 4)
-            UIView.animate(withDuration: 0.2, delay: 0, options: [.allowUserInteraction, .curveEaseInOut], animations: {
+            UIView.animate(withDuration: 0.2, delay: 0, options: [.allowUserInteraction, .curveEaseInOut]) {
                 self.transform = CGAffineTransform(scaleX: 1.05, y: 1.05)
-            })
+            }
             // Set suppressOverlay immediately without reconfigure
             suppressOverlay = true
             isLongPressed = true
@@ -292,9 +307,9 @@ class StreakCardCell: UICollectionViewCell {
             layer.setNeedsDisplay()
             layer.displayIfNeeded()
             clearAllShadowEffects()
-            UIView.animate(withDuration: 0.2, delay: 0, options: [.allowUserInteraction, .curveEaseInOut], animations: {
+            UIView.animate(withDuration: 0.2, delay: 0, options: [.allowUserInteraction, .curveEaseInOut]) {
                 self.transform = .identity
-            })
+            }
             // Clear suppressOverlay immediately without reconfigure
             suppressOverlay = false
             isLongPressed = false
@@ -309,7 +324,8 @@ class StreakCardCell: UICollectionViewCell {
             isLongPressed = false
             
             // When restoring overlays, add a small delay to ensure layout is fully settled
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: 200_000_000)
                 guard let self = self,
                       let item = self.representedItem,
                       let store = self.currentStore else { return }
@@ -375,7 +391,7 @@ class StreakCardCell: UICollectionViewCell {
     override func layoutSubviews() {
         super.layoutSubviews()
         // Wiggle only in edit mode and only if not removed
-        if let store = currentStore, store.ui.isEditMode, isWiggling && !isRemoved {
+        if let store = currentStore, store.state.ui.isEditMode, isWiggling && !isRemoved {
             contentView.startWiggleWithRowIndex(rowIndex)
         } else {
             contentView.stopWiggle()
@@ -413,8 +429,8 @@ class StreakCardCell: UICollectionViewCell {
         set { objc_setAssociatedObject(self, &AssociatedKeys.metricSelectCallback, newValue, .OBJC_ASSOCIATION_COPY_NONATOMIC) }
     }
     private struct AssociatedKeys {
-        static var metricLongPressCallback = "metricLongPressCallback"
-        static var metricSelectCallback = "metricSelectCallback"
+        static var metricLongPressCallback: UInt8 = 0
+        static var metricSelectCallback: UInt8 = 0
     }
     
     @objc private func handleMetricLongPressForInfo(_ gesture: UILongPressGestureRecognizer) {
@@ -424,8 +440,8 @@ class StreakCardCell: UICollectionViewCell {
             // Apply mild selection shadow to indicate selection like MetricCell
             applySelectionShadow()
             // Enter edit mode on long press if not already in edit mode
-            if let store = currentStore, !store.ui.isEditMode {
-                store.toggleEditMode()
+            if let store = currentStore, !store.state.ui.isEditMode {
+                store.gridEditingManager.toggleEditMode()
             }
             // Reconfigure to hide overlay during long press
             if let item = representedItem, let store = currentStore {
@@ -445,7 +461,6 @@ class StreakCardCell: UICollectionViewCell {
             if let item = representedItem, let store = currentStore {
                 configure(with: item, store: store)
             }
-            break
         default:
             break
         }
@@ -454,7 +469,7 @@ class StreakCardCell: UICollectionViewCell {
     @objc private func handleNonEditSelectTap(_ gesture: UITapGestureRecognizer) {
         guard gesture.state == .ended, let item = representedItem else { return }
         // Toggle selection: deselect if same, otherwise select tapped
-        if currentStore?.ui.selectedMetricLabel == item.label {
+        if currentStore?.state.ui.selectedMetricLabel == item.label {
             onSelectMetricCallback?("")
         } else {
             onSelectMetricCallback?(item.label)

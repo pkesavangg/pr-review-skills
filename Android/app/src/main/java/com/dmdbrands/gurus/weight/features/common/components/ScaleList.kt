@@ -16,7 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSegmentType
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.gurus.weight.features.common.model.DEVICES
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
@@ -43,23 +43,26 @@ fun ScaleList(
 ) {
   var selectedType by remember { mutableStateOf(initialSelectedType) }
 
+  val devices = DEVICES
   val filteredScales = remember(selectedType) {
     when (selectedType) {
-      ScaleSegmentType.All -> SCALES
+      ScaleSegmentType.All -> devices
       ScaleSegmentType.AppSync ->
-        SCALES.filter {
+        devices.filter {
           it.setupType == ScaleSetupType.AppSync
         }
 
       ScaleSegmentType.Bluetooth ->
-        SCALES.filter {
+        devices.filter {
           it.setupType == ScaleSetupType.Bluetooth ||
             it.setupType == ScaleSetupType.Lcbt ||
-            it.setupType == ScaleSetupType.BtWifiR4
+            it.setupType == ScaleSetupType.BtWifiR4 ||
+            it.setupType == ScaleSetupType.BpmBluetooth ||
+            it.setupType == ScaleSetupType.BpmA6Bluetooth
         }
 
       ScaleSegmentType.Wifi ->
-        SCALES.filter {
+        devices.filter {
           it.setupType == ScaleSetupType.Wifi ||
             it.setupType == ScaleSetupType.EspTouchWifi ||
             it.setupType == ScaleSetupType.BtWifiR4
@@ -105,7 +108,9 @@ fun ScaleList(
 
     items(
       items = filteredScales,
-      key = { scale -> scale.sku }, // Use sku as unique key for better performance
+      // Combine sku + setupType because some SKUs (e.g. 0603, 0634, 0661, 0663)
+      // appear in both SCALES and MONITORS with different setup types.
+      key = { scale -> "${scale.sku}-${scale.setupType.name}" },
     ) { scale ->
       AppScaleCard(
         scale = scale,

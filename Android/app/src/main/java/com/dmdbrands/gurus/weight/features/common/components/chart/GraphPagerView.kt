@@ -1,173 +1,144 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import kotlinx.coroutines.flow.MutableSharedFlow
 import androidx.compose.ui.Modifier
-import androidx.hilt.navigation.compose.hiltViewModel
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
-import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
+import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.model.goal.Goal
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonGroup
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
+import com.dmdbrands.gurus.weight.features.common.components.chart.config.rememberChartConfig
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardState
-import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
-import com.dmdbrands.gurus.weight.theme.MeAppTheme
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphLabelHelper
+import com.dmdbrands.gurus.weight.features.common.strings.ChartHeaderStrings
+import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyDashboardGraph
+import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyGraphRange
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.dmdbrands.gurus.weight.theme.MeTheme
-import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 
 /**
- * Composable for displaying a horizontal pager with 4 graph views for different segments.
- * Each page represents a different time segment (WEEK, MONTH, YEAR, TOTAL).
- *
- * @param state The dashboard state containing data and configuration.
- * @param onSelected Callback when entries are selected from the graph.
- * @param onPagerStateChange Callback when pager state changes.
- * @param onSegmentChange Callback when segment is selected.
- * @param onRangeChange Callback for date range label updates.
- * @param onMarkerIndexChange Callback when marker selection changes.
- * @param entries List of entries to be used by the graph viewmodels.
+ * Horizontal pager with 4 graph segments. Pure display — no VM reference.
+ * Receives state + callbacks.
  */
 @Composable
 fun GraphPagerView(
-  state: DashboardState,
-  onSelected: (List<PeriodBodyScaleSummary>) -> Unit,
-  onPagerStateChange: (Int) -> Unit,
+  pagerState: PagerState,
+  state: BaseDashboardState,
+  selectedProduct: ProductSelection,
+  goal: Goal? = null,
+  hasPercentile: Boolean = false,
+  chartFillsHeight: Boolean = false,
+  handleGraphIntent: (BaseGraphIntent) -> Unit,
+  createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
+  header: @Composable (GraphSegment) -> Unit,
+  emptyRange: EmptyGraphRange? = null,
   onSegmentChange: (GraphSegment) -> Unit = {},
-  onChartConsuming: (Boolean) -> Unit = {},
-  onRangeChange: (String) -> Unit = { },
-  onMarkerIndexChange: (Double?) -> Unit = {},
-  onLatestDaySelectedChange: (Boolean) -> Unit = {},
-  entries: List<PeriodBodyScaleSummary> = emptyList()
+  onScrollTargetConsumed: (Boolean) -> Unit = {},
 ) {
-  val pagerState = rememberPagerState(
-    initialPage = GraphSegment.entries.indexOf(state.selectedSegment).takeIf { it >= 0 } ?: 0,
-    pageCount = { GraphSegment.entries.size },
-  )
-
-  var subText: String by remember { mutableStateOf("") }
-  var labelData by remember { mutableStateOf("") }
-  var weightValue by remember { mutableStateOf(0.0) }
-
-  // One-shot signal emitted on every segment-button tap. Each GraphView page subscribes
-  // and the page whose segment matches the emitted value re-arms its scroll-to-initial.
-  // Using an explicit user-action signal (rather than inferring from `isCurrentPage`
-  // transitions) avoids both rotation/resume false-positives and pager-timing false-
-  // negatives where `pagerState.currentPage` updates before a freshly composed page
-  // observes the transition.
-  // replay = 1: new subscribers (freshly composed pages) immediately receive the last-emitted
-  // segment even if they subscribed after the emission. `remember { }` recreates this flow on
-  // rotation / navigation-stack push, so the replay cache is always session-scoped — no
-  // spurious resets after a config change.
-  val segmentResetSignal = remember { MutableSharedFlow<GraphSegment>(replay = 1, extraBufferCapacity = 4) }
-
-  LaunchedEffect(state.selectedSegment) {
-    val targetPage = GraphSegment.entries.indexOf(state.selectedSegment)
-    if (targetPage != pagerState.currentPage) {
-      pagerState.scrollToPage(targetPage)
-    }
-  }
-
-  // Handle pager page changes
-  LaunchedEffect(pagerState.currentPage) {
-    onPagerStateChange(pagerState.currentPage)
-  }
-
   Column(
     modifier = Modifier.background(MeTheme.colorScheme.primaryBackground),
   ) {
-
+    val pagerModifier = if (chartFillsHeight) {
+      Modifier
+        .fillMaxWidth()
+        .weight(1f)
+    } else {
+      Modifier.fillMaxWidth()
+    }
     HorizontalPager(
       state = pagerState,
       userScrollEnabled = false,
-      modifier = Modifier.fillMaxWidth(),
+      modifier = pagerModifier,
     ) { page ->
       val currentSegment = GraphSegment.entries.getOrNull(page) ?: GraphSegment.WEEK
-      val viewmodel = hiltViewModel<GraphViewModel, GraphViewModel.Factory>(key = "GraphViewModel-$page") { factory ->
-        factory.create(currentSegment)
-      }
-      val graphState by viewmodel.state.collectAsState()
+      val segmentState = state.forSegment(currentSegment)
+      val bpTarget = segmentState.target.filterIsInstance<PeriodBpmSummary>()
+      val chartConfig = rememberChartConfig(
+        product = selectedProduct,
+        goal = goal,
+        avgSystolic = bpTarget.takeIf { it.isNotEmpty() }?.map { it.avgSystolic }?.average()?.toInt(),
+        avgDiastolic = bpTarget.takeIf { it.isNotEmpty() }?.map { it.avgDiastolic }?.average()?.toInt(),
+        avgPulse = bpTarget.takeIf { it.isNotEmpty() }?.map { it.avgPulse }?.average()?.toInt(),
+        hasPercentile = hasPercentile,
+      )
+      val producer = state.producerForSegment(currentSegment)
+      val isChartReady by producer.isReady.collectAsStateWithLifecycle()
+      // No entries for this product/segment → show the static first-run grid (MOB-432).
+      val isEmpty = segmentState.isEmptyGraph
 
-      LaunchedEffect(graphState.target) {
-        val averageWeight = if (graphState.target.isEmpty()) 0.0 else graphState.target.map { it.weight }.average()
-        labelData = if (graphState.target.isEmpty()) "000.0" else formatWeightValue(averageWeight)
-        if (averageWeight > 0 && state.weightless?.isWeightlessOn == true) {
-          labelData = ("+").plus(labelData)
+      Column(modifier = Modifier.padding(vertical = MeTheme.spacing.x3s)) {
+        ChartHeaderLabel(
+          segment = currentSegment,
+          hasData = segmentState.target.isNotEmpty() && !isEmpty,
+          isLoading = !isEmpty && !isChartReady,
+          markerIndex = state.markerIndex,
+          isLatestDaySelected = GraphLabelHelper.isLatestDaySelected(state.markerIndex, segmentState.data),
+        )
+
+        // Header: crossfade between skeleton and real content (empty state is "ready").
+        Crossfade(
+          targetState = isEmpty || isChartReady,
+          animationSpec = tween(300),
+        ) { ready ->
+          if (ready) header(currentSegment) else HeaderSkeletonView()
         }
-        weightValue = averageWeight
-        onSelected(graphState.target)
-      }
 
-      LaunchedEffect(graphState.markerIndex) {
-        onMarkerIndexChange(graphState.markerIndex)
-      }
-
-      // Per MA-3965: report whether the currently selected graph point lands on the
-      // most recent day in the data set so the dashboard can route the metric-info
-      // sheet's label. Single source of truth lives on [GraphState.isLatestDaySelected]
-      // — the trend-view header reads from the same property, so the two surfaces
-      // cannot drift.
-      LaunchedEffect(graphState.isLatestDaySelected) {
-        onLatestDaySelectedChange(graphState.isLatestDaySelected)
-      }
-
-      LaunchedEffect(graphState.minTarget, graphState.maxTarget, pagerState.currentPage, state.isConsuming) {
-        if (graphState.minTarget != null && graphState.maxTarget != null && !state.isConsuming) {
-          val (minTarget, maxTarget) = if (currentSegment == GraphSegment.TOTAL && !graphState.isEmptyGraph) {
-            val calendar = java.util.Calendar.getInstance()
-            calendar.timeInMillis = graphState.minTarget!!
-            calendar.add(java.util.Calendar.MONTH, +6)
-            val min = calendar.timeInMillis
-
-            val calendar1 = java.util.Calendar.getInstance()
-            calendar1.timeInMillis = graphState.maxTarget!!
-            calendar1.add(java.util.Calendar.MONTH, -6)
-            val max = calendar1.timeInMillis
-            min to max
+        // Chart: always composed (producer needs it), skeleton overlays on top
+        Box(
+          modifier = Modifier
+            .fillMaxWidth()
+            .then(if (chartFillsHeight) Modifier.weight(1f) else Modifier),
+        ) {
+          if (isEmpty) {
+            EmptyDashboardGraph(
+              modifier = Modifier.fillMaxWidth(),
+              height = 300.dp,
+              range = emptyRange,
+            )
           } else {
-            graphState.minTarget!! to graphState.maxTarget!!
-          }
-          val formattedRange = GraphUtil.formatDateRange(minTarget, maxTarget, currentSegment)
-          AppLog.i(
-            "GraphView",
-            "segment : ${currentSegment} minTarget : ${minTarget} maxTarget : ${maxTarget} formattedRange : ${formattedRange}",
-          )
-          subText = formattedRange
-          onRangeChange(formattedRange)
-        }
-      }
-      Column {
-        ChartHeader(
-          state = graphState,
-          segment = currentSegment,
-          weightData = labelData,
-          rangeData = subText,
-          weightValue = weightValue,
-        )
+            GraphView(
+              modifier = Modifier.fillMaxWidth(),
+              state = state,
+              segmentState = segmentState,
+              chartConfig = chartConfig,
+              modelProducer = producer,
+              segment = currentSegment,
+              scrollTarget = state.scrollTarget,
+              canScrollToAnchor = state.selectedSegment == currentSegment,
+              handleGraphIntent = handleGraphIntent,
+              createFallbackEntry = createFallbackEntry,
+              onScrollTargetConsumed = onScrollTargetConsumed,
+              chartFillsHeight = chartFillsHeight,
+            )
 
-        GraphView(
-          modifier = Modifier.fillMaxWidth(),
-          segment = currentSegment,
-          isCurrentPage = pagerState.currentPage == page,
-          state = graphState,
-          viewModel = viewmodel,
-          onChartConsuming = onChartConsuming,
-          segmentResetSignal = segmentResetSignal,
-        )
+            // Chart skeleton: crossfade overlay
+            Crossfade(
+              targetState = isChartReady,
+              animationSpec = tween(300),
+              modifier = Modifier.matchParentSize(),
+            ) { ready ->
+              if (!ready) GraphSkeletonView(modifier = Modifier.fillMaxSize())
+            }
+          }
+        }
+
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
       }
     }
@@ -177,14 +148,8 @@ fun GraphPagerView(
       selectedData = GraphSegment.entries[pagerState.currentPage],
       key = GraphSegment::name,
       onSelected = { segment ->
-        onChartConsuming(true)
+        onScrollTargetConsumed(false)
         onSegmentChange(segment)
-        // Explicit reset-to-initial signal — only the page whose segment matches consumes
-        // it. Fires on every tap (including same-segment taps), which matches the user
-        // expectation that pressing a segment button shows that segment from its initial
-        // window. Rotation, history-screen return, and app resume do NOT emit, so scroll
-        // is preserved across non-tap recompositions.
-        segmentResetSignal.tryEmit(segment)
       },
       modifier = Modifier.padding(horizontal = MeTheme.spacing.xs),
     )
@@ -193,14 +158,35 @@ fun GraphPagerView(
   }
 }
 
-@PreviewTheme
+/**
+ * Always-visible chart label: "week average", "day average", "latest entry",
+ * "no entries", etc. Routes through [GraphLabelHelper] so it stays in lockstep with
+ * the metric-info sheet. Per MA-3965, selecting the most recent day on Week/Month
+ * reads "latest entry" (the plotted point shows that day's latest entry, not its
+ * average); any earlier day reads "day average".
+ */
 @Composable
-private fun GraphPagerViewPreview() {
-  MeAppTheme {
-    GraphPagerView(
-      state = DashboardState(),
-      onSelected = {},
-      onPagerStateChange = {},
+private fun ChartHeaderLabel(
+  segment: GraphSegment,
+  hasData: Boolean,
+  isLoading: Boolean,
+  markerIndex: Double? = null,
+  isLatestDaySelected: Boolean = false,
+) {
+  val text = if (!hasData && !isLoading) {
+    ChartHeaderStrings.NoEntries
+  } else {
+    GraphLabelHelper.selectionLabel(
+      segment = segment,
+      hasSelection = markerIndex != null,
+      isLatestDaySelected = isLatestDaySelected,
     )
   }
+
+  Text(
+    text = text,
+    style = MeTheme.typography.subHeading1,
+    color = MeTheme.colorScheme.textSubheading,
+    modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
+  )
 }

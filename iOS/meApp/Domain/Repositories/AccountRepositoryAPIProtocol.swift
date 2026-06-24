@@ -17,6 +17,21 @@ protocol AccountRepositoryAPIProtocol {
     /// - Returns: AccountResponse (account + tokens)
     func createAccount(email: String, password: String, profile: Profile) async throws -> AccountResponse
 
+    /// Checks whether an email is available for registration. (POST /account/email-check, no auth)
+    /// - Parameter email: The email address to check.
+    /// - Returns: `true` if the email is not already registered.
+    func checkEmailAvailability(email: String) async throws -> Bool
+
+    /// Updates the account's preferred measurement units. (PATCH /account/measurement-units)
+    /// - Parameter measurementUnits: One of "metric", "imperialLbOz", "imperialLbDecimal".
+    /// - Returns: AccountResponse (from { account })
+    func updateMeasurementUnits(_ measurementUnits: String) async throws -> AccountResponse
+
+    /// Updates the account's registered product types. (PATCH /account/products)
+    /// - Parameter productTypes: Array of product type strings, e.g. ["weight", "baby"].
+    /// - Returns: AccountResponse (from { account })
+    func patchProductTypes(_ productTypes: [String]) async throws -> AccountResponse
+
     /// Logs in with the given email and password. (POST /account/login)
     /// - Parameters:
     ///   - email: The user's email address.
@@ -39,7 +54,7 @@ protocol AccountRepositoryAPIProtocol {
     /// - Parameter updatedAccount: The updated Account object.
     /// - Returns: AccountResponse (from { account })
     func editAccount(_ updatedAccount: Account) async throws -> AccountResponse
-    
+
     /// Creates a new goal with the given Goal object (POST /account/goal).
     /// - Parameter goal: The Goal object to create.
     /// - Returns: GoalResponse (from { account })
@@ -104,7 +119,7 @@ protocol AccountRepositoryAPIProtocol {
     ///   - newPassword: The new password to set.
     ///   - Returns: Tokens (access and refresh tokens)
     func updatePassword(oldPassword: String, newPassword: String) async throws -> Tokens
-    
+
     /// Refreshes the access token using the provided refresh token. (POST /account/refresh-token)
     /// - Parameters:
     ///  - refreshToken: The refresh token to use for refreshing the session.
@@ -112,4 +127,3 @@ protocol AccountRepositoryAPIProtocol {
     ///  - Returns: Tokens (access and refresh tokens)
     func refreshToken(refreshToken: String, accountId: String?) async throws -> Tokens
 }
-

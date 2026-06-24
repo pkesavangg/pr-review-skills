@@ -37,14 +37,16 @@ struct StatusRowView: View {
         HStack(alignment: .center, spacing: .spacingXS) {
             AppIconView(icon: iconName, size: IconSize(width: 20, height: 20))
                 .foregroundColor(iconColor ?? theme.actionPrimary)
-            
+                .accessibilityHidden(true)
+
             Text(label)
                 .fontOpenSans(font ?? .body3)
                 .foregroundColor(foregroundColor ?? theme.textHeading)
-            
+
             Text(statusText)
                 .fontOpenSans(font ?? .body3)
                 .foregroundColor(foregroundColor ?? theme.textHeading)
         }
+        .accessibilityElement(children: .combine)
     }
 }

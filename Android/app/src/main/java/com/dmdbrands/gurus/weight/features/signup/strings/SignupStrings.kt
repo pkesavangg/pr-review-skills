@@ -32,15 +32,20 @@ object SignupStrings {
   const val goalStepMaintain = "Maintain"
   const val goalStepLoseGain = "Lose/Gain"
   const val goalStepUseMetric = "Use Metric Units"
+  const val weightUnitLbs = "lbs"
+  const val weightUnitKg = "kg"
+  const val heightUnitFtIn = "Ft / In"
+  const val heightUnitCm = "CM"
 
-  // Goal step dynamic weight labels
-  const val goalStepCurrentWeightDynamic = "starting weight (%s)"
-  const val goalStepGoalWeightDynamic = "Goal weight (%s)"
+  // Goal step weight labels (unit shown as trailing overlay)
+  const val goalStepCurrentWeightLabel = "starting weight"
+  const val goalStepGoalWeightLabel = "Goal weight"
 
   // HeightStep strings
   const val heightStepTitle = "How tall are you?"
   const val heightStepSubtitle = "Height is another factor that helps us provide you with the most accurate metrics."
   const val heightLabel = "Height"
+  const val heightLabelDynamic = "height (%s)"
 
   // EmailStep strings
   const val emailStepTitle = "What's your email?"
@@ -65,7 +70,7 @@ object SignupStrings {
   const val backButton = "BACK"
   const val skipButton = "SKIP"
   const val nextButton = "NEXT"
-  const val completeButton = "Complete"
+  const val completeButton = "CREATE"
 
   // Loader message
   const val LoaderMessage = "Creating your account..."
@@ -84,7 +89,7 @@ object SignupStrings {
       "Something went wrong. Please try again. If the problem continues, contact customer service."
     const val MessageNoConn = "Unable to find a network connection at this time. Please try again later."
     const val accountExist = "Email address is already in use"
-      const val blank = "must not be left blank"
+      const val blank = "this field is required"
       const val maxName = "maximum value should be 100"
       const val maxZipcode = "maximum value should be 20"
       const val required = "this field is required"

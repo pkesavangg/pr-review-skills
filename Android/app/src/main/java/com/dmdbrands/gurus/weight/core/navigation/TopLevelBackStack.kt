@@ -255,7 +255,6 @@ class TopLevelBackStack<T : NavKey>(
 
   private fun requiresLogin(key: T): Boolean = key !is PublicRoute && !isLoggedIn
 
-  private fun isPublic(key: T): Boolean = key is PublicRoute
 }
 
 /**

@@ -1,13 +1,15 @@
 package com.dmdbrands.gurus.weight.core.network
 
+import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.model.api.user.Token
+import com.dmdbrands.gurus.weight.domain.services.AuthState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import java.util.Date
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -32,9 +34,9 @@ interface ITokenManager {
 
     fun isTokenExpired(): Boolean
 
-    fun getAccessToken(): String?
+    suspend fun getAccessToken(): String?
 
-    fun getRefreshToken(): String?
+    suspend fun getRefreshToken(): String?
 
     fun getTokenExpiresAt(): String?
 
@@ -56,6 +58,8 @@ class TokenManager
 @Inject
 constructor(
     private val userDataStore: UserDataStore,
+    private val secureTokenStore: ISecureTokenStore,
+    private val appNavigationService: IAppNavigationService,
 ) : ITokenManager {
     companion object {
         private const val TAG = "TokenManager"
@@ -76,18 +80,24 @@ constructor(
     override var isOtherUserTokenRefreshed = false
         private set
 
-    // In-memory map for multi-account token management
-     override val accountTokens = mutableMapOf<String, Token>()
+    // In-memory map for multi-account token management (ConcurrentHashMap for thread safety)
+    override val accountTokens = ConcurrentHashMap<String, Token>()
 
     override suspend fun setTokens(token: Token) {
         AppLog.v(TAG, "Setting tokens for account: ${token.accountId}")
         accountTokens[token.accountId] = token
-        userDataStore.updateAccountTokens(
+        // Persist to encrypted storage
+        try {
+            secureTokenStore.saveToken(token.accountId, token)
+        } catch (e: EncryptionUnavailableException) {
+            handleEncryptionFailure(token.accountId, e)
+            return
+        }
+        // Ensure UserDataStore account entry exists and is active
+        // (required for currentAccountIdFlow, themeMode, syncTimestamp)
+        userDataStore.updateAccount(
             accountId = token.accountId,
             isActive = token.isActive,
-            refreshToken = token.refreshToken ?: "",
-            accessToken = token.accessToken ?: "",
-            expiresAt = token.expiresAt ?: "",
         )
         _tokens.value = token
     }
@@ -102,6 +112,15 @@ constructor(
         _tokens.value = null
         _otherUserToken.value = null
         isOtherUserTokenRefreshed = false
+        // Clear from encrypted storage
+        val currentAccountId = userDataStore.currentAccountIdFlow.first()
+        if (currentAccountId != null) {
+            try {
+                secureTokenStore.removeToken(currentAccountId)
+            } catch (e: EncryptionUnavailableException) {
+                AppLog.e(TAG, "Encryption unavailable during clearTokens — tokens already inaccessible", e)
+            }
+        }
         userDataStore.logoutCurrentAccount()
     }
 
@@ -135,42 +154,53 @@ constructor(
         } ?: true
     }
 
-    override fun getAccessToken(): String? {
-        val accessToken =
-            runBlocking {
-                userDataStore.currentAccountFlow.first()?.accessToken
-            }
-        return accessToken
+    override suspend fun getAccessToken(): String? {
+        val accountId = userDataStore.currentAccountIdFlow.first() ?: return null
+        return try {
+            accountTokens[accountId]?.accessToken
+                ?: secureTokenStore.getToken(accountId)?.accessToken
+        } catch (e: EncryptionUnavailableException) {
+            handleEncryptionFailure(accountId, e)
+            null
+        }
     }
 
-    override fun getRefreshToken(): String? {
-        val refreshToken =
-            runBlocking {
-                userDataStore.currentAccountFlow.first()?.refreshToken
-            }
-        return refreshToken
+    override suspend fun getRefreshToken(): String? {
+        val accountId = userDataStore.currentAccountIdFlow.first() ?: return null
+        return try {
+            accountTokens[accountId]?.refreshToken
+                ?: secureTokenStore.getToken(accountId)?.refreshToken
+        } catch (e: EncryptionUnavailableException) {
+            handleEncryptionFailure(accountId, e)
+            null
+        }
     }
 
     override fun getTokenExpiresAt(): String? = _tokens.value?.expiresAt
 
   override suspend fun getAccessToken(accountId: String): String? {
-    AppLog.d("Accountrepo2", "Processing request for account: $accountId")
+    AppLog.d(TAG, "Processing request for account: $accountId")
     return try {
       accountTokens[accountId]?.accessToken
-        ?: userDataStore.getData().accounts[accountId]?.accessToken
+        ?: secureTokenStore.getToken(accountId)?.accessToken
+    } catch (e: EncryptionUnavailableException) {
+      handleEncryptionFailure(accountId, e)
+      null
     } catch (e: Exception) {
-      // Log the error if needed
-      AppLog.e("AccountRepo", "Error getting access token for accountId: $accountId", e)
+      AppLog.e(TAG, "Error getting access token for accountId: $accountId", e)
       null
     }
   }
 
-
   override suspend fun getRefreshToken(accountId: String): String? {
-        // Prefer in-memory map for fast lookup
-        return accountTokens[accountId]?.refreshToken
-            ?: userDataStore.getData().accounts[accountId]?.refreshToken
+    return try {
+      accountTokens[accountId]?.refreshToken
+        ?: secureTokenStore.getToken(accountId)?.refreshToken
+    } catch (e: EncryptionUnavailableException) {
+      handleEncryptionFailure(accountId, e)
+      null
     }
+  }
 
     override fun getAccountIdForToken(token: String): String? =
         accountTokens.entries
@@ -179,18 +209,17 @@ constructor(
             }?.key
 
     override suspend fun loadAllTokens() {
-        AppLog.v(TAG, "Loading all tokens from UserDataStore")
+        AppLog.v(TAG, "Loading all tokens from SecureTokenStore")
         accountTokens.clear()
-        val allAccounts = userDataStore.getData().accounts
-        allAccounts.forEach { (id, userAccount) ->
-            accountTokens[id] =
-                Token(
-                    accountId = id,
-                    isActive = userAccount.isActive,
-                    accessToken = userAccount.accessToken,
-                    refreshToken = userAccount.refreshToken,
-                    expiresAt = userAccount.expiresAt,
-                )
+        try {
+            val allTokens = secureTokenStore.getAllTokens()
+            allTokens.forEach { (id, token) ->
+                accountTokens[id] = token
+            }
+        } catch (e: EncryptionUnavailableException) {
+            AppLog.e(TAG, "Encryption unavailable — cannot load tokens", e)
+            // Don't emit auth event here; let AppViewModel handle startup flow.
+            // If no tokens are loaded, user will be routed to login naturally.
         }
     }
 
@@ -199,13 +228,35 @@ constructor(
   }
 
   override suspend fun getCurrentAcccountExpiresAt(): String? {
-    return userDataStore.currentAccountFlow.first()?.expiresAt
+    val accountId = userDataStore.currentAccountIdFlow.first() ?: return null
+    return try {
+      accountTokens[accountId]?.expiresAt
+        ?: secureTokenStore.getToken(accountId)?.expiresAt
+    } catch (e: EncryptionUnavailableException) {
+      handleEncryptionFailure(accountId, e)
+      null
+    }
   }
 
   override suspend fun getAccountExpiresAt(accountId: String): String? {
-    // Prefer in-memory map for fast lookup
-    return accountTokens[accountId]?.expiresAt
-        ?: userDataStore.getData().accounts[accountId]?.expiresAt
+    return try {
+      accountTokens[accountId]?.expiresAt
+        ?: secureTokenStore.getToken(accountId)?.expiresAt
+    } catch (e: EncryptionUnavailableException) {
+      handleEncryptionFailure(accountId, e)
+      null
+    }
   }
 
+  /**
+   * Handles encryption failure by clearing in-memory tokens and emitting
+   * [AuthState.EncryptionFailure] to force re-login for all accounts.
+   */
+  private suspend fun handleEncryptionFailure(accountId: String?, e: EncryptionUnavailableException) {
+    AppLog.e(TAG, "Encryption unavailable — forcing re-login for all accounts", e)
+    accountTokens.clear()
+    _tokens.value = null
+    _otherUserToken.value = null
+    appNavigationService.emitAuthEvent(AuthState.EncryptionFailure(accountId))
+  }
 }

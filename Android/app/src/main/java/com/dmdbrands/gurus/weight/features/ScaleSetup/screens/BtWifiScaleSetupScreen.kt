@@ -4,11 +4,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -54,7 +52,7 @@ fun BtWifiScaleSetupScreen(
     hiltViewModel<BtWifiScaleSetupViewModel, BtWifiScaleSetupViewModel.Factory> { factory ->
       factory.create(sku, broadcastId, initialStep, userList)
     }
-  val state by viewModel.state.collectAsState()
+  val state by viewModel.state.collectAsStateWithLifecycle()
   BtWifiScaleSetupScreenContent(
     state = state,
     initialStep == BtWifiSetupStep.GATHERING_NETWORK,
@@ -70,17 +68,19 @@ fun BtWifiScaleSetupScreenContent(
 ) {
   val focusManager = LocalFocusManager.current
   val pagerState = rememberPagerState { state.steps.size }
-  val isAnimating = remember { mutableStateOf(false) }
+   val currentStep = state.currentStep
 
   // Sync ViewModel state to Pager state
-  LaunchedEffect(state.currentStep) {
-    if (!isAnimating.value && pagerState.currentPage != state.currentStepIndex) {
-      isAnimating.value = true
+  LaunchedEffect(currentStep) {
+    val targetPage = currentStep.ordinal
+    if (pagerState.currentPage != state.currentStepIndex) {
       try {
         pagerState.scrollToPage(state.currentStepIndex)
-      } finally {
-        withFrameNanos { }
-        isAnimating.value = false
+      }
+      catch(e: Exception){
+        pagerState.scrollToPage(targetPage)
+      }
+      finally {
       }
     }
   }

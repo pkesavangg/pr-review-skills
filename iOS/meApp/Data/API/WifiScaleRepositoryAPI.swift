@@ -1,10 +1,14 @@
 import Foundation
 
 @MainActor
-final class WifiScaleRepositoryAPI: WifiScaleRepositoryAPIProtocol {
-    private let httpClient = HTTPClient.shared
+final class WifiDeviceRepositoryAPI: WifiDeviceRepositoryAPIProtocol {
+    private let httpClient: HTTPClientProtocol
 
-    func getScaleToken(r: String?) async throws -> WifiScaleTokenResponse {
-        return try await httpClient.get(.wifiScale(r: r), needsAuth: true)
+    init(httpClient: HTTPClientProtocol? = nil) {
+        self.httpClient = httpClient ?? HTTPClient.shared
     }
-} 
+
+    func getScaleToken(request: String?) async throws -> WifiScaleTokenResponse {
+        return try await httpClient.get(.wifiScale(request: request), needsAuth: true)
+    }
+}

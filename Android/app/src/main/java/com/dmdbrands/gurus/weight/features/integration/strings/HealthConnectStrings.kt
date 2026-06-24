@@ -8,6 +8,12 @@ object HealthConnectStrings  {
     const val Title = "Integrate Health Connect"
     const val Description =
       "Personalize your experience and control which information is shared between Weight Gurus and Health Connect. Your privacy and data security are top priorities."
+    const val DataTypeWeight = "Weight"
+    const val DataTypeBmi = "BMI"
+    const val DataTypeBodyFat = "Body Fat"
+    const val DataTypeLeanBodyMass = "Lean Body Mass"
+    const val DataTypeBloodPressure = "Blood Pressure"
+    const val DataTypeHeartRate = "Heart Rate"
   }
   object Loader {
     const val loading = "Loading..."
