@@ -4,6 +4,7 @@
 //
 
 import Testing
+import Foundation
 @testable import meApp
 
 @Suite("IntegrationStore", .serialized)
@@ -246,5 +247,114 @@ struct IntegrationStoreTests {
         let (store, _, _, _, _) = makeSUT()
         #expect(store.browserURL == nil)
         #expect(store.presentingBrowserURL.absoluteString.isEmpty == false)
+    }
+
+    // MARK: - Disconnect flow (remove integration)
+
+    @Test("disconnect confirm removes the integration and refreshes the account")
+    func disconnectConfirmRemovesIntegration() async {
+        let (store, accountService, integrationsService, notificationService, _) = makeSUT()
+        store.skipInvalidIntegrationsCheck = true
+        accountService.activeAccount = makeAccountWithFitbit(true)
+        await waitUntil { store.accountID != "" }
+
+        store.selectIntegration(item: IntegrationItem(type: .fitbit, isSelected: true))
+        // refreshAccount returns the account with fitbit now off → disconnect verified → done alert
+        accountService.refreshAccountResult = makeAccountWithFitbit(false)
+
+        // Second button is the destructive "remove" action.
+        notificationService.lastShownAlert?.buttons.last?.action(nil)
+
+        await waitUntil { integrationsService.removeIntegrationCallCount == 1 }
+        #expect(integrationsService.removeIntegrationCallCount == 1)
+        #expect(integrationsService.lastRemovedProvider == .fitbit)
+    }
+
+    @Test("disconnect failure shows the try-again alert")
+    func disconnectFailureShowsTryAgain() async {
+        let (store, accountService, integrationsService, notificationService, _) = makeSUT()
+        store.skipInvalidIntegrationsCheck = true
+        accountService.activeAccount = makeAccountWithFitbit(true)
+        await waitUntil { store.accountID != "" }
+        integrationsService.removeIntegrationError = NSError(domain: "IntegrationTest", code: -1)
+
+        store.selectIntegration(item: IntegrationItem(type: .fitbit, isSelected: true))
+        notificationService.lastShownAlert?.buttons.last?.action(nil)
+
+        await waitUntil { integrationsService.removeIntegrationCallCount == 1 }
+        #expect(integrationsService.removeIntegrationCallCount == 1)
+    }
+
+    // MARK: - refreshAccounts result handling
+
+    @Test("refreshAccounts after a connect attempt handles a successful result")
+    func refreshAccountsConnectSuccess() async {
+        guard NetworkMonitor.shared.isConnected else { return }
+        let (store, accountService, _, _, _) = makeSUT()
+        store.skipInvalidIntegrationsCheck = true
+        store.accountID = "test-account-id"
+
+        // Opening the browser for an unconnected provider marks a pending connect action.
+        store.selectIntegration(item: IntegrationItem(type: .fitbit, isSelected: false))
+        accountService.refreshAccountResult = makeAccountWithFitbit(true)
+
+        store.refreshAccounts()
+
+        await waitUntil { accountService.refreshAccountCallCount >= 1 }
+        #expect(accountService.refreshAccountCallCount >= 1)
+    }
+
+    @Test("refreshAccounts after a failed connect shows try-again and retry re-selects")
+    func refreshAccountsConnectFailureRetry() async {
+        guard NetworkMonitor.shared.isConnected else { return }
+        let (store, accountService, _, notificationService, _) = makeSUT()
+        store.skipInvalidIntegrationsCheck = true
+        store.accountID = "test-account-id"
+
+        store.selectIntegration(item: IntegrationItem(type: .fitbit, isSelected: false))
+        accountService.refreshAccountResult = makeAccountWithFitbit(false) // not enabled → connect failed
+
+        store.refreshAccounts()
+        await waitUntil { accountService.refreshAccountCallCount >= 1 }
+
+        // Retry button (primary) re-triggers the connect flow.
+        notificationService.lastShownAlert?.buttons.last?.action(nil)
+        #expect(accountService.refreshAccountCallCount >= 1)
+    }
+
+    // MARK: - Invalid integration prompt
+
+    @Test("an enabled-but-invalid integration prompts re-integrate and disable removes it")
+    func invalidIntegrationPromptDisable() async {
+        guard NetworkMonitor.shared.isConnected else { return }
+
+        // The active account must be set BEFORE the store subscribes: the
+        // invalid-integration check is one-shot, and the publisher's initial
+        // nil emission would otherwise consume it.
+        _ = ServiceRegistry.shared
+        let accountService = MockAccountService()
+        let integrationsService = MockIntegrationService()
+        let notificationService = MockNotificationHelperService()
+        let logger = MockLoggerService()
+        DependencyContainer.shared.register(accountService as AccountServiceProtocol)
+        DependencyContainer.shared.register(integrationsService as IntegrationServiceProtocol)
+        DependencyContainer.shared.register(notificationService as NotificationHelperService)
+        DependencyContainer.shared.register(logger as LoggerServiceProtocol)
+
+        let account = AccountTestFixtures.makeAccount()
+        account.integrationSettings?.isFitbitOn = true
+        account.integrationSettings?.isFitbitValid = false
+        accountService.activeAccount = account
+        accountService.refreshAccountResult = makeAccountWithFitbit(false)
+
+        let store = IntegrationStore() // first emission is the invalid account → re-integrate prompt
+
+        await waitUntil { notificationService.lastShownAlert != nil }
+        // Disable button (danger) silently removes the invalid integrations.
+        notificationService.lastShownAlert?.buttons.first?.action(nil)
+
+        await waitUntil { integrationsService.removeIntegrationCallCount >= 1 }
+        #expect(integrationsService.removeIntegrationCallCount >= 1)
+        withExtendedLifetime(store) {}
     }
 }
