@@ -178,7 +178,7 @@ struct AccountFlagServiceTests {
         repo.deleteAccountFlagResult = .success(true)
         let (sut, _, _, _) = makeSUT(repo: repo)
 
-        var receivedEvent: ScaleReviewEvent?
+        var receivedEvent: DeviceReviewEvent?
         let cancellable = sut.scaleReviewSubject.sink { event in
             receivedEvent = event
         }
@@ -202,7 +202,7 @@ struct AccountFlagServiceTests {
         repo.deleteAccountFlagResult = .success(true)
         let (sut, _, _, _) = makeSUT(repo: repo)
 
-        var receivedEvent: ScaleReviewEvent?
+        var receivedEvent: DeviceReviewEvent?
         let cancellable = sut.scaleReviewSubject.sink { event in
             receivedEvent = event
         }

@@ -302,7 +302,7 @@ private func makeSUT(
 
     let viewModel = ContentViewModel(
         accountService: account,
-        scaleService: scale,
+        deviceService: scale,
         feedService: feed,
         entryService: entry,
         logger: logger,

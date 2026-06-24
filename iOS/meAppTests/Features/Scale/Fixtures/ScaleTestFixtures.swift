@@ -70,7 +70,7 @@ enum ScaleTestFixtures {
             isWifiConfigured: false,
             token: token
         )
-        device.bathScale = BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true)
+        device.bathScale = BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
         device.r4ScalePreference = R4ScalePreference(
             from: makePreferenceDTO(scaleId: id, displayName: displayName),
             scaleId: id
@@ -88,10 +88,10 @@ enum ScaleTestFixtures {
         sku: String = "R4-001",
         deviceName: String = "AccuCheck Verve Smart Scale",
         token: String = "token-1",
-        type: String = ScaleSourceType.btWifiR4.rawValue,
+        type: String = DeviceSourceType.btWifiR4.rawValue,
         deviceType: String? = nil
-    ) -> ScaleDTO {
-        ScaleDTO(
+    ) -> DeviceDTO {
+        DeviceDTO(
             broadcastId: broadcastId,
             broadcastIdString: broadcastIdString,
             createdAt: "2026-03-03T00:00:00Z",
@@ -201,8 +201,8 @@ enum ScaleTestFixtures {
         manufacturerName: String? = nil,
         systemId: String? = nil,
         wifiMac: String? = "AA:BB:CC:DD:EE:FF"
-    ) -> ScaleMetaDataDTO {
-        ScaleMetaDataDTO(
+    ) -> DeviceMetaDataDTO {
+        DeviceMetaDataDTO(
             firmwareRevision: firmwareRevision,
             hardwareRevision: hardwareRevision,
             latestFirmwareVersion: latestFirmwareVersion,
