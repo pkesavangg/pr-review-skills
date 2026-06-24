@@ -27,18 +27,18 @@ enum DashboardConstants {
 
     // MARK: - Metric Configurations
     enum MetricType {
-        static let fourScaleMetrics = ["bmi", "bodyFat", "muscleMass", "water"]
+        static let fourDeviceMetrics = ["bmi", "bodyFat", "muscleMass", "water"]
         static let allMetrics = ["bmi", "bodyFat", "muscleMass", "water", "pulse", "boneMass",
                                 "visceralFatLevel", "subcutaneousFatPercent", "proteinPercent",
                                 "skeletalMusclePercent", "bmr", "metabolicAge"]
     }
 
     // MARK: - UI Constants
-    enum UI {
+    enum UIConstants {
         static let gridSpacing: CGFloat = 16
         static let minimumTickSpacing: CGFloat = 20
         static let chartAnimationDuration: Double = 0.3
-        static let scrollEndDebounceDelay: Double = 0.3
+        static let scrollEndDebounceDelay: Double = 0.2
         static let loaderDelay: Double = 1.5
         static let dragPreviewScale: CGFloat = 0.92
 

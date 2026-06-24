@@ -53,6 +53,7 @@ struct ToggleListItem: View {
                 AppIconView(icon: icon, size: IconSize(width: 28, height: 28))
                     .foregroundColor(imageForegroundColor)
                     .padding(.leading, .spacingSM)
+                    .accessibilityHidden(true)
             }
             if let text = text {
                 Text(text)
@@ -68,13 +69,13 @@ struct ToggleListItem: View {
                 .padding(.trailing, .spacingSM)
                 .disabled(disableToggle)
             
-            // Hide divider when the row is disabled
             if showDivider && isOn && !isDisabled {
                 HStack {
                     Divider()
                         .foregroundColor(theme.statusUtilityPrimary)
                         .padding(.trailing, .spacingSM)
                 }
+                .accessibilityHidden(true)
             }
         }
         .frame(height: 48)

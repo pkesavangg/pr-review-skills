@@ -23,6 +23,7 @@ protocol LoggerServiceProtocol {
     /// - Returns: An array of `LogEntry` objects within the specified date range
     func getLogs(from: Date, to: Date) async throws -> [LogEntry]
     
+    // swiftlint:disable function_parameter_count
     /// Log a new entry with specified parameters
     /// - Parameters:
     ///   - level: The log level (e.g., info, debug, error)
@@ -40,6 +41,7 @@ protocol LoggerServiceProtocol {
              function: StaticString,
              line: UInt,
              accountId: String?)
+    // swiftlint:enable function_parameter_count
     
     /// Gets the current session ID
     /// - Returns: The current session ID as a string
@@ -72,12 +74,39 @@ protocol LoggerServiceProtocol {
 }
 
 extension LoggerServiceProtocol {
-    func log(level: LogLevel, tag: String, message: String) {
-        log(level: level, tag: tag, message: message, data: nil, function: #function, line: #line, accountId: nil)
+    func log(level: LogLevel, tag: String, message: String, function: StaticString = #function, line: UInt = #line) {
+        log(
+            level: level,
+            tag: tag,
+            message: message,
+            data: nil,
+            function: function,
+            line: line,
+            accountId: nil
+        )
     }
 
-    func log(level: LogLevel, tag: String, message: String, data: Any?) {
-        log(level: level, tag: tag, message: message, data: data, function: #function, line: #line, accountId: nil)
+    func log(level: LogLevel, tag: String, message: String, data: Any?, function: StaticString = #function, line: UInt = #line) {
+        log(
+            level: level,
+            tag: tag,
+            message: message,
+            data: data,
+            function: function,
+            line: line,
+            accountId: nil
+        )
+    }
+
+    func sendLogsToServer() async throws {
+        try await sendLogsToServer(accountId: nil, version: AppInfo.appVersion)
+    }
+
+    func sendLogsToServer(accountId: String?) async throws {
+        try await sendLogsToServer(accountId: accountId, version: AppInfo.appVersion)
+    }
+
+    func sendScaleLogsToServer(deviceLogs: [DeviceLogEntry]) async throws {
+        try await sendScaleLogsToServer(deviceLogs: deviceLogs, version: AppInfo.appVersion)
     }
 }
-

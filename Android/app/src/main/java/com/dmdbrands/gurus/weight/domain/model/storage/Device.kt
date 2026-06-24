@@ -31,15 +31,12 @@ data class Device(
   val preferences: Preferences? = null,
   val isDeleted: Boolean = false,
   val isSynced: Boolean = false,
-  val latestVersion: String? = null
+  val latestVersion: String? = null,
+  val productType: String? = null,
 ) : GGCacheDevice {
 
   fun getAppType(): String {
-    return GGAppType.WEIGHT_GURUS
-  }
-
-  fun hasNumericUsers(): Boolean {
-    return getAppType() == GGAppType.BALANCE_HEALTH
+    return GGAppType.ME_HEALTH
   }
 
   /**

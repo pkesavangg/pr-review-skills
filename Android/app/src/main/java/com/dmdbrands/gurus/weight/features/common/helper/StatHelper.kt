@@ -5,7 +5,7 @@ import androidx.compose.ui.graphics.Color
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
 import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
-import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
 import com.dmdbrands.gurus.weight.features.common.helper.StatMeta.metricStatMetaMap
@@ -194,7 +194,7 @@ object StatHelper {
    * Returns a list of milestone Stat objects.
    */
   fun getMilestone(
-    progress: Progress,
+    progress: WeightProgress,
     visibleKeys: List<MilestoneKey>? = null,
     useShort: Boolean = false,
     showMetricIcon: Boolean = false,
@@ -215,12 +215,12 @@ object StatHelper {
    * Extracts milestone values from Progress object based on MilestoneKey.
    */
   private fun getMilestoneValue(
-    progress: Progress,
+    progress: WeightProgress,
     key: MilestoneKey,
   ): Any? {
     return when (key) {
-      MilestoneKey.CURRENT_STREAK -> progress.currentStreak.takeIf { it > 0 }
-      MilestoneKey.LONGEST_STREAK -> progress.longestStreak.takeIf { it > 0 }
+      MilestoneKey.CURRENT_STREAK -> progress.streak.current.takeIf { it > 0 }
+      MilestoneKey.LONGEST_STREAK -> progress.streak.longest.takeIf { it > 0 }
       MilestoneKey.PER_WEEK -> progress.week.takeIf { it != null && it != 0.0 }?.let {
         if (it >= 0) "+${it.rounded()}" else it.rounded().toString()
       }

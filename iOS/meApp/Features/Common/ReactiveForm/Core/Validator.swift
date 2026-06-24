@@ -1,7 +1,6 @@
 import Foundation
 import UIKit
 
-
 /// A validator that performs synchronous validation.
 ///
 /// ## Adding Custom Validators
@@ -80,7 +79,7 @@ extension Validator where Value == String {
     /// Validator that prevents whitespace-only values
     public static let noWhiteSpace = Validator(type: .noWhiteSpace) { value in
         // Only fail if it's NOT empty but trimming removes everything (i.e. only whitespace)
-        value.isEmpty || value.trimmingCharacters(in: .whitespacesAndNewlines).count > 0
+        value.isEmpty || !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     
     /// Validator that requires the length of the control's value to be greater than
@@ -113,6 +112,14 @@ extension Validator where Value == String {
             return weight > Double(0)
         }
     }
+
+    /// Validator that requires the control's value to be greater than or equal to the provided minimum.
+    public static func minValue(_ minimum: Double) -> Validator {
+        Validator(type: .minValue, value: minimum) { value in
+            guard let num = Double(value) else { return true }
+            return num >= minimum
+        }
+    }
     
     /// Validator that requires the control's value to be less than or equal to the provided maximum weight.
     public static func maxValue(_ maximum: Double) -> Validator {
@@ -122,12 +129,20 @@ extension Validator where Value == String {
         }
     }
     
+    /// Validator that requires the control's value to not exceed an absolute maximum limit.
+    public static func maxLimit(_ maximum: Double) -> Validator {
+        Validator(type: .maxLimit, value: maximum) { value in
+            guard let num = Double(value) else { return true }
+            return num <= maximum
+        }
+    }
+
     /// Validator that requires the control's value to match a known scale SKU.
     /// Also checks if the entered value maps to a valid SKU (e.g., "0022" maps to "0383").
     public static let skuMatch = Validator(type: .skuMatch) { value in
         // Map SKU for SCALES lookup (e.g., 0022 -> 0383)
         let lookupSku = DeviceHelper.mapSkuForDisplay(value)
-        return SCALES.contains(where: { $0.sku == lookupSku })
+        return SCALES.contains { $0.sku == lookupSku } || bpmSkus.contains(value)
     }
     
     /// Validator that checks for duplicate usernames in a provided user list
@@ -168,6 +183,13 @@ extension Validator where Value == String {
         return trimmedValue.lowercased() != "guest"
     }
 
+    /// Validator that checks if the value contains only numeric characters (digits).
+    public static let numericOnly = Validator(type: .numericOnly) { value in
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return true } // Let .required handle empty
+        return trimmed.allSatisfy(\.isNumber)
+    }
+
 }
 
 // MARK: - Integer Validators
@@ -205,8 +227,9 @@ extension Validator where Value == Date {
 
 // MARK: - Validation Rules
 private struct Rule {
-    /// A regular expression that matches valid e-mail addresses.
-    static let emailPattern = #"(?i)^\s*(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@(([^<>()\[\]\\.,;:\s@"]+\.)+[^<>()\[\]\\.,;:\s@"]{2,})\s*$"#
+    // A regular expression that matches valid e-mail addresses.
+    static let emailPattern = #"(?i)^\s*(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))"#
+        + #"@(([^<>()\[\]\\.,;:\s@"]+\.)+[^<>()\[\]\\.,;:\s@"]{2,})\s*$"#
 
     /// A regular expression that matches valid URLs.
     static let urlPattern = ##"^(https?://)?(www\\.)?[a-zA-Z0-9@:%._\\+~#?&//=]{2,256}\\.[a-z]{2,6}\\b(?:[-a-zA-Z0-9@:%._\\+~#?&//=]*)$"##

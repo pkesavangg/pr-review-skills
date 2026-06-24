@@ -12,11 +12,13 @@ protocol IntegrationServiceProtocol {
     /// - Returns: The integration URL.
     func getIntegrationUrl(_ provider: IntegrationType) async throws -> String
 
-
     /// Removes a specific integration for the active account.
     /// - Parameter provider: The integration provider to remove.
     func removeIntegration(_ provider: IntegrationType) async throws
 
+    /// Submits a request for a new integration.
+    /// - Parameter text: The user-provided description of the requested integration.
+    func requestNewIntegration(text: String) async throws
 
     // MARK: - Status/Utility
 
@@ -56,4 +58,5 @@ protocol IntegrationServiceProtocol {
     
     /// Clears all integration data if integration is active (used during account deletion).
     func clearIntegration() async throws
+    func logHealthEntry(notification: EntryNotification) async
 }

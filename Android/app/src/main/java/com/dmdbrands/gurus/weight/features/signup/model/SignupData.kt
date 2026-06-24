@@ -13,12 +13,18 @@ import java.time.ZoneOffset
  */
 enum class SignupStep {
   NAME,
+  EMAIL,
   BIRTHDAY,
+  PICK_DEVICE,
   GENDER,
   HEIGHT,
   GOAL,
-  EMAIL,
+  ADD_BABY,
+  BABY_ADDED,
   PASSWORD,
+  DEVICE_READY,
+  ALL_DEVICES_READY,
+  ERROR,
 }
 
 /**Add commentMore actions

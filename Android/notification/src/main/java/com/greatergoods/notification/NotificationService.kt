@@ -198,6 +198,44 @@ constructor(
     }
 
     /**
+     * Shows a branded, grouped notification with a tap action and lock-screen visibility
+     * control (MOB-434).
+     * @param channelId The channel ID.
+     * @param notificationName The notification name/tag.
+     * @param textTitle The constant brand title.
+     * @param textContent The body text.
+     * @param smallIcon The brand small-icon resource id.
+     * @param contentIntent The PendingIntent for the tap action.
+     * @param groupKey The group key used to collapse related notifications.
+     * @param visibility Lock-screen visibility (defaults to VISIBILITY_PRIVATE).
+     * @param priority The notification priority.
+     */
+    fun showBrandedNotification(
+        channelId: String,
+        notificationName: String,
+        textTitle: String,
+        textContent: String,
+        smallIcon: Int,
+        contentIntent: PendingIntent,
+        groupKey: String,
+        visibility: Int = NotificationCompat.VISIBILITY_PRIVATE,
+        priority: Int = NotificationCompat.PRIORITY_DEFAULT,
+    ) {
+        notificationHandler.showBrandedNotification(
+            channelId = channelId,
+            notificationName = notificationName,
+            textTitle = textTitle,
+            textContent = textContent,
+            smallIcon = smallIcon,
+            contentIntent = contentIntent,
+            groupKey = groupKey,
+            visibility = visibility,
+            priority = priority,
+        )
+        update(notificationName, true)
+    }
+
+    /**
      * Shows a text notification with action buttons.
      * @param channelId The channel ID.
      * @param notificationName The notification name/tag.

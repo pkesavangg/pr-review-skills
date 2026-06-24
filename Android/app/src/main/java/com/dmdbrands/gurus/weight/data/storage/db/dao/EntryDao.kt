@@ -8,16 +8,18 @@ import androidx.room.Transaction
 import androidx.room.Update
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
-import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PopulatedActiveEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PopulatedEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
-import kotlinx.coroutines.flow.Flow
+
+/** Projection of a weight entry's timestamp + stored note for batch note merging (MOB-438). */
+data class ScaleNoteRow(val entryTimestamp: String, val note: String?)
 
 /**
  * Data Access Object (DAO) for the entry table.
@@ -90,23 +92,27 @@ interface EntryDao {
           insertBodyScale(entry.scale.scaleEntry.copy(id = entryId))
           entry.scale.scaleEntryMetric?.let { insertBodyScaleMetric(it.copy(id = entryId)) }
         }
+        is BabyEntry -> insertBabyEntry(entry.babyEntry.copy(id = entryId))
       }
     }
   }
 
   @Transaction
   suspend fun update(entry: Entry): Long {
-    val updatedId = update(entry.entry).toLong()
+    // NOTE: @Update returns the number of rows affected, NOT the row id — so the child
+    // rows must be keyed by the entry's actual id, not the update() result (MOB-438).
+    update(entry.entry)
+    val id = entry.entry.id
 
     if (entry is BpmEntry) {
-      updateBpm(entry.bpmEntry.copy(id = updatedId))
+      updateBpm(entry.bpmEntry.copy(id = id))
     } else if (entry is ScaleEntry) {
-      updateBodyScale(entry.scale.scaleEntry.copy(id = updatedId))
+      updateBodyScale(entry.scale.scaleEntry.copy(id = id))
       if (entry.scale.scaleEntryMetric != null) {
-        updateBodyScaleMetric(entry.scale.scaleEntryMetric.copy(id = updatedId))
+        updateBodyScaleMetric(entry.scale.scaleEntryMetric.copy(id = id))
       }
     }
-    return updatedId
+    return id
   }
 
   /**
@@ -128,15 +134,6 @@ interface EntryDao {
 
   // Get Methods
   /**
-   * Get the latest entry for a specific account with all related details.
-   * @param accountId The account ID
-   * @return The latest Entry with relations if found, null otherwise
-   */
-  @Transaction
-  @Query("SELECT * FROM entry_view WHERE accountId = :accountId AND (operationType IS NULL OR operationType != 'delete') ORDER BY datetime(entryTimestamp) DESC LIMIT 1")
-  fun getLatestEntry(accountId: String): Flow<PopulatedActiveEntry?>
-
-  /**
    * Get all entries with their related details for a specific account.
    * This method uses @Transaction to ensure all related data is fetched atomically.
    * @param accountId The account ID
@@ -146,50 +143,6 @@ interface EntryDao {
   @Query("SELECT * FROM entry_view WHERE accountId = :accountId AND (operationType IS NULL OR operationType != 'delete')")
   suspend fun getEntriesByAccount(accountId: String): List<PopulatedActiveEntry>
 
-  /**
-   * Get entries within a time range for a specific account.
-   * @param accountId The account ID
-   * @param startTime The start time in ISO 8601 format
-   * @param endTime The end time in ISO 8601 format
-   * @return A Flow of entries within the time range with relations
-   */
-  @Transaction
-  @Query(
-    """
-        SELECT *
-        FROM entry_view
-        WHERE accountId = :accountId
-          AND (operationType IS NULL OR operationType != 'delete')
-          AND datetime(entryTimestamp) BETWEEN datetime(:startTime) AND datetime(:endTime)
-          AND entryTimestamp IN (
-            SELECT MAX(entryTimestamp)
-            FROM entry_view
-            WHERE accountId = :accountId
-              AND (operationType IS NULL OR operationType != 'delete')
-              AND datetime(entryTimestamp) BETWEEN datetime(:startTime) AND datetime(:endTime)
-            GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp))
-          )
-        ORDER BY datetime(entryTimestamp) DESC
-    """,
-  )
-  fun getEntriesByTimeRange(
-    accountId: String,
-    startTime: String,
-    endTime: String,
-  ): Flow<List<PopulatedActiveEntry>>
-
-  /**
-   * Get entries by device type for a specific account with all related details.
-   * @param accountId The account ID
-   * @param deviceType The device type
-   * @return A Flow of entries for the specified device type with relations
-   */
-  @Transaction
-  @Query("SELECT * FROM entry_view WHERE accountId = :accountId AND deviceType = :deviceType AND (operationType IS NULL OR operationType != 'delete')")
-  fun getEntriesByDeviceType(
-    accountId: String,
-    deviceType: String,
-  ): Flow<List<PopulatedActiveEntry>>
 
   /**
    * Get an entry by its ID with all related details.
@@ -199,19 +152,6 @@ interface EntryDao {
   @Transaction
   @Query("SELECT * FROM entry WHERE id = :id AND (operationType IS NULL OR operationType != 'delete')")
   suspend fun getEntryById(id: Long): PopulatedEntry?
-
-  /**
-   * Get entries by operation type for a specific account.
-   * @param accountId The account ID
-   * @param operationType The operation type
-   * @return A Flow of entries with the specified operation type
-   */
-  @Transaction
-  @Query("SELECT * FROM entry WHERE accountId = :accountId AND operationType = :operationType")
-  fun getEntriesByOperationType(
-    accountId: String,
-    operationType: String,
-  ): Flow<List<PopulatedEntry>>
 
   // UnSynced Operations
 
@@ -268,6 +208,42 @@ interface EntryDao {
   suspend fun insertEntryEntity(entry: EntryEntity): Long
 
   /**
+   * Returns the existing stored note for a weight entry matched by account + timestamp,
+   * used to preserve a locally-entered note across a server sync that doesn't carry it
+   * (MOB-438). Returns null when no row or no note exists.
+   */
+  @Query(
+    "SELECT bse.note FROM entry e INNER JOIN body_scale_entry bse ON e.id = bse.id " +
+      "WHERE e.accountId = :accountId AND e.entryTimestamp = :timestamp ORDER BY e.id DESC LIMIT 1",
+  )
+  suspend fun getStoredScaleNote(accountId: String, timestamp: String): String?
+
+  /**
+   * Batch variant of [getStoredScaleNote]: all non-blank weight notes for an account in a
+   * single query, used to merge local notes during a bulk sync insert without issuing one
+   * query per entry (MOB-438 PR review).
+   */
+  @Query(
+    "SELECT e.entryTimestamp AS entryTimestamp, bse.note AS note " +
+      "FROM entry e INNER JOIN body_scale_entry bse ON e.id = bse.id " +
+      "WHERE e.accountId = :accountId AND bse.note IS NOT NULL AND bse.note != ''",
+  )
+  suspend fun getStoredScaleNotes(accountId: String): List<ScaleNoteRow>
+
+  /**
+   * Note-only updates (MOB-438). These touch just the note column so editing a note never
+   * round-trips weight/metrics through unit conversions (which would corrupt the value).
+   */
+  @Query("UPDATE body_scale_entry SET note = :note WHERE id = :id")
+  suspend fun updateScaleNote(id: Long, note: String?)
+
+  @Query("UPDATE bpm_entry SET note = :note WHERE id = :id")
+  suspend fun updateBpmNote(id: Long, note: String?)
+
+  @Query("UPDATE baby_entry SET entryNote = :note WHERE id = :id")
+  suspend fun updateBabyNote(id: Long, note: String?)
+
+  /**
    * Insert a list of entry entities into the database (bulk).
    * Use distinct name from single-arg insertEntryEntity to avoid Kotlin overload resolution issues.
    * @param entries The list of entry entities to insert
@@ -291,6 +267,9 @@ interface EntryDao {
    */
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun insertBpmList(bpm: List<BpmEntryEntity>)
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertBabyEntry(babyEntry: BabyEntryEntity): Long
 
   /**
    * Insert a new BodyScaleEntry entity into the database.
@@ -357,23 +336,6 @@ interface EntryDao {
   @Update
   suspend fun updateBodyScaleMetric(metric: BodyScaleEntryMetricEntity): Int
 
-  /**
-   * Get entries for a specific month.
-   * @param accountId The account ID
-   * @param month The month in YYYY-MM format
-   * @return Flow of list of entries for the specified month
-   */
-  @Transaction
-  @Query(
-    """
-        SELECT * FROM entry_view
-        WHERE accountId = :accountId
-        AND (operationType IS NULL OR operationType != 'delete')
-        AND strftime('%Y-%m', datetime(entryTimestamp,${UTC}, ${LOCAL_TIME})) = :month
-        ORDER BY datetime(entryTimestamp, ${UTC}, ${LOCAL_TIME}) DESC
-    """,
-  )
-  fun getMonthDetail(accountId: String, month: String): Flow<List<PopulatedActiveEntry>>
 
   /**
    * Get the operation count for an account.
@@ -383,13 +345,6 @@ interface EntryDao {
   @Query("SELECT COUNT(*) FROM entry WHERE accountId = :accountId")
   suspend fun getOperationCount(accountId: String): Int
 
-  /**
-   * Get metrics for a specific entry.
-   * @param entryId The ID of the entry
-   * @return Flow of BodyScaleEntryMetricEntity for the entry
-   */
-  @Query("SELECT * FROM body_scale_entry_metric WHERE id = :entryId")
-  fun getMetricsByEntryId(entryId: Long): Flow<BodyScaleEntryMetricEntity>
 
   /**
    * Insert a list of scale entries into the database.
@@ -398,586 +353,8 @@ interface EntryDao {
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun insertScaleEntries(entries: List<BodyScaleEntryEntity>)
 
-  /**
-   * Get a scale entry by its ID.
-   * @param entryId The ID of the entry
-   * @return The BodyScaleEntryEntity if found, null otherwise
-   */
-  @Query("SELECT * FROM body_scale_entry WHERE id = :entryId")
-  suspend fun getScaleEntryById(entryId: Long): BodyScaleEntryEntity?
 
-  /**
-   * Get monthly averages of body scale data for an account.
-   *
-   * This query joins the entry, body_scale_entry, and body_scale_entry_metric tables to aggregate
-   * all relevant body scale and metric fields. If you need to reuse this join pattern elsewhere,
-   * consider creating a database VIEW or a temporary table for maintainability and performance.
-   */
-  @Query(
-    """
-        SELECT
-          strftime('%Y-%m', datetime(e.entryTimestamp,${UTC}, ${LOCAL_TIME})) AS period,
-          datetime(MIN(e.entryTimestamp),${UTC}, ${LOCAL_TIME},${START_OF_MONTH}) AS entryTimestamp,
-          AVG(CASE WHEN bse.weight > 0 THEN bse.weight ELSE NULL END) AS weight,
-          AVG(CASE WHEN bse.bodyFat > 0 THEN bse.bodyFat ELSE NULL END) AS bodyFat,
-          AVG(CASE WHEN bse.muscleMass > 0 THEN bse.muscleMass ELSE NULL END) AS muscleMass,
-          AVG(CASE WHEN bse.water > 0 THEN bse.water ELSE NULL END) AS water,
-          AVG(CASE WHEN bse.bmi > 0 THEN bse.bmi ELSE NULL END) AS bmi,
-          AVG(CASE WHEN bsem.bmr > 0 THEN bsem.bmr ELSE NULL END) AS bmr,
-          AVG(CASE WHEN bsem.metabolicAge > 0 THEN bsem.metabolicAge ELSE NULL END) AS metabolicAge,
-          AVG(CASE WHEN bsem.proteinPercent > 0 THEN bsem.proteinPercent ELSE NULL END) AS proteinPercent,
-          AVG(CASE WHEN bsem.pulse > 0 THEN bsem.pulse ELSE NULL END) AS pulse,
-          AVG(CASE WHEN bsem.skeletalMusclePercent > 0 THEN bsem.skeletalMusclePercent ELSE NULL END) AS skeletalMusclePercent,
-          AVG(CASE WHEN bsem.subcutaneousFatPercent > 0 THEN bsem.subcutaneousFatPercent ELSE NULL END) AS subcutaneousFatPercent,
-          AVG(CASE WHEN bsem.visceralFatLevel > 0 THEN bsem.visceralFatLevel ELSE NULL END) AS visceralFatLevel,
-          AVG(CASE WHEN bsem.boneMass > 0 THEN bsem.boneMass ELSE NULL END) AS boneMass,
-          AVG(CASE WHEN bsem.impedance > 0 THEN bsem.impedance ELSE NULL END) AS impedance,
-          MAX(e.unit) AS unit
-        FROM entry_view AS e
-        LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
-        LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
-        WHERE e.accountId = :accountId
-          AND (e.operationType IS NULL OR e.operationType != 'delete')
-        GROUP BY period
-        ORDER BY period DESC
-    """,
-  )
-  fun getMonthlyBodyScaleAveragesWithJoin(
-    accountId: String
-  ): Flow<List<PeriodBodyScaleSummary>>
 
-  /**
-   * Get the latest body scale entry for each month for an account.
-   *
-   * This query joins the entry, body_scale_entry, and body_scale_entry_metric tables to fetch
-   * all relevant body scale and metric fields for the latest entry in each month. For repeated
-   * use, consider creating a VIEW or temporary table.
-   */
-  @Query(
-    """
-        SELECT
-          strftime('%Y-%m', datetime(e.entryTimestamp,${UTC}, ${LOCAL_TIME})) AS period,
-          e.entryTimestamp,
-          bse.weight,
-          bse.bodyFat,
-          bse.muscleMass,
-          bse.water,
-          bse.bmi,
-          bsem.bmr,
-          bsem.metabolicAge,
-          bsem.proteinPercent,
-          bsem.pulse,
-          bsem.skeletalMusclePercent,
-          bsem.subcutaneousFatPercent,
-          bsem.visceralFatLevel,
-          bsem.boneMass,
-          bsem.impedance,
-          e.unit
-        FROM entry_view AS e
-        LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
-        LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
-        WHERE e.accountId = :accountId
-          AND (e.operationType IS NULL OR e.operationType != 'delete')
-          AND e.entryTimestamp IN (
-            SELECT MAX(entryTimestamp)
-            FROM entry
-            WHERE accountId = :accountId
-              AND (operationType IS NULL OR operationType != 'delete')
-            GROUP BY strftime('%Y-%m', datetime(entryTimestamp, ${UTC}, ${LOCAL_TIME}))
-          )
-        ORDER BY period DESC
-    """,
-  )
-  fun getMonthlyBodyScaleLatestWithJoin(
-    accountId: String
-  ): Flow<List<PeriodBodyScaleSummary>>
 
-  @Query(
-    """
-    SELECT
-      strftime('%Y-%m-%d', datetime(e.entryTimestamp,${UTC}, ${LOCAL_TIME})) AS period,
-      datetime(MIN(e.entryTimestamp),${UTC}, ${LOCAL_TIME},${START_OF_DAY}) AS entryTimestamp,
-      AVG(CASE WHEN bse.weight > 0 THEN bse.weight ELSE NULL END) AS weight,
-      AVG(CASE WHEN bse.bodyFat > 0 THEN bse.bodyFat ELSE NULL END) AS bodyFat,
-      AVG(CASE WHEN bse.muscleMass > 0 THEN bse.muscleMass ELSE NULL END) AS muscleMass,
-      AVG(CASE WHEN bse.water > 0 THEN bse.water ELSE NULL END) AS water,
-      AVG(CASE WHEN bse.bmi > 0 THEN bse.bmi ELSE NULL END) AS bmi,
-      AVG(CASE WHEN bsem.bmr > 0 THEN bsem.bmr ELSE NULL END) AS bmr,
-      AVG(CASE WHEN bsem.metabolicAge > 0 THEN bsem.metabolicAge ELSE NULL END) AS metabolicAge,
-      AVG(CASE WHEN bsem.proteinPercent > 0 THEN bsem.proteinPercent ELSE NULL END) AS proteinPercent,
-      AVG(CASE WHEN bsem.pulse > 0 THEN bsem.pulse ELSE NULL END) AS pulse,
-      AVG(CASE WHEN bsem.skeletalMusclePercent > 0 THEN bsem.skeletalMusclePercent ELSE NULL END) AS skeletalMusclePercent,
-      AVG(CASE WHEN bsem.subcutaneousFatPercent > 0 THEN bsem.subcutaneousFatPercent ELSE NULL END) AS subcutaneousFatPercent,
-      AVG(CASE WHEN bsem.visceralFatLevel > 0 THEN bsem.visceralFatLevel ELSE NULL END) AS visceralFatLevel,
-      AVG(CASE WHEN bsem.boneMass > 0 THEN bsem.boneMass ELSE NULL END) AS boneMass,
-      AVG(CASE WHEN bsem.impedance > 0 THEN bsem.impedance ELSE NULL END) AS impedance,
-      MAX(e.unit) AS unit
-    FROM entry_view AS e
-    LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
-    LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
-    WHERE e.accountId = :accountId
-      AND (e.operationType IS NULL OR e.operationType != 'delete')
-    GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
-    ORDER BY period DESC
-  """,
-  )
-  fun getDaywiseBodyScaleAveragesWithJoin(
-    accountId: String
-  ): Flow<List<PeriodBodyScaleSummary>>
 
-  /**
-   * Get the latest body scale entry for each day for an account.
-   *
-   * This query joins the entry, body_scale_entry, and body_scale_entry_metric tables to fetch
-   * all relevant body scale and metric fields for the latest entry in each day. For repeated
-   * use, consider a VIEW or temp table.
-   */
-  @Query(
-    """
-WITH daily_entries AS (
-  SELECT
-    strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS day,
-    e.entryTimestamp,
-    e.unit,
-    bse.weight,
-    bse.bodyFat,
-    bse.muscleMass,
-    bse.water,
-    bse.bmi,
-    bsem.bmr,
-    bsem.metabolicAge,
-    bsem.proteinPercent,
-    bsem.pulse,
-    bsem.skeletalMusclePercent,
-    bsem.subcutaneousFatPercent,
-    bsem.visceralFatLevel,
-    bsem.boneMass,
-    bsem.impedance
-  FROM entry_view e
-  LEFT JOIN body_scale_entry bse ON e.id = bse.id
-  LEFT JOIN body_scale_entry_metric bsem ON e.id = bsem.id
-  WHERE e.accountId = :accountId
-    AND (e.operationType IS NULL OR e.operationType != 'delete')
-),
--- One window pass per day: for each metric, the latest entryTimestamp on that day where
--- the metric is non-null and positive. Same semantics as the previous 16 correlated
--- subqueries, but O(N) instead of O(days * metrics * entries_per_day).
-ranked AS (
-  SELECT
-    day,
-    entryTimestamp,
-    unit,
-    weight, bodyFat, muscleMass, water, bmi,
-    bmr, metabolicAge, proteinPercent, pulse,
-    skeletalMusclePercent, subcutaneousFatPercent,
-    visceralFatLevel, boneMass, impedance,
-    MAX(CASE WHEN weight                 > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_weight,
-    MAX(CASE WHEN bodyFat                > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_bodyFat,
-    MAX(CASE WHEN muscleMass             > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_muscleMass,
-    MAX(CASE WHEN water                  > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_water,
-    MAX(CASE WHEN bmi                    > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_bmi,
-    MAX(CASE WHEN bmr                    > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_bmr,
-    MAX(CASE WHEN metabolicAge           > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_metabolicAge,
-    MAX(CASE WHEN proteinPercent         > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_proteinPercent,
-    MAX(CASE WHEN pulse                  > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_pulse,
-    MAX(CASE WHEN skeletalMusclePercent  > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_skeletalMusclePercent,
-    MAX(CASE WHEN subcutaneousFatPercent > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_subcutaneousFatPercent,
-    MAX(CASE WHEN visceralFatLevel       > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_visceralFatLevel,
-    MAX(CASE WHEN boneMass               > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_boneMass,
-    MAX(CASE WHEN impedance              > 0 THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_impedance,
-    MAX(CASE WHEN unit IS NOT NULL           THEN entryTimestamp END) OVER (PARTITION BY day) AS lt_unit
-  FROM daily_entries
-)
-SELECT
-  day AS period,
-  datetime(MAX(entryTimestamp), ${UTC}, ${LOCAL_TIME}, ${START_OF_DAY}) AS entryTimestamp,
-  MAX(CASE WHEN entryTimestamp = lt_weight                 AND weight                 > 0 THEN weight                 END) AS weight,
-  MAX(CASE WHEN entryTimestamp = lt_bodyFat                AND bodyFat                > 0 THEN bodyFat                END) AS bodyFat,
-  MAX(CASE WHEN entryTimestamp = lt_muscleMass             AND muscleMass             > 0 THEN muscleMass             END) AS muscleMass,
-  MAX(CASE WHEN entryTimestamp = lt_water                  AND water                  > 0 THEN water                  END) AS water,
-  MAX(CASE WHEN entryTimestamp = lt_bmi                    AND bmi                    > 0 THEN bmi                    END) AS bmi,
-  MAX(CASE WHEN entryTimestamp = lt_bmr                    AND bmr                    > 0 THEN bmr                    END) AS bmr,
-  MAX(CASE WHEN entryTimestamp = lt_metabolicAge           AND metabolicAge           > 0 THEN metabolicAge           END) AS metabolicAge,
-  MAX(CASE WHEN entryTimestamp = lt_proteinPercent         AND proteinPercent         > 0 THEN proteinPercent         END) AS proteinPercent,
-  MAX(CASE WHEN entryTimestamp = lt_pulse                  AND pulse                  > 0 THEN pulse                  END) AS pulse,
-  MAX(CASE WHEN entryTimestamp = lt_skeletalMusclePercent  AND skeletalMusclePercent  > 0 THEN skeletalMusclePercent  END) AS skeletalMusclePercent,
-  MAX(CASE WHEN entryTimestamp = lt_subcutaneousFatPercent AND subcutaneousFatPercent > 0 THEN subcutaneousFatPercent END) AS subcutaneousFatPercent,
-  MAX(CASE WHEN entryTimestamp = lt_visceralFatLevel       AND visceralFatLevel       > 0 THEN visceralFatLevel       END) AS visceralFatLevel,
-  MAX(CASE WHEN entryTimestamp = lt_boneMass               AND boneMass               > 0 THEN boneMass               END) AS boneMass,
-  MAX(CASE WHEN entryTimestamp = lt_impedance              AND impedance              > 0 THEN impedance              END) AS impedance,
-  MAX(CASE WHEN entryTimestamp = lt_unit                   AND unit IS NOT NULL           THEN unit                   END) AS unit
-FROM ranked
-GROUP BY day
-ORDER BY day DESC
-""",
-  )
-  fun getDaywiseBodyScaleLatestWithJoin(
-    accountId: String
-  ): Flow<List<PeriodBodyScaleSummary>>
-
-  /**
-   * Per MA-3965: single-pass hybrid daywise query. The most recent day with a valid
-   * weight entry surfaces the latest non-null positive value per metric (same shape
-   * as [getDaywiseBodyScaleLatestWithJoin]); every earlier day surfaces the daily
-   * average per metric (same shape as [getDaywiseBodyScaleAveragesWithJoin]).
-   *
-   * One query, one Room invalidation, one emission per write — replaces the previous
-   * app-side combine of two flows, which doubled SQL work and could emit an
-   * intermediate frame where the latest day briefly showed averages before the
-   * "latest" flow caught up.
-   *
-   * Implementation notes:
-   *  - "latest day" is data-driven: MAX(day) where at least one entry has weight > 0.
-   *  - Latest-day branch reuses the window-function walkback from the latest query
-   *    (one pass per day, O(N)).
-   *  - Average-day branch reuses the AVG-over-positive-only-values logic from the
-   *    averages query.
-   *  - entryTimestamp follows each branch's existing convention: MAX(...) anchored
-   *    to start of day for the latest day, MIN(...) anchored to start of day for
-   *    earlier days.
-   */
-  @Query(
-    """
-WITH daily_entries AS (
-  SELECT
-    strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS day,
-    e.entryTimestamp,
-    e.unit,
-    bse.weight,
-    bse.bodyFat,
-    bse.muscleMass,
-    bse.water,
-    bse.bmi,
-    bsem.bmr,
-    bsem.metabolicAge,
-    bsem.proteinPercent,
-    bsem.pulse,
-    bsem.skeletalMusclePercent,
-    bsem.subcutaneousFatPercent,
-    bsem.visceralFatLevel,
-    bsem.boneMass,
-    bsem.impedance
-  FROM entry_view e
-  LEFT JOIN body_scale_entry bse ON e.id = bse.id
-  LEFT JOIN body_scale_entry_metric bsem ON e.id = bsem.id
-  WHERE e.accountId = :accountId
-    AND (e.operationType IS NULL OR e.operationType != 'delete')
-),
-latest_day_cte AS (
-  SELECT MAX(day) AS latest_day FROM daily_entries WHERE weight > 0
-),
-ranked AS (
-  SELECT
-    de.day,
-    de.entryTimestamp,
-    de.unit,
-    de.weight, de.bodyFat, de.muscleMass, de.water, de.bmi,
-    de.bmr, de.metabolicAge, de.proteinPercent, de.pulse,
-    de.skeletalMusclePercent, de.subcutaneousFatPercent,
-    de.visceralFatLevel, de.boneMass, de.impedance,
-    MAX(CASE WHEN de.weight                 > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_weight,
-    MAX(CASE WHEN de.bodyFat                > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_bodyFat,
-    MAX(CASE WHEN de.muscleMass             > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_muscleMass,
-    MAX(CASE WHEN de.water                  > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_water,
-    MAX(CASE WHEN de.bmi                    > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_bmi,
-    MAX(CASE WHEN de.bmr                    > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_bmr,
-    MAX(CASE WHEN de.metabolicAge           > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_metabolicAge,
-    MAX(CASE WHEN de.proteinPercent         > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_proteinPercent,
-    MAX(CASE WHEN de.pulse                  > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_pulse,
-    MAX(CASE WHEN de.skeletalMusclePercent  > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_skeletalMusclePercent,
-    MAX(CASE WHEN de.subcutaneousFatPercent > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_subcutaneousFatPercent,
-    MAX(CASE WHEN de.visceralFatLevel       > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_visceralFatLevel,
-    MAX(CASE WHEN de.boneMass               > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_boneMass,
-    MAX(CASE WHEN de.impedance              > 0 THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_impedance,
-    MAX(CASE WHEN de.unit IS NOT NULL           THEN de.entryTimestamp END) OVER (PARTITION BY de.day) AS lt_unit,
-    (SELECT latest_day FROM latest_day_cte) AS latest_day
-  FROM daily_entries de
-)
-SELECT
-  day AS period,
-  CASE WHEN day = latest_day
-    THEN datetime(MAX(entryTimestamp), ${UTC}, ${LOCAL_TIME}, ${START_OF_DAY})
-    ELSE datetime(MIN(entryTimestamp), ${UTC}, ${LOCAL_TIME}, ${START_OF_DAY})
-  END AS entryTimestamp,
-  CASE WHEN day = latest_day
-    THEN MAX(CASE WHEN entryTimestamp = lt_weight                 AND weight                 > 0 THEN weight                 END)
-    ELSE AVG(CASE WHEN weight                 > 0 THEN weight                 ELSE NULL END)
-  END AS weight,
-  CASE WHEN day = latest_day
-    THEN MAX(CASE WHEN entryTimestamp = lt_bodyFat                AND bodyFat                > 0 THEN bodyFat                END)
-    ELSE AVG(CASE WHEN bodyFat                > 0 THEN bodyFat                ELSE NULL END)
-  END AS bodyFat,
-  CASE WHEN day = latest_day
-    THEN MAX(CASE WHEN entryTimestamp = lt_muscleMass             AND muscleMass             > 0 THEN muscleMass             END)
-    ELSE AVG(CASE WHEN muscleMass             > 0 THEN muscleMass             ELSE NULL END)
-  END AS muscleMass,
-  CASE WHEN day = latest_day
-    THEN MAX(CASE WHEN entryTimestamp = lt_water                  AND water                  > 0 THEN water                  END)
-    ELSE AVG(CASE WHEN water                  > 0 THEN water                  ELSE NULL END)
-  END AS water,
-  CASE WHEN day = latest_day
-    THEN MAX(CASE WHEN entryTimestamp = lt_bmi                    AND bmi                    > 0 THEN bmi                    END)
-    ELSE AVG(CASE WHEN bmi                    > 0 THEN bmi                    ELSE NULL END)
-  END AS bmi,
-  CASE WHEN day = latest_day
-    THEN MAX(CASE WHEN entryTimestamp = lt_bmr                    AND bmr                    > 0 THEN bmr                    END)
-    ELSE AVG(CASE WHEN bmr                    > 0 THEN bmr                    ELSE NULL END)
-  END AS bmr,
-  CASE WHEN day = latest_day
-    THEN MAX(CASE WHEN entryTimestamp = lt_metabolicAge           AND metabolicAge           > 0 THEN metabolicAge           END)
-    ELSE AVG(CASE WHEN metabolicAge           > 0 THEN metabolicAge           ELSE NULL END)
-  END AS metabolicAge,
-  CASE WHEN day = latest_day
-    THEN MAX(CASE WHEN entryTimestamp = lt_proteinPercent         AND proteinPercent         > 0 THEN proteinPercent         END)
-    ELSE AVG(CASE WHEN proteinPercent         > 0 THEN proteinPercent         ELSE NULL END)
-  END AS proteinPercent,
-  CASE WHEN day = latest_day
-    THEN MAX(CASE WHEN entryTimestamp = lt_pulse                  AND pulse                  > 0 THEN pulse                  END)
-    ELSE AVG(CASE WHEN pulse                  > 0 THEN pulse                  ELSE NULL END)
-  END AS pulse,
-  CASE WHEN day = latest_day
-    THEN MAX(CASE WHEN entryTimestamp = lt_skeletalMusclePercent  AND skeletalMusclePercent  > 0 THEN skeletalMusclePercent  END)
-    ELSE AVG(CASE WHEN skeletalMusclePercent  > 0 THEN skeletalMusclePercent  ELSE NULL END)
-  END AS skeletalMusclePercent,
-  CASE WHEN day = latest_day
-    THEN MAX(CASE WHEN entryTimestamp = lt_subcutaneousFatPercent AND subcutaneousFatPercent > 0 THEN subcutaneousFatPercent END)
-    ELSE AVG(CASE WHEN subcutaneousFatPercent > 0 THEN subcutaneousFatPercent ELSE NULL END)
-  END AS subcutaneousFatPercent,
-  CASE WHEN day = latest_day
-    THEN MAX(CASE WHEN entryTimestamp = lt_visceralFatLevel       AND visceralFatLevel       > 0 THEN visceralFatLevel       END)
-    ELSE AVG(CASE WHEN visceralFatLevel       > 0 THEN visceralFatLevel       ELSE NULL END)
-  END AS visceralFatLevel,
-  CASE WHEN day = latest_day
-    THEN MAX(CASE WHEN entryTimestamp = lt_boneMass               AND boneMass               > 0 THEN boneMass               END)
-    ELSE AVG(CASE WHEN boneMass               > 0 THEN boneMass               ELSE NULL END)
-  END AS boneMass,
-  CASE WHEN day = latest_day
-    THEN MAX(CASE WHEN entryTimestamp = lt_impedance              AND impedance              > 0 THEN impedance              END)
-    ELSE AVG(CASE WHEN impedance              > 0 THEN impedance              ELSE NULL END)
-  END AS impedance,
-  CASE WHEN day = latest_day
-    THEN MAX(CASE WHEN entryTimestamp = lt_unit                   AND unit IS NOT NULL           THEN unit                   END)
-    ELSE MAX(unit)
-  END AS unit
-FROM ranked
-GROUP BY day
-ORDER BY day DESC
-""",
-  )
-  fun getDaywiseBodyScaleHybridWithJoin(
-    accountId: String
-  ): Flow<List<PeriodBodyScaleSummary>>
-
-  @Query(
-    """
-    WITH entries_with_period AS (
-        SELECT
-            e.entryTimestamp,
-            bse.weight,
-            strftime('%Y-%m', datetime(e.entryTimestamp,${UTC},${LOCAL_TIME})) AS period
-        FROM entry_view e
-        LEFT JOIN body_scale_entry bse ON e.id = bse.id
-        WHERE e.accountId = :accountId AND bse.weight IS NOT NULL
-          AND (e.operationType IS NULL OR e.operationType != 'delete')
-    ),
-    first_last AS (
-        SELECT
-            period,
-            MIN(entryTimestamp) AS firstTimestamp,
-            MAX(entryTimestamp) AS lastTimestamp
-        FROM entries_with_period
-        GROUP BY period
-    ),
-    joined AS (
-        SELECT
-            fl.period,
-            fl.firstTimestamp,
-            fl.lastTimestamp,
-            first_entry.weight AS firstWeight,
-            last_entry.weight AS lastWeight,
-            (SELECT AVG(weight) FROM entries_with_period WHERE period = fl.period) AS avgWeight,
-            (SELECT COUNT(*) FROM entries_with_period WHERE period = fl.period) AS entryCount
-        FROM first_last fl
-        LEFT JOIN entries_with_period first_entry ON fl.firstTimestamp = first_entry.entryTimestamp
-        LEFT JOIN entries_with_period last_entry ON fl.lastTimestamp = last_entry.entryTimestamp
-    )
-    SELECT
-        CASE CAST(strftime('%m', datetime(firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS INTEGER)
-            WHEN 1 THEN $MONTH_JAN
-            WHEN 2 THEN $MONTH_FEB
-            WHEN 3 THEN $MONTH_MAR
-            WHEN 4 THEN $MONTH_APR
-            WHEN 5 THEN $MONTH_MAY
-            WHEN 6 THEN $MONTH_JUN
-            WHEN 7 THEN $MONTH_JUL
-            WHEN 8 THEN $MONTH_AUG
-            WHEN 9 THEN $MONTH_SEP
-            WHEN 10 THEN $MONTH_OCT
-            WHEN 11 THEN $MONTH_NOV
-            WHEN 12 THEN $MONTH_DEC
-        END || ' ' || strftime('%Y', datetime(firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS entryTimestamp,
-        avgWeight,
-        entryCount,
-        CASE
-            WHEN firstWeight IS NOT NULL AND lastWeight IS NOT NULL
-            THEN lastWeight - firstWeight
-            ELSE NULL
-        END AS change
-    FROM joined
-    ORDER BY period DESC
-    """,
-  )
-  fun getMonthlyHistory(
-    accountId: String
-  ): Flow<List<HistoryMonth>>
-
-  /**
-   * Get monthly history for an account for the last 365 days.
-   * This method automatically filters entries from the last 365 days, groups by month, and calculates averages.
-   * @param accountId The account ID
-   * @return Flow of list of monthly history for the last 365 days
-   */
-  @Query(
-    """
-    WITH entries_with_period AS (
-        SELECT
-            e.entryTimestamp,
-            bse.weight,
-            strftime('%Y-%m', datetime(e.entryTimestamp,${UTC},${LOCAL_TIME})) AS period
-        FROM entry_view e
-        LEFT JOIN body_scale_entry bse ON e.id = bse.id
-        WHERE e.accountId = :accountId
-          AND bse.weight IS NOT NULL
-          AND (e.operationType IS NULL OR e.operationType != 'delete')
-          AND datetime(e.entryTimestamp) >= datetime('now', '-365 days')
-          AND datetime(e.entryTimestamp) <= datetime('now')
-    ),
-    first_last AS (
-        SELECT
-            period,
-            MIN(entryTimestamp) AS firstTimestamp,
-            MAX(entryTimestamp) AS lastTimestamp
-        FROM entries_with_period
-        GROUP BY period
-    ),
-    joined AS (
-        SELECT
-            fl.period,
-            fl.firstTimestamp,
-            fl.lastTimestamp,
-            first_entry.weight AS firstWeight,
-            last_entry.weight AS lastWeight,
-            (SELECT AVG(weight) FROM entries_with_period WHERE period = fl.period) AS avgWeight,
-            (SELECT COUNT(*) FROM entries_with_period WHERE period = fl.period) AS entryCount
-        FROM first_last fl
-        LEFT JOIN entries_with_period first_entry ON fl.firstTimestamp = first_entry.entryTimestamp
-        LEFT JOIN entries_with_period last_entry ON fl.lastTimestamp = last_entry.entryTimestamp
-    )
-    SELECT
-        CASE CAST(strftime('%m', datetime(firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS INTEGER)
-            WHEN 1 THEN $MONTH_JAN
-            WHEN 2 THEN $MONTH_FEB
-            WHEN 3 THEN $MONTH_MAR
-            WHEN 4 THEN $MONTH_APR
-            WHEN 5 THEN $MONTH_MAY
-            WHEN 6 THEN $MONTH_JUN
-            WHEN 7 THEN $MONTH_JUL
-            WHEN 8 THEN $MONTH_AUG
-            WHEN 9 THEN $MONTH_SEP
-            WHEN 10 THEN $MONTH_OCT
-            WHEN 11 THEN $MONTH_NOV
-            WHEN 12 THEN $MONTH_DEC
-        END || ' ' || strftime('%Y', datetime(firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS entryTimestamp,
-        avgWeight,
-        entryCount,
-        CASE
-            WHEN firstWeight IS NOT NULL AND lastWeight IS NOT NULL
-            THEN lastWeight - firstWeight
-            ELSE NULL
-        END AS change
-    FROM joined
-    ORDER BY period DESC
-    """,
-  )
-  fun getMonthlyHistoryLastYear(
-    accountId: String
-  ): Flow<List<HistoryMonth>>
-
-  /**
-   * Get the oldest entry for an account.
-   * @param accountId The account ID
-   * @return The oldest entry if found, null otherwise
-   */
-  @Query("SELECT * FROM entry_view WHERE accountId = :accountId AND (operationType IS NULL OR operationType != 'delete') ORDER BY entryTimestamp ASC LIMIT 1")
-  suspend fun getOldestEntry(accountId: String): PopulatedActiveEntry?
-
-  /**
-   * Get entry timestamps for streak calculation.
-   * Returns one entry timestamp per day, ordered with newest first.
-   * @param accountId The account ID
-   * @return List of entry timestamps for streak calculation
-   */
-  @Query(
-    """
-         SELECT
-        strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME}))
-        FROM entry_view
-        WHERE accountId = :accountId
-          AND (operationType IS NULL OR operationType != 'delete')
-        GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC}, ${LOCAL_TIME}))
-        ORDER BY datetime(entryTimestamp,${UTC},${LOCAL_TIME}) DESC
-        """,
-  )
-  suspend fun getStreakData(accountId: String): List<String>
-
-  /**
-   * Get the total count of entries for an account.
-   * @param accountId The account ID
-   * @return The total count of entries
-   */
-  @Query("SELECT COUNT(entryTimestamp) as total FROM entry_view WHERE accountId = :accountId AND (operationType IS NULL OR operationType != 'delete')")
-  suspend fun getTotalCount(accountId: String): Int
-
-  /**
-   * Get the longest streak count for an account.
-   * Uses window function (row_number) + GROUP BY to compute max consecutive days; faster than recursive CTE for large datasets.
-   * @param accountId The account ID
-   * @return The longest streak count
-   */
-  @Query(
-    """
-        SELECT COALESCE(MAX(streak_count), 0) AS longestStreak FROM (
-          SELECT COUNT(*) AS streak_count FROM (
-            SELECT day_start, row_number() OVER (ORDER BY day_start) AS row_num FROM (
-              SELECT strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME})) AS day_start
-              FROM entry_view
-              WHERE accountId = :accountId AND (operationType IS NULL OR operationType != 'delete')
-              GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME}))
-            )
-          ) AS t1
-          GROUP BY strftime('%Y-%m-%d', date(day_start, '-' || (row_num - 1) || ' day'))
-        )
-        """,
-  )
-  suspend fun getLongestStreakCount(accountId: String): Int
-
-  /**
-   * Get entries for an account in a specific date range (inclusive).
-   * @param accountId The account ID
-   * @param startDate The start date (ISO 8601 string)
-   * @param endDate The end date (ISO 8601 string)
-   * @return Flow of list of entries in the date range
-   */
-  @Transaction
-  @Query(
-    """
-        SELECT * FROM entry_view
-        WHERE accountId = :accountId
-          AND (operationType IS NULL OR operationType != 'delete')
-          AND entryTimestamp >= :startDate
-          AND entryTimestamp <= :endDate
-        ORDER BY datetime(entryTimestamp) DESC
-    """,
-  )
-  fun getEntriesInRange(accountId: String, startDate: String, endDate: String): Flow<List<PopulatedActiveEntry>>
 }

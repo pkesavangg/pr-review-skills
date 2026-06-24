@@ -82,11 +82,12 @@ struct WifiSelectionView: View {
             Text(isConnected ? lang.alreadyConnected : lang.selectNetwork)
                 .fontOpenSans(.heading4)
                 .foregroundColor(theme.textHeading)
-            
+
             Text(isConnected ? lang.continueOrChooseDiff : lang.pickClosestNetwork)
                 .fontOpenSans(.body2)
                 .foregroundColor(theme.textBody)
         }
+        .accessibilityElement(children: .combine)
     }
     
     @ViewBuilder
@@ -107,8 +108,6 @@ struct WifiSelectionView: View {
         }
     }
     
-
-    
     @ViewBuilder
     private func refreshButton() -> some View {
         ButtonView(
@@ -127,7 +126,7 @@ struct WifiSelectionView: View {
     store.configure(with: "0412", isWifiSetupOnly: true)
     return WifiPasswordEntryView(
         wifiDetail: WifiDetails(macAddress: "aa:bb:cc:dd:ee:ff", ssid: "Home WiFi"),
-        isScaleSetup: true
+        isDeviceSetup: true
     )
     .environmentObject(store)
 }

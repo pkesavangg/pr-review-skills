@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -29,6 +29,7 @@ import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import kotlinx.collections.immutable.toImmutableList
 import sh.calvin.reorderable.mainAxisViewportSize
 import sh.calvin.reorderable.rememberScroller
 
@@ -38,7 +39,7 @@ fun ScaleDisplayMetricsScreen(scaleId: String) {
     hiltViewModel<ScaleDisplayMetricsViewModel, ScaleDisplayMetricsViewModel.Factory>(
       creationCallback = { factory -> factory.create(scaleId) },
     )
-  val state by viewModel.state.collectAsState()
+  val state by viewModel.state.collectAsStateWithLifecycle()
 
   BackHandler {
     viewModel.handleIntent(ScaleDisplayMetricsIntent.Back)
@@ -158,7 +159,7 @@ fun ScaleDisplayMetricsScreenPreview() {
   val dummyState =
     ScaleDisplayMetricsState(
       scale = dummyDevice,
-      enabledMetrics = listOf("bmi", "bodyFatPercent", "musclePercent", "bodyWaterPercent"),
+      enabledMetrics = listOf("bmi", "bodyFatPercent", "musclePercent", "bodyWaterPercent").toImmutableList(),
       hasUpdated = true,
     )
 

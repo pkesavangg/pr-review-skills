@@ -1,55 +1,49 @@
 // domain/service/IEntryService.kt
 package com.dmdbrands.gurus.weight.domain.services
 
-import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
-import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
+/**
+ * Write + sync surface for entries. Read flows (progress, latestEntry, isEmpty)
+ * live on [IEntryReadService] — this interface is deliberately narrow.
+ */
 interface IEntryService {
+  /** Mirrors [IEntrySyncService.isUpdating]; exposed here for VMs that already inject EntryService. */
   val isUpdating: StateFlow<Boolean>
-  val isEmpty: StateFlow<Boolean>
-  val latestEntry: StateFlow<Entry?>
-  val last7Days: StateFlow<List<Entry>>
-  val last30Days: StateFlow<List<Entry>>
-  val progress: Flow<Progress>
-  val lastUpdated: StateFlow<Long?>
-  val monthlyBodyScaleAverages: StateFlow<List<PeriodBodyScaleSummary>>
-  val monthlyBodyScaleLatest: StateFlow<List<PeriodBodyScaleSummary>>
-  val daywiseBodyScaleAverages: StateFlow<List<PeriodBodyScaleSummary>>
-  val daywiseBodyScaleLatest: StateFlow<List<PeriodBodyScaleSummary>>
-
-  /**
-   * Per MA-3965: Week/Month graph hybrid — most recent day with entries surfaces the
-   * latest non-null positive value per metric (same as [daywiseBodyScaleLatest]); every
-   * earlier day surfaces the daily-average values (same as [daywiseBodyScaleAverages]).
-   * Year / Total remain monthly averages via [monthlyBodyScaleAverages].
-   */
-  val daywiseBodyScaleHybrid: StateFlow<List<PeriodBodyScaleSummary>>
-  val monthlyAverage: StateFlow<List<HistoryMonth>>
-  suspend fun getMonthlyAverage(accountId: String): Flow<List<HistoryMonth>>
-
-  suspend fun monthDetails(startDate: String): Flow<List<Entry>>
 
   suspend fun updateAllData(accountId: String?)
   suspend fun addEntry(entry: Entry)
   suspend fun addEntry(entries: List<Entry>)
+
+  /** Updates only an entry's note locally (e.g. editing from History). Device-local; see MOB-438. */
+  suspend fun updateNote(entry: Entry, note: String?)
   suspend fun deleteEntry(entry: Entry)
-  suspend fun syncOperations(
-    newEntries: List<Entry> = emptyList(),
-    deleteOps: List<Entry> = emptyList()
-  )
-
-  suspend fun refreshEntryData()
-
-  fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>>
 
   /**
-   * Initializes goal card monitoring by checking entry count and setting up listeners.
-   * This function monitors the lastUpdated flow and checks if the user has enough entries
-   * to display the goal card.
+   * Persists a baby reading locally under the active (parent) account, keyed by babyId,
+   * and returns the new entry id. Baby entries have no server contract yet (MOB-428), so
+   * this is a device-local write that is deliberately kept OUT of the sync queue — the sync
+   * loop sends every unsynced entry as a ScaleEntry, so a baby entry must never reach it.
+   * Server upload is a separate, backend-dependent ticket.
+   */
+  suspend fun addBabyEntry(entry: BabyEntry): Long
+
+  /**
+   * Hard-deletes a locally-saved baby entry by its id (cascades to the baby_entry row).
+   * Used by the reading-arrival "Reassign" flow to drop a reading from the previously
+   * chosen baby before re-saving it to another (MOB-428). Local-only — no sync side effect.
+   */
+  suspend fun deleteBabyEntryLocally(entryId: Long)
+  suspend fun syncOperations(
+    newEntries: List<Entry> = emptyList(),
+    deleteOps: List<Entry> = emptyList(),
+  )
+
+  /**
+   * Watches sync completions and triggers goal-card reveal once the account has
+   * ≥ 3 scale entries. Launched once from AppViewModel after account load.
    */
   fun initializeGoalCardMonitoring(accountId: String)
 }

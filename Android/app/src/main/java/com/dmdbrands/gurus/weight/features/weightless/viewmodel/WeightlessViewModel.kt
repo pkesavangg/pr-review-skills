@@ -209,7 +209,7 @@ constructor(
   private fun onSuccess() {
     viewModelScope.launch {
       dialogQueueService.showToast(
-        Toast(
+        Toast.Simple(
           title = WeightlessStrings.SuccessTitle,
           message = WeightlessStrings.SuccessMessage,
           action = null,

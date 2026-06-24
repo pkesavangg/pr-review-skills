@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
@@ -15,9 +16,10 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.AppsyncScaleSetupS
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
+import com.dmdbrands.gurus.weight.features.ScaleSetup.helper.switchActiveProductAfterSetup
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.gurus.weight.features.common.model.DEVICES
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
@@ -103,7 +105,7 @@ constructor(
    */
   private fun loadScaleInfo() {
     AppLog.d(TAG, "Loading scale info for SKU: $sku")
-    val scaleInfo = SCALES.find { it.sku == sku }
+    val scaleInfo = DEVICES.find { it.sku == sku }
     if (scaleInfo != null) {
       AppLog.d(TAG, "Found scale info: ${scaleInfo.productName}, bodyComp: ${scaleInfo.bodyComp}")
       handleIntent(AppsyncScaleSetupIntent.SetScaleSku(sku))
@@ -240,7 +242,7 @@ constructor(
           deviceService.deleteScale(alreadyPairedScale.id)
         }
 
-        val scaleInfo = SCALES.find { it.sku == currentSku }
+        val scaleInfo = DEVICES.find { it.sku == currentSku }
         val productName = scaleInfo?.productName ?: ScaleSetupStrings.UnknownScale
 
         AppLog.d(TAG, "Scale info found: $productName, bodyComp: ${state.value.bodyComp}, SKU: $currentSku")
@@ -259,6 +261,8 @@ constructor(
         AppLog.d(TAG, "Saving AppSync device: ${appSyncDevice.id}")
         val savedDevice = deviceService.saveScale(appSyncDevice)
         runAfterSaveComplete(savedDevice, currentSku)
+        // Auto-switch the dashboard header to the newly added scale (MOB-422).
+        productSelectionManager.switchActiveProductAfterSetup(ProductSelection.MyWeight)
       } catch (e: Exception) {
         AppLog.e(TAG, "Error checking and saving scale", e)
         dialogQueueService.dismissLoader()

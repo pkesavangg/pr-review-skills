@@ -17,6 +17,7 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
     var onTrailingTap: (() -> Void)?
     var onTitleTap: (() -> Void)?
     var canShowBorder = false
+    var canShowTitleChevron = false
     var canShowPresentationIndicator = false
     var shouldShowBackground: Bool = true
     
@@ -24,16 +25,25 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
         ZStack {
             // Center Title
             if let title = title {
-                Text(title)
-                    .fontOpenSans(.heading5)
-                    .fontWeight(.bold)
-                    .foregroundColor(theme.actionSecondary)
-                    .lineLimit(1)
-                    .accessibilityAddTraits(.isHeader)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .onTapGesture {
-                        onTitleTap?()
+                HStack(spacing: 4) {
+                    Spacer()
+                    Text(title)
+                        .fontOpenSans(.heading5)
+                        .fontWeight(.bold)
+                        .foregroundColor(theme.actionSecondary)
+                        .lineLimit(1)
+                        .accessibilityAddTraits(.isHeader)
+                    if canShowTitleChevron {
+                        Image(systemName: "chevron.down") // Placeholder — replace with asset icon when available
+                            .font(.caption2)
+                            .fontWeight(.bold)
+                            .foregroundColor(theme.actionSecondary)
                     }
+                    Spacer()
+                }
+                .onTapGesture {
+                    onTitleTap?()
+                }
             }
 
             HStack {
@@ -41,10 +51,10 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
                 if let leadingContent = leadingContent {
                     Button(action: {
                         onLeadingTap?()
-                    }) {
+                    }, label: {
                         leadingContent()
                             .foregroundColor(theme.actionPrimary)
-                    }
+                    })
                 }
 
                 Spacer()
@@ -66,7 +76,7 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
                     Capsule()
                         .fill(theme.statusUtilityPrimary)
                         .frame(width: 36, height: 5)
-                        .padding(.top, 4) // TODO: Need to update after UX design provides the correct padding
+                        .padding(.top, 4) // Placeholder value until UX finalizes top padding.
                     
                     Spacer()
                 }

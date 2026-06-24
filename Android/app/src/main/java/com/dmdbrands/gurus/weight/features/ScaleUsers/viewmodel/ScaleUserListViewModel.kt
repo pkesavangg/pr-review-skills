@@ -87,8 +87,9 @@ constructor(
     viewModelScope.launch {
       try {
         AppLog.d(TAG, "Loading scale users for scale: ${state.value.scale?.id}")
-        val device = state.value.scale!!.toGGBTDevice()
-        val currentUserDisplayName = state.value.scale!!.preferences?.displayName
+        val scale = state.value.scale ?: return@launch
+        val device = scale.toGGBTDevice()
+        val currentUserDisplayName = scale.preferences?.displayName
 
         ggDeviceService.getUsers(device) { response ->
           val filteredUsers = if (currentUserDisplayName != null) {
@@ -125,10 +126,11 @@ constructor(
         AppLog.d(TAG, "Updating scale username for scale: $scaleId")
         dialogQueueService.showLoader(message = ScaleUsersStrings.LoaderMessage)
 
-        val preferences =
+        val preferences = requireNotNull(
           scale.preferences?.toR4ScalePreferenceApiModel()?.copy(
             displayName = state.value.usernameForm.username.value,
-          )!!
+          )
+        ) { "Scale preferences are null; cannot update username" }
 
         val updatedScalePreference = scale.preferences.copy(
           displayName = state.value.usernameForm.username.value,
@@ -267,7 +269,7 @@ constructor(
 
   private fun showToast(message: String) {
     dialogQueueService.showToast(
-      Toast(
+      Toast.Simple(
         title = null,
         message = message,
         action = null,

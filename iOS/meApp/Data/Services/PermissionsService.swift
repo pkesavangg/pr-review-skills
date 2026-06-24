@@ -5,53 +5,74 @@
 //  Created by Kesavan Panchabakesan on 08/07/25.
 //
 
+import Combine
 import Foundation
 import GGBluetoothSwiftPackage
-import Combine
+
+protocol PermissionSDKClient {
+    func requestPermission(permissionType: GGPermissionType) async -> String
+    func navigateToSettings(permissionType: GGPermissionType) async -> String
+}
+
+extension GGBluetoothSwiftPackage: PermissionSDKClient {}
 
 @MainActor
 final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     // Shared singleton instance for global access. Prefer DI for new code when possible.
-    static let shared = PermissionsService()
+    static let shared = PermissionsService(
+        notificationService: NotificationHelperService.shared,
+        deviceService: DeviceService.shared,
+        logger: LoggerService.shared
+    )
 
     // MARK: - Published Properties
+
     /// Latest permission status keyed by permission type. `nil` until first update from SDK.
-    @Published private(set) var permissions: [GGPermissionType: GGPermissionState]? = nil
-
-    /// Permission categories that are required based on the user’s connected devices.
-    @Published private(set) var requiredCategories: Set<PermissionCategory> = []
-
-    // MARK: - Dependencies
-    @Injector private var notificationService: NotificationHelperService
-    @Injector private var scaleService: ScaleService
-    @Injector private var logger: LoggerService
-
-    private var cancellables = Set<AnyCancellable>()
-    private let tag = "PermissionsService"
-
+    @Published private(set) var permissions: [GGPermissionType: GGPermissionState]?
     var permissionsPublisher: AnyPublisher<[GGPermissionType: GGPermissionState]?, Never> {
         $permissions.eraseToAnyPublisher()
     }
 
+    /// Permission categories that are required based on the user’s connected devices.
+    @Published private(set) var requiredCategories: Set<PermissionCategory> = []
     var requiredCategoriesPublisher: AnyPublisher<Set<PermissionCategory>, Never> {
         $requiredCategories.eraseToAnyPublisher()
     }
 
+    // MARK: - Dependencies
+
+    private let notificationService: NotificationHelperServiceProtocol
+    private let deviceService: PairedDeviceServiceProtocol
+    private let logger: LoggerServiceProtocol
+    var permissionClient: PermissionSDKClient
+
+    private var cancellables = Set<AnyCancellable>()
+    private let tag = "PermissionsService"
+
     // MARK: - Init
-    private init() {
+
+    init(
+        notificationService: NotificationHelperServiceProtocol,
+        deviceService: PairedDeviceServiceProtocol,
+        logger: LoggerServiceProtocol,
+        permissionClient: PermissionSDKClient = GGBluetoothSwiftPackage.shared
+    ) {
+        self.notificationService = notificationService
+        self.deviceService = deviceService
+        self.logger = logger
+        self.permissionClient = permissionClient
         // Compute the initial required permissions
-        self.updateRequiredCategories(with: scaleService.scales)
+        updateRequiredCategories(with: deviceService.scales)
 
         // Observe scale changes to keep required permissions up-to-date
-        scaleService.$scales
+        deviceService.scalesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] scales in
                 self?.updateRequiredCategories(with: scales)
             }
             .store(in: &cancellables)
     }
-    
-    
+
     func setPermissions(_ permissions: [GGPermissionType: GGPermissionState]) {
         self.permissions = permissions
         let details = permissions
@@ -66,9 +87,9 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     ///   - type: The permission type to update.
     ///   - state: The new state for the permission.
     func updatePermission(_ type: GGPermissionType, to state: GGPermissionState) {
-        var current = self.permissions ?? [:]
+        var current = permissions ?? [:]
         current[type] = state
-        self.permissions = current
+        permissions = current
         let details = current
             .map { "\($0.key.rawValue)=\($0.value.rawValue)" }
             .sorted()
@@ -77,6 +98,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     }
 
     // MARK: - Permission Helper
+
     /// Requests or toggles the permission represented by `type` via the GG SDK and converts the raw result to `GGPermissionState`.
     /// Call this for any permission-related operation instead of the previous specialised helpers.
     /// - Parameter type: The permission type to request or enable.
@@ -84,13 +106,14 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     @discardableResult
     func permissionRequest(_ type: GGPermissionType) async -> GGPermissionState {
         logger.log(level: .info, tag: tag, message: "Permission request started. type=\(type.rawValue)")
-        let raw = await GGBluetoothSwiftPackage.shared.requestPermission(permissionType: type)
+        let raw = await permissionClient.requestPermission(permissionType: type)
         let result: GGPermissionState = raw == GGPermissionState.ENABLED.rawValue ? .ENABLED : .DISABLED
         logger.log(level: .info, tag: tag, message: "Permission request completed. type=\(type.rawValue), result=\(result.rawValue)")
         return result
     }
-    
+
     // MARK: - Permission Dispatcher
+
     /// Centralised permission handler that returns the resulting `GGPermissionState`.
     /// - Parameter type: The permission type that should be handled.
     /// - Returns: The latest `GGPermissionState` for the given permission.
@@ -100,39 +123,40 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
         let result: GGPermissionState
         switch type {
         case .notification:
-            result = await self.showNotificationDisabledAlert()
+            result = await showNotificationDisabledAlert()
         case .bluetoothSwitch:
-            result = await self.showBluetoothDisabledAlert()
+            result = await showBluetoothDisabledAlert()
         case .bluetooth:
-            result = await self.showBluetoothAuthDisabledAlert()
+            result = await showBluetoothAuthDisabledAlert()
         case .locationSwitch:
-            result = await self.showLocationDisabledAlert()
+            result = await showLocationDisabledAlert()
         case .location:
-            result = await self.showLocationAuthDisabledAlert()
+            result = await showLocationAuthDisabledAlert()
         case .camera:
-            result = await self.showCameraDisabledAlert()
+            result = await showCameraDisabledAlert()
         case .wifiSwitch, .internet:
-            result = await self.showWifiDisabledAlert()
+            result = await showWifiDisabledAlert()
         }
         logger.log(level: .info, tag: tag, message: "Handle permission flow completed. type=\(type.rawValue), result=\(result.rawValue)")
         return result
     }
-    
+
     /// Checks the current permission state for a given type.
     func getPermissionState(_ type: GGPermissionType) -> GGPermissionState? {
         return permissions?[type]
     }
-    
+
     func navigateToWifiSettings() {
         logger.log(level: .info, tag: tag, message: "Navigating to Wi-Fi settings")
         Task {
-            await GGBluetoothSwiftPackage.shared.navigateToSettings(permissionType: .WIFI_SWITCH)
+            _ = await permissionClient.navigateToSettings(permissionType: .WIFI_SWITCH)
         }
     }
 
     // MARK: - Required Permission Helpers
+
     /// Updates `requiredCategories` based on the provided devices.
-    private func updateRequiredCategories(with devices: [Device]) {
+    private func updateRequiredCategories(with devices: [DeviceSnapshot]) {
         var newRequired: Set<PermissionCategory> = []
 
         guard !devices.isEmpty else {
@@ -142,7 +166,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
 
         for device in devices {
             let rawType = (device.bathScale?.scaleType ?? device.deviceType ?? "")
-            guard let scaleType = ScaleSourceType(rawValue: rawType) else { continue }
+            guard let scaleType = DeviceSourceType(rawValue: rawType) else { continue }
             switch scaleType {
             case .wifi, .espTouchWifi:
                 newRequired.insert(.notifications)
@@ -162,7 +186,8 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
         logger.log(
             level: .info,
             tag: tag,
-            message: "Updated required permission categories. categories=\(newRequired.map { String(describing: $0) }), details=[\(currentPermissionDetails)]"
+            message: "Updated required permission categories. categories=\(newRequired.map { String(describing: $0) }), "
+                + "details=[\(currentPermissionDetails)]"
         )
     }
 
@@ -172,6 +197,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     }
 
     // MARK: - Alert Builders
+
     private func showBluetoothDisabledAlert() async -> GGPermissionState {
         await withCheckedContinuation { continuation in
             let alert = AlertModel(
@@ -239,7 +265,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
                             let state = await self.showLocationDisabledAlert()
                             continuation.resume(returning: state)
                         }
-                    },
+                    }
                 ]
             )
             self.notificationService.showAlert(alert)

@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 27/05/25.
 //
 
-
 import SwiftUI
 
 /// Enum representing the different appearance modes available in the app

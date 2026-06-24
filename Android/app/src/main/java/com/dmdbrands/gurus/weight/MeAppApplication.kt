@@ -4,6 +4,7 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.dmdbrands.gurus.weight.core.di.AppEntryPoint
 import com.dmdbrands.gurus.weight.core.service.pushNotification.NotificationManager
+import com.google.firebase.analytics.FirebaseAnalytics
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -32,6 +33,9 @@ class MeAppApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
     super.onCreate()
+
+    // Disable analytics for debug/staging builds
+    FirebaseAnalytics.getInstance(this).setAnalyticsCollectionEnabled(BuildConfig.ENABLE_ANALYTICS)
 
     // Initialize services needed for the app
     initService()

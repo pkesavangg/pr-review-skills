@@ -17,7 +17,7 @@ struct SkeletonStreakCardView: View {
         theme.textSubheading.opacity(isAnimating ? 0.4 : 0.2)
     }
     private var cardMinHeight: CGFloat {
-        parentView == .R4ScaleSetup ? 74 : 70
+        parentView == .r4DeviceSetup ? 74 : 70
     }
     
     var body: some View {
@@ -53,7 +53,7 @@ struct SkeletonStreakCardView: View {
 #Preview {
     VStack(spacing: 16) {
         SkeletonStreakCardView(parentView: .dashboard)
-        SkeletonStreakCardView(parentView: .R4ScaleSetup)
+        SkeletonStreakCardView(parentView: .r4DeviceSetup)
     }
     .padding()
     .environmentObject(Theme.shared)

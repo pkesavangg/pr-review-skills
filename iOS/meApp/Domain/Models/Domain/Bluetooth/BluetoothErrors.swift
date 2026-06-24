@@ -1,4 +1,3 @@
-
 //
 //  BluetoothErrors.swift
 //  meApp
@@ -134,7 +133,7 @@ enum BluetoothServiceError: Error, LocalizedError {
             return "Device is already connected"
         case .deviceNotConnected:
             return "Device is not connected"
-        case .getDeviceLogsFailed(_):
+        case .getDeviceLogsFailed:
             return "Get device logs failed"
         case .startLiveMeasurementFailed(let error):
             return "Start live measurement failed \(error.localizedDescription)"

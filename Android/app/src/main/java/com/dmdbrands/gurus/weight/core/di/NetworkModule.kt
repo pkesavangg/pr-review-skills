@@ -5,17 +5,19 @@ import com.dmdbrands.gurus.weight.BuildConfig
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.config.NetworkConfig
 import com.dmdbrands.gurus.weight.core.network.HttpClient
+import com.dmdbrands.gurus.weight.core.network.ISecureTokenStore
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
+import com.dmdbrands.gurus.weight.core.network.SecureTokenStore
 import com.dmdbrands.gurus.weight.core.network.TokenManager
 import com.dmdbrands.gurus.weight.core.network.interceptors.AuthTokenInterceptor
 import com.dmdbrands.gurus.weight.core.network.interceptors.BaseUrlInterceptor
 import com.dmdbrands.gurus.weight.core.network.interceptors.NetworkInterceptor
-import com.dmdbrands.gurus.weight.core.network.interceptors.ResponseInterceptor
 import com.dmdbrands.gurus.weight.core.network.interceptors.TokenAuthenticator
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.network.qualifiers.RefreshClient
 import com.dmdbrands.gurus.weight.core.network.utility.NetworkConnectivityObserver
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
+import com.dmdbrands.gurus.weight.domain.services.ICrashReportingService
 import com.dmdbrands.gurus.weight.data.api.RefreshTokenAPI
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import dagger.Module
@@ -44,7 +46,7 @@ object NetworkModule {
      */
     @Provides
     @Singleton
-    fun provideHttpClient(okHttpClient: OkHttpClient): HttpClient = HttpClient(AppConfig.BASE_URL, okHttpClient)
+    fun provideHttpClient(okHttpClient: OkHttpClient): HttpClient = HttpClient(BuildConfig.BASE_URL, okHttpClient)
 
     /**
      * Provides a logging interceptor for HTTP requests. Logging is enabled only in debug builds.
@@ -101,19 +103,8 @@ object NetworkModule {
     fun provideAuthTokenInterceptor(
         tokenManager: ITokenManager,
         refreshTokenAPI: RefreshTokenAPI,
-        userDataStore: UserDataStore,
     ): AuthTokenInterceptor =
-        AuthTokenInterceptor(tokenManager, refreshTokenAPI, userDataStore)
-
-    /**
-     * Provides a response interceptor for OkHttp.
-     */
-    @Provides
-    @Singleton
-    fun provideResponseInterceptor(appNavigationService: IAppNavigationService): ResponseInterceptor =
-        ResponseInterceptor(
-            appNavigationService,
-        )
+        AuthTokenInterceptor(tokenManager, refreshTokenAPI)
 
     /**
      * Provides a basic OkHttpClient for token refresh (no authenticator).
@@ -130,7 +121,7 @@ object NetworkModule {
     @Singleton
     fun provideRefreshTokenAPI(@RefreshClient refreshOkHttpClient: OkHttpClient): RefreshTokenAPI =
         Retrofit.Builder()
-            .baseUrl(AppConfig.BASE_URL)
+            .baseUrl(BuildConfig.BASE_URL)
             .client(refreshOkHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
@@ -142,9 +133,10 @@ object NetworkModule {
         tokenManager: ITokenManager,
         refreshTokenAPI: RefreshTokenAPI,
         userDataStore: UserDataStore,
-        navigationService: IAppNavigationService
+        navigationService: IAppNavigationService,
+        crashReportingService: ICrashReportingService,
     ): TokenAuthenticator {
-        return TokenAuthenticator(tokenManager, refreshTokenAPI, userDataStore, navigationService)
+        return TokenAuthenticator(tokenManager, refreshTokenAPI, userDataStore, navigationService, crashReportingService)
     }
 
     @Provides
@@ -173,6 +165,16 @@ object NetworkModule {
             .authenticator(tokenAuthenticator)
         return okHttpClient.build()
     }
+
+    @Provides
+    @Singleton
+    fun provideSecureTokenStore(@ApplicationContext context: Context): SecureTokenStore =
+        SecureTokenStore(context)
+
+    @Provides
+    @Singleton
+    fun provideSecureTokenStoreInterface(secureTokenStore: SecureTokenStore): ISecureTokenStore =
+        secureTokenStore
 
     @Provides
     @Singleton

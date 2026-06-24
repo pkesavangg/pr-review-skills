@@ -1,14 +1,13 @@
 package com.dmdbrands.gurus.weight.features.settings.strings
 
-// TODO: MyAccountsScreenStrings will be implemented in a new file in this folder, following the PascalCase object pattern for static text.
-
 object SettingsScreenStrings {
     const val Title = "Settings"
     const val Loading = "Loading"
 
     // Account Settings
-    const val AccountSettings = "Account Settings"
-    const val AddEditScales = "Add & Edit Scales"
+    const val Account = "Account"
+    const val MyKids = "My Kids"
+    const val MyDevices = "My Devices"
     const val Integrations = "Integrations"
     const val ExportData = "Export Data"
     const val ChangePassword = "Change Password"
@@ -16,27 +15,25 @@ object SettingsScreenStrings {
     const val DefaultGraphRange = "Default Graph View"
     const val NotSet = "Not Set"
 
-    // Profile Settings
-    const val ProfileSettings = "Profile Settings"
+    // Weight Scale Settings
     const val GoalSetting = "Goal Setting"
-    const val BiologicalSex = "Biological Sex"
     const val ActivityLevel = "Activity Level"
-    const val Height = "Height"
     const val UnitType = "Unit Type"
     const val Weightless = "Weightless"
 
     // App Settings
-    const val AppSettings = "App Settings"
+    const val App = "App"
     const val Notifications = "Notifications"
     const val Messages = "Messages"
+    const val WeightScale = "My Weight"
     fun MessagesWithCount(count: Int) = "Messages ($count new)"
     const val Streaks = "Streaks"
-    const val AppPermissions = "App Permissions"
+    const val Permissions = "Permissions"
     const val Appearance = "Appearance"
 
     // Support
     const val Support = "Support"
-    const val HelpCustomerService = "Help & Customer Service"
+    const val Help = "Help"
     const val PrivacyPolicy = "Privacy Policy"
     const val TermsOfService = "Terms of Service"
     const val GreaterGoodsDotCom = "GreaterGoods.com"
@@ -52,7 +49,7 @@ object SettingsScreenStrings {
     const val LoggingOut = "Logging out..."
     const val LoggingOutAll = "Logging out all Accounts..."
     const val DeletingAccount = "Deleting Account..."
-    const val UpdatingDefaultGraphRange = "Updating default graph view..."
+    const val UpdatingUnitType = "Updating unit type..."
 
     object Error {
         const val Header = "Profile Update Error"

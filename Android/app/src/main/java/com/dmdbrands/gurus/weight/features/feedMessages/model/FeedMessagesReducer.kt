@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.feedMessages.model
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * Reducer for Feed Messages Screen
@@ -13,7 +14,7 @@ class FeedMessagesReducer : IReducer<FeedMessagesState, FeedMessagesIntent> {
       }
       is FeedMessagesIntent.SetFeedItems -> {
         state.copy(
-          feedItems = intent.feedItems,
+          feedItems = intent.feedItems.toImmutableList(),
           isLoading = false,
           error = null
         )

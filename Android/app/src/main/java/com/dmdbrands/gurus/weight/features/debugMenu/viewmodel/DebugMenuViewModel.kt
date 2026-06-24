@@ -13,7 +13,7 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.gurus.weight.features.common.model.DEVICES
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
@@ -22,6 +22,7 @@ import com.dmdbrands.gurus.weight.features.debugMenu.model.DebugMenuReducer
 import com.dmdbrands.gurus.weight.features.debugMenu.model.DebugMenuState
 import com.dmdbrands.gurus.weight.features.debugMenu.strings.DebugMenuStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
@@ -79,8 +80,7 @@ class DebugMenuViewModel @Inject constructor(
      * Get scale info by SKU, similar to Angular scaleInfoService.getScaleInfoBySku()
      */
     private fun getScaleInfoBySku(sku: String?): ScaleInfo? {
-        if (sku == null) return null
-        return SCALES.find { it.sku == sku }
+        return DEVICES.find { it.sku == sku }
     }
 
 
@@ -166,7 +166,7 @@ class DebugMenuViewModel @Inject constructor(
                     // Send logs using LogManager (now account-specific)
                     logManager.sendLogs()
                     dialogQueueService.showToast(
-                        Toast(
+                        Toast.Simple(
                             message = DebugMenuStrings.Success.LogSent,
                         ),
                     )
@@ -201,7 +201,7 @@ class DebugMenuViewModel @Inject constructor(
                     accountService.clearSyncTimestampForResync()
                     entryService.syncOperations()
                     dialogQueueService.showToast(
-                        Toast(
+                        Toast.Simple(
                             message = DebugMenuStrings.Success.Synced,
                         ),
                     )
@@ -255,8 +255,9 @@ class DebugMenuViewModel @Inject constructor(
                 singularScale != null -> {
                     dialogQueueService.showLoader(message = DebugMenuStrings.Loading.SendScaleLogs)
                     try {
-                        exportService.sendScaleLog(singularScale!!.getBroadcastIdString())
-                        dialogQueueService.showToast(Toast(message = DebugMenuStrings.Success.LogSent))
+                        val broadcastId = singularScale?.getBroadcastIdString() ?: return@launch
+                        exportService.sendScaleLog(broadcastId)
+                        dialogQueueService.showToast(Toast.Simple(message = DebugMenuStrings.Success.LogSent))
                         AppLog.i(tag, "Scale logs sent for singular scale")
                     } catch (e: Exception) {
                         AppLog.e(tag, "Failed to send scale logs", e)
@@ -290,7 +291,7 @@ class DebugMenuViewModel @Inject constructor(
             if (device.connectionStatus != com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
                 AppLog.w(tag, "Selected scale not connected, skipping send")
                 _state.value = state.value.copy(
-                    scaleLogsPickerScales = emptyList(),
+                    scaleLogsPickerScales = persistentListOf<Device>(),
                     isLoading = false,
                 )
                 return@launch
@@ -298,7 +299,7 @@ class DebugMenuViewModel @Inject constructor(
             dialogQueueService.showLoader(message = DebugMenuStrings.Loading.SendScaleLogs)
             try {
                 exportService.sendScaleLog(device.getBroadcastIdString())
-                dialogQueueService.showToast(Toast(message = DebugMenuStrings.Success.LogSent))
+                dialogQueueService.showToast(Toast.Simple(message = DebugMenuStrings.Success.LogSent))
                 AppLog.i(tag, "Scale logs sent for scale from picker")
                 navigationService.navigateBack()
             } catch (e: Exception) {
@@ -307,7 +308,7 @@ class DebugMenuViewModel @Inject constructor(
                     showRestartAlertForScaleLog()
                 }
                 _state.value = state.value.copy(
-                    scaleLogsPickerScales = emptyList(),
+                    scaleLogsPickerScales = persistentListOf<Device>(),
                 )
             } finally {
                 dialogQueueService.dismissLoader()

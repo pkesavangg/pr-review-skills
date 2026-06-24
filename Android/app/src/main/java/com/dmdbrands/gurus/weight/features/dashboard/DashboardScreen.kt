@@ -1,324 +1,343 @@
 package com.dmdbrands.gurus.weight.features.dashboard
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.foundation.MutatePriority
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyMetric
+import com.dmdbrands.gurus.weight.core.navigation.LocalDialogQueueService
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
-import com.dmdbrands.gurus.weight.domain.enums.MetricKey
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric.Companion.fromPeriodSummaries
+import com.dmdbrands.gurus.weight.core.navigation.LocalProductSelectionManager
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
-import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
+import com.dmdbrands.gurus.weight.features.common.components.BabyEmptyState
+import com.dmdbrands.gurus.weight.features.common.components.ProductTypeHeader
 import com.dmdbrands.gurus.weight.features.common.components.chart.GraphPagerView
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.getSourceFromSegment
-import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
+import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
-import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardControlPanel
-import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardMetrics
-import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardMilestone
+import com.dmdbrands.gurus.weight.features.dashboard.components.BpDashboardContent
+import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardChartHeader
+import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyGraphDefaults
+import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyGraphRange
 import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyMetric
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardIntent
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardState
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardViewModel
-import com.dmdbrands.gurus.weight.theme.MeAppTheme
+import com.dmdbrands.gurus.weight.features.dashboard.components.WeightDashboardContent
+import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardViewModel
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyDashboardIntent
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyDashboardViewModel
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp.BpDashboardIntent
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp.BpDashboardViewModel
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardIntent
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardViewModel
+import com.dmdbrands.gurus.weight.features.dashboard.components.BabyDashboardContent
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen() {
-  val viewmodel: DashboardViewModel = hiltViewModel()
-  val state by viewmodel.state.collectAsState()
+  val psm = LocalProductSelectionManager.current
+  val dialogService = LocalDialogQueueService.current
+  val product by psm.selectedProduct.collectAsStateWithLifecycle()
+  val hasMultipleProducts = psm.availableProducts.collectAsStateWithLifecycle().value.size > 1
 
-  rememberCoroutineScope()
-  val lifecycleOwner = LocalLifecycleOwner.current
-  DisposableEffect(lifecycleOwner) {
-    val observer = LifecycleEventObserver { _, event ->
-      if (event == Lifecycle.Event.ON_RESUME) {
-        viewmodel.onResume(lifecycleOwner)
-      }
-    }
-    lifecycleOwner.lifecycle.addObserver(observer)
-    onDispose {
-      lifecycleOwner.lifecycle.removeObserver(observer)
-    }
-  }
-
-
-  DashboardScreenContent(
-    state,
-    showDialog = viewmodel.dialogQueueService::showDialog,
-    handleIntent = viewmodel::handleIntent,
-  )
-}
-
-@Composable
-private fun DashboardScreenContent(
-  state: DashboardState,
-  showDialog: (DialogModel) -> Unit,
-  handleIntent: (DashboardIntent) -> Unit
-) {
-  val scrollState = rememberScrollState()
-  rememberCoroutineScope()
   val navBackStack = LocalNavBackStack.current
-  var inEditMode by remember { mutableStateOf(false) }
-  var currentVisibleMetrics by remember(state.visibleKeys) {
-    mutableStateOf(state.visibleKeys.filter { it is DashboardKey.Metric })
-  }
-  var isSingleEntry by remember {
-    mutableStateOf(false)
-  }
-
-  // Per MA-3965: routes the metric-info sheet label between "latest entry" (most
-  // recent day in the data set) and "day average" (any other day) on Week/Month.
-  var isLatestDaySelected by remember {
-    mutableStateOf(false)
-  }
-
-  var rangeText: String? by remember {
-    mutableStateOf(null)
-  }
-  var currentVisibleMilestones by remember(state.visibleKeys) {
-    mutableStateOf(state.visibleKeys.filter { it is DashboardKey.Milestone })
-  }
-
   val scope = rememberCoroutineScope()
-  val context = LocalContext.current
-  val activity = context as? AppCompatActivity
+  val activity = LocalActivity.current as? AppCompatActivity
+
   BackHandler {
-    if (!inEditMode && activity != null) {
-      showDialog(
+    if (activity != null) {
+      dialogService.showDialog(
         DialogModel.Confirm(
-          title = "Exit Dashboard",
-          message = "Are you sure you want to exit the dashboard?",
-          onConfirm = {
-            scope.launch {
-              activity.finishAffinity()
-            }
-          },
+          title = DashboardString.ExitDialog.Title,
+          message = DashboardString.ExitDialog.Message,
+          onConfirm = { scope.launch { activity.finishAffinity() } },
         ),
       )
-    } else {
-      scope.launch {
-        scrollState.animateScrollTo(0)
-      }
-      if (inEditMode) {
-        inEditMode = false
-        currentVisibleMetrics = state.visibleKeys.filter { it is DashboardKey.Metric }
-        currentVisibleMilestones = state.visibleKeys.filter { it is DashboardKey.Milestone }
-      }
     }
   }
 
   AppScaffold(
     title = null,
-    onRefresh = {
-      handleIntent(DashboardIntent.Refresh)
-    },
-    isRefreshing = state.isRefreshing,
-  ) {
-    Column(
-      modifier = if (state.isEmpty) Modifier.fillMaxHeight() else Modifier.verticalScroll(scrollState),
-      verticalArrangement = if (state.isEmpty) Arrangement.SpaceBetween else Arrangement.Top,
-    ) {
-
-      GraphPagerView(
-        state = state,
-        onSegmentChange = { segment ->
-          handleIntent(DashboardIntent.SetSelectedSegment(segment))
-        },
-        onChartConsuming = {
-          handleIntent(DashboardIntent.SetIsChartConsuming(it))
-        },
-        onSelected = {
-          handleIntent(DashboardIntent.SetData(it))
-        },
-        onPagerStateChange = { pagerState ->
-          handleIntent(DashboardIntent.SetPagerState(pagerState))
-        },
-        onRangeChange = {
-          rangeText = it
-        },
-        onMarkerIndexChange = {
-          isSingleEntry = it != null
-        },
-        onLatestDaySelectedChange = {
-          isLatestDaySelected = it
-        },
+    navigationIcon = if (hasMultipleProducts) {
+      {
+        IconButton(
+          onClick = {
+            scope.launch {
+              psm.setSnapshotMode(true)
+              navBackStack.replaceStack(listOf(AppRoute.Main.DashboardSnapshot), AppRoute.Home)
+            }
+          },
+        ) {
+          Icon(Icons.AutoMirrored.Filled.ArrowBack, DashboardString.BackContentDescription, Modifier.size(24.dp), MeTheme.colorScheme.textHeading)
+        }
+      }
+    } else null,
+    topBarContent = {
+      ProductTypeHeader(
+        selectedProduct = product,
+        onClick = { psm.showProductSheet(DashboardString.SelectGraphTitle) },
       )
-
-
-      if (state.isEmpty) {
-        Column(
-          modifier = Modifier.fillMaxSize(),
-          verticalArrangement = Arrangement.Center,
-          horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-          EmptyMetric(
-            onConnectScaleClick = {
-              handleIntent(DashboardIntent.OnConnectScale)
-            },
-          )
-        }
-      } else {
-        Column(
-          modifier = Modifier
-            .fillMaxSize()
-            .clickable(
-              onClick = {
-                if (inEditMode) {
-                  currentVisibleMetrics = state.visibleKeys.filterIsInstance<DashboardKey.Metric>()
-                  currentVisibleMilestones = state.visibleKeys.filterIsInstance<DashboardKey.Milestone>()
-                  inEditMode = false
-                }
-              },
-            ),
-          verticalArrangement = Arrangement.Center,
-          horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-          DashboardMetrics(
-            metricData = state.data,
-            inEditMode = inEditMode,
-            visibleKeys = currentVisibleMetrics,
-            selectedStat = state.selectedStat,
-            dashboardType = state.dashboardType,
-            onMetricClick = { stat ->
-              handleIntent(DashboardIntent.SetSelectedStat(stat))
-            },
-            onLongClick = {
-              if (!inEditMode) {
-                handleIntent(DashboardIntent.SetSelectedStat(null))
-                inEditMode = true
-              }
-            },
-            onMetricsChanged = { visibleMetrics ->
-              currentVisibleMetrics = visibleMetrics
-            },
-          )
-          if ((!inEditMode && currentVisibleMilestones.isNotEmpty() && currentVisibleMetrics.isNotEmpty()) || inEditMode) {
-            HorizontalDivider(
-              color = MeTheme.colorScheme.utility,
-              modifier = Modifier.padding(horizontal = MeTheme.spacing.lg),
+    },
+  ) {
+    when (product) {
+      is ProductSelection.MyWeight -> {
+        val vm: WeightDashboardViewModel = hiltViewModel()
+        val state by vm.state.collectAsStateWithLifecycle()
+        DashboardPage(
+          vm = vm,
+          product = product,
+          goal = state.goal,
+          scrollToTopSignal = state.resetSignal,
+          emptyRange = EmptyGraphDefaults.weightGoal(
+            goalDisplay = state.goal?.goalWeight,
+            isKg = state.weightUnit == WeightUnit.KG,
+          ),
+          onRefresh = { vm.handleIntent(WeightDashboardIntent.Refresh) },
+          createFallbackEntry = { ts, yValues, seg ->
+            val y = yValues.firstOrNull() ?: return@DashboardPage null
+            val period = java.time.Instant.ofEpochMilli(ts).atZone(java.time.ZoneId.systemDefault()).let { dt ->
+              if (seg == GraphSegment.WEEK || seg == GraphSegment.MONTH) dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+              else dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+            }
+            PeriodBodyScaleSummary(
+              period = period,
+              entryTimestamp = DateTimeConverter.timestampToIso(ts),
+              weight = y,
+              unit = WeightUnit.LB,
             )
-          }
-
-          DashboardMilestone(
-            progress = state.progress,
-            isProgressUpdating = state.isProgressUpdating,
-            latestWeight = state.latestWeight,
-            inEditMode = inEditMode,
-            hasVisibleMetrics = currentVisibleMetrics.isNotEmpty(),
-            visibleKeys = currentVisibleMilestones,
-            onMilestonesChanged = { visibleMilestones ->
-              currentVisibleMilestones = visibleMilestones
-            },
-            onLongClick = { stat, progress ->
-              if (!inEditMode) {
-                handleIntent(DashboardIntent.SetSelectedStat(null))
-                inEditMode = true
-              }
-            },
-            onNavigateToGoal = {
-              scope.launch {
-                navBackStack.addRoute(AppRoute.AccountSettings.Goal)
-              }
-            },
-          )
-          if ((!inEditMode && currentVisibleMilestones.isNotEmpty() && currentVisibleMetrics.isNotEmpty()) || inEditMode) {
-            Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-          }
-          DashboardControlPanel(
-            inEditMode = inEditMode,
-            hasGoal = state.progress.goal?.account != null && state.progress.goal.account.goalType != null,
-            onResetClick = {
-              // Clear secondary metric selection when reset button is clicked (before confirmation)
-              handleIntent(DashboardIntent.SetSelectedStat(null))
-              handleIntent(
-                DashboardIntent.ResetDashboard(
-                  onConfirm = {
-                    inEditMode = false
-                    // Reset local state to match the reset state from service
-                    currentVisibleMetrics = state.visibleKeys.filter { it is DashboardKey.Metric }
-                    currentVisibleMilestones = state.visibleKeys.filter { it is DashboardKey.Milestone }
-                  },
-                ),
-              )
-            },
-            onEditClick = { editMode ->
-              if (editMode && !inEditMode) {
-                // Clear secondary metric selection when entering edit mode
-                handleIntent(DashboardIntent.SetSelectedStat(null))
-              } else if (!editMode && inEditMode) {
-                // Save dashboard metrics and milestones when exiting edit mode
-                val allVisibleKeys =
-                  currentVisibleMetrics + currentVisibleMilestones
-                handleIntent(DashboardIntent.UpdateVisibleKeys(allVisibleKeys, state.dashboardType))
-              }
-              inEditMode = editMode
-            },
-            onUpdateGoalClick = {
-              scope.launch {
-                navBackStack.addRoute(AppRoute.AccountSettings.Goal)
-              }
-            },
-            onMetricInfoClick = {
-              scope.launch {
-                navBackStack.addRoute(
-                  route = AppRoute.Dashboard.MetricInfo(
-                    info = fromPeriodSummaries(
-                      state.data,
-                      isSingleEntry = isSingleEntry,
-                      rangeText = rangeText,
-                      isLatestDaySelected = isLatestDaySelected,
-                    ),
-                    key = (state.selectedStat?.key as DashboardKey.Metric?)?.key ?: MetricKey.WEIGHT,
-                    source = getSourceFromSegment(state.selectedSegment),
-                  ),
-                )
-              }
-            },
+          },
+        ) { s ->
+          WeightDashboardContent(
+            state = s,
+            activeSegmentState = s.forSegment(s.selectedSegment),
+            handleIntent = vm::handleIntent,
           )
         }
-        Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+      }
+
+      is ProductSelection.BloodPressure -> {
+        val vm: BpDashboardViewModel = hiltViewModel()
+        DashboardPage(
+          vm = vm,
+          product = product,
+          emptyRange = EmptyGraphDefaults.Bp,
+          onRefresh = { vm.handleIntent(BpDashboardIntent.Refresh) },
+          createFallbackEntry = { ts, yValues, seg ->
+            if (yValues.size < 3) return@DashboardPage null
+            val period = java.time.Instant.ofEpochMilli(ts).atZone(java.time.ZoneId.systemDefault()).let { dt ->
+              if (seg == GraphSegment.WEEK || seg == GraphSegment.MONTH) dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+              else dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+            }
+            PeriodBpmSummary(
+              period = period,
+              entryTimestamp = DateTimeConverter.timestampToIso(ts),
+              avgSystolic = yValues[0].toInt(),
+              avgDiastolic = yValues[1].toInt(),
+              avgPulse = yValues[2].toInt(),
+            )
+          },
+        ) { s ->
+          BpDashboardContent(
+            state = s,
+            onConnectDevice = { vm.handleIntent(BpDashboardIntent.OnConnectDevice) },
+          )
+        }
+      }
+
+      is ProductSelection.Baby -> {
+        val babyProduct = product as ProductSelection.Baby
+        val vm: BabyDashboardViewModel = hiltViewModel(
+          creationCallback = { factory: BabyDashboardViewModel.Factory -> factory.create(babyProduct) },
+        )
+        val state by vm.state.collectAsStateWithLifecycle()
+        DashboardPage(
+          vm = vm,
+          product = product,
+          hasPercentile = true,
+          // Fill height only when there's data; the empty state needs a fixed-height
+          // grid so the CONNECT DEVICE CTA stays visible below the chart (MOB-432).
+          chartFillsHeight = !state.isEmpty,
+          emptyRange = if (state.selectedMetric == BabyMetric.HEIGHT) EmptyGraphDefaults.BabyHeight else EmptyGraphDefaults.BabyWeight,
+          onRefresh = { vm.handleIntent(BabyDashboardIntent.Refresh) },
+          createFallbackEntry = { ts, yValues, seg ->
+            val y = yValues.firstOrNull() ?: return@DashboardPage null
+            val period = java.time.Instant.ofEpochMilli(ts).atZone(java.time.ZoneId.systemDefault()).let { dt ->
+              if (seg == GraphSegment.WEEK || seg == GraphSegment.MONTH) dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+              else dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+            }
+            // Chart plots ONE metric at a time (weight in lbs OR height in inches).
+            // Convert the interpolated Y back to storage units for PeriodBabySummary.
+            val isWeight = state.selectedMetric == BabyMetric.WEIGHT
+            PeriodBabySummary(
+              period = period,
+              entryTimestamp = DateTimeConverter.timestampToIso(ts),
+              babyId = babyProduct.profile.id,
+              avgWeightDecigrams = if (isWeight) ConversionTools.convertLbToDecigrams(y) else null,
+              avgLengthMillimeters = if (!isWeight) ConversionTools.convertInchesToMm(y) else null,
+            )
+          },
+        ) { s ->
+          if (s.isEmpty) {
+            EmptyMetric(onConnectScaleClick = { vm.handleIntent(BabyDashboardIntent.OnConnectDevice) })
+          }
+        }
+      }
+
+      is ProductSelection.BabyScale -> {
+        BabyEmptyState(
+          onAddBaby = {
+            scope.launch {
+              navBackStack.addRoute(AppRoute.AccountSettings.AddBaby)
+            }
+          },
+        )
       }
     }
   }
 }
 
-@PreviewTheme
+/**
+ * Shared dashboard page wrapper: pager + pull-to-refresh + chart + below-chart slot.
+ * Each product provides its own below-chart content via [belowChart].
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DashboardPreview() {
-  MeAppTheme {
-    DashboardScreenContent(
-      state = DashboardState(),
-      showDialog = {},
-      handleIntent = {},
-    )
+private fun <S : BaseDashboardState> DashboardPage(
+  vm: BaseDashboardViewModel<S, BaseGraphIntent>,
+  product: ProductSelection,
+  goal: Goal? = null,
+  hasPercentile: Boolean = false,
+  chartFillsHeight: Boolean = false,
+  scrollToTopSignal: Int = 0,
+  emptyRange: EmptyGraphRange? = null,
+  onRefresh: () -> Unit,
+  createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
+  belowChart: @Composable (S) -> Unit,
+) {
+  val state by vm.state.collectAsStateWithLifecycle()
+
+  val pagerState = rememberPagerState(
+    initialPage = GraphSegment.entries.indexOf(state.selectedSegment).takeIf { it >= 0 } ?: 0,
+    pageCount = { GraphSegment.entries.size },
+  )
+
+  LaunchedEffect(state.selectedSegment) {
+    val targetPage = GraphSegment.entries.indexOf(state.selectedSegment)
+    if (targetPage != pagerState.currentPage) pagerState.scrollToPage(targetPage)
+  }
+
+  val scrollState = rememberScrollState()
+  ScrollToTopOnSignal(scrollState, scrollToTopSignal)
+  val flingInterceptScope = rememberCoroutineScope()
+  // Compose consumes the first Down event during a fling to stop the scroll,
+  // which means a clickable child (e.g. UPDATE GOAL / METRIC INFO) misses the
+  // tap if the user fingers down while the scroll is still gliding. We watch
+  // the Initial pass and stop the scroll ourselves without consuming the
+  // event, so the same gesture continues through to the child. (MA-2615)
+  val columnModifier = if (chartFillsHeight) {
+    Modifier.fillMaxSize()
+  } else {
+    Modifier
+      .verticalScroll(scrollState)
+      .pointerInput(scrollState) {
+        awaitPointerEventScope {
+          while (true) {
+            val event = awaitPointerEvent(PointerEventPass.Initial)
+            if (event.type == PointerEventType.Press && scrollState.isScrollInProgress) {
+              flingInterceptScope.launch {
+                scrollState.scroll(scrollPriority = MutatePriority.UserInput) { }
+              }
+            }
+          }
+        }
+      }
+  }
+
+  PullToRefreshBox(
+    isRefreshing = state.isRefreshing,
+    onRefresh = onRefresh,
+  ) {
+    Column(modifier = columnModifier) {
+      GraphPagerView(
+        pagerState = pagerState,
+        state = state,
+        selectedProduct = product,
+        goal = goal,
+        hasPercentile = hasPercentile,
+        chartFillsHeight = chartFillsHeight,
+        handleGraphIntent = vm::handleIntent,
+        createFallbackEntry = createFallbackEntry,
+        header = { segment -> DashboardChartHeader(state = state, segment = segment, product = product, handleIntent = vm::handleIntent) },
+        emptyRange = emptyRange,
+        onSegmentChange = { vm.handleIntent(BaseGraphIntent.SetSelectedSegment(it, state.segmentAnchorTimestamp())) },
+      )
+
+      belowChart(state)
+    }
   }
 }
+
+/**
+ * Midpoint of the currently visible chart range, used to anchor the chart when
+ * the user changes segments. Null when the visible range isn't known yet.
+ */
+private fun BaseDashboardState.segmentAnchorTimestamp(): Double? {
+  val segment = forSegment(selectedSegment)
+  return if (segment.visibleMin != null && segment.visibleMax != null) {
+    (segment.visibleMin + segment.visibleMax) / 2.0
+  } else {
+    null
+  }
+}
+
+/**
+ * Scrolls [scrollState] back to the top whenever [signal] changes to a positive
+ * value. Used after a RESET DASHBOARD restores the default tiles so the grid is
+ * in view rather than the button cluster (MOB-445). The initial composition
+ * (signal == 0) is a no-op.
+ */
+@Composable
+private fun ScrollToTopOnSignal(scrollState: ScrollState, signal: Int) {
+  LaunchedEffect(signal) {
+    if (signal > 0) scrollState.animateScrollTo(0)
+  }
+}
+

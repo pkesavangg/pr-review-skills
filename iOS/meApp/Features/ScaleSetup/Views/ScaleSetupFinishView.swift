@@ -12,7 +12,7 @@ struct ScaleSetupFinishView: View {
 
     let title: String
     let description: String
-    var isAppSyncScaleSetup: Bool = false
+    var isAppSyncDeviceSetup: Bool = false
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: .spacingLG) {
@@ -24,26 +24,35 @@ struct ScaleSetupFinishView: View {
                             .multilineTextAlignment(.leading)
                             .lineLimit(nil)
                             .fixedSize(horizontal: false, vertical: true)
-                        
+
                         Text(description)
                             .fontOpenSans(.body2)
                             .foregroundColor(theme.textBody)
                     }
+                    .accessibilityElement(children: .combine)
                     Spacer()
                 }
                 AppIconView(icon: AppAssets.checkMarkLarge, size: IconSize(width: 180, height: 180))
-                    .foregroundColor(theme.statusIconPrimary)
+                    .foregroundColor(theme.statusSuccess)
                     .frame(maxWidth: .infinity, alignment: .center)
-                if isAppSyncScaleSetup {
+                    .padding(.vertical, .spacingXL)
+                    .accessibilityLabel(ScaleSetupStrings.A11y.successIconLabel)
+                if isAppSyncDeviceSetup {
                     ThemedImage(name: AppAssets.appSyncTab)
                 }
             }
             .padding(.top, .spacingLG)
+            .padding(.horizontal, .spacingSM)
         }
     }
 }
 
 #Preview {
-    ScaleSetupFinishView(title: "Your scale is paired and ready to go!", description: "To sync new entries, tap the icon at the bottom right of the app when you see the result code display on your scale’s screen.", isAppSyncScaleSetup: true)
-        .environmentObject(Theme.shared)
+    ScaleSetupFinishView(
+        title: "Your scale is paired and ready to go!",
+        description: "To sync new entries, tap the icon at the bottom right of the app " +
+            "when you see the result code display on your scale's screen.",
+        isAppSyncDeviceSetup: true
+    )
+    .environmentObject(Theme.shared)
 }

@@ -18,7 +18,7 @@ struct GoalStepView: View {
     
     let goalStepLang = SignupStrings.GoalStep.self
     let labels = InputFieldLabels.self
-    
+
     var body: some View {
         SignupStepWrapper(title: goalStepLang.title, subtitle: goalStepLang.subtitle) {
             VStack {
@@ -26,7 +26,7 @@ struct GoalStepView: View {
                     segments: GoalTypeSegment.allCases,
                     selectedSegment: $selectedSegment
                 )
-                .onChange(of: selectedSegment) { oldValue, newValue in
+                .onChange(of: selectedSegment) { _, newValue in
                     signupStore.signupForm.goalType.value = newValue.goalTypeValue
                     // Mark as dirty and touched when goal type changes
                     signupStore.signupForm.goalType.markAsDirty()
@@ -40,14 +40,15 @@ struct GoalStepView: View {
                     if signupStore.signupForm.goalType.value != GoalType.maintain.rawValue {
                         MetricInputField(
                             config: TextInputConfig(
-                                label: "\(labels.startingWeight) (\(signupStore.signupForm.useMetric.value ? "kg" : "lbs"))",
+                                label: labels.startingWeight,
                                 placeholder: "0.0",
                                 inputType: .metric,
                                 errorMessage: signupStore.getError(for: signupStore.signupForm.currentWeight),
                                 isDisabled: signupStore.signupForm.goalType.value == GoalType.maintain.rawValue,
                                 focusField: .currentWeight,
                                 maxLength: 4,
-                                maxValue: 999.9
+                                maxValue: 999.9,
+                                trailingLabel: signupStore.signupForm.useMetric.value ? "(kg)" : "(lbs)"
                             ),
                             value: $signupStore.signupForm.currentWeight.value,
                             focusedField: $focusedField,
@@ -70,13 +71,14 @@ struct GoalStepView: View {
                     
                     MetricInputField(
                         config: TextInputConfig(
-                            label: "\(labels.goalWeight) (\(signupStore.signupForm.useMetric.value ? "kg" : "lbs"))",
+                            label: labels.goalWeight,
                             placeholder: "0.0",
                             inputType: .metric,
                             errorMessage: signupStore.getError(for: signupStore.signupForm.goalWeight),
                             focusField: .goalWeight,
                             maxLength: 4,
-                            maxValue: 999.9
+                            maxValue: 999.9,
+                            trailingLabel: signupStore.signupForm.useMetric.value ? "(kg)" : "(lbs)"
                         ),
                         value: $signupStore.signupForm.goalWeight.value,
                         focusedField: $focusedField,
@@ -98,9 +100,16 @@ struct GoalStepView: View {
                     }
                 }
                 .padding(.top, .spacingMD)
+
+                UnitSelectionToggle(
+                    imperialTitle: goalStepLang.imperialUnit,
+                    metricTitle: goalStepLang.metricUnit,
+                    isMetric: $signupStore.signupForm.useMetric.value
+                )
+                .padding(.top, .spacingXS)
             }
             .padding(.top, .spacingLG)
-            .onChange(of: signupStore.signupForm.goalType.value) { oldValue, newValue in
+            .onChange(of: signupStore.signupForm.goalType.value) { _, _ in
                 selectedSegment = GoalTypeSegment.fromGoalType(signupStore.signupForm.goalType.value)
             }
             .padding(.bottom, .spacing3XL)

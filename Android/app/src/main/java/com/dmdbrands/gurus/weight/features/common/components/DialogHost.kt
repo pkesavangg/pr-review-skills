@@ -12,7 +12,7 @@ import com.dmdbrands.gurus.weight.features.forgotPasswordDialog.screen.PasswordR
 import com.dmdbrands.gurus.weight.features.integration.components.AddHealthConnect
 import com.dmdbrands.gurus.weight.features.integration.components.MultipleDeviceConnectionScreen
 import com.dmdbrands.gurus.weight.features.integration.components.OutOfSyncScreen
-import com.dmdbrands.gurus.weight.features.dashboard.components.GraphScrollHintModal
+import com.dmdbrands.gurus.weight.features.integration.components.RequestIntegrationModal
 import com.dmdbrands.gurus.weight.features.scaleDetails.components.ScaleNameModal
 import com.dmdbrands.gurus.weight.features.settings.components.AccountSwitchInfoModal
 
@@ -21,6 +21,8 @@ enum class DialogType {
   HelpPopup,
   PasswordReset,
   RadioGroupPicker,
+  SectionedRadioGroupPicker,
+  AssignMeasurement,
   AccountSwitchInfoPopup,
   ModelNumberHelp,
   BiaModal,
@@ -32,7 +34,8 @@ enum class DialogType {
   AppsyncEntryPopup,
   SetGoalPopup,
   IAMFeedModal,
-  GraphScrollHintModal
+  GraphScrollHintModal,
+  RequestIntegration,
 }
 
 @Composable
@@ -94,6 +97,30 @@ fun DialogHost() {
             },
             onOk = { selectedValue ->
               onConfirm?.invoke(selectedValue)
+              dialogQueueViewModel.dismissCurrent()
+            },
+          )
+        }
+      }
+
+      DialogType.SectionedRadioGroupPicker -> {
+        val config = dialog.params["config"] as? SectionedRadioGroupModalConfig<*>
+        val onConfirm = dialog.params["onConfirm"] as? (Map<String, Any?>) -> Unit
+        val onCancel = dialog.params["onCancel"] as? (() -> Unit)
+        if (config != null) {
+          @Suppress("UNCHECKED_CAST")
+          AppSectionedRadioGroupModal(
+            title = config.title,
+            subtitle = config.subtitle,
+            sections = config.sections as List<RadioGroupSection<Any?>>,
+            confirmText = config.confirmText,
+            cancelText = config.cancelText,
+            onCancel = {
+              onCancel?.invoke()
+              dialogQueueViewModel.dismissCurrent()
+            },
+            onOk = { selections ->
+              onConfirm?.invoke(selections)
               dialogQueueViewModel.dismissCurrent()
             },
           )
@@ -200,6 +227,19 @@ fun DialogHost() {
         )
       }
 
+      DialogType.RequestIntegration -> {
+        RequestIntegrationModal(
+          onSend = { request ->
+            dialog.onConfirm?.invoke(request)
+            dialogQueueViewModel.dismissCurrent()
+          },
+          onDismiss = {
+            dialog.onDismiss?.invoke()
+            dialogQueueViewModel.dismissCurrent()
+          },
+        )
+      }
+
       DialogType.ScaleName -> {
         val scaleId = dialog.params["scaleId"] as? String ?: ""
         val accountId = dialog.params["accountId"] as? String
@@ -255,8 +295,31 @@ fun DialogHost() {
         )
       }
 
+      DialogType.AssignMeasurement -> {
+        @Suppress("UNCHECKED_CAST")
+        val babies = dialog.params["babies"] as List<com.dmdbrands.gurus.weight.domain.model.common.BabyProfile>
+        val reading = dialog.params["reading"] as String
+        val timestamp = dialog.params["timestamp"] as String
+        val preSelectedBabyId = dialog.params["preSelectedBabyId"] as? String
+
+        AssignMeasurementDialog(
+          reading = reading,
+          timestamp = timestamp,
+          babies = babies,
+          preSelectedBabyId = preSelectedBabyId,
+          onAssign = { babyId ->
+            dialog.onConfirm?.invoke(babyId)
+            dialogQueueViewModel.dismissCurrent()
+          },
+          onDismiss = {
+            dialog.onDismiss?.invoke()
+            dialogQueueViewModel.dismissCurrent()
+          },
+        )
+      }
+
       DialogType.GraphScrollHintModal -> {
-        GraphScrollHintModal(
+        com.dmdbrands.gurus.weight.features.dashboard.components.GraphScrollHintModal(
           onDismiss = {
             dialog.onDismiss?.invoke()
             dialogQueueViewModel.dismissCurrent()

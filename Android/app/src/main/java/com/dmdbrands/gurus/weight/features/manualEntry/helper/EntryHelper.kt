@@ -9,6 +9,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
 import com.dmdbrands.gurus.weight.domain.model.api.entry.ScaleApiEntry
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
@@ -17,6 +18,8 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntryWithMetri
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.manualEntry.viewmodel.EntryForm
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
+import com.dmdbrands.library.ggbluetooth.model.GGBPMEntry
 import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
 import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import java.math.BigDecimal
@@ -24,6 +27,7 @@ import java.math.RoundingMode
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlin.math.round
 import kotlin.math.roundToInt
 
@@ -42,23 +46,22 @@ object EntryHelper {
 
   fun FormControl<String>.toIntSafe(default: Int = 0): Int = this.value.toIntOrNull() ?: default
 
-  fun EntryForm.toScaleEntry(weightMode: WeightUnit): ScaleEntry {
+  fun EntryForm.toScaleEntry(weightMode: WeightUnit, accountId: String): ScaleEntry {
     val entryEntity =
       EntryEntity(
         id = 0L, // Let Room auto-generate
-        accountId = "TODO", // Replace with actual user/account ID
+        accountId = accountId,
         entryTimestamp =
           DateTimeConverter.timestampToIso(
             weightDateTime.controls.dateTime.value
               .getTimestamp(),
           ),
-        // Assuming DateTimeValue has .timestamp: Long
         serverTimestamp = null,
         opTimestamp = null,
-        unit = weightMode, // or whatever is relevant
-        operationType = OperationType.CREATE.name, // or appropriate value
-        deviceType = "scale", // or from context
-        deviceId = "TODO", // from current device
+        unit = weightMode,
+        operationType = OperationType.CREATE.name,
+        deviceType = "manual",
+        deviceId = "manual",
         attempts = 0,
         isSynced = false,
       )
@@ -72,6 +75,7 @@ object EntryHelper {
         water = generalMetrics.controls.bodyWater.toDoubleSafe() / 10,
         bmi = generalMetrics.controls.bodyMassIndex.toDoubleSafe() / 10,
         source = "manual", // or "bluetooth", "cloud", etc.
+        note = weightDateTime.controls.notes.value.ifBlank { null },
       )
 
     val metricEntity =
@@ -151,11 +155,44 @@ object EntryHelper {
     return timeFormatter.format(instant)
   }
 
+  fun BpmEntry.getDate(): String {
+    val instant = Instant.parse(entry.entryTimestamp)
+    return dateFormatter.format(instant)
+  }
+
+  fun BpmEntry.getTime(): String {
+    val instant = Instant.parse(entry.entryTimestamp)
+    return timeFormatter.format(instant)
+  }
+
+  fun BabyEntry.getDate(): String {
+    val instant = Instant.parse(entry.entryTimestamp)
+    return dateFormatter.format(instant)
+  }
+
+  fun BabyEntry.getTime(): String {
+    val instant = Instant.parse(entry.entryTimestamp)
+    return timeFormatter.format(instant)
+  }
+
+  /** Formatted weight based on unit preference, or "--" if null. */
+  fun BabyEntry.formattedWeight(isMetric: Boolean = false): String {
+    val dg = babyWeightDecigrams ?: return "--"
+    return ConversionTools.convertBabyWeightToDisplay(dg, babyEntry.source, isMetric)
+  }
+
+  /** Formatted length based on unit preference, or "--" if null. */
+  fun BabyEntry.formattedLength(isMetric: Boolean = false): String {
+    val mm = babyLengthMillimeters ?: return "--"
+    return ConversionTools.convertBabyLengthToDisplay(mm, isMetric)
+  }
+
   fun convertWeight(value: Double, from: WeightUnit, to: WeightUnit): Double {
     return when {
       from == to -> value
-      from == WeightUnit.KG && to == WeightUnit.LB -> value * 2.20462
-      from == WeightUnit.LB && to == WeightUnit.KG -> value / 2.20462
+      from == WeightUnit.KG && (to == WeightUnit.LB || to == WeightUnit.LB_OZ) -> value * 2.20462
+      (from == WeightUnit.LB || from == WeightUnit.LB_OZ) && to == WeightUnit.KG -> value / 2.20462
+      // LB <-> LB_OZ share the same underlying pounds scale — no numeric conversion
       else -> value
     }
   }
@@ -169,6 +206,7 @@ object EntryHelper {
       water = water?.div(10.0),
       bmi = bmi?.div(10.0),
       source = source,
+      note = note,
     )
   }
 
@@ -181,6 +219,7 @@ object EntryHelper {
       water = water?.times(10.0),
       bmi = bmi?.times(10.0),
       source = source,
+      note = note,
     )
   }
 
@@ -269,6 +308,13 @@ object EntryHelper {
           bpmEntry = bpmEntry,
         )
       }
+
+      is BabyEntry -> {
+        BabyEntry(
+          entry = entry,
+          babyEntry = babyEntry,
+        )
+      }
     }
   }
 
@@ -326,6 +372,52 @@ object EntryHelper {
     )
   }
 
+  /**
+   * Converts a GGBPMEntry from the BLE SDK into a domain BpmEntry.
+   * Uses the current time as the entry timestamp (per BPM requirements)
+   * instead of the device-reported time, matching the Angular implementation.
+   */
+  fun GGBPMEntry.toBpmEntry(accountId: String, deviceId: String, offsetMillis: Long = 0): BpmEntry {
+    val systolic = systolic?.toInt() ?: 0
+    val diastolic = diastolic?.toInt() ?: 0
+    val pulse = this.pulse?.toInt() ?: 0
+    // If both systolic and diastolic are 0 (null from BLE), MAP will be "0" —
+    // clinically meaningless but arithmetically correct for an invalid reading.
+    val meanArterial = meanPressure?.toInt()?.toString()
+      ?: "${(systolic + 2 * diastolic) / 3}"
+
+    val entryEntity = EntryEntity(
+      accountId = accountId,
+      // Uses phone time instead of monitor clock because BPM monitors may have
+      // incorrect clocks or no RTC. Matches the Angular/iOS implementation.
+      // offsetMillis ensures unique timestamps when processing MULTI_ENTRIES batches.
+      entryTimestamp = Instant.now().plusMillis(offsetMillis).toString(),
+      serverTimestamp = null,
+      opTimestamp = null,
+      operationType = operationType ?: "create",
+      deviceType = protocolType,
+      deviceId = deviceId,
+      // BPM entries have no weight data, so the unit field is semantically unused.
+      // LB is set as a placeholder to satisfy the non-null EntryEntity column constraint.
+      unit = WeightUnit.LB,
+      isSynced = false,
+    )
+
+    val bpmEntryEntity = BpmEntryEntity(
+      id = 0,
+      systolic = systolic,
+      diastolic = diastolic,
+      pulse = pulse,
+      meanArterial = meanArterial,
+      note = null,
+    )
+
+    return BpmEntry(
+      entry = entryEntity,
+      bpmEntry = bpmEntryEntity,
+    )
+  }
+
   fun getScaleSetupType(protocolType: String): String = when (protocolType) {
     GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value -> ScaleSetupType.toSource(ScaleSetupType.BtWifiR4.value)
     else -> ScaleSetupType.toSource(ScaleSetupType.Bluetooth.value)
@@ -365,10 +457,11 @@ object EntryHelper {
     )
 
     // Calculate BMI if weight and height are available
-    val calculatedBmi = if (weight != null && userHeight != null) {
+    val localWeight = weight
+    val calculatedBmi = if (localWeight != null && userHeight != null) {
       val weightKg = when (mode?.lowercase()) {
-        "kg" -> weight!!.toDoublePreserve()
-        else -> ConversionTools.convertStoredToKg(weight!!.toDoublePreserve() * 10) // Convert lbs to kg
+        "kg" -> localWeight.toDoublePreserve()
+        else -> ConversionTools.convertStoredToKg(localWeight.toDoublePreserve() * 10) // Convert lbs to kg
       }
       val heightCm = ConversionTools.convertStoredHeightToCm(userHeight)
       ConversionTools.calculateBMIFromMetric(weightKg, round(heightCm).toInt())

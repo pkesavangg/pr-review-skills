@@ -5,27 +5,28 @@
 //  Created by AI Assistant on $(DATE).
 //
 
-import Foundation
 import Combine
+import Foundation
 
 /// Service responsible for managing account flags and triggering appropriate actions
 @MainActor
 final class AccountFlagService: AccountFlagServiceProtocol, ObservableObject {
     static let shared = AccountFlagService()
-    
-    @Injector private var logger: LoggerService
-    @Injector private var appReviewService: AppReviewService
-    
-    private let apiRepo: AccountFlagRepositoryAPIProtocol = AccountFlagRepositoryAPI()
+
+    @Injector private var logger: LoggerServiceProtocol
+    @Injector private var appReviewService: AppReviewHandlerProtocol
+    private let apiRepo: AccountFlagRepositoryAPIProtocol
     private let tag = "AccountFlagService"
     
     /// Currently stored flag (cached after fetching)
-    @Published private var currentFlag: AccountFlag? = nil
+    @Published private var currentFlag: AccountFlag?
     
     /// Scale review event publisher for scale review flags
-    let scaleReviewSubject = PassthroughSubject<ScaleReviewEvent, Never>()
+    let scaleReviewSubject = PassthroughSubject<DeviceReviewEvent, Never>()
     
-    private init() {}
+    init(apiRepo: AccountFlagRepositoryAPIProtocol? = nil) {
+        self.apiRepo = apiRepo ?? AccountFlagRepositoryAPI()
+    }
     
     /// Fetches account flags from the API
     /// Prefers flags with trigger 'login' if present, otherwise returns the first flag
@@ -62,7 +63,9 @@ final class AccountFlagService: AccountFlagServiceProtocol, ObservableObject {
             logger.log(
                 level: .info,
                 tag: tag,
-                message: "Found account flag: type=\(preferredFlag?.type ?? "nil"), trigger=\(preferredFlag?.trigger ?? "nil"), id=\(preferredFlag?.id ?? "nil")"
+                message: "Found account flag: type=\(preferredFlag?.type ?? "nil"), "
+                    + "trigger=\(preferredFlag?.trigger ?? "nil"), "
+                    + "id=\(preferredFlag?.id ?? "nil")"
             )
             
             return preferredFlag
@@ -165,6 +168,15 @@ final class AccountFlagService: AccountFlagServiceProtocol, ObservableObject {
             throw error
         }
     }
+
+    func triggerAppReview(isFromDebug: Bool) async {
+        await appReviewService.triggerAppReview(isFromDebug: isFromDebug)
+    }
+
+    func emitScaleReview(screen: String, sku: String, flagId: String) {
+        let event = DeviceReviewEvent(screen: screen, sku: sku, flagId: flagId)
+        scaleReviewSubject.send(event)
+    }
     
     // MARK: - Private Methods
     
@@ -183,7 +195,7 @@ final class AccountFlagService: AccountFlagServiceProtocol, ObservableObject {
         }
         
         // Trigger the app review
-        await appReviewService.triggerAppReview(isFromDebug: false)
+        await triggerAppReview(isFromDebug: false)
         
         logger.log(
             level: .info,
@@ -212,13 +224,7 @@ final class AccountFlagService: AccountFlagServiceProtocol, ObservableObject {
         let sku = flag.scaleSku ?? ""
         
         // Emit the scale review event
-        let event = ScaleReviewEvent(
-            screen: "scaleReview",
-            sku: sku,
-            flagId: flag.id
-        )
-        
-        scaleReviewSubject.send(event)
+        emitScaleReview(screen: "scaleReview", sku: sku, flagId: flag.id)
         
         logger.log(
             level: .info,

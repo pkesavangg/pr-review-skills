@@ -10,11 +10,11 @@ enum BodyMetricsConvertor {
     /// - Returns: Formatted string representation of the metric
     static func convert(_ value: Double?, shouldCompose: Bool = true, wholeNumber: Bool = false, fallbackValue: Double? = nil) -> String {
         // Helper to process the value
-        func format(_ val: Double?) -> String? {
+        func format(_ inputValue: Double?) -> String? {
             // Try to use the primary value first
-            if let v = val {
+            if let value = inputValue {
                 // Apply composition transformation if needed
-                let processedValue = shouldCompose ? v / 10.0 : v
+                let processedValue = shouldCompose ? value / 10.0 : value
                 
                 // Check if the processed value is valid (not NaN, infinite, or unreasonably negative)
                 if !processedValue.isNaN && !processedValue.isInfinite && processedValue >= 0 {

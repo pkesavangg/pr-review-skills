@@ -5,8 +5,8 @@
 //  Created by Kesavan Panchabakesan on 08/07/25.
 //
 
-import SwiftUI
 import AppSyncPackage
+import SwiftUI
 
 // MARK: - AppSyncTabScreen
 /// A dedicated tab screen that launches the App Sync camera scanner.
@@ -45,7 +45,9 @@ struct AppSyncTabScreen: View {
                 )
             }
         }
-        .onChange(of: tabViewModel.selectedTab, { oldValue, newValue in
+        .onChange(of: tabViewModel.selectedTab) { _, newValue in
+            // MA-3863: load the saved zoom for the active account and gate scanner
+            // rendering until it's ready, so the camera reopens at the same zoom.
             if newValue == .appsync {
                 scanStore.loadSavedZoom()
                 isScannerReady = true
@@ -55,7 +57,7 @@ struct AppSyncTabScreen: View {
             withAnimation {
                 tabViewModel.showTabBar = newValue != .appsync
             }
-        })
+        }
     }
 }
 

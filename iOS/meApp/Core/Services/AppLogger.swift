@@ -40,12 +40,14 @@ class AppLogger {
         return String(describing: value)
     }
     
-    func log(level: LogLevel,
-            tag: String,
-            message: String,
-            data: Any? = nil,
-            function: StaticString = #function,
-            line: UInt = #line) {
+    func log(
+        level: LogLevel,
+        tag: String,
+        message: String,
+        data: Any? = nil,
+        function: StaticString = #function,
+        line: UInt = #line
+    ) {
         guard level.rawValue >= minimumLogLevel.rawValue else { return }
         
         let stringifiedData = data.map(stringify)

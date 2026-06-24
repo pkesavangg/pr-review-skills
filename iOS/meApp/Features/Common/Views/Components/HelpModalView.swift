@@ -13,13 +13,14 @@ struct HelpModalView: View {
     @EnvironmentObject var themeManager: Theme
     // MARK: - Product Manual Browser State
     @State var showProductBrowser: Bool = false
-    @State var productURL: URL? = nil
+    @State var productURL: URL?
     
     var skuToNavigate: String?
     let onClose: () -> Void
     let appAssets = AppAssets.self
     let appConstants = AppConstants.Help.self
     let helpLang = HelpStrings.self
+    private var fallbackProductURL: URL { AppConstants.LegalURLs.greaterGoodsWebsite }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -63,7 +64,7 @@ struct HelpModalView: View {
         .background(theme.backgroundSecondary)
         .cornerRadius(.radiusXL)
         .inAppBrowser(
-            url: productURL ?? URL(string: AppConstants.Product.baseURL)!,
+            url: productURL ?? fallbackProductURL,
             isPresented: $showProductBrowser
         )
     }
@@ -78,7 +79,7 @@ struct HelpModalView: View {
 
 // MARK: - Preview
 #Preview {
-    HelpModalView() {}
+    HelpModalView {}
         .environmentObject(Theme.shared)
         .padding(.horizontal)
 }

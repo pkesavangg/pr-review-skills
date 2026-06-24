@@ -9,5 +9,5 @@ import Foundation
 
 enum DashboardMetricsParentView {
     case dashboard
-    case R4ScaleSetup
+    case r4DeviceSetup
 }

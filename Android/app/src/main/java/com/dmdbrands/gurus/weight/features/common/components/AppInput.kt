@@ -1,13 +1,14 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.compose.foundation.border
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -23,10 +24,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -34,12 +35,15 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppInputDefaults.visualTransformation
+import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
+import com.dmdbrands.gurus.weight.features.common.helper.isPhoneLike
 import com.dmdbrands.gurus.weight.features.common.helper.form.DecimalInputVisualTransformation
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.strings.AppInputStrings
@@ -66,6 +70,13 @@ enum class AppInputType {
 }
 
 object AppInputDefaults {
+    /**
+     * Default visual height for a single-line input. On phones at default font
+     * scale this is the fixed height; tablets and large-font-scale phones treat
+     * it as a minimum so the input grows instead of clipping its label/value.
+     */
+    val SingleLineHeight = 56.dp
+
     fun visualTransformation(type: AppInputType): VisualTransformation =
         when (type) {
             AppInputType.PASSWORD -> PasswordVisualTransformation()
@@ -181,12 +192,15 @@ fun <T> AppInput(
     showTrailingIcon: Boolean = true,
     showTrailingIconAlways: Boolean = false,
     trailingIconId: Int = AppIcons.Outlined.Close,
+    trailingText: String? = null,
     maxLength: Int? = null,
+    showCharacterCounter: Boolean = false,
     onValueChange: ((T?) -> Unit)? = null,
     imeAction: ImeAction = ImeAction.Next,
     onImeAction: (() -> Unit)? = null,
     onTrailingAction: (() -> Unit)? = null,
     nextFocusRequester: FocusRequester? = null,
+    testTag: String? = null,
 ) {
     val visualTransformation = AppInputDefaults.visualTransformation(type)
     val keyboardOptions =
@@ -194,11 +208,12 @@ fun <T> AppInput(
             keyboardType = AppInputDefaults.keyboardType(type),
             imeAction = imeAction,
         )
+    val taggedModifier = if (testTag != null) modifier.testTag(testTag) else modifier
     CompositionLocalProvider(LocalAutofillHighlightColor provides Color.Transparent) {
         InputFieldBase(
-            modifier = modifier,
+            modifier = taggedModifier,
             formControl = formControl,
-            label = label.toString().lowercase(),
+            label = label?.lowercase(),
             value = AppInputDefaults.valueToString(type, formControl?.value),
             onValueChange = onValueChange,
             placeHolder = placeHolder,
@@ -208,12 +223,14 @@ fun <T> AppInput(
             supportingText = supportingText,
             inputType = type,
             maxLength = maxLength,
+            showCharacterCounter = showCharacterCounter,
             visualTransformation = visualTransformation,
             keyboardOptions = keyboardOptions,
             showTrailingIcon = showTrailingIcon,
             showTrailingIconAlways = showTrailingIconAlways,
             onTrailingAction = onTrailingAction,
             trailingIconId = trailingIconId,
+            trailingText = trailingText,
             onImeAction = onImeAction,
             nextFocusRequester = nextFocusRequester,
         )
@@ -238,7 +255,10 @@ fun <T> InputFieldBase(
     showTrailingIcon: Boolean = true,
     showTrailingIconAlways: Boolean = false,
     trailingIconId: Int = AppIcons.Outlined.Close,
+    trailingText: String? = null,
     maxLength: Int? = null,
+    showCharacterCounter: Boolean = false,
+    singleLine: Boolean = true,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     focusRequester: FocusRequester = remember { FocusRequester() },
@@ -255,16 +275,21 @@ fun <T> InputFieldBase(
     val currentOnFocus by rememberUpdatedState(onFocus)
     val currentOnBlur by rememberUpdatedState(onBlur)
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
-    remember { MutableInteractionSource() }
 
     val isError = formControl?.error?.type != null && (formControl.dirty || formControl.touched)
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    // Phones / folded displays keep pixel-parity fixed height; tablets use
+    // heightIn so the input can grow with the value/label instead of clipping
+    // the text under tablet density (MA-3713).
+    val isPhoneLike = getDeviceType().isPhoneLike
     val isPassword = inputType == AppInputType.PASSWORD
     val showPasswordToggle = isPassword && showTrailingIcon
     val showTrailingButton = showTrailingIcon && !isPassword &&
             enabled &&
-            !readOnly &&
+            // A read-only field still shows its trailing icon when it drives a custom action
+            // (e.g. a dropdown/caret via onTrailingAction); only the bare clear-X is hidden when read-only.
+            (!readOnly || onTrailingAction != null) &&
             (showTrailingIconAlways || formControl?.value?.toString()?.isNotEmpty() == true)
 
     val inputTextColor =
@@ -319,6 +344,17 @@ fun <T> InputFieldBase(
                 }
             }
 
+            trailingText != null -> {
+                @Composable {
+                    Text(
+                        text = "($trailingText)",
+                        style = typography.body3,
+                        color = colorScheme.textSubheading,
+                        modifier = Modifier.padding(end = spacing.md),
+                    )
+                }
+            }
+
             showTrailingButton -> {
                 @Composable {
                     AppIcon(
@@ -346,6 +382,13 @@ fun <T> InputFieldBase(
         modifier =
             modifier
                 .fillMaxWidth()
+                .then(
+                    when {
+                        !singleLine -> Modifier
+                        isPhoneLike -> Modifier.height(AppInputDefaults.SingleLineHeight)
+                        else -> Modifier.heightIn(min = AppInputDefaults.SingleLineHeight)
+                    },
+                )
                 .focusRequester(focusRequester)
                 .onFocusChanged { focusState ->
                     if (!focusState.isFocused && isFocused) {
@@ -384,7 +427,7 @@ fun <T> InputFieldBase(
             )
         },
         textStyle = typography.body2,
-        singleLine = true,
+        singleLine = singleLine,
         trailingIcon = trailingIcon,
         keyboardOptions = keyboardOptions,
         keyboardActions =
@@ -437,28 +480,52 @@ fun <T> InputFieldBase(
                 errorCursorColor = colorScheme.textError,
             ),
     )
-    Box(modifier = Modifier.padding(top = spacing.none, start = spacing.sm)) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = spacing.none, start = spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         val errorMessage = formControl?.error?.message.orEmpty()
-        when {
-            isError ->
-                Text(
-                    text = errorMessage.lowercase(),
-                    color = colorScheme.textError,
-                    style = typography.body3,
-                )
+        Box(modifier = Modifier.weight(1f)) {
+            when {
+                isError ->
+                    Text(
+                        text = errorMessage.lowercase(),
+                        color = colorScheme.textError,
+                        style = typography.body3,
+                    )
 
-            supportingText != null ->
-                Text(
-                    text = supportingText,
-                    color = colorScheme.textSubheading,
-                    style = typography.body3,
-                )
+                supportingText != null ->
+                    Text(
+                        text = supportingText,
+                        color = colorScheme.textSubheading,
+                        style = typography.body3,
+                    )
 
-            else ->
-                Text(
-                    text = AppInputStrings.EmptySpace,
-                    style = typography.body3,
-                )
+                else ->
+                    Text(
+                        text = AppInputStrings.EmptySpace,
+                        style = typography.body3,
+                    )
+            }
+        }
+        // Live character counter (e.g. "0/280" → "117/280" → "280/280") with three
+        // states: default (empty), filled (typing), and max-limit-reached.
+        if (showCharacterCounter && maxLength != null) {
+            val charCount = value.length
+            val counterColor =
+                when {
+                    charCount >= maxLength -> colorScheme.textError
+                    charCount > 0 -> colorScheme.textBody
+                    else -> colorScheme.textSubheading
+                }
+            Text(
+                text = "$charCount/$maxLength",
+                color = counterColor,
+                style = typography.body3,
+                modifier = Modifier.padding(start = spacing.sm, end = spacing.sm),
+            )
         }
     }
     Spacer(Modifier.height(spacing.xs))
@@ -483,7 +550,7 @@ fun AppInputPreview() {
                 label = "Disabled Input",
                 type = AppInputType.TEXT,
                 enabled = false,
-                supportingText = "must not be left blank"
+                supportingText = "this field is required"
             )
             AppInput(
                 formControl = maxLength,

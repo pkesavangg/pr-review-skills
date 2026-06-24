@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.features.common.strings.AppNoteStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.borderRadius
@@ -39,7 +40,7 @@ fun AppNote(
   title: String? = null,
   icon: Int? = null,
   iconType: AppIconType = AppIconType.Primary,
-  messageType: TextType = TextType.SubHeading,
+  messageType: TextType = TextType.Body,
   isCenter: Boolean = false,
   buttonText: String? = null,
   onButtonClick: (() -> Unit)? = null,
@@ -85,7 +86,7 @@ fun AppNote(
           } else {
             AppText(
               text = message,
-              annotatedText = if (showNote) "Note: " else null,
+              annotatedText = if (showNote) AppNoteStrings.NotePrefix else null,
               annotationPosition = AnnotationPosition.Start,
               spanStyle = if (showNote) SpanStyle(fontWeight = FontWeight.Bold) else null,
               textType = messageType,
@@ -109,10 +110,10 @@ fun AppNote(
       if (title != null) {
         AppText(
           text = message,
-          annotatedText = if (showNote) "Note:" else null,
+          annotatedText = if (showNote) AppNoteStrings.NotePrefix else null,
           annotationPosition = AnnotationPosition.Start,
           spanStyle = if (showNote) SpanStyle(fontWeight = FontWeight.Bold) else null,
-          textType = TextType.SubHeading,
+          textType = messageType,
         )
       }
     }

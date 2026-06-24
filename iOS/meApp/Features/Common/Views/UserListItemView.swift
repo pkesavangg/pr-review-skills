@@ -17,7 +17,8 @@ struct UserListItemView: View {
     /// Width of each swipe action button; allows per-screen customization
     var swipeButtonWidth: CGFloat = 72
     var onTap: ((String, Bool) -> Void)
-    var onDelete: ((String) -> Void)? = nil // optional deletion trigger
+    var onEdit: ((String) -> Void)? // optional edit trigger — shows pencil icon when set
+    var onDelete: ((String) -> Void)? // optional deletion trigger
     
     var body: some View {
         rowContent
@@ -28,7 +29,7 @@ struct UserListItemView: View {
             .swipeableActions(
                 buttonWidth: swipeButtonWidth,
                 buttons:
-                    !user.canShowSelection || onDelete == nil ? [] : [
+                    onDelete == nil ? [] : [
                         SwipeButton(
                             tint: theme.textError,
                             action: { onDelete?(user.accountID) },
@@ -63,16 +64,29 @@ struct UserListItemView: View {
                 }
                 .opacity(user.isExpired ? 0.4 : 1)
             
-            VStack(alignment: .leading, spacing: 0) {
-                Text(user.name)
-                    .fontOpenSans(.body2)
-                    .foregroundColor(theme.textBody)
-                Text(user.email)
-                    .fontOpenSans(.subHeading2)
-                    .foregroundColor(theme.textSubheading)
+            VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(user.name)
+                        .fontOpenSans(.body2)
+                        .foregroundColor(theme.textBody)
+                    if !user.email.isEmpty {
+                        Text(user.email)
+                            .fontOpenSans(.subHeading2)
+                            .foregroundColor(theme.textSubheading)
+                    }
+                }
+                .opacity(user.isExpired ? 0.4 : 1)
+
+                // Logged-out state label — kept at full opacity so the account's
+                // state stays legible even while the name/email are dimmed.
+                if user.isExpired {
+                    Text(CommonStrings.loggedOut)
+                        .fontOpenSans(.body4)
+                        .foregroundColor(theme.textSubheading)
+                        .accessibilityIdentifier(AccessibilityID.accountCardLoggedOutLabel)
+                }
             }
-            .opacity(user.isExpired ? 0.4 : 1)
-            
+
             Spacer()
             if user.isExpired {
                 ButtonView(text: CommonStrings.logIn, type: .inlineTextPrimary, size: .large, isDisabled: false) {
@@ -80,17 +94,25 @@ struct UserListItemView: View {
                         onTap(user.accountID, user.isExpired)
                     }
                 }
+            } else if let onEdit {
+                Button {
+                    onEdit(user.accountID)
+                } label: {
+                    AppIconView(icon: AppAssets.editIcon, size: IconSize(width: 24, height: 24))
+                        .foregroundColor(theme.actionSecondary)
+                }
+                .buttonStyle(.plain)
             } else if user.canShowSelection {
                 AppIconView(icon: user.isSelected ? AppAssets.circleCheckFilled : AppAssets.circleOutline, size: IconSize(width: 24, height: 24))
                     .foregroundColor(theme.statusIconPrimary)
             }
         }
         .padding(.spacingSM)
-        .background(theme.backgroundPrimary)
         .frame(height: 72)
+        .frame(maxWidth: .infinity)
+        .background(theme.backgroundPrimary)
     }
 }
-
 
 // Testing Purpose View
 struct AccountListView: View {
@@ -99,13 +121,13 @@ struct AccountListView: View {
         .init(accountID: "567", name: "Kesavan", email: "kesavan@gmail.com", isSelected: false, isExpired: false, canShowSelection: true),
         .init(accountID: "Random", name: "Random", email: "Random@gmail.com", isSelected: false, isExpired: false, canShowSelection: true),
         .init(accountID: "abc", name: "Kristin", email: "kristin@gmail.com", isSelected: false, isExpired: false, canShowSelection: true),
-        .init(accountID: "123",name: "William", email: "william@gmail.com", isSelected: true, isExpired: false, canShowSelection: true),
-        .init(accountID: "xyz",name: "Jacob", email: "jacob@gmail.com", isSelected: false, isExpired: true, canShowSelection: true)
+        .init(accountID: "123", name: "William", email: "william@gmail.com", isSelected: true, isExpired: false, canShowSelection: true),
+        .init(accountID: "xyz", name: "Jacob", email: "jacob@gmail.com", isSelected: false, isExpired: true, canShowSelection: true)
     ]
     
     @State private var showDeleteAlert = false
     @State private var userToDelete: UserItemInfo?
-    @State private var openItemID: UUID? = nil
+    @State private var openItemID: UUID?
     
     var body: some View {
         List {
@@ -113,11 +135,8 @@ struct AccountListView: View {
                 UserListItemView(
                     user: account,
                     openItemID: $openItemID, // Binding to track open item and closes the other open item
-                    onTap: { _, isFromLogin in
-                        print("\(account.name) tapped", isFromLogin)
-                    },
+                    onTap: { _, _ in },
                     onDelete: { _ in
-                        print("Delete tapped for \(account.name)")
                         userToDelete = account
                         showDeleteAlert = true
                     }
@@ -138,7 +157,6 @@ struct AccountListView: View {
         }
     }
 }
-
 
 // MARK: - Preview
 #Preview {

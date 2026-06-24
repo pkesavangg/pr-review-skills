@@ -15,7 +15,7 @@ struct VersionView: View {
     }
     
     var body: some View {
-        VStack() {
+        VStack {
             Text("\(lang.versionPrefix.lowercased()) \(appVersion)")
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.backgroundPrimary)

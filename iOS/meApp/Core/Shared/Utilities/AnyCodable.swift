@@ -58,7 +58,7 @@ public struct AnyCodable: Codable {
     }
 }
 
-/// MARK: - USAGE GUIDE
+// MARK: - USAGE GUIDE
 ///
 /// Wrap any value for encoding:
 /// ```swift

@@ -2,7 +2,10 @@ package com.dmdbrands.gurus.weight.migration.service
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.IonicDatabaseHelper
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.core.network.EncryptionUnavailableException
+import com.dmdbrands.gurus.weight.core.network.SecureTokenStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
+import com.dmdbrands.gurus.weight.domain.model.api.user.Token
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntity
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.migration.helper.CapacitorStorageHelper
@@ -293,12 +296,12 @@ class MigrationService @Inject constructor(
         return
       }
       val userDataStore = UserDataStore(context)
-      AppLog.d(TAG, "Found ${timestampMap.size} timestampkey entries ${timestampMap}")
+       AppLog.d(TAG, "Found ${timestampMap.size} timestampkey entries ${timestampMap}")
       timestampMap.forEach { (accountId, timestamp) ->
         if (accountId == activeAccountID ) {
           AppLog.d(TAG, "Updating sync timestamp for $accountId: $timestamp")
           userDataStore.updateSyncTimestamp(accountId, timestamp)
-          AppLog.d(TAG, "Migrated Sync timestamp updated for $accountId")
+         AppLog.d(TAG, "Migrated Sync timestamp updated for $accountId")
         }
       }
     } catch (e: Exception) {
@@ -393,7 +396,7 @@ class MigrationService @Inject constructor(
       // all entries finish saving successfully (see migrateIonicDatabase Step 5).
       saveAccountAndSettings(context, ionicAccount, accountEntity, themeModeMap)
       AppLog.d(TAG, "Account migration completed")
-      AppLog.i(TAG, "Account migration successful: ${accountEntity.email}, activeAccountId=${accountEntity.id}")
+      AppLog.i(TAG, "Account migration successful: activeAccountId=${accountEntity.id}")
       Pair(true, accountEntity.id)
     } catch (e: Exception) {
       AppLog.e(TAG, "Account migration failed: ${e.message}")
@@ -416,26 +419,42 @@ class MigrationService @Inject constructor(
 
     themeModeMap.forEach { (key, value) ->
       val themeMode = value.toThemeMode()
-      val refreshToken = if (key == accountEntity.id) ionicAccount.refreshToken else ""
-      val accessToken = if (key == accountEntity.id) ionicAccount.accessToken else ""
+      // Sync timestamp is deferred: written only after all entries migrate successfully (see migrateIonicDatabase Step 5).
+      val syncTs = ""
 
       AppLog.d(TAG, "Theme mode for $key: $value")
       userDataStore.addAccount(
         key,
-        refreshToken = refreshToken ?: "",
-        accessToken = accessToken ?: "",
+        refreshToken = "",
+        accessToken = "",
         themeMode = themeMode,
         forceUpdate = userDataStore.containsAccount(key),
       )
     }
 
-    userDataStore.updateAccountTokens(
-      accountEntity.id,
-      ionicAccount.refreshToken ?: "",
-      ionicAccount.accessToken ?: "",
-      ionicAccount.expiresAt ?: "",
-      true,
+    // Write tokens to EncryptedSharedPreferences only (not DataStore)
+    try {
+      val secureTokenStore = SecureTokenStore(context)
+      secureTokenStore.saveToken(
+        accountEntity.id,
+        Token(
+          accountId = accountEntity.id,
+          isActive = true,
+          accessToken = ionicAccount.accessToken,
+          refreshToken = ionicAccount.refreshToken,
+          expiresAt = ionicAccount.expiresAt,
+        )
+      )
+    } catch (e: EncryptionUnavailableException) {
+      AppLog.e(TAG, "Failed to save token to encrypted storage during Ionic migration", e.toString())
+      // Token will be unavailable — user will be forced to re-login after migration
+    }
+    // Update DataStore account entry (isActive flag only, no token fields)
+    userDataStore.updateAccount(
+      accountId = accountEntity.id,
+      isActive = true,
     )
+
     userDataStore.setActiveAccount(accountEntity.id)
 
     // Insert account and settings using extension functions
@@ -450,7 +469,7 @@ class MigrationService @Inject constructor(
     )
 
     // Dashboard metrics are now properly handled via DashboardSettingsEntity
-    AppLog.i(TAG, "Dashboard settings migrated successfully for ${accountEntity.email}")
+    AppLog.i(TAG, "Dashboard settings migrated successfully")
   }
 
   /**

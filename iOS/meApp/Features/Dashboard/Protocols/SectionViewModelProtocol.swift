@@ -5,9 +5,9 @@
 //  Created by Assistant on 04/07/25.
 //
 
+import Charts
 import Foundation
 import SwiftUI
-import Charts
 
 /// Protocol defining common functionality for all section view models
 @MainActor
@@ -39,6 +39,7 @@ protocol SectionViewModelProtocol: ObservableObject {
     
     // MARK: - Common Computed Properties
     var chartOperations: [BathScaleWeightSummary] { get }
+    var hasChartOperations: Bool { get }
     var chartSeriesData: [GraphSeries] { get }
     /// Chart series points that fall within the currently visible X-domain
     var visibleChartSeriesData: [GraphSeries] { get }
@@ -46,6 +47,8 @@ protocol SectionViewModelProtocol: ObservableObject {
     var displayWeight: Double? { get }
     var weightLabel: String { get }
     var xAxisValues: [Date] { get }
+    var gridTicks: [Date] { get }
+    var adjustedLabelTicks: [Date] { get }
     var isAtLeftBoundary: Bool { get }
     
     // MARK: - Stroke & Point Sizing
@@ -71,7 +74,9 @@ protocol SectionViewModelProtocol: ObservableObject {
     
     // MARK: - Selection Management
     func handleChartSelection(at date: Date?)
+    /// MA-3837: applies a programmatic selection through the normal snap pipeline.
     func applyProgrammaticSelection(at date: Date?)
+    /// MA-3977: applies a store-validated selection directly, bypassing user-input snap/range guards.
     func applyStoreValidatedSelection(date: Date, point: BathScaleWeightSummary?)
     func clearSelection()
     

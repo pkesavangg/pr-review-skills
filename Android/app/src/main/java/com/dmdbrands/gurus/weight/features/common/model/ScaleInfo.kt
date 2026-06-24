@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.model
 
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import kotlinx.serialization.Serializable
 
 /**
@@ -13,6 +14,8 @@ import kotlinx.serialization.Serializable
  * @property isWifiConfigured Whether the scale is WiFi configured.
  * @property scaleId The unique identifier of the scale.
  * @property createdAt The timestamp when the scale was created.
+ * @property hasNumericUsers Whether the device uses numeric user labels (1/2) or alphabetic (A/B). Only relevant for BPM devices; ignored for other scales.
+ * @property userNumber The assigned user slot (1 or 2) for BPM devices; null for non-BPM scales or when unassigned.
  */
 @Serializable
 data class ScaleInfo(
@@ -24,9 +27,11 @@ data class ScaleInfo(
   val isWifiConfigured: Boolean? = null,
   val scaleId: String? = null,
   val createdAt: String? = null,
+  val hasNumericUsers: Boolean = true,
+  val userNumber: Int? = null,
 )
 
-val SCALES =
+val DEVICES =
   listOf(
     ScaleInfo("AppSync Body Fat Scale", "0340", ScaleSetupType.AppSync, true, createdAt = null),
     ScaleInfo("AppSync Body Fat Scale", "0341", ScaleSetupType.AppSync, true, createdAt = null),
@@ -52,4 +57,25 @@ val SCALES =
     ScaleInfo("Wi-Fi Smart Scale", "0396", ScaleSetupType.Wifi, false, createdAt = null),
     ScaleInfo("Wi-Fi Smart Scale", "0397", ScaleSetupType.EspTouchWifi, false, createdAt = null),
     ScaleInfo("AccuCheck Verve Smart Scale", "0412", ScaleSetupType.BtWifiR4, true, createdAt = null),
+    // Baby Scales
+    ScaleInfo("Smart Baby Scale", "0220", ScaleSetupType.BabyScale, false, createdAt = null),
+    ScaleInfo("Smart Baby Scale", "0222", ScaleSetupType.BabyScale, false, createdAt = null),
+    // Blood Pressure Monitors
+    ScaleInfo("Smart Wrist Blood Pressure Monitor", "0603", ScaleSetupType.BpmBluetooth, false, createdAt = null),
+    ScaleInfo("Smart Blood Pressure Monitor", "0604", ScaleSetupType.BpmBluetooth, false, createdAt = null),
+    ScaleInfo("Smart Pro-Series Blood Pressure Monitor", "0634", ScaleSetupType.BpmBluetooth, false, createdAt = null),
+    ScaleInfo("All-In-One Bluetooth Blood Pressure Monitor", "0636", ScaleSetupType.BpmBluetooth, false, createdAt = null),
+    ScaleInfo("Smart Blood Pressure Monitor", "0661", ScaleSetupType.BpmA6Bluetooth, false, createdAt = null),
+    ScaleInfo("Smart Blood Pressure Monitor", "0663", ScaleSetupType.BpmA6Bluetooth, false, createdAt = null),
   )
+
+/** Baby scales — derived from [SCALES] via [DeviceHelper.BABY_SCALE_SKUS]. */
+val BABY_SCALES: List<ScaleInfo> = DEVICES.filter { it.sku in DeviceHelper.BABY_SCALE_SKUS }
+
+/** Blood Pressure Monitors — derived from [SCALES] via [DeviceHelper.BPM_SKUS]. */
+val BPM_DEVICES: List<ScaleInfo> = DEVICES.filter { it.sku in DeviceHelper.BPM_SKUS }
+
+/** Weight scales only — [SCALES] excluding baby scales and BPM devices. */
+val WEIGHT_SCALES: List<ScaleInfo> = DEVICES.filterNot {
+  it.sku in DeviceHelper.BABY_SCALE_SKUS || it.sku in DeviceHelper.BPM_SKUS
+}

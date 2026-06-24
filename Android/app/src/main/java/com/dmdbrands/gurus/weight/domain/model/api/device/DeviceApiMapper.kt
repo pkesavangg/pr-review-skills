@@ -40,6 +40,7 @@ fun DeviceApiModel.toDomainModel(
     hasServerID = !id.isNullOrEmpty(),
     isWeighOnlyModeEnabledByOthers = false,
     token = scaleToken,
+    productType = productType,
   )
 }
 
@@ -64,7 +65,28 @@ fun Device.toApiModel(): DeviceApiModel =
     peripheralIdentifier = device?.identifier,
     preference = preferences?.toPreferencesApiModel(), // Not present in GGDevice, add if needed
     latestVersion = null, // Not present in GGDevice
+    productType = productType,
   )
+
+/**
+ * Maps a domain [Device] to a [PairedDeviceRequest] for `POST /v3/paired-device/`
+ * and `PATCH /v3/paired-device/{id}` (MOB-378).
+ * [deviceType] (e.g. `weight_scale`, `baby_scale`, `bpm`) must be set on the Device;
+ * defaults to `weight_scale` if absent to preserve backward compatibility.
+ */
+fun Device.toPairedDeviceRequest(): PairedDeviceRequest = PairedDeviceRequest(
+    deviceType = productType ?: "weight_scale",
+    type = deviceType ?: "",
+    nickname = nickname,
+    sku = sku ?: "",
+    mac = device?.macAddress,
+    broadcastId = convertHexToInt(device?.broadcastId),
+    password = convertHexToInt(device?.password),
+    userNumber = userNumber,
+    name = device?.deviceName,
+    peripheralIdentifier = device?.identifier,
+    scaleToken = token,
+)
 
 fun convertHexToInt(value: String?): Long? {
   // Scales' broadcastIds and passwords are returned as hex strings, but need to be

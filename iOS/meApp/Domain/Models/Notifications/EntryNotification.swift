@@ -30,10 +30,14 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
     /// May be nil if created from DTO without a persisted Entry.
     let persistentId: PersistentIdentifier?
     let accountId: String
+    /// Total number of readings in the BT batch that produced this notification.
+    /// 1 for a single reading; >1 when the device sent a batch (e.g. GGBPMEntryList or GGEntryList).
+    /// Historical entries in the batch are saved silently; this value lets the toast show the correct count.
+    let batchCount: Int
     let entryTimestamp: String
     let serverTimestamp: String?
     let operationType: String
-    let deviceType: String
+    let entryType: String
     let isSynced: Bool
     let isFailedToSync: Bool
     let attempts: Int
@@ -45,6 +49,15 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
     let water: Int?
     let bmi: Int?
     let source: String?
+
+    // MARK: - Baby Entry Data (from BabyEntry relationship)
+    let babyWeight: Int?    // decigrams
+    let babySource: String? // scale SKU (e.g. "0220")
+    let babyId: String?     // BabyEntry.babyId at save time
+
+    // MARK: - BPM Entry Data (from BPMEntry relationship)
+    let systolic: Int?
+    let diastolic: Int?
 
     // MARK: - Scale Metric Data (from BathScaleMetric relationship)
     let bmr: Int?
@@ -63,14 +76,15 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
     /// Creates a notification by extracting all data from an Entry.
     /// Must be called on MainActor to safely access Entry relationships.
     @MainActor
-    init(from entry: Entry) {
+    init(from entry: Entry, batchCount: Int = 1) {
         self.id = entry.id
         self.persistentId = entry.persistentModelID
         self.accountId = entry.accountId
+        self.batchCount = batchCount
         self.entryTimestamp = entry.entryTimestamp
         self.serverTimestamp = entry.serverTimestamp
         self.operationType = entry.operationType
-        self.deviceType = entry.deviceType
+        self.entryType = entry.entryType ?? EntryType.scale.rawValue
         self.isSynced = entry.isSynced
         self.isFailedToSync = entry.isFailedToSync
         self.attempts = entry.attempts
@@ -83,6 +97,15 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
         self.bmi = entry.scaleEntry?.bmi
         self.source = entry.scaleEntry?.source
 
+        // Extract baby entry data (relationship)
+        self.babyWeight = entry.babyEntry?.weight
+        self.babySource = entry.babyEntry?.source
+        self.babyId = entry.babyEntry?.babyId
+
+        // Extract BPM entry data (relationship)
+        self.systolic = entry.bpmEntry?.systolic
+        self.diastolic = entry.bpmEntry?.diastolic
+
         // Extract scale metric data (relationship)
         self.bmr = entry.scaleEntryMetric?.bmr
         self.metabolicAge = entry.scaleEntryMetric?.metabolicAge
@@ -94,6 +117,7 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
         self.boneMass = entry.scaleEntryMetric?.boneMass
         self.impedance = entry.scaleEntryMetric?.impedance
         self.unit = entry.scaleEntryMetric?.unit
+
     }
 
     /// Creates a notification from a DTO (for cases where Entry is not available).
@@ -101,10 +125,11 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
         self.id = id
         self.persistentId = persistentId
         self.accountId = dto.accountId ?? ""
+        self.batchCount = 1
         self.entryTimestamp = dto.entryTimestamp ?? ""
         self.serverTimestamp = dto.serverTimestamp
         self.operationType = dto.operationType ?? ""
-        self.deviceType = "scale"
+        self.entryType = dto.entryType ?? EntryType.scale.rawValue
         self.isSynced = true
         self.isFailedToSync = false
         self.attempts = 0
@@ -116,6 +141,15 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
         self.bmi = dto.bmi.map { Int($0) }
         self.source = nil
 
+        // Baby data not available from BathScaleOperationDTO
+        self.babyWeight = nil
+        self.babySource = nil
+        self.babyId = nil
+
+        // BPM data not available from BathScaleOperationDTO
+        self.systolic = nil
+        self.diastolic = nil
+
         self.bmr = dto.bmr.map { Int($0) }
         self.metabolicAge = dto.metabolicAge.map { Int($0) }
         self.proteinPercent = dto.proteinPercent.map { Int($0) }
@@ -126,6 +160,7 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
         self.boneMass = dto.boneMass.map { Int($0) }
         self.impedance = dto.impedance.map { Int($0) }
         self.unit = dto.unit
+
     }
 
     // MARK: - Conversion Methods
@@ -139,6 +174,7 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
             bodyFat: bodyFat.map(Double.init),
             boneMass: boneMass.map(Double.init),
             entryTimestamp: entryTimestamp,
+            entryType: nil,
             impedance: impedance.map(Double.init),
             metabolicAge: metabolicAge.map(Double.init),
             muscleMass: muscleMass.map(Double.init),
@@ -149,6 +185,9 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
             skeletalMusclePercent: skeletalMusclePercent.map(Double.init),
             source: source,
             subcutaneousFatPercent: subcutaneousFatPercent.map(Double.init),
+            systolic: nil,
+            diastolic: nil,
+            meanArterial: nil,
             unit: unit,
             visceralFatLevel: visceralFatLevel.map(Double.init),
             water: water.map(Double.init),

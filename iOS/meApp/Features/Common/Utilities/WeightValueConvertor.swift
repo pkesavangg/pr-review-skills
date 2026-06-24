@@ -28,25 +28,23 @@ struct WeightValueConvertor {
     ///   - weightless: Optional weightless settings to apply
     ///   - isMetric: Whether to use metric units (from AppStatus)
     /// - Returns: Formatted weight string with optional + symbol
-    static func formatWeight(_ value: Double,
-                           showSymbol: Bool = false,
-                           weightUnit: WeightUnit = .kg,
-                           weightless: WeightlessSettings? = nil
+    static func formatWeight(
+        _ value: Double,
+        showSymbol: Bool = false,
+        weightUnit: WeightUnit = .kg,
+        weightless: WeightlessSettings? = nil
     ) -> String {
 
         var weight: Double
 
-        // Convert the input value to stored format (tenths of lbs)
-        let storedValue = Int(round(value))
-
         // Apply weightless adjustment if needed
         if let weightless = weightless, weightless.isWeightlessOn {
-            let weightlessValue = Int(round(weightless.weightlessWeight ?? 0))
-            weight = ConversionTools.convertStoredToDisplay(storedValue - weightlessValue, isMetric: weightUnit == .kg)
+            let weightlessValue = weightless.weightlessWeight ?? 0
+            weight = ConversionTools.convertStoredToDisplay(value - weightlessValue, isMetric: weightUnit == .kg)
             // Force show symbol for weightless mode
             return formatWithSymbol(weight, showSymbol: true)
         } else {
-            weight = ConversionTools.convertStoredToDisplay(storedValue, isMetric: weightUnit == .kg)
+            weight = ConversionTools.convertStoredToDisplay(value, isMetric: weightUnit == .kg)
             return formatWithSymbol(weight, showSymbol: showSymbol)
         }
     }

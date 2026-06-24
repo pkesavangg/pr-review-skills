@@ -19,9 +19,9 @@ import SwiftUI
 struct BluetoothConnectionView: View {
     // MARK: - Props
     let state: ConnectionState
-    let setupType: ScaleSetupType
+    let setupType: DeviceSetupType
     /// Optional error code to display when `state == .failure`.
-    var errorCode: String? = nil
+    var errorCode: String?
     
     /// Called when the user taps the *Try Again* button (shown only on `.failure`).
     var onTryAgain: () -> Void = {}
@@ -44,7 +44,7 @@ struct BluetoothConnectionView: View {
     }
     
     private var showErrorCode: Bool {
-        state == .failure && errorCode != nil && !errorCode!.isEmpty
+        state == .failure && !(errorCode?.isEmpty ?? true)
     }
     
     private var image: String? {
@@ -87,22 +87,23 @@ struct BluetoothConnectionView: View {
                                 .scaledToFit()
                                 .frame(width: 180, height: 180)
                                 .themeDropShadow()
+                                .accessibilityHidden(true)
                         }
-                        
+
                         VStack(spacing: .spacingMD) {
-                            // Re-instantiate the loader every time the state changes so
-                            // we don't keep the previous animation colours (e.g. red ➜ blue).
                             SetupLoaderView(connectionState: state)
-                                .id(state)  // Force a fresh view when the enum value flips
-                            
+                                .id(state)
+                                .accessibilityHidden(true)
+
                             ConnectionIndicatorView(
                                 image: AppAssets.bluetooth,
                                 isFailure: state == .failure,
                                 showPulsingCircle: false
                             )
+                            .accessibilityHidden(true)
                         }
                     }
-                    
+
                     // Action buttons (visible only on failure)
                     if state == .failure {
                         VStack(spacing: .spacingMD) {
@@ -113,14 +114,16 @@ struct BluetoothConnectionView: View {
                                 isDisabled: false,
                                 action: onTryAgain
                             )
-                            
+                            .accessibilityHint(ScaleSetupStrings.A11y.tryAgainHint)
+
                             ButtonView(
-                                text:  commonStrings.support,
+                                text: commonStrings.support,
                                 type: .inlineTextPrimary,
                                 size: .large,
                                 isDisabled: false,
                                 action: onSupport
                             )
+                            .accessibilityHint(ScaleSetupStrings.A11y.supportHint)
                         }
                         .padding(.top, .spacingXL)
                     }
