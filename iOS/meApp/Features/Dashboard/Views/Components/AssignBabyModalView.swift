@@ -158,11 +158,11 @@ private struct AssignToNewBabyRow: View {
             HStack(spacing: .spacingSM) {
                 ZStack {
                     Circle()
-                        .fill(theme.babyPrimary.opacity(0.2))
+                        .fill(theme.babyScaleColor.opacity(0.2))
                         .frame(width: 40, height: 40)
                     Image(systemName: "plus")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(theme.babyPrimary)
+                        .foregroundColor(theme.babyScaleColor)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -178,11 +178,11 @@ private struct AssignToNewBabyRow: View {
 
                 ZStack {
                     Circle()
-                        .strokeBorder(isSelected ? theme.babyPrimary : theme.textBody.opacity(0.4), lineWidth: 2)
+                        .strokeBorder(isSelected ? theme.babyScaleColor : theme.textBody.opacity(0.4), lineWidth: 2)
                         .frame(width: 22, height: 22)
                     if isSelected {
                         Circle()
-                            .fill(theme.babyPrimary)
+                            .fill(theme.babyScaleColor)
                             .frame(width: 12, height: 12)
                     }
                 }
@@ -190,7 +190,7 @@ private struct AssignToNewBabyRow: View {
             .padding(.spacingSM)
             .background(
                 RoundedRectangle(cornerRadius: .radiusMD)
-                    .fill(isSelected ? theme.babyPrimary.opacity(0.1) : theme.backgroundPrimary)
+                    .fill(isSelected ? theme.babyScaleColor.opacity(0.1) : theme.backgroundPrimary)
             )
         }
         .buttonStyle(.plain)
@@ -212,12 +212,12 @@ private struct BabySelectionRow: View {
                 // Avatar circle with initial
                 ZStack {
                     Circle()
-                        .fill(theme.babyPrimary.opacity(0.2))
+                        .fill(theme.babyScaleColor.opacity(0.2))
                         .frame(width: 40, height: 40)
                     Text(String(baby.name.prefix(1)).uppercased())
                         .fontOpenSans(.body1)
                         .bold()
-                        .foregroundColor(theme.babyPrimary)
+                        .foregroundColor(theme.babyScaleColor)
                 }
 
                 // Name + age
@@ -238,11 +238,11 @@ private struct BabySelectionRow: View {
                 // Radio button
                 ZStack {
                     Circle()
-                        .strokeBorder(isSelected ? theme.babyPrimary : theme.textBody.opacity(0.4), lineWidth: 2)
+                        .strokeBorder(isSelected ? theme.babyScaleColor : theme.textBody.opacity(0.4), lineWidth: 2)
                         .frame(width: 22, height: 22)
                     if isSelected {
                         Circle()
-                            .fill(theme.babyPrimary)
+                            .fill(theme.babyScaleColor)
                             .frame(width: 12, height: 12)
                     }
                 }
@@ -250,7 +250,7 @@ private struct BabySelectionRow: View {
             .padding(.spacingSM)
             .background(
                 RoundedRectangle(cornerRadius: .radiusMD)
-                    .fill(isSelected ? theme.babyPrimary.opacity(0.1) : theme.backgroundPrimary)
+                    .fill(isSelected ? theme.babyScaleColor.opacity(0.1) : theme.backgroundPrimary)
             )
         }
         .buttonStyle(.plain)

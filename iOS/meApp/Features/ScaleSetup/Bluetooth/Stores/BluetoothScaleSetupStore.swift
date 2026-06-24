@@ -228,6 +228,11 @@ final class BluetoothScaleSetupStore: ObservableObject {
         switch currentStep {
         case .connectingBluetooth:
             pair()
+            // For BPM scales, advance past this step immediately so the user never sees it.
+            // SwiftUI batches the state change and renders .setUser directly.
+            if scaleItem?.setupType == .bpm, let setUserIndex = steps.firstIndex(of: .setUser) {
+                currentStepIndex = setUserIndex
+            }
         case .stepOn:
             // If scale is already saved, set up entry subscription
             // This handles the case where user navigates to stepOn after Bluetooth is turned back on
@@ -449,8 +454,10 @@ final class BluetoothScaleSetupStore: ObservableObject {
     }
     
     private func handleDeviceDiscovery(_ event: DeviceDiscoveryEvent) {
-        // Only handle during connecting step & for bluetooth scales
-        guard currentStep == .connectingBluetooth else { return }
+        // For BPM scales the connectingBluetooth step is skipped, so discovery arrives while on setUser.
+        let isExpectingDiscovery = currentStep == .connectingBluetooth ||
+            (scaleItem?.setupType == .bpm && currentStep == .setUser)
+        guard isExpectingDiscovery else { return }
         guard event.deviceInfo.setupType == .bluetooth else { return }
         
         deviceDiscoveryCancellable?.cancel()
@@ -664,6 +671,17 @@ final class BluetoothScaleSetupStore: ObservableObject {
     private func setConnectionFailure() {
         self.bluetoothConnectionState = .failure
         self.resetDiscoveryState()
+        // BPM skips the connectingBluetooth screen, so show an alert and return to selectUser.
+        if scaleItem?.setupType == .bpm {
+            if let selectUserIndex = steps.firstIndex(of: .selectUser) {
+                currentStepIndex = selectUserIndex
+            }
+            notificationService.showAlert(AlertModel(
+                title: alertLang.PairingFailedAlert.title,
+                message: alertLang.PairingFailedAlert.message,
+                buttons: [AlertButtonModel(title: alertLang.PairingFailedAlert.okButton, type: .primary) { _ in }]
+            ))
+        }
     }
     
     /// Cleans up all subscriptions and resources when the view disappears

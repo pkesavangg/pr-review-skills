@@ -205,7 +205,7 @@ struct HistoryListScreen: View {
                                 description: ProductTypeStrings.BabyEmptyState.historyDescription,
                                 buttonTitle: ProductTypeStrings.BabyEmptyState.addABaby,
                                 iconAsset: AppAssets.babyAppIcon,
-                                iconTint: theme.babyPrimary
+                                iconTint: theme.babyScaleColor
                             ) {
                                 tabViewModel.navigateToSettings(route: .myKids, sourceTab: .history)
                             }

@@ -573,6 +573,12 @@ struct AlertStrings {
         static let pairButton = "PAIR"
     }
 
+    struct PairingFailedAlert {
+        static let title = "Pairing Failed"
+        static let message = "Could not connect to the device. Please try again."
+        static let okButton = "OK"
+    }
+
     struct DeleteEntryAlert {
         static let title = "Delete Entry?"
         static let message = "Are you sure you want to delete your entry?"

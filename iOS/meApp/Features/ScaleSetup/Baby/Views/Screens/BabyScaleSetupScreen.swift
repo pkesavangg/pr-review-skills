@@ -126,7 +126,7 @@ struct BabyScaleSetupScreen: View {
 
             Spacer()
 
-            if setupStore.currentStep == .paired || setupStore.currentStep == .babyProfile {
+            if setupStore.currentStep == .babyProfile {
                 ButtonView(
                     text: commonLang.skip,
                     type: .inlineTextTertiary,

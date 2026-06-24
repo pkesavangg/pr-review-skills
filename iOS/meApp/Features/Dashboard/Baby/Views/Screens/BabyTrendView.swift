@@ -16,7 +16,7 @@ struct BabyTrendView: View {
     @State private var isGrowthPercentilesSheetPresented = false
     private let viewModel = BabyTrendViewModel()
 
-    private var babyColor: Color { theme.babyPrimary }
+    private var babyColor: Color { theme.babyScaleColor }
 
     private var babyScaleColor: Color { theme.babyScaleColor }
 

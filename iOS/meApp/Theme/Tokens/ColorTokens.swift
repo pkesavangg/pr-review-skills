@@ -22,7 +22,6 @@ struct ColorTokens {
 
     // Brand colors
     static let teal100 = Color("teal-100")
-    static let babyPrimary = Color("babyScale")
     static let blue100 = Color("blue-100")
     static let blue500 = Color("blue-500")
     static let blue900 = Color("blue-900")
@@ -112,7 +111,6 @@ struct ColorTokens {
             // Brand
             brandMeAppPrimary: teal100,
             brandWgPrimary: blue800,
-            babyPrimary: babyPrimary,
             babyScaleColor: babyScale,
             weightScaleColor: weightScale,
             bpmColor: bpm,

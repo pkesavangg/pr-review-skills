@@ -56,14 +56,17 @@ extension BabyScaleSetupStore {
 
     /// Skips steps that should be bypassed during navigation:
     /// - `.permissions` if BT permissions are already granted (both directions)
-    /// - `.wakeup` and `.connectingBluetooth` when going backwards (avoids re-triggering scan)
+    /// - `.connectingBluetooth` in both directions (pairing happens in background)
+    /// - `.wakeup` and `.connectionError` when going backwards (avoids re-triggering scan)
     func adjustedIndex(from index: Int, direction: Int) -> Int {
         var idx = index
         while idx >= 0 && idx < steps.count {
             let step = steps[idx]
             if step == .permissions && arePermissionsEnabled() {
                 idx += direction
-            } else if direction == -1 && (step == .wakeup || step == .connectingBluetooth || step == .connectionError) {
+            } else if step == .connectingBluetooth {
+                idx += direction
+            } else if direction == -1 && (step == .wakeup || step == .connectionError) {
                 idx += direction
             } else {
                 break
@@ -90,7 +93,7 @@ extension BabyScaleSetupStore {
 
     /// Steps where the footer buttons should be hidden.
     private var stepsToHideFooter: Set<BabyScaleSetupStep> {
-        [.wakeup, .connectingBluetooth, .connectionError, .done]
+        [.wakeup, .connectingBluetooth, .connectionError]
     }
 
     func shouldShowFooter() -> Bool {
