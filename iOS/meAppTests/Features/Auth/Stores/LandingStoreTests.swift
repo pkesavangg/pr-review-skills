@@ -96,7 +96,7 @@ struct LandingStoreTests {
     }
 
     @Test("userItems maps accountId, email, and firstName as name")
-    func userItemsMapsAccountFields() async {
+    func userItemsMapsAccountFields() async throws {
         let (store, accountService) = makeSUT()
 
         let account = AccountTestFixtures.makeAccountSnapshot(

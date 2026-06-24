@@ -99,6 +99,9 @@ final class MockEntryService: EntryServiceProtocol {
         return try getAllEntriesResult.get()
     }
     func getAllEntriesAsDTO() async throws -> [BathScaleOperationDTO] { [] }
+    func getAllEntriesAsSnapshots() async throws -> [EntrySnapshot] {
+        try fetchAllEntrySnapshotsResult.get()
+    }
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool { false }
     func getEntryCount() async throws -> Int {
         getEntryCountCalls += 1
@@ -186,14 +189,26 @@ final class MockEntryService: EntryServiceProtocol {
     private(set) var fetchBpmEntriesCalls = 0
     private(set) var deleteBpmEntryCalls = 0
     private(set) var exportBpmCSVCalls = 0
+    private(set) var lastCreatedBpmDTO: BpmOperationDTO?
+    private(set) var lastDeletedBpmTimestamp: String?
+    var createBpmEntryError: Error?
+    var deleteBpmEntryError: Error?
     var fetchBpmEntriesResult: Result<[BpmOperationDTO], Error> = .success([])
 
-    func createBpmEntry(_ dto: BpmOperationDTO) async throws { createBpmEntryCalls += 1 }
+    func createBpmEntry(_ dto: BpmOperationDTO) async throws {
+        createBpmEntryCalls += 1
+        lastCreatedBpmDTO = dto
+        if let createBpmEntryError { throw createBpmEntryError }
+    }
     func fetchBpmEntries() async throws -> [BpmOperationDTO] {
         fetchBpmEntriesCalls += 1
         return try fetchBpmEntriesResult.get()
     }
-    func deleteBpmEntry(entryTimestamp: String) async throws { deleteBpmEntryCalls += 1 }
+    func deleteBpmEntry(entryTimestamp: String) async throws {
+        deleteBpmEntryCalls += 1
+        lastDeletedBpmTimestamp = entryTimestamp
+        if let deleteBpmEntryError { throw deleteBpmEntryError }
+    }
     func exportBpmCSV() async throws { exportBpmCSVCalls += 1 }
     func migrateBabyEntriesToDecigrams() async {}
     func getEntry(byId id: UUID) async throws -> Entry? { nil }

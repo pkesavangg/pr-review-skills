@@ -142,7 +142,7 @@ struct UserNameFormTests {
     @Test("duplicate name in userList fails duplicate")
     func duplicateNameFails() {
         let form = UserNameForm()
-        form.updateUserList([ScaleUser(name: "Alice", token: nil)])
+        form.updateUserList([DeviceUser(name: "Alice", token: nil)])
         form.setDisplayName("Alice")
         form.displayName.validate()
         #expect(form.displayName.errors[.duplicate] == true)
@@ -151,7 +151,7 @@ struct UserNameFormTests {
     @Test("unique name not in userList passes duplicate")
     func uniqueNamePasses() {
         let form = UserNameForm()
-        form.updateUserList([ScaleUser(name: "Alice", token: nil)])
+        form.updateUserList([DeviceUser(name: "Alice", token: nil)])
         form.setDisplayName("Bob")
         form.displayName.validate()
         #expect(form.displayName.errors[.duplicate] == false)
@@ -161,7 +161,7 @@ struct UserNameFormTests {
     func currentUserNameExcluded() {
         let form = UserNameForm()
         form.setCurrentUserName("Alice")
-        form.updateUserList([ScaleUser(name: "Alice", token: nil)])
+        form.updateUserList([DeviceUser(name: "Alice", token: nil)])
         form.setDisplayName("Alice")
         form.displayName.validate()
         #expect(form.displayName.errors[.duplicate] == false)
@@ -209,8 +209,8 @@ struct UserNameFormTests {
     @Test("updateUserList replaces existing list")
     func updateUserListReplaces() {
         let form = UserNameForm()
-        form.updateUserList([ScaleUser(name: "Alice", token: nil)])
-        form.updateUserList([ScaleUser(name: "Bob", token: nil), ScaleUser(name: "Carol", token: nil)])
+        form.updateUserList([DeviceUser(name: "Alice", token: nil)])
+        form.updateUserList([DeviceUser(name: "Bob", token: nil), DeviceUser(name: "Carol", token: nil)])
         #expect(form.userList.count == 2)
         #expect(form.userList[0].name == "Bob")
     }

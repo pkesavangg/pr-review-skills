@@ -42,7 +42,7 @@ enum BpmSetupStoreTestFixtures {
         DependencyContainer.shared.register(permissions as PermissionsServiceProtocol)
         DependencyContainer.shared.register(bluetooth as BluetoothServiceProtocol)
         DependencyContainer.shared.register(account as AccountServiceProtocol)
-        DependencyContainer.shared.register(scaleService as ScaleServiceProtocol)
+        DependencyContainer.shared.register(scaleService as PairedDeviceServiceProtocol)
 
         let store = BpmSetupStore(
             scanTimeoutNs: scanTimeoutNs,
@@ -108,11 +108,11 @@ enum BpmSetupStoreTestFixtures {
 
     static func makeBpmDiscoveryEvent(
         device: Device? = nil,
-        setupType: ScaleSetupType = .bpm,
+        setupType: DeviceSetupType = .bpm,
         protocolType: ProtocolType = .A3
     ) -> DeviceDiscoveryEvent {
         let bpmDevice = device ?? makeBpmDevice()
-        let info = ScaleItemInfo(
+        let info = DeviceItemInfo(
             productName: setupType == .bpm ? "Blood Pressure Monitor" : "Bluetooth Scale",
             sku: setupType == .bpm ? "0603" : "0375",
             imgPath: setupType == .bpm ? AppAssets.bpm0603 : AppAssets.scale0375,

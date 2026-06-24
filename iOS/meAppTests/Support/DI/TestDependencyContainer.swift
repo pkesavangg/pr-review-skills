@@ -6,7 +6,7 @@ enum TestDependencyContainer {
     struct DashboardConcreteDependencies {
         let account: AccountService
         let logger: LoggerService
-        let scale: ScaleService
+        let scale: DeviceService
         let entry: EntryService
     }
 
@@ -28,8 +28,8 @@ enum TestDependencyContainer {
         DependencyContainer.shared.register(MockGoalAlertService() as GoalAlertServiceProtocol)
         DependencyContainer.shared.register(MockIntegrationService() as IntegrationServiceProtocol)
         DependencyContainer.shared.register(MockHealthKitServiceForIntegrations() as HealthKitServiceProtocol)
-        DependencyContainer.shared.register(MockScaleService() as ScaleServiceProtocol)
-        DependencyContainer.shared.register(MockWifiScaleService() as WifiScaleServiceProtocol)
+        DependencyContainer.shared.register(MockScaleService() as PairedDeviceServiceProtocol)
+        DependencyContainer.shared.register(MockWifiScaleService() as WifiPairedDeviceServiceProtocol)
         DependencyContainer.shared.register(MockPushNotificationService() as PushNotificationServiceProtocol)
         DependencyContainer.shared.register(MockContentViewModelAccountFlagService() as AccountFlagServiceProtocol)
         DependencyContainer.shared.register(MockKvStorageService() as KvStorageServiceProtocol)
@@ -59,7 +59,7 @@ enum TestDependencyContainer {
             performInitialLoad: performInitialAccountLoad
         )
         let loggerService = LoggerService()
-        let scaleService = ScaleService(
+        let scaleService = DeviceService(
             accountService: accountService,
             apiRepository: MockScaleRepositoryAPI(),
             localRepository: MockScaleRepository()
@@ -81,7 +81,7 @@ enum TestDependencyContainer {
 
         DependencyContainer.shared.register(accountService as AccountService)
         DependencyContainer.shared.register(loggerService as LoggerService)
-        DependencyContainer.shared.register(scaleService as ScaleService)
+        DependencyContainer.shared.register(scaleService as DeviceService)
         DependencyContainer.shared.register(entryService as EntryService)
         DependencyContainer.shared.register(goalAlertService as GoalAlertService)
         DependencyContainer.shared.register(ProductTypeStore.shared as ProductTypeStore)

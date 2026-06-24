@@ -1,5 +1,6 @@
 package com.greatergoods.libs.appsync.screen.components
 
+import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraControl
 import androidx.camera.core.CameraInfo
@@ -19,16 +20,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.dmdbrands.appsync.CameraHandlerCallback
 import com.greatergoods.libs.appsync.AppSyncLogger
+import com.greatergoods.libs.appsync.config.AppSyncConstants
 import com.greatergoods.libs.appsync.model.AppSyncResult
 import com.greatergoods.libs.appsync.strings.AppSyncStrings
 import com.greatergoods.libs.appsync.utility.AppSyncFs003Interpreter
 import com.greatergoods.libs.appsync.utility.AppSyncLowLightDetector
 import com.greatergoods.libs.appsync.utility.YUV420888ToGrayscaleConverter
 import java.util.concurrent.ExecutorService
+import android.content.Context
 import android.graphics.ImageFormat
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
+import android.hardware.camera2.CaptureRequest
+import android.hardware.camera2.params.MeteringRectangle
 import android.view.ViewGroup
 import android.widget.FrameLayout
 
@@ -81,7 +89,6 @@ fun CameraPreview(
   Box(modifier = Modifier.fillMaxSize()) {
     AndroidView(
       factory = { ctx ->
-        // Create PreviewView for camera display
         val previewView =
           PreviewView(ctx).apply {
             layoutParams =
@@ -91,65 +98,21 @@ fun CameraPreview(
               )
           }
 
-        // Initialize CameraX provider
         val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
         cameraProviderFuture.addListener(
           {
-            try {
-              val cameraProvider = cameraProviderFuture.get()
-
-              // Set up camera preview use case
-              val preview =
-                Preview.Builder()
-                  .build().also {
-                    it.surfaceProvider = previewView.surfaceProvider
-                  }
-
-              // Set up image analysis use case for frame processing.
-              // 1280x720 is a good balance — high enough for FS003 detection, works with zoom.
-              // ResolutionSelector replaces the deprecated setTargetResolution: it makes the
-              // fallback rule explicit (closest higher, then lower) and pins the 16:9 aspect
-              // ratio so frames don't get reshaped to the sensor's default 4:3.
-              val resolutionSelector =
-                ResolutionSelector.Builder()
-                  .setResolutionStrategy(
-                    ResolutionStrategy(
-                      android.util.Size(1280, 720),
-                      ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER,
-                    ),
-                  )
-                  .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
-                  .build()
-              val imageAnalyzer =
-                ImageAnalysis
-                  .Builder()
-                  .setResolutionSelector(resolutionSelector)
-                  .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                  .setTargetRotation(previewView.display.rotation)
-                  .build()
-              imageAnalyzer.setAnalyzer(
-                cameraExecutor,
-                { imageProxy ->
-                  processFrameWithJNI(imageProxy, onScanResult, onLowLightDetected, currentZoom)
-                },
-              )
-
-              // Unbind any existing use cases and bind new ones
-              cameraProvider.unbindAll()
-              val camera =
-                cameraProvider.bindToLifecycle(
-                  lifecycleOwner,
-                  CameraSelector.DEFAULT_BACK_CAMERA,
-                  preview,
-                  imageAnalyzer,
-                )
-
-              // Notify that camera is ready
-              onCameraReady(camera, camera.cameraControl, camera.cameraInfo)
-            } catch (exc: Exception) {
-              AppSyncLogger.e(TAG, AppSyncStrings.CameraBindingFailed, exc)
-              onError(AppSyncStrings.CameraInitializationFailed)
-            }
+            bindCameraUseCases(
+              ctx = ctx,
+              previewView = previewView,
+              lifecycleOwner = lifecycleOwner,
+              cameraProvider = cameraProviderFuture.get(),
+              cameraExecutor = cameraExecutor,
+              onScanResult = onScanResult,
+              onLowLightDetected = onLowLightDetected,
+              currentZoom = currentZoom,
+              onCameraReady = onCameraReady,
+              onError = onError,
+            )
           },
           ContextCompat.getMainExecutor(ctx),
         )
@@ -161,6 +124,180 @@ fun CameraPreview(
     // Add overlay graphics for scan targeting
     CameraOverlayBox()
   }
+}
+
+/**
+ * Builds and binds the preview + image-analysis use cases to the lifecycle.
+ *
+ * The preview is configured for continuous, centre-weighted autofocus/exposure via
+ * Camera2 (MOB-869): the scale display is small and bright, and the camera binds the
+ * instant the scan screen opens — before the user has aimed. Relying on the default 3A
+ * let focus/exposure settle on the background, leaving the display soft; a blurry pattern
+ * fails to decode, so the scan only worked sometimes and needed several attempts.
+ * [applyContinuousCenterFocus] keeps the HAL refocusing on the display for the whole
+ * session. Binding failures are surfaced via [onError]; scanning then can't proceed.
+ */
+private fun bindCameraUseCases(
+  ctx: Context,
+  previewView: PreviewView,
+  lifecycleOwner: LifecycleOwner,
+  cameraProvider: ProcessCameraProvider,
+  cameraExecutor: ExecutorService,
+  onScanResult: (AppSyncResult) -> Unit,
+  onLowLightDetected: (Boolean) -> Unit,
+  currentZoom: () -> Int,
+  onCameraReady: (Camera, CameraControl, CameraInfo) -> Unit,
+  onError: (String) -> Unit,
+) {
+  try {
+    val previewBuilder = Preview.Builder()
+    applyContinuousCenterFocus(previewBuilder, ctx)
+    val preview =
+      previewBuilder.build().also {
+        it.surfaceProvider = previewView.surfaceProvider
+      }
+
+    // 1280x720 is a good balance — high enough for FS003 detection, works with zoom.
+    // ResolutionSelector replaces the deprecated setTargetResolution: it makes the
+    // fallback rule explicit (closest higher, then lower) and pins the 16:9 aspect ratio
+    // so frames don't get reshaped to the sensor's default 4:3.
+    val resolutionSelector =
+      ResolutionSelector.Builder()
+        .setResolutionStrategy(
+          ResolutionStrategy(
+            android.util.Size(1280, 720),
+            ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER,
+          ),
+        )
+        .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
+        .build()
+    val imageAnalyzer =
+      ImageAnalysis.Builder()
+        .setResolutionSelector(resolutionSelector)
+        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+        .setTargetRotation(previewView.display.rotation)
+        .build()
+    imageAnalyzer.setAnalyzer(cameraExecutor) { imageProxy ->
+      processFrameWithJNI(imageProxy, onScanResult, onLowLightDetected, currentZoom)
+    }
+
+    cameraProvider.unbindAll()
+    val camera =
+      cameraProvider.bindToLifecycle(
+        lifecycleOwner,
+        CameraSelector.DEFAULT_BACK_CAMERA,
+        preview,
+        imageAnalyzer,
+      )
+    onCameraReady(camera, camera.cameraControl, camera.cameraInfo)
+  } catch (exc: Exception) {
+    AppSyncLogger.e(TAG, AppSyncStrings.CameraBindingFailed, exc)
+    onError(AppSyncStrings.CameraInitializationFailed)
+  }
+}
+
+/**
+ * Configures the camera for continuous, centre-weighted autofocus and auto-exposure via
+ * the Camera2 interop layer, so the scale display stays sharp throughout the scan.
+ *
+ * The FS003 pattern is small and bright; relying on CameraX's default 3A can let the
+ * camera settle focus/exposure on the background, leaving the display soft, and a blurry
+ * pattern fails to decode — the intermittent "needs several attempts / only works when
+ * held perfectly still" behaviour reported in MOB-869 / MOB-392.
+ *
+ * This sets [CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE] so the HAL keeps
+ * refocusing for the whole session (no timer, no manual re-trigger), and pins AF/AE
+ * metering regions to the centre of the sensor where the display is framed. Centre
+ * regions remain correct under digital zoom. All of this is best-effort — if the device
+ * ignores regions or the interop call fails, scanning continues with default 3A.
+ *
+ * @param builder The [Preview.Builder] whose session capture requests are extended.
+ * @param context Used to read the back camera's sensor geometry for the metering region.
+ */
+internal fun applyContinuousCenterFocus(
+  builder: Preview.Builder,
+  context: Context,
+) {
+  try {
+    val extender = Camera2Interop.Extender(builder)
+    extender.setCaptureRequestOption(
+      CaptureRequest.CONTROL_AF_MODE,
+      CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE,
+    )
+    val region = centerMeteringRegion(context)
+    if (region != null) {
+      val regions = arrayOf(region)
+      extender.setCaptureRequestOption(CaptureRequest.CONTROL_AF_REGIONS, regions)
+      extender.setCaptureRequestOption(CaptureRequest.CONTROL_AE_REGIONS, regions)
+    }
+  } catch (e: Exception) {
+    // Non-fatal: scanning continues with the camera's default 3A behaviour.
+    AppSyncLogger.w(TAG, "Continuous center focus setup failed: ${e.message}")
+  }
+}
+
+/**
+ * Builds a centre metering rectangle (the middle region of the sensor active array) for
+ * the back camera, or null if the geometry/camera can't be resolved.
+ *
+ * The rectangle covers the central [AppSyncConstants.CENTER_REGION_HALF_FRACTION] of the
+ * active array on each axis, which is where the targeting overlay frames the scale display.
+ */
+private fun centerMeteringRegion(context: Context): MeteringRectangle? =
+  try {
+    val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as? CameraManager
+    val backCameraId =
+      cameraManager?.cameraIdList?.firstOrNull { id ->
+        cameraManager.getCameraCharacteristics(id)
+          .get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK
+      }
+    val activeArray =
+      backCameraId
+        ?.let { cameraManager.getCameraCharacteristics(it) }
+        ?.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE)
+    if (activeArray == null) {
+      null
+    } else {
+      val (x, y, w, h) =
+        centerRegionBounds(
+          width = activeArray.width(),
+          height = activeArray.height(),
+          left = activeArray.left,
+          top = activeArray.top,
+          halfFraction = AppSyncConstants.CENTER_REGION_HALF_FRACTION,
+        )
+      MeteringRectangle(x, y, w, h, MeteringRectangle.METERING_WEIGHT_MAX)
+    }
+  } catch (e: Exception) {
+    AppSyncLogger.w(TAG, "Could not resolve center metering region: ${e.message}")
+    null
+  }
+
+/**
+ * Computes the centre metering rectangle bounds within a sensor active array, as
+ * `[x, y, width, height]`.
+ *
+ * Pure integer geometry (no Android types) so it is unit-testable. The rectangle is
+ * centred in the active array and spans [halfFraction] of each axis on either side of
+ * centre, clamped so it never starts before the array origin.
+ */
+internal fun centerRegionBounds(
+  width: Int,
+  height: Int,
+  left: Int,
+  top: Int,
+  halfFraction: Float,
+): IntArray {
+  val halfWidth = (width * halfFraction).toInt()
+  val halfHeight = (height * halfFraction).toInt()
+  val centerX = left + width / 2
+  val centerY = top + height / 2
+  return intArrayOf(
+    (centerX - halfWidth).coerceAtLeast(left),
+    (centerY - halfHeight).coerceAtLeast(top),
+    halfWidth * 2,
+    halfHeight * 2,
+  )
 }
 
 /**
@@ -248,34 +385,8 @@ private fun processFrameWithJNI(
           else -> Triple(grayscaleData, convertedWidth, height)
         }
 
-        // Call native detector to look for FS003 protocol patterns
-        // Target resolution is 1280x720, works well at all zoom levels
-        try {
-          val bits = CameraHandlerCallback.nativeDetector(rotatedData, rotatedWidth, rotatedHeight)
-          if (bits != null && bits.isNotEmpty()) {
-            AppSyncLogger.d(
-              TAG,
-              "Pattern detected: bits=${bits.size}, resolution=${rotatedWidth}x${rotatedHeight}, rotation=$rotationDegrees",
-            )
-            // Interpret the detected bits using FS003 protocol
-            val result = AppSyncFs003Interpreter.interpret(bits, currentZoom())
-            if (result != null) {
-              AppSyncLogger.i(
-                TAG,
-                "Scan successful: weight=${result.weight}, fat=${result.fat}, muscle=${result.muscle}",
-              )
-              // Deliver the successful scan result
-              onScanResult(result)
-            } else {
-              // Interpreter failed to process the detected bits
-              AppSyncLogger.w(TAG, "Pattern detected but interpreter returned null")
-            }
-          }
-          // Don't log null results - it's normal for most frames
-        } catch (e: Exception) {
-          // Prevent crashes from native detector
-          AppSyncLogger.e(TAG, "Error calling native detector: ${e.message}", e)
-        }
+        // Hand the upright frame to the native FS003 detector and deliver any result.
+        runNativeDetector(rotatedData, rotatedWidth, rotatedHeight, rotationDegrees, currentZoom, onScanResult)
       } else {
         AppSyncLogger.w(TAG, "Failed to convert YUV_420_888 to grayscale")
       }
@@ -286,5 +397,42 @@ private fun processFrameWithJNI(
   } finally {
     // Always close the image proxy to release resources
     imageProxy.close()
+  }
+}
+
+/**
+ * Runs the native FS003 detector on an upright grayscale frame and, when a pattern is
+ * found and interpreted, delivers the result via [onScanResult]. Null detections are
+ * normal for most frames and are not logged. Exceptions from the native layer are
+ * swallowed so a single bad frame can never crash the analyzer.
+ */
+private fun runNativeDetector(
+  data: ByteArray,
+  width: Int,
+  height: Int,
+  rotationDegrees: Int,
+  currentZoom: () -> Int,
+  onScanResult: (AppSyncResult) -> Unit,
+) {
+  try {
+    val bits = CameraHandlerCallback.nativeDetector(data, width, height)
+    if (bits != null && bits.isNotEmpty()) {
+      AppSyncLogger.d(
+        TAG,
+        "Pattern detected: bits=${bits.size}, resolution=${width}x$height, rotation=$rotationDegrees",
+      )
+      val result = AppSyncFs003Interpreter.interpret(bits, currentZoom())
+      if (result != null) {
+        AppSyncLogger.i(
+          TAG,
+          "Scan successful: weight=${result.weight}, fat=${result.fat}, muscle=${result.muscle}",
+        )
+        onScanResult(result)
+      } else {
+        AppSyncLogger.w(TAG, "Pattern detected but interpreter returned null")
+      }
+    }
+  } catch (e: Exception) {
+    AppSyncLogger.e(TAG, "Error calling native detector: ${e.message}", e)
   }
 }

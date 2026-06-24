@@ -8,7 +8,7 @@ import Combine
 @testable import meApp
 
 @MainActor
-final class MockScaleSetupScaleService: ScaleServiceProtocol {
+final class MockScaleSetupScaleService: PairedDeviceServiceProtocol {
 
     // MARK: - scales
     var scales: [Device] = []
