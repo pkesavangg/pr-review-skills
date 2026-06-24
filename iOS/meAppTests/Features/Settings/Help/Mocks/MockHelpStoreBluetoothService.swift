@@ -13,7 +13,7 @@ final class MockHelpStoreBluetoothService: BluetoothServiceProtocol {
     var canShowScaleDiscoveredModal: Bool = false
     var isSetupInProgress: Bool = false
     var skipDevices: [String] = []
-    var onOpenScaleSetup: ((DeviceSnapshot, DeviceDiscoveryEvent?, Bool, Bool) -> Void)?
+    var onOpenDeviceSetup: ((DeviceSnapshot, DeviceDiscoveryEvent?, Bool, Bool) -> Void)?
 
     var deviceDiscoveredPublisher: AnyPublisher<DeviceDiscoveryEvent, Never> { Empty().eraseToAnyPublisher() }
     var deviceInfoUpdatedPublisher: AnyPublisher<DeviceInfo, Never> { Empty().eraseToAnyPublisher() }

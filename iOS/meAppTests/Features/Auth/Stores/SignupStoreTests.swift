@@ -696,12 +696,15 @@ struct SignupStoreTests {
 
     @Test("selecting a sex on a subsequent device loop does not auto-advance from .sex")
     func selectingSexOnSubsequentLoopDoesNotAdvance() {
-        // First loop: baby scale (no sex step) — gender stays empty.
+        // First loop: baby scale (no sex step). gender defaults to "male", so we
+        // clear it to model a user who hasn't picked a sex yet — only then does the
+        // subsequent BPM loop surface the .sex step (skipSex is false when gender is empty).
         // Second loop: BPM — sex is collected. Tapping a sex option must keep
         // the user on .sex until they explicitly tap Next.
         let (store, _, _, _) = makeSUT()
         store.selectDeviceType(.babyScale)
         store.connectAnotherDevice()
+        store.signupForm.gender.value = ""
         store.selectDeviceType(.bpm)
         guard let sexIndex = store.steps.firstIndex(of: .sex) else {
             Issue.record("expected .sex in steps for BPM second loop")
@@ -715,15 +718,18 @@ struct SignupStoreTests {
         #expect(store.currentStepIndex == sexIndex)
     }
 
-    @Test("profileReadyTitle uses per-device copy while more devices can be added")
+    @Test("profileReadyTitle uses per-device copy for the first device, then combined copy once two are done")
     func profileReadyTitlePerDeviceWhileMoreRemain() {
         let (store, _, _, _) = makeSUT()
         store.selectDeviceType(.weightScale)
         #expect(store.profileReadyTitle == SignupStrings.ProfileReadyStep.weightScaleTitle)
 
+        // After the first device is registered, selecting a second device makes two
+        // devices "done", so the title switches to the combined multi-device copy.
         store.connectAnotherDevice()
         store.selectDeviceType(.babyScale)
-        #expect(store.profileReadyTitle == SignupStrings.ProfileReadyStep.babyScaleTitle)
+        let expectedNames = [SignupDeviceType.weightScale, .babyScale].map(\.profileReadyName).joined(separator: " & ")
+        #expect(store.profileReadyTitle == SignupStrings.ProfileReadyStep.multiDeviceTitle(names: expectedNames))
     }
 
     @Test("profileReadyTitle shows combined multi-device title when exactly 2 devices done")
@@ -782,6 +788,7 @@ struct SignupStoreTests {
         store.registeredDeviceTypes = [.weightScale, .babyScale]
         store.selectedDeviceType = .bpm
         store.disabledDeviceTypes = [.weightScale, .babyScale]
+        store.currentStepIndex = stepIndex(.password, in: store)
 
         // Create account first (COMPLETE on password step).
         await store.performCreateAccount()
@@ -1298,7 +1305,10 @@ struct SignupStoreTests {
 
         accountService.updateProductTypesResult = .success(())
         store.retryFailedDevices()
-        await waitUntil { store.currentStep == .allProfilesReady || store.currentStep == .signupError }
+        // Wait for the retry to actually finish. The store starts on .signupError, so
+        // we must NOT treat .signupError as a terminal wait condition (it would return
+        // immediately, before the async retry runs). The success path lands on .allProfilesReady.
+        await waitUntil { store.currentStep == .allProfilesReady }
 
         let anyFailed = store.deviceStatuses.contains {
             if case .failure = $0.status { return true }; return false

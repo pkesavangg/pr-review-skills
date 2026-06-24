@@ -39,7 +39,7 @@ struct BpmDeviceSettingsStoreTests {
         let store = BpmDeviceSettingsStore(
             device: device,
             notificationService: notification,
-            scaleService: scaleService,
+            deviceService: scaleService,
             bluetoothService: bluetooth,
             logger: logger,
             permissionsService: permissions
@@ -63,7 +63,7 @@ struct BpmDeviceSettingsStoreTests {
             deviceType: DeviceType.bpm.rawValue,
             broadcastIdString: broadcastIdString,
             isConnected: isConnected,
-            bathScale: BathScale(scaleType: ScaleSourceType.bluetooth.rawValue, bodyComp: false)
+            bathScale: BathScale(scaleType: DeviceSourceType.bluetooth.rawValue, bodyComp: false)
         )
     }
 
