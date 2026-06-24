@@ -8,14 +8,19 @@ jobs:
   # Job 1: Gitleaks Secrets Scan
   # ===========================================================
   gitleaks:
-    macos:
-      xcode: "16.0.0"
-    resource_class: macos.m1.medium.gen1
+    docker:
+      - image: cimg/base:current
+    resource_class: small
     steps:
       - checkout
       - run:
           name: Install Gitleaks
-          command: brew install gitleaks
+          command: |
+            GITLEAKS_VERSION=8.21.2
+            curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+              | tar -xz -C /tmp gitleaks
+            sudo mv /tmp/gitleaks /usr/local/bin/gitleaks
+            gitleaks version
       - run:
           name: Secrets scan (Gitleaks)
           command: gitleaks detect --no-banner
@@ -25,8 +30,8 @@ jobs:
   # ===========================================================
   swiftlint:
     macos:
-      xcode: "16.0.0"
-    resource_class: macos.m1.medium.gen1
+      xcode: "16.4.0"
+    resource_class: m4pro.medium
     steps:
       - checkout
       - run:
@@ -50,8 +55,8 @@ jobs:
   # ===========================================================
   build:
     macos:
-      xcode: "16.0.0"
-    resource_class: macos.m1.medium.gen1
+      xcode: "16.4.0"
+    resource_class: m4pro.medium
     steps:
       - checkout
       - run:
@@ -109,8 +114,8 @@ jobs:
   # ===========================================================
   # unit-tests:
   #   macos:
-  #     xcode: "16.0.0"
-  #   resource_class: macos.m1.medium.gen1
+  #     xcode: "16.4.0"
+  #   resource_class: m4pro.medium
   #   steps:
   #     - checkout
   #     - run:
@@ -168,8 +173,8 @@ jobs:
   # ===========================================================
   dependency-audit:
     macos:
-      xcode: "16.0.0"
-    resource_class: macos.m1.medium.gen1
+      xcode: "16.4.0"
+    resource_class: m4pro.medium
     steps:
       - checkout
       - run:
