@@ -118,7 +118,7 @@ extension Validator where Value == String {
     public static func maxValue(_ maximum: Double) -> Validator {
         Validator(type: .maxValue, value: maximum) { value in
             guard let weight = Double(value) else { return true } // Pass if not a number, other validators will catch it
-            return weight < maximum
+            return weight <= maximum
         }
     }
     

@@ -3571,6 +3571,12 @@ class DashboardStore: ObservableObject {
             return
         }
 
+        // Capture before updateScrollPosition fires graphManager.$state (via Combine) which
+        // synchronously overwrites store.graph with graphManager.state, including any
+        // selectedPoint/selectedXValue set during makeStore — causing shouldPreferLatestSelectionForInitialMetrics
+        // to return false and hasLandedInitialSelection to never be set.
+        let hadNoSelection = graph.selectedPoint == nil && graph.selectedXValue == nil
+
         // Calculate optimal scroll position based on X-axis computation logic
         // This ensures the leftmost visible X-axis value aligns with computed X-axis ticks
         // Use cached bounds for O(1) lookup
@@ -3602,7 +3608,7 @@ class DashboardStore: ObservableObject {
         // raced against `BaseGraphView`'s mount + section-VM guards on cold
         // start with the default period (most visibly on Month) and the
         // crosshair often didn't land on the latest entry.
-        if shouldPreferLatestSelectionForInitialMetrics,
+        if hadNoSelection && !ui.hasLandedInitialSelection && !continuousOperations.isEmpty,
            let initialLatestSelectionDate = latestSelectionDateForCurrentPeriod() {
             graphManager.applyChartSelectionSync(
                 at: initialLatestSelectionDate,

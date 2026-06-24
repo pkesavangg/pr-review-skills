@@ -3,6 +3,7 @@
 //  meAppTests
 //
 
+import Foundation
 import Testing
 @testable import meApp
 
@@ -435,5 +436,124 @@ struct HistoryStoreTests {
         await store.refreshAllEntries()
 
         #expect(entryService.getMonthDetailCallCount == 0)
+    }
+
+    // MARK: - showDeleteEntryAlert button actions
+
+    @Test("delete alert confirm button deletes the entry via entry service")
+    func deleteAlertConfirmDeletesEntry() async {
+        let (store, entryService, _, notificationService, _) = makeSUT()
+        let entry = makeEntry()
+
+        store.showDeleteEntryAlert(entry: entry)
+        #expect(notificationService.lastShownAlert != nil)
+
+        // First button is the destructive delete action.
+        notificationService.lastShownAlert?.buttons.first?.action(nil)
+
+        await waitUntil { entryService.deleteEntryCallCount == 1 }
+        #expect(entryService.deleteEntryCallCount == 1)
+        #expect(entryService.lastDeletedEntry?.entryTimestamp == entry.entryTimestamp)
+    }
+
+    @Test("delete alert confirm button handles a delete failure without crashing")
+    func deleteAlertConfirmHandlesError() async {
+        let (store, entryService, _, notificationService, _) = makeSUT()
+        entryService.deleteEntryError = NSError(domain: "HistoryTest", code: -1)
+
+        store.showDeleteEntryAlert(entry: makeEntry())
+        notificationService.lastShownAlert?.buttons.first?.action(nil)
+
+        await waitUntil { entryService.deleteEntryCallCount == 1 }
+        #expect(entryService.deleteEntryCallCount == 1)
+    }
+
+    @Test("delete alert cancel button dismisses the alert")
+    func deleteAlertCancelDismisses() {
+        let (store, _, _, notificationService, _) = makeSUT()
+
+        store.showDeleteEntryAlert(entry: makeEntry())
+        // Second button is the cancel action.
+        notificationService.lastShownAlert?.buttons.last?.action(nil)
+
+        #expect(notificationService.dismissAlertCallCount == 1)
+    }
+
+    // MARK: - handleExport button actions
+
+    @Test("export alert send button exports CSV and shows a success toast")
+    func exportAlertSendExportsCSV() async {
+        let (store, entryService, _, notificationService, _) = makeSUT()
+
+        store.handleExport()
+        notificationService.lastShownAlert?.buttons.first?.action(nil)
+
+        await waitUntil { entryService.exportCSVCallCount == 1 }
+        #expect(entryService.exportCSVCallCount == 1)
+        await waitUntil { notificationService.showToastCallCount == 1 }
+        #expect(notificationService.showToastCallCount == 1)
+    }
+
+    @Test("export failure shows an error toast")
+    func exportShowsErrorToastOnFailure() async {
+        let (store, entryService, _, notificationService, _) = makeSUT()
+        entryService.exportCSVError = NSError(domain: "HistoryTest", code: -1)
+
+        store.handleExport()
+        notificationService.lastShownAlert?.buttons.first?.action(nil)
+
+        await waitUntil { notificationService.showToastCallCount == 1 }
+        #expect(notificationService.showToastCallCount == 1)
+    }
+
+    @Test("export failure with no internet does not show a toast")
+    func exportNoInternetShowsNoToast() async {
+        let (store, entryService, _, notificationService, _) = makeSUT()
+        entryService.exportCSVError = HTTPError.noInternet
+
+        store.handleExport()
+        notificationService.lastShownAlert?.buttons.first?.action(nil)
+
+        // dismissLoader is the final statement of the export flow; once it runs the catch has completed.
+        await waitUntil { notificationService.dismissLoaderCallCount >= 1 }
+        #expect(notificationService.showToastCallCount == 0)
+    }
+
+    @Test("export alert cancel button does not export")
+    func exportAlertCancelDoesNotExport() {
+        let (store, entryService, _, notificationService, _) = makeSUT()
+
+        store.handleExport()
+        notificationService.lastShownAlert?.buttons.last?.action(nil)
+
+        #expect(entryService.exportCSVCallCount == 0)
+    }
+
+    // MARK: - entrySaved / entryDeleted publishers
+
+    @Test("entrySaved publisher reloads months")
+    func entrySavedReloadsMonths() async {
+        // `store` must be retained: the init subscriber captures `[weak self]`,
+        // so a deallocated store would silently skip the reload.
+        let (store, entryService, _, _, _) = makeSUT()
+        entryService.getMonthsAllResult = [makeHistoryMonth()]
+
+        entryService.entrySaved.send(EntryNotification(from: makeEntry()))
+
+        await waitUntil { entryService.getMonthsAllCallCount >= 1 }
+        #expect(entryService.getMonthsAllCallCount >= 1)
+        withExtendedLifetime(store) {}
+    }
+
+    @Test("entryDeleted publisher reloads months")
+    func entryDeletedReloadsMonths() async {
+        let (store, entryService, _, _, _) = makeSUT()
+        entryService.getMonthsAllResult = [makeHistoryMonth()]
+
+        entryService.entryDeleted.send(EntryNotification(from: makeEntry()))
+
+        await waitUntil { entryService.getMonthsAllCallCount >= 1 }
+        #expect(entryService.getMonthsAllCallCount >= 1)
+        withExtendedLifetime(store) {}
     }
 }

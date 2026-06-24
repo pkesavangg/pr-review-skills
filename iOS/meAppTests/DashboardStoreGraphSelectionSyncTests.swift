@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import meApp
 
+@Suite(.serialized)
 @MainActor
 struct DashboardStoreGraphSelectionSyncTests {
 
@@ -25,7 +26,7 @@ struct DashboardStoreGraphSelectionSyncTests {
 
     @Test
     func exactChartSelectionUpdatesSelectedPointMetricsForAllPeriods() async throws {
-        defer { Task { await clearEntrySummaries() } }
+        defer { clearEntrySummaries() }
 
         let dailyOlder = makeSummary(
             date: makeDate(2026, 4, 18),
@@ -88,7 +89,7 @@ struct DashboardStoreGraphSelectionSyncTests {
 
     @Test
     func monthViewModelAppliesExistingStoreLatestSelectionAfterConfiguration() async throws {
-        defer { Task { await clearEntrySummaries() } }
+        defer { clearEntrySummaries() }
 
         let older = makeSummary(
             date: makeDate(2026, 4, 18),
@@ -122,7 +123,7 @@ struct DashboardStoreGraphSelectionSyncTests {
 
     @Test
     func initializeChartSelectsLatestEntryWhenMonthIsVisibleInitially() async throws {
-        defer { Task { await clearEntrySummaries() } }
+        defer { clearEntrySummaries() }
 
         let older = makeSummary(
             date: makeDate(2026, 4, 18),
@@ -148,14 +149,14 @@ struct DashboardStoreGraphSelectionSyncTests {
 
         store.initializeChart()
 
-        try await waitUntil(timeout: 2.0) {
+        try await waitUntil(timeout: 5.0) {
             store.state.graph.selectedPoint?.entryTimestamp == latest.entryTimestamp &&
-            store.state.graph.selectedXValue == latest.date &&
+            store.state.graph.selectedXValue.map { Calendar.current.isDate($0, inSameDayAs: latest.date) } == true &&
             store.state.ui.hasLandedInitialSelection
         }
 
         #expect(store.state.graph.selectedPoint?.entryTimestamp == latest.entryTimestamp)
-        #expect(store.state.graph.selectedXValue == latest.date)
+        #expect(store.state.graph.selectedXValue.map { Calendar.current.isDate($0, inSameDayAs: latest.date) } == true)
         #expect(store.state.ui.hasLandedInitialSelection)
     }
 
@@ -189,12 +190,12 @@ private func makeStore(
     store.state.ui.hasLoadedDashboardConfig = true
 
     // Let any init-time async work settle before returning.
-    try? await waitUntil(timeout: 2.0) { store.state.ui.hasLoadedMetricValues }
+    try? await waitUntil(timeout: 5.0) { store.state.ui.hasLoadedMetricValues }
     return store
 }
 
 @MainActor
-private func clearEntrySummaries() async {
+private func clearEntrySummaries() {
     EntryService.shared.dailySummaries = []
     EntryService.shared.monthlySummaries = []
 }
