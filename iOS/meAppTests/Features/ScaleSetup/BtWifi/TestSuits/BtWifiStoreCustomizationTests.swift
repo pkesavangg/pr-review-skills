@@ -50,28 +50,28 @@ extension BtWifiStoreTests {
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
             store.savedScale = scale
-            store.savedScaleMetricsSnapshot = ["saved-metric"]
+            store.savedDeviceMetricsSnapshot = ["saved-metric"]
             store.navigateToStep(.customizeSettings)
 
             store.setCustomizationPage(.scaleMetrics)
 
             await BtWifiStoreTestFixtures.waitUntil {
                 store.currentStep == .viewSettings &&
-                    store.selectedScaleMetrics == ScaleMetrics.defaultMetricsKeys
+                    store.selectedDeviceMetrics == DeviceMetrics.defaultMetricsKeys
             }
 
-            #expect(store.initialScaleMetricsSnapshot == ScaleMetrics.defaultMetricsKeys)
-            #expect(store.savedScaleMetricsSnapshot == ["saved-metric"])
+            #expect(store.initialDeviceMetricsSnapshot == DeviceMetrics.defaultMetricsKeys)
+            #expect(store.savedDeviceMetricsSnapshot == ["saved-metric"])
 
             store.navigateToStep(.customizeSettings)
             store.setCustomizationPage(.scaleMetrics)
 
             await BtWifiStoreTestFixtures.waitUntil {
                 store.currentStep == .viewSettings &&
-                    store.selectedScaleMetrics == ScaleMetrics.defaultMetricsKeys
+                    store.selectedDeviceMetrics == DeviceMetrics.defaultMetricsKeys
             }
 
-            #expect(store.savedScaleMetricsSnapshot == ["saved-metric"])
+            #expect(store.savedDeviceMetricsSnapshot == ["saved-metric"])
         }
 
         @Test("handleScaleModeChange updates state and next button reflects changed versus reverted values")
@@ -82,16 +82,16 @@ extension BtWifiStoreTests {
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
             store.navigateToStep(.viewSettings)
             store.currentCustomizeSetting = .scaleMode
-            store.initialScaleModeSnapshot = .allBodyMetrics
+            store.initialDeviceModeSnapshot = .allBodyMetrics
             store.initialHeartRateEnabledSnapshot = false
-            store.selectedScaleMode = .allBodyMetrics
+            store.selectedDeviceMode = .allBodyMetrics
             store.isHeartRateEnabled = false
             store.updateNextEnabled()
 
             #expect(store.isNextEnabled == false)
 
             store.handleScaleModeChange(.weightOnly, heartRateEnabled: true)
-            #expect(store.selectedScaleMode == .weightOnly)
+            #expect(store.selectedDeviceMode == .weightOnly)
             #expect(store.isHeartRateEnabled == true)
             #expect(store.isNextEnabled == true)
 
@@ -165,13 +165,13 @@ extension BtWifiStoreTests {
             store.savedScale = scale
             store.navigateToStep(.viewSettings)
             store.currentCustomizeSetting = .scaleMetrics
-            store.selectedScaleMetrics = ["weight"]
+            store.selectedDeviceMetrics = ["weight"]
 
             store.performViewSettingsSave()
 
             await BtWifiStoreTestFixtures.waitUntil {
                 store.currentCustomizeSetting == .none &&
-                    store.savedScaleMetricsSnapshot == ["weight"]
+                    store.savedDeviceMetricsSnapshot == ["weight"]
             }
 
             #expect(store.selectedCustomizeItems == [metricsKey])
@@ -179,17 +179,17 @@ extension BtWifiStoreTests {
 
             store.navigateToStep(.viewSettings)
             store.currentCustomizeSetting = .scaleMetrics
-            store.selectedScaleMetrics = ["weight", "heartRate"]
+            store.selectedDeviceMetrics = ["weight", "heartRate"]
 
             store.performViewSettingsSave()
 
             await BtWifiStoreTestFixtures.waitUntil {
                 store.currentCustomizeSetting == .none &&
-                    store.savedScaleMetricsSnapshot == ["weight", "heartRate"]
+                    store.savedDeviceMetricsSnapshot == ["weight", "heartRate"]
             }
 
             #expect(store.selectedCustomizeItems == [metricsKey])
-            #expect(store.savedScaleMetricsSnapshot == ["weight", "heartRate"])
+            #expect(store.savedDeviceMetricsSnapshot == ["weight", "heartRate"])
         }
 
         @Test("customization helper actions track visited items and present both info modals")
@@ -233,15 +233,15 @@ extension BtWifiStoreTests {
             store.savedScale = scale
             store.selectedCustomizeItems = [
                 CustomizeSettingsItem.userName.rawValue,
-                CustomizeSettingsItem.scaleModes.rawValue,
+                CustomizeSettingsItem.deviceModes.rawValue,
                 CustomizeSettingsItem.scaleMetrics.rawValue
             ]
             store.hasCustomizeChanges = true
             store.hasSavedSettings = true
             store.userNameForm.setDisplayName("")
-            store.selectedScaleMode = .weightOnly
+            store.selectedDeviceMode = .weightOnly
             store.isHeartRateEnabled = true
-            store.selectedScaleMetrics = ["weight", "heartRate"]
+            store.selectedDeviceMetrics = ["weight", "heartRate"]
 
             await store.updateCustomizeSettings()
 
@@ -270,7 +270,7 @@ extension BtWifiStoreTests {
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
             store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             store.selectedCustomizeItems = [CustomizeSettingsItem.scaleMetrics.rawValue]
-            store.selectedScaleMetrics = ["weight"]
+            store.selectedDeviceMetrics = ["weight"]
 
             await store.updateCustomizeSettings()
 
@@ -294,12 +294,12 @@ extension BtWifiStoreTests {
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
             store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             store.selectedCustomizeItems = [
-                CustomizeSettingsItem.scaleModes.rawValue,
+                CustomizeSettingsItem.deviceModes.rawValue,
                 CustomizeSettingsItem.scaleMetrics.rawValue
             ]
-            store.selectedScaleMode = .weightOnly
+            store.selectedDeviceMode = .weightOnly
             store.isHeartRateEnabled = true
-            store.selectedScaleMetrics = ["weight", "heartRate"]
+            store.selectedDeviceMetrics = ["weight", "heartRate"]
             store.hasCustomizeChanges = true
             store.hasSavedSettings = true
 
@@ -313,7 +313,7 @@ extension BtWifiStoreTests {
             #expect(scaleService.pushLocalChangesToServerCalls == 1)
             #expect(bluetooth.updateAccountCalls == 1)
             #expect(store.currentStep != .stepOn)
-            #expect(store.selectedCustomizeItems.contains(CustomizeSettingsItem.scaleModes.rawValue))
+            #expect(store.selectedCustomizeItems.contains(CustomizeSettingsItem.deviceModes.rawValue))
             #expect(store.selectedCustomizeItems.contains(CustomizeSettingsItem.scaleMetrics.rawValue))
             #expect(store.hasCustomizeChanges == true)
             #expect(store.hasSavedSettings == true)
@@ -341,7 +341,7 @@ extension BtWifiStoreTests {
 
             await BtWifiStoreTestFixtures.waitUntil {
                 store.currentStep == .viewSettings &&
-                    store.selectedScaleMode == .weightOnly &&
+                    store.selectedDeviceMode == .weightOnly &&
                     store.isHeartRateEnabled == true
             }
 
@@ -368,11 +368,11 @@ extension BtWifiStoreTests {
             store.setCustomizationPage(.scaleMetrics)
 
             await BtWifiStoreTestFixtures.waitUntil {
-                store.currentStep == .viewSettings && store.selectedScaleMetrics == ["weight", "bodyFat"]
+                store.currentStep == .viewSettings && store.selectedDeviceMetrics == ["weight", "bodyFat"]
             }
 
-            #expect(store.initialScaleMetricsSnapshot == ["weight", "bodyFat"])
-            #expect(store.savedScaleMetricsSnapshot == ["weight", "bodyFat"])
+            #expect(store.initialDeviceMetricsSnapshot == ["weight", "bodyFat"])
+            #expect(store.savedDeviceMetricsSnapshot == ["weight", "bodyFat"])
         }
 
         @Test("valid username save updates attached preference and returns to customize settings")
@@ -423,7 +423,7 @@ extension BtWifiStoreTests {
             store.savedScale = scale.toSnapshot()
             store.navigateToStep(.viewSettings)
             store.currentCustomizeSetting = .scaleMode
-            store.selectedScaleMode = .allBodyMetrics
+            store.selectedDeviceMode = .allBodyMetrics
             store.isHeartRateEnabled = false
 
             store.performViewSettingsSave()
@@ -437,9 +437,9 @@ extension BtWifiStoreTests {
 
             store.navigateToStep(.viewSettings)
             store.currentCustomizeSetting = .scaleMode
-            store.initialScaleModeSnapshot = nil
+            store.initialDeviceModeSnapshot = nil
             store.initialHeartRateEnabledSnapshot = nil
-            store.selectedScaleMode = .allBodyMetrics
+            store.selectedDeviceMode = .allBodyMetrics
             store.isHeartRateEnabled = false
             attached.shouldMeasureImpedance = false
             attached.shouldMeasurePulse = true
@@ -450,7 +450,7 @@ extension BtWifiStoreTests {
                 store.currentCustomizeSetting == .none
             }
 
-            #expect(store.selectedScaleMode == .weightOnly)
+            #expect(store.selectedDeviceMode == .weightOnly)
             #expect(store.isHeartRateEnabled == true)
         }
 
@@ -462,8 +462,8 @@ extension BtWifiStoreTests {
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
             store.navigateToStep(.viewSettings)
             store.currentCustomizeSetting = .scaleMetrics
-            store.savedScaleMetricsSnapshot = ["weight", "bodyFat"]
-            store.selectedScaleMetrics = ["weight"]
+            store.savedDeviceMetricsSnapshot = ["weight", "bodyFat"]
+            store.selectedDeviceMetrics = ["weight"]
 
             store.handleBackButtonClick()
 
@@ -471,7 +471,7 @@ extension BtWifiStoreTests {
                 store.currentCustomizeSetting == .none && store.currentStep == .customizeSettings
             }
 
-            #expect(store.selectedScaleMetrics == ["weight", "bodyFat"])
+            #expect(store.selectedDeviceMetrics == ["weight", "bodyFat"])
         }
 
         @Test("setupScaleUsernameForm skips re-fetch when user list already exists and leaves matching display name stable")
@@ -520,11 +520,11 @@ extension BtWifiStoreTests {
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
             store.savedScale = scale
-            store.selectedCustomizeItems = [CustomizeSettingsItem.scaleModes.rawValue]
+            store.selectedCustomizeItems = [CustomizeSettingsItem.deviceModes.rawValue]
             store.userNameForm.setDisplayName("Ignored")
-            store.selectedScaleMode = .weightOnly
+            store.selectedDeviceMode = .weightOnly
             store.isHeartRateEnabled = true
-            store.selectedScaleMetrics = ["weight"]
+            store.selectedDeviceMetrics = ["weight"]
 
             await store.updateCustomizeSettings()
 
@@ -547,7 +547,7 @@ extension BtWifiStoreTests {
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
             store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot()
             store.selectedCustomizeItems = [CustomizeSettingsItem.scaleMetrics.rawValue]
-            store.selectedScaleMetrics = ["weight"]
+            store.selectedDeviceMetrics = ["weight"]
 
             await store.updateCustomizeSettings()
 
@@ -846,7 +846,7 @@ extension BtWifiStoreTests {
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
             store.navigateToStep(.customizeSettings)
             store.userNameForm.setDisplayName("KeepMe")
-            store.selectedScaleMetrics = ["weight"]
+            store.selectedDeviceMetrics = ["weight"]
 
             store.setCustomizationPage(.none)
 
@@ -856,7 +856,7 @@ extension BtWifiStoreTests {
 
             #expect(store.currentCustomizeSetting == .none)
             #expect(store.userNameForm.displayName.value == "KeepMe")
-            #expect(store.selectedScaleMetrics == ["weight"])
+            #expect(store.selectedDeviceMetrics == ["weight"])
             #expect(bluetooth.getScaleUserListCalls == 0)
         }
 
@@ -873,13 +873,13 @@ extension BtWifiStoreTests {
             store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot(id: "scale-default-pref")
             store.selectedCustomizeItems = [
                 CustomizeSettingsItem.userName.rawValue,
-                CustomizeSettingsItem.scaleModes.rawValue,
+                CustomizeSettingsItem.deviceModes.rawValue,
                 CustomizeSettingsItem.scaleMetrics.rawValue
             ]
             store.userNameForm.setDisplayName("")
-            store.selectedScaleMode = .weightOnly
+            store.selectedDeviceMode = .weightOnly
             store.isHeartRateEnabled = true
-            store.selectedScaleMetrics = ["weight", "heartRate"]
+            store.selectedDeviceMetrics = ["weight", "heartRate"]
 
             await store.updateCustomizeSettings()
 

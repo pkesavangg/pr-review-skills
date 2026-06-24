@@ -91,8 +91,8 @@ enum BtWifiStoreTestFixtures {
         DependencyContainer.shared.register(permissions as PermissionsServiceProtocol)
         DependencyContainer.shared.register(bluetooth as BluetoothServiceProtocol)
         DependencyContainer.shared.register(account as AccountServiceProtocol)
-        DependencyContainer.shared.register(scaleService as ScaleServiceProtocol)
-        DependencyContainer.shared.register(wifiScaleService as WifiScaleServiceProtocol)
+        DependencyContainer.shared.register(scaleService as PairedDeviceServiceProtocol)
+        DependencyContainer.shared.register(wifiScaleService as WifiPairedDeviceServiceProtocol)
         DependencyContainer.shared.register(pushNotifications as PushNotificationServiceProtocol)
         DependencyContainer.shared.register(entryService as EntryServiceProtocol)
         DependencyContainer.shared.register(goalAlertService as GoalAlertServiceProtocol)
@@ -111,8 +111,8 @@ enum BtWifiStoreTestFixtures {
         _ = store.permissionsService
         _ = store.bluetoothService
         _ = store.accountService
-        _ = store.wifiScaleService
-        _ = store.scaleService
+        _ = store.wifiDeviceService
+        _ = store.deviceService
         _ = store.pushNotificationService
         _ = store.entryService
         _ = store.goalAlertService

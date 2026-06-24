@@ -51,7 +51,7 @@ extension BpmSetupStoreTests {
             store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.scanning, in: store)
 
             let failed = await BpmSetupStoreTestFixtures.waitUntil {
-                store.connectionState == .failure
+                harness.notification.showAlertCalls > 0
             }
             #expect(failed)
         }
@@ -130,7 +130,7 @@ extension BpmSetupStoreTests {
 
             await store.testStartPairing()
 
-            #expect(store.connectionState == .failure)
+            #expect(harness.notification.showAlertCalls > 0)
             #expect(harness.scaleService.createBluetoothScaleCalls == 0)
         }
 
@@ -142,7 +142,7 @@ extension BpmSetupStoreTests {
 
             await store.testStartPairing()
 
-            #expect(store.connectionState == .failure)
+            #expect(harness.notification.showAlertCalls > 0)
         }
 
         @Test("Already Paired alert shown only once when Continue leads to successful second pairing")
@@ -216,7 +216,7 @@ extension BpmSetupStoreTests {
             let existing = BpmSetupStoreTestFixtures.makeBpmDevice(id: "existing-bpm")
             existing.peripheralIdentifier = "SN-ABC"
             existing.userNumber = "1"
-            harness.scaleService.scales = [existing]
+            harness.scaleService.scales = [existing.toSnapshot()]
 
             let device = BpmSetupStoreTestFixtures.makeBpmDevice(id: "new-bpm")
             device.broadcastIdString = "ABCD"
