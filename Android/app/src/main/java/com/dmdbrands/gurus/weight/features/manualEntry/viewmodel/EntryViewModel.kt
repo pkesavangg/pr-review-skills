@@ -29,6 +29,9 @@ import com.dmdbrands.gurus.weight.features.dashboard.string.DashboardString
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
 import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -399,15 +402,35 @@ constructor(
 
   private fun saveBabyEntry() {
     val babyForm = (_state.value.activeForm as? ActiveEntryForm.Baby)?.form ?: return
-    val babyId = (productSelectionManager.selectedProduct.value as? ProductSelection.Baby)?.profile?.id
+    val babyProfile = (productSelectionManager.selectedProduct.value as? ProductSelection.Baby)?.profile
+    val babyId = babyProfile?.id
     if (babyId == null) {
       AppLog.w(TAG, "No baby selected; cannot save baby entry")
       return
     }
+
+    // Match Smart Baby (babyApp): reject entries dated before the baby's birthdate. The
+    // comparison is calendar-day only (time-of-day ignored), and surfaces a toast without
+    // saving — same behaviour and copy as babyApp's add-weight/add-length screens. (MOB-592)
+    val entryTimestamp = babyForm.forms.baby.controls.dateTime.value.getTimestamp()
+    if (isBeforeBirthdate(entryTimestamp, babyProfile.birthdate)) {
+      dialogQueueService.showToast(Toast.Simple(message = EntryScreenStrings.EntryBeforeBirthdate))
+      return
+    }
+
     dialogQueueService.showLoader(message = DashboardString.Loader.save)
     viewModelScope.launch {
       val accountId = accountService.activeAccountFlow.first()?.id
       if (accountId == null) {
+        // Practically unreachable for a logged-in user, but surface it like the other save
+        // paths rather than dismissing the loader with no feedback. (MOB-592)
+        AppLog.w(TAG, "No active account; cannot save baby entry")
+        dialogQueueService.showToast(
+          Toast.Simple(
+            title = EntryScreenStrings.EntryErrorTitle,
+            message = EntryScreenStrings.EntryErrorMessage,
+          ),
+        )
         dialogQueueService.dismissLoader()
         return@launch
       }
@@ -441,6 +464,19 @@ constructor(
         dialogQueueService.dismissLoader()
       }
     }
+  }
+
+  /**
+   * True when [entryTimestamp] falls on a calendar day strictly before the baby's [birthdate]
+   * (an ISO date like "2026-01-10"). Day-level comparison in the device's zone, mirroring
+   * babyApp's getDateOnly check. Returns false when the birthdate is missing/unparseable so
+   * we never block a save on bad profile data.
+   */
+  private fun isBeforeBirthdate(entryTimestamp: Long, birthdate: String?): Boolean {
+    if (birthdate.isNullOrBlank()) return false
+    val birthDay = runCatching { LocalDate.parse(birthdate.take(10)) }.getOrNull() ?: return false
+    val entryDay = Instant.ofEpochMilli(entryTimestamp).atZone(ZoneId.systemDefault()).toLocalDate()
+    return entryDay.isBefore(birthDay)
   }
 
   /**

@@ -507,4 +507,61 @@ class DashboardReducerTest {
 
         assertThat(result).isEqualTo(state)
     }
+
+    // -------------------------------------------------------------------------
+    // Base intent — ScrollRange
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `ScrollRange stores visible range on the segment`() {
+        val result = reducer.reduce(
+            WeightDashboardState(),
+            BaseGraphIntent.ScrollRange(GraphSegment.WEEK, min = 100L, max = 200L),
+        )
+
+        val segment = result?.segmentStates?.get(GraphSegment.WEEK)
+        assertThat(segment?.visibleMin).isEqualTo(100L)
+        assertThat(segment?.visibleMax).isEqualTo(200L)
+    }
+
+    // -------------------------------------------------------------------------
+    // Base intent — UpdateSegmentTarget
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `UpdateSegmentTarget stores target on the segment`() {
+        val result = reducer.reduce(
+            WeightDashboardState(),
+            BaseGraphIntent.UpdateSegmentTarget(GraphSegment.WEEK, listOf(fakeSummaryA, fakeSummaryB)),
+        )
+
+        assertThat(result?.segmentStates?.get(GraphSegment.WEEK)?.target)
+            .containsExactly(fakeSummaryA, fakeSummaryB).inOrder()
+    }
+
+    @Test
+    fun `UpdateSegmentTarget keeps null markerIndex with empty target`() {
+        val result = reducer.reduce(
+            WeightDashboardState(markerIndex = null),
+            BaseGraphIntent.UpdateSegmentTarget(GraphSegment.WEEK, emptyList()),
+        )
+
+        assertThat(result?.markerIndex).isNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // Base intent — UpdateSeedYRange
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `UpdateSeedYRange stores seed Y range on the segment`() {
+        val result = reducer.reduce(
+            WeightDashboardState(),
+            BaseGraphIntent.UpdateSeedYRange(GraphSegment.MONTH, minY = 50.0, maxY = 250.0),
+        )
+
+        val segment = result?.segmentStates?.get(GraphSegment.MONTH)
+        assertThat(segment?.seedMinY).isEqualTo(50.0)
+        assertThat(segment?.seedMaxY).isEqualTo(250.0)
+    }
 }

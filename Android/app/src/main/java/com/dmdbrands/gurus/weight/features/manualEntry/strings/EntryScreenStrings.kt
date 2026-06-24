@@ -70,6 +70,9 @@ object EntryScreenStrings {
   const val EntryErrorTitle = "Error saving new entry!"
   const val EntryErrorMessage = "Please try again."
 
+  // Baby: reject entries dated before the baby's birthdate (matches Smart Baby / babyApp).
+  const val EntryBeforeBirthdate = "Unable to add entries before a babys first birth date"
+
   // Blood pressure
   const val SYSTOLIC_LABEL = "systolic"
   const val DIASTOLIC_LABEL = "diastolic"

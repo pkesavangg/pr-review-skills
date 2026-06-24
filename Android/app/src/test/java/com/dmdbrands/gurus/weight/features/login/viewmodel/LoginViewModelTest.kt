@@ -260,6 +260,31 @@ class LoginViewModelTest {
     }
 
     @Test
+    fun `Submit when login returns null dismisses the loader`() = runTest {
+        coEvery { accountService.login(TEST_EMAIL, TEST_PASSWORD) } returns null
+
+        fillValidForm()
+        viewModel.handleIntent(LoginIntent.Submit)
+        advanceUntilIdle()
+
+        verify { dialogQueueService.showLoader(message = LoginStrings.LoaderMessage) }
+        verify { dialogQueueService.dismissLoader() }
+    }
+
+    @Test
+    fun `Submit when login throws generic exception sets error to exception string`() = runTest {
+        coEvery {
+            accountService.login(TEST_EMAIL, TEST_PASSWORD)
+        } throws RuntimeException(GENERIC_EXCEPTION_MESSAGE)
+
+        fillValidForm()
+        viewModel.handleIntent(LoginIntent.Submit)
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.error).contains(GENERIC_EXCEPTION_MESSAGE)
+    }
+
+    @Test
     fun `Submit when login throws generic exception sets error state`() = runTest {
         coEvery {
             accountService.login(TEST_EMAIL, TEST_PASSWORD)
