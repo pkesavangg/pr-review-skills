@@ -10,7 +10,7 @@ jobs:
   gitleaks:
     macos:
       xcode: "16.2.0"
-    resource_class: macos.m2.medium.gen2
+    resource_class: macos.m1.medium.gen1
     steps:
       - checkout
       - run:
@@ -26,7 +26,7 @@ jobs:
   swiftlint:
     macos:
       xcode: "16.2.0"
-    resource_class: macos.m2.medium.gen2
+    resource_class: macos.m1.medium.gen1
     steps:
       - checkout
       - run:
@@ -51,7 +51,7 @@ jobs:
   build:
     macos:
       xcode: "16.2.0"
-    resource_class: macos.m2.medium.gen2
+    resource_class: macos.m1.medium.gen1
     steps:
       - checkout
       - run:
@@ -110,7 +110,7 @@ jobs:
   # unit-tests:
   #   macos:
   #     xcode: "16.2.0"
-  #   resource_class: macos.m2.medium.gen2
+  #   resource_class: macos.m1.medium.gen1
   #   steps:
   #     - checkout
   #     - run:
@@ -169,7 +169,7 @@ jobs:
   dependency-audit:
     macos:
       xcode: "16.2.0"
-    resource_class: macos.m2.medium.gen2
+    resource_class: macos.m1.medium.gen1
     steps:
       - checkout
       - run:
