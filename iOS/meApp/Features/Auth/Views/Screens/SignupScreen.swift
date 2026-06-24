@@ -115,8 +115,8 @@ struct SignupScreen: View {
                 shouldShowBackground: false
             )
             
-            if signupStore.currentStep != .allProfilesReady && signupStore.currentStep != .signupError {
-                ProgressBarView(progress: signupStore.progressValue)
+            if signupStore.currentStep != .signupError {
+                ProgressBarView(progress: signupStore.currentStep == .allProfilesReady ? 1.0 : signupStore.progressValue)
                     .padding([.horizontal, .top], .spacingSM)
             }
             
@@ -182,7 +182,7 @@ struct SignupScreen: View {
                         text: commonLang.back,
                         type: .textPrimary,
                         size: .small,
-                        isDisabled: false,
+                        isDisabled: true,
                         padding: true
                     ) {
                         withAnimation { signupStore.moveToPreviousStep() }

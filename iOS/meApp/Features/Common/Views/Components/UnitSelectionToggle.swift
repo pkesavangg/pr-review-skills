@@ -55,7 +55,7 @@ struct UnitSelectionToggle: View {
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingXS)
                 .background(
-                    Capsule().fill(isSelected ? theme.actionPrimary : Color.clear)
+                    Capsule().fill(isSelected ? theme.actionPrimary : theme.backgroundPrimary)
                 )
         })
         .buttonStyle(.plain)

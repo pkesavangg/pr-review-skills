@@ -92,7 +92,6 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
                 .offset(x: calculateOffset())
                 .compositingGroup()
         )
-        .background(theme.backgroundSecondary)
         .clipShape(RoundedRectangle(cornerRadius: .radiusMD))
     }
 

@@ -529,11 +529,17 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         }
 
         let response = try await apiRepo.patchProductTypes(productTypes)
-        // Merge what we sent with what the server returned — never reduce product types.
-        // A server PATCH response may return a device-only subset (e.g. ["weight"]), which
-        // would drop types earned via manual entries (e.g. "blood_pressure") after relaunch.
+        // Merge what we sent with what the server returned AND what is already persisted
+        // locally — never reduce product types. A server PATCH response may return a
+        // device-only subset (e.g. ["weight"]), and a stale/concurrent caller may send a
+        // subset (e.g. ["baby"]); unioning with the existing local value guarantees neither
+        // can drop a type earned earlier (e.g. "blood_pressure" from another device).
         let serverTypes = response.account.productTypes ?? productTypes
-        localAccount.productTypes = Array(Set(productTypes).union(Set(serverTypes)))
+        localAccount.productTypes = Array(
+            Set(localAccount.productTypes)
+                .union(productTypes)
+                .union(serverTypes)
+        )
         try await updateAccountClearingTokens(localAccount)
         try await updatePublishedState()
         logger.log(

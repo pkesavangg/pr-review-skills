@@ -21,7 +21,7 @@ struct TabBarItemView: View {
             VStack {
                 Image(isSelected ? tab.filledIcon : tab.icon)
                  .renderingMode(.template)
-                 .foregroundColor(theme.actionSecondary)
+                 .foregroundColor(theme.statusIconPrimary)
             }
             .frame(width: 40, height: 40)
             .overlay {

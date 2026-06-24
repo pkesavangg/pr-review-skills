@@ -62,6 +62,9 @@ enum AppColors {
         let brandMeAppPrimary: Color
         let brandWgPrimary: Color
         let babyPrimary: Color
+        let babyScaleColor: Color
+        let weightScaleColor: Color
+        let bpmColor: Color
         
         // Icon colors
         let statusSuccess: Color

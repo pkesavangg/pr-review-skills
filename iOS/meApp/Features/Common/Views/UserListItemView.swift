@@ -99,7 +99,7 @@ struct UserListItemView: View {
                     onEdit(user.accountID)
                 } label: {
                     AppIconView(icon: AppAssets.editIcon, size: IconSize(width: 24, height: 24))
-                        .foregroundColor(theme.actionSecondary)
+                        .foregroundColor(theme.statusIconSecondary)
                 }
                 .buttonStyle(.plain)
             } else if user.canShowSelection {

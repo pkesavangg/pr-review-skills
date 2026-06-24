@@ -30,6 +30,14 @@ final class SignupStore: ObservableObject {
     @Published var currentStepIndex: Int = 0 {
         didSet {
             currentStep = steps[currentStepIndex]
+            // (Re)entering Add Baby for a NEW baby (not an edit) must start from a clean
+            // form. The keyboard blur that fires as the user leaves this step marks the
+            // already-reset name field as touched, so without this the empty field shows a
+            // phantom "Required." error when the user navigates back to it. Edits keep their
+            // populated values (isEditingBabyIndex is set before navigating).
+            if currentStep == .addBaby, isEditingBabyIndex == nil {
+                resetBabyProfileForm()
+            }
             updateNextButtonState()
         }
     }
@@ -475,6 +483,9 @@ final class SignupStore: ObservableObject {
             birthWeightOz: baby.birthWeightOz,
             preferredWeightUnit: baby.selectedWeightUnit
         )
+        // Populating sets values (marking controls dirty); clear that so the edit screen
+        // opens without surfacing validation errors until the user actually edits a field.
+        markBabyProfileFormPristine()
         isEditingBabyIndex = index
         guard let addBabyIndex = steps.firstIndex(of: .addBaby) else { return }
         currentStepIndex = addBabyIndex
@@ -733,6 +744,13 @@ final class SignupStore: ObservableObject {
                 currentStepIndex = errorIndex
             }
         } else {
+            // A fresh signup should open on the multi-device snapshot overview, not jump
+            // straight into a product dashboard. persistSignupBabies() persists a baby
+            // selection (so the right baby is highlighted), which would otherwise be read
+            // by resolveInitialProductRedirect() as a returning-user "last viewed product"
+            // hint and redirect into that product. Clear it so the overview shows first;
+            // the in-memory selection is kept.
+            ProductTypeStore.shared.clearPersistedSelection()
             completeSignup()
         }
     }
@@ -912,6 +930,28 @@ final class SignupStore: ObservableObject {
 
     private func resetBabyProfileForm() {
         babyProfileForm.reset()
+    }
+
+    /// Clears dirty/touched state on the baby form's controls without changing their values.
+    /// Used after programmatically populating the form for an edit so validation errors
+    /// don't appear until the user interacts.
+    private func markBabyProfileFormPristine() {
+        babyProfileForm.name.markAsPristine()
+        babyProfileForm.name.markAsUntouched()
+        babyProfileForm.birthday.markAsPristine()
+        babyProfileForm.birthday.markAsUntouched()
+        babyProfileForm.biologicalSex.markAsPristine()
+        babyProfileForm.biologicalSex.markAsUntouched()
+        babyProfileForm.birthLengthInches.markAsPristine()
+        babyProfileForm.birthLengthInches.markAsUntouched()
+        babyProfileForm.birthWeightLbs.markAsPristine()
+        babyProfileForm.birthWeightLbs.markAsUntouched()
+        babyProfileForm.birthWeightOz.markAsPristine()
+        babyProfileForm.birthWeightOz.markAsUntouched()
+        babyProfileForm.birthLengthCm.markAsPristine()
+        babyProfileForm.birthLengthCm.markAsUntouched()
+        babyProfileForm.birthWeightKg.markAsPristine()
+        babyProfileForm.birthWeightKg.markAsUntouched()
     }
 
     private func persistSelectedSignupDeviceType(for accountId: String) {

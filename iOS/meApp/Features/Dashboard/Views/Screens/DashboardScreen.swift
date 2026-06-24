@@ -168,7 +168,7 @@ struct DashboardScreen: View {
 
     private func snapshotLogo() -> some View {
         AppIconView(icon: AppAssets.wgLogo, size: IconSize(width: 45, height: 45))
-            .foregroundColor(theme.textSubheading)
+            .foregroundColor(theme.logoPrimary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, .spacingXS)
             .accessibilityLabel(lang.accSnapshotLogoLabel)
