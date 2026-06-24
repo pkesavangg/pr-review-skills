@@ -55,6 +55,68 @@
 			);
 			target = 105A1F992DE585B800FBB764 /* meApp */;
 		};
+		DEAD208B2DE5998800FBB764 /* Exceptions for "meAppTests" folder in "meAppTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				DashboardStoreGraphSelectionSyncTests.swift,
+				Features/Bluetooth/BluetoothServiceScanEventPipelineTests.swift,
+				Features/Dashboard/DashboardStoreCoverageTests.swift,
+				Features/Scale/DeviceTypeServerValueTests.swift,
+				Features/Scale/Fixtures/ScaleMigrationTestFixtures.swift,
+				Features/Scale/PairedDeviceAPIRepositoryTests.swift,
+				Features/Scale/ScaleAPIRepositoryAPITests.swift,
+				Features/Scale/ScaleMigrationServiceTests.swift,
+				Features/Scale/ScaleRepositoryLocalTests.swift,
+				Features/Scale/ScaleRepositoryTests.swift,
+				Features/Scale/ScaleServicePairedDeviceTests.swift,
+				Features/Scale/ScaleServiceTests.swift,
+				Features/Scale/ScaleSettingsStoreTests.swift,
+				Features/Scale/ScaleStoreTests.swift,
+				Features/Scale/UsersViewModelTests.swift,
+				Features/ScaleSetup/A6/A6ScaleSetupStoreTests.swift,
+				Features/ScaleSetup/A6/Fixtures/A6ScaleSetupStoreTestFixtures.swift,
+				Features/ScaleSetup/A6/TestSuits/A6ScaleSetupStoreConnectionAndSaveTests.swift,
+				Features/ScaleSetup/A6/TestSuits/A6ScaleSetupStoreEdgeCoverageTests.swift,
+				Features/ScaleSetup/A6/TestSuits/A6ScaleSetupStoreNavigationTests.swift,
+				Features/ScaleSetup/A6/TestSuits/A6ScaleSetupStorePairingTests.swift,
+				Features/ScaleSetup/AppSync/AppSyncSetupStoreTests.swift,
+				Features/ScaleSetup/AppSync/Fixtures/AppSyncSetupStoreTestFixtures.swift,
+				Features/ScaleSetup/Baby/BabyProfileSetupFormTests.swift,
+				Features/ScaleSetup/Baby/BabyScaleSetupStoreTests.swift,
+				Features/ScaleSetup/Baby/ScaleNicknameFormTests.swift,
+				Features/ScaleSetup/Bluetooth/BluetoothScaleSetupStoreTests.swift,
+				Features/ScaleSetup/Bluetooth/Fixtures/BluetoothScaleSetupStoreTestFixtures.swift,
+				Features/ScaleSetup/Bluetooth/TestSuits/BluetoothScaleSetupStoreCompletionAndRecoveryTests.swift,
+				Features/ScaleSetup/Bluetooth/TestSuits/BluetoothScaleSetupStoreEdgeCoverageTests.swift,
+				Features/ScaleSetup/Bluetooth/TestSuits/BluetoothScaleSetupStoreNavigationTests.swift,
+				Features/ScaleSetup/Bluetooth/TestSuits/BluetoothScaleSetupStorePairingTests.swift,
+				Features/ScaleSetup/BpmSetup/BpmSetupStoreTests.swift,
+				Features/ScaleSetup/BpmSetup/Fixtures/BpmSetupStoreTestFixtures.swift,
+				Features/ScaleSetup/BpmSetup/TestSuits/BpmSetupStoreAssetResolutionTests.swift,
+				Features/ScaleSetup/BpmSetup/TestSuits/BpmSetupStoreDeviceFlowTests.swift,
+				Features/ScaleSetup/BpmSetup/TestSuits/BpmSetupStoreHelperTests.swift,
+				Features/ScaleSetup/BpmSetup/TestSuits/BpmSetupStoreNavigationTests.swift,
+				Features/ScaleSetup/BpmSetup/TestSuits/BpmSetupStorePermissionTests.swift,
+				Features/ScaleSetup/BpmSetup/TestSuits/BpmSetupStoreScanningTests.swift,
+				Features/ScaleSetup/BtWifi/BtWifiStoreTests.swift,
+				Features/ScaleSetup/BtWifi/Fixtures/BtWifiStoreTestFixtures.swift,
+				Features/ScaleSetup/BtWifi/TestSuits/BtWifiStoreActionHandlersTests.swift,
+				Features/ScaleSetup/BtWifi/TestSuits/BtWifiStoreCoreStateTests.swift,
+				Features/ScaleSetup/BtWifi/TestSuits/BtWifiStoreCustomizationTests.swift,
+				Features/ScaleSetup/BtWifi/TestSuits/BtWifiStoreNavigationTests.swift,
+				Features/ScaleSetup/BtWifi/TestSuits/BtWifiStorePairingFlowStateTests.swift,
+				Features/ScaleSetup/BtWifi/TestSuits/BtWifiStorePairingTests.swift,
+				Features/ScaleSetup/BtWifi/TestSuits/BtWifiStoreRecoveryTests.swift,
+				Features/ScaleSetup/BtWifi/TestSuits/BtWifiStoreWifiUserFlowTests.swift,
+				Features/ScaleSetup/Wifi/Fixtures/WifiScaleSetupStoreTestFixtures.swift,
+				Features/ScaleSetup/Wifi/TestSuits/WifiScaleSetupStoreEdgeCaseTests.swift,
+				Features/ScaleSetup/Wifi/TestSuits/WifiScaleSetupStoreModesTests.swift,
+				Features/ScaleSetup/Wifi/TestSuits/WifiScaleSetupStoreNavigationTests.swift,
+				Features/ScaleSetup/Wifi/TestSuits/WifiScaleSetupStoreValidationAndErrorsTests.swift,
+				Features/ScaleSetup/Wifi/WifiScaleSetupStoreTests.swift,
+			);
+			target = 105A1FAB2DE585BA00FBB764 /* meAppTests */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -68,6 +130,9 @@
 		};
 		105A1FAF2DE585BA00FBB764 /* meAppTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				DEAD208B2DE5998800FBB764 /* Exceptions for "meAppTests" folder in "meAppTests" target */,
+			);
 			path = meAppTests;
 			sourceTree = "<group>";
 		};
