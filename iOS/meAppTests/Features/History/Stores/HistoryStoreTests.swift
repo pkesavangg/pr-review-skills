@@ -353,7 +353,7 @@ struct HistoryStoreTests {
         #expect(notificationService.alertData?.buttons.count == 2)
     }
 
-    @Test("showDeleteEntryAlert confirm invokes delete and shows loader")
+    @Test("showDeleteEntryAlert confirm shows undo toast then commits delete on dismiss")
     func showDeleteEntryAlertConfirmDeletes() async {
         let (store, entryService, notificationService, _, _) = makeSUT()
         let entry = EntryTestFixtures.makeEntrySnapshot()
@@ -363,9 +363,14 @@ struct HistoryStoreTests {
             return
         }
         deleteButton.action(nil)
+        // Optimistic delete: an undo toast is shown and no delete is performed yet.
+        #expect(notificationService.showToastCalls >= 1)
+        #expect(entryService.deleteEntryByIdCalls == 0)
+        // Dismissing the undo toast commits the actual delete.
+        notificationService.toastData?.onDismiss?()
         let done = await waitUntil { entryService.deleteEntryByIdCalls == 1 }
         #expect(done == true)
-        #expect(notificationService.dismissLoaderCalls >= 1)
+        #expect(entryService.deletedEntryIds.first == entry.id)
     }
 
     @Test("showDeleteEntryAlert cancel dismisses and calls onCancel")

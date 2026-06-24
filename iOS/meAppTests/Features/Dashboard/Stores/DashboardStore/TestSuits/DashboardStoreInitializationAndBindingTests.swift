@@ -14,7 +14,7 @@ extension DashboardStoreTests {
         #expect(store.state.ui.isEditMode == false)
         #expect(store.state.ui.isLoading == false)
         #expect(store.state.ui.selectedMetricLabel == nil)
-        #expect(store.state.graph.selectedPeriod == .week)
+        #expect(store.state.graph.selectedPeriod == .month)
         #expect(store.state.goal.hasGoalSet == false)
     }
 
@@ -23,7 +23,7 @@ extension DashboardStoreTests {
         let (store, _, _) = DashboardStoreTestSupport.makeSUT(lightweight: true)
 
         #expect(store.metricsManager.state.dashboardType == .dashboard12)
-        #expect(store.graphManager.state.selectedPeriod == .week)
+        #expect(store.graphManager.state.selectedPeriod == .month)
         #expect(store.streakManager.state.activeStreakItemsCount == 6)
         #expect(store.dataManager.state.dailySummaries.isEmpty)
         #expect(store.goalManager.state.hasGoalSet == false)

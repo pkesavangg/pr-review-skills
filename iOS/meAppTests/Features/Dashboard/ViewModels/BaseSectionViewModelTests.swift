@@ -160,7 +160,7 @@ struct BaseSectionViewModelTests {
 
     @Test("gridTicks for month exclude next-month boundary tick")
     func gridTicksForMonthExcludeNextMonthBoundary() {
-        let (sut, _) = makeConfiguredSUT(period: .month)
+        let (sut, _, _) = makeConfiguredSUT(period: .month)
         sut.scrollPosition = makeDate(year: 2026, month: 3, day: 1, hour: 0)
 
         let calendar = Calendar.current

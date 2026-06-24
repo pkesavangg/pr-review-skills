@@ -7,7 +7,8 @@ import Testing
 @MainActor
 struct AppReviewServiceReviewTests {
 
-    private func makeSUT(logger: MockLoggerService = MockLoggerService()) -> (sut: AppReviewService, repo: MockScaleRepositoryAPI) {
+    private func makeSUT(logger: MockLoggerService? = nil) -> (sut: AppReviewService, repo: MockScaleRepositoryAPI) {
+        let logger = logger ?? MockLoggerService()
         let repo = MockScaleRepositoryAPI()
         let sut = AppReviewService(
             logger: logger,
