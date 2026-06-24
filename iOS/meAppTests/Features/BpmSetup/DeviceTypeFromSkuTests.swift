@@ -98,3 +98,4 @@ struct DeviceTypeFromSkuTests {
         #expect(DeviceType.fromSku("0222") == .babyScale)
     }
 }
+
