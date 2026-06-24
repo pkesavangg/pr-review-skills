@@ -69,7 +69,13 @@ jobs:
             gitleaks version
       - run:
           name: Secrets scan (Gitleaks)
-          command: gitleaks detect --no-banner
+          # Scan the working tree, not full git history. `gitleaks detect` walks
+          # every commit (~5k commits / ~185MB) which runs >10m silently on this
+          # small box and trips the no-output timer. `gitleaks dir` gates the
+          # current code (what actually ships) in seconds; the pre-commit
+          # `gitleaks protect --staged` hook blocks new secrets locally, and the
+          # weekly scheduled-security workflow does the deep full-history scan.
+          command: gitleaks dir . --no-banner
 
   # ===========================================================
   # Job 2: SwiftLint Static Analysis
@@ -302,17 +308,31 @@ jobs:
                 resolved = json.load(f)
             pins = resolved.get('pins', resolved.get('object', {}).get('pins', []))
             unpinned = []
+            branch_tracked = []
             for pin in pins:
                 pkg = pin.get('identity', pin.get('package', 'unknown'))
                 state = pin.get('state', {})
-                version = state.get('version') or state.get('revision', 'unpinned')
-                if not state.get('version'):
+                version = state.get('version')
+                revision = state.get('revision')
+                branch = state.get('branch')
+                # A pin is reproducible if it has a semver tag OR an exact commit.
+                if version:
+                    display = version
+                elif revision:
+                    display = revision[:12]
+                    if branch:
+                        display = display + ' (branch: ' + branch + ')'
+                        branch_tracked.append(pkg)
+                else:
+                    display = 'UNPINNED'
                     unpinned.append(pkg)
-                print(f'  {pkg}: {version}')
+                print('  ' + pkg + ': ' + display)
+            if branch_tracked:
+                print('\nNOTE: branch-tracked (pinned to a commit, but the branch can advance on re-resolve): ' + ', '.join(branch_tracked))
             if unpinned:
-                print(f'\nWARNING: Unpinned dependencies: {', '.join(unpinned)}')
+                print('\nERROR: truly unpinned dependencies (no version and no revision): ' + ', '.join(unpinned))
                 sys.exit(1)
-            print('\nAll dependencies are pinned.')
+            print('\nAll dependencies are pinned to a version or an exact commit.')
             "
 
   # ===========================================================
