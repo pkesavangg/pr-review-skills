@@ -8,7 +8,7 @@
 /// | serverTimestamp  | string  | Server-generated timestamp of entry receipt         |
 /// | opTimestamp      | string  | Operation timestamp                                |
 /// | operationType    | string  | Type of operation (e.g., create, delete, note)      |
-/// | deviceType       | string  | Device type (e.g., scale, bgm)                      |
+/// | entryType        | string  | Entry type: "scale", "bpm", or "baby"               |
 /// | isSynced         | boolean | Whether entry is synced online                      |
 
 import Foundation
@@ -28,16 +28,26 @@ final class Entry {
     var opTimestamp: String?
     /// Type of operation (eg., 'create', 'delete', 'note')
     var operationType: String
-    /// Device type (eg., 'scale', 'bgm' )
-    var deviceType: String
+    /// Entry type: "scale" (adult weight), "bpm" (blood pressure), or "baby" (baby scale).
+    /// Optional at the schema level so SwiftData's lightweight migration can synthesize
+    /// `nil` for rows written before this column existed; consumers that need a concrete
+    /// value should coalesce to `EntryType.scale.rawValue` (the original implicit default).
+    var entryType: String?
     /// Whether entry is synced online
     var isSynced: Bool
+    /// User note for the entry
+    var note: String?
     /// Number of attempts to sync the entry
     var attempts: Int
     /// Whether entry is failed to sync
     var isFailedToSync: Bool
+    /// Server-assigned entry identifier returned from the create response.
+    /// Stored after a successful create sync; required by the server for delete operations.
+    var serverEntryId: String?
     @Relationship var scaleEntry: BathScaleEntry?
     @Relationship var scaleEntryMetric: BathScaleMetric?
+    @Relationship var bpmEntry: BPMEntry?
+    @Relationship var babyEntry: BabyEntry?
 
     init(id: UUID = UUID(),
          entryTimestamp: String,
@@ -45,7 +55,7 @@ final class Entry {
          operationType: String,
          opTimestamp: String? = nil,
          serverTimestamp: String? = nil,
-         deviceType: String = "scale",
+         entryType: String = EntryType.scale.rawValue,
          isSynced: Bool = false) {
         self.id = id
         self.entryTimestamp = entryTimestamp
@@ -53,7 +63,7 @@ final class Entry {
         self.operationType = operationType
         self.opTimestamp = opTimestamp
         self.serverTimestamp = serverTimestamp
-        self.deviceType = deviceType
+        self.entryType = entryType
         self.isSynced = isSynced
         self.attempts = 0
         self.isFailedToSync = false
@@ -66,15 +76,76 @@ final class Entry {
             self.accountId = accountId
             self.operationType = dto.operationType ?? ""
             self.serverTimestamp = dto.serverTimestamp
-            self.deviceType = DeviceType.scale.rawValue
-            self.isSynced = isSynced
             self.attempts = 0
             self.isFailedToSync = false
+
+            let resolvedEntryType = dto.entryType ?? EntryType.scale.rawValue
+            self.entryType = resolvedEntryType
+            self.isSynced = isSynced
+            self.note = dto.note
             self.scaleEntry = BathScaleEntry(from: dto)
             self.scaleEntryMetric = BathScaleMetric(from: dto)
+
+            switch resolvedEntryType {
+            case EntryType.bpm.rawValue:
+                self.bpmEntry = BPMEntry(
+                    systolic: dto.systolic.map { Int($0) } ?? 0,
+                    diastolic: dto.diastolic.map { Int($0) } ?? 0,
+                    meanArterial: dto.meanArterial.map { String($0) } ?? "",
+                    pulse: dto.pulse.map { Int($0) } ?? 0
+                )
+            case EntryType.baby.rawValue:
+                self.babyEntry = BabyEntry(
+                    babyId: dto.babyId ?? "",
+                    length: dto.babyLength.map { Int($0) } ?? 0,
+                    weight: dto.babyWeight.map { Int($0) } ?? 0,
+                    source: dto.source
+                )
+            default:
+                break
+            }
+    }
+
+    init(from dto: BpmOperationDTO, accountId: String, isSynced: Bool = false) {
+        let timestamp = dto.entryTimestamp ?? ISO8601DateFormatter().string(from: Date())
+        self.id = UUID()
+        self.entryTimestamp = timestamp
+        self.accountId = accountId
+        self.operationType = dto.operationType ?? ""
+        self.opTimestamp = nil
+        self.serverTimestamp = dto.serverTimestamp
+        self.entryType = EntryType.bpm.rawValue
+        self.isSynced = isSynced
+        self.attempts = 0
+        self.isFailedToSync = false
+        self.note = dto.note
+        self.scaleEntry = BathScaleEntry(from: dto)
+        self.scaleEntryMetric = BathScaleMetric(from: dto)
+        self.bpmEntry = BPMEntry(from: dto)
+    }
+
+    func toBpmOperationDTO() -> BpmOperationDTO {
+        return BpmOperationDTO(
+            accountId: self.accountId,
+            systolic: self.bpmEntry.map { Double($0.systolic) },
+            diastolic: self.bpmEntry.map { Double($0.diastolic) },
+            pulse: self.bpmEntry.map { Double($0.pulse) },
+            meanArterial: self.bpmEntry?.meanArterial,
+            note: self.note,
+            source: self.scaleEntry?.source,
+            unit: self.scaleEntryMetric?.unit,
+            entryTimestamp: self.entryTimestamp,
+            operationType: self.operationType,
+            serverTimestamp: self.serverTimestamp
+        )
     }
 
     func toOperationDTO() -> BathScaleOperationDTO {
+        let dtoSystolic: Double? = bpmEntry.map { Double($0.systolic) } ?? scaleEntry?.systolic.map { Double($0) }
+        let dtoDiastolic: Double? = bpmEntry.map { Double($0.diastolic) } ?? scaleEntry?.diastolic.map { Double($0) }
+        let dtoPulse: Double? = bpmEntry.map { Double($0.pulse) } ?? scaleEntryMetric?.pulse.map { Double($0) }
+        let dtoMeanArterial: Double? = bpmEntry.flatMap { Double($0.meanArterial) } ?? scaleEntry?.meanArterial.flatMap { Double($0) }
+
         return BathScaleOperationDTO(
             accountId: self.accountId,
             bmr: self.scaleEntryMetric?.bmr.map { Double($0) },
@@ -82,20 +153,27 @@ final class Entry {
             bodyFat: self.scaleEntry?.bodyFat.map { Double($0) },
             boneMass: self.scaleEntryMetric?.boneMass.map { Double($0) },
             entryTimestamp: self.entryTimestamp,
+            entryType: self.entryType,
             impedance: self.scaleEntryMetric?.impedance.map { Double($0) },
             metabolicAge: self.scaleEntryMetric?.metabolicAge.map { Double($0) },
             muscleMass: self.scaleEntry?.muscleMass.map { Double($0) },
             operationType: self.operationType,
             proteinPercent: self.scaleEntryMetric?.proteinPercent.map { Double($0) },
-            pulse: self.scaleEntryMetric?.pulse.map { Double($0) },
+            pulse: dtoPulse,
             serverTimestamp: self.serverTimestamp,
             skeletalMusclePercent: self.scaleEntryMetric?.skeletalMusclePercent.map { Double($0) },
-            source: self.scaleEntry?.source,
+            source: self.babyEntry?.source ?? self.scaleEntry?.source,
             subcutaneousFatPercent: self.scaleEntryMetric?.subcutaneousFatPercent.map { Double($0) },
+            systolic: dtoSystolic,
+            diastolic: dtoDiastolic,
+            meanArterial: dtoMeanArterial,
             unit: self.scaleEntryMetric?.unit,
             visceralFatLevel: self.scaleEntryMetric?.visceralFatLevel.map { Double($0) },
             water: self.scaleEntry?.water.map { Double($0) },
             weight: self.scaleEntry?.weight.map { Double($0) },
+            babyId: self.babyEntry?.babyId,
+            babyWeight: self.babyEntry.map { Double($0.weight) },
+            babyLength: self.babyEntry.map { Double($0.length) }
         )
     }
 

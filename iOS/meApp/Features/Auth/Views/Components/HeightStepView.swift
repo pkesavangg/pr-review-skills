@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 11/06/25.
 //
 
-
 import SwiftUI
 
 // MARK: - HeightStepView
@@ -20,24 +19,22 @@ struct HeightStepView: View {
     
     var body: some View {
         SignupStepWrapper(title: heightStepLang.title, subtitle: heightStepLang.subtitle) {
-            
-            VStack(alignment: .leading, spacing: .spacingLG){
-                // Height Selection Chip
-                ChipView(
-                    text: signupStore.getFormattedHeight(),
-                    style: .bordered,
-                    isSelected: signupStore.showHeightInchesPicker || signupStore.showHeightCmPicker,
-                    onTap: {
-                        signupStore.showHeightPicker()
-                    }
-                )
+            VStack(spacing: .spacingMD) {
+                UnitValuePickerField(
+                    label: heightStepLang.fieldLabel,
+                    value: signupStore.getFormattedHeight(),
+                    isActive: signupStore.showHeightInchesPicker || signupStore.showHeightCmPicker
+                ) {
+                    signupStore.showHeightPicker()
+                }
                 .padding(.top, .spacingLG)
-                
-                CustomToggleView(isOn: $signupStore.signupForm.useMetric.value,
-                                 text: labels.useMetric)
-                
+
+                UnitSelectionToggle(
+                    imperialTitle: heightStepLang.imperialUnit,
+                    metricTitle: heightStepLang.metricUnit,
+                    isMetric: $signupStore.signupForm.useMetric.value
+                )
             }
-            .padding(.leading, 2)
         }
         .pickerSheet(
             isPresented: $signupStore.showHeightInchesPicker,
@@ -45,21 +42,19 @@ struct HeightStepView: View {
             options: signupStore.heightInchesOptions,
             displayValue: { $0 },
             pickerType: .heightInches,
-            title: heightStepLang.pickerHeader,
-            onUpdate: { newValues in
-                signupStore.updateFormHeight(fromMetric: false, values: newValues)
-            }
-        )
+            title: heightStepLang.pickerHeader
+        ) { newValues in
+            signupStore.updateFormHeight(fromMetric: false, values: newValues)
+        }
         .pickerSheet(
             isPresented: $signupStore.showHeightCmPicker,
             selectedValues: signupStore.selectedHeightCm,
             options: signupStore.heightCmOptions,
             displayValue: { $0 },
             pickerType: .heightCm,
-            title: heightStepLang.pickerHeader,
-            onUpdate: { newValues in
-                signupStore.updateFormHeight(fromMetric: true, values: newValues)
-            }
-        )
+            title: heightStepLang.pickerHeader
+        ) { newValues in
+            signupStore.updateFormHeight(fromMetric: true, values: newValues)
+        }
     }
 }

@@ -12,16 +12,26 @@ struct DashboardMetricsSection: View {
     @ObservedObject var store: DashboardStore
     let parentView: DashboardMetricsParentView
     @Binding var openMetricInfoWithoutSelection: MetricInfoWrapper?
+
+    private var shouldShowProgressSkeleton: Bool {
+        store.shouldShowProgressMetricsSkeleton ||
+            (parentView == .r4DeviceSetup && store.shouldShowBodyMetricsSkeleton)
+    }
+
+    private var shouldShowSectionDivider: Bool {
+        store.shouldShowDivider ||
+            (parentView == .r4DeviceSetup && store.shouldShowBodyMetricsSkeleton)
+    }
     
     var body: some View {
         VStack(spacing: 0) {
-            if parentView == .R4ScaleSetup {
-                VStack(alignment: .leading, spacing: .spacingXS){
+            if parentView == .r4DeviceSetup {
+                VStack(alignment: .leading, spacing: .spacingXS) {
                     Text(DashboardStrings.customizeDashboardTitle)
                         .fontOpenSans(.heading4)
                         .fontWeight(.bold)
                         .foregroundColor(theme.textHeading)
-                    VStack{
+                    VStack {
                         Text(DashboardStrings.customizeDashboardSubtitle)
                             .fontOpenSans(.body2)
                             .foregroundColor(theme.textHeading)
@@ -38,12 +48,12 @@ struct DashboardMetricsSection: View {
             }
             
             // Show divider if both body metrics and progress metrics are present
-            if store.shouldShowDivider {
+            if shouldShowSectionDivider {
                 dividerSection()
             }
 
             // Show skeleton while loading progress metrics, otherwise show actual progress metrics
-            if store.shouldShowProgressMetricsSkeleton {
+            if shouldShowProgressSkeleton {
                 skeletonProgressMetrics(hasContentAbove: store.skeletonProgressMetricsHasContentAbove)
             } else if store.shouldShowGoalStreakSection {
                 goalStreakSection()
@@ -51,52 +61,52 @@ struct DashboardMetricsSection: View {
             
         }
         .onAppear {
-            if parentView == .R4ScaleSetup {
+            if parentView == .r4DeviceSetup {
                 // Force edit mode in Scale Setup context
-                if !store.ui.isEditMode {
-                    store.ui.isEditMode = true
+                if !store.state.ui.isEditMode {
+                    store.state.ui.isEditMode = true
                 }
-                store.syncRemovalStateFromMetricsManager()
+                store.gridEditingManager.syncRemovalStateFromMetricsManager()
                 store.objectWillChange.send()
             }
         }
         .onChange(of: store.metricsManager.state.metrics) { _, _ in
-            if parentView == .R4ScaleSetup {
-                store.debouncedSyncRemovalState()
+            if parentView == .r4DeviceSetup {
+                store.gridEditingManager.debouncedSyncRemovalState()
             }
         }
         .onChange(of: store.metricsManager.state.activeMetricsCount) { _, _ in
-            if parentView == .R4ScaleSetup {
-                store.debouncedSyncRemovalState()
+            if parentView == .r4DeviceSetup {
+                store.gridEditingManager.debouncedSyncRemovalState()
             }
         }
         .onChange(of: parentView) { _, newValue in
-            if newValue == .R4ScaleSetup {
-                if !store.ui.isEditMode {
-                    store.ui.isEditMode = true
+            if newValue == .r4DeviceSetup {
+                if !store.state.ui.isEditMode {
+                    store.state.ui.isEditMode = true
                 }
             }
         }
-        .onChange(of: store.ui.isEditMode) { _, newValue in
-            if parentView == .R4ScaleSetup && newValue == false {
+        .onChange(of: store.state.ui.isEditMode) { _, newValue in
+            if parentView == .r4DeviceSetup && newValue == false {
                 // Keep edit mode on while customizing from Scale Setup
-                store.ui.isEditMode = true
+                store.state.ui.isEditMode = true
             }
         }
     }
     
     private func metricsGridSection() -> some View {
         Group {
-            MetricGridUIKitView(parentView: parentView, store: store, onMetricLongPress: { label in
+            MetricGridUIKitView(parentView: parentView, store: store) { _ in
                 // Long press on any metric should directly open edit dashboard mode
-                if !store.ui.isEditMode {
-                    store.toggleEditMode()
+                if !store.state.ui.isEditMode {
+                    store.gridEditingManager.toggleEditMode()
                 }
-            })
+            }
             .frame(minHeight: DevicePlatform.isTablet ? 74 : 100)
             .padding(.top, .spacingSM)
-            .id(store.ui.gridLayoutId)
-            .animation(.easeInOut(duration: 0.3), value: store.ui.gridLayoutId)
+            .id(store.state.ui.gridLayoutId)
+            .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
         }
     }
     
@@ -113,9 +123,9 @@ struct DashboardMetricsSection: View {
         Group {
             GoalStreakGridUIKitView(parentView: parentView, store: store)
                 .frame(minHeight: store.shouldShowGoalCardOrStreaks ? 100 : 200)
-                .padding(.top, store.ui.isGoalCardRemoved ? 0 : .spacingXS)
-                .id(store.ui.gridLayoutId)
-                .animation(.easeInOut(duration: 0.3), value: store.ui.gridLayoutId)
+                .padding(.top, store.state.ui.isGoalCardRemoved ? 0 : .spacingXS)
+                .id(store.state.ui.gridLayoutId)
+                .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
         }
     }
     
@@ -126,8 +136,8 @@ struct DashboardMetricsSection: View {
         let skeletonCount = store.effectiveDashboardType == .dashboard12 ? 12 : 4
         
         return LazyVGrid(
-            columns: Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columnCount),
-            spacing: DashboardConstants.UI.gridSpacing
+            columns: Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UIConstants.gridSpacing), count: columnCount),
+            spacing: DashboardConstants.UIConstants.gridSpacing
         ) {
             ForEach(0..<skeletonCount, id: \.self) { _ in
                 SkeletonMetricCardView(dashboardType: store.effectiveDashboardType)
@@ -140,13 +150,13 @@ struct DashboardMetricsSection: View {
     
     private func skeletonProgressMetrics(hasContentAbove: Bool) -> some View {
         let columns = DevicePlatform.isTablet ? 4 : 2
-        let topInset: CGFloat = store.ui.isGoalCardRemoved ? .spacingLG : .spacingSM
-        let extraTopPadding: CGFloat = store.ui.isGoalCardRemoved ? 0 : .spacingXS
+        let topInset: CGFloat = store.state.ui.isGoalCardRemoved ? .spacingLG : .spacingSM
+        let extraTopPadding: CGFloat = store.state.ui.isGoalCardRemoved ? 0 : .spacingXS
 
         return VStack(spacing: .spacingLG) {
             SkeletonGoalCardView()
             LazyVGrid(
-                columns: Array(repeating: .init(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columns),
+                columns: Array(repeating: .init(.flexible(), spacing: DashboardConstants.UIConstants.gridSpacing), count: columns),
                 spacing: .spacingLG
             ) {
                 ForEach(0..<6, id: \.self) { _ in
@@ -163,5 +173,3 @@ struct DashboardMetricsSection: View {
 #Preview("DashboardContentSection") {
     DashboardMetricsSection(store: DashboardStore(), parentView: .dashboard, openMetricInfoWithoutSelection: .constant(nil))
 }
-
-

@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.data.repository
 
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.gurus.weight.core.service.AppStatusService
 import com.dmdbrands.gurus.weight.core.shared.utilities.DeviceInfoUtil
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
@@ -12,8 +13,6 @@ import com.dmdbrands.gurus.weight.domain.model.api.support.SendLogRequest
 import com.dmdbrands.gurus.weight.domain.repository.ILogRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emitAll
@@ -35,8 +34,8 @@ class LogRepository
         private val logDao: LogDao,
         private val supportAPI: ISupportAPI,
         private val accountService: IAccountService,
+        @ApplicationScope private val appScope: CoroutineScope,
     ) : ILogRepository {
-        private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private var currentSessionId: String = UUID.randomUUID().toString()
         private var currentAccountId: String = "default"
         private var isInitialized = false
@@ -48,7 +47,7 @@ class LogRepository
 
         init {
             AppLog.d("LogRepository", "Initialized with session ID: $currentSessionId")
-          repositoryScope.launch {
+          appScope.launch {
                 AppLog.d("LogRepository", "Coroutine scope cancelled")
             val activeAccount = accountService.activeAccountFlow.first()
             currentAccountId = activeAccount?.id ?: "default"
@@ -58,7 +57,7 @@ class LogRepository
         override suspend fun initialize() {
             if (isInitialized) return
 
-            repositoryScope.launch {
+            appScope.launch {
                 try {
                     // Clean up old logs
                     deleteLogsOlderThanDays(MAX_LOG_AGE_DAYS)
@@ -120,7 +119,6 @@ class LogRepository
             data: String?,
         ) {
             if (!isInitialized) {
-                AppLog.e("LogRepository", "Attempting to log before initialization")
                 return
             }
 

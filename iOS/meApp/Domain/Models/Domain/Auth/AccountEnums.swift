@@ -3,35 +3,38 @@ import Foundation
 // MARK: - GoalType
 
 enum GoalType: String, Codable, Equatable {
-    case none = "none"
-    case gain = "gain"
-    case lose = "lose"
-    case maintain = "maintain"
+    case none
+    case gain
+    case lose
+    case maintain
 }
 
 // MARK: - ActivityLevel
 
 enum ActivityLevel: String, Codable, Equatable {
-    case normal = "normal"
-    case athlete = "athlete"
+    case normal
+    case athlete
 }
 
 // MARK: - Sex
 
 enum Sex: String, Codable, Equatable, CaseIterable {
-    case male = "male"
-    case female = "female"
-    
+    case male
+    case female
+    case `private`
+
     init?(rawInput: String?) {
         guard let input = rawInput?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() else {
             return nil
         }
-        
+
         switch input {
         case "male":
             self = .male
         case "female":
             self = .female
+        case "private":
+            self = .private
         default:
             return nil
         }
@@ -41,8 +44,40 @@ enum Sex: String, Codable, Equatable, CaseIterable {
 // MARK: - WeightUnit
 
 enum WeightUnit: String, Codable, Equatable {
-    case kg = "kg"
-    case lb = "lb"
+    case kg
+    case lb
+}
+
+// MARK: - MeasurementUnits
+
+/// Preferred measurement units for multi-product accounts.
+/// Mirrors the server `measurementUnits` field (see Me App 2.0 API spec).
+enum MeasurementUnits: String, Codable, Equatable, CaseIterable {
+    case metric
+    case imperialLbOz
+    case imperialLbDecimal
+}
+
+// MARK: - ProductType
+
+/// Product-type identifiers persisted in `account.productTypes`.
+/// Raw values match the persisted vocabulary: "myWeight", "myBloodPressure", "baby".
+enum ProductType: String, Codable, Equatable, CaseIterable {
+    case weight = "myWeight"
+    case bloodPressure = "myBloodPressure"
+    case baby
+}
+
+extension ProductType {
+    /// The API-format string sent to and received from the server.
+    /// Distinct from `rawValue`, which is the app-internal persisted vocabulary.
+    var apiValue: String {
+        switch self {
+        case .weight: return "weight"
+        case .bloodPressure: return "blood_pressure"
+        case .baby: return "baby"
+        }
+    }
 }
 
 // MARK: - DashboardType

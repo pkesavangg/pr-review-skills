@@ -24,7 +24,8 @@ import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
     indices = [
         Index("accountId"),
         Index("entryTimestamp"),
-        Index(value = ["accountId", "entryTimestamp"], unique = true), // <- Enforce uniqueness here
+        Index(value = ["accountId", "entryTimestamp"], unique = true),
+        Index(value = ["accountId", "operationType"]),
     ],
 )
 data class EntryEntity(

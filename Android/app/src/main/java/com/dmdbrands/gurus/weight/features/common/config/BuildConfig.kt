@@ -21,22 +21,4 @@ object AppBuildConfig {
     return "version $BUILD_NUMBER"
   }
 
-  /**
-   * Determines if the current build is a production build.
-   * Automatically detects based on build configuration.
-   * @return true if this is a production build, false otherwise
-   */
-  private fun isProductionBuild(): Boolean {
-    return try {
-      // Check if this is a release build (not debug)
-      com.dmdbrands.gurus.weight.BuildConfig.BUILD_TYPE
-      val isDebug = com.dmdbrands.gurus.weight.BuildConfig.DEBUG
-
-      // Production = release build type AND not debug
-      !isDebug
-    } catch (e: Exception) {
-      // Fallback: if we can't detect, assume development
-      false
-    }
-  }
 }

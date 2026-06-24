@@ -1,20 +1,17 @@
-import com.android.build.gradle.ProguardFiles.getDefaultProguardFile
-import org.gradle.kotlin.dsl.android
-import org.gradle.kotlin.dsl.kotlin
-import org.gradle.kotlin.dsl.libs
-import org.gradle.kotlin.dsl.`maven-publish`
-import org.gradle.kotlin.dsl.protobuf
-import org.gradle.kotlin.dsl.publishing
-
 plugins {
   alias(libs.plugins.android.library)
-  alias(libs.plugins.kotlin.android)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.google.proto)
   alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.hilt)
-  kotlin("kapt")
+  alias(libs.plugins.ksp)
   `maven-publish`
+}
+
+kotlin {
+  compilerOptions {
+    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+  }
 }
 
 android {
@@ -47,17 +44,9 @@ android {
     targetCompatibility = JavaVersion.VERSION_11
   }
 
-  kotlinOptions {
-    jvmTarget = "11"
-  }
-
   buildFeatures {
     compose = true
     buildConfig = true
-  }
-
-  composeOptions {
-    kotlinCompilerExtensionVersion = "1.5.8"
   }
 
   publishing {
@@ -71,6 +60,8 @@ android {
 dependencies {
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.lifecycle.runtime.ktx)
+  implementation(libs.kotlinx.collections.immutable)
+  implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.activity.compose)
   implementation(platform(libs.androidx.compose.bom))
   implementation(libs.androidx.ui)
@@ -103,14 +94,18 @@ dependencies {
 
   // Hilt dependencies
   implementation(libs.hilt.android)
-  kapt(libs.hilt.android.compiler)
+  ksp(libs.hilt.android.compiler)
   implementation(libs.hilt.navigation.compose)
 
   // ViewModel Compose
   implementation(libs.androidx.lifecycle.viewmodel.compose)
 
   // Testing
-  testImplementation(libs.junit)
+  testImplementation(libs.junit.jupiter)
+  testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+  testImplementation(libs.mockk)
+  testImplementation(libs.truth)
+  testImplementation(libs.kotlinx.coroutines.test)
   androidTestImplementation(libs.androidx.junit)
   androidTestImplementation(libs.androidx.espresso.core)
   androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -119,14 +114,13 @@ dependencies {
   debugImplementation(libs.androidx.ui.test.manifest)
 }
 
-// Allow references to generated code
-kapt {
-  correctErrorTypes = true
+tasks.withType<Test> {
+  useJUnitPlatform()
 }
 
 protobuf {
   protoc {
-    artifact = "com.google.protobuf:protoc:3.25.3"
+    artifact = "com.google.protobuf:protoc:${libs.versions.protoc.get()}"
   }
   generateProtoTasks {
     all().forEach {

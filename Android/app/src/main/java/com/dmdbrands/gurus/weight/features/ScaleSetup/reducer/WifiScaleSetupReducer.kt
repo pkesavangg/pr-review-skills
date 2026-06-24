@@ -8,6 +8,10 @@ import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * Setup path options for WiFi scale setup
@@ -62,10 +66,11 @@ data class ScaleNetworkForm(
 /**
  * State for WifiScaleSetupScreen.
  */
+@Stable
 data class WifiScaleSetupState(
   val currentStep: WifiScaleSetupStep = WifiScaleSetupStep.SCALE_INFO,
   val sku: String = "0384",
-  val steps: List<WifiScaleSetupStep> = listOf(
+  val steps: ImmutableList<WifiScaleSetupStep> = persistentListOf(
     WifiScaleSetupStep.SCALE_INFO,
     WifiScaleSetupStep.PERMISSIONS,
     WifiScaleSetupStep.WIFI_PASSWORD,
@@ -106,6 +111,12 @@ data class WifiScaleSetupState(
   val isNavigating: Boolean = false, // Add navigation state to prevent double-clicks
   /** Step we were on when we navigated to ERROR_GUIDE; used for correct back navigation. */
   val stepBeforeErrorGuide: WifiScaleSetupStep? = null,
+  /**
+   * True when the network name field was auto-populated from a live permission-granted WiFi
+   * detection. False when the user is in manual-entry mode (permission denied/skipped) or
+   * when the previously auto-populated value has been cleared after permission revocation.
+   */
+  val isWifiAutoPopulated: Boolean = false,
 ) : IReducer.State {
   val currentStepIndex: Int = steps.indexOf(currentStep)
   val isFirstStep: Boolean = currentStepIndex == 0
@@ -232,6 +243,8 @@ sealed class WifiScaleSetupIntent : IReducer.Intent {
   data class ExitSetup(val isSetupFinished: Boolean, val isConnected: Boolean = false) : WifiScaleSetupIntent()
   data class OpenHelp(val helpType: String = "wifi") : WifiScaleSetupIntent()
   data class SetShouldGetMacAddress(val shouldGet: Boolean) : WifiScaleSetupIntent() // Add this intent
+  /** Tracks whether the network name was auto-populated from live WiFi detection. */
+  data class SetWifiAutoPopulated(val autoPopulated: Boolean) : WifiScaleSetupIntent()
   data class NavigateToErrorGuide(val step: WifiScaleSetupStep = WifiScaleSetupStep.ERROR_GUIDE) :
     WifiScaleSetupIntent()
 
@@ -635,6 +648,10 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
 
       is WifiScaleSetupIntent.SetShouldGetMacAddress -> {
         state.copy(shouldGetMacAddress = intent.shouldGet)
+      }
+
+      is WifiScaleSetupIntent.SetWifiAutoPopulated -> {
+        state.copy(isWifiAutoPopulated = intent.autoPopulated)
       }
 
       else -> state.copy()

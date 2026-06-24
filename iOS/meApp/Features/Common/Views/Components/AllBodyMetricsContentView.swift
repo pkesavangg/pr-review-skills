@@ -12,7 +12,7 @@ struct AllBodyMetricsContentView: View {
     @Binding var isHeartRateOn: Bool
     let onHeartRateChanged: (Bool) -> Void
 
-    private let lang = ScaleModesStrings.self
+    private let lang = DeviceModesStrings.self
     private let commonLang = CommonStrings.self
 
     var body: some View {

@@ -1,6 +1,8 @@
 package com.dmdbrands.gurus.weight.data.storage.db.entity.account
 
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
+import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account as DomainAccount
 
@@ -17,11 +19,13 @@ object AccountEntityMapper {
             id = account.id,
             firstName = account.firstName,
             lastName = account.lastName,
-            dob = account.dob,
+            // Persist "" for an unset dob so the Room column stays non-null (MOB-591).
+            dob = account.dob ?: "",
             email = account.email,
             expiresAt = account.expiresAt,
             fcmToken = account.fcmToken,
-            gender = account.gender,
+            // Persist "" for an unset gender so the Room column stays non-null (MOB-591).
+            gender = account.gender ?: "",
             isActiveAccount = account.isActiveAccount,
             isLoggedIn = account.isLoggedIn,
             isExpired = account.isExpired,
@@ -83,6 +87,10 @@ object AccountEntityMapper {
             isHealthKitOn = accountWithRelations.integrationsSettings?.isHealthKitOn ?: false,
             isMFPOn = accountWithRelations.integrationsSettings?.isMFPOn ?: false,
             isMFPValid = accountWithRelations.integrationsSettings?.isMFPValid ?: false,
+            // Phase 2 (MOB-377): product settings
+            productTypes = accountWithRelations.productSettings?.productTypes
+                ?: listOf(ProductType.MY_WEIGHT.apiValue),
+            measurementUnits = MeasurementUnits.fromValue(accountWithRelations.productSettings?.measurementUnits),
         )
     }
 }

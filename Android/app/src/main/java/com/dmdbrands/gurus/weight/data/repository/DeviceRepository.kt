@@ -2,12 +2,14 @@ package com.dmdbrands.gurus.weight.data.repository
 
 import com.dmdbrands.gurus.weight.data.api.IDeviceAPI
 import com.dmdbrands.gurus.weight.data.storage.db.dao.DeviceDao
+import com.dmdbrands.gurus.weight.domain.model.api.device.DeviceApiException
 import com.dmdbrands.gurus.weight.domain.model.api.device.DeviceApiModel
 import com.dmdbrands.gurus.weight.domain.model.api.device.R4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.api.device.ScaleMetaDataApiModel
 import com.dmdbrands.gurus.weight.domain.model.api.device.toApiModel
 import com.dmdbrands.gurus.weight.domain.model.api.device.toDomainModel
 import com.dmdbrands.gurus.weight.domain.model.api.device.toDomainModels
+import com.dmdbrands.gurus.weight.domain.model.api.device.toPairedDeviceRequest
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.toDeviceDetails
 import com.dmdbrands.gurus.weight.domain.model.storage.toDeviceDomainModel
@@ -177,6 +179,61 @@ constructor(
       val errorBody = response.errorBody()?.string()
       AppLog.e(TAG, "deleteDeviceFromApi failed with code: ${response.code()}, error: $errorBody")
       throw Exception("Failed to delete device from API: ${response.code()}, Error: $errorBody")
+    }
+  }
+
+  // ── Unified /v3/paired-device/ (MOB-378) ─────────────────────────────────
+
+  override suspend fun createPairedDevice(device: Device, accountId: String): Device {
+    AppLog.d(TAG, "createPairedDevice deviceId=${device.id}")
+    val request = device.toPairedDeviceRequest()
+    val response = deviceApi.createPairedDevice(request)
+    if (response.isSuccessful) {
+      val body = response.body()
+      AppLog.i(TAG, "createPairedDevice succeeded")
+      return body?.toDomainModel(device.connectionStatus, device.device?.wifiMacAddress, device.device?.isWifiConfigured ?: false) ?: device
+    } else {
+      AppLog.e(TAG, "createPairedDevice failed code=${response.code()}")
+      throw DeviceApiException(response.code(), "createPairedDevice failed: ${response.code()}")
+    }
+  }
+
+  override suspend fun getPairedDevices(deviceType: String?): List<Device> {
+    AppLog.d(TAG, "getPairedDevices deviceType=$deviceType")
+    val response = deviceApi.getPairedDevices(deviceType)
+    if (response.isSuccessful) {
+      val models = response.body() ?: emptyList()
+      AppLog.i(TAG, "getPairedDevices returned ${models.size} devices")
+      return models.toDomainModels()
+    } else {
+      AppLog.e(TAG, "getPairedDevices failed code=${response.code()}")
+      throw DeviceApiException(response.code(), "getPairedDevices failed: ${response.code()}")
+    }
+  }
+
+  override suspend fun updatePairedDevice(deviceId: String, device: Device, accountId: String): Device {
+    AppLog.d(TAG, "updatePairedDevice deviceId=$deviceId")
+    val request = device.toPairedDeviceRequest()
+    val response = deviceApi.updatePairedDevice(deviceId, request)
+    if (response.isSuccessful) {
+      val body = response.body()
+      AppLog.i(TAG, "updatePairedDevice succeeded deviceId=$deviceId")
+      return body?.toDomainModel(device.connectionStatus, device.device?.wifiMacAddress, device.device?.isWifiConfigured ?: false) ?: device
+    } else {
+      AppLog.e(TAG, "updatePairedDevice failed code=${response.code()}")
+      throw DeviceApiException(response.code(), "updatePairedDevice failed: ${response.code()}")
+    }
+  }
+
+  override suspend fun deletePairedDevice(deviceId: String): Boolean {
+    AppLog.d(TAG, "deletePairedDevice deviceId=$deviceId")
+    val response = deviceApi.deletePairedDevice(deviceId)
+    if (response.isSuccessful) {
+      AppLog.i(TAG, "deletePairedDevice succeeded deviceId=$deviceId")
+      return true
+    } else {
+      AppLog.e(TAG, "deletePairedDevice failed code=${response.code()}")
+      throw DeviceApiException(response.code(), "deletePairedDevice failed: ${response.code()}")
     }
   }
 

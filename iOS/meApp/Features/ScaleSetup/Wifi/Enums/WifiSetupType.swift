@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 24/07/25.
 //
 
-
 enum WifiSetupType: String {
     case first
     case join

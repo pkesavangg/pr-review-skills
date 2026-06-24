@@ -15,7 +15,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
@@ -31,14 +30,11 @@ import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.launch
-import android.app.Activity
 
 @Composable
 fun LandingScreen() {
   val backStack = LocalNavBackStack.current
   val coroutineScope = rememberCoroutineScope()
-  val context = LocalContext.current
-  context as? Activity
 
   Box(
     modifier =

@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 26/07/25.
 //
 
-
 struct DeviceInfoRequest: Codable {
     let appVersion: String
     let deviceManufacturer: String

@@ -17,7 +17,7 @@ struct TimePickerView: View {
     /// We align the `time`'s day/month/year to this value to avoid cross-day clamping.
     var selectedDate: Date
     /// Maximum selectable time (inclusive).
-    var endTime: Date = Date()
+    var endTime = Date()
     @Environment(\.appTheme) private var theme
 
     var body: some View {

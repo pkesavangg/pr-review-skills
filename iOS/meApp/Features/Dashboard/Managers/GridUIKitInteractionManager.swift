@@ -55,5 +55,3 @@ struct GridUIKitInteractionManager {
         collectionView.addGestureRecognizer(tap)
     }
 }
-
-

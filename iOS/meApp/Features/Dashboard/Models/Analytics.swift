@@ -39,7 +39,6 @@ struct GoalAnalytics {
     let progressPercentage: Double
 }
 
-
 // MARK: - Supporting Types
 struct StreakAnalytics {
     let currentStreak: Int

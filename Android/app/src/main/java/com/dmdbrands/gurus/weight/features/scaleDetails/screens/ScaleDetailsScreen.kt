@@ -16,7 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -68,7 +68,7 @@ fun ScaleDetailsScreen(scaleId: String) {
         factory.create(scaleId)
       },
     )
-  val state by viewModel.state.collectAsState()
+  val state by viewModel.state.collectAsStateWithLifecycle()
 
   BackHandler {
     viewModel.handleIntent(ScaleDetailsIntent.Back)
@@ -90,6 +90,7 @@ fun ScaleDetailsScreenContent(
   val scaleSetupType =
     device?.deviceType?.let { ScaleSetupType.fromString(it) } ?: ScaleSetupType.Bluetooth
   val isWifiSetup = scaleSetupType == ScaleSetupType.Wifi || scaleSetupType == ScaleSetupType.EspTouchWifi
+  val isBpm = DeviceHelper.isBpmDevice(device?.getSKU())
   val showUserNumber = (isWifiSetup || scaleSetupType == ScaleSetupType.Bluetooth) && state.scale?.userNumber != null
   val isConnected = device?.connectionStatus == BLEStatus.CONNECTED
   val scaleMode =
@@ -121,14 +122,13 @@ fun ScaleDetailsScreenContent(
     ) {
       // Scale Image - map SKU for display (e.g., 0022 -> 0383)
       AppScaleImage(
-        // Unknown-SKU devices fall through to AppScaleImage's default placeholder via empty string.
-        sku = DeviceHelper.mapSkuForDisplay(device!!.getSKU()) ?: "unknowscale",
+        sku = DeviceHelper.mapSkuForDisplay(device?.getSKU() ?: ""),
         modifier = Modifier.fillMaxWidth(),
         scaleImageSize = ScaleImageSize.Large,
       )
       Spacer(modifier = Modifier.height(spacing.xl))
       Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-        if (state.scale.isWeighOnlyModeEnabledByOthers && state.scale.connectionStatus == BLEStatus.CONNECTED) {
+        if (state.scale?.isWeighOnlyModeEnabledByOthers == true && state.scale?.connectionStatus == BLEStatus.CONNECTED) {
           AppNote(
             message = ScaleMetricsSettingStrings.WeightOnlyNotes.Message,
             icon = AppIcons.Default.WeightOnlyMode,
@@ -139,8 +139,8 @@ fun ScaleDetailsScreenContent(
           )
         }
         // Show SetupIncomplete note if Wi-Fi is not configured AND no SSID is connected
-        val isWifiConfigured = state.scale.device?.isWifiConfigured == true || !state.connectedSSID.isNullOrEmpty()
-        if (!isWifiConfigured && state.scale.connectionStatus == BLEStatus.CONNECTED && scaleSetupType == ScaleSetupType.BtWifiR4) {
+        val isWifiConfigured = state.scale?.device?.isWifiConfigured == true || !state.connectedSSID.isNullOrEmpty()
+        if (!isWifiConfigured && state.scale?.connectionStatus == BLEStatus.CONNECTED && scaleSetupType == ScaleSetupType.BtWifiR4) {
           AppNote(
             message = ScaleDetailsStrings.SetupIncomplete,
             icon = AppIcons.Default.Exclamation,
@@ -191,7 +191,7 @@ fun ScaleDetailsScreenContent(
             }
             add(
               SettingsItem(
-                title = ScaleDetailsStrings.ScaleName,
+                title = ScaleDetailsStrings.DeviceName,
                 type =
                   SettingsItemType.TextOnly(
                     scaleName ?: "", // Display truncated name to match SDK limit
@@ -202,12 +202,23 @@ fun ScaleDetailsScreenContent(
               ),
             )
             if (showUserNumber) {
-              add(
-                SettingsItem(
-                  title = ScaleDetailsStrings.UserNumber,
-                  type = SettingsItemType.TextOnly("U${device.userNumber}"),
-                ),
-              )
+              val userLabel = if (isBpm) {
+                val scaleInfo = ScaleDataHelper.findScaleInfoBySku(device.getSKU())
+                ScaleDataHelper.formatUserDisplay(
+                  scaleInfo?.hasNumericUsers ?: true,
+                  device.userNumber,
+                )
+              } else {
+                "U${device.userNumber}"
+              }
+              if (userLabel.isNotEmpty()) {
+                add(
+                  SettingsItem(
+                    title = ScaleDetailsStrings.userNumberLabel(device.getSKU()),
+                    type = SettingsItemType.TextOnly(userLabel),
+                  ),
+                )
+              }
             }
           },
       )
@@ -232,7 +243,7 @@ fun ScaleDetailsScreenContent(
               )
               if (scaleSetupType == ScaleSetupType.BtWifiR4) {
                 // Wi-Fi is considered configured if we have isWifiConfigured=true OR if we have a connected SSID
-                val isWifiConfigured = device.device?.isWifiConfigured == true || !state.connectedSSID.isNullOrEmpty()
+                val isWifiConfigured = device?.device?.isWifiConfigured == true || !state.connectedSSID.isNullOrEmpty()
                 add(
                   SettingsItem(
                     title = ScaleDetailsStrings.WiFi,
@@ -270,11 +281,11 @@ fun ScaleDetailsScreenContent(
               title = ScaleDetailsStrings.ScaleType,
               type =
                 SettingsItemType.CustomIcon(
-                  text = ScaleSetupType.toLabel(device.deviceType),
+                  text = ScaleSetupType.toLabel(device?.deviceType),
                   icon = {
                     AppIcon(
                       id = ScaleDataHelper.scaleTypeIcon(scaleSetupType),
-                      contentDescription = ScaleSetupType.toLabel(device.deviceType),
+                      contentDescription = ScaleSetupType.toLabel(device?.deviceType),
                       type = AppIconType.Primary,
                     )
                   },
@@ -282,11 +293,11 @@ fun ScaleDetailsScreenContent(
             ),
             SettingsItem(
               title = ScaleDetailsStrings.Sku,
-              type = SettingsItemType.TextOnly(DeviceHelper.mapSkuForDisplay(device.getSKU()) ?: "unknown"),
+              type = SettingsItemType.TextOnly(DeviceHelper.mapSkuForDisplay(device?.getSKU() ?: "")),
             ),
             SettingsItem(
               title = ScaleDetailsStrings.DatePaired,
-              type = SettingsItemType.TextDate(state.scale.createdAt ?: ""), // Not available in GGDevice
+              type = SettingsItemType.TextDate(state.scale?.createdAt ?: ""), // Not available in GGDevice
             ),
             SettingsItem(
               title = ScaleDetailsStrings.ProductGuide,
@@ -300,7 +311,7 @@ fun ScaleDetailsScreenContent(
         items =
           listOf(
             SettingsItem(
-              title = ScaleDetailsStrings.DeleteScale,
+              title = ScaleDetailsStrings.DeleteLabel,
               type = SettingsItemType.None,
               color = SettingColorType.Danger,
               onClick = { handleIntent(ScaleDetailsIntent.DeleteScale) },
@@ -314,7 +325,7 @@ fun ScaleDetailsScreenContent(
           items = listOf(
             SettingsItem(
               title = ScaleDetailsStrings.ScaleMac,
-              type = SettingsItemType.TextOnly(device.device?.macAddress ?: "Unknown"),
+              type = SettingsItemType.TextOnly(device?.device?.macAddress ?: "Unknown"),
             ),
             SettingsItem(
               title = ScaleDetailsStrings.SoftwareUpdate,

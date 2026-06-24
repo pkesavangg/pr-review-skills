@@ -23,7 +23,6 @@ struct AppProgressView: View {
     }
 }
 
-
 // MARK: - Preview
 #Preview {
     AppProgressView(progressValue: 0.2)

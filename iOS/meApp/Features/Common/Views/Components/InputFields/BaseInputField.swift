@@ -25,6 +25,9 @@ struct BaseInputField: View {
     // Callbacks
     var onCommit: (() -> Void)?
     var onEditingChanged: ((Bool) -> Void)?
+
+    // Accessibility
+    var accessibilityIdentifier: String?
     
     // Internal state for password visibility
     @State private var isSecureTextVisible: Bool = false
@@ -34,6 +37,30 @@ struct BaseInputField: View {
     // Constants
     let focusedTopPadding: CGFloat = 15
     let trailingPadding: CGFloat = 40
+
+    init(
+        inputType: TextFieldType,
+        keyboardType: UIKeyboardType,
+        submitLabel: SubmitLabel,
+        isDisabled: Bool,
+        fieldType: FocusField,
+        value: Binding<String>,
+        focusedField: Binding<FocusField?>,
+        onCommit: (() -> Void)? = nil,
+        onEditingChanged: ((Bool) -> Void)? = nil,
+        accessibilityIdentifier: String? = nil
+    ) {
+        self.inputType = inputType
+        self.keyboardType = keyboardType
+        self.submitLabel = submitLabel
+        self.isDisabled = isDisabled
+        self.fieldType = fieldType
+        self._value = value
+        self._focusedField = focusedField
+        self.onCommit = onCommit
+        self.onEditingChanged = onEditingChanged
+        self.accessibilityIdentifier = accessibilityIdentifier
+    }
     
     // Computed property for theme palette (derived from themeManager)
     private var theme: AppColors.Palette {
@@ -57,7 +84,7 @@ struct BaseInputField: View {
         
         // Restore focus after TextField is recreated on next run loop
         if wasFocused {
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 isFocused = true
                 focusedField = fieldType
             }
@@ -77,7 +104,9 @@ struct BaseInputField: View {
                     .disabled(isDisabled)
             }
         }
+        .accessibilityIdentifier(accessibilityIdentifier ?? "")
         .id("\(fieldType)-\(themeRefreshId)")
+        .font(.custom("OpenSans-Regular", size: CustomTextStyle.body2.size))
         .padding(.top, (isFocused || !value.isEmpty) ? focusedTopPadding : 0)
         .padding(.trailing, trailingPadding)
         .foregroundStyle(textColor)
@@ -116,10 +145,10 @@ struct BaseInputField: View {
                         withAnimation {
                             isSecureTextVisible.toggle()
                         }
-                    }) {
+                    }, label: {
                         AppIconView(icon: isSecureTextVisible ? AppAssets.eyeClosed : AppAssets.eyeOpen)
                             .foregroundColor(theme.statusIconPrimary)
-                    }
+                    })
                     .padding(.trailing, .spacingXS)
                 }
             }
@@ -143,12 +172,8 @@ struct BaseInputTestView: View {
                 fieldType: .password,
                 value: $text,
                 focusedField: $focusedField,
-                onCommit: {
-                    print("Submitted: \(text)")
-                },
-                onEditingChanged: { isEditing in
-                    print("Editing changed: \(isEditing)")
-                })
+                onCommit: { },
+                onEditingChanged: { _ in })
         }
     }
 }

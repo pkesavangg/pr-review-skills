@@ -1,12 +1,12 @@
-import Foundation
 import Combine
+import Foundation
 import SwiftUI
 
 /// Form for handling WiFi network configuration with password validation
 class NetworkForm: ObservableForm {
     var ssid = FormControl("", validators: [.required])
     var password = FormControl("", validators: [.required])
-    private let apModeSSIDPrefix = "gg_SmartScaleSetup"
+    private let apModeSSIDPrefix = "gg_SmartDeviceSetup"
     @Published var networkHasNoPassword: Bool = false {
         didSet {
             updatePasswordValidation()

@@ -23,7 +23,6 @@ fun DeviceDetails.toDeviceDomainModel(): Device =
       broadcastId = convertIntToHex(device.broadcastId, device.deviceType),
       broadcastIdString = device.broadcastIdString,
       password = convertIntToHex(device.password, device.deviceType),
-      // Add other fields as needed
     ),
     nickname = device.nickname ?: device.deviceName ?: "",
     sku = device.sku,
@@ -37,6 +36,7 @@ fun DeviceDetails.toDeviceDomainModel(): Device =
     isWeighOnlyModeEnabledByOthers = scale?.isWeighOnlyModeEnabledByOthers ?: false,
     token = device.token,
     preferences = r4Preference?.toPreferences(), // Add mapping if needed,
+    productType = device.productType,
   )
 
 fun R4ScalePreferenceEntity.toPreferences(): Preferences {
@@ -93,6 +93,7 @@ fun DeviceEntity.toDeviceDomainModel(): Device =
     isWeighOnlyModeEnabledByOthers = false,
     token = token,
     preferences = null, // Add mapping if needed
+    productType = productType,
   )
 
 fun Device.toDeviceDetails(accountId: String): DeviceDetails =
@@ -117,6 +118,8 @@ fun Device.toDeviceDetails(accountId: String): DeviceDetails =
         hasServerID = hasServerID,
         isDeleted = isDeleted,
         token = token,
+        productType = productType,
+        lastModified = System.currentTimeMillis() / 1000,
       ),
 
     scale = null, // Add mapping if needed

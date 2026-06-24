@@ -38,6 +38,7 @@ fun AnimatedAppInput(
     maxLength: Int,
     modifier: Modifier,
     index: Int,
+    testTag: String? = null,
 ) {
     val alpha = remember { Animatable(0f) }
 
@@ -56,5 +57,6 @@ fun AnimatedAppInput(
         onImeAction = onImeAction,
         maxLength = maxLength,
         modifier = modifier.graphicsLayer { this.alpha = alpha.value },
+        testTag = testTag,
     )
 }

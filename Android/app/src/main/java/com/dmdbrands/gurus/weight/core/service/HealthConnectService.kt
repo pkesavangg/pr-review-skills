@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.core.service
 
 import androidx.activity.ComponentActivity
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.DeviceInfoUtil
@@ -11,9 +12,14 @@ import com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationData
 import com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationOperationType
 import com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationPreferences
 import com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationType
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.toPeriodBodyScaleSummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.toBpmSummary
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IEntryRepository
 import com.dmdbrands.gurus.weight.domain.repository.IHealthConnectRepository
@@ -29,12 +35,13 @@ import com.greatergoods.libs.healthconnect.enums.DataType
 import com.greatergoods.libs.healthconnect.enums.HealthConnectPermissionStatus
 import com.greatergoods.libs.healthconnect.enums.HealthConnectRequestStatus
 import com.greatergoods.libs.healthconnect.enums.HealthConnectStatus
+import com.greatergoods.libs.healthconnect.model.BloodPressureData
 import com.greatergoods.libs.healthconnect.model.HealthConnectData
 import com.greatergoods.libs.healthconnect.model.HealthConnectOptions
 import com.greatergoods.libs.healthconnect.model.HealthConnectResult
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,6 +49,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.time.format.DateTimeParseException
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.app.Activity
@@ -62,14 +70,13 @@ class HealthConnectService @Inject constructor(
   appNavigationService: IAppNavigationService,
   private val entryRepository: IEntryRepository, // Add entry repository for fetching entries
   private val integrationRepository: IIntegrationRepository, // Inject IntegrationRepository for integrations flow
-  // Inject IntegrationService for API calls
+  @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IHealthConnectService {
 
   // Core Health Connect components
   private lateinit var healthConnect: HealthConnect
   private lateinit var currentActivity: Activity
   private var currentIntegrations: Integrations? = null
-  private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
   // Service state
   private val tag = "HealthConnectService"
@@ -108,12 +115,13 @@ class HealthConnectService @Inject constructor(
       DataType.BasalMetabolicRate,
       DataType.RestingHeartRate,
       DataType.BoneMass,
+      DataType.BloodPressure,
     ),
   )
 
   init {
 
-    repositoryScope.launch {
+    appScope.launch {
       AppLog.d(tag, "Health connect service gets initialised")
       accountRepository.getActiveAccount().collect { it ->
         currentAccountId = it?.id
@@ -352,32 +360,93 @@ class HealthConnectService @Inject constructor(
       }
 
       val entries: List<Entry> = entryRepository.getEntriesByAccount(accountId)
-      val summaries: List<PeriodBodyScaleSummary> = entries.mapNotNull { it.toPeriodBodyScaleSummary() }
-      syncData(summaries)
+      val combined = buildCombinedSyncPayload(entries)
+
+      if (entries.isNotEmpty() && combined.isEmpty()) {
+        // Real failure: the user has entries but none reached HC due to bad data.
+        // Surface the same error dialog as a sync exception so the user is not misled
+        // by a "Sync complete" toast.
+        AppLog.e(tag, "syncAllData: ${entries.size} entries had no syncable HC data after filtering")
+        showDataNotSyncedDialog()
+        return false
+      }
+
+      if (combined.isNotEmpty()) {
+        AppLog.d(tag, "Syncing ${combined.size} records to Health Connect")
+        healthConnect.saveData(combined)
+      }
       dialogQueueService.dismissLoader()
       if (!fromOutOfSync) {
-        dialogQueueService.showToast(Toast(HealthConnectStrings.ToastStrings.syncToast))
+        dialogQueueService.showToast(Toast.Simple(HealthConnectStrings.ToastStrings.syncToast))
       } else {
-        dialogQueueService.showToast(Toast(HealthConnectStrings.ToastStrings.syncHc))
+        dialogQueueService.showToast(Toast.Simple(HealthConnectStrings.ToastStrings.syncHc))
       }
       return true
+    } catch (e: CancellationException) {
+      // Coroutine cancellation (e.g. user navigated away) is not a sync failure;
+      // re-throw so structured concurrency unwinds correctly. Protect the loader
+      // dismissal so any service-side throw cannot replace the cancellation cause.
+      try {
+        dialogQueueService.dismissLoader()
+      } catch (suppressed: Throwable) {
+        e.addSuppressed(suppressed)
+      }
+      throw e
     } catch (e: Exception) {
       AppLog.e(tag, "User denied health connect permission or sync failed", e)
-      dialogQueueService.dismissLoader()
-      dialogQueueService.showDialog(
-        DialogModel.Alert(
-          title = HealthConnectStrings.dataNotSynced.title,
-          message = HealthConnectStrings.dataNotSynced.message,
-          dismissText = HealthConnectStrings.ActionButtons.close,
-          onDismiss = { dialogQueueService.dismissCurrent() },
-        ),
-      )
+      showDataNotSyncedDialog()
       return false
     } finally {
       dialogQueueService.dismissLoader()
     }
   }
 
+  /**
+   * Builds the combined HC payload from [entries], aggregating body-scale and BPM data
+   * via the shared [buildBodyScaleData] / [buildBpmData] helpers. Entries with
+   * malformed `entryTimestamp` are skipped (each is already logged at .e inside
+   * [parseTimestampOrNull]); the aggregate count is logged at .w as supplementary context
+   * so the crash reporter doesn't see duplicate signal.
+   */
+  private fun buildCombinedSyncPayload(entries: List<Entry>): List<HealthConnectData> {
+    val summaries = entries.mapNotNull { it.toPeriodBodyScaleSummary() }
+    val bpmEntries = entries.filterIsInstance<BpmEntry>()
+    var skipped = 0
+    val bodyScaleData = summaries.flatMap { summary ->
+      val timestamp = parseTimestampOrNull(summary.entryTimestamp)
+      if (timestamp == null) { skipped++; return@flatMap emptyList() }
+      buildBodyScaleData(summary, timestamp)
+    }
+    val bpmData = bpmEntries.flatMap { entry ->
+      val summary = entry.toBpmSummary()
+      val timestamp = parseTimestampOrNull(summary.entryTimestamp)
+      if (timestamp == null) { skipped++; return@flatMap emptyList() }
+      buildBpmData(summary, timestamp)
+    }
+    if (skipped > 0) {
+      AppLog.w(tag, "syncAllData: skipped $skipped entries with malformed timestamps")
+    }
+    return bodyScaleData + bpmData
+  }
+
+  /** Dismisses the sync loader and shows the user-facing "data not synced" alert. */
+  private fun showDataNotSyncedDialog() {
+    dialogQueueService.dismissLoader()
+    dialogQueueService.showDialog(
+      DialogModel.Alert(
+        title = HealthConnectStrings.dataNotSynced.title,
+        message = HealthConnectStrings.dataNotSynced.message,
+        dismissText = HealthConnectStrings.ActionButtons.close,
+        onDismiss = { dialogQueueService.dismissCurrent() },
+      ),
+    )
+  }
+
+  /**
+   * Pushes [entries] to Health Connect. Logs and rethrows on failure so the caller
+   * can surface UX (e.g. permission-denied dialog); the duplicate log here keeps
+   * stack context for tools that lose it across coroutine boundaries.
+   */
   override suspend fun syncData(entries: List<PeriodBodyScaleSummary>) {
     val isIntegrated = checkIfAlreadyUsed()
     if (!isIntegrated) {
@@ -386,73 +455,13 @@ class HealthConnectService @Inject constructor(
       return
     }
 
-    val finalData = mutableListOf<HealthConnectData>()
-
-    for (entry in entries) {
-      val timestamp = Instant.parse(entry.entryTimestamp)
-
-      // Only add weight if it's not zero
-      if (entry.weight > 0.0) {
-        finalData.add(HealthConnectData(DataType.Weight, entry.weight, timeStamp = timestamp))
-      }
-
-      // Only add body fat if it's not null and not zero
-      entry.bodyFat?.let { bodyFat ->
-        if (bodyFat > 0.0) {
-          finalData.add(HealthConnectData(DataType.BodyFat, bodyFat, timeStamp = timestamp))
-
-          // Calculate and add lean body mass only if body fat is valid
-          val leanBodyMass = calculateLeanBodyMass(entry.weight, bodyFat)
-          if (leanBodyMass > 0.0) {
-            finalData.add(
-              HealthConnectData(
-                DataType.LeanBodyMass,
-                leanBodyMass,
-                timeStamp = timestamp,
-              ),
-            )
-          }
-        }
-      }
-
-      // Only add bone mass if it's not null and calculated value is not zero
-      entry.boneMass?.let { boneMass ->
-        val boneMassValue = (boneMass * entry.weight) / 100
-        if (boneMassValue > 0.0) {
-          finalData.add(
-            HealthConnectData(
-              DataType.BoneMass,
-              boneMassValue,
-              timeStamp = timestamp,
-            ),
-          )
-        }
-      }
-
-      // Only add BMR if it's not null and not zero
-      entry.bmr?.let { bmr ->
-        if (bmr > 0.0) {
-          finalData.add(
-            HealthConnectData(
-              DataType.BasalMetabolicRate,
-              bmr,
-              timeStamp = timestamp,
-            ),
-          )
-        }
-      }
-
-      // Only add pulse if it's not null and not zero
-      entry.pulse?.let { pulse ->
-        if (pulse > 0.0) {
-          finalData.add(HealthConnectData(DataType.RestingHeartRate, pulse, timeStamp = timestamp))
-        }
-      }
+    val finalData = entries.flatMap { entry ->
+      val timestamp = parseTimestampOrNull(entry.entryTimestamp) ?: return@flatMap emptyList()
+      buildBodyScaleData(entry, timestamp)
     }
     try {
-      AppLog.d(tag, "Syncing $finalData entries")
+      AppLog.d(tag, "Syncing ${finalData.size} entries to Health Connect")
       healthConnect.saveData(finalData)
-      // Optionally, set a flag or observable for successful sync
     } catch (e: Exception) {
       AppLog.e(tag, "User denied health connect permission or save failed", e)
       throw e
@@ -464,17 +473,99 @@ class HealthConnectService @Inject constructor(
     return weight * (1 - bodyFat / 100)
   }
 
+  /**
+   * Builds the list of [HealthConnectData] for a body-scale [summary], applying `> 0.0` guards
+   * on every field. Used by both the sync path ([syncData]) and the [ScaleEntry] branch of
+   * [deleteEntry] so the two paths cannot drift apart on which fields are meaningful — the
+   * previous asymmetry caused HC state drift on zero-valued fields and on a divergent
+   * LeanBodyMass formula (delete used `muscleMass`, sync derives from `bodyFat`).
+   */
+  private fun buildBodyScaleData(
+    summary: PeriodBodyScaleSummary,
+    timestamp: Instant,
+  ): List<HealthConnectData> {
+    val data = mutableListOf<HealthConnectData>()
+    if (summary.weight > 0.0) {
+      data.add(HealthConnectData(DataType.Weight, summary.weight, timeStamp = timestamp))
+    }
+    summary.bodyFat?.takeIf { it > 0.0 }?.let { bodyFat ->
+      data.add(HealthConnectData(DataType.BodyFat, bodyFat, timeStamp = timestamp))
+      val leanBodyMass = calculateLeanBodyMass(summary.weight, bodyFat)
+      if (leanBodyMass > 0.0) {
+        data.add(HealthConnectData(DataType.LeanBodyMass, leanBodyMass, timeStamp = timestamp))
+      }
+    }
+    summary.boneMass?.let { boneMass ->
+      val boneMassValue = (boneMass * summary.weight) / 100
+      if (boneMassValue > 0.0) {
+        data.add(HealthConnectData(DataType.BoneMass, boneMassValue, timeStamp = timestamp))
+      }
+    }
+    summary.bmr?.takeIf { it > 0.0 }?.let { bmr ->
+      data.add(HealthConnectData(DataType.BasalMetabolicRate, bmr, timeStamp = timestamp))
+    }
+    summary.pulse?.takeIf { it > 0.0 }?.let { pulse ->
+      data.add(HealthConnectData(DataType.RestingHeartRate, pulse, timeStamp = timestamp))
+    }
+    return data
+  }
+
+  /**
+   * Parses an ISO-8601 timestamp, returning null and logging on malformed input
+   * so callers can surface a targeted failure instead of a generic exception.
+   */
+  private fun parseTimestampOrNull(raw: String): Instant? = try {
+    Instant.parse(raw)
+  } catch (e: DateTimeParseException) {
+    // Use AppLog.e so malformed timestamps surface to the crash reporter instead of being
+    // hidden as a debug warning — they indicate corrupt data that should be investigated.
+    AppLog.e(tag, "Malformed entryTimestamp '$raw' for Health Connect: ${e.message}")
+    null
+  }
+
+  /**
+   * Builds a [BloodPressureRecord]-backed [HealthConnectData] from a [PeriodBpmSummary].
+   * Returns null when systolic/diastolic are non-positive so callers can skip the entry.
+   * Pulse is **not** part of `BloodPressureRecord`; it is emitted separately as a
+   * `HeartRateRecord` ([DataType.RestingHeartRate]) — see [buildBpmData].
+   */
+  private fun buildBloodPressureData(
+    summary: PeriodBpmSummary,
+    timestamp: Instant,
+  ): HealthConnectData? {
+    if (summary.avgSystolic <= 0 || summary.avgDiastolic <= 0) return null
+    return HealthConnectData(
+      type = DataType.BloodPressure,
+      bloodPressure = BloodPressureData(
+        systolic = summary.avgSystolic.toDouble(),
+        diastolic = summary.avgDiastolic.toDouble(),
+      ),
+      timeStamp = timestamp,
+    )
+  }
+
+  /**
+   * Builds the list of [HealthConnectData] for a BPM [summary]: the BP record (when valid)
+   * plus the pulse [HeartRateRecord] (when `avgPulse > 0`). Used by both [syncBpmData] and
+   * the [BpmEntry] branch of [deleteEntry] so save and delete cannot drift on which BPM
+   * fields are meaningful.
+   */
+  private fun buildBpmData(
+    summary: PeriodBpmSummary,
+    timestamp: Instant,
+  ): List<HealthConnectData> {
+    val data = mutableListOf<HealthConnectData>()
+    buildBloodPressureData(summary, timestamp)?.let { data.add(it) }
+    if (summary.avgPulse > 0) {
+      data.add(HealthConnectData(DataType.RestingHeartRate, summary.avgPulse.toDouble(), timeStamp = timestamp))
+    }
+    return data
+  }
+
   override suspend fun deleteEntry(entry: Entry): Boolean {
     return try {
       if (!isLoaded) {
         AppLog.w(tag, "Health Connect service not loaded")
-        return false
-      }
-
-      // Convert entry to PeriodBodyScaleSummary
-      val summary = entry.toPeriodBodyScaleSummary()
-      if (summary == null) {
-        AppLog.w(tag, "Could not convert entry to PeriodBodyScaleSummary for deletion")
         return false
       }
 
@@ -485,29 +576,37 @@ class HealthConnectService @Inject constructor(
         return false
       }
 
-      // Build data to delete matching the Angular implementation
       val dataToDelete = mutableListOf<HealthConnectData>()
-      val timestamp = Instant.parse(summary.entryTimestamp)
 
-      summary.weight.let {
-          dataToDelete.add(HealthConnectData(DataType.Weight, it, timeStamp = timestamp))
-      }
-      summary.bodyFat?.let {
-        dataToDelete.add(HealthConnectData(DataType.BodyFat, it, timeStamp = timestamp))
-      }
-      if (summary.muscleMass != null) {
-        val leanBodyMass = (summary.muscleMass * summary.weight) / 100
-        dataToDelete.add(HealthConnectData(DataType.LeanBodyMass, leanBodyMass, timeStamp = timestamp))
-      }
-      if (summary.boneMass != null) {
-        val boneMassValue = (summary.boneMass * summary.weight) / 100
-        dataToDelete.add(HealthConnectData(DataType.BoneMass, boneMassValue, timeStamp = timestamp))
-      }
-      summary.bmr?.let {
-        dataToDelete.add(HealthConnectData(DataType.BasalMetabolicRate, it, timeStamp = timestamp))
-      }
-      summary.pulse?.let {
-        dataToDelete.add(HealthConnectData(DataType.RestingHeartRate, it, timeStamp = timestamp))
+      when (entry) {
+        is BpmEntry -> {
+          val summary = entry.toBpmSummary()
+          val timestamp = parseTimestampOrNull(summary.entryTimestamp) ?: return false
+          val bpmData = buildBpmData(summary, timestamp)
+          if (bpmData.isEmpty()) {
+            AppLog.w(tag, "BpmEntry has no valid HC data (BP readings invalid and pulse non-positive), cannot delete")
+            return false
+          }
+          dataToDelete.addAll(bpmData)
+        }
+        is BabyEntry -> {
+          AppLog.d(tag, "BabyEntry not synced to HC, skipping")
+          return true
+        }
+        is ScaleEntry -> {
+          val summary = entry.toPeriodBodyScaleSummary()
+          if (summary == null) {
+            AppLog.w(tag, "Could not convert entry to PeriodBodyScaleSummary for deletion")
+            return false
+          }
+          val timestamp = parseTimestampOrNull(summary.entryTimestamp) ?: return false
+          dataToDelete.addAll(buildBodyScaleData(summary, timestamp))
+        }
+      }.let { /* exhaustive */ }
+
+      if (dataToDelete.isEmpty()) {
+        AppLog.w(tag, "No data to delete from Health Connect")
+        return false
       }
 
       // Delete data from Health Connect
@@ -611,7 +710,7 @@ class HealthConnectService @Inject constructor(
         integrationRepository.updateLocalAccount()
       }
       _outOfSyncState.value = false
-      dialogQueueService.showToast(Toast(HealthConnectStrings.ToastStrings.removeHC))
+      dialogQueueService.showToast(Toast.Simple(HealthConnectStrings.ToastStrings.removeHC))
       true
     } catch (e: Exception) {
       AppLog.e(tag, "Failed to remove Health Connect integration", e)
@@ -743,7 +842,7 @@ class HealthConnectService @Inject constructor(
   }
 
   private fun onConfirmMultiDevice(accountId: String){
-    CoroutineScope(SupervisorJob() + Dispatchers.Main).launch  {
+    appScope.launch(Dispatchers.Main) {
       appNavigationService.navigateTo(AppRoute.Integration.IntegrationList)
       appNavigationService.navigateTo(AppRoute.Integration.HealthConnect)
       healthConnectRepository.updateOutOfSync(accountId, false)
@@ -752,7 +851,7 @@ class HealthConnectService @Inject constructor(
   }
 
   private fun onCancelMultiDevice(accountId: String){
-    CoroutineScope(SupervisorJob() + Dispatchers.Main).launch  {
+    appScope.launch(Dispatchers.Main) {
       healthConnectRepository.setHealthConnectIntegrationStatus(accountId, true)
       healthConnectRepository.updateOutOfSync(accountId, true)
       healthConnectRepository.updateModalState(accountId, true)
@@ -821,11 +920,11 @@ class HealthConnectService @Inject constructor(
         cancelText = HealthConnectStrings.ActionButtons.cancel,
         onConfirm = {
           dialogQueueService.showLoader(HealthConnectStrings.Loader.loading)
-          CoroutineScope(Dispatchers.IO).launch {
+          appScope.launch {
             syncAllData()
             dialogQueueService.dismissCurrent()
             dialogQueueService.dismissLoader()
-            dialogQueueService.showToast(Toast(HealthConnectStrings.ToastStrings.syncToast))
+            dialogQueueService.showToast(Toast.Simple(HealthConnectStrings.ToastStrings.syncToast))
           }
         },
         onCancel = {
@@ -876,7 +975,7 @@ class HealthConnectService @Inject constructor(
                     DialogModel.Custom(
                       contentKey = DialogType.FinishConnect,
                       onConfirm = {
-                        CoroutineScope(Dispatchers.IO).launch {
+                        appScope.launch {
                           appNavigationService.navigateTo(AppRoute.Integration.IntegrationList)
                           appNavigationService.navigateTo(AppRoute.Integration.HealthConnect)
                           dialogQueueService.dismissCurrent()
@@ -1011,7 +1110,7 @@ class HealthConnectService @Inject constructor(
               params =
                 mapOf(
                   "secondaryAction" to {
-                    CoroutineScope(Dispatchers.IO).launch {
+                    appScope.launch {
                       dialogQueueService.showLoader(HealthConnectStrings.Loader.removing)
                       removeHealthConnectIntegration()
                       healthConnectRepository.updateOutOfSync(accountId, true)
@@ -1023,7 +1122,7 @@ class HealthConnectService @Inject constructor(
                 ),
               onConfirm = {
                 dialogQueueService.dismissCurrent()
-                CoroutineScope(Dispatchers.IO).launch {
+                appScope.launch {
                   openHealthConnect()
                   healthConnectRepository.setHealthConnectIntegrationStatus(accountId, true)
                   // On confirm, you may want to reset out-of-sync state if permissions are restored
@@ -1033,7 +1132,7 @@ class HealthConnectService @Inject constructor(
                 }
               },
               onDismiss = {
-                CoroutineScope(Dispatchers.IO).launch {
+                appScope.launch {
                   healthConnectRepository.setHealthConnectIntegrationStatus(accountId, true)
                   healthConnectRepository.updateOutOfSync(accountId, true)
                   healthConnectRepository.updateModalState(accountId, true)
@@ -1077,14 +1176,14 @@ class HealthConnectService @Inject constructor(
               DialogModel.Custom(
                 contentKey = DialogType.FinishConnect,
                 onConfirm = {
-                  CoroutineScope(Dispatchers.IO).launch {
+                  appScope.launch {
                     appNavigationService.navigateTo(AppRoute.Integration.IntegrationList)
                     appNavigationService.navigateTo(AppRoute.Integration.HealthConnect)
                     dialogQueueService.dismissCurrent()
                   }
                 },
                 onDismiss = {
-                  CoroutineScope(Dispatchers.IO).launch {
+                  appScope.launch {
                     healthConnectRepository.updateAlertSeen(accountId, true)
                     dialogQueueService.dismissCurrent()
                   }
@@ -1102,7 +1201,7 @@ class HealthConnectService @Inject constructor(
               DialogModel.Custom(
                 contentKey = DialogType.FinishConnect,
                 onConfirm = {
-                  CoroutineScope(Dispatchers.IO).launch {
+                  appScope.launch {
                     healthConnectRepository.setOpen(accountId, false)
                     appNavigationService.navigateTo(AppRoute.Integration.IntegrationList)
                     appNavigationService.navigateTo(AppRoute.Integration.HealthConnect)
@@ -1110,7 +1209,7 @@ class HealthConnectService @Inject constructor(
                   }
                 },
                 onDismiss = {
-                  CoroutineScope(Dispatchers.IO).launch {
+                  appScope.launch {
                     healthConnectRepository.setOpen(accountId, false)
                   }
                   dialogQueueService.dismissCurrent()

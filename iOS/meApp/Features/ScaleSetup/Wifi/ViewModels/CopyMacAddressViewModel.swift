@@ -8,7 +8,7 @@ import SwiftUI
 
 @MainActor
 class CopyMacAddressViewModel: ObservableObject {
-    @Injector var notificationService: NotificationHelperService
+    @Injector var notificationService: NotificationHelperServiceProtocol
     private let toastLang = ToastStrings.self
     
     func copyMacAddress(macAddress: String) {

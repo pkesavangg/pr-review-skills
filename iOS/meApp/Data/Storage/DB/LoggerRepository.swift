@@ -8,101 +8,29 @@
 import Foundation
 import SwiftData
 
-// MARK: - Serial write actor
-
-/// Owns a single ModelContext and serialises all logger write/delete operations
-/// through Swift's actor executor.  Replaces the previous pattern of creating a
-/// new ModelContext per Task.detached call, which allowed multiple simultaneous
-/// background contexts to write to the same SQLite store and corrupt SwiftData's
-/// internal backing-data dictionary.
-private actor LoggerWriteActor {
-    var context: ModelContext
-
-    init(container: ModelContainer) {
-        context = ModelContext(container)
-        context.autosaveEnabled = false
-    }
-
-    func saveEntry(id: String, accountId: String?, sessionId: String, tag: String,
-                   tagId: String, type: LogEntry.LogType, message: String,
-                   timestamp: Int64, data: String?) throws {
-        let entry = LogEntry(id: id, accountId: accountId, sessionId: sessionId,
-                             tag: tag, tagId: tagId, type: type,
-                             message: message, timestamp: timestamp, data: data)
-        context.insert(entry)
-        try context.save()
-    }
-
-    func deleteForAccount(_ accountId: String) throws {
-        let descriptor = FetchDescriptor<LogEntry>(
-            predicate: #Predicate { $0.accountId == accountId }
-        )
-        let logs = try context.fetch(descriptor)
-        logs.forEach { context.delete($0) }
-        try context.save()
-    }
-
-    func deleteAll() throws {
-        let all = try context.fetch(FetchDescriptor<LogEntry>())
-        all.forEach { context.delete($0) }
-        try context.save()
-    }
-
-    func deleteOlderThan(_ cutoff: Int64) throws {
-        let descriptor = FetchDescriptor<LogEntry>(
-            predicate: #Predicate { $0.timestamp < cutoff }
-        )
-        let old = try context.fetch(descriptor)
-        old.forEach { context.delete($0) }
-        try context.save()
-    }
-
-    func deleteOlderThanBatch(_ cutoff: Int64, batchSize: Int) throws -> Int {
-        var descriptor = FetchDescriptor<LogEntry>(
-            predicate: #Predicate { $0.timestamp < cutoff }
-        )
-        descriptor.fetchLimit = batchSize
-        let toDelete = try context.fetch(descriptor)
-        guard !toDelete.isEmpty else { return 0 }
-        toDelete.forEach { context.delete($0) }
-        try context.save()
-        return toDelete.count
-    }
-
-    func hasOlderThan(_ cutoff: Int64) throws -> Bool {
-        var descriptor = FetchDescriptor<LogEntry>(
-            predicate: #Predicate { $0.timestamp < cutoff }
-        )
-        descriptor.fetchLimit = 1
-        return !(try context.fetch(descriptor).isEmpty)
-    }
-}
-
-// MARK: - Repository
-
 @MainActor
 final class LoggerRepository: LoggerRepositoryProtocol {
-
-    /// Shared singleton used by LoggerService.log so every save call flows through
-    /// the same LoggerWriteActor — never creating competing background contexts.
-    static let shared = LoggerRepository()
-
-    /// Serial actor that owns one background ModelContext for all writes/deletes.
-    private let writeActor: LoggerWriteActor
-
-    /// Separate container reference used only for read-only fetch operations.
     private let container: ModelContainer
+    private let appLogger = AppLogger(tag: "LoggerRepository")
 
-    init() {
-        let c = PersistenceController.shared.container
-        self.container = c
-        self.writeActor = LoggerWriteActor(container: c)
+    init(container: ModelContainer? = nil) {
+        self.container = container ?? PersistenceController.shared.container
     }
 
-    // MARK: - Write (serialised through writeActor)
+    /// Executes work on a background `ModelContext` to avoid blocking the main actor.
+    /// Mirrors the approach used in `EntryRepository`.
+    /// - Parameter work: Closure that performs fetch/update/delete using the provided background context.
+    /// - Returns: The result of the work closure.
+    private func performBackgroundTask<T>(_ work: @escaping (ModelContext) throws -> T) async throws -> T {
+        let container = self.container
+        return try await Task.detached(priority: .userInitiated) {
+            let backgroundContext = ModelContext(container)
+            return try work(backgroundContext)
+        }.value
+    }
 
     func saveLogEntry(_ entry: LogEntry) async {
-        // Extract all primitives before crossing the actor boundary.
+        // Extract all data before crossing actor boundary
         let id = entry.id
         let accountId = entry.accountId
         let sessionId = entry.sessionId
@@ -114,27 +42,95 @@ final class LoggerRepository: LoggerRepositoryProtocol {
         let data = entry.data
 
         do {
-            try await writeActor.saveEntry(
-                id: id, accountId: accountId, sessionId: sessionId,
-                tag: tag, tagId: tagId, type: type,
-                message: message, timestamp: timestamp, data: data
-            )
+            try await performBackgroundTask { ctx in
+                let newEntry = LogEntry(
+                    id: id,
+                    accountId: accountId,
+                    sessionId: sessionId,
+                    tag: tag,
+                    tagId: tagId,
+                    type: type,
+                    message: message,
+                    timestamp: timestamp,
+                    data: data
+                )
+                ctx.insert(newEntry)
+                try ctx.save()
+            }
         } catch {
-            print("LoggerRepository save failed: \(error.localizedDescription)")
+            appLogger.log(level: .error, tag: "LoggerRepository", message: "Save failed", data: error.localizedDescription)
+        }
+    }
+
+    func fetchAllLogs() async throws -> [LogEntry] {
+        return try await performBackgroundTask { ctx in
+            let descriptor = FetchDescriptor<LogEntry>()
+            return try ctx.fetch(descriptor)
+        }
+    }
+
+    func fetchLogs(forSession sessionId: String) async throws -> [LogEntry] {
+        return try await performBackgroundTask { ctx in
+            let descriptor = FetchDescriptor<LogEntry>(
+                predicate: #Predicate { $0.sessionId == sessionId }
+            )
+            return try ctx.fetch(descriptor)
+        }
+    }
+
+    func fetchLogs(forAccount accountId: String) async throws -> [LogEntry] {
+        return try await performBackgroundTask { ctx in
+            let descriptor = FetchDescriptor<LogEntry>(
+                predicate: #Predicate { $0.accountId == accountId }
+            )
+            return try ctx.fetch(descriptor)
+        }
+    }
+
+    func fetchLogs(from: Date, to: Date) async throws -> [LogEntry] {
+        let start = Int64(from.timeIntervalSince1970 * 1000)
+        let end = Int64(to.timeIntervalSince1970 * 1000)
+        return try await performBackgroundTask { ctx in
+            let descriptor = FetchDescriptor<LogEntry>(
+                predicate: #Predicate { $0.timestamp >= start && $0.timestamp <= end }
+            )
+            return try ctx.fetch(descriptor)
         }
     }
 
     func deleteLogs(forAccount accountId: String) async throws {
-        try await writeActor.deleteForAccount(accountId)
+        try await performBackgroundTask { ctx in
+            let descriptor = FetchDescriptor<LogEntry>(
+                predicate: #Predicate { $0.accountId == accountId }
+            )
+            let logs = try ctx.fetch(descriptor)
+            logs.forEach { ctx.delete($0) }
+            try ctx.save()
+            return ()
+        }
     }
-
+    
     func deleteAllLogs() async throws {
-        try await writeActor.deleteAll()
+        try await performBackgroundTask { ctx in
+            let descriptor = FetchDescriptor<LogEntry>()
+            let all = try ctx.fetch(descriptor)
+            for log in all { ctx.delete(log) }
+            try ctx.save()
+            return ()
+        }
     }
-
+    
     func deleteLogsOlderThan(olderThanDays days: Int) async throws {
-        let cutoff = DateTimeTools.getTimestampDaysAgo(days)
-        try await writeActor.deleteOlderThan(cutoff)
+        let cutoffTimestamp = DateTimeTools.getTimestampDaysAgo(days)
+        try await performBackgroundTask { ctx in
+            let descriptor = FetchDescriptor<LogEntry>(
+                predicate: #Predicate { $0.timestamp < cutoffTimestamp }
+            )
+            let oldLogs = try ctx.fetch(descriptor)
+            oldLogs.forEach { ctx.delete($0) }
+            try ctx.save()
+            return ()
+        }
     }
 
     /// Deletes old logs in small batches to reduce CPU spikes and memory usage.
@@ -147,62 +143,39 @@ final class LoggerRepository: LoggerRepositoryProtocol {
         batchSize: Int = 500,
         interBatchDelayNs: UInt64 = 20_000_000
     ) async throws {
-        let cutoff = DateTimeTools.getTimestampDaysAgo(days)
+        let cutoffTimestamp = DateTimeTools.getTimestampDaysAgo(days)
+
         while true {
-            let deletedCount = try await writeActor.deleteOlderThanBatch(cutoff, batchSize: batchSize)
+            let deletedCount: Int = try await performBackgroundTask { ctx in
+                var descriptor = FetchDescriptor<LogEntry>(
+                    predicate: #Predicate { $0.timestamp < cutoffTimestamp }
+                )
+                descriptor.fetchLimit = batchSize
+
+                let toDelete = try ctx.fetch(descriptor)
+                guard !toDelete.isEmpty else { return 0 }
+                toDelete.forEach { ctx.delete($0) }
+                try ctx.save()
+                return toDelete.count
+            }
+
             if deletedCount == 0 { break }
+
+            // Yield a bit between batches to avoid prolonged 100% CPU usage
             try? await Task.sleep(nanoseconds: interBatchDelayNs)
             try Task.checkCancellation()
         }
     }
 
     func hasLogsOlderThan(olderThanDays days: Int) async throws -> Bool {
-        let cutoff = DateTimeTools.getTimestampDaysAgo(days)
-        return try await writeActor.hasOlderThan(cutoff)
-    }
-
-    // MARK: - Read (each fetch gets its own fresh context — read-only, no write contention)
-
-    func fetchAllLogs() async throws -> [LogEntry] {
-        let container = self.container
-        return try await Task.detached(priority: .userInitiated) {
-            let ctx = ModelContext(container)
-            return try ctx.fetch(FetchDescriptor<LogEntry>())
-        }.value
-    }
-
-    func fetchLogs(forSession sessionId: String) async throws -> [LogEntry] {
-        let container = self.container
-        return try await Task.detached(priority: .userInitiated) {
-            let ctx = ModelContext(container)
-            let descriptor = FetchDescriptor<LogEntry>(
-                predicate: #Predicate { $0.sessionId == sessionId }
+        let cutoffTimestamp = DateTimeTools.getTimestampDaysAgo(days)
+        return try await performBackgroundTask { ctx in
+            var descriptor = FetchDescriptor<LogEntry>(
+                predicate: #Predicate { $0.timestamp < cutoffTimestamp }
             )
-            return try ctx.fetch(descriptor)
-        }.value
-    }
-
-    func fetchLogs(forAccount accountId: String) async throws -> [LogEntry] {
-        let container = self.container
-        return try await Task.detached(priority: .userInitiated) {
-            let ctx = ModelContext(container)
-            let descriptor = FetchDescriptor<LogEntry>(
-                predicate: #Predicate { $0.accountId == accountId }
-            )
-            return try ctx.fetch(descriptor)
-        }.value
-    }
-
-    func fetchLogs(from: Date, to: Date) async throws -> [LogEntry] {
-        let start = Int64(from.timeIntervalSince1970 * 1000)
-        let end = Int64(to.timeIntervalSince1970 * 1000)
-        let container = self.container
-        return try await Task.detached(priority: .userInitiated) {
-            let ctx = ModelContext(container)
-            let descriptor = FetchDescriptor<LogEntry>(
-                predicate: #Predicate { $0.timestamp >= start && $0.timestamp <= end }
-            )
-            return try ctx.fetch(descriptor)
-        }.value
+            descriptor.fetchLimit = 1
+            let result = try ctx.fetch(descriptor)
+            return !result.isEmpty
+        }
     }
 }

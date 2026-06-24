@@ -4,8 +4,8 @@ import Foundation
 final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
     private let httpClient: HTTPClientProtocol
 
-    init(httpClient: HTTPClientProtocol = HTTPClient.shared) {
-        self.httpClient = httpClient
+    init(httpClient: HTTPClientProtocol? = nil) {
+        self.httpClient = httpClient ?? HTTPClient.shared
     }
 
     func createAccount(email: String, password: String, profile: Profile) async throws -> AccountResponse {
@@ -14,25 +14,61 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
             let password: String
             let firstName: String
             let lastName: String
-            let gender: String
+            // Conditional per the multi-product spec — omitted (nil) for baby-only signups.
+            let gender: String?
             let zipcode: String
-            let dob: String
+            let dob: String?
             let weightUnit: String
-            let height: Double
+            let height: Double?
             let activityLevel: String
+            let productTypes: [String]
+            let measurementUnits: String?
         }
+        let productTypes = profile.productTypes ?? [ProductType.weight.apiValue]
+        let requiresHeight = productTypes.contains(ProductType.weight.apiValue)
+        let requiresGenderAndDob = requiresHeight || productTypes.contains(ProductType.bloodPressure.apiValue)
         let createAccountRequest = RegisterRequest(
             email: email,
             password: password,
             firstName: profile.firstName,
             lastName: profile.lastName,
-            gender: profile.gender.rawValue,
+            gender: requiresGenderAndDob ? profile.gender.rawValue : nil,
             zipcode: profile.zipcode,
-            dob: profile.dob,
+            dob: requiresGenderAndDob ? profile.dob : nil,
             weightUnit: profile.weightUnit.rawValue,
-            height: profile.height,
-            activityLevel: profile.activityLevel.rawValue)
+            height: requiresHeight ? profile.height : nil,
+            activityLevel: profile.activityLevel.rawValue,
+            productTypes: productTypes,
+            measurementUnits: profile.measurementUnits)
         return try await httpClient.send(.signup, method: .post, body: createAccountRequest)
+    }
+
+    func checkEmailAvailability(email: String) async throws -> Bool {
+        let response: EmailCheckResponse = try await httpClient.send(
+            .emailCheck,
+            method: .post,
+            body: EmailCheckRequest(email: email)
+        )
+        return response.isAvailable
+    }
+
+    func updateMeasurementUnits(_ measurementUnits: String) async throws -> AccountResponse {
+        return try await httpClient.send(
+            .updateMeasurementUnits,
+            method: .patch,
+            body: UpdateMeasurementUnitsRequest(measurementUnits: measurementUnits),
+            needsAuth: true
+        )
+    }
+
+    func patchProductTypes(_ productTypes: [String]) async throws -> AccountResponse {
+        struct ProductTypesRequest: Codable { let productTypes: [String] }
+        return try await httpClient.send(
+            .updateProductTypes,
+            method: .patch,
+            body: ProductTypesRequest(productTypes: productTypes),
+            needsAuth: true
+        )
     }
 
     func logIn(email: String, password: String) async throws -> AccountResponse {
@@ -60,7 +96,7 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
         let dto = updatedAccount.toAccountDTO()
         return try await httpClient.send(.updateAccount, method: .put, body: dto, needsAuth: true)
     }
-    
+
     func createGoal(_ goal: Goal) async throws -> GoalResponse {
         return try await httpClient.send(.setGoal, method: .post, body: goal, needsAuth: true)
     }
@@ -84,17 +120,32 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
 
     func patchDashboardMetrics(_ metrics: [String]) async throws -> AccountResponse {
         struct DashboardMetricsRequest: Codable { let dashboardMetrics: [String] }
-        return try await httpClient.send(.updateDashboardMetrics, method: .patch, body: DashboardMetricsRequest(dashboardMetrics: metrics), needsAuth: true)
+        return try await httpClient.send(
+            .updateDashboardMetrics,
+            method: .patch,
+            body: DashboardMetricsRequest(dashboardMetrics: metrics),
+            needsAuth: true
+        )
     }
 
     func patchProgressMetrics(_ metrics: [String]) async throws -> AccountResponse {
         struct ProgressMetricsRequest: Codable { let progressMetrics: [String] }
-        return try await httpClient.send(.updateProgressMetrics, method: .patch, body: ProgressMetricsRequest(progressMetrics: metrics), needsAuth: true)
+        return try await httpClient.send(
+            .updateProgressMetrics,
+            method: .patch,
+            body: ProgressMetricsRequest(progressMetrics: metrics),
+            needsAuth: true
+        )
     }
 
     func patchStreak(_ isStreakOn: Bool, _ streakTimestamp: String) async throws -> AccountResponse {
         struct StreakRequest: Codable { let isStreakOn: Bool, streakTimestamp: String }
-        return try await httpClient.send(.updateStreak, method: .patch, body: StreakRequest(isStreakOn: isStreakOn, streakTimestamp: streakTimestamp), needsAuth: true)
+        return try await httpClient.send(
+            .updateStreak,
+            method: .patch,
+            body: StreakRequest(isStreakOn: isStreakOn, streakTimestamp: streakTimestamp),
+            needsAuth: true
+        )
     }
 
     func patchWeightless(_ isWeightlessOn: Bool, _ weightlessTimestamp: String, _ weightlessWeight: Int) async throws -> AccountResponse {
@@ -103,7 +154,16 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
             let weightlessTimestamp: String
             let weightlessWeight: Int
         }
-        return try await httpClient.send(.updateWeightless, method: .patch, body: WeightlessRequest(isWeightlessOn: isWeightlessOn, weightlessTimestamp: weightlessTimestamp, weightlessWeight: weightlessWeight), needsAuth: true)
+        return try await httpClient.send(
+            .updateWeightless,
+            method: .patch,
+            body: WeightlessRequest(
+                isWeightlessOn: isWeightlessOn,
+                weightlessTimestamp: weightlessTimestamp,
+                weightlessWeight: weightlessWeight
+            ),
+            needsAuth: true
+        )
     }
 
     func deleteAccount(accountId: String) async throws {
@@ -117,9 +177,14 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
 
     func updatePassword(oldPassword: String, newPassword: String) async throws -> Tokens {
         struct Request: Codable { let oldPassword: String; let newPassword: String }
-        return try await httpClient.send(.changePassword, method: .put, body: Request(oldPassword: oldPassword, newPassword: newPassword), needsAuth: true)
+        return try await httpClient.send(
+            .changePassword,
+            method: .put,
+            body: Request(oldPassword: oldPassword, newPassword: newPassword),
+            needsAuth: true
+        )
     }
-    
+
     func refreshToken(refreshToken: String, accountId: String?) async throws -> Tokens {
         struct Request: Codable { let refreshToken: String }
         return try await httpClient.send(

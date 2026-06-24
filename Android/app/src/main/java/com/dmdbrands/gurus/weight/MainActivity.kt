@@ -12,8 +12,11 @@ import com.dmdbrands.gurus.weight.app.MeApp
 import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.service.NotificationEventType
+import com.dmdbrands.gurus.weight.core.service.NotificationTapPayload
+import com.dmdbrands.gurus.weight.core.service.pushNotification.PushNotificationService
 import com.dmdbrands.gurus.weight.core.service.WifiScaleService
 import com.dmdbrands.gurus.weight.core.shared.utilities.IAppReviewManager
+import com.dmdbrands.gurus.weight.core.shared.utilities.browser.ICustomTabManager
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.repository.AppRepository
 import com.dmdbrands.gurus.weight.data.storage.datastore.FcmDataStore
@@ -21,6 +24,9 @@ import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.repository.IAppRepository
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.proto.ThemeMode
+import com.dmdbrands.gurus.weight.theme.ThemePrefs
+import com.dmdbrands.gurus.weight.theme.applyNightFlag
+import com.dmdbrands.gurus.weight.theme.resolveNightFlag
 import com.greatergoods.blewrapper.GGBLEService
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -29,7 +35,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import android.app.UiModeManager
+import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 
@@ -59,10 +67,33 @@ class MainActivity : AppCompatActivity() {
   @Inject
   lateinit var appReviewManager: IAppReviewManager
 
+  @Inject
+  lateinit var customTabManager: ICustomTabManager
+
   /**
    * Called when the activity is starting. Sets up Compose content and handles navigation intents.
    * @param savedInstanceState The previously saved instance state, if any.
    */
+  /**
+   * Override the base context's Configuration so Android's resource resolution
+   * (drawable-night/, values-night/, raw-night/) follows the user's stored
+   * Appearance pick instead of the OS-level uiMode. Without this, MeAppTheme
+   * renders the chosen color scheme but theme-aware drawables remain stuck
+   * on the OS setting — see MA-3996.
+   */
+  override fun attachBaseContext(newBase: Context) {
+    // Read the cached pick synchronously from SharedPreferences — runs before Hilt injection and
+    // before the first frame, so we must not block on a proto DataStore disk read or hand-build
+    // DataStore-backed repos here. ThemePrefs is kept current by applyNightMode(). See MA-3996.
+    val mode = ThemePrefs.read(newBase)
+    val baseConfig = newBase.resources.configuration
+    val nightFlag = resolveNightFlag(mode, baseConfig.uiMode)
+    val overridden = Configuration(baseConfig).apply {
+      uiMode = applyNightFlag(uiMode, nightFlag)
+    }
+    super.attachBaseContext(newBase.createConfigurationContext(overridden))
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     applyInitialTheme()
     initializeSplashScreen()
@@ -82,8 +113,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     observeThemeChanges()
-    // Handle initial intent
+    // Handle initial intent (includes the cold-start notification-tap deep link: when the
+    // process was killed the tap launches MainActivity through onCreate, not onNewIntent).
     handleHealthConnectIntent(intent)
+    handleNotificationIntent(intent)
+
+    // Pre-warm Custom Tabs service so support links and OAuth open in browser without delay
+    lifecycleScope.launch {
+      customTabManager.bindService()
+    }
+  }
+
+  override fun onDestroy() {
+    super.onDestroy()
+    if (isFinishing) {
+      customTabManager.unbind()
+    }
   }
 
   /**
@@ -94,12 +139,27 @@ class MainActivity : AppCompatActivity() {
     super.onNewIntent(intent)
     setIntent(intent) // Save the new intent
     handleHealthConnectIntent(intent)
-    if (intent.action == "ACTION_HANDLE_NOTIFICATION") {
-      AppLog.d("MainActivity", "Notification tapped. Destination: ${intent.getStringExtra("destination")}")
-      lifecycleScope.launch {
-        AppNotificationEventService.emit(NotificationEventType.NOTIFICATION_TAPPED)
-      }
-      // Emit event to shared flow or handle navigation
+    handleNotificationIntent(intent)
+  }
+
+  /**
+   * Handles a tapped entry notification, emitting the deep-link payload so [com.dmdbrands.gurus.weight.app.viewmodel.AppViewModel]
+   * can switch account and navigate to History. Called from both [onCreate] (cold start: the
+   * process was killed and the tap relaunches the Activity) and [onNewIntent] (warm start).
+   * @param intent The launch/new intent to inspect.
+   */
+  private fun handleNotificationIntent(intent: Intent?) {
+    if (intent?.action != PushNotificationService.ACTION_HANDLE_NOTIFICATION) return
+    val tapPayload =
+      NotificationTapPayload(
+        accountId = intent.getStringExtra(PushNotificationService.EXTRA_ACCOUNT_ID),
+        destination = intent.getStringExtra(PushNotificationService.EXTRA_DESTINATION),
+        monthKey = intent.getStringExtra(PushNotificationService.EXTRA_MONTH_KEY),
+      )
+    AppLog.d("MainActivity", "Notification tapped: $tapPayload")
+    lifecycleScope.launch {
+      AppNotificationEventService.emit(NotificationEventType.NOTIFICATION_TAPPED)
+      AppNotificationEventService.emitTap(tapPayload)
     }
   }
 
@@ -146,6 +206,9 @@ class MainActivity : AppCompatActivity() {
   }
 
   private fun applyNightMode(mode: ThemeMode) {
+    // Keep the fast SharedPreferences cache in sync so the next attachBaseContext() resolves the
+    // correct night resources without a DataStore read. See ThemePrefs / MA-3996.
+    ThemePrefs.save(this, mode)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
       val ui = getSystemService(UI_MODE_SERVICE) as UiModeManager
       ui.setApplicationNightMode(mode.toUiMode())
@@ -160,11 +223,9 @@ class MainActivity : AppCompatActivity() {
         UserDataStore(applicationContext),
         FcmDataStore(applicationContext),
       )
-
-    val initialMode =
-      runBlocking {
-        appRepository.themeModeFlow.first() // blocks briefly, safe here
-      }
+    val initialMode = runBlocking {
+      appRepository.themeModeFlow.first()
+    }
     applyNightMode(initialMode)
   }
 

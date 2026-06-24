@@ -2,14 +2,19 @@ package com.dmdbrands.gurus.weight.features.integration.model
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.api.integration.IntegrationProvider
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * State for Integration screen, including UI state and data.
  * @property integrations List of all integrations with their connection status.
  * @property selectedIntegrationForDisconnect The integration selected for disconnection.
  */
+@Stable
 data class IntegrationState(
-  val integrations: List<IntegrationItem> = emptyList(),
+  val integrations: ImmutableList<IntegrationItem> = persistentListOf(),
   val selectedIntegrationForDisconnect: IntegrationItem? = null,
 ) : IReducer.State
 
@@ -81,6 +86,9 @@ sealed class IntegrationIntent : IReducer.Intent {
     val integration: IntegrationItem,
   ) : IntegrationIntent()
 
+  /** User tapped the "Request new integration" footer CTA. */
+  object RequestNewIntegration : IntegrationIntent()
+
 }
 
 /**
@@ -96,79 +104,43 @@ class IntegrationReducer : IReducer<IntegrationState, IntegrationIntent> {
   override fun reduce(
     state: IntegrationState,
     intent: IntegrationIntent,
-  ): IntegrationState =
-    when (intent) {
-      is IntegrationIntent.LoadIntegrations -> {
-        state
+  ): IntegrationState = when (intent) {
+    is IntegrationIntent.InitializeIntegrations -> {
+      val allIntegrations = IntegrationProvider.getAllProviders().map { provider ->
+        IntegrationItem.fromProvider(provider)
       }
-
-      is IntegrationIntent.OpenIntegration -> {
-        state
-      }
-
-      is IntegrationIntent.InitializeIntegrations -> {
-        val allIntegrations =
-          IntegrationProvider.getAllProviders().map { provider ->
-            IntegrationItem.fromProvider(provider)
-          }
-        state.copy(integrations = allIntegrations)
-      }
-
-      is IntegrationIntent.SetIntegrations -> {
-        state.copy(integrations = intent.integrations)
-      }
-
-      is IntegrationIntent.AddIntegration -> {
-        state
-      }
-
-      is IntegrationIntent.RemoveIntegration -> {
-        state.copy(selectedIntegrationForDisconnect = intent.integrations)
-      }
-
-      is IntegrationIntent.OnBack -> {
-        state
-      }
-
-      is IntegrationIntent.StartOAuthFlow -> {
-        state
-      }
-
-      is IntegrationIntent.OAuthFlowCompleted -> {
-        state
-      }
-
-      is IntegrationIntent.OAuthFlowFailed -> {
-        state
-      }
-
-      is IntegrationIntent.CheckHealthConnectAvailability -> {
-        state
-      }
-
-      is IntegrationIntent.UpdateIntegrationConnectionStatus -> {
-        val updatedIntegrations =
-          state.integrations.map { integration ->
-            if (integration.provider == intent.provider) {
-              integration.copy(isConnected = intent.isConnected, isValid = intent.isValid)
-            } else {
-              integration
-            }
-          }
-        state.copy(integrations = updatedIntegrations)
-      }
-
-      is IntegrationIntent.NavigateToHealthConnect ->{
-        state
-      }
-
-      is IntegrationIntent.RemoveHealthConnectIntegration ->{
-        state
-      }
-
-      is IntegrationIntent.ToggleHealthConnectIntegration -> {
-        state
-      }
-
+      state.copy(integrations = allIntegrations.toImmutableList())
     }
+
+    is IntegrationIntent.SetIntegrations ->
+      state.copy(integrations = intent.integrations.toImmutableList())
+
+    is IntegrationIntent.RemoveIntegration ->
+      state.copy(selectedIntegrationForDisconnect = intent.integrations)
+
+    is IntegrationIntent.UpdateIntegrationConnectionStatus -> {
+      val updatedIntegrations = state.integrations.map { integration ->
+        if (integration.provider == intent.provider) {
+          integration.copy(isConnected = intent.isConnected, isValid = intent.isValid)
+        } else {
+          integration
+        }
+      }
+      state.copy(integrations = updatedIntegrations.toImmutableList())
+    }
+
+    // Side-effect-only intents (no state change here — handled by the ViewModel).
+    is IntegrationIntent.LoadIntegrations,
+    is IntegrationIntent.OpenIntegration,
+    is IntegrationIntent.AddIntegration,
+    is IntegrationIntent.OnBack,
+    is IntegrationIntent.StartOAuthFlow,
+    is IntegrationIntent.OAuthFlowCompleted,
+    is IntegrationIntent.OAuthFlowFailed,
+    is IntegrationIntent.CheckHealthConnectAvailability,
+    is IntegrationIntent.NavigateToHealthConnect,
+    is IntegrationIntent.RemoveHealthConnectIntegration,
+    is IntegrationIntent.ToggleHealthConnectIntegration,
+    is IntegrationIntent.RequestNewIntegration -> state
+  }
 }

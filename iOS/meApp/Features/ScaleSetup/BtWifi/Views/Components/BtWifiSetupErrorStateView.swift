@@ -35,7 +35,7 @@ struct BtWifiSetupErrorStateView: View {
     /// The heading shown at the top of the error view.
     var title: String = BtWifiScaleSetupStrings.BtWifiSetupErrorStateViewStrings.updateFailed
     /// Optional error code to show below the title.
-    var errorCode: String? = nil
+    var errorCode: String?
 
     /// Triggered when the user taps the **Try Again** button.
     var onTryAgain: () -> Void = {}
@@ -49,10 +49,8 @@ struct BtWifiSetupErrorStateView: View {
 
     /// Whether to show the error code label.
     private var showErrorCode: Bool {
-        errorCode != nil && !errorCode!.isEmpty
+        !(errorCode?.isEmpty ?? true)
     }
-
-   
 
     // MARK: - Body
 
@@ -85,6 +83,7 @@ struct BtWifiSetupErrorStateView: View {
                             customImageSize: CGSize(width: 8, height: 35),
                             showSmallCircleOverride: true
                         )
+                        .accessibilityHidden(true)
                         .padding(.bottom, 180)
                     }
 
@@ -97,6 +96,7 @@ struct BtWifiSetupErrorStateView: View {
                             isDisabled: false,
                             action: onTryAgain
                         )
+                        .accessibilityHint(ScaleSetupStrings.A11y.tryAgainHint)
 
                         ButtonView(
                             text: commonStrings.support,
@@ -105,6 +105,7 @@ struct BtWifiSetupErrorStateView: View {
                             isDisabled: false,
                             action: onSupport
                         )
+                        .accessibilityHint(ScaleSetupStrings.A11y.supportHint)
                     }
                     .padding(.top, .spacingXL)
                 }

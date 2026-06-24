@@ -61,4 +61,3 @@ struct ReorderDropDelegate<T: Identifiable & Equatable>: DropDelegate {
         return true
     }
 }
-

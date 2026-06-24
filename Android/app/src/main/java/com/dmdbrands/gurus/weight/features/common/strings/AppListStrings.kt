@@ -6,5 +6,6 @@ object AppListStrings {
     const val NotConnected = "Not Connected"
     const val SetupIncomplete = "Setup Incomplete"
     const val Connected = "Connected"
+    const val User = "User"
 
 }

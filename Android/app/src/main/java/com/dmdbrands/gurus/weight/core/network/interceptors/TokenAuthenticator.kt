@@ -6,21 +6,25 @@ import com.dmdbrands.gurus.weight.core.network.HttpClient
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.services.ICrashReportingService
 import com.dmdbrands.gurus.weight.data.api.RefreshTokenAPI
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.model.api.auth.RefreshTokenRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.Token
 import com.dmdbrands.gurus.weight.domain.services.AuthState
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import okhttp3.Authenticator
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.Route
 import java.io.IOException
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.time.Instant
+import java.time.format.DateTimeFormatter
+import java.time.ZoneOffset
 import javax.inject.Inject
 
 /**
@@ -31,7 +35,8 @@ class TokenAuthenticator @Inject constructor(
     private val tokenManager: ITokenManager,
     private val refreshTokenAPI: RefreshTokenAPI,
     private val userDataStore: UserDataStore,
-    private val appNavigationService: IAppNavigationService
+    private val appNavigationService: IAppNavigationService,
+    private val crashReportingService: ICrashReportingService,
 ) : Authenticator {
     companion object {
         private const val TAG = "TokenAuthenticator"
@@ -39,9 +44,10 @@ class TokenAuthenticator @Inject constructor(
         private const val MAX_REFRESH_ATTEMPTS = 3
     }
 
-    private var isRefreshingToken = false
+    private val refreshMutex = Mutex()
     private var ongoingRefreshDeferred: CompletableDeferred<Token?>? = null
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+    private val dateFormatter: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC)
 
 
     override fun authenticate(route: Route?, response: Response): Request? {
@@ -60,7 +66,7 @@ class TokenAuthenticator @Inject constructor(
 
       AppLog.v(TAG, "Attempting token refresh for account: $accountId")
         // Try to refresh the token (same as Angular: proactive + reactive)
-        return runBlocking {
+        return runBlocking(Dispatchers.IO) {
             try {
               if(accountId == null){
                 accountId = tokenManager.getCurrentAccountID()
@@ -100,6 +106,7 @@ class TokenAuthenticator @Inject constructor(
 
             } catch (e: Exception) {
                 AppLog.e(TAG, "Token refresh failed for account: $accountId", e.toString())
+                crashReportingService.recordException(e, "token_refresh_failure")
                 // At this point, we know it's the current account (non-active accounts are skipped earlier)
                 // For current account, logout and return null to fail the request
               logoutUser(accountId, isCurrentAccount(accountId))
@@ -141,9 +148,9 @@ class TokenAuthenticator @Inject constructor(
      */
     private fun isTokenExpired(expiresAt: String): Boolean {
         return try {
-            val tokenExpires = dateFormat.parse(expiresAt)
-            val currentTime = Date()
-            val timeUntilExpiry = tokenExpires!!.time - currentTime.time
+            val tokenExpires = Instant.from(dateFormatter.parse(expiresAt))
+            val currentTime = Instant.now()
+            val timeUntilExpiry = tokenExpires.toEpochMilli() - currentTime.toEpochMilli()
             AppLog.v(TAG, "Token expires at: $expiresAt ($timeUntilExpiry ms until expiry)")
 
             val isExpired = timeUntilExpiry <= TOKEN_EXPIRY_BUFFER_MS
@@ -173,109 +180,92 @@ class TokenAuthenticator @Inject constructor(
     }
 
     /**
-     * Refresh token (same as Angular tokenRefresh method)
-     * Matches Angular implementation: waits for ongoing refresh
-     * @param accountId The account ID to refresh token for
-     * @return The new token response if successful, null if failed
+     * Refresh token with Mutex-based synchronization.
+     * Concurrent callers wait for the single in-flight refresh to complete rather than
+     * each starting their own, preventing redundant API calls and token clobbering.
      */
     private suspend fun tokenRefresh(accountId: String?): Token? {
-        // If not refreshing, proceed with refresh
-        if (!isRefreshingToken) {
-            isRefreshingToken = true
-            // Emit refresh started (equivalent to tokenRefreshed.next(false) in Angular)
-            val deferred = CompletableDeferred<Token?>()
-            ongoingRefreshDeferred = deferred
-            try {
-                val refreshToken = if (accountId != null) {
-                    tokenManager.getRefreshToken(accountId)
-                } else {
-                    tokenManager.getRefreshToken()
-                }
+        val newDeferred = CompletableDeferred<Token?>()
 
-                if (refreshToken.isNullOrEmpty()) {
-                    AppLog.e(TAG, "No refresh token available for account: $accountId")
-                    logoutUser(accountId, isCurrentAccount(accountId))
-                    isRefreshingToken = false
-                    deferred.complete(null)
-                    ongoingRefreshDeferred = null
-                    return null
-                }
+        // Under lock: either join an ongoing refresh or register ourselves as the owner
+        val deferredToAwait: CompletableDeferred<Token?>? = refreshMutex.withLock {
+            val existing = ongoingRefreshDeferred
+            if (existing != null) {
+                existing // another thread is already refreshing — await it
+            } else {
+                ongoingRefreshDeferred = newDeferred
+                null // we own the refresh
+            }
+        }
 
-                AppLog.v(TAG, "Refreshing token for account: $accountId")
+        if (deferredToAwait != null) {
+            AppLog.v(TAG, "Token refresh already in progress, waiting for completion...")
+            return deferredToAwait.await()
+        }
 
-                // Make refresh token API call
-                val newTokenResponse = refreshTokenAPI.refreshToken(RefreshTokenRequest(refreshToken))
+        // We own the refresh
+        return try {
+            val refreshToken = if (accountId != null) {
+                tokenManager.getRefreshToken(accountId)
+            } else {
+                tokenManager.getRefreshToken()
+            }
 
-              if (newTokenResponse.accessToken.isEmpty()) {
-                    AppLog.e(TAG, "Received empty access token from refresh response")
-                    isRefreshingToken = false
-                    deferred.complete(null)
-                    ongoingRefreshDeferred = null
-                    return null
-                }
+            if (refreshToken.isNullOrEmpty()) {
+                AppLog.e(TAG, "No refresh token available for account: $accountId")
+                logoutUser(accountId, isCurrentAccount(accountId))
+                refreshMutex.withLock { ongoingRefreshDeferred = null }
+                newDeferred.complete(null)
+                return null
+            }
 
-                // Create new token with preserved account ID
-                val newToken = Token(
-                  accountId = accountId ?: "",
-                  isActive = true,
-                  accessToken = newTokenResponse.accessToken,
-                  refreshToken = newTokenResponse.refreshToken,
-                  expiresAt = newTokenResponse.expiresAt,
-                )
+            AppLog.v(TAG, "Refreshing token for account: $accountId")
+            val newTokenResponse = refreshTokenAPI.refreshToken(RefreshTokenRequest(refreshToken))
 
-                // Update tokens in TokenManager (equivalent to setTokens in Angular)
-                tokenManager.setTokens(newToken)
+            if (newTokenResponse.accessToken.isEmpty()) {
+                AppLog.e(TAG, "Received empty access token from refresh response")
+                refreshMutex.withLock { ongoingRefreshDeferred = null }
+                newDeferred.complete(null)
+                return null
+            }
 
-                // Emit refresh success (equivalent to tokenRefreshed.next(true) in Angular)
-                isRefreshingToken = false
-                deferred.complete(newToken)
-                ongoingRefreshDeferred = null
-                AppLog.v(TAG, "Successfully refreshed token for account: $accountId")
+            val newToken = Token(
+                accountId = accountId ?: "",
+                isActive = true,
+                accessToken = newTokenResponse.accessToken,
+                refreshToken = newTokenResponse.refreshToken,
+                expiresAt = newTokenResponse.expiresAt,
+            )
 
-                return newToken
+            tokenManager.setTokens(newToken)
+            AppLog.v(TAG, "Successfully refreshed token for account: $accountId")
+            refreshMutex.withLock { ongoingRefreshDeferred = null }
+            newDeferred.complete(newToken)
+            newToken
 
-            } catch (e: Exception) {
-                isRefreshingToken = false
-                AppLog.e(TAG, "Token refresh failed for account: $accountId", e.toString())
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Token refresh failed for account: $accountId", e.toString())
+            refreshMutex.withLock { ongoingRefreshDeferred = null }
 
-                // Check error status (same as Angular: err.status === 401)
-                val errorStatus = getErrorStatus(e)
-
-              when (e) {
+            when (e) {
                 is java.net.UnknownHostException,
                 is java.net.SocketTimeoutException,
                 is java.io.InterruptedIOException,
                 is java.io.IOException -> {
-                  // network problem: don't logout
-                  deferred.complete(null)
-                  ongoingRefreshDeferred = null
-                  return null
+                    // Network problem — don't logout
+                    newDeferred.complete(null)
+                    return null
                 }
-              }
+            }
 
-              // Only logout when refresh endpoint says 401/403
-              val httpCode = (e as? retrofit2.HttpException)?.code()
+            // Only logout when refresh endpoint returns 401/403
+            val httpCode = (e as? retrofit2.HttpException)?.code()
                 ?: (e.cause as? retrofit2.HttpException)?.code()
-
-              if (httpCode == 401 || errorStatus == 401) {
+            if (httpCode == 401 || getErrorStatus(e) == 401) {
                 logoutUser(accountId, isCurrentAccount(accountId))
-              }
-              deferred.complete(null)
-              ongoingRefreshDeferred = null
-              return null
             }
-        } else {
-            // Already refreshing - wait for ongoing refresh to complete (same as Angular Promise subscription)
-            AppLog.v(TAG, "Token refresh already in progress, waiting for completion...")
-            val deferred = ongoingRefreshDeferred
-            return if (deferred != null) {
-                // Wait for the ongoing refresh to complete
-                deferred.await()
-            } else {
-                // If deferred is null, refresh might have just completed, try again
-                AppLog.v(TAG, "Ongoing refresh completed, retrying...")
-                tokenRefresh(accountId)
-            }
+            newDeferred.complete(null)
+            null
         }
     }
 

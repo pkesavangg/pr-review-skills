@@ -8,15 +8,20 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * State for AddScaleScreen.
  */
+@Stable
 data class AddScaleState(
   val form: FormGroup<AddScaleFormControls>,
   val isSubmitting: Boolean = false,
   val selectedSku: String? = null,
-  val savedScales: List<ScaleInfo> = emptyList<ScaleInfo>(),
+  val savedScales: ImmutableList<ScaleInfo> = persistentListOf(),
   val scaleId: String? = null,
 ) : IReducer.State
 
@@ -83,7 +88,8 @@ class AddScaleReducer : IReducer<AddScaleState, AddScaleIntent> {
           .map { it.toScaleInfo() }
           .sortedByDescending { scaleInfo ->
             DateTimeConverter.isoToTimestamp(scaleInfo.createdAt)
-          },
+          }
+          .toImmutableList(),
       )
       is AddScaleIntent.OpenSelectedScaleSetup -> state.copy(selectedSku = intent.sku)
       is AddScaleIntent.OpenScaleSettings -> state.copy(scaleId = intent.scaleId)

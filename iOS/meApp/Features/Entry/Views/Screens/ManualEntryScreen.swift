@@ -5,26 +5,28 @@
 //  Created by Kesavan Panchabakesan on 16/06/25.
 //
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 // MARK: - ManualEntryScreen
-/// A view for manual entry of body metrics and other related information.
-/// This screen allows users to input various body metrics such as weight, BMI, body fat, and more.
+// A view for manual entry of body metrics and other related information.
+// This screen allows users to input various body metrics such as weight, BMI, body fat, and more.
 struct ManualEntryScreen: View {
     @Environment(\.appTheme) private var theme
     @StateObject private var entryStore = EntryStore()
+    @ObservedObject private var productTypeStore = ProductTypeStore.shared
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
     @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
     @State private var focusedField: FocusField?
+    @State private var isProductTypeSelectorPresented = false
     // Keyboard observer to adjust bottom padding when the keyboard is visible
     @StateObject private var keyboard = KeyboardResponder()
-    
+
     let manualEntryLang = ManualEntryStrings.self
     let commonLang = CommonStrings.self
     let labels = InputFieldLabels.self
     let appAssets = AppAssets.self
-    
+
     // Computed property for weight input config to ensure it updates when weightUnit changes
     private var weightInputConfig: TextInputConfig {
         let weightLabel = labels.weightLabel(entryStore.weightUnit == .kg)
@@ -37,40 +39,148 @@ struct ManualEntryScreen: View {
             maxValue: 999.9
         )
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
-            NavbarHeaderView<EmptyView, EmptyView>(title: manualEntryLang.title, canShowBorder: true)
-            
+            NavbarHeaderView<EmptyView, EmptyView>(
+                title: productTypeStore.availableItems.count > 1
+                    ? productTypeStore.selectedItem.entryTitle
+                    : manualEntryLang.title,
+                onTitleTap: productTypeStore.availableItems.count > 1 ? {
+                    isProductTypeSelectorPresented = true
+                } : nil,
+                canShowBorder: true,
+                canShowTitleChevron: productTypeStore.availableItems.count > 1
+            )
+            .sheet(isPresented: $isProductTypeSelectorPresented) {
+                ProductTypeSelectorSheet(
+                    store: productTypeStore,
+                    isPresented: $isProductTypeSelectorPresented,
+                    title: ProductTypeStrings.manualEntry
+                )
+            }
+
+            if productTypeStore.selectedItem.isPendingBaby {
+                // No baby profile yet — show the "No babies added yet" empty state.
+                babyEmptyState
+            } else {
             ScrollView(.vertical) {
-                VStack(spacing: .spacingLG) {
+                // Body: switch between entry types based on product selection
+                switch productTypeStore.selectedItem {
+                case .baby:
+                    BabyEntryView(
+                        entryStore: entryStore,
+                        focusedField: $focusedField
+                    ) {
+                        performTabSwitchAndHideKeyboard()
+                    }
+                    .padding(.horizontal, .spacingSM)
+                    .padding(.vertical, .spacingLG)
+                    .padding(.bottom, keyboard.currentHeight)
+                case .myBloodPressure:
+                    BloodPressureEntryView(
+                        entryStore: entryStore,
+                        focusedField: $focusedField
+                    ) {
+                        performTabSwitchAndHideKeyboard()
+                    }
+                    .padding(.horizontal, .spacingSM)
+                    .padding(.vertical, .spacingLG)
+                    .padding(.bottom, keyboard.currentHeight)
+                case .myWeight:
+                    weightEntryContent
+                }
+            }
+            .scrollDismissesKeyboard(.interactively)
+            }
+        }
+        .background(theme.backgroundSecondary)
+        .animation(.easeOut(duration: 0.25), value: keyboard.currentHeight)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(commonLang.done) {
+                    withAnimation {
+                        focusedField = nil
+                    }
+                }
+            }
+        }
+        .onAppear {
+            entryStore.refreshTimeOnTabSelected()
+            entryStore.refreshWeightUnit()
+            entryStore.startAutoTimeSync()
+            tabViewModel.registerReselectHandler(for: .entry) { }
+            registerDeactivation {
+                guard entryStore.manualEntryForm.isDirty else { return true }
+                return await entryStore.confirmDiscardChanges()
+            }
+        }
+        .onDisappear {
+            entryStore.stopAutoTimeSync()
+        }
+        .onChange(of: tabViewModel.selectedTab) { _, newValue in
+            if newValue == .entry {
+                entryStore.refreshTimeOnTabSelected()
+                entryStore.refreshWeightUnit()
+                entryStore.startAutoTimeSync()
+            } else {
+                entryStore.stopAutoTimeSync()
+            }
+        }
+        .onReceive(tabViewModel.$pendingAppSyncEditMetrics) { metrics in
+            guard let metrics = metrics, tabViewModel.selectedTab == .entry else { return }
+            entryStore.populateFromAppSync(metrics: metrics)
+            tabViewModel.pendingAppSyncEditMetrics = nil
+        }
+    }
+
+    // MARK: - Baby Empty State (no baby profile yet)
+    private var babyEmptyState: some View {
+        NoEntryView(
+            title: ProductTypeStrings.BabyEmptyState.title,
+            description: ProductTypeStrings.BabyEmptyState.entryDescription,
+            buttonTitle: ProductTypeStrings.BabyEmptyState.addABaby,
+            iconAsset: appAssets.babyAppIcon,
+            iconTint: theme.babyPrimary
+        ) {
+            tabViewModel.navigateToSettings(route: .addBaby, sourceTab: .entry)
+        }
+    }
+
+    // MARK: - Weight Entry Content (existing UI extracted)
+    private var weightEntryContent: some View {
+        VStack(spacing: .spacingLG) {
                     VStack(alignment: .leading, spacing: .spacingXS) {
                         // Weight Input Field
                         MetricInputField(
                             config: weightInputConfig,
                             value: $entryStore.manualEntryForm.weight.value,
-                            focusedField: $focusedField
+                            focusedField: $focusedField,
+                            accessibilityIdentifier: AccessibilityID.weightField
                         ) {
                             focusedField = nil
                         }
                         .id(entryStore.weightUnit)
-                        
+
                         Text(labels.date)
                             .fontOpenSans(.heading4)
                             .foregroundColor(theme.textHeading)
-                        
+
                         HStack(spacing: .spacingSM) {
                             DateLabelView(date: entryStore.manualEntryForm.date.value,
                                           isSelected: entryStore.showDatePicker
                             ) {
                                 toggleDatePicker()
                             }
+                            .accessibilityHint(manualEntryLang.accDateHint)
                             TimeLabelView(time: entryStore.manualEntryForm.time.value,
                                           isSelected: entryStore.showTimePicker) {
                                 toggleTimePicker()
                             }
+                            .accessibilityHint(manualEntryLang.accTimeHint)
                         }
-                        
+
                         // Pickers
                         DatePickerView(isPresented: $entryStore.showDatePicker,
                                        date: $entryStore.manualEntryForm.date.value,
@@ -82,7 +192,7 @@ struct ManualEntryScreen: View {
                                 dismissOtherPicker(for: .date)
                             }
                         }
-                        
+
                         TimePickerView(isPresented: $entryStore.showTimePicker,
                                        time: $entryStore.manualEntryForm.time.value,
                                        selectedDate: entryStore.manualEntryForm.date.value,
@@ -94,7 +204,7 @@ struct ManualEntryScreen: View {
                             }
                         }
                     }
-                    
+
                     // Accordion header
                     VStack(spacing: 0) {
                         VStack {
@@ -103,11 +213,11 @@ struct ManualEntryScreen: View {
                                     .fontOpenSans(.heading4)
                                     .foregroundColor(theme.textHeading)
                                 Spacer()
-                                AppIconView(icon: entryStore.showMetrics ? appAssets.chevronUp: appAssets.chevronDown,
+                                AppIconView(icon: entryStore.showMetrics ? appAssets.chevronUp : appAssets.chevronDown,
                                             size: IconSize(width: 32, height: 32))
                                 .foregroundColor(theme.actionPrimary)
                             }
-                            
+
                             Text("(\(commonLang.optional))")
                                 .fontOpenSans(.body2)
                                 .foregroundColor(theme.textSubheading)
@@ -119,21 +229,26 @@ struct ManualEntryScreen: View {
                                 entryStore.showMetrics.toggle()
                             }
                         }
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityLabel(manualEntryLang.accBodyMetricsHeader)
+                        .accessibilityHint(entryStore.showMetrics ? manualEntryLang.accBodyMetricsCollapseHint : manualEntryLang.accBodyMetricsExpandHint)
                         .padding(.bottom, .spacingXS)
-                        
+
                         if entryStore.showMetrics {
                             VStack(spacing: .spacingSM) {
                                 // Input fields for body metrics
-                                
+
                                 // BMI field
                                 MetricInputField(
                                     config: TextInputConfig(label: labels.bmi,
                                                             inputType: .metric,
+// swiftlint:disable:next multiline_arguments
                                                             errorMessage: entryStore.getError(for: entryStore.manualEntryForm.bmi), focusField: .bmi,
                                                             maxLength: 3,
                                                             maxValue: 99.9),
                                     value: $entryStore.manualEntryForm.bmi.value,
-                                    focusedField: $focusedField
+                                    focusedField: $focusedField,
+                                    accessibilityIdentifier: AccessibilityID.bmiField
                                 ) {
                                     focusedField = .bodyFat
                                 }
@@ -142,7 +257,7 @@ struct ManualEntryScreen: View {
                                         entryStore.disableBmiAutoCalculation()
                                     }
                                 }
-                                
+
                                 // Body Fat field
                                 MetricInputField(
                                     config: TextInputConfig(label: labels.bodyFat,
@@ -152,11 +267,12 @@ struct ManualEntryScreen: View {
                                                             maxLength: 3,
                                                             maxValue: 99.9),
                                     value: $entryStore.manualEntryForm.bodyFat.value,
-                                    focusedField: $focusedField
+                                    focusedField: $focusedField,
+                                    accessibilityIdentifier: AccessibilityID.bodyFatField
                                 ) {
                                     focusedField = .muscleMass
                                 }
-                                
+
                                 // Muscle Mass field
                                 MetricInputField(
                                     config: TextInputConfig(label: labels.muscleMass,
@@ -166,11 +282,12 @@ struct ManualEntryScreen: View {
                                                             maxLength: 3,
                                                             maxValue: 99.9),
                                     value: $entryStore.manualEntryForm.muscleMass.value,
-                                    focusedField: $focusedField
+                                    focusedField: $focusedField,
+                                    accessibilityIdentifier: AccessibilityID.muscleMassField
                                 ) {
                                     focusedField = .bodyWater
                                 }
-                                
+
                                 MetricInputField(
                                     config: TextInputConfig(label: labels.bodyWater,
                                                             inputType: .metric,
@@ -179,11 +296,12 @@ struct ManualEntryScreen: View {
                                                             maxLength: 3,
                                                             maxValue: 99.9),
                                     value: $entryStore.manualEntryForm.bodyWater.value,
-                                    focusedField: $focusedField
+                                    focusedField: $focusedField,
+                                    accessibilityIdentifier: AccessibilityID.bodyWaterField
                                 ) {
                                     focusedField = nil
                                 }
-                                
+
                                 // Other body metrics fields
                                 if entryStore.canShowOtherBodyMetrics {
                                     // Heart Rate field
@@ -195,11 +313,12 @@ struct ManualEntryScreen: View {
                                                                 maxLength: 3,
                                                                 allowWholeNumbers: true),
                                         value: $entryStore.manualEntryForm.heartRate.value,
-                                        focusedField: $focusedField
+                                        focusedField: $focusedField,
+                                        accessibilityIdentifier: AccessibilityID.heartRateField
                                     ) {
                                         focusedField = .boneMass
                                     }
-                                    
+
                                     // Bone Mass field
                                     MetricInputField(
                                         config: TextInputConfig(label: labels.boneMass,
@@ -209,11 +328,12 @@ struct ManualEntryScreen: View {
                                                                 maxLength: 3,
                                                                 maxValue: 99.9),
                                         value: $entryStore.manualEntryForm.boneMass.value,
-                                        focusedField: $focusedField
+                                        focusedField: $focusedField,
+                                        accessibilityIdentifier: AccessibilityID.boneMassField
                                     ) {
                                         focusedField = .visceralFat
                                     }
-                                    
+
                                     // Visceral Fat field
                                     MetricInputField(
                                         config: TextInputConfig(label: labels.visceralFat,
@@ -223,11 +343,12 @@ struct ManualEntryScreen: View {
                                                                 maxLength: 2,
                                                                 allowWholeNumbers: true),
                                         value: $entryStore.manualEntryForm.visceralFat.value,
-                                        focusedField: $focusedField
+                                        focusedField: $focusedField,
+                                        accessibilityIdentifier: AccessibilityID.visceralFatField
                                     ) {
                                         focusedField = .subcutaneousFat
                                     }
-                                    
+
                                     // Subcutaneous Fat field
                                     MetricInputField(
                                         config: TextInputConfig(label: labels.subcutaneousFat,
@@ -237,11 +358,12 @@ struct ManualEntryScreen: View {
                                                                 maxLength: 3,
                                                                 maxValue: 99.9),
                                         value: $entryStore.manualEntryForm.subcutaneousFat.value,
-                                        focusedField: $focusedField
+                                        focusedField: $focusedField,
+                                        accessibilityIdentifier: AccessibilityID.subcutaneousFatField
                                     ) {
                                         focusedField = .protein
                                     }
-                                    
+
                                     // Protein field
                                     MetricInputField(
                                         config: TextInputConfig(label: labels.protein,
@@ -251,11 +373,12 @@ struct ManualEntryScreen: View {
                                                                 maxLength: 3,
                                                                 maxValue: 99.9),
                                         value: $entryStore.manualEntryForm.protein.value,
-                                        focusedField: $focusedField
+                                        focusedField: $focusedField,
+                                        accessibilityIdentifier: AccessibilityID.proteinField
                                     ) {
                                         focusedField = .skeletalMuscles
                                     }
-                                    
+
                                     // Skeletal Muscles field
                                     MetricInputField(
                                         config: TextInputConfig(label: labels.skeletalMuscles,
@@ -265,11 +388,12 @@ struct ManualEntryScreen: View {
                                                                 maxLength: 3,
                                                                 maxValue: 99.9),
                                         value: $entryStore.manualEntryForm.skeletalMuscles.value,
-                                        focusedField: $focusedField
+                                        focusedField: $focusedField,
+                                        accessibilityIdentifier: AccessibilityID.skeletalMusclesField
                                     ) {
                                         focusedField = .bmr
                                     }
-                                    
+
                                     // Basal Metabolic Rate field
                                     MetricInputField(
                                         config: TextInputConfig(label: labels.basalMetabolicRate,
@@ -279,11 +403,12 @@ struct ManualEntryScreen: View {
                                                                 maxLength: 5,
                                                                 allowWholeNumbers: true),
                                         value: $entryStore.manualEntryForm.bmr.value,
-                                        focusedField: $focusedField
+                                        focusedField: $focusedField,
+                                        accessibilityIdentifier: AccessibilityID.basalMetabolicField
                                     ) {
                                         focusedField = .metabolicAge
                                     }
-                                    
+
                                     // Metabolic Age field
                                     MetricInputField(
                                         config: TextInputConfig(label: labels.metabolicAge,
@@ -293,7 +418,8 @@ struct ManualEntryScreen: View {
                                                                 maxLength: 3,
                                                                 allowWholeNumbers: true),
                                         value: $entryStore.manualEntryForm.metabolicAge.value,
-                                        focusedField: $focusedField
+                                        focusedField: $focusedField,
+                                        accessibilityIdentifier: AccessibilityID.metabolicAgeField
                                     ) {
                                         focusedField = nil
                                         Task {
@@ -308,7 +434,7 @@ struct ManualEntryScreen: View {
                             .padding(.top, .spacingSM)
                         }
                     }
-                    
+
                     // Save button
                     ButtonView(
                         text: commonLang.save,
@@ -323,62 +449,13 @@ struct ManualEntryScreen: View {
                             }
                         }
                     }
-                    
+
                 }
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingLG)
                 .padding(.bottom, keyboard.currentHeight)
-                .onAppear {
-                    // Ensure time defaults to current when landing on this tab
-                    entryStore.refreshTimeOnTabSelected()
-                    // Refresh weight unit to catch any sync updates from other devices
-                    entryStore.refreshWeightUnit()
-                    // Start periodic time sync while on this screen
-                    entryStore.startAutoTimeSync()
-                    // Register a reselect handler for same-tab clicks (do nothing)
-                    tabViewModel.registerReselectHandler(for: .entry) {
-                        // Do nothing when clicking the same tab - just stay on it
-                    }
-                    // Register a handler that decides whether the tab can be left.
-                    registerDeactivation {
-                        // If the form is clean we can leave immediately.
-                        guard entryStore.manualEntryForm.isDirty else { return true }
-                        // Ask the user via the store's confirmation helper.
-                        return await entryStore.confirmDiscardChanges()
-                    }
-                }
-                .onDisappear {
-                    // Stop periodic time sync when leaving screen
-                    entryStore.stopAutoTimeSync()
-                }
-                .onChange(of: tabViewModel.selectedTab) { _, newValue in
-                    // Update time every time Entry tab becomes active
-                    if newValue == .entry {
-                        entryStore.refreshTimeOnTabSelected()
-                        entryStore.refreshWeightUnit()
-                        entryStore.startAutoTimeSync()
-                    } else {
-                        entryStore.stopAutoTimeSync()
-                    }
-                }
-                // Observe AppSync edit metrics reactively for navigation and in-tab updates
-                .onReceive(tabViewModel.$pendingAppSyncEditMetrics) { metrics in
-                    guard let metrics = metrics, tabViewModel.selectedTab == .entry else { return }
-                    entryStore.populateFromAppSync(metrics: metrics)
-                    tabViewModel.pendingAppSyncEditMetrics = nil
-                }
-            }
-            .scrollDismissesKeyboard(.interactively)
-        }
-        .background(theme.backgroundSecondary)
-        .animation(.easeOut(duration: 0.25), value: keyboard.currentHeight)
-        .keyboardDoneToolbar {
-            withAnimation {
-                focusedField = nil
-            }
-        }
     }
-    
+
     private func dismissKeyboardAndUnfocus() {
         focusedField = nil
         hideKeyboard()
@@ -427,7 +504,7 @@ struct ManualEntryScreen: View {
             tabViewModel.selectTab(.dash)
         }
     }
-    
+
 }
 
 #Preview {

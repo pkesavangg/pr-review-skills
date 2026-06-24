@@ -1,15 +1,18 @@
 import java.util.Properties
 
-val localProperties = Properties().apply {
-  val f = file("local.properties")
-  if (f.exists()) f.inputStream().use { load(it) }
+// Load local.properties for credentials
+val localProperties = Properties()
+val localPropertiesFile = file("local.properties")
+if (localPropertiesFile.exists()) {
+  localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
-val gprUser: String = System.getenv("GITHUB_USERNAME")
-  ?: localProperties.getProperty("gpr.user")
-  ?: ""
-val gprKey: String = System.getenv("GITHUB_TOKEN")
-  ?: localProperties.getProperty("gpr.key")
-  ?: ""
+
+val githubUser = System.getenv("GITHUB_USERNAME") ?: localProperties["gpr.user"]?.toString() ?: ""
+val githubToken = System.getenv("GITHUB_TOKEN") ?: localProperties["gpr.key"]?.toString() ?: ""
+
+if (githubUser.isEmpty() || githubToken.isEmpty()) {
+  logger.warn("GitHub credentials missing. Set GITHUB_USERNAME/GITHUB_TOKEN env vars or gpr.user/gpr.key in local.properties. GitHub Package Registry repos will fail to resolve.")
+}
 
 pluginManagement {
   repositories {
@@ -30,19 +33,24 @@ dependencyResolutionManagement {
     google()
     mavenCentral()
     maven {
-      url =
-        uri("https://maven.pkg.github.com/gg-engineering/ggBluetoothNativeLibrary")
+      url = uri("https://maven.pkg.github.com/dmdbrands/ggBluetoothNativeLibrary")
       credentials {
-        username = gprUser
-        password = gprKey
+        username = githubUser
+        password = githubToken
       }
     }
     maven {
-      url =
-        uri("https://maven.pkg.github.com/gg-engineering/vico")
+      url = uri("https://maven.pkg.github.com/dmdbrands/vico")
       credentials {
-        username = gprUser
-        password = gprKey
+        username = githubUser
+        password = githubToken
+      }
+    }
+    maven {
+      url = uri("https://maven.pkg.github.com/gg-engineering/vico")
+      credentials {
+        username = githubUser
+        password = githubToken
       }
     }
   }
@@ -57,3 +65,11 @@ include(":app:appsync")
 include(":bleWrapper")
 // include(":ggBluetoothLibrary")
 include(":iam")
+include(":benchmark")
+
+// Local vico development — uncomment to use local vico source
+//includeBuild("/Users/selvakumar/Projects/vico") {
+//  dependencySubstitution {
+//    substitute(module("com.dmdbrands.lib:compose-android")).using(project(":vico:compose"))
+//  }
+//}

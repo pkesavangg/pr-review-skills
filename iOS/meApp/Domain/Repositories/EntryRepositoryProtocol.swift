@@ -4,6 +4,7 @@ import Foundation
 ///
 /// This protocol defines the contract for interacting with entry data sources (e.g., local database, cache).
 /// It includes CRUD operations, queries by user/month, progress/streak calculations, and sync support.
+@MainActor
 protocol EntryRepositoryProtocol {
     // MARK: - CRUD
 
@@ -27,6 +28,10 @@ protocol EntryRepositoryProtocol {
     /// Updates only the sync-related fields of an entry by its UUID string.
     /// Use this instead of mutating @Model then calling updateEntry (R7/R9).
     func updateEntrySyncStatus(entryId: String, isSynced: Bool, isFailedToSync: Bool, attempts: Int) async throws
+
+    /// Stores the server-assigned entryId returned from a successful create sync.
+    /// Required so subsequent delete operations can include it in the request body.
+    func updateEntryServerEntryId(entryId: String, serverEntryId: String) async throws
 
     /// Deletes an entry by its unique ID.
     /// - Parameter id: The ID of the entry to delete.
@@ -116,25 +121,12 @@ protocol EntryRepositoryProtocol {
     /// - Returns: An array of BathScaleOperationDTO objects.
     func fetchEntriesAsDTO(forUserId userId: String, operationType: String?) async throws -> [BathScaleOperationDTO]
 
-    /// Fetches entries for a specific timestamp as Sendable snapshots.
-    /// Prefer this over `fetchEntriesOfTimestamp` whenever the caller needs to
-    /// hold the result across an `await` boundary — see MA-3898.
-    func fetchEntriesOfTimestampAsSnapshots(forUserId userId: String, timestamp: String) async throws -> [EntrySnapshot]
-
-    /// Fetches entries for a user as Sendable snapshots.
-    /// Prefer this over `fetchEntries(forUserId:operationType:)` whenever the
-    /// caller needs to hold the result across an `await` boundary — see MA-3898.
-    func fetchEntriesAsSnapshots(forUserId userId: String, operationType: String?) async throws -> [EntrySnapshot]
-
-    /// Fetches entries for a given month as Sendable snapshots.
-    /// Prefer this over `fetchEntries(forMonth:userId:)` whenever the caller
-    /// needs to hold the result across an `await` boundary — see MA-3898.
-    func fetchEntriesAsSnapshots(forMonth month: String, userId: String) async throws -> [EntrySnapshot]
-
-    /// Fetches the latest entry for a user as a Sendable snapshot.
-    /// Prefer this over `fetchLatestEntry(forUserId:)` whenever the caller
-    /// needs to read fields after an `await` boundary — see MA-3898.
-    func fetchLatestEntryAsSnapshot(forUserId userId: String) async throws -> EntrySnapshot?
+    /// Fetches BPM entries and returns BpmOperationDTOs.
+    /// - Parameters:
+    ///   - userId: The user ID to filter entries by.
+    ///   - operationType: Optional operation type filter.
+    /// - Returns: An array of BpmOperationDTO objects.
+    func fetchEntriesAsBpmDTO(forUserId userId: String, operationType: String?) async throws -> [BpmOperationDTO]
 
     // MARK: - Sync
 
