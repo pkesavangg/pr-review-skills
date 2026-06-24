@@ -133,7 +133,7 @@ struct ToastStrings {
     static let weightHistorySynced = "Weight history successfully synced."
     static let hkIntegrationRemoved = "Apple Health integration removed."
     static let hkIntegrationSynced = "Apple Health is synced!"
-    static let saveScaleError = "Error saving scale. Please restart the app and try again."
+    static let saveDeviceError = "Error saving scale. Please restart the app and try again."
     static let restartApp = "Please restart your app and try again."
     static let displayMetricsSaved = "Display metrics saved successfully."
     static let errorSavingDisplayMetrics = "Failed to save display metrics."

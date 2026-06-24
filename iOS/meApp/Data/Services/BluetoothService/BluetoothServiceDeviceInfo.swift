@@ -93,7 +93,7 @@ extension BluetoothService {
         let connectedScales = bluetoothScales.filter { $0.isConnected }
         for scale in connectedScales {
             if let broadcastId = scale.broadcastIdString {
-                await scaleService.updateConnectedDeviceWeightOnlyMode(
+                await deviceService.updateConnectedDeviceWeightOnlyMode(
                     broadcastId: broadcastId,
                     isWeightOnlyModeEnabledByOthers: false
                 )
@@ -107,14 +107,14 @@ extension BluetoothService {
         let connectedR4Scales = bluetoothScales.filter { scale in
             guard scale.isConnected else { return false }
             guard let raw = scale.bathScale?.scaleType else { return false }
-            return ScaleSourceType(rawValue: raw) == .btWifiR4
+            return DeviceSourceType(rawValue: raw) == .btWifiR4
         }
 
         logger.log(level: .info, tag: tag, message: "Found \(connectedR4Scales.count) connected R4 scales to delete")
 
         for scale in connectedR4Scales {
             let broadcastId = scale.broadcastIdString ?? ""
-            await scaleService.updateConnectedDeviceWeightOnlyMode(
+            await deviceService.updateConnectedDeviceWeightOnlyMode(
                 broadcastId: broadcastId,
                 isWeightOnlyModeEnabledByOthers: false
             )

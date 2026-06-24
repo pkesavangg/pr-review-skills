@@ -53,7 +53,7 @@ class BottomTabBarViewModel: ObservableObject {
     // New dependencies for Set Goal Card logic
     @Injector private var entryService: EntryServiceProtocol
     @Injector private var accountService: AccountServiceProtocol
-    @Injector private var scaleService: ScaleServiceProtocol
+    @Injector private var deviceService: PairedDeviceServiceProtocol
     // New dependency to evaluate permission status
     @Injector private var permissionsService: PermissionsServiceProtocol
     @Injector private var pushNotificationService: PushNotificationServiceProtocol
@@ -174,7 +174,7 @@ class BottomTabBarViewModel: ObservableObject {
             .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
             .filter { [weak self] notification in
                 guard notification.entryType == EntryType.scale.rawValue else { return false }
-                let btSources = [ScaleSourceType.bluetoothScale.rawValue, ScaleSourceType.btWifiR4.rawValue]
+                let btSources = [DeviceSourceType.bluetoothScale.rawValue, DeviceSourceType.btWifiR4.rawValue]
                 guard !btSources.contains(notification.source ?? "") else { return false }
                 return self?.hasWifiCapableScale ?? false
             }
@@ -244,9 +244,9 @@ class BottomTabBarViewModel: ObservableObject {
             .store(in: &cancellables)
 
         // Update the app sync tab based on the app sync scale defined in the paired scale list
-        scaleService.scalesPublisher
+        deviceService.scalesPublisher
             .map { scales in
-                scales.contains { $0.bathScale?.scaleType == ScaleSourceType.appsync.rawValue }
+                scales.contains { $0.bathScale?.scaleType == DeviceSourceType.appsync.rawValue }
             }
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
@@ -288,8 +288,8 @@ class BottomTabBarViewModel: ObservableObject {
         }
 
         // Connect BluetoothService scale setup navigation callback
-        bluetoothService.onOpenScaleSetup = { [weak self] scale, event, isReconnect, isDuplicated in
-            self?.openScaleSetup(scale: scale, event: event, isReconnect: isReconnect, isDuplicated: isDuplicated)
+        bluetoothService.onOpenDeviceSetup = { [weak self] scale, event, isReconnect, isDuplicated in
+            self?.openDeviceSetup(scale: scale, event: event, isReconnect: isReconnect, isDuplicated: isDuplicated)
         }
     }
 
@@ -310,7 +310,7 @@ class BottomTabBarViewModel: ObservableObject {
             logger: logger,
             entry: entryService,
             account: accountService,
-            scale: scaleService,
+            scale: deviceService,
             permissions: permissionsService,
             push: pushNotificationService,
             integration: integrationService
@@ -520,11 +520,11 @@ class BottomTabBarViewModel: ObservableObject {
 
     // MARK: - Connect Action from Scale Discovered Sheet
 
-    func openScaleSetup(scale: DeviceSnapshot, event: DeviceDiscoveryEvent?) {
-        openScaleSetup(scale: scale, event: event, isReconnect: false, isDuplicated: false)
+    func openDeviceSetup(scale: DeviceSnapshot, event: DeviceDiscoveryEvent?) {
+        openDeviceSetup(scale: scale, event: event, isReconnect: false, isDuplicated: false)
     }
 
-    func openScaleSetup(scale: DeviceSnapshot, event: DeviceDiscoveryEvent?, isReconnect: Bool, isDuplicated: Bool) {
+    func openDeviceSetup(scale: DeviceSnapshot, event: DeviceDiscoveryEvent?, isReconnect: Bool, isDuplicated: Bool) {
         let sku = scale.sku ?? event?.deviceInfo.sku ?? ""
         guard !sku.isEmpty, let setupType = event?.deviceInfo.setupType else { return }
         logger.log(
@@ -1375,9 +1375,9 @@ class BottomTabBarViewModel: ObservableObject {
     /// (pure Wi-Fi scales or BT+Wi-Fi R4 hybrids). Used to gate the
     /// "New Reading saved to your log" card so it never fires for BT-only accounts.
     private var hasWifiCapableScale: Bool {
-        scaleService.scales.contains { scale in
+        deviceService.scales.contains { scale in
             let type = scale.bathScale?.scaleType
-            return type == ScaleType.wifi.rawValue || type == ScaleType.bluetoothR4.rawValue
+            return type == DeviceModelType.wifi.rawValue || type == DeviceModelType.bluetoothR4.rawValue
         }
     }
 

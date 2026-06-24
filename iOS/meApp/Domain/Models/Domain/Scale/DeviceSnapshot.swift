@@ -1,13 +1,13 @@
 import Foundation
 
 /// A value-type copy of Device and its child relationships.
-/// Published by ScaleService instead of the SwiftData @Model directly.
+/// Published by DeviceService instead of the SwiftData @Model directly.
 /// Safe to use across async boundaries and as Combine publisher payloads.
 ///
 /// ## Ephemeral vs. Persisted State
 ///
 /// Three properties are **ephemeral** — they come from the in-memory
-/// `ephemeralState` dictionary in ScaleService, NOT from SwiftData:
+/// `ephemeralState` dictionary in DeviceService, NOT from SwiftData:
 /// - `isConnected` (set by BLE DEVICE_CONNECTED events)
 /// - `isWifiConfigured` (set by BLE DEVICE_INFO_UPDATE events)
 /// - `isWeighOnlyModeEnabledByOthers` (set by BLE scan pipeline)
@@ -49,8 +49,8 @@ struct DeviceSnapshot: Equatable, Sendable, Identifiable {
     let metaData: DeviceMetaDataSnapshot?
 
     // MARK: - Computed
-    var connectionStatus: ScaleConnectionStatus {
-        let type = ScaleTypeHelper.determineScaleType(
+    var connectionStatus: DeviceConnectionStatus {
+        let type = DeviceTypeHelper.determineDeviceModelType(
             sku: sku,
             scaleType: bathScale?.scaleType,
             deviceType: deviceType

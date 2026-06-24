@@ -10,7 +10,7 @@ import SwiftUI
 struct BIAInfoModalView: View {
     let onClose: () -> Void
     @Environment(\.appTheme) private var theme
-    let lang = ScaleModesStrings.self
+    let lang = DeviceModesStrings.self
 
     var body: some View {
         GeometryReader { geometry in

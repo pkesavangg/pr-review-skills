@@ -9,7 +9,7 @@
 enum CustomizeSettingsItem: String, CaseIterable {
     case dashboardMetrics
     case scaleMetrics
-    case scaleModes
+    case deviceModes
     case userName
     
     var title: String {
@@ -18,7 +18,7 @@ enum CustomizeSettingsItem: String, CaseIterable {
             return BtWifiScaleSetupStrings.CustomizeSettingsStrings.dashboardMetricsTitle
         case .scaleMetrics:
             return BtWifiScaleSetupStrings.CustomizeSettingsStrings.scaleMetricsTitle
-        case .scaleModes:
+        case .deviceModes:
             return BtWifiScaleSetupStrings.CustomizeSettingsStrings.scaleModesTitle
         case .userName:
             return BtWifiScaleSetupStrings.CustomizeSettingsStrings.userNameTitle
@@ -31,7 +31,7 @@ enum CustomizeSettingsItem: String, CaseIterable {
             return BtWifiScaleSetupStrings.CustomizeSettingsStrings.dashboardMetricsSubtitle
         case .scaleMetrics:
             return BtWifiScaleSetupStrings.CustomizeSettingsStrings.scaleMetricsSubtitle
-        case .scaleModes:
+        case .deviceModes:
             return BtWifiScaleSetupStrings.CustomizeSettingsStrings.scaleModesSubtitle
         case .userName:
             return BtWifiScaleSetupStrings.CustomizeSettingsStrings.userNameSubtitle
@@ -44,7 +44,7 @@ enum CustomizeSettingsItem: String, CaseIterable {
             return AppAssets.grid
         case .scaleMetrics:
             return AppAssets.metric
-        case .scaleModes:
+        case .deviceModes:
             return AppAssets.weightOnlyMode
         case .userName:
             return AppAssets.scale
@@ -58,7 +58,7 @@ enum CustomizeSettingsItem: String, CaseIterable {
             return .dashboardMetrics
         case .scaleMetrics:
             return .scaleMetrics
-        case .scaleModes:
+        case .deviceModes:
             return .scaleMode
         case .userName:
             return .scaleUsername

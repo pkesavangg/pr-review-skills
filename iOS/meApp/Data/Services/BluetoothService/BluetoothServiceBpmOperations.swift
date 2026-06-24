@@ -115,7 +115,7 @@ extension BluetoothService {
             isSynced: false
         )
         entry.scaleEntry = BathScaleEntry(
-            source: ScaleSourceType.bluetooth.rawValue,
+            source: DeviceSourceType.bluetooth.rawValue,
             systolic: measurement.systolic,
             diastolic: measurement.diastolic,
             meanArterial: measurement.meanArterial

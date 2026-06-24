@@ -10,7 +10,7 @@ import SwiftUI
 @MainActor
 final class BpmDeviceSettingsStore: ObservableObject {
     @Injector var notificationService: NotificationHelperServiceProtocol
-    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var deviceService: PairedDeviceServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     @Injector var permissionsService: PermissionsServiceProtocol
@@ -38,7 +38,7 @@ final class BpmDeviceSettingsStore: ObservableObject {
     @Published var showProductBrowser: Bool = false
     @Published var productURL: URL?
 
-    let disconnectableScaleTypes: Set<ScaleSourceType> = [.btWifiR4, .bluetooth, .bluetoothScale, .lcbt, .lcbtScale]
+    let disconnectableDeviceModelTypes: Set<DeviceSourceType> = [.btWifiR4, .bluetooth, .bluetoothScale, .lcbt, .lcbtScale]
 
     // Strings
     private let loaderLang = LoaderStrings.self
@@ -52,7 +52,7 @@ final class BpmDeviceSettingsStore: ObservableObject {
         self.init(
             device: device,
             notificationService: nil,
-            scaleService: nil,
+            deviceService: nil,
             bluetoothService: nil,
             logger: nil,
             permissionsService: nil
@@ -62,7 +62,7 @@ final class BpmDeviceSettingsStore: ObservableObject {
     init(
         device: Device,
         notificationService: NotificationHelperServiceProtocol?,
-        scaleService: ScaleServiceProtocol?,
+        deviceService: PairedDeviceServiceProtocol?,
         bluetoothService: BluetoothServiceProtocol?,
         logger: LoggerServiceProtocol?,
         permissionsService: PermissionsServiceProtocol?
@@ -72,7 +72,7 @@ final class BpmDeviceSettingsStore: ObservableObject {
         self.cachedDevice = device
 
         if let notificationService { self.notificationService = notificationService }
-        if let scaleService { self.scaleService = scaleService }
+        if let deviceService { self.deviceService = deviceService }
         if let bluetoothService { self.bluetoothService = bluetoothService }
         if let logger { self.logger = logger }
         if let permissionsService { self.permissionsService = permissionsService }
@@ -81,7 +81,7 @@ final class BpmDeviceSettingsStore: ObservableObject {
 
         refreshCachedValues()
 
-        self.scaleService.scalesPublisher
+        self.deviceService.scalesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] devices in
                 guard let self = self else { return }
@@ -178,9 +178,9 @@ final class BpmDeviceSettingsStore: ObservableObject {
             }
             // Use deleteSingleDeviceEntry to remove only THIS specific user's entry,
             // preserving other users' entries on the same physical BPM monitor.
-            try await scaleService.deleteSingleDeviceEntry(deviceId)
+            try await deviceService.deleteSingleDeviceEntry(deviceId)
             bluetoothService.isSetupInProgress = false
-            await scaleService.syncAllScalesWithRemote()
+            await deviceService.syncAllScalesWithRemote()
             notificationService.showToast(ToastModel(title: ToastStrings.deleted, message: ToastStrings.scaleDeleted))
             isSuccess = true
         } catch {
@@ -191,8 +191,8 @@ final class BpmDeviceSettingsStore: ObservableObject {
         return isSuccess
     }
 
-    private func getScaleType() -> ScaleSourceType? {
+    private func getDeviceModelType() -> DeviceSourceType? {
         guard let scaleType = device.bathScale?.scaleType else { return nil }
-        return ScaleSourceType(rawValue: scaleType)
+        return DeviceSourceType(rawValue: scaleType)
     }
 }

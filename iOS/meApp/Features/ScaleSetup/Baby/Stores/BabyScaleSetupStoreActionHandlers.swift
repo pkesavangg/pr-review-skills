@@ -108,7 +108,7 @@ extension BabyScaleSetupStore {
         guard !nickname.isEmpty else { return }
         Task {
             do {
-                _ = try await scaleService.editDevice(
+                _ = try await deviceService.editDevice(
                     scale.id,
                     properties: ["nickname": nickname]
                 )

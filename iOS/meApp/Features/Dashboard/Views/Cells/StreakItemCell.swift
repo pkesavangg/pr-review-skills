@@ -79,7 +79,7 @@ class StreakCardCell: UICollectionViewCell {
     }
     
     private func getStreakValue(for item: MetricItem) -> String {
-        if parentView == .R4ScaleSetup {
+        if parentView == .r4DeviceSetup {
             let lower = item.label.lowercased()
             if lower.contains("current streak") || lower.contains("longest streak") {
                 return "0"

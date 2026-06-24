@@ -26,7 +26,7 @@ class ServiceRegistry {
     /// Registers services required at app launch (before login)
     @MainActor private func registerEssentialServices() {
         registerCoreInfrastructure()
-        registerAccountDataAndScale()
+        registerAccountDataAndDevices()
 
         let notifications = NotificationHelperService.shared
         DependencyContainer.shared.register(notifications)
@@ -46,7 +46,7 @@ class ServiceRegistry {
 
         let wifi = WifiScaleService.shared
         DependencyContainer.shared.register(wifi)
-        DependencyContainer.shared.register(wifi as WifiScaleServiceProtocol)
+        DependencyContainer.shared.register(wifi as WifiPairedDeviceServiceProtocol)
 
         let integration = IntegrationsService.shared
         DependencyContainer.shared.register(integration)
@@ -90,7 +90,7 @@ class ServiceRegistry {
         DependencyContainer.shared.register(keychain as KeychainServiceProtocol)
     }
 
-    @MainActor private func registerAccountDataAndScale() {
+    @MainActor private func registerAccountDataAndDevices() {
         let account = AccountService.shared
         DependencyContainer.shared.register(account)
         DependencyContainer.shared.register(account as AccountServiceProtocol)
@@ -99,9 +99,9 @@ class ServiceRegistry {
         DependencyContainer.shared.register(entry)
         DependencyContainer.shared.register(entry as EntryServiceProtocol)
 
-        let scale = ScaleService.shared
+        let scale = DeviceService.shared
         DependencyContainer.shared.register(scale)
-        DependencyContainer.shared.register(scale as ScaleServiceProtocol)
+        DependencyContainer.shared.register(scale as PairedDeviceServiceProtocol)
 
         let baby = BabyService.shared
         DependencyContainer.shared.register(baby)
@@ -133,8 +133,8 @@ class ServiceRegistry {
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: KeychainServiceProtocol.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: AccountService.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: AccountServiceProtocol.self))
-        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: ScaleService.self))
-        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: ScaleServiceProtocol.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: DeviceService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: PairedDeviceServiceProtocol.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: IntegrationsService.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: IntegrationServiceProtocol.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: HealthKitService.self))
@@ -154,7 +154,7 @@ class ServiceRegistry {
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: PermissionsService.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: PermissionsServiceProtocol.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: WifiScaleService.self))
-        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: WifiScaleServiceProtocol.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: WifiPairedDeviceServiceProtocol.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: GoalAlertService.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: GoalAlertServiceProtocol.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: AccountFlagService.self))

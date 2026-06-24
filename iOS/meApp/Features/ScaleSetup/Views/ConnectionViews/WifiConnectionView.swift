@@ -20,7 +20,7 @@ import SwiftUI
 struct WifiConnectionView: View {
     // MARK: - Props
     let state: ConnectionState
-    var setupType: ScaleSetupType = .btWifiR4
+    var setupType: DeviceSetupType = .btWifiR4
     /// Optional error code to display when `state == .failure`.
     var errorCode: String?
     /// True when this view is used in the Scale Settings Wi-Fi setup flow (not initial scale setup).

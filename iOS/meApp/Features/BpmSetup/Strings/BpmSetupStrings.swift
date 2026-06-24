@@ -37,7 +37,7 @@ struct BpmSetupStrings {
         static let title: (String) -> String = { userLabel in
             "Set the monitor to User \(userLabel)."
         }
-        static func description(for item: ScaleItemInfo) -> String {
+        static func description(for item: DeviceItemInfo) -> String {
             if item.toggleButton {
                 return "With the monitor off, toggle the user switch to change users."
             }

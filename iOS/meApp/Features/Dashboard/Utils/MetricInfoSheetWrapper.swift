@@ -2,7 +2,7 @@
 //  MetricInfoSheetWrapper.swift
 //  meApp
 //
-//  Wrapper to safely extract DTO from Entry before displaying ScaleMetricsView
+//  Wrapper to safely extract DTO from Entry before displaying DeviceMetricsView
 //
 
 import SwiftData
@@ -30,7 +30,7 @@ enum MetricInfoSheetDTOResolver {
     }
 }
 
-/// Wrapper that safely extracts DTO from Entry before displaying ScaleMetricsView.
+/// Wrapper that safely extracts DTO from Entry before displaying DeviceMetricsView.
 /// This ensures SwiftData properties are accessed on main actor within a ModelContext.
 @MainActor
 struct MetricInfoSheetWrapper: View {
@@ -64,7 +64,7 @@ struct MetricInfoSheetWrapper: View {
     var body: some View {
         Group {
             if let dto = entryDTO {
-                ScaleMetricsView(entryDTO: dto, selectedMetric: selectedMetric, dashboardStore: dashboardStore)
+                DeviceMetricsView(entryDTO: dto, selectedMetric: selectedMetric, dashboardStore: dashboardStore)
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

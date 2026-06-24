@@ -50,7 +50,7 @@ struct BabyScaleSetupStrings {
     }
 
     // MARK: - Scale Name
-    struct ScaleName {
+    struct DeviceName {
         static let title = "Give your scale a name."
         static let nicknamePlaceholder = "Smart Baby Scale"
         static let nicknameLabel = "nickname"

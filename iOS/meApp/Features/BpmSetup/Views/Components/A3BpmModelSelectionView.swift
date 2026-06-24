@@ -9,7 +9,7 @@ import SwiftUI
 struct A3BpmModelSelectionView: View {
     @Environment(\.appTheme) private var theme
 
-    let models: [ScaleItemInfo]
+    let models: [DeviceItemInfo]
     let selectedSku: String?
     let onSelect: (String) -> Void
 
@@ -51,7 +51,7 @@ struct A3BpmModelSelectionView: View {
 private struct BpmModelCard: View {
     @Environment(\.appTheme) private var theme
 
-    let model: ScaleItemInfo
+    let model: DeviceItemInfo
     let isSelected: Bool
     let onTap: () -> Void
 

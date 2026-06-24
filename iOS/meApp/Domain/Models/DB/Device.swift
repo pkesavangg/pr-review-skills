@@ -119,14 +119,14 @@ final class Device {
         // that can't be converted to a valid hex broadcast ID). In that case, keep the SDK-provided
         // broadcastIdString as-is.
         if let broadcastId = broadcastId, broadcastId > 0 {
-            let scaleSource = ScaleSourceType(rawValue: bathScale?.scaleType ?? "") ?? .bluetoothScale
-            let protocolType = ProtocolConversionTools.getProtocolTypeFromScaleType(scaleType: scaleSource)
+            let scaleSource = DeviceSourceType(rawValue: bathScale?.scaleType ?? "") ?? .bluetoothScale
+            let protocolType = ProtocolConversionTools.getProtocolTypeFromDeviceModelType(scaleType: scaleSource)
             self.broadcastIdString = ProtocolConversionTools.convertIntToHex(Int(broadcastId), protocolType: protocolType)
         }
 
     }
     // swiftlint:disable:next function_body_length
-    convenience init(from dto: ScaleDTO,
+    convenience init(from dto: DeviceDTO,
                      accountId: String? = nil,
                      protocolType: String? = nil,
                      isSynced: Bool? = nil,
@@ -157,9 +157,9 @@ final class Device {
         }
 
         var bathScale: BathScale?
-        let resolvedScaleType = scaleType ?? dto.type
-        if let resolvedScaleType {
-            bathScale = BathScale(scaleType: resolvedScaleType, bodyComp: bodyComp)
+        let resolvedDeviceModelType = scaleType ?? dto.type
+        if let resolvedDeviceModelType {
+            bathScale = BathScale(scaleType: resolvedDeviceModelType, bodyComp: bodyComp)
         }
 
         // Prefer the server-provided deviceType when present (Me App 2.0), mapping the server's
@@ -210,14 +210,14 @@ final class Device {
         // inserted into a SwiftData ModelContext to avoid crashes with non-persisted instances
 
         if let broadcastId = self.broadcastId, broadcastId > 0 {
-            let scaleSource = ScaleSourceType(rawValue: resolvedScaleType ?? "") ?? .bluetoothScale
-            let protocolType = ProtocolConversionTools.getProtocolTypeFromScaleType(scaleType: scaleSource)
+            let scaleSource = DeviceSourceType(rawValue: resolvedDeviceModelType ?? "") ?? .bluetoothScale
+            let protocolType = ProtocolConversionTools.getProtocolTypeFromDeviceModelType(scaleType: scaleSource)
             self.broadcastIdString = ProtocolConversionTools.convertIntToHex(Int(broadcastId), protocolType: protocolType)
         }
     }
 
-    func toDTO() -> ScaleDTO {
-        return ScaleDTO(
+    func toDTO() -> DeviceDTO {
+        return DeviceDTO(
             broadcastId: self.broadcastId.map { Int($0) },
             broadcastIdString: self.broadcastIdString,
             createdAt: self.createdAt,
@@ -251,8 +251,8 @@ final class Device {
 extension Device: Identifiable {}
 
 extension Device {
-    var connectionStatus: ScaleConnectionStatus {
-        let type = ScaleTypeHelper.determineScaleType(for: self)
+    var connectionStatus: DeviceConnectionStatus {
+        let type = DeviceTypeHelper.determineDeviceModelType(for: self)
         if type == .appsync || type == .wifi { return .noStatus }
         
         // Only check for setupIncomplete if scale is actually connected

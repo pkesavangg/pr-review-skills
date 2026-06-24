@@ -22,7 +22,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
     private let integrationApiRepo: IntegrationRepositoryAPIProtocol
     /// Migration service for Ionic app data
     private let migrationService: AccountMigrationService
-    private let scaleRepo: ScaleRepositoryProtocol
+    private let scaleRepo: DeviceRepositoryProtocol
     @Published private(set) var isIonicMigrationInProgress: Bool = false
     @Published private(set) var isSignupInProgress: Bool = false
     var isSignupInProgressPublisher: Published<Bool>.Publisher { $isSignupInProgress }
@@ -42,7 +42,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         integrationApiRepo: IntegrationRepositoryAPIProtocol? = nil,
         networkMonitor: NetworkMonitoring? = nil,
         migrationService: AccountMigrationService? = nil,
-        scaleRepo: ScaleRepositoryProtocol? = nil,
+        scaleRepo: DeviceRepositoryProtocol? = nil,
         performInitialLoad: Bool = true
     ) {
         self.apiRepo = apiRepo ?? AccountRepositoryAPI()
@@ -50,7 +50,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         self.integrationApiRepo = integrationApiRepo ?? IntegrationAPIRepository()
         self.networkMonitor = networkMonitor ?? NetworkMonitor.shared
         self.migrationService = migrationService ?? AccountMigrationService()
-        self.scaleRepo = scaleRepo ?? ScaleRepository()
+        self.scaleRepo = scaleRepo ?? DeviceRepository()
         
         $activeAccount
             .dropFirst()

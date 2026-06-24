@@ -17,7 +17,7 @@ struct IntegrationsStrings {
 
     /// Section headers grouping providers by the device types they support.
     static let weightScalesSectionTitle = "Integrations for weight scales"
-    static let weightScalesAndBpmSectionTitle = "Integrations for Weight Scales & BPM"
+    static let weightScalesAndBpmSectionTitle = "Integrations for Weight Devices & BPM"
 
     /// Request new integration button and modal.
     static let requestNewIntegration = "REQUEST NEW INTEGRATION"

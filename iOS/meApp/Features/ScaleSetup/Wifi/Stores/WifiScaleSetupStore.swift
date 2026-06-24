@@ -13,10 +13,10 @@ final class WifiScaleSetupStore: ObservableObject {
     // MARK: - Dependencies
     private let notificationService: NotificationHelperServiceProtocol
     private let permissionsService: PermissionsServiceProtocol
-    private let wifiScaleService: WifiScaleServiceProtocol
+    private let wifiDeviceService: WifiPairedDeviceServiceProtocol
     private let accountService: AccountServiceProtocol
     private let logger: LoggerServiceProtocol
-    private let scaleService: ScaleServiceProtocol
+    private let deviceService: PairedDeviceServiceProtocol
     private let pushNotificationService: PushNotificationServiceProtocol
     private let httpClient: HTTPClientProtocol
     private var bluetoothService: BluetoothServiceProtocol
@@ -102,7 +102,7 @@ final class WifiScaleSetupStore: ObservableObject {
     var dismissAction: (() -> Void)?
     
     /// Resolved scale metadata used across the setup flow.
-    private var scaleItem: ScaleItemInfo?
+    private var scaleItem: DeviceItemInfo?
     
     /// Controls whether to skip network connectivity checks during AP mode
     private var skipCheckNetwork: Bool = false
@@ -206,10 +206,10 @@ final class WifiScaleSetupStore: ObservableObject {
         self.init(
             notificationService: WifiScaleSetupStore.resolveDependency(NotificationHelperServiceProtocol.self),
             permissionsService: WifiScaleSetupStore.resolveDependency(PermissionsServiceProtocol.self),
-            wifiScaleService: WifiScaleSetupStore.resolveDependency(WifiScaleServiceProtocol.self),
+            wifiDeviceService: WifiScaleSetupStore.resolveDependency(WifiPairedDeviceServiceProtocol.self),
             accountService: WifiScaleSetupStore.resolveDependency(AccountServiceProtocol.self),
             logger: WifiScaleSetupStore.resolveDependency(LoggerServiceProtocol.self),
-            scaleService: WifiScaleSetupStore.resolveDependency(ScaleServiceProtocol.self),
+            deviceService: WifiScaleSetupStore.resolveDependency(PairedDeviceServiceProtocol.self),
             pushNotificationService: WifiScaleSetupStore.resolveDependency(PushNotificationServiceProtocol.self),
             httpClient: WifiScaleSetupStore.resolveDependency(HTTPClientProtocol.self),
             bluetoothService: WifiScaleSetupStore.resolveDependency(BluetoothServiceProtocol.self),
@@ -220,10 +220,10 @@ final class WifiScaleSetupStore: ObservableObject {
     init(
         notificationService: NotificationHelperServiceProtocol,
         permissionsService: PermissionsServiceProtocol,
-        wifiScaleService: WifiScaleServiceProtocol,
+        wifiDeviceService: WifiPairedDeviceServiceProtocol,
         accountService: AccountServiceProtocol,
         logger: LoggerServiceProtocol,
-        scaleService: ScaleServiceProtocol,
+        deviceService: PairedDeviceServiceProtocol,
         pushNotificationService: PushNotificationServiceProtocol,
         httpClient: HTTPClientProtocol,
         bluetoothService: BluetoothServiceProtocol,
@@ -231,10 +231,10 @@ final class WifiScaleSetupStore: ObservableObject {
     ) {
         self.notificationService = notificationService
         self.permissionsService = permissionsService
-        self.wifiScaleService = wifiScaleService
+        self.wifiDeviceService = wifiDeviceService
         self.accountService = accountService
         self.logger = logger
-        self.scaleService = scaleService
+        self.deviceService = deviceService
         self.pushNotificationService = pushNotificationService
         self.httpClient = httpClient
         self.bluetoothService = bluetoothService
@@ -535,7 +535,7 @@ final class WifiScaleSetupStore: ObservableObject {
     private func getWifiStatus() {
         Task { @MainActor in
             let kvStorage = KvStorageService.shared
-            let status = await wifiScaleService.getConnectedWifiInfo()
+            let status = await wifiDeviceService.getConnectedWifiInfo()
             
             /// Auto-populate SSID only when permissions allow or are currently enabled
             let arePermissionsCurrentlyEnabled = arePermissionsEnabled()
@@ -648,7 +648,7 @@ final class WifiScaleSetupStore: ObservableObject {
         }
         Task {
             do {
-                let scaleTokenResponse = try await wifiScaleService.getScaleToken(request: "4")
+                let scaleTokenResponse = try await wifiDeviceService.getScaleToken(request: "4")
                 self.scaleToken = scaleTokenResponse.token
             } catch {
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to fetch WiFi scale token: \(error.localizedDescription)")
@@ -702,19 +702,19 @@ final class WifiScaleSetupStore: ObservableObject {
                     deviceType: DeviceType.scale.rawValue,
                     userNumber: "\(userNumber)",
                     token: self.scaleToken ?? "",
-                    bathScale: BathScale(scaleType: ScaleSourceType.wifi.rawValue, bodyComp: scaleItem.bodyComp)
+                    bathScale: BathScale(scaleType: DeviceSourceType.wifi.rawValue, bodyComp: scaleItem.bodyComp)
                 )
-                let response = try await self.scaleService.createDevice(newDevice, false)
-                await self.scaleService.syncAllScalesWithRemote()
+                let response = try await self.deviceService.createDevice(newDevice, false)
+                await self.deviceService.syncAllScalesWithRemote()
                 Task {
-                    await self.pushNotificationService.setupPushNotifications(isFromScaleSetup: true)
+                    await self.pushNotificationService.setupPushNotifications(isFromDeviceSetup: true)
                 }
                 ProductTypeStore.shared.selectLastAdded(.myWeight)
                 NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
                 logger.log(level: .info, tag: tag, message: "Scale saved successfully with ID: \(response.id) \(scaleItem.sku)")
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
-                self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
+                self.notificationService.showToast(ToastModel(message: ToastStrings.saveDeviceError))
             }
             self.bluetoothService.isSetupInProgress = false
         }
@@ -747,7 +747,7 @@ final class WifiScaleSetupStore: ObservableObject {
         
         do {
             // Ensure any previous smart-connect sessions are stopped.
-            await wifiScaleService.stop()
+            await wifiDeviceService.stop()
             
             // Cache SSID / BSSID for later use if required.
             // self.connectedSsid = setupInfo.ssid // This line was removed from the original file, so it's removed here.
@@ -755,9 +755,9 @@ final class WifiScaleSetupStore: ObservableObject {
             self.connectedSsid = setupInfo.ssid
             self.connectedBssid = setupInfo.bssid
             if scaleItem?.setupType == .espTouchWifi {
-                try await wifiScaleService.espSmartConnect(setupInfo)
+                try await wifiDeviceService.espSmartConnect(setupInfo)
             } else {
-                try await wifiScaleService.smartConnect(setupInfo)
+                try await wifiDeviceService.smartConnect(setupInfo)
             }
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "startSmartConnect error: \(error.localizedDescription)")
@@ -790,7 +790,7 @@ final class WifiScaleSetupStore: ObservableObject {
         setSkipCheckNetwork(false)
         
         Task {
-            await self.wifiScaleService.stop()
+            await self.wifiDeviceService.stop()
             dismissAction?()
         }
     }
@@ -816,8 +816,8 @@ final class WifiScaleSetupStore: ObservableObject {
         
         do {
             // Stop any previous sessions before starting AP-mode.
-            await wifiScaleService.stop()
-            try await wifiScaleService.apMode(info)
+            await wifiDeviceService.stop()
+            try await wifiDeviceService.apMode(info)
         } catch {
             logger.log(level: .error, tag: tag, message: "startApMode error: \(error.localizedDescription)")
             
@@ -851,7 +851,7 @@ final class WifiScaleSetupStore: ObservableObject {
         
         while Date().timeIntervalSince(startDate) < timeout {
             if self.wifiStatus?.bssid?.isEmpty ?? true {
-                let latestStatus = await wifiScaleService.getConnectedWifiInfo()
+                let latestStatus = await wifiDeviceService.getConnectedWifiInfo()
                 if let ssid = latestStatus.ssid, !ssid.isEmpty {
                     KvStorageService.shared.setCodable(latestStatus, forKey: ssidTempKey)
                 }

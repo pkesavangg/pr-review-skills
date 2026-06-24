@@ -8,7 +8,7 @@ import SwiftUI
 /// Intro screen showing baby scale model info and image.
 struct BabyScaleIntroView: View {
     @Environment(\.appTheme) private var theme
-    let scale: ScaleItemInfo
+    let scale: DeviceItemInfo
     private let lang = BabyScaleSetupStrings.self
 
     var body: some View {

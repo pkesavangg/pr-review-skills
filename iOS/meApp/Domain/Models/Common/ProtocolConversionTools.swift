@@ -7,7 +7,7 @@ final class ProtocolConversionTools {
     // MARK: - Protocol Conversion
     /// Converts integer to hex string for protocol (R4 or other)
     static func convertIntToHex(_ value: Int, protocolType: ProtocolType) -> String {
-        // Scales' broadcastIds and passwords are stored as integers and need to be
+        // Devices' broadcastIds and passwords are stored as integers and need to be
         // converted to a Hex string before being sent to the app
         var convertedValue = String(value, radix: 16)
 
@@ -34,7 +34,7 @@ final class ProtocolConversionTools {
         return hexPairs.reversed().joined().uppercased()
     }
 
-    static func getProtocolTypeFromScaleType(scaleType: ScaleSourceType) -> ProtocolType {
+    static func getProtocolTypeFromDeviceModelType(scaleType: DeviceSourceType) -> ProtocolType {
       if scaleType == .btWifiR4 {
         return .R4
       } else if scaleType == .bluetooth {

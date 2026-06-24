@@ -15,7 +15,7 @@ struct WifiPasswordEntryView: View {
     @State private var keyboardHeight: CGFloat = 0
     let lang = BtWifiScaleSetupStrings.WifiScreenStrings.self
     let commonLang = CommonStrings.self
-    let isScaleSetup: Bool
+    let isDeviceSetup: Bool
     var labels = InputFieldLabels.self
     
     /// Bottom padding to keep ScrollView content visible above footer and keyboard
@@ -130,7 +130,7 @@ struct WifiPasswordEntryView: View {
     store.configure(with: "0412", isWifiSetupOnly: true)
     return WifiPasswordEntryView(
         wifiDetail: WifiDetails(macAddress: "aa:bb:cc:dd:ee:ff", ssid: "Home WiFi"),
-        isScaleSetup: true
+        isDeviceSetup: true
     )
     .environmentObject(store)
 }

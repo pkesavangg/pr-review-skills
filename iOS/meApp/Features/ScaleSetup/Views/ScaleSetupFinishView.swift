@@ -12,7 +12,7 @@ struct ScaleSetupFinishView: View {
 
     let title: String
     let description: String
-    var isAppSyncScaleSetup: Bool = false
+    var isAppSyncDeviceSetup: Bool = false
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: .spacingLG) {
@@ -37,7 +37,7 @@ struct ScaleSetupFinishView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, .spacingXL)
                     .accessibilityLabel(ScaleSetupStrings.A11y.successIconLabel)
-                if isAppSyncScaleSetup {
+                if isAppSyncDeviceSetup {
                     ThemedImage(name: AppAssets.appSyncTab)
                 }
             }
@@ -52,7 +52,7 @@ struct ScaleSetupFinishView: View {
         title: "Your scale is paired and ready to go!",
         description: "To sync new entries, tap the icon at the bottom right of the app " +
             "when you see the result code display on your scale's screen.",
-        isAppSyncScaleSetup: true
+        isAppSyncDeviceSetup: true
     )
     .environmentObject(Theme.shared)
 }

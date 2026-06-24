@@ -1,7 +1,7 @@
 import Foundation
 
 /// In-memory ephemeral state for a Device, keyed by broadcastIdString or device ID.
-/// Managed by ScaleService. Never persisted to SwiftData.
+/// Managed by DeviceService. Never persisted to SwiftData.
 ///
 /// These three properties are reset on every app launch — they have no persistence
 /// value and were previously stored in SwiftData unnecessarily.

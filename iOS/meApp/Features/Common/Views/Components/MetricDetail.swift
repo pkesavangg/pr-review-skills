@@ -122,7 +122,7 @@ struct MetricDetailView: View {
     }
 
     // MARK: - Scale Preference Helpers
-    private var allScales: [DeviceSnapshot] { ScaleService.shared.scales }
+    private var allScales: [DeviceSnapshot] { DeviceService.shared.scales }
     private var heartRateDisabledScales: [DeviceSnapshot] {
         allScales.filter { device in
             guard let pref = device.r4ScalePreference else { return false }
@@ -132,10 +132,10 @@ struct MetricDetailView: View {
     private var activePreference: R4ScalePreferenceSnapshot? { allScales.first?.r4ScalePreference }
     private var selectedDisabledPreference: R4ScalePreferenceSnapshot? { heartRateDisabledScales.first?.r4ScalePreference }
     private var isHeartRateOnBannerState: Bool { heartRateDisabledScales.isEmpty }
-    private var selectedModeFromPreference: ScaleModes { (activePreference?.shouldMeasureImpedance ?? true) ? .allBodyMetrics : .weightOnly }
-    /// Preferred scale for presenting ScaleModes when exactly one scale needs update.
+    private var selectedModeFromPreference: DeviceModes { (activePreference?.shouldMeasureImpedance ?? true) ? .allBodyMetrics : .weightOnly }
+    /// Preferred scale for presenting DeviceModes when exactly one scale needs update.
     private var selectedScale: Device? {
-        (heartRateDisabledScales.first ?? ScaleService.shared.scales.first)?.toDevice()
+        (heartRateDisabledScales.first ?? DeviceService.shared.scales.first)?.toDevice()
     }
 
     var body: some View {
@@ -183,7 +183,7 @@ struct MetricDetailView: View {
                                 if disabled.count == 1 {
                                     showScaleModesSheet = true
                                 } else if disabled.count > 1 {
-                                    // Dismiss this modal first, then route to My Scales via Settings tab routing
+                                    // Dismiss this modal first, then route to My Devices via Settings tab routing
                                     dismiss()
                                     tabViewModel.navigateToSettings(route: .addEditScales)
                                 }
@@ -247,9 +247,9 @@ struct MetricDetailView: View {
       )
         .sheet(isPresented: $showScaleModesSheet) {
             if let scale = selectedScale {
-                ScaleModesScreen(
+                DeviceModesScreen(
                     scale: scale,
-                    isR4ScaleSetup: false,
+                    isR4DeviceSetup: false,
                     isPresentedAsSheet: true
                 )
                 .environmentObject(Theme.shared)

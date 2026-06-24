@@ -20,7 +20,7 @@ class HelpStore: ObservableObject {
     @Injector var entryService: EntryServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     @Injector var feedService: FeedServiceProtocol
-    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var deviceService: PairedDeviceServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
     private let appReviewHandler: AppReviewHandlerProtocol
     var kvStorage = KvStorageService.shared
@@ -62,10 +62,10 @@ class HelpStore: ObservableObject {
     
     init(appReviewHandler: AppReviewHandlerProtocol? = nil) {
         self.appReviewHandler = appReviewHandler ?? AppReviewService.shared
-        scaleService.scalesPublisher
+        deviceService.scalesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] scales in
-                self?.scales = scales.filter { $0.bathScale?.scaleType == ScaleSourceType.btWifiR4.rawValue }
+                self?.scales = scales.filter { $0.bathScale?.scaleType == DeviceSourceType.btWifiR4.rawValue }
             }
             .store(in: &cancellables)
     }
@@ -175,7 +175,7 @@ class HelpStore: ObservableObject {
                 try await Task.sleep(for: .seconds(3)) // Simulate delay for UI
                 kvStorage.clearAll()
                 await entryService.clearAllData()
-                await scaleService.clearAllData()
+                await deviceService.clearAllData()
                 try await accountService.deleteAllAccounts()
                 // Show success alert
                 notificationService.dismissLoader()

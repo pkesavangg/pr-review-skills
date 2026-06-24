@@ -8,7 +8,7 @@ struct PairedDeviceRequest: Codable, Sendable {
     // MARK: - Required
     /// Physical hardware type: `weight_scale`, `baby_scale`, or `bpm`.
     let deviceType: String
-    /// Connection type. Scales: `wifi`, `bluetooth`, `appsync`, `lcbt`, `btWifiR4`.
+    /// Connection type. Devices: `wifi`, `bluetooth`, `appsync`, `lcbt`, `btWifiR4`.
     /// BPM: `bpmBluetooth`, `bpmLcbt`.
     let type: String
     /// User-friendly device name.

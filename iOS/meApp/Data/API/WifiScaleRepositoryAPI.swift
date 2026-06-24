@@ -1,7 +1,7 @@
 import Foundation
 
 @MainActor
-final class WifiScaleRepositoryAPI: WifiScaleRepositoryAPIProtocol {
+final class WifiDeviceRepositoryAPI: WifiDeviceRepositoryAPIProtocol {
     private let httpClient: HTTPClientProtocol
 
     init(httpClient: HTTPClientProtocol? = nil) {

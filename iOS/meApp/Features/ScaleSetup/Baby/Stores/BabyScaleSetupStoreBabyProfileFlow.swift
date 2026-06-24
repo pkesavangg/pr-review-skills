@@ -164,7 +164,7 @@ extension BabyScaleSetupStore {
 
     // MARK: - Save Device Locally
 
-    /// Creates a local Device record for the baby scale so it appears in My Scales.
+    /// Creates a local Device record for the baby scale so it appears in My Devices.
     func saveScaleLocally() async {
         guard !isScaleSaved else { return }
         guard let accountId = accountService.activeAccount?.accountId else {
@@ -186,7 +186,7 @@ extension BabyScaleSetupStore {
         )
 
         do {
-            _ = try await scaleService.createBluetoothScale(
+            _ = try await deviceService.createBluetoothScale(
                 device: device,
                 sku: sku,
                 userNumber: "1",
@@ -196,7 +196,7 @@ extension BabyScaleSetupStore {
                 deviceType: .babyScale
             )
             isScaleSaved = true
-            await scaleService.syncAllScalesWithRemote()
+            await deviceService.syncAllScalesWithRemote()
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
             let pendingProfile = BabyProfile(id: BabyProfile.pendingSelectionId, name: ProductTypeStrings.babyScale)
             productTypeStore.selectLastAdded(.baby(profile: pendingProfile))
