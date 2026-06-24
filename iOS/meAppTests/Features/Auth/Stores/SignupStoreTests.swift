@@ -960,6 +960,556 @@ struct SignupStoreTests {
         store.signupForm.currentWeight.value = "451"
         #expect(store.signupForm.getError(for: store.signupForm.currentWeight) == SignupStoreTestText.maxWeightKg)
     }
+
+    // MARK: - Baby Management
+
+    @Test("editBaby loads baby data into form and navigates to addBaby step")
+    func editBabyLoadsFormAndNavigates() {
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.babyScale)
+        guard let addBabyIndex = store.steps.firstIndex(of: .addBaby) else {
+            Issue.record("expected .addBaby in steps for babyScale"); return
+        }
+        store.currentStepIndex = addBabyIndex
+        store.babyProfileForm.name.value = "Alice"
+        store.moveToNextStep()
+        #expect(store.babies.count == 1)
+
+        store.editBaby(at: 0)
+
+        #expect(store.babyProfileForm.name.value == "Alice")
+        #expect(store.isEditingBabyIndex == 0)
+        #expect(store.currentStep == .addBaby)
+    }
+
+    @Test("editBaby with out-of-bounds index is a no-op")
+    func editBabyOutOfBoundsIsNoOp() {
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.babyScale)
+
+        store.editBaby(at: 99)
+
+        #expect(store.isEditingBabyIndex == nil)
+    }
+
+    @Test("deleteBaby removes the baby at the given index")
+    func deleteBabyRemovesBabyAtIndex() {
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.babyScale)
+        guard let addBabyIndex = store.steps.firstIndex(of: .addBaby) else {
+            Issue.record("expected .addBaby in steps for babyScale"); return
+        }
+        store.currentStepIndex = addBabyIndex
+        store.babyProfileForm.name.value = "Alice"
+        store.moveToNextStep()
+        #expect(store.babies.count == 1)
+
+        store.deleteBaby(at: 0)
+
+        #expect(store.babies.isEmpty)
+    }
+
+    @Test("deleteBaby with out-of-bounds index is a no-op")
+    func deleteBabyOutOfBoundsIsNoOp() {
+        let (store, _, _, _) = makeSUT()
+
+        store.deleteBaby(at: 0)
+
+        #expect(store.babies.isEmpty)
+    }
+
+    @Test("confirmDeleteBaby shows delete confirmation alert")
+    func confirmDeleteBabyShowsAlert() {
+        let (store, _, notificationService, _) = makeSUT()
+        store.selectDeviceType(.babyScale)
+        guard let addBabyIndex = store.steps.firstIndex(of: .addBaby) else {
+            Issue.record("expected .addBaby in steps for babyScale"); return
+        }
+        store.currentStepIndex = addBabyIndex
+        store.babyProfileForm.name.value = "Alice"
+        store.moveToNextStep()
+
+        store.confirmDeleteBaby(at: 0)
+
+        #expect(notificationService.isAlertVisible == true)
+        #expect(notificationService.alertData?.buttons.count == 2)
+    }
+
+    @Test("confirmDeleteBaby primary button removes the baby")
+    func confirmDeleteBabyPrimaryButtonDeletesBaby() {
+        let (store, _, notificationService, _) = makeSUT()
+        store.selectDeviceType(.babyScale)
+        guard let addBabyIndex = store.steps.firstIndex(of: .addBaby) else {
+            Issue.record("expected .addBaby in steps for babyScale"); return
+        }
+        store.currentStepIndex = addBabyIndex
+        store.babyProfileForm.name.value = "Alice"
+        store.moveToNextStep()
+        #expect(store.babies.count == 1)
+
+        store.confirmDeleteBaby(at: 0)
+        notificationService.alertData?.buttons.first?.action(nil)
+
+        #expect(store.babies.isEmpty)
+    }
+
+    @Test("handleSkip on addBaby with no editing shows skip-baby alert")
+    func handleSkipOnAddBabyShowsSkipAlert() {
+        let (store, _, notificationService, _) = makeSUT()
+        store.selectDeviceType(.babyScale)
+        guard let addBabyIndex = store.steps.firstIndex(of: .addBaby) else {
+            Issue.record("expected .addBaby in steps for babyScale"); return
+        }
+        store.currentStepIndex = addBabyIndex
+
+        store.handleSkip()
+
+        #expect(notificationService.isAlertVisible == true)
+        #expect(notificationService.alertData?.buttons.count == 2)
+    }
+
+    @Test("skip-baby alert primary action jumps to password and resets baby form")
+    func skipAddBabyAlertPrimaryJumpsToPassword() {
+        let (store, _, notificationService, _) = makeSUT()
+        store.selectDeviceType(.babyScale)
+        guard let addBabyIndex = store.steps.firstIndex(of: .addBaby) else {
+            Issue.record("expected .addBaby in steps for babyScale"); return
+        }
+        store.currentStepIndex = addBabyIndex
+        store.babyProfileForm.name.value = "Charlie"
+
+        store.handleSkip()
+        notificationService.alertData?.buttons.first?.action(nil)
+
+        let expectedStep: SignupStep = store.steps.contains(.password) ? .password : .profileReady
+        #expect(store.currentStep == expectedStep)
+        #expect(store.babyProfileForm.name.value == "")
+    }
+
+    @Test("handleSkip on addBaby while editing shows edit-skip confirmation alert")
+    func handleSkipOnAddBabyWhileEditingShowsAlert() {
+        let (store, _, notificationService, _) = makeSUT()
+        store.selectDeviceType(.babyScale)
+        guard let addBabyIndex = store.steps.firstIndex(of: .addBaby) else {
+            Issue.record("expected .addBaby in steps for babyScale"); return
+        }
+        store.currentStepIndex = addBabyIndex
+        store.babyProfileForm.name.value = "Alice"
+        store.moveToNextStep()
+        store.editBaby(at: 0)
+
+        store.handleSkip()
+
+        #expect(notificationService.isAlertVisible == true)
+    }
+
+    @Test("skip-edit-baby alert primary action navigates to babyList and clears editing index")
+    func skipEditBabyAlertPrimaryGoesToBabyList() {
+        let (store, _, notificationService, _) = makeSUT()
+        store.selectDeviceType(.babyScale)
+        guard let addBabyIndex = store.steps.firstIndex(of: .addBaby) else {
+            Issue.record("expected .addBaby in steps for babyScale"); return
+        }
+        store.currentStepIndex = addBabyIndex
+        store.babyProfileForm.name.value = "Alice"
+        store.moveToNextStep()
+        store.editBaby(at: 0)
+        store.handleSkip()
+
+        notificationService.alertData?.buttons.first?.action(nil)
+
+        #expect(store.currentStep == .babyList)
+        #expect(store.isEditingBabyIndex == nil)
+        #expect(store.babyProfileForm.name.value == "")
+    }
+
+    @Test("moveToPreviousStep skips babyList back to addBaby when no babies saved")
+    func moveToPreviousStepSkipsBabyListWhenEmpty() {
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.babyScale)
+        guard let babyListIndex = store.steps.firstIndex(of: .babyList) else {
+            Issue.record("expected .babyList in steps for babyScale"); return
+        }
+        store.currentStepIndex = babyListIndex
+
+        store.moveToPreviousStep()
+
+        #expect(store.currentStep == .addBaby)
+    }
+
+    @Test("next button enabled on babyList when babies list is non-empty")
+    func nextEnabledBabyListNonEmpty() {
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.babyScale)
+        guard let addBabyIndex = store.steps.firstIndex(of: .addBaby) else {
+            Issue.record("expected .addBaby in steps"); return
+        }
+        store.currentStepIndex = addBabyIndex
+        store.babyProfileForm.name.value = "Alice"
+        store.moveToNextStep()
+
+        #expect(store.currentStep == .babyList)
+        #expect(store.isNextEnabled == true)
+    }
+
+    @Test("next button disabled on babyList when babies list is empty")
+    func nextDisabledBabyListEmpty() {
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.babyScale)
+        guard let babyListIndex = store.steps.firstIndex(of: .babyList) else {
+            Issue.record("expected .babyList in steps"); return
+        }
+        store.currentStepIndex = babyListIndex
+        store.updateNextButtonState()
+
+        #expect(store.isNextEnabled == false)
+    }
+
+    @Test("performSaveDevicesAndFinalize with babyScale saves baby and completes signup")
+    func finalizeWithBabyScaleSavesBabyAndCompletes() async {
+        let (store, accountService, _, _) = makeSUT()
+        accountService.signUpResult = .success(())
+        fillRequiredSignupFields(store)
+        store.isGoalSkipped = true
+        store.selectDeviceType(.babyScale)
+
+        guard let addBabyIndex = store.steps.firstIndex(of: .addBaby) else {
+            Issue.record("expected .addBaby in steps"); return
+        }
+        store.currentStepIndex = addBabyIndex
+        store.babyProfileForm.name.value = "Charlie"
+        store.moveToNextStep()
+        #expect(store.babies.count == 1)
+
+        var successCalled = false
+        store.onSignupSuccess = { successCalled = true }
+
+        await store.performCreateAccount()
+        await store.performSaveDevicesAndFinalize()
+
+        #expect(successCalled == true)
+        let anyFailed = store.deviceStatuses.contains {
+            if case .failure = $0.status { return true }; return false
+        }
+        #expect(anyFailed == false)
+    }
+
+    // MARK: - Cancel Signup
+
+    @Test("cancelSignup with router navigates back and resets form")
+    func cancelSignupWithRouterNavigatesBack() {
+        let (store, _, _, _) = makeSUT()
+        let router = Router<AuthRoute>()
+        router.navigate(to: .signup)
+        store.signupForm.firstName.value = "John"
+
+        store.cancelSignup(router: router)
+
+        #expect(router.stack.isEmpty)
+        #expect(store.signupForm.firstName.value == "")
+    }
+
+    @Test("cancelSignup from account switching calls dismissAction and resets form")
+    func cancelSignupFromAccountSwitchingCallsDismissAction() {
+        let (store, _, _, _) = makeSUT()
+        store.isFromAccountSwitching = true
+        var dismissed = false
+        store.dismissAction = { dismissed = true }
+
+        store.cancelSignup()
+
+        #expect(dismissed == true)
+        #expect(store.signupForm.firstName.value == "")
+    }
+
+    // MARK: - handleExit extra paths
+
+    @Test("handleExit on profileReady marks signup not in progress and resets without alert")
+    func handleExitOnProfileReadyResetsWithoutAlert() {
+        let (store, accountService, notificationService, _) = makeSUT()
+        store.currentStepIndex = stepIndex(.profileReady, in: store)
+        store.signupForm.firstName.value = "John"
+        accountService.isSignupInProgress = true
+
+        store.handleExit()
+
+        #expect(notificationService.isAlertVisible == false)
+        #expect(accountService.isSignupInProgress == false)
+        #expect(store.signupForm.firstName.value == "")
+    }
+
+    @Test("handleExit from account switching with pristine form calls dismissAction without alert")
+    func handleExitFromAccountSwitchingPristineCallsDismissAction() {
+        let (store, _, notificationService, _) = makeSUT()
+        store.isFromAccountSwitching = true
+        var dismissed = false
+        store.dismissAction = { dismissed = true }
+
+        store.handleExit()
+
+        #expect(notificationService.isAlertVisible == false)
+        #expect(dismissed == true)
+    }
+
+    @Test("handleExit from account switching with dirty form — primary button calls dismissAction")
+    func handleExitFromAccountSwitchingDirtyFormPrimaryCallsDismissAction() {
+        let (store, _, notificationService, _) = makeSUT()
+        store.isFromAccountSwitching = true
+        store.signupForm.firstName.value = "John"
+        var dismissed = false
+        store.dismissAction = { dismissed = true }
+
+        store.handleExit()
+        notificationService.alertData?.buttons.first?.action(nil)
+
+        #expect(dismissed == true)
+    }
+
+    // MARK: - completeSignup isFromAccountSwitching path
+
+    @Test("completeSignup from account switching with no onSignupSuccess uses dismissAction")
+    func completeSignupFromAccountSwitchingUsesDismissAction() {
+        let (store, _, _, _) = makeSUT()
+        store.isFromAccountSwitching = true
+        store.onSignupSuccess = nil
+        var dismissed = false
+        store.dismissAction = { dismissed = true }
+
+        store.completeSignup()
+
+        #expect(dismissed == true)
+        #expect(store.signupForm.firstName.value == "")
+    }
+
+    // MARK: - Retry Failed Devices
+
+    @Test("retryFailedDevices succeeds after writeAccumulatedProductTypes failure and advances to allProfilesReady")
+    func retryFailedDevicesAdvancesToAllProfilesReady() async {
+        let (store, accountService, _, _) = makeSUT()
+        accountService.signUpResult = .success(())
+        fillRequiredSignupFields(store)
+        store.isGoalSkipped = true
+        store.selectedDeviceType = .bpm
+
+        accountService.updateProductTypesResult = .failure(HTTPError.serverError)
+        await store.performCreateAccount()
+        await store.performSaveDevicesAndFinalize()
+        #expect(store.currentStep == .signupError)
+
+        accountService.updateProductTypesResult = .success(())
+        store.retryFailedDevices()
+        await waitUntil { store.currentStep == .allProfilesReady || store.currentStep == .signupError }
+
+        let anyFailed = store.deviceStatuses.contains {
+            if case .failure = $0.status { return true }; return false
+        }
+        #expect(anyFailed == false)
+        #expect(store.currentStep == .allProfilesReady)
+    }
+
+    // MARK: - Computed Properties
+
+    @Test("pickNextDeviceTitle shows the last-completed device title for a single registered device")
+    func pickNextDeviceTitleSingleDevice() {
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.weightScale)
+        store.connectAnotherDevice()
+
+        #expect(store.lastCompletedDeviceType == .weightScale)
+        #expect(store.pickNextDeviceTitle.isEmpty == false)
+    }
+
+    @Test("pickNextDeviceTitle shows combined title when 2 or more devices are registered")
+    func pickNextDeviceTitleMultipleDevices() {
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.weightScale)
+        store.connectAnotherDevice()
+        store.selectDeviceType(.bpm)
+        store.connectAnotherDevice()
+
+        #expect(store.registeredDeviceTypes.count == 2)
+        #expect(store.pickNextDeviceTitle.contains("&"))
+    }
+
+    @Test("allCompletedDevices includes current selectedDeviceType when not yet in registeredDeviceTypes")
+    func allCompletedDevicesIncludesCurrentDevice() {
+        let (store, _, _, _) = makeSUT()
+        store.registeredDeviceTypes = [.weightScale]
+        store.selectedDeviceType = .bpm
+
+        let completed = store.allCompletedDevices
+
+        #expect(completed.contains(.weightScale))
+        #expect(completed.contains(.bpm))
+        #expect(completed.count == 2)
+    }
+
+    @Test("allCompletedDevices does not duplicate currentDevice when already in registeredDeviceTypes")
+    func allCompletedDevicesNoDuplicateWhenAlreadyRegistered() {
+        let (store, _, _, _) = makeSUT()
+        store.registeredDeviceTypes = [.weightScale]
+        store.selectedDeviceType = .weightScale
+
+        let completed = store.allCompletedDevices
+
+        #expect(completed.count == 1)
+    }
+
+    @Test("allCompletedDevices returns registeredDeviceTypes only when selectedDeviceType is nil")
+    func allCompletedDevicesWithNilSelection() {
+        let (store, _, _, _) = makeSUT()
+        store.registeredDeviceTypes = [.bpm]
+        store.selectedDeviceType = nil
+
+        let completed = store.allCompletedDevices
+
+        #expect(completed == [.bpm])
+    }
+
+    @Test("progressValue returns the snapshot value (0.9) on pickNextDevice step")
+    func progressValueOnPickNextDeviceReturnsSavedValue() {
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.weightScale)
+        store.connectAnotherDevice()
+
+        #expect(store.currentStep == .pickNextDevice)
+        #expect(store.progressValue == 0.9)
+    }
+
+    // MARK: - updateNextButtonState uncovered steps
+
+    @Test("next button enabled on pickNextDevice when a device type is selected")
+    func nextEnabledPickNextDeviceWithSelection() {
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.weightScale)
+        store.connectAnotherDevice()
+        store.selectedDeviceType = .bpm
+        store.updateNextButtonState()
+
+        #expect(store.isNextEnabled == true)
+    }
+
+    @Test("next button disabled on pickNextDevice when no device type is selected")
+    func nextDisabledPickNextDeviceWithoutSelection() {
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.weightScale)
+        store.connectAnotherDevice()
+        store.selectedDeviceType = nil
+        store.updateNextButtonState()
+
+        #expect(store.isNextEnabled == false)
+    }
+
+    // MARK: - createAccount guard
+
+    @Test("createAccount is a no-op when isSignupInProgress is already true")
+    func createAccountSkipsWhenAlreadyInProgress() async {
+        let (store, accountService, _, _) = makeSUT()
+        accountService.isSignupInProgress = true
+
+        store.createAccount()
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        #expect(accountService.signUpCalls == 0)
+    }
+
+    // MARK: - touchAndValidate additional fields
+
+    @Test("touchAndValidate marks firstName as touched")
+    func touchAndValidateFirstNameMarkedTouched() {
+        let (store, _, _, _) = makeSUT()
+
+        #expect(store.signupForm.firstName.isTouched == false)
+        store.touchAndValidate(field: .firstName)
+        #expect(store.signupForm.firstName.isTouched == true)
+    }
+
+    @Test("touchAndValidate marks lastName as touched")
+    func touchAndValidateLastNameMarkedTouched() {
+        let (store, _, _, _) = makeSUT()
+
+        #expect(store.signupForm.lastName.isTouched == false)
+        store.touchAndValidate(field: .lastName)
+        #expect(store.signupForm.lastName.isTouched == true)
+    }
+
+    @Test("touchAndValidate marks password as touched and triggers form-level validation")
+    func touchAndValidatePasswordTriggersValidation() {
+        let (store, _, _, _) = makeSUT()
+        store.signupForm.password.value = "secret"
+        store.signupForm.confirmPassword.value = "different"
+
+        store.touchAndValidate(field: .password)
+
+        #expect(store.signupForm.password.isTouched == true)
+        #expect(store.signupForm.formErrors[.passwordMatch] == true)
+    }
+
+    @Test("touchAndValidate marks confirmPassword as touched and triggers form-level validation")
+    func touchAndValidateConfirmPasswordTriggersValidation() {
+        let (store, _, _, _) = makeSUT()
+        store.signupForm.password.value = "secret"
+        store.signupForm.confirmPassword.value = "different"
+
+        store.touchAndValidate(field: .confirmPassword)
+
+        #expect(store.signupForm.confirmPassword.isTouched == true)
+        #expect(store.signupForm.formErrors[.passwordMatch] == true)
+    }
+
+    @Test("touchAndValidate marks currentWeight as touched")
+    func touchAndValidateCurrentWeightMarkedTouched() {
+        let (store, _, _, _) = makeSUT()
+
+        store.touchAndValidate(field: .currentWeight)
+
+        #expect(store.signupForm.currentWeight.isTouched == true)
+    }
+
+    @Test("touchAndValidate marks goalWeight as touched")
+    func touchAndValidateGoalWeightMarkedTouched() {
+        let (store, _, _, _) = makeSUT()
+
+        store.touchAndValidate(field: .goalWeight)
+
+        #expect(store.signupForm.goalWeight.isTouched == true)
+    }
+
+    @Test("touchAndValidate with an unhandled field hits the default branch without crashing")
+    func touchAndValidateUnhandledFieldIsNoOp() {
+        let (store, _, _, _) = makeSUT()
+
+        store.touchAndValidate(field: .bmi)
+
+        #expect(store.signupForm.firstName.isTouched == false)
+        #expect(store.signupForm.email.isTouched == false)
+    }
+
+    // MARK: - handleSkip default case
+
+    @Test("handleSkip on a step with no special handler advances via moveToNextStep")
+    func handleSkipDefaultCaseAdvancesStep() {
+        let (store, _, _, _) = makeSUT()
+        store.currentStepIndex = stepIndex(.email, in: store)
+        let emailIndex = store.currentStepIndex
+
+        store.handleSkip()
+
+        #expect(store.currentStepIndex > emailIndex)
+    }
+
+    // MARK: - updateHeightPickerValues
+
+    @Test("updateHeightPickerValues populates selectedHeightCm and selectedHeightInches from stored height")
+    func updateHeightPickerValuesSetsPickerSelections() {
+        let (store, _, _, _) = makeSUT()
+        let storedHeight = ConversionTools.convertCmToStoredHeight(170)
+
+        store.updateHeightPickerValues(from: storedHeight)
+
+        #expect(store.selectedHeightCm.isEmpty == false)
+        #expect(store.selectedHeightInches.isEmpty == false)
+    }
 }
 
 // swiftlint:disable large_tuple
