@@ -1,11 +1,13 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -40,15 +42,23 @@ fun ScaleInfo(
   val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku)
   // mapSkuForDisplay is null-safe; for display fall back to the original sku, then to empty.
   val displaySku = scaleInfo?.sku ?: DeviceHelper.mapSkuForDisplay(sku) ?: sku
-  Column(
-    modifier = Modifier
-      .fillMaxSize()
-      .verticalScroll(rememberScrollState())
-      .padding(horizontal = spacing.sm, vertical = spacing.md),
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.Center,
-  ) {
-    val scaleName = scaleInfo?.productName
+  // Vertically centre the device-info content (MOB-970). A plain
+  // Modifier.fillMaxSize().verticalScroll() + Arrangement.Center does NOT centre —
+  // verticalScroll relaxes the height to infinity, so the column wraps its content
+  // and Arrangement.Center is ignored (content sticks to the top). Forcing the
+  // scrollable column to be at least the viewport tall (heightIn min = maxHeight)
+  // makes Arrangement.Center centre when content fits, and still scroll when it overflows.
+  BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+    Column(
+      modifier = Modifier
+        .fillMaxWidth()
+        .heightIn(min = maxHeight)
+        .verticalScroll(rememberScrollState())
+        .padding(horizontal = spacing.sm, vertical = spacing.md),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.Center,
+    ) {
+      val scaleName = scaleInfo?.productName
     val isBabyScale = setupType == ScaleSetupType.BabyScale
     AppScaleImage(sku = displaySku, scaleImageSize = ScaleImageSize.Large, showShadow = !isBabyScale)
     Spacer(modifier = Modifier.height(spacing.lg))
@@ -83,6 +93,7 @@ fun ScaleInfo(
         onClick = onButtonClick,
         modifier = Modifier.align(Alignment.CenterHorizontally),
       )
+      }
     }
   }
 }
