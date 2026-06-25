@@ -204,13 +204,24 @@ struct BabyScaleSetupStoreTests {
         #expect(store.isNextEnabled == true)
     }
 
-    @Test("babyAdded step: isNextEnabled is always true")
-    func updateNextEnabled_babyAdded_alwaysTrue() {
+    @Test("babyAdded step: isNextEnabled is true when at least one baby exists")
+    func updateNextEnabled_babyAdded_enabledWithBabies() {
         let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
+        store.savedBabies = [Baby(accountId: "acct-1", name: "Baby 1")]
         store.currentStepIndex = BabyScaleSetupStep.babyAdded.rawValue
         store.updateNextEnabled()
         #expect(store.isNextEnabled == true)
+    }
+
+    @Test("babyAdded step: isNextEnabled is false when all babies removed")
+    func updateNextEnabled_babyAdded_disabledWhenEmpty() {
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        store.savedBabies = []
+        store.currentStepIndex = BabyScaleSetupStep.babyAdded.rawValue
+        store.updateNextEnabled()
+        #expect(store.isNextEnabled == false)
     }
 
     @Test("scaleName step: isNextEnabled follows scaleNicknameForm.isValid")
@@ -383,8 +394,8 @@ struct BabyScaleSetupStoreTests {
         #expect(deleted == true)
     }
 
-    @Test("deleteBabyFromList navigates to babyProfile when last baby deleted")
-    func deleteBabyFromList_lastBaby_navigatesToBabyProfile() {
+    @Test("deleteBabyFromList stays on babyAdded and disables Next when last baby deleted")
+    func deleteBabyFromList_lastBaby_staysOnBabyAddedAndDisablesNext() {
         let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         let baby = Baby(accountId: "acct-1", name: "Only Baby")
@@ -394,7 +405,8 @@ struct BabyScaleSetupStoreTests {
         store.deleteBabyFromList(baby)
 
         #expect(store.savedBabies.isEmpty)
-        #expect(store.currentStep == .babyProfile)
+        #expect(store.currentStep == .babyAdded)
+        #expect(store.isNextEnabled == false)
     }
 
     @Test("deleteBabyFromList with multiple babies stays on babyAdded")

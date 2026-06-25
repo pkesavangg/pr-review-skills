@@ -143,9 +143,19 @@ extension BluetoothService {
         let protocolType = ProtocolType(rawValue: deviceDetails.protocolType ?? "") ?? .A6
 
         let accountId = activeAccount?.accountId ?? ""
+        // Match the discovered device against paired scales by its normalized integer
+        // broadcastId. broadcastIdString is recomputed per-protocol (A6 pads to 8 hex
+        // chars, R4 to 12), so a string comparison can spuriously miss a known scale —
+        // e.g. a baby scale is stored as R4 (12-char) but its discovery event maps with
+        // no bath scale (A6, 8-char), so the two strings never match. That made every
+        // re-pair look "new" and suppressed the "Scale Already Paired" alert.
         let isKnown = bluetoothScales.contains { scale in
-            scale.broadcastIdString == deviceDetails.broadcastId
-            && scale.accountId == accountId
+            guard scale.accountId == accountId else { return false }
+            if let discoveredId = device.broadcastId, discoveredId > 0, let storedId = scale.broadcastId {
+                return storedId == discoveredId
+            }
+            // Fallback for devices without a usable integer broadcastId (e.g. A3 BPM).
+            return scale.broadcastIdString == deviceDetails.broadcastIdString
         }
         let isNew = !isKnown
 
