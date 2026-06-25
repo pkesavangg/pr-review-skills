@@ -20,6 +20,7 @@ import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.BabyEmptyState
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.ProductTypeHeader
+import com.dmdbrands.gurus.weight.features.common.components.strings.BabyEmptyStateStrings
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import androidx.lifecycle.compose.collectAsStateWithLifecycle as collectAsState2
@@ -65,6 +66,8 @@ fun HistoryScreenContent(
   val coroutineScope = rememberCoroutineScope()
   val selectedProduct = productSelectionManager?.selectedProduct
       ?.collectAsState2()
+  val hasMultipleProducts = (productSelectionManager?.availableProducts
+      ?.collectAsState2()?.value?.size ?: 0) > 1
 
   AppScaffold(
     title = if (productSelectionManager == null) HistoryScreenStrings.Title else null,
@@ -73,6 +76,7 @@ fun HistoryScreenContent(
         ProductTypeHeader(
           selectedProduct = selectedProduct?.value,
           onClick = { productSelectionManager.showProductSheet(HistoryScreenStrings.Title) },
+          showDropdown = hasMultipleProducts,
         )
       }
     } else null,
@@ -155,12 +159,15 @@ fun HistoryScreenContent(
         }
 
         is ProductSelection.BabyScale -> {
+          // No baby profile yet: Manual Entry and History both show the add-a-baby empty
+          // state (baby icon + "No babies added yet"), under the "Baby Scale" title. (MOB-592)
           BabyEmptyState(
             onAddBaby = {
               coroutineScope.launch {
                 navBackStack.addRoute(AppRoute.AccountSettings.AddBaby())
               }
             },
+            description = BabyEmptyStateStrings.EntryDescription,
           )
         }
       }
