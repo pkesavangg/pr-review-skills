@@ -49,8 +49,6 @@ struct BabyHistoryEntryItem: View {
                     Text(entry.weightDisplay)
                         .fontOpenSans(.heading5)
                         .foregroundStyle(isExpanded ? theme.textInverse : theme.textHeading)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
 
                     Text(HistoryListStrings.weight)
                         .fontOpenSans(.body3)
@@ -90,7 +88,10 @@ struct BabyHistoryEntryItem: View {
             .padding(.vertical, .spacingSM)
             .padding(.horizontal, .spacingSM)
             .contentShape(Rectangle())
-            .background(isExpanded ? theme.actionSecondary : Color.clear)
+            // Expanded row is a dark highlight: its values use inverse (light) text, so the
+            // background must be the dark actionPrimary. actionSecondary is the same light
+            // token as textInverse, which made the values invisible.
+            .background(isExpanded ? theme.actionPrimary : Color.clear)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(combinedAccessibilityLabel)
             .accessibilityAddTraits(.isButton)

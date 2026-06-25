@@ -524,7 +524,7 @@ enum BabyDashboardChartSupport {
         case .imperialLbDecimal:
             return BabyWeightDisplay(primary: "--", primaryUnit: BabyDashboardStrings.lb, secondary: nil, secondaryUnit: nil)
         case .imperialLbOz:
-            return BabyWeightDisplay(primary: "00", primaryUnit: BabyDashboardStrings.lbs, secondary: "00", secondaryUnit: BabyDashboardStrings.oz)
+            return BabyWeightDisplay(primary: "00", primaryUnit: BabyDashboardStrings.lbs, secondary: "0.0", secondaryUnit: BabyDashboardStrings.oz)
         }
     }
 

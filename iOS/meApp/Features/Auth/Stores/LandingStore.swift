@@ -49,21 +49,19 @@ final class LandingStore: ObservableObject {
             .sink { [weak self] all in
                 guard let self = self else { return }
 
-                // Only active accounts (isLoggedIn=true, isExpired=false) appear on the
-                // landing screen. Manually logged-out accounts (isLoggedIn=false) and
-                // auto-logged-out accounts (isExpired=true) are excluded — they should
-                // not be selectable from landing.
-                let activeAccounts = all.filter {
-                    $0.isLoggedIn == true && ($0.isExpired ?? false) == false
-                }
-
+                // MOB-423: every saved account appears on landing — active, manually
+                // logged-out (isLoggedIn=false), and auto-logged-out (isExpired=true).
+                // Accounts disappear only when explicitly removed from the device. A
+                // logged-out account renders the "Logged out" card with a Log In action
+                // (tapping it opens Login with the email pre-filled); an active account
+                // stays tap-to-switch.
                 let sortByLastActive: (AccountSnapshot, AccountSnapshot) -> Bool = { lhs, rhs in
                     let lhsDate = DateTimeTools.parse(lhs.lastActiveTime ?? "") ?? .distantPast
                     let rhsDate = DateTimeTools.parse(rhs.lastActiveTime ?? "") ?? .distantPast
                     return lhsDate > rhsDate
                 }
 
-                let sorted = activeAccounts.sorted(by: sortByLastActive)
+                let sorted = all.sorted(by: sortByLastActive)
 
                 self.accounts = sorted
 
@@ -71,12 +69,16 @@ final class LandingStore: ObservableObject {
                     let displayName = account.firstName?.isEmpty == false
                         ? (account.firstName ?? account.email)
                         : account.email
+                    // The row view keys its logged-out treatment (dimmed card, "Logged
+                    // out" label, Log In button) off `isExpired`. An account needs login
+                    // whenever it isn't fully active.
+                    let needsLogin = !(account.isLoggedIn == true && (account.isExpired ?? false) == false)
                     return UserItemInfo(
                         accountID: account.accountId,
                         name: displayName,
                         email: account.email,
                         isSelected: false,
-                        isExpired: false,
+                        isExpired: needsLogin,
                         canShowSelection: false
                     )
                 }
