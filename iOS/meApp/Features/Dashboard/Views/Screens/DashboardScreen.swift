@@ -44,6 +44,7 @@ struct DashboardScreen: View {
                         MultiDeviceSnapshotView(
                             availableItems: store.availableProductItems,
                             selectedItem: store.selectedProductItem,
+                            selectedPeriod: store.state.graph.selectedPeriod,
                             onSelectItem: { selectedItem in
                                 store.selectProductItem(selectedItem)
                                 isInProductDashboard = true
@@ -167,9 +168,10 @@ struct DashboardScreen: View {
 
     private func snapshotLogo() -> some View {
         AppIconView(icon: AppAssets.wgLogo, size: IconSize(width: 45, height: 45))
-            .foregroundColor(theme.textSubheading)
+            .foregroundColor(theme.logoPrimary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, .spacingXS)
+            .accessibilityLabel(lang.accSnapshotLogoLabel)
     }
 
     private func navbarHeader() -> some View {
@@ -186,7 +188,10 @@ struct DashboardScreen: View {
             leadingContent: isProductDashboardFromSnapshot
                 ? { AppIconView(icon: AppAssets.chevronLeft) }
                 : nil,
-            onLeadingTap: isProductDashboardFromSnapshot ? { isInProductDashboard = false } : nil,
+            onLeadingTap: isProductDashboardFromSnapshot ? {
+                isInProductDashboard = false
+                store.clearProductTypeSelection()
+            } : nil,
             onTitleTap: showProductSelector ? {
                 isProductTypeSelectorPresented = true
             } : nil,

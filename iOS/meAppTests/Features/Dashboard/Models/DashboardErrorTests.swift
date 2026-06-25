@@ -38,7 +38,7 @@ struct DashboardErrorTests {
             (.metricConversionFailed("weight"), "Failed to convert metric: weight"),
             (.unsupportedMetricType("bone"), "Unsupported metric type: bone"),
             (.scaleDetectionFailed(wrappedError("unknown scale")), "Failed to detect scale type: unknown scale"),
-            (.unsupportedScaleType("legacy"), "Unsupported scale type: legacy")
+            (.unsupportedDeviceModelType("legacy"), "Unsupported scale type: legacy")
         ]
 
         for (error, expected) in cases {

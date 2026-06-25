@@ -23,7 +23,7 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         let productTypes: [String]
     }
 
-    @Injector private var scaleService: ScaleServiceProtocol
+    @Injector private var deviceService: PairedDeviceServiceProtocol
     @Injector private var babyService: BabyServiceProtocol
     @Injector private var kvStorage: KvStorageServiceProtocol
     @Injector private var accountService: AccountServiceProtocol
@@ -133,12 +133,25 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
                                                accountId: accountService.activeAccount?.accountId)
     }
 
+    func clearPersistedSelection() {
+        ProductTypeStore.clearPersistedSelection(kvStorage: kvStorage,
+                                                 accountId: accountService.activeAccount?.accountId)
+    }
+
     /// Package-internal entry point so unit tests can exercise the real logic
     /// without going through the singleton or copying the implementation.
     static func hasPersistedSelection(kvStorage: KvStorageServiceProtocol, accountId: String?) -> Bool {
         guard let accountId else { return false }
         let key = KvStorageKeys.selectedProductTypeKey(for: accountId)
         return kvStorage.getValue(forKey: key) != nil
+    }
+
+    /// Package-internal entry point so unit tests can exercise the real logic
+    /// without going through the singleton or copying the implementation.
+    static func clearPersistedSelection(kvStorage: KvStorageServiceProtocol, accountId: String?) {
+        guard let accountId else { return }
+        let key = KvStorageKeys.selectedProductTypeKey(for: accountId)
+        kvStorage.clearValue(forKey: key)
     }
 
     /// Returns the resolved `isInProductDashboard` value for the initial product redirect,
@@ -183,7 +196,7 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
     // MARK: - Rebuild on Changes
 
     private func subscribeToChanges() {
-        scaleService.scalesPublisher
+        deviceService.scalesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] devices in
                 self?.syncProductTypesFromDevices(devices)
@@ -304,7 +317,21 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         }
 
         // Reconstruction: derive from server-synced devices.
-        let devices = scaleService.scales
+        let devices = deviceService.scales
+
+        // Don't reconstruct and save if DeviceService hasn't synced yet. Saving a device-only
+        // subset before sync completes permanently drops product types the user earned via
+        // manual entries (e.g. "blood_pressure" with no paired BP device). The scalesPublisher
+        // will fire once devices are loaded and trigger a fresh rebuild().
+        guard !devices.isEmpty else {
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Reconstruction skipped — DeviceService not yet loaded for accountId=\(account.accountId)"
+            )
+            return ["myWeight"]
+        }
+
         var serverTypes: [String] = []
 
         if devices.contains(where: { $0.deviceType == DeviceType.scale.rawValue }) {

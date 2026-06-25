@@ -20,7 +20,7 @@ import SwiftUI
 struct WifiConnectionView: View {
     // MARK: - Props
     let state: ConnectionState
-    var setupType: ScaleSetupType = .btWifiR4
+    var setupType: DeviceSetupType = .btWifiR4
     /// Optional error code to display when `state == .failure`.
     var errorCode: String?
     /// True when this view is used in the Scale Settings Wi-Fi setup flow (not initial scale setup).
@@ -88,22 +88,23 @@ struct WifiConnectionView: View {
                                 .scaledToFit()
                                 .frame(width: 180, height: 180)
                                 .themeDropShadow()
+                                .accessibilityHidden(true)
                         }
-                        
+
                         VStack(spacing: .spacingMD) {
-                            // Re-instantiate the loader every time the state changes so
-                            // we don't keep the previous animation colours (e.g. red ➜ blue).
                             SetupLoaderView(connectionState: state)
-                                .id(state)  // Force a fresh view when the enum value flips
-                            
+                                .id(state)
+                                .accessibilityHidden(true)
+
                             ConnectionIndicatorView(
                                 image: AppAssets.wifi,
                                 isFailure: (state == .failure || state == .noNetworks),
                                 showPulsingCircle: false
                             )
+                            .accessibilityHidden(true)
                         }
                     }
-                    
+
                     // Action buttons (visible only on failure)
                     if state == .failure || state == .noNetworks {
                         VStack(spacing: .spacingMD) {
@@ -114,13 +115,19 @@ struct WifiConnectionView: View {
                                 isDisabled: false,
                                 action: onTryAgain
                             )
-                            
+                            .accessibilityHint(ScaleSetupStrings.A11y.tryAgainHint)
+
                             ButtonView(
                                 text: (state == .noNetworks && !isFromSettingsFlow) ? scaleSetupStrings.setupWifiLater : commonStrings.support,
                                 type: .inlineTextPrimary,
                                 size: .large,
                                 isDisabled: false,
                                 action: onSupport
+                            )
+                            .accessibilityHint(
+                                (state == .noNetworks && !isFromSettingsFlow)
+                                    ? ScaleSetupStrings.A11y.setupWifiLaterHint
+                                    : ScaleSetupStrings.A11y.supportHint
                             )
                         }
                         .padding(.top, .spacingXL)

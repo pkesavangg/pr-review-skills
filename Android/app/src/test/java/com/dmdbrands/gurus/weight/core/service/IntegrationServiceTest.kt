@@ -764,7 +764,7 @@ class IntegrationServiceTest {
 
     service.submitIntegrationRequest("  Garmin  ")
 
-    coVerify { integrationRepository.requestIntegration(mapOf("request" to "Garmin")) }
+    coVerify { integrationRepository.requestIntegration(mapOf("suggestion" to "Garmin")) }
   }
 
   @Test
@@ -775,7 +775,7 @@ class IntegrationServiceTest {
       service.submitIntegrationRequest("Garmin")
     }
 
-    coVerify { integrationRepository.requestIntegration(mapOf("request" to "Garmin")) }
+    coVerify { integrationRepository.requestIntegration(mapOf("suggestion" to "Garmin")) }
   }
 
   @Test

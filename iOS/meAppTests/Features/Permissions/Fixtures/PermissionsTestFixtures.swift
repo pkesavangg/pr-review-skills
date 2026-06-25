@@ -25,7 +25,7 @@ enum PermissionsTestFixtures {
 
     static func makeDevice(
         id: String = UUID().uuidString,
-        scaleType: ScaleSourceType
+        scaleType: DeviceSourceType
     ) -> Device {
         Device(
             id: id,

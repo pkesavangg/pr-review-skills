@@ -10,6 +10,17 @@ struct SignupErrorStepView: View {
     let deviceStatuses: [(device: SignupDeviceType, status: SignupDeviceStatus)]
     let lang = SignupStrings.SignupErrorStep.self
 
+    private var errorSubtitle: String {
+        let failed = deviceStatuses.filter {
+            if case .failure = $0.status { return true }
+            return false
+        }.map(\.device)
+        if failed.count == 1 {
+            return "We couldn't complete your \(failed[0].profileReadyName) setup. Check your connection and try again."
+        }
+        return lang.subtitle
+    }
+
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: .spacingLG) {
@@ -24,13 +35,14 @@ struct SignupErrorStepView: View {
                     )
                     .foregroundColor(theme.statusError)
                 }
+                .accessibilityHidden(true)
 
                 VStack(spacing: .spacingXS) {
                     Text(lang.title)
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
                         .multilineTextAlignment(.center)
-                    Text(lang.subtitle)
+                    Text(errorSubtitle)
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textSubheading)
                         .multilineTextAlignment(.center)
@@ -79,6 +91,7 @@ private struct DeviceStatusCard: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 44, height: 44)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(deviceType.title)

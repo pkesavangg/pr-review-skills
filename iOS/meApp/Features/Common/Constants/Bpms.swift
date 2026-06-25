@@ -14,9 +14,9 @@ func primaryBpmSetupSku(for code: String) -> String {
     bpmAlternateToPrimarySku[code] ?? code
 }
 
-/// Model line shown in My Scales (Bluetooth) and BPM setup model grid — matches BH monitor list order and grouping.
-let BPMS: [ScaleItemInfo] = [
-    ScaleItemInfo(
+/// Model line shown in My Devices (Bluetooth) and BPM setup model grid — matches BH monitor list order and grouping.
+let BPMS: [DeviceItemInfo] = [
+    DeviceItemInfo(
         productName: "Smart Wrist Blood Pressure Monitor",
         sku: "0603",
         imgPath: AppAssets.bpm0603,
@@ -25,7 +25,7 @@ let BPMS: [ScaleItemInfo] = [
         hasNumericUsers: true,
         broadcastName: "gG BPM 0603"
     ),
-    ScaleItemInfo(
+    DeviceItemInfo(
         productName: "Smart Blood Pressure Monitor",
         sku: "0604",
         imgPath: AppAssets.bpm0604,
@@ -34,7 +34,7 @@ let BPMS: [ScaleItemInfo] = [
         toggleButton: true,
         broadcastName: "1490BT"
     ),
-    ScaleItemInfo(
+    DeviceItemInfo(
         productName: "Smart Pro-Series Blood Pressure Monitor",
         sku: "0634",
         imgPath: AppAssets.bpm0634,
@@ -42,7 +42,7 @@ let BPMS: [ScaleItemInfo] = [
         bodyComp: false,
         broadcastName: "gG BPM 0634"
     ),
-    ScaleItemInfo(
+    DeviceItemInfo(
         productName: "All-In-One Bluetooth Blood Pressure Monitor",
         sku: "0636",
         imgPath: AppAssets.bpm0636,
@@ -51,7 +51,7 @@ let BPMS: [ScaleItemInfo] = [
         hasStartButton: false,
         broadcastName: "gG BPM 0636"
     ),
-    ScaleItemInfo(
+    DeviceItemInfo(
         productName: "Smart Blood Pressure Monitor",
         sku: "0663",
         imgPath: AppAssets.bpm0663,
@@ -59,7 +59,7 @@ let BPMS: [ScaleItemInfo] = [
         bodyComp: false,
         broadcastName: "gG BPM 0663"
     ),
-    ScaleItemInfo(
+    DeviceItemInfo(
         productName: "Smart Blood Pressure Monitor",
         sku: "0661",
         imgPath: AppAssets.bpm0604,
@@ -84,7 +84,7 @@ func bpmListModelLabel(primarySku: String) -> String {
 }
 
 /// Looks up the catalog row for a typed or broadcast SKU (accepts alternates such as 0664 → 0604).
-func bpmCatalogItem(forEnteredCode code: String) -> ScaleItemInfo? {
+func bpmCatalogItem(forEnteredCode code: String) -> DeviceItemInfo? {
     let primary = primaryBpmSetupSku(for: code)
     return BPMS.first { $0.sku == primary }
 }

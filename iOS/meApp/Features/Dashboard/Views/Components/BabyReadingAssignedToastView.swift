@@ -21,7 +21,7 @@ func styledBabyWeightText(
     var isFirstNumber = true
     return tokens.reduce(Text("")) { acc, token in
         if Double(token) != nil || Int(token) != nil {
-            let color = isFirstNumber ? theme.babyPrimary : theme.actionSuccess
+            let color = isFirstNumber ? theme.babyScaleColor : theme.actionSuccess
             isFirstNumber = false
             return acc + Text(token)
                 .fontOpenSans(numberStyle)

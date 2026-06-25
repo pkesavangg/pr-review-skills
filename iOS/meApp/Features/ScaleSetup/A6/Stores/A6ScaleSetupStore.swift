@@ -15,7 +15,7 @@ final class A6ScaleSetupStore: ObservableObject {
     @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var permissionsService: PermissionsServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
-    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var deviceService: PairedDeviceServiceProtocol
     @Injector var accountService: AccountServiceProtocol
     
     // MARK: - Private
@@ -24,7 +24,7 @@ final class A6ScaleSetupStore: ObservableObject {
     private var deviceDiscoveryCancellable: AnyCancellable?
     
     /// Resolved scale metadata used across the setup flow.
-    private var scaleItem: ScaleItemInfo?
+    private var scaleItem: DeviceItemInfo?
     private var originalSku: String?
     /// Callback used by the screen to dismiss itself.
     var dismissAction: (() -> Void)?
@@ -307,7 +307,7 @@ final class A6ScaleSetupStore: ObservableObject {
             // This preserves the original SKU (e.g., "0022") passed to the setup flow
             let finalSku = originalSku ?? scaleItem?.sku ?? discoveryEvent.device.sku
             
-            let savedScale = try await scaleService.createA6Scale(
+            let savedScale = try await deviceService.createA6Scale(
                 device: scale,
                 sku: finalSku,
                 accountId: accountId,
@@ -315,7 +315,7 @@ final class A6ScaleSetupStore: ObservableObject {
                 skipDuplicateCheck: false
             )
             
-            await scaleService.syncAllScalesWithRemote()
+            await deviceService.syncAllScalesWithRemote()
             bluetoothService.syncDevices([])
             
             LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully: \(savedScale.id)")
@@ -325,7 +325,7 @@ final class A6ScaleSetupStore: ObservableObject {
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
-            self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
+            self.notificationService.showToast(ToastModel(message: ToastStrings.saveDeviceError))
         }
         bluetoothService.isSetupInProgress = false
     }
@@ -440,17 +440,17 @@ final class A6ScaleSetupStore: ObservableObject {
     // MARK: - A6 Scale Unit Update
     /// Marks A6 scale preferences as unsynced so updated units are applied on reconnect.
     func markA6ScalesUnsyncedForUnitUpdate() async {
-        let a6Scales = scaleService.scales.filter { $0.protocolType == "A6" }
+        let a6Scales = deviceService.scales.filter { $0.protocolType == "A6" }
         guard !a6Scales.isEmpty else {
             return
         }
 
         for scale in a6Scales {
-            guard let preference = scaleService.fetchAttachedPreferenceSync(by: scale.id) else { continue }
+            guard let preference = deviceService.fetchAttachedPreferenceSync(by: scale.id) else { continue }
 
             preference.isSynced = false
             do {
-                try await scaleService.updateScalePreference(scale.id, preference)
+                try await deviceService.updateScalePreference(scale.id, preference)
             } catch {
                 LoggerService.shared.log(
                     level: .error,
@@ -461,7 +461,7 @@ final class A6ScaleSetupStore: ObservableObject {
         }
 
         // Ensure SDK picks up updated unit on reconnect
-        bluetoothService.syncDevices(scaleService.scales)
+        bluetoothService.syncDevices(deviceService.scales)
     }
     deinit {
         deviceDiscoveryCancellable?.cancel()
@@ -478,7 +478,7 @@ final class A6ScaleSetupStore: ObservableObject {
 extension A6ScaleSetupStore {
     @MainActor
     func testWarmInjectedDependencies() {
-        _ = (notificationService, permissionsService, bluetoothService, scaleService, accountService)
+        _ = (notificationService, permissionsService, bluetoothService, deviceService, accountService)
     }
 
     @MainActor

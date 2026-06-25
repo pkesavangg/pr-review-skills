@@ -10,7 +10,7 @@ import SwiftUI
 @MainActor
 final class AdditionalSettingsViewModel: ObservableObject {
     @Injector var notificationService: NotificationHelperServiceProtocol
-    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var deviceService: PairedDeviceServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     @Injector var accountService: AccountServiceProtocol
@@ -19,7 +19,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
 
     /// Reads the current snapshot directly from the service — the single source of truth.
     var deviceSnapshot: DeviceSnapshot? {
-        scaleService.scales.first(where: { $0.id == scaleIdString })
+        deviceService.scales.first(where: { $0.id == scaleIdString })
     }
 
     @Published var deviceInfo: DeviceInfo?
@@ -81,7 +81,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
             if let preference = deviceSnapshot?.r4ScalePreference {
                 var dto = preference.toDTO()
                 dto.timeFormat = (format == "12H") ? "12" : "24"
-                try? await scaleService.updateScalePreference(deviceId, fromDTO: dto)
+                try? await deviceService.updateScalePreference(deviceId, fromDTO: dto)
             }
             notificationService.showToast(ToastModel(title: ToastStrings.saved, message: "Time format updated"))
         case .failure(let err):

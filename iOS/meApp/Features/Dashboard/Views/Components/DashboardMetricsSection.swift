@@ -15,17 +15,17 @@ struct DashboardMetricsSection: View {
 
     private var shouldShowProgressSkeleton: Bool {
         store.shouldShowProgressMetricsSkeleton ||
-            (parentView == .R4ScaleSetup && store.shouldShowBodyMetricsSkeleton)
+            (parentView == .r4DeviceSetup && store.shouldShowBodyMetricsSkeleton)
     }
 
     private var shouldShowSectionDivider: Bool {
         store.shouldShowDivider ||
-            (parentView == .R4ScaleSetup && store.shouldShowBodyMetricsSkeleton)
+            (parentView == .r4DeviceSetup && store.shouldShowBodyMetricsSkeleton)
     }
     
     var body: some View {
         VStack(spacing: 0) {
-            if parentView == .R4ScaleSetup {
+            if parentView == .r4DeviceSetup {
                 VStack(alignment: .leading, spacing: .spacingXS) {
                     Text(DashboardStrings.customizeDashboardTitle)
                         .fontOpenSans(.heading4)
@@ -61,7 +61,7 @@ struct DashboardMetricsSection: View {
             
         }
         .onAppear {
-            if parentView == .R4ScaleSetup {
+            if parentView == .r4DeviceSetup {
                 // Force edit mode in Scale Setup context
                 if !store.state.ui.isEditMode {
                     store.state.ui.isEditMode = true
@@ -71,24 +71,24 @@ struct DashboardMetricsSection: View {
             }
         }
         .onChange(of: store.metricsManager.state.metrics) { _, _ in
-            if parentView == .R4ScaleSetup {
+            if parentView == .r4DeviceSetup {
                 store.gridEditingManager.debouncedSyncRemovalState()
             }
         }
         .onChange(of: store.metricsManager.state.activeMetricsCount) { _, _ in
-            if parentView == .R4ScaleSetup {
+            if parentView == .r4DeviceSetup {
                 store.gridEditingManager.debouncedSyncRemovalState()
             }
         }
         .onChange(of: parentView) { _, newValue in
-            if newValue == .R4ScaleSetup {
+            if newValue == .r4DeviceSetup {
                 if !store.state.ui.isEditMode {
                     store.state.ui.isEditMode = true
                 }
             }
         }
         .onChange(of: store.state.ui.isEditMode) { _, newValue in
-            if parentView == .R4ScaleSetup && newValue == false {
+            if parentView == .r4DeviceSetup && newValue == false {
                 // Keep edit mode on while customizing from Scale Setup
                 store.state.ui.isEditMode = true
             }

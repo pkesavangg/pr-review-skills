@@ -4,10 +4,10 @@ import ggWifiScalePackage
 import Network
 
 @MainActor
-final class WifiScaleService: WifiScaleServiceProtocol {
+final class WifiScaleService: WifiPairedDeviceServiceProtocol {
     static let shared = WifiScaleService()
 
-    private let apiRepo: WifiScaleRepositoryAPIProtocol
+    private let apiRepo: WifiDeviceRepositoryAPIProtocol
     private let logger: LoggerServiceProtocol
     private let tag = "WifiScaleService"
     private let setupClient: WifiScaleSetupClientProtocol
@@ -16,14 +16,14 @@ final class WifiScaleService: WifiScaleServiceProtocol {
     @Injector private var permissionsService: PermissionsServiceProtocol
 
     init(
-        apiRepo: WifiScaleRepositoryAPIProtocol? = nil,
+        apiRepo: WifiDeviceRepositoryAPIProtocol? = nil,
         logger: LoggerServiceProtocol? = nil,
         setupClient: WifiScaleSetupClientProtocol? = nil,
         networkProvider: WifiNetworkStatusProviding? = nil,
         wifiInfoProvider: WifiInfoProviding? = nil,
         permissionsService: PermissionsServiceProtocol? = nil
     ) {
-        self.apiRepo = apiRepo ?? WifiScaleRepositoryAPI()
+        self.apiRepo = apiRepo ?? WifiDeviceRepositoryAPI()
         self.logger = logger ?? LoggerService.shared
         self.setupClient = setupClient ?? BasicWifiScaleSetupClient()
         self.networkProvider = networkProvider ?? NetworkMonitorStatusProvider()

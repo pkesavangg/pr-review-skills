@@ -19,15 +19,14 @@ struct ColorTokens {
     static let neutral750 = Color("neutral-750")
     static let neutral800 = Color("neutral-800")
     static let neutral900 = Color("neutral-900")
-    
+
     // Brand colors
     static let teal100 = Color("teal-100")
-    static let babyPrimary = Color("babyPrimary")
     static let blue100 = Color("blue-100")
     static let blue500 = Color("blue-500")
     static let blue900 = Color("blue-900")
     static let blue800 = Color("blue-800")
-    
+
     // Status colors
     static let red100 = Color("red-100")
     static let red800 = Color("red-800")
@@ -37,7 +36,7 @@ struct ColorTokens {
     static let green900 = Color("green-900")
     static let yellow100 = Color("yellow-100")
     static let accucheck = Color("accucheck")
-    
+
     static let ggBackground = Color("ggBackground")
     static let ggPrimary = Color("ggPrimary")
     static let ggSecondary100 = Color("ggSecondary100")
@@ -58,6 +57,11 @@ struct ColorTokens {
     static let promoRed200 = Color("promoRed200")
     static let promoRed800 = Color("promoRed800")
     static let promoRed900 = Color("promoRed900")
+
+    // Device / scale accent colors
+    static let weightScale = Color("weightScale")
+    static let bpm = Color("bpm")
+    static let babyScale = Color("babyScale")
     // MARK: - App Palette Definitions
     struct Palette {
         static let primary = AppColors.Palette(
@@ -65,32 +69,33 @@ struct ColorTokens {
             backgroundPrimary: neutral100,
             backgroundPrimaryDisabled: neutral300,
             backgroundSecondary: neutral200,
-            
+
             // Text
             textHeading: neutral800,
             textBody: neutral800,
             textSubheading: neutral700,
+            textDisabled: neutral400,
             textError: red800,
             textErrorDisabled: red100,
             textInverse: neutral100,
             textInverseSecondary: neutral200,
-            
+
             // Support
             supportOverlay: neutral600,
             supportToastBackground: blue100,
             glow: neutral500,
-            
+
             // Action
-            actionPrimary: blue800,
-            actionPrimaryPressed: blue900,
-            actionPrimaryDisabled: blue500,
-            actionSecondary: neutral800,
-            actionSecondaryPressed: neutral900,
-            actionSecondaryDisabled: neutral400,
+            actionPrimary: neutral800,
+            actionPrimaryPressed: neutral900,
+            actionPrimaryDisabled: neutral400,
+            actionSecondary: neutral100,
+            actionSecondaryPressed: neutral200,
+            actionSecondaryDisabled: neutral300,
             actionTertiary: neutral700,
             actionTertiaryPressed: neutral750,
             actionTertiaryDisabled: neutral400,
-            
+
             actionInverse: neutral100,
             actionInversePressed: neutral200,
             actionInverseDisabled: neutral300,
@@ -98,38 +103,40 @@ struct ColorTokens {
             actionSuccess: green800,
             actionSuccessPressed: green900,
             actionSuccessDisabled: green100,
-            
+
             actionError: red800,
             actionErrorPressed: red900,
             actionErrorDisabled: red100,
-            
+
             // Brand
             brandMeAppPrimary: teal100,
             brandWgPrimary: blue800,
-            babyPrimary: babyPrimary,
-            
+            babyScaleColor: babyScale,
+            weightScaleColor: weightScale,
+            bpmColor: bpm,
+
             // Status
             statusSuccess: green800,
             statusError: red800,
             statusStreak: yellow100,
             statusUtilityPrimary: neutral400,
             statusUtilitySecondary: neutral800,
-            statusIconPrimary: blue800,
+            statusIconPrimary: neutral800,
             statusIconSecondary: neutral700,
-            statusIconPrimaryDisabled: blue500,
+            statusIconPrimaryDisabled: neutral400,
             statusIconSecondaryDisabled: neutral400,
-            statusIconLoading: blue500,
+            statusIconLoading: neutral700,
             statusIconLoadingError: red100,
-            
+
             // Logos
-            logoPrimary: neutral100,
-            logoSecondary: neutral800,
-            
+            logoPrimary: neutral800,
+            logoSecondary: neutral100,
+
             ggBackground: ggBackground,
             ggPrimary: ggPrimary,
             ggSecondary100: ggSecondary100,
             ggSecondary900: ggSecondary900,
-            
+
             // Promo
             promoBlue100: promoBlue100,
             promoBlue900: promoBlue900,
@@ -137,7 +144,7 @@ struct ColorTokens {
             promoGreen900: promoGreen900,
             promoRed100: promoRed100,
             promoRed900: promoRed900,
-            
+
             ggSecondary: ggSecondary800,
             ggSecondaryPressed: ggSecondary900,
             ggSecondaryDisabled: ggSecondary200,

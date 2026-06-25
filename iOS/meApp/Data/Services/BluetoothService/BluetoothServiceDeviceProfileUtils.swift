@@ -12,7 +12,7 @@ import SwiftData
 extension BluetoothService {
     // MARK: - Scale & Profile Helpers
 
-    func getSafeScaleType(for device: DeviceSnapshot) -> String? {
+    func getSafeDeviceModelType(for device: DeviceSnapshot) -> String? {
         device.bathScale?.scaleType
     }
 
@@ -36,7 +36,7 @@ extension BluetoothService {
 
             if scale.isConnected {
                 let broadcastId = scale.broadcastIdString ?? ""
-                await scaleService.updateConnectedDeviceWeightOnlyMode(
+                await deviceService.updateConnectedDeviceWeightOnlyMode(
                     broadcastId: broadcastId,
                     isWeightOnlyModeEnabledByOthers: false
                 )

@@ -50,7 +50,7 @@ struct BabyScaleSetupStrings {
     }
 
     // MARK: - Scale Name
-    struct ScaleName {
+    struct DeviceName {
         static let title = "Give your scale a name."
         static let nicknamePlaceholder = "Smart Baby Scale"
         static let nicknameLabel = "nickname"
@@ -131,5 +131,9 @@ struct BabyScaleSetupStrings {
         static let connectionFailed = "Failed to connect to the scale. Please try again."
         static let pairingFailed = "Failed to pair with the scale. Please try again."
         static let profileSaveFailed = "Failed to save baby profile. Please try again."
+    }
+
+    struct A11y {
+        static let scaleImageLabel = "Baby scale product image"
     }
 }

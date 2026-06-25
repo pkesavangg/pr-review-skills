@@ -60,6 +60,36 @@ extension BluetoothScaleSetupStoreTests {
             #expect(harness.scaleService.createBluetoothScaleCalls == 0)
         }
 
+        @Test("bpm pairing timeout on set user shows pairing failed alert and returns to select user")
+        func bpmPairingTimeoutOnSetUserShowsAlertAndReturnsToSelectUser() async {
+            let harness = BluetoothScaleSetupStoreTestFixtures.makeSUT(pairingTimeoutNs: 40_000_000)
+            let store = harness.store
+            BluetoothScaleSetupStoreTestFixtures.configureDefaultScale(store)
+
+            // BPM scales skip the .connectingBluetooth screen and land on .setUser while the
+            // pairing scan continues. configure() only resolves SCALES, so inject the BPM
+            // catalog item directly to exercise the .bpm timeout-recovery branch.
+            let bpmItem = BPMS.first { $0.setupType == .bpm }
+            #expect(bpmItem != nil)
+            store.testSetScaleItem(bpmItem!)
+
+            // Entering .connectingBluetooth starts pair() and immediately advances to .setUser
+            // for BPM. No device is discovered, so the pairing timeout should fire.
+            store.currentStepIndex = BluetoothScaleSetupStep.connectingBluetooth.index
+
+            let alerted = await BluetoothScaleSetupStoreTestFixtures.waitUntil(timeoutNanoseconds: 600_000_000) {
+                harness.notification.showAlertCalls == 1 && store.currentStep == .selectUser
+            }
+
+            #expect(alerted == true)
+            #expect(store.bluetoothConnectionState == .failure)
+            #expect(store.currentStep == .selectUser)
+            #expect(harness.notification.showAlertCalls == 1)
+            #expect(harness.notification.alertData?.title == AlertStrings.PairingFailedAlert.title)
+            #expect(harness.bluetooth.confirmSmartPairCalls == 0)
+            #expect(harness.scaleService.createBluetoothScaleCalls == 0)
+        }
+
         @Test("non bluetooth discovery events are ignored and pairing eventually times out")
         func nonBluetoothDiscoveryEventsAreIgnored() async {
             let harness = BluetoothScaleSetupStoreTestFixtures.makeSUT(pairingTimeoutNs: 40_000_000)

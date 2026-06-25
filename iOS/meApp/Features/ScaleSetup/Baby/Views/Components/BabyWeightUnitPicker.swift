@@ -23,7 +23,7 @@ struct BabyWeightUnitPicker: View {
                 } label: {
                     Text(segment.displayName)
                         .fontOpenSans(.button2)
-                        .foregroundColor(selectedSegment == segment ? theme.textInverse : theme.actionSecondary)
+                        .foregroundColor(selectedSegment == segment ? theme.textInverse : theme.actionTertiary)
                         .frame(maxWidth: .infinity)
                         .frame(minWidth: 75)
                         .lineLimit(1)
@@ -47,7 +47,7 @@ struct BabyWeightUnitPicker: View {
         }
         .background(
             Capsule()
-                .fill(theme.actionSecondary)
+                .fill(theme.actionPrimary)
                 .frame(width: selectedWidth())
                 .offset(x: calculateOffset())
                 .compositingGroup()

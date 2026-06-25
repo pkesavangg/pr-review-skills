@@ -16,6 +16,7 @@ struct PickDeviceStepView: View {
                 Text(lang.title)
                     .fontOpenSans(.heading4)
                     .foregroundStyle(theme.textHeading)
+                    .accessibilityAddTraits(.isHeader)
 
                 ForEach(SignupDeviceType.allCases) { deviceType in
                     let isDisabled = signupStore.disabledDeviceTypes.contains(deviceType)
@@ -36,7 +37,7 @@ struct PickDeviceStepView: View {
 
 // MARK: - DeviceCard
 
-private struct DeviceCard: View {
+struct DeviceCard: View {
     @Environment(\.appTheme) private var theme
     let deviceType: SignupDeviceType
     let isSelected: Bool
@@ -51,6 +52,7 @@ private struct DeviceCard: View {
                     .scaledToFit()
                     .frame(width: 75, height: 75)
                     .opacity(isDisabled ? 0.4 : 1)
+                    .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 0) {
                     Text(deviceType.title)
@@ -66,12 +68,14 @@ private struct DeviceCard: View {
                 Image(systemName: isSelected ? "circle.inset.filled" : "circle")
                     .foregroundStyle(isDisabled ? theme.textSubheading.opacity(0.4) : (isSelected ? theme.actionPrimary : theme.textSubheading))
                     .font(.system(size: 22))
+                    .accessibilityHidden(true)
             }
             .padding(.spacingSM)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(theme.backgroundPrimary)
             .cornerRadius(.spacingSM)
         }
+        .accessibilityValue(isSelected ? SignupStrings.Accessibility.accSelectedValue : SignupStrings.Accessibility.accNotSelectedValue)
         .buttonStyle(.plain)
         .disabled(isDisabled)
     }

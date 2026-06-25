@@ -142,7 +142,7 @@ struct ManualEntryScreen: View {
             description: ProductTypeStrings.BabyEmptyState.entryDescription,
             buttonTitle: ProductTypeStrings.BabyEmptyState.addABaby,
             iconAsset: appAssets.babyAppIcon,
-            iconTint: theme.babyPrimary
+            iconTint: theme.babyScaleColor
         ) {
             tabViewModel.navigateToSettings(route: .addBaby, sourceTab: .entry)
         }
@@ -173,10 +173,12 @@ struct ManualEntryScreen: View {
                             ) {
                                 toggleDatePicker()
                             }
+                            .accessibilityHint(manualEntryLang.accDateHint)
                             TimeLabelView(time: entryStore.manualEntryForm.time.value,
                                           isSelected: entryStore.showTimePicker) {
                                 toggleTimePicker()
                             }
+                            .accessibilityHint(manualEntryLang.accTimeHint)
                         }
 
                         // Pickers
@@ -227,6 +229,9 @@ struct ManualEntryScreen: View {
                                 entryStore.showMetrics.toggle()
                             }
                         }
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityLabel(manualEntryLang.accBodyMetricsHeader)
+                        .accessibilityHint(entryStore.showMetrics ? manualEntryLang.accBodyMetricsCollapseHint : manualEntryLang.accBodyMetricsExpandHint)
                         .padding(.bottom, .spacingXS)
 
                         if entryStore.showMetrics {

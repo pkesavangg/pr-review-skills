@@ -182,4 +182,5 @@ final class MockAccountAPIRepository: AccountRepositoryAPIProtocol {
         lastRefreshToken = refreshToken
         return try refreshTokenResult.get()
     }
+
 }

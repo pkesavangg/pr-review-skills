@@ -1,12 +1,14 @@
-import Combine
 import Foundation
+import Combine
 
 /// Protocol for business logic and orchestration related to paired-scale management.
 ///
 /// This protocol defines high-level operations for paired scales, including listing, creating,
 /// editing, deleting, updating scale meta and preferences, connection management, and pairing logic.
 protocol ScaleServiceProtocol: DeviceServiceProtocol {
-    func clearAllData() async
+
+    /// The current list of paired scales (synchronous accessor).
+    var scales: [Device] { get }
 
     /// The scales managed by the service.
     ///
@@ -15,8 +17,7 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
     /// edited, or deleted.
     ///
     /// The subject is updated on the main thread.
-    var scalesPublisher: AnyPublisher<[DeviceSnapshot], Never> { get }
-    var scales: [DeviceSnapshot] { get }
+    var scalesPublisher: AnyPublisher<[Device], Never> { get }
 
     /// Updates scale meta data.
     /// - Parameters:
@@ -31,55 +32,10 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
     /// Updates scale preference from a DTO (safe for async boundaries — no @Model crossing required).
     func updateScalePreference(_ deviceId: String, fromDTO dto: R4ScalePreferenceDTO) async throws
 
-    // swiftlint:disable:next function_parameter_count
-    func createR4Scale(
-        scaleId: String,
-        accountId: String,
-        displayName: String,
-        token: String,
-        mac: String?,
-        broadcastIdString: String?,
-        broadcastId: Int64?,
-        sku: String?,
-        deviceName: String?,
-        wifiMac: String?,
-        deviceMetadata: DeviceMetaData?,
-        isWifiConfigured: Bool,
-        isConnected: Bool,
-        skipDuplicateCheck: Bool
-    ) async throws -> Device
-
-    // swiftlint:disable:next function_parameter_count
-    func createBluetoothScale(
-        device: Device,
-        sku: String?,
-        userNumber: String,
-        accountId: String,
-        deviceMetadata: DeviceMetaData?,
-        skipDuplicateCheck: Bool,
-        deviceType: DeviceType
-    ) async throws -> Device
-
-    func createA6Scale(
-        device: Device,
-        sku: String?,
-        accountId: String,
-        deviceMetadata: DeviceMetaData?,
-        skipDuplicateCheck: Bool
-    ) async throws -> Device
-
     /// Updates the status of a scale.
     /// - Parameters:
     ///   - scales: The scales to update.
     func updateAllScalesStatus(_ scales: [Device]?) async throws
-    func createScaleInLocal(_ device: Device) async throws -> Device
-    /// Deletes a single device entry by its ID without removing other entries for the same
-    /// physical device (e.g. a different user slot on the same BPM monitor).
-    func deleteSingleDeviceEntry(_ deviceId: String) async throws
-
-    func syncAllScalesWithRemote() async
-    func pushLocalChangesToServer() async
-    func getDevice(by deviceId: String) async throws -> DeviceSnapshot?
 
     /// Updates connected device information including connection status and WiFi configuration.
     /// - Parameters:
@@ -108,36 +64,12 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
     /// Must be called on main actor. Intended for synchronous call sites.
     func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference?
 
-    /// Pairs a device through the unified `/paired-device/` endpoint by mapping a `Device` model
-    /// into a `PairedDeviceRequest`. Convenience for pairing flows migrating off `/paired-scale/`.
-    /// - Parameters:
-    ///   - device: The device to pair (its connection `type` is derived from its bath-scale source type).
-    ///   - deviceType: The product hardware type (`weight_scale`/`baby_scale`/`bpm`).
-    /// - Returns: The created `PairedDeviceResponse`.
-    func pairDevice(_ device: Device, deviceType: DeviceType) async throws -> PairedDeviceResponse
-}
+    /// Syncs all scales with the remote server.
+    func syncAllScalesWithRemote() async
 
-extension ScaleServiceProtocol {
-    /// Default implementation: maps the `Device` into a `PairedDeviceRequest` and submits it via
-    /// `createPairedDevice(_:)`. The connection `type` falls back to the bath-scale source type, then
-    /// the device's stored `protocolType`, and finally `bluetooth`.
-    func pairDevice(_ device: Device, deviceType: DeviceType) async throws -> PairedDeviceResponse {
-        let connectionType = device.bathScale?.scaleType
-            ?? device.protocolType
-            ?? ScaleSourceType.bluetooth.rawValue
-        let request = PairedDeviceRequest(
-            deviceType: deviceType.serverValue,
-            type: connectionType,
-            nickname: device.nickname ?? "",
-            sku: device.sku ?? "",
-            mac: device.mac,
-            broadcastId: device.broadcastId.map { Int($0) },
-            password: device.password.map { Int($0) },
-            userNumber: device.userNumber.flatMap { Int($0) },
-            name: device.deviceName,
-            peripheralIdentifier: device.peripheralIdentifier,
-            scaleToken: device.token
-        )
-        return try await createPairedDevice(request)
-    }
+    /// Creates a new Bluetooth (A3) scale entry.
+    func createBluetoothScale(device: Device, sku: String?, userNumber: String, accountId: String, deviceMetadata: DeviceMetaData?, skipDuplicateCheck: Bool) async throws -> Device
+
+    /// Creates a new A6 (LCBT) scale entry.
+    func createA6Scale(device: Device, sku: String?, accountId: String, deviceMetadata: DeviceMetaData?, skipDuplicateCheck: Bool) async throws -> Device
 }

@@ -36,13 +36,27 @@ android {
   buildFeatures {
     compose = true
   }
+  testOptions {
+    unitTests.isReturnDefaultValues = true
+  }
+}
+
+tasks.withType<Test> {
+  useJUnitPlatform()
 }
 
 dependencies {
 
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.appcompat)
+  // Pin the JUnit platform + launcher via the BOM so junit-platform-launcher tracks the
+  // jupiter/platform version (junit6) instead of resolving an unmanaged version on a clean
+  // CI build, which risks a launcher/platform mismatch. (PR #2092 review)
+  testImplementation(platform(libs.junit.bom))
   testImplementation(libs.junit.jupiter)
+  testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+  testImplementation(libs.mockk)
+  testImplementation(libs.truth)
   androidTestImplementation(libs.androidx.junit)
   androidTestImplementation(libs.androidx.espresso.core)
   // CameraX core and lifecycle

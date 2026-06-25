@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Project Context
+
+- **Repo / org:** gg-engineering monorepo (`github.com/gg-engineering/meApp`), post gg-engineering migration.
+- **Jira:** Active work tracks in the **MOB** project (GGT-Mobile, board 1088) on `greatergoods.atlassian.net`. Branch/commit prefix `MOB-XXXX` (legacy `MA-XXXX` is deprecated).
+- **Branch model:** `main` = MA / 5.0.x release line (default PR target) · `develop` = active integration branch.
+- See the monorepo root [`/CLAUDE.md`](../CLAUDE.md) for the cross-platform overview.
+
 ## Build Commands
 
 ```bash
@@ -41,7 +48,7 @@ cd /path/to/meApp && lefthook install
 **What runs on commit:**
 - **Detekt CLI** — static analysis on staged `.kt` files (<10s)
 - **Gitleaks** — secrets detection on all staged files (warns if not installed)
-- **JIRA ticket** — validates commit message contains `MA-XXXX`
+- **JIRA ticket** — validates commit message contains a Jira key (`MOB-XXXX`; legacy `MA-XXXX` also accepted)
 
 To bypass in emergencies: `git commit --no-verify`
 

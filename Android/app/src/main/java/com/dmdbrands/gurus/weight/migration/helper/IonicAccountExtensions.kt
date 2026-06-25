@@ -196,7 +196,10 @@ private fun IonicScale.toDeviceEntity(accountID: String): DeviceEntity {
   // Get name and type based on SKU from SCALES lookup
   val scaleInfo = ScaleDataHelper.findScaleInfoBySku(deviceSku.toString())
   val deviceName = this.name ?: scaleInfo?.productName ?: "Unknown Scale"
-  val deviceType = this.type ?: "Unknown Type"
+  // SKU is the source of truth for the setup/protocol type. The stored Ionic `type`
+  // is only a fallback: legacy records can carry a stale value (e.g. "appsync" for the
+  // Bluetooth SKU 0375), which would otherwise surface as the wrong Scale Type. (MOB-204)
+  val deviceType = scaleInfo?.setupType?.value ?: this.type ?: "Unknown Type"
 
   val deviceNickname = this.nickname ?: deviceName
 

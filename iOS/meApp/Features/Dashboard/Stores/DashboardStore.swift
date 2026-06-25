@@ -22,7 +22,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var accountService: AccountService
     @Injector var logger: LoggerService
-    @Injector private var scaleService: ScaleService
+    @Injector private var deviceService: DeviceService
     @Injector private var entryService: EntryService
     @Injector private var productTypeStore: ProductTypeStoreProtocol
 
@@ -553,6 +553,10 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     var productTypeSelectorStore: ProductTypeStore {
         ProductTypeStore.shared
+    }
+
+    func clearProductTypeSelection() {
+        productTypeStore.clearPersistedSelection()
     }
 
     var dashboardEntryService: EntryService {

@@ -144,7 +144,7 @@ extension BabyScaleSetupStore {
             var deviceMetadata: DeviceMetaData?
             let deviceInfoResult = await bluetoothService.getDeviceInfo(broadcastId: scale.broadcastIdString ?? "", skipConnectionCheck: true)
             if case .success(let deviceInfo) = deviceInfoResult {
-                let dto = ScaleMetaDataDTO(
+                let dto = DeviceMetaDataDTO(
                     firmwareRevision: deviceInfo.firmwareRevision?.replacingOccurrences(of: "\0", with: ""),
                     hardwareRevision: deviceInfo.hardwareRevision?.replacingOccurrences(of: "\0", with: ""),
                     latestFirmwareVersion: nil,
@@ -158,7 +158,7 @@ extension BabyScaleSetupStore {
                 deviceMetadata = DeviceMetaData(from: dto)
             }
 
-            let device = try await scaleService.createR4Scale(
+            let device = try await deviceService.createR4Scale(
                 scaleId: scaleID,
                 accountId: accountId,
                 displayName: displayName,
@@ -175,7 +175,7 @@ extension BabyScaleSetupStore {
                 skipDuplicateCheck: false
             )
             self.savedScale = device.toSnapshot(isConnected: true)
-            await scaleService.syncAllScalesWithRemote()
+            await deviceService.syncAllScalesWithRemote()
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
             LoggerService.shared.log(level: .info, tag: tag, message: "Baby scale saved: \(device.id)")
         } catch {
@@ -203,7 +203,11 @@ extension BabyScaleSetupStore {
                     self?.navigateToStep(.intro)
                 },
                 AlertButtonModel(title: "Continue", type: .primary) { [weak self] _ in
-                    self?.moveToNextStep()
+                    guard let self else { return }
+                    Task {
+                        self.connectionState = .loading
+                        await self.confirmPair()
+                    }
                 }
             ]
         )

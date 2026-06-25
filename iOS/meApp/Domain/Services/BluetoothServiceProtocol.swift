@@ -19,7 +19,7 @@ protocol BluetoothServiceProtocol {
     /// Indicates whether a setup is currently in progress.
     var isSetupInProgress: Bool { get set }
     var skipDevices: [String] { get }
-    var onOpenScaleSetup: ((DeviceSnapshot, DeviceDiscoveryEvent?, Bool, Bool) -> Void)? { get set }
+    var onOpenDeviceSetup: ((DeviceSnapshot, DeviceDiscoveryEvent?, Bool, Bool) -> Void)? { get set }
 
     // MARK: - Publishers
     /// Publisher for unified device discovery events containing device, protocol type, and isNew flag.

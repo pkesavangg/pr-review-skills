@@ -17,7 +17,7 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
     @Injector private var accountService: AccountServiceProtocol
     @Injector private var notificationService: NotificationHelperServiceProtocol
     @Injector private var bluetoothService: BluetoothServiceProtocol
-    @Injector private var scaleService: ScaleServiceProtocol
+    @Injector private var deviceService: PairedDeviceServiceProtocol
     @Injector private var keychainService: KeychainServiceProtocol
     // API repository for push-notification related network calls
     private let apiRepo: PushNotificationRepositoryAPIProtocol
@@ -49,7 +49,7 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
         accountService: AccountServiceProtocol? = nil,
         notificationService: NotificationHelperServiceProtocol? = nil,
         bluetoothService: BluetoothServiceProtocol? = nil,
-        scaleService: ScaleServiceProtocol? = nil,
+        deviceService: PairedDeviceServiceProtocol? = nil,
         keychainService: KeychainServiceProtocol? = nil,
         kvStorage: KvStorageServiceProtocol? = nil,
         logger: LoggerServiceProtocol? = nil,
@@ -80,8 +80,8 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
         if let bluetoothService {
             self.bluetoothService = bluetoothService
         }
-        if let scaleService {
-            self.scaleService = scaleService
+        if let deviceService {
+            self.deviceService = deviceService
         }
         if let keychainService {
             self.keychainService = keychainService
@@ -192,8 +192,8 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
 
     // MARK: - Push Notification Registration
 
-    func setupPushNotifications(isFromScaleSetup: Bool = false) async {
-        logger.log(level: .info, tag: tag, message: "Push setup started. isFromScaleSetup=\(isFromScaleSetup)")
+    func setupPushNotifications(isFromDeviceSetup: Bool = false) async {
+        logger.log(level: .info, tag: tag, message: "Push setup started. isFromDeviceSetup=\(isFromDeviceSetup)")
         // Always update device info regardless of notification permission.
         await updateDeviceInfo()
 
@@ -215,7 +215,7 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
             let accountId = accountService.activeAccount?.accountId ?? ""
             let viewedKey = KvStorageKeys.notificationOnlyAlertShownKey(for: accountId)
             let hasViewedAlert = (kvStorage.getValue(forKey: viewedKey) as? Bool) ?? false
-            if !hasViewedAlert || isFromScaleSetup {
+            if !hasViewedAlert || isFromDeviceSetup {
                 logger.log(level: .info, tag: tag, message: "Requesting notification permission during push setup")
                 permissionResult = await permissionsService.handlePermission(.notification)
                 kvStorage.setValue(true, forKey: viewedKey)
@@ -357,7 +357,7 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
 
     private func syncDevices() async {
         logger.log(level: .info, tag: tag, message: "Scale sync from push flow started")
-        await scaleService.syncAllScalesWithRemote()
+        await deviceService.syncAllScalesWithRemote()
         logger.log(level: .info, tag: tag, message: "Scale sync from push flow completed")
     }
 

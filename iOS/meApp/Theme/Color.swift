@@ -10,7 +10,7 @@ import SwiftUI
 enum AppColors {
     enum Theme {
         case primary
-        
+
         var palette: Palette {
             Palette.forTheme(self)
         }
@@ -21,21 +21,22 @@ enum AppColors {
         let backgroundPrimary: Color
         let backgroundPrimaryDisabled: Color
         let backgroundSecondary: Color
-        
+
         // Text colors
         let textHeading: Color
         let textBody: Color
         let textSubheading: Color
+        let textDisabled: Color
         let textError: Color
         let textErrorDisabled: Color
         let textInverse: Color
         let textInverseSecondary: Color
-        
+
         // Support colors
         let supportOverlay: Color
         let supportToastBackground: Color
         let glow: Color
-        
+
         // Action colors
         let actionPrimary: Color
         let actionPrimaryPressed: Color
@@ -56,12 +57,14 @@ enum AppColors {
         let actionError: Color
         let actionErrorPressed: Color
         let actionErrorDisabled: Color
-        
+
         // Brand colors
         let brandMeAppPrimary: Color
         let brandWgPrimary: Color
-        let babyPrimary: Color
-        
+        let babyScaleColor: Color
+        let weightScaleColor: Color
+        let bpmColor: Color
+
         // Icon colors
         let statusSuccess: Color
         let statusError: Color
@@ -74,11 +77,11 @@ enum AppColors {
         let statusIconSecondaryDisabled: Color
         let statusIconLoading: Color
         let statusIconLoadingError: Color
-        
+
         // Logo colors
         let logoPrimary: Color
         let logoSecondary: Color
-        
+
         let ggBackground: Color
         let ggPrimary: Color
         let ggSecondary100: Color
@@ -91,7 +94,7 @@ enum AppColors {
         let promoGreen900: Color
         let promoRed100: Color
         let promoRed900: Color
-        
+
         // GG Named Colors (asset-backed defaults provided via extension)
         let ggSecondary: Color
         let ggSecondaryPressed: Color
@@ -108,7 +111,7 @@ enum AppColors {
         let promoGreen: Color
         let promoGreenPressed: Color
         let promoGreenDisabled: Color
-        
+
         static func forTheme(_ theme: Theme) -> Palette {
             switch theme {
             case .primary:

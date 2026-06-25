@@ -92,4 +92,18 @@ struct BtWifiScaleSetupStrings {
         static let title = "Customize Your Scale"
         static let subtitle = "Rearrange tiles and/or hide unwanted metrics from your scale screen."
     }
+
+    struct DeviceMetricsCustomizationViewStrings {
+        static let title = "Customize Your Metrics"
+        static let subtitle = "Rearrange tiles and/or hide unwanted metrics from your dashboard and scale screen."
+    }
+
+    struct A11y {
+        static let accuCheckImageLabel = "AccuCheck measurement result"
+        static let whatThisHint = "Double tap to learn more about AccuCheck"
+        static let settingsItemHint = "Double tap to configure"
+        static let settingsItemDoneHint = "Already configured. Double tap to reconfigure"
+        static let closeAccuCheckLabel = "Close"
+        static let closeAccuCheckHint = "Dismiss AccuCheck information"
+    }
 }

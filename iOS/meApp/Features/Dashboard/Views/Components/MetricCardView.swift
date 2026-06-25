@@ -73,9 +73,18 @@ struct MetricCardView: View {
         isDropTarget ? 2 : 0
     }
     
+    private var combinedAccessibilityLabel: String {
+        "\(value), \(displayLabel)"
+    }
+
+    private var accessibilityEditHint: String {
+        guard isEditMode else { return "" }
+        return isRemoved ? DashboardStrings.accAddMetricHint : DashboardStrings.accRemoveMetricHint
+    }
+
     /// Returns the appropriate label based on parentView context
     private var displayLabel: String {
-        if parentView == .R4ScaleSetup {
+        if parentView == .r4DeviceSetup {
             return getR4ScaleSetupLabel(for: label)
         }
         return label
@@ -128,12 +137,17 @@ struct MetricCardView: View {
             .onTapGesture {
                 onTap()
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(combinedAccessibilityLabel)
+            .accessibilityHint(accessibilityEditHint)
+            .accessibilityValue(isEditMode ? (isRemoved ? DashboardStrings.accMetricRemovedValue : DashboardStrings.accMetricVisibleValue) : "")
+            .accessibilityAddTraits(.isButton)
     }
     
     private func content() -> some View {
         VStack(spacing: 1) {
             Group {
-                if parentView == .R4ScaleSetup, isEditMode, let icon, !icon.isEmpty {
+                if parentView == .r4DeviceSetup, isEditMode, let icon, !icon.isEmpty {
                     AppIconView(icon: icon, size: IconSize())
                         .foregroundColor(foregroundColor)
                 } else {
@@ -147,7 +161,7 @@ struct MetricCardView: View {
             Text(displayLabel)
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(subheadingColor)
-                .multilineTextAlignment(parentView == .R4ScaleSetup ? .center : .leading)
+                .multilineTextAlignment(parentView == .r4DeviceSetup ? .center : .leading)
         }
     }
 }
@@ -186,7 +200,7 @@ struct MetricCardView: View {
             onDrop: { _, _ in false },
             onDropTargetChanged: { _ in },
             verticalPadding: MetricCardView.twelveCardVerticalPadding,
-            parentView: .R4ScaleSetup
+            parentView: .r4DeviceSetup
         )
         
         MetricCardView(
@@ -203,7 +217,7 @@ struct MetricCardView: View {
             onDrop: { _, _ in false },
             onDropTargetChanged: { _ in },
             verticalPadding: MetricCardView.fourCardVerticalPadding,
-            parentView: .R4ScaleSetup
+            parentView: .r4DeviceSetup
         )
         
         MetricCardView(
@@ -220,7 +234,7 @@ struct MetricCardView: View {
             onDrop: { _, _ in false },
             onDropTargetChanged: { _ in },
             verticalPadding: MetricCardView.twelveCardVerticalPadding,
-            parentView: .R4ScaleSetup
+            parentView: .r4DeviceSetup
         )
         
         // Edit mode with wiggle animation (matching movingGridsLearning exactly)

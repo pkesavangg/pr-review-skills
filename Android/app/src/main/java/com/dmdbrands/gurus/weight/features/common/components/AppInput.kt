@@ -226,7 +226,7 @@ fun <T> AppInput(
         InputFieldBase(
             modifier = taggedModifier,
             formControl = formControl,
-            label = label.toString().lowercase(),
+            label = label?.lowercase(),
             value = AppInputDefaults.valueToString(type, formControl?.value),
             onValueChange = onValueChange,
             placeHolder = placeHolder,

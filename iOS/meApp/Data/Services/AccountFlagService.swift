@@ -22,7 +22,7 @@ final class AccountFlagService: AccountFlagServiceProtocol, ObservableObject {
     @Published private var currentFlag: AccountFlag?
     
     /// Scale review event publisher for scale review flags
-    let scaleReviewSubject = PassthroughSubject<ScaleReviewEvent, Never>()
+    let scaleReviewSubject = PassthroughSubject<DeviceReviewEvent, Never>()
     
     init(apiRepo: AccountFlagRepositoryAPIProtocol? = nil) {
         self.apiRepo = apiRepo ?? AccountFlagRepositoryAPI()
@@ -174,7 +174,7 @@ final class AccountFlagService: AccountFlagServiceProtocol, ObservableObject {
     }
 
     func emitScaleReview(screen: String, sku: String, flagId: String) {
-        let event = ScaleReviewEvent(screen: screen, sku: sku, flagId: flagId)
+        let event = DeviceReviewEvent(screen: screen, sku: sku, flagId: flagId)
         scaleReviewSubject.send(event)
     }
     

@@ -10,7 +10,7 @@ struct ScaleSetupIntroView: View {
     @Environment(\.appTheme) private var theme
 
     /// Scale metadata retrieved from the central `SCALES` array.
-    let scale: ScaleItemInfo
+    let scale: DeviceItemInfo
     var troubleText: String = ScaleSetupStrings.troubleSettingUp
     var onClick: (() -> Void)?
     let scaleSetupLang = ScaleSetupStrings.self
@@ -48,6 +48,7 @@ struct ScaleSetupIntroView: View {
                 .cornerRadius(.radiusLG)
                 .themeDropShadow()
                 .padding(.bottom, .spacingLG)
+                .accessibilityHidden(true)
 
             Text(scaleSetupLang.modelTitle(introModelCode(for: scale)))
                 .fontOpenSans(.heading4)
@@ -57,6 +58,7 @@ struct ScaleSetupIntroView: View {
                 .fontOpenSans(.body2)
                 .foregroundColor(theme.textBody)
         }
+        .accessibilityElement(children: .combine)
     }
     
     private var buttonTitle: String? {
@@ -65,7 +67,7 @@ struct ScaleSetupIntroView: View {
         : nil
     }
 
-    private func introModelCode(for scale: ScaleItemInfo) -> String {
+    private func introModelCode(for scale: DeviceItemInfo) -> String {
         if scale.setupType == .bpm {
             let primary = primaryBpmSetupSku(for: scale.sku)
             return bpmListModelLabel(primarySku: primary)

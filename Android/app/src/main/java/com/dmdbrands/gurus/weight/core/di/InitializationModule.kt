@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.core.di
 
 import com.dmdbrands.gurus.weight.core.initialization.AppInitializer
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.ILogger
+import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
 import com.dmdbrands.gurus.weight.domain.services.ICrashReportingService
 import dagger.Module
 import dagger.Provides
@@ -18,11 +19,13 @@ object InitializationModule {
     fun provideAppInitializer(
         logRepository: ILogger,
         crashReportingService: ICrashReportingService,
-         @ApplicationScope appScope: CoroutineScope,
+        deviceRepository: IDeviceRepository,
+        @ApplicationScope appScope: CoroutineScope,
     ): AppInitializer =
         AppInitializer(
             logRepository,
             crashReportingService,
+            deviceRepository,
             appScope,
         )
 }

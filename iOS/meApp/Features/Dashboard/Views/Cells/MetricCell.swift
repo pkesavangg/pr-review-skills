@@ -120,7 +120,7 @@ class MetricCell: UICollectionViewCell {
     //   - dashboardType: The dashboard type for styling
     //   - store: The dashboard store for formatting
     //   - isBeingDragged: Whether this cell is currently being dragged
-    //   - parentView: The context in which this cell is displayed (dashboard vs R4ScaleSetup)
+    //   - parentView: The context in which this cell is displayed (dashboard vs R4DeviceSetup)
     func configure(with item: MetricItem, dashboardType: DashboardType, store: DashboardStore, isBeingDragged: Bool = false, parentView: DashboardMetricsParentView, onMetricLongPress: ((String) -> Void)? = nil, onSelectMetric: ((String) -> Void)? = nil) { // swiftlint:disable:this function_body_length
         representedItem = item
         currentStore = store

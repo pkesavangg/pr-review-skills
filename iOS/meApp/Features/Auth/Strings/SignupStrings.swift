@@ -56,13 +56,14 @@ struct SignupStrings {
         static let bpmSubtitle = "BP trends & reminders"
         static let weightScaleSubtitle = "BMI & weight insights"
         static let alreadyAdded = "already added to your profile"
+        static let addDeviceButton = "ADD DEVICE"
     }
 
     struct AddBabyStep {
         static let title = "Add a Baby"
         static let subtitle = "Let's add a baby. If you don't know their info, take your best guess. You can always update it later."
         static let birthdayLabel = "baby's Birthday"
-        static let duplicateName = "A baby with this name has already been added."
+        static let duplicateName = "baby name already exists"
     }
 
     struct BabyListStep {
@@ -73,6 +74,7 @@ struct SignupStrings {
     struct PasswordStep {
         static let title = "Create a password."
         static let subtitle = "Your password must be at least six characters."
+        static let createButton = "Create"
         static let termsAndPrivacyText = "By completing, you are agreeing to our"
         static let termsOfService = "Terms of Service"
         static let privacyPolicy = "Privacy Policy"
@@ -83,8 +85,12 @@ struct SignupStrings {
         static let weightScaleTitle = "Your weight scale profile is ready!"
         static let bpmTitle = "Your blood pressure monitor profile is ready!"
         static let babyScaleTitle = "Your baby scale profile is ready!"
-        static let finishButton = "FINISH"
+        static let finishButton = "Get Started"
         static let connectAnotherDevice = "CONNECT ANOTHER DEVICE"
+        static let connectAnotherSubtitle = "Connect another device to keep everything in one place."
+        static func multiDeviceTitle(names: String) -> String {
+            "Your \(names) profiles are ready!"
+        }
     }
 
     struct AllProfilesReadyStep {
@@ -94,11 +100,30 @@ struct SignupStrings {
 
     struct SignupErrorStep {
         static let title = "Something went wrong."
-        static let subtitle = "We couldn't save your profile. Check your connection and try again."
+        static let subtitle = "We couldn't complete your setup. Check your connection and try again."
         static let deviceSuccess = "Added to your profile"
         static let deviceFailure = "Profile couldn't be saved — tap Try Again"
         static let devicePending = "Not yet started"
-        static let cancelButton = "CANCEL"
+        static let finishButton = "Finish"
         static let tryAgainButton = "TRY AGAIN"
+    }
+
+    // MARK: - Accessibility (VoiceOver) — spoken text only, not shown on screen
+    struct Accessibility {
+        static let accCloseLabel = "Close"
+        static let accCloseHint = "Returns to the previous screen"
+        static let accHelpLabel = "Help"
+        static let accHelpHint = "Opens help and support"
+        static let accBackHint = "Returns to the previous step"
+        static let accNextHint = "Proceeds to the next step"
+        static let accCompleteHint = "Completes account creation"
+        static let accSkipHint = "Skips this optional step"
+        static let accFinishHint = "Finishes profile setup"
+        static let accConnectAnotherDeviceHint = "Connects another device to your profile"
+        static let accDoneHint = "Completes signup"
+        static let accCancelHint = "Cancels signup"
+        static let accTryAgainHint = "Retries failed device setup"
+        static let accSelectedValue = "Selected"
+        static let accNotSelectedValue = "Not selected"
     }
 }

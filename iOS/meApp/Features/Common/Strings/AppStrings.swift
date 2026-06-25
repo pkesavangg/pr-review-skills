@@ -133,7 +133,7 @@ struct ToastStrings {
     static let weightHistorySynced = "Weight history successfully synced."
     static let hkIntegrationRemoved = "Apple Health integration removed."
     static let hkIntegrationSynced = "Apple Health is synced!"
-    static let saveScaleError = "Error saving scale. Please restart the app and try again."
+    static let saveDeviceError = "Error saving scale. Please restart the app and try again."
     static let restartApp = "Please restart your app and try again."
     static let displayMetricsSaved = "Display metrics saved successfully."
     static let errorSavingDisplayMetrics = "Failed to save display metrics."
@@ -573,6 +573,12 @@ struct AlertStrings {
         static let pairButton = "PAIR"
     }
 
+    struct PairingFailedAlert {
+        static let title = "Pairing Failed"
+        static let message = "Could not connect to the device. Please try again."
+        static let okButton = "OK"
+    }
+
     struct DeleteEntryAlert {
         static let title = "Delete Entry?"
         static let message = "Are you sure you want to delete your entry?"
@@ -733,6 +739,20 @@ struct AlertStrings {
         static let message = "Are you sure you want to remove this baby? You will not be able to get it back."
         static let deleteButton = "DELETE"
         static let cancelButton = "CANCEL"
+    }
+
+    struct SkipAddBabyAlert {
+        static let title = "Skip Baby Profile?"
+        static let message = "Your baby profile won't be created. You can add it anytime from profile settings."
+        static let goBackButton = "GO BACK"
+        static let skipButton = "YES, SKIP"
+    }
+
+    struct SkipEditBabyAlert {
+        static let title = "Skip editing?"
+        static let message = "Your changes won't be saved. You can edit this anytime from my kids profile settings."
+        static let goBackButton = "GO BACK"
+        static let skipButton = "YES, SKIP"
     }
 }
 
@@ -1047,6 +1067,12 @@ struct AppSyncEntryCardStrings {
     static let muscleMass = "Muscle Mass"
     static let waterWeight = "Water Weight"
     static let bmi = "BMI"
+
+    struct A11y {
+        static let metricsGroupLabel = "Scan results"
+        static let saveHint = "Double tap to save this entry"
+        static let editHint = "Double tap to edit this entry before saving"
+    }
 }
 
 /// Constants used in the Set A Goal card

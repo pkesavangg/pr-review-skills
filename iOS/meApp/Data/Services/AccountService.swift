@@ -22,7 +22,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
     private let integrationApiRepo: IntegrationRepositoryAPIProtocol
     /// Migration service for Ionic app data
     private let migrationService: AccountMigrationService
-    private let scaleRepo: ScaleRepositoryProtocol
+    private let scaleRepo: DeviceRepositoryProtocol
     @Published private(set) var isIonicMigrationInProgress: Bool = false
     @Published private(set) var isSignupInProgress: Bool = false
     var isSignupInProgressPublisher: Published<Bool>.Publisher { $isSignupInProgress }
@@ -42,7 +42,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         integrationApiRepo: IntegrationRepositoryAPIProtocol? = nil,
         networkMonitor: NetworkMonitoring? = nil,
         migrationService: AccountMigrationService? = nil,
-        scaleRepo: ScaleRepositoryProtocol? = nil,
+        scaleRepo: DeviceRepositoryProtocol? = nil,
         performInitialLoad: Bool = true
     ) {
         self.apiRepo = apiRepo ?? AccountRepositoryAPI()
@@ -50,7 +50,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         self.integrationApiRepo = integrationApiRepo ?? IntegrationAPIRepository()
         self.networkMonitor = networkMonitor ?? NetworkMonitor.shared
         self.migrationService = migrationService ?? AccountMigrationService()
-        self.scaleRepo = scaleRepo ?? ScaleRepository()
+        self.scaleRepo = scaleRepo ?? DeviceRepository()
         
         $activeAccount
             .dropFirst()
@@ -529,7 +529,17 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         }
 
         let response = try await apiRepo.patchProductTypes(productTypes)
-        localAccount.productTypes = response.account.productTypes ?? productTypes
+        // Merge what we sent with what the server returned AND what is already persisted
+        // locally — never reduce product types. A server PATCH response may return a
+        // device-only subset (e.g. ["weight"]), and a stale/concurrent caller may send a
+        // subset (e.g. ["baby"]); unioning with the existing local value guarantees neither
+        // can drop a type earned earlier (e.g. "blood_pressure" from another device).
+        let serverTypes = response.account.productTypes ?? productTypes
+        localAccount.productTypes = Array(
+            Set(localAccount.productTypes)
+                .union(productTypes)
+                .union(serverTypes)
+        )
         try await updateAccountClearingTokens(localAccount)
         try await updatePublishedState()
         logger.log(

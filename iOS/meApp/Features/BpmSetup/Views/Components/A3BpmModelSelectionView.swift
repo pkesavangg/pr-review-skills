@@ -9,7 +9,7 @@ import SwiftUI
 struct A3BpmModelSelectionView: View {
     @Environment(\.appTheme) private var theme
 
-    let models: [ScaleItemInfo]
+    let models: [DeviceItemInfo]
     let selectedSku: String?
     let onSelect: (String) -> Void
 
@@ -28,6 +28,7 @@ struct A3BpmModelSelectionView: View {
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textBody)
                 }
+                .accessibilityElement(children: .combine)
 
                 LazyVGrid(columns: columns, spacing: .spacingMD) {
                     ForEach(models) { model in
@@ -50,7 +51,7 @@ struct A3BpmModelSelectionView: View {
 private struct BpmModelCard: View {
     @Environment(\.appTheme) private var theme
 
-    let model: ScaleItemInfo
+    let model: DeviceItemInfo
     let isSelected: Bool
     let onTap: () -> Void
 
@@ -62,6 +63,7 @@ private struct BpmModelCard: View {
                     .scaledToFit()
                     .frame(height: 100)
                     .cornerRadius(.radiusMD)
+                    .accessibilityHidden(true)
 
                 Text(bpmListModelLabel(primarySku: model.sku))
                     .fontOpenSans(.body2)
@@ -80,6 +82,8 @@ private struct BpmModelCard: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityHint(BpmSetupStrings.A11y.modelCardHint)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 

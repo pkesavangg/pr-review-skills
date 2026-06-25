@@ -30,6 +30,14 @@ final class SignupStore: ObservableObject {
     @Published var currentStepIndex: Int = 0 {
         didSet {
             currentStep = steps[currentStepIndex]
+            // (Re)entering Add Baby for a NEW baby (not an edit) must start from a clean
+            // form. The keyboard blur that fires as the user leaves this step marks the
+            // already-reset name field as touched, so without this the empty field shows a
+            // phantom "Required." error when the user navigates back to it. Edits keep their
+            // populated values (isEditingBabyIndex is set before navigating).
+            if currentStep == .addBaby, isEditingBabyIndex == nil {
+                resetBabyProfileForm()
+            }
             updateNextButtonState()
         }
     }
@@ -43,6 +51,8 @@ final class SignupStore: ObservableObject {
     @Published var selectedDeviceType: SignupDeviceType?
     // Devices already added during this signup session — shown as disabled on the pick screen
     @Published var disabledDeviceTypes: Set<SignupDeviceType> = []
+    // The last device type the user completed — used for the "connect another device" screen title
+    @Published var lastCompletedDeviceType: SignupDeviceType?
     // Accumulates every device type confirmed through connectAnotherDevice().
     // Used by setInitialProductTypes to send ALL selected devices on FINISH.
     @Published var registeredDeviceTypes: [SignupDeviceType] = []
@@ -58,15 +68,15 @@ final class SignupStore: ObservableObject {
     @Published var babyProfileForm = BabyProfileSetupForm()
 
     // Height-related published properties
-    @Published var selectedHeightInches: [String] = ["5", "10"]  // Default 5'10"
-    @Published var selectedHeightCm: [String] = ["1", "7", "8"]  // Default 178cm
+    @Published var selectedHeightInches: [String] = ["6", "5"]  // Default 6'5"
+    @Published var selectedHeightCm: [String] = ["1", "9", "6"]  // Default 196cm
     @Published var showHeightInchesPicker = false
     @Published var showHeightCmPicker = false
 
     @Published var isFromAccountSwitching: Bool = false
 
     var onSignupSuccess: (() -> Void)?
-    var dismissAction: DismissAction?
+    var dismissAction: (() -> Void)?
 
     let heightInchesOptions = ConversionTools.heightInchesOptions
     let heightCmOptions     = ConversionTools.heightCmOptions
@@ -76,6 +86,7 @@ final class SignupStore: ObservableObject {
     private var previousMetricValue: Bool = false
 
     private let tag = "SignupStore"
+    private var isFinalizingSignup = false
 
     init() {
         // Resolve once per store instance to avoid cross-test DI races when
@@ -107,7 +118,7 @@ final class SignupStore: ObservableObject {
         // Email is the 2nd step (per design): Name → Email → Birthday → Pick a Device
         // On subsequent device loops email is already collected — skip it
         var result: [SignupStep] = isSubsequentDevice
-            ? [.name, .dateOfBirth, .pickDevice]
+            ? [.profileReady, .pickNextDevice]
             : [.name, .email, .dateOfBirth, .pickDevice]
 
         switch selectedDeviceType {
@@ -149,7 +160,14 @@ final class SignupStore: ObservableObject {
         disabledDeviceTypes.count < SignupDeviceType.allCases.count - 1
     }
 
+    // Snapshotted when connectAnotherDevice() is called so the progress bar
+    // doesn't reset to near-zero on the pickNextDevice screen.
+    private var savedProgressValue: Double = 0
+
     var progressValue: Double {
+        if currentStep == .pickNextDevice {
+            return savedProgressValue
+        }
         let terminalSteps: Set<SignupStep> = [.allProfilesReady, .signupError]
         let visibleCount = steps.filter { !terminalSteps.contains($0) }.count
         guard visibleCount > 0 else { return 1.0 }
@@ -157,13 +175,39 @@ final class SignupStore: ObservableObject {
         return Double(clampedIndex) / Double(visibleCount)
     }
 
+    /// All device types completed so far (registered + current selection if not yet registered).
+    var allCompletedDevices: [SignupDeviceType] {
+        guard let current = selectedDeviceType else { return registeredDeviceTypes }
+        return registeredDeviceTypes.contains(current)
+            ? registeredDeviceTypes
+            : registeredDeviceTypes + [current]
+    }
+
     var profileReadyTitle: String {
-        // When the current device completes the full set, the per-device "Your X
-        // profile is ready" reads oddly — show the all-profiles message instead.
         if !canConnectAnotherDevice {
             return SignupStrings.AllProfilesReadyStep.title
         }
-        return selectedDeviceType?.profileReadyTitle ?? SignupStrings.ProfileReadyStep.weightScaleTitle
+        let currentDevice = selectedDeviceType ?? lastCompletedDeviceType
+        var done = registeredDeviceTypes
+        if let device = currentDevice, !done.contains(device) { done.append(device) }
+
+        if done.count >= 2 {
+            let names = done.map(\.profileReadyName).joined(separator: " & ")
+            return SignupStrings.ProfileReadyStep.multiDeviceTitle(names: names)
+        }
+        return currentDevice?.profileReadyTitle ?? SignupStrings.ProfileReadyStep.weightScaleTitle
+    }
+
+    /// Title shown on the "Connect Another Device" screen.
+    /// Shows a combined title once 2+ devices are fully registered (both disabled),
+    /// otherwise shows the single last-completed device title.
+    var pickNextDeviceTitle: String {
+        if registeredDeviceTypes.count >= 2 {
+            let names = registeredDeviceTypes.map(\.profileReadyName).joined(separator: " & ")
+            return SignupStrings.ProfileReadyStep.multiDeviceTitle(names: names)
+        }
+        return lastCompletedDeviceType?.profileReadyTitle
+            ?? SignupStrings.ProfileReadyStep.weightScaleTitle
     }
 
     // MARK: - Height Management
@@ -227,17 +271,57 @@ final class SignupStore: ObservableObject {
             objectWillChange.send()
             moveToNextStep()
         case .addBaby:
-            // Skip baby flow entirely — jump to password (first loop) or profileReady (subsequent loops)
-            resetBabyProfileForm()
-            objectWillChange.send()
-            let jumpTarget: SignupStep = steps.contains(.password) ? .password : .profileReady
-            if let targetIndex = steps.firstIndex(of: jumpTarget) {
-                currentStepIndex = targetIndex
+            if isEditingBabyIndex != nil {
+                showSkipEditBabyAlert()
+            } else {
+                showSkipAddBabyAlert()
             }
         default:
             objectWillChange.send()
             moveToNextStep()
         }
+    }
+
+    private func showSkipAddBabyAlert() {
+        let lang = AlertStrings.SkipAddBabyAlert.self
+        let alert = AlertModel(
+            title: lang.title,
+            message: lang.message,
+            buttons: [
+                AlertButtonModel(title: lang.skipButton, type: .primary) { [weak self] _ in
+                    guard let self else { return }
+                    self.resetBabyProfileForm()
+                    self.objectWillChange.send()
+                    let jumpTarget: SignupStep = self.steps.contains(.password) ? .password : .profileReady
+                    if let targetIndex = self.steps.firstIndex(of: jumpTarget) {
+                        self.currentStepIndex = targetIndex
+                    }
+                },
+                AlertButtonModel(title: lang.goBackButton, type: .secondary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+
+    private func showSkipEditBabyAlert() {
+        let lang = AlertStrings.SkipEditBabyAlert.self
+        let alert = AlertModel(
+            title: lang.title,
+            message: lang.message,
+            buttons: [
+                AlertButtonModel(title: lang.skipButton, type: .primary) { [weak self] _ in
+                    guard let self else { return }
+                    self.resetBabyProfileForm()
+                    self.isEditingBabyIndex = nil
+                    self.objectWillChange.send()
+                    if let babyListIndex = self.steps.firstIndex(of: .babyList) {
+                        self.currentStepIndex = babyListIndex
+                    }
+                },
+                AlertButtonModel(title: lang.goBackButton, type: .secondary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
     }
 
     func moveToNextStep() {
@@ -264,9 +348,11 @@ final class SignupStore: ObservableObject {
     /// Called from the profileReady step "FINISH" button — saves device profiles and finalizes.
     /// Clears isSignupInProgress so ContentViewModel can navigate to dashboard.
     func finishSignup() {
-        guard !accountService.isSignupInProgress else { return }
+        guard !isFinalizingSignup else { return }
+        isFinalizingSignup = true
         Task {
             await performSaveDevicesAndFinalize()
+            isFinalizingSignup = false
         }
     }
 
@@ -298,14 +384,19 @@ final class SignupStore: ObservableObject {
     }
 
     func connectAnotherDevice() {
+        // Fixed at 0.9 so the bar reads ~90% on every iteration — the subsequent-device
+        // loop has far fewer steps (profileReady + pickNextDevice + profileReady = 3),
+        // and a computed ratio would drop to ~67% on the second pass.
+        savedProgressValue = 0.9
         if let current = selectedDeviceType {
+            lastCompletedDeviceType = current
             disabledDeviceTypes.insert(current)
             registeredDeviceTypes.append(current)
         }
         selectedDeviceType = nil
         rebuildSteps()
-        guard let pickDeviceIndex = steps.firstIndex(of: .pickDevice) else { return }
-        currentStepIndex = pickDeviceIndex
+        guard let pickNextDeviceIndex = steps.firstIndex(of: .pickNextDevice) else { return }
+        currentStepIndex = pickNextDeviceIndex
     }
 
     func moveToPreviousStep() {
@@ -392,6 +483,9 @@ final class SignupStore: ObservableObject {
             birthWeightOz: baby.birthWeightOz,
             preferredWeightUnit: baby.selectedWeightUnit
         )
+        // Populating sets values (marking controls dirty); clear that so the edit screen
+        // opens without surfacing validation errors until the user actually edits a field.
+        markBabyProfileFormPristine()
         isEditingBabyIndex = index
         guard let addBabyIndex = steps.firstIndex(of: .addBaby) else { return }
         currentStepIndex = addBabyIndex
@@ -436,6 +530,8 @@ final class SignupStore: ObservableObject {
             let fieldsValid = signupForm.password.isValid && signupForm.confirmPassword.isValid && signupForm.zipcode.isValid
             let passwordsMatch = !signupForm.formErrors[.passwordMatch]
             isNextEnabled = fieldsValid && passwordsMatch
+        case .pickNextDevice:
+            isNextEnabled = selectedDeviceType != nil
         case .profileReady:
             isNextEnabled = true
         case .allProfilesReady, .signupError:
@@ -648,6 +744,13 @@ final class SignupStore: ObservableObject {
                 currentStepIndex = errorIndex
             }
         } else {
+            // A fresh signup should open on the multi-device snapshot overview, not jump
+            // straight into a product dashboard. persistSignupBabies() persists a baby
+            // selection (so the right baby is highlighted), which would otherwise be read
+            // by resolveInitialProductRedirect() as a returning-user "last viewed product"
+            // hint and redirect into that product. Clear it so the overview shows first;
+            // the in-memory selection is kept.
+            ProductTypeStore.shared.clearPersistedSelection()
             completeSignup()
         }
     }
@@ -829,6 +932,28 @@ final class SignupStore: ObservableObject {
         babyProfileForm.reset()
     }
 
+    /// Clears dirty/touched state on the baby form's controls without changing their values.
+    /// Used after programmatically populating the form for an edit so validation errors
+    /// don't appear until the user interacts.
+    private func markBabyProfileFormPristine() {
+        babyProfileForm.name.markAsPristine()
+        babyProfileForm.name.markAsUntouched()
+        babyProfileForm.birthday.markAsPristine()
+        babyProfileForm.birthday.markAsUntouched()
+        babyProfileForm.biologicalSex.markAsPristine()
+        babyProfileForm.biologicalSex.markAsUntouched()
+        babyProfileForm.birthLengthInches.markAsPristine()
+        babyProfileForm.birthLengthInches.markAsUntouched()
+        babyProfileForm.birthWeightLbs.markAsPristine()
+        babyProfileForm.birthWeightLbs.markAsUntouched()
+        babyProfileForm.birthWeightOz.markAsPristine()
+        babyProfileForm.birthWeightOz.markAsUntouched()
+        babyProfileForm.birthLengthCm.markAsPristine()
+        babyProfileForm.birthLengthCm.markAsUntouched()
+        babyProfileForm.birthWeightKg.markAsPristine()
+        babyProfileForm.birthWeightKg.markAsUntouched()
+    }
+
     private func persistSelectedSignupDeviceType(for accountId: String) {
         // Persist the first device from the session as the primary signup device type.
         // This drives HealthKit permission scoping — use the user's first intent.
@@ -992,6 +1117,8 @@ final class SignupStore: ObservableObject {
 
         // Reset navigation/UI state.
         selectedDeviceType = nil
+        lastCompletedDeviceType = nil
+        savedProgressValue = 0
         disabledDeviceTypes = []
         registeredDeviceTypes = []
         deviceStatuses = []

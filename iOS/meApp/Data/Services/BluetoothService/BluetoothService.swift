@@ -34,7 +34,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
     /// Legacy singleton for compatibility. Prefer dependency injection for new code.
     static let shared = BluetoothService(accountService: AccountService.shared,
-                                         scaleService: ScaleService.shared,
+                                         deviceService: DeviceService.shared,
                                          entryService: EntryService.shared,
                                          babyService: BabyService.shared,
                                          logger: LoggerService.shared)
@@ -118,7 +118,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     // MARK: - Navigation Callback
 
     /// Callback to handle scale setup navigation. Set by the UI layer (e.g. BottomTabBarViewModel).
-    var onOpenScaleSetup: ((DeviceSnapshot, DeviceDiscoveryEvent?, Bool, Bool) -> Void)?
+    var onOpenDeviceSetup: ((DeviceSnapshot, DeviceDiscoveryEvent?, Bool, Bool) -> Void)?
 
     // MARK: - Subjects for Scale Discovery
 
@@ -137,6 +137,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     /// The most recently received weight scale entry that is awaiting user confirmation.
     /// Set by the scan pipeline before firing pendingScaleEntrySubject; cleared by confirm/discard.
     var pendingScaleEntry: Entry?
+
+    /// Earlier weight entries that were displaced when a new reading arrived before the user
+    /// acted on the previous toast. Queued here instead of auto-saved so that tapping DISCARD
+    /// discards all of them, matching user intent.
+    var displacedPendingEntries: [Entry] = []
 
     /// The most recently received BPM entry that is awaiting user confirmation.
     /// Set by the scan pipeline before firing pendingBpmEntrySubject; cleared by confirm/discard.
@@ -161,7 +166,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     // MARK: - Dependencies
 
     let accountService: AccountServiceProtocol
-    let scaleService: ScaleServiceProtocol
+    let deviceService: PairedDeviceServiceProtocol
     let entryService: EntryServiceProtocol
     let babyService: BabyServiceProtocol
     let logger: LoggerServiceProtocol
@@ -180,7 +185,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     // MARK: - Alert Dependencies
 
     let notificationService: NotificationHelperServiceProtocol
-    var scaleInfoUtils: ScaleInfoUtils { ScaleInfoUtils.shared }
+    var scaleInfoUtils: DeviceInfoUtils { DeviceInfoUtils.shared }
 
     // MARK: - BLE Components
 
@@ -192,13 +197,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      Initializes the BluetoothService with all required dependencies.
      - Parameters:
      - accountService: The account service dependency.
-     - scaleService: The scale service dependency.
+     - deviceService: The scale service dependency.
      - entryService: The entry service dependency.
      - logger: The logger service dependency.
      */
     init(
         accountService: AccountServiceProtocol,
-        scaleService: ScaleServiceProtocol,
+        deviceService: PairedDeviceServiceProtocol,
         entryService: EntryServiceProtocol,
         babyService: BabyServiceProtocol,
         logger: LoggerServiceProtocol,
@@ -207,7 +212,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         notificationService: NotificationHelperServiceProtocol? = nil
     ) {
         self.accountService = accountService
-        self.scaleService = scaleService
+        self.deviceService = deviceService
         self.entryService = entryService
         self.babyService = babyService
         self.logger = logger
@@ -222,7 +227,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
     private func setupSubscriptions() {
         // Subscribe to scale changes
-        scaleService.scalesPublisher
+        deviceService.scalesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] scales in
                 Task { await self?.handleScalesUpdate(scales) }
@@ -258,6 +263,18 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     func confirmPendingScaleEntry() async throws {
         guard let entry = pendingScaleEntry else { return }
         pendingScaleEntry = nil
+        let displaced = displacedPendingEntries
+        displacedPendingEntries = []
+        for displacedEntry in displaced {
+            do {
+                try await entryService.saveNewEntry(displacedEntry)
+                let displacedNotification = EntryNotification(from: displacedEntry)
+                newEntryReceivedSubject.send(displacedNotification)
+                logger.log(level: .info, tag: tag, message: "Displaced scale entry saved on confirm. entryId=\(displacedEntry.id.uuidString)")
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to save displaced scale entry on confirm. entryId=\(displacedEntry.id.uuidString)", data: error.localizedDescription)
+            }
+        }
         try await entryService.saveNewEntry(entry)
         let notification = EntryNotification(from: entry)
         newEntryReceivedSubject.send(notification)
@@ -268,6 +285,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     /// Called when the user taps DISCARD on the reading-arrival toast.
     func discardPendingScaleEntry() {
         guard let entry = pendingScaleEntry else { return }
+        let displaced = displacedPendingEntries
+        displacedPendingEntries = []
+        for displacedEntry in displaced {
+            logger.log(level: .info, tag: tag, message: "Displaced scale entry discarded. entryId=\(displacedEntry.id.uuidString)")
+        }
         logger.log(level: .info, tag: tag, message: "Pending scale entry discarded. entryId=\(entry.id.uuidString)")
         pendingScaleEntry = nil
     }
@@ -320,7 +342,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             logger.log(level: .info, tag: tag, message: "Bluetooth scales update received empty list; synced zero devices")
             return
         }
-        let allowedTypes: Set<ScaleSourceType> = Set([
+        let allowedTypes: Set<DeviceSourceType> = Set([
             .bluetooth,
             .bluetoothScale,
             .lcbt,
@@ -334,8 +356,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             // cause a valid new device to be treated as already-known (MOB-427 fix).
             guard !accountId.isEmpty,
                   scale.accountId == accountId,
-                  let raw = getSafeScaleType(for: scale),
-                  let type = ScaleSourceType(rawValue: raw)
+                  let raw = getSafeDeviceModelType(for: scale),
+                  let type = DeviceSourceType(rawValue: raw)
             else { return false }
             return allowedTypes.contains(type)
         }

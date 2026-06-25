@@ -8,6 +8,7 @@ import SwiftUI
 struct ProfileReadyStepView: View {
     @Environment(\.appTheme) private var theme
     let title: String
+    var completedDevices: [SignupDeviceType] = []
 
     var body: some View {
         VStack(spacing: .spacingLG) {
@@ -15,11 +16,25 @@ struct ProfileReadyStepView: View {
             AppIconView(icon: AppAssets.checkMarkLarge, size: IconSize(width: 180, height: 180))
                 .foregroundColor(theme.statusSuccess)
                 .frame(maxWidth: .infinity, alignment: .center)
+                .accessibilityHidden(true)
             Text(title)
                 .fontOpenSans(.heading4)
                 .foregroundColor(theme.textHeading)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, alignment: .center)
+                .accessibilityAddTraits(.isHeader)
+            if completedDevices.count >= 2 {
+                HStack(spacing: .spacingLG) {
+                    ForEach(completedDevices) { device in
+                        Image(device.iconName)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 60, height: 60)
+                            .accessibilityLabel(device.profileReadyName)
+                            .accessibilityHidden(true)
+                    }
+                }
+            }
             Spacer()
         }
         .padding(.horizontal, .spacingSM)

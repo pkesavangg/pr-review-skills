@@ -33,6 +33,7 @@ import com.dmdbrands.gurus.weight.features.common.strings.ReadingToastStrings
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
 import com.dmdbrands.library.ggbluetooth.enums.GGAppType
+import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.dmdbrands.library.ggbluetooth.model.GGBTUserProfile
 import com.google.common.truth.Truth.assertThat
 import com.greatergoods.blewrapper.GGDeviceService
@@ -442,6 +443,108 @@ class AppViewModelTest {
         advanceUntilIdle()
 
         verify(exactly = 0) { dialogQueueService.showToast(any()) }
+    }
+
+    @Test
+    fun `AuthState AccountSwitched resets scale-discovered state so reconnect alert is not suppressed`() = runTest {
+        // MOB-175: switching accounts in-session must clear the previous account's skip/ignore
+        // state. Otherwise a scale skipped under the previous account stays muted and the
+        // duplicate-user reconnect alert never reappears after switching back.
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // Simulate a scale having been discovered before the switch, so we can prove the reset
+        // flips it back (pins the full reset, not just the clearSkipDevices side effect).
+        viewModel.handleIntent(AppIntent.SetScaleDiscovered(true))
+        assertThat(viewModel.state.value.isScaleDiscovered).isTrue()
+
+        authEventFlow.emit(
+            AuthState.AccountSwitched(
+                account = TestFixtures.activeAccount,
+                showToast = true,
+            ),
+        )
+        advanceUntilIdle()
+
+        verify { bluetoothPreferencesService.clearSkipDevices() }
+        // resetScaleDiscoveredState() also dispatches SetScaleDiscovered(false).
+        assertThat(viewModel.state.value.isScaleDiscovered).isFalse()
+    }
+
+    @Test
+    fun `AuthState AccountSwitched resets scale-discovered state even when showToast is false`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        authEventFlow.emit(
+            AuthState.AccountSwitched(
+                account = TestFixtures.activeAccount,
+                showToast = false,
+            ),
+        )
+        advanceUntilIdle()
+
+        // The reset is independent of the toast — it must happen on every account switch.
+        verify { bluetoothPreferencesService.clearSkipDevices() }
+        verify(exactly = 0) { dialogQueueService.showToast(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // Duplicate-user reconnect — token-disambiguation selection (MOB-175)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `selectDuplicateUserToken prefers the token-matched user among same-name users`() = runTest {
+        viewModel = createViewModel()
+        // Two users share the display name "renu"; only one token matches THIS account's stored token.
+        val users = listOf(
+            GGBTUser(name = "renu", token = "this-account-token", lastActive = 1000L, isBodyMetricsEnabled = true),
+            GGBTUser(name = "renu", token = "other-account-token", lastActive = 2000L, isBodyMetricsEnabled = false),
+        )
+
+        val selected = viewModel.selectDuplicateUserToken(
+            userList = users,
+            displayName = "renu",
+            localToken = "this-account-token",
+        )
+
+        // Must pick the token-matched user, not an arbitrary name match (which could delete the wrong slot).
+        assertThat(selected).isEqualTo("this-account-token")
+    }
+
+    @Test
+    fun `selectDuplicateUserToken falls back to first name match when no token matches`() = runTest {
+        viewModel = createViewModel()
+        val users = listOf(
+            GGBTUser(name = "renu", token = "token-a", lastActive = 1000L, isBodyMetricsEnabled = true),
+            GGBTUser(name = "renu", token = "token-b", lastActive = 2000L, isBodyMetricsEnabled = false),
+        )
+
+        val selected = viewModel.selectDuplicateUserToken(
+            userList = users,
+            displayName = "renu",
+            // localToken matches neither user (e.g. this account has no stored scale token yet).
+            localToken = "unmatched-token",
+        )
+
+        // Falls back to the first name match.
+        assertThat(selected).isEqualTo("token-a")
+    }
+
+    @Test
+    fun `selectDuplicateUserToken returns null when no user shares the display name`() = runTest {
+        viewModel = createViewModel()
+        val users = listOf(
+            GGBTUser(name = "alice", token = "token-a", lastActive = 1000L, isBodyMetricsEnabled = true),
+        )
+
+        val selected = viewModel.selectDuplicateUserToken(
+            userList = users,
+            displayName = "renu",
+            localToken = "token-a",
+        )
+
+        assertThat(selected).isNull()
     }
 
     // -------------------------------------------------------------------------

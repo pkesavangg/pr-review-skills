@@ -8,7 +8,7 @@ import SwiftUI
 /// Intro screen showing baby scale model info and image.
 struct BabyScaleIntroView: View {
     @Environment(\.appTheme) private var theme
-    let scale: ScaleItemInfo
+    let scale: DeviceItemInfo
     private let lang = BabyScaleSetupStrings.self
 
     var body: some View {
@@ -22,6 +22,7 @@ struct BabyScaleIntroView: View {
                         .cornerRadius(.radiusLG)
                         .themeDropShadow()
                         .padding(.bottom, .spacingLG)
+                        .accessibilityHidden(true)
 
                     Text(ScaleSetupStrings.modelTitle(scale.sku))
                         .fontOpenSans(.heading4)
@@ -32,6 +33,7 @@ struct BabyScaleIntroView: View {
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textBody)
                 }
+                .accessibilityElement(children: .combine)
                 .frame(maxWidth: .infinity)
 
                 Text(lang.Intro.troubleSettingUp)

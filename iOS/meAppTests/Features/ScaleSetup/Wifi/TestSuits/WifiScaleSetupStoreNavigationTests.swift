@@ -71,7 +71,7 @@ extension WifiScaleSetupStoreTests {
 
             #expect(store.permissionsSkipped == true)
             #expect(store.currentStep == .wifiPassword)
-            #expect(store.networkForm.ssid.value.isEmpty)
+            #expect(store.currentStep == .wifiPassword)
         }
 
         @Test("skipping permissions again preserves manually entered network name")

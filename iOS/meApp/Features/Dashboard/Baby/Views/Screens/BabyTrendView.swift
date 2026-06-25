@@ -16,7 +16,7 @@ struct BabyTrendView: View {
     @State private var isGrowthPercentilesSheetPresented = false
     private let viewModel = BabyTrendViewModel()
 
-    private var babyColor: Color { theme.babyPrimary }
+    private var babyColor: Color { theme.babyScaleColor }
 
     private var displayState: BabyTrendDisplayState {
         viewModel.displayState(dashboardStore: dashboardStore, babyProfile: babyProfile)
@@ -53,6 +53,20 @@ struct BabyTrendView: View {
         !dashboardStore.state.graph.isGraphReady
     }
 
+    private var babyInfoAccessibilityLabel: String {
+        let headline = displayState.headlineLabel
+        if displayState.selectedMetric == .weight {
+            let display = displayState.weightDisplay
+            var text = "\(headline), \(display.primary) \(display.primaryUnit)"
+            if let secondary = display.secondary, let secondaryUnit = display.secondaryUnit {
+                text += " \(secondary) \(secondaryUnit)"
+            }
+            return text
+        } else {
+            return "\(headline), \(displayState.heightDisplayText) \(BabyDashboardStrings.inches)"
+        }
+    }
+
     @ViewBuilder
     private var babyInfoSection: some View {
         HStack(alignment: .top) {
@@ -82,6 +96,8 @@ struct BabyTrendView: View {
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(babyInfoAccessibilityLabel)
+            .accessibilityHint(BabyDashboardStrings.accPercentilesHint)
 
             Spacer()
 
@@ -95,9 +111,12 @@ struct BabyTrendView: View {
     @ViewBuilder
     private var babyWeightDisplay: some View {
         let display = displayState.weightDisplay
+        // lb/oz shows two values (e.g. "15 lb 4 oz"); shrink the value font so the pair
+        // fits the row. A single value (kg) keeps the larger heading1 size.
+        let valueStyle: CustomTextStyle = display.secondary != nil ? .heading2 : .heading1
         HStack(alignment: .lastTextBaseline, spacing: .zero) {
             Text(display.primary)
-                .fontOpenSans(.heading1)
+                .fontOpenSans(valueStyle)
                 .fontWeight(.heavy)
                 .foregroundColor(babyColor)
 
@@ -108,7 +127,7 @@ struct BabyTrendView: View {
 
             if let secondary = display.secondary, let secondaryUnit = display.secondaryUnit {
                 Text(secondary)
-                    .fontOpenSans(.heading1)
+                    .fontOpenSans(valueStyle)
                     .fontWeight(.heavy)
                     .foregroundColor(babyColor)
                     .padding(.leading, .spacingMD)
@@ -183,10 +202,11 @@ struct BabyTrendView: View {
                 .frame(minWidth: 80)
                 .background(
                     RoundedRectangle(cornerRadius: .radiusSM)
-                        .fill(displayState.selectedMetric == metric ? babyColor : Color.clear)
+                        .fill(displayState.selectedMetric == metric ? babyColor : theme.backgroundPrimary)
                 )
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(displayState.selectedMetric == metric ? .isSelected : [])
     }
 }
 

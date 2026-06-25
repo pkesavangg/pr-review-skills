@@ -64,12 +64,14 @@ struct AppInputField: View {
             VStack(alignment: .leading, spacing: 0) {
                 ZStack(alignment: .topLeading) {
                     TextEditor(text: $value)
-                        .font(.body1)
-                        .foregroundColor(theme.textBody)
+                        .font(.custom("OpenSans-Regular", size: CustomTextStyle.body3.size))
+                        .foregroundColor(theme.textSubheading)
                         .scrollContentBackground(.hidden)
                         .padding(.horizontal, CGFloat.spacingXS)
                         .padding(.top, isTextareaLabelActive ? CGFloat.spacingLG : CGFloat.spacingXS)
                         .frame(height: 100)
+                        .focused($fieldIsFocused)
+                        .accessibilityLabel(config.label)
                         .onTapGesture {
                             focusedField = config.focusField
                         }
@@ -117,6 +119,18 @@ struct AppInputField: View {
                     .foregroundColor(theme.textError)
                     .padding(.leading, .spacingSM)
                     .padding(.top, 4)
+            }
+        }
+        .onChange(of: focusedField) { _, newValue in
+            if newValue == config.focusField {
+                fieldIsFocused = true
+            } else if newValue == nil && fieldIsFocused {
+                fieldIsFocused = false
+            }
+        }
+        .onChange(of: fieldIsFocused) { _, newValue in
+            if !newValue && focusedField == config.focusField {
+                focusedField = nil
             }
         }
     }
@@ -193,6 +207,7 @@ struct AppInputField: View {
         )
         .focused($fieldIsFocused)
         .padding(.leading, .spacingSM)
+        .accessibilityLabel(config.label)
     }
 
     private var disabledOverlay: some View {

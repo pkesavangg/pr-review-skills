@@ -134,7 +134,7 @@ extension BtWifiScaleSetupStore {
                 self.errorCode = nil
 
                 if let broadcastId = scale.broadcastIdString {
-                    await scaleService.updateConnectedDeviceWifiStatus(broadcastId: broadcastId, isConfigured: true)
+                    await deviceService.updateConnectedDeviceWifiStatus(broadcastId: broadcastId, isConfigured: true)
                     LoggerService.shared.log(
                         level: .info,
                         tag: tag,
