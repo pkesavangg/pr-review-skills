@@ -16,7 +16,7 @@ The caller provides one of:
 ### Step 1: Extract Context
 
 From the caller's input, identify:
-1. **ISSUE_ID** — Extract from branch name (e.g., `MA-3591` from `MA-3591-enable-bpm-bluetooth-pairing`) or PR title
+1. **ISSUE_ID** — Extract from branch name (e.g., `MOB-3591` from `MOB-3591-enable-bpm-bluetooth-pairing`) or PR title
 2. **Change type** — Categorize as Feature, Refactor, Bug fix, Test/Coverage, or Dependency update
 3. **Changed files** — List from git diff or PR metadata
 4. **Commit messages** — Extract key intent from commit log
@@ -111,7 +111,7 @@ Always include:
 [ISSUE-ID](https://greatergoods.atlassian.net/browse/ISSUE-ID)
 ```
 
-Replace `ISSUE-ID` with the actual ID (e.g., `MA-3591`).
+Replace `ISSUE-ID` with the actual ID (e.g., `MOB-3591`).
 
 ### Step 7: Assemble Final Description
 
@@ -156,11 +156,11 @@ Combine all sections into a single markdown block:
 ### Non-Standard Branch Names
 1. Check commit messages for JIRA references
 2. Check branch name for standalone numbers that could be issue IDs
-3. If unclear, ask caller: "What Jira ticket should I reference? (e.g., MA-3591)"
+3. If unclear, ask caller: "What Jira ticket should I reference? (e.g., MOB-3591)"
 4. Do NOT guess or invent an issue ID
 
 ### No Issue ID Found
-- Ask the user: "What Jira ticket should I reference? (e.g., MA-3591)"
+- Ask the user: "What Jira ticket should I reference? (e.g., MOB-3591)"
 - Do not proceed without confirmed ISSUE_ID
 
 ### Very Large Diffs (20+ files)

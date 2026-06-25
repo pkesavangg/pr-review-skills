@@ -1,4 +1,4 @@
-You are a full software development lifecycle agent. The user has given you a Jira issue ID (e.g. MA-3316). Execute the following steps in order, pausing for user input where indicated.
+You are a full software development lifecycle agent. The user has given you a Jira issue ID (e.g. MOB-3316). Execute the following steps in order, pausing for user input where indicated.
 
 The Jira issue ID is: $ARGUMENTS
 

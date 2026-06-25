@@ -37,7 +37,7 @@ This skill invokes `/gen-pr-description-template` to consolidate template logic 
    git diff main...HEAD
    ```
 
-2. **Extract the ISSUE_ID** from the branch name (e.g. `MA-3591` from `MA-3591-enable-bpm-bluetooth-pairing`).
+2. **Extract the ISSUE_ID** from the branch name (e.g. `MOB-3591` from `MOB-3591-enable-bpm-bluetooth-pairing`).
    
    **Error handling**: If branch doesn't follow standard format:
    - Check if ISSUE_ID appears in recent commit messages
@@ -83,10 +83,10 @@ Use this workflow when the user provides a GitHub PR link or PR number.
    ```
 
 3. **Extract ISSUE_ID from PR data:**
-   - Check PR title for pattern `ISSUE-ID` (e.g., `MA-3603`)
+   - Check PR title for pattern `ISSUE-ID` (e.g., `MOB-3603`)
    - Check commit messages for JIRA references
    - Check existing PR body for `[ISSUE-ID]` link
-   - If not found, ask user: "What Jira ticket should I reference? (e.g., MA-3603)"
+   - If not found, ask user: "What Jira ticket should I reference? (e.g., MOB-3603)"
 
 4. **Read key files if needed:**
    - Same heuristic as Workflow A: if diff is complex or intent unclear, read relevant Swift files
@@ -122,9 +122,9 @@ Use this workflow when the user provides a GitHub PR link or PR number.
 ## Edge Cases & Error Handling
 
 ### Non-Standard Branch Names
-1. Check commit messages for JIRA references (e.g., "MA-3591")
+1. Check commit messages for JIRA references (e.g., "MOB-3591")
 2. Check branch name for standalone numbers
-3. If unclear, ask: "What Jira ticket should I reference? (e.g., MA-3591)"
+3. If unclear, ask: "What Jira ticket should I reference? (e.g., MOB-3591)"
 4. Do NOT guess or invent an issue ID
 
 ### No Changes or Empty Diff

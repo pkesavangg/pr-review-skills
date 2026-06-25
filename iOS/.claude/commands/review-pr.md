@@ -24,7 +24,7 @@ Store for each PR:
 - `BASE_BRANCH` (baseRefName)
 - `PR_BODY`
 - `PR_URL`
-- `JIRA_ID` — extract by scanning title and body for pattern `MA-\d+` (first match)
+- `JIRA_ID` — extract by scanning title and body for pattern `(MOB|MA)-\d+` (first match)
 
 ---
 
@@ -169,7 +169,7 @@ Write the file with the following structure:
 
 | PR | Title | Branch | Jira | Security | Lint | Regression | Code Standards | UI Standards | Issue Coverage | Verdict |
 |----|-------|--------|------|----------|------|------------|----------------|--------------|----------------|---------|
-| #{n} | {title} | {branch} | {MA-XXXX or —} | PASS/WARN/FAIL | PASS/WARN/FAIL | Low/Med/High | PASS/WARN/FAIL | PASS/WARN/FAIL | Complete/Partial/Missing | APPROVED/NEEDS CHANGES/BLOCKED |
+| #{n} | {title} | {branch} | {MOB-XXXX or —} | PASS/WARN/FAIL | PASS/WARN/FAIL | Low/Med/High | PASS/WARN/FAIL | PASS/WARN/FAIL | Complete/Partial/Missing | APPROVED/NEEDS CHANGES/BLOCKED |
 
 ---
 

@@ -13,7 +13,7 @@ The Jira issue ID or task description is: $ARGUMENTS
 
 ### 1 — Fetch Ticket Details
 
-If `$ARGUMENTS` is a Jira issue ID (e.g. `MA-3319`):
+If `$ARGUMENTS` is a Jira issue ID (e.g. `MOB-3319`):
 - Call `getAccessibleAtlassianResources` to retrieve the `cloudId`
 - Call `getJiraIssue` with `cloudId` and the issue ID
 - Extract: `ISSUE_ID`, `ISSUE_TITLE`, `ISSUE_TYPE`, `ISSUE_DESCRIPTION`, `ACCEPTANCE_CRITERIA`

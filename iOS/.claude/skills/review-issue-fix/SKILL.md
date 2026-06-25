@@ -5,14 +5,14 @@ description: Verify that a PR's code changes and tests actually address all acce
 
 Verify the PR actually addresses the Jira issue it claims to fix.
 
-Inputs available: PR_META (number, title, body, branch), DIFF (full patch text), CHANGED_FILES (list), WORKTREE_PATH, JIRA_ID (extracted from PR title/body, e.g. MA-3316)
+Inputs available: PR_META (number, title, body, branch), DIFF (full patch text), CHANGED_FILES (list), WORKTREE_PATH, JIRA_ID (extracted from PR title/body, e.g. MOB-3316)
 
 ## Instructions
 
 ### 1 — Extract Jira Issue ID
 
 If JIRA_ID was not already extracted by the caller:
-- Scan PR_META.title and PR_META.body for the pattern `MA-\d+`
+- Scan PR_META.title and PR_META.body for the pattern `(MOB|MA)-\d+`
 - Use the first match found
 - If no Jira ID found: output "No Jira issue linked — skipping issue coverage check" and exit this skill
 

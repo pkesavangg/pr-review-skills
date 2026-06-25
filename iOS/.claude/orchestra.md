@@ -71,7 +71,7 @@ The `/work-ticket` command orchestrates the complete flow. When working a Jira t
 
 ```
 /fetch-ticket          → Gather requirements and acceptance criteria
-/create-branch         → Branch from main, transition Jira to In Progress
+/create-branch         → Branch from develop, transition Jira to In Progress
 /create-prd            → Write implementation plan (for non-trivial tasks)
   ↓
 [Implementation phase — use skills as needed per task type]
@@ -223,7 +223,7 @@ Fetches all inline and general review comments, classifies each as Auto-fix / Ne
 
 Trigger phrases: "fix PR comments", "address review feedback", "apply reviewer suggestions", "respond to PR feedback", "fix the review comments", "act on code review", "resolve PR comments".
 
-### 4.11 Release Preparation
+### 4.12 Release Preparation
 
 ```
 /release-cut                     → Gather changes, group by theme, write release notes
@@ -256,7 +256,7 @@ Before marking any task complete, confirm:
 - [ ] Coverage meets layer thresholds (`/verify-tests`)
 - [ ] Self-review passes all 5 checks (`/self-review`)
 - [ ] No unrelated files modified
-- [ ] Commit message follows `MA-XXXX Description` format
+- [ ] Commit message follows `MOB-XXXX Description` format
 - [ ] Architecture doc updated if structural changes made (`/update-architecture`)
 
 ---
@@ -329,7 +329,7 @@ Before marking any task complete, confirm:
 ### Git & Delivery
 | Skill/Command | Purpose |
 |---------------|---------|
-| `/create-branch` | Branch from main with Jira ID |
+| `/create-branch` | Branch from develop with Jira ID |
 | `/commit` | Stage and commit with Jira prefix |
 | `/raise-pr` | Push and create PR |
 | `/log-work` | Log time on Jira |
