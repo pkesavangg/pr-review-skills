@@ -163,13 +163,20 @@ jobs:
       - run:
           name: Resolve Swift Package Dependencies
           working_directory: iOS
-          no_output_timeout: 20m
+          # 45m (not 20m) to break the cold-cache chicken-and-egg: the SPM cache
+          # is only saved AFTER a resolve succeeds, but a COLD resolve of this
+          # graph (Firebase + swift-syntax prerelease + branch-tracked gg-*
+          # packages) runs >20m silently in the post-checkout phase and was
+          # being killed before save_cache ever ran — so every run stayed cold.
+          # -onlyUsePackageVersionsFromResolvedFile keeps the version SOLVER out,
+          # so the remaining work is bounded and WILL finish given room. One
+          # successful cold resolve populates the cache; warm runs are fast and
+          # this ceiling becomes irrelevant. If a run still hits 45m it's a true
+          # hang (likely a gg-* branch-tip refetch) → pin those to tags instead.
+          no_output_timeout: 45m
           command: |
             # Package.resolved is committed, so use ONLY its pinned versions and
-            # skip SwiftPM's version solver. The solver was thrashing for hours
-            # in the silent post-checkout phase on cold CI (all clones finished,
-            # then it hung). This fetches the pinned revisions and stops. No
-            # heartbeat — a genuinely silent hang should fail fast, not run 3h.
+            # skip SwiftPM's version solver.
             xcodebuild -resolvePackageDependencies \
               -project meApp.xcodeproj \
               -onlyUsePackageVersionsFromResolvedFile \
