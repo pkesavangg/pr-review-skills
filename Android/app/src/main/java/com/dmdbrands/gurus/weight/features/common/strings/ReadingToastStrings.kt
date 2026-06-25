@@ -12,6 +12,9 @@ object ReadingToastStrings {
     /** Single-baby arrival card title, e.g. "New Reading Received for PRINCY". */
     fun titleForBaby(name: String): String = "New Reading Received for ${name.uppercase()}"
 
+    /** Manual-entry confirmation card title (Figma 30456-24170). */
+    const val SavedToLog = "New Reading saved to your log"
+
     fun primaryAction(type: ProductType): String = when (type) {
         ProductType.BABY -> "ASSIGN"
         else -> "SAVE"

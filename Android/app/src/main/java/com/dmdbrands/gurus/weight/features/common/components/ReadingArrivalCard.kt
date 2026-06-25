@@ -72,6 +72,9 @@ fun ReadingArrivalCard(
                 )
             }
             when {
+                // Manual entry: already saved — show "saved to your log" + a single VIEW action.
+                readingToast.savedToLog -> SavedToLogContent(readingToast, clearToast)
+
                 readingToast.type == ProductType.BABY && readingToast.noBabyProfile ->
                     NoBabyContent(readingToast, clearToast)
 
@@ -133,6 +136,54 @@ private fun ReadingContent(
             clearToast()
         },
     )
+}
+
+/**
+ * Manual-entry confirmation: "New Reading saved to your log", the reading value, and a single
+ * VIEW pill that opens the entry's History detail (Figma 30456-24170).
+ */
+@Composable
+private fun SavedToLogContent(
+    readingToast: ReadingToast,
+    clearToast: () -> Unit,
+) {
+    val measurementType = readingToast.type.toMeasurementType()
+    Text(
+        text = ReadingToastStrings.SavedToLog,
+        style = MeTheme.typography.heading5,
+        color = colorScheme.textBody,
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = rememberMeasurementText(
+                text = "${readingToast.reading} · ${readingToast.timestamp}",
+                type = measurementType,
+                valueStyle = MeTheme.typography.heading4,
+            ),
+        )
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = colorScheme.textBody),
+            onClick = {
+                readingToast.onView()
+                clearToast()
+            },
+        ) {
+            Text(
+                text = ReadingToastStrings.View,
+                style = MeTheme.typography.button2,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.toastBackground,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            )
+        }
+    }
 }
 
 /** Shared bottom action row: a secondary text button and a filled primary pill button. */

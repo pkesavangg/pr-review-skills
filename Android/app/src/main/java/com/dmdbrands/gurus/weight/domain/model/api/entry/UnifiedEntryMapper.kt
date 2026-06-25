@@ -24,18 +24,20 @@ import kotlin.math.roundToInt
  * these bounds (or a 0/garbage sensor value) is dropped rather than POSTed as a real
  * entry — in an atomic batch one bad reading would otherwise fail the whole batch.
  */
-private const val SYSTOLIC_MIN = 60
-private const val SYSTOLIC_MAX = 250
-private const val DIASTOLIC_MIN = 40
-private const val DIASTOLIC_MAX = 150
-private const val PULSE_MIN = 30
-private const val PULSE_MAX = 250
+// Kept in lockstep with the manual BP form (AppValidatorConfig.Systolic/Diastolic/Pulse):
+// the form is "warn-but-save" — it blocks only above the hard cap and requires sys/dia/pulse to
+// be present. The earlier narrow window (60..250 / 40..150 / 30..250) REJECTED readings the form
+// had accepted (blank/low pulse, sys 251..500, dia 30..39, …), so the op produced no unified
+// request, was filtered out of the batch, and silently vanished while the UI reported success.
+// Mirror the form's contract here: present (> 0) and within the hard cap.
+private const val BP_VALUE_MIN = 1
+private const val BP_HARD_MAX = 500
 
-/** True when sys/dia/pulse are all within physiological range and safe to write. */
+/** True when sys/dia/pulse are all present and within the form's hard cap — safe to write. */
 private fun BpmEntry.hasValidReading(): Boolean =
-    systolic in SYSTOLIC_MIN..SYSTOLIC_MAX &&
-        diastolic in DIASTOLIC_MIN..DIASTOLIC_MAX &&
-        pulse in PULSE_MIN..PULSE_MAX
+    systolic in BP_VALUE_MIN..BP_HARD_MAX &&
+        diastolic in BP_VALUE_MIN..BP_HARD_MAX &&
+        pulse in BP_VALUE_MIN..BP_HARD_MAX
 
 /** Builds the unified request for a weight entry (reuses the legacy field math). */
 fun ScaleEntry.toUnifiedRequest(): UnifiedEntryRequest {

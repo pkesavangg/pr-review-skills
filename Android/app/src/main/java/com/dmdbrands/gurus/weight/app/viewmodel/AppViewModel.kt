@@ -73,6 +73,7 @@ import com.dmdbrands.library.ggbluetooth.model.GGBPMEntry
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGEntry
 import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
+import com.dmdbrands.library.ggbluetooth.model.GGWeightEntry
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGCacheDevice
 import com.greatergoods.blewrapper.GGDeviceService
@@ -597,21 +598,72 @@ constructor(
 
 
   private fun handleEntryResponse(entryResponse: GGScanResponse.Entry) {
+    val data = entryResponse.data
+    val scaleEntries = data.filterIsInstance<GGScaleEntry>()
+    val bpmEntries = data.filterIsInstance<GGBPMEntry>()
+    // Weight-only devices (baby scale + weight-only scales) emit GGWeightEntry, which carries
+    // no body composition — distinct from the body-scale GGScaleEntry (MOB-598).
+    val weightEntries = data.filterIsInstance<GGWeightEntry>()
+
+    // Confirms the scale actually emitted a reading and which GGEntry subtype reached the app —
+    // the missing log when a baby reading "doesn't sync" (it never arrived / wasn't a handled type).
+    AppLog.i(
+      TAG,
+      "handleEntryResponse type=${entryResponse.type} total=${data.size} " +
+        "scale=${scaleEntries.size} bpm=${bpmEntries.size} weight=${weightEntries.size} " +
+        "subtypes=${data.map { it.javaClass.simpleName }}",
+    )
+
     when (entryResponse.type) {
       GGScanResponseType.SINGLE_ENTRY, GGScanResponseType.MULTI_ENTRIES -> {
-        val scaleEntries = entryResponse.data.filterIsInstance<GGScaleEntry>()
-        val bpmEntries = entryResponse.data.filterIsInstance<GGBPMEntry>()
         if (scaleEntries.isNotEmpty()) {
           saveEntry(scaleEntries)
         }
         if (bpmEntries.isNotEmpty()) {
           saveBpmEntry(bpmEntries)
         }
+        // Route weight-only readings through the same save/assign path by representing each
+        // as a weight-only scale entry. saveEntry's SKU check then sends a baby-scale reading
+        // into the assign-to-baby flow; only the weight is used downstream (MOB-598).
+        if (weightEntries.isNotEmpty()) {
+          saveEntry(weightEntries.map { it.toWeightOnlyScaleEntry() })
+        }
       }
 
-      else -> null
+      else ->
+        AppLog.w(TAG, "handleEntryResponse: unhandled entry type=${entryResponse.type}")
     }
   }
+
+  /**
+   * Represents a weight-only [GGWeightEntry] (baby scale / weight-only scale) as a body-scale
+   * [GGScaleEntry] with zeroed body-composition so it can flow through the shared [saveEntry]
+   * path. Only the weight is meaningful; the baby-assignment flow (and `toBabyEntry`) reads the
+   * weight alone, so the zeroed metrics are never persisted (MOB-598).
+   */
+  private fun GGWeightEntry.toWeightOnlyScaleEntry(): GGScaleEntry = GGScaleEntry(
+    bmi = 0f,
+    bmr = 0,
+    bodyFat = 0f,
+    water = 0f,
+    boneMass = 0f,
+    metabolicAge = 0,
+    muscleMass = 0f,
+    proteinPercent = 0f,
+    skeletalMusclePercent = 0f,
+    subcutaneousFatPercent = 0f,
+    unit = unit,
+    visceralFatLevel = 0,
+    weight = weight,
+    weightInKg = weightInKg ?: weight,
+    date = date,
+    impedance = 0f,
+    pulse = 0,
+    broadcastId = broadcastId,
+    broadcastIdString = broadcastIdString,
+    protocolType = protocolType,
+    operationType = operationType,
+  )
 
   private fun saveBpmEntry(ggEntries: List<GGBPMEntry>) {
     saveBluetoothEntries(ggEntries) { accountId, deviceId ->
@@ -1189,10 +1241,12 @@ constructor(
     val unit = entry.entry.unit
     return when (type) {
       ProductType.BABY -> {
-        val totalOz = weight / 10.0 * 0.035274 * 16 // decigrams → oz approximation
-        val lbs = (totalOz / 16).toInt()
-        val oz = totalOz % 16
-        "$lbs ${unit.label} ${formatWeightValue(oz)} oz"
+        // Normalise the native deci-pound reading to the canonical decigrams, then let the
+        // shared SKU-aware converter do the lb/oz split — no bespoke oz math, no unit.label
+        // (which is "lbs"/"lbs & oz" and wrong here). Always "<lb> lb <oz> oz".
+        val decigrams = ConversionTools.convertLbToDecigrams(weight / 10.0)
+        val (lbs, oz) = ConversionTools.convertBabyWeightToLbOz(decigrams, entry.scale.scaleEntry.source)
+        "$lbs lb ${formatWeightValue(oz)} oz"
       }
       ProductType.BLOOD_PRESSURE -> {
         // Weight field stores systolic for BPM protocol entries

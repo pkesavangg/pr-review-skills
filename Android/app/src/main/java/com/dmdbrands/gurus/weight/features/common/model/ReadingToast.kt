@@ -24,6 +24,12 @@ data class ReadingToast(
      * card surfaces a "<N> more readings received… VIEW" pill that opens History (MOB-598).
      */
     val additionalCount: Int = 0,
+    /**
+     * Manual-entry confirmation variant: the reading is already saved, so the card shows
+     * "New Reading saved to your log" with a single VIEW action (→ History detail) instead of
+     * SAVE/DISCARD (Figma 30456-24170).
+     */
+    val savedToLog: Boolean = false,
     val primaryAction: () -> Unit = {},
     val secondaryAction: () -> Unit = {},
     /** Opens the History tab from the "VIEW" pill. */
@@ -35,5 +41,6 @@ data class ReadingToast(
     val onTimeout: (() -> Unit)? = null,
 ) : ToastContent {
     override val message: String
-        get() = "${ReadingToastStrings.title(type)} · $reading"
+        get() = if (savedToLog) "${ReadingToastStrings.SavedToLog} · $reading"
+        else "${ReadingToastStrings.title(type)} · $reading"
 }

@@ -3,6 +3,8 @@ package com.dmdbrands.gurus.weight.domain.model.api.device
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.Preferences
+import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import java.util.UUID
 
@@ -75,8 +77,26 @@ fun Device.toApiModel(): DeviceApiModel =
  * defaults to `weight_scale` if absent to preserve backward compatibility.
  */
 fun Device.toPairedDeviceRequest(): PairedDeviceRequest = PairedDeviceRequest(
-    deviceType = productType ?: "weight_scale",
-    type = deviceType ?: "",
+    // API deviceType is the product CATEGORY ("weight_scale" / "baby_scale" / "bpm"). When the
+    // domain Device didn't set productType (scan/discovery path), derive it from the SKU instead
+    // of blindly defaulting to "weight_scale" — otherwise a baby scale / BPM monitor was sent as
+    // deviceType="weight_scale" while its `type` was "babyScale"/"bpmBluetooth", which the server
+    // rejects: "Invalid type … for deviceType weight_scale" (MOB-598/MOB-378).
+    deviceType = productType ?: when {
+        sku?.let { DeviceHelper.isBabyScale(it) } == true -> "baby_scale"
+        DeviceHelper.isBpmDevice(sku) -> "bpm"
+        else -> "weight_scale"
+    },
+    // API `type` is the CONNECTION type, not the setup/category. Allowed (§2.3):
+    // wifi, bluetooth, appsync, lcbt, btWifiR4, bpmBluetooth, bpmLcbt. Map the setup types
+    // that aren't valid connection types — e.g. "babyScale" is a BLE scale → "bluetooth"
+    // (server 400s on type="babyScale"). The rest already match.
+    type = when (deviceType) {
+        ScaleSetupType.BabyScale.value -> ScaleSetupType.Bluetooth.value
+        ScaleSetupType.BpmA6Bluetooth.value -> ScaleSetupType.BpmBluetooth.value
+        ScaleSetupType.EspTouchWifi.value -> ScaleSetupType.Wifi.value
+        else -> deviceType ?: ""
+    },
     nickname = nickname,
     sku = sku ?: "",
     mac = device?.macAddress,

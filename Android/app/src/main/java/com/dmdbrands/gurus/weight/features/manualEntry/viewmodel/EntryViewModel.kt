@@ -21,14 +21,19 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.features.common.helper.form.MultiFormGroup
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.common.model.ReadingToast
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
 import com.dmdbrands.gurus.weight.features.dashboard.string.DashboardString
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
 import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
+import java.util.Locale
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -55,6 +60,9 @@ constructor(
   private val appSyncService: IAppSyncService,
   private val deviceService: IDeviceService,
   private val analyticsService: IAnalyticsService,
+  // App-lifetime scope: the saved-to-log toast's VIEW is tapped AFTER this screen pops (so
+  // viewModelScope is already cancelled). Navigating from the app scope keeps it working.
+  @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseIntentViewModel<EntryState, EntryIntent>(
   reducer = EntryReducer(),
 ) {
@@ -298,6 +306,46 @@ constructor(
     earlyExit()
   }
 
+  /**
+   * Manual-entry confirmation card (Figma 30456-24170): "New Reading saved to your log" with the
+   * reading and a single VIEW action that opens this entry's History detail — replaces the plain
+   * "Entry added" toast.
+   */
+  /** Saved-to-log card for a baby manual entry; falls back to the plain toast if no weight row. */
+  private fun showBabySavedToLogToast(builtEntries: List<BabyEntry>) {
+    val weightDecigrams = builtEntries.firstNotNullOfOrNull { it.babyWeightDecigrams }
+    val monthKey = builtEntries.firstOrNull()?.entry?.entryTimestamp
+    if (weightDecigrams != null && monthKey != null) {
+      showSavedToLogToast(
+        reading = ConversionTools.convertBabyWeightToDisplay(weightDecigrams, source = null, isMetric = false),
+        type = ProductType.BABY,
+        monthKey = monthKey,
+      )
+    } else {
+      dialogQueueService.showToast(
+        Toast.Simple(title = EntryScreenStrings.EntryAddedTitle, message = EntryScreenStrings.EntryAdded),
+      )
+    }
+  }
+
+  private fun showSavedToLogToast(reading: String, type: ProductType, monthKey: String) {
+    dialogQueueService.showToast(
+      Toast.Custom(
+        ReadingToast(
+          reading = reading,
+          type = type,
+          timestamp = "Just now",
+          savedToLog = true,
+          onView = {
+            appScope.launch {
+              navigationService.navigateTo(AppRoute.History.MonthDetails(monthKey, type))
+            }
+          },
+        ),
+      ),
+    )
+  }
+
   private fun saveEntry() {
     dialogQueueService.showLoader(
       message = DashboardString.Loader.save,
@@ -314,11 +362,13 @@ constructor(
         // Clear AppSync data after successful save
         appSyncService.setAppSyncDataForEditing(null)
 
-        dialogQueueService.showToast(
-          Toast.Simple(
-            title = EntryScreenStrings.EntryAddedTitle,
-            message = EntryScreenStrings.EntryAdded,
-          ),
+        val isMetric = _state.value.weightMode == WeightUnit.KG
+        val displayValue =
+          ConversionTools.convertStoredToDisplay(scaleEntry.scale.scaleEntry.weight, isMetric)
+        showSavedToLogToast(
+          reading = "${String.format(Locale.US, "%.1f", displayValue)} ${_state.value.weightMode.label}",
+          type = ProductType.MY_WEIGHT,
+          monthKey = scaleEntry.entry.entryTimestamp,
         )
         deactivate()
         navigationService.navigateBack(AppRoute.Home)
@@ -370,11 +420,10 @@ constructor(
         )
         entryService.addEntry(entry = bpmEntry)
         analyticsService.logEvent(IAnalyticsService.Events.MANUAL_ENTRY_CREATED)
-        dialogQueueService.showToast(
-          Toast.Simple(
-            title = EntryScreenStrings.EntryAddedTitle,
-            message = EntryScreenStrings.EntryAdded,
-          ),
+        showSavedToLogToast(
+          reading = "$systolic/$diastolic",
+          type = ProductType.BLOOD_PRESSURE,
+          monthKey = entryEntity.entryTimestamp,
         )
         // Reset form
         handleIntent(
@@ -437,15 +486,10 @@ constructor(
       try {
         // addEntry persists locally (isSynced=false) and syncs to POST /v3/entries/
         // (category=baby) — the same path manual BP uses.
-        buildBabyEntries(babyForm.forms.baby.controls, accountId, babyId)
-          .forEach { entryService.addEntry(it) }
+        val builtEntries = buildBabyEntries(babyForm.forms.baby.controls, accountId, babyId)
+        builtEntries.forEach { entryService.addEntry(it) }
         analyticsService.logEvent(IAnalyticsService.Events.MANUAL_ENTRY_CREATED)
-        dialogQueueService.showToast(
-          Toast.Simple(
-            title = EntryScreenStrings.EntryAddedTitle,
-            message = EntryScreenStrings.EntryAdded,
-          ),
-        )
+        showBabySavedToLogToast(builtEntries)
         // Match the weight/BP save flow: just deactivate + pop back to where the
         // entry screen was opened from. (Rebuilding the form here re-activated the
         // screen and prevented the back navigation — the form is recreated by
