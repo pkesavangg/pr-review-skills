@@ -130,7 +130,7 @@ struct BpmDisplayView: View {
                                 Text(BpmDashboardStrings.bpSystolicZeroPlaceholder)
                                     .fontWeight(.heavy)
                                     .fontOpenSans(.heading1)
-                                    .foregroundColor(AhaPressureClass.classify(systolic: 0, diastolic: 0).color(theme: theme))
+                                    .foregroundColor(theme.textSubheading)
                                     .lineLimit(1)
                                     .fixedSize()
 
@@ -139,7 +139,7 @@ struct BpmDisplayView: View {
                                 Text(BpmDashboardStrings.bpDiastolicZeroPlaceholder)
                                     .fontWeight(.heavy)
                                     .fontOpenSans(.heading1)
-                                    .foregroundColor(AhaPressureClass.classify(systolic: 0, diastolic: 0).color(theme: theme))
+                                    .foregroundColor(theme.textSubheading)
                                     .lineLimit(1)
                                     .fixedSize()
                             }

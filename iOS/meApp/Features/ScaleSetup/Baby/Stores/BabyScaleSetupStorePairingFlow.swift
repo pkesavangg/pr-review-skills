@@ -203,7 +203,11 @@ extension BabyScaleSetupStore {
                     self?.navigateToStep(.intro)
                 },
                 AlertButtonModel(title: "Continue", type: .primary) { [weak self] _ in
-                    self?.moveToNextStep()
+                    guard let self else { return }
+                    Task {
+                        self.connectionState = .loading
+                        await self.confirmPair()
+                    }
                 }
             ]
         )

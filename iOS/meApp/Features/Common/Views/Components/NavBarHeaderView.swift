@@ -30,14 +30,14 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
                     Text(title)
                         .fontOpenSans(.heading5)
                         .fontWeight(.bold)
-                        .foregroundColor(theme.actionSecondary)
+                        .foregroundColor(theme.textHeading)
                         .lineLimit(1)
                         .accessibilityAddTraits(.isHeader)
                     if canShowTitleChevron {
                         Image(systemName: "chevron.down") // Placeholder — replace with asset icon when available
                             .font(.caption2)
                             .fontWeight(.bold)
-                            .foregroundColor(theme.actionSecondary)
+                            .foregroundColor(theme.textHeading)
                     }
                     Spacer()
                 }

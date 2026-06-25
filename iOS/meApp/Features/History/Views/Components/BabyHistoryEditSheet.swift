@@ -32,6 +32,14 @@ struct BabyHistoryEditSheet: View {
 
     private let labels = InputFieldLabels.self
     private let lang = HistoryListStrings.self
+    private let entryLang = ManualEntryStrings.self
+
+    // Dirty flags — errors only appear after the user edits a field
+    @State private var kgDirty = false
+    @State private var lbsDirty = false
+    @State private var ozDirty = false
+    @State private var inchesDirty = false
+    @State private var cmDirty = false
 
     init(entry: BabyHistoryEntry) {
         self.entry = entry
@@ -48,13 +56,44 @@ struct BabyHistoryEditSheet: View {
 
     private var isMetric: Bool { historyStore.isMetric }
 
+    // MARK: - Validation
+
+    private var kgError: String? {
+        guard kgDirty else { return nil }
+        let val = Double(kgText) ?? 0
+        if val < 1.0 || val > 450.0 { return entryLang.invalidWeight }
+        return nil
+    }
+
+    private var weightImperialError: String? {
+        guard lbsDirty || ozDirty else { return nil }
+        let lbs = Int(lbsText) ?? 0
+        let oz = Double(ozText) ?? 0
+        if lbs > 999 || oz > 15.9 { return entryLang.invalidWeight }
+        return nil
+    }
+
+    private var lengthInchesError: String? {
+        guard inchesDirty, let val = Double(inchesText) else { return nil }
+        if val > 99.9 { return entryLang.invalidLength }
+        return nil
+    }
+
+    private var lengthCmError: String? {
+        guard cmDirty, let val = Double(cmText) else { return nil }
+        if val > 254.0 { return entryLang.invalidLength }
+        return nil
+    }
+
     private var isValid: Bool {
         if isMetric {
-            return (Double(kgText) ?? 0) > 0
+            let kg = Double(kgText) ?? 0
+            return kg >= 1.0 && kg <= 450.0
         } else {
             let lbs = Int(lbsText) ?? 0
             let oz = Double(ozText) ?? 0
-            return lbs > 0 || oz > 0
+            guard lbs > 0 || oz > 0 else { return false }
+            return lbs <= 999 && oz <= 15.9
         }
     }
 
@@ -68,28 +107,34 @@ struct BabyHistoryEditSheet: View {
                         config: TextInputConfig(
                             label: lang.kg,
                             inputType: .metric,
+                            errorMessage: kgError,
                             focusField: .weight,
-                            allowWholeNumbers: false
+                            allowWholeNumbers: false,
+                            decimalPlaces: 3
                         ),
                         value: $kgText,
                         focusedField: $focusedField
                     ) { focusedField = .inches }
+                    .onChange(of: kgText) { _, _ in kgDirty = true }
 
                     MetricInputField(
                         config: TextInputConfig(
                             label: lang.cm,
                             inputType: .metric,
+                            errorMessage: lengthCmError,
                             focusField: .inches,
                             allowWholeNumbers: false
                         ),
                         value: $cmText,
                         focusedField: $focusedField
                     ) { focusedField = .notes }
+                    .onChange(of: cmText) { _, _ in cmDirty = true }
                 } else {
                     MetricInputField(
                         config: TextInputConfig(
                             label: lang.pounds,
                             inputType: .metric,
+                            errorMessage: weightImperialError,
                             focusField: .weight,
                             maxLength: 3,
                             allowWholeNumbers: true
@@ -97,6 +142,7 @@ struct BabyHistoryEditSheet: View {
                         value: $lbsText,
                         focusedField: $focusedField
                     ) { focusedField = .ounces }
+                    .onChange(of: lbsText) { _, _ in lbsDirty = true }
 
                     MetricInputField(
                         config: TextInputConfig(
@@ -108,17 +154,20 @@ struct BabyHistoryEditSheet: View {
                         value: $ozText,
                         focusedField: $focusedField
                     ) { focusedField = .inches }
+                    .onChange(of: ozText) { _, _ in ozDirty = true }
 
                     MetricInputField(
                         config: TextInputConfig(
                             label: lang.inches,
                             inputType: .metric,
+                            errorMessage: lengthInchesError,
                             focusField: .inches,
                             allowWholeNumbers: false
                         ),
                         value: $inchesText,
                         focusedField: $focusedField
                     ) { focusedField = .notes }
+                    .onChange(of: inchesText) { _, _ in inchesDirty = true }
                 }
 
                 AppInputField(

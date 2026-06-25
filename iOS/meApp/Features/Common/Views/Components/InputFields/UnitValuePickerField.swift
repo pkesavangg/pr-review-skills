@@ -34,10 +34,10 @@ struct UnitValuePickerField: View {
 
                 Text(value)
                     .fontOpenSans(.heading5)
-                    .foregroundStyle(theme.actionSecondary)
+                    .foregroundStyle(theme.textHeading)
 
                 AppIconView(icon: AppAssets.chevronDown, size: IconSize(width: 16, height: 16))
-                    .foregroundStyle(theme.actionSecondary)
+                    .foregroundStyle(theme.statusIconSecondary)
             }
             .padding(.horizontal, .spacingSM)
             .frame(height: 56)

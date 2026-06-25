@@ -15,13 +15,13 @@ struct TabBarItemView: View {
     let tab: BottomTab
     let isSelected: Bool
     let showSettingsBadge: Bool
-    
+
     var body: some View {
         VStack(spacing: 0) {
             VStack {
                 Image(isSelected ? tab.filledIcon : tab.icon)
                  .renderingMode(.template)
-                 .foregroundColor(theme.actionSecondary)
+                 .foregroundColor(isSelected ? theme.statusIconPrimary : theme.statusIconPrimaryDisabled)
             }
             .frame(width: 40, height: 40)
             .overlay {
@@ -34,7 +34,7 @@ struct TabBarItemView: View {
             }
             Text(tab.label)
                 .fontOpenSans(.body5)
-                .foregroundColor(theme.textSubheading)
+                .foregroundColor(isSelected ? theme.textHeading : theme.textDisabled)
         }
     }
 }
