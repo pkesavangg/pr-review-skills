@@ -1520,6 +1520,42 @@ struct SignupStoreTests {
         #expect(store.selectedHeightCm.isEmpty == false)
         #expect(store.selectedHeightInches.isEmpty == false)
     }
+
+    // MARK: - Add Baby form pristine logic
+
+    @Test("re-entering add baby for a new baby resets the populated form")
+    func reenteringAddBabyForNewBabyResetsForm() {
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.babyScale)
+
+        // Simulate stale form state left over from a prior interaction.
+        store.babyProfileForm.name.value = "Olivia"
+        store.isEditingBabyIndex = nil
+
+        let addBabyIndex = store.steps.firstIndex(of: .addBaby)
+        #expect(addBabyIndex != nil)
+        store.currentStepIndex = addBabyIndex!
+
+        // New baby (not an edit) must start from a clean form so no phantom
+        // "Required." error shows for the blurred-but-empty name field.
+        #expect(store.babyProfileForm.name.value.isEmpty)
+    }
+
+    @Test("re-entering add baby while editing keeps the populated form")
+    func reenteringAddBabyWhileEditingKeepsForm() {
+        let (store, _, _, _) = makeSUT()
+        store.selectDeviceType(.babyScale)
+
+        store.babyProfileForm.name.value = "Olivia"
+        store.isEditingBabyIndex = 0
+
+        let addBabyIndex = store.steps.firstIndex(of: .addBaby)
+        #expect(addBabyIndex != nil)
+        store.currentStepIndex = addBabyIndex!
+
+        // Edits keep their populated values — the reset only fires for new babies.
+        #expect(store.babyProfileForm.name.value == "Olivia")
+    }
 }
 
 // swiftlint:disable large_tuple
