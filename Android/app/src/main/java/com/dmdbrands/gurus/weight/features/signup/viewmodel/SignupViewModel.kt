@@ -4,9 +4,9 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
-import com.dmdbrands.gurus.weight.domain.enums.BabySex
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
+import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile as DomainBabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
@@ -21,7 +21,7 @@ import com.dmdbrands.gurus.weight.features.signup.model.BabyWeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
-import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
+import com.dmdbrands.gurus.weight.features.common.components.BiologicalSexOptions
 import com.dmdbrands.gurus.weight.features.common.components.showRadioGroupModal
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -393,6 +393,11 @@ constructor(
     // For additional devices (account already existed before this pass), the original signup
     // request only carried the first product, so sync the newly added product here.
     if (stateValue.accountCreated) {
+      // Order matters: the products endpoint (§2.19) rejects adding weight/blood_pressure with
+      // "gender, dob must be set before adding the requested product(s)" if the account is missing
+      // them (e.g. a previously baby-only account). The signup request only sent gender/dob/height
+      // for the FIRST device, so PATCH the profile FIRST, then add the product. (MOB-598 #9)
+      syncProfileForAdditionalDevice(productType, account, stateValue, signupData)
       syncDeviceToServer(productType, signupData)
     }
 
@@ -446,8 +451,8 @@ constructor(
       accountId = accountId,
       name = name,
       birthdate = birthday?.getTimestamp()?.let { DateTimeValue.getDateFormatFromMilliseconds(it) },
-      // signup uses Gender (male/female/other); the API expects BabySex (male/female/private).
-      sex = biologicalSex?.let { BabySex.fromValue(it.value).value },
+      // biologicalSex is a BabySex (male/female/private), matching the API value directly.
+      sex = biologicalSex?.value,
       birthWeightDecigrams = birthWeightDecigrams(),
       birthLengthMillimeters = birthLengthMillimeters(),
     )
@@ -479,13 +484,66 @@ constructor(
    * is also auto-managed server-side when the device is paired or an entry is created, and the
    * next account sync reconciles. Mirrors ProductSelectionManager.persistProductForSetup.
    */
+  /**
+   * Syncs the gender/dob (and height for weight) entered for a device added on a loop pass.
+   *
+   * [buildSignupRequest] only sends these for the first device; a device added later collects
+   * them again but they were never PATCHed, so the account kept its original (often null) values
+   * — e.g. a baby-only account stayed gender-less after a weight scale was added. We merge the
+   * freshly entered values onto the existing account and PATCH the profile (spec §2.5).
+   *
+   * Best-effort: a failure must not block the signup loop; the next account sync reconciles.
+   */
+  private suspend fun syncProfileForAdditionalDevice(
+    productType: ProductType,
+    account: Account,
+    stateValue: SignupState,
+    signupData: SignupData,
+  ) {
+    val needsGenderDob = productType == ProductType.MY_WEIGHT || productType == ProductType.BLOOD_PRESSURE
+    if (!needsGenderDob) return
+
+    val controls = stateValue.form.controls
+    val gender = signupData.sex.takeIf { it.isNotBlank() } ?: account.gender
+    val dob = controls.birthday.value.getTimestamp()
+      .takeIf { it > 0 }
+      ?.let { DateTimeValue.getDateFormatFromMilliseconds(it) }
+      ?: account.dob
+    // Height is only collected for weight scales; reuse the existing height otherwise.
+    val height = if (productType == ProductType.MY_WEIGHT) {
+      controls.height.value.toStoredHeight().toDouble()
+    } else {
+      account.height?.toDouble()
+    }
+
+    val request = ProfileUpdateRequest(
+      id = account.id,
+      email = account.email,
+      firstName = account.firstName,
+      lastName = account.lastName,
+      gender = gender,
+      zipcode = account.zipcode,
+      dob = dob,
+      height = height,
+    )
+    AppLog.d(TAG, "Syncing profile (gender/dob/height) for additional device=${productType.apiValue}")
+    runCatching { accountService.updateProfile(request, isFromProfile = false, showToast = false) }
+      .onFailure { AppLog.e(TAG, "Profile sync for additional device failed (continuing signup)", it) }
+  }
+
   private suspend fun syncDeviceToServer(productType: ProductType, signupData: SignupData) {
-    AppLog.d(TAG, "Syncing product=${productType.apiValue} + measurement units to server")
+    AppLog.d(TAG, "Syncing product=${productType.apiValue} to server")
+    // Product registration is required for the device to actually exist on the account. If it
+    // fails (e.g. §2.19 rejects the request) we must NOT complete signup silently with the product
+    // missing — let the failure propagate so runDeviceProfile routes to the device-error screen
+    // (with retry). (MOB-598 #9)
+    accountService.addProduct(productType)
+    // Measurement units are best-effort: a failure here must not block the loop, and the next
+    // account sync reconciles.
     runCatching {
-      accountService.addProduct(productType)
       val weightUnit = if (signupData.useMetric) WeightUnit.KG else WeightUnit.LB
       accountService.updateMeasurementUnits(MeasurementUnits.fromWeightUnit(weightUnit))
-    }.onFailure { AppLog.e(TAG, "Product/measurement sync failed (continuing signup)", it) }
+    }.onFailure { AppLog.e(TAG, "Measurement-units sync failed (continuing signup)", it) }
   }
 
   /**
@@ -533,12 +591,8 @@ constructor(
     val babyForm = state.value.babyState?.babyForm ?: return
     showRadioGroupModal(
       dialogService = dialogQueueService,
-      title = BabySignupStrings.selectSexTitle,
-      options = listOf(
-        RadioButtonOption(BabySignupStrings.male, BabySignupStrings.male),
-        RadioButtonOption(BabySignupStrings.female, BabySignupStrings.female),
-        RadioButtonOption(BabySignupStrings.other, BabySignupStrings.other),
-      ),
+      title = BiologicalSexOptions.Title,
+      options = BiologicalSexOptions.options(),
       selectedItem = babyForm.biologicalSex.value.ifEmpty { null },
       onConfirm = { selected -> selected?.let { babyForm.biologicalSex.onValueChange(it) } },
       onCancel = {},

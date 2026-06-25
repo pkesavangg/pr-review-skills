@@ -55,7 +55,7 @@ import com.dmdbrands.gurus.weight.features.common.components.DateTimeInput
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeInputMode
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
-import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
+import com.dmdbrands.gurus.weight.features.common.components.BiologicalSexOptions
 import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.common.components.rememberPickerState
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
@@ -202,15 +202,9 @@ private fun seedBabyControls(controls: BabyFormControls, baby: BabyProfile, isMe
 /** Biological-sex picker modal (capitalized labels; writes the selected label to [sexControl]). */
 @Composable
 private fun BabySexModal(sexControl: FormControl<String>, onDismiss: () -> Unit) {
-    val options = remember {
-        listOf(
-            RadioButtonOption(id = AddBabyStrings.BiologicalSexModal.Male, label = AddBabyStrings.BiologicalSexModal.Male),
-            RadioButtonOption(id = AddBabyStrings.BiologicalSexModal.Female, label = AddBabyStrings.BiologicalSexModal.Female),
-            RadioButtonOption(id = AddBabyStrings.BiologicalSexModal.Private, label = AddBabyStrings.BiologicalSexModal.Private),
-        )
-    }
+    val options = remember { BiologicalSexOptions.options() }
     AppRadioGroupModal(
-        title = AddBabyStrings.BiologicalSexModal.Title,
+        title = BiologicalSexOptions.Title,
         options = options,
         selectedItem = sexControl.value.ifEmpty { null },
         confirmText = AddBabyStrings.BiologicalSexModal.Confirm,

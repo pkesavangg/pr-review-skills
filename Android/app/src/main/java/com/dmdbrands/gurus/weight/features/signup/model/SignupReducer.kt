@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.domain.enums.GoalType
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.features.common.components.BiologicalSexOptions
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
 import com.dmdbrands.gurus.weight.features.common.components.HeightInput
 import com.dmdbrands.gurus.weight.features.common.helper.form.AppValidatorConfig
@@ -15,7 +16,6 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations.we
 import com.dmdbrands.gurus.weight.features.common.helper.form.Validator
 import com.dmdbrands.gurus.weight.features.login.strings.LoginStrings
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
-import com.dmdbrands.gurus.weight.domain.enums.Gender
 import com.dmdbrands.gurus.weight.features.signup.strings.PickDeviceStrings
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -601,9 +601,7 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
               id = bs.editingBabyId ?: java.util.UUID.randomUUID().toString(),
               name = bs.babyForm.name.value,
               birthday = bs.babyForm.birthday.value,
-              biologicalSex = Gender.entries.firstOrNull {
-                it.value.equals(bs.babyForm.biologicalSex.value, ignoreCase = true)
-              },
+              biologicalSex = BiologicalSexOptions.toBabySex(bs.babyForm.biologicalSex.value),
               birthLength = bs.babyForm.birthLength.value,
               birthWeight = bs.babyForm.birthWeight.value,
               birthWeightOz = bs.babyForm.birthWeightOz.value,
@@ -785,7 +783,7 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
         )
         newForm.name.onValueChange(baby.name)
         if (baby.birthday != null) newForm.birthday.onValueChange(baby.birthday)
-        val sexValue = baby.biologicalSex?.value?.replaceFirstChar { it.uppercase() } ?: ""
+        val sexValue = BiologicalSexOptions.toLabel(baby.biologicalSex)
         if (sexValue.isNotEmpty()) newForm.biologicalSex.onValueChange(sexValue)
         if (baby.birthLength.isNotEmpty()) newForm.birthLength.onValueChange(baby.birthLength)
         if (baby.birthWeight.isNotEmpty()) newForm.birthWeight.onValueChange(baby.birthWeight)

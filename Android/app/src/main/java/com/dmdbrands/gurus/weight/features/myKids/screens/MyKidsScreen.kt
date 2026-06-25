@@ -42,6 +42,8 @@ import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.BaseListItem
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
+import com.dmdbrands.gurus.weight.features.common.components.KidListItem
+import com.dmdbrands.gurus.weight.features.common.components.KidsList
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.myKids.strings.MyKidsStrings
@@ -91,8 +93,6 @@ private fun MyKidsList(
     onDeleteBaby: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var openIndex by remember { mutableStateOf<Int?>(null) }
-
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -105,41 +105,18 @@ private fun MyKidsList(
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
 
-        Column(verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.x3s)) {
-            babies.forEachIndexed { index, baby ->
-                AppSwipeableListItem(
-                    onActionOpened = { openedIdx -> openIndex = openedIdx },
-                    isSwipeable = true,
-                    index = index,
-                    iconWidth = 56.dp,
-                    showAction = openIndex == index,
-                    actionContent = {
-                        AppSwipeableListActions {
-                            AppSwipeableActionItem(
-                                iconId = AppIcons.Default.Delete,
-                                contentDescription = MyKidsStrings.DeleteBaby,
-                                backgroundColor = MeTheme.colorScheme.danger,
-                            ) { onDeleteBaby(baby.id) }
-                        }
-                    },
-                ) {
-                    BaseListItem(
-                        title = baby.name.ifEmpty { "${MyKidsStrings.BabyFallbackPrefix} ${index + 1}" },
-                        leadingContent = { BabyAvatar(name = baby.name.ifEmpty { MyKidsStrings.AvatarFallback }) },
-                        trailingContent = {
-                            IconButton(onClick = { onEditBaby(baby.id) }) {
-                                Icon(
-                                    painter = painterResource(AppIcons.Default.EditPencil),
-                                    contentDescription = MyKidsStrings.EditBaby,
-                                    tint = MeTheme.colorScheme.textBody,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-                        },
-                    )
-                }
-            }
-        }
+        KidsList(
+            kids = babies.mapIndexed { index, baby ->
+                KidListItem(
+                    id = baby.id,
+                    name = baby.name.ifEmpty { "${MyKidsStrings.BabyFallbackPrefix} ${index + 1}" },
+                )
+            },
+            editContentDescription = MyKidsStrings.EditBaby,
+            deleteContentDescription = MyKidsStrings.DeleteBaby,
+            onEditKid = onEditBaby,
+            onDeleteKid = onDeleteBaby,
+        )
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -150,25 +127,6 @@ private fun MyKidsList(
                 onClick = onAddBaby,
             )
         }
-    }
-}
-
-@Composable
-private fun BabyAvatar(name: String, modifier: Modifier = Modifier) {
-    val initial = name.firstOrNull()?.uppercase() ?: "?"
-    Box(
-        modifier = modifier
-            .size(40.dp)
-            .clip(CircleShape)
-            .background(MeTheme.colorScheme.secondaryBackground),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = initial,
-            style = MeTheme.typography.heading5,
-            color = MeTheme.colorScheme.textBody,
-            textAlign = TextAlign.Center,
-        )
     }
 }
 

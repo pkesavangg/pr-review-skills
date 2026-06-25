@@ -34,8 +34,8 @@ object SignupStrings {
   const val goalStepUseMetric = "Use Metric Units"
   const val weightUnitLbs = "lbs"
   const val weightUnitKg = "kg"
-  const val heightUnitFtIn = "Ft / In"
-  const val heightUnitCm = "CM"
+  const val heightUnitFtIn = "ft / in"
+  const val heightUnitCm = "cm"
 
   // Goal step weight labels (unit shown as trailing overlay)
   const val goalStepCurrentWeightLabel = "starting weight"

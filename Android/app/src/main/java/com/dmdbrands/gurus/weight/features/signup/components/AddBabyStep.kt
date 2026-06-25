@@ -231,6 +231,7 @@ private fun BabyUnitSelector(
             size = SegmentButtonSize.Small,
             type = SegmentButtonType.Scrollable,
             spacedBy = MeTheme.spacing.xs,
+            uppercaseLabels = false,
         )
     }
 

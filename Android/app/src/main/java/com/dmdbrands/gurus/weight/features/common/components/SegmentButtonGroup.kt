@@ -169,30 +169,18 @@ fun <T> SegmentButtonGroup(
   size: SegmentButtonSize = SegmentButtonSize.Small,
   type: SegmentButtonType = SegmentButtonType.Single,
   spacedBy: Dp = 0.dp,
+  // Labels upper-cased by default (Day/Week/Month tabs); unit toggles (lbs/kg, ft·in/cm) pass false.
+  uppercaseLabels: Boolean = true,
   onSelected: (T) -> Unit,
 ) {
   val textStyle = SegmentButtonDefaults.textStyle(size)
-  val horizontalSpacedBy = SegmentButtonDefaults.segmentSpacing
   val horizontalPadding = SegmentButtonDefaults.horizontalPadding(size)
   val cornerRadius = SegmentButtonDefaults.cornerRadius()
-  val maxLines = 1
-
   val listState = rememberLazyListState()
 
-  LaunchedEffect(selectedData) {
-    if (data.isNotEmpty() && type == SegmentButtonType.Scrollable) {
-      val selectedKey = key(selectedData)
-      val selectedIndex = data.indexOfFirst { key(it) == selectedKey }
-
-      if (selectedIndex >= 0) {
-        listState.animateScrollToItemCenter(selectedIndex)
-      }
-    }
-  }
-
+  AutoCenterSelected(listState, data, selectedData, key, enabled = type == SegmentButtonType.Scrollable)
 
   if (type == SegmentButtonType.Single) {
-    // Non-scrollable, all items visible in one row with spacing
     Row(
       modifier = modifier
         .fillMaxWidth()
@@ -207,14 +195,14 @@ fun <T> SegmentButtonGroup(
           textStyle = textStyle,
           horizontalPadding = horizontalPadding,
           cornerRadius = cornerRadius,
-          maxLines = maxLines,
+          maxLines = 1,
+          uppercaseLabels = uppercaseLabels,
           onSelected = onSelected,
           modifier = Modifier.width(intrinsicSize = IntrinsicSize.Max), // Take natural content width
         )
       }
     }
   } else {
-    // Scrollable layout - horizontal scrolling with LazyRow
     LazyRow(
       state = listState,
       contentPadding = contentPadding,
@@ -232,11 +220,29 @@ fun <T> SegmentButtonGroup(
           textStyle = textStyle,
           horizontalPadding = horizontalPadding,
           cornerRadius = cornerRadius,
-          maxLines = maxLines,
+          maxLines = 1,
+          uppercaseLabels = uppercaseLabels,
           onSelected = onSelected,
           modifier = Modifier.width(intrinsicSize = IntrinsicSize.Max), // Maintain intrinsic width for scrollable
         )
       }
+    }
+  }
+}
+
+/** Auto-scrolls the [listState] so the selected item is centered (scrollable layout only). */
+@Composable
+private fun <T> AutoCenterSelected(
+  listState: LazyListState,
+  data: List<T>,
+  selectedData: T,
+  key: (T) -> String,
+  enabled: Boolean,
+) {
+  LaunchedEffect(selectedData) {
+    if (data.isNotEmpty() && enabled) {
+      val selectedIndex = data.indexOfFirst { key(it) == key(selectedData) }
+      if (selectedIndex >= 0) listState.animateScrollToItemCenter(selectedIndex)
     }
   }
 }
@@ -253,6 +259,7 @@ private fun <T> SegmentButtonItem(
   horizontalPadding: Dp,
   cornerRadius: Dp,
   maxLines: Int,
+  uppercaseLabels: Boolean,
   onSelected: (T) -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -290,7 +297,7 @@ private fun <T> SegmentButtonItem(
         ),
     ) {
       Text(
-        text = key(item).uppercase(Locale.getDefault()),
+        text = if (uppercaseLabels) key(item).uppercase(Locale.getDefault()) else key(item),
         style = textStyle,
         color = if (isSelected) colors.activeContentColor else colors.inactiveContentColor,
         maxLines = maxLines,
