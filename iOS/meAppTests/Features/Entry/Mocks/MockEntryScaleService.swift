@@ -12,12 +12,14 @@ final class MockEntryScaleService: ScaleServiceProtocol {
         scalesSubject.eraseToAnyPublisher()
     }
 
+    var scales: [Device] { scalesSubject.value }
+
     func sendScales(_ devices: [Device]) {
         scalesSubject.send(devices)
     }
 
     // MARK: - DeviceServiceProtocol stubs
-    func getDevices() async throws -> [Device] { [] }
+    func getDevices() async throws -> [DeviceSnapshot] { [] }
     func getConnectedDevices() async -> [String: Any] { [:] }
     func updateConnectedDevices(device: Any, isConnected: Bool) async {}
     func updateConnectedDeviceWifiStatus(broadcastId: String, isConfigured: Bool) async {}
@@ -36,4 +38,20 @@ final class MockEntryScaleService: ScaleServiceProtocol {
     func updateConnectedDeviceWeightOnlyMode(broadcastId: String, isWeightOnlyModeEnabledByOthers: Bool) async {}
     func fetchAttachedPreference(by id: String) async -> R4ScalePreference? { nil }
     func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? { nil }
+    func syncAllScalesWithRemote() async {}
+    func createBluetoothScale(
+        device: Device,
+        sku: String?,
+        userNumber: String,
+        accountId: String,
+        deviceMetadata: DeviceMetaData?,
+        skipDuplicateCheck: Bool
+    ) async throws -> Device { device }
+    func createA6Scale(
+        device: Device,
+        sku: String?,
+        accountId: String,
+        deviceMetadata: DeviceMetaData?,
+        skipDuplicateCheck: Bool
+    ) async throws -> Device { device }
 }
