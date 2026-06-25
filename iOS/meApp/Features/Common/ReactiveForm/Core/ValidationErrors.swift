@@ -14,7 +14,13 @@ public struct ValidationErrors<Value> {
     ) {
         errors.updateValue((hasError: !value, value: validator.value), forKey: validator.type)
     }
-    
+
+    /// Clears any recorded error for the given validator type.
+    /// Used when a validator is removed so its stale error no longer keeps the control invalid.
+    mutating func remove(for type: ValidatorType) {
+        errors.removeValue(forKey: type)
+    }
+
     /// Gets whether there is an error with the provided validator type.
     public subscript(_ type: ValidatorType) -> Bool {
         errors[type]?.hasError ?? false

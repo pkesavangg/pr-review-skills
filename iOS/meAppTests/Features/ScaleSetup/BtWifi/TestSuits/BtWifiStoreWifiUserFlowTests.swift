@@ -323,7 +323,7 @@ extension BtWifiStoreTests {
             store.navigateToStep(.gatheringNetwork)
             store.scaleSetupError = .duplicatesFound
             store.initialDisplayNameSnapshot = "Lakshmi"
-            store.userNameForm.updateUserList([ScaleUser(name: "Lakshmi", token: "dup")])
+            store.userNameForm.updateUserList([DeviceUser(name: "Lakshmi", token: "dup")])
             store.userNameForm.setDisplayName("Lakshmi2")
 
             store.handleSaveDuplicateUser()
@@ -341,7 +341,7 @@ extension BtWifiStoreTests {
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
             store.navigateToStep(.gatheringNetwork)
             store.scaleSetupError = .duplicatesFound
-            store.userNameForm.updateUserList([ScaleUser(name: "Taken", token: "dup")])
+            store.userNameForm.updateUserList([DeviceUser(name: "Taken", token: "dup")])
             store.userNameForm.setDisplayName("Taken")
 
             store.handleSaveDuplicateUser()

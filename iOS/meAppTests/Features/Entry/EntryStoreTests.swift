@@ -42,7 +42,7 @@ struct EntryStoreTests {
         #expect(store.manualEntryForm.date.isValid == false)
     }
 
-    @Test("saveEntry success: saves entry, converts weight, resets form, shows success toast")
+    @Test("saveEntry success: saves entry, converts weight, resets form")
     func saveEntrySuccess() async {
         let (store, entryService, notificationService, accountService) = makeSUT()
         accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "entry-account", email: "entry@example.com", isActiveAccount: true, weightUnit: .kg)
@@ -53,9 +53,9 @@ struct EntryStoreTests {
         store.manualEntryForm.date.value = Date()
         store.manualEntryForm.time.value = Date()
 
-        await store.saveEntry()
-        let toastShown = await waitUntil { notificationService.toastData != nil }
+        let didSave = await store.saveEntry()
 
+        #expect(didSave == true)
         #expect(entryService.saveNewEntryCalls == 1)
         guard let saved = entryService.lastSavedEntry else {
             Issue.record("Expected saved entry")
@@ -74,9 +74,7 @@ struct EntryStoreTests {
 
         #expect(store.manualEntryForm.weight.value == "")
         #expect(store.showMetrics == false)
-        #expect(toastShown == true)
-        #expect(notificationService.toastData?.title == ToastStrings.success)
-        #expect(notificationService.toastData?.message == ToastStrings.entryAdded)
+        // Success path no longer shows a toast; it relies on entrySaved event streams.
         #expect(notificationService.dismissLoaderCalls == 1)
     }
 
