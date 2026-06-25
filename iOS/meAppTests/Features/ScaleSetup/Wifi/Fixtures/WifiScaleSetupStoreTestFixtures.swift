@@ -67,10 +67,10 @@ enum WifiScaleSetupStoreTestFixtures {
         let store = WifiScaleSetupStore(
             notificationService: notification,
             permissionsService: permissions,
-            wifiScaleService: wifiScaleService,
+            wifiDeviceService: wifiScaleService,
             accountService: accountService,
             logger: logger,
-            scaleService: scaleService,
+            deviceService: scaleService,
             pushNotificationService: pushNotifications,
             httpClient: httpClient,
             bluetoothService: bluetoothService,
@@ -141,10 +141,10 @@ enum WifiScaleSetupStoreTestFixtures {
 
         DependencyContainer.shared.register(notification as NotificationHelperServiceProtocol)
         DependencyContainer.shared.register(permissions as PermissionsServiceProtocol)
-        DependencyContainer.shared.register(wifiScaleService as WifiScaleServiceProtocol)
+        DependencyContainer.shared.register(wifiScaleService as WifiPairedDeviceServiceProtocol)
         DependencyContainer.shared.register(accountService as AccountServiceProtocol)
         DependencyContainer.shared.register(logger as LoggerServiceProtocol)
-        DependencyContainer.shared.register(scaleService as ScaleServiceProtocol)
+        DependencyContainer.shared.register(scaleService as PairedDeviceServiceProtocol)
         DependencyContainer.shared.register(pushNotifications as PushNotificationServiceProtocol)
         DependencyContainer.shared.register(httpClient as HTTPClientProtocol)
         DependencyContainer.shared.register(bluetoothService as BluetoothServiceProtocol)

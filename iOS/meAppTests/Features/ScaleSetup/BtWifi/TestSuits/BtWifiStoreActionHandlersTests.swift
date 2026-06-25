@@ -131,26 +131,26 @@ extension BtWifiStoreTests {
             store.navigateToStep(.customizeSettings)
             store.navigateToStep(.viewSettings)
             store.currentCustomizeSetting = .scaleMetrics
-            store.selectedScaleMetrics = ["weight"]
+            store.selectedDeviceMetrics = ["weight"]
 
             store.handleViewSettingsAction()
 
             await BtWifiStoreTestFixtures.waitUntil {
                 store.currentCustomizeSetting == .none &&
                     store.currentStep == .customizeSettings &&
-                    store.savedScaleMetricsSnapshot == ["weight"]
+                    store.savedDeviceMetricsSnapshot == ["weight"]
             }
 
             store.navigateToStep(.viewSettings)
             store.currentCustomizeSetting = .scaleMetrics
-            store.selectedScaleMetrics = ["weight", "heartRate"]
+            store.selectedDeviceMetrics = ["weight", "heartRate"]
 
             store.handleViewSettingsAction()
 
             await BtWifiStoreTestFixtures.waitUntil {
                 store.currentCustomizeSetting == .none &&
                     store.currentStep == .customizeSettings &&
-                    store.savedScaleMetricsSnapshot == ["weight", "heartRate"]
+                    store.savedDeviceMetricsSnapshot == ["weight", "heartRate"]
             }
 
             #expect(store.selectedCustomizeItems == [metricsKey])

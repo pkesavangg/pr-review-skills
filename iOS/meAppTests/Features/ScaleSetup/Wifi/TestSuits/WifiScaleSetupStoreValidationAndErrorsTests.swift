@@ -115,7 +115,7 @@ extension WifiScaleSetupStoreTests {
             store.currentStepIndex = WifiScaleSetupStep.apMode.index
             #expect(store.isNextEnabled == false)
 
-            store.networkForm.setSSID("gg_SmartScaleSetup_123")
+            store.networkForm.setSSID("gg_SmartDeviceSetup_123")
             store.currentStepIndex = WifiScaleSetupStep.intro.index
             store.currentStepIndex = WifiScaleSetupStep.apMode.index
             #expect(store.isNextEnabled == true)
@@ -277,7 +277,7 @@ extension WifiScaleSetupStoreTests {
             WifiScaleSetupStoreTestFixtures.configureDefaultWifiScale(store)
             store.connectedSsid = "Stored SSID"
             store.connectedBssid = "AA:BB:CC:DD:EE:FF"
-            store.networkForm.setSSID("gg_SmartScaleSetup_123")
+            store.networkForm.setSSID("gg_SmartDeviceSetup_123")
 
             store.currentStepIndex = WifiScaleSetupStep.apModeConfirm.index
             await WifiScaleSetupStoreTestFixtures.waitUntil {

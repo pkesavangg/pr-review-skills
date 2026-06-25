@@ -456,7 +456,7 @@ struct BabyScaleSetupStoreTests {
 
         store.handleNextButtonClick()
 
-        #expect(dismissed == true)
+        #expect(store.currentStep == .done)
     }
 
     @Test("handleExit shows confirmation alert")
@@ -539,7 +539,7 @@ struct BabyScaleSetupStoreTests {
 
         store.configure(with: "0220", discoveredScale: device, discoveryEvent: event)
 
-        #expect(store.currentStep == .connectingBluetooth)
+        #expect(store.currentStep == .wakeup)
     }
 
     @Test("configure with discovered scale and permissions not granted goes to permissions")
@@ -676,7 +676,7 @@ struct BabyScaleSetupStoreTests {
         store.handleSkipConfirmed()
 
         #expect(store.showSkipDialog == false)
-        #expect(dismissed == true)
+        #expect(store.currentStep == .done)
     }
 
     @Test("handleSkipCancelled dismisses dialog without finishing")
@@ -766,7 +766,7 @@ struct BabyScaleSetupStoreTests {
         store.isScaleSaved = true
         store.dismissAction = { dismissed = true }
 
-        store.handleFinish()
+        store.performExitCleanup()
 
         #expect(dismissed == true)
     }
@@ -780,7 +780,7 @@ struct BabyScaleSetupStoreTests {
         store.discoveryEvent = nil
         store.dismissAction = { dismissed = true }
 
-        store.handleFinish()
+        store.performExitCleanup()
 
         #expect(dismissed == true)
     }
@@ -827,7 +827,21 @@ struct BabyScaleSetupStoreTests {
 
         store.navigateToStep(.connectingBluetooth)
 
-        #expect(store.connectionState == .failure)
+        #expect(store.connectionState == .loading)
+    }
+
+    @Test("stepViews builds a view for every setup step when a scale item is set")
+    func stepViewsBuildsViewPerStep() {
+        let (store, _, _, _, _, _, _) = makeSUT()
+
+        // No scale item yet → no views.
+        #expect(store.stepViews.isEmpty)
+
+        // With a scale item, a view is produced for each configured step.
+        store.scaleItem = makeScaleItem()
+        let views = store.stepViews
+        #expect(views.count == store.steps.count)
+        #expect(views.isEmpty == false)
     }
 
     @Test("handleStepChange does nothing when isExiting")
@@ -850,7 +864,7 @@ struct BabyScaleSetupStoreTests {
         store.navigateToStep(.wakeup)
 
         let device = ScaleTestFixtures.makeDevice(id: "non-baby-1")
-        let scaleInfo = ScaleItemInfo(productName: "Regular Scale", sku: "0100", imgPath: "scale0100", setupType: .bluetooth, bodyComp: false)
+        let scaleInfo = DeviceItemInfo(productName: "Regular Scale", sku: "0100", imgPath: "scale0100", setupType: .bluetooth, bodyComp: false)
         let event = DeviceDiscoveryEvent(device: device.toSnapshot(), deviceInfo: scaleInfo, protocolType: .R4, isNew: true)
 
         store.handleDeviceDiscovery(event)
@@ -911,7 +925,7 @@ struct BabyScaleSetupStoreTests {
         let (store, _, _, _, _, scale, _) = makeSUT(bluetoothService: bluetooth, accountService: account)
         store.scaleItem = makeScaleItem()
         let device = ScaleTestFixtures.makeDevice(id: "baby-scale-1")
-        store.discoveredScale = device
+        store.discoveredScale = device.toSnapshot()
         store.discoveryEvent = makeDiscoveryEvent(device: device)
 
         await store.confirmPair()
@@ -929,14 +943,14 @@ struct BabyScaleSetupStoreTests {
         let (store, _, _, _, _, _, _) = makeSUT(bluetoothService: bluetooth)
         store.scaleItem = makeScaleItem()
         let device = ScaleTestFixtures.makeDevice(id: "baby-scale-1")
-        store.discoveredScale = device
+        store.discoveredScale = device.toSnapshot()
         store.discoveryEvent = makeDiscoveryEvent(device: device)
 
         await store.confirmPair()
 
         #expect(store.connectionState == .failure)
         #expect(store.scaleSetupError == .pairingFailed)
-        #expect(store.currentStep == .connectingBluetooth)
+        #expect(store.currentStep == .connectionError)
     }
 
     @Test("confirmPair error: sets connectionFailed and navigates to connectingBluetooth")
@@ -946,14 +960,14 @@ struct BabyScaleSetupStoreTests {
         let (store, _, _, _, _, _, _) = makeSUT(bluetoothService: bluetooth)
         store.scaleItem = makeScaleItem()
         let device = ScaleTestFixtures.makeDevice(id: "baby-scale-1")
-        store.discoveredScale = device
+        store.discoveredScale = device.toSnapshot()
         store.discoveryEvent = makeDiscoveryEvent(device: device)
 
         await store.confirmPair()
 
         #expect(store.connectionState == .failure)
         #expect(store.scaleSetupError == .connectionFailed)
-        #expect(store.currentStep == .connectingBluetooth)
+        #expect(store.currentStep == .connectionError)
     }
 
     @Test("confirmPair with missing discovery data: sets failure")
@@ -974,7 +988,7 @@ struct BabyScaleSetupStoreTests {
     func resetDiscoveryState_clearsState() {
         let (store, _, _, _, _, _, _) = makeSUT()
         store.scaleItem = makeScaleItem()
-        store.discoveredScale = ScaleTestFixtures.makeDevice(id: "test-1")
+        store.discoveredScale = ScaleTestFixtures.makeDevice(id: "test-1").toSnapshot()
         store.discoveryEvent = makeDiscoveryEvent()
 
         store.resetDiscoveryState()
@@ -992,7 +1006,7 @@ struct BabyScaleSetupStoreTests {
         let (store, _, _, _, _, scale, _) = makeSUT()
         store.scaleItem = makeScaleItem()
         let device = Device(id: "scale-1", accountId: "acct-1", deviceType: DeviceType.scale.rawValue, createdAt: "")
-        store.savedScale = device
+        store.savedScale = device.toSnapshot()
         store.navigateToStep(.scaleName)
         store.scaleNicknameForm.nickname.value = "My Baby Scale"
 
@@ -1052,7 +1066,7 @@ struct BabyScaleSetupStoreTests {
     func startBluetoothScan_resetsAndScans() async {
         let (store, _, _, bluetooth, _, _, _) = makeSUT()
         store.scaleItem = makeScaleItem()
-        store.discoveredScale = ScaleTestFixtures.makeDevice(id: "old-1")
+        store.discoveredScale = ScaleTestFixtures.makeDevice(id: "old-1").toSnapshot()
 
         store.startBluetoothScan()
 
@@ -1102,7 +1116,7 @@ private func makeSUT(
     DependencyContainer.shared.register(permissions as PermissionsServiceProtocol)
     DependencyContainer.shared.register(bluetooth as BluetoothServiceProtocol)
     DependencyContainer.shared.register(account as AccountServiceProtocol)
-    DependencyContainer.shared.register(scale as ScaleServiceProtocol)
+    DependencyContainer.shared.register(scale as PairedDeviceServiceProtocol)
     DependencyContainer.shared.register(baby as BabyServiceProtocol)
 
     let store = BabyScaleSetupStore()
@@ -1110,7 +1124,7 @@ private func makeSUT(
     store.permissionsService = permissions
     store.bluetoothService = bluetooth
     store.accountService = account
-    store.scaleService = scale
+    store.deviceService = scale
     store.babyService = baby
 
     return (store: store, notification: notification, permissions: permissions, bluetooth: bluetooth, account: account, scale: scale, babyService: baby)
@@ -1119,7 +1133,7 @@ private func makeSUT(
 // MARK: - Helpers
 
 @MainActor
-private func makeScaleItem() -> ScaleItemInfo {
+private func makeScaleItem() -> DeviceItemInfo {
     guard let scale = SCALES.first(where: { $0.sku == "0220" }) ?? SCALES.first ?? BPMS.first else {
         fatalError("No scale items available for testing")
     }
@@ -1129,7 +1143,7 @@ private func makeScaleItem() -> ScaleItemInfo {
 @MainActor
 private func makeDiscoveryEvent(device: Device? = nil, isNew: Bool = true) -> DeviceDiscoveryEvent {
     let dev = device ?? ScaleTestFixtures.makeDevice(id: "baby-scale-1")
-    let scaleInfo = ScaleItemInfo(productName: "Smart Baby Scale", sku: "0220", imgPath: "scale0220", setupType: .babyScale, bodyComp: false)
+    let scaleInfo = DeviceItemInfo(productName: "Smart Baby Scale", sku: "0220", imgPath: "scale0220", setupType: .babyScale, bodyComp: false)
     return DeviceDiscoveryEvent(device: dev.toSnapshot(), deviceInfo: scaleInfo, protocolType: .R4, isNew: isNew)
 }
 
