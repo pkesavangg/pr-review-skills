@@ -18,8 +18,6 @@ struct BabyTrendView: View {
 
     private var babyColor: Color { theme.babyScaleColor }
 
-    private var babyScaleColor: Color { theme.babyScaleColor }
-
     private var displayState: BabyTrendDisplayState {
         viewModel.displayState(dashboardStore: dashboardStore, babyProfile: babyProfile)
     }
@@ -120,7 +118,7 @@ struct BabyTrendView: View {
             Text(display.primary)
                 .fontOpenSans(valueStyle)
                 .fontWeight(.heavy)
-                .foregroundColor(babyScaleColor)
+                .foregroundColor(babyColor)
 
             Text(display.primaryUnit)
                 .fontOpenSans(.subHeading2)
@@ -131,7 +129,7 @@ struct BabyTrendView: View {
                 Text(secondary)
                     .fontOpenSans(valueStyle)
                     .fontWeight(.heavy)
-                    .foregroundColor(babyScaleColor)
+                    .foregroundColor(babyColor)
                     .padding(.leading, .spacingMD)
 
                 Text(secondaryUnit)

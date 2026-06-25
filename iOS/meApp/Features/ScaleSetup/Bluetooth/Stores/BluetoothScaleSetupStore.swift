@@ -268,7 +268,9 @@ final class BluetoothScaleSetupStore: ObservableObject {
             try? await Task.sleep(nanoseconds: pairingTimeoutNs)
             guard !Task.isCancelled else { return }
             await MainActor.run {
-                if self.discoveredScale == nil && self.currentStep == .connectingBluetooth {
+                let isBpmOnSetUser = self.scaleItem?.setupType == .bpm && self.currentStep == .setUser
+                if self.discoveredScale == nil &&
+                    (self.currentStep == .connectingBluetooth || isBpmOnSetUser) {
                     self.setConnectionFailure()
                 }
             }
