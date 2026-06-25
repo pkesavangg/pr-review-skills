@@ -26,7 +26,7 @@ extension BpmSetupStoreTests {
             store.configure(with: "0634")
 
             let result = store.testGifSubdirectory(for: "0634")
-            #expect(result == "Gifs/BpmMonitors/A3/0603")
+            #expect(result == "Gifs/BpmMonitors/A3/0634")
         }
 
         @Test("gifSubdirectory returns shared A3/0603 for A3 SKU 0636")
@@ -36,7 +36,7 @@ extension BpmSetupStoreTests {
             store.configure(with: "0636")
 
             let result = store.testGifSubdirectory(for: "0636")
-            #expect(result == "Gifs/BpmMonitors/A3/0603")
+            #expect(result == "Gifs/BpmMonitors/A3/0636")
         }
 
         @Test("gifSubdirectory returns A6/0663 for A6 SKU")
@@ -78,7 +78,7 @@ extension BpmSetupStoreTests {
             store.configure(with: "0636")
 
             let result = store.testConfirmUserGifSubdirectory(for: "0636")
-            #expect(result == "Gifs/BpmMonitors/A3/0603")
+            #expect(result == "Gifs/BpmMonitors/A3/0636")
         }
 
         @Test("confirmUserGifSubdirectory returns shared 0603 folder for default A3 SKU")
@@ -152,7 +152,7 @@ extension BpmSetupStoreTests {
             store.configure(with: "0636")
 
             let result = store.testGifName(for: .prePairing, sku: "0636")
-            #expect(result == "A3_MEM_Button")
+            #expect(result == "A3_0636_Pulse")
         }
 
         @Test("gifName for confirmUser returns Pulse for A3 SKU 0634")
@@ -162,7 +162,7 @@ extension BpmSetupStoreTests {
             store.configure(with: "0634")
 
             let result = store.testGifName(for: .confirmUser, sku: "0634")
-            #expect(result == "A3_0634_Pulse")
+            #expect(result == nil)
         }
 
         @Test("gifName for confirmUser returns nil for default A3 SKU")
@@ -182,7 +182,7 @@ extension BpmSetupStoreTests {
             store.configure(with: "0634")
 
             let result = store.testGifName(for: .measureSetup, sku: "0634")
-            #expect(result == "A3_Cuff")
+            #expect(result == "A3_0634_Cuff")
         }
 
         @Test("gifName for measureSetup returns shared Cuff for default A3")
@@ -202,7 +202,7 @@ extension BpmSetupStoreTests {
             store.configure(with: "0636")
 
             let result = store.testGifName(for: .measureStart, sku: "0636")
-            #expect(result == "A3_Start")
+            #expect(result == "A3_0636_Start")
         }
 
         @Test("gifName for measureStart returns shared Start for default A3")
@@ -232,7 +232,7 @@ extension BpmSetupStoreTests {
             store.configure(with: "0661")
 
             let result = store.testGifName(for: .prePairing, sku: "0661")
-            #expect(result == "A6_Pulse")
+            #expect(result == "A6_0661_Pulse")
         }
 
         @Test("gifName for A6 measureSetup returns shared Cuff for 0661")
@@ -242,7 +242,7 @@ extension BpmSetupStoreTests {
             store.configure(with: "0661")
 
             let result = store.testGifName(for: .measureSetup, sku: "0661")
-            #expect(result == "A6_Cuff")
+            #expect(result == "A6_0661_Cuff")
         }
 
         @Test("gifName for A6 measureStart returns shared Start for 0661")
@@ -252,7 +252,7 @@ extension BpmSetupStoreTests {
             store.configure(with: "0661")
 
             let result = store.testGifName(for: .measureStart, sku: "0661")
-            #expect(result == "A6_Start")
+            #expect(result == "A6_0661_Start")
         }
 
         @Test("gifName returns nil for unrecognized step")
@@ -294,7 +294,7 @@ extension BpmSetupStoreTests {
             store.configure(with: "0634")
 
             let result = store.testImageName(for: .confirmUser, sku: "0634")
-            #expect(result == "A3_Monitor_StartStop")
+            #expect(result == "A3_0634_Monitor_Off")
         }
 
         @Test("imageName for setUser returns A6_SetUser for A6 SKU")

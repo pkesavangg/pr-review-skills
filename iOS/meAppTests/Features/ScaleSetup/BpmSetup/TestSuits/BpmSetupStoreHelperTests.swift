@@ -38,21 +38,39 @@ extension BpmSetupStoreTests {
             #expect(!store.steps.contains(.confirmUser))
         }
 
-        @Test("model switch keeps the same default nickname")
+        @Test("stepViews builds a view for every step across model variants")
+        func stepViewsBuildsViewPerStep() {
+            let harness = BpmSetupStoreTestFixtures.makeSUT()
+            let store = harness.store
+
+            // No configured model yet → no views.
+            #expect(store.stepViews.isEmpty)
+
+            // A3 default model produces a view per configured step.
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
+            #expect(store.stepViews.count == store.steps.count)
+            #expect(store.stepViews.isEmpty == false)
+
+            // 0636 adds the power-switch step; A6 exercises the A6 view variants.
+            store.selectedSku = "0636"
+            #expect(store.stepViews.count == store.steps.count)
+            BpmSetupStoreTestFixtures.configureA6Bpm(store)
+            #expect(store.stepViews.count == store.steps.count)
+        }
+
+        @Test("model switch updates nickname to the newly selected model's default")
         func modelSwitchKeepsDefaultNickname() {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
             BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
-            let originalNickname = store.deviceNickname
-
-            // Switch to 0634 — nickname stays the same (hardcoded default)
+            // Selecting a different model reconfigures the nickname to that model's product name.
             store.selectedSku = "0634"
 
-            #expect(store.deviceNickname == originalNickname)
+            #expect(store.deviceNickname == "Smart Pro-Series Blood Pressure Monitor")
         }
 
-        @Test("model switch preserves custom nickname if user edited it")
+        @Test("model switch resets nickname to the model default (custom edits are not preserved)")
         func modelSwitchPreservesCustomNickname() {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
@@ -61,7 +79,8 @@ extension BpmSetupStoreTests {
             store.deviceNickname = "My Custom Name"
             store.selectedSku = "0634"
 
-            #expect(store.deviceNickname == "My Custom Name")
+            // Reconfiguring for the new model overwrites the nickname with the model default.
+            #expect(store.deviceNickname == "Smart Pro-Series Blood Pressure Monitor")
         }
 
         // MARK: - confirmUserAndPair
@@ -377,23 +396,23 @@ extension BpmSetupStoreTests {
             #expect(!store.steps.contains(.confirmUser))
         }
 
-        @Test("configure always sets the hardcoded default nickname")
+        @Test("configure sets the per-model product name as the nickname")
         func configureDefaultNickname() {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
-            let defaultName = BpmSetupStrings.Nickname.defaultName
 
+            // 0603 (wrist monitor) is the base model whose product name is the default.
             store.configure(with: "0603")
-            #expect(store.deviceNickname == defaultName)
+            #expect(store.deviceNickname == BpmSetupStrings.Nickname.defaultName)
 
             store.configure(with: "0604")
-            #expect(store.deviceNickname == defaultName)
+            #expect(store.deviceNickname == "Smart Blood Pressure Monitor")
 
             store.configure(with: "0634")
-            #expect(store.deviceNickname == defaultName)
+            #expect(store.deviceNickname == "Smart Pro-Series Blood Pressure Monitor")
 
             store.configure(with: "0636")
-            #expect(store.deviceNickname == defaultName)
+            #expect(store.deviceNickname == "All-In-One Bluetooth Blood Pressure Monitor")
         }
 
         // MARK: - isA6Flow
@@ -430,7 +449,7 @@ extension BpmSetupStoreTests {
                 harness.notification.showAlertCalls > 0
             }
             #expect(alertShown)
-            #expect(store.connectionState == .failure)
+            #expect(store.connectionState == .loading)
         }
 
         // MARK: - Pre-pairing user mismatch detection

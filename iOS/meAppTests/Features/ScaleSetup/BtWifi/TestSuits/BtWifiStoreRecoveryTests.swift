@@ -61,7 +61,7 @@ extension BtWifiStoreTests {
             store.navigateToStep(.gatheringNetwork)
             store.scaleSetupError = .duplicatesFound
             store.initialDisplayNameSnapshot = "Lakshmi"
-            store.userNameForm.updateUserList([ScaleUser(name: "Taken", token: "dup")])
+            store.userNameForm.updateUserList([DeviceUser(name: "Taken", token: "dup")])
             store.userNameForm.setDisplayName("Lakshmi")
             store.updateNextEnabled()
             #expect(store.isNextEnabled == false)
