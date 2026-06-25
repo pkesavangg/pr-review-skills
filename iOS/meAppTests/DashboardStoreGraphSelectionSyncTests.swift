@@ -149,6 +149,7 @@ struct DashboardStoreGraphSelectionSyncTests {
 
         store.initializeChart()
 
+        // selectedXValue is plot-aligned to local noon (not raw UTC date), so compare by calendar day
         try await waitUntil(timeout: 5.0) {
             store.state.graph.selectedPoint?.entryTimestamp == latest.entryTimestamp &&
             store.state.graph.selectedXValue.map { Calendar.current.isDate($0, inSameDayAs: latest.date) } == true &&

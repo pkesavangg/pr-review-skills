@@ -42,7 +42,7 @@ enum BluetoothScaleSetupStoreTestFixtures {
         DependencyContainer.shared.register(permissions as PermissionsServiceProtocol)
         DependencyContainer.shared.register(bluetooth as BluetoothServiceProtocol)
         DependencyContainer.shared.register(account as AccountServiceProtocol)
-        DependencyContainer.shared.register(scaleService as ScaleServiceProtocol)
+        DependencyContainer.shared.register(scaleService as PairedDeviceServiceProtocol)
 
         let store = BluetoothScaleSetupStore(
             pairingTimeoutNs: pairingTimeoutNs,
@@ -101,15 +101,15 @@ enum BluetoothScaleSetupStoreTestFixtures {
             deviceName: "BT Scale"
         )
         scale.userNumber = userNumber
-        scale.bathScale = BathScale(scaleType: ScaleSourceType.bluetooth.rawValue, bodyComp: false)
+        scale.bathScale = BathScale(scaleType: DeviceSourceType.bluetooth.rawValue, bodyComp: false)
         return scale
     }
 
     static func makeDiscoveryEvent(
         scale: Device = makeBluetoothScale(),
-        setupType: ScaleSetupType = .bluetooth
+        setupType: DeviceSetupType = .bluetooth
     ) -> DeviceDiscoveryEvent {
-        let fallback = SCALES.first ?? ScaleItemInfo(
+        let fallback = SCALES.first ?? DeviceItemInfo(
             productName: "Bluetooth Smart Scale",
             sku: "0375",
             imgPath: AppAssets.scale0375,

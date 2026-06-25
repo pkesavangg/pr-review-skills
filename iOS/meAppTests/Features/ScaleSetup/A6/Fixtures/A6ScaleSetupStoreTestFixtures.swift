@@ -42,7 +42,7 @@ enum A6ScaleSetupStoreTestFixtures {
         DependencyContainer.shared.register(permissions as PermissionsServiceProtocol)
         DependencyContainer.shared.register(bluetooth as BluetoothServiceProtocol)
         DependencyContainer.shared.register(account as AccountServiceProtocol)
-        DependencyContainer.shared.register(scaleService as ScaleServiceProtocol)
+        DependencyContainer.shared.register(scaleService as PairedDeviceServiceProtocol)
 
         let store = A6ScaleSetupStore(
             pairingTimeoutNs: pairingTimeoutNs,
@@ -99,17 +99,17 @@ enum A6ScaleSetupStoreTestFixtures {
             sku: "0022",
             deviceName: "LCBT Scale"
         )
-        scale.bathScale = BathScale(scaleType: ScaleSourceType.bluetooth.rawValue, bodyComp: false)
+        scale.bathScale = BathScale(scaleType: DeviceSourceType.bluetooth.rawValue, bodyComp: false)
         return scale
     }
 
     static func makeDiscoveryEvent(
         scale: Device? = nil,
-        setupType: ScaleSetupType = .lcbt,
+        setupType: DeviceSetupType = .lcbt,
         isNew: Bool = true
     ) -> DeviceDiscoveryEvent {
         let device = scale ?? makeA6Device()
-        let fallback = SCALES.first ?? ScaleItemInfo(
+        let fallback = SCALES.first ?? DeviceItemInfo(
             productName: "A6 Smart Scale",
             sku: "0022",
             imgPath: AppAssets.scale0375,

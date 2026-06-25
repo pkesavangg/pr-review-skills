@@ -114,6 +114,8 @@ struct IntegrationStoreTests {
         let account = MockAccountService()
         account.activeAccount = IntegrationStoreTestFixtures.makeAccount(id: "acc-5", fitbitOn: true)
         account.refreshAccountResult = .success(())
+        // After removal + refresh, the server reports Fitbit disabled.
+        account.refreshAccountAppliesAccount = IntegrationStoreTestFixtures.makeAccount(id: "acc-5", fitbitOn: false)
         let integrationService = MockIntegrationStoreService()
         let notification = MockNotificationHelperService()
 
@@ -184,12 +186,17 @@ struct IntegrationStoreTests {
         let account = MockAccountService()
         account.activeAccount = IntegrationStoreTestFixtures.makeAccount(id: "acc-8", fitbitOn: false)
         account.refreshAccountResult = .success(())
+        // After the OAuth flow completes, refreshing the account reports Fitbit enabled.
+        account.refreshAccountAppliesAccount = IntegrationStoreTestFixtures.makeAccount(id: "acc-8", fitbitOn: true)
         let notification = MockNotificationHelperService()
         let (store, _, _, _, _) = makeSUT(accountService: account, notificationService: notification)
 
         store.selectIntegration(item: IntegrationItem(type: .fitbit, isSelected: false))
         store.refreshAccounts()
-        let refreshed = await waitUntil { account.refreshAccountCalls == 1 }
+        let refreshed = await waitUntil {
+            account.refreshAccountCalls == 1
+                && store.integrations.first(where: { $0.type == .fitbit })?.isSelected == true
+        }
 
         #expect(refreshed == true)
         #expect(store.integrations.first(where: { $0.type == .fitbit })?.isSelected == true)
@@ -428,15 +435,24 @@ struct IntegrationStoreTests {
         #expect(store.integrations.contains(where: { $0.type == .fitbit }))
         #expect(store.integrations.contains(where: { $0.type == .myFitnessPal }))
 
-        let productTypeStore = DependencyContainer.shared.dependencies["ProductTypeStore"] as? MockProductTypeStore
+        // The store observes the mock registered under the protocol key; the concrete
+        // "ProductTypeStore" key is later overwritten by the real shared store in DI setup.
+        guard let productTypeStore = DependencyContainer.shared.dependencies["ProductTypeStoreProtocol"] as? MockProductTypeStore else {
+            Issue.record("Expected the store's product-type store to be a MockProductTypeStore")
+            return
+        }
 
-        // No weight device paired → the weight-scale provider section disappears.
-        productTypeStore?.availableItems = [.myBloodPressure]
+        // No weight device available → the weight-scale provider section disappears.
+        // The availableItems publisher fires during `willSet`, so settle the new value first,
+        // then let an account emission recompute the list (applyAccountState reads availableItems fresh).
+        productTypeStore.availableItems = [.myBloodPressure]
+        account.activeAccount = IntegrationStoreTestFixtures.makeAccount(id: "acc-dev-bp", fitbitOn: true, mfpOn: true)
         let hidden = await waitUntil { store.integrations.isEmpty }
         #expect(hidden == true)
 
-        // A weight scale is paired later → the provider section reappears automatically.
-        productTypeStore?.availableItems = [.myWeight]
+        // A weight scale is available again → the provider section reappears.
+        productTypeStore.availableItems = [.myWeight]
+        account.activeAccount = IntegrationStoreTestFixtures.makeAccount(id: "acc-dev-wt", fitbitOn: true, mfpOn: true)
         let shown = await waitUntil {
             store.integrations.contains(where: { $0.type == .fitbit })
                 && store.integrations.contains(where: { $0.type == .myFitnessPal })
@@ -485,6 +501,16 @@ struct IntegrationStoreTests {
         #expect(notification.showAlertCalls == 1)
         #expect(notification.alertData?.title == IntegrationsStrings.requestIntegrationErrorTitle)
         #expect(notification.alertData?.buttons.count == 1)
+    }
+
+    @Test("showRequestIntegrationModal presents a backdrop-dismissible modal")
+    func showRequestIntegrationModalPresentsModal() {
+        let notification = MockNotificationHelperService()
+        let (store, _, _, _, _) = makeSUT(notificationService: notification)
+
+        store.showRequestIntegrationModal()
+
+        #expect(notification.showModalCalls == 1)
     }
 
     @Test("account publisher handles nil account correctly")
