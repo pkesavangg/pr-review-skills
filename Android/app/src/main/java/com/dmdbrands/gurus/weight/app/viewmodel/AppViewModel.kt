@@ -22,6 +22,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.data.services.OperationType
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
 import com.dmdbrands.gurus.weight.domain.enums.BabyEntryType
@@ -1222,6 +1223,10 @@ constructor(
       entry = entry.copy(
         id = 0L,
         accountId = accountId,
+        // The baby scale's RTC is unreliable (reports ~1974/1980), which otherwise plotted the
+        // reading decades in the past on the graph. A live weigh happens now, so stamp it with
+        // the device time — same approach as the BPM live reading (MOB-598).
+        entryTimestamp = DateTimeConverter.timestampToIso(System.currentTimeMillis()),
         operationType = OperationType.CREATE.name,
         isSynced = false,
       ),

@@ -11,6 +11,7 @@ object ScaleUtility {
     // Scales
     "0220" to R.drawable.scale_0220,
     "0222" to R.drawable.scale_0222,
+    "0340" to R.drawable.scale_0341, // 0340 (AppSync) uses the 0341 image
     "0341" to R.drawable.scale_0341,
     "0342" to R.drawable.scale_0342,
     "0343" to R.drawable.scale_0343,

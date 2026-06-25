@@ -50,11 +50,29 @@ fun AppScaleImage(
   sku: String,
   modifier: Modifier = Modifier,
   scaleImageSize: ScaleImageSize = ScaleImageSize.Small,
-  showShadow: Boolean = sku !in ScaleImageDefaults.BABY_SCALE_SKUS,
+  // Only weight scales get the glow backdrop; baby scales and BPM monitors render flat (no bg).
+  showShadow: Boolean =
+    sku !in ScaleImageDefaults.BABY_SCALE_SKUS && !DeviceHelper.isBpmDevice(sku),
 ) {
   val isBpm = DeviceHelper.isBpmDevice(sku)
   val imageHeight = ScaleImageDefaults.size(scaleImageSize)
   val imageWidth = if (isBpm) ScaleImageDefaults.monitorWidth(scaleImageSize) else imageHeight
+
+  // Apply the glow only when showShadow — previously it was applied unconditionally, so the
+  // backdrop showed behind baby/balance images too.
+  val shadowModifier = if (showShadow) {
+    Modifier.dropShadow(
+      shape = RoundedCornerShape(borderRadius.sm),
+      shadow = Shadow(
+        radius = spacing.sm,
+        spread = (-4).dp,
+        color = MeTheme.colorScheme.glow,
+        offset = DpOffset(x = 0.dp, 0.dp),
+      ),
+    )
+  } else {
+    Modifier
+  }
 
   Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
     Box(
@@ -62,15 +80,8 @@ fun AppScaleImage(
         Modifier
           .width(imageWidth)
           .height(imageHeight)
-          .dropShadow(
-            shape = RoundedCornerShape(borderRadius.sm),
-            shadow = Shadow(
-              radius = spacing.sm,
-              spread = (-4).dp,
-              color = MeTheme.colorScheme.glow,
-              offset = DpOffset(x = 0.dp, 0.dp),
-            ),
-          ).clip(RoundedCornerShape(borderRadius.xs)),
+          .then(shadowModifier)
+          .clip(RoundedCornerShape(borderRadius.xs)),
       contentAlignment = Alignment.Center,
     ) {
       Image(
