@@ -154,5 +154,5 @@ Ask Claude to:
 ## References
 
 - [Xcode Code Coverage](https://developer.apple.com/documentation/xcode/configuring_code_coverage)
-- [meApp Coverage Guide](../../docs/COVERAGE_REPORTING.md)
-- [Unit Testing Best Practices](../../meAppTests/docs/UNIT_TESTING.md)
+- [meApp Coverage Guide](../../../docs/COVERAGE_REPORTING.md)
+- [Unit Testing Best Practices](../../../meAppTests/docs/UNIT_TESTING.md)

@@ -585,10 +585,10 @@ func syncEntries() {
 
 ## Related Skills
 
-- **`/add-endpoint.md`** — Step-by-step to add a complete API endpoint
-- **`/wire-service.md`** — Register repository in DI for store injection
-- **`/fix-bug.md`** — Common bug: 401 retry loop; debug via `restartWithNewTokens` flag
-- **`/review-security.md`** — Never log tokens or auth headers in full
+- **`/add-endpoint`** — Step-by-step to add a complete API endpoint
+- **`/wire-service`** — Register repository in DI for store injection
+- **`/fix-bug`** — Common bug: 401 retry loop; debug via `restartWithNewTokens` flag
+- **`/review-security`** — Never log tokens or auth headers in full
 
 ---
 

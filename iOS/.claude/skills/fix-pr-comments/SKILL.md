@@ -164,7 +164,7 @@ Wait for the user's answer before proceeding.
 
 ### If the user says yes
 
-**Commit** — follow `.claude/skills/commit.md` to stage and commit only the changed files. Do not commit anything else.
+**Commit** — follow `.claude/skills/commit/SKILL.md` to stage and commit only the changed files. Do not commit anything else.
 
 **Reply to each comment** — post a reply to every non-skipped comment thread using:
 ```bash

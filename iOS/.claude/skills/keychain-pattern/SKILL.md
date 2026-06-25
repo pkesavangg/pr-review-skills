@@ -344,9 +344,9 @@ final class AccountMigrationService {
 ## Related Skills
 
 Reference this skill from:
-- **`/analytics.md`** — PII logging safety rules
-- **`/review-security.md`** — Keychain compliance checks
-- **`/storage-change.md`** — Migration planning and token storage decisions
+- **`/analytics`** — PII logging safety rules
+- **`/review-security`** — Keychain compliance checks
+- **`/storage-change`** — Migration planning and token storage decisions
 
 ---
 

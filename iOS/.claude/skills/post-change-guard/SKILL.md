@@ -89,7 +89,7 @@ Run all four review checks concurrently. They are all read-only diff analyses wi
 **[PARALLEL BLOCK — run all four simultaneously]**
 
 ### 3a — SwiftLint Auto-Fix
-Read and execute `.claude/skills/swiftlint.md`
+Read and execute `.claude/skills/swiftlint/SKILL.md`
 
 Pass scope: `{CHANGED_FILES}` as the file list.
 
@@ -102,7 +102,7 @@ This skill:
 Capture result as `{LINT_RESULT}`.
 
 ### 3b — Accessibility Review + Fix
-Read and execute `.claude/skills/review-accessibility.md` with `--fix` flag.
+Read and execute `.claude/skills/review-accessibility/SKILL.md` with `--fix` flag.
 
 Pass: `CHANGED_FILES={CHANGED_FILES}`, `DIFF={DIFF}`, `WORKTREE_PATH={WORKTREE_PATH}`
 
@@ -111,7 +111,7 @@ The `--fix` mode auto-adds missing accessibility labels, hides decorative elemen
 Capture result as `{A11Y_RESULT}`.
 
 ### 3c — Security Review (Report Only)
-Read and execute `.claude/skills/review-security.md`
+Read and execute `.claude/skills/review-security/SKILL.md`
 
 Pass: `DIFF={DIFF}`, `CHANGED_FILES={CHANGED_FILES}`, `WORKTREE_PATH={WORKTREE_PATH}`
 
@@ -120,7 +120,7 @@ This is report-only. Do NOT auto-fix security findings — they require human ju
 Capture result as `{SECURITY_RESULT}`.
 
 ### 3d — Code Standards Review (Report Only)
-Read and execute `.claude/skills/review-code-standards.md`
+Read and execute `.claude/skills/review-code-standards/SKILL.md`
 
 Pass: `DIFF={DIFF}`, `CHANGED_FILES={CHANGED_FILES}`, `WORKTREE_PATH={WORKTREE_PATH}`
 
@@ -136,7 +136,7 @@ Capture result as `{STANDARDS_RESULT}`.
 
 After the parallel block (because concurrency fixes modify files, which affects lint):
 
-Read and execute `.claude/skills/swift-concurrency.md`
+Read and execute `.claude/skills/swift-concurrency/SKILL.md`
 
 Pass scope: files in `{CHANGED_FILES}` that are async/actor-related — specifically:
 - Files in `meApp/Data/Services/`
@@ -155,7 +155,7 @@ If no async-related files are in scope, skip this step and set `{CONCURRENCY_RES
 
 Only execute this step if `{BUILD_REQUIRED}=true` from Step 2.
 
-Read and execute `.claude/skills/build.md`
+Read and execute `.claude/skills/build/SKILL.md`
 
 This runs:
 ```bash

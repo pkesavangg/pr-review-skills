@@ -29,19 +29,19 @@ The table above is the **weight** chart layer (the shared `BaseGraphView` / four
 ### Phase 2 — Blood Pressure (BPM) charts
 | File | Responsibility |
 |------|---------------|
-| `Features/Dashboard/BPM/Views/Screens/BpmTrendView.swift` | BP trend chart screen |
-| `Features/Dashboard/BPM/Views/Components/BpmMetricsSection.swift` | Systolic/diastolic/pulse metrics section |
-| `Features/Dashboard/BPM/Views/Components/` | `BpmReadingCard`, `BpmSnapshotCard`, `ThreeReadingAverage*`, `AhaRating*`, `BpmSummaryCardView`, `BpmDisplayView` |
+| `meApp/Features/Dashboard/BPM/Views/Screens/BpmTrendView.swift` | BP trend chart screen |
+| `meApp/Features/Dashboard/BPM/Views/Components/BpmMetricsSection.swift` | Systolic/diastolic/pulse metrics section |
+| `meApp/Features/Dashboard/BPM/Views/Components/` | `BpmReadingCard`, `BpmSnapshotCard`, `ThreeReadingAverage*`, `AhaRating*`, `BpmSummaryCardView`, `BpmDisplayView` |
 
 ### Phase 2 — Baby growth charts (percentile)
 | File | Responsibility |
 |------|---------------|
-| `Features/Dashboard/Baby/Views/Screens/BabyTrendView.swift` | Baby growth chart screen |
-| `Features/Dashboard/ViewModels/BabyTrendViewModel.swift` | Baby trend VM |
-| `Features/Dashboard/Baby/Utils/BabyDashboardChartStyle.swift`, `BabyDashboardChartSupport.swift` | Chart styling/support |
-| `Features/Dashboard/Baby/Models/BabyPercentileChartPoint.swift`, `BabyPercentileLineEntry.swift` | Percentile data points |
-| `Features/Dashboard/Baby/Utils/BabyWeightPercentileCalculator.swift`, `BabyPercentileGrowthReference.swift`, `BabyGrowthPercentileZTable.swift` | WHO/CDC percentile math |
-| `Features/Dashboard/Baby/Environment/BabyGrowthChartEnvironment.swift`, `Enums/BabyPercentileLine.swift`, `Enums/BabyMetric.swift` | Chart environment + metric enums |
+| `meApp/Features/Dashboard/Baby/Views/Screens/BabyTrendView.swift` | Baby growth chart screen |
+| `meApp/Features/Dashboard/ViewModels/BabyTrendViewModel.swift` | Baby trend VM |
+| `meApp/Features/Dashboard/Baby/Utils/BabyDashboardChartStyle.swift`, `BabyDashboardChartSupport.swift` | Chart styling/support |
+| `meApp/Features/Dashboard/Baby/Models/BabyPercentileChartPoint.swift`, `BabyPercentileLineEntry.swift` | Percentile data points |
+| `meApp/Features/Dashboard/Baby/Utils/BabyWeightPercentileCalculator.swift`, `BabyPercentileGrowthReference.swift`, `BabyGrowthPercentileZTable.swift` | WHO/CDC percentile math |
+| `meApp/Features/Dashboard/Baby/Environment/BabyGrowthChartEnvironment.swift`, `Enums/BabyPercentileLine.swift`, `Enums/BabyMetric.swift` | Chart environment + metric enums |
 
 BP/baby charts do **not** reuse the weight `BaseGraphView` paging machinery — classify the problem against the right stack before applying the sections below (which are written for the weight graph).
 

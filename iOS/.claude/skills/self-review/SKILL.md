@@ -39,19 +39,19 @@ Extract:
 Execute each skill in order, passing the context gathered above.
 
 #### 2a — Lint & Formatting
-Read and execute `.claude/skills/review-lint.md`
+Read and execute `.claude/skills/review-lint/SKILL.md`
 
 #### 2b — Regression Risk
-Read and execute `.claude/skills/review-regression.md`
+Read and execute `.claude/skills/review-regression/SKILL.md`
 
 #### 2c — Security
-Read and execute `.claude/skills/review-security.md`
+Read and execute `.claude/skills/review-security/SKILL.md`
 
 #### 2d — Issue Coverage
-Read and execute `.claude/skills/review-issue-fix.md`
+Read and execute `.claude/skills/review-issue-fix/SKILL.md`
 
 #### 2e — Accessibility
-Read and execute `.claude/skills/review-accessibility.md`
+Read and execute `.claude/skills/review-accessibility/SKILL.md`
 
 ---
 

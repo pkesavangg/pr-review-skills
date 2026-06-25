@@ -65,7 +65,7 @@ After receiving the impact map, flag any usage in:
 
 ### 3 — Run Regression Baseline
 
-Before making any changes, read and execute `.claude/skills/review-regression.md` on the files in scope. Note the current risk level and any existing issues. The refactoring must not increase it.
+Before making any changes, read and execute `.claude/skills/review-regression/SKILL.md` on the files in scope. Note the current risk level and any existing issues. The refactoring must not increase it.
 
 ---
 

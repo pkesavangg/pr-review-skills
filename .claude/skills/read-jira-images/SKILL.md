@@ -11,7 +11,7 @@ Download and visually analyze image attachments from a Jira issue. Returns an **
 
 ## Input
 
-`$ARGUMENTS` — The full Jira issue data object returned by `getJiraIssue` (passed from `fetch-ticket.md`).
+`$ARGUMENTS` — The full Jira issue data object returned by `getJiraIssue` (passed from the `fetch-ticket` skill).
 
 ---
 

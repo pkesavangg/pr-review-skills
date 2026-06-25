@@ -126,7 +126,7 @@ For each screen found, note whether it has a corresponding UI test file. This he
 1. Write the scaffolded file to: `meAppUITests/Features/<Feature>/<ScreenName>UITests.swift`
 2. Report the file path
 3. List accessibility identifiers that need to be added to the source screen
-4. Coverage target: ≥ 85% for UI test files (per `verify-tests.md`)
+4. Coverage target: ≥ 85% for UI test files (per the `verify-tests` skill)
 5. Reminder: these are stubs — fill in real interactions and assertions before running
 6. If first UI test for the feature: list all other screens in the feature that still need UI tests
 7. Recommend: run `/add-accessibility` on the target screen first if accessibility identifiers are missing

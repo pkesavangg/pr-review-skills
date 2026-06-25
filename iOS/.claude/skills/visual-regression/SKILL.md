@@ -220,4 +220,4 @@ xcodebuild test \
 
 - [swift-snapshot-testing](https://github.com/pointfreeco/swift-snapshot-testing)
 - [XCTest UI Testing](https://developer.apple.com/documentation/xctest/user_interface_tests)
-- [meApp UI Test Guide](../../meAppUITests/docs/UI_TESTING.md)
+- [meApp UI Test Guide](../../../meAppUITests/docs/UI_TESTING.md)
