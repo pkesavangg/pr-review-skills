@@ -756,16 +756,19 @@ struct BaseSectionViewModelTests {
 
     // MARK: - handleSettingsChange
 
-    @Test("handleSettingsChange clears selection")
-    func handleSettingsChangeClearsSelection() {
+    @Test("handleSettingsChange preserves selection")
+    func handleSettingsChangePreservesSelection() {
+        // MA-3891: unit / weightless toggles change displayed values but not which date is
+        // selected, so the crosshair selection must be preserved across a settings change.
         let (sut, _, _) = makeConfiguredSUT()
-        sut.selectedDate = Date()
+        let selected = Date()
+        sut.selectedDate = selected
         sut.showCrosshair = true
 
         sut.handleSettingsChange()
 
-        #expect(sut.selectedDate == nil)
-        #expect(sut.showCrosshair == false)
+        #expect(sut.selectedDate != nil)
+        #expect(sut.showCrosshair == true)
     }
 
     // MARK: - forceScrollPositionUpdate
@@ -782,10 +785,12 @@ struct BaseSectionViewModelTests {
 
     // MARK: - visibleDomainLength
 
-    @Test("visibleDomainLength returns 7*24*60*60 fallback when store is nil")
+    @Test("visibleDomainLength returns the week fallback constant when store is nil")
     func visibleDomainLengthFallback() {
+        // The week visible domain carries a small padding factor (7.15 days) so the trailing
+        // phantom tick is reachable; assert against the production constant rather than a raw 7 days.
         let (sut, _) = makeSUT()
-        #expect(sut.visibleDomainLength == 7 * 24 * 60 * 60)
+        #expect(sut.visibleDomainLength == DashboardConstants.TimeInterval.week)
     }
 
     // MARK: - pointSize
@@ -878,8 +883,10 @@ struct BaseSectionViewModelTests {
         #expect(label == "8")
     }
 
-    @Test("formatXAxisLabel for month with no ops returns nil on non-Sunday")
+    @Test("formatXAxisLabel for month with no ops returns the day number for any weekly tick")
     func formatXAxisLabelMonthEmptyNonSunday() {
+        // Month empty-state ticks are generated weekly (1, 8, 15, 22, 29) and may not fall on a
+        // Sunday, so the label is the day-of-month for whatever tick date it is given.
         let vm = TestSectionViewModel(period: .month)
         let calendar = Calendar.current
         var comps = DateComponents()
@@ -888,7 +895,7 @@ struct BaseSectionViewModelTests {
         comps.day = 9 // Monday
         let monday = calendar.date(from: comps)! // swiftlint:disable:this force_unwrapping
         let label = vm.formatXAxisLabel(for: monday)
-        #expect(label == nil)
+        #expect(label == "9")
     }
 
     // MARK: - formatSelectedXAxisLabel

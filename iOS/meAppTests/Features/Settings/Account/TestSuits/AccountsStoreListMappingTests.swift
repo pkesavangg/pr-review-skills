@@ -6,7 +6,7 @@ extension AccountsStoreTests {
     @Suite("List Mapping And Ordering")
     @MainActor
     struct ListMappingAndOrdering {
-        @Test("maps and orders logged-in accounts by most recent activity and excludes logged-out")
+        @Test("maps and orders accounts by most recent activity with logged-out accounts last")
         func mapsAndOrdersAccountsAndExcludesLoggedOut() async {
             let recent = AccountsStoreTestFixtures.makeAccount(
                 id: "recent",
@@ -43,12 +43,14 @@ extension AccountsStoreTests {
             )
             let store = harness.store
             await AccountsStoreTestFixtures.waitUntil {
-                store.accounts.count == 3 && store.userItems.count == 3
+                store.accounts.count == 4 && store.userItems.count == 4
             }
 
-            #expect(store.accounts.map(\.accountId) == ["recent", "older", "invalid-date"])
-            #expect(store.userItems.map(\.accountID) == ["recent", "older", "invalid-date"])
-            #expect(store.accounts.contains { $0.accountId == "logged-out" } == false)
+            // MA-3283: the store shows every saved account. Logged-in accounts come first
+            // (sorted by last-active desc), followed by logged-out / expired accounts.
+            #expect(store.accounts.map(\.accountId) == ["recent", "older", "invalid-date", "logged-out"])
+            #expect(store.userItems.map(\.accountID) == ["recent", "older", "invalid-date", "logged-out"])
+            #expect(store.accounts.contains { $0.accountId == "logged-out" } == true)
         }
 
         @Test("maps user item fields with name fallback, selected state, and expired login CTA state")

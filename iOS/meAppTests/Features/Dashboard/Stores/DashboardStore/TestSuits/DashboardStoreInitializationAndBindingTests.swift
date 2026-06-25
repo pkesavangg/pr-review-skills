@@ -188,14 +188,33 @@ extension DashboardStoreTests {
 
     @Test("subscriptions: dashboard type change updates store metrics type")
     func subscriptionsDashboardTypeChangeUpdatesStore() async {
-        let (store, accountService, _) = DashboardStoreTestSupport.makeSUT(lightweight: false)
+        // Seed a non-nil dashboard12 account BEFORE init so the async init pipeline never takes the
+        // `noActiveAccount` catch path (which defaults dashboardType to .dashboard12). With a non-nil
+        // account throughout, the only source of dashboardType is the account's own value, so the
+        // $activeAccount subscription is the deterministic writer — no init-vs-subscription race.
+        let (store, accountService, _) = DashboardStoreTestSupport.makeSUT(
+            lightweight: false,
+            initialAccount: DashboardStoreTestSupport.makeActiveAccount(
+                dashboardMetrics: "bmi,bodyFat,muscleMass,water,pulse,boneMass",
+                dashboardType: "dashboard12"
+            )
+        )
 
+        // Let the full init pipeline settle on the seeded baseline (dashboard12).
+        await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 5_000_000_000) {
+            store.state.ui.hasLoadedDashboardConfig == true &&
+            store.state.ui.isResettingDashboard == false &&
+            store.state.metrics.dashboardType == .dashboard12
+        }
+
+        // Now exercise the subscription: change to a dashboard4 account. The account stays non-nil,
+        // so no catch-path default can clobber the value.
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(
             dashboardMetrics: "bmi,bodyFat,muscleMass,water",
             dashboardType: "dashboard4"
         )
 
-        await DashboardTestFixtures.waitUntil {
+        await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 5_000_000_000) {
             store.state.metrics.dashboardType == .dashboard4 &&
             store.metricsManager.state.dashboardType == .dashboard4
         }

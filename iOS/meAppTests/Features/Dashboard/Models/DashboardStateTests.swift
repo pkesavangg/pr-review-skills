@@ -49,7 +49,7 @@ struct DashboardStateTests {
 
         // GraphState defaults
         #expect(state.graph.selectedEntry == nil)
-        #expect(state.graph.selectedPeriod == .week)
+        #expect(state.graph.selectedPeriod == .month)
         #expect(state.graph.selectedWeight == nil)
         #expect(state.graph.selectedPoint == nil)
         #expect(state.graph.selectedXValue == nil)
@@ -338,10 +338,10 @@ struct DashboardStateTests {
 
     // MARK: - GraphState Tests
 
-    @Test("GraphState: default selectedPeriod is week")
+    @Test("GraphState: default selectedPeriod is month")
     func graphDefaultPeriod() {
         let graphState = GraphState()
-        #expect(graphState.selectedPeriod == .week)
+        #expect(graphState.selectedPeriod == .month)
     }
 
     @Test("GraphState: clearSelection resets all selection properties")
@@ -662,7 +662,7 @@ struct DashboardStateTests {
         #expect(state.goal.hasGoalSet == true)
         // Others unchanged
         #expect(state.streak.activeStreakItemsCount == 6)
-        #expect(state.graph.selectedPeriod == .week)
+        #expect(state.graph.selectedPeriod == .month)
         #expect(state.data.dailySummaries.isEmpty)
     }
 

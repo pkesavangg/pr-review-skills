@@ -376,7 +376,7 @@ struct MultipleReadingsCounterIntegrationTests {
         let (sut, bluetooth, notification, _) = makeCounterSUT()
         bluetooth.isSetupInProgress = false
 
-        bluetooth.newEntryReceivedSubject.send(BottomTabBarViewModelTestFixtures.bpmNotification())
+        bluetooth.pendingBpmEntrySubject.send(BottomTabBarViewModelTestFixtures.bpmNotification())
         let shown = await waitUntilCounter { notification.showToastCalls >= 1 }
         #expect(shown)
         #expect(notification.toastData?.headerView == nil,
@@ -389,10 +389,10 @@ struct MultipleReadingsCounterIntegrationTests {
         let (sut, bluetooth, notification, _) = makeCounterSUT()
         bluetooth.isSetupInProgress = false
 
-        bluetooth.newEntryReceivedSubject.send(BottomTabBarViewModelTestFixtures.bpmNotification())
+        bluetooth.pendingBpmEntrySubject.send(BottomTabBarViewModelTestFixtures.bpmNotification())
         _ = await waitUntilCounter { notification.showToastCalls >= 1 }
 
-        bluetooth.newEntryReceivedSubject.send(BottomTabBarViewModelTestFixtures.bpmNotification())
+        bluetooth.pendingBpmEntrySubject.send(BottomTabBarViewModelTestFixtures.bpmNotification())
         let shown = await waitUntilCounter { notification.showToastCalls >= 2 }
         #expect(shown)
         #expect(notification.toastData?.headerView != nil,
@@ -415,8 +415,8 @@ struct MultipleReadingsCounterIntegrationTests {
         _ = sut
     }
 
-    @Test("second baby reading: headerView is non-nil")
-    func secondBabyReadingHasHeader() async {
+    @Test("second baby reading: no multiple-readings header (baby cards require per-reading assignment)")
+    func secondBabyReadingHasNoHeader() async {
         let (sut, bluetooth, notification, _) = makeCounterSUT()
         bluetooth.isSetupInProgress = false
 
@@ -433,8 +433,10 @@ struct MultipleReadingsCounterIntegrationTests {
         bluetooth.newEntryReceivedSubject.send(BottomTabBarViewModelTestFixtures.babyNotification())
         let shown = await waitUntilCounter { notification.showToastCalls >= 2 }
         #expect(shown)
-        #expect(notification.toastData?.headerView != nil,
-                "Second baby reading must show a multiple-readings header")
+        // Baby readings are assigned/discarded individually, so they intentionally do NOT
+        // use the batch multiple-readings counter header that weight/BPM cards do.
+        #expect(notification.toastData?.headerView == nil,
+                "Baby reading cards do not show a multiple-readings header")
         _ = sut
     }
 
@@ -444,12 +446,12 @@ struct MultipleReadingsCounterIntegrationTests {
         bluetooth.isSetupInProgress = false
 
         // Single BPM reading + dismiss
-        bluetooth.newEntryReceivedSubject.send(BottomTabBarViewModelTestFixtures.bpmNotification())
+        bluetooth.pendingBpmEntrySubject.send(BottomTabBarViewModelTestFixtures.bpmNotification())
         _ = await waitUntilCounter { notification.showToastCalls >= 1 }
         notification.toastData?.onDismiss?()
 
         // Next reading should be treated as the first again (counter zeroed)
-        bluetooth.newEntryReceivedSubject.send(BottomTabBarViewModelTestFixtures.bpmNotification())
+        bluetooth.pendingBpmEntrySubject.send(BottomTabBarViewModelTestFixtures.bpmNotification())
         let shown = await waitUntilCounter { notification.showToastCalls >= 2 }
         #expect(shown)
         #expect(notification.toastData?.headerView == nil,

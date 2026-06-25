@@ -15,6 +15,9 @@ struct DashboardGridEditingManagerTests {
 
         let apiRepo = MockAccountAPIRepository()
         let localRepo = MockAccountRepository()
+        // The real metric-save path fetches the account from the local repo by id, so the
+        // active account must also exist in storage — not just be set as `activeAccount`.
+        localRepo.seed([AccountTestFixtures.makeAccountModel(id: activeAccount.accountId, isActive: true)])
         let accountService = AccountService(
             apiRepo: apiRepo,
             localRepo: localRepo,

@@ -1050,10 +1050,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         var failedSyncCount = 0
         var firstFailureReason: String?
 
-        // 2. Try to sync with backend
-        // Baby sync is out of scope until iOS 3. Exclude baby entries here so they
-        // are not re-evaluated every cycle and never accumulate as a perpetual skip.
-        if let unsyncedEntries = unsynced?.filter({ $0.entryType != EntryType.baby.rawValue }), !unsyncedEntries.isEmpty {
+        // 2. Try to sync with backend. Baby entries expand into baby-category
+        // weight + measureLength requests (MOB-386) and are pushed alongside
+        // weight/BP entries.
+        if let unsyncedEntries = unsynced, !unsyncedEntries.isEmpty {
             for operation in unsyncedEntries {
                 // R7/R9: Extract all @Model data BEFORE any await calls
                 let entryId = operation.id

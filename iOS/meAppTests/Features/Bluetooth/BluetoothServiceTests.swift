@@ -73,6 +73,7 @@ struct BluetoothServiceTests {
     func scalesSubscriptionFiltersBluetoothTypes() async {
         let scale = MockScaleService()
         let sut = makeSUT(scale: scale)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", isActiveAccount: true)
 
         let bluetoothScale = makeDevice(
             id: "keep-1",

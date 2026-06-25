@@ -28,6 +28,7 @@ final class MockAccountService: AccountServiceProtocol {
     var updateWeightlessResult: Result<Void, Error> = .failure(UnexpectedCallError.methodCalled("updateWeightless"))
     var updatePasswordResult: Result<Void, Error> = .failure(UnexpectedCallError.methodCalled("updatePassword"))
     var logOutResult: Result<Void, Error> = .success(())
+    var removeAccountFromDeviceResult: Result<Void, Error> = .success(())
     var logOutAllAccountsResult: Result<Void, Error> = .success(())
     var deleteAccountResult: Result<Void, Error> = .success(())
     var switchAccountResult: Result<Void, Error> = .failure(UnexpectedCallError.methodCalled("switchAccount"))
@@ -82,6 +83,8 @@ final class MockAccountService: AccountServiceProtocol {
     private(set) var lastUpdatedOldPassword: String?
     private(set) var lastUpdatedNewPassword: String?
     private(set) var lastLoggedOutAccountId: String?
+    private(set) var removeAccountFromDeviceCalls = 0
+    private(set) var lastRemovedFromDeviceAccountId: String?
     private(set) var lastIsAutoLogout: Bool?
     private(set) var lastSwitchedAccountId: String?
     private(set) var lastRefreshAccountId: String?
@@ -128,13 +131,27 @@ final class MockAccountService: AccountServiceProtocol {
     }
 
     func removeAccountFromDevice(accountId: String) async throws {
-        throw UnexpectedCallError.methodCalled("removeAccountFromDevice")
+        removeAccountFromDeviceCalls += 1
+        lastRemovedFromDeviceAccountId = accountId
+        _ = try removeAccountFromDeviceResult.get()
+        // Mirror the real AccountService: on success the account is deleted locally and
+        // the active reference is cleared if it pointed at the removed account.
+        allAccounts.removeAll { $0.accountId == accountId }
+        if activeAccount?.accountId == accountId {
+            activeAccount = nil
+        }
     }
 
     func switchAccount(to accountId: String) async throws {
         switchAccountCalls += 1
         lastSwitchedAccountId = accountId
         _ = try switchAccountResult.get()
+        // Mirror the real AccountService: a successful switch makes the target the
+        // active account (via setActiveAccount). Resolve from the seeded accounts so
+        // callers can assert `activeAccount?.accountId == target`.
+        if let target = allAccounts.first(where: { $0.accountId == accountId }) {
+            activeAccount = target
+        }
     }
 
     func setActiveAccount(accountId: String) async throws {

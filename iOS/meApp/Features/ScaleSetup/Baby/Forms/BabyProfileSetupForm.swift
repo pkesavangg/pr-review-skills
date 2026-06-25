@@ -30,8 +30,9 @@ class BabyProfileSetupForm: ObservableForm {
     var birthLengthCm = FormControl("")
     var birthWeightKg = FormControl("")
 
-    // Unit selection — drives which fields are shown and which length unit is derived
-    @Published var selectedWeightUnit: BabyWeightUnit = .kg
+    // Unit selection — drives which fields are shown and which length unit is derived.
+    // Defaults to imperial (lbs/oz): the imperial fields are the model's source of truth.
+    @Published var selectedWeightUnit: BabyWeightUnit = .lbsOz
 
     /// Derived length unit: kg → cm, lb/lb-oz → in
     var derivedLengthUnit: BabyLengthUnit {
@@ -94,7 +95,7 @@ class BabyProfileSetupForm: ObservableForm {
         birthWeightKg.value = ""
         birthWeightKg.markAsPristine()
         birthWeightKg.markAsUntouched()
-        selectedWeightUnit = .kg
+        selectedWeightUnit = .lbsOz
     }
 
     // MARK: - Error Messages

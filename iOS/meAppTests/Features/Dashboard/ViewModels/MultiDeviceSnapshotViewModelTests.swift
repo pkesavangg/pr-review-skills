@@ -12,8 +12,24 @@ struct MultiDeviceSnapshotViewModelTests {
     private func makeSUT() -> (sut: MultiDeviceSnapshotViewModel, entryService: EntryService) {
         TestDependencyContainer.reset()
         let deps = TestDependencyContainer.registerDashboardConcreteDependencies()
+
+        // Replace the entry service with one backed by an account so the baby/weight/BP
+        // dashboard load paths (which require an active account) can run in tests.
+        let account = MockAccountService()
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(
+            id: "acct-1", email: "snapshot@example.com", isActiveAccount: true
+        )
+        let entryService = EntryService(
+            accountService: account,
+            localRepo: MockEntryRepository(),
+            localKVRepo: MockEntrySyncStore(),
+            remoteRepo: MockEntryRepositoryAPI()
+        )
+        DependencyContainer.shared.register(entryService as EntryService)
+        _ = deps
+
         let sut = MultiDeviceSnapshotViewModel()
-        return (sut, deps.entry)
+        return (sut, entryService)
     }
 
     private func makeBabyProfile(

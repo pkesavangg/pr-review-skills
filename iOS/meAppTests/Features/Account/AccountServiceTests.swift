@@ -1452,7 +1452,10 @@ struct AccountServiceTests {
         #expect(api.patchProductTypesCalls == 1)
         #expect(api.lastPatchProductTypes == ["weight"])
         let updated = try await local.fetchAccount(byId: "101")
-        #expect(updated?.productTypes == ["blood_pressure"])
+        // updateProductTypes never reduces types: it unions the sent value, the server
+        // response, and the existing local value (MOB-581, 351f80164). Order is not
+        // significant because the union is built from a Set.
+        #expect(updated?.productTypes.sorted() == ["blood_pressure", "weight"])
     }
 
     @Test("updateProductTypes: server returns nil productTypes, falls back to sent value")
@@ -1469,7 +1472,9 @@ struct AccountServiceTests {
         try await sut.updateProductTypes(["weight", "blood_pressure"])
 
         let updated = try await local.fetchAccount(byId: "101")
-        #expect(updated?.productTypes == ["weight", "blood_pressure"])
+        // Server returned nil, so the sent value is the fallback; result order is not
+        // significant because productTypes is merged via a Set union (MOB-581, 351f80164).
+        #expect(updated?.productTypes.sorted() == ["blood_pressure", "weight"])
     }
 
     @Test("updateProductTypes: API failure propagates error")

@@ -14,6 +14,23 @@ enum DashboardManagerTestSupport {
         cacheManager: DashboardCacheManagerProtocol,
         formatter: DashboardFormatterProtocol
     ) -> StoreSUT {
+        let sut = makeStoreWithRepo(cacheManager: cacheManager, formatter: formatter)
+        return (sut.store, sut.accountService, sut.entryService)
+    }
+
+    typealias StoreSUTWithRepo = (
+        store: DashboardStore,
+        accountService: AccountService,
+        entryService: EntryService,
+        accountLocalRepo: MockAccountRepository
+    )
+
+    /// Same as `makeStore` but also surfaces the account's local repo so tests that
+    /// exercise the real save path can seed the active account into storage.
+    static func makeStoreWithRepo(
+        cacheManager: DashboardCacheManagerProtocol,
+        formatter: DashboardFormatterProtocol
+    ) -> StoreSUTWithRepo {
         TestDependencyContainer.reset()
         let deps = TestDependencyContainer.registerDashboardConcreteDependencies()
         let store = DashboardStore(lightweight: true, formatter: formatter, cacheManager: cacheManager)
@@ -30,7 +47,7 @@ enum DashboardManagerTestSupport {
         store.lifecycleManager.accountService = deps.account
         store.lifecycleManager.logger = deps.logger
 
-        return (store, deps.account, deps.entry)
+        return (store, deps.account, deps.entry, deps.accountLocalRepo)
     }
 
     static func syncStoreGraphState(_ store: DashboardStore) {

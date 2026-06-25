@@ -163,7 +163,11 @@ struct SwiftDataWorkerTests {
         let ctx = container.mainContext
 
         let now = Date()
-        let fmt = ISO8601DateFormatter()
+        // Use the same fractional-seconds UTC formatter the worker uses, so the lexical
+        // string comparison in fetchProgressData treats the boundary "today" entry as <= now.
+        // A plain ISO8601DateFormatter() omits fractional seconds and sorts "…53Z" after
+        // the worker's "…53.xxxZ" upper bound, dropping the newest entry from each window.
+        let fmt = DateTimeTools.isoFormatter(useUTC: true)
 
         let today = fmt.string(from: now)
         let threeDaysAgo = fmt.string(from: now.addingTimeInterval(-3 * 86400))

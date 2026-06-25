@@ -334,6 +334,9 @@ struct DashboardGraphManagerTests {
     @Test("handleScrollPhaseChange: idle commits the buffered scroll position and exits scrolling")
     func handleScrollPhaseChangeIdleCommitsBufferedPosition() async {
         let sut = makeSUT()
+        // Use .week so the committed position is the raw buffered value; .month (the default)
+        // snaps the commit to the month boundary, which this test is not exercising.
+        sut.state.selectedPeriod = .week
         let expectedPosition = DateTimeTools.getDateFromDateString("2026-03-15", format: "yyyy-MM-dd")
 
         if #available(iOS 18.0, *) {
@@ -368,6 +371,9 @@ struct DashboardGraphManagerTests {
     @Test("handleScrollEnd: commits the buffered position after the debounce timer")
     func handleScrollEndCommitsBufferedPosition() async {
         let sut = makeSUT()
+        // Use .week so the committed position is the raw buffered value; .month (the default)
+        // snaps the commit to the month boundary, which this test is not exercising.
+        sut.state.selectedPeriod = .week
         let bufferedPosition = DateTimeTools.getDateFromDateString("2026-03-18", format: "yyyy-MM-dd")
 
         sut.handleScrollStart()

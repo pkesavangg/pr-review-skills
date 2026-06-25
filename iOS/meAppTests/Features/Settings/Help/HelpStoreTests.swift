@@ -27,8 +27,7 @@ struct HelpStoreTests {
     func isSendScaleLogEnabled_singleConnectedScale_returnsTrue() {
         let (store, _, _, _, _, _, _) = makeSUT()
         let device = ScaleTestFixtures.makeDevice(id: "scale-1")
-        device.isConnected = true
-        store.scales = [device.toSnapshot()]
+        store.scales = [device.toSnapshot(isConnected: true)]
         #expect(store.isSendScaleLogEnabled == true)
     }
 

@@ -33,7 +33,7 @@ struct BluetoothServiceDeviceInfoTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(isConnected: true)
-        sut.bluetoothScales = [device.toSnapshot()]
+        sut.bluetoothScales = [device.toSnapshot(isConnected: true)]
 
         let result = await sut.getDeviceInfo(broadcastId: device.broadcastIdString ?? "")
 
@@ -86,7 +86,7 @@ struct BluetoothServiceDeviceInfoTests {
         let logger = MockLoggerService()
         let sut = makeSUT(logger: logger, sdk: sdk)
         let device = makeDevice(isConnected: true)
-        sut.bluetoothScales = [device.toSnapshot()]
+        sut.bluetoothScales = [device.toSnapshot(isConnected: true)]
 
         let result = await sut.getDeviceInfo(broadcastId: device.broadcastIdString ?? "")
 
@@ -102,7 +102,7 @@ struct BluetoothServiceDeviceInfoTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(isConnected: true)
-        sut.bluetoothScales = [device.toSnapshot()]
+        sut.bluetoothScales = [device.toSnapshot(isConnected: true)]
 
         let result = await sut.getDeviceInfo(broadcastId: device.broadcastIdString ?? "")
 
@@ -124,7 +124,7 @@ struct BluetoothServiceDeviceInfoTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(isConnected: true)
-        sut.bluetoothScales = [device.toSnapshot()]
+        sut.bluetoothScales = [device.toSnapshot(isConnected: true)]
 
         _ = await sut.getDeviceInfo(broadcastId: device.broadcastIdString ?? "")
 
@@ -221,9 +221,9 @@ struct BluetoothServiceDeviceInfoTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk)
         sut.bluetoothScales = [
-            makeDevice(id: "c1", broadcastIdString: "BID-C1", isConnected: true).toSnapshot(),
-            makeDevice(id: "c2", broadcastIdString: "BID-C2", isConnected: true).toSnapshot(),
-            makeDevice(id: "d1", broadcastIdString: "BID-D1", isConnected: false).toSnapshot()
+            makeDevice(id: "c1", broadcastIdString: "BID-C1", isConnected: true).toSnapshot(isConnected: true),
+            makeDevice(id: "c2", broadcastIdString: "BID-C2", isConnected: true).toSnapshot(isConnected: true),
+            makeDevice(id: "d1", broadcastIdString: "BID-D1", isConnected: false).toSnapshot(isConnected: false)
         ]
 
         let result = await sut.updateWeightOnlyMode(broadcastId: nil)
@@ -302,9 +302,9 @@ struct BluetoothServiceDeviceInfoTests {
         let scale = MockScaleService()
         let sut = makeSUT(scale: scale, sdk: sdk)
         sut.bluetoothScales = [
-            makeDevice(id: "c1", broadcastIdString: "BID-C1", isConnected: true).toSnapshot(),
-            makeDevice(id: "c2", broadcastIdString: "BID-C2", isConnected: true).toSnapshot(),
-            makeDevice(id: "d1", broadcastIdString: "BID-D1", isConnected: false).toSnapshot()
+            makeDevice(id: "c1", broadcastIdString: "BID-C1", isConnected: true).toSnapshot(isConnected: true),
+            makeDevice(id: "c2", broadcastIdString: "BID-C2", isConnected: true).toSnapshot(isConnected: true),
+            makeDevice(id: "d1", broadcastIdString: "BID-D1", isConnected: false).toSnapshot(isConnected: false)
         ]
 
         await sut.disconnectConnectedScales()
@@ -355,7 +355,8 @@ struct BluetoothServiceDeviceInfoTests {
             isConnected: true,
             bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
         )
-        sut.bluetoothScales = [r4Device.toSnapshot()]
+        r4Device.token = "r4-token"
+        sut.bluetoothScales = [r4Device.toSnapshot(isConnected: true)]
 
         let result = await sut.deleteR4Scales()
 
@@ -443,7 +444,8 @@ struct BluetoothServiceDeviceInfoTests {
             isConnected: true,
             bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
         )
-        sut.bluetoothScales = [device.toSnapshot()]
+        device.token = "r4-token"
+        sut.bluetoothScales = [device.toSnapshot(isConnected: true)]
 
         let result = await sut.deleteR4Scales()
 
@@ -469,7 +471,7 @@ struct BluetoothServiceDeviceInfoTests {
             bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
         )
         device.isWeighOnlyModeEnabledByOthers = true
-        sut.bluetoothScales = [device.toSnapshot()]
+        sut.bluetoothScales = [device.toSnapshot(isConnected: true, isWeighOnlyModeEnabledByOthers: true)]
 
         _ = await sut.deleteR4Scales()
 
@@ -503,19 +505,25 @@ struct BluetoothServiceDeviceInfoTests {
             isConnected: true,
             bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
         )
+        r4a.token = "r4a-token"
         let r4b = makeDevice(
             id: "r4-b",
             broadcastIdString: "R4-B",
             isConnected: true,
             bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
         )
+        r4b.token = "r4b-token"
         let nonR4 = makeDevice(
             id: "wifi-1",
             broadcastIdString: "WIFI-1",
             isConnected: true,
             bathScale: BathScale(scaleType: DeviceSourceType.wifi.rawValue, bodyComp: false)
         )
-        sut.bluetoothScales = [r4a.toSnapshot(), r4b.toSnapshot(), nonR4.toSnapshot()]
+        sut.bluetoothScales = [
+            r4a.toSnapshot(isConnected: true),
+            r4b.toSnapshot(isConnected: true),
+            nonR4.toSnapshot(isConnected: true)
+        ]
 
         let result = await sut.deleteR4Scales()
 

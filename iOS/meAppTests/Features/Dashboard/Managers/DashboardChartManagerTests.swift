@@ -378,6 +378,9 @@ struct DashboardChartManagerTests {
     @Test("handleScrollPositionChange and handleScrollStart: buffer the position and enter scrolling mode")
     func handleScrollPositionChangeAndStartTrackScrollState() async {
         let (store, _, _, _) = makeSUT()
+        // Use .week so the committed position is the raw buffered value; .month (the default)
+        // snaps the commit to the month boundary, which this test is not exercising.
+        store.graphManager.state.selectedPeriod = .week
         let position = DateTimeTools.getDateFromDateString("2026-03-10", format: "yyyy-MM-dd")
 
         store.chartManager.handleScrollStart()

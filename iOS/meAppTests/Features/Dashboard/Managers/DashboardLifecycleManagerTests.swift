@@ -15,12 +15,13 @@ struct DashboardLifecycleManagerTests {
         store: DashboardStore,
         accountService: AccountService,
         entryService: EntryService,
-        cacheManager: MockDashboardCacheManager
+        cacheManager: MockDashboardCacheManager,
+        accountLocalRepo: MockAccountRepository
     )
 
     private func makeSUT() -> SUTBundle {
         let cacheManager = MockDashboardCacheManager()
-        let sut = DashboardManagerTestSupport.makeStore(
+        let sut = DashboardManagerTestSupport.makeStoreWithRepo(
             cacheManager: cacheManager,
             formatter: MockDashboardFormatter()
         )
@@ -28,7 +29,8 @@ struct DashboardLifecycleManagerTests {
             store: sut.store,
             accountService: sut.accountService,
             entryService: sut.entryService,
-            cacheManager: cacheManager
+            cacheManager: cacheManager,
+            accountLocalRepo: sut.accountLocalRepo
         )
     }
 
@@ -98,7 +100,14 @@ struct DashboardLifecycleManagerTests {
 
         await store.lifecycleManager.initializeDashboard()
 
+        // The progress-metric / dashboard-config flags are set by a staged background
+        // refresh task that outlives initializeDashboard()'s await; poll for completion.
+        let loaded = await waitUntil {
+            store.state.ui.hasLoadedDashboardConfig && store.state.ui.hasLoadedProgressMetrics
+        }
+
         #expect(store.state.ui.isResettingDashboard == false)
+        #expect(loaded == true)
         #expect(store.state.ui.hasLoadedDashboardConfig == true)
         #expect(store.state.ui.hasLoadedProgressMetrics == true)
         #expect(store.state.metrics.dashboardType == .dashboard12)
@@ -205,7 +214,7 @@ struct DashboardLifecycleManagerTests {
     // MARK: - Entry Lifecycle Tests
 
     @Test("onEntryAdded: invalidates continuous operations cache")
-    func onEntryAddedInvalidatesCache() {
+    func onEntryAddedInvalidatesCache() async {
         let sut = makeSUT(); let store = sut.store; let cacheManager = sut.cacheManager
 
         let notification = makeEntryNotification()
@@ -213,11 +222,13 @@ struct DashboardLifecycleManagerTests {
 
         store.lifecycleManager.onEntryAdded(notification)
 
-        #expect(cacheManager.invalidateContinuousOpsCalls > before)
+        // Entry-lifecycle changes are debounced (~250ms); wait for the coalesced invalidation.
+        let invalidated = await waitUntil { cacheManager.invalidateContinuousOpsCalls > before }
+        #expect(invalidated == true)
     }
 
     @Test("onEntryUpdated: invalidates continuous operations cache")
-    func onEntryUpdatedInvalidatesCache() {
+    func onEntryUpdatedInvalidatesCache() async {
         let sut = makeSUT(); let store = sut.store; let cacheManager = sut.cacheManager
 
         let notification = makeEntryNotification()
@@ -225,11 +236,12 @@ struct DashboardLifecycleManagerTests {
 
         store.lifecycleManager.onEntryUpdated(notification)
 
-        #expect(cacheManager.invalidateContinuousOpsCalls > before)
+        let invalidated = await waitUntil { cacheManager.invalidateContinuousOpsCalls > before }
+        #expect(invalidated == true)
     }
 
     @Test("onEntryDeleted: invalidates continuous operations cache")
-    func onEntryDeletedInvalidatesCache() {
+    func onEntryDeletedInvalidatesCache() async {
         let sut = makeSUT(); let store = sut.store; let cacheManager = sut.cacheManager
 
         let notification = makeEntryNotification()
@@ -237,7 +249,8 @@ struct DashboardLifecycleManagerTests {
 
         store.lifecycleManager.onEntryDeleted(notification)
 
-        #expect(cacheManager.invalidateContinuousOpsCalls > before)
+        let invalidated = await waitUntil { cacheManager.invalidateContinuousOpsCalls > before }
+        #expect(invalidated == true)
     }
 
     @Test("onEntryAdded: updates display metrics when chart is initialized")
@@ -499,6 +512,9 @@ struct DashboardLifecycleManagerTests {
     func saveProgressMetricsToAPIPersistsOrder() async throws {
         let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         let activeAccount = DashboardStoreTestSupport.makeActiveAccount(id: "lifecycle-progress-save")
+        // The real save path fetches the account from the local repo by id, so it must
+        // exist in storage — not just be set as `activeAccount`.
+        sut.accountLocalRepo.seed([AccountTestFixtures.makeAccountModel(id: activeAccount.accountId, isActive: true)])
         accountService.activeAccount = activeAccount
 
         let streaks = [
