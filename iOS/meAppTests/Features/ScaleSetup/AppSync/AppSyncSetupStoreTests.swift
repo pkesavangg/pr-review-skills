@@ -195,7 +195,7 @@ struct AppSyncSetupStoreTests {
             sku: "0341",
             deviceName: "Old Scale",
             deviceType: DeviceType.scale.rawValue,
-            bathScale: BathScale(scaleType: ScaleSourceType.appsync.rawValue, bodyComp: true)
+            bathScale: BathScale(scaleType: DeviceSourceType.appsync.rawValue, bodyComp: true)
         )
         scale.scales = [existingDevice.toSnapshot()]
 
@@ -223,7 +223,7 @@ struct AppSyncSetupStoreTests {
             sku: "0341",
             deviceName: "Old Scale",
             deviceType: DeviceType.scale.rawValue,
-            bathScale: BathScale(scaleType: ScaleSourceType.appsync.rawValue, bodyComp: true)
+            bathScale: BathScale(scaleType: DeviceSourceType.appsync.rawValue, bodyComp: true)
         )
         scale.scales = [existingDevice.toSnapshot()]
         scale.deleteDeviceError = AppSyncSetupStoreTestError.saveFailed
@@ -393,7 +393,7 @@ struct AppSyncSetupStoreTests {
             sku: "9999",
             deviceName: "Other Scale",
             deviceType: DeviceType.scale.rawValue,
-            bathScale: BathScale(scaleType: ScaleSourceType.appsync.rawValue, bodyComp: false)
+            bathScale: BathScale(scaleType: DeviceSourceType.appsync.rawValue, bodyComp: false)
         )
         scale.scales = [differentDevice.toSnapshot()]
 
@@ -435,14 +435,14 @@ private func makeSUT() -> (
     DependencyContainer.shared.register(account as AccountServiceProtocol)
     DependencyContainer.shared.register(permissions as PermissionsServiceProtocol)
     DependencyContainer.shared.register(notification as NotificationHelperServiceProtocol)
-    DependencyContainer.shared.register(scale as ScaleServiceProtocol)
+    DependencyContainer.shared.register(scale as PairedDeviceServiceProtocol)
     DependencyContainer.shared.register(bluetooth as BluetoothServiceProtocol)
     DependencyContainer.shared.register(logger as LoggerServiceProtocol)
 
     let store = AppSyncSetupStore()
     store.notificationService = notification
     store.logger = logger
-    store.scaleService = scale
+    store.deviceService = scale
     store.accountService = account
     store.permissionsService = permissions
     store.bluetoothService = bluetooth

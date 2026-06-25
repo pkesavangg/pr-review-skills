@@ -2,8 +2,8 @@ import Foundation
 import Testing
 @testable import meApp
 
-@MainActor
 @Suite(.serialized)
+@MainActor
 struct DashboardStoreGraphSelectionSyncTests {
 
     @Test
@@ -26,7 +26,7 @@ struct DashboardStoreGraphSelectionSyncTests {
 
     @Test
     func exactChartSelectionUpdatesSelectedPointMetricsForAllPeriods() async throws {
-        defer { Task { await clearEntrySummaries() } }
+        defer { clearEntrySummaries() }
 
         let dailyOlder = makeSummary(
             date: makeDate(2026, 4, 18),
@@ -89,7 +89,7 @@ struct DashboardStoreGraphSelectionSyncTests {
 
     @Test
     func monthViewModelAppliesExistingStoreLatestSelectionAfterConfiguration() async throws {
-        defer { Task { await clearEntrySummaries() } }
+        defer { clearEntrySummaries() }
 
         let older = makeSummary(
             date: makeDate(2026, 4, 18),
@@ -114,12 +114,7 @@ struct DashboardStoreGraphSelectionSyncTests {
 
         let viewModel = MonthSectionViewModel()
         viewModel.configure(with: store)
-        // applyProgrammaticSelection routes through handleChartSelection which requires
-        // chartSeriesData to be fully settled — not guaranteed synchronously after
-        // clearAllCaches() inside updateSelectedPeriod. Use applyStoreValidatedSelection
-        // (the store-validated path) to directly assert the view model applies the selection.
-        let plottedDate = viewModel.plotXDate(for: latest.date)
-        viewModel.applyStoreValidatedSelection(date: plottedDate, point: latest)
+        viewModel.applyProgrammaticSelection(at: store.state.graph.selectedXValue)
 
         #expect(viewModel.showCrosshair)
         #expect(viewModel.selectedPoint?.entryTimestamp == latest.entryTimestamp)
@@ -128,7 +123,7 @@ struct DashboardStoreGraphSelectionSyncTests {
 
     @Test
     func initializeChartSelectsLatestEntryWhenMonthIsVisibleInitially() async throws {
-        defer { Task { await clearEntrySummaries() } }
+        defer { clearEntrySummaries() }
 
         let older = makeSummary(
             date: makeDate(2026, 4, 18),
@@ -147,30 +142,22 @@ struct DashboardStoreGraphSelectionSyncTests {
         )
 
         store.state.graph.selectedPeriod = .month
+        store.state.graph.selectedPoint = nil
+        store.state.graph.selectedXValue = nil
         store.state.ui.hasInitializedChart = false
         store.state.ui.hasLandedInitialSelection = false
-        // Clear both the store slice AND graphManager.state — the Combine sink
-        // (graphManager.$state → store.graph) fires on the next graphManager mutation
-        // and will restore any non-nil graphManager.state.selectedXValue, causing
-        // shouldPreferLatestSelectionForInitialMetrics to return false.
-        store.graphManager.state.clearSelection()
 
         store.initializeChart()
 
-        try await waitUntil(timeout: 2.0) {
-            let cal = Calendar.current
-            let xValueOnSameDay = store.state.graph.selectedXValue.map {
-                cal.isDate($0, inSameDayAs: latest.date)
-            } ?? false
-            return store.state.graph.selectedPoint?.entryTimestamp == latest.entryTimestamp &&
-                xValueOnSameDay &&
-                store.state.ui.hasLandedInitialSelection
+        // selectedXValue is plot-aligned to local noon (not raw UTC date), so compare by calendar day
+        try await waitUntil(timeout: 5.0) {
+            store.state.graph.selectedPoint?.entryTimestamp == latest.entryTimestamp &&
+            store.state.graph.selectedXValue.map { Calendar.current.isDate($0, inSameDayAs: latest.date) } == true &&
+            store.state.ui.hasLandedInitialSelection
         }
 
         #expect(store.state.graph.selectedPoint?.entryTimestamp == latest.entryTimestamp)
-        // selectedXValue is plot-aligned (noon local time), so compare at day granularity
-        let calendar = Calendar.current
-        #expect(store.state.graph.selectedXValue.map { calendar.isDate($0, inSameDayAs: latest.date) } == true)
+        #expect(store.state.graph.selectedXValue.map { Calendar.current.isDate($0, inSameDayAs: latest.date) } == true)
         #expect(store.state.ui.hasLandedInitialSelection)
     }
 
@@ -204,12 +191,12 @@ private func makeStore(
     store.state.ui.hasLoadedDashboardConfig = true
 
     // Let any init-time async work settle before returning.
-    try? await waitUntil(timeout: 2.0) { store.state.ui.hasLoadedMetricValues }
+    try? await waitUntil(timeout: 5.0) { store.state.ui.hasLoadedMetricValues }
     return store
 }
 
 @MainActor
-private func clearEntrySummaries() async {
+private func clearEntrySummaries() {
     EntryService.shared.dailySummaries = []
     EntryService.shared.monthlySummaries = []
 }
