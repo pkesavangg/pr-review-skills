@@ -4,6 +4,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -18,6 +21,7 @@ import com.dmdbrands.gurus.weight.core.service.WifiScaleService
 import com.dmdbrands.gurus.weight.core.shared.utilities.IAppReviewManager
 import com.dmdbrands.gurus.weight.core.shared.utilities.browser.ICustomTabManager
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.exposeTestTagsAsResourceId
 import com.dmdbrands.gurus.weight.data.repository.AppRepository
 import com.dmdbrands.gurus.weight.data.storage.datastore.FcmDataStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
@@ -109,7 +113,11 @@ class MainActivity : AppCompatActivity() {
     wifiScaleService.initialise(this)
 
     setContent {
-      MeApp()
+      // Expose Compose testTags as resource-ids so UiAutomator/Appium can select nodes by id.
+      // This covers the main window; separate Dialog/Popup windows opt in individually. See MOB-1099.
+      Box(modifier = Modifier.fillMaxSize().exposeTestTagsAsResourceId()) {
+        MeApp()
+      }
     }
 
     observeThemeChanges()
