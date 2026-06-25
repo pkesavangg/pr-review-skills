@@ -55,6 +55,11 @@ final class MockSettingsPermissionsService: PermissionsServiceProtocol {
         permissions?[type]
     }
 
+    var navigateToWifiSettingsCallCount = 0
+    func navigateToWifiSettings() {
+        navigateToWifiSettingsCallCount += 1
+    }
+
     // MARK: - Helpers
 
     func sendRequiredCategories(_ categories: Set<PermissionCategory>) {

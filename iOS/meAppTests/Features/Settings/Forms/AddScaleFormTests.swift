@@ -6,7 +6,7 @@ import Foundation
 @MainActor
 struct AddScaleFormTests {
 
-    private func makeForm() -> AddScaleForm { AddScaleForm() }
+    private func makeForm() -> AddDeviceForm { AddDeviceForm() }
 
     // MARK: - Initial state
 
