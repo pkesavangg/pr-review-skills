@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationError
 import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationMessages
+import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationSeverity
 import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationType
 import com.dmdbrands.gurus.weight.features.signup.model.SignupFormControls
 import com.google.common.truth.Truth.assertThat
@@ -834,5 +835,99 @@ class FormValidationsTest {
         val result = validator("Sally")
 
         assertThat(result).isNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // rangeWarningValidator (Balance Health parity — advisory, non-blocking)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `rangeWarningValidator returns null inside the typical range`() {
+        val validator = FormValidations.rangeWarningValidator(60, 250)
+
+        assertThat(validator("120")).isNull()
+        assertThat(validator("60")).isNull()
+        assertThat(validator("250")).isNull()
+    }
+
+    @Test
+    fun `rangeWarningValidator warns below and above the range with WARNING severity`() {
+        val validator = FormValidations.rangeWarningValidator(60, 250)
+
+        val low = validator("40")
+        val high = validator("300")
+
+        assertThat(low?.severity).isEqualTo(ValidationSeverity.WARNING)
+        assertThat(high?.severity).isEqualTo(ValidationSeverity.WARNING)
+        assertThat(low?.message).contains("60-250")
+    }
+
+    @Test
+    fun `rangeWarningValidator ignores blank and non-numeric values`() {
+        val validator = FormValidations.rangeWarningValidator(60, 250)
+
+        assertThat(validator("")).isNull()
+        assertThat(validator("abc")).isNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // hardMaxValidator (Balance Health 500 hard cap — blocking)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `hardMaxValidator allows values up to the cap`() {
+        val validator = FormValidations.hardMaxValidator(500)
+
+        assertThat(validator("500")).isNull()
+        assertThat(validator("300")).isNull()
+    }
+
+    @Test
+    fun `hardMaxValidator blocks above the cap with ERROR severity`() {
+        val validator = FormValidations.hardMaxValidator(500)
+
+        val result = validator("501")
+
+        assertThat(result).isNotNull()
+        assertThat(result?.severity).isEqualTo(ValidationSeverity.ERROR)
+        assertThat(result?.type).isEqualTo(ValidationType.MAX_LIMIT)
+    }
+
+    @Test
+    fun `hardMaxValidator rejects non-numeric and passes blank to required`() {
+        val validator = FormValidations.hardMaxValidator(500)
+
+        assertThat(validator("12x")?.type).isEqualTo(ValidationType.NOT_IN_RANGE)
+        assertThat(validator("")).isNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // decimalRangeValidator (Smart Baby parity — exclusive decimal bounds)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `decimalRangeValidator accepts a one-decimal value inside the range`() {
+        val validator = FormValidations.decimalRangeValidator(0, 16) // oz: 0.1..15.9
+
+        assertThat(validator("15.9")).isNull()
+        assertThat(validator("0.1")).isNull()
+        assertThat(validator("7.5")).isNull()
+    }
+
+    @Test
+    fun `decimalRangeValidator rejects values at or beyond the exclusive bounds`() {
+        val validator = FormValidations.decimalRangeValidator(0, 16)
+
+        assertThat(validator("0")?.type).isEqualTo(ValidationType.GREATER)
+        assertThat(validator("16")?.type).isEqualTo(ValidationType.LESSER)
+        assertThat(validator("20")?.type).isEqualTo(ValidationType.LESSER)
+    }
+
+    @Test
+    fun `decimalRangeValidator treats blank as valid and non-numeric as error`() {
+        val validator = FormValidations.decimalRangeValidator(0, 16)
+
+        assertThat(validator("")).isNull()
+        assertThat(validator("1.2.3")?.type).isEqualTo(ValidationType.NOT_IN_RANGE)
     }
 }

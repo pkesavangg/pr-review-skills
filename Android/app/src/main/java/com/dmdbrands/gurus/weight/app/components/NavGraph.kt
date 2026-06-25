@@ -84,7 +84,7 @@ fun EntryProviderScope<NavKey>.accountSettingsEntries() {
   }
   entry<AppRoute.AccountSettings.AppPermissions> { AppPermissionsScreen() }
   entry<AppRoute.AccountSettings.MyKids> { MyKidsScreen() }
-  entry<AppRoute.AccountSettings.AddBaby> { AddBabyScreen() }
+  entry<AppRoute.AccountSettings.AddBaby> { addBaby -> AddBabyScreen(babyId = addBaby.babyId) }
 }
 
 fun EntryProviderScope<NavKey>.scaleDetailEntries() {

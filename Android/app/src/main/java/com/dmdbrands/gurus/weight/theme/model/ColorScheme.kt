@@ -60,6 +60,8 @@ data class ColorScheme(
   val textSubheading: Color,
   val textError: Color,
   val textErrorDisabled: Color,
+  // Advisory (non-blocking) warning text, e.g. out-of-typical-range manual entry.
+  val textWarning: Color,
   // Brand
   val meAppPrimary: Color,
   val wgPrimary: Color,
@@ -70,6 +72,29 @@ data class ColorScheme(
   val marketingSecondaryAction: Color,
   val marketingTertiary: Color,
   val marketingTertiaryAction: Color,
+  // Action - secondary pressed
+  val secondaryFocusedAction: Color,
+  // Status - utility secondary
+  val utilitySecondary: Color,
+  // Text - disabled & inverse
+  val textDisabled: Color,
+  val textInverse: Color,
+  // Logo
+  val logoPrimary: Color,
+  val logoSecondary: Color,
+  // Greater Goods / promo (default / pressed / disabled)
+  val ggSecondaryAction: Color,
+  val ggSecondaryActionPressed: Color,
+  val ggSecondaryActionDisabled: Color,
+  val promoRed: Color,
+  val promoRedPressed: Color,
+  val promoRedDisabled: Color,
+  val promoBlue: Color,
+  val promoBluePressed: Color,
+  val promoBlueDisabled: Color,
+  val promoGreen: Color,
+  val promoGreenPressed: Color,
+  val promoGreenDisabled: Color,
 ) {
   /**
    * Holds all semantic color roles for the app's theme.

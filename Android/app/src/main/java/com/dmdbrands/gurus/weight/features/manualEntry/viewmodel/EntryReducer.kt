@@ -211,29 +211,34 @@ data class BloodPressureEntryForm(
     fun create(): BloodPressureEntryForm {
       val calendar = Calendar.getInstance()
       val controls = BloodPressureFormControls(
+        // Warn-but-save (Balance Health parity): block only above the hard cap,
+        // show an advisory warning outside the typical range, still allow save.
         systolic = FormControl.create(
           "",
           listOf(
-            FormValidations.bodyCompValidator(
-              AppValidatorConfig.Systolic.MIN, AppValidatorConfig.Systolic.MAX, false,
-            ),
             FormValidations.required(),
+            FormValidations.hardMaxValidator(AppValidatorConfig.Systolic.HARD_MAX),
+            FormValidations.rangeWarningValidator(
+              AppValidatorConfig.Systolic.WARN_MIN, AppValidatorConfig.Systolic.WARN_MAX,
+            ),
           ),
         ),
         diastolic = FormControl.create(
           "",
           listOf(
-            FormValidations.bodyCompValidator(
-              AppValidatorConfig.Diastolic.MIN, AppValidatorConfig.Diastolic.MAX, false,
-            ),
             FormValidations.required(),
+            FormValidations.hardMaxValidator(AppValidatorConfig.Diastolic.HARD_MAX),
+            FormValidations.rangeWarningValidator(
+              AppValidatorConfig.Diastolic.WARN_MIN, AppValidatorConfig.Diastolic.WARN_MAX,
+            ),
           ),
         ),
         pulse = FormControl.create(
           "",
           listOf(
-            FormValidations.bodyCompValidator(
-              AppValidatorConfig.Pulse.MIN, AppValidatorConfig.Pulse.MAX, false,
+            FormValidations.hardMaxValidator(AppValidatorConfig.Pulse.HARD_MAX),
+            FormValidations.rangeWarningValidator(
+              AppValidatorConfig.Pulse.WARN_MIN, AppValidatorConfig.Pulse.WARN_MAX,
             ),
           ),
         ),
@@ -282,19 +287,21 @@ data class BabyEntryForm(
             FormValidations.required(),
           ),
         ),
+        // oz and length accept one decimal (Smart Baby parity): real decimal
+        // string, validated against exclusive Smart Baby bounds.
         ounces = FormControl.create(
           "",
           listOf(
-            FormValidations.bodyCompValidator(
-              AppValidatorConfig.BabyWeightOz.MIN, AppValidatorConfig.BabyWeightOz.MAX, false,
+            FormValidations.decimalRangeValidator(
+              AppValidatorConfig.BabyWeightOz.MIN, AppValidatorConfig.BabyWeightOz.MAX,
             ),
           ),
         ),
         inches = FormControl.create(
           "",
           listOf(
-            FormValidations.bodyCompValidator(
-              AppValidatorConfig.BabyHeight.MIN, AppValidatorConfig.BabyHeight.MAX, false,
+            FormValidations.decimalRangeValidator(
+              AppValidatorConfig.BabyHeight.MIN, AppValidatorConfig.BabyHeight.MAX,
             ),
           ),
         ),

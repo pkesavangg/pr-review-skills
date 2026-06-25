@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.strings.BabyEmptyStateStrings
+import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.SnapshotColors
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -26,16 +27,36 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 fun BabyEmptyState(
     onAddBaby: () -> Unit,
     modifier: Modifier = Modifier,
+    description: String = BabyEmptyStateStrings.Description,
 ) {
     Column(
         modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        BabyEmptyContent(onAddBaby = onAddBaby, description = description)
+    }
+}
+
+/**
+ * The icon + title + description + ADD A BABY CTA, without any sizing/scroll wrapper.
+ * Reused full-screen (Dashboard/Entry/History) and inside the snapshot empty card. (MOB-592)
+ */
+@Composable
+fun BabyEmptyContent(
+    onAddBaby: () -> Unit,
+    modifier: Modifier = Modifier,
+    description: String = BabyEmptyStateStrings.Description,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         AppIcon(
-            id = AppIcons.Default.BabyScale,
+            id = AppIcons.Default.Baby,
             contentDescription = BabyEmptyStateStrings.IconContentDescription,
-            modifier = Modifier.size(48.dp),
+            tintColor = SnapshotColors.Baby,
+            modifier = Modifier.size(50.dp),
             onClick = null,
         )
         AppText(
@@ -45,7 +66,7 @@ fun BabyEmptyState(
             modifier = Modifier.padding(top = MeTheme.spacing.md),
         )
         AppText(
-            text = BabyEmptyStateStrings.Description,
+            text = description,
             textType = TextType.Body,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(

@@ -356,6 +356,7 @@ class EntryReadRepository @Inject constructor(
                     entries = days.map { day ->
                         BabyWeekHistory(
                             date = day.date,
+                            dateKey = day.dateKey,
                             entryCount = day.entryCount,
                             weightLb = day.babyWeightDecigrams?.let { ConversionTools.convertDecigramsToLb(it) },
                             weightOz = day.babyWeightDecigrams?.let { ConversionTools.convertDecigramsToOz(it) },

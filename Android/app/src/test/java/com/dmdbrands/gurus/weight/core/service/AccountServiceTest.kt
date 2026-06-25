@@ -30,6 +30,8 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.verify
+import com.dmdbrands.gurus.weight.features.common.model.Toast
+import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -317,23 +319,39 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `signup returns null and emits error on HttpException 400 (account exists)`() = runTest {
+    fun `signup returns null and shows email-already-in-use toast on HttpException 400`() = runTest {
         coEvery { accountRepository.signup(any()) } throws httpException(400)
 
         val result = service.signup(fakeSignupRequest)
 
         assertThat(result).isNull()
         coVerify { appNavigationService.emitAuthEvent(any<AuthState.Error>()) }
+        // A 400 means the email is already registered — surface that specific copy,
+        // not a generic failure. (MOB-592)
+        verify {
+            dialogQueueService.showToast(
+                match<Toast.Simple> {
+                    it.message == SignupStrings.Error.accountExist &&
+                        it.title == SignupStrings.Error.accountExistHeader
+                },
+            )
+        }
     }
 
     @Test
-    fun `signup returns null and emits error on generic exception`() = runTest {
+    fun `signup returns null and shows generic toast on non-HTTP exception`() = runTest {
         coEvery { accountRepository.signup(any()) } throws RuntimeException("Network error")
 
         val result = service.signup(fakeSignupRequest)
 
         assertThat(result).isNull()
         coVerify { appNavigationService.emitAuthEvent(any<AuthState.Error>()) }
+        // Non-HTTP failures must still surface a toast so callers don't add their own. (MOB-592)
+        verify {
+            dialogQueueService.showToast(
+                match<Toast.Simple> { it.message == SignupStrings.Error.MessageGeneric },
+            )
+        }
     }
 
     // -------------------------------------------------------------------------

@@ -147,7 +147,7 @@ fun HistoryScreenContent(
               onItemClick = {  item ->
                 coroutineScope.launch {
                 navBackStack.addRoute(
-                  AppRoute.History.MonthDetails(item.date, ProductType.BABY),
+                  AppRoute.History.MonthDetails(item.dateKey, ProductType.BABY),
                 )
               }},
             )
@@ -158,7 +158,7 @@ fun HistoryScreenContent(
           BabyEmptyState(
             onAddBaby = {
               coroutineScope.launch {
-                navBackStack.addRoute(AppRoute.AccountSettings.AddBaby)
+                navBackStack.addRoute(AppRoute.AccountSettings.AddBaby())
               }
             },
           )

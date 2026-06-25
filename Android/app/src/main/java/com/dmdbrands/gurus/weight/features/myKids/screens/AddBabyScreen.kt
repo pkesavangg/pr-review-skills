@@ -14,12 +14,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
+import java.text.SimpleDateFormat
+import java.util.Locale
+import kotlin.math.roundToInt
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
@@ -29,6 +36,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
+import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
@@ -64,86 +73,40 @@ private val BIRTH_WEIGHT_OZ = (0..15).toList()
 private val BIRTH_LENGTH_IN = (1..36).toList()
 
 @Composable
-fun AddBabyScreen(viewModel: MyKidsViewModel = hiltViewModel()) {
+fun AddBabyScreen(babyId: String? = null, viewModel: MyKidsViewModel = hiltViewModel()) {
     val backStack = LocalNavBackStack.current
     val coroutineScope = rememberCoroutineScope()
-    val focusManager = LocalFocusManager.current
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val isEditing = babyId != null
 
-    val nameControl = remember {
-        FormControl.create(initialValue = "", validators = listOf(FormValidations.required()))
+    // Weight/length inputs follow the account's unit (no toggle, unlike sign-up):
+    //  - metric           → kg (1 field)  + cm
+    //  - imperial lb+oz    → lb + oz (2 fields) + in
+    //  - imperial lb-dec   → lb decimal (1 field) + in
+    val isMetric = state.measurementUnits == MeasurementUnits.METRIC
+    val isLbOz = state.measurementUnits == MeasurementUnits.IMPERIAL_LB_OZ
+
+    val controls = rememberBabyFormControls()
+
+    // Edit mode: seed the form once from the existing baby (when it loads from the VM flow).
+    val editingBaby = remember(babyId, state.babies) {
+        babyId?.let { id -> state.babies.firstOrNull { it.id == id } }
     }
-    val birthdayControl = remember {
-        FormControl.create<DateTimeValue>(
-            initialValue = DateTimeValue.Date(System.currentTimeMillis()),
-            validators = emptyList(),
-        )
-    }
-    val sexControl = remember {
-        FormControl.create(initialValue = "", validators = listOf(FormValidations.required()))
-    }
-    val birthLengthControl = remember {
-        FormControl.create(initialValue = "", validators = emptyList<com.dmdbrands.gurus.weight.features.common.helper.form.Validator<String>>())
-    }
-    val birthWeightControl = remember {
-        FormControl.create(initialValue = "", validators = emptyList<com.dmdbrands.gurus.weight.features.common.helper.form.Validator<String>>())
+    var hasSeeded by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(editingBaby, isMetric, isLbOz) {
+        val baby = editingBaby ?: return@LaunchedEffect
+        if (hasSeeded) return@LaunchedEffect
+        hasSeeded = true
+        seedBabyControls(controls, baby, isMetric, isLbOz)
     }
 
     var showSexModal by remember { mutableStateOf(false) }
-    var showLengthModal by remember { mutableStateOf(false) }
-    var showWeightModal by remember { mutableStateOf(false) }
-
-    val sexOptions = remember {
-        listOf(
-            RadioButtonOption(id = AddBabyStrings.BiologicalSexModal.Male, label = AddBabyStrings.BiologicalSexModal.Male),
-            RadioButtonOption(id = AddBabyStrings.BiologicalSexModal.Female, label = AddBabyStrings.BiologicalSexModal.Female),
-            RadioButtonOption(id = AddBabyStrings.BiologicalSexModal.Private, label = AddBabyStrings.BiologicalSexModal.Private),
-        )
-    }
-
     if (showSexModal) {
-        AppRadioGroupModal(
-            title = AddBabyStrings.BiologicalSexModal.Title,
-            options = sexOptions,
-            selectedItem = sexControl.value.ifEmpty { null },
-            confirmText = AddBabyStrings.BiologicalSexModal.Confirm,
-            onCancel = { showSexModal = false },
-            onOk = { selected ->
-                if (selected != null) sexControl.onValueChange(selected)
-                showSexModal = false
-            },
-        )
-    }
-
-    if (showLengthModal) {
-        BirthLengthPickerModal(
-            selectedInches = birthLengthControl.value.removeSuffix(" ${AddBabyStrings.BirthLengthModal.InchSuffix}").toIntOrNull() ?: 18,
-            onCancel = { showLengthModal = false },
-            onOk = { inches ->
-                birthLengthControl.onValueChange("$inches ${AddBabyStrings.BirthLengthModal.InchSuffix}")
-                showLengthModal = false
-            },
-        )
-    }
-
-    if (showWeightModal) {
-        val parts = birthWeightControl.value.split(" ")
-        val currentLbs = parts.getOrNull(0)?.toIntOrNull() ?: 7
-        val currentOz = parts.getOrNull(2)?.toIntOrNull() ?: 0
-        BirthWeightPickerModal(
-            selectedLbs = currentLbs,
-            selectedOz = currentOz,
-            onCancel = { showWeightModal = false },
-            onOk = { lbs, oz ->
-                birthWeightControl.onValueChange(
-                    "$lbs ${AddBabyStrings.BirthWeightModal.LbSuffix} $oz ${AddBabyStrings.BirthWeightModal.OzSuffix}"
-                )
-                showWeightModal = false
-            },
-        )
+        BabySexModal(sexControl = controls.sex, onDismiss = { showSexModal = false })
     }
 
     AppScaffold(
-        title = AddBabyStrings.Title,
+        title = if (isEditing) AddBabyStrings.EditTitle else AddBabyStrings.Title,
         navigationIcon = {
             AppIconButton(AppIcons.Default.Close) {
                 coroutineScope.launch { backStack.removeLast() }
@@ -155,106 +118,177 @@ fun AddBabyScreen(viewModel: MyKidsViewModel = hiltViewModel()) {
                 type = ButtonType.InlineTextPrimary,
                 size = ButtonSize.Small,
                 onClick = {
-                    viewModel.handleIntent(
-                        MyKidsIntent.SaveBaby(
-                            name = nameControl.value,
-                            birthdayMillis = (birthdayControl.value as? DateTimeValue.Date)?.millis
-                                ?: System.currentTimeMillis(),
-                            biologicalSex = sexControl.value.ifEmpty { null },
-                            birthLengthMillimeters = parseLengthToMm(birthLengthControl.value),
-                            birthWeightDecigrams = parseWeightToDecigrams(birthWeightControl.value),
-                        )
-                    )
+                    viewModel.handleIntent(controls.toSaveBabyIntent(babyId, isMetric, isLbOz))
                 },
             )
         },
     ) { scaffoldModifier ->
-        Column(
-            modifier = scaffoldModifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md)
-                .dismissKeyboardOnTap(),
-        ) {
-            // AppInput already has a built-in xs spacer + error placeholder at the bottom,
-            // so we use no extra spacing here — just the birthday label immediately after.
-            AppInput(
-                formControl = nameControl,
-                type = AppInputType.TEXT,
-                label = AddBabyStrings.NameLabel,
-                imeAction = ImeAction.Done,
-                onImeAction = { focusManager.clearFocus() },
-            )
-
-            AppText(
-                text = AddBabyStrings.BirthdayLabel,
-                textType = TextType.Subtitle,
-            )
-            DateTimeInput(
-                formControl = birthdayControl,
-                mode = DateTimeInputMode.Date,
-                maxValue = DateTimeValue.Date(System.currentTimeMillis()),
-            )
-
-            Spacer(modifier = Modifier.height(MeTheme.spacing.md))
-
-            Box(modifier = Modifier.fillMaxWidth()) {
-                AppInput(
-                    formControl = sexControl,
-                    type = AppInputType.TEXT,
-                    label = AddBabyStrings.BiologicalSexLabel,
-                    readOnly = true,
-                    showTrailingIcon = true,
-                    showTrailingIconAlways = true,
-                    trailingIconId = AppIcons.Filled.CaretDown,
-                    onTrailingAction = { showSexModal = true },
-                )
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clickable(
-                            indication = null,
-                            interactionSource = remember { MutableInteractionSource() },
-                        ) { showSexModal = true },
-                )
-            }
-
-            Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-
-            ReadOnlyUnitField(
-                formControl = birthLengthControl,
-                label = AddBabyStrings.BirthLengthLabel,
-                trailingUnit = AddBabyStrings.FixedLengthUnit,
-                onClick = { showLengthModal = true },
-            )
-
-            Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-
-            ReadOnlyUnitField(
-                formControl = birthWeightControl,
-                label = AddBabyStrings.BirthWeightLabel,
-                trailingUnit = AddBabyStrings.FixedWeightUnit,
-                onClick = { showWeightModal = true },
-            )
-        }
+        AddBabyFields(
+            modifier = scaffoldModifier,
+            controls = controls,
+            isMetric = isMetric,
+            isLbOz = isLbOz,
+            onOpenSexModal = { showSexModal = true },
+        )
     }
 }
 
+/** Form-control holder for the add/edit baby screen. */
+private data class BabyFormControls(
+    val name: FormControl<String>,
+    val birthday: FormControl<DateTimeValue>,
+    val sex: FormControl<String>,
+    val length: FormControl<String>,
+    val weight: FormControl<String>,
+    val weightOz: FormControl<String>,
+)
+
 @Composable
-private fun ReadOnlyUnitField(
-    formControl: FormControl<String>,
-    label: String,
-    trailingUnit: String,
-    onClick: () -> Unit,
+private fun rememberBabyFormControls(): BabyFormControls {
+    // Typed inputs (no pickers). Bounds mirror babyApp's add-a-baby validation
+    // (lb/kg ≤ ~999/450, oz < 16, length ≤ ~999); blank is allowed (optional fields).
+    val name = remember { FormControl.create("", listOf(FormValidations.required())) }
+    val birthday = remember {
+        FormControl.create<DateTimeValue>(DateTimeValue.Date(System.currentTimeMillis()), emptyList())
+    }
+    val sex = remember { FormControl.create("", listOf(FormValidations.required())) }
+    val length = remember { FormControl.create("", listOf(FormValidations.decimalRangeValidator(0, 1000))) }
+    val weight = remember { FormControl.create("", listOf(FormValidations.decimalRangeValidator(0, 1000))) }
+    val weightOz = remember { FormControl.create("", listOf(FormValidations.decimalRangeValidator(0, 16))) }
+    return remember { BabyFormControls(name, birthday, sex, length, weight, weightOz) }
+}
+
+/** Maps the form to a SaveBaby intent, converting weight/length per the account's unit. */
+private fun BabyFormControls.toSaveBabyIntent(babyId: String?, isMetric: Boolean, isLbOz: Boolean) =
+    MyKidsIntent.SaveBaby(
+        name = name.value,
+        birthdayMillis = (birthday.value as? DateTimeValue.Date)?.millis ?: System.currentTimeMillis(),
+        // Persist the canonical lowercase API value ("male"), not the capitalized display
+        // label ("Male"), so it matches §2.8 and the percentile/display logic across the app.
+        biologicalSex = sex.value.ifEmpty { null }?.lowercase(),
+        birthLengthMillimeters = lengthToMm(length.value, isMetric),
+        birthWeightDecigrams = weightToDecigrams(weight.value, weightOz.value, isMetric, isLbOz),
+        babyId = babyId,
+    )
+
+/** Edit mode: seeds the form from an existing baby, in the account's unit. */
+private fun seedBabyControls(controls: BabyFormControls, baby: BabyProfile, isMetric: Boolean, isLbOz: Boolean) {
+    controls.name.onValueChange(baby.name)
+    baby.birthdate?.let { iso ->
+        runCatching { SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(iso)?.time }
+            .getOrNull()?.let { controls.birthday.onValueChange(DateTimeValue.Date(it)) }
+    }
+    // Stored/API sex is lowercase ("male"); the radio options + field show capitalized
+    // labels ("Male"), so capitalize for the field value to preselect + display correctly.
+    baby.sex?.takeIf { it.isNotBlank() }
+        ?.let { sex -> controls.sex.onValueChange(sex.replaceFirstChar { c -> c.uppercase() }) }
+    baby.birthWeightDecigrams?.takeIf { it > 0 }?.let { dg ->
+        when {
+            isLbOz -> {
+                val (lb, oz) = ConversionTools.convertDecigramsToLbOz(dg)
+                controls.weight.onValueChange(lb.toString())
+                controls.weightOz.onValueChange(formatOneDecimal(oz))
+            }
+            isMetric -> controls.weight.onValueChange(formatOneDecimal(ConversionTools.convertDecigramsToKg(dg)))
+            else -> controls.weight.onValueChange(formatOneDecimal(ConversionTools.convertDecigramsToLbExact(dg)))
+        }
+    }
+    baby.birthLengthMillimeters?.takeIf { it > 0 }?.let { mm ->
+        val value = if (isMetric) ConversionTools.convertMmToCm(mm) else ConversionTools.convertMmToInches(mm)
+        controls.length.onValueChange(formatOneDecimal(value))
+    }
+}
+
+/** Biological-sex picker modal (capitalized labels; writes the selected label to [sexControl]). */
+@Composable
+private fun BabySexModal(sexControl: FormControl<String>, onDismiss: () -> Unit) {
+    val options = remember {
+        listOf(
+            RadioButtonOption(id = AddBabyStrings.BiologicalSexModal.Male, label = AddBabyStrings.BiologicalSexModal.Male),
+            RadioButtonOption(id = AddBabyStrings.BiologicalSexModal.Female, label = AddBabyStrings.BiologicalSexModal.Female),
+            RadioButtonOption(id = AddBabyStrings.BiologicalSexModal.Private, label = AddBabyStrings.BiologicalSexModal.Private),
+        )
+    }
+    AppRadioGroupModal(
+        title = AddBabyStrings.BiologicalSexModal.Title,
+        options = options,
+        selectedItem = sexControl.value.ifEmpty { null },
+        confirmText = AddBabyStrings.BiologicalSexModal.Confirm,
+        onCancel = onDismiss,
+        onOk = { selected ->
+            if (selected != null) sexControl.onValueChange(selected)
+            onDismiss()
+        },
+    )
+}
+
+/** The scrollable form fields (name, birthday, sex, length, weight) for the add/edit baby screen. */
+@Composable
+private fun AddBabyFields(
+    modifier: Modifier,
+    controls: BabyFormControls,
+    isMetric: Boolean,
+    isLbOz: Boolean,
+    onOpenSexModal: () -> Unit,
 ) {
+    val focusManager = LocalFocusManager.current
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md)
+            .dismissKeyboardOnTap(),
+    ) {
+        AppInput(
+            formControl = controls.name,
+            type = AppInputType.TEXT,
+            label = AddBabyStrings.NameLabel,
+            imeAction = ImeAction.Done,
+            onImeAction = { focusManager.clearFocus() },
+        )
+
+        AppText(text = AddBabyStrings.BirthdayLabel, textType = TextType.Subtitle)
+        DateTimeInput(
+            formControl = controls.birthday,
+            mode = DateTimeInputMode.Date,
+            maxValue = DateTimeValue.Date(System.currentTimeMillis()),
+        )
+
+        Spacer(modifier = Modifier.height(MeTheme.spacing.md))
+
+        BabySexField(sexControl = controls.sex, onOpenSexModal = onOpenSexModal)
+
+        Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+
+        // Length — typed, unit per account (cm metric / in imperial).
+        AppInput(
+            formControl = controls.length,
+            type = AppInputType.DECIMAL_STRING,
+            label = AddBabyStrings.BirthLengthLabel,
+            trailingText = if (isMetric) AddBabyStrings.CmUnit else AddBabyStrings.FixedLengthUnit,
+            imeAction = ImeAction.Next,
+            maxLength = 5,
+        )
+
+        Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+
+        BirthWeightInput(controls.weight, controls.weightOz, isMetric, isLbOz, focusManager)
+    }
+}
+
+/** Read-only Biological Sex field that opens the radio picker. */
+@Composable
+private fun BabySexField(sexControl: FormControl<String>, onOpenSexModal: () -> Unit) {
     Box(modifier = Modifier.fillMaxWidth()) {
         AppInput(
-            formControl = formControl,
+            formControl = sexControl,
             type = AppInputType.TEXT,
-            label = label,
+            label = AddBabyStrings.BiologicalSexLabel,
             readOnly = true,
-            showTrailingIcon = false,
-            trailingText = trailingUnit,
+            showTrailingIcon = true,
+            showTrailingIconAlways = true,
+            trailingIconId = AppIcons.Filled.CaretDown,
+            onTrailingAction = onOpenSexModal,
         )
         Box(
             modifier = Modifier
@@ -262,140 +296,85 @@ private fun ReadOnlyUnitField(
                 .clickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() },
-                ) { onClick() },
+                ) { onOpenSexModal() },
         )
     }
 }
 
+/** Birth-weight input: two fields (lb + oz) for lb+oz units, otherwise one decimal field. */
 @Composable
-private fun BirthWeightPickerModal(
-    selectedLbs: Int,
-    selectedOz: Int,
-    onCancel: () -> Unit,
-    onOk: (lbs: Int, oz: Int) -> Unit,
+private fun BirthWeightInput(
+    weightControl: FormControl<String>,
+    ozControl: FormControl<String>,
+    isMetric: Boolean,
+    isLbOz: Boolean,
+    focusManager: androidx.compose.ui.focus.FocusManager,
 ) {
-    val lbsState = rememberPickerState(selectedLbs)
-    val ozState = rememberPickerState(selectedOz)
-    val itemHeight = (MeTheme.spacing.sm * 2) + 24.dp
-
-    Dialog(
-        onDismissRequest = onCancel,
-        properties = DialogProperties(
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true,
-            usePlatformDefaultWidth = false,
-        ),
-    ) {
-        BaseModal(
-            title = AddBabyStrings.BirthWeightModal.Title,
-            primaryAction = com.dmdbrands.gurus.weight.features.common.model.ActionButton(
-                text = AddBabyStrings.ModalConfirm,
-                action = { onOk(lbsState.item, ozState.item) },
-            ),
-            secondaryAction = com.dmdbrands.gurus.weight.features.common.model.ActionButton(
-                text = AddBabyStrings.ModalCancel,
-                action = onCancel,
-            ),
+    if (isLbOz) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                AppPicker(
-                    items = BIRTH_WEIGHT_LBS,
-                    selectedItem = lbsState.item,
-                    onItemSelected = { lbsState.setItem(it) },
-                    labelMapper = { it, _ -> "$it ${AddBabyStrings.BirthWeightModal.LbSuffix}" },
-                    itemHeight = itemHeight,
-                    modifier = Modifier.weight(1f),
+            Column(modifier = Modifier.weight(1f)) {
+                AppInput(
+                    formControl = weightControl,
+                    type = AppInputType.NUMERIC_STRING,
+                    label = AddBabyStrings.BirthWeightLabel,
+                    trailingText = AddBabyStrings.BirthWeightModal.LbSuffix,
+                    imeAction = ImeAction.Next,
+                    maxLength = 3,
                 )
-                AppPicker(
-                    items = BIRTH_WEIGHT_OZ,
-                    selectedItem = ozState.item,
-                    onItemSelected = { ozState.setItem(it) },
-                    labelMapper = { it, _ -> "$it ${AddBabyStrings.BirthWeightModal.OzSuffix}" },
-                    itemHeight = itemHeight,
-                    modifier = Modifier.weight(1f),
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                AppInput(
+                    formControl = ozControl,
+                    type = AppInputType.DECIMAL_STRING,
+                    label = AddBabyStrings.BirthWeightLabel,
+                    trailingText = AddBabyStrings.BirthWeightModal.OzSuffix,
+                    imeAction = ImeAction.Done,
+                    onImeAction = { focusManager.clearFocus() },
+                    maxLength = 4,
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun BirthLengthPickerModal(
-    selectedInches: Int,
-    onCancel: () -> Unit,
-    onOk: (inches: Int) -> Unit,
-) {
-    val inchState = rememberPickerState(selectedInches)
-    val itemHeight = (MeTheme.spacing.sm * 2) + 24.dp
-
-    Dialog(
-        onDismissRequest = onCancel,
-        properties = DialogProperties(
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true,
-            usePlatformDefaultWidth = false,
-        ),
-    ) {
-        BaseModal(
-            title = AddBabyStrings.BirthLengthModal.Title,
-            primaryAction = com.dmdbrands.gurus.weight.features.common.model.ActionButton(
-                text = AddBabyStrings.ModalConfirm,
-                action = { onOk(inchState.item) },
-            ),
-            secondaryAction = com.dmdbrands.gurus.weight.features.common.model.ActionButton(
-                text = AddBabyStrings.ModalCancel,
-                action = onCancel,
-            ),
-        ) {
-            AppPicker(
-                items = BIRTH_LENGTH_IN,
-                selectedItem = inchState.item,
-                onItemSelected = { inchState.setItem(it) },
-                labelMapper = { it, _ -> "$it ${AddBabyStrings.BirthLengthModal.InchSuffix}" },
-                itemHeight = itemHeight,
-            )
-        }
-    }
-}
-
-private fun parseWeightToDecigrams(value: String): Int? {
-    if (value.isBlank()) return null
-    val parts = value.split(" ")
-    val lbs = parts.getOrNull(0)?.toIntOrNull() ?: return null
-    val oz = parts.getOrNull(2)?.toIntOrNull() ?: 0
-    return Math.round(lbs * 4535.92 + oz * 283.495).toInt()
-}
-
-private fun parseLengthToMm(value: String): Int? {
-    if (value.isBlank()) return null
-    val inches = value.split(" ").getOrNull(0)?.toIntOrNull() ?: return null
-    return Math.round(inches * 25.4).toInt()
-}
-
-@PreviewTheme
-@Composable
-fun AddBabyScreenPreview() {
-    MeAppTheme {
-        BirthWeightPickerModal(
-            selectedLbs = 6,
-            selectedOz = 8,
-            onCancel = {},
-            onOk = { _, _ -> },
+    } else {
+        AppInput(
+            formControl = weightControl,
+            type = AppInputType.DECIMAL_STRING,
+            label = AddBabyStrings.BirthWeightLabel,
+            trailingText = if (isMetric) AddBabyStrings.KgUnit else AddBabyStrings.FixedWeightUnit,
+            imeAction = ImeAction.Done,
+            onImeAction = { focusManager.clearFocus() },
+            maxLength = 6,
         )
     }
 }
 
-@PreviewTheme
-@Composable
-fun BirthLengthPickerModalPreview() {
-    MeAppTheme {
-        BirthLengthPickerModal(
-            selectedInches = 6,
-            onCancel = {},
-            onOk = {},
-        )
+/**
+ * Converts the typed birth weight to decigrams per the account's unit (mirrors sign-up):
+ * metric → kg, imperial lb+oz → two fields, imperial decimal → lb. Returns null when empty.
+ */
+private fun weightToDecigrams(weight: String, ounces: String, isMetric: Boolean, isLbOz: Boolean): Int? {
+    if (isLbOz) {
+        val lbs = weight.toIntOrNull() ?: 0
+        val oz = ounces.toDoubleOrNull() ?: 0.0
+        if (lbs <= 0 && oz <= 0.0) return null
+        return ConversionTools.convertLbOzToDecigrams(lbs, oz)
     }
+    val value = weight.toDoubleOrNull() ?: return null
+    if (value <= 0.0) return null
+    return if (isMetric) ConversionTools.convertKgToDecigrams(value) else ConversionTools.convertLbToDecigrams(value)
+}
+
+/** Converts the typed birth length to millimeters per the account's unit (cm metric / in imperial). */
+private fun lengthToMm(value: String, isMetric: Boolean): Int? {
+    val v = value.toDoubleOrNull() ?: return null
+    if (v <= 0.0) return null
+    return if (isMetric) ConversionTools.convertCmToMm(v) else ConversionTools.convertInchesToMm(v)
+}
+
+/** Seeds a decimal field as "8" (whole) or "14.9" (1 decimal), never "8.0". */
+private fun formatOneDecimal(value: Double): String {
+    val rounded = kotlin.math.round(value * 10) / 10.0
+    return if (rounded % 1.0 == 0.0) rounded.toInt().toString() else rounded.toString()
 }

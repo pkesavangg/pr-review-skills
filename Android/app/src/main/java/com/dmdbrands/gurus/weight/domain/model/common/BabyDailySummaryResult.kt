@@ -12,4 +12,7 @@ data class BabyDailySummaryResult(
     val babyLengthMillimeters: Int?,
     val weekNumber: Int,
     val year: Int,
+    // Machine date key (YYYY-MM-DD) for day-detail lookup; `date` is display-only.
+    // Room populates it by column name; default keeps dev-only sample data compiling.
+    val dateKey: String = "",
 )

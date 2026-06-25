@@ -9,7 +9,8 @@ import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.api.entry.toDomainEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
-import com.dmdbrands.gurus.weight.domain.model.api.entry.toUnifiedRequestOrNull
+import com.dmdbrands.gurus.weight.domain.model.api.entry.toDomainEntries
+import com.dmdbrands.gurus.weight.domain.model.api.entry.toUnifiedRequests
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry.Companion.fromScaleApiEntry
@@ -229,14 +230,15 @@ class EntryService(
             val successfulOperations = mutableListOf<Entry>()
             val failedOperations = mutableListOf<Entry>()
 
-            // Build a single atomic batch for POST /v3/entries/. Baby entries map to
-            // null and are skipped until Android 3 / MOB-381 wires the baby write.
-            val sendable = unSyncedEntries.mapNotNull { op ->
-                op.toUnifiedRequestOrNull()?.let { request -> op to request }
-            }
+            // Build a single atomic batch for POST /v3/entries/. Each op maps to 0..N
+            // requests — a combined baby row fans out to weight + measureLength (§2.16),
+            // so we track ops (for isSynced bookkeeping) separately from the flat request list.
+            val sendable = unSyncedEntries
+                .map { op -> op to op.toUnifiedRequests() }
+                .filter { it.second.isNotEmpty() }
             if (sendable.isNotEmpty()) {
                 try {
-                    val response = entryRepository.sendBatchToAPI(sendable.map { it.second })
+                    val response = entryRepository.sendBatchToAPI(sendable.flatMap { it.second })
                     // Whole batch succeeded — mark every sent op synced.
                     sendable.forEach { (op, _) ->
                         successfulOperations.add(op.updateEntry(entry = op.entry.copy(isSynced = true)))
@@ -254,7 +256,7 @@ class EntryService(
                     // TODO(MOB-380): the legacy GET refetch below also advances the sync cursor. When the
                     // unified GET replaces operation/r4, drive a single sync-cursor source to avoid
                     // skipping cross-device entries between the two timestamp values.
-                    val confirmed = response.entries.mapNotNull { it.toDomainEntry(accountId) }
+                    val confirmed = response.entries.toDomainEntries(accountId)
                     EntryServiceHelper.executeOperations(entryRepository, confirmed)
                     response.timestamp?.takeIf { it.isNotBlank() }?.let { accountRepository.updateSyncTimeStamp(it) }
                 } catch (e: Exception) {
@@ -301,7 +303,7 @@ class EntryService(
             try {
                 val syncTimeStamp = accountRepository.getSyncTimeStamp().first()
                 val response = entryRepository.getEntriesSync(start = syncTimeStamp)
-                val domainEntries = response.entries.mapNotNull { it.toDomainEntry(accountId) }
+                val domainEntries = response.entries.toDomainEntries(accountId)
                 if (domainEntries.isNotEmpty()) {
                     EntryServiceHelper.executeOperations(entryRepository, domainEntries)
                 }
