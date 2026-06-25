@@ -32,6 +32,9 @@ final class MockAccountService: AccountServiceProtocol {
     var deleteAccountResult: Result<Void, Error> = .success(())
     var switchAccountResult: Result<Void, Error> = .failure(UnexpectedCallError.methodCalled("switchAccount"))
     var refreshAccountResult: Result<Void, Error> = .failure(UnexpectedCallError.methodCalled("refreshAccount"))
+    /// When set, a successful `refreshAccount` swaps in this snapshot as the new `activeAccount`,
+    /// simulating the server-side state the app re-fetches after an OAuth/integration change.
+    var refreshAccountAppliesAccount: AccountSnapshot?
     var updatePublishedStateError: Error?
     var shouldDeferUnauthenticatedLandingResult = false
     var deleteAllAccountsError: Error?
@@ -236,6 +239,7 @@ final class MockAccountService: AccountServiceProtocol {
         refreshAccountCalls += 1
         lastRefreshAccountId = accountId
         try refreshAccountResult.get()
+        if let refreshAccountAppliesAccount { activeAccount = refreshAccountAppliesAccount }
     }
 
     func logOutAllAccounts() async throws {

@@ -3,7 +3,7 @@ import SwiftData
 @testable import meApp
 
 @MainActor
-final class MockScaleRepository: ScaleRepositoryProtocol {
+final class MockScaleRepository: DeviceRepositoryProtocol {
     let context: ModelContext
     var devices: [Device] = [] {
         didSet {
@@ -43,7 +43,7 @@ final class MockScaleRepository: ScaleRepositoryProtocol {
     private(set) var lastPatchedPreferenceScaleId: String?
     private(set) var lastPatchedPreferenceDTO: R4ScalePreferenceDTO?
     private(set) var lastReplacedAccountId: String?
-    private(set) var lastServerDevices: [ScaleDTO] = []
+    private(set) var lastServerDevices: [DeviceDTO] = []
     private(set) var lastPreservedUnsyncedDevices: [Device] = []
     private var isSyncingSnapshot = false
 
@@ -129,7 +129,7 @@ final class MockScaleRepository: ScaleRepositoryProtocol {
         lastEditProperties = properties
         if let editScaleError { throw editScaleError }
         guard let device = try await getDevice(scaleId) else {
-            throw ScaleError.deviceNotFound(id: scaleId)
+            throw DeviceError.deviceNotFound(id: scaleId)
         }
         if let nickname = properties["nickname"] as? String {
             device.nickname = nickname
@@ -153,7 +153,7 @@ final class MockScaleRepository: ScaleRepositoryProtocol {
         lastPatchedMetaData = metaData
         if let patchScaleMetaError { throw patchScaleMetaError }
         guard let device = try await getDevice(scaleId) else {
-            throw ScaleError.deviceNotFound(id: scaleId)
+            throw DeviceError.deviceNotFound(id: scaleId)
         }
         device.metaData = cloneMetaData(metaData)
         try context.save()
@@ -170,7 +170,7 @@ final class MockScaleRepository: ScaleRepositoryProtocol {
         lastPatchedPreferenceDTO = dto
         if let patchScalePreferenceError { throw patchScalePreferenceError }
         guard let device = try await getDevice(scaleId) else {
-            throw ScaleError.deviceNotFound(id: scaleId)
+            throw DeviceError.deviceNotFound(id: scaleId)
         }
         if let existing = device.r4ScalePreference {
             existing.displayName = dto.displayName
@@ -193,7 +193,7 @@ final class MockScaleRepository: ScaleRepositoryProtocol {
         syncSnapshotFromContext()
     }
 
-    func replaceAllDevicesForAccount(_ accountId: String, with serverDevices: [ScaleDTO], preserveUnsynced unsyncedDevices: [Device]) async throws {
+    func replaceAllDevicesForAccount(_ accountId: String, with serverDevices: [DeviceDTO], preserveUnsynced unsyncedDevices: [Device]) async throws {
         replaceAllDevicesForAccountCalls += 1
         lastReplacedAccountId = accountId
         lastServerDevices = serverDevices

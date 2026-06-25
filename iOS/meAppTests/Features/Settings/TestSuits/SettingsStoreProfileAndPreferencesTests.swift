@@ -65,26 +65,27 @@ extension SettingsStoreTests {
             #expect(store.editProfileForm.birthday.value == originalBirthday)
         }
 
-        @Test("updateHeight rejects invalid values and shows error toast")
+        @Test("updateHeightInForm rejects invalid imperial values without changing the form")
         func updateHeightRejectsInvalidValues() {
             let notification = TestNotificationHelperService()
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification)
 
             store.updateHeightInForm(fromMetric: false, values: ["9", "13"])
 
-            #expect(notification.showToastCalls == 1)
-            #expect(notification.toastData?.title == ToastStrings.errorUpdatingHeight)
+            // The form-only mutator logs and returns on invalid input — no toast, no form change.
+            #expect(notification.showToastCalls == 0)
+            #expect(!store.editProfileForm.height.isDirty)
         }
 
-        @Test("updateHeight rejects invalid metric values and shows error toast")
+        @Test("updateHeightInForm rejects invalid metric values without changing the form")
         func updateHeightRejectsInvalidMetricValues() {
             let notification = TestNotificationHelperService()
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification)
 
             store.updateHeightInForm(fromMetric: true, values: ["4", "9", "9"])
 
-            #expect(notification.showToastCalls == 1)
-            #expect(notification.toastData?.title == ToastStrings.errorUpdatingHeight)
+            #expect(notification.showToastCalls == 0)
+            #expect(!store.editProfileForm.height.isDirty)
         }
 
         @Test("updateHeight without current stored height does nothing")
@@ -131,110 +132,59 @@ extension SettingsStoreTests {
             #expect(notification.showLoaderCalls == 0)
         }
 
-        @Test("updateHeight success persists body comp and shows toast")
-        func updateHeightSuccessPersistsBodyComp() async {
+        @Test("updateHeightInForm valid metric values update the form height and mark it dirty")
+        func updateHeightValidMetricUpdatesForm() async {
             let notification = TestNotificationHelperService()
-            let account = AccountTestFixtures.makeAccountSnapshot(
-                id: "acct-1",
-                email: "lakshmi@example.com",
-                firstName: "Lakshmi",
-                lastName: "Priya",
-                gender: .female,
-                dob: "1992-03-04",
-                zipcode: "560001",
-                isActiveAccount: true,
-                weightUnit: .kg,
-                weightHeight: "680",
-                activityLevel: .athlete,
-                isStreakOn: true,
-                isWeightlessOn: true,
-                weightlessWeight: 1550,
-                shouldSendEntryNotifications: true,
-                shouldSendWeightInEntryNotifications: true
-            )
+            let account = SettingsStoreTestFixtures.makeAccount(unit: .kg)
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
-            accountService.updateBodyCompResult = .success(())
-            let bluetooth = MockBluetoothService()
-            bluetooth.updateUserProfileForR4ScalesResult = .failure(.notImplemented)
-            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService, bluetoothService: bluetooth)
-
-            store.updateHeightInForm(fromMetric: true, values: ["1", "7", "3"])
-            await SettingsStoreTestFixtures.waitUntil { accountService.updateBodyCompCalls == 1 && notification.dismissLoaderCalls == 1 }
-
-            #expect(accountService.lastUpdatedBodyComp?.height == Double(ConversionTools.convertCmToStoredHeight(173)))
-            #expect(notification.showToastCalls == 1)
-        }
-
-        @Test("updateHeight success with scale sync success shows success toast")
-        func updateHeightSuccessWithScaleSyncSuccessShowsToast() async {
-            let notification = TestNotificationHelperService()
-            let account = AccountTestFixtures.makeAccountSnapshot(
-                id: "acct-1",
-                email: "lakshmi@example.com",
-                firstName: "Lakshmi",
-                lastName: "Priya",
-                gender: .female,
-                dob: "1992-03-04",
-                zipcode: "560001",
-                isActiveAccount: true,
-                weightUnit: .kg,
-                weightHeight: "680",
-                activityLevel: .athlete,
-                isStreakOn: true,
-                isWeightlessOn: true,
-                weightlessWeight: 1550,
-                shouldSendEntryNotifications: true,
-                shouldSendWeightInEntryNotifications: true
-            )
-            let accountService = MockAccountService()
-            accountService.seedAccounts([account], active: account)
-            accountService.updateBodyCompResult = .success(())
-            let bluetooth = MockBluetoothService()
-            bluetooth.updateUserProfileForR4ScalesResult = .success(["UPDATED"])
-            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService, bluetoothService: bluetooth)
-
-            store.updateHeightInForm(fromMetric: true, values: ["1", "7", "3"])
-            await SettingsStoreTestFixtures.waitUntil {
-                accountService.updateBodyCompCalls == 1 &&
-                bluetooth.updateUserProfileForR4ScalesCalls == 1 &&
-                notification.dismissLoaderCalls == 1
-            }
-
-            #expect(notification.toastData?.message == ToastStrings.heightUpdated)
-            #expect(notification.showAlertCalls == 0)
-        }
-
-        @Test("updateHeight failure shows error toast")
-        func updateHeightFailureShowsErrorToast() async {
-            let notification = TestNotificationHelperService()
-            let account = AccountTestFixtures.makeAccountSnapshot(
-                id: "acct-1",
-                email: "lakshmi@example.com",
-                firstName: "Lakshmi",
-                lastName: "Priya",
-                gender: .female,
-                dob: "1992-03-04",
-                zipcode: "560001",
-                isActiveAccount: true,
-                weightUnit: .kg,
-                weightHeight: "680",
-                activityLevel: .athlete,
-                isStreakOn: true,
-                isWeightlessOn: true,
-                weightlessWeight: 1550,
-                shouldSendEntryNotifications: true,
-                shouldSendWeightInEntryNotifications: true
-            )
-            let accountService = MockAccountService()
-            accountService.seedAccounts([account], active: account)
-            accountService.updateBodyCompResult = .failure(AccountTestError.apiFailed)
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService)
 
             store.updateHeightInForm(fromMetric: true, values: ["1", "7", "3"])
-            await SettingsStoreTestFixtures.waitUntil { accountService.updateBodyCompCalls == 1 && notification.dismissLoaderCalls == 1 }
+            await Task.yield()
 
-            #expect(notification.toastData?.title == ToastStrings.errorUpdatingHeight)
+            // The form-only mutator updates the form; persistence happens later in saveProfile().
+            #expect(store.editProfileForm.height.value == String(ConversionTools.convertCmToStoredHeight(173)))
+            #expect(store.editProfileForm.height.isDirty)
+            #expect(accountService.updateBodyCompCalls == 0)
+            #expect(notification.showToastCalls == 0)
+            #expect(notification.showLoaderCalls == 0)
+        }
+
+        @Test("updateHeightInForm does not call services or show a toast")
+        func updateHeightDoesNotCallServices() async {
+            let notification = TestNotificationHelperService()
+            let account = SettingsStoreTestFixtures.makeAccount(unit: .kg)
+            let accountService = MockAccountService()
+            accountService.seedAccounts([account], active: account)
+            let bluetooth = MockBluetoothService()
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService, bluetoothService: bluetooth)
+
+            store.updateHeightInForm(fromMetric: true, values: ["1", "7", "3"])
+            await Task.yield()
+
+            #expect(accountService.updateBodyCompCalls == 0)
+            #expect(bluetooth.updateUserProfileForR4ScalesCalls == 0)
+            #expect(notification.showToastCalls == 0)
+            #expect(notification.showAlertCalls == 0)
+        }
+
+        @Test("updateHeightInForm valid imperial values update the form height and mark it dirty")
+        func updateHeightValidImperialUpdatesForm() async {
+            let notification = TestNotificationHelperService()
+            let account = SettingsStoreTestFixtures.makeAccount(unit: .lb)
+            let accountService = MockAccountService()
+            accountService.seedAccounts([account], active: account)
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService)
+
+            store.updateHeightInForm(fromMetric: false, values: ["5", "9"])
+            await Task.yield()
+
+            let expected = ConversionTools.convertInchesToStoredHeight((5 * 12) + 9)
+            #expect(store.editProfileForm.height.value == String(expected))
+            #expect(store.editProfileForm.height.isDirty)
+            #expect(accountService.updateBodyCompCalls == 0)
+            #expect(notification.showToastCalls == 0)
         }
 
         @Test("confirmDiscardProfileChanges returns true when user exits")
@@ -291,6 +241,7 @@ extension SettingsStoreTests {
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
             accountService.updateProfileResult = .success(())
+            accountService.updateBodyCompResult = .success(())
             let bluetooth = MockBluetoothService()
             bluetooth.updateUserProfileForR4ScalesResult = .failure(.notImplemented)
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService, bluetoothService: bluetooth)
@@ -319,6 +270,7 @@ extension SettingsStoreTests {
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
             accountService.updateProfileResult = .success(())
+            accountService.updateBodyCompResult = .success(())
             let bluetooth = MockBluetoothService()
             bluetooth.updateUserProfileForR4ScalesResult = .success(["UPDATED"])
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService, bluetoothService: bluetooth)
@@ -350,6 +302,7 @@ extension SettingsStoreTests {
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
             accountService.updateProfileResult = .success(())
+            accountService.updateBodyCompResult = .success(())
             let bluetooth = MockBluetoothService()
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService, bluetoothService: bluetooth)
             let router = Router<SettingsRoute>()
@@ -779,59 +732,57 @@ extension SettingsStoreTests {
             #expect(notification.showLoaderCalls == 0)
         }
 
-        @Test("updateGender success persists profile")
-        func updateGenderSuccessPersistsProfile() async {
+        @Test("updateGenderInForm updates the form gender and marks it dirty")
+        func updateGenderInFormUpdatesFormValue() async {
             let notification = TestNotificationHelperService()
             let account = SettingsStoreTestFixtures.makeAccount()
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
-            accountService.updateProfileResult = .success(())
-            let bluetooth = MockBluetoothService()
-            bluetooth.updateUserProfileForR4ScalesResult = .failure(.notImplemented)
-            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService, bluetoothService: bluetooth)
-
-            store.updateGenderInForm(.male)
-            await SettingsStoreTestFixtures.waitUntil { accountService.updateProfileCalls == 1 && notification.dismissLoaderCalls == 1 }
-
-            #expect(accountService.lastUpdatedProfile?.gender == .male)
-            #expect(notification.showToastCalls == 1)
-        }
-
-        @Test("updateGender success with scale sync success shows success toast")
-        func updateGenderSuccessWithScaleSyncSuccessShowsToast() async {
-            let notification = TestNotificationHelperService()
-            let account = SettingsStoreTestFixtures.makeAccount()
-            let accountService = MockAccountService()
-            accountService.seedAccounts([account], active: account)
-            accountService.updateProfileResult = .success(())
-            let bluetooth = MockBluetoothService()
-            bluetooth.updateUserProfileForR4ScalesResult = .success(["UPDATED"])
-            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService, bluetoothService: bluetooth)
-
-            store.updateGenderInForm(.male)
-            await SettingsStoreTestFixtures.waitUntil {
-                accountService.updateProfileCalls == 1 &&
-                bluetooth.updateUserProfileForR4ScalesCalls == 1 &&
-                notification.dismissLoaderCalls == 1
-            }
-
-            #expect(notification.toastData?.message == ToastStrings.profileSaved)
-            #expect(notification.showAlertCalls == 0)
-        }
-
-        @Test("updateGender failure shows unable to update toast")
-        func updateGenderFailureShowsToast() async {
-            let notification = TestNotificationHelperService()
-            let account = SettingsStoreTestFixtures.makeAccount()
-            let accountService = MockAccountService()
-            accountService.seedAccounts([account], active: account)
-            accountService.updateProfileResult = .failure(AccountTestError.apiFailed)
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService)
 
             store.updateGenderInForm(.male)
-            await SettingsStoreTestFixtures.waitUntil { accountService.updateProfileCalls == 1 && notification.dismissLoaderCalls == 1 }
+            await Task.yield()
 
-            #expect(notification.toastData?.message == ToastStrings.unableToUpdateAccountSettings)
+            // The form-only mutator updates the form; persistence happens later in saveProfile().
+            #expect(store.editProfileForm.gender.value == .male)
+            #expect(store.editProfileForm.gender.isDirty)
+            #expect(accountService.updateProfileCalls == 0)
+            #expect(notification.showToastCalls == 0)
+            #expect(notification.showLoaderCalls == 0)
+        }
+
+        @Test("updateGenderInForm does not call services or show a toast")
+        func updateGenderInFormDoesNotCallServices() async {
+            let notification = TestNotificationHelperService()
+            let account = SettingsStoreTestFixtures.makeAccount()
+            let accountService = MockAccountService()
+            accountService.seedAccounts([account], active: account)
+            let bluetooth = MockBluetoothService()
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService, bluetoothService: bluetooth)
+
+            store.updateGenderInForm(.male)
+            await Task.yield()
+
+            #expect(accountService.updateProfileCalls == 0)
+            #expect(bluetooth.updateUserProfileForR4ScalesCalls == 0)
+            #expect(notification.showToastCalls == 0)
+            #expect(notification.showAlertCalls == 0)
+        }
+
+        @Test("updateGenderInForm reflects the latest selection")
+        func updateGenderInFormReflectsLatestSelection() async {
+            let account = SettingsStoreTestFixtures.makeAccount()
+            let accountService = MockAccountService()
+            accountService.seedAccounts([account], active: account)
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService)
+
+            store.updateGenderInForm(.male)
+            store.updateGenderInForm(.female)
+            await Task.yield()
+
+            #expect(store.editProfileForm.gender.value == .female)
+            #expect(store.editProfileForm.gender.isDirty)
+            #expect(accountService.updateProfileCalls == 0)
         }
 
         @Test("confirmDiscardProfileChanges returns false when user cancels")
@@ -878,6 +829,7 @@ extension SettingsStoreTests {
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
             accountService.updateProfileResult = .success(())
+            accountService.updateBodyCompResult = .success(())
             let bluetooth = MockBluetoothService()
             bluetooth.updateUserProfileForR4ScalesResult = .success([UserCreationResponse.userSelectionInProgress.rawValue])
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService, bluetoothService: bluetooth)
@@ -932,57 +884,41 @@ extension SettingsStoreTests {
             #expect(notification.showToastCalls == 0)
         }
 
-        @Test("updateGender user selection in progress shows pending alert")
-        func updateGenderUserSelectionInProgressShowsPendingAlert() async {
+        @Test("updateGenderInForm does not present the scale-pending alert")
+        func updateGenderInFormDoesNotPresentPendingAlert() async {
             let notification = TestNotificationHelperService()
             let account = SettingsStoreTestFixtures.makeAccount()
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
-            accountService.updateProfileResult = .success(())
             let bluetooth = MockBluetoothService()
             bluetooth.updateUserProfileForR4ScalesResult = .success([UserCreationResponse.userSelectionInProgress.rawValue])
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService, bluetoothService: bluetooth)
 
             store.updateGenderInForm(.male)
-            await SettingsStoreTestFixtures.waitUntil { accountService.updateProfileCalls == 1 && notification.dismissLoaderCalls == 1 }
+            await Task.yield()
 
-            #expect(notification.showAlertCalls == 1)
+            // No R4 sync happens here, so the pending alert is never shown.
+            #expect(notification.showAlertCalls == 0)
             #expect(notification.showToastCalls == 0)
+            #expect(bluetooth.updateUserProfileForR4ScalesCalls == 0)
         }
 
-        @Test("updateHeight user selection in progress shows pending alert")
-        func updateHeightUserSelectionInProgressShowsPendingAlert() async {
+        @Test("updateHeightInForm does not present the scale-pending alert")
+        func updateHeightInFormDoesNotPresentPendingAlert() async {
             let notification = TestNotificationHelperService()
-            let account = AccountTestFixtures.makeAccountSnapshot(
-                id: "acct-1",
-                email: "lakshmi@example.com",
-                firstName: "Lakshmi",
-                lastName: "Priya",
-                gender: .female,
-                dob: "1992-03-04",
-                zipcode: "560001",
-                isActiveAccount: true,
-                weightUnit: .kg,
-                weightHeight: "680",
-                activityLevel: .athlete,
-                isStreakOn: true,
-                isWeightlessOn: true,
-                weightlessWeight: 1550,
-                shouldSendEntryNotifications: true,
-                shouldSendWeightInEntryNotifications: true
-            )
+            let account = SettingsStoreTestFixtures.makeAccount(unit: .kg)
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
-            accountService.updateBodyCompResult = .success(())
             let bluetooth = MockBluetoothService()
             bluetooth.updateUserProfileForR4ScalesResult = .success([UserCreationResponse.userSelectionInProgress.rawValue])
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService, bluetoothService: bluetooth)
 
             store.updateHeightInForm(fromMetric: true, values: ["1", "7", "3"])
-            await SettingsStoreTestFixtures.waitUntil { accountService.updateBodyCompCalls == 1 && notification.dismissLoaderCalls == 1 }
+            await Task.yield()
 
-            #expect(notification.showAlertCalls == 1)
-            #expect(notification.showToastCalls == 0)
+            #expect(notification.showAlertCalls == 0)
+            #expect(bluetooth.updateUserProfileForR4ScalesCalls == 0)
+            #expect(store.editProfileForm.height.isDirty)
         }
     }
 }

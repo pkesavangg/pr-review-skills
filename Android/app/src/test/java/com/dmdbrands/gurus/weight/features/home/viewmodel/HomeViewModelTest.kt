@@ -13,7 +13,9 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
+import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.home.reducer.HomeIntent
+import com.greatergoods.libs.appsync.startAppSyncScan
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
 import com.google.common.truth.Truth.assertThat
@@ -27,6 +29,10 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.mockkStatic
+import io.mockk.unmockkObject
+import io.mockk.unmockkStatic
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -265,6 +271,71 @@ class HomeViewModelTest {
         viewModel.handleIntent(HomeIntent.CheckAndRequestPermission { })
         advanceUntilIdle()
         verify { dialogUtility.permissionAlert(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `CheckAndRequestPermission dismisses the loader when permission status never loads`() = runTest {
+        // Loader must always be dismissed, even if the flow never emits (times out) or the
+        // coroutine is cancelled mid-await — the try/finally guard. (PR #2093 review)
+        val permFlow = MutableStateFlow(mutableMapOf<String, String>())
+        every { ggPermissionService.permissionCallBackFlow } returns permFlow
+        viewModel = createViewModel()
+        mockkObject(AppPermissionsHelper)
+        every { AppPermissionsHelper.areRequiredPermissionsEnabled(any(), any()) } returns false
+
+        try {
+            viewModel.handleIntent(HomeIntent.CheckAndRequestPermission { })
+            advanceUntilIdle() // advances past PERMISSION_LOAD_TIMEOUT_MS
+
+            verify { dialogQueueService.showLoader(any()) }
+            verify { dialogQueueService.dismissLoader() }
+        } finally {
+            unmockkObject(AppPermissionsHelper)
+        }
+    }
+
+    @Test
+    fun `CheckAndRequestPermission with empty-then-granted flow opens scanner without prompting`() = runTest {
+        // MOB-710 regression: the permission flow holds an empty map until its first poll, then
+        // emits the real (granted) status. The tap must wait for that status and proceed —
+        // NOT prompt off the stale empty map. (PR #2093 review)
+        val permFlow = MutableStateFlow(mutableMapOf<String, String>())
+        every { ggPermissionService.permissionCallBackFlow } returns permFlow
+        viewModel = createViewModel()
+        mockkObject(AppPermissionsHelper)
+        // areRequiredPermissionsEnabled has 4 params (map, sku, setupType, requiredTypes) — match all.
+        every { AppPermissionsHelper.areRequiredPermissionsEnabled(any(), any(), any(), any()) } returns true
+
+        try {
+            var result: Boolean? = null
+            viewModel.handleIntent(HomeIntent.CheckAndRequestPermission { result = it })
+            // Status loads after the tap (empty -> granted).
+            permFlow.value = mutableMapOf("android.permission.CAMERA" to "granted")
+            advanceUntilIdle()
+
+            assertThat(result).isTrue()
+            verify(exactly = 0) { dialogUtility.permissionAlert(any(), any(), any(), any()) }
+        } finally {
+            unmockkObject(AppPermissionsHelper)
+        }
+    }
+
+    @Test
+    fun `StartAppSyncScan resets isScanning to false when the scan fails`() = runTest {
+        // The scan runs on viewModelScope with a finally that always clears the flag; a failed
+        // scan must leave isScanning = false, otherwise the AppSync icon stays stuck. (PR #2093 review)
+        mockkStatic(::startAppSyncScan)
+        try {
+            coEvery { startAppSyncScan(any(), any(), any(), any()) } throws RuntimeException("scan failed")
+            val activity = mockk<android.app.Activity>(relaxed = true)
+
+            viewModel.handleIntent(HomeIntent.StartAppSyncScan(activity))
+            advanceUntilIdle()
+
+            assertThat(viewModel.state.value.isScanning).isFalse()
+        } finally {
+            unmockkStatic(::startAppSyncScan)
+        }
     }
 
     // -------------------------------------------------------------------------

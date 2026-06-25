@@ -256,7 +256,7 @@ struct PermissionsServiceTests {
     ) -> PermissionsService {
         PermissionsService(
             notificationService: notification ?? MockPermissionsNotificationHelperService(),
-            scaleService: scale ?? MockScaleService(),
+            deviceService: scale ?? MockScaleService(),
             logger: logger ?? MockLoggerService(),
             permissionClient: permissionClient ?? MockPermissionSDKClient()
         )

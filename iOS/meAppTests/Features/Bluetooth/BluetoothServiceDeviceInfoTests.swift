@@ -353,7 +353,7 @@ struct BluetoothServiceDeviceInfoTests {
             id: "r4-1",
             broadcastIdString: "R4-BID",
             isConnected: true,
-            bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true)
+            bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
         )
         sut.bluetoothScales = [r4Device.toSnapshot()]
 
@@ -377,7 +377,7 @@ struct BluetoothServiceDeviceInfoTests {
             id: "wifi-1",
             broadcastIdString: "WIFI-BID",
             isConnected: true,
-            bathScale: BathScale(scaleType: ScaleSourceType.wifi.rawValue, bodyComp: false)
+            bathScale: BathScale(scaleType: DeviceSourceType.wifi.rawValue, bodyComp: false)
         )
         sut.bluetoothScales = [wifiDevice.toSnapshot()]
 
@@ -399,7 +399,7 @@ struct BluetoothServiceDeviceInfoTests {
             id: "r4-disc",
             broadcastIdString: "R4-DISC",
             isConnected: false,
-            bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true)
+            bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
         )
         sut.bluetoothScales = [device.toSnapshot()]
 
@@ -441,7 +441,7 @@ struct BluetoothServiceDeviceInfoTests {
             id: "r4-fail",
             broadcastIdString: "R4-FAIL",
             isConnected: true,
-            bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true)
+            bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
         )
         sut.bluetoothScales = [device.toSnapshot()]
 
@@ -466,7 +466,7 @@ struct BluetoothServiceDeviceInfoTests {
             id: "r4-wo",
             broadcastIdString: "R4-WO",
             isConnected: true,
-            bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true)
+            bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
         )
         device.isWeighOnlyModeEnabledByOthers = true
         sut.bluetoothScales = [device.toSnapshot()]
@@ -501,19 +501,19 @@ struct BluetoothServiceDeviceInfoTests {
             id: "r4-a",
             broadcastIdString: "R4-A",
             isConnected: true,
-            bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true)
+            bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
         )
         let r4b = makeDevice(
             id: "r4-b",
             broadcastIdString: "R4-B",
             isConnected: true,
-            bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true)
+            bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
         )
         let nonR4 = makeDevice(
             id: "wifi-1",
             broadcastIdString: "WIFI-1",
             isConnected: true,
-            bathScale: BathScale(scaleType: ScaleSourceType.wifi.rawValue, bodyComp: false)
+            bathScale: BathScale(scaleType: DeviceSourceType.wifi.rawValue, bodyComp: false)
         )
         sut.bluetoothScales = [r4a.toSnapshot(), r4b.toSnapshot(), nonR4.toSnapshot()]
 
@@ -540,7 +540,7 @@ struct BluetoothServiceDeviceInfoTests {
     ) -> BluetoothService {
         BluetoothService(
             accountService: account ?? MockAccountService(),
-            scaleService: scale ?? MockScaleService(),
+            deviceService: scale ?? MockScaleService(),
             entryService: entry ?? MockEntryService(),
             babyService: MockBabyService(),
             logger: logger ?? MockLoggerService(),
