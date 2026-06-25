@@ -29,6 +29,7 @@ import com.dmdbrands.gurus.weight.features.dashboard.string.DashboardString
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
 import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -59,6 +60,11 @@ constructor(
   reducer = EntryReducer(),
 ) {
   private val TAG = "EntryViewModel"
+
+  // Short settle delay between a successful save and showing the success toast
+  // so the dashboard reflects the new entry before navigating back (MOB-183).
+  private val ENTRY_SAVE_SETTLE_DELAY_MS = 1_000L
+
   override fun provideInitialState(): EntryState = EntryState()
 
   init {
@@ -313,6 +319,20 @@ constructor(
 
         // Clear AppSync data after successful save
         appSyncService.setAppSyncDataForEditing(null)
+
+        // Brief settle delay so the just-saved entry is reflected on the
+        // dashboard before the success toast appears and we navigate back,
+        // avoiding the perceived "entry shows up a few seconds after the
+        // popup" lag (MOB-183). addEntry() already awaits the local save +
+        // server-sync attempt, so this only smooths the hand-off.
+        //
+        // TODO(MOB-183 follow-up): this fixed delay is a short-term smoothing, not a real fix — it
+        // will still lag on a slow device and over-hold the loader on a fast one. The systematic
+        // fix is to have the dashboard observe its data reactively (await the new entry appearing
+        // in the source flow / await an explicit refresh) and gate navigateBack on that signal
+        // instead of a guessed sleep. Same anti-pattern as DashboardViewModel's delay(300) calls —
+        // worth tracking together in a dedicated follow-up ticket.
+        delay(ENTRY_SAVE_SETTLE_DELAY_MS)
 
         dialogQueueService.showToast(
           Toast.Simple(
