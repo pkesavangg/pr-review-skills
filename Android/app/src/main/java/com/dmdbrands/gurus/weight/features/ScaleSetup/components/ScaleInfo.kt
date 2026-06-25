@@ -48,7 +48,7 @@ fun ScaleInfo(
   // and Arrangement.Center is ignored (content sticks to the top). Forcing the
   // scrollable column to be at least the viewport tall (heightIn min = maxHeight)
   // makes Arrangement.Center centre when content fits, and still scroll when it overflows.
-  BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+  BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     Column(
       modifier = Modifier
         .fillMaxWidth()
