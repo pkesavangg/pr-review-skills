@@ -2,18 +2,24 @@ package com.dmdbrands.gurus.weight.features.manualEntry.viewmodel
 
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
+import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
+import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
 import com.dmdbrands.gurus.weight.features.common.helper.form.MultiFormGroup
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
+import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
 import com.google.common.truth.Truth.assertThat
@@ -27,10 +33,14 @@ import io.mockk.slot
 import io.mockk.clearMocks
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import java.time.LocalDate
+import java.time.ZoneId
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
@@ -63,6 +73,7 @@ class EntryViewModelTest {
 
     private lateinit var navigationService: IAppNavigationService
     private lateinit var dialogQueueService: IDialogQueueService
+    private lateinit var productSelectionManager: IProductSelectionManager
     private lateinit var viewModel: EntryViewModel
 
     @BeforeEach
@@ -70,6 +81,7 @@ class EntryViewModelTest {
         MockKAnnotations.init(this)
         navigationService = mockk(relaxed = true)
         dialogQueueService = mockk(relaxed = true)
+        productSelectionManager = mockk(relaxed = true)
         stubDefaultFlows()
         viewModel = createViewModel()
     }
@@ -79,6 +91,8 @@ class EntryViewModelTest {
         every { accountService.activeAccountFlow } returns flowOf(TestFixtures.activeAccount)
         every { appSyncService.appSyncDataForEditing } returns MutableStateFlow(null)
         every { deviceService.hasBluetoothWifiScale } returns flowOf(false)
+        // Default to the weight product so UpdateOnRelaunch builds the weight form. (MOB-592)
+        every { productSelectionManager.selectedProduct } returns MutableStateFlow(ProductSelection.MyWeight)
     }
 
     private fun createViewModel(): EntryViewModel =
@@ -91,6 +105,7 @@ class EntryViewModelTest {
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
+            productSelectionManager = productSelectionManager,
         )
 
     // -------------------------------------------------------------------------
@@ -172,6 +187,35 @@ class EntryViewModelTest {
     }
 
     @Test
+    fun `Save with baby form saves one combined baby entry carrying weight and length`() = runTest {
+        val baby = ProductSelection.Baby(
+            BabyProfile(id = "baby-1", name = "Timmy", birthdate = null, accountId = "acc-1"),
+        )
+        every { productSelectionManager.selectedProduct } returns MutableStateFlow(baby)
+        viewModel = createViewModel()
+
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
+        form.forms.baby.controls.pounds.onValueChange("7")
+        form.forms.baby.controls.ounces.onValueChange("4")
+        form.forms.baby.controls.inches.onValueChange("20")
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+
+        val captured = mutableListOf<Entry>()
+        coEvery { entryService.addEntry(entry = capture(captured)) } returns Unit
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        // One local row carries BOTH measures (the unique entryTimestamp index allows only one
+        // row per timestamp; the POST split fans it into two §2.16 requests later).
+        assertThat(captured).hasSize(1)
+        val entry = captured.single() as BabyEntry
+        assertThat(entry.babyId).isEqualTo("baby-1")
+        assertThat(entry.babyWeightDecigrams).isEqualTo(ConversionTools.convertLbOzToDecigrams(7, 4.0))
+        assertThat(entry.babyLengthMillimeters).isEqualTo(ConversionTools.convertInchesToMm(20.0))
+    }
+
+    @Test
     fun `Save shows loader and dismisses it after success`() = runTest {
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
@@ -205,6 +249,100 @@ class EntryViewModelTest {
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
         coVerify { navigationService.unregisterOnDeactivate(AppRoute.Main.Entry) }
+    }
+
+    // -------------------------------------------------------------------------
+    // Save — baby pre-birthdate guard (MOB-592)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Save baby entry dated before birthdate shows toast and does not save`() = runTest {
+        // Birthdate 2026-06-15; entry dated the day before → must be rejected.
+        setUpBabyForm(birthdate = "2026-06-15", entryDate = "2026-06-14")
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        verify {
+            dialogQueueService.showToast(
+                match<Toast.Simple> { it.message == EntryScreenStrings.EntryBeforeBirthdate },
+            )
+        }
+        coVerify(exactly = 0) { entryService.addEntry(entry = any()) }
+        coVerify(exactly = 0) { navigationService.navigateBack(any()) }
+        // The guard returns before the loader is shown, so no loader for the rejected path.
+        verify(exactly = 0) { dialogQueueService.showLoader(message = any()) }
+    }
+
+    @Test
+    fun `Save baby entry dated on the exact birthday is allowed`() = runTest {
+        // entryDay == birthDay → isBefore is false → save proceeds.
+        setUpBabyForm(birthdate = "2026-06-15", entryDate = "2026-06-15")
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        coVerify { entryService.addEntry(entry = any()) }
+        verify(exactly = 0) {
+            dialogQueueService.showToast(
+                match<Toast.Simple> { it.message == EntryScreenStrings.EntryBeforeBirthdate },
+            )
+        }
+    }
+
+    @Test
+    fun `Save baby entry proceeds when birthdate is blank`() = runTest {
+        // Blank birthdate → isBeforeBirthdate returns false → never block on bad profile data.
+        setUpBabyForm(birthdate = "", entryDate = "2020-01-01")
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        coVerify { entryService.addEntry(entry = any()) }
+        verify(exactly = 0) {
+            dialogQueueService.showToast(
+                match<Toast.Simple> { it.message == EntryScreenStrings.EntryBeforeBirthdate },
+            )
+        }
+    }
+
+    @Test
+    fun `Save baby entry proceeds when birthdate is unparseable`() = runTest {
+        // Unparseable birthdate → isBeforeBirthdate returns false → save proceeds.
+        setUpBabyForm(birthdate = "not-a-date", entryDate = "2020-01-01")
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        coVerify { entryService.addEntry(entry = any()) }
+        verify(exactly = 0) {
+            dialogQueueService.showToast(
+                match<Toast.Simple> { it.message == EntryScreenStrings.EntryBeforeBirthdate },
+            )
+        }
+    }
+
+    /**
+     * Selects a Baby product with the given [birthdate] and activates a baby form with a valid
+     * weight (pounds > 0) dated [entryDate] (ISO yyyy-MM-dd, anchored to start-of-day in the
+     * device zone so it matches isBeforeBirthdate's day-level comparison).
+     */
+    private fun setUpBabyForm(birthdate: String?, entryDate: String) {
+        val baby = ProductSelection.Baby(
+            BabyProfile(id = "baby-1", name = "Timmy", birthdate = birthdate, accountId = "acc-1"),
+        )
+        every { productSelectionManager.selectedProduct } returns MutableStateFlow(baby)
+        viewModel = createViewModel()
+
+        val entryMillis = LocalDate.parse(entryDate)
+            .atStartOfDay(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
+        form.forms.baby.controls.pounds.onValueChange("7")
+        form.forms.baby.controls.ounces.onValueChange("4")
+        form.forms.baby.controls.dateTime.onValueChange(DateTimeValue.Date(entryMillis))
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
     }
 
     // -------------------------------------------------------------------------

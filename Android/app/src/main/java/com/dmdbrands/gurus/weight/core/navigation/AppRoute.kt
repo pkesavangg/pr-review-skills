@@ -132,8 +132,9 @@ sealed class AppRoute : NavKey {
     @Serializable
     data object MyKids : AccountSettings()
 
+    // babyId != null opens the screen in edit mode (pre-filled, saves via PUT /v3/baby).
     @Serializable
-    data object AddBaby : AccountSettings()
+    data class AddBaby(val babyId: String? = null) : AccountSettings()
 
     @Serializable
     data class ScaleDetails(

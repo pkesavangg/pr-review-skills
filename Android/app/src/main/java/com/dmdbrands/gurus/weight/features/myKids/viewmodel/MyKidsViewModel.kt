@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.myKids.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
+import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.services.IBabyProfileService
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
@@ -27,7 +28,15 @@ class MyKidsViewModel @Inject constructor(
     override fun onDependenciesReady() {
         observeBabies()
         loadActiveBabyId()
+        loadMeasurementUnits()
         refreshBabies()
+    }
+
+    private fun loadMeasurementUnits() {
+        viewModelScope.launch {
+            val units = accountRepository.getActiveAccount().first()?.measurementUnits ?: return@launch
+            handleIntent(MyKidsIntent.SetMeasurementUnits(units))
+        }
     }
 
     override fun handleIntent(intent: MyKidsIntent) {
@@ -73,8 +82,11 @@ class MyKidsViewModel @Inject constructor(
 
                 val birthdateStr = SimpleDateFormat("yyyy-MM-dd", Locale.US)
                     .format(Date(intent.birthdayMillis))
+                val isEditing = intent.babyId != null
                 val profile = BabyProfile(
-                    id = UUID.randomUUID().toString(),
+                    // Editing reuses the existing id so the server PUT targets the same baby;
+                    // creating mints a fresh id.
+                    id = intent.babyId ?: UUID.randomUUID().toString(),
                     accountId = accountId,
                     name = intent.name,
                     birthdate = birthdateStr,
@@ -82,11 +94,15 @@ class MyKidsViewModel @Inject constructor(
                     birthWeightDecigrams = intent.birthWeightDecigrams,
                     birthLengthMillimeters = intent.birthLengthMillimeters,
                 )
-                babyProfileService.save(profile)
+                if (isEditing) {
+                    babyProfileService.update(profile)
+                } else {
+                    babyProfileService.save(profile)
+                }
 
-                // Set as activeBabyId if none is set yet
+                // Set as activeBabyId if none is set yet (create only).
                 val currentActiveBabyId = accountRepository.getActiveBabyId()
-                if (currentActiveBabyId == null) {
+                if (!isEditing && currentActiveBabyId == null) {
                     accountRepository.setActiveBabyId(accountId, profile.id)
                     handleIntent(MyKidsIntent.SetActiveBabyId(profile.id))
                 }

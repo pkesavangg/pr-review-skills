@@ -29,6 +29,16 @@ data class UnifiedEntryRequest(
     val diastolic: Int? = null,
     val note: String? = null,
 
+    // ── baby (MOB-381 / §2.16): weight & measureLength are separate entryTypes ──
+    val babyId: String? = null,
+    // Client-generated idempotency key — REQUIRED for baby create/edit (§2.16). Stable
+    // across retries so a re-sent batch doesn't duplicate the entry server-side.
+    val entryId: String? = null,
+    val entryType: String? = null,
+    val babyWeightDecigrams: Int? = null,
+    val babyLengthMillimeters: Int? = null,
+    val entryNote: String? = null,
+
     // ── shared (weight optional / bp required) ──
     val pulse: Int? = null,
     val source: String? = null,

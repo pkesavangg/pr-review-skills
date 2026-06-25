@@ -552,4 +552,60 @@ class FormControlTest {
 
         assertThat(group.isDirty).isFalse()
     }
+
+    // -------------------------------------------------------------------------
+    // Warning severity (advisory, non-blocking)
+    // -------------------------------------------------------------------------
+
+    private fun warnOutside(min: Int, max: Int): (String) -> ValidationError? = { value ->
+        val v = value.toIntOrNull()
+        if (v != null && (v < min || v > max)) {
+            ValidationError("warning", "out of range", ValidationSeverity.WARNING)
+        } else {
+            null
+        }
+    }
+
+    @Test
+    fun `a warning surfaces but does not invalidate the control`() {
+        val control = FormControl.create("300", listOf(warnOutside(60, 250)))
+        control.markAsDirty()
+        control.validate()
+
+        // Warning is shown to the user...
+        assertThat(control.isWarning).isTrue()
+        assertThat(control.warning?.severity).isEqualTo(ValidationSeverity.WARNING)
+        // ...but the value is still considered valid (savable).
+        assertThat(control.isError).isFalse()
+        assertThat(control.isValueValid()).isTrue()
+    }
+
+    @Test
+    fun `an error takes precedence and blocks validity even with a warning present`() {
+        val control = FormControl.create(
+            "x",
+            listOf(
+                warnOutside(60, 250),
+                { v -> if (v.toIntOrNull() == null) ValidationError("err", "invalid") else null },
+            ),
+        )
+        control.markAsDirty()
+        control.validate()
+
+        assertThat(control.isError).isTrue()
+        assertThat(control.isValueValid()).isFalse()
+    }
+
+    @Test
+    fun `warning clears when value returns to the typical range`() {
+        val control = FormControl.create("300", listOf(warnOutside(60, 250)))
+        control.markAsDirty()
+        control.validate()
+        assertThat(control.isWarning).isTrue()
+
+        control.onValueChange("120")
+
+        assertThat(control.isWarning).isFalse()
+        assertThat(control.isValueValid()).isTrue()
+    }
 }

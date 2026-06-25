@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
+import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
@@ -13,7 +14,10 @@ import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IBabyProfileService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
+import com.dmdbrands.gurus.weight.features.common.components.HeightInput
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.common.model.Toast
+import com.dmdbrands.gurus.weight.features.signup.strings.SignupErrorStrings
 import com.dmdbrands.gurus.weight.features.signup.model.BabyFormControls
 import com.dmdbrands.gurus.weight.features.signup.model.BabyWeightUnit
 import com.dmdbrands.gurus.weight.features.signup.model.SignupIntent
@@ -30,6 +34,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.BeforeEach
@@ -253,6 +258,34 @@ class SignupViewModelTest {
         assertThat(viewModel.state.value.form.controls.useMetric.value).isFalse()
     }
 
+    @Test
+    fun `ToggleMetric converts entered weights to kg and restores the originals on toggle back`() {
+        val controls = viewModel.state.value.form.controls
+        controls.goalType.onValueChange(TEST_GOAL_TYPE)
+        controls.currentWeight.onValueChange(TEST_CURRENT_WEIGHT) // 180.0 lb
+        controls.goalWeight.onValueChange(TEST_GOAL_WEIGHT) // 160.0 lb
+
+        viewModel.handleIntent(SignupIntent.ToggleMetric(true)) // lb → kg, converts
+        assertThat(controls.currentWeight.value).isNotEqualTo(TEST_CURRENT_WEIGHT)
+
+        // Toggling back to the original unit restores the exact typed value (no rounding drift).
+        viewModel.handleIntent(SignupIntent.ToggleMetric(false))
+        assertThat(controls.currentWeight.value).isEqualTo(TEST_CURRENT_WEIGHT)
+        assertThat(controls.goalWeight.value).isEqualTo(TEST_GOAL_WEIGHT)
+    }
+
+    @Test
+    fun `ToggleMetric converts height between imperial and metric`() {
+        val controls = viewModel.state.value.form.controls
+        controls.height.onValueChange(HeightInput.FtIn(5, 10))
+
+        viewModel.handleIntent(SignupIntent.ToggleMetric(true))
+        assertThat(controls.height.value).isInstanceOf(HeightInput.Cm::class.java)
+
+        viewModel.handleIntent(SignupIntent.ToggleMetric(false))
+        assertThat(controls.height.value).isInstanceOf(HeightInput.FtIn::class.java)
+    }
+
     // -------------------------------------------------------------------------
     // Error / Success intents
     // -------------------------------------------------------------------------
@@ -417,6 +450,25 @@ class SignupViewModelTest {
 
         coVerify { accountService.signup(any()) }
         coVerify(exactly = 0) { navigationService.replaceStack(AppRoute.Init.Loading) }
+    }
+
+    @Test
+    fun `Submit does not show generic toast when signup returns null`() = runTest {
+        // AccountService.signup already surfaces the specific failure toast (e.g.
+        // "Email address is already in use"). The VM must not mask it with the
+        // generic "We couldn't create your account" toast. (MOB-592)
+        coEvery { accountService.signup(any()) } returns null
+
+        navigateToLastStepWithValidForm()
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        coVerify { accountService.signup(any()) }
+        verify(exactly = 0) {
+            dialogQueueService.showToast(
+                match<Toast.Simple> { it.message == SignupErrorStrings.accountFailedToast },
+            )
+        }
     }
 
     @Test
@@ -696,6 +748,51 @@ class SignupViewModelTest {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Signup request payload — conditional gender/dob/height (MOB-592 / MOB-377)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Submit baby scale omits gender dob and height so the server does not 400`() = runTest {
+        // The baby path skips the GENDER/HEIGHT steps, leaving sex = "". Sending an
+        // empty gender made the server reject the request as a missing required value.
+        // For a baby-only account these fields must be omitted (null), not "".
+        val requestSlot = slot<SignupRequest>()
+        coEvery { accountService.signup(capture(requestSlot)) } returns TestFixtures.activeAccount
+
+        navigateToBabyPasswordStep { form ->
+            form.name.onValueChange("Tammy")
+            form.biologicalSex.onValueChange("male")
+            form.weightUnit.onValueChange(BabyWeightUnit.LBS)
+            form.birthWeight.onValueChange("7")
+        }
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        val request = requestSlot.captured
+        assertThat(request.productTypes).containsExactly(ProductType.BABY.apiValue)
+        assertThat(request.gender).isNull()
+        assertThat(request.dob).isNull()
+        assertThat(request.height).isNull()
+    }
+
+    @Test
+    fun `Submit weight scale sends gender dob and height`() = runTest {
+        val requestSlot = slot<SignupRequest>()
+        coEvery { accountService.signup(capture(requestSlot)) } returns TestFixtures.activeAccount
+        coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
+
+        navigateToLastStepWithValidForm()
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        val request = requestSlot.captured
+        assertThat(request.productTypes).containsExactly(ProductType.MY_WEIGHT.apiValue)
+        assertThat(request.gender).isEqualTo(TEST_SEX)
+        assertThat(request.dob).isNotNull()
+        assertThat(request.height).isNotNull()
+    }
+
     @Test
     fun `Submit baby scale swallows a save failure and still reaches the Ready terminal`() = runTest {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
@@ -713,5 +810,331 @@ class SignupViewModelTest {
         // The failure is best-effort/swallowed: save was attempted and the flow still advances.
         coVerify { babyProfileService.save(any()) }
         assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.DEVICE_READY)
+    }
+
+    // -------------------------------------------------------------------------
+    // Submit — analytics, product selection, and error routing
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Submit success saves the selected product and logs the completed event`() = runTest {
+        coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
+        coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
+
+        navigateToLastStepWithValidForm()
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        coVerify { productSelectionRepository.saveSelectedProductType(ProductType.MY_WEIGHT) }
+        verify { analyticsService.logEvent(IAnalyticsService.Events.SIGNUP_COMPLETED) }
+    }
+
+    @Test
+    fun `Submit when signup throws shows the account-failed toast`() = runTest {
+        // An unexpected throw (not an HTTP error AccountService already handled) must
+        // surface the generic account-failed toast.
+        coEvery { accountService.signup(any()) } throws RuntimeException("max accounts")
+
+        navigateToLastStepWithValidForm()
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        verify {
+            dialogQueueService.showToast(
+                match<Toast.Simple> { it.message == SignupErrorStrings.accountFailedToast },
+            )
+        }
+    }
+
+    @Test
+    fun `Submit routes to the ERROR screen when a device side effect fails`() = runTest {
+        coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
+        coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } throws RuntimeException("goal failed")
+
+        navigateToLastStepWithValidForm()
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        // Account creation succeeded but the goal call failed → terminal ERROR screen.
+        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.ERROR)
+        assertThat(viewModel.state.value.accountCreated).isTrue()
+    }
+
+    @Test
+    fun `Submit routes to the ERROR screen when the selected device is unresolvable`() = runTest {
+        navigateToLastStepWithValidForm()
+        // Corrupt the device selection so ProductType.fromId returns null at submit.
+        viewModel.state.value.form.controls.device.onValueChange("")
+
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.ERROR)
+        coVerify(exactly = 0) { accountService.signup(any()) }
+    }
+
+    @Test
+    fun `Submit blood pressure sends gender and dob but omits height`() = runTest {
+        val requestSlot = slot<SignupRequest>()
+        coEvery { accountService.signup(capture(requestSlot)) } returns TestFixtures.activeAccount
+
+        navigateToBloodPressurePasswordStep()
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        val request = requestSlot.captured
+        assertThat(request.productTypes).containsExactly(ProductType.BLOOD_PRESSURE.apiValue)
+        assertThat(request.gender).isEqualTo(TEST_SEX)
+        assertThat(request.dob).isNotNull()
+        assertThat(request.height).isNull()
+        coVerify(exactly = 0) { goalService.createGoalForSignup(any(), any(), any(), any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // Multi-device loop — add product + measurement units on a loop pass
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Loop pass for a second device syncs product and measurement units without re-creating the account`() = runTest {
+        coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
+        coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
+        coEvery { accountService.getCurrentAccount() } returns TestFixtures.activeAccount
+
+        registerFirstWeightDeviceThenPickBloodPressure()
+        // On the loop pass the next data step is the Ready terminal — Next submits.
+        assertThat(viewModel.state.value.isFinalDataStep).isTrue()
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        coVerify { accountService.addProduct(ProductType.BLOOD_PRESSURE) }
+        coVerify { accountService.updateMeasurementUnits(any()) }
+        // Account was created only once, on the first pass.
+        coVerify(exactly = 1) { accountService.signup(any()) }
+        assertThat(viewModel.state.value.registeredDevices)
+            .containsAtLeast(ProductType.MY_WEIGHT, ProductType.BLOOD_PRESSURE)
+    }
+
+    @Test
+    fun `FinishSignup with multiple devices clears the saved product selection`() = runTest {
+        coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
+        coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
+        coEvery { accountService.getCurrentAccount() } returns TestFixtures.activeAccount
+
+        registerFirstWeightDeviceThenPickBloodPressure()
+        viewModel.handleIntent(SignupIntent.Next) // registers the 2nd device
+        advanceUntilIdle()
+
+        viewModel.handleIntent(SignupIntent.FinishSignup)
+        advanceUntilIdle()
+
+        coVerify { productSelectionRepository.clearSelectedProduct() }
+        coVerify { navigationService.replaceStack(AppRoute.Init.Loading) }
+    }
+
+    @Test
+    fun `Skip on a loop pass syncs the product and measurement units to the server`() = runTest {
+        coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
+        coEvery { accountService.getCurrentAccount() } returns TestFixtures.activeAccount
+
+        // First pass: register the Baby Scale so the account is created.
+        navigateToBabyPasswordStep { form ->
+            form.name.onValueChange("Tammy")
+            form.biologicalSex.onValueChange("male")
+            form.weightUnit.onValueChange(BabyWeightUnit.LBS)
+            form.birthWeight.onValueChange("7")
+        }
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        // Loop pass: pick the Weight Scale and Skip the goal step.
+        viewModel.handleIntent(SignupIntent.ConnectAnotherDevice)
+        viewModel.handleIntent(SignupIntent.SelectDevice(ProductType.MY_WEIGHT.id))
+        viewModel.handleIntent(SignupIntent.Next) // → GENDER
+        viewModel.state.value.form.controls.sex.onValueChange(TEST_SEX)
+        viewModel.handleIntent(SignupIntent.Next) // → HEIGHT
+        viewModel.handleIntent(SignupIntent.Next) // → GOAL
+        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.GOAL)
+
+        viewModel.handleIntent(SignupIntent.Skip)
+        advanceUntilIdle()
+
+        // The skipped loop device still reaches the server (matches the non-skip submit path).
+        coVerify { accountService.addProduct(ProductType.MY_WEIGHT) }
+        coVerify { accountService.updateMeasurementUnits(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // RetryDevice (error screen)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `RetryDevice re-runs the failed device side effect and registers the device`() = runTest {
+        coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
+        coEvery { accountService.getCurrentAccount() } returns TestFixtures.activeAccount
+        // First goal attempt fails → ERROR screen.
+        coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } throws RuntimeException("transient")
+
+        navigateToLastStepWithValidForm()
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.ERROR)
+
+        // Retry now succeeds — account already exists so signup must NOT run again.
+        coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
+        viewModel.handleIntent(SignupIntent.RetryDevice)
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.DEVICE_READY)
+        assertThat(viewModel.state.value.registeredDevices).contains(ProductType.MY_WEIGHT)
+        coVerify(exactly = 1) { accountService.signup(any()) }
+    }
+
+    @Test
+    fun `RetryDevice shows the account-failed toast when there is no current account`() = runTest {
+        coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
+        coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } throws RuntimeException("transient")
+
+        navigateToLastStepWithValidForm()
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        // The account read fails on retry → surface the account-failed toast.
+        coEvery { accountService.getCurrentAccount() } returns null
+        viewModel.handleIntent(SignupIntent.RetryDevice)
+        advanceUntilIdle()
+
+        verify {
+            dialogQueueService.showToast(
+                match<Toast.Simple> { it.message == SignupErrorStrings.accountFailedToast },
+            )
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Baby confirmation dialogs (skip / edit-back / delete)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Skip on ADD_BABY enqueues a confirm dialog and does not forward immediately`() {
+        navigateToAddBabyStep()
+
+        viewModel.handleIntent(SignupIntent.Skip)
+
+        verify { dialogQueueService.enqueue(any<DialogModel.Confirm>()) }
+        // Intent is deferred until the user confirms — still on ADD_BABY.
+        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.ADD_BABY)
+    }
+
+    @Test
+    fun `Skip confirm callback forwards Skip to the reducer`() {
+        navigateToAddBabyStep()
+        val dialogSlot = slot<DialogModel.Confirm>()
+        every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
+
+        viewModel.handleIntent(SignupIntent.Skip)
+        dialogSlot.captured.onConfirm?.invoke()
+
+        // First-pass skip with no babies advances to PASSWORD.
+        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.PASSWORD)
+    }
+
+    @Test
+    fun `DeleteBaby enqueues a confirm dialog and removes the baby on confirm`() {
+        navigateToBabyAddedWithOneBaby()
+        val babyId = requireNotNull(viewModel.state.value.babyState).babies.single().id
+        val dialogSlot = slot<DialogModel.Confirm>()
+        every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
+
+        viewModel.handleIntent(SignupIntent.DeleteBaby(babyId))
+        // Not removed until the user confirms.
+        assertThat(viewModel.state.value.babyState?.babies).hasSize(1)
+
+        dialogSlot.captured.onConfirm?.invoke()
+        assertThat(viewModel.state.value.babyState?.babies).isEmpty()
+    }
+
+    @Test
+    fun `Back while editing a baby enqueues the skip-editing confirm dialog`() {
+        navigateToBabyAddedWithOneBaby()
+        val baby = requireNotNull(viewModel.state.value.babyState).babies.single()
+        viewModel.handleIntent(SignupIntent.EditBaby(baby))
+        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.ADD_BABY)
+
+        viewModel.handleIntent(SignupIntent.Back)
+
+        verify { dialogQueueService.enqueue(any<DialogModel.Confirm>()) }
+        // Deferred until confirmed — still editing on ADD_BABY.
+        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.ADD_BABY)
+    }
+
+    @Test
+    fun `OpenBabySexPicker enqueues a picker dialog`() {
+        navigateToAddBabyStep()
+
+        viewModel.handleIntent(SignupIntent.OpenBabySexPicker)
+
+        // Pin the specific radio-group picker dialog, not just "some dialog model", so a stray
+        // confirm/other dialog can't satisfy this verify. (PR #2110 review)
+        verify {
+            dialogQueueService.enqueue(
+                match<DialogModel.Custom> { it.contentKey == DialogType.RadioGroupPicker },
+            )
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers — blood pressure, multi-device loop, baby navigation
+    // -------------------------------------------------------------------------
+
+    /** Walks the Blood Pressure first-pass flow to PASSWORD (GENDER captured, no HEIGHT/GOAL). */
+    private fun navigateToBloodPressurePasswordStep() {
+        val controls = viewModel.state.value.form.controls
+        controls.firstName.onValueChange(TEST_FIRST_NAME)
+        controls.lastName.onValueChange(TEST_LAST_NAME)
+        viewModel.handleIntent(SignupIntent.Next) // → EMAIL
+        controls.email.onValueChange(TEST_EMAIL)
+        viewModel.handleIntent(SignupIntent.Next) // → BIRTHDAY
+        viewModel.handleIntent(SignupIntent.Next) // → PICK_DEVICE
+        viewModel.handleIntent(SignupIntent.SelectDevice(ProductType.BLOOD_PRESSURE.id))
+        viewModel.handleIntent(SignupIntent.Next) // → GENDER
+        controls.sex.onValueChange(TEST_SEX)
+        viewModel.handleIntent(SignupIntent.Next) // → PASSWORD
+        controls.password.onValueChange(TEST_PASSWORD)
+        controls.confirmPassword.onValueChange(TEST_PASSWORD)
+        controls.zipcode.onValueChange(TEST_ZIPCODE)
+    }
+
+    /**
+     * Completes a first-pass Weight Scale signup, then enters the multi-device loop and
+     * picks Blood Pressure — leaving the flow on the loop pass's final data step.
+     */
+    private fun TestScope.registerFirstWeightDeviceThenPickBloodPressure() {
+        navigateToLastStepWithValidForm()
+        viewModel.handleIntent(SignupIntent.Next) // first device registered
+        advanceUntilIdle()
+        viewModel.handleIntent(SignupIntent.ConnectAnotherDevice) // → PICK_DEVICE (loop)
+        viewModel.handleIntent(SignupIntent.SelectDevice(ProductType.BLOOD_PRESSURE.id))
+    }
+
+    /** Walks the common head, selects the Baby Scale, and lands on ADD_BABY. */
+    private fun navigateToAddBabyStep() {
+        val controls = viewModel.state.value.form.controls
+        controls.firstName.onValueChange(TEST_FIRST_NAME)
+        controls.lastName.onValueChange(TEST_LAST_NAME)
+        viewModel.handleIntent(SignupIntent.Next) // → EMAIL
+        controls.email.onValueChange(TEST_EMAIL)
+        viewModel.handleIntent(SignupIntent.Next) // → BIRTHDAY
+        viewModel.handleIntent(SignupIntent.Next) // → PICK_DEVICE
+        viewModel.handleIntent(SignupIntent.SelectDevice(ProductType.BABY.id))
+        viewModel.handleIntent(SignupIntent.Next) // → ADD_BABY
+    }
+
+    /** Navigates to ADD_BABY, fills the baby form, and saves one baby (landing on BABY_ADDED). */
+    private fun navigateToBabyAddedWithOneBaby() {
+        navigateToAddBabyStep()
+        val babyForm = requireNotNull(viewModel.state.value.babyState).babyForm
+        babyForm.name.onValueChange("Tammy")
+        babyForm.biologicalSex.onValueChange("male")
+        viewModel.handleIntent(SignupIntent.Next) // ADD_BABY → BABY_ADDED
     }
 }

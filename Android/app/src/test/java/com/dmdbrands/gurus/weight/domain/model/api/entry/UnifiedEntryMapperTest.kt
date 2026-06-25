@@ -1,14 +1,17 @@
 package com.dmdbrands.gurus.weight.domain.model.api.entry
 
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
+import com.dmdbrands.gurus.weight.domain.enums.BabyEntryType
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntryWithMetrics
 import com.google.common.truth.Truth.assertThat
-import org.junit.Test
+import org.junit.jupiter.api.Test
 
 class UnifiedEntryMapperTest {
 
@@ -107,32 +110,111 @@ class UnifiedEntryMapperTest {
         assertThat(bpmEntry(op = "DELETE").toUnifiedRequest().operationType).isEqualTo("delete")
     }
 
-    // ── Entry.toUnifiedRequestOrNull ─────────────────────────────────────────────
+    // ── BabyEntry → request (MOB-381 / §2.16) ────────────────────────────────────
+
+    private fun babyEntry(
+        weightDecigrams: Int? = null,
+        lengthMm: Int? = null,
+    ) = BabyEntry(
+        entry = EntryEntity(
+            accountId = ACCOUNT_ID,
+            entryTimestamp = TIMESTAMP,
+            operationType = "CREATE",
+            deviceType = "manual",
+            deviceId = "",
+        ),
+        babyEntry = BabyEntryEntity(
+            id = 0L,
+            babyId = "baby-1",
+            babyWeightDecigrams = weightDecigrams,
+            babyLengthMillimeters = lengthMm,
+            entryNote = "after bath",
+            entryType = if (weightDecigrams != null) BabyEntryType.WEIGHT.value else BabyEntryType.MEASURE_LENGTH.value,
+            source = EntrySource.MANUAL.value,
+        ),
+    )
 
     @Test
-    fun `toUnifiedRequestOrNull dispatches weight and bp`() {
-        assertThat(scaleEntry().toUnifiedRequestOrNull()?.category).isEqualTo("weight")
-        assertThat(bpmEntry().toUnifiedRequestOrNull()?.category).isEqualTo("bp")
+    fun `baby weight-only entry yields a single weight request`() {
+        val reqs = babyEntry(weightDecigrams = 45_200).toUnifiedRequests()
+
+        assertThat(reqs).hasSize(1)
+        val req = reqs.single()
+        assertThat(req.category).isEqualTo(EntryCategory.BABY.value)
+        assertThat(req.operationType).isEqualTo("create")
+        assertThat(req.babyId).isEqualTo("baby-1")
+        assertThat(req.entryType).isEqualTo(BabyEntryType.WEIGHT.value)
+        assertThat(req.babyWeightDecigrams).isEqualTo(45_200)
+        assertThat(req.babyLengthMillimeters).isNull()
+        assertThat(req.entryNote).isEqualTo("after bath")
+        assertThat(req.source).isEqualTo(EntrySource.MANUAL.value)
+        // §2.16 requires a client-generated entryId for baby; it's deterministic.
+        assertThat(req.entryId).isEqualTo("baby-1_weight_$TIMESTAMP")
     }
 
     @Test
-    fun `toUnifiedRequestOrNull drops a zero-weight reading`() {
+    fun `baby length-only entry yields a single measureLength request`() {
+        val reqs = babyEntry(lengthMm = 510).toUnifiedRequests()
+
+        assertThat(reqs).hasSize(1)
+        assertThat(reqs.single().entryType).isEqualTo(BabyEntryType.MEASURE_LENGTH.value)
+        assertThat(reqs.single().babyLengthMillimeters).isEqualTo(510)
+        assertThat(reqs.single().babyWeightDecigrams).isNull()
+    }
+
+    @Test
+    fun `combined baby entry fans out to weight + measureLength with distinct entryIds`() {
+        val reqs = babyEntry(weightDecigrams = 45_200, lengthMm = 510).toUnifiedRequests()
+
+        assertThat(reqs).hasSize(2)
+        val weight = reqs.single { it.entryType == BabyEntryType.WEIGHT.value }
+        val length = reqs.single { it.entryType == BabyEntryType.MEASURE_LENGTH.value }
+        assertThat(weight.babyWeightDecigrams).isEqualTo(45_200)
+        assertThat(weight.babyLengthMillimeters).isNull()
+        assertThat(length.babyLengthMillimeters).isEqualTo(510)
+        assertThat(length.babyWeightDecigrams).isNull()
+        // Same reading, same timestamp, but distinct ids — server keeps them as two entries.
+        assertThat(weight.entryTimestamp).isEqualTo(length.entryTimestamp)
+        assertThat(weight.entryId).isEqualTo("baby-1_weight_$TIMESTAMP")
+        assertThat(length.entryId).isEqualTo("baby-1_measureLength_$TIMESTAMP")
+    }
+
+    @Test
+    fun `baby entry drops zero or empty measures rather than POSTing garbage`() {
+        assertThat(babyEntry(weightDecigrams = 0).toUnifiedRequests()).isEmpty()
+        assertThat(babyEntry(weightDecigrams = null, lengthMm = null).toUnifiedRequests()).isEmpty()
+        // A combined entry with a 0 length only sends the valid weight half.
+        val reqs = babyEntry(weightDecigrams = 45_200, lengthMm = 0).toUnifiedRequests()
+        assertThat(reqs).hasSize(1)
+        assertThat(reqs.single().entryType).isEqualTo(BabyEntryType.WEIGHT.value)
+    }
+
+    // ── Entry.toUnifiedRequests ──────────────────────────────────────────────────
+
+    @Test
+    fun `toUnifiedRequests dispatches weight and bp`() {
+        assertThat(scaleEntry().toUnifiedRequests().single().category).isEqualTo("weight")
+        assertThat(bpmEntry().toUnifiedRequests().single().category).isEqualTo("bp")
+    }
+
+    @Test
+    fun `toUnifiedRequests drops a zero-weight reading`() {
         val zeroWeight = scaleEntry().let {
             it.copy(scale = it.scale.copy(scaleEntry = it.scale.scaleEntry.copy(weight = 0.0)))
         }
-        assertThat(zeroWeight.toUnifiedRequestOrNull()).isNull()
+        assertThat(zeroWeight.toUnifiedRequests()).isEmpty()
     }
 
     @Test
-    fun `toUnifiedRequestOrNull drops an out-of-range bp reading`() {
+    fun `toUnifiedRequests drops an out-of-range bp reading`() {
         // systolic 0 / diastolic 0 — a garbage reading must not be POSTed as a real entry.
         val garbage = bpmEntry().let {
             it.copy(bpmEntry = it.bpmEntry.copy(systolic = 0, diastolic = 0, pulse = 0))
         }
-        assertThat(garbage.toUnifiedRequestOrNull()).isNull()
+        assertThat(garbage.toUnifiedRequests()).isEmpty()
         // An above-range systolic is also rejected.
         val tooHigh = bpmEntry().let { it.copy(bpmEntry = it.bpmEntry.copy(systolic = 400)) }
-        assertThat(tooHigh.toUnifiedRequestOrNull()).isNull()
+        assertThat(tooHigh.toUnifiedRequests()).isEmpty()
     }
 
     // ── UnifiedEntry → domain ────────────────────────────────────────────────────
@@ -194,7 +276,118 @@ class UnifiedEntryMapperTest {
 
     @Test
     fun `response unknown category maps to null`() {
-        val unified = UnifiedEntry(category = "baby", entryTimestamp = TIMESTAMP)
+        val unified = UnifiedEntry(category = "nope", entryTimestamp = TIMESTAMP)
         assertThat(unified.toDomainEntry(ACCOUNT_ID)).isNull()
+    }
+
+    // ── UnifiedEntry → BabyEntry (read path, §2.17) ──────────────────────────────
+
+    @Test
+    fun `response baby weight entry maps to a synced BabyEntry`() {
+        val unified = UnifiedEntry(
+            category = "baby",
+            operationType = "create",
+            entryTimestamp = TIMESTAMP,
+            serverTimestamp = TIMESTAMP,
+            babyId = "baby-1",
+            entryId = "baby-1_weight_$TIMESTAMP",
+            entryType = "weight",
+            babyWeightDecigrams = 45_200,
+            entryNote = "after bath",
+            source = "manual",
+        )
+
+        val domain = unified.toDomainEntry(ACCOUNT_ID) as? BabyEntry
+
+        assertThat(domain).isNotNull()
+        assertThat(domain?.babyId).isEqualTo("baby-1")
+        assertThat(domain?.entryType).isEqualTo("weight")
+        assertThat(domain?.babyWeightDecigrams).isEqualTo(45_200)
+        assertThat(domain?.babyLengthMillimeters).isNull()
+        assertThat(domain?.entry?.isSynced).isTrue()
+        assertThat(domain?.entry?.deviceId).isEqualTo("baby-1_weight_$TIMESTAMP")
+    }
+
+    @Test
+    fun `response baby measureLength entry maps with length only`() {
+        val unified = UnifiedEntry(
+            category = "baby",
+            entryTimestamp = TIMESTAMP,
+            babyId = "baby-1",
+            entryType = "measureLength",
+            babyLengthMillimeters = 510,
+        )
+
+        val domain = unified.toDomainEntry(ACCOUNT_ID) as? BabyEntry
+
+        assertThat(domain?.babyLengthMillimeters).isEqualTo(510)
+        assertThat(domain?.babyWeightDecigrams).isNull()
+    }
+
+    @Test
+    fun `response baby entry of an unmodeled type is skipped`() {
+        // feeding/sleep/diaper/snapshot are not modeled locally — must not be mis-stored as weight.
+        val unified = UnifiedEntry(
+            category = "baby",
+            entryTimestamp = TIMESTAMP,
+            babyId = "baby-1",
+            entryType = "feedingBottle",
+        )
+        assertThat(unified.toDomainEntry(ACCOUNT_ID)).isNull()
+    }
+
+    @Test
+    fun `response baby entry without babyId or value maps to null`() {
+        // No babyId.
+        assertThat(
+            UnifiedEntry(category = "baby", entryTimestamp = TIMESTAMP, entryType = "weight", babyWeightDecigrams = 45_200)
+                .toDomainEntry(ACCOUNT_ID),
+        ).isNull()
+        // babyId present but no usable value.
+        assertThat(
+            UnifiedEntry(category = "baby", entryTimestamp = TIMESTAMP, babyId = "baby-1", entryType = "weight")
+                .toDomainEntry(ACCOUNT_ID),
+        ).isNull()
+    }
+
+    // ── List<UnifiedEntry>.toDomainEntries (read-back merge) ─────────────────────
+
+    @Test
+    fun `server weight + measureLength of one reading merge into a single BabyEntry`() {
+        // The server keeps them as two entries (distinct entryId, shared timestamp); the local
+        // UNIQUE(accountId, entryTimestamp) index needs them merged back into one row.
+        val server = listOf(
+            UnifiedEntry(
+                category = "baby", operationType = "create", entryTimestamp = TIMESTAMP, serverTimestamp = TIMESTAMP,
+                babyId = "baby-1", entryId = "baby-1_weight_$TIMESTAMP", entryType = "weight", babyWeightDecigrams = 45_200,
+            ),
+            UnifiedEntry(
+                category = "baby", operationType = "create", entryTimestamp = TIMESTAMP, serverTimestamp = TIMESTAMP,
+                babyId = "baby-1", entryId = "baby-1_measureLength_$TIMESTAMP", entryType = "measureLength",
+                babyLengthMillimeters = 510,
+            ),
+        )
+
+        val domain = server.toDomainEntries(ACCOUNT_ID)
+
+        assertThat(domain).hasSize(1)
+        val baby = domain.single() as BabyEntry
+        assertThat(baby.babyWeightDecigrams).isEqualTo(45_200)
+        assertThat(baby.babyLengthMillimeters).isEqualTo(510)
+        assertThat(baby.entry.isSynced).isTrue()
+    }
+
+    @Test
+    fun `toDomainEntries keeps weight and bp as separate entries`() {
+        val server = listOf(
+            UnifiedEntry(category = "weight", entryTimestamp = TIMESTAMP, serverTimestamp = TIMESTAMP, weight = 750, unit = "lb"),
+            UnifiedEntry(category = "bp", entryTimestamp = TIMESTAMP, serverTimestamp = TIMESTAMP, systolic = 120, diastolic = 80, pulse = 72),
+        )
+
+        val domain = server.toDomainEntries(ACCOUNT_ID)
+
+        assertThat(domain).hasSize(2)
+        assertThat(domain.any { it is ScaleEntry }).isTrue()
+        assertThat(domain.any { it is BpmEntry }).isTrue()
     }
 }

@@ -10,6 +10,14 @@ MeApp (Weight Gurus) is a dual-platform health/weight tracking application with 
 - **Android**: Kotlin + Jetpack Compose + Hilt
 - **iOS**: Swift + SwiftUI + SwiftData
 
+## Project Context
+
+- **Repo / org:** Hosted under the gg-engineering org (`github.com/gg-engineering/meApp`) following the gg-engineering migration.
+- **Jira:** Active work tracks in the **MOB** project (GGT-Mobile, board 1088) on `greatergoods.atlassian.net`. Branch and commit prefix is `MOB-XXXX` (the older `MA-XXXX` prefix is legacy).
+- **Branch model:**
+  - `main` — the MA / 5.0.x release line; default PR target unless told otherwise.
+  - `develop` — active integration branch for in-flight work.
+
 ## Build & Run Commands
 
 ### Android
@@ -187,6 +195,9 @@ Android CI runs on CircleCI with the following gates:
 
 ## Documentation
 
-- [Architecture Overview](architecture.md)
+- [Documentation index](docs/README.md)
+- [Architecture Overview (iOS)](iOS/architecture.md)
 - [Database Schema](docs/database-schema.md)
 - [Account Switching Flow](docs/account-switching-flow.md)
+- [Product Types — Current State](docs/product-types-current-state.md)
+- [Dashboard: Latest vs Average](docs/dashboard-hybrid-latest-vs-average.md)

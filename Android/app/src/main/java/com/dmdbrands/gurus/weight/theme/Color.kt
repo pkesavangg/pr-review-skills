@@ -76,6 +76,7 @@ val LightColorScheme =
     textSubheading = LightColorToken.subheading,
     textError = LightColorToken.textError,
     textErrorDisabled = LightColorToken.textErrorDisabled,
+    textWarning = LightColorToken.textWarning,
     // Brand
     meAppPrimary = LightColorToken.meAppPrimary,
     wgPrimary = LightColorToken.wgPrimary,
@@ -87,6 +88,29 @@ val LightColorScheme =
     marketingSecondaryAction = LightColorToken.marketingSecondaryAction,
     marketingTertiary = LightColorToken.marketingTertiary,
     marketingTertiaryAction = LightColorToken.marketingTertiaryAction,
+    // Action - secondary pressed
+    secondaryFocusedAction = LightColorToken.secondaryFocusedAction,
+    // Status - utility secondary
+    utilitySecondary = LightColorToken.utilitySecondary,
+    // Text
+    textDisabled = LightColorToken.textDisabled,
+    textInverse = LightColorToken.textInverse,
+    // Logo
+    logoPrimary = LightColorToken.logoPrimary,
+    logoSecondary = LightColorToken.logoSecondary,
+    // Greater Goods / promo
+    ggSecondaryAction = LightColorToken.ggSecondaryAction,
+    ggSecondaryActionPressed = LightColorToken.ggSecondaryActionPressed,
+    ggSecondaryActionDisabled = LightColorToken.ggSecondaryActionDisabled,
+    promoRed = LightColorToken.promoRed,
+    promoRedPressed = LightColorToken.promoRedPressed,
+    promoRedDisabled = LightColorToken.promoRedDisabled,
+    promoBlue = LightColorToken.promoBlue,
+    promoBluePressed = LightColorToken.promoBluePressed,
+    promoBlueDisabled = LightColorToken.promoBlueDisabled,
+    promoGreen = LightColorToken.promoGreen,
+    promoGreenPressed = LightColorToken.promoGreenPressed,
+    promoGreenDisabled = LightColorToken.promoGreenDisabled,
   )
 
 /**
@@ -145,6 +169,7 @@ val DarkColorScheme =
     textSubheading = DarkColorToken.subheading,
     textError = DarkColorToken.textError,
     textErrorDisabled = DarkColorToken.textErrorDisabled,
+    textWarning = DarkColorToken.textWarning,
     // Brand
     meAppPrimary = DarkColorToken.meAppPrimary,
     wgPrimary = DarkColorToken.wgPrimary,
@@ -155,7 +180,29 @@ val DarkColorScheme =
     marketingSecondaryAction = DarkColorToken.marketingSecondaryAction,
     marketingTertiary = DarkColorToken.marketingTertiary,
     marketingTertiaryAction = DarkColorToken.marketingTertiaryAction,
-
+    // Action - secondary pressed
+    secondaryFocusedAction = DarkColorToken.secondaryFocusedAction,
+    // Status - utility secondary
+    utilitySecondary = DarkColorToken.utilitySecondary,
+    // Text
+    textDisabled = DarkColorToken.textDisabled,
+    textInverse = DarkColorToken.textInverse,
+    // Logo
+    logoPrimary = DarkColorToken.logoPrimary,
+    logoSecondary = DarkColorToken.logoSecondary,
+    // Greater Goods / promo
+    ggSecondaryAction = DarkColorToken.ggSecondaryAction,
+    ggSecondaryActionPressed = DarkColorToken.ggSecondaryActionPressed,
+    ggSecondaryActionDisabled = DarkColorToken.ggSecondaryActionDisabled,
+    promoRed = DarkColorToken.promoRed,
+    promoRedPressed = DarkColorToken.promoRedPressed,
+    promoRedDisabled = DarkColorToken.promoRedDisabled,
+    promoBlue = DarkColorToken.promoBlue,
+    promoBluePressed = DarkColorToken.promoBluePressed,
+    promoBlueDisabled = DarkColorToken.promoBlueDisabled,
+    promoGreen = DarkColorToken.promoGreen,
+    promoGreenPressed = DarkColorToken.promoGreenPressed,
+    promoGreenDisabled = DarkColorToken.promoGreenDisabled,
   )
 
 /**

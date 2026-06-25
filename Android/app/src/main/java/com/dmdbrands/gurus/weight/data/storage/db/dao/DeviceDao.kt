@@ -218,4 +218,12 @@ interface DeviceDao {
    */
   @Query("SELECT * FROM device WHERE isSynced = 0")
   suspend fun getUnsyncedDevicesList(): List<DeviceDetails>
+
+  /**
+   * Get every device row (all accounts) as raw entities.
+   * Used by the MOB-204 startup repair to reconcile stale setup/protocol types.
+   * @return A List of all device entities
+   */
+  @Query("SELECT * FROM device")
+  suspend fun getAllDevicesList(): List<DeviceEntity>
 }

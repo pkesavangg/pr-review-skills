@@ -1,16 +1,13 @@
 package com.dmdbrands.gurus.weight.features.dashboard.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -75,7 +72,10 @@ fun BabyChartHeader(
       }
     }
     if (babyState != null && handleIntent != null) {
-      BabyMetricToggle(babyState.selectedMetric, handleIntent)
+      BabyMetricToggle(
+        selected = babyState.selectedMetric,
+        onSelect = { handleIntent(BabyDashboardIntent.SetSelectedMetric(it)) },
+      )
     }
   }
 
@@ -141,38 +141,6 @@ private fun BabyValueDisplay(
           Spacer(modifier = Modifier.width(4.dp))
           Text(text = DashboardSnapshotStrings.Inches, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
         }
-      }
-    }
-  }
-}
-
-/** Vertical Weight/Height pill toggle on the right edge of the header. */
-@Composable
-private fun BabyMetricToggle(
-  selected: BabyMetric,
-  handleIntent: (BaseGraphIntent) -> Unit,
-) {
-  Column(horizontalAlignment = Alignment.CenterHorizontally) {
-    BabyMetric.entries.forEach { metric ->
-      val isSelected = selected == metric
-      Box(
-        modifier = Modifier
-          .clickable(
-            indication = null,
-            interactionSource = remember { MutableInteractionSource() },
-          ) { handleIntent(BabyDashboardIntent.SetSelectedMetric(metric)) }
-          .then(
-            if (isSelected) Modifier.background(SnapshotColors.Baby, RoundedCornerShape(8.dp))
-            else Modifier,
-          )
-          .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.xs),
-        contentAlignment = Alignment.Center,
-      ) {
-        Text(
-          text = metric.name.uppercase(),
-          style = MeTheme.typography.link1,
-          color = if (isSelected) MeTheme.colorScheme.inverseAction else SnapshotColors.Baby,
-        )
       }
     }
   }

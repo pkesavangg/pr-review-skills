@@ -10,6 +10,15 @@ iOS application for [Greater Goods](https://greatergoods.com) — a health/weigh
 
 ---
 
+## Project Context
+
+- **Repo / org:** gg-engineering monorepo (`github.com/gg-engineering/meApp`), post gg-engineering migration.
+- **Jira:** Active work tracks in the **MOB** project (GGT-Mobile, board 1088) on `greatergoods.atlassian.net`. Branch/commit prefix `MOB-XXXX` (legacy `MA-XXXX` is deprecated).
+- **Branch model:** `main` = MA / 5.0.x release line (default PR target) · `develop` = active integration branch.
+- See the monorepo root [`/CLAUDE.md`](../CLAUDE.md) for the cross-platform overview.
+
+---
+
 ## Features
 
 | Feature | Description |
@@ -122,8 +131,6 @@ Flat `Equatable, Sendable` structs that services publish instead of the SwiftDat
 | `DeviceEphemeralState` | in-memory runtime state (connection / Wi-Fi status) | merged into `DeviceSnapshot` by `ScaleService` |
 
 Conversion: `model.toSnapshot()` on the main actor, right before any `await`. Snapshots are immutable (`let` fields) — construct with the desired values, don't mutate.
-
-Further reading: `docs/account-snapshot-implementation.md`, `docs/DEVICESNAPSHOT_IMPLEMENTATION.md`, `docs/ENTRYSNAPSHOT_IMPLEMENTATION.md`.
 
 ---
 
@@ -265,10 +272,10 @@ For detailed test patterns, mock usage, and assertion examples → `meAppTests/d
 
 ## Git & Branching
 
-- **Branch format:** `{ISSUE-ID}-{slugified-summary}` — e.g. `MA-3318-add-unit-tests-for-entry-api-repository`
-- **Commit format:** `MA-XXXX Short description of what was done`
-- **Main branch:** `main` — always target PRs here unless told otherwise
-- **Jira project:** `MA` on `greatergoods.atlassian.net`
+- **Branch format:** `{ISSUE-ID}-{slugified-summary}` — e.g. `MOB-1006-clean-up-ai-context`
+- **Commit format:** `MOB-XXXX Short description of what was done`
+- **Main branch:** `main` (MA / 5.0.x release line) — always target PRs here unless told otherwise. `develop` is the active integration branch.
+- **Jira project:** `MOB` (GGT-Mobile, board 1088) on `greatergoods.atlassian.net`. The older `MA` prefix is legacy.
 
 ---
 
@@ -321,7 +328,7 @@ When the user describes a task in natural language, match it to the appropriate 
 | "fix PR comments", "address review feedback", "apply reviewer suggestions", "resolve PR comments", "act on code review" | `.claude/skills/fix-pr-comments.md` |
 | "write a PR description", "draft a PR description", "describe this PR", "what should I put in the PR description" | `.claude/skills/pr-description.md` |
 | "log time", "log work" | `.claude/skills/log-work.md` |
-| "create a branch", "start working on MA-XXXX" | `.claude/skills/create-branch.md` |
+| "create a branch", "start working on MOB-XXXX" | `.claude/skills/create-branch.md` |
 | "scaffold this feature", "new feature" | `.claude/skills/feature-slice.md` |
 | "generate tests for X", "add unit tests" | `.claude/skills/gen-test-file.md` |
 | "generate a mock", "mock this protocol" | `.claude/skills/gen-mock-single.md` |

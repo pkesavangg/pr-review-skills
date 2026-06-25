@@ -997,7 +997,7 @@ constructor(
               primaryAction = {
                 if (hasNoBabyProfile) {
                   viewModelScope.launch {
-                    navigationService.navigateTo(AppRoute.AccountSettings.AddBaby)
+                    navigationService.navigateTo(AppRoute.AccountSettings.AddBaby())
                   }
                 } else if (readingType == ProductType.BABY) {
                   val babies = availableBabyProfiles()

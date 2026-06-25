@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.myKids.strings
 
 object AddBabyStrings {
     const val Title = "Add Baby"
+    const val EditTitle = "Edit Baby"
     const val Save = "SAVE"
     const val NameLabel = "name"
     const val BirthdayLabel = "baby's birthday"
@@ -10,6 +11,8 @@ object AddBabyStrings {
     const val BirthWeightLabel = "Birth Weight"
     const val FixedLengthUnit = "in"
     const val FixedWeightUnit = "lb"
+    const val KgUnit = "kg"
+    const val CmUnit = "cm"
 
     object BiologicalSexModal {
         const val Title = "Biological Sex"
