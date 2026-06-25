@@ -4,11 +4,16 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import com.dmdbrands.gurus.weight.BuildConfig
 
 /**
  * Exposes every descendant [androidx.compose.ui.platform.testTag] as an Android `resource-id`
  * in the rendered view hierarchy, so UiAutomator / Appium can select Compose nodes by id
  * (e.g. `toast_card`, `dialog_card`, `modal_card`).
+ *
+ * Gated to debug builds: this is test scaffolding for UiAutomator/Appium automation (which runs
+ * against the debug build), so the internal tag names are not exposed in the production view
+ * hierarchy. In release builds the modifier is returned unchanged — a no-op.
  *
  * Compose resolves `testTagsAsResourceId` per window: the root `setContent`, and every
  * `Dialog` / `Popup` / bottom sheet each own a separate semantics tree, and the flag does
@@ -20,4 +25,4 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
  */
 @OptIn(ExperimentalComposeUiApi::class)
 fun Modifier.exposeTestTagsAsResourceId(): Modifier =
-  semantics { testTagsAsResourceId = true }
+  if (BuildConfig.DEBUG) semantics { testTagsAsResourceId = true } else this
