@@ -1,7 +1,6 @@
 package com.greatergoods.libs.appsync.screen.components
 
 import androidx.camera.camera2.interop.Camera2Interop
-import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraControl
 import androidx.camera.core.CameraInfo
@@ -215,7 +214,10 @@ private fun bindCameraUseCases(
  * @param builder The [Preview.Builder] whose session capture requests are extended.
  * @param context Used to read the back camera's sensor geometry for the metering region.
  */
-@OptIn(ExperimentalCamera2Interop::class)
+// CameraX Camera2 interop is annotated with androidx @RequiresOptIn, which the
+// UnsafeOptInUsageError lint check does not accept Kotlin's @OptIn for; suppress
+// the lint id directly (same pattern as YUV420888ToGrayscaleConverter).
+@Suppress("UnsafeOptInUsageError")
 internal fun applyContinuousCenterFocus(
   builder: Preview.Builder,
   context: Context,

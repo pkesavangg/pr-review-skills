@@ -163,17 +163,16 @@ jobs:
       - run:
           name: Resolve Swift Package Dependencies
           working_directory: iOS
-          no_output_timeout: 45m
+          no_output_timeout: 20m
           command: |
-            # xcodebuild emits NO output while cloning large packages
-            # (firebase-ios-sdk, swift-syntax), so CI's no-output timer can kill
-            # a clone that is still progressing. Emit a heartbeat so only a
-            # genuine stall is caught, and clone into a cacheable directory.
-            ( while true; do sleep 60; echo "… still resolving $(date -u +%H:%M:%S)"; done ) &
-            HEARTBEAT=$!
-            trap 'kill $HEARTBEAT 2>/dev/null || true' EXIT
+            # Package.resolved is committed, so use ONLY its pinned versions and
+            # skip SwiftPM's version solver. The solver was thrashing for hours
+            # in the silent post-checkout phase on cold CI (all clones finished,
+            # then it hung). This fetches the pinned revisions and stops. No
+            # heartbeat — a genuinely silent hang should fail fast, not run 3h.
             xcodebuild -resolvePackageDependencies \
               -project meApp.xcodeproj \
+              -onlyUsePackageVersionsFromResolvedFile \
               -clonedSourcePackagesDirPath SourcePackages
       # Save right after resolve so the expensive clone is preserved even if the
       # build step later fails (no-op once the exact key already exists).
@@ -198,6 +197,8 @@ jobs:
               -scheme meApp \
               -destination 'generic/platform=iOS' \
               -configuration Debug \
+              -onlyUsePackageVersionsFromResolvedFile \
+              -disableAutomaticPackageResolution \
               -clonedSourcePackagesDirPath SourcePackages \
               -derivedDataPath DerivedData \
               CODE_SIGN_IDENTITY="" \
