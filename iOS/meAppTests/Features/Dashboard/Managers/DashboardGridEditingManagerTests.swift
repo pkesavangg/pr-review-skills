@@ -23,7 +23,7 @@ struct DashboardGridEditingManagerTests {
             performInitialLoad: false
         )
         let loggerService = LoggerService()
-        let scaleService = ScaleService(
+        let scaleService = DeviceService(
             accountService: accountService,
             apiRepository: MockScaleRepositoryAPI(),
             localRepository: MockScaleRepository()
@@ -37,7 +37,7 @@ struct DashboardGridEditingManagerTests {
 
         DependencyContainer.shared.register(loggerService as LoggerService)
         DependencyContainer.shared.register(accountService as AccountService)
-        DependencyContainer.shared.register(scaleService as ScaleService)
+        DependencyContainer.shared.register(scaleService as DeviceService)
         DependencyContainer.shared.register(entryService as EntryService)
 
         let store = DashboardStore(

@@ -37,4 +37,8 @@ final class MockIntegrationAPIRepository: IntegrationRepositoryAPIProtocol {
         deleteHealthIntegrationCalls += 1
         _ = try deleteHealthIntegrationResult.get()
     }
+
+    func requestNewIntegration(suggestion: String) async throws {
+        throw UnexpectedCallError.methodCalled("requestNewIntegration")
+    }
 }

@@ -93,7 +93,7 @@ struct PushNotificationServiceTests {
         deps.keychain.setFCMToken("existing-token", for: "acct-1")
         let sut = makeSUT(deps)
 
-        await sut.setupPushNotifications(isFromScaleSetup: false)
+        await sut.setupPushNotifications(isFromDeviceSetup: false)
 
         #expect(deps.api.updateDeviceInfoCalls == 1)
         #expect(deps.registrar.registerCalls == 0)
@@ -107,7 +107,7 @@ struct PushNotificationServiceTests {
         deps.tokenProvider.fetchTokenResult = .success("fresh-fcm-token")
         let sut = makeSUT(deps)
 
-        await sut.setupPushNotifications(isFromScaleSetup: false)
+        await sut.setupPushNotifications(isFromDeviceSetup: false)
 
         #expect(deps.registrar.registerCalls == 1)
         #expect(deps.tokenProvider.fetchCalls == 1)
@@ -123,7 +123,7 @@ struct PushNotificationServiceTests {
         deps.kv.setValue(true, forKey: KvStorageKeys.notificationOnlyAlertShownKey(for: "acct-1"))
         let sut = makeSUT(deps)
 
-        await sut.setupPushNotifications(isFromScaleSetup: true)
+        await sut.setupPushNotifications(isFromDeviceSetup: true)
 
         #expect(deps.permissions.handlePermissionCalls == 1)
         #expect(deps.permissions.lastHandledPermission == .notification)
@@ -135,7 +135,7 @@ struct PushNotificationServiceTests {
         deps.permissions.requiredCategories = []
         let sut = makeSUT(deps)
 
-        await sut.setupPushNotifications(isFromScaleSetup: false)
+        await sut.setupPushNotifications(isFromDeviceSetup: false)
 
         #expect(deps.permissions.handlePermissionCalls == 0)
         #expect(deps.registrar.registerCalls == 0)
@@ -149,7 +149,7 @@ struct PushNotificationServiceTests {
         deps.permissions.forcedGetPermissionState = .DISABLED
         let sut = makeSUT(deps)
 
-        await sut.setupPushNotifications(isFromScaleSetup: false)
+        await sut.setupPushNotifications(isFromDeviceSetup: false)
 
         #expect(deps.registrar.registerCalls == 0)
         #expect(deps.tokenProvider.fetchCalls == 0)
@@ -248,7 +248,7 @@ struct PushNotificationServiceTests {
             accountService: deps.account,
             notificationService: deps.notifications,
             bluetoothService: deps.bluetooth,
-            scaleService: deps.scale,
+            deviceService: deps.scale,
             keychainService: deps.keychain,
             kvStorage: deps.kv,
             logger: deps.logger,

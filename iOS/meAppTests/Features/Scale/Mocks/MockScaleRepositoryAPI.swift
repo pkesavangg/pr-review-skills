@@ -1,10 +1,10 @@
 import Foundation
 @testable import meApp
 
-final class MockScaleRepositoryAPI: ScaleRepositoryAPIProtocol {
-    var listScalesResult: [ScaleDTO] = []
-    var createScaleResult: ScaleDTO = ScaleDTO()
-    var editScaleResult: ScaleDTO = ScaleDTO()
+final class MockScaleRepositoryAPI: DeviceRepositoryAPIProtocol {
+    var listScalesResult: [DeviceDTO] = []
+    var createScaleResult: DeviceDTO = DeviceDTO()
+    var editScaleResult: DeviceDTO = DeviceDTO()
     var createScaleError: Error?
     var listScalesError: Error?
     var editScaleError: Error?
@@ -30,10 +30,10 @@ final class MockScaleRepositoryAPI: ScaleRepositoryAPIProtocol {
     private(set) var patchScalePreferenceCalls = 0
     private(set) var lastDeletedScaleId: String?
     private(set) var lastEditedScaleId: String?
-    private(set) var lastEditedScale: ScaleDTO?
+    private(set) var lastEditedScale: DeviceDTO?
     private(set) var lastPatchedMetaScaleId: String?
-    private(set) var lastPatchedMetaData: ScaleMetaDataDTO?
-    private(set) var lastCreatedScale: ScaleDTO?
+    private(set) var lastPatchedMetaData: DeviceMetaDataDTO?
+    private(set) var lastCreatedScale: DeviceDTO?
     private(set) var lastPatchedPreference: R4ScalePreferenceDTO?
 
     private(set) var listPairedDevicesCalls = 0
@@ -48,20 +48,20 @@ final class MockScaleRepositoryAPI: ScaleRepositoryAPIProtocol {
     private(set) var lastDeletedPairedDeviceId: String?
     private(set) var lastSubmittedReview: ReviewRequest?
 
-    func listScales() async throws -> [ScaleDTO] {
+    func listScales() async throws -> [DeviceDTO] {
         listScalesCalls += 1
         if let listScalesError { throw listScalesError }
         return listScalesResult
     }
 
-    func createScale(_ scale: ScaleDTO) async throws -> ScaleDTO {
+    func createScale(_ scale: DeviceDTO) async throws -> DeviceDTO {
         createScaleCalls += 1
         lastCreatedScale = scale
         if let createScaleError { throw createScaleError }
         return createScaleResult
     }
 
-    func editScale(_ scaleId: String, properties: ScaleDTO) async throws -> ScaleDTO {
+    func editScale(_ scaleId: String, properties: DeviceDTO) async throws -> DeviceDTO {
         editScaleCalls += 1
         lastEditedScaleId = scaleId
         lastEditedScale = properties
@@ -75,7 +75,7 @@ final class MockScaleRepositoryAPI: ScaleRepositoryAPIProtocol {
         if let deleteScaleError { throw deleteScaleError }
     }
 
-    func patchScaleMeta(_ scaleId: String, metaData: ScaleMetaDataDTO) async throws {
+    func patchScaleMeta(_ scaleId: String, metaData: DeviceMetaDataDTO) async throws {
         patchScaleMetaCalls += 1
         lastPatchedMetaScaleId = scaleId
         lastPatchedMetaData = metaData

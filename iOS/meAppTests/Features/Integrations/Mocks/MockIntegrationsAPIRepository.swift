@@ -6,6 +6,7 @@ final class MockIntegrationsAPIRepository: IntegrationRepositoryAPIProtocol {
     var createHealthIntegrationError: Error?
     var logHealthIntegrationError: Error?
     var deleteHealthIntegrationError: Error?
+    var requestNewIntegrationError: Error?
 
     private(set) var removeIntegrationCalls = 0
     private(set) var lastRemoveAccountId: String?
@@ -13,6 +14,16 @@ final class MockIntegrationsAPIRepository: IntegrationRepositoryAPIProtocol {
     private(set) var logHealthIntegrationCalls = 0
     private(set) var lastLogType: IntegrationType?
     private(set) var lastLogTimestamp: String?
+    private(set) var requestNewIntegrationCalls = 0
+    private(set) var lastRequestSuggestion: String?
+
+    func requestNewIntegration(suggestion: String) async throws {
+        requestNewIntegrationCalls += 1
+        lastRequestSuggestion = suggestion
+        if let requestNewIntegrationError {
+            throw requestNewIntegrationError
+        }
+    }
 
     func removeIntegration(accountId: String, provider: IntegrationType) async throws {
         removeIntegrationCalls += 1

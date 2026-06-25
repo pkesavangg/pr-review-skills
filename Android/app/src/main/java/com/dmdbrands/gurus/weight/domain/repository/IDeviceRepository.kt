@@ -56,6 +56,18 @@ interface IDeviceRepository {
     isDeleted: Boolean,
   )
 
+  /**
+   * Reconciles persisted device setup/protocol types against the SKU's known setup type.
+   *
+   * Legacy Ionic migration could store a stale `type` (e.g. "appsync" for the Bluetooth
+   * SKU 0375), which surfaces as the wrong Scale Type. This rewrites `deviceType` and
+   * `protocolType` from the SKU lookup for any row that disagrees. Devices with an unknown
+   * SKU are left untouched. Idempotent. (MOB-204)
+   *
+   * @return the number of device rows repaired
+   */
+  suspend fun repairDeviceTypesFromSku(): Int
+
   // API operations
 
   /**
