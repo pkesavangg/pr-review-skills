@@ -270,6 +270,8 @@ Before marking any task complete, confirm:
 | `/create-prd` | Generate implementation plan |
 | `/read-figma` | Extract design context from Figma |
 | `/read-jira-images` | Analyze Jira image attachments |
+| `/phase2-context` | Phase 2 (Me.Health 2.0) product + unified-API model |
+| `/phase2-design-system` | Phase 2 Figma 2.0 file/nodes + token mapping |
 | `api-change-planner` | Map API feature impact across layers |
 | `di-impact-finder` | Assess DI registration impact |
 | `coverage-gap-finder` | Find uncovered methods and branches |
@@ -302,6 +304,10 @@ Before marking any task complete, confirm:
 | `/form-guide` | Form validation — ObservableForm, FormControl, validators |
 | `/logging-guide` | Logging system — LoggerService, persistence, retention, server submission |
 | `/notification-guide` | Notification layer — alerts, toasts, loaders, modals, two-window architecture |
+| `/unified-entries` | Phase 2 unified `/v3/entries/` write (array) + read (sync/cursor) |
+| `/paired-device` | Phase 2 unified `/v3/paired-device/` + `DeviceType` mapping |
+| `/baby-profile` | Phase 2 baby CRUD (`/v3/baby/`, iOS owner-CRUD only) |
+| `/product-selection` | Phase 2 `productTypes`/`measurementUnits`, `ProductTypeStore` |
 
 ### Testing & Mocks
 | Skill/Agent | Purpose |

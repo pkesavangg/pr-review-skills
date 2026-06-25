@@ -14,8 +14,20 @@ iOS application for [Greater Goods](https://greatergoods.com) — a health/weigh
 
 - **Repo / org:** gg-engineering monorepo (`github.com/gg-engineering/meApp`), post gg-engineering migration.
 - **Jira:** Active work tracks in the **MOB** project (GGT-Mobile, board 1088) on `greatergoods.atlassian.net`. Branch/commit prefix `MOB-XXXX` (legacy `MA-XXXX` is deprecated).
-- **Branch model:** `main` = MA / 5.0.x release line (default PR target) · `develop` = active integration branch.
+- **Branch model:** `main` = MA / 5.0.x release line (5.0.x hotfixes only) · **`develop` = active integration branch and current default base/target** — Phase 2 (`phase2-dev`) is merged into it. Start new branches from `develop`.
 - See the monorepo root [`/CLAUDE.md`](../CLAUDE.md) for the cross-platform overview.
+
+---
+
+## Phase 2 — Me.Health 2.0 ("Mega App")
+
+The shipped app (v5.0.x) is weight-only. **Phase 2 turns it into a multi-product app: Weight + Blood Pressure (Balance) + Baby**, against a merged wgServer3 `/v3` API.
+
+- **Account product model:** `productTypes` array (`weight` / `blood_pressure` / `baby`) + `measurementUnits` (`metric` / `imperialLbOz` / `imperialLbDecimal`). `gender`/`dob`/`height` are now **conditionally** required (only for weight/BP), which affects signup forms.
+- **In this codebase already:** `EntrySnapshot` carries `BPMEntrySnapshot` + `BabyEntrySnapshot`; unified `/v3/entries/`, `/v3/paired-device/`, baby profile/permissions work landed via `MOB-382…386`.
+- **Unified entries:** one `POST /v3/entries/` (raw array, `category` routes weight/bp/baby) and one `GET /v3/entries/` with **sync** (`?start`) and **cursor** (`?cursor`+`limit`) modes; baby `entryType`s include feeding/sleep/diaper/length/snapshot.
+- **Backward compatibility is mandatory** — legacy weight endpoints remain for old apps.
+- **Skills:** `phase2-context` (full API cheat sheet, auto-triggers) · `phase2-design-system` (Figma 2.0 file/nodes + token mapping) · `unified-entries` / `paired-device` / `baby-profile` / `product-selection` (technical patterns).
 
 ---
 

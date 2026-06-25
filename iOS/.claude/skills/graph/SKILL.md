@@ -1,6 +1,6 @@
 ---
 name: graph
-description: Fix bugs or make enhancements in the Dashboard graph layer. Use whenever the task touches BaseGraphView, BaseSectionViewModel, GraphView, GraphState, PagedChartScrollBehavior, or chart rendering — for any reason: chart not updating, animation glitch, scroll wrong, Y-axis off, crosshair broken, goal chip wrong, data not showing, performance issue, graph enhancement, or graph refactor. Triggers on "graph bug", "chart issue", "fix graph", "chart animation", "scroll behavior", "y-axis", "crosshair", "goal chip", "graph not updating", "chart performance", or any mention of graph/chart files.
+description: Fix bugs or make enhancements in the Dashboard graph/chart layer (weight, blood pressure/BPM, and baby growth charts). Use whenever the task touches BaseGraphView, BaseSectionViewModel, GraphView, GraphState, PagedChartScrollBehavior, the BPM trend charts, the Baby growth-percentile charts, or chart rendering — for any reason: chart not updating, animation glitch, scroll wrong, Y-axis off, crosshair broken, goal chip wrong, data not showing, performance issue, graph enhancement, or graph refactor. Triggers on "graph bug", "chart issue", "fix graph", "bp chart", "bpm trend", "baby growth chart", "percentile chart", "chart animation", "scroll behavior", "y-axis", "crosshair", "goal chip", "graph not updating", "chart performance", or any mention of graph/chart files.
 ---
 
 Fix a bug or make an enhancement in the Dashboard graph layer.
@@ -23,6 +23,27 @@ Orient yourself before touching anything:
 | `GraphViewModifier.swift` | Consistent frame/padding for all graph views |
 
 Read only the files relevant to your task.
+
+The table above is the **weight** chart layer (the shared `BaseGraphView` / four-period section VMs). Phase 2 added **separate chart stacks** for the other products — use the matching one:
+
+### Phase 2 — Blood Pressure (BPM) charts
+| File | Responsibility |
+|------|---------------|
+| `Features/Dashboard/BPM/Views/Screens/BpmTrendView.swift` | BP trend chart screen |
+| `Features/Dashboard/BPM/Views/Components/BpmMetricsSection.swift` | Systolic/diastolic/pulse metrics section |
+| `Features/Dashboard/BPM/Views/Components/` | `BpmReadingCard`, `BpmSnapshotCard`, `ThreeReadingAverage*`, `AhaRating*`, `BpmSummaryCardView`, `BpmDisplayView` |
+
+### Phase 2 — Baby growth charts (percentile)
+| File | Responsibility |
+|------|---------------|
+| `Features/Dashboard/Baby/Views/Screens/BabyTrendView.swift` | Baby growth chart screen |
+| `Features/Dashboard/ViewModels/BabyTrendViewModel.swift` | Baby trend VM |
+| `Features/Dashboard/Baby/Utils/BabyDashboardChartStyle.swift`, `BabyDashboardChartSupport.swift` | Chart styling/support |
+| `Features/Dashboard/Baby/Models/BabyPercentileChartPoint.swift`, `BabyPercentileLineEntry.swift` | Percentile data points |
+| `Features/Dashboard/Baby/Utils/BabyWeightPercentileCalculator.swift`, `BabyPercentileGrowthReference.swift`, `BabyGrowthPercentileZTable.swift` | WHO/CDC percentile math |
+| `Features/Dashboard/Baby/Environment/BabyGrowthChartEnvironment.swift`, `Enums/BabyPercentileLine.swift`, `Enums/BabyMetric.swift` | Chart environment + metric enums |
+
+BP/baby charts do **not** reuse the weight `BaseGraphView` paging machinery — classify the problem against the right stack before applying the sections below (which are written for the weight graph).
 
 ---
 
