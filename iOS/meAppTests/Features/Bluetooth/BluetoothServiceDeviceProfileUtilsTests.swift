@@ -13,11 +13,11 @@ struct BluetoothServiceDeviceProfileUtilsTests {
     @Test("getSafeScaleType returns scaleType when device has bathScale")
     func getSafeScaleTypeWithBathScale() {
         let sut = makeSUT()
-        let device = makeDevice(bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true))
+        let device = makeDevice(bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true))
 
-        let result = sut.getSafeScaleType(for: device.toSnapshot())
+        let result = sut.getSafeDeviceModelType(for: device.toSnapshot())
 
-        #expect(result == ScaleSourceType.btWifiR4.rawValue)
+        #expect(result == DeviceSourceType.btWifiR4.rawValue)
     }
 
     @Test("getSafeScaleType returns nil when device has no bathScale")
@@ -25,7 +25,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
         let sut = makeSUT()
         let device = makeDevice()
 
-        let result = sut.getSafeScaleType(for: device.toSnapshot())
+        let result = sut.getSafeDeviceModelType(for: device.toSnapshot())
 
         #expect(result == nil)
     }
@@ -35,19 +35,19 @@ struct BluetoothServiceDeviceProfileUtilsTests {
         let sut = makeSUT()
         let device = makeDevice(bathScale: BathScale(scaleType: nil, bodyComp: nil))
 
-        let result = sut.getSafeScaleType(for: device.toSnapshot())
+        let result = sut.getSafeDeviceModelType(for: device.toSnapshot())
 
         #expect(result == nil)
     }
 
-    @Test("getSafeScaleType returns correct type for each ScaleSourceType variant")
+    @Test("getSafeScaleType returns correct type for each DeviceSourceType variant")
     func getSafeScaleTypeAllVariants() {
         let sut = makeSUT()
-        let variants: [ScaleSourceType] = [.wifi, .bluetooth, .btWifiR4, .appsync, .bluetoothScale]
+        let variants: [DeviceSourceType] = [.wifi, .bluetooth, .btWifiR4, .appsync, .bluetoothScale]
 
         for variant in variants {
             let device = makeDevice(id: "dev-\(variant.rawValue)", bathScale: BathScale(scaleType: variant.rawValue, bodyComp: false))
-            let result = sut.getSafeScaleType(for: device.toSnapshot())
+            let result = sut.getSafeDeviceModelType(for: device.toSnapshot())
             #expect(result == variant.rawValue)
         }
     }
@@ -530,7 +530,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
     ) -> BluetoothService {
         BluetoothService(
             accountService: account ?? MockAccountService(),
-            scaleService: scale ?? MockScaleService(),
+            deviceService: scale ?? MockScaleService(),
             entryService: entry ?? MockEntryService(),
             babyService: MockBabyService(),
             logger: logger ?? MockLoggerService(),

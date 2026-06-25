@@ -88,6 +88,7 @@ final class MockPushEntryService: EntryServiceProtocol {
     func fetchEntrySnapshots(forMonth month: String, entryType: EntryType) async throws -> [EntrySnapshot] { [] }
     func getAllEntries() async throws -> [Entry] { [] }
     func getAllEntriesAsDTO() async throws -> [BathScaleOperationDTO] { [] }
+    func getAllEntriesAsSnapshots() async throws -> [EntrySnapshot] { [] }
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool { false }
     func getEntryCount() async throws -> Int { 0 }
     func getOldestEntry() async throws -> Entry? { nil }
@@ -174,7 +175,7 @@ final class MockPushPermissionsService: PermissionsServiceProtocol {
 }
 
 @MainActor
-final class MockPushScaleService: ScaleServiceProtocol {
+final class MockPushScaleService: PairedDeviceServiceProtocol {
     @Published var scales: [DeviceSnapshot] = []
     var scalesPublisher: AnyPublisher<[DeviceSnapshot], Never> { $scales.eraseToAnyPublisher() }
     private(set) var syncAllScalesCalls = 0
@@ -242,4 +243,12 @@ final class MockPushScaleService: ScaleServiceProtocol {
     func fetchAttachedPreference(by id: String) async -> R4ScalePreference? { nil }
     func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? { nil }
     func deleteSingleDeviceEntry(_ deviceId: String) async throws {}
+    func listPairedDevices(deviceType: DeviceType?) async throws -> [PairedDeviceResponse] { [] }
+    func createPairedDevice(_ request: PairedDeviceRequest) async throws -> PairedDeviceResponse {
+        throw UnexpectedCallError.methodCalled("createPairedDevice")
+    }
+    func updatePairedDevice(_ deviceId: String, nickname: String) async throws -> PairedDeviceResponse {
+        throw UnexpectedCallError.methodCalled("updatePairedDevice")
+    }
+    func deletePairedDevice(_ deviceId: String) async throws {}
 }

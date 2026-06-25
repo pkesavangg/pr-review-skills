@@ -53,7 +53,7 @@ struct WeightOnlyModeAlertStoreTests {
         let scaleService = MockScaleService()
         let bluetooth = MockBluetoothService()
         let (store, _, _, _) = makeSUT(scaleService: scaleService, bluetooth: bluetooth)
-        let event = BtWifiStoreTestFixtures.makeDiscoveryEvent(
+        let event = makeDiscoveryEvent(
             scale: makeScale(id: "discovered", isConnected: true, isWeightOnlyEnabledByOthers: true)
         )
 
@@ -233,7 +233,7 @@ struct WeightOnlyModeAlertStoreTests {
         DependencyContainer.shared.register(bluetooth as BluetoothServiceProtocol)
         DependencyContainer.shared.register(notification as NotificationHelperServiceProtocol)
 
-        let store = WeightOnlyModeAlertStore(scaleService: scaleService)
+        let store = WeightOnlyModeAlertStore(deviceService: scaleService)
         return (store, scaleService, bluetooth, notification)
     }
 
@@ -246,6 +246,15 @@ struct WeightOnlyModeAlertStoreTests {
         scale.isConnected = isConnected
         scale.isWeighOnlyModeEnabledByOthers = isWeightOnlyEnabledByOthers
         return scale
+    }
+
+    private func makeDiscoveryEvent(scale: Device, isNew: Bool = true) -> DeviceDiscoveryEvent {
+        DeviceDiscoveryEvent(
+            device: scale.toSnapshot(),
+            deviceInfo: SCALES.first { $0.setupType == .btWifiR4 } ?? SCALES[0],
+            protocolType: .R4,
+            isNew: isNew
+        )
     }
 
     private func waitUntil(

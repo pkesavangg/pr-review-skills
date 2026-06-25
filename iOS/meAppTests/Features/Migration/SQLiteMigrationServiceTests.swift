@@ -431,6 +431,9 @@ private final class MockSQLiteMigrationEntryRepository: EntryRepositoryProtocol 
     func fetchEntriesAsDTO(forUserId userId: String, operationType: String?) async throws -> [BathScaleOperationDTO] { [] }
     func fetchEntriesAsBpmDTO(forUserId userId: String, operationType: String?) async throws -> [BpmOperationDTO] { [] }
     func syncEntries(newEntries: [Entry]) async throws {}
+    func markEntryAsDeleted(byId id: String) async throws {}
+    func updateEntryServerEntryId(entryId: String, serverEntryId: String) async throws {}
+    func fetchUnsyncedEntriesAsSnapshots(forUserId userId: String) async throws -> [(EntrySnapshot, BathScaleOperationDTO)] { [] }
 }
 
 // MARK: - SQLiteTestHelper

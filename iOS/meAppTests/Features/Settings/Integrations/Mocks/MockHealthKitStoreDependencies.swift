@@ -143,6 +143,7 @@ final class MockHealthKitStoreEntryService: EntryServiceProtocol {
     func fetchEntrySnapshots(forMonth month: String, entryType: EntryType) async throws -> [EntrySnapshot] { [] }
     func getAllEntries() async throws -> [Entry] { [] }
     func getAllEntriesAsDTO() async throws -> [BathScaleOperationDTO] { [] }
+    func getAllEntriesAsSnapshots() async throws -> [EntrySnapshot] { [] }
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool { false }
 
     func getEntryCount() async throws -> Int {

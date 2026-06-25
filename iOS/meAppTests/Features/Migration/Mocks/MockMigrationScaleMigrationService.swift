@@ -2,7 +2,7 @@ import Foundation
 @testable import meApp
 
 @MainActor
-final class MockMigrationScaleMigrationService: ScaleMigrationServiceProtocol {
+final class MockMigrationScaleMigrationService: DeviceMigrationServiceProtocol {
     var isMigrationNeededResult = false
     var migrateScaleDataResult: Result<[Device], Error> = .success([])
 

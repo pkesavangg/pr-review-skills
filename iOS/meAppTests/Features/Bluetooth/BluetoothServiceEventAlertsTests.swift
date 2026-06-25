@@ -180,7 +180,7 @@ struct BluetoothServiceEventAlertsTests {
         #expect(skipped == true)
     }
 
-    @Test("reconnect button triggers onOpenScaleSetup callback")
+    @Test("reconnect button triggers onOpenDeviceSetup callback")
     func reconnectButtonTriggersOpenScaleSetup() async {
         let notification = MockNotificationHelperService()
         let sdk = MockBluetoothSDKClient()
@@ -190,7 +190,7 @@ struct BluetoothServiceEventAlertsTests {
 
         var callbackInvoked = false
         var callbackIsDuplicate = false
-        sut.onOpenScaleSetup = { _, _, _, isDuplicate in
+        sut.onOpenDeviceSetup = { _, _, _, isDuplicate in
             callbackInvoked = true
             callbackIsDuplicate = isDuplicate
         }
@@ -207,7 +207,7 @@ struct BluetoothServiceEventAlertsTests {
         #expect(callbackIsDuplicate == false)
     }
 
-    @Test("duplicate reconnect button triggers onOpenScaleSetup with isDuplicate true")
+    @Test("duplicate reconnect button triggers onOpenDeviceSetup with isDuplicate true")
     func duplicateReconnectButtonTriggersOpenScaleSetupWithDuplicate() async {
         let notification = MockNotificationHelperService()
         let sdk = MockBluetoothSDKClient()
@@ -217,7 +217,7 @@ struct BluetoothServiceEventAlertsTests {
 
         var callbackIsDuplicate = false
         var callbackInvoked = false
-        sut.onOpenScaleSetup = { _, _, _, isDuplicate in
+        sut.onOpenDeviceSetup = { _, _, _, isDuplicate in
             callbackInvoked = true
             callbackIsDuplicate = isDuplicate
         }
@@ -268,7 +268,7 @@ struct BluetoothServiceEventAlertsTests {
         let device = BluetoothTestFixtures.makeDevice(
             id: "dev-1",
             broadcastIdString: "ABC",
-            bathScale: BathScale(scaleType: ScaleSourceType.wifi.rawValue, bodyComp: false)
+            bathScale: BathScale(scaleType: DeviceSourceType.wifi.rawValue, bodyComp: false)
         )
         device.r4ScalePreference = R4ScalePreference(
             scaleId: "dev-1",
@@ -297,7 +297,7 @@ struct BluetoothServiceEventAlertsTests {
         let scaleDevice = BluetoothTestFixtures.makeDevice(
             id: "dev-1",
             broadcastIdString: "DIFFERENT",
-            bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true)
+            bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
         )
         scaleDevice.broadcastId = 100
         scaleDevice.r4ScalePreference = R4ScalePreference(
@@ -330,7 +330,7 @@ struct BluetoothServiceEventAlertsTests {
         let device = BluetoothTestFixtures.makeDevice(
             id: "dev-1",
             broadcastIdString: "ABC",
-            bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true)
+            bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
         )
         device.r4ScalePreference = R4ScalePreference(
             scaleId: "dev-1",
@@ -359,7 +359,7 @@ struct BluetoothServiceEventAlertsTests {
         let device = BluetoothTestFixtures.makeDevice(
             id: "dev-1",
             broadcastIdString: "ABC",
-            bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true)
+            bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
         )
         let pref = R4ScalePreference(
             scaleId: "dev-1",
@@ -391,7 +391,7 @@ struct BluetoothServiceEventAlertsTests {
         let device = BluetoothTestFixtures.makeDevice(
             id: "dev-1",
             broadcastIdString: "ABC",
-            bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true)
+            bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
         )
         // Set r4ScalePreference with one name
         let originalPref = R4ScalePreference(
@@ -536,7 +536,7 @@ struct BluetoothServiceEventAlertsTests {
     ) -> BluetoothService {
         BluetoothService(
             accountService: account ?? MockAccountService(),
-            scaleService: scale ?? MockScaleService(),
+            deviceService: scale ?? MockScaleService(),
             entryService: entry ?? MockEntryService(),
             babyService: MockBabyService(),
             logger: logger ?? MockLoggerService(),

@@ -3,7 +3,7 @@ import Foundation
 @testable import meApp
 
 @MainActor
-final class MockScaleService: ScaleServiceProtocol {
+final class MockScaleService: PairedDeviceServiceProtocol {
     @Published var scales: [DeviceSnapshot] = []
     var scalesPublisher: AnyPublisher<[DeviceSnapshot], Never> { $scales.eraseToAnyPublisher() }
     var attachedPreferences: [String: R4ScalePreference] = [:]
@@ -101,7 +101,7 @@ final class MockScaleService: ScaleServiceProtocol {
         device.sku = sku
         device.userNumber = userNumber
         device.metaData = deviceMetadata
-        device.bathScale = device.bathScale ?? BathScale(scaleType: ScaleSourceType.bluetooth.rawValue, bodyComp: false)
+        device.bathScale = device.bathScale ?? BathScale(scaleType: DeviceSourceType.bluetooth.rawValue, bodyComp: false)
         lastCreatedBluetoothScale = device
         return device
     }
@@ -161,7 +161,7 @@ final class MockScaleService: ScaleServiceProtocol {
             token: token,
             metaData: deviceMetadata
         )
-        device.bathScale = BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true)
+        device.bathScale = BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
         device.r4ScalePreference = R4ScalePreference(
             from: ScaleTestFixtures.makePreferenceDTO(scaleId: scaleId, displayName: displayName),
             scaleId: scaleId

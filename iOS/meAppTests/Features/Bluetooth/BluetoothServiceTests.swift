@@ -77,12 +77,12 @@ struct BluetoothServiceTests {
         let bluetoothScale = makeDevice(
             id: "keep-1",
             broadcastIdString: "AA11",
-            bathScale: BathScale(scaleType: ScaleSourceType.bluetoothScale.rawValue, bodyComp: true)
+            bathScale: BathScale(scaleType: DeviceSourceType.bluetoothScale.rawValue, bodyComp: true)
         )
         let wifiScale = makeDevice(
             id: "drop-1",
             broadcastIdString: "BB22",
-            bathScale: BathScale(scaleType: ScaleSourceType.wifi.rawValue, bodyComp: true)
+            bathScale: BathScale(scaleType: DeviceSourceType.wifi.rawValue, bodyComp: true)
         )
 
         scale.scales = [bluetoothScale.toSnapshot(), wifiScale.toSnapshot()]
@@ -129,7 +129,7 @@ struct BluetoothServiceTests {
 
         let discoveryEvent = DeviceDiscoveryEvent(
             device: makeDevice(id: "publisher-device-1", broadcastIdString: "P1").toSnapshot(),
-            deviceInfo: ScaleItemInfo(productName: "Test Scale", sku: "SKU-1", imgPath: "image", setupType: .bluetooth, bodyComp: true),
+            deviceInfo: DeviceItemInfo(productName: "Test Scale", sku: "SKU-1", imgPath: "image", setupType: .bluetooth, bodyComp: true),
             protocolType: .A6,
             isNew: true
         )
@@ -292,7 +292,7 @@ struct BluetoothServiceTests {
     ) -> BluetoothService {
         BluetoothService(
             accountService: account ?? MockAccountService(),
-            scaleService: scale ?? MockScaleService(),
+            deviceService: scale ?? MockScaleService(),
             entryService: entry ?? MockEntryService(),
             babyService: MockBabyService(),
             logger: logger ?? MockLoggerService(),

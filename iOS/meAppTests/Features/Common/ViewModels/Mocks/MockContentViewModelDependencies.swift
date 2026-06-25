@@ -123,7 +123,7 @@ final class MockContentViewModelFeedService: FeedServiceProtocol {
 }
 
 @MainActor
-final class MockContentViewModelScaleService: ScaleServiceProtocol {
+final class MockContentViewModelScaleService: PairedDeviceServiceProtocol {
     @Published var scales: [DeviceSnapshot] = []
     var scalesPublisher: AnyPublisher<[DeviceSnapshot], Never> { $scales.eraseToAnyPublisher() }
 
@@ -207,10 +207,10 @@ final class MockContentViewModelScaleService: ScaleServiceProtocol {
 
 @MainActor
 final class MockContentViewModelBluetoothService: BluetoothServiceProtocol {
+    var onOpenDeviceSetup: ((DeviceSnapshot, DeviceDiscoveryEvent?, Bool, Bool) -> Void)?
     var canShowScaleDiscoveredModal: Bool = false
     var isSetupInProgress: Bool = false
     var skipDevices: [String] = []
-    var onOpenScaleSetup: ((DeviceSnapshot, DeviceDiscoveryEvent?, Bool, Bool) -> Void)?
 
     private(set) var initializeCalls = 0
     private(set) var startBluetoothOperationsCalls = 0

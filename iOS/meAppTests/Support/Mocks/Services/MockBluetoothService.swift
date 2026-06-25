@@ -8,7 +8,7 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     var canShowScaleDiscoveredModal: Bool = false
     var isSetupInProgress: Bool = false
     var skipDevices: [String] = []
-    var onOpenScaleSetup: ((DeviceSnapshot, DeviceDiscoveryEvent?, Bool, Bool) -> Void)?
+    var onOpenDeviceSetup: ((DeviceSnapshot, DeviceDiscoveryEvent?, Bool, Bool) -> Void)?
     var resyncAndScanResult: Result<Void, BluetoothServiceError> = .success(())
     var deleteCurrentUserFromScaleIfPossibleResult: Result<UserDeletionResponse, BluetoothServiceError> = .failure(.notImplemented)
     var disconnectDeviceResult: Result<Void, BluetoothServiceError> = .success(())
