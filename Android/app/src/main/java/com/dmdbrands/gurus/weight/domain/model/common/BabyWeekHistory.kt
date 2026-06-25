@@ -5,6 +5,8 @@ package com.dmdbrands.gurus.weight.domain.model.common
  */
 data class BabyWeekHistory(
     val date: String,
+    // Machine date key (YYYY-MM-DD) passed to the day-detail screen; `date` is display-only.
+    val dateKey: String,
     val entryCount: Int,
     val weightLb: Int?,
     val weightOz: Double?,

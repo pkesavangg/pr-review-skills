@@ -21,7 +21,7 @@ enum DashboardError: Error, LocalizedError, Equatable {
 
     // MARK: - Scale Detection Errors
     case scaleDetectionFailed(Error)
-    case unsupportedScaleType(String)
+    case unsupportedDeviceModelType(String)
 
     // MARK: - Graph Errors
     case chartDataGenerationFailed(String)
@@ -65,7 +65,7 @@ enum DashboardError: Error, LocalizedError, Equatable {
         // Scale Detection Errors
         case .scaleDetectionFailed(let error):
             return "Failed to detect scale type: \(error.localizedDescription)"
-        case .unsupportedScaleType(let type):
+        case .unsupportedDeviceModelType(let type):
             return "Unsupported scale type: \(type)"
 
         // Graph Errors
@@ -139,7 +139,7 @@ extension DashboardError {
              (.invalidMetricData(let lhsMessage), .invalidMetricData(let rhsMessage)),
              (.metricConversionFailed(let lhsMessage), .metricConversionFailed(let rhsMessage)),
              (.unsupportedMetricType(let lhsMessage), .unsupportedMetricType(let rhsMessage)),
-             (.unsupportedScaleType(let lhsMessage), .unsupportedScaleType(let rhsMessage)),
+             (.unsupportedDeviceModelType(let lhsMessage), .unsupportedDeviceModelType(let rhsMessage)),
              (.chartDataGenerationFailed(let lhsMessage), .chartDataGenerationFailed(let rhsMessage)),
              (.invalidTimeRange(let lhsMessage), .invalidTimeRange(let rhsMessage)),
              (.scrollPositionUpdateFailed(let lhsMessage), .scrollPositionUpdateFailed(let rhsMessage)),

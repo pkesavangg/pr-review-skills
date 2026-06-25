@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.core.service
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.google.common.truth.Truth.assertThat
@@ -17,9 +18,9 @@ import io.mockk.unmockkAll
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import javax.inject.Provider
 
 class ProductSelectionManagerTest {
@@ -42,7 +43,7 @@ class ProductSelectionManagerTest {
     private val baby1 = BabyProfile(id = BABY_ID_1, name = BABY_NAME_1, birthdate = null, accountId = ACCOUNT_ID)
     private val baby2 = BabyProfile(id = BABY_ID_2, name = BABY_NAME_2, birthdate = null, accountId = ACCOUNT_ID)
 
-    @Before
+    @BeforeEach
     fun setUp() {
         MockKAnnotations.init(this)
         mockkObject(AppLog)
@@ -63,7 +64,7 @@ class ProductSelectionManagerTest {
         )
     }
 
-    @After
+    @AfterEach
     fun tearDown() {
         unmockkAll()
     }
@@ -198,6 +199,126 @@ class ProductSelectionManagerTest {
         coVerify { productSelectionRepository.saveSelectedProductType(ProductType.BABY) }
         coVerify { productSelectionRepository.saveSelectedBabyProfileId(null) }
         assertThat(manager.selectedProduct.value).isEqualTo(ProductSelection.BabyScale)
+    }
+
+    // ── account productTypes drives availability (MOB-592) ────────────────────
+    // A fresh baby-scale/BP signup has the product on the account before any baby
+    // profile or paired device exists locally. Availability must honour productTypes.
+
+    @Test
+    fun `loadAvailableProducts shows only BabyScale for a baby-only account (no weight)`() = runTest {
+        coEvery { productSelectionRepository.getBabyProfiles(ACCOUNT_ID) } returns emptyList()
+        coEvery { productSelectionRepository.hasBpmDevice(ACCOUNT_ID) } returns false
+        coEvery { productSelectionRepository.hasBabyScaleDevice(ACCOUNT_ID) } returns false
+        val account = mockk<Account>(relaxed = true)
+        every { account.productTypes } returns listOf(ProductType.BABY.apiValue)
+        coEvery { accountService.getCurrentAccount() } returns account
+
+        manager.loadAvailableProducts(ACCOUNT_ID)
+
+        // Baby-only account must NOT surface My Weight. (MOB-592)
+        assertThat(manager.availableProducts.value).containsExactly(ProductSelection.BabyScale)
+    }
+
+    @Test
+    fun `loadAvailableProducts excludes MyWeight when account productTypes omits weight`() = runTest {
+        coEvery { productSelectionRepository.getBabyProfiles(ACCOUNT_ID) } returns emptyList()
+        coEvery { productSelectionRepository.hasBpmDevice(ACCOUNT_ID) } returns false
+        val account = mockk<Account>(relaxed = true)
+        every { account.productTypes } returns listOf(ProductType.BLOOD_PRESSURE.apiValue)
+        coEvery { accountService.getCurrentAccount() } returns account
+
+        manager.loadAvailableProducts(ACCOUNT_ID)
+
+        assertThat(manager.availableProducts.value).containsExactly(ProductSelection.BloodPressure)
+    }
+
+    @Test
+    fun `loadAvailableProducts keeps MyWeight for legacy accounts with empty productTypes`() = runTest {
+        coEvery { productSelectionRepository.getBabyProfiles(ACCOUNT_ID) } returns emptyList()
+        coEvery { productSelectionRepository.hasBpmDevice(ACCOUNT_ID) } returns false
+        val account = mockk<Account>(relaxed = true)
+        every { account.productTypes } returns emptyList()
+        coEvery { accountService.getCurrentAccount() } returns account
+
+        manager.loadAvailableProducts(ACCOUNT_ID)
+
+        assertThat(manager.availableProducts.value).containsExactly(ProductSelection.MyWeight)
+    }
+
+    @Test
+    fun `loadAvailableProducts includes BloodPressure when account productTypes has blood_pressure and no device`() = runTest {
+        coEvery { productSelectionRepository.getBabyProfiles(ACCOUNT_ID) } returns emptyList()
+        coEvery { productSelectionRepository.hasBpmDevice(ACCOUNT_ID) } returns false
+        val account = mockk<Account>(relaxed = true)
+        every { account.productTypes } returns listOf(ProductType.BLOOD_PRESSURE.apiValue)
+        coEvery { accountService.getCurrentAccount() } returns account
+
+        manager.loadAvailableProducts(ACCOUNT_ID)
+
+        assertThat(manager.availableProducts.value).contains(ProductSelection.BloodPressure)
+    }
+
+    @Test
+    fun `loadAvailableProducts prefers real Baby profiles over BabyScale even when productTypes has baby`() = runTest {
+        coEvery { productSelectionRepository.getBabyProfiles(ACCOUNT_ID) } returns listOf(baby1)
+        coEvery { productSelectionRepository.hasBpmDevice(ACCOUNT_ID) } returns false
+        coEvery { productSelectionRepository.hasBabyScaleDevice(ACCOUNT_ID) } returns false
+        val account = mockk<Account>(relaxed = true)
+        every { account.productTypes } returns listOf(ProductType.BABY.apiValue)
+        coEvery { accountService.getCurrentAccount() } returns account
+
+        manager.loadAvailableProducts(ACCOUNT_ID)
+
+        val available = manager.availableProducts.value
+        assertThat(available).contains(ProductSelection.Baby(baby1))
+        assertThat(available).doesNotContain(ProductSelection.BabyScale)
+    }
+
+    // ── dropdown visibility predicate (MOB-592) ──────────────────────────────
+    // The product-type header shows its dropdown chevron only when there is more
+    // than one product to switch between (availableProducts.size > 1). These tests
+    // pin that predicate against each account configuration.
+
+    @Test
+    fun `dropdown hidden for weight-only account (single product)`() = runTest {
+        coEvery { productSelectionRepository.getBabyProfiles(ACCOUNT_ID) } returns emptyList()
+        coEvery { productSelectionRepository.hasBpmDevice(ACCOUNT_ID) } returns false
+
+        manager.loadAvailableProducts(ACCOUNT_ID)
+
+        assertThat(manager.availableProducts.value.size > 1).isFalse()
+    }
+
+    @Test
+    fun `dropdown shown when a BPM device adds a second product`() = runTest {
+        coEvery { productSelectionRepository.getBabyProfiles(ACCOUNT_ID) } returns emptyList()
+        coEvery { productSelectionRepository.hasBpmDevice(ACCOUNT_ID) } returns true
+
+        manager.loadAvailableProducts(ACCOUNT_ID)
+
+        assertThat(manager.availableProducts.value.size > 1).isTrue()
+    }
+
+    @Test
+    fun `dropdown shown when a baby profile adds a second product`() = runTest {
+        coEvery { productSelectionRepository.getBabyProfiles(ACCOUNT_ID) } returns listOf(baby1)
+        coEvery { productSelectionRepository.hasBpmDevice(ACCOUNT_ID) } returns false
+
+        manager.loadAvailableProducts(ACCOUNT_ID)
+
+        assertThat(manager.availableProducts.value.size > 1).isTrue()
+    }
+
+    @Test
+    fun `dropdown shown when baby scale (no profiles) adds a second product`() = runTest {
+        coEvery { productSelectionRepository.getBabyProfiles(ACCOUNT_ID) } returns emptyList()
+        coEvery { productSelectionRepository.hasBpmDevice(ACCOUNT_ID) } returns false
+        coEvery { productSelectionRepository.hasBabyScaleDevice(ACCOUNT_ID) } returns true
+
+        manager.loadAvailableProducts(ACCOUNT_ID)
+
+        assertThat(manager.availableProducts.value.size > 1).isTrue()
     }
 
     // ── initial selection: restore from storage ──────────────────────────────

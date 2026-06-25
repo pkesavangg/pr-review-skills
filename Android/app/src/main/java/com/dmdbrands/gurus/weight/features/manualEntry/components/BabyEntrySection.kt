@@ -47,7 +47,7 @@ fun BabyEntrySection(
                 type = AppInputType.NUMERIC_STRING,
                 imeAction = ImeAction.Next,
                 nextFocusRequester = ouncesFocusRequester,
-                maxLength = 2,
+                maxLength = 3,
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(poundsFocusRequester),
@@ -57,10 +57,10 @@ fun BabyEntrySection(
             AppInput(
                 formControl = controls.ounces,
                 label = EntryScreenStrings.OUNCES_LABEL,
-                type = AppInputType.NUMERIC_STRING,
+                type = AppInputType.DECIMAL_STRING,
                 imeAction = ImeAction.Next,
                 nextFocusRequester = inchesFocusRequester,
-                maxLength = 2,
+                maxLength = 4,
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(ouncesFocusRequester),
@@ -71,10 +71,10 @@ fun BabyEntrySection(
     AppInput(
         formControl = controls.inches,
         label = EntryScreenStrings.INCHES_LABEL,
-        type = AppInputType.NUMERIC_STRING,
+        type = AppInputType.DECIMAL_STRING,
         imeAction = ImeAction.Done,
         onImeAction = onImeAction,
-        maxLength = 2,
+        maxLength = 4,
         modifier = Modifier
             .fillMaxWidth()
             .focusRequester(inchesFocusRequester),

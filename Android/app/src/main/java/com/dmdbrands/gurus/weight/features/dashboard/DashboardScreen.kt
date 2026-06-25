@@ -38,7 +38,7 @@ import com.dmdbrands.gurus.weight.core.navigation.LocalProductSelectionManager
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
-import com.dmdbrands.gurus.weight.features.common.components.BabyEmptyState
+import com.dmdbrands.gurus.weight.features.dashboard.components.BabyScaleEmptyDashboard
 import com.dmdbrands.gurus.weight.features.common.components.ProductTypeHeader
 import com.dmdbrands.gurus.weight.features.common.components.chart.GraphPagerView
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
@@ -114,6 +114,7 @@ fun DashboardScreen() {
       ProductTypeHeader(
         selectedProduct = product,
         onClick = { psm.showProductSheet(DashboardString.SelectGraphTitle) },
+        showDropdown = hasMultipleProducts,
       )
     },
   ) {
@@ -222,10 +223,14 @@ fun DashboardScreen() {
       }
 
       is ProductSelection.BabyScale -> {
-        BabyEmptyState(
-          onAddBaby = {
+        // Owns the baby product but no baby profile yet: show the exact baby empty
+        // dashboard (zero value + W/H toggle + grid + tabs + connect-device CTA),
+        // surfaced under the "Baby Scale" title. The CTA routes to add-a-baby since a
+        // profile is required before any entry can be collected. (MOB-592)
+        BabyScaleEmptyDashboard(
+          onConnectDevice = {
             scope.launch {
-              navBackStack.addRoute(AppRoute.AccountSettings.AddBaby)
+              navBackStack.addRoute(AppRoute.AccountSettings.AddBaby())
             }
           },
         )

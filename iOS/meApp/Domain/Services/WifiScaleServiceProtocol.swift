@@ -5,7 +5,7 @@ import Foundation
 /// This protocol defines the contract for WiFi scale business logic operations,
 /// including token management and other WiFi scale related functionality.
 @MainActor
-protocol WifiScaleServiceProtocol {
+protocol WifiPairedDeviceServiceProtocol {
     /// Fetches the scale token for WiFi scale operations.
     /// - Parameter request: Optional parameter for the scale token request.
     /// - Returns: A WifiScaleTokenResponse containing the scale token.

@@ -9,10 +9,15 @@ import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
+import com.dmdbrands.gurus.weight.domain.enums.BabyEntryType
+import com.dmdbrands.gurus.weight.domain.model.api.entry.EntrySource
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.features.common.helper.form.MultiFormGroup
@@ -24,6 +29,9 @@ import com.dmdbrands.gurus.weight.features.dashboard.string.DashboardString
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
 import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -162,6 +170,12 @@ constructor(
         val weightUnit = account?.weightUnit ?: state.value.weightMode
         handleIntent(EntryIntent.UpdateWeightUnit(weightUnit))
         viewModelScope.launch {
+          // Only (re)build the weight form for the weight product. For BP/Baby the active
+          // form is owned by observeProductSelection(); rebuilding a weight form here would
+          // clobber it (activeForm → Weight) and hide the BP/Baby entry form. (MOB-592)
+          if (productSelectionManager.selectedProduct.value !is ProductSelection.MyWeight) {
+            return@launch
+          }
           val hasAppSyncData = appSyncService.appSyncDataForEditing.first() != null
           if (!hasAppSyncData) {
             val activeAccount = accountService.activeAccountFlow.first()
@@ -388,9 +402,43 @@ constructor(
 
   private fun saveBabyEntry() {
     val babyForm = (_state.value.activeForm as? ActiveEntryForm.Baby)?.form ?: return
+    val babyProfile = (productSelectionManager.selectedProduct.value as? ProductSelection.Baby)?.profile
+    val babyId = babyProfile?.id
+    if (babyId == null) {
+      AppLog.w(TAG, "No baby selected; cannot save baby entry")
+      return
+    }
+
+    // Match Smart Baby (babyApp): reject entries dated before the baby's birthdate. The
+    // comparison is calendar-day only (time-of-day ignored), and surfaces a toast without
+    // saving — same behaviour and copy as babyApp's add-weight/add-length screens. (MOB-592)
+    val entryTimestamp = babyForm.forms.baby.controls.dateTime.value.getTimestamp()
+    if (isBeforeBirthdate(entryTimestamp, babyProfile.birthdate)) {
+      dialogQueueService.showToast(Toast.Simple(message = EntryScreenStrings.EntryBeforeBirthdate))
+      return
+    }
+
     dialogQueueService.showLoader(message = DashboardString.Loader.save)
     viewModelScope.launch {
+      val accountId = accountService.activeAccountFlow.first()?.id
+      if (accountId == null) {
+        // Practically unreachable for a logged-in user, but surface it like the other save
+        // paths rather than dismissing the loader with no feedback. (MOB-592)
+        AppLog.w(TAG, "No active account; cannot save baby entry")
+        dialogQueueService.showToast(
+          Toast.Simple(
+            title = EntryScreenStrings.EntryErrorTitle,
+            message = EntryScreenStrings.EntryErrorMessage,
+          ),
+        )
+        dialogQueueService.dismissLoader()
+        return@launch
+      }
       try {
+        // addEntry persists locally (isSynced=false) and syncs to POST /v3/entries/
+        // (category=baby) — the same path manual BP uses.
+        buildBabyEntries(babyForm.forms.baby.controls, accountId, babyId)
+          .forEach { entryService.addEntry(it) }
         analyticsService.logEvent(IAnalyticsService.Events.MANUAL_ENTRY_CREATED)
         dialogQueueService.showToast(
           Toast.Simple(
@@ -398,13 +446,10 @@ constructor(
             message = EntryScreenStrings.EntryAdded,
           ),
         )
-        handleIntent(
-          EntryIntent.UpdateActiveForm(
-            ActiveEntryForm.Baby(
-              form = MultiFormGroup.create(forms = BabyEntryForm.create()),
-            ),
-          ),
-        )
+        // Match the weight/BP save flow: just deactivate + pop back to where the
+        // entry screen was opened from. (Rebuilding the form here re-activated the
+        // screen and prevented the back navigation — the form is recreated by
+        // observeProductSelection the next time Entry is opened anyway.)
         deactivate()
         navigationService.navigateBack(AppRoute.Home)
       } catch (e: Exception) {
@@ -420,6 +465,72 @@ constructor(
       }
     }
   }
+
+  /**
+   * True when [entryTimestamp] falls on a calendar day strictly before the baby's [birthdate]
+   * (an ISO date like "2026-01-10"). Day-level comparison in the device's zone, mirroring
+   * babyApp's getDateOnly check. Returns false when the birthdate is missing/unparseable so
+   * we never block a save on bad profile data.
+   */
+  private fun isBeforeBirthdate(entryTimestamp: Long, birthdate: String?): Boolean {
+    if (birthdate.isNullOrBlank()) return false
+    val birthDay = runCatching { LocalDate.parse(birthdate.take(10)) }.getOrNull() ?: return false
+    val entryDay = Instant.ofEpochMilli(entryTimestamp).atZone(ZoneId.systemDefault()).toLocalDate()
+    return entryDay.isBefore(birthDay)
+  }
+
+  /**
+   * Reads the baby form and builds one [BabyEntry] per provided measure. Weight and length
+   * are distinct entryTypes (§2.16), so an entry with both yields two entries.
+   */
+  private fun buildBabyEntries(
+    controls: BabyEntryFormControls,
+    accountId: String,
+    babyId: String,
+  ): List<BabyEntry> {
+    val timestamp = DateTimeConverter.timestampToIso(controls.dateTime.value.getTimestamp())
+    val note = controls.notes.value.ifBlank { null }
+    val lbs = controls.pounds.value.toIntOrNull() ?: 0
+    val oz = controls.ounces.value.toDoubleOrNull() ?: 0.0
+    val inches = controls.inches.value.toDoubleOrNull()
+
+    val weightDecigrams = if (lbs > 0 || oz > 0) ConversionTools.convertLbOzToDecigrams(lbs, oz) else null
+    val lengthMm = if (inches != null && inches > 0) ConversionTools.convertInchesToMm(inches) else null
+    if (weightDecigrams == null && lengthMm == null) return emptyList()
+
+    // ONE local row carries both measures — the unique (accountId, entryTimestamp) index
+    // allows only one row per timestamp, and the history/detail UI shows weight + length on
+    // one line. The row fans out to the two §2.16 requests (distinct entryId) only at POST.
+    return listOf(buildBabyEntry(accountId, babyId, timestamp, note, weightDecigrams, lengthMm))
+  }
+
+  /** Builds the combined baby [BabyEntry] (weight and/or length) for manual entry. */
+  private fun buildBabyEntry(
+    accountId: String,
+    babyId: String,
+    timestamp: String,
+    note: String?,
+    weightDecigrams: Int?,
+    lengthMm: Int?,
+  ): BabyEntry = BabyEntry(
+    entry = EntryEntity(
+      accountId = accountId,
+      entryTimestamp = timestamp,
+      operationType = "create",
+      deviceType = "manual",
+      deviceId = "",
+    ),
+    babyEntry = BabyEntryEntity(
+      id = 0L,
+      babyId = babyId,
+      babyWeightDecigrams = weightDecigrams,
+      babyLengthMillimeters = lengthMm,
+      entryNote = note,
+      // Primary type for the local row; POST splits per present measure regardless.
+      entryType = if (weightDecigrams != null) BabyEntryType.WEIGHT.value else BabyEntryType.MEASURE_LENGTH.value,
+      source = EntrySource.MANUAL.value,
+    ),
+  )
 
   /**
    * Loads AppSync data into the form for editing, following ProfileViewModel pattern.

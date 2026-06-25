@@ -12,24 +12,24 @@ struct MetricsSectionView: View {
     @Environment(\.appTheme) private var theme
     
     // Required parameters
-    let metrics: Binding<[ScaleMetricSetting]>
+    let metrics: Binding<[DeviceMetricSetting]>
     let onValueChanged: () -> Void
     let onMove: (IndexSet, Int) -> Void
     /// Optional toggle handler so parent/view-model can control reordering logic
-    let onToggle: ((ScaleMetricSetting, Bool) -> Void)?
+    let onToggle: ((DeviceMetricSetting, Bool) -> Void)?
     
     // Optional parameters for customization
     let showIcon: Bool
     /// Optional predicate to decide if a particular metric's toggle should be disabled
-    let shouldDisableToggle: ((ScaleMetricSetting) -> Bool)?
+    let shouldDisableToggle: ((DeviceMetricSetting) -> Bool)?
     
     init(
-        metrics: Binding<[ScaleMetricSetting]>,
+        metrics: Binding<[DeviceMetricSetting]>,
         onValueChanged: @escaping () -> Void,
         onMove: @escaping (IndexSet, Int) -> Void,
         showIcon: Bool = true,
-        onToggle: ((ScaleMetricSetting, Bool) -> Void)? = nil,
-        shouldDisableToggle: ((ScaleMetricSetting) -> Bool)? = nil
+        onToggle: ((DeviceMetricSetting, Bool) -> Void)? = nil,
+        shouldDisableToggle: ((DeviceMetricSetting) -> Bool)? = nil
     ) {
         self.metrics = metrics
         self.onValueChanged = onValueChanged
@@ -75,8 +75,8 @@ struct MetricsSectionView: View {
 #Preview {
     MetricsSectionView(
         metrics: .constant([
-            ScaleMetricSetting(name: "Body Fat", key: "bodyFat", isEnabled: true),
-            ScaleMetricSetting(name: "Muscle Mass", key: "muscle", isEnabled: false)
+            DeviceMetricSetting(name: "Body Fat", key: "bodyFat", isEnabled: true),
+            DeviceMetricSetting(name: "Muscle Mass", key: "muscle", isEnabled: false)
         ]),
         onValueChanged: {},
         onMove: { _, _ in }

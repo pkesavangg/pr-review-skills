@@ -27,7 +27,7 @@ enum DashboardConstants {
 
     // MARK: - Metric Configurations
     enum MetricType {
-        static let fourScaleMetrics = ["bmi", "bodyFat", "muscleMass", "water"]
+        static let fourDeviceMetrics = ["bmi", "bodyFat", "muscleMass", "water"]
         static let allMetrics = ["bmi", "bodyFat", "muscleMass", "water", "pulse", "boneMass",
                                 "visceralFatLevel", "subcutaneousFatPercent", "proteinPercent",
                                 "skeletalMusclePercent", "bmr", "metabolicAge"]

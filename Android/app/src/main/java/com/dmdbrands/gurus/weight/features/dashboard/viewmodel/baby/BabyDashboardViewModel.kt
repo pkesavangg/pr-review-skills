@@ -120,13 +120,45 @@ class BabyDashboardViewModel @AssistedInject constructor(
     } ?: entries.first().getTimeStamp()
     val firstDataTs = entries.minOf { it.getTimeStamp() }
     val endTs = entries.maxOf { it.getTimeStamp() }
+    // The scroll domain extends to the CURRENT period end (this week/month/year), like the
+    // weight graph — so the user can scroll from the data up to "now", never into the future.
+    val now = System.currentTimeMillis()
     val targetData = entries.toImmutableList<PeriodSummary>()
 
     for (segment in segments) {
-      val endX = GraphUtil.getEndRange(segment, endTs) ?: endTs
-      // Initial target: use rolling window (latest week/month) — not full range
-      val targetStartX = GraphUtil.getRollingWindowStart(segment, endTs) ?: firstDataTs
-      val filteredTarget = entries.filter { it.getTimeStamp() in targetStartX..endX }
+      val isSingleWindow = GraphUtil.isSingleWindow(segment, firstDataTs, endTs)
+
+      // Canonical chart-wide X bounds — the same rule the weight/BP graph uses
+      // (GraphUtil.computeChartXBounds): TOTAL pads the data extents by ±6 months; MONTH
+      // reaches into the current month; WEEK/YEAR run from the oldest entry's window start to
+      // the current period end. chartMinX is the EARLIEST data's window start (NOT the
+      // birthdate — anchoring to birth collapsed the scroll domain and clipped pre-birth test
+      // entries), except TOTAL which anchors to birth so the growth curve starts at day 0.
+      val (boundMin, boundMax) = GraphUtil.computeChartXBounds(segment, firstDataTs, endTs, now)
+      val chartMinX = when (segment) {
+        GraphSegment.TOTAL -> minOf(birthDate, boundMin ?: firstDataTs)
+        else -> boundMin ?: firstDataTs
+      }.toDouble()
+      val chartMaxX = (boundMax ?: endTs).toDouble()
+
+      // Initial visible window:
+      //  • TOTAL — the whole padded domain (it fits everything; not scrollable).
+      //  • Single-window data (e.g. one month of entries, which aggregates to ONE monthly
+      //    point on YEAR/TOTAL) — the FULL calendar window (week/month/year) so the lone
+      //    point lands at its true position mid-chart instead of pinned to the right edge,
+      //    which read as an empty graph. (MOB-592)
+      //  • Otherwise — the latest rolling window, scrollable back to older data.
+      val (startX, endX) = when {
+        segment == GraphSegment.TOTAL -> chartMinX.toLong() to chartMaxX.toLong()
+        isSingleWindow -> (GraphUtil.getStartRange(segment, endTs) ?: firstDataTs) to
+          (GraphUtil.getEndRange(segment, endTs) ?: endTs)
+        else -> (
+          GraphUtil.getRollingWindowStart(segment, endTs)
+            ?: GraphUtil.getStartRange(segment, endTs)
+            ?: now
+          ) to endTs
+      }
+      val filteredTarget = entries.filter { it.getTimeStamp() in startX..endX }
 
       // Match ScrollAwareRangeProvider padding (paddingEntries=1): include 1 entry just
       // before and 1 entry just after the rolling window so seed Y range matches the
@@ -134,7 +166,7 @@ class BabyDashboardViewModel @AssistedInject constructor(
       // expand the runtime range and cause a frame-1 → frame-2 slide on initial load.
       val seedSource = run {
         val sorted = entries.sortedBy { it.getTimeStamp() }
-        val firstIdx = sorted.indexOfFirst { it.getTimeStamp() >= targetStartX }
+        val firstIdx = sorted.indexOfFirst { it.getTimeStamp() >= startX }
         val lastIdx = sorted.indexOfLast { it.getTimeStamp() <= endX }
         if (firstIdx < 0 || lastIdx < 0 || firstIdx > lastIdx) {
           filteredTarget
@@ -169,12 +201,13 @@ class BabyDashboardViewModel @AssistedInject constructor(
         it.copy(
           data = targetData,
           target = filteredTarget.toImmutableList<PeriodSummary>(),
-          chartMinX = birthDate.toDouble(),
-          chartMaxX = endX.toDouble(),
+          chartMinX = chartMinX,
+          chartMaxX = chartMaxX,
+          isSingleWindow = isSingleWindow,
           isEmptyGraph = false,
           startTimestamp = firstDataTs,
           endTimestamp = endTs,
-          visibleMin = it.visibleMin ?: targetStartX,
+          visibleMin = it.visibleMin ?: startX,
           visibleMax = it.visibleMax ?: endX,
           seedMinY = seed?.first ?: it.seedMinY,
           seedMaxY = seed?.second ?: it.seedMaxY,

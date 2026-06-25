@@ -21,7 +21,6 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList
 import kotlin.math.round
-import kotlin.math.roundToInt
 
 /**
  * All form controls for the signup process in a single FormGroup.
@@ -326,27 +325,22 @@ data class SignupFormControls(
         val currentHeight = controls.height.value
         val newHeight =
           if (newValue) {
-            // Convert to metric (cm)
+            // Convert to metric (cm), coerced to the cm picker's 100..299 range
+            // so a short imperial height (the ft/in picker allows down to
+            // 2'0" ≈ 61 cm) doesn't produce an out-of-range value the picker
+            // can't display (MOB-172).
             when (currentHeight) {
-              is HeightInput.FtIn -> {
-                val totalInches = (currentHeight.feet * 12) + currentHeight.inches
-                // Use roundToInt() instead of toInt() to round to nearest instead of truncating
-                val cm = (totalInches * 2.54).roundToInt()
-                HeightInput.Cm(cm)
-              }
+              is HeightInput.FtIn ->
+                HeightInput.ftInToCm(currentHeight.feet, currentHeight.inches)
 
               is HeightInput.Cm -> currentHeight // Already metric
             }
           } else {
-            // Convert to imperial (ft/in)
+            // Convert to imperial (ft/in), capped to 7'11" so a tall metric
+            // height (cm picker allows up to 299 cm) doesn't produce an
+            // out-of-range value the picker can't display (MOB-172).
             when (currentHeight) {
-              is HeightInput.Cm -> {
-                // Use roundToInt() for proper rounding
-                val totalInches = (currentHeight.value / 2.54).roundToInt()
-                val feet = totalInches / 12
-                val inches = totalInches % 12
-                HeightInput.FtIn(feet, inches)
-              }
+              is HeightInput.Cm -> HeightInput.cmToFtIn(currentHeight.value)
 
               is HeightInput.FtIn -> currentHeight // Already imperial
             }

@@ -97,7 +97,7 @@ final class EntryRepository: EntryRepositoryProtocol {
 
         // Extract relationship data
         let scaleEntryData = entry.scaleEntry.map { scaleEntry in
-            ScaleEntryData(
+            DeviceEntryData(
                 weight: scaleEntry.weight,
                 bodyFat: scaleEntry.bodyFat,
                 muscleMass: scaleEntry.muscleMass,
@@ -107,7 +107,7 @@ final class EntryRepository: EntryRepositoryProtocol {
             )
         }
         let scaleEntryMetricData = entry.scaleEntryMetric.map { metric in
-            ScaleMetricData(
+            DeviceMetricData(
                 bmr: metric.bmr,
                 metabolicAge: metric.metabolicAge,
                 proteinPercent: metric.proteinPercent,
@@ -680,7 +680,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     private func extractEntryData(from entries: [Entry]) -> [EntrySyncData] {
         return entries.map { entry in
             let scaleEntryData = entry.scaleEntry.map { scaleEntry in
-                ScaleEntryData(
+                DeviceEntryData(
                     weight: scaleEntry.weight,
                     bodyFat: scaleEntry.bodyFat,
                     muscleMass: scaleEntry.muscleMass,
@@ -690,7 +690,7 @@ final class EntryRepository: EntryRepositoryProtocol {
                 )
             }
             let metricData = entry.scaleEntryMetric.map { metric in
-                ScaleMetricData(
+                DeviceMetricData(
                     bmr: metric.bmr,
                     metabolicAge: metric.metabolicAge,
                     proteinPercent: metric.proteinPercent,

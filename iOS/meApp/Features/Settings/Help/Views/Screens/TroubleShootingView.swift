@@ -45,7 +45,7 @@ struct TroubleShootingView: View {
             }
         }
         .sheet(isPresented: $helpStore.showScaleLogSheet) {
-            ScaleLogSheetView(scales: helpStore.scales)
+            DeviceLogSheetView(scales: helpStore.scales)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
     }

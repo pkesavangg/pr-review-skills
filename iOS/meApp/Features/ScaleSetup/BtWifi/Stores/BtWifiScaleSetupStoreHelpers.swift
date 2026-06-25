@@ -125,7 +125,7 @@ extension BtWifiScaleSetupStore {
     /// Updates `isNextEnabled` depending on the current step and permission state.
     func updateNextEnabled() {
         let states = bluetoothPermissionStates()
-        let hasScaleMetricsChanged = savedScaleMetricsSnapshot != nil && savedScaleMetricsSnapshot != selectedScaleMetrics
+        let hasDeviceMetricsChanged = savedDeviceMetricsSnapshot != nil && savedDeviceMetricsSnapshot != selectedDeviceMetrics
 
         let context = SetupValidationContext(
             currentStep: currentStep,
@@ -138,11 +138,11 @@ extension BtWifiScaleSetupStore {
             duplicateNameInitial: removeWhiteSpace(initialDisplayNameSnapshot ?? (firstName ?? "User")),
             duplicateNameIsValid: userNameForm.displayName.isValid,
             isWifiPasswordValid: wifiSetupManager.isPasswordValid(networkForm: networkForm),
-            selectedScaleMode: selectedScaleMode,
-            initialScaleModeSnapshot: initialScaleModeSnapshot,
+            selectedDeviceMode: selectedDeviceMode,
+            initialDeviceModeSnapshot: initialDeviceModeSnapshot,
             isHeartRateEnabled: isHeartRateEnabled,
             initialHeartRateEnabledSnapshot: initialHeartRateEnabledSnapshot,
-            hasScaleMetricsChanged: hasScaleMetricsChanged,
+            hasDeviceMetricsChanged: hasDeviceMetricsChanged,
             hasDashboardCustomizationChanged: hasDashboardCustomizationChanged()
         )
 

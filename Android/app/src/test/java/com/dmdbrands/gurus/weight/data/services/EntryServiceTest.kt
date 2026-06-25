@@ -182,6 +182,27 @@ class EntryServiceTest {
     }
 
     @Test
+    fun `addEntry sends a baby weight entry to the entries endpoint`() = runTest {
+        // Manual baby entries go through addEntry (syncing path), unlike addBabyEntry (local-only).
+        coEvery { entryRepository.getUnSynced(testAccountId) } returns emptyList()
+        coEvery { entryRepository.getOperationCount(testAccountId) } returns 0
+        coEvery { entryRepository.getOperationsFromAPI(any()) } returns null
+        coEvery { accountRepository.getSyncTimeStamp() } returns flowOf("")
+        val captured = mutableListOf<List<UnifiedEntryRequest>>()
+        coEvery { entryRepository.sendBatchToAPI(capture(captured)) } returns
+            UnifiedEntryResponse(entries = emptyList(), timestamp = "2024-01-01T00:00:00.000Z")
+
+        service.updateAllData(testAccountId)
+        service.addEntry(babyEntry())
+
+        val batch = captured.last()
+        assertThat(batch.map { it.category }).containsExactly("baby")
+        assertThat(batch.first().entryType).isEqualTo("weight")
+        assertThat(batch.first().babyWeightDecigrams).isEqualTo(40_000)
+        coVerify { entryRepository.sendBatchToAPI(any()) }
+    }
+
+    @Test
     fun `successful batch persists source rows as synced even when server echo is empty`() = runTest {
         coEvery { entryRepository.getUnSynced(testAccountId) } returns emptyList()
         coEvery { entryRepository.getOperationCount(testAccountId) } returns 0

@@ -225,7 +225,8 @@ interface EntryReadDao {
   @Query(
     """
     SELECT
-        strftime('%m/%d/%y', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS date,
+        strftime('%m/%d/%Y', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS date,
+        strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS dateKey,
         COUNT(*) AS entryCount,
         CAST(AVG(be.babyWeightDecigrams) AS INTEGER) AS babyWeightDecigrams,
         CAST(AVG(be.babyLengthMillimeters) AS INTEGER) AS babyLengthMillimeters,

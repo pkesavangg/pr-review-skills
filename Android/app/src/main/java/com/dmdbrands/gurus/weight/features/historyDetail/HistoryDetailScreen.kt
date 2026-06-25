@@ -1,10 +1,15 @@
 package com.dmdbrands.gurus.weight.features.historyDetail
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -27,11 +32,20 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntryWithMetrics
 import com.dmdbrands.gurus.weight.features.common.components.AppBottomSheet
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
+import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
+import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
+import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.AppTextArea
+import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
+import com.dmdbrands.gurus.weight.features.common.helper.form.MultiFormGroup
+import com.dmdbrands.gurus.weight.features.manualEntry.components.BabyEntrySection
+import com.dmdbrands.gurus.weight.features.manualEntry.viewmodel.BabyEntryForm
 import com.dmdbrands.gurus.weight.features.historyDetail.strings.HistoryDetailScreenStrings
 import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -119,7 +133,7 @@ fun HistoryDetailScreenContent(
                             BabyDayHistoryList(
                                 entries = state.historyItems.filterIsInstance<BabyEntry>(),
                                 isMetric = state.isMetric,
-                                onEditEntry = { handleIntent(HistoryDetailIntent.EditEntry(it)) },
+                                onEditEntry = { handleIntent(HistoryDetailIntent.EditBabyEntry(it)) },
                             )
                         }
                         else -> {
@@ -148,6 +162,118 @@ fun HistoryDetailScreenContent(
             onDismiss = { handleIntent(HistoryDetailIntent.DismissNoteEditor) },
         )
     }
+
+    state.babyEditEntry?.let { entry ->
+        BabyEditModal(
+            entry = entry,
+            onSave = { weightDecigrams, lengthMm, note, timestamp ->
+                handleIntent(
+                    HistoryDetailIntent.SaveBabyEdit(
+                        entry = entry,
+                        weightDecigrams = weightDecigrams,
+                        lengthMillimeters = lengthMm,
+                        note = note,
+                        timestamp = timestamp,
+                    ),
+                )
+            },
+            onDismiss = { handleIntent(HistoryDetailIntent.DismissBabyEditor) },
+        )
+    }
+}
+
+/**
+ * Full baby edit bottom-sheet (weight/length/notes/date) — opened from the baby history
+ * detail. Hosts the shared baby [BabyEntrySection] reusable inputs in a padded, scrollable
+ * column (same inputs as manual entry), with a filled SAVE button. Seeds the form with the
+ * entry's current values; SAVE converts the inputs back to decigrams/mm and emits the
+ * timestamp so the row updates in place (or moves if the date changed).
+ */
+@Composable
+private fun BabyEditModal(
+    entry: BabyEntry,
+    onSave: (weightDecigrams: Int?, lengthMm: Int?, note: String?, timestamp: String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val form = remember(entry.entry.id) { seededBabyEntryForm(entry) }
+    val controls = form.forms.baby.controls
+    AppBottomSheet(
+        title = "",
+        onDismiss = onDismiss,
+        // Use the manual entry screen's body color so the (primaryBackground) AppInputs
+        // contrast against the sheet and read as form fields — otherwise they're the same
+        // color as the sheet and look invisible/scattered.
+        containerColor = MeTheme.colorScheme.secondaryBackground,
+    ) {
+        // Mirror the manual entry screen's container so the AppInputs are padded and scrollable
+        // (the raw sheet content slot has no padding → fields render edge-to-edge / scattered).
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = MeTheme.spacing.sm)
+                .padding(top = MeTheme.spacing.md)
+                .dismissKeyboardOnTap(),
+            verticalArrangement = Arrangement.Top,
+        ) {
+            BabyEntrySection(controls = controls, onImeAction = {})
+            Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                AppButton(
+                    enabled = form.isValid,
+                    label = EntryScreenStrings.SaveButton,
+                    size = ButtonSize.Large,
+                    type = ButtonType.PrimaryFilled,
+                    onClick = {
+                        val lbs = controls.pounds.value.toIntOrNull() ?: 0
+                        val oz = controls.ounces.value.toDoubleOrNull() ?: 0.0
+                        val inches = controls.inches.value.toDoubleOrNull()
+                        val weightDecigrams =
+                            if (lbs > 0 || oz > 0) ConversionTools.convertLbOzToDecigrams(lbs, oz) else null
+                        val lengthMm =
+                            if (inches != null && inches > 0) ConversionTools.convertInchesToMm(inches) else null
+                        onSave(
+                            weightDecigrams,
+                            lengthMm,
+                            controls.notes.value.ifBlank { null },
+                            DateTimeConverter.timestampToIso(controls.dateTime.value.getTimestamp()),
+                        )
+                    },
+                )
+            }
+            Spacer(modifier = Modifier.height(MeTheme.spacing.x3l))
+        }
+    }
+}
+
+/** Builds a baby entry form pre-filled from an existing [entry] for editing. */
+private fun seededBabyEntryForm(entry: BabyEntry): MultiFormGroup<BabyEntryForm> {
+    val form = MultiFormGroup.create(forms = BabyEntryForm.create())
+    val controls = form.forms.baby.controls
+    entry.babyWeightDecigrams?.takeIf { it > 0 }?.let {
+        val (lb, oz) = ConversionTools.convertDecigramsToLbOz(it)
+        controls.pounds.setValue(lb.toString())
+        controls.ounces.setValue(formatOneDecimal(oz))
+    }
+    entry.babyLengthMillimeters?.takeIf { it > 0 }?.let {
+        controls.inches.setValue(formatOneDecimal(ConversionTools.convertMmToInches(it)))
+    }
+    entry.entryNote?.let { controls.notes.setValue(it) }
+    val millis = DateTimeConverter.isoToTimestamp(entry.entry.entryTimestamp)
+    val calendar = java.util.Calendar.getInstance().apply { timeInMillis = millis }
+    controls.dateTime.setValue(
+        DateTimeValue.DateTime(
+            millis = millis,
+            hour = calendar.get(java.util.Calendar.HOUR_OF_DAY),
+            minute = calendar.get(java.util.Calendar.MINUTE),
+        ),
+    )
+    return form
+}
+
+/** Trims a trailing ".0" so whole values seed as "8" not "8.0" but keeps "14.9". */
+private fun formatOneDecimal(value: Double): String {
+    val rounded = kotlin.math.round(value * 10) / 10.0
+    return if (rounded % 1.0 == 0.0) rounded.toInt().toString() else rounded.toString()
 }
 
 /**

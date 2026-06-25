@@ -7,8 +7,7 @@
 
 import Foundation
 
-/// Enum case `R4ScaleSetup` uses uppercase to match R4 scale protocol naming conventions.
 enum DashboardMetricsParentView {
     case dashboard
-    case R4ScaleSetup
+    case r4DeviceSetup
 }

@@ -85,33 +85,41 @@ class AppValidatorConfig {
         val PATTERN = Regex("^[0-9]{4}$")
     }
 
+    // Blood-pressure manual entry mirrors Balance Health (bpmMobileApp4):
+    // values outside WARN_MIN..WARN_MAX show an advisory warning but still save;
+    // only values above HARD_MAX are blocked.
     object Systolic {
-        const val MIN = 60
-        const val MAX = 250
+        const val WARN_MIN = 60
+        const val WARN_MAX = 250
+        const val HARD_MAX = 500
     }
 
     object Diastolic {
-        const val MIN = 40
-        const val MAX = 150
+        const val WARN_MIN = 30
+        const val WARN_MAX = 150
+        const val HARD_MAX = 500
     }
 
     object Pulse {
-        const val MIN = 30
-        const val MAX = 250
+        const val WARN_MIN = 20
+        const val WARN_MAX = 200
+        const val HARD_MAX = 500
     }
 
+    // Baby manual entry mirrors Smart Baby (babyApp): bounds are exclusive
+    // (value must be strictly inside MIN..MAX) and oz/height accept one decimal.
     object BabyWeightLb {
         const val MIN = 0
-        const val MAX = 50
+        const val MAX = 1000 // allows whole lb up to 999 (Smart Baby imperial cap)
     }
 
     object BabyWeightOz {
         const val MIN = 0
-        const val MAX = 15
+        const val MAX = 16 // allows up to 15.9 oz (16 oz = 1 lb)
     }
 
     object BabyHeight {
         const val MIN = 0
-        const val MAX = 60
+        const val MAX = 100 // allows up to 99.9 in (Smart Baby imperial cap)
     }
 }

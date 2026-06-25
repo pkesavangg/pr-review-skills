@@ -11,7 +11,7 @@ struct A3BpmScanningView: View {
     @Environment(\.appTheme) private var theme
 
     let connectionState: ConnectionState
-    let bpmItem: ScaleItemInfo
+    let bpmItem: DeviceItemInfo
     let onTryAgain: () -> Void
     let onSupport: () -> Void
 

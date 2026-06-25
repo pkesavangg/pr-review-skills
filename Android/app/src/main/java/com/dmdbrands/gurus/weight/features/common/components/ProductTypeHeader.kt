@@ -21,17 +21,23 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.typography
 
 /**
- * Displays the currently selected product type with a dropdown icon.
+ * Displays the currently selected product type, with a dropdown affordance when
+ * more than one product is available to switch between.
  * Used in the app bar of Dashboard, History, and Manual Entry screens.
+ *
+ * @param showDropdown when true the chevron is shown and the header is tappable to
+ *   open the product selection sheet. When the account has a single product there is
+ *   nothing to switch to, so the chevron is hidden and the header is not clickable.
  */
 @Composable
 fun ProductTypeHeader(
     selectedProduct: ProductSelection?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    showDropdown: Boolean = true,
 ) {
     Row(
-        modifier = modifier.clickable(onClick = onClick),
+        modifier = if (showDropdown) modifier.clickable(onClick = onClick) else modifier,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -39,13 +45,15 @@ fun ProductTypeHeader(
             style = typography.heading5,
             color = selectedProduct.displayColor(),
         )
-        Spacer(modifier = Modifier.width(4.dp))
-        Icon(
-            painter = painterResource(AppIcons.Default.ChevronDown),
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = colorScheme.textHeading,
-        )
+        if (showDropdown) {
+            Spacer(modifier = Modifier.width(4.dp))
+            Icon(
+                painter = painterResource(AppIcons.Default.ChevronDown),
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = colorScheme.textHeading,
+            )
+        }
     }
 }
 

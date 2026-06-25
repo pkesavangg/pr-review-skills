@@ -76,7 +76,7 @@ struct BpmDeviceSettingsScreen: View {
                 config: ActionListItemConfig(
                     title: lang.deviceName,
                     value: device.nickname ?? device.deviceName
-                ) { router.navigate(to: .scaleNameScreen(scale: device)) }
+                ) { router.navigate(to: .deviceNameScreen(scale: device)) }
             )
 
             if let userNumber = device.userNumber {
@@ -99,8 +99,8 @@ struct BpmDeviceSettingsScreen: View {
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.bluetooth,
-                    value: bpmStore.isDeviceConnected ? ScaleBluetoothStrings.connected : ScaleBluetoothStrings.notConnected
-                ) { router.navigate(to: .scaleBluetoothScreen(scale: device)) }
+                    value: bpmStore.isDeviceConnected ? DeviceBluetoothStrings.connected : DeviceBluetoothStrings.notConnected
+                ) { router.navigate(to: .deviceBluetoothScreen(scale: device)) }
             )
         }
         .listRowInsets()
@@ -113,7 +113,7 @@ struct BpmDeviceSettingsScreen: View {
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.deviceType,
-                    value: ScaleType.bpm.displayName,
+                    value: DeviceModelType.bpm.displayName,
                     chevronType: .none
                 ) {}
             )

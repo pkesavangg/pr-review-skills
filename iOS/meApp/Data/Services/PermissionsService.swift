@@ -21,7 +21,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     // Shared singleton instance for global access. Prefer DI for new code when possible.
     static let shared = PermissionsService(
         notificationService: NotificationHelperService.shared,
-        scaleService: ScaleService.shared,
+        deviceService: DeviceService.shared,
         logger: LoggerService.shared
     )
 
@@ -42,7 +42,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     // MARK: - Dependencies
 
     private let notificationService: NotificationHelperServiceProtocol
-    private let scaleService: ScaleServiceProtocol
+    private let deviceService: PairedDeviceServiceProtocol
     private let logger: LoggerServiceProtocol
     var permissionClient: PermissionSDKClient
 
@@ -53,19 +53,19 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
 
     init(
         notificationService: NotificationHelperServiceProtocol,
-        scaleService: ScaleServiceProtocol,
+        deviceService: PairedDeviceServiceProtocol,
         logger: LoggerServiceProtocol,
         permissionClient: PermissionSDKClient = GGBluetoothSwiftPackage.shared
     ) {
         self.notificationService = notificationService
-        self.scaleService = scaleService
+        self.deviceService = deviceService
         self.logger = logger
         self.permissionClient = permissionClient
         // Compute the initial required permissions
-        updateRequiredCategories(with: scaleService.scales)
+        updateRequiredCategories(with: deviceService.scales)
 
         // Observe scale changes to keep required permissions up-to-date
-        scaleService.scalesPublisher
+        deviceService.scalesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] scales in
                 self?.updateRequiredCategories(with: scales)
@@ -166,7 +166,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
 
         for device in devices {
             let rawType = (device.bathScale?.scaleType ?? device.deviceType ?? "")
-            guard let scaleType = ScaleSourceType(rawValue: rawType) else { continue }
+            guard let scaleType = DeviceSourceType(rawValue: rawType) else { continue }
             switch scaleType {
             case .wifi, .espTouchWifi:
                 newRequired.insert(.notifications)

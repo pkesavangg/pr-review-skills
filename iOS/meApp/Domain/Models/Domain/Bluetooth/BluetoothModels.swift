@@ -286,7 +286,7 @@ public enum UserDeletionResponse: String, Sendable, Codable, Equatable, CaseIter
 }
 
 /// Scale type enumeration
-public enum BluetoothScaleType: String, Sendable, CaseIterable {
+public enum BluetoothDeviceModelType: String, Sendable, CaseIterable {
     case bluetooth
     case bluetoothScale
     case lcbt
@@ -366,14 +366,14 @@ public enum DeviceCategory: String, Sendable, Equatable {
 /// `Sendable` — no `@unchecked` marker needed.
 public struct DeviceDiscoveryEvent: Sendable, Equatable {
     let device: DeviceSnapshot
-    let deviceInfo: ScaleItemInfo
+    let deviceInfo: DeviceItemInfo
     let protocolType: ProtocolType
     let isNew: Bool
     let deviceCategory: DeviceCategory
 
     init(
         device: DeviceSnapshot,
-        deviceInfo: ScaleItemInfo,
+        deviceInfo: DeviceItemInfo,
         protocolType: ProtocolType,
         isNew: Bool,
         deviceCategory: DeviceCategory = .scale

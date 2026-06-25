@@ -69,6 +69,7 @@ import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
 import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
 import com.dmdbrands.library.ggbluetooth.model.GGBPMEntry
+import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGEntry
 import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
@@ -362,6 +363,11 @@ constructor(
           }
 
           is AuthState.AccountSwitched -> {
+            // Switching accounts must start the new account with a clean scan state. Otherwise the
+            // previous account's skip/ignore flags leak across and can suppress the duplicate-user
+            // reconnect alert after switching back to a previously connected account (MOB-175).
+            // Mirrors the reset already done on LoggedInFromLoading / LoggedOut.
+            resetScaleDiscoveredState()
             if (authState.showToast) {
               val accountName = authState.account.firstName
               dialogQueueService.showToast(
@@ -643,6 +649,24 @@ constructor(
     }
   }
 
+  /**
+   * Picks which scale-user token to delete when reconnecting a duplicate-name user (MOB-175).
+   *
+   * When two accounts share a scale display name (e.g. both "renu"), a name-only match could pick an
+   * arbitrary user and delete the wrong account's slot. Prefer the user whose token matches THIS
+   * account's stored token ([localToken]); fall back to the first name match only when no token
+   * matches. Returns null when no user shares the display name.
+   */
+  internal fun selectDuplicateUserToken(
+    userList: List<GGBTUser>,
+    displayName: String?,
+    localToken: String?,
+  ): String? {
+    val nameMatches = userList.filter { user -> user.name == displayName }
+    return nameMatches.firstOrNull { it.token == localToken }?.token
+      ?: nameMatches.firstOrNull()?.token
+  }
+
   private fun handleDeviceResponse(deviceResponse: GGScanResponse.DeviceDetail) {
     val data = deviceResponse.data
     viewModelScope.launch {
@@ -840,7 +864,11 @@ constructor(
                           continuation.resume(response.user)
                         }
                       }
-                      val scaleToken = userList.find { user -> user.name == device.preferences?.displayName }?.token
+                      val scaleToken = selectDuplicateUserToken(
+                        userList = userList,
+                        displayName = device.preferences?.displayName,
+                        localToken = device.toGGBTDevice().token,
+                      )
                       ggDeviceService.deleteAccount(device.toGGBTDevice().copy(token = scaleToken)) {
                         if (it.name == GGUserActionResponseType.DELETE_COMPLETED.name) {
                           viewModelScope.launch {
@@ -969,7 +997,7 @@ constructor(
               primaryAction = {
                 if (hasNoBabyProfile) {
                   viewModelScope.launch {
-                    navigationService.navigateTo(AppRoute.AccountSettings.AddBaby)
+                    navigationService.navigateTo(AppRoute.AccountSettings.AddBaby())
                   }
                 } else if (readingType == ProductType.BABY) {
                   val babies = availableBabyProfiles()

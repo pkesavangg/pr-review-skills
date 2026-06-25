@@ -24,7 +24,7 @@ struct BtWifiScaleSetupScreen: View {
     let sku: String
     let discoveredScale: Device?
     let discoveryEvent: DeviceDiscoveryEvent?
-    let savedScale: Device? // if the scale was previously saved in settings open the BtWifiScaleSetup for the wifi setup
+    let savedScale: Device? // if the scale was previously saved in settings open the BtWifiDeviceSetup for the wifi setup
     let isReconnect: Bool // indicates if this is a reconnect flow
     let isDuplicated: Bool // indicates if this is handling a duplicate user error
     let commonLang = CommonStrings.self

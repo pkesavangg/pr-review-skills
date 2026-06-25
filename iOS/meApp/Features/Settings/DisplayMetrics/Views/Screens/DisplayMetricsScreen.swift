@@ -12,7 +12,7 @@ struct DisplayMetricsScreen: View {
     @Environment(\.appTheme) private var theme
     @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
     @StateObject private var viewModel: DisplayMetricsViewModel
-    let lang = ScaleModesStrings.self
+    let lang = DeviceModesStrings.self
     
     let scale: Device
     let isWeighOnlyModeEnabledByOthers: Bool
@@ -164,7 +164,7 @@ struct DisplayMetricsScreen: View {
                 .fontWeight(.regular)
                 Spacer()
                 ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false) {
-                    router.navigate(to: .scaleModes(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
+                    router.navigate(to: .deviceModes(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
                 }
                 .padding(.leading, 5)
             }
@@ -195,7 +195,7 @@ struct DisplayMetricsScreen: View {
         HeartRateBanner(
             isHeartRateOn: viewModel.isHeartRateOn
         ) {
-                router.navigate(to: .scaleModes(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
+                router.navigate(to: .deviceModes(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
             }
     }
 }

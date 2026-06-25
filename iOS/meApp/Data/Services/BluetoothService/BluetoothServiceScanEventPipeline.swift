@@ -62,7 +62,7 @@ extension BluetoothService {
             break
         case .DEVICE_CONNECTED:
             logger.log(level: .info, tag: tag, message: "DEVICE_CONNECTED called in handleSmartScaleData", data: scanData)
-            await scaleService.updateConnectedDevices(device: data.data, isConnected: true)
+            await deviceService.updateConnectedDevices(device: data.data, isConnected: true)
             if let deviceDetails = data.data as? GGDeviceDetails {
                 // Weight-only mode only applies to adult weight scales, not baby scales
                 let deviceType = resolveDeviceType(broadcastId: deviceDetails.broadcastIdString)
@@ -72,7 +72,7 @@ extension BluetoothService {
             }
             await checkCanShowWeightOnlyModeAlert()
         case .DEVICE_DISCONNECTED:
-            await scaleService.updateConnectedDevices(device: data.data, isConnected: false)
+            await deviceService.updateConnectedDevices(device: data.data, isConnected: false)
             if let deviceDetails = data.data as? GGDeviceDetails {
                 await clearWeightOnlyModeStatusOnDisconnect(deviceDetails)
             }
@@ -85,13 +85,13 @@ extension BluetoothService {
         case .DEVICE_DUPLICATE_USER:
             await handleDeviceEventAlert(scanData, isDuplicateUserError: true)
         case .WIFI_STATUS_UPDATE:
-            await scaleService.updateConnectedDevices(device: data.data, isConnected: true)
+            await deviceService.updateConnectedDevices(device: data.data, isConnected: true)
             if let deviceDetails = data.data as? GGDeviceDetails {
                 await updateWeightOnlyModeStatusFromDeviceDetails(deviceDetails)
             }
             await handleWifiStatusUpdate(scanData)
         case .DEVICE_INFO_UPDATE:
-            await scaleService.updateConnectedDevices(device: scanData, isConnected: true)
+            await deviceService.updateConnectedDevices(device: scanData, isConnected: true)
 
             guard let deviceDetails = data.data as? GGDeviceDetails else {
                 logger.log(level: .error, tag: tag, message: "DEVICE_INFO_UPDATE: Failed to cast data to GGDeviceDetails")
@@ -119,7 +119,7 @@ extension BluetoothService {
 
     private func handleWifiStatusUpdate(_ deviceData: GGScanResponseData) async {
         guard let wifiStatus = parseWifiStatus(deviceData) else { return }
-        await scaleService.updateConnectedDeviceWifiStatus(
+        await deviceService.updateConnectedDeviceWifiStatus(
             broadcastId: wifiStatus.broadcastId,
             isConfigured: wifiStatus.isConfigured
         )
@@ -135,7 +135,7 @@ extension BluetoothService {
     private func handleNewDevice(_ deviceData: GGScanResponseData) async {
         guard let deviceDetails = deviceData as? GGDeviceDetails else { return }
 
-        let scaleInfo = ScaleInfoUtils.shared.getScaleInfo(byScaleName: deviceDetails.deviceName)
+        let scaleInfo = DeviceInfoUtils.shared.getDeviceInfo(byDeviceName: deviceDetails.deviceName)
         // Discovery creates a temporary device model. A3 BPMs may not have a stable
         // hex broadcast ID yet, so we preserve the raw discovery identifier for pairing
         // and patch in the stable post-connect fields later.
@@ -372,7 +372,7 @@ extension BluetoothService {
     }
 
     private func createBathScaleEntry(ggEntry: GGEntry, protocolType: ProtocolType, activeAccount: AccountSnapshot) -> BathScaleEntry {
-        var sourceType = ScaleSourceType.bluetoothScale
+        var sourceType = DeviceSourceType.bluetoothScale
         if protocolType == .R4 {
             sourceType = .btWifiR4
         }
@@ -410,7 +410,7 @@ extension BluetoothService {
         guard let broadcastId = broadcastId else { return .scale }
         if let scale = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId }),
            let sku = scale.sku {
-            let scaleInfo = ScaleInfoUtils.shared.getScaleInfo(bySku: sku)
+            let scaleInfo = DeviceInfoUtils.shared.getDeviceInfo(bySku: sku)
             if scaleInfo?.setupType == .babyScale {
                 return .babyScale
             }
@@ -478,7 +478,7 @@ extension BluetoothService {
                 guard scale.isConnected else { return false }
                 // Exclude baby scales — weight-only mode only applies to adult weight scales
                 if let sku = scale.sku,
-                   ScaleInfoUtils.shared.getScaleInfo(bySku: sku)?.setupType == .babyScale {
+                   DeviceInfoUtils.shared.getDeviceInfo(bySku: sku)?.setupType == .babyScale {
                     return false
                 }
                 return true
@@ -533,7 +533,7 @@ extension BluetoothService {
             preference.isSynced = true
             await Task { @MainActor in
                 do {
-                    try await scaleService.updateScalePreference(scale.id, preference)
+                    try await deviceService.updateScalePreference(scale.id, preference)
                 } catch {
                     logger.log(level: .error, tag: tag, message: "Failed to update preference sync status: \(error)")
                 }
@@ -570,7 +570,7 @@ extension BluetoothService {
 
         let isWeightOnlyModeEnabledByOthers = !finalImpedanceSwitchState && shouldMeasureImpedance
 
-        await scaleService.updateConnectedDeviceWeightOnlyMode(
+        await deviceService.updateConnectedDeviceWeightOnlyMode(
             broadcastId: broadcastId,
             isWeightOnlyModeEnabledByOthers: isWeightOnlyModeEnabledByOthers
         )
@@ -601,7 +601,7 @@ extension BluetoothService {
         }
         let broadcastId = resolvedScale.broadcastId
 
-        await scaleService.updateConnectedDeviceWeightOnlyMode(
+        await deviceService.updateConnectedDeviceWeightOnlyMode(
             broadcastId: broadcastId,
             isWeightOnlyModeEnabledByOthers: false
         )

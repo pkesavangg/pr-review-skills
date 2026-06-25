@@ -116,7 +116,7 @@ private struct ScaleDiscoveredSheetTestView: View {
                 isConnected: false
             )
             
-            let dummyDeviceInfo = ScaleItemInfo(
+            let dummyDeviceInfo = DeviceItemInfo(
                 productName: "AccuCheck Verve Smart Scale",
                 sku: "0412",
                 imgPath: "0412",

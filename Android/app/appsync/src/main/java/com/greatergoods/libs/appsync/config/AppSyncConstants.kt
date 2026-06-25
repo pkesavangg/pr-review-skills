@@ -13,6 +13,21 @@ package com.greatergoods.libs.appsync.config
  */
 object AppSyncConstants {
     // ============================================================================
+    // Camera focus settings
+    // ============================================================================
+
+    /**
+     * Half-extent (per axis, as a fraction of the sensor active array) of the centre
+     * AF/AE metering region used while scanning.
+     *
+     * MOB-869: focus/exposure are driven continuously and biased onto the centre of the
+     * frame, where the targeting overlay frames the scale display. 0.15 yields a central
+     * box covering ~30% of each axis — large enough to tolerate framing wobble, small
+     * enough to keep the bright display (rather than the background) the metering subject.
+     */
+    const val CENTER_REGION_HALF_FRACTION = 0.15f
+
+    // ============================================================================
     // Camera zoom settings
     // ============================================================================
 

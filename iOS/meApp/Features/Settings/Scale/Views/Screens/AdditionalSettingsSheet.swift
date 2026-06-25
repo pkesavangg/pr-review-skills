@@ -9,7 +9,7 @@ struct AdditionalSettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.appTheme) private var theme
     @StateObject private var viewModel: AdditionalSettingsViewModel
-    private let lang = ScaleSettingsStrings.self
+    private let lang = DeviceSettingsStrings.self
     private let scale: Device
 
     init(scale: Device) {

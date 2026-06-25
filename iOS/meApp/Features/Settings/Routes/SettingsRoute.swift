@@ -11,13 +11,13 @@ import SwiftUI
 enum SettingsRoute: Routable {
     case editProfile
     case changePassword
-    case scaleModes(scale: Device, isWeighOnlyModeEnabledByOthers: Bool = false)
+    case deviceModes(scale: Device, isWeighOnlyModeEnabledByOthers: Bool = false)
     case displayMetrics(scale: Device, isWeighOnlyModeEnabledByOthers: Bool = false)
-    case scaleNameScreen(scale: Device)
+    case deviceNameScreen(scale: Device)
     case users(scale: Device, usersList: [DeviceUser])
     case wifi(scale: Device)
-    case scaleBluetoothScreen(scale: Device)
-    case scaleSettings(scale: Device, scaleType: ScaleType)
+    case deviceBluetoothScreen(scale: Device)
+    case deviceSettings(scale: Device, scaleType: DeviceModelType)
     case bpmDeviceSettings(device: Device)
     case addEditScales, integrations, goal, weightless, messages, appPermissions, help, myAccounts, myKids, addBaby, wifiMacAddress(macAddress: String)
 
@@ -28,21 +28,21 @@ enum SettingsRoute: Routable {
         case .changePassword:
             ChangePasswordScreen()
         case .addEditScales:
-            MyScalesScreen()
-        case .scaleSettings(let scale, let scaleType):
-            ScaleSettingsScreen(scale: scale, scaleType: scaleType)
+            MyDevicesScreen()
+        case .deviceSettings(let scale, let scaleType):
+            DeviceSettingsScreen(scale: scale, scaleType: scaleType)
         case .bpmDeviceSettings(let device):
             BpmDeviceSettingsScreen(device: device)
-        case .scaleModes(let scale, let isWeighOnlyModeEnabledByOthers):
-            ScaleModesScreen(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers)
+        case .deviceModes(let scale, let isWeighOnlyModeEnabledByOthers):
+            DeviceModesScreen(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers)
         case .displayMetrics(let scale, let isWeighOnlyModeEnabledByOthers):
             DisplayMetricsScreen(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers)
-        case .scaleNameScreen(let scale):
-            ScaleNameScreen(scale: scale)
+        case .deviceNameScreen(let scale):
+            DeviceNameScreen(scale: scale)
         case .users(let scale, let usersList):
             UsersScreen(scale: scale, usersList: usersList)
-        case .scaleBluetoothScreen(let scale):
-            ScaleBluetoothScreen(scale: scale)
+        case .deviceBluetoothScreen(let scale):
+            DeviceBluetoothScreen(scale: scale)
         case .wifi(let scale):
             let sku = scale.sku ?? "default"
             BtWifiScaleSetupScreen(

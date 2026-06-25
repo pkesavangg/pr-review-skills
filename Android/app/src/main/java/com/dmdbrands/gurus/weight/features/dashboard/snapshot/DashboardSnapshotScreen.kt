@@ -22,6 +22,7 @@ import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
+import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.BabyEmptySnapshotCard
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.BabySnapshotCard
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.BpSnapshotCard
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.WeightSnapshotCard
@@ -114,9 +115,14 @@ fun DashboardSnapshotScreen(
             },
           )
 
-          // Baby scale owned but no profile: snapshot empty card is tracked separately
-          // (MOB-431). MOB-416 surfaces the empty state on the single dashboard instead.
-          is ProductSelection.BabyScale -> Unit
+          // Baby scale owned but no profile: show the add-a-baby empty card (MOB-592).
+          is ProductSelection.BabyScale -> BabyEmptySnapshotCard(
+            onAddBaby = {
+              scope.launch {
+                navBackStack.addRoute(AppRoute.AccountSettings.AddBaby())
+              }
+            },
+          )
         }
       }
     }

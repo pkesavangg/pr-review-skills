@@ -10,7 +10,7 @@ struct BabyScaleNameView: View {
     @EnvironmentObject var store: BabyScaleSetupStore
     @Environment(\.appTheme) private var theme
     @FocusState private var focusedField: FocusField?
-    private let lang = BabyScaleSetupStrings.ScaleName.self
+    private let lang = BabyScaleSetupStrings.DeviceName.self
 
     private var focusBinding: Binding<FocusField?> {
         Binding(

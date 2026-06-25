@@ -25,7 +25,7 @@ final class AccountMigrationService { // swiftlint:disable:this type_body_length
     @Injector private var logger: LoggerServiceProtocol
     @Injector private var keychainService: KeychainServiceProtocol
     private let accountRepo: AccountRepositoryProtocol
-    private let scaleMigrationService: ScaleMigrationServiceProtocol
+    private let scaleMigrationService: DeviceMigrationServiceProtocol
     private let integrationStore: MigrationIntegrationStoreProtocol
     private let theme = Theme.shared
     private let tag = "AccountMigrationService"
@@ -36,12 +36,12 @@ final class AccountMigrationService { // swiftlint:disable:this type_body_length
     init(
         kvStorage: KvStorageServiceProtocol? = nil,
         accountRepo: AccountRepositoryProtocol? = nil,
-        scaleMigrationService: ScaleMigrationServiceProtocol? = nil,
+        scaleMigrationService: DeviceMigrationServiceProtocol? = nil,
         integrationStore: MigrationIntegrationStoreProtocol? = nil
     ) {
         self.kvStorage = kvStorage ?? KvStorageService.shared
         self.accountRepo = accountRepo ?? AccountRepository()
-        self.scaleMigrationService = scaleMigrationService ?? ScaleMigrationService()
+        self.scaleMigrationService = scaleMigrationService ?? DeviceMigrationService()
         self.integrationStore = integrationStore ?? IntegrationRepository()
     }
 

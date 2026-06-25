@@ -21,9 +21,23 @@ typealias Validator<T> = (T) -> ValidationError?
 typealias AsyncValidator<T> = suspend (T) -> ValidationError?
 typealias OnValueChangeCallback<T> = (oldValue: T, newValue: T) -> Unit
 
+/**
+ * Severity of a validation result.
+ *
+ * [ERROR] is blocking — it fails the control/form and prevents submit.
+ * [WARNING] is advisory — it surfaces a caution to the user but the value is
+ * still considered valid and can be saved (mirrors Balance Health's manual-entry
+ * "warn but still save" behaviour for out-of-typical-range readings).
+ */
+enum class ValidationSeverity {
+    ERROR,
+    WARNING,
+}
+
 data class ValidationError(
     val type: String,
     val message: String,
+    val severity: ValidationSeverity = ValidationSeverity.ERROR,
 )
 
 /**
@@ -46,6 +60,13 @@ class FormControl<T> private constructor(
     val error: ValidationError? get() = _error.value
     val errorMessage: String? get() = _error.value?.message
     val isError: Boolean get() = _error.value != null && _error.value?.type != null
+
+    // Advisory (non-blocking) warning, shown when the value is out of the typical
+    // range but still allowed. Independent of [_error]; never affects validity.
+    private val _warning = mutableStateOf<ValidationError?>(null)
+    val warning: ValidationError? get() = _warning.value
+    val warningMessage: String? get() = _warning.value?.message
+    val isWarning: Boolean get() = _warning.value != null
 
     private val _touched = mutableStateOf(false)
     val touched: Boolean get() = _touched.value
@@ -93,6 +114,7 @@ class FormControl<T> private constructor(
         suppressNextBlurTouch = false
         _touched.value = false
         _error.value = null
+        _warning.value = null
         _pending.value = false
         return
       }
@@ -147,17 +169,28 @@ class FormControl<T> private constructor(
 // ✅ 1. Do NOT validate if untouched AND not dirty
       if (!touched && !dirty) {
         _error.value = null
+        _warning.value = null
         _pending.value = false
         return true
       }
-        // Run sync validators first
+        // Run sync validators first. Collect the first blocking error and the
+        // first advisory warning separately so a warning never short-circuits
+        // (or masks) a real error.
+        var firstError: ValidationError? = null
+        var firstWarning: ValidationError? = null
         for (validator in _validators.value) {
-            val err = validator(value)
-            if (err != null) {
-                _error.value = err
-                _pending.value = false
-                return false
+            val result = validator(value) ?: continue
+            if (result.severity == ValidationSeverity.WARNING) {
+                if (firstWarning == null) firstWarning = result
+            } else if (firstError == null) {
+                firstError = result
             }
+        }
+        _warning.value = firstWarning
+        if (firstError != null) {
+            _error.value = firstError
+            _pending.value = false
+            return false
         }
 
         // If we have async validators, run them
@@ -222,7 +255,9 @@ class FormControl<T> private constructor(
      */
     fun isValueValid(): Boolean {
         for (validator in _validators.value) {
-            if (validator(value) != null) return false
+            val result = validator(value) ?: continue
+            // Warnings are advisory and never make the value invalid.
+            if (result.severity != ValidationSeverity.WARNING) return false
         }
         return true
     }
@@ -236,6 +271,7 @@ class FormControl<T> private constructor(
         _initialValue = valueToReset
         _value.value = valueToReset
         _error.value = null
+        _warning.value = null
         _touched.value = false
         _dirty.value = false
         _pending.value = false

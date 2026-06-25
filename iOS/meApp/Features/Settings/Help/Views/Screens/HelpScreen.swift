@@ -40,7 +40,7 @@ struct HelpScreen: View {
             }
         }
 
-        var scales: [ScaleItemInfo] {
+        var scales: [DeviceItemInfo] {
             switch self {
             case .weightScale:
                 return SCALES.filter { $0.setupType != .babyScale }
@@ -183,7 +183,7 @@ struct HelpScreen: View {
             if isExpanded {
                 if category == .weightScale {
                     // Weight scales use the existing segmented filter list
-                    ScaleManualListView(scales: category.scales) { scale in
+                    DeviceManualListView(scales: category.scales) { scale in
                         helpStore.openProductManual(sku: scale.sku)
                     }
                     .padding(.top, .spacingSM)
@@ -195,7 +195,7 @@ struct HelpScreen: View {
                             Button {
                                 helpStore.openProductManual(sku: scale.sku)
                             } label: {
-                                ScaleManualListRowView(
+                                DeviceManualListRowView(
                                     scale: scale,
                                     showConnectivityIcon: false,
                                     showBottomBorder: index < scales.count - 1

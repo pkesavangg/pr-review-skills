@@ -3,7 +3,9 @@ package com.dmdbrands.gurus.weight.features.historyDetail.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
+import com.dmdbrands.gurus.weight.domain.enums.BabyEntryType
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryDetail
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
@@ -113,7 +115,48 @@ class HistoryDetailViewModel @AssistedInject constructor(
                 saveNote(intent.entry, intent.note)
             }
 
+            is HistoryDetailIntent.SaveBabyEdit -> {
+                AppLog.d(TAG, "Save baby edit for entry: ${intent.entry.entry.id}")
+                saveBabyEdit(intent)
+            }
+
             else -> Unit
+        }
+    }
+
+    private fun saveBabyEdit(intent: HistoryDetailIntent.SaveBabyEdit) {
+        viewModelScope.launch {
+            try {
+                val original = intent.entry
+                val updated = BabyEntry(
+                    // addEntry re-stamps isSynced/operationType/accountId; we keep the row id (so it
+                    // updates in place via the unique entryTimestamp index) and apply the new values.
+                    entry = original.entry.copy(entryTimestamp = intent.timestamp),
+                    babyEntry = original.babyEntry.copy(
+                        babyWeightDecigrams = intent.weightDecigrams,
+                        babyLengthMillimeters = intent.lengthMillimeters,
+                        entryNote = intent.note,
+                        entryType = if (intent.weightDecigrams != null) {
+                            BabyEntryType.WEIGHT.value
+                        } else {
+                            BabyEntryType.MEASURE_LENGTH.value
+                        },
+                    ),
+                )
+                // If the date changed the row moves to a new entryTimestamp — delete the old one so
+                // it isn't orphaned, then save the updated reading.
+                if (original.entry.entryTimestamp != intent.timestamp) {
+                    entryService.deleteEntry(original)
+                }
+                entryService.addEntry(updated)
+                handleIntent(HistoryDetailIntent.DismissBabyEditor)
+                loadDetail()
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error saving baby edit for entry: ${intent.entry.entry.id}", e)
+                dialogQueueService.showToast(
+                    Toast.Simple(title = null, message = HistoryDetailScreenStrings.NoteSaveError),
+                )
+            }
         }
     }
 

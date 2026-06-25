@@ -8,7 +8,7 @@
 import SwiftData
 import SwiftUI
 
-/// Wrapper view that refetches an Entry by ID on the main actor before displaying ScaleMetricsView.
+/// Wrapper view that refetches an Entry by ID on the main actor before displaying DeviceMetricsView.
 /// This ensures SwiftData properties can be safely accessed in MetricDetailView.
 struct RefetchedEntryWrapper: View {
     let entryId: UUID
@@ -23,7 +23,7 @@ struct RefetchedEntryWrapper: View {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let dto = entryDTO {
-                ScaleMetricsView(entryDTO: dto, selectedMetric: selectedMetric, dashboardStore: dashboardStore)
+                DeviceMetricsView(entryDTO: dto, selectedMetric: selectedMetric, dashboardStore: dashboardStore)
             } else {
                 EmptyView()
             }
