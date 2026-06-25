@@ -80,7 +80,7 @@ jobs:
   # ===========================================================
   # Job 2: SwiftLint Static Analysis
   # ===========================================================
-  swiftlint:
+  ios-swiftlint:
     macos:
       xcode: "16.4.0"
     resource_class: m4pro.medium
@@ -105,7 +105,7 @@ jobs:
   # ===========================================================
   # Job 3: iOS Build
   # ===========================================================
-  build:
+  ios-build:
     macos:
       xcode: "16.4.0"
     resource_class: m4pro.medium
@@ -217,7 +217,7 @@ jobs:
   # compatibility issue (requires physical device). Uncomment
   # when simulator support is restored.
   # ===========================================================
-  # unit-tests:
+  # ios-unit-tests:
   #   macos:
   #     xcode: "16.4.0"
   #   resource_class: m4pro.medium
@@ -276,7 +276,7 @@ jobs:
   # ===========================================================
   # Job 5: Dependency Audit
   # ===========================================================
-  dependency-audit:
+  ios-dependency-audit:
     macos:
       xcode: "16.4.0"
     resource_class: m4pro.medium
@@ -472,7 +472,7 @@ workflows:
       # --- Platform-agnostic ---
       - gitleaks
       # --- iOS jobs ---
-      - swiftlint:
+      - ios-swiftlint:
           filters:
             branches:
               only:
@@ -480,7 +480,7 @@ workflows:
                 - main
                 - /^MA-.*$/
                 - /^MOB-.*$/
-      - build:
+      - ios-build:
           filters:
             branches:
               only:
@@ -489,10 +489,10 @@ workflows:
                 - /^MA-.*$/
                 - /^MOB-.*$/
       # Uncomment when simulator support is restored:
-      # - unit-tests:
+      # - ios-unit-tests:
       #     requires:
-      #       - build
-      - dependency-audit:
+      #       - ios-build
+      - ios-dependency-audit:
           filters:
             branches:
               only:
