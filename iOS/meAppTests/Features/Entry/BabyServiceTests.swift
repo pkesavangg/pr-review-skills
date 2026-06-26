@@ -161,8 +161,11 @@ struct BabyServiceTests {
         #expect(repo.deleteCalls == 1)
         #expect(repo.lastDeletedId == babyId)
         #expect(!sut.currentBabies.contains { $0.id == babyId })
-        // Last baby removed → "baby" stripped from productTypes.
-        #expect(account.lastUpdatedProductTypes?.contains("baby") == false)
+        // Last baby removed → "baby" stripped via the dedicated reducing path
+        // (removeProductType), not updateProductTypes which never reduces.
+        #expect(account.removeProductTypeCalls == 1)
+        #expect(account.lastRemovedProductType == "baby")
+        #expect(account.updateProductTypesCalls == 0)
     }
 
     // MARK: - loadBabies

@@ -17,6 +17,7 @@ final class MockAccountService: AccountServiceProtocol {
     var signUpResult: Result<Void, Error> = .failure(UnexpectedCallError.methodCalled("signUp"))
     var createGoalResult: Result<Void, Error> = .failure(UnexpectedCallError.methodCalled("createGoal"))
     var updateProductTypesResult: Result<Void, Error> = .success(())
+    var removeProductTypeResult: Result<Void, Error> = .success(())
     var updateMeasurementUnitsResult: Result<Void, Error> = .success(())
     var checkEmailAvailabilityResult: Result<Bool, Error> = .success(true)
     var requestPasswordResetResult: Result<Void, Error> = .success(())
@@ -46,6 +47,8 @@ final class MockAccountService: AccountServiceProtocol {
     private(set) var createGoalCalls = 0
     private(set) var updateProductTypesCalls = 0
     private(set) var lastUpdatedProductTypes: [String]?
+    private(set) var removeProductTypeCalls = 0
+    private(set) var lastRemovedProductType: String?
     private(set) var updateMeasurementUnitsCalls = 0
     private(set) var lastUpdatedMeasurementUnits: MeasurementUnits?
     private(set) var checkEmailAvailabilityCalls = 0
@@ -292,6 +295,12 @@ final class MockAccountService: AccountServiceProtocol {
         lastUpdatedProductTypes = productTypes
         allUpdatedProductTypes.append(productTypes)
         try updateProductTypesResult.get()
+    }
+
+    func removeProductType(_ productType: String) async throws {
+        removeProductTypeCalls += 1
+        lastRemovedProductType = productType
+        try removeProductTypeResult.get()
     }
 
     func updateMeasurementUnits(_ measurementUnits: MeasurementUnits) async throws {

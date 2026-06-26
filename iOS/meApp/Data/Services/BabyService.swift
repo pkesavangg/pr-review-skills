@@ -213,7 +213,10 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
         guard babies.isEmpty,
               let snapshot = accountService.activeAccount,
               snapshot.productTypes.contains("baby") else { return }
-        try await accountService.updateProductTypes(snapshot.productTypes.filter { $0 != "baby" })
+        // Use the dedicated reducing path: updateProductTypes(_:) never reduces (it unions
+        // with the existing local value), so filtering "baby" out and sending it there would
+        // be a no-op that re-adds "baby". removeProductType authoritatively drops it.
+        try await accountService.removeProductType("baby")
         LoggerService.shared.log(
             level: .info,
             tag: tag,
