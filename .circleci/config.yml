@@ -203,7 +203,7 @@ jobs:
               -project meApp.xcodeproj \
               -scheme meApp \
               -destination 'generic/platform=iOS' \
-              -configuration Debug \
+              -configuration Dev \
               -onlyUsePackageVersionsFromResolvedFile \
               -disableAutomaticPackageResolution \
               -clonedSourcePackagesDirPath SourcePackages \
