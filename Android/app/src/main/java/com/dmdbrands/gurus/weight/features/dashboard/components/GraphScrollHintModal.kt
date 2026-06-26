@@ -2,10 +2,8 @@ package com.dmdbrands.gurus.weight.features.dashboard.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.keyframes
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
@@ -37,6 +35,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.R
+import com.dmdbrands.gurus.weight.core.power.powerSaveAwareInfiniteFloat
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
 import com.dmdbrands.gurus.weight.features.common.components.AppIconType
@@ -144,7 +143,8 @@ private const val VisiblePoints = 6
 /** Renders the small chart with a finger glyph that pans the data left/right on a loop. */
 @Composable
 private fun AnimatedHintGraph(modifier: Modifier = Modifier) {
-  val transition = rememberInfiniteTransition(label = "graph-scroll-hint")
+  // Under Power Saving Mode the hint holds a static frame (chart at rest, hand visible at the
+  // start position) instead of looping the pan/hand animation (MOB-226).
   val totalSteps = (DemoPoints.size - VisiblePoints).toFloat()
   val maxOffset = totalSteps.coerceAtLeast(1f)
 
@@ -160,7 +160,7 @@ private fun AnimatedHintGraph(modifier: Modifier = Modifier) {
   val twoThirds = maxOffset * 2f / 3f
   val half = maxOffset / 2f
 
-  val panProgress by transition.animateFloat(
+  val panProgress = powerSaveAwareInfiniteFloat(
     initialValue = 0f,
     targetValue = 0f,
     animationSpec = infiniteRepeatable(
@@ -183,6 +183,7 @@ private fun AnimatedHintGraph(modifier: Modifier = Modifier) {
       },
       repeatMode = RepeatMode.Restart,
     ),
+    restingValue = 0f,
     label = "pan-progress",
   )
 
@@ -190,7 +191,7 @@ private fun AnimatedHintGraph(modifier: Modifier = Modifier) {
   // left → right; during return it drags right → left. Between swipes it
   // snaps back to the start side while the alpha is dipped so the snap
   // doesn't read as a teleport.
-  val handPosition by transition.animateFloat(
+  val handPosition = powerSaveAwareInfiniteFloat(
     initialValue = 0f,
     targetValue = 0f,
     animationSpec = infiniteRepeatable(
@@ -219,13 +220,14 @@ private fun AnimatedHintGraph(modifier: Modifier = Modifier) {
       },
       repeatMode = RepeatMode.Restart,
     ),
+    restingValue = 0f,
     label = "hand-position",
   )
 
   // Hand alpha fades fully out during the long pause and during the gap
   // between pan-back and return phases. Between drags it dips to 0.25 so the
   // "lift and reset" reads as the same gesture lifting off the screen.
-  val handAlpha by transition.animateFloat(
+  val handAlpha = powerSaveAwareInfiniteFloat(
     initialValue = 0f,
     targetValue = 0f,
     animationSpec = infiniteRepeatable(
@@ -255,6 +257,7 @@ private fun AnimatedHintGraph(modifier: Modifier = Modifier) {
       },
       repeatMode = RepeatMode.Restart,
     ),
+    restingValue = 1f,
     label = "hand-alpha",
   )
 

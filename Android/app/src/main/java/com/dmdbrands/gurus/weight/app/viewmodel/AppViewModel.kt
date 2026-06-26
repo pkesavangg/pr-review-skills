@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.app.string.AppString.SCALEDISCOVEREDTIMEOUT
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.network.TokenMigrationHelper
+import com.dmdbrands.gurus.weight.core.power.interfaces.IPowerSaveModeObserver
 import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
@@ -83,9 +84,12 @@ import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.coroutines.resume
@@ -120,6 +124,7 @@ constructor(
   private val accountFlagService: IAccountFlagService,
   private val tokenMigrationHelper: TokenMigrationHelper,
   private val analyticsService: IAnalyticsService,
+  private val powerSaveModeObserver: IPowerSaveModeObserver,
 ) : BaseIntentViewModel<AppState, AppIntent>(
   reducer = AppReducer(),
 ) {
@@ -134,6 +139,19 @@ constructor(
   }
 
   override fun provideInitialState(): AppState = AppState()
+
+  /**
+   * Device Power Saving Mode state, surfaced to the Compose tree via LocalPowerSaveMode so
+   * components can drop continuous animations while Battery Saver is on (MOB-226).
+   */
+  val powerSaveMode: StateFlow<Boolean> =
+    powerSaveModeObserver.observe()
+      .stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = powerSaveModeObserver.isPowerSaveMode(),
+      )
+
   private var currentAccountId: String? = null
   private var canShowScaleDiscoveredModal = true
   private var scaleToIgnore: String? = null
