@@ -720,6 +720,11 @@ extension BluetoothScaleSetupStore {
     }
 
     @MainActor
+    func testSetScaleItem(_ item: DeviceItemInfo) {
+        self.scaleItem = item
+    }
+
+    @MainActor
     func testSetInternalState(
         discoveredScale: Device? = nil,
         discoveryEvent: DeviceDiscoveryEvent? = nil,

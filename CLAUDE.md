@@ -15,8 +15,17 @@ MeApp (Weight Gurus) is a dual-platform health/weight tracking application with 
 - **Repo / org:** Hosted under the gg-engineering org (`github.com/gg-engineering/meApp`) following the gg-engineering migration.
 - **Jira:** Active work tracks in the **MOB** project (GGT-Mobile, board 1088) on `greatergoods.atlassian.net`. Branch and commit prefix is `MOB-XXXX` (the older `MA-XXXX` prefix is legacy).
 - **Branch model:**
-  - `main` — the MA / 5.0.x release line; default PR target unless told otherwise.
-  - `develop` — active integration branch for in-flight work.
+  - `main` — the MA / 5.0.x release line (shipped Weight Gurus app). Target only for 5.0.x hotfixes.
+  - `develop` — **active integration branch and current default base/target.** Phase 2 (`phase2-dev`) has been merged into `develop`, so it now carries the Me.Health 2.0 multi-product work. New branches start from `develop`.
+
+## Phase 2 — Me.Health 2.0 ("Mega App") · current focus
+
+Phase 1 shipped Weight Gurus (weight + body composition) as `v5.0.0`–`v5.0.2`. **Phase 2 merges three products into one app and one server:** **Weight + Blood Pressure (Balance) + Baby.**
+
+- **Product model:** an account has a `productTypes` array (`weight`, `blood_pressure`, `baby`) plus `measurementUnits` (`metric` / `imperialLbOz` / `imperialLbDecimal`). Products are auto-added when a device is paired / a baby is created / an entry is made, and are directly settable.
+- **Unified v3 APIs (new app):** `/v3/paired-device/` (any `deviceType`), `/v3/review/`, `/v3/entries/` (multi-`category` write + sync/cursor read + csv), baby profiles/permissions/invitations, `PATCH /v3/account/products` + `/measurement-units`.
+- **Backward compatibility is a hard requirement:** legacy weight endpoints (`/v3/operation/*`, `/v3/paired-scale/`, `/v3/review/app|scale`) stay live for old apps. Never guide their removal.
+- **Sources of truth:** the `phase2-context` skill (auto-triggers; full API cheat sheet), the [API Changes Specification](https://greatergoods.atlassian.net/wiki/spaces/GGT/pages/1458962434/Me+App+2.0+API+Changes+Specification) (Confluence), and the [Me.Health Mega App 2.0 Figma](https://www.figma.com/design/k0HO1SquDGrYOcoMSbrzA0/Me.Health-Mega-App-2.0?node-id=8-2145) (design system) — captured in the iOS `phase2-design-system` skill.
 
 ## Build & Run Commands
 

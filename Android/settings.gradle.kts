@@ -32,15 +32,12 @@ dependencyResolutionManagement {
   repositories {
     google()
     mavenCentral()
+    // The org was renamed "dmdbrands" -> "gg-engineering". GitHub Packages does
+    // NOT follow org-rename redirects (the repo API does, the Maven registry
+    // doesn't), so the old dmdbrands URLs 404. Resolution is per-repo, so each
+    // package needs its own repo URL under the current org name.
     maven {
-      url = uri("https://maven.pkg.github.com/dmdbrands/ggBluetoothNativeLibrary")
-      credentials {
-        username = githubUser
-        password = githubToken
-      }
-    }
-    maven {
-      url = uri("https://maven.pkg.github.com/dmdbrands/vico")
+      url = uri("https://maven.pkg.github.com/gg-engineering/ggBluetoothNativeLibrary")
       credentials {
         username = githubUser
         password = githubToken

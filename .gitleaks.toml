@@ -120,6 +120,25 @@ tags = ["phi", "mrn", "hipaa"]
     '''__snapshots__''',
     '''\.md$''',
     '''CHANGELOG''',
+
+    # UI string-constant files (PascalCase labels like "Forgot Password?"),
+    # never credentials — by project convention static text lives in these dirs.
+    '''/[Ss]trings/''',
+    # API interface definitions: field-name / header-key constants, not secrets
+    # (e.g. TOKEN = "refresh-token", PASSWORD = "password").
+    '''data/api/''',
+    # Mock/preview data + storage-key/field-name constants flagged by the broad
+    # generic-secret rule (token = "dummy-token"/"preview-token"/"4244…",
+    # password "password123", fcmToken key, API_TRACE, matchPassword, etc.).
+    '''features/ScaleUsers/components/ScaleUserItem\.kt''',
+    '''features/ScaleUsers/components/ScaleUserList\.kt''',
+    '''features/common/helper/form/FormValidations\.kt''',
+    '''Core/Network/HTTPClient\.swift''',
+    '''Core/Storage/KvStorageKeys\.swift''',
+    '''Features/Common/ReactiveForm/Core/ObservableForm\.swift''',
+    '''Features/Common/Views/Components/DeviceUserListView\.swift''',
+    '''Features/Common/Views/Components/InputFields/MetricInputField\.swift''',
+    '''Features/Settings/Scale/Views/Screens/UsersScreen\.swift''',
   ]
 
   # Regex patterns to ignore globally
