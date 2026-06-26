@@ -16,6 +16,7 @@
     <ID>LargeClass:AppViewModel.kt$AppViewModel : BaseIntentViewModel</ID>
     <ID>LargeClass:BtWifiScaleSetupViewModel.kt$BtWifiScaleSetupViewModel : ScaleSetupViewmodel</ID>
     <ID>LargeClass:DeviceServiceTest.kt$DeviceServiceTest</ID>
+    <ID>LargeClass:EntryViewModelTest.kt$EntryViewModelTest</ID>
     <ID>LargeClass:FeedServiceTest.kt$FeedServiceTest</ID>
     <ID>LargeClass:GoalServiceTest.kt$GoalServiceTest</ID>
     <ID>LargeClass:HealthConnectService.kt$HealthConnectService : BaseServiceIHealthConnectService</ID>

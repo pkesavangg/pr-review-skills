@@ -241,6 +241,37 @@ class EntryReducerTest {
     }
 
     @Test
+    fun `LoadAppSyncData preserves r4 metrics section when present`() {
+        val mockScaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry =
+            mockk(relaxed = true)
+        val realForm = MultiFormGroup.create(forms = EntryForm.create(includeR4ScaleMetrics = true))
+        val state = EntryState(activeForm = ActiveEntryForm.Weight(form = realForm), weightMode = WeightUnit.LB)
+
+        val result = reducer.reduce(
+            state,
+            EntryIntent.LoadAppSyncData(scaleEntry = mockScaleEntry, height = 170),
+        )
+
+        // includeR4ScaleMetrics is derived from currentForm.r4ScaleMetrics != null → r4 kept.
+        assertThat(result?.form?.forms?.r4ScaleMetrics).isNotNull()
+    }
+
+    @Test
+    fun `LoadAppSyncData drops r4 metrics section when absent`() {
+        val mockScaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry =
+            mockk(relaxed = true)
+        val realForm = MultiFormGroup.create(forms = EntryForm.create(includeR4ScaleMetrics = false))
+        val state = EntryState(activeForm = ActiveEntryForm.Weight(form = realForm), weightMode = WeightUnit.LB)
+
+        val result = reducer.reduce(
+            state,
+            EntryIntent.LoadAppSyncData(scaleEntry = mockScaleEntry, height = 170),
+        )
+
+        assertThat(result?.form?.forms?.r4ScaleMetrics).isNull()
+    }
+
+    @Test
     fun `LoadAppSyncData with null height does not crash`() {
         val mockScaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry =
             mockk(relaxed = true)
@@ -258,6 +289,61 @@ class EntryReducerTest {
     // -------------------------------------------------------------------------
     // EntryForm.create — companion object
     // -------------------------------------------------------------------------
+
+    // -------------------------------------------------------------------------
+    // ActiveEntryForm — isValid / isDirty getters
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `ActiveEntryForm Weight reflects form valid and dirty state`() {
+        val form = MultiFormGroup.create(forms = EntryForm.create())
+        val active = ActiveEntryForm.Weight(form)
+        // Fresh form is untouched/not dirty.
+        assertThat(active.isDirty).isFalse()
+        // isValid delegates to the underlying form.
+        assertThat(active.isValid).isEqualTo(form.isValid)
+    }
+
+    @Test
+    fun `ActiveEntryForm Weight isDirty true when touched`() {
+        val form = MultiFormGroup.create(forms = EntryForm.create())
+        form.forms.weightDateTime.controls.weight.markAsTouched()
+        val active = ActiveEntryForm.Weight(form)
+        assertThat(active.isDirty).isTrue()
+    }
+
+    @Test
+    fun `ActiveEntryForm BloodPressure reflects form state`() {
+        val form = MultiFormGroup.create(forms = BloodPressureEntryForm.create())
+        val active = ActiveEntryForm.BloodPressure(form)
+        assertThat(active.isDirty).isFalse()
+        assertThat(active.isValid).isEqualTo(form.isValid)
+    }
+
+    @Test
+    fun `ActiveEntryForm BloodPressure isDirty true when dirty`() {
+        val form = MultiFormGroup.create(forms = BloodPressureEntryForm.create())
+        form.forms.bloodPressure.controls.systolic.onValueChange("120")
+        form.forms.bloodPressure.controls.systolic.markAsDirty()
+        val active = ActiveEntryForm.BloodPressure(form)
+        assertThat(active.isDirty).isTrue()
+    }
+
+    @Test
+    fun `ActiveEntryForm Baby reflects form state`() {
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
+        val active = ActiveEntryForm.Baby(form)
+        assertThat(active.isDirty).isFalse()
+        assertThat(active.isValid).isEqualTo(form.isValid)
+    }
+
+    @Test
+    fun `ActiveEntryForm Baby isDirty true when touched`() {
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
+        form.forms.baby.controls.pounds.markAsTouched()
+        val active = ActiveEntryForm.Baby(form)
+        assertThat(active.isDirty).isTrue()
+    }
 
     @Test
     fun `EntryForm create returns form with expected structure`() {

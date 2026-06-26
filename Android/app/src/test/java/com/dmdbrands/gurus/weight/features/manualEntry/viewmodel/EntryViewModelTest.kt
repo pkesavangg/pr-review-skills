@@ -9,6 +9,7 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
@@ -603,5 +604,435 @@ class EntryViewModelTest {
         // Should show loader but not call addEntry since account id is null
         verify { dialogQueueService.showLoader(message = any()) }
         coVerify(exactly = 0) { entryService.addEntry(entry = any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // saveBloodPressureEntry
+    // -------------------------------------------------------------------------
+
+    private fun selectBloodPressureForm(
+        systolic: String = "120",
+        diastolic: String = "80",
+        pulse: String = "72",
+        notes: String = "",
+    ) {
+        every { productSelectionManager.selectedProduct } returns
+            MutableStateFlow(ProductSelection.BloodPressure)
+        viewModel = createViewModel()
+        val form = MultiFormGroup.create(forms = BloodPressureEntryForm.create())
+        form.forms.bloodPressure.controls.systolic.onValueChange(systolic)
+        form.forms.bloodPressure.controls.diastolic.onValueChange(diastolic)
+        form.forms.bloodPressure.controls.pulse.onValueChange(pulse)
+        if (notes.isNotEmpty()) form.forms.bloodPressure.controls.notes.onValueChange(notes)
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.BloodPressure(form)))
+    }
+
+    @Test
+    fun `Save with BP form computes mean arterial and persists bpm entry`() = runTest {
+        selectBloodPressureForm(systolic = "120", diastolic = "80", pulse = "72")
+        val captured = slot<Entry>()
+        coEvery { entryService.addEntry(entry = capture(captured)) } returns Unit
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        val bpm = captured.captured as BpmEntry
+        assertThat(bpm.bpmEntry.systolic).isEqualTo(120)
+        assertThat(bpm.bpmEntry.diastolic).isEqualTo(80)
+        assertThat(bpm.bpmEntry.pulse).isEqualTo(72)
+        // MAP = (120 + 2*80) / 3 = 93
+        assertThat(bpm.bpmEntry.meanArterial).isEqualTo("93")
+    }
+
+    @Test
+    fun `Save with BP form blank values default to zero`() = runTest {
+        selectBloodPressureForm(systolic = "", diastolic = "abc", pulse = "")
+        val captured = slot<Entry>()
+        coEvery { entryService.addEntry(entry = capture(captured)) } returns Unit
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        val bpm = captured.captured as BpmEntry
+        assertThat(bpm.bpmEntry.systolic).isEqualTo(0)
+        assertThat(bpm.bpmEntry.diastolic).isEqualTo(0)
+        assertThat(bpm.bpmEntry.pulse).isEqualTo(0)
+        assertThat(bpm.bpmEntry.meanArterial).isEqualTo("0")
+    }
+
+    @Test
+    fun `Save with BP form keeps note when provided`() = runTest {
+        selectBloodPressureForm(notes = "after walk")
+        val captured = slot<Entry>()
+        coEvery { entryService.addEntry(entry = capture(captured)) } returns Unit
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        assertThat((captured.captured as BpmEntry).bpmEntry.note).isEqualTo("after walk")
+    }
+
+    @Test
+    fun `Save with BP form shows success toast and navigates back`() = runTest {
+        selectBloodPressureForm()
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+        verify { dialogQueueService.showToast(match<Toast.Simple> { it.title == SUCCESS_TOAST_TITLE }) }
+        coVerify { navigationService.navigateBack(AppRoute.Home) }
+    }
+
+    @Test
+    fun `Save with BP form shows error toast when addEntry throws`() = runTest {
+        selectBloodPressureForm()
+        coEvery { entryService.addEntry(entry = any()) } throws RuntimeException(NETWORK_ERROR)
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        verify { dialogQueueService.showToast(match<Toast.Simple> { it.title == ERROR_TOAST_TITLE }) }
+        verify { dialogQueueService.dismissLoader() }
+    }
+
+    @Test
+    fun `Save with BP form returns early when activeAccount id is null`() = runTest {
+        every { accountService.activeAccount } returns MutableStateFlow(null)
+        every { accountService.activeAccountFlow } returns flowOf(null)
+        selectBloodPressureForm()
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { entryService.addEntry(entry = any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // saveBabyEntry — edge cases
+    // -------------------------------------------------------------------------
+
+    private fun babyProfile(id: String = "baby-1") =
+        ProductSelection.Baby(BabyProfile(id = id, name = "Timmy", birthdate = null, accountId = "acc-1"))
+
+    @Test
+    fun `Save with baby form but no profile selected does not persist`() = runTest {
+        // Active form is Baby, but the selected product is NOT a Baby → babyId is null.
+        every { productSelectionManager.selectedProduct } returns
+            MutableStateFlow(ProductSelection.MyWeight)
+        viewModel = createViewModel()
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
+        form.forms.baby.controls.pounds.onValueChange("7")
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { entryService.addEntry(entry = any()) }
+    }
+
+    @Test
+    fun `Save with baby form returns early when activeAccount id is null`() = runTest {
+        every { accountService.activeAccount } returns MutableStateFlow(null)
+        every { accountService.activeAccountFlow } returns flowOf(null)
+        every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
+        viewModel = createViewModel()
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
+        form.forms.baby.controls.pounds.onValueChange("7")
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { entryService.addEntry(entry = any()) }
+        verify { dialogQueueService.dismissLoader() }
+    }
+
+    @Test
+    fun `Save with baby form weight only sends single weight entry`() = runTest {
+        every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
+        viewModel = createViewModel()
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
+        form.forms.baby.controls.pounds.onValueChange("7")
+        form.forms.baby.controls.ounces.onValueChange("4")
+        // No inches → no length entry
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+
+        val captured = mutableListOf<Entry>()
+        coEvery { entryService.addEntry(entry = capture(captured)) } returns Unit
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        assertThat(captured).hasSize(1)
+        assertThat((captured.first() as BabyEntry).entryType).isEqualTo("weight")
+    }
+
+    @Test
+    fun `Save with baby form length only sends single length entry`() = runTest {
+        every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
+        viewModel = createViewModel()
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
+        // No pounds/ounces (both 0) → no weight entry, only length
+        form.forms.baby.controls.inches.onValueChange("20")
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+
+        val captured = mutableListOf<Entry>()
+        coEvery { entryService.addEntry(entry = capture(captured)) } returns Unit
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        assertThat(captured).hasSize(1)
+        assertThat((captured.first() as BabyEntry).entryType).isEqualTo("measureLength")
+    }
+
+    @Test
+    fun `Save with baby form all zero values sends no entries`() = runTest {
+        every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
+        viewModel = createViewModel()
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        // buildBabyEntries returns empty → forEach is a no-op
+        coVerify(exactly = 0) { entryService.addEntry(entry = any()) }
+    }
+
+    @Test
+    fun `Save with baby form shows error toast when addEntry throws`() = runTest {
+        every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
+        viewModel = createViewModel()
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
+        form.forms.baby.controls.pounds.onValueChange("7")
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+        coEvery { entryService.addEntry(entry = any()) } throws RuntimeException(NETWORK_ERROR)
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        verify { dialogQueueService.showToast(match<Toast.Simple> { it.title == ERROR_TOAST_TITLE }) }
+        verify { dialogQueueService.dismissLoader() }
+    }
+
+    // -------------------------------------------------------------------------
+    // observeProductSelection → initProductForm branches
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `observeProductSelection with BloodPressure sets BloodPressure active form`() = runTest {
+        every { productSelectionManager.selectedProduct } returns
+            MutableStateFlow(ProductSelection.BloodPressure)
+        viewModel = createViewModel()
+
+        viewModel.observeProductSelection()
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.activeForm).isInstanceOf(ActiveEntryForm.BloodPressure::class.java)
+    }
+
+    @Test
+    fun `observeProductSelection with Baby sets Baby active form`() = runTest {
+        every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
+        viewModel = createViewModel()
+
+        viewModel.observeProductSelection()
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.activeForm).isInstanceOf(ActiveEntryForm.Baby::class.java)
+    }
+
+    @Test
+    fun `observeProductSelection with MyWeight and no appSync builds weight form`() = runTest {
+        every { productSelectionManager.selectedProduct } returns
+            MutableStateFlow(ProductSelection.MyWeight)
+        viewModel = createViewModel()
+
+        viewModel.observeProductSelection()
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.activeForm).isInstanceOf(ActiveEntryForm.Weight::class.java)
+    }
+
+    @Test
+    fun `observeProductSelection with MyWeight and appSync expands metrics`() = runTest {
+        every { appSyncService.appSyncDataForEditing } returns MutableStateFlow(TestFixtures.weightEntry)
+        every { productSelectionManager.selectedProduct } returns
+            MutableStateFlow(ProductSelection.MyWeight)
+        viewModel = createViewModel()
+
+        viewModel.observeProductSelection()
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.isMetricFieldsExpandedInitially).isTrue()
+    }
+
+    @Test
+    fun `observeProductSelection with BabyScale is a no-op`() = runTest {
+        every { productSelectionManager.selectedProduct } returns
+            MutableStateFlow(ProductSelection.BabyScale)
+        viewModel = createViewModel()
+
+        viewModel.observeProductSelection()
+        advanceUntilIdle()
+
+        // Default active form remains Weight; no crash.
+        assertThat(viewModel.state.value.activeForm).isInstanceOf(ActiveEntryForm.Weight::class.java)
+    }
+
+    // -------------------------------------------------------------------------
+    // UpdateOnRelaunch — non-weight product short-circuits
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `UpdateOnRelaunch with BloodPressure product does not rebuild weight form`() = runTest {
+        every { productSelectionManager.selectedProduct } returns
+            MutableStateFlow(ProductSelection.BloodPressure)
+        viewModel = createViewModel()
+        val bpForm = MultiFormGroup.create(forms = BloodPressureEntryForm.create())
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.BloodPressure(bpForm)))
+
+        viewModel.handleIntent(EntryIntent.UpdateOnRelaunch)
+        advanceUntilIdle()
+
+        // Active form must remain BloodPressure (weight form not clobbered).
+        assertThat(viewModel.state.value.activeForm).isInstanceOf(ActiveEntryForm.BloodPressure::class.java)
+    }
+
+    // -------------------------------------------------------------------------
+    // loadAppSyncData — error path (null account still loads form)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `loadAppSyncData with null account uses null height and still loads`() = runTest {
+        every { accountService.activeAccount } returns MutableStateFlow(null)
+        every { accountService.activeAccountFlow } returns flowOf(null)
+        val scaleEntry = TestFixtures.weightEntry
+        every { appSyncService.appSyncDataForEditing } returns MutableStateFlow(scaleEntry)
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.isMetricFieldsExpandedInitially).isTrue()
+    }
+
+    // -------------------------------------------------------------------------
+    // initDeactivate / Exit — dialog confirm & cancel callbacks
+    // -------------------------------------------------------------------------
+
+    private fun makeFormDirty() {
+        val form = MultiFormGroup.create(forms = EntryForm.create())
+        form.forms.weightDateTime.controls.weight.onValueChange("160")
+        form.forms.weightDateTime.controls.weight.markAsDirty()
+        form.forms.weightDateTime.controls.weight.markAsTouched()
+        viewModel.handleIntent(EntryIntent.UpdateForm(form))
+    }
+
+    @Test
+    fun `initDeactivate enqueues confirm dialog when form is dirty`() = runTest {
+        val handlerSlot = slot<suspend () -> Boolean>()
+        coEvery {
+            navigationService.registerOnDeactivate(eq(AppRoute.Main.Entry), capture(handlerSlot))
+        } returns Unit
+        // The enqueued Confirm dialog auto-confirms so the suspended handler resumes.
+        every { dialogQueueService.enqueue(any<DialogModel.Confirm>()) } answers {
+            (firstArg<DialogModel.Confirm>()).onConfirm?.invoke()
+        }
+
+        makeFormDirty()
+        var confirmed = false
+        viewModel.initDeactivate { confirmed = true }
+        advanceUntilIdle()
+
+        // Fire the registered handler — it enqueues a Confirm that auto-confirms.
+        val result = handlerSlot.captured.invoke()
+
+        assertThat(result).isTrue()
+        assertThat(confirmed).isTrue()
+        coVerify { navigationService.unregisterOnDeactivate(AppRoute.Main.Entry) }
+    }
+
+    @Test
+    fun `initDeactivate cancel callback resumes false`() = runTest {
+        val handlerSlot = slot<suspend () -> Boolean>()
+        coEvery {
+            navigationService.registerOnDeactivate(eq(AppRoute.Main.Entry), capture(handlerSlot))
+        } returns Unit
+        every { dialogQueueService.enqueue(any<DialogModel.Confirm>()) } answers {
+            (firstArg<DialogModel.Confirm>()).onCancel?.invoke()
+        }
+
+        makeFormDirty()
+        viewModel.initDeactivate { }
+        advanceUntilIdle()
+
+        val result = handlerSlot.captured.invoke()
+
+        assertThat(result).isFalse()
+    }
+
+    @Test
+    fun `initDeactivate returns true immediately when form not dirty`() = runTest {
+        val handlerSlot = slot<suspend () -> Boolean>()
+        coEvery {
+            navigationService.registerOnDeactivate(eq(AppRoute.Main.Entry), capture(handlerSlot))
+        } returns Unit
+
+        viewModel.initDeactivate { }
+        advanceUntilIdle()
+
+        val result = handlerSlot.captured.invoke()
+        assertThat(result).isTrue()
+    }
+
+    @Test
+    fun `Exit enqueues confirm dialog and confirm callback deactivates`() = runTest {
+        val handlerSlot = slot<suspend () -> Boolean>()
+        coEvery {
+            navigationService.registerOnDeactivate(eq(AppRoute.Main.Entry), capture(handlerSlot))
+        } returns Unit
+        every { dialogQueueService.enqueue(any<DialogModel.Confirm>()) } answers {
+            (firstArg<DialogModel.Confirm>()).onConfirm?.invoke()
+        }
+
+        makeFormDirty()
+        viewModel.Exit()
+        advanceUntilIdle()
+
+        val result = handlerSlot.captured.invoke()
+
+        assertThat(result).isTrue()
+        coVerify { navigationService.unregisterOnDeactivate(AppRoute.Main.Entry) }
+    }
+
+    @Test
+    fun `Exit cancel callback resumes false`() = runTest {
+        val handlerSlot = slot<suspend () -> Boolean>()
+        coEvery {
+            navigationService.registerOnDeactivate(eq(AppRoute.Main.Entry), capture(handlerSlot))
+        } returns Unit
+        every { dialogQueueService.enqueue(any<DialogModel.Confirm>()) } answers {
+            (firstArg<DialogModel.Confirm>()).onCancel?.invoke()
+        }
+
+        makeFormDirty()
+        viewModel.Exit()
+        advanceUntilIdle()
+
+        val result = handlerSlot.captured.invoke()
+
+        assertThat(result).isFalse()
+    }
+
+    @Test
+    fun `Exit returns true immediately when form not dirty`() = runTest {
+        val handlerSlot = slot<suspend () -> Boolean>()
+        coEvery {
+            navigationService.registerOnDeactivate(eq(AppRoute.Main.Entry), capture(handlerSlot))
+        } returns Unit
+
+        viewModel.Exit()
+        advanceUntilIdle()
+
+        assertThat(handlerSlot.captured.invoke()).isTrue()
     }
 }
