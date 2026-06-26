@@ -71,7 +71,7 @@ The `/work-ticket` command orchestrates the complete flow. When working a Jira t
 
 ```
 /fetch-ticket          → Gather requirements and acceptance criteria
-/create-branch         → Branch from main, transition Jira to In Progress
+/create-branch         → Branch from develop, transition Jira to In Progress
 /create-prd            → Write implementation plan (for non-trivial tasks)
   ↓
 [Implementation phase — use skills as needed per task type]
@@ -223,7 +223,7 @@ Fetches all inline and general review comments, classifies each as Auto-fix / Ne
 
 Trigger phrases: "fix PR comments", "address review feedback", "apply reviewer suggestions", "respond to PR feedback", "fix the review comments", "act on code review", "resolve PR comments".
 
-### 4.11 Release Preparation
+### 4.12 Release Preparation
 
 ```
 /release-cut                     → Gather changes, group by theme, write release notes
@@ -256,7 +256,7 @@ Before marking any task complete, confirm:
 - [ ] Coverage meets layer thresholds (`/verify-tests`)
 - [ ] Self-review passes all 5 checks (`/self-review`)
 - [ ] No unrelated files modified
-- [ ] Commit message follows `MA-XXXX Description` format
+- [ ] Commit message follows `MOB-XXXX Description` format
 - [ ] Architecture doc updated if structural changes made (`/update-architecture`)
 
 ---
@@ -270,6 +270,8 @@ Before marking any task complete, confirm:
 | `/create-prd` | Generate implementation plan |
 | `/read-figma` | Extract design context from Figma |
 | `/read-jira-images` | Analyze Jira image attachments |
+| `/phase2-context` | Phase 2 (Me.Health 2.0) product + unified-API model |
+| `/phase2-design-system` | Phase 2 Figma 2.0 file/nodes + token mapping |
 | `api-change-planner` | Map API feature impact across layers |
 | `di-impact-finder` | Assess DI registration impact |
 | `coverage-gap-finder` | Find uncovered methods and branches |
@@ -302,6 +304,10 @@ Before marking any task complete, confirm:
 | `/form-guide` | Form validation — ObservableForm, FormControl, validators |
 | `/logging-guide` | Logging system — LoggerService, persistence, retention, server submission |
 | `/notification-guide` | Notification layer — alerts, toasts, loaders, modals, two-window architecture |
+| `/unified-entries` | Phase 2 unified `/v3/entries/` write (array) + read (sync/cursor) |
+| `/paired-device` | Phase 2 unified `/v3/paired-device/` + `DeviceType` mapping |
+| `/baby-profile` | Phase 2 baby CRUD (`/v3/baby/`, iOS owner-CRUD only) |
+| `/product-selection` | Phase 2 `productTypes`/`measurementUnits`, `ProductTypeStore` |
 
 ### Testing & Mocks
 | Skill/Agent | Purpose |
@@ -329,7 +335,7 @@ Before marking any task complete, confirm:
 ### Git & Delivery
 | Skill/Command | Purpose |
 |---------------|---------|
-| `/create-branch` | Branch from main with Jira ID |
+| `/create-branch` | Branch from develop with Jira ID |
 | `/commit` | Stage and commit with Jira prefix |
 | `/raise-pr` | Push and create PR |
 | `/log-work` | Log time on Jira |
