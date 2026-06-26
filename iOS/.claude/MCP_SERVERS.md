@@ -21,7 +21,7 @@ claude mcp add atlassian
 
 **Usage**:
 ```
-"Fetch MA-3619 details"
+"Fetch MOB-3619 details"
 "Search confluence for HealthKit integration patterns"
 "Log 2 hours on this ticket"
 ```
@@ -46,7 +46,7 @@ claude mcp add github
 ```
 "Check if main branch protection requires PR reviews"
 "List failing GitHub Actions on this commit"
-"Create a PR linking to MA-3619"
+"Create a PR linking to MOB-3619"
 ```
 
 ---
@@ -174,7 +174,7 @@ claude mcp add context7
 ```
 Task: Implement a new Dashboard card showing daily trends
 
-1. "Fetch MA-3620 to understand requirements"
+1. "Fetch MOB-3620 to understand requirements"
    → Atlassian: Gets ticket details, acceptance criteria
 
 2. "Get design context for the dashboard mockup"
@@ -183,7 +183,7 @@ Task: Implement a new Dashboard card showing daily trends
 3. "How do I create an animated SwiftUI chart?"
    → Context7: SwiftUI animation examples
 
-4. "Create a PR linking to MA-3620"
+4. "Create a PR linking to MOB-3620"
    → GitHub: Opens PR with ticket link
 ```
 
@@ -217,7 +217,7 @@ Task: Implement a new Dashboard card showing daily trends
 **Solution**:
 - Context7: Try broader search terms or different wording
 - Figma: Ensure you have access to the file/project
-- Atlassian: Check project key is correct (MA-xxxx)
+- Atlassian: Check project key is correct (MOB-xxxx)
 
 ---
 
@@ -237,7 +237,7 @@ To ensure your team has the same MCP setup:
 1. **Commit this file** to the repository:
    ```bash
    git add .claude/MCP_SERVERS.md
-   git commit -m "MA-XXXX Document MCP server setup for team"
+   git commit -m "MOB-XXXX Document MCP server setup for team"
    ```
 
 2. **Share authentication approach**:
