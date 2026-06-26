@@ -117,6 +117,8 @@ fun AssignMeasurementDialog(
                     Spacer(modifier = Modifier.height(MeTheme.spacing.md))
 
                     AssignMeasurementActions(
+                        // "Assign to new baby" selected → CTA becomes "ADD A BABY" → Add-a-Baby flow (MOB-598).
+                        assignLabel = if (selectedBabyId == ASSIGN_NEW_BABY_ID) ReadingToastStrings.AddBaby else ReadingToastStrings.AssignModal.Assign,
                         onAssign = {
                             if (selectedBabyId == ASSIGN_NEW_BABY_ID) {
                                 onAssignNewBaby()
@@ -203,9 +205,10 @@ private fun AssignMeasurementBabyList(
     }
 }
 
-/** ASSIGN (primary) and DON'T ASSIGN (dismiss) buttons. */
+/** Primary CTA ([assignLabel] — "ASSIGN" or "ADD A BABY") and the DON'T ASSIGN dismiss button. */
 @Composable
 private fun AssignMeasurementActions(
+    assignLabel: String,
     onAssign: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -225,7 +228,7 @@ private fun AssignMeasurementActions(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = ReadingToastStrings.AssignModal.Assign,
+                text = assignLabel,
                 style = MeTheme.typography.button1,
                 fontWeight = FontWeight.Bold,
                 color = colorScheme.primaryBackground,
