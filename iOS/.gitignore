@@ -55,7 +55,11 @@ playground.xcworkspace
 *.xcresult
 
 # SPM Packages
+# Ignore resolved files inside dependency checkouts, but commit the app's own
+# Package.resolved so CI resolves the exact same versions as local (prevents
+# drift to broken upstream manifests, e.g. swiftui-cached-async-image 2.1.2).
 Package.resolved
+!meApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 
 # Swift Package Manager
 .swiftpm/
