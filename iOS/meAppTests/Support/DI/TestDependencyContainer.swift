@@ -8,6 +8,7 @@ enum TestDependencyContainer {
         let logger: LoggerService
         let scale: DeviceService
         let entry: EntryService
+        let accountLocalRepo: MockAccountRepository
     }
 
     static func reset() {
@@ -31,6 +32,15 @@ enum TestDependencyContainer {
         DependencyContainer.shared.register(MockScaleService() as PairedDeviceServiceProtocol)
         DependencyContainer.shared.register(MockWifiScaleService() as WifiPairedDeviceServiceProtocol)
         DependencyContainer.shared.register(MockPushNotificationService() as PushNotificationServiceProtocol)
+        // The real PushNotificationService.shared singleton (lazily created when AccountService /
+        // ServiceRegistry touch it) starts NWPathMonitor network monitoring, whose async callback
+        // resolves `permissionsService` via @Injector. Without a registered PermissionsServiceProtocol
+        // here, that leaked callback hits @Injector's fatalError mid-suite — crashing the runner at a
+        // random test and producing the shifting "TEST EXECUTE FAILED" failures. Register a permissions
+        // mock so the leaked monitor resolves cleanly.
+        let permissions = MockPermissionsService()
+        DependencyContainer.shared.register(permissions)
+        DependencyContainer.shared.register(permissions as PermissionsServiceProtocol)
         DependencyContainer.shared.register(MockContentViewModelAccountFlagService() as AccountFlagServiceProtocol)
         DependencyContainer.shared.register(MockKvStorageService() as KvStorageServiceProtocol)
         DependencyContainer.shared.register(MockBabyService() as BabyServiceProtocol)
@@ -51,9 +61,10 @@ enum TestDependencyContainer {
     ) -> DashboardConcreteDependencies {
         DependencyContainer.shared.register(KvStorageService.shared as KvStorageService)
 
+        let accountLocalRepo = MockAccountRepository()
         let accountService = AccountService(
             apiRepo: MockAccountAPIRepository(),
-            localRepo: MockAccountRepository(),
+            localRepo: accountLocalRepo,
             integrationApiRepo: MockIntegrationAPIRepository(),
             networkMonitor: MockNetworkMonitor(isConnected: true),
             performInitialLoad: performInitialAccountLoad
@@ -90,7 +101,8 @@ enum TestDependencyContainer {
             account: accountService,
             logger: loggerService,
             scale: scaleService,
-            entry: entryService
+            entry: entryService,
+            accountLocalRepo: accountLocalRepo
         )
     }
 

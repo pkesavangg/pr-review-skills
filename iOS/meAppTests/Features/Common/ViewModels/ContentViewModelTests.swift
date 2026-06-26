@@ -28,7 +28,7 @@ struct ContentViewModelTests {
         let (viewModel, account, _, entry, feed, scale, bluetooth, accountFlag) = makeSUT()
         account.activeAccount = ContentViewModelTestFixtures.makeActiveAccount(id: "content-1", lastActiveTime: "t1")
         account.refreshAccountResult = .success(())
-        entry.allEntriesResult = .success(ContentViewModelTestFixtures.makeEntries(accountId: "content-1", count: 2))
+        entry.allEntrySnapshotsResult = .success(ContentViewModelTestFixtures.makeEntrySnapshots(accountId: "content-1", count: 2))
 
         viewModel.performAppInitialization()
         await viewModel.waitForInitialization()
@@ -39,7 +39,7 @@ struct ContentViewModelTests {
         #expect(entry.migrateFromSQLiteCalls == 1)
         #expect(entry.syncAllEntriesCalls == 1)
         #expect(entry.loadDashboardDataCalls == 1)
-        #expect(entry.getAllEntriesCalls == 1)
+        #expect(entry.fetchAllEntrySnapshotsCalls == 1)
         #expect(feed.fetchFeedItemsCalls == 1)
         #expect(feed.checkAndTriggerFeedModalCalls == 1)
         #expect(scale.syncAllScalesWithRemoteCalls == 1)

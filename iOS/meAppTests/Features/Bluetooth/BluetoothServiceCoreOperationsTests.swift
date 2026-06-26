@@ -93,7 +93,11 @@ struct BluetoothServiceCoreOperationsTests {
         let connectedOne = makeDevice(id: "connected-1", broadcastIdString: "AA11", isConnected: true)
         let connectedTwo = makeDevice(id: "connected-2", broadcastIdString: "BB22", isConnected: true)
         let disconnected = makeDevice(id: "disconnected-1", broadcastIdString: "CC33", isConnected: false)
-        sut.bluetoothScales = [connectedOne.toSnapshot(), connectedTwo.toSnapshot(), disconnected.toSnapshot()]
+        sut.bluetoothScales = [
+            connectedOne.toSnapshot(isConnected: true),
+            connectedTwo.toSnapshot(isConnected: true),
+            disconnected.toSnapshot(isConnected: false)
+        ]
         sut.skipDevices = ["STALE-ID"]
 
         await sut.disconnectConnectedScales()
@@ -563,6 +567,13 @@ struct BluetoothServiceCoreOperationsTests {
         entry.latestEntry = latestEntry
         let sut = makeSUT(entry: entry, sdk: sdk)
         sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-profile", email: "profile@example.com", isLoggedIn: true, isActiveAccount: true)
+        let r4Device = makeDevice(
+            id: "r4-profile",
+            broadcastIdString: "ABC123",
+            isConnected: true,
+            bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
+        )
+        sut.bluetoothScales = [r4Device.toSnapshot(isConnected: true)]
 
         let result = await sut.updateUserProfileForR4Scales()
 
@@ -604,7 +615,7 @@ struct BluetoothServiceCoreOperationsTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(id: "users-1", broadcastIdString: "USER11", isConnected: true)
-        sut.bluetoothScales = [device.toSnapshot()]
+        sut.bluetoothScales = [device.toSnapshot(isConnected: true)]
 
         let result = await sut.getScaleUserList(broadcastId: device.broadcastIdString ?? "")
 

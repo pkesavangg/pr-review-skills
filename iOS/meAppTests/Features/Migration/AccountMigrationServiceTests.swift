@@ -917,7 +917,9 @@ struct AccountMigrationServiceTests {
 
         sut.migrateProductTypesIfNeeded(for: account, devices: [device])
 
-        #expect(account.productTypes == ["myWeight"])
+        // Persisted vocabulary is the API value ("weight"); ProductTypeStore
+        // normalizes to "myWeight" only at read time. See MOB-581 (3c0517896).
+        #expect(account.productTypes == ["weight"])
     }
 
     @Test("migrateProductTypesIfNeeded sets [myBloodPressure] for BPM only")
@@ -928,7 +930,8 @@ struct AccountMigrationServiceTests {
 
         sut.migrateProductTypesIfNeeded(for: account, devices: [device])
 
-        #expect(account.productTypes == ["myBloodPressure"])
+        // Persisted vocabulary is the API value ("blood_pressure"). See MOB-581 (3c0517896).
+        #expect(account.productTypes == ["blood_pressure"])
     }
 
     @Test("migrateProductTypesIfNeeded sets [baby] for baby scale only")
@@ -953,7 +956,7 @@ struct AccountMigrationServiceTests {
 
         sut.migrateProductTypesIfNeeded(for: account, devices: devices)
 
-        #expect(account.productTypes.sorted() == ["myBloodPressure", "myWeight"])
+        #expect(account.productTypes.sorted() == ["blood_pressure", "weight"])
     }
 
     @Test("migrateProductTypesIfNeeded sets [myWeight, baby] for weight + baby scale")
@@ -967,7 +970,7 @@ struct AccountMigrationServiceTests {
 
         sut.migrateProductTypesIfNeeded(for: account, devices: devices)
 
-        #expect(account.productTypes.sorted() == ["baby", "myWeight"])
+        #expect(account.productTypes.sorted() == ["baby", "weight"])
     }
 
     @Test("migrateProductTypesIfNeeded sets all three types for weight + BPM + baby scale")
@@ -982,7 +985,7 @@ struct AccountMigrationServiceTests {
 
         sut.migrateProductTypesIfNeeded(for: account, devices: devices)
 
-        #expect(account.productTypes.sorted() == ["baby", "myBloodPressure", "myWeight"])
+        #expect(account.productTypes.sorted() == ["baby", "blood_pressure", "weight"])
     }
 
     // MARK: - makeSUT

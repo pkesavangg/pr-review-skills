@@ -51,14 +51,14 @@ class BottomTabBarViewModel: ObservableObject {
     @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector private var logger: LoggerServiceProtocol
     // New dependencies for Set Goal Card logic
-    @Injector private var entryService: EntryServiceProtocol
+    @Injector var entryService: EntryServiceProtocol
     @Injector private var accountService: AccountServiceProtocol
     @Injector private var deviceService: PairedDeviceServiceProtocol
     // New dependency to evaluate permission status
     @Injector private var permissionsService: PermissionsServiceProtocol
     @Injector private var pushNotificationService: PushNotificationServiceProtocol
     @Injector private var integrationService: IntegrationServiceProtocol
-    @Injector private var babyService: BabyServiceProtocol
+    @Injector var babyService: BabyServiceProtocol
 
     // MARK: - Permission Disabled Alert Tracking
 

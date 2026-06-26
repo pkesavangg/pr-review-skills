@@ -257,7 +257,10 @@ final class DateTimeTools {
         if cal.isDate(date, inSameDayAs: now) {
             return formatter("h:mm a").string(from: date)
         }
-        if cal.isDateInYesterday(date) {
+        // Anchor "yesterday" to the injected `now` rather than `Calendar.isDateInYesterday`,
+        // which always compares against the real current date and would ignore `now`.
+        if let yesterday = cal.date(byAdding: .day, value: -1, to: now),
+           cal.isDate(date, inSameDayAs: yesterday) {
             return String(format: DashboardStrings.yesterdayAtFormat, formatter("h:mm a").string(from: date))
         }
         if cal.component(.year, from: date) == cal.component(.year, from: now) {

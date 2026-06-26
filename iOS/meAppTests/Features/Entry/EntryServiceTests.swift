@@ -33,14 +33,15 @@ struct EntryServiceTests {
 
         try await sut.saveNewEntry(entry)
 
+        // MA-3820: local save is decoupled from remote sync. saveNewEntry only persists locally,
+        // updates summaries, fires the entrySaved notification, and triggers integration sync.
+        // Pushing to the remote (submitEntries) now happens separately via syncAllEntriesWithRemote,
+        // so the entry stays unsynced here and no submit/sync-status calls are made.
         #expect(repo.saveEntryCalls == 1)
-        #expect(remote.submitEntriesCalls == 1)
-        #expect(remote.lastSubmittedEntry?.category == EntryCategory.weight.rawValue)
-        #expect(remote.lastSubmittedEntry?.weight == 1800)
-        #expect(remote.lastSubmittedEntry?.source == "scale")
-        #expect(repo.updateEntrySyncStatusCalls == 1)
+        #expect(remote.submitEntriesCalls == 0)
+        #expect(repo.updateEntrySyncStatusCalls == 0)
         #expect(repo.entries.count == 1)
-        #expect(repo.entries.first?.isSynced == true)
+        #expect(repo.entries.first?.isSynced == false)
         #expect(savedNotifications.count == 1)
         #expect(savedNotifications.first?.entryTimestamp == "2026-03-01T08:00:00Z")
         #expect(integration.syncNewEntryCalls == 1)
@@ -107,7 +108,7 @@ struct EntryServiceTests {
         }
     }
 
-    @Test("deleteEntry success: syncs delete, removes local data, and clears summaries")
+    @Test("deleteEntry success: queues delete locally, notifies integrations, and clears summaries")
     func deleteEntrySuccess() async throws {
         let repo = MockEntryRepository()
         let remote = MockEntryRepositoryAPI()
@@ -121,9 +122,15 @@ struct EntryServiceTests {
 
         try await sut.deleteEntry(entry)
 
-        #expect(remote.submitEntriesCalls == 1)
-        #expect(remote.lastSubmittedEntry?.operationType == OperationType.delete.rawValue)
-        #expect(repo.entries.isEmpty)
+        // MA-3820: delete is decoupled from remote sync. deleteEntry marks the entry as a pending
+        // delete locally (operationType == "delete", unsynced) and clears the affected summaries.
+        // The actual remote submitEntries happens later via syncAllEntriesWithRemote, so the
+        // delete-op row remains in the local store here and no submit call is made.
+        #expect(remote.submitEntriesCalls == 0)
+        #expect(repo.entries.count == 1)
+        #expect(repo.entries.first?.operationType == OperationType.delete.rawValue)
+        #expect(repo.entries.first?.isSynced == false)
+        #expect(integration.deleteEntryCalls == 1)
         #expect(sut.dailySummaries.isEmpty)
         #expect(sut.monthlySummaries.isEmpty)
         #expect(deletedNotifications.count >= 1)
@@ -164,7 +171,7 @@ struct EntryServiceTests {
         #expect(sut.monthlySummaries.first?.weight == 1950)
     }
 
-    @Test("aggregateByDay: averages weights and ignores zero-value metrics")
+    @Test("aggregateByDay: surfaces latest weigh-in for the most recent day and ignores zero-value metrics")
     func aggregateByDayAveragesWeights() {
         let sut = makeSUT()
         let first = EntryTestFixtures.makeEntry(timestamp: "2026-03-01T08:00:00Z", weight: 1800, bodyFat: 250)
@@ -173,10 +180,13 @@ struct EntryServiceTests {
 
         let summaries = sut.aggregateByDay(entries: [first, second, invalid], accountId: "acct-1").compactMap { $0 }
 
+        // MA-3937 hybrid rule: the most recent day with valid data surfaces its latest weigh-in
+        // (the 12:00 entry, weight 1820) rather than the daily average. The 15:00 entry is ignored
+        // because its weight is 0, and bodyFat falls back to the latest non-zero reading (250).
         #expect(summaries.count == 1)
         #expect(summaries.first?.period == "2026-03-01")
         #expect(summaries.first?.count == 2)
-        #expect(summaries.first?.weight == 1810)
+        #expect(summaries.first?.weight == 1820)
         #expect(summaries.first?.bodyFat == 250)
     }
 
@@ -184,17 +194,21 @@ struct EntryServiceTests {
     func aggregateByDayPreservesFractionalStoredAverageForKgDisplay() {
         let sut = makeSUT()
         let kgValues = [20.0, 18.7, 9.3, 17.0, 21.3, 24.9]
-        let entries = kgValues.enumerated().map { index, kg in
+        var entries = kgValues.enumerated().map { index, kg in
             EntryTestFixtures.makeEntry(
                 timestamp: String(format: "2026-02-17T%02d:00:00Z", index),
                 weight: ConversionTools.convertKgToStored(kg)
             )
         }
+        // MA-3937 hybrid rule: the *most recent* valid day surfaces its latest weigh-in instead of
+        // an average. Add a later day so 2026-02-17 stays on the daily-average branch, which is the
+        // branch that must preserve the fractional stored average until kg display rounding.
+        entries.append(EntryTestFixtures.makeEntry(timestamp: "2026-02-18T08:00:00Z", weight: 1800))
 
         let summaries = sut.aggregateByDay(entries: entries, accountId: "acct-1").compactMap { $0 }
-        let summary = summaries.first
+        let summary = summaries.first { $0.period == "2026-02-17" }
 
-        #expect(summaries.count == 1)
+        #expect(summaries.count == 2)
         #expect(abs((summary?.weight ?? 0) - (2452.0 / 6.0)) < 0.001)
         #expect(ConversionTools.convertStoredToKg(summary?.weight ?? 0) == 18.5)
     }
@@ -243,13 +257,18 @@ struct EntryServiceTests {
                 weight: ConversionTools.convertKgToStored(kg)
             )
         }
+        // MA-3937 hybrid rule: the most recent valid day surfaces its latest weigh-in, not an average.
+        // Add a later day so 2026-02-17 stays on the daily-average branch, which must preserve the
+        // fractional stored average until kg display rounding.
+        repo.entries.append(EntryTestFixtures.makeEntry(timestamp: "2026-02-18T08:00:00Z", weight: 1800))
         let sut = makeSUT(repo: repo)
 
         await sut.loadDashboardData()
 
-        #expect(sut.dailySummaries.count == 1)
-        #expect(abs((sut.dailySummaries.first?.weight ?? 0) - (2452.0 / 6.0)) < 0.001)
-        #expect(ConversionTools.convertStoredToKg(sut.dailySummaries.first?.weight ?? 0) == 18.5)
+        let summary = sut.dailySummaries.first { $0.period == "2026-02-17" }
+        #expect(sut.dailySummaries.count == 2)
+        #expect(abs((summary?.weight ?? 0) - (2452.0 / 6.0)) < 0.001)
+        #expect(ConversionTools.convertStoredToKg(summary?.weight ?? 0) == 18.5)
     }
 
     @Test("loadDashboardData failure: logs error and leaves summaries untouched")
@@ -332,8 +351,10 @@ struct EntryServiceTests {
 
         try await sut.saveNewEntry(EntryTestFixtures.makeEntry())
 
+        // MA-3820: saveNewEntry persists locally and triggers integration sync but does not push to
+        // the remote inline. An integration failure is logged and swallowed so the save still succeeds.
         #expect(repo.entries.count == 1)
-        #expect(remote.submitEntriesCalls == 1)
+        #expect(remote.submitEntriesCalls == 0)
         #expect(logger.messages.contains(where: { $0.contains("Failed to sync new entry to integrations") }))
     }
 
@@ -361,14 +382,33 @@ struct EntryServiceTests {
                 keychain: keychain,
                 bluetooth: bluetooth
             )
+            // Register the test doubles LAST and under both the concrete type and the protocol so
+            // they deterministically win over the throwaway mocks registered by reset() and over the
+            // real services ServiceRegistry registers (e.g. IntegrationsService.shared) if it was
+            // ever initialised earlier in the serialized run. EntryService injects these via @Injector
+            // (IntegrationServiceProtocol / LoggerServiceProtocol), so without this the SUT can resolve
+            // a different instance than the one the test asserts on.
+            DependencyContainer.shared.register(logger)
+            DependencyContainer.shared.register(logger as LoggerServiceProtocol)
+            DependencyContainer.shared.register(goalAlert)
             DependencyContainer.shared.register(goalAlert as GoalAlertServiceProtocol)
+            DependencyContainer.shared.register(integration)
             DependencyContainer.shared.register(integration as IntegrationServiceProtocol)
 
-            return EntryService(
+            let service = EntryService(
                 accountService: account,
                 localRepo: repo ?? MockEntryRepository(),
                 localKVRepo: syncStore ?? MockEntrySyncStore(),
                 remoteRepo: remote ?? MockEntryRepositoryAPI()
             )
+            // Lock the @Injector-resolved collaborators to the test doubles directly, bypassing the
+            // global DependencyContainer. In the full serialized suite, leaked async work from the
+            // real services built in registerDashboardConcreteDependencies (and other suites) can
+            // change which instance @Injector resolves; direct assignment makes these tests
+            // order-independent (they already pass in isolation).
+            service.logger = logger
+            service.goalAlertService = goalAlert
+            service.integrationService = integration
+            return service
         }
 }

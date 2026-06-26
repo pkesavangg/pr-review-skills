@@ -403,6 +403,10 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         accountService.$activeAccount
             .compactMap { $0?.dashboardType }
             .removeDuplicates()
+            // `@Published` fires in `willSet`, so the sink runs before `activeAccount` is
+            // committed. `handleDashboardTypeChange()` re-reads `activeAccount`, so hop to the
+            // next main-actor turn to ensure it reads the new value rather than the stale one.
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.lifecycleManager.handleDashboardTypeChange()
             }
@@ -695,10 +699,16 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         }
 
         // Tests and a few initialization paths seed summaries directly onto state before
-        // DashboardDataManager's published-cache bindings have populated. Fall back to the
-        // manager's pre-sorted cache so selection and chart rendering remain consistent
-        // without performing an uncached O(n log n) sort on every access.
-        return dataManager.getContinuousOperations(for: state.graph.selectedPeriod)
+        // DashboardDataManager's published-cache bindings have populated. The manager's
+        // pre-sorted cache is empty in that window, so fall back to the store's own
+        // state-backed summaries. This path is only reached when the manager cache is
+        // empty (init race / direct state seeding), so it is not on the scroll hot path.
+        switch state.graph.selectedPeriod {
+        case .week, .month:
+            return state.data.dailySummaries.compactMap { $0 }.sorted { $0.date < $1.date }
+        case .year, .total:
+            return state.data.monthlySummaries.compactMap { $0 }.sorted { $0.date < $1.date }
+        }
     }
 
     func invalidateContinuousOperationsCache() {

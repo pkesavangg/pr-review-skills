@@ -1452,7 +1452,10 @@ struct AccountServiceTests {
         #expect(api.patchProductTypesCalls == 1)
         #expect(api.lastPatchProductTypes == ["weight"])
         let updated = try await local.fetchAccount(byId: "101")
-        #expect(updated?.productTypes == ["blood_pressure"])
+        // updateProductTypes never reduces types: it unions the sent value, the server
+        // response, and the existing local value (MOB-581, 351f80164). Order is not
+        // significant because the union is built from a Set.
+        #expect(updated?.productTypes.sorted() == ["blood_pressure", "weight"])
     }
 
     @Test("updateProductTypes: server returns nil productTypes, falls back to sent value")
@@ -1469,7 +1472,9 @@ struct AccountServiceTests {
         try await sut.updateProductTypes(["weight", "blood_pressure"])
 
         let updated = try await local.fetchAccount(byId: "101")
-        #expect(updated?.productTypes == ["weight", "blood_pressure"])
+        // Server returned nil, so the sent value is the fallback; result order is not
+        // significant because productTypes is merged via a Set union (MOB-581, 351f80164).
+        #expect(updated?.productTypes.sorted() == ["blood_pressure", "weight"])
     }
 
     @Test("updateProductTypes: API failure propagates error")
@@ -1485,6 +1490,100 @@ struct AccountServiceTests {
 
         await #expect(throws: AccountTestError.apiFailed) {
             try await sut.updateProductTypes(["weight"])
+        }
+    }
+
+    // MARK: - removeProductType
+
+    @Test("removeProductType: sends the reduced list and adopts the server's authoritative response")
+    func removeProductTypeUsesServerAuthoritativeResponse() async throws {
+        let api = MockAccountAPIRepository()
+        let local = MockAccountRepository()
+        let account = AccountTestFixtures.makeAccountModel(
+            id: "101", isLoggedIn: true, isActive: true, productTypes: ["weight", "baby"]
+        )
+        local.seed([account])
+        api.patchProductTypesResult = .success(
+            AccountResponse(
+                account: AccountTestFixtures.makeAccountDTO(id: "101", productTypes: ["weight"]),
+                accessToken: nil, refreshToken: nil, expiresAt: nil
+            )
+        )
+
+        let sut = makeSUT(api: api, local: local)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", isActiveAccount: true)
+
+        try await sut.removeProductType("baby")
+
+        #expect(api.patchProductTypesCalls == 1)
+        // The PATCH sends the reduced list (no "baby"), not the prior local value.
+        #expect(api.lastPatchProductTypes == ["weight"])
+        let updated = try await local.fetchAccount(byId: "101")
+        // Critically: "baby" is gone — removeProductType does NOT union with the prior local
+        // value the way updateProductTypes does, so the removal actually reduces the set.
+        #expect(updated?.productTypes == ["weight"])
+    }
+
+    @Test("removeProductType: strips the type even if the server response echoes it back")
+    func removeProductTypeStripsEchoedType() async throws {
+        let api = MockAccountAPIRepository()
+        let local = MockAccountRepository()
+        let account = AccountTestFixtures.makeAccountModel(
+            id: "101", isLoggedIn: true, isActive: true, productTypes: ["weight", "baby"]
+        )
+        local.seed([account])
+        // Server echoes "baby" back in the response (a never-reduce server).
+        api.patchProductTypesResult = .success(
+            AccountResponse(
+                account: AccountTestFixtures.makeAccountDTO(id: "101", productTypes: ["weight", "baby"]),
+                accessToken: nil, refreshToken: nil, expiresAt: nil
+            )
+        )
+
+        let sut = makeSUT(api: api, local: local)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", isActiveAccount: true)
+
+        try await sut.removeProductType("baby")
+
+        let updated = try await local.fetchAccount(byId: "101")
+        // Defensive: the removed type is stripped from the final local value regardless.
+        #expect(updated?.productTypes == ["weight"])
+    }
+
+    @Test("removeProductType: server returns nil productTypes, falls back to the reduced local set")
+    func removeProductTypeServerNilFallsBackToReduced() async throws {
+        let api = MockAccountAPIRepository()
+        let local = MockAccountRepository()
+        let account = AccountTestFixtures.makeAccountModel(
+            id: "101", isLoggedIn: true, isActive: true, productTypes: ["weight", "baby"]
+        )
+        local.seed([account])
+        api.patchProductTypesResult = .success(AccountTestFixtures.makeAccountResponse(accountId: "101"))
+
+        let sut = makeSUT(api: api, local: local)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", isActiveAccount: true)
+
+        try await sut.removeProductType("baby")
+
+        let updated = try await local.fetchAccount(byId: "101")
+        #expect(updated?.productTypes == ["weight"])
+    }
+
+    @Test("removeProductType: API failure propagates error")
+    func removeProductTypeAPIFailurePropagates() async throws {
+        let api = MockAccountAPIRepository()
+        let local = MockAccountRepository()
+        let account = AccountTestFixtures.makeAccountModel(
+            id: "101", isLoggedIn: true, isActive: true, productTypes: ["weight", "baby"]
+        )
+        local.seed([account])
+        api.patchProductTypesResult = .failure(AccountTestError.apiFailed)
+
+        let sut = makeSUT(api: api, local: local)
+        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "101", isActiveAccount: true)
+
+        await #expect(throws: AccountTestError.apiFailed) {
+            try await sut.removeProductType("baby")
         }
     }
 

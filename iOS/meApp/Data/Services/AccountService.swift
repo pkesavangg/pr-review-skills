@@ -549,6 +549,30 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         )
     }
 
+    func removeProductType(_ productType: String) async throws {
+        guard let accountId = activeAccount?.accountId,
+              let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
+            throw AccountError.noActiveAccount
+        }
+
+        // Removal is a reducing path: send the remaining types so the server PATCH replaces
+        // the list, then adopt the server's authoritative response. We deliberately do NOT
+        // union with the existing local value the way updateProductTypes(_:) does — that union
+        // exists to grow the set and would re-add the type we are removing. As a safeguard
+        // against a server that echoes the type back, we also strip it from the final result.
+        let reduced = localAccount.productTypes.filter { $0 != productType }
+        let response = try await apiRepo.patchProductTypes(reduced)
+        let serverTypes = response.account.productTypes ?? reduced
+        localAccount.productTypes = serverTypes.filter { $0 != productType }
+        try await updateAccountClearingTokens(localAccount)
+        try await updatePublishedState()
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Removed productType=\(productType) for accountId=\(accountId)"
+        )
+    }
+
     /// Updates the active account's preferred measurement units via the server,
     /// then persists the returned account locally.
     func updateMeasurementUnits(_ measurementUnits: MeasurementUnits) async throws {

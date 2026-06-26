@@ -33,6 +33,13 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
             let initialWeightStored = Int(account.initialWeight ?? 0)
             let goalWeightStored = Int(account.goalWeight ?? 0)
 
+            // No goal settings on the account → leave goal state untouched so progress
+            // does not default to 100% for accounts that have not set a goal.
+            guard hasGoalSet else {
+                state.hasGoalSet = false
+                return
+            }
+
             // Update goal state with extracted settings
             state.goalType = goalType
             state.goalUnit = goalUnit
@@ -88,6 +95,12 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
                 throw DashboardError.noActiveAccount
             }
 
+            // No goal settings on the account → leave goal state untouched.
+            guard account.goalWeight != nil else {
+                state.hasGoalSet = false
+                return
+            }
+
             // Convert weights to display units
             let initialWeightStored = Int(account.initialWeight ?? 0)
             let goalWeightStored = Int(account.goalWeight ?? 0)
@@ -131,6 +144,12 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
         do {
             guard let account = accountService.activeAccount else {
                 throw DashboardError.noActiveAccount
+            }
+
+            // No goal settings on the account → leave goal state untouched.
+            guard account.goalWeight != nil else {
+                state.hasGoalSet = false
+                return
             }
 
             // Extract flattened fields from snapshot

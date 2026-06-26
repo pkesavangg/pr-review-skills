@@ -86,7 +86,17 @@ protocol AccountServiceProtocol {
 
     /// Updates the product types for the active account via PATCH /account/products, then persists locally.
     /// Used when signup or device/baby flows establish the authoritative product list.
+    /// Note: this grows the set (it unions the sent value, the server response, and the existing
+    /// local value) and never reduces — use `removeProductType(_:)` to drop a type.
     func updateProductTypes(_ productTypes: [String]) async throws
+
+    /// Removes a single product type from the active account via PATCH /account/products, then
+    /// persists locally. Unlike `updateProductTypes(_:)`, this is a *reducing* path: it sends the
+    /// remaining types and adopts the server's authoritative response, deliberately not unioning
+    /// with the prior local value (which would re-add the removed type). Used when the last baby
+    /// profile is deleted and "baby" must be stripped.
+    /// - Parameter productType: The product type to remove (e.g. "baby").
+    func removeProductType(_ productType: String) async throws
 
     /// Updates the active account's preferred measurement units (PATCH /account/measurement-units).
     /// - Parameter measurementUnits: The new measurement units.

@@ -56,7 +56,14 @@ final class MockDashboardFormatter: DashboardFormatterProtocol {
         formattedMetricValueResult ?? metric.value
     }
     func composeMetricInfoLabel(prefix: String, dateText: String) -> String { "\(prefix) \(dateText)" }
-    func selectionPrefix(for period: TimePeriod, isLatestDaySelected: Bool) -> String { "Avg" }
+    func selectionPrefix(for period: TimePeriod, isLatestDaySelected: Bool) -> String {
+        // Mirror the real DashboardFormatter so DisplayManager tests assert against the
+        // production hybrid "latest entry" / "day average" / "month average" labels.
+        switch period {
+        case .week, .month: return isLatestDaySelected ? "latest entry" : "day average"
+        case .year, .total: return "month average"
+        }
+    }
 }
 
 @MainActor

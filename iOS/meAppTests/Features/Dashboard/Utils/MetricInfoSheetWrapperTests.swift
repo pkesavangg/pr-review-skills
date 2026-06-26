@@ -174,7 +174,9 @@ struct MetricInfoSheetWrapperTests {
             loadCalls >= 1
         }
 
-        store.state.graph.selectedPeriod = .month
+        // Use a period that differs from the GraphState default (.month) so this is a real
+        // change that flips the reload trigger; otherwise the on-change handler is a no-op.
+        store.state.graph.selectedPeriod = .week
         store.forceImmediateUIUpdate()
         await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 1_000_000_000) {
             loadCalls >= 2

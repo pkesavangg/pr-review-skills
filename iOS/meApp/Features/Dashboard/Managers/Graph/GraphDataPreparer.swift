@@ -340,10 +340,11 @@ struct GraphDataPreparer { // swiftlint:disable:this type_body_length
         guard isWeightlessMode else {
             return (avg * 100).rounded(.toNearestOrAwayFromZero) / 100
         }
-        guard let anchorWeight else { return 0 }
+        // No anchor in weightless mode means "subtract zero" — fall back to the plain average
+        // rather than collapsing to 0 (preserves the pre-MA-2816 semantics the tests encode).
         let diff = displayedWeightlessAverageDifference(
             currentWeights: weights,
-            anchorWeight: anchorWeight
+            anchorWeight: anchorWeight ?? 0
         )
         // Match the non-weightless path's 2-decimal-place precision
         return (diff * 100).rounded(.toNearestOrAwayFromZero) / 100
