@@ -31,6 +31,67 @@ struct BluetoothServiceScanEventPipelineTests {
         #expect(discovered.first?.isNew == true)
     }
 
+    @Test("known device is matched by integer broadcastId even when broadcastIdString differs across protocols")
+    func knownDeviceMatchedByIntegerBroadcastIdAcrossProtocols() async throws {
+        let sdk = MockBluetoothSDKClient()
+        let account = MockAccountService()
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-known-1", email: "known1@example.com", isLoggedIn: true, isActiveAccount: true)
+        let sut = makeSUT(account: account, sdk: sdk)
+        _ = await waitUntil { sut.activeAccount?.accountId == "acct-known-1" }
+
+        // A paired scale is stored as R4 (12-char broadcastIdString) while the discovery event
+        // maps as A6 (8-char). The two strings never match, so only the normalized integer
+        // broadcastId can detect the re-pair — this is the "Scale Already Paired" fix.
+        let rawHex = "AA11"
+        let knownInt = sut.convertHexToInt(rawHex)
+        let stored = BluetoothTestFixtures.makeDevice(
+            id: "known-scale", accountId: "acct-known-1", broadcastId: knownInt, protocolType: "R4"
+        )
+        sut.bluetoothScales = [stored.toSnapshot()]
+
+        try await sut.startSmartScan()
+        _ = await waitUntil { sut.isSmartScanStarted }
+        let discovered = await collectValues(count: 1, from: sut.deviceDiscoveredPublisher) {
+            await sendScanResponse(
+                makeScanResponse(type: .NEW_DEVICE, data: makeDeviceDetails(broadcastId: rawHex, protocolType: "A6")),
+                through: sdk
+            )
+        }
+
+        // Strings genuinely differ across protocols, but the integer matches → already paired.
+        #expect(stored.broadcastIdString != discovered.first?.device.broadcastIdString)
+        #expect(discovered.first?.isNew == false)
+    }
+
+    @Test("A3 device without a usable integer broadcastId falls back to broadcastIdString match")
+    func knownA3DeviceMatchedByStringFallback() async throws {
+        let sdk = MockBluetoothSDKClient()
+        let account = MockAccountService()
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-a3-1", email: "a3@example.com", isLoggedIn: true, isActiveAccount: true)
+        let sut = makeSUT(account: account, sdk: sdk)
+        _ = await waitUntil { sut.activeAccount?.accountId == "acct-a3-1" }
+
+        // A3 BPMs may not expose a stable integer broadcastId at discovery (it converts to 0),
+        // so re-pair detection falls back to comparing the raw broadcastIdString.
+        let rawId = "A3BPMUUID1"
+        #expect(sut.convertHexToInt(rawId) == 0)
+        let stored = BluetoothTestFixtures.makeDevice(
+            id: "known-a3", accountId: "acct-a3-1", broadcastIdString: rawId, protocolType: "A3"
+        )
+        sut.bluetoothScales = [stored.toSnapshot()]
+
+        try await sut.startSmartScan()
+        _ = await waitUntil { sut.isSmartScanStarted }
+        let discovered = await collectValues(count: 1, from: sut.deviceDiscoveredPublisher) {
+            await sendScanResponse(
+                makeScanResponse(type: .NEW_DEVICE, data: makeDeviceDetails(broadcastId: rawId, protocolType: "A3")),
+                through: sdk
+            )
+        }
+
+        #expect(discovered.first?.isNew == false)
+    }
+
 
     @Test("blocked or malformed scan events are filtered before downstream processing")
     func blockedOrMalformedScanEventsAreFiltered() async throws {
