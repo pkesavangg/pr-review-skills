@@ -35,6 +35,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -402,7 +405,12 @@ fun AppButton(
           enabled = enabled,
           interactionSource = interactionSource,
           onClick = throttledClick
-        ),
+        )
+        // TalkBack: the Material3 Button branch announces "<label>, button" automatically.
+        // This transparent Box branch needs the Button role added explicitly, and
+        // mergeDescendants so the child label folds into the button node (otherwise
+        // TalkBack reads a nameless "button" and the label as a separate focus stop).
+        .semantics(mergeDescendants = true) { role = Role.Button },
       contentAlignment = Alignment.Center
     ) {
       Text(

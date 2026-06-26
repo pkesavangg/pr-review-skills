@@ -14,12 +14,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.draw.rotate
 import com.dmdbrands.gurus.weight.domain.enums.BpSeverity
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
 import com.dmdbrands.gurus.weight.features.history.strings.HistoryItemStrings
+import com.dmdbrands.gurus.weight.features.historyDetail.strings.HistoryDetailScreenStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
@@ -48,12 +52,33 @@ fun BpHistoryDetailItem(
     label = "chevron",
   )
 
+  // TalkBack: read the BP entry as one announcement with an expand/collapse state, e.g.
+  // "Jun 19, 6:30 AM, pressure 120 over 80, pulse 60". The systolic/diastolic "/" is
+  // spoken as "over" so the value is unambiguous.
+  val rowDescription = buildString {
+    append("$dateDisplay, $timeDisplay")
+    append(
+      ", ${HistoryDetailScreenStrings.accPressureLabel} " +
+        "${entry.systolic} ${HistoryDetailScreenStrings.accOver} ${entry.diastolic}",
+    )
+    append(", ${HistoryDetailScreenStrings.accPulseLabel} ${entry.pulse}")
+  }
+  val expandState = if (isExpanded) {
+    HistoryDetailScreenStrings.accExpandedState
+  } else {
+    HistoryDetailScreenStrings.accCollapsedState
+  }
+
   Column(modifier = Modifier.fillMaxWidth().testTag("entry_row")) {
     // Entry row
     Row(
       modifier = Modifier
         .fillMaxWidth()
         .clickable { onToggle() }
+        .semantics(mergeDescendants = true) {
+          contentDescription = rowDescription
+          stateDescription = expandState
+        }
         .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.lg),

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -46,7 +47,11 @@ fun <T> AppRadioGroup(
     groupLabel: String? = null,
 ) {
     Column(
-        modifier = modifier.fillMaxWidth(),
+        // selectableGroup() tells TalkBack these radios are one single-choice group
+        // (announces "N of M"); semantics-only, no layout change.
+        modifier = modifier
+            .fillMaxWidth()
+            .selectableGroup(),
         verticalArrangement = Arrangement.spacedBy(spacing.xs),
     ) {
         groupLabel?.let {

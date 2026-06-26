@@ -60,7 +60,7 @@ private fun HelpContent(
     title = HelpScreenStrings.Title,
     enable = true,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close) {
+      AppIconButton(AppIcons.Default.Close, contentDescription = HelpScreenStrings.accCloseLabel) {
         handleIntent(HelpIntent.OnBack)
       }
     },

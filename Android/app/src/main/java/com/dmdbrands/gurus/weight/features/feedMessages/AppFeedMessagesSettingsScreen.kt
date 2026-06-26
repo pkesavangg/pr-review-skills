@@ -40,7 +40,10 @@ fun AppFeedMessagesSettingsScreen(
   AppScaffold(
     title = FeedMessagesStrings.SettingsTitle,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close) {
+      AppIconButton(
+        AppIcons.Default.Close,
+        contentDescription = FeedMessagesStrings.accCloseButton,
+      ) {
         viewModel.handleIntent(FeedMessagesIntent.OnBackPress)
       }
     },

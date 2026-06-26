@@ -50,7 +50,7 @@ fun AppPermissionsContent(
 
   AppScaffold(
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close) {
+      AppIconButton(AppIcons.Default.Close, contentDescription = AppPermissionsScreenStrings.accCloseLabel) {
         scope.launch {
           navBackStack.removeLast()
         }

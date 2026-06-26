@@ -7,6 +7,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -44,6 +46,10 @@ import kotlin.math.roundToInt
 /**
  * Simplified static line chart for dashboard snapshot cards.
  * No scrolling, no markers, no snapping — just renders a line with axes.
+ *
+ * @param chartContentDescription TalkBack summary of the plotted line (value + range),
+ *   composed by the caller. The chart is a custom Vico Canvas with no inherent text
+ *   nodes, so without this the whole graph is invisible to screen readers.
  */
 @Composable
 fun SnapshotLineChart(
@@ -56,6 +62,7 @@ fun SnapshotLineChart(
   yStep: Double? = null,
   yMin: Double? = null,
   yMax: Double? = null,
+  chartContentDescription: String? = null,
   modifier: Modifier = Modifier,
 ) {
   if (yMin == null || yMax == null) return
@@ -193,7 +200,14 @@ fun SnapshotLineChart(
     modelProducer = modelProducer,
     modifier = modifier
       .fillMaxWidth()
-      .height(200.dp),
+      .height(200.dp)
+      .then(
+        if (chartContentDescription != null) {
+          Modifier.semantics { contentDescription = chartContentDescription }
+        } else {
+          Modifier
+        },
+      ),
     animateIn = false,
     scrollState = rememberVicoScrollState(
       scrollEnabled = false,

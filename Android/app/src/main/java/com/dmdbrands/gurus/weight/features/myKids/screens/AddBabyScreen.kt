@@ -108,7 +108,7 @@ fun AddBabyScreen(babyId: String? = null, viewModel: MyKidsViewModel = hiltViewM
     AppScaffold(
         title = if (isEditing) AddBabyStrings.EditTitle else AddBabyStrings.Title,
         navigationIcon = {
-            AppIconButton(AppIcons.Default.Close) {
+            AppIconButton(AppIcons.Default.Close, contentDescription = AddBabyStrings.accCloseLabel) {
                 coroutineScope.launch { backStack.removeLast() }
             }
         },

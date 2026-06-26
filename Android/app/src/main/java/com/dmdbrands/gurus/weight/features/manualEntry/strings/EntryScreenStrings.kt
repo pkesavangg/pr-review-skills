@@ -86,4 +86,12 @@ object EntryScreenStrings {
   const val POUNDS_LABEL = "pounds"
   const val OUNCES_LABEL = "ounces"
   const val INCHES_LABEL = "inches"
+
+  // region Accessibility (TalkBack)
+  /** Chevron-icon label when the metrics card is expanded (tapping collapses it). */
+  const val accMetricsCollapseLabel = "Collapse"
+
+  /** Chevron-icon label when the metrics card is collapsed (tapping expands it). */
+  const val accMetricsExpandLabel = "Expand"
+  // endregion
 }

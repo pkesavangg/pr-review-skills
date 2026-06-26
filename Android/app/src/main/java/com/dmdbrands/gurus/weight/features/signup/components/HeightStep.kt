@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -72,7 +73,13 @@ fun HeightStep(
     AppStyledCard(
         cardAlignmentType = LocalCardAlignment.current,
     ) {
-        AppText(SignupStrings.heightStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
+        // TalkBack: the step title is a heading for by-heading navigation.
+        AppText(
+            SignupStrings.heightStepTitle,
+            TextType.Title,
+            spacing = MeTheme.spacing.xs,
+            modifier = Modifier.semantics { heading() },
+        )
         AppText(SignupStrings.heightStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.lg)
 
         HeightField(heightControl = heightControl)

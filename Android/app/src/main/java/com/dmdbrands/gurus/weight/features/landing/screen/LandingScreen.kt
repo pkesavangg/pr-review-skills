@@ -25,7 +25,6 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.VersionText
 import com.dmdbrands.gurus.weight.features.landing.strings.LandingString
-import com.dmdbrands.gurus.weight.features.loading.string.LoadingString
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -53,7 +52,9 @@ fun LandingScreen() {
     ) {
       Image(
         painter = painterResource(id = AppIcons.Default.Banner),
-        contentDescription = LoadingString.LOADING,
+        // TalkBack: brand logo — read the product name rather than the
+        // unrelated "loading" string the banner previously borrowed.
+        contentDescription = LandingString.accLogoLabel,
         colorFilter = ColorFilter.tint(MeTheme.colorScheme.inverseAction),
       )
       Spacer(modifier = Modifier.height(MeTheme.spacing.x6l))

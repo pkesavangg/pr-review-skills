@@ -18,11 +18,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.dmdbrands.gurus.weight.features.common.strings.AppBarStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
@@ -86,7 +85,10 @@ fun AppBar(
                     color = colorScheme.textHeading,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.semantics { contentDescription = AppBarStrings.AppBarTitleContentDescription },
+                    // TalkBack: mark the title as a heading so users can navigate by heading.
+                    // The Text's own text is the spoken name — previously a fixed
+                    // contentDescription overrode it, making TalkBack read "AppBarTitle".
+                    modifier = Modifier.semantics { heading() },
                 )
             }
         },

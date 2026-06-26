@@ -13,6 +13,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.feed.model.FeedLandingIntent
+import com.dmdbrands.gurus.weight.features.feed.strings.FeedStrings
 import com.dmdbrands.gurus.weight.features.feed.viewmodel.FeedLandingViewModel
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
@@ -35,12 +36,18 @@ fun FeedLandingScreen() {
   AppScaffold(
     title = state.feedItem?.landingPage?.titleText ?: state.feedItem?.titleText ?: "Feed",
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close) {
+      AppIconButton(
+        AppIcons.Default.Close,
+        contentDescription = FeedStrings.accCloseButton,
+      ) {
         viewModel.handleIntent(FeedLandingIntent.OnBackPress)
       }
     },
     actions = {
-      AppIconButton(AppIcons.Outlined.Help) { viewModel.handleIntent(FeedLandingIntent.OpenFAQ) }
+      AppIconButton(
+        AppIcons.Outlined.Help,
+        contentDescription = FeedStrings.accFaqButton,
+      ) { viewModel.handleIntent(FeedLandingIntent.OpenFAQ) }
     },
   ) { scaffoldModifier ->
     Column(

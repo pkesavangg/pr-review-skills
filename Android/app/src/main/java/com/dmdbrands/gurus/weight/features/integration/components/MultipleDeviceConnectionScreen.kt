@@ -13,6 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -47,7 +49,7 @@ fun MultipleDeviceConnectionScreen(
           Box {
             AppIcon(
               id = AppIcons.Filled.Close,
-              contentDescription = "Close",
+              contentDescription = HealthConnectStrings.Accessibility.closeButton,
               modifier = Modifier
                 .align(Alignment.TopEnd).padding(bottom = spacing.md),
               type = com.dmdbrands.gurus.weight.features.common.components.AppIconType.Default,
@@ -67,10 +69,12 @@ fun MultipleDeviceConnectionScreen(
                   .padding(top = spacing.lg),
               )
               Spacer(Modifier.padding(top = spacing.lg))
+              // TalkBack: status title is the heading, announced politely on appearance.
               AppText(
                 text = HealthConnectStrings.AddHealthConnectStrings.Title,
                 textType = TextType.Title,
                 textAlign = TextAlign.Center,
+                modifier = Modifier.semantics { heading() },
               )
               Spacer(Modifier.padding(top = MeTheme.spacing.sm))
               AppText(

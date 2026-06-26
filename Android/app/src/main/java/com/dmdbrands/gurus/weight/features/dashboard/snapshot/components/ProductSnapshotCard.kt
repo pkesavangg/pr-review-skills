@@ -16,6 +16,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -112,7 +114,12 @@ fun WeightSnapshotCard(
         Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
 
         if (chart.isEmpty) {
-            EmptyDashboardGraph(modifier = Modifier.fillMaxWidth())
+            EmptyDashboardGraph(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    // TalkBack: an empty chart is otherwise invisible — announce it.
+                    .semantics { contentDescription = DashboardSnapshotStrings.accEmptyChartDescription },
+            )
         } else if (chart.startTimestamp != null && chart.endTimestamp != null) {
             SnapshotLineChart(
                 modelProducer = viewModel.weightModelProducer,
@@ -122,6 +129,8 @@ fun WeightSnapshotCard(
                 yStep = chart.yStep,
                 yMin = chart.yMin,
                 yMax = chart.yMax,
+                chartContentDescription = "${DashboardSnapshotStrings.accChartSummaryPrefix} " +
+                    "${chart.label} ${state.weightUnit.label} ${DashboardSnapshotStrings.WeekAverage}",
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -194,7 +203,12 @@ fun BpSnapshotCard(
         Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
 
         if (chart.isEmpty) {
-            EmptyDashboardGraph(modifier = Modifier.fillMaxWidth())
+            EmptyDashboardGraph(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    // TalkBack: an empty chart is otherwise invisible — announce it.
+                    .semantics { contentDescription = DashboardSnapshotStrings.accEmptyChartDescription },
+            )
         } else if (chart.startTimestamp != null && chart.endTimestamp != null) {
             val chartLineColors = listOfNotNull(
                 systolic?.let { SnapshotColors.systolicColor(it) },
@@ -211,6 +225,9 @@ fun BpSnapshotCard(
                 yStep = chart.yStep,
                 yMin = chart.yMin,
                 yMax = chart.yMax,
+                chartContentDescription = "${DashboardSnapshotStrings.accChartSummaryPrefix} " +
+                    "${chart.label} ${DashboardSnapshotStrings.Mmhg}, " +
+                    "${chart.secondaryLabel} ${DashboardSnapshotStrings.Pulse}",
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -280,7 +297,12 @@ fun BabySnapshotCard(
         Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
 
         if (chart.isEmpty) {
-            EmptyDashboardGraph(modifier = Modifier.fillMaxWidth())
+            EmptyDashboardGraph(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    // TalkBack: an empty chart is otherwise invisible — announce it.
+                    .semantics { contentDescription = DashboardSnapshotStrings.accEmptyChartDescription },
+            )
         } else if (chart.startTimestamp != null && chart.endTimestamp != null) {
             SnapshotLineChart(
                 modelProducer = viewModel.getBabyModelProducer(product.profile.id),
@@ -291,6 +313,8 @@ fun BabySnapshotCard(
                 yStep = chart.yStep,
                 yMin = chart.yMin,
                 yMax = chart.yMax,
+                chartContentDescription = "${DashboardSnapshotStrings.accChartSummaryPrefix} " +
+                    "${product.profile.name.lowercase()}'s ${DashboardSnapshotStrings.Weight} ${chart.label}",
                 modifier = Modifier.fillMaxWidth(),
             )
         }

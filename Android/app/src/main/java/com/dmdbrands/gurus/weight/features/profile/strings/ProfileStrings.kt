@@ -36,4 +36,9 @@ object ProfileStrings {
         const val ConfirmText = "EXIT"
         const val CancelText = "RETURN"
     }
+
+    // region Accessibility (TalkBack)
+    /** Spoken label for the icon-only close button in the app bar. */
+    const val accCloseLabel = "Close"
+    // endregion
 }

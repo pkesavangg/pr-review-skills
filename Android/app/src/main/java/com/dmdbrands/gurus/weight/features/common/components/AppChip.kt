@@ -194,6 +194,10 @@ fun AppChip(
     val maxLines = 1
 
     FilterChip(
+        // Forward the caller's modifier. TalkBack already announces the selection state via
+        // FilterChip's own `selected = selected` arg below (it wraps the chip in a `selectable`),
+        // so no extra `semantics { selected }` modifier is needed here.
+        modifier = modifier,
         shape = shape,
         colors =
             SelectableChipColors(

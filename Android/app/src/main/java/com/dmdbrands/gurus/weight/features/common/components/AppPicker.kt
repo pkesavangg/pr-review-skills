@@ -30,6 +30,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -134,7 +136,10 @@ fun <T> AppPicker(
                         .clickable {
                             coroutineScope.launch { listState.animateScrollToItem(index) }
                             onItemSelected(item)
-                        },
+                        }
+                        // TalkBack: the centered item is only bold visually; expose it as
+                        // the selected item so a screen reader can announce it.
+                        .semantics { selected = isSelected },
                     contentAlignment = Alignment.Center,
                 ) {
                     if (customItem != null) {

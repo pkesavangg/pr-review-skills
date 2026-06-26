@@ -21,6 +21,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -77,7 +78,11 @@ fun AddScaleScreenContent(
   AppScaffold(
     title = AddScaleScreenStrings.Header,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close) {
+      // TalkBack: icon-only button needs a spoken label.
+      AppIconButton(
+        AppIcons.Default.Close,
+        contentDescription = AddScaleScreenStrings.accCloseButton,
+      ) {
         coroutineScope.launch {
           backStack.removeLast()
         }
@@ -99,6 +104,8 @@ fun AddScaleScreenContent(
         AppText(
           text = AddScaleScreenStrings.Title,
           textType = TextType.Title,
+          // TalkBack: screen title is the heading.
+          modifier = Modifier.semantics { heading() },
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
         AppText(
@@ -153,6 +160,8 @@ fun AddScaleScreenContent(
           AppText(
             text = AddScaleScreenStrings.MyDevices,
             textType = TextType.Title,
+            // TalkBack: section header is a heading.
+            modifier = Modifier.semantics { heading() },
           )
         }
       }

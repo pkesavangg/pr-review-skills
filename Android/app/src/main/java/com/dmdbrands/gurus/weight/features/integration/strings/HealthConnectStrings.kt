@@ -144,5 +144,12 @@ object HealthConnectStrings  {
     const val message =
     "Sorry, Health Connect is not available, Install Heath connect from play store and try again"
   }
+
+  // region Accessibility (TalkBack)
+  object Accessibility {
+    // Actionable close button on the modal status screens (it has an onClick — not decorative).
+    const val closeButton = "Close"
+  }
+  // endregion
 }
 

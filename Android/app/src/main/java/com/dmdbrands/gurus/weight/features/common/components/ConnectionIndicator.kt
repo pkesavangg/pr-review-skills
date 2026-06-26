@@ -23,7 +23,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.features.common.components.strings.ConnectionIndicatorStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
@@ -64,13 +69,20 @@ fun ConnectionIndicator(
     ConnectionIndicatorState.Failed -> colorScheme.danger.copy(alpha = 0.3f)
   }
 
-  val contentDescription = when (connectionState) {
-    ConnectionIndicatorState.Connecting -> "Connection in progress"
-    ConnectionIndicatorState.Failed -> "Connection Failed"
+  val stateDescription = when (connectionState) {
+    ConnectionIndicatorState.Connecting -> ConnectionIndicatorStrings.ConnectingDescription
+    ConnectionIndicatorState.Failed -> ConnectionIndicatorStrings.FailedDescription
   }
 
   Box(
-    modifier = modifier.size(if (showIndicatorAlone) 90.dp else 170.dp),
+    modifier = modifier
+      .size(if (showIndicatorAlone) 90.dp else 170.dp)
+      // TalkBack: announce the connection status as one node, and re-announce when the
+      // state changes (Connecting -> Failed) via a polite live region.
+      .semantics {
+        contentDescription = stateDescription
+        liveRegion = LiveRegionMode.Polite
+      },
     contentAlignment = Alignment.Center,
   ) {
     // Large pulsing circle (only when connecting, behind everything)
@@ -88,10 +100,10 @@ fun ConnectionIndicator(
         .background(mainCircleColor),
     )
 
-    // White icon on top
+    // White icon on top (decorative: the status is announced on the parent Box)
     Image(
       painter = painterResource(id = indicatorIcon),
-      contentDescription = contentDescription,
+      contentDescription = null,
       modifier = Modifier.size(60.dp),
     )
   }

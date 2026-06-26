@@ -15,6 +15,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleSetupLoaderConstants.FailedIndicatorOnlySpacerHeight
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleSetupLoaderConstants.SetupGifImageHeight
@@ -129,8 +133,10 @@ fun ScaleSetupLoader(
             text = title,
             textType = TextType.Title,
             textAlign = TextAlign.Center,
+            // TalkBack: loader/status title is the heading.
             modifier = Modifier
               .fillMaxWidth()
+              .semantics { heading() }
               .then(
                 if (connectionState is ConnectionState.Failed) {
                   Modifier.padding(top = spacing.md)
@@ -159,7 +165,10 @@ fun ScaleSetupLoader(
             text = "${SetupLoaderStrings.ErrorCodeLabel}$errorCode",
             textType = TextType.Body,
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
+            // TalkBack: announce the error code when it appears.
+            modifier = Modifier
+              .fillMaxWidth()
+              .semantics { liveRegion = LiveRegionMode.Polite },
           )
         }
       }

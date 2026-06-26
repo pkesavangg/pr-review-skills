@@ -21,4 +21,33 @@ object HistoryItemStrings {
     const val EditNoteContentDescription = "edit entry"
     const val ExpandNote = "expand note"
     const val CollapseNote = "collapse note"
+
+    // region Accessibility (TalkBack)
+    /** Connector word joining a count to its noun in a row announcement (e.g. "15 entries"). */
+    const val accEntriesSuffix = "entries"
+
+    /** Label spoken for the average-weight value in a weight history row (e.g. "average 70.5 lbs"). */
+    const val accAverageLabel = "average"
+
+    /** Label spoken for the change value in a weight history row (e.g. "change minus 1.2 lbs"). */
+    const val accChangeLabel = "change"
+
+    /** Label spoken for the average pressure in a BP history row (e.g. "average pressure 115 over 75"). */
+    const val accAvgPressureLabel = "average pressure"
+
+    /** Connector word read between systolic and diastolic in a BP announcement ("115 over 75"). */
+    const val accOver = "over"
+
+    /** Label spoken for the average pulse in a BP history row (e.g. "average pulse 60"). */
+    const val accAvgPulseLabel = "average pulse"
+
+    /** Label spoken for the weight value in a baby history row (e.g. "weight 8 lbs 14 oz"). */
+    const val accWeightLabel = "weight"
+
+    /** Label spoken for the length value in a baby history row (e.g. "length 12 in"). */
+    const val accLengthLabel = "length"
+
+    /** Label spoken for the percentile value in a baby history row (e.g. "percentile 6th"). */
+    const val accPercentileLabel = "percentile"
+    // endregion
 }

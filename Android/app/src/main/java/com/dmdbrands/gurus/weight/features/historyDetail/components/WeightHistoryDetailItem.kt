@@ -21,6 +21,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -100,11 +103,32 @@ fun WeightHistoryDetailItemHeader(
         if (isExpanded) MeTheme.colorScheme.secondaryBackground else MeTheme.colorScheme.textSubheading
   var lastClickTime by remember { mutableStateOf(0L) }
   val debounceTime = 500L // Prevent multiple clicks within 300ms
+    // TalkBack: read the weight entry as one announcement with an expand/collapse state,
+    // e.g. "Jun 19, 6:30 AM, weight 150 lb". The decorative chevron is folded in by merge.
+    val weightValue = buildString {
+        item.scale.scaleEntry.prefix?.let { append(it) }
+        append(formatWeightValue(item.scale.scaleEntry.weight))
+    }
+    val rowDescription = buildString {
+        append("${item.getDate()}, ${item.getTime()}")
+        append(
+            ", ${HistoryDetailScreenStrings.accWeightLabel} $weightValue ${item.entry.unit.label}",
+        )
+    }
+    val expandState = if (isExpanded) {
+        HistoryDetailScreenStrings.accExpandedState
+    } else {
+        HistoryDetailScreenStrings.accCollapsedState
+    }
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .testTag("entry_row")
+                .semantics(mergeDescendants = true) {
+                    contentDescription = rowDescription
+                    if (canExpand) stateDescription = expandState
+                }
                 .background(backgroundColor)
                 .combinedClickable(
                   enabled = canExpand,

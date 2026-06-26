@@ -73,7 +73,7 @@ private fun ChangePasswordContent(
     AppScaffold(
         title = ChangePasswordStrings.Title,
         navigationIcon = {
-            AppIconButton(AppIcons.Default.Close) {
+            AppIconButton(AppIcons.Default.Close, contentDescription = ChangePasswordStrings.accCloseLabel) {
               focusManager.clearFocus()
               handleIntent.invoke(ChangePasswordIntent.OnRequestBack) }
         },

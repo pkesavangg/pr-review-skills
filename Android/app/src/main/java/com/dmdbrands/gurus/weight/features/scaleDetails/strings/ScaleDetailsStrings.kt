@@ -11,6 +11,10 @@ object ScaleDetailsStrings {
   const val DeleteLoaderMessage = "Deleting device..."
   const val DeleteLabel = "Delete Device"
   const val Close = "Close"
+
+  /** TalkBack label for the app-bar close button (a11y). Kept dedicated and uniform with the
+   *  other screens in this feature set, rather than reusing the general-purpose [Close]. */
+  const val accCloseLabel = "Close"
   const val Mode = "Mode"
   const val AllBodyMetrics = "All Body Metrics"
   const val WeightOnly = "Weight Only"

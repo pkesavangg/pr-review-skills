@@ -62,4 +62,9 @@ object AppPermissionsScreenStrings {
     const val PermissionCheck = "Unable to check permission status."
     const val SettingsAccess = "Unable to open device settings."
   }
+
+  // region Accessibility (TalkBack)
+  /** Spoken label for the icon-only close button in the app bar. */
+  const val accCloseLabel = "Close"
+  // endregion
 }

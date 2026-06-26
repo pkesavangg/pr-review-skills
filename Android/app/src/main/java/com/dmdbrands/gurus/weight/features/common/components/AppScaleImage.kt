@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.helper.ScaleUtility
+import com.dmdbrands.gurus.weight.features.common.strings.ScaleStrings
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.borderRadius
@@ -78,7 +79,7 @@ fun AppScaleImage(
           painterResource(
             id = ScaleUtility.scaleImageResource(sku),
           ),
-        contentDescription = if (isBpm) "$sku monitor" else "$sku scale",
+        contentDescription = if (isBpm) "$sku ${ScaleStrings.accMonitorImageSuffix}" else "$sku ${ScaleStrings.accScaleImageSuffix}",
       )
     }
   }

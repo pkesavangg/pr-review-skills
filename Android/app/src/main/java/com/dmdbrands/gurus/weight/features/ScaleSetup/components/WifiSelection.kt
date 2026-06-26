@@ -204,9 +204,11 @@ fun WifiItem(
       if(isWifiIcon){
         AppIcon(
           id = AppIcons.Connection.Wifi,
-          contentDescription = "Wifi",
+          contentDescription = ScaleSetupStrings.accWifiNetworkIcon,
           modifier = Modifier.size(32.dp),
-          onClick = { onClick?.invoke() },
+          // Decorative within the row: the parent Row.clickable is the single actionable target,
+          // so the icon must not be its own focusable/clickable TalkBack stop.
+          onClick = null,
         )
       }
 
@@ -220,10 +222,12 @@ fun WifiItem(
 
       if (!isConfigured) {
         AppIcon(
+          // Decorative chevron: the whole row is the actionable target named by the SSID, so the
+          // chevron must not be its own clickable node (an unlabeled "double-tap to activate" stop).
           id = AppIcons.Default.RightCaret,
-          contentDescription = "Right caret",
+          contentDescription = null,
           modifier = Modifier.size(24.dp),
-          onClick = { onClick?.invoke() },
+          onClick = null,
         )
       }
     }

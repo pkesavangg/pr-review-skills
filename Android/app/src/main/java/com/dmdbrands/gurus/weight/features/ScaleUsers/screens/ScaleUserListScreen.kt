@@ -10,6 +10,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.features.ScaleUsers.components.ScaleUserList
 import com.dmdbrands.gurus.weight.features.ScaleUsers.reducer.ScaleUserListIntent
@@ -73,7 +77,7 @@ fun ScaleUserListScreenContent(
   AppScaffold(
     title = ScaleUsersStrings.Header,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close) {
+      AppIconButton(AppIcons.Default.Close, contentDescription = ScaleUsersStrings.accCloseLabel) {
         handleIntent(ScaleUserListIntent.Back)
       }
     },
@@ -87,6 +91,13 @@ fun ScaleUserListScreenContent(
         modifier =
           Modifier
             .padding(end = spacing.md)
+            // TalkBack: this clickable text acts as a button, so expose the Button role. When the
+            // form is incomplete, also mark it disabled() so the spoken state matches the greyed-out
+            // visual/interaction state (otherwise TalkBack announces an actionable "Save, button").
+            .semantics {
+              role = Role.Button
+              if (!isSaveEnabled) disabled()
+            }
             .clickable(enabled = isSaveEnabled)
             { handleIntent(ScaleUserListIntent.Save) },
       )

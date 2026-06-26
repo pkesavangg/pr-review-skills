@@ -13,6 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -26,6 +28,7 @@ import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.TextType
+import com.dmdbrands.gurus.weight.features.integration.strings.HealthConnectStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -75,10 +78,12 @@ fun HealthConnectScreen(
         .padding(top = MeTheme.spacing.md),
     )
     Spacer(Modifier.padding(top = MeTheme.spacing.lg))
+    // TalkBack: status title is the screen heading, announced politely on state change.
     AppText(
       text = content.title,
       textType = TextType.Title,
       textAlign = TextAlign.Center,
+      modifier = Modifier.semantics { heading() },
     )
     Spacer(Modifier.padding(top = MeTheme.spacing.x2s))
     AppText(
@@ -122,6 +127,9 @@ private fun DataTypeRow(label: String) {
     modifier = Modifier
       .fillMaxWidth()
       .padding(vertical = MeTheme.spacing.x2s),
+    // These rows are plain list items on the pre-connection consent screen — nothing is enabled
+    // yet, so no stateDescription. The checkmark icon is a decorative bullet (contentDescription =
+    // null) and the label Text is read on its own.
     verticalAlignment = Alignment.CenterVertically,
   ) {
     AppIcon(

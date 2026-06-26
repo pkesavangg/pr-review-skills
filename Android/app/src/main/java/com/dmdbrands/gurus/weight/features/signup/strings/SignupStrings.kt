@@ -81,6 +81,14 @@ object SignupStrings {
   const val ExitConfirmButton = "EXIT"
   const val ExitCancelButton = "RETURN"
 
+  // region Accessibility (TalkBack)
+  /** Label for the close (X) navigation icon button on the signup scaffold. */
+  const val accCloseLabel = "Close"
+
+  /** Label for the help (?) action icon button on the signup scaffold. */
+  const val accHelpLabel = "Help"
+  // endregion
+
   object Error {
     const val Header = "Signup Error"
     const val accountExistHeader = "Error creating account"

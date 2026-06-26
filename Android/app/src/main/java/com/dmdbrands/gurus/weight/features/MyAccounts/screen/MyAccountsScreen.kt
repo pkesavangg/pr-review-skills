@@ -65,7 +65,7 @@ fun MyAccountsScreenContent(
   AppScaffold(
     title = MyAccountsScreenStrings.Title,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close) {
+      AppIconButton(AppIcons.Default.Close, contentDescription = MyAccountsScreenStrings.accCloseLabel) {
         onNavigateBack() // Start scanning when navigating back
         coroutineScope.launch {
           backStack.removeLast()

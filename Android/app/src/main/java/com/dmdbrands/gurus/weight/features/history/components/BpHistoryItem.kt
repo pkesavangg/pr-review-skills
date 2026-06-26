@@ -29,10 +29,23 @@ fun BpHistoryItem(
         BpSeverity.HYPERTENSION -> MeTheme.colorScheme.textError
     }
 
+    // TalkBack: announce systolic/diastolic/pulse explicitly so the row reads, e.g.
+    // "Dec 2025, 5 entries, average pressure 115 over 75, average pulse 60".
+    val rowDescription = buildString {
+        append(item.entryTimestamp)
+        append(", ${item.entryCount} ${HistoryItemStrings.accEntriesSuffix}")
+        append(
+            ", ${HistoryItemStrings.accAvgPressureLabel} " +
+                "${item.avgSystolic} ${HistoryItemStrings.accOver} ${item.avgDiastolic}",
+        )
+        append(", ${HistoryItemStrings.accAvgPulseLabel} ${item.avgPulse}")
+    }
+
     HistoryRowLayout(
         month = item.entryTimestamp,
         entryCount = item.entryCount,
         onClick = onClick,
+        rowContentDescription = rowDescription,
     ) {
         // Avg pressure (severity-colored)
         Column(

@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -24,6 +25,9 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 @Composable
 fun MetricInfoValueSection(subText : String , value: String? = null, unit: String? = null, valuePrefix: String? = null) {
   Column(
+    // TalkBack: read the value, unit and measurement date as a single announcement
+    // rather than three separate swipe stops.
+    modifier = Modifier.semantics(mergeDescendants = true) {},
     verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
     horizontalAlignment = Alignment.Start,
   ) {

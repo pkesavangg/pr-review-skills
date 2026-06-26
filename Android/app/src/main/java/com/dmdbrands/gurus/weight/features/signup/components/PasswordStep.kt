@@ -16,6 +16,7 @@ import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
@@ -54,7 +55,13 @@ fun PasswordStep(
         cardAlignmentType = LocalCardAlignment.current,
     ) {
         Column {
-            AppText(SignupStrings.passwordStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
+            // TalkBack: the step title is a heading for by-heading navigation.
+            AppText(
+                SignupStrings.passwordStepTitle,
+                TextType.Title,
+                spacing = MeTheme.spacing.xs,
+                modifier = Modifier.semantics { heading() },
+            )
             AppText(SignupStrings.passwordStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.lg)
             AppInput(
                 formControl = passwordControl,

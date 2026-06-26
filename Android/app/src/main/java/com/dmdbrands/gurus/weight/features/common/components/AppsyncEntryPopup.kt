@@ -9,8 +9,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
+import com.dmdbrands.gurus.weight.features.appSync.strings.AppSyncStrings
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
@@ -48,7 +54,16 @@ fun AppsyncEntryPopup(
               text = AppPopupStrings.AppsyncEntryPopup.Title,
               textType = TextType.Title,
               textAlign = TextAlign.Center,
-              modifier = Modifier.padding(bottom = spacing.md),
+              modifier = Modifier
+                .padding(bottom = spacing.md)
+                // TalkBack: the success message is the popup's heading, and is announced
+                // politely as a live region when the scan-result popup appears.
+                .semantics {
+                  heading()
+                  liveRegion = LiveRegionMode.Polite
+                  contentDescription = "${AppSyncStrings.accScanResultLabel}: " +
+                    AppPopupStrings.AppsyncEntryPopup.Title
+                },
             )
             val isMetric = entry.entry.unit.value.lowercase() == "kg"
             val conversionWeight = ConversionTools.convertStoredToDisplay(scaleEntry.weight, isMetric)

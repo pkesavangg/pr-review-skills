@@ -10,6 +10,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.ScaleModeSettings.screens.ScaleModeSettingsScreen
@@ -52,7 +55,7 @@ fun ScaleModeScreenContent(
   AppScaffold(
     title = ScaleModeStrings.Title,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close) {
+      AppIconButton(AppIcons.Default.Close, contentDescription = ScaleModeStrings.accCloseLabel) {
         handleIntent(ScaleModeIntent.Back)
       }
     },
@@ -65,6 +68,8 @@ fun ScaleModeScreenContent(
           modifier =
             Modifier
               .padding(end = spacing.md)
+              // TalkBack: this clickable text acts as a button, so expose the Button role.
+              .semantics { role = Role.Button }
               .clickable { handleIntent(ScaleModeIntent.Save) },
         )
       }

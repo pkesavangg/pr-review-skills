@@ -14,6 +14,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -238,7 +240,12 @@ fun BpmSetupScreenContent(
                 modifier = Modifier.fillMaxSize().padding(horizontal = spacing.sm, vertical = spacing.md),
                 horizontalAlignment = Alignment.CenterHorizontally,
               ) {
-                AppText(text = MonitorSetupStrings.MonitorNickname.Title, textType = TextType.Title)
+                AppText(
+                  text = MonitorSetupStrings.MonitorNickname.Title,
+                  textType = TextType.Title,
+                  // TalkBack: step title is the heading.
+                  modifier = Modifier.semantics { heading() },
+                )
                 Spacer(modifier = Modifier.height(spacing.lg))
                 AppInput(
                   formControl = nicknameFormControl,

@@ -31,4 +31,8 @@ object WeightlessStrings {
     const val SuccessTitle = "Success!"
     const val SuccessMessage = "Weightless Updated."
 
+    // region Accessibility (TalkBack)
+    /** Spoken label for the icon-only close button in the app bar. */
+    const val accCloseLabel = "Close"
+    // endregion
 }

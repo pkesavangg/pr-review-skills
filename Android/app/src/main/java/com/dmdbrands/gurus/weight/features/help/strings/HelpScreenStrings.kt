@@ -26,4 +26,9 @@ object HelpScreenStrings {
     // Footer content
     const val FooterTitle = "Need More Help?"
     const val FooterSubtitle = "Visit our support center for additional resources and troubleshooting guides."
+
+    // region Accessibility (TalkBack)
+    /** Spoken label for the icon-only close button in the app bar. */
+    const val accCloseLabel = "Close"
+    // endregion
 }

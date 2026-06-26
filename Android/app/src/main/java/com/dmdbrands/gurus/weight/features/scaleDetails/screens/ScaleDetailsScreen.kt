@@ -106,7 +106,7 @@ fun ScaleDetailsScreenContent(
   AppScaffold(
     title = scaleName,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close) {
+      AppIconButton(AppIcons.Default.Close, contentDescription = ScaleDetailsStrings.accCloseLabel) {
         coroutineScope.launch {
           backStack.removeLast()
         }

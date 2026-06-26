@@ -16,4 +16,9 @@ object ChangePasswordStrings {
     const val PasswordMin = "Password must be 6 characters long"
     const val PasswordMax = "maximum value should be 50"
     const val SaveButton = "Save"
+
+    // region Accessibility (TalkBack)
+    /** Spoken label for the icon-only close button in the app bar. */
+    const val accCloseLabel = "Close"
+    // endregion
 }

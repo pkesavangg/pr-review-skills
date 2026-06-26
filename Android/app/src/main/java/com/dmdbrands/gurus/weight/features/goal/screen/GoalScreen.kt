@@ -61,7 +61,7 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
   AppScaffold(
     title = GoalStrings.PageTitle,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close) { handleIntent(GoalIntent.OnBack) }
+      AppIconButton(AppIcons.Default.Close, contentDescription = GoalStrings.accCloseLabel) { handleIntent(GoalIntent.OnBack) }
     },
     actions = {
       AppButton(

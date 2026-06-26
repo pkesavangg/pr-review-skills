@@ -21,6 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppProfileAvatar
@@ -59,7 +61,13 @@ fun BabyAddedStep(
         cardAlignmentType = LocalCardAlignment.current,
         modifier = modifier,
     ) {
-        AppText(BabySignupStrings.babyAddedTitle, TextType.Title, spacing = MeTheme.spacing.lg)
+        // TalkBack: the step title is a heading for by-heading navigation.
+        AppText(
+            BabySignupStrings.babyAddedTitle,
+            TextType.Title,
+            spacing = MeTheme.spacing.lg,
+            modifier = Modifier.semantics { heading() },
+        )
 
         // Reuses the same swipe primitive + AppProfileAvatar as the switch-account list (AppUserList)
         // for visual parity, with thin dividers between rows. (Figma 31880-34959)

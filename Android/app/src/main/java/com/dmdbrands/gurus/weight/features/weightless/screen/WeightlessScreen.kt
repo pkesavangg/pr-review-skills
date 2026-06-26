@@ -73,7 +73,7 @@ private fun WeightlessContent(state: WeightlessState, handleIntent: (WeightlessI
   AppScaffold(
     title = WeightlessStrings.PageTitle,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close) {
+      AppIconButton(AppIcons.Default.Close, contentDescription = WeightlessStrings.accCloseLabel) {
         focusManager.clearFocus()
         keyboardController?.hide()
         handleIntent(WeightlessIntent.OnBack) }

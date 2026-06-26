@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -96,10 +97,16 @@ private fun LoginContent(
   AppScaffold(
     title = null,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close) { handleIntent(LoginIntent.OnRequestBack) }
+      AppIconButton(
+        AppIcons.Default.Close,
+        contentDescription = LoginStrings.accCloseLabel,
+      ) { handleIntent(LoginIntent.OnRequestBack) }
     },
     actions = {
-      AppIconButton(AppIcons.Outlined.Help) { handleIntent(LoginIntent.OpenHelpModal) }
+      AppIconButton(
+        AppIcons.Outlined.Help,
+        contentDescription = LoginStrings.accHelpLabel,
+      ) { handleIntent(LoginIntent.OpenHelpModal) }
     },
     containerColor = colorScheme.secondaryBackground,
     appBarColor = colorScheme.secondaryBackground,
@@ -115,9 +122,11 @@ private fun LoginContent(
         text = LoginStrings.WelcomeBack,
         textType = TextType.Title,
         textAlign = TextAlign.Center,
+        // TalkBack: expose the screen title as a heading for by-heading navigation.
         modifier = Modifier
           .fillMaxWidth()
-          .padding(horizontal = spacing.sm),
+          .padding(horizontal = spacing.sm)
+          .semantics { heading() },
       )
       Spacer(Modifier.height(spacing.xl))
       Column(

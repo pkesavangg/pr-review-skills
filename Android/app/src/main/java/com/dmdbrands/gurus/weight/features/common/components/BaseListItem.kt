@@ -18,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.model.ActionButton
@@ -112,7 +114,11 @@ fun BaseListItem(
         contentDescription = checkboxDescription ?: "",
         type = AppIconType.Primary,
         onClick = onClick,
-        modifier = Modifier.size(24.dp),
+        // TalkBack: the checked/unchecked state is only conveyed by the icon swap
+        // visually; expose it as a selected state so a screen reader announces it.
+        modifier = Modifier
+          .size(24.dp)
+          .semantics { selected = isChecked },
       )
     }
 

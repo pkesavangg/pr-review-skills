@@ -9,4 +9,9 @@ object MyKidsStrings {
     const val EditBaby = "Edit baby"
     const val BabyFallbackPrefix = "Baby"
     const val AvatarFallback = "?"
+
+    // region Accessibility (TalkBack)
+    /** Spoken label for the icon-only close button in the app bar. */
+    const val accCloseLabel = "Close"
+    // endregion
 }

@@ -98,7 +98,10 @@ fun HistoryDetailScreenContent(
         title = state.month,
         isRefreshing = state.isLoading,
         navigationIcon = {
-            AppIconButton(AppIcons.Default.Close) {
+            AppIconButton(
+                AppIcons.Default.Close,
+                contentDescription = HistoryDetailScreenStrings.BackButtonContentDescription,
+            ) {
                 scope.launch {
                     backStack.removeLast()
                 }

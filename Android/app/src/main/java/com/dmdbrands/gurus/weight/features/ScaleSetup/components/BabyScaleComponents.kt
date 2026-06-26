@@ -37,6 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -92,7 +94,10 @@ fun ScaleNameContent(
     AppText(
       text = BabyScaleSetupStrings.ScaleName.Title,
       textType = TextType.Title,
-      modifier = Modifier.fillMaxWidth(),
+      // TalkBack: step title is the heading.
+      modifier = Modifier
+        .fillMaxWidth()
+        .semantics { heading() },
     )
     val focusRequester = remember { FocusRequester() }
     InputFieldBase<String>(
@@ -123,7 +128,10 @@ fun PairedSuccessContent(
     AppText(
       text = BabyScaleSetupStrings.PairedSuccess.Title,
       textType = TextType.Title,
-      modifier = Modifier.fillMaxWidth(),
+      // TalkBack: step title is the heading.
+      modifier = Modifier
+        .fillMaxWidth()
+        .semantics { heading() },
     )
     Spacer(modifier = Modifier.height(spacing.xs))
     AppText(
@@ -137,7 +145,7 @@ fun PairedSuccessContent(
     ) {
       Image(
         painter = painterResource(id = AppIcons.Setup.BabyScalePairedCheck),
-        contentDescription = "Paired",
+        contentDescription = BabyScaleSetupStrings.accPairedImage,
         modifier = Modifier.size(ScaleImageDefaults.size(ScaleImageSize.Large)),
       )
     }
@@ -241,7 +249,7 @@ fun BabyProfileFormContent(
       .verticalScroll(rememberScrollState())
       .padding(vertical = spacing.md, horizontal = spacing.sm),
   ) {
-    AppText(text = BabyScaleSetupStrings.BabyProfileForm.Title, textType = TextType.Title, modifier = Modifier.fillMaxWidth())
+    AppText(text = BabyScaleSetupStrings.BabyProfileForm.Title, textType = TextType.Title, modifier = Modifier.fillMaxWidth().semantics { heading() })
     Spacer(modifier = Modifier.height(spacing.xs))
     AppText(text = BabyScaleSetupStrings.BabyProfileForm.Subtitle, textType = TextType.Body, modifier = Modifier.fillMaxWidth())
     Spacer(modifier = Modifier.height(spacing.lg))
@@ -333,7 +341,10 @@ fun BabyListContent(
     AppText(
       text = BabyScaleSetupStrings.BabyList.Title,
       textType = TextType.Title,
-      modifier = Modifier.fillMaxWidth(),
+      // TalkBack: step title is the heading.
+      modifier = Modifier
+        .fillMaxWidth()
+        .semantics { heading() },
     )
     Spacer(modifier = Modifier.height(spacing.lg))
 
@@ -430,7 +441,10 @@ fun BabyScaleConnectionFailed(
       AppText(
         text = title,
         textType = TextType.Title,
-        modifier = Modifier.fillMaxWidth(),
+        // TalkBack: connection-failed title is the heading.
+        modifier = Modifier
+          .fillMaxWidth()
+          .semantics { heading() },
       )
       Spacer(modifier = Modifier.height(spacing.xs))
       AppText(

@@ -127,7 +127,9 @@ fun AppScaleCard(
             }
             AppIcon(
               id = setupIndicationIcon,
-              contentDescription = "Connection type icon",
+              // Decorative: the connection status is already announced by the adjacent
+              // "Connected"/"Not Connected"/"Setup Incomplete" text within this card.
+              contentDescription = null,
               type = iconType,
               enabled = scale.isConnected == true,
               onClick = null,
@@ -150,7 +152,9 @@ fun AppScaleCard(
       if (!isSavedScale) {
         AppIcon(
           id = connectionIcon,
-          contentDescription = "Scale type icon",
+          // Decorative: the scale type/name is already announced by the SKU and
+          // product-name text in this card.
+          contentDescription = null,
           type = AppIconType.Primary,
           modifier = Modifier.size(32.dp),
           enabled = enabled,
@@ -161,7 +165,9 @@ fun AppScaleCard(
 if(canShowRightCaret){
   AppIcon(
     id = AppIcons.Default.RightCaret,
-    contentDescription = if (isSavedScale) "Navigate" else "Scale type icon",
+    // Decorative caret: the whole card is already a single clickable element, so the
+    // navigation affordance does not need a separate spoken label.
+    contentDescription = null,
     type = AppIconType.Primary,
     modifier = Modifier.size(32.dp),
     enabled = enabled,

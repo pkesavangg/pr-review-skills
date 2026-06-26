@@ -100,7 +100,7 @@ fun AppUser(
         if (showAccountActivity && account.isLoggedIn && !account.isExpired) {
             AppIcon(
                 id = if (account.isActiveAccount) AppIcons.Selection.CircleSelected else AppIcons.Selection.CircleUnselected,
-                contentDescription = "Select account",
+                contentDescription = AppListStrings.accSelectAccountLabel,
                 type = AppIconType.Primary,
                 modifier = Modifier.size(24.dp),
                 onClick = if (account.isActiveAccount) null else onAccountSelect,

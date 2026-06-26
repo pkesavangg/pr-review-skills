@@ -33,6 +33,7 @@ import com.dmdbrands.gurus.weight.features.signup.components.SignupPager
 import com.dmdbrands.gurus.weight.features.signup.model.SignupFormControls
 import com.dmdbrands.gurus.weight.features.signup.model.SignupIntent
 import com.dmdbrands.gurus.weight.features.signup.model.SignupState
+import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import com.dmdbrands.gurus.weight.features.signup.viewmodel.SignupViewModel
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -101,12 +102,20 @@ fun SignupScreenContent(
         containerColor = MeTheme.colorScheme.secondaryBackground,
         appBarColor = MeTheme.colorScheme.secondaryBackground,
         navigationIcon = {
-            AppIconButton(AppIcons.Default.Close) {
+            AppIconButton(
+                AppIcons.Default.Close,
+                contentDescription = SignupStrings.accCloseLabel,
+            ) {
                 handleBack()
             }
         },
         borderColor = Color.Transparent,
-        actions = { AppIconButton(AppIcons.Outlined.Help) { handleIntent.invoke(SignupIntent.OpenHelpModal) } },
+        actions = {
+            AppIconButton(
+                AppIcons.Outlined.Help,
+                contentDescription = SignupStrings.accHelpLabel,
+            ) { handleIntent.invoke(SignupIntent.OpenHelpModal) }
+        },
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),

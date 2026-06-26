@@ -24,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
@@ -92,7 +94,10 @@ fun SignupErrorStep(
                 text = SignupErrorStrings.title,
                 textType = TextType.Title,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
+                // TalkBack: the error title is a heading for by-heading navigation.
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { heading() },
             )
             Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
             AppText(
@@ -178,12 +183,16 @@ private fun DeviceStatusCard(device: ProductType, status: DeviceStatus) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(MeTheme.borderRadius.sm))
             .background(MeTheme.colorScheme.primaryBackground)
-            .padding(horizontal = MeTheme.spacing.md, vertical = MeTheme.spacing.md),
+            .padding(horizontal = MeTheme.spacing.md, vertical = MeTheme.spacing.md)
+            // TalkBack: read the device name + its status as one node (the icon is
+            // decorative — the name is already shown as the title text).
+            .semantics(mergeDescendants = true) {},
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(
             painter = painterResource(iconFor(device)),
-            contentDescription = device.displayName,
+            // Decorative: the device name is already spoken as the title text below.
+            contentDescription = null,
             modifier = Modifier.size(DeviceIconSize),
         )
         Spacer(modifier = Modifier.width(MeTheme.spacing.md))

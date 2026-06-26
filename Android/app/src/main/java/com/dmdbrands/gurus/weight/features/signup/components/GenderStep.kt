@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import com.dmdbrands.gurus.weight.domain.enums.Gender
 import com.dmdbrands.gurus.weight.features.common.components.AppStyledCard
 import com.dmdbrands.gurus.weight.features.common.components.AppText
@@ -29,7 +31,13 @@ fun GenderStep(
   AppStyledCard(
     cardAlignmentType = LocalCardAlignment.current,
   ) {
-    AppText(SignupStrings.genderStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
+    // TalkBack: the step title is a heading for by-heading navigation.
+    AppText(
+      SignupStrings.genderStepTitle,
+      TextType.Title,
+      spacing = MeTheme.spacing.xs,
+      modifier = Modifier.semantics { heading() },
+    )
     AppText(
       SignupStrings.genderStepSubtitle,
       TextType.Subtitle,

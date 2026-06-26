@@ -1,6 +1,9 @@
 package com.dmdbrands.gurus.weight.features.signup.components
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeUtil
 import com.dmdbrands.gurus.weight.features.common.components.AppStyledCard
 import com.dmdbrands.gurus.weight.features.common.components.AppText
@@ -23,7 +26,13 @@ fun BirthdayStep(birthdayControl: FormControl<DateTimeValue>) {
   AppStyledCard(
     cardAlignmentType = LocalCardAlignment.current,
   ) {
-    AppText(SignupStrings.birthdayStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
+    // TalkBack: the step title is a heading for by-heading navigation.
+    AppText(
+      SignupStrings.birthdayStepTitle,
+      TextType.Title,
+      spacing = MeTheme.spacing.xs,
+      modifier = Modifier.semantics { heading() },
+    )
     AppText(SignupStrings.birthdayStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.lg)
     DateTimeInput(
       formControl = birthdayControl,
