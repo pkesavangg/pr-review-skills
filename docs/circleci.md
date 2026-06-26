@@ -65,10 +65,16 @@ resolution slow and unreliable. Keeping lint separate means:
 
 | Name | Used by | Purpose |
 |------|---------|---------|
-| `GITHUB_USERNAME` | Android | GitHub Packages (Maven) auth |
-| `GITHUB_PACKAGES_TOKEN` | iOS + Android | Classic PAT with `read:packages` + `repo`, SSO-authorized for `gg-engineering`. Used by iOS SPM clones and Android Maven. |
+| `GITHUB_USERNAME` | Android | GitHub account for Packages (Maven) auth — set to **`pkesavangg`** in CircleCI |
+| `GITHUB_PACKAGES_TOKEN` | iOS + Android | **`pkesavangg`'s** classic PAT (`read:packages` + `repo`, SSO-authorized for `gg-engineering`), stored as a CircleCI env var. Used by iOS SPM clones and Android Maven. |
 | `GOOGLESERVICE_INFO_BASE64` | iOS | base64 of `GoogleService-Info.plist` |
 | `GOOGLE_SERVICES_JSON_BASE64` | Android | base64 of `google-services.json` |
+
+CI authenticates to the private GitHub repos and packages as the **`pkesavangg`**
+GitHub account: `GITHUB_USERNAME` holds the account name and `GITHUB_PACKAGES_TOKEN`
+holds that account's personal access token. Both are configured as CircleCI
+project/context **environment variables** — the token is a secret and is never
+stored in the repo. If CI auth breaks (401/403), check or rotate `pkesavangg`'s PAT.
 
 ## Not yet enabled
 
