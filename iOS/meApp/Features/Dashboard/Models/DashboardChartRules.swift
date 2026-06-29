@@ -144,7 +144,7 @@ struct SnapshotChartPlotBorderView: View {
     let yDomain: ClosedRange<Double>
     let yTicks: [Double]
     var showHorizontalGridLines: Bool = true
-    var visibleHorizontalTicks: [Double]? = nil
+    var visibleHorizontalTicks: [Double]?
     var showTrailingBorder: Bool = true
     private let leftExtension: CGFloat = 16
 

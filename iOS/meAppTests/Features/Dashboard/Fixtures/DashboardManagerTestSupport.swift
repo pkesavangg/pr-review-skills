@@ -1,9 +1,11 @@
 import Foundation
-import SwiftData
 @testable import meApp
+import SwiftData
 
 @MainActor
 enum DashboardManagerTestSupport {
+    // Test SUT alias; labeled tuple is clearer than a one-off struct.
+    // swiftlint:disable:next large_tuple
     typealias StoreSUT = (
         store: DashboardStore,
         accountService: AccountService,
@@ -18,6 +20,8 @@ enum DashboardManagerTestSupport {
         return (sut.store, sut.accountService, sut.entryService)
     }
 
+    // Test SUT alias; labeled tuple is clearer than a one-off struct.
+    // swiftlint:disable:next large_tuple
     typealias StoreSUTWithRepo = (
         store: DashboardStore,
         accountService: AccountService,
@@ -80,10 +84,16 @@ enum DashboardManagerTestSupport {
 
     static func makeEntryContext() -> ModelContext {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try! ModelContainer(
-            for: Entry.self, BathScaleEntry.self, BathScaleMetric.self,
-            configurations: config
-        )
-        return ModelContext(container)
+        do {
+            let container = try ModelContainer(
+                for: Entry.self,
+                BathScaleEntry.self,
+                BathScaleMetric.self,
+                configurations: config
+            )
+            return ModelContext(container)
+        } catch {
+            fatalError("Failed to create in-memory ModelContainer: \(error)")
+        }
     }
 }

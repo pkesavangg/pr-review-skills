@@ -12,7 +12,9 @@ struct BabyDaySummaryItem: View {
     let day: BabyHistoryDay
 
     private var combinedAccessibilityLabel: String {
-        "\(dateText), \(day.entryCount) \(HistoryListStrings.entries), \(HistoryListStrings.weight) \(weightText), \(HistoryListStrings.length) \(lengthText)"
+        "\(dateText), \(day.entryCount) \(HistoryListStrings.entries), "
+            + "\(HistoryListStrings.weight) \(weightText), "
+            + "\(HistoryListStrings.length) \(lengthText)"
     }
 
     private var dateText: String {

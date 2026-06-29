@@ -1,7 +1,7 @@
 import Foundation
+@testable import meApp
 import Testing
 import UIKit
-@testable import meApp
 
 private enum WifiScaleSetupStoreEdgeTestError: Error {
     case failure

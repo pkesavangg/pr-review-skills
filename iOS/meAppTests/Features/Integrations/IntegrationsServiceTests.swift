@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -142,6 +142,7 @@ struct IntegrationsServiceTests {
         #expect(local.setIntegrationDataCalls == 1)
         #expect(local.lastSetAccountId == "101")
         #expect(local.lastSetInfo == info)
+        // swiftlint:disable:next todo
         // Remote sync is disabled (TODO in production code)
         #expect(account.updateIntegrationsCalls == 0)
     }
@@ -191,6 +192,7 @@ struct IntegrationsServiceTests {
         try await sut.setStoredIntegrationData(info)
 
         #expect(local.setIntegrationDataCalls == 1)
+        // swiftlint:disable:next todo
         // Remote sync is disabled (TODO in production code)
         #expect(account.updateIntegrationsCalls == 0)
     }
@@ -257,6 +259,7 @@ struct IntegrationsServiceTests {
         #expect(local.setIntegrationDataCalls == 1)
         #expect(local.lastSetInfo?.type == .healthKit)
         #expect(local.lastSetInfo?.isIntegrated == false)
+        // swiftlint:disable:next todo
         // Remote sync is disabled (TODO in production code)
         #expect(account.deleteHealthIntegrationCalls == 0)
     }
@@ -398,12 +401,30 @@ struct IntegrationsServiceTests {
 
         // A BP entry routed through the unified write path fires `entrySaved` like any other.
         let bpDTO = BathScaleOperationDTO(
-            accountId: "101", bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
-            entryTimestamp: "2026-05-06T09:30:00Z", entryType: EntryType.bpm.rawValue, impedance: nil,
-            metabolicAge: nil, muscleMass: nil, operationType: OperationType.create.rawValue,
-            proteinPercent: nil, pulse: 72, serverTimestamp: nil, skeletalMusclePercent: nil,
-            source: "manual", subcutaneousFatPercent: nil, systolic: 120, diastolic: 80,
-            meanArterial: nil, unit: nil, visceralFatLevel: nil, water: nil, weight: nil
+            accountId: "101",
+            bmr: nil,
+            bmi: nil,
+            bodyFat: nil,
+            boneMass: nil,
+            entryTimestamp: "2026-05-06T09:30:00Z",
+            entryType: EntryType.bpm.rawValue,
+            impedance: nil,
+            metabolicAge: nil,
+            muscleMass: nil,
+            operationType: OperationType.create.rawValue,
+            proteinPercent: nil,
+            pulse: 72,
+            serverTimestamp: nil,
+            skeletalMusclePercent: nil,
+            source: "manual",
+            subcutaneousFatPercent: nil,
+            systolic: 120,
+            diastolic: 80,
+            meanArterial: nil,
+            unit: nil,
+            visceralFatLevel: nil,
+            water: nil,
+            weight: nil
         )
         let bpNotification = EntryNotification(from: bpDTO)
         #expect(bpNotification.entryType == EntryType.bpm.rawValue)

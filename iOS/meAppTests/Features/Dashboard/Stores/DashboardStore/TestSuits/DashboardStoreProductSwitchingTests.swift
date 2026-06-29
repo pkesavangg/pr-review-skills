@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 extension DashboardStoreTests {
     @Suite("Product Switching")
@@ -20,21 +20,21 @@ extension DashboardStoreTests {
 
         @Test("isBabySelection is false when myWeight is selected")
         func isBabySelectionFalseForWeight() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             store.selectProductItem(.myWeight)
             #expect(store.isBabySelection == false)
         }
 
         @Test("isBabySelection is false when myBloodPressure is selected")
         func isBabySelectionFalseForBpm() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             store.selectProductItem(.myBloodPressure)
             #expect(store.isBabySelection == false)
         }
 
         @Test("isBabySelection is true when a baby product is selected")
         func isBabySelectionTrueForBaby() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             store.selectProductItem(.baby(profile: makeBaby()))
             #expect(store.isBabySelection == true)
         }
@@ -43,21 +43,21 @@ extension DashboardStoreTests {
 
         @Test("selectedBabyProfile is nil when myWeight is selected")
         func selectedBabyProfileNilForWeight() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             store.selectProductItem(.myWeight)
             #expect(store.selectedBabyProfile == nil)
         }
 
         @Test("selectedBabyProfile is nil when myBloodPressure is selected")
         func selectedBabyProfileNilForBpm() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             store.selectProductItem(.myBloodPressure)
             #expect(store.selectedBabyProfile == nil)
         }
 
         @Test("selectedBabyProfile returns the profile when baby is selected")
         func selectedBabyProfileReturnsBabyProfile() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             let baby = makeBaby(id: "baby-unique-id")
             store.selectProductItem(.baby(profile: baby))
             #expect(store.selectedBabyProfile?.id == "baby-unique-id")
@@ -67,21 +67,21 @@ extension DashboardStoreTests {
 
         @Test("selectedBabyMetric returns weight when selectedMetricLabel is nil")
         func selectedBabyMetricDefaultsToWeight() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             store.state.ui.selectedMetricLabel = nil
             #expect(store.selectedBabyMetric == .weight)
         }
 
         @Test("selectedBabyMetric returns height when selectedMetricLabel is Height")
         func selectedBabyMetricReturnsHeightForHeightLabel() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             store.state.ui.selectedMetricLabel = BabyMetric.height.rawValue
             #expect(store.selectedBabyMetric == .height)
         }
 
         @Test("selectedBabyMetric returns weight for any other label value")
         func selectedBabyMetricReturnWeightForOtherLabel() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             store.state.ui.selectedMetricLabel = "bodyFat"
             #expect(store.selectedBabyMetric == .weight)
         }
@@ -90,7 +90,7 @@ extension DashboardStoreTests {
 
         @Test("switchProductType updates productType from wg to bpm")
         func switchProductTypeWgToBpm() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             #expect(store.productType == .scale) // default
 
             store.switchProductType(to: .bpm)
@@ -100,7 +100,7 @@ extension DashboardStoreTests {
 
         @Test("switchProductType is no-op when switching to the same type")
         func switchProductTypeSameTypeNoOp() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             store.productType = .scale
 
             store.switchProductType(to: .scale)
@@ -111,7 +111,7 @@ extension DashboardStoreTests {
 
         @Test("switchProductType clears selectedMetricLabel")
         func switchProductTypeClearsSelectedMetricLabel() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             store.state.ui.selectedMetricLabel = "bodyFat"
 
             store.switchProductType(to: .bpm)
@@ -121,7 +121,7 @@ extension DashboardStoreTests {
 
         @Test("switchProductType resets hasInitializedChart to false")
         func switchProductTypeResetsChartFlag() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             store.state.ui.hasInitializedChart = true
 
             store.switchProductType(to: .bpm)
@@ -131,7 +131,7 @@ extension DashboardStoreTests {
 
         @Test("switchProductType switches back from bpm to wg")
         func switchProductTypeBpmBackToWg() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             store.switchProductType(to: .bpm)
             #expect(store.productType == .bpm)
 
@@ -144,7 +144,7 @@ extension DashboardStoreTests {
 
         @Test("selectProductItem transitions to bpm product type")
         func selectProductItemTransitionsToBpm() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             #expect(store.selectedProductItem == .myWeight)
 
             store.selectProductItem(.myBloodPressure)
@@ -155,7 +155,7 @@ extension DashboardStoreTests {
 
         @Test("selectProductItem to a baby switches product type to baby")
         func selectProductItemBabyKeepsWgType() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             let baby = makeBaby(id: "b-wg")
             store.selectProductItem(.baby(profile: baby))
 
@@ -165,7 +165,7 @@ extension DashboardStoreTests {
 
         @Test("selectProductItem back to myWeight clears baby selection")
         func selectProductItemBackToWeightClearsBabySelection() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             store.selectProductItem(.baby(profile: makeBaby()))
             #expect(store.isBabySelection == true)
 
@@ -177,7 +177,7 @@ extension DashboardStoreTests {
 
         @Test("selectProductItem clears selectedMetricLabel on product change")
         func selectProductItemClearsMetricLabel() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             store.state.ui.selectedMetricLabel = BabyMetric.height.rawValue
 
             store.selectProductItem(.myBloodPressure)
@@ -189,7 +189,7 @@ extension DashboardStoreTests {
 
         @Test("continuousOperations returns baby dummy data when baby is selected")
         func continuousOperationsReturnsBabyDummyData() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             let baby = makeBaby()
             store.selectProductItem(.baby(profile: baby))
 
@@ -201,7 +201,7 @@ extension DashboardStoreTests {
 
         @Test("continuousOperations returns empty when weight selected and no data")
         func continuousOperationsEmptyForWeightWithNoData() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             store.selectProductItem(.myWeight)
             store.dataManager.state.dailySummaries = []
             store.dataManager.state.monthlySummaries = []
@@ -215,7 +215,7 @@ extension DashboardStoreTests {
 
         @Test("productTypeSelectorStore is accessible and returns the product type store")
         func productTypeSelectorStoreIsAccessible() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             // Just verify it's accessible without crash
             _ = store.productTypeSelectorStore
         }
@@ -224,7 +224,7 @@ extension DashboardStoreTests {
 
         @Test("switchProductType clears cached Y-axis domain and ticks")
         func switchProductTypeClearsYAxisState() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             store.state.graph.cachedYAxisDomain = 100.0...200.0
             store.state.graph.cachedYAxisTicks = [100, 125, 150, 175, 200]
             store.state.graph.selectedXValue = Date()
@@ -242,7 +242,7 @@ extension DashboardStoreTests {
 
         @Test("switchProductType clears scroll and processing state")
         func switchProductTypeClearsScrollState() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             store.state.graph.isScrolling = true
             store.state.graph.hasDetectedScrollInCurrentGesture = true
             store.graphManager.state.isScrolling = true
@@ -260,7 +260,9 @@ extension DashboardStoreTests {
 
         @Test("switchProductType sets product context on cache manager")
         func switchProductTypeSetsProductContext() {
-            let (store, _, cacheManager) = DashboardStoreTestSupport.makeSUT()
+            let sutBundle = DashboardStoreTestSupport.makeSUT()
+            let store = sutBundle.store
+            let cacheManager = sutBundle.cacheManager
 
             store.switchProductType(to: .bpm)
 
@@ -270,7 +272,7 @@ extension DashboardStoreTests {
 
         @Test("switchProductType resets hasInitializedChart and isGraphReady")
         func switchProductTypeResetsChartFlags() {
-            let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+            let store = DashboardStoreTestSupport.makeSUT().store
             store.state.ui.hasInitializedChart = true
             store.graphManager.state.isGraphReady = true
 
@@ -282,7 +284,9 @@ extension DashboardStoreTests {
 
         @Test("refreshSelectedProductContext clears caches when switching baby profiles")
         func refreshSelectedProductContextClearsCaches() {
-            let (store, _, cacheManager) = DashboardStoreTestSupport.makeSUT()
+            let sutBundle = DashboardStoreTestSupport.makeSUT()
+            let store = sutBundle.store
+            let cacheManager = sutBundle.cacheManager
             store.productType = .scale
             store.state.ui.hasInitializedChart = true
 

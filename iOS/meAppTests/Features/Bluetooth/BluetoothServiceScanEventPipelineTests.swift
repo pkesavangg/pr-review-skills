@@ -1,8 +1,8 @@
 import Combine
 import Foundation
 @testable import GGBluetoothSwiftPackage
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -92,7 +92,6 @@ struct BluetoothServiceScanEventPipelineTests {
         #expect(discovered.first?.isNew == false)
     }
 
-
     @Test("blocked or malformed scan events are filtered before downstream processing")
     func blockedOrMalformedScanEventsAreFiltered() async throws {
         let sdk = MockBluetoothSDKClient()
@@ -138,8 +137,14 @@ struct BluetoothServiceScanEventPipelineTests {
         // Scale entries now fire pendingScaleEntryPublisher (not newEntryReceivedPublisher)
         // because the entry is held pending user confirmation before saving.
         let notifications = await collectValues(count: 2, from: sut.pendingScaleEntryPublisher) {
-            await sendScanResponse(makeScanResponse(type: .SINGLE_ENTRY, data: makeEntry(protocolType: "A6", timestamp: 1_730_000_000_000, weightInKg: 72.5)), through: sdk)
-            await sendScanResponse(makeScanResponse(type: .SINGLE_ENTRY, data: makeEntry(protocolType: "A6", timestamp: 1_730_000_100_000, weightInKg: 73.0)), through: sdk)
+            await sendScanResponse(
+                makeScanResponse(type: .SINGLE_ENTRY, data: makeEntry(protocolType: "A6", timestamp: 1_730_000_000_000, weightInKg: 72.5)),
+                through: sdk
+            )
+            await sendScanResponse(
+                makeScanResponse(type: .SINGLE_ENTRY, data: makeEntry(protocolType: "A6", timestamp: 1_730_000_100_000, weightInKg: 73.0)),
+                through: sdk
+            )
             await sendScanResponse(makeScanResponse(type: .MULTI_ENTRIES, data: MalformedScanData()), through: sdk)
         }
 
@@ -163,8 +168,14 @@ struct BluetoothServiceScanEventPipelineTests {
         try await sut.startSmartScan()
         // Two readings arrive before the user acts: the first becomes displaced, the second is pending.
         _ = await collectValues(count: 2, from: sut.pendingScaleEntryPublisher) {
-            await sendScanResponse(makeScanResponse(type: .SINGLE_ENTRY, data: makeEntry(protocolType: "A6", timestamp: 1_730_000_000_000, weightInKg: 70.0)), through: sdk)
-            await sendScanResponse(makeScanResponse(type: .SINGLE_ENTRY, data: makeEntry(protocolType: "A6", timestamp: 1_730_000_100_000, weightInKg: 71.0)), through: sdk)
+            await sendScanResponse(
+                makeScanResponse(type: .SINGLE_ENTRY, data: makeEntry(protocolType: "A6", timestamp: 1_730_000_000_000, weightInKg: 70.0)),
+                through: sdk
+            )
+            await sendScanResponse(
+                makeScanResponse(type: .SINGLE_ENTRY, data: makeEntry(protocolType: "A6", timestamp: 1_730_000_100_000, weightInKg: 71.0)),
+                through: sdk
+            )
         }
 
         #expect(entry.savedEntries.isEmpty)
@@ -188,8 +199,14 @@ struct BluetoothServiceScanEventPipelineTests {
 
         try await sut.startSmartScan()
         _ = await collectValues(count: 2, from: sut.pendingScaleEntryPublisher) {
-            await sendScanResponse(makeScanResponse(type: .SINGLE_ENTRY, data: makeEntry(protocolType: "A6", timestamp: 1_730_000_000_000, weightInKg: 70.0)), through: sdk)
-            await sendScanResponse(makeScanResponse(type: .SINGLE_ENTRY, data: makeEntry(protocolType: "A6", timestamp: 1_730_000_100_000, weightInKg: 71.0)), through: sdk)
+            await sendScanResponse(
+                makeScanResponse(type: .SINGLE_ENTRY, data: makeEntry(protocolType: "A6", timestamp: 1_730_000_000_000, weightInKg: 70.0)),
+                through: sdk
+            )
+            await sendScanResponse(
+                makeScanResponse(type: .SINGLE_ENTRY, data: makeEntry(protocolType: "A6", timestamp: 1_730_000_100_000, weightInKg: 71.0)),
+                through: sdk
+            )
         }
 
         #expect(sut.displacedPendingEntries.count == 1)
@@ -339,14 +356,31 @@ struct BluetoothServiceScanEventPipelineTests {
         account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-info", email: "info@example.com", isLoggedIn: true, isActiveAccount: true)
         let sut = makeSUT(account: account, scale: scale, sdk: sdk)
         _ = await waitUntil { sut.activeAccount?.accountId == "acct-info" }
-        let device = makeDevice(id: "info-scale-1", broadcastIdString: "INFO-1", isConnected: true, bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true))
+        let device = makeDevice(
+            id: "info-scale-1",
+            broadcastIdString: "INFO-1",
+            isConnected: true,
+            bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
+        )
         device.r4ScalePreference = makePreference(id: "info-scale-1", shouldMeasureImpedance: true)
         sut.bluetoothScales = [device.toSnapshot()]
 
         try await sut.startSmartScan()
         let infos = await collectValues(count: 1, from: sut.deviceInfoUpdatedPublisher, timeoutNanoseconds: 3_000_000_000) {
-            await sendScanResponse(makeScanResponse(type: .WIFI_STATUS_UPDATE, data: makeDeviceDetails(broadcastId: "INFO-1", protocolType: "R4", isWifiConfigured: true)), through: sdk)
-            await sendScanResponse(makeScanResponse(type: .DEVICE_INFO_UPDATE, data: makeDeviceDetails(broadcastId: "INFO-1", protocolType: "R4", impedanceSwitchState: true)), through: sdk)
+            await sendScanResponse(
+                makeScanResponse(
+                    type: .WIFI_STATUS_UPDATE,
+                    data: makeDeviceDetails(broadcastId: "INFO-1", protocolType: "R4", isWifiConfigured: true)
+                ),
+                through: sdk
+            )
+            await sendScanResponse(
+                makeScanResponse(
+                    type: .DEVICE_INFO_UPDATE,
+                    data: makeDeviceDetails(broadcastId: "INFO-1", protocolType: "R4", impedanceSwitchState: true)
+                ),
+                through: sdk
+            )
         }
         let routed = await waitUntil(timeoutNanoseconds: 3_000_000_000) {
             scale.updateConnectedDeviceWifiStatusCalls == 1 &&
@@ -376,8 +410,13 @@ struct BluetoothServiceScanEventPipelineTests {
 
         try await sut.startSmartScan()
         await Task.yield()
-        await sendScanResponse(makeScanResponse(type: .DEVICE_INFO_UPDATE, data: makeEntry(protocolType: "A6", timestamp: 1_730_000_200_000, weightInKg: 70.0)), through: sdk)
-        let loggedMalformed = await waitUntil { logger.messages.contains { $0.contains("DEVICE_INFO_UPDATE: Failed to cast data to GGDeviceDetails") } }
+        await sendScanResponse(
+            makeScanResponse(type: .DEVICE_INFO_UPDATE, data: makeEntry(protocolType: "A6", timestamp: 1_730_000_200_000, weightInKg: 70.0)),
+            through: sdk
+        )
+        let loggedMalformed = await waitUntil {
+            logger.messages.contains { $0.contains("DEVICE_INFO_UPDATE: Failed to cast data to GGDeviceDetails") }
+        }
 
         #expect(scale.updateConnectedDevicesCalls == 1)
         #expect(infos.isEmpty)
@@ -387,7 +426,12 @@ struct BluetoothServiceScanEventPipelineTests {
     @Test("weight-only alert debounce emits only the final stable state")
     func weightOnlyAlertDebounceEmitsFinalStateOnly() async {
         let sut = makeSUT()
-        let deviceBase = makeDevice(id: "alert-scale-1", broadcastIdString: "ALERT-1", isConnected: true, bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true))
+        let deviceBase = makeDevice(
+            id: "alert-scale-1",
+            broadcastIdString: "ALERT-1",
+            isConnected: true,
+            bathScale: BathScale(scaleType: DeviceSourceType.btWifiR4.rawValue, bodyComp: true)
+        )
         deviceBase.isWeighOnlyModeEnabledByOthers = true
         let snapshotOn = deviceBase.toSnapshot()
         deviceBase.isWeighOnlyModeEnabledByOthers = false

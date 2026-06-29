@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 extension DashboardStoreTests {
     @Suite("Initialization And Bindings")
@@ -9,7 +9,7 @@ extension DashboardStoreTests {
 
     @Test("init lightweight: creates store with default state")
     func initLightweightDefaultState() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT(lightweight: true)
+        let store = DashboardStoreTestSupport.makeSUT(lightweight: true).store
 
         #expect(store.state.ui.isEditMode == false)
         #expect(store.state.ui.isLoading == false)
@@ -20,7 +20,7 @@ extension DashboardStoreTests {
 
     @Test("init lightweight: managers are initialized")
     func initLightweightManagersInitialized() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT(lightweight: true)
+        let store = DashboardStoreTestSupport.makeSUT(lightweight: true).store
 
         #expect(store.metricsManager.state.dashboardType == .dashboard12)
         #expect(store.graphManager.state.selectedPeriod == .month)
@@ -35,13 +35,13 @@ extension DashboardStoreTests {
 
     @Test("init lightweight true: does not setup subscriptions")
     func initLightweightTrueSkipsSubscriptions() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT(lightweight: true)
+        let store = DashboardStoreTestSupport.makeSUT(lightweight: true).store
         #expect(store.state.ui.isLoading == false)
     }
 
     @Test("init lightweight false: sets up subscriptions")
     func initLightweightFalseSetupSubscriptions() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT(lightweight: false)
+        let store = DashboardStoreTestSupport.makeSUT(lightweight: false).store
         #expect(store.state.ui.isLoading == false)
     }
 
@@ -66,7 +66,9 @@ extension DashboardStoreTests {
 
     @Test("init: formatter and cacheManager are injected correctly")
     func initFormatterAndCacheInjected() {
-        let (store, _, cacheManager) = DashboardStoreTestSupport.makeSUT()
+        let sutBundle = DashboardStoreTestSupport.makeSUT()
+        let store = sutBundle.store
+        let cacheManager = sutBundle.cacheManager
 
         #expect(store.formatter is MockDashboardFormatter)
         #expect(store.cacheManager is MockDashboardCacheManager)
@@ -75,7 +77,7 @@ extension DashboardStoreTests {
 
     @Test("init: editSessionManager starts with no snapshot")
     func initEditSessionManagerEmpty() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         #expect(store.editSessionManager.hasSnapshot == false)
         #expect(store.editSessionManager.snapshot == nil)
@@ -83,7 +85,7 @@ extension DashboardStoreTests {
 
     @Test("bindings: metricsManager state changes propagate to store")
     func bindingsMetricsManagerPropagates() async {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         let item = DashboardTestFixtures.makeMetricItem(label: "bmi", unit: "")
         store.metricsManager.state.metrics = [item]
@@ -96,7 +98,7 @@ extension DashboardStoreTests {
 
     @Test("bindings: streakManager state changes propagate to store")
     func bindingsStreakManagerPropagates() async {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         let item = DashboardTestFixtures.makeMetricItem(label: "current-streak")
         store.streakManager.state.streakItems = [item]
@@ -108,7 +110,7 @@ extension DashboardStoreTests {
 
     @Test("bindings: goalManager state changes propagate to store")
     func bindingsGoalManagerPropagates() async {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.goalManager.state.hasGoalSet = true
         store.goalManager.state.goalType = .lose
@@ -123,7 +125,7 @@ extension DashboardStoreTests {
 
     @Test("bindings: graphManager state changes propagate to store")
     func bindingsGraphManagerPropagates() async {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.graphManager.state.selectedPeriod = .month
         store.graphManager.state.isScrolling = true
@@ -136,7 +138,7 @@ extension DashboardStoreTests {
 
     @Test("bindings: dataManager state changes propagate to store")
     func bindingsDataManagerPropagates() async {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         let summary = DashboardTestFixtures.makeSummary(period: "2026-03-01")
         store.dataManager.state.dailySummaries = [summary]
@@ -148,7 +150,7 @@ extension DashboardStoreTests {
 
     @Test("bindings: metricsManager state suppressed during dashboard reset")
     func bindingsSuppressedDuringReset() async {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         let initialLabels = store.state.metrics.metrics.map(\.label)
 
         store.state.ui.isResettingDashboard = true
@@ -162,7 +164,7 @@ extension DashboardStoreTests {
 
     @Test("bindings: streakManager state suppressed during dashboard reset")
     func bindingsStreakSuppressedDuringReset() async {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         let initialLabels = store.state.streak.streakItems.map(\.label)
 
         store.state.ui.isResettingDashboard = true
@@ -176,7 +178,7 @@ extension DashboardStoreTests {
 
     @Test("bindings: goalManager state NOT suppressed during dashboard reset")
     func bindingsGoalNotSuppressedDuringReset() async {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.state.ui.isResettingDashboard = true
         store.goalManager.state.hasGoalSet = true
@@ -192,13 +194,15 @@ extension DashboardStoreTests {
         // `noActiveAccount` catch path (which defaults dashboardType to .dashboard12). With a non-nil
         // account throughout, the only source of dashboardType is the account's own value, so the
         // $activeAccount subscription is the deterministic writer — no init-vs-subscription race.
-        let (store, accountService, _) = DashboardStoreTestSupport.makeSUT(
+        let sutBundle = DashboardStoreTestSupport.makeSUT(
             lightweight: false,
             initialAccount: DashboardStoreTestSupport.makeActiveAccount(
                 dashboardMetrics: "bmi,bodyFat,muscleMass,water,pulse,boneMass",
                 dashboardType: "dashboard12"
             )
         )
+        let store = sutBundle.store
+        let accountService = sutBundle.accountService
 
         // Let the full init pipeline settle on the seeded baseline (dashboard12).
         await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 5_000_000_000) {
@@ -225,7 +229,9 @@ extension DashboardStoreTests {
 
     @Test("subscriptions: active account change clears chart initialization state")
     func subscriptionsActiveAccountChangeClearsChartState() async {
-        let (store, accountService, _) = DashboardStoreTestSupport.makeSUT(lightweight: false)
+        let sutBundle = DashboardStoreTestSupport.makeSUT(lightweight: false)
+        let store = sutBundle.store
+        let accountService = sutBundle.accountService
         store.state.ui.hasInitializedChart = true
         store.graphManager.state.isGraphReady = true
         store.state.graph.selectedPoint = DashboardTestFixtures.makeSummary()
@@ -245,7 +251,9 @@ extension DashboardStoreTests {
 
     @Test("bindings: entry data changes invalidate continuous operations cache")
     func bindingsEntryDataChangeInvalidatesContinuousCache() async {
-        let (store, _, cacheManager) = DashboardStoreTestSupport.makeSUT()
+        let sutBundle = DashboardStoreTestSupport.makeSUT()
+        let store = sutBundle.store
+        let cacheManager = sutBundle.cacheManager
         let entryService = DependencyContainer.shared.resolve(EntryService.self)
 
         #expect(entryService != nil)
@@ -262,7 +270,7 @@ extension DashboardStoreTests {
 
     @Test("bindings: first entry arrival resets chart initialization while scrolling")
     func bindingsFirstEntryArrivalResetsChartInitialization() async {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         let entryService = DependencyContainer.shared.resolve(EntryService.self)
 
         #expect(entryService != nil)
@@ -281,7 +289,7 @@ extension DashboardStoreTests {
 
     @Test("graph period change: store state reflects new period after manager update")
     func graphPeriodChangeReflected() async {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.graphManager.state.selectedPeriod = .year
 
@@ -292,7 +300,7 @@ extension DashboardStoreTests {
 
     @Test("graph period: all period values can be set")
     func graphAllPeriodValues() async {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         for period in TimePeriod.allCases {
             store.graphManager.state.selectedPeriod = period
@@ -303,7 +311,7 @@ extension DashboardStoreTests {
 
     @Test("data state: adding daily summaries updates hasAnyEntries")
     func dataStateAddingDailyUpdatesHasEntries() async {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         #expect(store.hasAnyEntries == false)
 
         store.dataManager.state.dailySummaries = [DashboardTestFixtures.makeSummary()]
@@ -315,7 +323,7 @@ extension DashboardStoreTests {
 
     @Test("data state: clearing daily summaries updates hasAnyEntries")
     func dataStateClearingDailyUpdatesHasEntries() async {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.dataManager.state.dailySummaries = [DashboardTestFixtures.makeSummary()]
         await DashboardTestFixtures.waitUntil { store.hasAnyEntries == true }
@@ -330,7 +338,7 @@ extension DashboardStoreTests {
 
     @Test("goal state: goalManager changes propagate")
     func goalManagerChangesPropagate() async {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.goalManager.state.goalType = .lose
         store.goalManager.state.goalStartWeight = 200.0

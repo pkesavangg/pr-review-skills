@@ -279,7 +279,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     // MARK: - Reactive Bindings
 
-    // swiftlint:disable:next function_body_length
+    // swiftlint:disable:next function_body_length cyclomatic_complexity
     private func setupBindings() {
         metricsManager.$state
             .sink { [weak self] metricsState in
@@ -861,6 +861,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     private func convertBabyDecigramsToDisplay(_ decigrams: Int) -> Double {
         let isMetric = accountService.activeAccount?.weightUnit == .kg
+        // swiftlint:disable:next todo
         // TODO: Remove this fallback once baby-scale conversion is confirmed and
         // implemented separately per SKU type.
         let kg = Double(decigrams) / BabyPercentileGrowthReference.decigramsToKgFactor

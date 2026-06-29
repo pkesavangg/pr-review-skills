@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -14,12 +14,10 @@ struct HTTPClientTests {
     @Test("get decodes valid JSON response")
     func get_validResponse_decodesSuccessfully() async throws {
         let responseData = try JSONEncoder().encode(HTTPClientTestResponse(value: "ok"))
-        let (sut, _, _, _, _) = makeSUT(
-            requestExecutor: { request in
+        let (sut, _, _, _, _) = makeSUT { request in
                 let response = makeHTTPResponse(statusCode: 200, request: request)
                 return (responseData, response)
             }
-        )
 
         let result: HTTPClientTestResponse = try await sut.get(.login)
 
@@ -30,13 +28,11 @@ struct HTTPClientTests {
     func send_validBodyAndResponse_succeeds() async throws {
         let responseData = try JSONEncoder().encode(HTTPClientTestResponse(value: "created"))
         var capturedRequest: URLRequest?
-        let (sut, _, _, _, _) = makeSUT(
-            requestExecutor: { request in
+        let (sut, _, _, _, _) = makeSUT { request in
                 capturedRequest = request
                 let response = makeHTTPResponse(statusCode: 201, request: request)
                 return (responseData, response)
             }
-        )
 
         let result: HTTPClientTestResponse = try await sut.send(
             .signup,
@@ -53,12 +49,10 @@ struct HTTPClientTests {
 
     @Test("get returns plain text when response type is String")
     func get_stringResponse_returnsPlainText() async throws {
-        let (sut, _, _, _, _) = makeSUT(
-            requestExecutor: { request in
+        let (sut, _, _, _, _) = makeSUT { request in
                 let response = makeHTTPResponse(statusCode: 200, request: request)
                 return (Data("plain-response".utf8), response)
             }
-        )
 
         let result: String = try await sut.get(.login)
 
@@ -67,12 +61,10 @@ struct HTTPClientTests {
 
     @Test("get returns EmptyResponse for 204 no content")
     func get_noContent_returnsEmptyResponse() async throws {
-        let (sut, _, _, _, _) = makeSUT(
-            requestExecutor: { request in
+        let (sut, _, _, _, _) = makeSUT { request in
                 let response = makeHTTPResponse(statusCode: 204, request: request)
                 return (Data(), response)
             }
-        )
 
         let result: EmptyResponse = try await sut.get(.login)
         _ = result
@@ -81,12 +73,10 @@ struct HTTPClientTests {
 
     @Test("get throws decodingError for 204 no content with non-empty response type")
     func get_noContent_withDecodableType_throwsDecodingError() async {
-        let (sut, _, _, _, _) = makeSUT(
-            requestExecutor: { request in
+        let (sut, _, _, _, _) = makeSUT { request in
                 let response = makeHTTPResponse(statusCode: 204, request: request)
                 return (Data(), response)
             }
-        )
 
         do {
             let _: HTTPClientTestResponse = try await sut.get(.login)
@@ -165,11 +155,9 @@ struct HTTPClientTests {
 
     @Test("get maps URLError.timedOut to HTTPError.timeout")
     func get_timeoutURLError_mapsToTimeout() async {
-        let (sut, _, _, _, _) = makeSUT(
-            requestExecutor: { _ in
+        let (sut, _, _, _, _) = makeSUT { _ in
                 throw URLError(.timedOut)
             }
-        )
 
         do {
             let _: HTTPClientTestResponse = try await sut.get(.login)
@@ -189,11 +177,9 @@ struct HTTPClientTests {
 
     @Test("get maps network URLError to HTTPError.noInternet")
     func get_networkURLError_mapsToNoInternet() async {
-        let (sut, _, _, _, _) = makeSUT(
-            requestExecutor: { _ in
+        let (sut, _, _, _, _) = makeSUT { _ in
                 throw URLError(.notConnectedToInternet)
             }
-        )
 
         do {
             let _: HTTPClientTestResponse = try await sut.get(.login)
@@ -215,8 +201,7 @@ struct HTTPClientTests {
 
     @Test("get throws invalidResponse for non-HTTP URLResponse")
     func get_nonHTTPResponse_throwsInvalidResponse() async {
-        let (sut, _, _, _, _) = makeSUT(
-            requestExecutor: { request in
+        let (sut, _, _, _, _) = makeSUT { request in
                 let response = URLResponse(
                     // swiftlint:disable:next force_unwrapping
                     url: request.url ?? URL(string: "https://example.com")!,
@@ -226,7 +211,6 @@ struct HTTPClientTests {
                 )
                 return (Data(), response)
             }
-        )
 
         do {
             let _: HTTPClientTestResponse = try await sut.get(.login)
@@ -246,12 +230,10 @@ struct HTTPClientTests {
 
     @Test("get throws statusCode for unknown HTTP status")
     func get_unknownStatusCode_throwsStatusCode() async {
-        let (sut, _, _, _, _) = makeSUT(
-            requestExecutor: { request in
+        let (sut, _, _, _, _) = makeSUT { request in
                 let response = makeHTTPResponse(statusCode: 418, request: request)
                 return (Data(), response)
             }
-        )
 
         do {
             let _: HTTPClientTestResponse = try await sut.get(.login)
@@ -271,12 +253,10 @@ struct HTTPClientTests {
 
     @Test("get throws decodingError for malformed JSON response")
     func get_malformedJSON_throwsDecodingError() async {
-        let (sut, _, _, _, _) = makeSUT(
-            requestExecutor: { request in
+        let (sut, _, _, _, _) = makeSUT { request in
                 let response = makeHTTPResponse(statusCode: 200, request: request)
                 return (Data("not-json".utf8), response)
             }
-        )
 
         do {
             let _: HTTPClientTestResponse = try await sut.get(.login)
@@ -297,12 +277,10 @@ struct HTTPClientTests {
     @Test("get parses API error payload for non-success status")
     func get_errorPayload_parsesAPIErrorMessage() async {
         let errorPayload = Data(#"{"error":"bad request payload"}"#.utf8)
-        let (sut, _, _, _, _) = makeSUT(
-            requestExecutor: { request in
+        let (sut, _, _, _, _) = makeSUT { request in
                 let response = makeHTTPResponse(statusCode: 400, request: request)
                 return (errorPayload, response)
             }
-        )
 
         do {
             let _: HTTPClientTestResponse = try await sut.get(.login)
@@ -325,7 +303,8 @@ struct HTTPClientTests {
 
     @Test("get with auth refreshes expired token before request and succeeds")
     func get_needsAuthExpiredToken_refreshesBeforeRequest() async throws {
-        let account = makeActiveAccount(accessToken: "old-token") // swiftlint:disable:this no_hardcoded_credentials
+        // swiftlint:disable:next no_hardcoded_credentials
+        let account = makeActiveAccount(accessToken: "old-token")
         let tokenManager = MockHTTPClientTokenManager()
         tokenManager.checkTokenExpirationResult = true
         tokenManager.refreshTokenResult = .success(makeTokens(access: "new-token"))
@@ -333,13 +312,12 @@ struct HTTPClientTests {
         var capturedAuthHeader: String?
         let (sut, _, _, _, _) = makeSUT(
             account: account,
-            tokenManager: tokenManager,
-            requestExecutor: { request in
+            tokenManager: tokenManager
+        ) { request in
                 capturedAuthHeader = request.value(forHTTPHeaderField: "Authorization")
                 let response = makeHTTPResponse(statusCode: 200, request: request)
                 return (responseData, response)
             }
-        )
 
         let result: HTTPClientTestResponse = try await sut.get(.accountInfo, needsAuth: true)
 
@@ -351,7 +329,8 @@ struct HTTPClientTests {
 
     @Test("get with auth retries once on unauthorized using refreshed token")
     func get_needsAuthUnauthorized_retriesWithRefreshedToken() async throws {
-        let account = makeActiveAccount(accessToken: "old-token") // swiftlint:disable:this no_hardcoded_credentials
+        // swiftlint:disable:next no_hardcoded_credentials
+        let account = makeActiveAccount(accessToken: "old-token")
         let tokenManager = MockHTTPClientTokenManager()
         tokenManager.checkTokenExpirationResult = false
         tokenManager.refreshTokenResult = .success(makeTokens(access: "retry-token"))
@@ -361,8 +340,8 @@ struct HTTPClientTests {
 
         let (sut, _, _, _, _) = makeSUT(
             account: account,
-            tokenManager: tokenManager,
-            requestExecutor: { request in
+            tokenManager: tokenManager
+        ) { request in
                 callCount += 1
                 authHeaders.append(request.value(forHTTPHeaderField: "Authorization"))
 
@@ -374,7 +353,6 @@ struct HTTPClientTests {
                 let success = makeHTTPResponse(statusCode: 200, request: request)
                 return (successData, success)
             }
-        )
 
         let result: HTTPClientTestResponse = try await sut.get(.accountInfo, needsAuth: true)
 
@@ -389,8 +367,12 @@ struct HTTPClientTests {
     func get_needsAuthWithAccountId_usesFetchedAccountToken() async throws {
         let accountService = MockTokenManagerAccountService()
         let fetched = AccountTestFixtures.makeAccountSnapshot(
-            id: "acc-2", email: "b@example.com", isLoggedIn: true,
-            accessToken: "fetched-token", expiresAt: "2099-01-01T00:00:00.000Z" // swiftlint:disable:this no_hardcoded_credentials
+            id: "acc-2",
+            email: "b@example.com",
+            isLoggedIn: true,
+            // swiftlint:disable:next no_hardcoded_credentials
+            accessToken: "fetched-token",
+            expiresAt: "2099-01-01T00:00:00.000Z"
         )
         accountService.fetchAccountById["acc-2"] = fetched
 
@@ -401,13 +383,12 @@ struct HTTPClientTests {
         let responseData = try JSONEncoder().encode(HTTPClientTestResponse(value: "ok"))
         let (sut, _, _, _, _) = makeSUT(
             account: accountService,
-            tokenManager: tokenManager,
-            requestExecutor: { request in
+            tokenManager: tokenManager
+        ) { request in
                 authHeader = request.value(forHTTPHeaderField: "Authorization")
                 let response = makeHTTPResponse(statusCode: 200, request: request)
                 return (responseData, response)
             }
-        )
 
         let result: HTTPClientTestResponse = try await sut.get(.accountInfo, needsAuth: true, accountId: "acc-2")
 
@@ -433,7 +414,8 @@ struct HTTPClientTests {
         logger: MockLoggerService,
         tokenManager: MockHTTPClientTokenManager
     ) {
-        let account = account ?? makeActiveAccount(accessToken: "active-token") // swiftlint:disable:this no_hardcoded_credentials
+        // swiftlint:disable:next no_hardcoded_credentials
+        let account = account ?? makeActiveAccount(accessToken: "active-token")
         let notification = notification ?? MockNotificationHelperService()
         let logger = logger ?? MockLoggerService()
         let tokenManager = tokenManager ?? MockHTTPClientTokenManager()
@@ -451,9 +433,8 @@ struct HTTPClientTests {
 
         let sut = HTTPClient(
             tokenManager: tokenManager,
-            requestExecutor: executor,
-            connectivityProvider: { connectivity }
-        )
+            requestExecutor: executor
+        ) { connectivity }
         return (sut, account, notification, logger, tokenManager)
     }
 
@@ -464,13 +445,17 @@ struct HTTPClientTests {
     ) -> MockTokenManagerAccountService {
         let accountService = MockTokenManagerAccountService()
         accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(
-            id: accountId, email: "user@example.com", isLoggedIn: true, isActiveAccount: true,
-            accessToken: accessToken, expiresAt: expiresAt
+            id: accountId,
+            email: "user@example.com",
+            isLoggedIn: true,
+            isActiveAccount: true,
+            accessToken: accessToken,
+            expiresAt: expiresAt
         )
         return accountService
     }
 
-    private func makeTokens( // swiftlint:disable:this no_hardcoded_credentials
+    private func makeTokens(
         access: String = "new-token",
         refresh: String = "refresh-token",
         expiresAt: String = "2099-01-01T00:00:00.000Z"

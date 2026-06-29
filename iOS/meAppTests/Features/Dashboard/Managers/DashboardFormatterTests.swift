@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -139,8 +139,14 @@ struct DashboardFormatterTests {
         let sut = makeSUT()
 
         #expect(sut.formattedMetricValue(for: (preLabel: nil, value: DashboardStrings.placeholder)) == DashboardStrings.placeholder)
-        #expect(sut.formattedMetricValue(for: (preLabel: DashboardStrings.visceralFatPre, value: "0")) == "\(DashboardStrings.visceralFatPre) \(DashboardStrings.placeholder)")
-        #expect(sut.formattedMetricValue(for: (preLabel: DashboardStrings.visceralFatPre, value: "0.0")) == "\(DashboardStrings.visceralFatPre) \(DashboardStrings.placeholder)")
+        #expect(
+            sut.formattedMetricValue(for: (preLabel: DashboardStrings.visceralFatPre, value: "0"))
+                == "\(DashboardStrings.visceralFatPre) \(DashboardStrings.placeholder)"
+        )
+        #expect(
+            sut.formattedMetricValue(for: (preLabel: DashboardStrings.visceralFatPre, value: "0.0"))
+                == "\(DashboardStrings.visceralFatPre) \(DashboardStrings.placeholder)"
+        )
     }
 
     @Test("formattedMetricValue: non-zero values preserve prelabel and whitespace-trimmed values")

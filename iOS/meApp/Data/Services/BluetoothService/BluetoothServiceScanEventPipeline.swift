@@ -280,7 +280,7 @@ extension BluetoothService {
         pendingScaleEntrySubject.send(EntryNotification(from: entry, batchCount: 1))
     }
 
-    private func saveWeightEntryList(_ entryList: GGEntryList) async { // swiftlint:disable:this function_body_length
+    private func saveWeightEntryList(_ entryList: GGEntryList) async {
         let entries = entryList.list.compactMap { convertGGEntry($0) }
         if entries.isEmpty {
             logger.log(level: .info, tag: tag, message: "No valid entries to save")

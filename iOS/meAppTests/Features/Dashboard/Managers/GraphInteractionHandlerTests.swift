@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -11,7 +11,7 @@ struct GraphInteractionHandlerTests {
 
     private func makeRenderConfig() -> GraphRenderingConfiguration {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
         return GraphRenderingConfiguration(calendar: calendar)
     }
 
@@ -142,6 +142,10 @@ struct GraphInteractionHandlerTests {
     private func isoDate(_ value: String) -> Date {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: value)!
+        guard let date = formatter.date(from: value) else {
+            Issue.record("unexpected nil")
+            return Date()
+        }
+        return date
     }
 }

@@ -313,7 +313,8 @@ final class DeviceService: ObservableObject, @preconcurrency PairedDeviceService
         ephemeralState[key] = state
 
         logger.log(
-            level: .info, tag: tag,
+            level: .info,
+            tag: tag,
             message: "Ephemeral state updated: broadcastId=\(key), connected=\(isConnected), wifiConfigured=\(isWifiConfigured)"
         )
         await refreshScalesFromLocal()
@@ -625,7 +626,8 @@ final class DeviceService: ObservableObject, @preconcurrency PairedDeviceService
     func listPairedDevices(deviceType: DeviceType?) async throws -> [PairedDeviceResponse] {
         let devices = try await remoteRepo.listPairedDevices(deviceType: deviceType?.serverValue)
         logger.log(
-            level: .info, tag: tag,
+            level: .info,
+            tag: tag,
             message: "Fetched \(devices.count) paired device(s) from unified endpoint, filter=\(deviceType?.serverValue ?? "all")"
         )
         return devices
@@ -675,7 +677,8 @@ final class DeviceService: ObservableObject, @preconcurrency PairedDeviceService
             scales = snapshots
             if previousIds != currentIds {
                 logger.log(
-                    level: .info, tag: tag,
+                    level: .info,
+                    tag: tag,
                     message: "Paired scale list changed. accountId=\(accountId), count=\(snapshots.count)"
                 )
             }

@@ -1,7 +1,7 @@
 import Foundation
+@testable import meApp
 import SQLite3
 import Testing
-@testable import meApp
 
 // MARK: - SQLiteMigrationServiceTests
 
@@ -13,7 +13,9 @@ struct SQLiteMigrationServiceTests {
 
     @Test("isMigrationNeeded returns true when database file exists")
     func isMigrationNeeded_databaseExists_returnsTrue() {
-        let (sut, _, dbPath) = makeSUT()
+        let bundle = makeSUT()
+        let sut = bundle.sut
+        let dbPath = bundle.dbPath
         SQLiteTestHelper.createEmptyDatabase(at: dbPath)
         defer { SQLiteTestHelper.cleanup(path: dbPath) }
 
@@ -22,7 +24,8 @@ struct SQLiteMigrationServiceTests {
 
     @Test("isMigrationNeeded returns false when database file does not exist")
     func isMigrationNeeded_noDatabaseFile_returnsFalse() {
-        let (sut, _, _) = makeSUT()
+        let bundle = makeSUT()
+        let sut = bundle.sut
         #expect(sut.isMigrationNeeded() == false)
     }
 
@@ -30,7 +33,10 @@ struct SQLiteMigrationServiceTests {
 
     @Test("migrateAllUsersEntryData migrates single user entries successfully")
     func migrateAllUsersEntryData_singleUser_migratesEntries() async throws {
-        let (sut, repo, dbPath) = makeSUT()
+        let bundle = makeSUT()
+        let sut = bundle.sut
+        let repo = bundle.repo
+        let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(at: dbPath, entries: [
             .init(userId: "user-A", timestamp: "2026-01-01T08:00:00Z", opType: "create", weight: 1800),
             .init(userId: "user-A", timestamp: "2026-01-02T08:00:00Z", opType: "create", weight: 1750)
@@ -45,7 +51,10 @@ struct SQLiteMigrationServiceTests {
 
     @Test("migrateAllUsersEntryData migrates entries for multiple users")
     func migrateAllUsersEntryData_multipleUsers_migratesAllEntries() async throws {
-        let (sut, repo, dbPath) = makeSUT()
+        let bundle = makeSUT()
+        let sut = bundle.sut
+        let repo = bundle.repo
+        let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(at: dbPath, entries: [
             .init(userId: "user-A", timestamp: "2026-01-01T08:00:00Z", opType: "create", weight: 1800),
             .init(userId: "user-B", timestamp: "2026-01-01T08:00:00Z", opType: "create", weight: 1600),
@@ -62,10 +71,22 @@ struct SQLiteMigrationServiceTests {
 
     @Test("migrateAllUsersEntryData preserves weight and scale data in saved entries")
     func migrateAllUsersEntryData_withScaleData_preservesValues() async throws {
-        let (sut, repo, dbPath) = makeSUT()
+        let bundle = makeSUT()
+        let sut = bundle.sut
+        let repo = bundle.repo
+        let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(at: dbPath, entries: [
-            .init(userId: "user-A", timestamp: "2026-01-01T08:00:00Z", opType: "create",
-                  weight: 1800, bodyFat: 250, muscleMass: 820, water: 540, bmi: 230, source: "manual")
+            .init(
+                userId: "user-A",
+                timestamp: "2026-01-01T08:00:00Z",
+                opType: "create",
+                weight: 1800,
+                bodyFat: 250,
+                muscleMass: 820,
+                water: 540,
+                bmi: 230,
+                source: "manual"
+            )
         ])
         defer { SQLiteTestHelper.cleanup(path: dbPath) }
 
@@ -82,17 +103,28 @@ struct SQLiteMigrationServiceTests {
 
     @Test("migrateAllUsersEntryData preserves metric data from opStack_metric join")
     func migrateAllUsersEntryData_withMetrics_preservesValues() async throws {
-        let (sut, repo, dbPath) = makeSUT()
+        let bundle = makeSUT()
+        let sut = bundle.sut
+        let repo = bundle.repo
+        let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(
             at: dbPath,
             entries: [
                 .init(userId: "user-A", timestamp: "2026-01-01T08:00:00Z", opType: "create", weight: 1800)
             ],
             metrics: [
-                .init(userId: "user-A", timestamp: "2026-01-01T08:00:00Z",
-                      bmr: 1600, metabolicAge: 35, proteinPercent: 190, pulse: 72,
-                      skeletalMusclePercent: 410, subcutaneousFatPercent: 210,
-                      visceralFatLevel: 11, boneMass: 80)
+                .init(
+                    userId: "user-A",
+                    timestamp: "2026-01-01T08:00:00Z",
+                    bmr: 1600,
+                    metabolicAge: 35,
+                    proteinPercent: 190,
+                    pulse: 72,
+                    skeletalMusclePercent: 410,
+                    subcutaneousFatPercent: 210,
+                    visceralFatLevel: 11,
+                    boneMass: 80
+                )
             ]
         )
         defer { SQLiteTestHelper.cleanup(path: dbPath) }
@@ -112,7 +144,10 @@ struct SQLiteMigrationServiceTests {
 
     @Test("migrateAllUsersEntryData creates entry without scale data when weight is zero")
     func migrateAllUsersEntryData_weightZero_noScaleEntry() async throws {
-        let (sut, repo, dbPath) = makeSUT()
+        let bundle = makeSUT()
+        let sut = bundle.sut
+        let repo = bundle.repo
+        let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(at: dbPath, entries: [
             .init(userId: "user-A", timestamp: "2026-01-01T08:00:00Z", opType: "delete", weight: 0)
         ])
@@ -128,7 +163,10 @@ struct SQLiteMigrationServiceTests {
 
     @Test("migrateAllUsersEntryData creates entry without metric when no bmr or metabolicAge")
     func migrateAllUsersEntryData_noMetrics_noScaleEntryMetric() async throws {
-        let (sut, repo, dbPath) = makeSUT()
+        let bundle = makeSUT()
+        let sut = bundle.sut
+        let repo = bundle.repo
+        let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(
             at: dbPath,
             entries: [
@@ -145,7 +183,10 @@ struct SQLiteMigrationServiceTests {
 
     @Test("migrateAllUsersEntryData handles NULL values in optional scale fields")
     func migrateAllUsersEntryData_nullOptionalFields_handlesGracefully() async throws {
-        let (sut, repo, dbPath) = makeSUT()
+        let bundle = makeSUT()
+        let sut = bundle.sut
+        let repo = bundle.repo
+        let dbPath = bundle.dbPath
         // Entry with weight but all other scale fields NULL
         SQLiteTestHelper.createDatabase(at: dbPath, entries: [
             .init(userId: "user-A", timestamp: "2026-01-01T08:00:00Z", opType: "create", weight: 1800)
@@ -165,7 +206,10 @@ struct SQLiteMigrationServiceTests {
 
     @Test("migrateAllUsersEntryData sets entries as unsynced with scale device type")
     func migrateAllUsersEntryData_entryProperties_correctDefaults() async throws {
-        let (sut, repo, dbPath) = makeSUT()
+        let bundle = makeSUT()
+        let sut = bundle.sut
+        let repo = bundle.repo
+        let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(at: dbPath, entries: [
             .init(userId: "user-A", timestamp: "2026-03-01T08:00:00Z", opType: "create", weight: 1800)
         ])
@@ -184,7 +228,10 @@ struct SQLiteMigrationServiceTests {
 
     @Test("migrateAllUsersEntryData defaults operationType to create when NULL")
     func migrateAllUsersEntryData_nullOpType_defaultsToCreate() async throws {
-        let (sut, repo, dbPath) = makeSUT()
+        let bundle = makeSUT()
+        let sut = bundle.sut
+        let repo = bundle.repo
+        let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabaseWithNullOpType(at: dbPath, userId: "user-A", timestamp: "2026-01-01T08:00:00Z", weight: 1800)
         defer { SQLiteTestHelper.cleanup(path: dbPath) }
 
@@ -197,7 +244,10 @@ struct SQLiteMigrationServiceTests {
 
     @Test("migrateAllUsersEntryData returns empty dict when no opStack tables exist")
     func migrateAllUsersEntryData_noTables_returnsEmpty() async throws {
-        let (sut, repo, dbPath) = makeSUT()
+        let bundle = makeSUT()
+        let sut = bundle.sut
+        let repo = bundle.repo
+        let dbPath = bundle.dbPath
         SQLiteTestHelper.createEmptyDatabase(at: dbPath)
         defer { SQLiteTestHelper.cleanup(path: dbPath) }
 
@@ -209,7 +259,10 @@ struct SQLiteMigrationServiceTests {
 
     @Test("migrateAllUsersEntryData returns empty dict when opStack table has no rows")
     func migrateAllUsersEntryData_emptyTable_returnsEmpty() async throws {
-        let (sut, repo, dbPath) = makeSUT()
+        let bundle = makeSUT()
+        let sut = bundle.sut
+        let repo = bundle.repo
+        let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(at: dbPath, entries: [])
         defer { SQLiteTestHelper.cleanup(path: dbPath) }
 
@@ -223,8 +276,8 @@ struct SQLiteMigrationServiceTests {
 
     @Test("migrateAllUsersEntryData throws databaseConnectionFailed when file doesn't exist")
     func migrateAllUsersEntryData_noDatabase_throwsConnectionError() async {
-        let (sut, _, _) = makeSUT()
-
+        let bundle = makeSUT()
+        let sut = bundle.sut
         do {
             _ = try await sut.migrateAllUsersEntryData()
             Issue.record("Expected migrateAllUsersEntryData to throw")
@@ -237,7 +290,9 @@ struct SQLiteMigrationServiceTests {
     @Test("migrateAllUsersEntryData continues when individual entry save fails")
     func migrateAllUsersEntryData_partialSaveFailure_continuesWithRemaining() async throws {
         let mockRepo = MockSQLiteMigrationEntryRepository(failOnCallNumbers: [1])
-        let (sut, _, dbPath) = makeSUT(entryRepository: mockRepo)
+        let bundle = makeSUT(entryRepository: mockRepo)
+        let sut = bundle.sut
+        let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(at: dbPath, entries: [
             .init(userId: "user-A", timestamp: "2026-01-01T08:00:00Z", opType: "create", weight: 1800),
             .init(userId: "user-A", timestamp: "2026-01-02T08:00:00Z", opType: "create", weight: 1750),
@@ -256,7 +311,9 @@ struct SQLiteMigrationServiceTests {
     func migrateAllUsersEntryData_allSavesFail_returnsEmptyDict() async throws {
         let repo = MockEntryRepository()
         repo.saveEntryError = SQLiteMigrationTestError.saveFailed
-        let (sut, _, dbPath) = makeSUT(entryRepository: repo)
+        let bundle = makeSUT(entryRepository: repo)
+        let sut = bundle.sut
+        let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(at: dbPath, entries: [
             .init(userId: "user-A", timestamp: "2026-01-01T08:00:00Z", opType: "create", weight: 1800)
         ])
@@ -271,7 +328,9 @@ struct SQLiteMigrationServiceTests {
 
     @Test("cleanupAfterMigration removes database file")
     func cleanupAfterMigration_existingFile_removesIt() throws {
-        let (sut, _, dbPath) = makeSUT()
+        let bundle = makeSUT()
+        let sut = bundle.sut
+        let dbPath = bundle.dbPath
         SQLiteTestHelper.createEmptyDatabase(at: dbPath)
         #expect(FileManager.default.fileExists(atPath: dbPath) == true)
 
@@ -282,7 +341,8 @@ struct SQLiteMigrationServiceTests {
 
     @Test("cleanupAfterMigration does nothing when file doesn't exist")
     func cleanupAfterMigration_noFile_noOp() throws {
-        let (sut, _, _) = makeSUT()
+        let bundle = makeSUT()
+        let sut = bundle.sut
         // Should complete without error
         try sut.cleanupAfterMigration()
     }
@@ -291,7 +351,9 @@ struct SQLiteMigrationServiceTests {
 
     @Test("isMigrationNeeded returns false after cleanup")
     func isMigrationNeeded_afterCleanup_returnsFalse() throws {
-        let (sut, _, dbPath) = makeSUT()
+        let bundle = makeSUT()
+        let sut = bundle.sut
+        let dbPath = bundle.dbPath
         SQLiteTestHelper.createEmptyDatabase(at: dbPath)
         #expect(sut.isMigrationNeeded() == true)
 
@@ -302,7 +364,10 @@ struct SQLiteMigrationServiceTests {
 
     @Test("full migration flow: check needed, migrate, cleanup")
     func fullFlow_migrateAndCleanup_worksEndToEnd() async throws {
-        let (sut, repo, dbPath) = makeSUT()
+        let bundle = makeSUT()
+        let sut = bundle.sut
+        let repo = bundle.repo
+        let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(at: dbPath, entries: [
             .init(userId: "user-A", timestamp: "2026-01-01T08:00:00Z", opType: "create", weight: 1800)
         ])
@@ -324,7 +389,10 @@ struct SQLiteMigrationServiceTests {
 
     @Test("migrateAllUsersEntryData creates metric when only bmr exists")
     func migrateAllUsersEntryData_onlyBmr_createsMetric() async throws {
-        let (sut, repo, dbPath) = makeSUT()
+        let bundle = makeSUT()
+        let sut = bundle.sut
+        let repo = bundle.repo
+        let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(
             at: dbPath,
             entries: [
@@ -346,7 +414,10 @@ struct SQLiteMigrationServiceTests {
 
     @Test("migrateAllUsersEntryData creates metric when only metabolicAge exists")
     func migrateAllUsersEntryData_onlyMetabolicAge_createsMetric() async throws {
-        let (sut, repo, dbPath) = makeSUT()
+        let bundle = makeSUT()
+        let sut = bundle.sut
+        let repo = bundle.repo
+        let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(
             at: dbPath,
             entries: [
@@ -371,7 +442,7 @@ struct SQLiteMigrationServiceTests {
     @MainActor
     private func makeSUT(
         entryRepository: (any EntryRepositoryProtocol)? = nil
-    ) -> (sut: SQLiteMigrationService, repo: MockEntryRepository, dbPath: String) {
+    ) -> SQLiteMigrationSUT {
         TestDependencyContainer.reset()
 
         let dbPath = NSTemporaryDirectory() + "test_migration_\(UUID().uuidString).db"
@@ -379,8 +450,16 @@ struct SQLiteMigrationServiceTests {
         let actualRepo = entryRepository ?? repo
         let sut = SQLiteMigrationService(databasePathOverride: dbPath, entryRepository: actualRepo)
 
-        return (sut, repo, dbPath)
+        return SQLiteMigrationSUT(sut: sut, repo: repo, dbPath: dbPath)
     }
+}
+
+// MARK: - Test SUT Bundle
+
+private struct SQLiteMigrationSUT {
+    let sut: SQLiteMigrationService
+    let repo: MockEntryRepository
+    let dbPath: String
 }
 
 // MARK: - Test Errors
@@ -434,201 +513,4 @@ private final class MockSQLiteMigrationEntryRepository: EntryRepositoryProtocol 
     func markEntryAsDeleted(byId id: String) async throws {}
     func updateEntryServerEntryId(entryId: String, serverEntryId: String) async throws {}
     func fetchUnsyncedEntriesAsSnapshots(forUserId userId: String) async throws -> [(EntrySnapshot, BathScaleOperationDTO)] { [] }
-}
-
-// MARK: - SQLiteTestHelper
-
-private enum SQLiteTestHelper {
-    struct OpStackRow {
-        let userId: String
-        let timestamp: String
-        let opType: String
-        let weight: Int32
-        var bodyFat: Int32?
-        var muscleMass: Int32?
-        var water: Int32?
-        var bmi: Int32?
-        var source: String?
-        var attempts: Int32 = 0
-    }
-
-    struct OpStackMetricRow {
-        let userId: String
-        let timestamp: String
-        var bmr: Int32?
-        var metabolicAge: Int32?
-        var proteinPercent: Int32?
-        var pulse: Int32?
-        var skeletalMusclePercent: Int32?
-        var subcutaneousFatPercent: Int32?
-        var visceralFatLevel: Int32?
-        var boneMass: Int32?
-    }
-
-    static func createEmptyDatabase(at path: String) {
-        var db: OpaquePointer?
-        sqlite3_open(path, &db)
-        sqlite3_close(db)
-    }
-
-    static func createDatabase(
-        at path: String,
-        entries: [OpStackRow],
-        metrics: [OpStackMetricRow] = []
-    ) {
-        var db: OpaquePointer?
-        sqlite3_open(path, &db)
-
-        // Create opStack table
-        sqlite3_exec(db, """
-            CREATE TABLE opStack (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                userId TEXT NOT NULL,
-                entryTimestamp TEXT NOT NULL,
-                operationType TEXT,
-                weight INTEGER DEFAULT 0,
-                bodyFat INTEGER,
-                muscleMass INTEGER,
-                water INTEGER,
-                bmi INTEGER,
-                source TEXT,
-                attempts INTEGER DEFAULT 0
-            )
-        """, nil, nil, nil)
-
-        // Create opStack_metric table
-        sqlite3_exec(db, """
-            CREATE TABLE opStack_metric (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                userId TEXT NOT NULL,
-                entryTimestamp TEXT NOT NULL,
-                bmr INTEGER,
-                metabolicAge INTEGER,
-                proteinPercent INTEGER,
-                pulse INTEGER,
-                skeletalMusclePercent INTEGER,
-                subcutaneousFatPercent INTEGER,
-                visceralFatLevel INTEGER,
-                boneMass INTEGER
-            )
-        """, nil, nil, nil)
-
-        // Insert entries
-        for entry in entries {
-            let sql = buildInsertSQL(for: entry)
-            sqlite3_exec(db, sql, nil, nil, nil)
-        }
-
-        // Insert metrics
-        for metric in metrics {
-            let sql = buildInsertSQL(for: metric)
-            sqlite3_exec(db, sql, nil, nil, nil)
-        }
-
-        sqlite3_close(db)
-    }
-
-    static func createDatabaseWithNullOpType(at path: String, userId: String, timestamp: String, weight: Int32) {
-        var db: OpaquePointer?
-        sqlite3_open(path, &db)
-
-        sqlite3_exec(db, """
-            CREATE TABLE opStack (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                userId TEXT NOT NULL,
-                entryTimestamp TEXT NOT NULL,
-                operationType TEXT,
-                weight INTEGER DEFAULT 0,
-                bodyFat INTEGER,
-                muscleMass INTEGER,
-                water INTEGER,
-                bmi INTEGER,
-                source TEXT,
-                attempts INTEGER DEFAULT 0
-            )
-        """, nil, nil, nil)
-
-        sqlite3_exec(db, """
-            CREATE TABLE opStack_metric (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                userId TEXT NOT NULL,
-                entryTimestamp TEXT NOT NULL,
-                bmr INTEGER,
-                metabolicAge INTEGER,
-                proteinPercent INTEGER,
-                pulse INTEGER,
-                skeletalMusclePercent INTEGER,
-                subcutaneousFatPercent INTEGER,
-                visceralFatLevel INTEGER,
-                boneMass INTEGER
-            )
-        """, nil, nil, nil)
-
-        // Insert with NULL operationType
-        let sql = "INSERT INTO opStack (userId, entryTimestamp, operationType, weight) VALUES ('\(userId)', '\(timestamp)', NULL, \(weight))"
-        sqlite3_exec(db, sql, nil, nil, nil)
-
-        sqlite3_close(db)
-    }
-
-    static func cleanup(path: String) {
-        try? FileManager.default.removeItem(atPath: path)
-    }
-
-    // MARK: - SQL Builders
-
-    private static func buildInsertSQL(for entry: OpStackRow) -> String {
-        var columns = ["userId", "entryTimestamp", "operationType", "weight", "attempts"]
-        var values = ["'\(entry.userId)'", "'\(entry.timestamp)'", "'\(entry.opType)'", "\(entry.weight)", "\(entry.attempts)"]
-
-        if let bodyFat = entry.bodyFat {
-            columns.append("bodyFat"); values.append("\(bodyFat)")
-        }
-        if let muscleMass = entry.muscleMass {
-            columns.append("muscleMass"); values.append("\(muscleMass)")
-        }
-        if let water = entry.water {
-            columns.append("water"); values.append("\(water)")
-        }
-        if let bmi = entry.bmi {
-            columns.append("bmi"); values.append("\(bmi)")
-        }
-        if let source = entry.source {
-            columns.append("source"); values.append("'\(source)'")
-        }
-
-        return "INSERT INTO opStack (\(columns.joined(separator: ", "))) VALUES (\(values.joined(separator: ", ")))"
-    }
-
-    private static func buildInsertSQL(for metric: OpStackMetricRow) -> String {
-        var columns = ["userId", "entryTimestamp"]
-        var values = ["'\(metric.userId)'", "'\(metric.timestamp)'"]
-
-        if let bmr = metric.bmr {
-            columns.append("bmr"); values.append("\(bmr)")
-        }
-        if let metabolicAge = metric.metabolicAge {
-            columns.append("metabolicAge"); values.append("\(metabolicAge)")
-        }
-        if let proteinPercent = metric.proteinPercent {
-            columns.append("proteinPercent"); values.append("\(proteinPercent)")
-        }
-        if let pulse = metric.pulse {
-            columns.append("pulse"); values.append("\(pulse)")
-        }
-        if let skeletalMusclePercent = metric.skeletalMusclePercent {
-            columns.append("skeletalMusclePercent"); values.append("\(skeletalMusclePercent)")
-        }
-        if let subcutaneousFatPercent = metric.subcutaneousFatPercent {
-            columns.append("subcutaneousFatPercent"); values.append("\(subcutaneousFatPercent)")
-        }
-        if let visceralFatLevel = metric.visceralFatLevel {
-            columns.append("visceralFatLevel"); values.append("\(visceralFatLevel)")
-        }
-        if let boneMass = metric.boneMass {
-            columns.append("boneMass"); values.append("\(boneMass)")
-        }
-
-        return "INSERT INTO opStack_metric (\(columns.joined(separator: ", "))) VALUES (\(values.joined(separator: ", ")))"
-    }
 }

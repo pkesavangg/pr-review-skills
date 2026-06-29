@@ -1,7 +1,7 @@
 import Foundation
+@testable import meApp
 import Security
 import Testing
-@testable import meApp
 
 @Suite(.serialized)
 @MainActor
@@ -29,7 +29,9 @@ struct KeychainServiceTests {
         clearAllItems(for: serviceName)
 
         let sut = KeychainService(serviceName: serviceName)
+        // swiftlint:disable:next no_hardcoded_credentials
         let accountOneTokens = makeTokens(accessToken: "access-1", refreshToken: "refresh-1", expiresAt: "2099-01-01T00:00:00Z")
+        // swiftlint:disable:next no_hardcoded_credentials
         let accountTwoTokens = makeTokens(accessToken: "access-2", refreshToken: "refresh-2", expiresAt: "2099-02-02T00:00:00Z")
 
         sut.setTokens(accountOneTokens, for: "account-1")
@@ -48,7 +50,9 @@ struct KeychainServiceTests {
         clearAllItems(for: serviceName)
 
         let sut = KeychainService(serviceName: serviceName)
+        // swiftlint:disable:next no_hardcoded_credentials
         let originalTokens = makeTokens(accessToken: "access-old", refreshToken: "refresh-old", expiresAt: "2099-01-01T00:00:00Z")
+        // swiftlint:disable:next no_hardcoded_credentials
         let updatedTokens = makeTokens(accessToken: "access-new", refreshToken: "refresh-new", expiresAt: "2099-12-31T00:00:00Z")
 
         sut.setTokens(originalTokens, for: "account-1")
@@ -65,7 +69,9 @@ struct KeychainServiceTests {
         clearAllItems(for: serviceName)
 
         let sut = KeychainService(serviceName: serviceName)
+        // swiftlint:disable:next no_hardcoded_credentials
         let accountOneTokens = makeTokens(accessToken: "access-1", refreshToken: "refresh-1", expiresAt: "2099-01-01T00:00:00Z")
+        // swiftlint:disable:next no_hardcoded_credentials
         let accountTwoTokens = makeTokens(accessToken: "access-2", refreshToken: "refresh-2", expiresAt: "2099-02-02T00:00:00Z")
 
         sut.setTokens(accountOneTokens, for: "account-1")
@@ -128,6 +134,7 @@ struct KeychainServiceTests {
 
         sut.setTokens(tokens, for: "account-1")
         sut.setFCMToken("fcm-1", for: "account-1")
+        // swiftlint:disable:next no_hardcoded_credentials
         sut.setTokens(makeTokens(accessToken: "other-access", refreshToken: "other-refresh", expiresAt: "2099-03-03T00:00:00Z"), for: "account-2")
         sut.setFCMToken("fcm-2", for: "account-2")
 
@@ -217,6 +224,7 @@ struct KeychainServiceTests {
         let defaultServiceName = (Bundle.main.bundleIdentifier ?? "meApp") + ".tokens"
         clearAllItems(for: defaultServiceName)
 
+        // swiftlint:disable:next no_hardcoded_credentials
         let tokens = makeTokens(accessToken: "shared-access", refreshToken: "shared-refresh", expiresAt: "2099-06-01T00:00:00Z")
         KeychainService.shared.setTokens(tokens, for: "shared-account")
 

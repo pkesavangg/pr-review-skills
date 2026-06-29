@@ -1,7 +1,6 @@
-// swiftlint:disable function_parameter_count
-import Testing
 import Foundation
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -212,7 +211,10 @@ struct IntegrationAPIRepositoryTests {
             sentAt: "2026-03-01T08:00:00Z",
             timestamp: "2026-03-01T07:55:00Z",
             weight: 7500,
-            bodyFat: nil, muscleMass: nil, water: nil, bmi: nil,
+            bodyFat: nil,
+            muscleMass: nil,
+            water: nil,
+            bmi: nil,
             data: [:]
         )
         try await sut.logHealthIntegration(
@@ -220,7 +222,10 @@ struct IntegrationAPIRepositoryTests {
             sentAt: "2026-03-01T08:00:00Z",
             timestamp: "2026-03-01T07:55:00Z",
             weight: 7500,
-            bodyFat: nil, muscleMass: nil, water: nil, bmi: nil,
+            bodyFat: nil,
+            muscleMass: nil,
+            water: nil,
+            bmi: nil,
             data: [:]
         )
 
@@ -237,7 +242,11 @@ struct IntegrationAPIRepositoryTests {
                 type: .healthKit,
                 sentAt: "2026-03-01T08:00:00Z",
                 timestamp: "2026-03-01T07:55:00Z",
-                weight: nil, bodyFat: nil, muscleMass: nil, water: nil, bmi: nil,
+                weight: nil,
+                bodyFat: nil,
+                muscleMass: nil,
+                water: nil,
+                bmi: nil,
                 data: [:]
             )
         }
@@ -273,4 +282,3 @@ struct IntegrationAPIRepositoryTests {
         #expect(http.sendCalls == 1)
     }
 }
-// swiftlint:enable function_parameter_count

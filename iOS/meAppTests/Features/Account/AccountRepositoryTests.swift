@@ -1,7 +1,7 @@
 import Foundation
+@testable import meApp
 import SwiftData
 import Testing
-@testable import meApp
 
 @Suite(.serialized)
 @MainActor
@@ -530,8 +530,8 @@ struct AccountRepositoryTests {
         #expect(activeAccounts.count == 1)
         #expect(activeAccounts.first?.accountId == "acct-3")
         #expect(activeAccounts.first?.lastActiveTime == "2026-03-11T10:00:00Z")
-        #expect(all.first(where: { $0.accountId == "acct-1" })?.isActiveAccount == false)
-        #expect(all.first(where: { $0.accountId == "acct-2" })?.isActiveAccount == false)
+        #expect(all.first { $0.accountId == "acct-1" }?.isActiveAccount == false)
+        #expect(all.first { $0.accountId == "acct-2" }?.isActiveAccount == false)
     }
 
     @Test("activateAccount throws accountNotFound when target account is missing")

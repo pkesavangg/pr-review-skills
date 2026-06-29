@@ -36,6 +36,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
     var cancellables = Set<AnyCancellable>()
     let tag = "AccountService"
 
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     init(
         apiRepo: AccountRepositoryAPIProtocol? = nil,
         localRepo: AccountRepositoryProtocol? = nil,

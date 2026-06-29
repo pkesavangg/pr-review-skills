@@ -107,7 +107,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         updateMetrics: @escaping () -> Void
     ) {
         state.scrollEndTimer?.invalidate()
-        state.scrollEndTimer = Timer.scheduledTimer(withTimeInterval: DashboardConstants.UIConstants.scrollEndDebounceDelay, repeats: false) { [weak self] _ in
+        state.scrollEndTimer = Timer.scheduledTimer(
+            withTimeInterval: DashboardConstants.UIConstants.scrollEndDebounceDelay,
+            repeats: false
+        ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.state.isScrolling = false

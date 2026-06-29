@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -74,11 +74,11 @@ struct LandingStoreTests {
     func showsAllSavedAccounts() async {
         let (store, accountService) = makeSUT()
 
-        let a = makeAccount(id: "a", isLoggedIn: true, isExpired: false)
-        let b = makeAccount(id: "b", isLoggedIn: false, isExpired: false)
-        let c = makeAccount(id: "c", isLoggedIn: true, isExpired: true)
-        let d = makeAccount(id: "d", isLoggedIn: true, isExpired: false)
-        accountService.seedAccounts([a, b, c, d], active: a)
+        let activeAccount = makeAccount(id: "a", isLoggedIn: true, isExpired: false)
+        let loggedOutAccount = makeAccount(id: "b", isLoggedIn: false, isExpired: false)
+        let expiredAccount = makeAccount(id: "c", isLoggedIn: true, isExpired: true)
+        let secondActiveAccount = makeAccount(id: "d", isLoggedIn: true, isExpired: false)
+        accountService.seedAccounts([activeAccount, loggedOutAccount, expiredAccount, secondActiveAccount], active: activeAccount)
 
         await waitUntil { store.accounts.count == 4 }
 

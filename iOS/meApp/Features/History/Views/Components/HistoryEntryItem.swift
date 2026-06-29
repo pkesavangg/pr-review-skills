@@ -121,7 +121,9 @@ struct HistoryEntryItem: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(combinedAccessibilityLabel)
             .accessibilityAddTraits(entry.metricItems.isEmpty ? [] : .isButton)
-            .accessibilityHint(entry.metricItems.isEmpty ? "" : (isExpanded ? HistoryListStrings.accEntryCollapseHint : HistoryListStrings.accEntryExpandHint))
+            .accessibilityHint(entry.metricItems.isEmpty
+                ? ""
+                : (isExpanded ? HistoryListStrings.accEntryCollapseHint : HistoryListStrings.accEntryExpandHint))
             // Swipeable delete action
             .swipeableActions(
                 buttons: [
