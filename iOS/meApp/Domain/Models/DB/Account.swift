@@ -13,9 +13,9 @@
 /// | isLoggedIn      | bool?   | If the user is logged in                    |
 /// | isExpired       | bool?   | Whether the account/session is expired      |
 /// | isActiveAccount | bool?   | Indicates if the account is active          |
-/// | accessToken     | string? | In-memory only; tokens live in Keychain     |
-/// | refreshToken    | string? | In-memory only; tokens live in Keychain     |
-/// | expiresAt       | string? | In-memory only; tokens live in Keychain     |
+/// | accessToken     | string? | Keychain is source of truth; persisted col cleared on save (5.0.3 migration only) |
+/// | refreshToken    | string? | Keychain is source of truth; persisted col cleared on save (5.0.3 migration only) |
+/// | expiresAt       | string? | Keychain is source of truth; persisted col cleared on save (5.0.3 migration only) |
 /// | fcmToken        | string? | Firebase Cloud Messaging token              |
 /// | lastActiveTime  | string? | Timestamp of last activity                  |
 /// | isSynced        | bool?   | Whether account is synced online            |
@@ -57,20 +57,26 @@ final class Account {
     var isExpired: Bool?
     /// Indicates if the account is currently active
     var isActiveAccount: Bool?
-    /// OAuth or app-specific access token (in-memory only; source of truth is Keychain).
-    @Transient var accessToken: String?
-    /// OAuth refresh token (in-memory only; source of truth is Keychain).
-    @Transient var refreshToken: String?
-    /// Access token expiration time (in-memory only; source of truth is Keychain).
-    @Transient var expiresAt: String?
+    /// OAuth or app-specific access token. Keychain is the source of truth; this column is
+    /// persisted (not `@Transient`) only so the one-time `migrateTokensToKeychainIfNeeded()`
+    /// pass can read the value an upgrading 5.0.3 store still holds. It is cleared to `nil`
+    /// before every save (see `clearTokenFieldsBeforeSave`), so it never re-persists a token.
+    var accessToken: String?
+    /// OAuth refresh token. Persisted only for the one-time 5.0.3 → Keychain migration; cleared on save.
+    var refreshToken: String?
+    /// Access token expiration time. Persisted only for the one-time 5.0.3 → Keychain migration; cleared on save.
+    var expiresAt: String?
     /// Firebase Cloud Messaging token
     var fcmToken: String?
     /// Timestamp of last activity
     var lastActiveTime: String?
     /// Whether account is updated and synced online
     var isSynced: Bool?
-    /// Product types the user has selected (e.g. "myWeight", "myBloodPressure", "baby")
-    var productTypes: [String] = []
+    /// Product types the user has selected (e.g. "myWeight", "myBloodPressure", "baby").
+    /// Defaults to `["myWeight"]` so SwiftData lightweight migration can infer this
+    /// non-optional column when upgrading from 5.0.3 (where it did not exist) and so
+    /// existing weight-only accounts back-fill to weight rather than an empty selection.
+    var productTypes: [String] = ["myWeight"]
     /// Preferred measurement units ("metric", "imperialLbOz", "imperialLbDecimal").
     /// Sourced from the server `measurementUnits` field; nil until set.
     var measurementUnits: String?

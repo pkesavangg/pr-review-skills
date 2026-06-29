@@ -88,11 +88,16 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
             do {
                 if let activeAcct = try localRepo?.fetchAllAccountsSync()
                     .first(where: { $0.isActiveAccount == true }) {
-                    let tokens = keychainService.getTokens(for: activeAcct.accountId)
+                    let keychainTokens = keychainService.getTokens(for: activeAcct.accountId)
+                    // During the 5.0.3 → Keychain migration window, Keychain is empty but the
+                    // SwiftData columns still hold the 5.0.3 tokens. Use them as a fallback so
+                    // session services that register immediately after this assignment never see
+                    // an empty bearer token (which would cause a spurious 401 → auto-logout
+                    // before migrateTokensToKeychainIfNeeded() runs in the sibling Task).
                     self.activeAccount = activeAcct.toSnapshot(
-                        accessToken: tokens?.accessToken,
-                        refreshToken: tokens?.refreshToken,
-                        expiresAt: tokens?.expiresAt
+                        accessToken: keychainTokens?.accessToken ?? activeAcct.accessToken,
+                        refreshToken: keychainTokens?.refreshToken ?? activeAcct.refreshToken,
+                        expiresAt: keychainTokens?.expiresAt ?? activeAcct.expiresAt
                     )
                     Theme.shared.setActiveAccount(activeAcct.accountId)
                 }
@@ -104,10 +109,17 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         // Load initial accounts from local storage
         Task {
             do {
-                try await migrateTokensToKeychainIfNeeded()
-                try await syncUnsyncedAccounts() // Try to sync any offline changes
+                let justMigrated = try await migrateTokensToKeychainIfNeeded()
+                // On first launch after a 5.0.3 upgrade the local data is already complete —
+                // skip the server sync/refresh so we never fire API calls with potentially
+                // stale tokens. Normal sync/refresh resumes on every subsequent launch.
+                if !justMigrated {
+                    try await syncUnsyncedAccounts()
+                }
                 try await updatePublishedState()
-                try await refreshAllAccounts()
+                if !justMigrated {
+                    try await refreshAllAccounts()
+                }
                 if activeAccount == nil {
                     /// migrate from ionic app if needed
                     isIonicMigrationInProgress = true
@@ -1412,10 +1424,14 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
     }
 
     /// One-time migration: copy tokens from SwiftData to Keychain, then clear on Account so SwiftData never persists them again.
-    private func migrateTokensToKeychainIfNeeded() async throws {
+    /// Moves tokens from the 5.0.3 SwiftData columns to the Keychain.
+    /// Returns `true` if this was the first run of the migration (i.e. we actually moved tokens),
+    /// `false` if the migration had already been completed on a previous launch.
+    @discardableResult
+    private func migrateTokensToKeychainIfNeeded() async throws -> Bool {
         let key = KvStorageKeys.tokensMigratedToKeychain.rawValue
         if kvStorage.getValue(forKey: key) as? Bool == true {
-            return
+            return false
         }
         let accounts = try await localRepo.fetchAllAccounts()
         for account in accounts {
@@ -1432,6 +1448,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         }
         kvStorage.setValue(true, forKey: key)
         logger.log(level: .info, tag: tag, message: "Tokens migrated from SwiftData to Keychain for \(accounts.count) account(s)")
+        return true
     }
 
     /// Clears token fields on account before persist so tokens are never stored in SwiftData (Keychain only).
