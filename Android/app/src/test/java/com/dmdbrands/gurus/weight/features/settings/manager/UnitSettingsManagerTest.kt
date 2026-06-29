@@ -12,10 +12,14 @@ import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsState
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
 import com.google.common.truth.Truth.assertThat
+import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import kotlinx.coroutines.flow.flowOf
+import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsIntent
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -178,5 +182,51 @@ class UnitSettingsManagerTest {
     val keys = (config.sections as List<RadioGroupSection<String>>).map { it.key }
 
     assertThat(keys).containsExactly(UnitSettingsManager.SECTION_MY_WEIGHT)
+  }
+
+  @Test
+  fun `observeBabyWeightUnit dispatches the persisted baby unit`() = runTest {
+    every { userDataStore.babyWeightUnitForCurrentAccountFlow } returns flowOf(WeightUnit.KG)
+    val dispatch = mockk<(SettingsIntent) -> Unit>(relaxed = true)
+
+    manager.observeBabyWeightUnit(scope = this, dispatchIntent = dispatch)
+    advanceUntilIdle()
+
+    verify { dispatch(SettingsIntent.SetBabyWeightUnit(WeightUnit.KG)) }
+  }
+
+  @Test
+  fun `handleSave with no active account persists nothing`() = runTest {
+    val onConfirm = openDialog(SettingsState(account = null, isBabyProduct = true))
+
+    onConfirm(
+      mapOf(
+        UnitSettingsManager.SECTION_MY_WEIGHT to WeightUnit.KG.value,
+        UnitSettingsManager.SECTION_MY_KIDS to WeightUnit.KG.value,
+      ),
+    )
+    advanceUntilIdle()
+
+    verify(exactly = 0) { dialogQueueService.showLoader(any()) }
+    coVerify(exactly = 0) { userDataStore.setBabyWeightUnit(any(), any()) }
+  }
+
+  @Test
+  fun `handleSave swallows persistence exception and still dismisses loader`() = runTest {
+    coEvery { bodyCompositionService.updateBodyComposition(any(), any(), any()) } throws
+      RuntimeException("update failed")
+    val onConfirm = openDialog(stateWithBaby())
+
+    // Adult changes (lb -> kg) -> loader shown; the failing body-comp update must still
+    // dismiss the loader in the finally block.
+    onConfirm(
+      mapOf(
+        UnitSettingsManager.SECTION_MY_WEIGHT to WeightUnit.KG.value,
+        UnitSettingsManager.SECTION_MY_KIDS to WeightUnit.LB_OZ.value,
+      ),
+    )
+    advanceUntilIdle()
+
+    verify(exactly = 1) { dialogQueueService.dismissLoader() }
   }
 }

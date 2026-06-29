@@ -27,6 +27,7 @@ import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
+import com.dmdbrands.gurus.weight.features.common.model.ReadingToast
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.strings.ReadingToastStrings
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
@@ -128,7 +129,10 @@ class AppViewModelTest {
         every { entryReadService.latestEntry() } returns flowOf<Entry?>(null)
     }
 
-    private fun createViewModel(): AppViewModel =
+    private fun createViewModel(
+        productSelectionManager: com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager =
+            mockk(relaxed = true),
+    ): AppViewModel =
         AppViewModel(
             appRepository = appRepository,
             entryService = entryService,
@@ -156,6 +160,7 @@ class AppViewModelTest {
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
+            productSelectionManager = productSelectionManager,
         ).also { createdViewModels += it }
 
     // -------------------------------------------------------------------------
@@ -696,5 +701,689 @@ class AppViewModelTest {
         verify { dialogQueueService.showToast(capture(toasts)) }
         assertThat(toasts.any { it is Toast.Simple && it.message == ReadingToastStrings.SaveFailed }).isFalse()
         assertThat(toasts.any { it is Toast.Custom }).isTrue()
+    }
+
+    @Test
+    fun `assignReadingToBaby with unknown babyId persists but shows no assigned toast`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        coEvery { entryService.addBabyEntry(any()) } returns 5L
+
+        // babyId is not present in the babies list -> firstOrNull is null -> no assigned toast.
+        viewModel.assignReadingToBaby(
+            entry = listOf(TestFixtures.weightEntry),
+            babyId = "ghost-baby",
+            babies = listOf(aBaby(id = "baby1")),
+            previousEntryIds = emptyList(),
+        )
+        advanceUntilIdle()
+
+        coVerify { entryService.addBabyEntry(any()) }
+        verify(exactly = 0) { dialogQueueService.showToast(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // Entry assignment / routing — saveEntry, saveBpmEntry, saveBluetoothEntries
+    // (MOB-968). These are private; drive them via reflection like assignReadingToBaby.
+    // -------------------------------------------------------------------------
+
+    private fun AppViewModel.invokePrivate(name: String, vararg args: Any?) {
+        val fn = AppViewModel::class.declaredMemberFunctions.first { it.name == name }
+        fn.isAccessible = true
+        fn.call(this, *args)
+    }
+
+    private fun aScaleGGEntry(broadcastId: String = "bc-1") = com.dmdbrands.library.ggbluetooth.model.GGScaleEntry(
+        bmi = 0f, bmr = 0, bodyFat = 0f, water = 0f, boneMass = 0f, metabolicAge = 0,
+        muscleMass = 0f, proteinPercent = 0f, skeletalMusclePercent = 0f,
+        subcutaneousFatPercent = 0f, unit = "lb", visceralFatLevel = 0,
+        weight = 150f, weightInKg = 68f, date = 1_700_000_000_000L, impedance = 0f,
+        pulse = 0, broadcastId = broadcastId, broadcastIdString = broadcastId,
+    )
+
+    private fun aBpmGGEntry(broadcastId: String = "bc-bpm") = com.dmdbrands.library.ggbluetooth.model.GGBPMEntry(
+        systolic = 120, diastolic = 80, pulse = 72, date = 1_700_000_000_000L,
+        broadcastId = broadcastId, broadcastIdString = broadcastId,
+        protocolType = "bpm", userNumber = 1, meanPressure = 93,
+    )
+
+    private fun captureReadingToast(): ReadingToast {
+        val toasts = mutableListOf<Toast>()
+        verify { dialogQueueService.showToast(capture(toasts)) }
+        return (toasts.last { it is Toast.Custom } as Toast.Custom).content as ReadingToast
+    }
+
+    @Test
+    fun `saveEntry with empty list does nothing`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.invokePrivate("saveEntry", emptyList<com.dmdbrands.library.ggbluetooth.model.GGScaleEntry>())
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { entryService.addEntry(any<List<Entry>>()) }
+    }
+
+    @Test
+    fun `saveEntry returns early when device unknown and setup not in progress`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        coEvery { deviceService.isSetupInProgress() } returns false
+        coEvery { deviceService.getScaleByBroadcastId(any(), any()) } returns null
+
+        viewModel.invokePrivate("saveEntry", listOf(aScaleGGEntry()))
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { entryService.addEntry(any<List<Entry>>()) }
+    }
+
+    @Test
+    fun `saveEntry during setup saves immediately without toast`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        coEvery { deviceService.isSetupInProgress() } returns true
+        coEvery { deviceService.getScaleByBroadcastId(any(), any()) } returns null
+
+        viewModel.invokePrivate("saveEntry", listOf(aScaleGGEntry()))
+        advanceUntilIdle()
+
+        coVerify { entryService.addEntry(any<List<Entry>>()) }
+        verify(exactly = 0) { dialogQueueService.showToast(any()) }
+    }
+
+    @Test
+    fun `saveEntry not in setup shows a reading toast whose Save action persists the entry`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        coEvery { deviceService.isSetupInProgress() } returns false
+        coEvery { deviceService.getScaleByBroadcastId(any(), any()) } returns
+            TestFixtures.aDevice(id = "dev-1").copy(sku = "0412")
+
+        viewModel.invokePrivate("saveEntry", listOf(aScaleGGEntry()))
+        advanceUntilIdle()
+
+        val toast = captureReadingToast()
+        assertThat(toast.type).isEqualTo(com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT)
+
+        // Invoking the Save (primary) action persists the entry.
+        toast.primaryAction()
+        advanceUntilIdle()
+        coVerify { entryService.addEntry(any<List<Entry>>()) }
+    }
+
+    @Test
+    fun `saveEntry reading toast discard action dismisses without persisting`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        coEvery { deviceService.isSetupInProgress() } returns false
+        coEvery { deviceService.getScaleByBroadcastId(any(), any()) } returns
+            TestFixtures.aDevice(id = "dev-1").copy(sku = "0412")
+
+        viewModel.invokePrivate("saveEntry", listOf(aScaleGGEntry()))
+        advanceUntilIdle()
+
+        val toast = captureReadingToast()
+        toast.secondaryAction()
+        advanceUntilIdle()
+
+        verify { dialogQueueService.dismissToast() }
+        coVerify(exactly = 0) { entryService.addEntry(any<List<Entry>>()) }
+    }
+
+    @Test
+    fun `saveBpmEntry maps and saves via saveBluetoothEntries when device known`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        coEvery { deviceService.isSetupInProgress() } returns false
+        coEvery { deviceService.getScaleByBroadcastId(any(), any()) } returns
+            TestFixtures.aDevice(id = "dev-bpm").copy(sku = "0663")
+
+        viewModel.invokePrivate("saveBpmEntry", listOf(aBpmGGEntry()))
+        advanceUntilIdle()
+
+        coVerify { entryService.addEntry(any<List<Entry>>()) }
+        verify { dialogQueueService.showToast(any()) }
+    }
+
+    @Test
+    fun `saveBpmEntry returns early when device unknown and not in setup`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        coEvery { deviceService.isSetupInProgress() } returns false
+        coEvery { deviceService.getScaleByBroadcastId(any(), any()) } returns null
+
+        viewModel.invokePrivate("saveBpmEntry", listOf(aBpmGGEntry()))
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { entryService.addEntry(any<List<Entry>>()) }
+    }
+
+    @Test
+    fun `saveBpmEntry during setup saves without success toast`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        coEvery { deviceService.isSetupInProgress() } returns true
+        coEvery { deviceService.getScaleByBroadcastId(any(), any()) } returns null
+
+        viewModel.invokePrivate("saveBpmEntry", listOf(aBpmGGEntry()))
+        advanceUntilIdle()
+
+        coVerify { entryService.addEntry(any<List<Entry>>()) }
+        verify(exactly = 0) { dialogQueueService.showToast(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // Notification-permission gate (MOB-774) + app-permission routing
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `checkAndRequestNotificationPermission requests when alert not yet shown`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        coEvery { accountService.hasShownNotificationAlertForAccount(any()) } returns false
+
+        viewModel.invokePrivate("checkAndRequestNotificationPermission")
+        advanceUntilIdle()
+
+        coVerify { accountService.setNotificationAlertShownForAccount(any(), true) }
+        verify { dialogUtility.permissionAlert(permissionType = any(), onRequest = any(), onDismiss = any()) }
+    }
+
+    @Test
+    fun `checkAndRequestNotificationPermission skips when alert already shown`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        coEvery { accountService.hasShownNotificationAlertForAccount(any()) } returns true
+
+        viewModel.invokePrivate("checkAndRequestNotificationPermission")
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { accountService.setNotificationAlertShownForAccount(any(), any()) }
+        verify(exactly = 0) { dialogUtility.permissionAlert(permissionType = any(), onRequest = any(), onDismiss = any()) }
+    }
+
+    @Test
+    fun `requestPermissions ALL onRequest navigates to AppPermissions and dismisses`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        val onRequest = slot<() -> Unit>()
+        every {
+            dialogUtility.permissionAlert(permissionType = any(), onRequest = capture(onRequest), onDismiss = any())
+        } returns Unit
+
+        viewModel.invokePrivate("requestPermissions", "ALL")
+        advanceUntilIdle()
+        onRequest.captured.invoke()
+        advanceUntilIdle()
+
+        coVerify { navigationService.navigateTo(AppRoute.AccountSettings.AppPermissions) }
+        verify { dialogQueueService.dismissCurrent() }
+    }
+
+    @Test
+    fun `requestPermissions non-ALL onRequest delegates to ggPermissionService`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        val onRequest = slot<() -> Unit>()
+        every {
+            dialogUtility.permissionAlert(permissionType = any(), onRequest = capture(onRequest), onDismiss = any())
+        } returns Unit
+
+        viewModel.invokePrivate("requestPermissions", "NOTIFICATION")
+        advanceUntilIdle()
+        onRequest.captured.invoke()
+        advanceUntilIdle()
+
+        verify { ggPermissionService.requestPermission("NOTIFICATION") }
+    }
+
+    @Test
+    fun `navigateToAppPermissions routes to AppPermissions`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.invokePrivate("navigateToAppPermissions")
+        advanceUntilIdle()
+
+        coVerify { navigationService.navigateTo(AppRoute.AccountSettings.AppPermissions) }
+    }
+
+    @Test
+    fun `stopScan resets callbacks and clears scan status`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.invokePrivate("stopScan")
+        advanceUntilIdle()
+
+        verify { ggPermissionService.resetCallbacks() }
+        verify { ggPermissionService.stopScan() }
+        assertThat(viewModel.state.value.hasScanStarted).isFalse()
+    }
+
+    @Test
+    fun `checkCanShowWeightOnlyModeAlert runs without error when no paired scales`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // latestPairedScales is empty by default — exercises the empty-path branches.
+        viewModel.invokePrivate("checkCanShowWeightOnlyModeAlert")
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value).isNotNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // Device-callback routing — handleEntryResponse + handleDeviceResponse
+    // (entry-type routing scale/bpm and connection-status branches, MOB-968)
+    // -------------------------------------------------------------------------
+
+    private fun aDeviceDetail(broadcastId: String = "bc-1"): com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail {
+        val detail = mockk<com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail>(relaxed = true)
+        every { detail.broadcastId } returns broadcastId
+        every { detail.macAddress } returns "AA:BB:CC:DD:EE:FF"
+        return detail
+    }
+
+    @Test
+    fun `handleEntryResponse routes scale entries to saveEntry`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        coEvery { deviceService.isSetupInProgress() } returns true
+        coEvery { deviceService.getScaleByBroadcastId(any(), any()) } returns null
+
+        val response = com.dmdbrands.library.ggbluetooth.model.GGScanResponse.Entry(
+            type = com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType.SINGLE_ENTRY,
+            data = listOf(aScaleGGEntry()),
+        )
+        viewModel.invokePrivate("handleEntryResponse", response)
+        advanceUntilIdle()
+
+        coVerify { entryService.addEntry(any<List<Entry>>()) }
+    }
+
+    @Test
+    fun `handleEntryResponse routes bpm entries to saveBpmEntry`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        coEvery { deviceService.isSetupInProgress() } returns true
+        coEvery { deviceService.getScaleByBroadcastId(any(), any()) } returns null
+
+        val response = com.dmdbrands.library.ggbluetooth.model.GGScanResponse.Entry(
+            type = com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType.MULTI_ENTRIES,
+            data = listOf(aBpmGGEntry()),
+        )
+        viewModel.invokePrivate("handleEntryResponse", response)
+        advanceUntilIdle()
+
+        coVerify { entryService.addEntry(any<List<Entry>>()) }
+    }
+
+    @Test
+    fun `handleDeviceResponse DEVICE_CONNECTED updates device and logs analytics`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val response = com.dmdbrands.library.ggbluetooth.model.GGScanResponse.DeviceDetail(
+            type = com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType.DEVICE_CONNECTED,
+            data = aDeviceDetail(),
+        )
+        viewModel.invokePrivate("handleDeviceResponse", response)
+        advanceUntilIdle()
+
+        coVerify { deviceService.onDeviceUpdate(any(), any()) }
+    }
+
+    @Test
+    fun `handleDeviceResponse DEVICE_DISCONNECTED clears discovered state`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        viewModel.handleIntent(AppIntent.SetScaleDiscovered(true))
+
+        val response = com.dmdbrands.library.ggbluetooth.model.GGScanResponse.DeviceDetail(
+            type = com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType.DEVICE_DISCONNECTED,
+            data = aDeviceDetail(),
+        )
+        viewModel.invokePrivate("handleDeviceResponse", response)
+        advanceUntilIdle()
+
+        coVerify { deviceService.onDeviceUpdate(any(), any()) }
+        assertThat(viewModel.state.value.isScaleDiscovered).isFalse()
+    }
+
+    @Test
+    fun `handleDeviceResponse DEVICE_INFO_UPDATE updates device`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val response = com.dmdbrands.library.ggbluetooth.model.GGScanResponse.DeviceDetail(
+            type = com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType.DEVICE_INFO_UPDATE,
+            data = aDeviceDetail(),
+        )
+        viewModel.invokePrivate("handleDeviceResponse", response)
+        advanceUntilIdle()
+
+        coVerify { deviceService.onDeviceUpdate(any(), any()) }
+    }
+
+    @Test
+    fun `handleDeviceResponse WIFI_STATUS_UPDATE updates device as connected`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val response = com.dmdbrands.library.ggbluetooth.model.GGScanResponse.DeviceDetail(
+            type = com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType.WIFI_STATUS_UPDATE,
+            data = aDeviceDetail(),
+        )
+        viewModel.invokePrivate("handleDeviceResponse", response)
+        advanceUntilIdle()
+
+        coVerify { deviceService.onDeviceUpdate(any(), any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // Baby reading assignment routing — saveEntry baby branches (MOB-426 / MOB-428)
+    // -------------------------------------------------------------------------
+
+    private fun babyProductManager(
+        babies: List<BabyProfile>,
+    ): com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager {
+        val manager = mockk<com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager>(relaxed = true)
+        val products = babies.map {
+            com.dmdbrands.gurus.weight.domain.model.common.ProductSelection.Baby(it)
+        }
+        every { manager.availableProducts } returns MutableStateFlow(products)
+        return manager
+    }
+
+    @Test
+    fun `saveEntry from baby scale with no baby profile shows an ADD A BABY toast`() = runTest {
+        viewModel = createViewModel(productSelectionManager = babyProductManager(emptyList()))
+        advanceUntilIdle()
+        coEvery { deviceService.isSetupInProgress() } returns false
+        coEvery { deviceService.getScaleByBroadcastId(any(), any()) } returns
+            TestFixtures.aDevice(id = "baby-dev").copy(sku = SKU_0220)
+
+        viewModel.invokePrivate("saveEntry", listOf(aScaleGGEntry()))
+        advanceUntilIdle()
+
+        val toast = captureReadingToast()
+        assertThat(toast.type).isEqualTo(com.dmdbrands.gurus.weight.domain.enums.ProductType.BABY)
+        assertThat(toast.noBabyProfile).isTrue()
+
+        // The CTA routes to AddBaby rather than the assign flow.
+        toast.primaryAction()
+        advanceUntilIdle()
+        coVerify { navigationService.navigateTo(any<AppRoute.AccountSettings.AddBaby>()) }
+    }
+
+    @Test
+    fun `saveEntry from baby scale with a single baby auto-assigns without the picker`() = runTest {
+        viewModel = createViewModel(productSelectionManager = babyProductManager(listOf(aBaby())))
+        advanceUntilIdle()
+        coEvery { deviceService.isSetupInProgress() } returns false
+        coEvery { deviceService.getScaleByBroadcastId(any(), any()) } returns
+            TestFixtures.aDevice(id = "baby-dev").copy(sku = SKU_0220)
+        coEvery { entryService.addBabyEntry(any()) } returns 7L
+
+        viewModel.invokePrivate("saveEntry", listOf(aScaleGGEntry()))
+        advanceUntilIdle()
+
+        val toast = captureReadingToast()
+        assertThat(toast.noBabyProfile).isFalse()
+
+        // Single baby -> primary action assigns straight to that baby.
+        toast.primaryAction()
+        advanceUntilIdle()
+        coVerify { entryService.addBabyEntry(any()) }
+    }
+
+    @Test
+    fun `saveEntry from baby scale with multiple babies opens the assign picker`() = runTest {
+        viewModel = createViewModel(
+            productSelectionManager = babyProductManager(listOf(aBaby("baby1"), aBaby("baby2"))),
+        )
+        advanceUntilIdle()
+        coEvery { deviceService.isSetupInProgress() } returns false
+        coEvery { deviceService.getScaleByBroadcastId(any(), any()) } returns
+            TestFixtures.aDevice(id = "baby-dev").copy(sku = SKU_0220)
+
+        viewModel.invokePrivate("saveEntry", listOf(aScaleGGEntry()))
+        advanceUntilIdle()
+
+        val toast = captureReadingToast()
+        toast.primaryAction()
+        advanceUntilIdle()
+
+        // Two babies -> disambiguation dialog rather than a direct save.
+        verify { dialogQueueService.showDialog(any()) }
+        coVerify(exactly = 0) { entryService.addBabyEntry(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // Auth event handlers — remaining branches (MOB-967 account management)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `AuthState EncryptionFailure logs out all accounts and routes to landing`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        coEvery { accountService.getCurrentAccount() } returns TestFixtures.activeAccount
+
+        authEventFlow.emit(AuthState.EncryptionFailure(accountId = "acc-1"))
+        advanceUntilIdle()
+
+        coVerify { accountService.logoutAll() }
+        coVerify { navigationService.replaceStack(route = AppRoute.Auth.Landing) }
+        verify { dialogUtility.showAccountLoggedOutAlert(TestFixtures.activeAccount.firstName) }
+    }
+
+    @Test
+    fun `AuthState NavigateToMyAccounts stops scan`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        authEventFlow.emit(AuthState.NavigateToMyAccounts)
+        advanceUntilIdle()
+
+        verify { ggPermissionService.stopScan() }
+    }
+
+    @Test
+    fun `AuthState NavigateBackFromMyAccounts restarts scan and syncs scales`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        every { deviceService.getGGBTDevices() } returns flowOf(emptyList())
+
+        authEventFlow.emit(AuthState.NavigateBackFromMyAccounts)
+        advanceUntilIdle()
+
+        coVerify { deviceService.getGGBTDevices() }
+    }
+
+    @Test
+    fun `AuthState ProfileUpdated is handled without navigation`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        authEventFlow.emit(AuthState.ProfileUpdated(account = TestFixtures.activeAccount))
+        advanceUntilIdle()
+
+        // No navigation side effect for a profile update.
+        coVerify(exactly = 0) { navigationService.replaceStack(route = any<AppRoute>()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // Notification event handlers — sync + tap deep-link (MOB-434)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `NOTIFICATION_RECEIVED event syncs operations and shows a success toast`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        AppNotificationEventService.emit(
+            com.dmdbrands.gurus.weight.core.service.NotificationEventType.NOTIFICATION_RECEIVED,
+        )
+        advanceUntilIdle()
+
+        coVerify { entryService.syncOperations() }
+        verify { dialogQueueService.showToast(any()) }
+    }
+
+    @Test
+    fun `NOTIFICATION_TAPPED event syncs operations`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        AppNotificationEventService.emit(
+            com.dmdbrands.gurus.weight.core.service.NotificationEventType.NOTIFICATION_TAPPED,
+        )
+        advanceUntilIdle()
+
+        coVerify { entryService.syncOperations() }
+    }
+
+    // -------------------------------------------------------------------------
+    // checkAccountFlags — flag present vs absent
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `checkAccountFlags triggers the flag check when an account flag exists`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        coEvery { accountFlagService.getAccountFlag() } returns mockk(relaxed = true)
+
+        viewModel.invokePrivate("checkAccountFlags", "entry")
+        advanceUntilIdle()
+
+        coVerify { accountFlagService.checkAccountFlag("entry") }
+    }
+
+    @Test
+    fun `checkAccountFlags skips the flag check when no account flag exists`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        coEvery { accountFlagService.getAccountFlag() } returns null
+
+        viewModel.invokePrivate("checkAccountFlags", "entry")
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { accountFlagService.checkAccountFlag(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // showAssignMeasurementDialog — picker onConfirm assigns to chosen baby
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `showAssignMeasurementDialog onConfirm assigns the reading to the selected baby`() = runTest {
+        viewModel = createViewModel(productSelectionManager = babyProductManager(listOf(aBaby("baby1"))))
+        advanceUntilIdle()
+        coEvery { entryService.addBabyEntry(any()) } returns 3L
+
+        val dialogSlot = slot<com.dmdbrands.gurus.weight.features.common.model.DialogModel.Custom>()
+        every { dialogQueueService.showDialog(capture(dialogSlot)) } returns Unit
+
+        viewModel.invokePrivate(
+            "showAssignMeasurementDialog",
+            "75 lbs 0 oz",
+            listOf(TestFixtures.weightEntry),
+            null,
+            emptyList<Long>(),
+        )
+        advanceUntilIdle()
+
+        // Simulate the picker confirming a baby selection.
+        dialogSlot.captured.onConfirm?.invoke("baby1")
+        advanceUntilIdle()
+
+        coVerify { entryService.addBabyEntry(any()) }
+    }
+
+    @Test
+    fun `showAssignMeasurementDialog onConfirm with non-string result is ignored`() = runTest {
+        viewModel = createViewModel(productSelectionManager = babyProductManager(listOf(aBaby("baby1"))))
+        advanceUntilIdle()
+
+        val dialogSlot = slot<com.dmdbrands.gurus.weight.features.common.model.DialogModel.Custom>()
+        every { dialogQueueService.showDialog(capture(dialogSlot)) } returns Unit
+
+        viewModel.invokePrivate(
+            "showAssignMeasurementDialog",
+            "75 lbs 0 oz",
+            listOf(TestFixtures.weightEntry),
+            null,
+            emptyList<Long>(),
+        )
+        advanceUntilIdle()
+
+        dialogSlot.captured.onConfirm?.invoke(42) // not a String -> early return
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { entryService.addBabyEntry(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // handleDeviceResponse — alert branches (memory-full / duplicate user)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `handleDeviceResponse DEVICE_MEMORY_FULL shows the max-user alert for a known scale`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        coEvery { deviceService.getScaleByBroadcastId(any(), any()) } returns
+            TestFixtures.aDevice(id = "known-dev")
+        coEvery { navigationService.getCurrentRoute() } returns AppRoute.Main.Dashboard
+
+        val response = com.dmdbrands.library.ggbluetooth.model.GGScanResponse.DeviceDetail(
+            type = com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType.DEVICE_MEMORY_FULL,
+            data = aDeviceDetail(),
+        )
+        viewModel.invokePrivate("handleDeviceResponse", response)
+        advanceUntilIdle()
+
+        verify { dialogQueueService.showDialog(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // Weight-only-mode alert — paired-scale observation (checkCanShowWeightOnlyModeAlert)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `a connected weight-only 0412 scale emits a SHOW_ALERT weight-only event`() = runTest {
+        val connectedWeightOnly = TestFixtures.aDevice(id = "wo-scale").copy(
+            sku = "0412",
+            connectionStatus = com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED,
+            isWeighOnlyModeEnabledByOthers = true,
+        )
+        every { deviceService.pairedScales } returns MutableStateFlow(listOf(connectedWeightOnly))
+        every { deviceService.isWeightOnlyModeAlertShown } returns MutableStateFlow(false)
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // subscribePairedScales only starts collecting after login; drive it via the auth event.
+        authEventFlow.emit(AuthState.LoggedInFromLoading(account = TestFixtures.activeAccount))
+        advanceUntilIdle()
+
+        // checkCanShowWeightOnlyModeAlert runs the connected/weight-only branch and marks shown.
+        coVerify { deviceService.updateWeightOnlyModeAlertShown(false) }
+    }
+
+    @Test
+    fun `handleDeviceResponse DEVICE_DUPLICATE_USER shows the duplicate-user alert`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        coEvery { navigationService.getCurrentRoute() } returns AppRoute.Main.Dashboard
+
+        val response = com.dmdbrands.library.ggbluetooth.model.GGScanResponse.DeviceDetail(
+            type = com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType.DEVICE_DUPLICATE_USER,
+            data = aDeviceDetail(),
+        )
+        viewModel.invokePrivate("handleDeviceResponse", response)
+        advanceUntilIdle()
+
+        verify { dialogQueueService.showDialog(any()) }
     }
 }
