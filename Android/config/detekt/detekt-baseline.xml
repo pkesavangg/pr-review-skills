@@ -22,6 +22,8 @@
     <ID>LargeClass:GoalServiceTest.kt$GoalServiceTest</ID>
     <ID>LargeClass:HealthConnectService.kt$HealthConnectService : BaseServiceIHealthConnectService</ID>
     <ID>LargeClass:HealthConnectServiceTest.kt$HealthConnectServiceTest</ID>
+    <ID>LargeClass:HealthConnectViewModelTest.kt$HealthConnectViewModelTest</ID>
+    <ID>LargeClass:IntegrationViewModelTest.kt$IntegrationViewModelTest</ID>
     <ID>LargeClass:MigrationServiceTest.kt$MigrationServiceTest</ID>
     <ID>LargeClass:ScaleDetailsViewModel.kt$ScaleDetailsViewModel : BaseIntentViewModel</ID>
     <ID>LargeClass:SignupViewModelTest.kt$SignupViewModelTest</ID>

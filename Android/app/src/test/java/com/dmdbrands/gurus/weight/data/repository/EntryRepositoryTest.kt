@@ -129,6 +129,17 @@ class EntryRepositoryTest {
         coVerify { entryDao.update(any<Entry>()) }
     }
 
+    @Test
+    fun `update preserves existing local scale note when incoming note is blank`() = runTest {
+        val entry = buildScaleEntry(VALID_TIMESTAMP)
+        coEvery { entryDao.getStoredScaleNote(any(), any()) } returns "local note"
+        coEvery { entryDao.update(any<Entry>()) } returns 1L
+
+        repository.update(entry)
+
+        coVerify { entryDao.update(any<Entry>()) }
+    }
+
     // ── delete(Entry) ──────────────────────────────────────────────────────────
 
     @Test
@@ -295,6 +306,15 @@ class EntryRepositoryTest {
         coEvery { entryDao.getEntriesByAccount(ACCOUNT_ID) } returns listOf(buildPopulatedActiveEntry())
 
         val result = repository.getEntriesByAccount(ACCOUNT_ID)
+
+        assertThat(result).hasSize(1)
+    }
+
+    @Test
+    fun `getEntriesByAccount with convertToDisplay maps entries`() = runTest {
+        coEvery { entryDao.getEntriesByAccount(ACCOUNT_ID) } returns listOf(buildPopulatedActiveEntry())
+
+        val result = repository.getEntriesByAccount(ACCOUNT_ID, convertToDisplay = true)
 
         assertThat(result).hasSize(1)
     }
