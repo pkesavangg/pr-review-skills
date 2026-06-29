@@ -203,7 +203,6 @@ struct HTTPClientTests {
     func get_nonHTTPResponse_throwsInvalidResponse() async {
         let (sut, _, _, _, _) = makeSUT { request in
                 let response = URLResponse(
-                    // swiftlint:disable:next force_unwrapping
                     url: request.url ?? URL(string: "https://example.com")!,
                     mimeType: nil,
                     expectedContentLength: 0,
@@ -464,7 +463,6 @@ struct HTTPClientTests {
     }
 
     private func makeHTTPResponse(statusCode: Int, request: URLRequest) -> HTTPURLResponse {
-        // swiftlint:disable:next force_unwrapping
         let url = request.url ?? URL(string: "https://example.com")!
         // swiftlint:disable:next force_unwrapping
         return HTTPURLResponse(url: url, statusCode: statusCode, httpVersion: nil, headerFields: nil)!

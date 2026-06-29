@@ -1721,8 +1721,10 @@ struct AccountServiceTests {
         let local = MockAccountRepository()
         let keychain = MockKeychainService()
         let sut = makeSUT(local: local, keychain: keychain)
-        // Reset the shared migration flag so this exercises the first post-5.0.3 launch.
+        // Reset the shared migration flag so this exercises the first post-5.0.3 launch,
+        // and restore it on exit so the singleton state never leaks to sibling tests.
         KvStorageService.shared.clearValue(forKey: KvStorageKeys.tokensMigratedToKeychain.rawValue)
+        defer { KvStorageService.shared.clearValue(forKey: KvStorageKeys.tokensMigratedToKeychain.rawValue) }
 
         let account = AccountTestFixtures.makeAccountModel(id: "501", email: "mig@example.com")
         // swiftlint:disable:next no_hardcoded_credentials
@@ -1750,6 +1752,7 @@ struct AccountServiceTests {
         let keychain = MockKeychainService()
         let sut = makeSUT(local: local, keychain: keychain)
         KvStorageService.shared.clearValue(forKey: KvStorageKeys.tokensMigratedToKeychain.rawValue)
+        defer { KvStorageService.shared.clearValue(forKey: KvStorageKeys.tokensMigratedToKeychain.rawValue) }
 
         let account = AccountTestFixtures.makeAccountModel(id: "502", email: "mig2@example.com")
         // swiftlint:disable:next no_hardcoded_credentials
