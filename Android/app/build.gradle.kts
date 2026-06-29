@@ -334,16 +334,26 @@ val jacocoExcludes = listOf(
   // Compose UI & design system (MOB-1010): these are exercised by instrumented /
   // screenshot tests, NOT JVM unit tests, so counting them in the unit-coverage
   // denominator is misleading. Excluding them keeps the gate meaningful for the
-  // testable layers (domain / data / core / view-models). Business-logic coverage
-  // is still ~55%; the dedicated coverage tickets (MOB-963/964/967/1101) raise it
-  // toward 80%, ratcheting the verification minimum below up as they land.
+  // testable layers (domain / data / core / view-models). The dedicated coverage
+  // tickets (MOB-963/964/967/1101) raise real coverage toward 80%, ratcheting the
+  // verification minimum below up as they land.
+  //
+  // NOTE: patterns deliberately target COMPOSABLES only (the `*Kt` files Kotlin emits
+  // for top-level @Composable functions) — NOT ViewModels or data classes that happen
+  // to live in a UI package. e.g. `LoadingScreenViewModel` and
+  // `components/chart/viewmodel/SeriesData` stay counted.
   // ---------------------------------------------------------------------------
   "**/theme/**",
-  "**/*Theme*",
-  "**/components/**",
-  "**/*Screen*",
   "**/navigation/**",
   "**/di/**",
+  // Screen composables: `XxxScreen.kt` -> `XxxScreenKt.class` (+ lambda inner classes).
+  // Does NOT match `XxxScreenViewModel` (no "ScreenKt" substring).
+  "**/*ScreenKt.class",
+  "**/*ScreenKt\$*.class",
+  // Component composables under any `components/` package: only the `*Kt` files,
+  // leaving data/view-model classes there in the denominator.
+  "**/components/**/*Kt.class",
+  "**/components/**/*Kt\$*.class",
 )
 
 // Class files that match the on-the-fly coverage exec: AGP compiles Kotlin via the
