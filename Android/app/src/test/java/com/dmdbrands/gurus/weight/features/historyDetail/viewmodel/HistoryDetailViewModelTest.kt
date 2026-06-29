@@ -633,4 +633,168 @@ class HistoryDetailViewModelTest {
         advanceUntilIdle()
         assertThat(viewModel.state.value.isMetric).isTrue()
     }
+
+    // -------------------------------------------------------------------------
+    // loadDetail — empty entries and other product types
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `loadDetail with empty weight entries sets error`() = runTest {
+        every { entryReadService.getDetail(any(), eq(TEST_MONTH)) } returns
+            flowOf(HistoryDetail.Weight(emptyList()))
+        viewModel = createViewModelRaw()
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.errorMessage).isNotNull()
+    }
+
+    @Test
+    fun `loadDetail with blood pressure entries populates items`() = runTest {
+        every { entryReadService.getDetail(any(), eq(TEST_MONTH)) } returns
+            flowOf(HistoryDetail.BloodPressure(listOf(TestFixtures.bpmEntry)))
+        viewModel = createViewModelRaw()
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.historyItems).hasSize(1)
+    }
+
+    @Test
+    fun `loadDetail with baby entries populates items`() = runTest {
+        val babyEntry = mockk<com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry>(relaxed = true)
+        every { entryReadService.getDetail(any(), eq(TEST_MONTH)) } returns
+            flowOf(HistoryDetail.Baby(listOf(babyEntry)))
+        viewModel = createViewModelRaw()
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.historyItems).hasSize(1)
+    }
+
+    @Test
+    fun `loadDetail surfaces error when service throws`() = runTest {
+        every { entryReadService.getDetail(any(), eq(TEST_MONTH)) } throws RuntimeException("boom")
+        viewModel = createViewModelRaw()
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.errorMessage).isNotNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // SaveNote
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `SaveNote updates note via service and reloads detail`() = runTest {
+        coEvery { entryService.updateNote(any(), any()) } returns Unit
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.handleIntent(HistoryDetailIntent.SaveNote(TestFixtures.weightEntry, "after run"))
+        advanceUntilIdle()
+
+        coVerify { entryService.updateNote(TestFixtures.weightEntry, "after run") }
+    }
+
+    @Test
+    fun `SaveNote with blank note passes null to service`() = runTest {
+        coEvery { entryService.updateNote(any(), any()) } returns Unit
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.handleIntent(HistoryDetailIntent.SaveNote(TestFixtures.weightEntry, "   "))
+        advanceUntilIdle()
+
+        coVerify { entryService.updateNote(TestFixtures.weightEntry, null) }
+    }
+
+    @Test
+    fun `SaveNote shows error toast when service fails`() = runTest {
+        coEvery { entryService.updateNote(any(), any()) } throws RuntimeException("db error")
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.handleIntent(HistoryDetailIntent.SaveNote(TestFixtures.weightEntry, "note"))
+        advanceUntilIdle()
+
+        verify { dialogQueueService.showToast(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // SaveBabyEdit
+    // -------------------------------------------------------------------------
+
+    private fun babyEditIntent(
+        timestamp: String = TEST_MONTH,
+        originalTimestamp: String = TEST_MONTH,
+        weightDecigrams: Int? = 35000,
+    ): HistoryDetailIntent.SaveBabyEdit {
+        val entryEntity = mockk<com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity>(relaxed = true) {
+            every { entryTimestamp } returns originalTimestamp
+            every { id } returns 1L
+        }
+        val babyEntryEntity =
+            mockk<com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity>(relaxed = true)
+        val baby = mockk<com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry>(relaxed = true) {
+            every { entry } returns entryEntity
+            every { babyEntry } returns babyEntryEntity
+        }
+        return HistoryDetailIntent.SaveBabyEdit(
+            entry = baby,
+            weightDecigrams = weightDecigrams,
+            lengthMillimeters = null,
+            note = "note",
+            timestamp = timestamp,
+        )
+    }
+
+    @Test
+    fun `SaveBabyEdit saves entry and dismisses editor when timestamp unchanged`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.handleIntent(babyEditIntent())
+        advanceUntilIdle()
+
+        coVerify { entryService.addEntry(any<com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry>()) }
+        coVerify(exactly = 0) { entryService.deleteEntry(any()) }
+    }
+
+    @Test
+    fun `SaveBabyEdit deletes old entry when timestamp changed`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.handleIntent(babyEditIntent(timestamp = "2024-02", originalTimestamp = "2024-01"))
+        advanceUntilIdle()
+
+        coVerify { entryService.deleteEntry(any()) }
+        coVerify { entryService.addEntry(any<com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry>()) }
+    }
+
+    @Test
+    fun `SaveBabyEdit with no weight uses length entry type and shows toast on failure`() = runTest {
+        coEvery {
+            entryService.addEntry(any<com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry>())
+        } throws RuntimeException("save error")
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.handleIntent(babyEditIntent(weightDecigrams = null))
+        advanceUntilIdle()
+
+        verify { dialogQueueService.showToast(any()) }
+    }
+
+    private fun createViewModelRaw(month: String = TEST_MONTH): HistoryDetailViewModel =
+        HistoryDetailViewModel(
+            accountService = accountService,
+            entryService = entryService,
+            healthConnectService = healthConnectService,
+            entryReadService = entryReadService,
+            month = month,
+            productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
+        ).initTestDependencies(
+            navigationService = navigationService,
+            dialogQueueService = dialogQueueService,
+            productSelectionManager = productSelectionManager,
+        )
 }
