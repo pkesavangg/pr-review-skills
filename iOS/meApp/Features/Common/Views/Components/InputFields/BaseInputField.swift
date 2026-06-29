@@ -150,6 +150,8 @@ struct BaseInputField: View {
                             .foregroundColor(theme.statusIconPrimary)
                     })
                     .padding(.trailing, .spacingXS)
+                    .accessibilityIdentifier(accessibilityIdentifier.map { "\($0)_visibility_toggle" } ?? "")
+                    .accessibilityLabel(isSecureTextVisible ? "Hide password" : "Show password")
                 }
             }
         )

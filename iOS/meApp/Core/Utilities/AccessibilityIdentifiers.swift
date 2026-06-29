@@ -29,6 +29,12 @@ enum AccessibilityID {
     static let loginPasswordField = "login_password_field"
     static let loginSubmitButton = "login_submit_button"
     static let loginForgotPasswordButton = "login_forgot_password_button"
+    static let loginCloseButton = "login_close_button"
+    static let loginHelpButton = "login_help_button"
+    static let loginWelcomeTitle = "login_welcome_title"
+    // Clear / visibility-toggle ids are derived from the field id in AppInputField/BaseInputField:
+    //   "<field_id>_clear_button" and "<field_id>_visibility_toggle".
+    // Mirror the same derivation in the Android testTags for cross-platform parity.
 
     // MARK: - Signup Screen (Name Step — first screen shown after tapping Sign Up)
     static let signupFirstNameField = "signup_first_name_field"

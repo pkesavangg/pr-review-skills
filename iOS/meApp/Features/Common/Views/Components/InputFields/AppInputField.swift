@@ -283,6 +283,8 @@ struct AppInputField: View {
             AppIconView(icon: AppAssets.closeCircle)
                 .foregroundColor(config.errorMessage != nil ? theme.textError : theme.actionPrimary)
         })
+        .accessibilityIdentifier(accessibilityIdentifier.map { "\($0)_clear_button" } ?? "")
+        .accessibilityLabel("Clear")
     }
 }
 
