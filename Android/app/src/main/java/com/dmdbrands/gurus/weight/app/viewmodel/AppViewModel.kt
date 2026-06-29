@@ -686,7 +686,13 @@ constructor(
       if (ggEntries.isEmpty()) return@launch
       val accountId = currentAccountId ?: return@launch
       val isSetupInProgress = deviceService.isSetupInProgress()
-      val device = deviceService.getScaleByBroadcastId(ggEntries.first().broadcastId, accountId)
+      val broadcastId = ggEntries.first().broadcastId
+      // A device synced from GET /v3/paired-device carries no broadcastId (the server omits it),
+      // so a live monitor reading can't match it and the entry was silently dropped. Heal: attribute
+      // the reading to the single paired BPM device and backfill its broadcastId so it syncs now and
+      // future readings resolve directly. (MOB-598)
+      val device = deviceService.getScaleByBroadcastId(broadcastId, accountId)
+        ?: deviceService.healBpmDeviceBroadcastId(broadcastId, accountId)
 
       if (device == null && !isSetupInProgress) return@launch
 
@@ -1030,82 +1036,99 @@ constructor(
             else -> ProductType.MY_WEIGHT
           }
         } ?: ProductType.MY_WEIGHT
+        showReadingToast(entry, readingType, sourceSku = device?.sku)
+      }
+    }
+  }
 
-        // Show the latest reading in the card; any extra buffered readings (taken while
-        // disconnected) surface as a "+N more… VIEW" count pill (MOB-598).
-        val latestEntry = entry.maxByOrNull { it.entry.entryTimestamp } ?: return@launch
-        val reading = formatReadingForDisplay(latestEntry, readingType)
-        val additionalCount = (entry.size - 1).coerceAtLeast(0)
+  /**
+   * Shows the post-reading toast (Save/Discard, or the baby assign flow) for [entry]. Extracted
+   * from [saveEntry] so it can be reused. [sourceSku]
+   * is the originating device SKU (null for synthesized/debug readings).
+   */
+  private fun showReadingToast(
+    entry: List<ScaleEntry>,
+    readingType: ProductType,
+    sourceSku: String?,
+  ) {
+    // Show the latest reading in the card; any extra buffered readings (taken while
+    // disconnected) surface as a "+N more… VIEW" count pill (MOB-598).
+    val latestEntry = entry.maxByOrNull { it.entry.entryTimestamp } ?: return
+    val reading = formatReadingForDisplay(latestEntry, readingType)
+    val additionalCount = (entry.size - 1).coerceAtLeast(0)
 
-        // Snapshot of baby profiles at arrival — drives the single-baby card and timeout auto-assign.
-        val babiesAtArrival = if (readingType == ProductType.BABY) availableBabyProfiles() else emptyList()
-        val singleBabyName = babiesAtArrival.singleOrNull()?.name
+    // Snapshot of baby profiles at arrival — drives the single-baby card and timeout auto-assign.
+    val babiesAtArrival = if (readingType == ProductType.BABY) availableBabyProfiles() else emptyList()
+    val singleBabyName = babiesAtArrival.singleOrNull()?.name
 
-        // A baby scale reading with no baby profile has nowhere to be saved —
-        // surface an "ADD A BABY" CTA instead of the assign flow (MOB-426).
-        val hasNoBabyProfile = readingType == ProductType.BABY && babiesAtArrival.isEmpty()
+    // A baby scale reading with no baby profile has nowhere to be saved —
+    // surface an "ADD A BABY" CTA instead of the assign flow (MOB-426).
+    val hasNoBabyProfile = readingType == ProductType.BABY && babiesAtArrival.isEmpty()
 
-        // Multi-baby readings auto-assign to the last-assigned baby on timeout, if it still
-        // exists; single-baby/no-baby readings have no auto-assign target (MOB-598).
-        val autoAssignBabyId = lastAssignedBabyId
-          ?.takeIf { readingType == ProductType.BABY && babiesAtArrival.size > 1 }
-          ?.takeIf { id -> babiesAtArrival.any { it.id == id } }
+    // Multi-baby readings auto-assign to the last-assigned baby on timeout, if it still
+    // exists; single-baby/no-baby readings have no auto-assign target (MOB-598).
+    val autoAssignBabyId = lastAssignedBabyId
+      ?.takeIf { readingType == ProductType.BABY && babiesAtArrival.size > 1 }
+      ?.takeIf { id -> babiesAtArrival.any { it.id == id } }
 
-        dialogQueueService.showToast(
-          Toast.Custom(
-            ReadingToast(
-              reading = reading,
-              type = readingType,
-              timestamp = "Just now",
-              noBabyProfile = hasNoBabyProfile,
-              assignTargetName = singleBabyName,
-              additionalCount = additionalCount,
-              primaryAction = {
-                if (hasNoBabyProfile) {
-                  viewModelScope.launch {
-                    navigationService.navigateTo(AppRoute.AccountSettings.AddBaby())
-                  }
-                } else if (readingType == ProductType.BABY) {
-                  if (babiesAtArrival.size == 1) {
-                    // Single baby — SAVE persists straight to that baby (no picker) (MOB-598).
-                    viewModelScope.launch {
-                      assignReadingToBaby(reading, entry, babiesAtArrival.first().id, babiesAtArrival, emptyList(), device?.sku)
-                    }
-                  } else {
-                    showAssignMeasurementDialog(reading, entry, sourceSku = device?.sku)
-                  }
-                } else {
-                  viewModelScope.launch {
-                    try {
-                      entryService.addEntry(entry)
-                      checkAccountFlags("entry")
-                      AppLog.i(TAG, "Entry saved via reading toast")
-                    } catch (e: Exception) {
-                      AppLog.e(TAG, "Error saving entry from toast", e)
-                    }
-                  }
+    dialogQueueService.showToast(
+      Toast.Custom(
+        ReadingToast(
+          reading = reading,
+          type = readingType,
+          timestamp = "Just now",
+          noBabyProfile = hasNoBabyProfile,
+          assignTargetName = singleBabyName,
+          additionalCount = additionalCount,
+          primaryAction = {
+            if (hasNoBabyProfile) {
+              viewModelScope.launch {
+                navigationService.navigateTo(AppRoute.AccountSettings.AddBaby())
+              }
+            } else if (readingType == ProductType.BABY) {
+              if (babiesAtArrival.size == 1) {
+                // Single baby — SAVE persists straight to that baby (no picker) (MOB-598).
+                viewModelScope.launch {
+                  assignReadingToBaby(reading, entry, babiesAtArrival.first().id, babiesAtArrival, emptyList(), sourceSku)
                 }
-              },
-              secondaryAction = {
-                // The reading is only persisted on Save/Assign, so discarding an unsynced
-                // reading just dismisses the card — nothing was written (MOB-428).
-                dialogQueueService.dismissToast()
-                AppLog.i(TAG, "Entry discarded via reading toast")
-              },
-              onView = {
-                // "VIEW" opens History so all buffered readings can be seen (MOB-598).
-                viewModelScope.launch { navigationService.navigateTo(AppRoute.Main.History) }
-              },
-              onTimeout = autoAssignBabyId?.let { babyId ->
-                {
-                  viewModelScope.launch {
-                    assignReadingToBaby(reading, entry, babyId, babiesAtArrival, emptyList(), device?.sku)
-                  }
-                }
-              },
-            ),
-          ),
-        )
+              } else {
+                showAssignMeasurementDialog(reading, entry, sourceSku = sourceSku)
+              }
+            } else {
+              saveEntryFromToast(entry)
+            }
+          },
+          secondaryAction = {
+            // The reading is only persisted on Save/Assign, so discarding an unsynced
+            // reading just dismisses the card — nothing was written (MOB-428).
+            dialogQueueService.dismissToast()
+            AppLog.i(TAG, "Entry discarded via reading toast")
+          },
+          onView = {
+            // "VIEW" opens History so all buffered readings can be seen (MOB-598).
+            viewModelScope.launch { navigationService.navigateTo(AppRoute.Main.History) }
+          },
+          onTimeout = autoAssignBabyId?.let { babyId ->
+            {
+              viewModelScope.launch {
+                assignReadingToBaby(reading, entry, babyId, babiesAtArrival, emptyList(), sourceSku)
+              }
+            }
+          },
+        ),
+      ),
+    )
+  }
+
+  /** Saves a non-baby reading straight from the reading toast's SAVE action. */
+  private fun saveEntryFromToast(entry: List<ScaleEntry>) {
+    viewModelScope.launch {
+      try {
+        entryService.addEntry(entry)
+        checkAccountFlags("entry")
+        AppLog.i(TAG, "Entry saved via reading toast")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error saving entry from toast", e)
       }
     }
   }

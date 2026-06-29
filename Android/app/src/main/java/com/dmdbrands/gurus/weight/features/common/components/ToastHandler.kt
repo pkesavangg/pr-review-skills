@@ -9,6 +9,7 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
@@ -65,7 +66,9 @@ fun ToastHandler(
     val isDismissed = remember { mutableStateOf(false) }
     LaunchedEffect(toast) {
         if (toast != null) {
-            hostState.showSnackbar(message = toast.message)
+            // DEBUG/TEST ONLY — Indefinite so the AUTO_DISMISS_MS delay (temporarily 60s) controls
+            // the visible duration. Revert to the default (no duration arg) before commit.
+            hostState.showSnackbar(message = toast.message, duration = SnackbarDuration.Indefinite)
         }
     }
     if (toast != null) {
@@ -144,10 +147,12 @@ fun ToastHandler(
 }
 
 /** Default auto-dismiss window for a toast. */
-private const val AUTO_DISMISS_MS = 3900L
+// DEBUG/TEST ONLY — temporarily 60s to inspect the reading toast. Revert to 3900L before commit.
+private const val AUTO_DISMISS_MS = 60000L
 
 /** Longer window for a reading card that auto-assigns on timeout (design: 5–8s) — MOB-598. */
-private const val READING_AUTO_ASSIGN_MS = 6000L
+// DEBUG/TEST ONLY — temporarily 60s. Revert to 6000L before commit.
+private const val READING_AUTO_ASSIGN_MS = 60000L
 
 enum class DragAnchors {
     Center,

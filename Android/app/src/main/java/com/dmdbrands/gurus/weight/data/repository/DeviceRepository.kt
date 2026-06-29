@@ -60,6 +60,10 @@ constructor(
     deviceDao.updateDevice(device.toDeviceDetails(accountId))
   }
 
+  override suspend fun updateDeviceBroadcastId(deviceId: String, broadcastId: String, accountId: String) {
+    deviceDao.updateBroadcastId(deviceId, broadcastId, accountId)
+  }
+
   override suspend fun repairDeviceTypesFromSku(): Int {
     var repaired = 0
     deviceDao.getAllDevicesList().forEach { device ->

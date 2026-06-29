@@ -28,6 +28,7 @@ import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
 import com.dmdbrands.gurus.weight.features.dashboard.string.DashboardString
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
 import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
 import com.dmdbrands.gurus.weight.core.di.ApplicationScope
@@ -320,12 +321,12 @@ constructor(
   /** Saved-to-log card for a baby manual entry; falls back to the plain toast if no weight row. */
   private fun showBabySavedToLogToast(builtEntries: List<BabyEntry>) {
     val weightDecigrams = builtEntries.firstNotNullOfOrNull { it.babyWeightDecigrams }
-    val monthKey = builtEntries.firstOrNull()?.entry?.entryTimestamp
-    if (weightDecigrams != null && monthKey != null) {
+    val entryTimestamp = builtEntries.firstOrNull()?.entry?.entryTimestamp
+    if (weightDecigrams != null && entryTimestamp != null) {
       showSavedToLogToast(
         reading = ConversionTools.convertBabyWeightToDisplay(weightDecigrams, source = null, isMetric = false),
         type = ProductType.BABY,
-        monthKey = monthKey,
+        entryTimestamp = entryTimestamp,
       )
     } else {
       dialogQueueService.showToast(
@@ -334,7 +335,11 @@ constructor(
     }
   }
 
-  private fun showSavedToLogToast(reading: String, type: ProductType, monthKey: String) {
+  private fun showSavedToLogToast(reading: String, type: ProductType, entryTimestamp: String) {
+    // VIEW opens this entry's History detail, whose query matches the bucketed key the History list
+    // passes (a "Mon YYYY" month label for weight/BP, a "yyyy-MM-dd" day key for baby) — not the raw
+    // entryTimestamp, which lands on an empty detail. See EntryHelper.historyDetailKey.
+    val detailKey = EntryHelper.historyDetailKey(entryTimestamp, type)
     dialogQueueService.showToast(
       Toast.Custom(
         ReadingToast(
@@ -344,7 +349,7 @@ constructor(
           savedToLog = true,
           onView = {
             appScope.launch {
-              navigationService.navigateTo(AppRoute.History.MonthDetails(monthKey, type))
+              navigationService.navigateTo(AppRoute.History.MonthDetails(detailKey, type))
             }
           },
         ),
@@ -386,7 +391,7 @@ constructor(
         showSavedToLogToast(
           reading = "${String.format(Locale.US, "%.1f", displayValue)} ${_state.value.weightMode.label}",
           type = ProductType.MY_WEIGHT,
-          monthKey = scaleEntry.entry.entryTimestamp,
+          entryTimestamp = scaleEntry.entry.entryTimestamp,
         )
         deactivate()
         navigationService.navigateBack(AppRoute.Home)
@@ -441,7 +446,7 @@ constructor(
         showSavedToLogToast(
           reading = "$systolic/$diastolic",
           type = ProductType.BLOOD_PRESSURE,
-          monthKey = entryEntity.entryTimestamp,
+          entryTimestamp = entryEntity.entryTimestamp,
         )
         // Reset form
         handleIntent(

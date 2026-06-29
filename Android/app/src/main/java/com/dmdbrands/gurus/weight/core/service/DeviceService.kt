@@ -12,6 +12,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.library.ggbluetooth.model.GGBTDevice
@@ -563,6 +564,28 @@ constructor(
       deviceRepository.getDeviceByBroadcastId(broadcastId, accountId).first()
     } catch (e: Exception) {
       AppLog.e(tag, "Error getting scale by broadcast ID", e)
+      null
+    }
+
+  override suspend fun healBpmDeviceBroadcastId(broadcastId: String, accountId: String): Device? =
+    try {
+      // Only safe to attribute a monitor reading when there's exactly one paired BPM device still
+      // missing a broadcastId (the server-synced state). Multiple → ambiguous, so bail.
+      val candidate = _pairedScales.value.singleOrNull { device ->
+        !device.isDeleted &&
+          DeviceHelper.isBpmDevice(device.sku.orEmpty()) &&
+          device.device?.broadcastIdString.isNullOrBlank()
+      }
+      if (candidate == null) {
+        AppLog.w(tag, "healBpmDeviceBroadcastId: no single un-identified BPM device to heal")
+        null
+      } else {
+        deviceRepository.updateDeviceBroadcastId(candidate.id, broadcastId, accountId)
+        AppLog.i(tag, "Healed BPM device ${candidate.id} with broadcastId=$broadcastId")
+        deviceRepository.getDeviceByBroadcastId(broadcastId, accountId).first()
+      }
+    } catch (e: Exception) {
+      AppLog.e(tag, "Error healing BPM device broadcastId", e)
       null
     }
 

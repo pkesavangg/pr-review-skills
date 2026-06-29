@@ -15,6 +15,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntryWithMetrics
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.manualEntry.viewmodel.EntryForm
@@ -26,6 +27,7 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.round
@@ -41,6 +43,15 @@ object EntryHelper {
     DateTimeFormatter
       .ofPattern("hh:mm a")
       .withZone(ZoneId.systemDefault())
+
+  // History-detail bucket keys are computed in UTC: the stored entryTimestamp is written in UTC
+  // (DateTimeConverter.timestampToIso), and the DAO's datetime(entryTimestamp,'utc','localtime')
+  // resolves back to that UTC wall-clock, so we must format in UTC to land on the same bucket.
+  private val monthKeyFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("MMM yyyy", Locale.US).withZone(ZoneOffset.UTC)
+
+  private val babyDayKeyFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.US).withZone(ZoneOffset.UTC)
 
   fun FormControl<String>.toDoubleSafe(default: Double = 0.0): Double = this.value.toDoubleOrNull() ?: default
 
@@ -173,6 +184,21 @@ object EntryHelper {
   fun BabyEntry.getTime(): String {
     val instant = Instant.parse(entry.entryTimestamp)
     return timeFormatter.format(instant)
+  }
+
+  /**
+   * Bucket key for opening the just-saved entry's History detail from the saved-to-log VIEW action.
+   *
+   * The detail screen queries the History list's *bucketed* key, not the raw entryTimestamp: weight
+   * and blood-pressure use a "Mon YYYY" month label (EntryReadDao.getWeightMonthDetail /
+   * getBpmMonthDetail) while baby uses a "yyyy-MM-dd" day key (getBabyDayDetail). Passing the raw
+   * ISO timestamp matches no bucket and lands on an empty detail. [entryTimestamp] is the stored ISO
+   * string (UTC); see [monthKeyFormatter] / [babyDayKeyFormatter] for why we format in UTC.
+   */
+  fun historyDetailKey(entryTimestamp: String, type: ProductType): String {
+    val instant = Instant.ofEpochMilli(DateTimeConverter.isoToTimestamp(entryTimestamp))
+    val formatter = if (type == ProductType.BABY) babyDayKeyFormatter else monthKeyFormatter
+    return formatter.format(instant)
   }
 
   /** Formatted weight based on unit preference, or "--" if null. */

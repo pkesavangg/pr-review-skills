@@ -103,6 +103,12 @@ class BabyDashboardViewModel @AssistedInject constructor(
     viewModelScope.launch {
       entryReadService.getBabyMonthlyGraphData(profileId).collect { entries ->
         latestMonthlyEntries = entries
+        AppLog.d(
+          TAG,
+          "YTDEBUG monthly recv size=${entries.size} " +
+            "first=${entries.firstOrNull()?.entryTimestamp} w=${entries.firstOrNull()?.avgWeightDecigrams} " +
+            "l=${entries.firstOrNull()?.avgLengthMillimeters} metric=${_state.value.selectedMetric}",
+        )
         updateBabySegmentRanges(entries, listOf(GraphSegment.YEAR, GraphSegment.TOTAL))
         rebuildProducer(_state.value.monthlyProducer, entries)
       }
@@ -197,6 +203,12 @@ class BabyDashboardViewModel @AssistedInject constructor(
         scale.min to scale.max
       } else null
 
+      AppLog.d(
+        TAG,
+        "YTDEBUG range seg=$segment single=$isSingleWindow startX=$startX endX=$endX " +
+          "cMin=$chartMinX cMax=$chartMaxX tgt=${filteredTarget.size} yv=${yValues.size} seed=$seed " +
+          "ptTs=${entries.firstOrNull()?.getTimeStamp()}",
+      )
       updateSegmentState(segment) {
         it.copy(
           data = targetData,
@@ -225,6 +237,12 @@ class BabyDashboardViewModel @AssistedInject constructor(
 
   private fun rebuildProducer(producer: CartesianChartModelProducer, entries: List<PeriodBabySummary>) {
     val series = activeSeriesFor(entries)
+    AppLog.d(
+      TAG,
+      "YTDEBUG rebuild entries=${entries.size} series=${series.size} " +
+        "pts=${series.firstOrNull()?.xValues?.size} firstX=${series.firstOrNull()?.xValues?.firstOrNull()} " +
+        "firstY=${series.firstOrNull()?.yValues?.firstOrNull()} pct=${_state.value.activePercentile != null}",
+    )
     if (series.isEmpty()) {
       viewModelScope.launch { pushEmptyProducer(producer) }
       return
