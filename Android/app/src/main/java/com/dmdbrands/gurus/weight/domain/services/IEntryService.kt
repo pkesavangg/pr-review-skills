@@ -22,6 +22,12 @@ interface IEntryService {
   suspend fun deleteEntry(entry: Entry)
 
   /**
+   * Restores a soft-deleted entry (Undo from the History delete toast). Re-stamps the row as
+   * create, upserts it in place, and re-syncs so the reading reappears locally and on the server.
+   */
+  suspend fun restoreEntry(entry: Entry)
+
+  /**
    * Persists a baby reading under the active (parent) account, keyed by babyId, and returns
    * the new local entry id. The Me App 2.0 unified API now carries baby entries
    * (POST /v3/entries/, category=baby — §2.16), so the reading is written unsynced and pushed

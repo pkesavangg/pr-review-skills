@@ -19,7 +19,7 @@ import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
-import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
 import com.google.common.truth.Truth.assertThat
@@ -189,180 +189,6 @@ class HistoryDetailViewModelTest {
         advanceUntilIdle()
 
         assertThat(viewModel.state.value.isLoading).isFalse()
-    }
-
-    // -------------------------------------------------------------------------
-    // DeleteEntry — shows confirmation dialog
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `DeleteEntry shows confirmation dialog`() = runTest {
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured
-        assertThat(dialog).isInstanceOf(DialogModel.Confirm::class.java)
-    }
-
-    @Test
-    fun `DeleteEntry dialog has correct title and message`() = runTest {
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        assertThat(dialog.title).isEqualTo("Delete Entry?")
-        assertThat(dialog.message).isEqualTo("Are you sure you want to delete your entry?")
-    }
-
-    // -------------------------------------------------------------------------
-    // DeleteEntry — onConfirm callback
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `DeleteEntry onConfirm calls entryService deleteEntry`() = runTest {
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        dialog.onConfirm?.invoke()
-        advanceUntilIdle()
-
-        coVerify { entryService.deleteEntry(entry) }
-    }
-
-    @Test
-    fun `DeleteEntry onConfirm shows loader`() = runTest {
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        dialog.onConfirm?.invoke()
-        advanceUntilIdle()
-
-        verify { dialogQueueService.showLoader("Deleting entry...") }
-    }
-
-    @Test
-    fun `DeleteEntry onConfirm calls healthConnectService deleteEntry`() = runTest {
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        dialog.onConfirm?.invoke()
-        advanceUntilIdle()
-
-        coVerify { healthConnectService.deleteEntry(entry) }
-    }
-
-    @Test
-    fun `DeleteEntry onConfirm dismisses dialog and loader`() = runTest {
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        dialog.onConfirm?.invoke()
-        advanceUntilIdle()
-
-        verify { dialogQueueService.dismissCurrent() }
-        verify { dialogQueueService.dismissLoader() }
-    }
-
-    @Test
-    fun `DeleteEntry onConfirm still dismisses when healthConnect deleteEntry throws`() = runTest {
-        coEvery { healthConnectService.deleteEntry(any()) } throws RuntimeException("HC error")
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        dialog.onConfirm?.invoke()
-        advanceUntilIdle()
-
-        verify { dialogQueueService.dismissCurrent() }
-        verify { dialogQueueService.dismissLoader() }
-    }
-
-    // -------------------------------------------------------------------------
-    // DeleteEntry — onCancel callback
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `DeleteEntry onCancel dismisses dialog`() = runTest {
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        dialog.onCancel?.invoke()
-
-        verify { dialogQueueService.dismissCurrent() }
-    }
-
-    // -------------------------------------------------------------------------
-    // DeleteEntry — onDismiss callback
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `DeleteEntry onDismiss dismisses dialog`() = runTest {
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        dialog.onDismiss?.invoke()
-
-        verify { dialogQueueService.dismissCurrent() }
     }
 
     // -------------------------------------------------------------------------
@@ -536,11 +362,11 @@ class HistoryDetailViewModelTest {
     }
 
     // -------------------------------------------------------------------------
-    // showDeleteEntryDialog — additional coverage
+    // DeleteEntry — optimistic delete + undo (MOB-598)
     // -------------------------------------------------------------------------
 
     @Test
-    fun `showDeleteEntryDialog has delete and cancel buttons`() = runTest {
+    fun `DeleteEntry deletes and shows Reading deleted toast with Undo`() = runTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -548,15 +374,16 @@ class HistoryDetailViewModelTest {
         viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
         advanceUntilIdle()
 
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        assertThat(dialog.confirmText).isNotNull()
-        assertThat(dialog.cancelText).isNotNull()
+        coVerify { entryService.deleteEntry(entry) }
+        val toasts = mutableListOf<Toast>()
+        verify { dialogQueueService.showToast(capture(toasts)) }
+        val toast = toasts.first() as Toast.Simple
+        assertThat(toast.message).isEqualTo("Reading deleted.")
+        assertThat(toast.action?.text).isEqualTo("Undo")
     }
 
     @Test
-    fun `showDeleteEntryDialog uses ErrorText button type`() = runTest {
+    fun `DeleteEntry also deletes from Health Connect`() = runTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -564,10 +391,59 @@ class HistoryDetailViewModelTest {
         viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
         advanceUntilIdle()
 
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        assertThat(dialog.primaryActionType).isEqualTo(com.dmdbrands.gurus.weight.features.common.components.ButtonType.ErrorText)
+        coVerify { healthConnectService.deleteEntry(entry) }
+    }
+
+    @Test
+    fun `DeleteEntry still shows deleted toast when Health Connect throws`() = runTest {
+        coEvery { healthConnectService.deleteEntry(any()) } throws RuntimeException("HC error")
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val entry = TestFixtures.weightEntry
+        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
+        advanceUntilIdle()
+
+        val toasts = mutableListOf<Toast>()
+        verify { dialogQueueService.showToast(capture(toasts)) }
+        assertThat((toasts.first() as Toast.Simple).message).isEqualTo("Reading deleted.")
+    }
+
+    @Test
+    fun `DeleteEntry shows Couldnt delete toast when deleteEntry fails`() = runTest {
+        coEvery { entryService.deleteEntry(any()) } throws RuntimeException("db error")
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val entry = TestFixtures.weightEntry
+        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
+        advanceUntilIdle()
+
+        val toasts = mutableListOf<Toast>()
+        verify { dialogQueueService.showToast(capture(toasts)) }
+        val toast = toasts.first() as Toast.Simple
+        assertThat(toast.title).isEqualTo("Couldn't delete!")
+        assertThat(toast.message).isEqualTo("Try again")
+    }
+
+    @Test
+    fun `Undo restores the entry and shows Reading restored toast`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val entry = TestFixtures.weightEntry
+        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
+        advanceUntilIdle()
+
+        val deleted = mutableListOf<Toast>()
+        verify { dialogQueueService.showToast(capture(deleted)) }
+        (deleted.first() as Toast.Simple).action?.action?.invoke()
+        advanceUntilIdle()
+
+        coVerify { entryService.restoreEntry(entry) }
+        val all = mutableListOf<Toast>()
+        verify(atLeast = 2) { dialogQueueService.showToast(capture(all)) }
+        assertThat((all.last() as Toast.Simple).message).isEqualTo("Reading restored.")
     }
 
     // -------------------------------------------------------------------------
@@ -625,41 +501,6 @@ class HistoryDetailViewModelTest {
             entryType = BabyEntryType.WEIGHT.value,
         ),
     )
-
-    @Test
-    fun `showDeleteEntryDialog onConfirm shows success toast after deletion`() = runTest {
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        dialog.onConfirm?.invoke()
-        advanceUntilIdle()
-
-        // Verify delete was called and dialog was dismissed
-        coVerify { entryService.deleteEntry(entry) }
-        verify { dialogQueueService.dismissCurrent() }
-    }
-
-    @Test
-    fun `showDeleteEntryDialog onDismiss callback is set`() = runTest {
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        assertThat(dialog.onDismiss).isNotNull()
-    }
 
     // -------------------------------------------------------------------------
     // isMetric state

@@ -12,8 +12,7 @@ import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.features.common.helper.AccountHelper.isMetricUnit
-import com.dmdbrands.gurus.weight.features.common.components.ButtonType
-import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.common.model.ActionButton
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.historyDetail.strings.HistoryDetailScreenStrings
@@ -107,7 +106,7 @@ class HistoryDetailViewModel @AssistedInject constructor(
 
             is HistoryDetailIntent.DeleteEntry -> {
                 AppLog.d(TAG, "Delete entry intent received for entry: ${intent.entry.entry.id}")
-                showDeleteEntryDialog(intent.entry)
+                deleteEntryWithUndo(intent.entry)
             }
 
             is HistoryDetailIntent.SaveNote -> {
@@ -175,42 +174,62 @@ class HistoryDetailViewModel @AssistedInject constructor(
         }
     }
 
-    private fun showDeleteEntryDialog(entry: Entry) {
+    /**
+     * Deletes an entry optimistically and shows a "Reading deleted." toast with an Undo action
+     * (no confirm dialog — the toast is the safety net). Undo restores the reading; a failed
+     * delete surfaces a "Couldn't delete!" toast.
+     */
+    private fun deleteEntryWithUndo(entry: Entry) {
         viewModelScope.launch {
-            dialogQueueService.showDialog(
-                DialogModel.Confirm(
-                    title = HistoryDetailScreenStrings.DeleteEntryDialogTitle,
-                    message = HistoryDetailScreenStrings.DeleteEntryDialogMessage,
-                    confirmText = HistoryDetailScreenStrings.DeleteButton,
-                    cancelText = HistoryDetailScreenStrings.CancelButton,
-                    primaryActionType = ButtonType.ErrorText,
-                    onConfirm = {
-                        AppLog.d(TAG, "User confirmed deletion of entry: ${entry.entry.id}")
-                        dialogQueueService.showLoader(HistoryDetailScreenStrings.DeleteLoaderMessage)
-                        viewModelScope.launch {
-                            // Delete from entry service (local + API)
-                            entryService.deleteEntry(entry)
-                            // Try to delete from Health Connect (non-blocking)
-                            try {
-                                healthConnectService.deleteEntry(entry)
-                                AppLog.d(TAG, "Entry deleted from Health Connect")
-                            } catch (e: Exception) {
-                                AppLog.w(TAG, "Failed to delete entry from Health Connect")
-                                // Don't fail the operation if HC deletion fails
-                            }
+            try {
+                entryService.deleteEntry(entry)
+                // Best-effort Health Connect mirror — a HC failure must not fail the delete.
+                try {
+                    healthConnectService.deleteEntry(entry)
+                } catch (e: Exception) {
+                    AppLog.w(TAG, "Failed to delete entry from Health Connect")
+                }
+                loadDetail()
+                dialogQueueService.showToast(
+                    Toast.Simple(
+                        message = HistoryDetailScreenStrings.ReadingDeleted,
+                        action = ActionButton(
+                            text = HistoryDetailScreenStrings.UndoButton,
+                            action = { undoDelete(entry) },
+                        ),
+                    ),
+                )
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error deleting entry: ${entry.entry.id}", e)
+                dialogQueueService.showToast(
+                    Toast.Simple(
+                        title = HistoryDetailScreenStrings.DeleteFailedTitle,
+                        message = HistoryDetailScreenStrings.DeleteFailedMessage,
+                    ),
+                )
+            }
+        }
+    }
 
-                            dialogQueueService.dismissCurrent()
-                            dialogQueueService.dismissLoader()
-                        }
-                    },
-                    onCancel = {
-                        dialogQueueService.dismissCurrent()
-                    },
-                    onDismiss = {
-                        dialogQueueService.dismissCurrent()
-                    },
-                ),
-            )
+    /** Restores a just-deleted reading (Undo) and confirms with a "Reading restored." toast. */
+    private fun undoDelete(entry: Entry) {
+        viewModelScope.launch {
+            try {
+                dialogQueueService.dismissToast()
+                entryService.restoreEntry(entry)
+                loadDetail()
+                dialogQueueService.showToast(
+                    Toast.Simple(message = HistoryDetailScreenStrings.ReadingRestored),
+                )
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error restoring entry: ${entry.entry.id}", e)
+                dialogQueueService.showToast(
+                    Toast.Simple(
+                        title = HistoryDetailScreenStrings.DeleteFailedTitle,
+                        message = HistoryDetailScreenStrings.DeleteFailedMessage,
+                    ),
+                )
+            }
         }
     }
 

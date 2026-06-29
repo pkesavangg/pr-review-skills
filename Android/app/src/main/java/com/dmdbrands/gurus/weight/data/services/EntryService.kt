@@ -154,17 +154,28 @@ class EntryService(
     /** Deletes an entry both locally and remotely. */
     override suspend fun deleteEntry(entry: Entry) {
         val currentAccountId = accountId ?: return
-        try {
-            val deleteEntry = entry.updateEntry(
-                entry.entry.copy(
-                    isSynced = false,
-                    operationType = OperationType.DELETE.name,
-                ),
-            )
-            syncOperationsInternal(currentAccountId, emptyList(), listOf(deleteEntry))
-        } catch (e: Exception) {
-            AppLog.e(TAG, "Error deleting entry", e)
-        }
+        // Soft-delete the local row first so a genuine persistence failure propagates to the caller
+        // (the History delete toast shows "Couldn't delete!"). Then push the delete — network
+        // errors are retried by the sync loop, not surfaced as a delete failure.
+        val deleted = entry.updateEntry(
+            entry.entry.copy(isSynced = false, operationType = OperationType.DELETE.name),
+        )
+        entryRepository.delete(deleted)
+        syncOperationsInternal(currentAccountId)
+    }
+
+    /**
+     * Restores a soft-deleted entry (Undo). Re-stamps the same row as create and upserts it in
+     * place (insert is a REPLACE by id), overwriting the soft-deleted row so the next sync batch
+     * carries a create — not a competing delete — for that id, then pushes it.
+     */
+    override suspend fun restoreEntry(entry: Entry) {
+        val currentAccountId = accountId ?: return
+        val restored = entry.updateEntry(
+            entry.entry.copy(isSynced = false, operationType = OperationType.CREATE.name),
+        )
+        entryRepository.insert(restored)
+        syncOperationsInternal(currentAccountId)
     }
 
     /**

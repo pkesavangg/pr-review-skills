@@ -37,6 +37,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import java.time.LocalDate
@@ -102,6 +103,7 @@ class EntryViewModelTest {
             appSyncService = appSyncService,
             deviceService = deviceService,
             analyticsService = mockk(relaxed = true),
+            appScope = TestScope(mainDispatcherRule.dispatcher),
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
