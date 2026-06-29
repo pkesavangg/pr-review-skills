@@ -26,12 +26,12 @@ struct BathScaleOperationDTO: Codable, Sendable, Equatable {
     let water: Double?
     let weight: Double?
     // Baby scale fields
-    var babyId: String? = nil
-    var babyWeight: Double? = nil
-    var babyLength: Double? = nil
+    var babyId: String?
+    var babyWeight: Double?
+    var babyLength: Double?
     // BP free-text note. Carried so the unified read path (MOB-385) can round-trip the
     // BP `note` field through the sync/merge engine into the local entry.
-    var note: String? = nil
+    var note: String?
 }
 
 // Extend BathScaleOperationDTO to conform to Identifiable and provide a computed date property

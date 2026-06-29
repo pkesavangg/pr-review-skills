@@ -29,7 +29,7 @@ enum BabyEntryRequest {
     /// - create: a `weight` request when `weightDecigrams > 0` and a `measureLength` request
     ///   when `lengthMillimeters > 0`.
     /// - delete: a single baby delete keyed by `entryId`.
-    static func makeRequests(
+    static func makeRequests( // swiftlint:disable:this function_parameter_count
         babyId: String,
         entryId: String,
         operationType: String,

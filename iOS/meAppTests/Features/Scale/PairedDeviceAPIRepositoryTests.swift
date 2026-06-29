@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 /// Tests for the Me App 2.0 unified `/paired-device/` CRUD endpoints and the unified `/review/`
 /// endpoint on `ScaleAPIRepository` (MOB-383).

@@ -85,6 +85,7 @@ final class MockScaleService: PairedDeviceServiceProtocol {
         return device
     }
 
+    // swiftlint:disable:next function_parameter_count
     func createBluetoothScale(
         device: Device,
         sku: String?,

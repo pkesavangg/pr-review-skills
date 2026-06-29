@@ -14,6 +14,7 @@ final class MockHelpStoreLoggerService: LoggerServiceProtocol {
     var sendLogsToServerError: Error?
     var sendScaleLogsToServerError: Error?
 
+    // swiftlint:disable:next function_parameter_count
     func log(
         level: LogLevel,
         tag: String,

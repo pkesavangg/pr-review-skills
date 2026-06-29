@@ -1,11 +1,13 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
 struct DashboardChartManagerTests {
 
+    // Test factory return; labeled tuple is clearer than a one-off SUT struct.
+    // swiftlint:disable:next large_tuple
     private func makeSUT() -> (
         store: DashboardStore,
         accountService: AccountService,
@@ -15,6 +17,8 @@ struct DashboardChartManagerTests {
         makeSUT(cacheManager: MockDashboardCacheManager())
     }
 
+    // Test factory return; labeled tuple is clearer than a one-off SUT struct.
+    // swiftlint:disable:next large_tuple
     private func makeSUT(cacheManager: MockDashboardCacheManager) -> (
         store: DashboardStore,
         accountService: AccountService,

@@ -452,7 +452,6 @@ final class HistoryStore: ObservableObject {
             message: "\(label) \(HistoryListStrings.readingDeleted)",
             btnTextView: AnyView(Text(HistoryListStrings.undo).fontOpenSans(.button1)),
             onClick: { Task { @MainActor in self.undoBPDelete() } },
-            duration: 3,
             onDismiss: { Task { @MainActor in self.commitBPDelete() } }
         ))
     }
@@ -521,7 +520,6 @@ final class HistoryStore: ObservableObject {
             message: "\(label): \(HistoryListStrings.readingDeleted)",
             btnTextView: AnyView(Text(HistoryListStrings.undo).fontOpenSans(.button1)),
             onClick: { Task { @MainActor in self.undoBabyDelete() } },
-            duration: 3,
             onDismiss: { Task { @MainActor in self.commitBabyDelete() } }
         ))
     }
@@ -565,7 +563,6 @@ final class HistoryStore: ObservableObject {
             message: "\(time) \(HistoryListStrings.readingDeleted)",
             btnTextView: AnyView(Text(HistoryListStrings.undo).fontOpenSans(.button1)),
             onClick: { Task { @MainActor in self.undoWGDelete() } },
-            duration: 3,
             onDismiss: { Task { @MainActor in self.commitWGDelete() } }
         ))
     }
@@ -600,6 +597,7 @@ final class HistoryStore: ObservableObject {
 
     // MARK: - BP Edit (delete-old + create-new)
 
+    // swiftlint:disable:next function_parameter_count
     func updateBPEntry(
         old: BPHistoryEntry,
         systolic: Int,
@@ -931,7 +929,7 @@ final class HistoryStore: ObservableObject {
     }
 
     /// Groups baby entries by day, then by week, building weekly summaries.
-    private func mapBabyEntriesToWeeks(_ entries: [EntrySnapshot], profile: BabyProfile? = nil) -> [BabyHistoryWeek] {
+    private func mapBabyEntriesToWeeks(_ entries: [EntrySnapshot], profile: BabyProfile? = nil) -> [BabyHistoryWeek] { // swiftlint:disable:this function_body_length
         // Group by local day
         let grouped = Dictionary(grouping: entries) { entry -> String in
             return self.localDayString(from: entry.entryTimestamp)

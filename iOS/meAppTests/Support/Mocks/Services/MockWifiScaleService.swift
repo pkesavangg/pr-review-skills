@@ -6,7 +6,7 @@ final class MockWifiScaleService: WifiPairedDeviceServiceProtocol {
     var getScaleTokenResult: Result<WifiScaleTokenResponse, Error> = .success(
         WifiScaleTokenResponse(token: "scale-token")
     )
-    var connectedWifiInfo: WifiStatus = WifiStatus(status: .connected, locationStatus: .ENABLED, ssid: "Home", bssid: "AA:BB")
+    var connectedWifiInfo = WifiStatus(status: .connected, locationStatus: .ENABLED, ssid: "Home", bssid: "AA:BB")
 
     private(set) var getScaleTokenCalls = 0
     private(set) var lastScaleTokenRequest: String?

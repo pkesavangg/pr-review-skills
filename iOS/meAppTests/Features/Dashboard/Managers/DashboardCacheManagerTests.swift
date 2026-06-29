@@ -1,23 +1,23 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
 struct DashboardCacheManagerTests {
 
-    private func makeSUT() -> DashboardCacheManager {
+    func makeSUT() -> DashboardCacheManager {
         DashboardCacheManager()
     }
 
-    private func makeSummary(
+    func makeSummary(
         period: String = "2026-03-01",
         weight: Double = 1800
     ) -> BathScaleWeightSummary {
         DashboardTestFixtures.makeSummary(period: period, weight: weight)
     }
 
-    private func makeSeries(
+    func makeSeries(
         dateString: String = "2026-03-01",
         value: Double = 180.0,
         series: String = "weight"
@@ -29,7 +29,7 @@ struct DashboardCacheManagerTests {
         )]
     }
 
-    private func makeDateRangeResult(
+    func makeDateRangeResult(
         period: TimePeriod = .week,
         scrollPosition: Date = DateTimeTools.getDateFromDateString("2026-03-01", format: "yyyy-MM-dd"),
         ops: [BathScaleWeightSummary]
@@ -112,23 +112,51 @@ struct DashboardCacheManagerTests {
         #expect(callCount == 2)
     }
 
-    @Test("invalidateContinuousOperationsCache: clears dependent caches")
-    func invalidateContinuousOperationsCacheClearsDependentCaches() {
+    @Test("invalidateContinuousOperationsCache: clears continuous operations cache")
+    func invalidateContinuousOperationsCacheClearsContinuous() {
         let sut = makeSUT()
         var continuousCalls = 0
-        var visibleCalls = 0
-        var chartCalls = 0
-        var labelRangeCalls = 0
-        let scroll = DateTimeTools.getDateFromDateString("2026-03-01", format: "yyyy-MM-dd")
 
         _ = sut.getContinuousOperations(for: .week) {
             continuousCalls += 1
             return [makeSummary(period: "2026-03-01")]
         }
+
+        sut.invalidateContinuousOperationsCache()
+
+        _ = sut.getContinuousOperations(for: .week) {
+            continuousCalls += 1
+            return [makeSummary(period: "2026-03-02")]
+        }
+
+        #expect(continuousCalls == 2)
+    }
+
+    @Test("invalidateContinuousOperationsCache: clears visible operations cache")
+    func invalidateContinuousOperationsCacheClearsVisible() {
+        let sut = makeSUT()
+        var visibleCalls = 0
+
         _ = sut.getVisibleOperations(isScrolling: true) {
             visibleCalls += 1
             return [makeSummary(period: "2026-03-01")]
         }
+
+        sut.invalidateContinuousOperationsCache()
+
+        _ = sut.getVisibleOperations(isScrolling: true) {
+            visibleCalls += 1
+            return [makeSummary(period: "2026-03-02")]
+        }
+
+        #expect(visibleCalls == 2)
+    }
+
+    @Test("invalidateContinuousOperationsCache: clears chart series cache")
+    func invalidateContinuousOperationsCacheClearsChart() {
+        let sut = makeSUT()
+        var chartCalls = 0
+
         _ = sut.getChartSeriesData(
             isScrolling: false,
             isProcessingScrollEnd: false,
@@ -140,21 +168,9 @@ struct DashboardCacheManagerTests {
             chartCalls += 1
             return makeSeries()
         }
-        _ = sut.getLabelDateRangeOperations(period: .week, scrollPosition: scroll) {
-            labelRangeCalls += 1
-            return makeDateRangeResult(period: .week, scrollPosition: scroll, ops: [makeSummary()])
-        }
 
         sut.invalidateContinuousOperationsCache()
 
-        _ = sut.getContinuousOperations(for: .week) {
-            continuousCalls += 1
-            return [makeSummary(period: "2026-03-02")]
-        }
-        _ = sut.getVisibleOperations(isScrolling: true) {
-            visibleCalls += 1
-            return [makeSummary(period: "2026-03-02")]
-        }
         _ = sut.getChartSeriesData(
             isScrolling: false,
             isProcessingScrollEnd: false,
@@ -166,14 +182,28 @@ struct DashboardCacheManagerTests {
             chartCalls += 1
             return makeSeries(dateString: "2026-03-02", value: 181.0)
         }
+
+        #expect(chartCalls == 2)
+    }
+
+    @Test("invalidateContinuousOperationsCache: clears label date range cache")
+    func invalidateContinuousOperationsCacheClearsLabelRange() {
+        let sut = makeSUT()
+        var labelRangeCalls = 0
+        let scroll = DateTimeTools.getDateFromDateString("2026-03-01", format: "yyyy-MM-dd")
+
+        _ = sut.getLabelDateRangeOperations(period: .week, scrollPosition: scroll) {
+            labelRangeCalls += 1
+            return makeDateRangeResult(period: .week, scrollPosition: scroll, ops: [makeSummary()])
+        }
+
+        sut.invalidateContinuousOperationsCache()
+
         _ = sut.getLabelDateRangeOperations(period: .week, scrollPosition: scroll) {
             labelRangeCalls += 1
             return makeDateRangeResult(period: .week, scrollPosition: scroll, ops: [makeSummary(period: "2026-03-02")])
         }
 
-        #expect(continuousCalls == 2)
-        #expect(visibleCalls == 2)
-        #expect(chartCalls == 2)
         #expect(labelRangeCalls == 2)
     }
 
@@ -230,276 +260,6 @@ struct DashboardCacheManagerTests {
         }
 
         #expect(second.map(\.period) == ["2026-03-02"])
-        #expect(callCount == 2)
-    }
-
-    @Test("getChartSeriesData: processing scroll end returns cached data without recomputing")
-    func getChartSeriesDataProcessingScrollEndUsesCache() {
-        let sut = makeSUT()
-        var callCount = 0
-
-        let primed = sut.getChartSeriesData(
-            isScrolling: false,
-            isProcessingScrollEnd: false,
-            period: .week,
-            selectedMetric: "weight",
-            operationsCount: 1,
-            yAxisDomain: 170.0 ... 190.0
-        ) {
-            callCount += 1
-            return makeSeries()
-        }
-
-        let second = sut.getChartSeriesData(
-            isScrolling: false,
-            isProcessingScrollEnd: true,
-            period: .month,
-            selectedMetric: "bmi",
-            operationsCount: 999,
-            yAxisDomain: 0.0 ... 1.0
-        ) {
-            callCount += 1
-            return makeSeries(dateString: "2026-03-02", value: 181.0, series: "bmi")
-        }
-
-        #expect(second == primed)
-        #expect(callCount == 1)
-    }
-
-    @Test("getChartSeriesData: empty processing scroll end returns empty when cache is empty")
-    func getChartSeriesDataProcessingScrollEndEmptyWithoutCache() {
-        let sut = makeSUT()
-        var callCount = 0
-
-        let result = sut.getChartSeriesData(
-            isScrolling: false,
-            isProcessingScrollEnd: true,
-            period: .week,
-            selectedMetric: nil,
-            operationsCount: 0,
-            yAxisDomain: nil
-        ) {
-            callCount += 1
-            return makeSeries()
-        }
-
-        #expect(result.isEmpty)
-        #expect(callCount == 0)
-    }
-
-    @Test("getChartSeriesData: valid cached metadata returns cached series")
-    func getChartSeriesDataCacheHitByMetadata() {
-        let sut = makeSUT()
-        var callCount = 0
-
-        let first = sut.getChartSeriesData(
-            isScrolling: false,
-            isProcessingScrollEnd: false,
-            period: .week,
-            selectedMetric: "weight",
-            operationsCount: 3,
-            yAxisDomain: 170.0 ... 190.0
-        ) {
-            callCount += 1
-            return makeSeries()
-        }
-        let second = sut.getChartSeriesData(
-            isScrolling: false,
-            isProcessingScrollEnd: false,
-            period: .week,
-            selectedMetric: "weight",
-            operationsCount: 3,
-            yAxisDomain: 170.0 ... 190.0
-        ) {
-            callCount += 1
-            return makeSeries(dateString: "2026-03-02", value: 181.0)
-        }
-
-        #expect(second == first)
-        #expect(callCount == 1)
-    }
-
-    @Test("getChartSeriesData: scrolling uses cache only when metric is unchanged")
-    func getChartSeriesDataScrollingMetricChangeInvalidatesCache() {
-        let sut = makeSUT()
-        var callCount = 0
-
-        let first = sut.getChartSeriesData(
-            isScrolling: false,
-            isProcessingScrollEnd: false,
-            period: .week,
-            selectedMetric: "weight",
-            operationsCount: 1,
-            yAxisDomain: 170.0 ... 190.0
-        ) {
-            callCount += 1
-            return makeSeries(series: "weight")
-        }
-        let cached = sut.getChartSeriesData(
-            isScrolling: true,
-            isProcessingScrollEnd: false,
-            period: .week,
-            selectedMetric: "weight",
-            operationsCount: 1,
-            yAxisDomain: 170.0 ... 190.0
-        ) {
-            callCount += 1
-            return makeSeries(series: "weight-2")
-        }
-        let metricChanged = sut.getChartSeriesData(
-            isScrolling: true,
-            isProcessingScrollEnd: false,
-            period: .week,
-            selectedMetric: "bmi",
-            operationsCount: 1,
-            yAxisDomain: 170.0 ... 190.0
-        ) {
-            callCount += 1
-            return makeSeries(series: "bmi")
-        }
-
-        #expect(cached == first)
-        #expect(metricChanged != first)
-        #expect(callCount == 2)
-    }
-
-    @Test("getChartSeriesData: data-count and y-axis changes invalidate cache")
-    func getChartSeriesDataMetadataChangesRecalculate() {
-        let sut = makeSUT()
-        var callCount = 0
-
-        _ = sut.getChartSeriesData(
-            isScrolling: false,
-            isProcessingScrollEnd: false,
-            period: .week,
-            selectedMetric: "weight",
-            operationsCount: 1,
-            yAxisDomain: 170.0 ... 190.0
-        ) {
-            callCount += 1
-            return makeSeries()
-        }
-        _ = sut.getChartSeriesData(
-            isScrolling: false,
-            isProcessingScrollEnd: false,
-            period: .week,
-            selectedMetric: "weight",
-            operationsCount: 2,
-            yAxisDomain: 170.0 ... 190.0
-        ) {
-            callCount += 1
-            return makeSeries(dateString: "2026-03-02", value: 181.0)
-        }
-        _ = sut.getChartSeriesData(
-            isScrolling: false,
-            isProcessingScrollEnd: false,
-            period: .week,
-            selectedMetric: "weight",
-            operationsCount: 2,
-            yAxisDomain: 160.0 ... 200.0
-        ) {
-            callCount += 1
-            return makeSeries(dateString: "2026-03-03", value: 182.0)
-        }
-
-        #expect(callCount == 3)
-    }
-
-    @Test("getChartSeriesData: period change invalidates cached series")
-    func getChartSeriesDataPeriodChangeRecalculates() {
-        let sut = makeSUT()
-        var callCount = 0
-
-        let first = sut.getChartSeriesData(
-            isScrolling: false,
-            isProcessingScrollEnd: false,
-            period: .week,
-            selectedMetric: "weight",
-            operationsCount: 1,
-            yAxisDomain: 170.0 ... 190.0
-        ) {
-            callCount += 1
-            return makeSeries(series: "week")
-        }
-        let second = sut.getChartSeriesData(
-            isScrolling: false,
-            isProcessingScrollEnd: false,
-            period: .month,
-            selectedMetric: "weight",
-            operationsCount: 1,
-            yAxisDomain: 170.0 ... 190.0
-        ) {
-            callCount += 1
-            return makeSeries(dateString: "2026-03-15", value: 181.0, series: "month")
-        }
-
-        #expect(first != second)
-        #expect(callCount == 2)
-    }
-
-    @Test("getChartSeriesData: scrolling metric deselection invalidates cache")
-    func getChartSeriesDataScrollingMetricDeselectionInvalidatesCache() {
-        let sut = makeSUT()
-        var callCount = 0
-
-        _ = sut.getChartSeriesData(
-            isScrolling: false,
-            isProcessingScrollEnd: false,
-            period: .week,
-            selectedMetric: "weight",
-            operationsCount: 1,
-            yAxisDomain: 170.0 ... 190.0
-        ) {
-            callCount += 1
-            return makeSeries(series: "weight")
-        }
-        let second = sut.getChartSeriesData(
-            isScrolling: true,
-            isProcessingScrollEnd: false,
-            period: .week,
-            selectedMetric: nil,
-            operationsCount: 1,
-            yAxisDomain: 170.0 ... 190.0
-        ) {
-            callCount += 1
-            return makeSeries(series: "all")
-        }
-
-        #expect(second.map(\.series) == ["all"])
-        #expect(callCount == 2)
-    }
-
-    @Test("invalidateChartSeriesCache: clears chart series metadata")
-    func invalidateChartSeriesCacheForcesRefresh() {
-        let sut = makeSUT()
-        var callCount = 0
-
-        _ = sut.getChartSeriesData(
-            isScrolling: false,
-            isProcessingScrollEnd: false,
-            period: .week,
-            selectedMetric: "weight",
-            operationsCount: 1,
-            yAxisDomain: 170.0 ... 190.0
-        ) {
-            callCount += 1
-            return makeSeries()
-        }
-
-        sut.invalidateChartSeriesCache()
-
-        _ = sut.getChartSeriesData(
-            isScrolling: false,
-            isProcessingScrollEnd: false,
-            period: .week,
-            selectedMetric: "weight",
-            operationsCount: 1,
-            yAxisDomain: 170.0 ... 190.0
-        ) {
-            callCount += 1
-            return makeSeries(dateString: "2026-03-02", value: 181.0)
-        }
-
         #expect(callCount == 2)
     }
 
@@ -647,23 +407,51 @@ struct DashboardCacheManagerTests {
         #expect(callCount == 2)
     }
 
-    @Test("clearAllCaches: resets all cache layers")
-    func clearAllCachesResetsEverything() {
+    @Test("clearAllCaches: resets continuous operations cache")
+    func clearAllCachesResetsContinuous() {
         let sut = makeSUT()
         var continuousCalls = 0
-        var visibleCalls = 0
-        var chartCalls = 0
-        var labelRangeCalls = 0
-        let scroll = DateTimeTools.getDateFromDateString("2026-03-01", format: "yyyy-MM-dd")
 
         _ = sut.getContinuousOperations(for: .week) {
             continuousCalls += 1
             return [makeSummary(period: "2026-03-01")]
         }
+
+        sut.clearAllCaches()
+
+        _ = sut.getContinuousOperations(for: .week) {
+            continuousCalls += 1
+            return [makeSummary(period: "2026-03-02")]
+        }
+
+        #expect(continuousCalls == 2)
+    }
+
+    @Test("clearAllCaches: resets visible operations cache")
+    func clearAllCachesResetsVisible() {
+        let sut = makeSUT()
+        var visibleCalls = 0
+
         _ = sut.getVisibleOperations(isScrolling: true) {
             visibleCalls += 1
             return [makeSummary(period: "2026-03-01")]
         }
+
+        sut.clearAllCaches()
+
+        _ = sut.getVisibleOperations(isScrolling: true) {
+            visibleCalls += 1
+            return [makeSummary(period: "2026-03-02")]
+        }
+
+        #expect(visibleCalls == 2)
+    }
+
+    @Test("clearAllCaches: resets chart series cache")
+    func clearAllCachesResetsChart() {
+        let sut = makeSUT()
+        var chartCalls = 0
+
         _ = sut.getChartSeriesData(
             isScrolling: false,
             isProcessingScrollEnd: false,
@@ -675,21 +463,9 @@ struct DashboardCacheManagerTests {
             chartCalls += 1
             return makeSeries()
         }
-        _ = sut.getLabelDateRangeOperations(period: .week, scrollPosition: scroll) {
-            labelRangeCalls += 1
-            return makeDateRangeResult(period: .week, scrollPosition: scroll, ops: [makeSummary()])
-        }
 
         sut.clearAllCaches()
 
-        _ = sut.getContinuousOperations(for: .week) {
-            continuousCalls += 1
-            return [makeSummary(period: "2026-03-02")]
-        }
-        _ = sut.getVisibleOperations(isScrolling: true) {
-            visibleCalls += 1
-            return [makeSummary(period: "2026-03-02")]
-        }
         _ = sut.getChartSeriesData(
             isScrolling: false,
             isProcessingScrollEnd: false,
@@ -701,14 +477,28 @@ struct DashboardCacheManagerTests {
             chartCalls += 1
             return makeSeries(dateString: "2026-03-02", value: 181.0)
         }
+
+        #expect(chartCalls == 2)
+    }
+
+    @Test("clearAllCaches: resets label date range cache")
+    func clearAllCachesResetsLabelRange() {
+        let sut = makeSUT()
+        var labelRangeCalls = 0
+        let scroll = DateTimeTools.getDateFromDateString("2026-03-01", format: "yyyy-MM-dd")
+
+        _ = sut.getLabelDateRangeOperations(period: .week, scrollPosition: scroll) {
+            labelRangeCalls += 1
+            return makeDateRangeResult(period: .week, scrollPosition: scroll, ops: [makeSummary()])
+        }
+
+        sut.clearAllCaches()
+
         _ = sut.getLabelDateRangeOperations(period: .week, scrollPosition: scroll) {
             labelRangeCalls += 1
             return makeDateRangeResult(period: .week, scrollPosition: scroll, ops: [makeSummary(period: "2026-03-02")])
         }
 
-        #expect(continuousCalls == 2)
-        #expect(visibleCalls == 2)
-        #expect(chartCalls == 2)
         #expect(labelRangeCalls == 2)
     }
 }

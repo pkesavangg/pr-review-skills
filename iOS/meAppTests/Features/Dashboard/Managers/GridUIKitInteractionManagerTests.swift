@@ -1,6 +1,6 @@
+@testable import meApp
 import Testing
 import UIKit
-@testable import meApp
 
 @MainActor
 private final class GridTapSinkTarget: NSObject {
@@ -62,9 +62,9 @@ struct GridUIKitInteractionManagerTests {
 
         let tapRecognizer = recognizers
             .compactMap { $0 as? UITapGestureRecognizer }
-            .first(where: { recognizer in
+            .first { recognizer in
                 !existingRecognizers.contains { $0 === recognizer }
-            })
+            }
         #expect(tapRecognizer != nil)
         #expect(tapRecognizer?.cancelsTouchesInView == false)
         #expect(tapRecognizer?.delaysTouchesBegan == false)

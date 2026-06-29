@@ -62,14 +62,13 @@ struct GoalSettingScreen: View {
                     }
                     SegmentedButtonView(
                         segments: GoalTypeSegment.allCases,
-                        selectedSegment: $settingsStore.selectedSegment,
-                        accessibilityIdentifierProvider: { segment in
-                            switch segment {
-                            case .maintain: return AccessibilityID.goalMaintainTab
-                            case .loseGain: return AccessibilityID.goalLoseGainTab
-                            }
+                        selectedSegment: $settingsStore.selectedSegment
+                    ) { segment in
+                        switch segment {
+                        case .maintain: return AccessibilityID.goalMaintainTab
+                        case .loseGain: return AccessibilityID.goalLoseGainTab
                         }
-                    )
+                    }
                     .onChange(of: settingsStore.selectedSegment) {
                         settingsStore.handleGoalTypeChange(settingsStore.selectedSegment)
                     }

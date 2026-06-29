@@ -9,6 +9,9 @@ import Accessibility
 import Charts
 import SwiftUI
 
+// swiftlint:disable file_length
+
+// swiftlint:disable:next type_body_length
 struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
     @ObservedObject var viewModel: ViewModel
     @ObservedObject var dashboardStore: DashboardStore
@@ -482,9 +485,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
             horizontalYValue: horizontalBabyCrosshairYValue,
             timePeriod: viewModel.timePeriod,
             selectedBabyPercentile: selectedBabyPercentile,
-            theme: theme,
-            plotXDate: { viewModel.plotXDate(for: $0) }
-        )
+            theme: theme
+        ) { viewModel.plotXDate(for: $0) }
     }
 
     private var chartSeriesContent: ChartSeriesContent {
@@ -519,9 +521,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
             activeMonthInterval: dashboardStore.displayManager.activeMonthInterval,
             bpmClassification: dashboardStore.displayManager?.getBpmDisplayValues()?.classification,
             theme: theme,
-            babyProfile: selectedBabyProfile,
-            pointArea: { viewModel.pointArea(isSelected: $0) }
-        )
+            babyProfile: selectedBabyProfile
+        ) { viewModel.pointArea(isSelected: $0) }
     }
 
     private var chartBpmReferenceLines: BpmReferenceLines {
@@ -650,15 +651,14 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
             GoalWeightChipView(
                 label: BaseGraphViewCalloutSupport.goalWeightLabel(
                     roundedValue: roundedGoalWeight,
-                    formattedValue: formattedGoalWeight,
-                    fallbackFormatter: {
-                        BaseGraphViewCacheManager.yAxisLabel(
-                            for: $0,
-                            cachedLabels: cachedYAxisLabels,
-                            formatter: dashboardStore.displayManager.formatYAxisTickLabel
-                        )
-                    }
-                ),
+                    formattedValue: formattedGoalWeight
+                ) {
+                    BaseGraphViewCacheManager.yAxisLabel(
+                        for: $0,
+                        cachedLabels: cachedYAxisLabels,
+                        formatter: dashboardStore.displayManager.formatYAxisTickLabel
+                    )
+                },
                 theme: theme
             )
             .position(
@@ -693,6 +693,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
 // MARK: - AXChartDescriptorRepresentable
 
 extension BaseGraphView: AXChartDescriptorRepresentable {
+    // swiftlint:disable:next function_body_length
     func makeChartDescriptor() -> AXChartDescriptor {
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .medium
@@ -790,3 +791,4 @@ extension BaseGraphView: AXChartDescriptorRepresentable {
     .frame(height: 265)
     .padding()
 }
+// swiftlint:enable file_length

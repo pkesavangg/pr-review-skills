@@ -207,13 +207,27 @@ enum EntryTestFixtures {
             attempts: 0,
             isFailedToSync: false,
             scaleEntry: BathScaleEntrySnapshot(
-                weight: nil, bodyFat: nil, muscleMass: nil, water: nil, bmi: nil,
-                source: source, systolic: systolic, diastolic: diastolic, meanArterial: meanArterial
+                weight: nil,
+                bodyFat: nil,
+                muscleMass: nil,
+                water: nil,
+                bmi: nil,
+                source: source,
+                systolic: systolic,
+                diastolic: diastolic,
+                meanArterial: meanArterial
             ),
             scaleEntryMetric: BathScaleMetricSnapshot(
-                bmr: nil, metabolicAge: nil, proteinPercent: nil, pulse: pulse,
-                skeletalMusclePercent: nil, subcutaneousFatPercent: nil, visceralFatLevel: nil,
-                boneMass: nil, impedance: nil, unit: unit
+                bmr: nil,
+                metabolicAge: nil,
+                proteinPercent: nil,
+                pulse: pulse,
+                skeletalMusclePercent: nil,
+                subcutaneousFatPercent: nil,
+                visceralFatLevel: nil,
+                boneMass: nil,
+                impedance: nil,
+                unit: unit
             ),
             bpmEntry: BPMEntrySnapshot(
                 systolic: systolic,

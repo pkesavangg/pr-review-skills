@@ -74,12 +74,12 @@ struct DeviceTypeHelper {
         return .bluetoothA6 // Default fallback
     }
 
-    /// Determines the scale type from primitive values — used by DeviceSnapshot (no @Model access).
-    /// - Parameters:
-    ///   - sku: The device SKU.
-    ///   - scaleType: The raw scaleType string from BathScale / BathScaleSnapshot.
-    ///   - deviceType: The raw deviceType string from Device / DeviceSnapshot.
-    // swiftlint:disable:next cyclomatic_complexity
+    // Determines the scale type from primitive values — used by DeviceSnapshot (no @Model access).
+    // - Parameters:
+    //   - sku: The device SKU.
+    //   - scaleType: The raw scaleType string from BathScale / BathScaleSnapshot.
+    //   - deviceType: The raw deviceType string from Device / DeviceSnapshot.
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     static func determineDeviceModelType(sku: String?, scaleType: String?, deviceType: String?) -> DeviceModelType {
         guard let sku else {
             if let scaleType {

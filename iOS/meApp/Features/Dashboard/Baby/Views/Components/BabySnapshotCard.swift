@@ -134,6 +134,7 @@ struct BabySnapshotCard: View {
     }
 
     @MainActor
+    // swiftlint:disable:next function_body_length
     private func recomputeCache() async {
         let inputSummaries = summaries
         let profile = babyProfile
@@ -174,9 +175,8 @@ struct BabySnapshotCard: View {
                 let allPoints = BabyPercentileGrowthReference.percentileChartPoints(
                     biologicalSex: profile.biologicalSex,
                     birthday: birthday,
-                    dateRange: effectiveBounds.start...effectiveBounds.end,
-                    convertDecigramsToDisplay: { BabyDashboardChartSupport.convertDecigramsToDisplay($0, unit: weightUnit) }
-                )
+                    dateRange: effectiveBounds.start...effectiveBounds.end
+                ) { BabyDashboardChartSupport.convertDecigramsToDisplay($0, unit: weightUnit) }
                 let byLine = Dictionary(grouping: allPoints, by: \.line)
                 var thinnedByLine: [BabyPercentileLine: [BabyPercentileChartPoint]] = [:]
                 for (line, points) in byLine {

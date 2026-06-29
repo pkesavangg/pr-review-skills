@@ -8,6 +8,9 @@
 import SwiftUI
 import UIKit
 
+// swiftlint:disable file_length
+
+// swiftlint:disable:next type_body_length
 struct GoalStreakGridUIKitView: UIViewRepresentable {
     var parentView: DashboardMetricsParentView = .dashboard
     @ObservedObject var store: DashboardStore
@@ -30,6 +33,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         return collectionView
     }
     
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     func updateUIView(_ collectionView: UICollectionView, context: Context) {
         let coordinator = context.coordinator
         coordinator.store = store
@@ -206,6 +210,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     
     // MARK: - Coordinator
 
+    // swiftlint:disable:next type_body_length
     class Coordinator: NSObject, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
         // Reentrancy guard for updateUIView to avoid AttributeGraph cycles
         var isUpdating: Bool = false
@@ -445,12 +450,11 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             UIView.animate(
                 withDuration: 0.16,
                 delay: 0,
-                options: [.beginFromCurrentState, .allowUserInteraction, .curveEaseInOut],
-                animations: {
-                    collectionView.collectionViewLayout.invalidateLayout()
-                    collectionView.layoutIfNeeded()
-                }
-            )
+                options: [.beginFromCurrentState, .allowUserInteraction, .curveEaseInOut]
+            ) {
+                collectionView.collectionViewLayout.invalidateLayout()
+                collectionView.layoutIfNeeded()
+            }
         }
 
         // MARK: - Interactive Movement (Strictly Clamped)
@@ -984,3 +988,4 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
 
     }
 }
+// swiftlint:enable file_length

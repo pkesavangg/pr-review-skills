@@ -4,8 +4,8 @@
 //
 
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -203,7 +203,6 @@ struct HelpStoreTests {
         #expect(notification.alertData?.title == AlertStrings.DataClearingAlert.successHeader)
     }
 
-
     // MARK: - showAppRateModal
 
     @Test("showAppRateModal logs an info message and requests review via handler (no real modal)")
@@ -212,7 +211,7 @@ struct HelpStoreTests {
         store.showAppRateModal()
         let called = await waitUntil { appReview.triggerAppReviewCalls == 1 }
         #expect(called == true)
-        #expect(logger.messages.contains(where: { $0.contains("Presenting app rating modal") }))
+        #expect(logger.messages.contains { $0.contains("Presenting app rating modal") })
         #expect(appReview.lastIsFromDebug == true)
     }
 

@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -245,7 +245,6 @@ struct ContentViewModelTests {
         #expect(accountFlag.getAccountFlagCalls == 1)
         #expect(accountFlag.checkAccountFlagCalls == 0)
     }
-
 
     @Test("waitForStartupMigrationIfNeeded times out after 15 seconds")
     func waitForStartupMigrationTimesOut() async {

@@ -72,7 +72,7 @@ final class LandingStore: ObservableObject {
                     // The row view keys its logged-out treatment (dimmed card, "Logged
                     // out" label, Log In button) off `isExpired`. An account needs login
                     // whenever it isn't fully active.
-                    let needsLogin = !(account.isLoggedIn == true && (account.isExpired ?? false) == false)
+                    let needsLogin = !(account.isLoggedIn == true && account.isExpired == false)
                     return UserItemInfo(
                         accountID: account.accountId,
                         name: displayName,
@@ -181,7 +181,7 @@ final class LandingStore: ObservableObject {
         }
 
         // Only require connectivity when the account is still logged in.
-        let isLoggedIn = account.isLoggedIn == true && (account.isExpired ?? false) == false
+        let isLoggedIn = account.isLoggedIn == true && account.isExpired == false
         if isLoggedIn && !networkMonitor.isConnected {
             notificationService.showToast(ToastModel(message: toastLang.unableToConnect))
             return
@@ -212,7 +212,7 @@ final class LandingStore: ObservableObject {
     func canAddMoreAccounts() -> Bool {
         // Only count fully logged-in accounts toward the limit.
         let loggedInCount = accounts.filter {
-            $0.isLoggedIn == true && ($0.isExpired ?? false) == false
+            $0.isLoggedIn == true && $0.isExpired == false
         }.count
         if loggedInCount >= appConstants.Account.maxAccounts {
             showMaxUserAccountsAlert()

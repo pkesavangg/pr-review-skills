@@ -1,7 +1,7 @@
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 extension BtWifiStoreTests {
     @Suite("Pairing Flow")

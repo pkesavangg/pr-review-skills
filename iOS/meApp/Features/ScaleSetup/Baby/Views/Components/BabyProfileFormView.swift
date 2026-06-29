@@ -15,6 +15,7 @@ struct BabyProfileFormView: View {
     @FocusState private var focusedField: FocusField?
     private let lang = BabyScaleSetupStrings.BabyProfile.self
     private let labels = InputFieldLabels.self
+    private let sexDisplay: (Sex) -> String = { $0.rawValue.capitalized }
     private let babyWeightSegments: [BabyWeightUnit] = [.lb, .lbsOz, .kg]
 
     /// When `true`, the title and subtitle header is hidden (e.g. Settings -> Add Baby).
@@ -176,7 +177,7 @@ struct BabyProfileFormView: View {
             isPresented: $showSexPicker,
             selectedValues: [selectedSex],
             options: [Sex.allCases],
-            displayValue: { $0.rawValue.capitalized },
+            displayValue: sexDisplay,
             title: labels.biologicalSex
         ) { vals in
             if let sex = vals.first {

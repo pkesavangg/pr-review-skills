@@ -402,6 +402,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     // MARK: - Progress/Stats
 
+    // swiftlint:disable:next function_body_length
     func getProgress(entryType: EntryType = .scale) async throws -> Progress {
         let accountId = try getAccountId()
 
@@ -548,7 +549,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         return df
     }()
 
-    private static let monthSummaryDateFormatter: DateFormatter = {
+    private nonisolated static let monthSummaryDateFormatter: DateFormatter = {
         let df = DateFormatter()
         df.calendar = Calendar(identifier: .gregorian)
         df.dateFormat = "yyyy-MM-dd"
@@ -1039,7 +1040,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// - Returns: `true` if at least one create operation was successfully synced.
     ///   The caller uses this to decide whether to show the goal met card: we only show it when
     ///   the user actually added new entries in this sync (not on every login or pull-to-refresh).
-    private func pushUnsyncedEntriesToRemote(accountId: String) async -> Bool { // swiftlint:disable:this function_body_length
+    private func pushUnsyncedEntriesToRemote(accountId: String) async -> Bool { // swiftlint:disable:this cyclomatic_complexity function_body_length
         // 1. Get all unsynced entries (both new and delete operations)
         let unsynced = try? await localRepo.fetchUnsyncedEntries(forUserId: accountId)
 
@@ -1096,7 +1097,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                                     serverEntryId: responseEntryId
                                 )
                             } catch {
-                                logger.log(level: .error, tag: tag, message: "Failed to persist serverEntryId for entryId=\(entryIdString): \(error.localizedDescription)")
+                                logger.log(
+                                    level: .error,
+                                    tag: tag,
+                                    message: "Failed to persist serverEntryId for entryId=\(entryIdString): " +
+                                        "\(error.localizedDescription)"
+                                )
                             }
                         }
                         // R9: Use primitive-based update instead of mutating @Model
@@ -1351,7 +1357,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 logger.log(
                     level: .error,
                     tag: tag,
-                    message: "Failed to sync remote-merged entry to integrations: timestamp=\(notification.entryTimestamp), error=\(error.localizedDescription)"
+                    message: "Failed to sync remote-merged entry to integrations: " +
+                        "timestamp=\(notification.entryTimestamp), error=\(error.localizedDescription)"
                 )
             }
         }
@@ -1389,8 +1396,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             throw AccountError.noActiveAccount
         }
         if category == EntryCategory.baby.rawValue && babyId == nil {
-            throw NSError(domain: "EntryService", code: 400,
-                          userInfo: [NSLocalizedDescriptionKey: "babyId is required for baby CSV export"])
+            throw NSError(
+                domain: "EntryService",
+                code: 400,
+                userInfo: [NSLocalizedDescriptionKey: "babyId is required for baby CSV export"]
+            )
         }
         let request = EntriesCSVRequest(
             category: category,
@@ -1485,11 +1495,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         return Double(filtered.reduce(0, +)) / Double(filtered.count)
     }
 
-    /// Aggregate entries by day, returning BathScaleWeightSummary for each day.
-    ///
-    /// MA-3937: hybrid rule — the *most recent day with valid entries* surfaces its latest
-    /// non-null-positive values per metric (so the dashboard headline reflects the actual most
-    /// recent weigh-in). Every other day reverts to the prior daily-average behaviour.
+    // Aggregate entries by day, returning BathScaleWeightSummary for each day.
+    //
+    // MA-3937: hybrid rule — the *most recent day with valid entries* surfaces its latest
+    // non-null-positive values per metric (so the dashboard headline reflects the actual most
+    // recent weigh-in). Every other day reverts to the prior daily-average behaviour.
     // swiftlint:disable:next function_body_length
     func aggregateByDay(entries: [Entry], accountId: String) -> [BathScaleWeightSummary?] {
         // Group entries by day (YYYY-MM-DD), converting UTC to local timezone
@@ -1628,11 +1638,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     // MARK: - DTO-based Aggregation (Background Thread Safe)
 
-    /// Aggregate DTOs by day on background thread - avoids SwiftData relationship access.
-    ///
-    /// MA-3937 hybrid rule: the most recent day with valid weight surfaces its latest-non-null-positive
-    /// metrics (latest weigh-in), while every other day keeps the daily-average behaviour via the
-    /// `EntrySummaryBucket` accumulator.
+    // Aggregate DTOs by day on background thread - avoids SwiftData relationship access.
+    //
+    // MA-3937 hybrid rule: the most recent day with valid weight surfaces its latest-non-null-positive
+    // metrics (latest weigh-in), while every other day keeps the daily-average behaviour via the
+    // `EntrySummaryBucket` accumulator.
     // swiftlint:disable:next function_body_length
     private nonisolated func aggregateByDayFromDTOs(_ dtos: [BathScaleOperationDTO], accountId: String) -> [BathScaleWeightSummary] {
         var groupedDTOs: [String: [BathScaleOperationDTO]] = [:]
@@ -1973,7 +1983,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             logger.log(
                 level: .info,
                 tag: tag,
-                message: "Baby dashboard data loaded: babyId=\(babyId), daily=\(babyDailySummariesByProfile[babyId]?.count ?? 0), monthly=\(babyMonthlySummariesByProfile[babyId]?.count ?? 0)"
+                message: "Baby dashboard data loaded: babyId=\(babyId), " +
+                    "daily=\(babyDailySummariesByProfile[babyId]?.count ?? 0), " +
+                    "monthly=\(babyMonthlySummariesByProfile[babyId]?.count ?? 0)"
             )
             return true
         } catch {
