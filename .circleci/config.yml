@@ -85,7 +85,14 @@ jobs:
             fi
       - run:
           name: Install SwiftLint
-          command: brew install swiftlint
+          # `brew install` does NOT upgrade an already-installed formula, so the SwiftLint
+          # pre-baked into the Xcode image (older) would run instead of the version the
+          # codebase is converged against. That version skew makes `--strict` flag/clear
+          # different rules in CI vs. locally. Force the latest so lint is deterministic.
+          command: |
+            brew update
+            brew upgrade swiftlint || brew install swiftlint
+            swiftlint version
       - run:
           name: Run SwiftLint
           working_directory: iOS
