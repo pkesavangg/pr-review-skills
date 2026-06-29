@@ -159,7 +159,7 @@ class AppViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `initial state has default values`() = runTest {
+    fun `initial state has default values`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -177,7 +177,7 @@ class AppViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetScaleDiscovered true updates isScaleDiscovered`() = runTest {
+    fun `SetScaleDiscovered true updates isScaleDiscovered`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -188,7 +188,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `SetScaleDiscovered false clears timestamp`() = runTest {
+    fun `SetScaleDiscovered false clears timestamp`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -200,7 +200,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `SetSku updates sku in state`() = runTest {
+    fun `SetSku updates sku in state`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -210,7 +210,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `SetScanStatus updates hasScanStarted`() = runTest {
+    fun `SetScanStatus updates hasScanStarted`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -220,7 +220,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `SetUnreadFeedCount updates unreadFeedCount`() = runTest {
+    fun `SetUnreadFeedCount updates unreadFeedCount`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -230,7 +230,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `SetShowUnreadFeedIndication updates showUnreadFeedIndication`() = runTest {
+    fun `SetShowUnreadFeedIndication updates showUnreadFeedIndication`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -244,7 +244,7 @@ class AppViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnPopUpDismiss sets isScaleDiscovered to false`() = runTest {
+    fun `OnPopUpDismiss sets isScaleDiscovered to false`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -258,7 +258,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `OnPopUpDismiss skips device in ggDeviceService`() = runTest {
+    fun `OnPopUpDismiss skips device in ggDeviceService`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -275,7 +275,7 @@ class AppViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnPopUpConnect sets isScaleDiscovered to false`() = runTest {
+    fun `OnPopUpConnect sets isScaleDiscovered to false`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -287,7 +287,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `OnPopUpConnect clears dialog queue`() = runTest {
+    fun `OnPopUpConnect clears dialog queue`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -298,7 +298,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `OnPopUpConnect with baby scale SKU navigates to BabyScaleSetup with WAKEUP step`() = runTest {
+    fun `OnPopUpConnect with baby scale SKU navigates to BabyScaleSetup with WAKEUP step`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -321,7 +321,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `OnPopUpConnect with LCBT SKU navigates to LcbtScaleSetup`() = runTest {
+    fun `OnPopUpConnect with LCBT SKU navigates to LcbtScaleSetup`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -344,7 +344,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `OnPopUpConnect with BPM SKU navigates to BpmSetup`() = runTest {
+    fun `OnPopUpConnect with BPM SKU navigates to BpmSetup`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -370,7 +370,7 @@ class AppViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `AuthState LoggedOut with active account clears dialog queue`() = runTest {
+    fun `AuthState LoggedOut with active account clears dialog queue`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -383,7 +383,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `AuthState LoggedOut with last account navigates to landing`() = runTest {
+    fun `AuthState LoggedOut with last account navigates to landing`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -396,7 +396,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `AuthState LoggedOut with other logged-in accounts navigates to MultiAccountLanding`() = runTest {
+    fun `AuthState LoggedOut with other logged-in accounts navigates to MultiAccountLanding`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -413,7 +413,7 @@ class AppViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `AuthState AccountSwitched with showToast true shows toast`() = runTest {
+    fun `AuthState AccountSwitched with showToast true shows toast`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -429,7 +429,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `AuthState AccountSwitched with showToast false does not show toast`() = runTest {
+    fun `AuthState AccountSwitched with showToast false does not show toast`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -445,7 +445,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `AuthState AccountSwitched resets scale-discovered state so reconnect alert is not suppressed`() = runTest {
+    fun `AuthState AccountSwitched resets scale-discovered state so reconnect alert is not suppressed`() = runTest(mainDispatcherRule.scheduler) {
         // MOB-175: switching accounts in-session must clear the previous account's skip/ignore
         // state. Otherwise a scale skipped under the previous account stays muted and the
         // duplicate-user reconnect alert never reappears after switching back.
@@ -471,7 +471,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `AuthState AccountSwitched resets scale-discovered state even when showToast is false`() = runTest {
+    fun `AuthState AccountSwitched resets scale-discovered state even when showToast is false`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -493,7 +493,7 @@ class AppViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `selectDuplicateUserToken prefers the token-matched user among same-name users`() = runTest {
+    fun `selectDuplicateUserToken prefers the token-matched user among same-name users`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         // Two users share the display name "renu"; only one token matches THIS account's stored token.
         val users = listOf(
@@ -512,7 +512,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `selectDuplicateUserToken falls back to first name match when no token matches`() = runTest {
+    fun `selectDuplicateUserToken falls back to first name match when no token matches`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         val users = listOf(
             GGBTUser(name = "renu", token = "token-a", lastActive = 1000L, isBodyMetricsEnabled = true),
@@ -531,7 +531,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `selectDuplicateUserToken returns null when no user shares the display name`() = runTest {
+    fun `selectDuplicateUserToken returns null when no user shares the display name`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         val users = listOf(
             GGBTUser(name = "alice", token = "token-a", lastActive = 1000L, isBodyMetricsEnabled = true),
@@ -551,7 +551,7 @@ class AppViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `AuthState AccountDeleted with active account navigates and resets dashboard`() = runTest {
+    fun `AuthState AccountDeleted with active account navigates and resets dashboard`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -568,7 +568,7 @@ class AppViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `AuthState UnauthorizedLogout navigates to MultiAccountLanding when active account found`() = runTest {
+    fun `AuthState UnauthorizedLogout navigates to MultiAccountLanding when active account found`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -586,7 +586,7 @@ class AppViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `AuthState LoggedInFromLoading resets dashboard selected key`() = runTest {
+    fun `AuthState LoggedInFromLoading resets dashboard selected key`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -597,7 +597,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `scan starts with ME_HEALTH app type and active account profile on login`() = runTest {
+    fun `scan starts with ME_HEALTH app type and active account profile on login`() = runTest(mainDispatcherRule.scheduler) {
         val profileSlot = slot<GGBTUserProfile>()
         viewModel = createViewModel()
         advanceUntilIdle()
@@ -615,7 +615,7 @@ class AppViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `init loads all tokens into TokenManager`() = runTest {
+    fun `init loads all tokens into TokenManager`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -624,7 +624,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `init cleans up old logs`() = runTest {
+    fun `init cleans up old logs`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -650,7 +650,7 @@ class AppViewModelTest {
         BabyProfile(id = id, accountId = "active-account-id", name = "Emma")
 
     @Test
-    fun `assignReadingToBaby surfaces an error and skips success when the save fails`() = runTest {
+    fun `assignReadingToBaby surfaces an error and skips success when the save fails`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
         coEvery { entryService.addBabyEntry(any()) } returns -1L
@@ -673,7 +673,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `assignReadingToBaby deletes previous entries and confirms when the save succeeds`() = runTest {
+    fun `assignReadingToBaby deletes previous entries and confirms when the save succeeds`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
         coEvery { entryService.addBabyEntry(any()) } returns 5L

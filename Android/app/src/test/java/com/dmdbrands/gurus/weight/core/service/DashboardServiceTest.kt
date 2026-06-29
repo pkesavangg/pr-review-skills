@@ -111,7 +111,7 @@ class DashboardServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `setAccountId clears visibleKeys before refreshing`() = runTest {
+    fun `setAccountId clears visibleKeys before refreshing`() = runTest(mainDispatcherRule.scheduler) {
         // Pre-populate by setting an initial account
         service.setAccountId(accountId)
         advanceUntilIdle()
@@ -124,14 +124,14 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `setAccountId calls refreshDashboard with new accountId`() = runTest {
+    fun `setAccountId calls refreshDashboard with new accountId`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
 
         coVerify { accountRepository.getAccountFromAPI(accountId) }
     }
 
     @Test
-    fun `setAccountId stores accountId for use by null-param methods`() = runTest {
+    fun `setAccountId stores accountId for use by null-param methods`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
 
         // hasVisibleKeys(null) should use the stored accountId
@@ -145,7 +145,7 @@ class DashboardServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `setSelectedKey updates selectedKey StateFlow`() = runTest {
+    fun `setSelectedKey updates selectedKey StateFlow`() = runTest(mainDispatcherRule.scheduler) {
         val key = DashboardKey.Metric(MetricKey.BMI)
 
         service.setSelectedKey(key)
@@ -154,7 +154,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `setSelectedKey accepts null to clear selected key`() = runTest {
+    fun `setSelectedKey accepts null to clear selected key`() = runTest(mainDispatcherRule.scheduler) {
         service.setSelectedKey(DashboardKey.Metric(MetricKey.BMI))
         service.setSelectedKey(null)
 
@@ -167,7 +167,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `getCurrentSelectedKey returns value after setSelectedKey`() = runTest {
+    fun `getCurrentSelectedKey returns value after setSelectedKey`() = runTest(mainDispatcherRule.scheduler) {
         val key = DashboardKey.Milestone(MilestoneKey.TO_GOAL)
         service.setSelectedKey(key)
 
@@ -175,7 +175,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `selectedKey StateFlow emits new value when key changes`() = runTest {
+    fun `selectedKey StateFlow emits new value when key changes`() = runTest(mainDispatcherRule.scheduler) {
         val key = DashboardKey.Metric(MetricKey.BODY_FAT)
 
         service.selectedKey.test {
@@ -191,14 +191,14 @@ class DashboardServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `refreshDashboard fetches account from API with provided accountId`() = runTest {
+    fun `refreshDashboard fetches account from API with provided accountId`() = runTest(mainDispatcherRule.scheduler) {
         service.refreshDashboard(accountId)
 
         coVerify { accountRepository.getAccountFromAPI(accountId) }
     }
 
     @Test
-    fun `refreshDashboard uses stored accountId when null passed`() = runTest {
+    fun `refreshDashboard uses stored accountId when null passed`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         coVerify { accountRepository.getAccountFromAPI(accountId) }
 
@@ -208,7 +208,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `refreshDashboard resolves DASHBOARD_4_METRICS type correctly with lowercase value`() = runTest {
+    fun `refreshDashboard resolves DASHBOARD_4_METRICS type correctly with lowercase value`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(accountId) } returns
             fakeAccountInfo(dashboardType = "dashboard_4_metrics")
 
@@ -226,7 +226,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `refreshDashboard resolves DASHBOARD_12_METRICS type correctly with lowercase value`() = runTest {
+    fun `refreshDashboard resolves DASHBOARD_12_METRICS type correctly with lowercase value`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(accountId) } returns
             fakeAccountInfo(dashboardType = "dashboard_12_metrics")
 
@@ -244,7 +244,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `refreshDashboard resolves DASHBOARD_12_METRICS type case-insensitively`() = runTest {
+    fun `refreshDashboard resolves DASHBOARD_12_METRICS type case-insensitively`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(accountId) } returns
             fakeAccountInfo(dashboardType = "DASHBOARD_12_METRICS")
 
@@ -262,7 +262,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `refreshDashboard defaults to DASHBOARD_4_METRICS for unknown dashboardType`() = runTest {
+    fun `refreshDashboard defaults to DASHBOARD_4_METRICS for unknown dashboardType`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(accountId) } returns
             fakeAccountInfo(dashboardType = "unknown_type")
 
@@ -280,7 +280,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `refreshDashboard uses server progressMetrics when provided`() = runTest {
+    fun `refreshDashboard uses server progressMetrics when provided`() = runTest(mainDispatcherRule.scheduler) {
         val serverProgress = listOf(ProgressKeyConstants.GOAL, ProgressKeyConstants.CURRENT_STREAK)
         coEvery { accountRepository.getAccountFromAPI(accountId) } returns
             fakeAccountInfo(progressMetrics = serverProgress)
@@ -292,7 +292,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `refreshDashboard falls back to DB milestone keys when progressMetrics is null`() = runTest {
+    fun `refreshDashboard falls back to DB milestone keys when progressMetrics is null`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(accountId) } returns
             fakeAccountInfo(progressMetrics = null)
         every { dashboardRepository.getVisibleMilestoneKeys(accountId) } returns
@@ -304,7 +304,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `refreshDashboard handles API exception gracefully`() = runTest {
+    fun `refreshDashboard handles API exception gracefully`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(accountId) } throws RuntimeException("API error")
 
         service.refreshDashboard(accountId)
@@ -313,7 +313,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `refreshDashboard handles missing accountId gracefully`() = runTest {
+    fun `refreshDashboard handles missing accountId gracefully`() = runTest(mainDispatcherRule.scheduler) {
         // Neither param nor stored accountId — IllegalStateException caught internally
         service.refreshDashboard(null)
 
@@ -325,7 +325,7 @@ class DashboardServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `getVisibleKeys emits combined metric and milestone DashboardKeys`() = runTest {
+    fun `getVisibleKeys emits combined metric and milestone DashboardKeys`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
 
         service.getVisibleKeys(accountId).test {
@@ -339,7 +339,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `getVisibleKeys uses stored accountId when null passed`() = runTest {
+    fun `getVisibleKeys uses stored accountId when null passed`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
 
         service.getVisibleKeys(null).test {
@@ -351,7 +351,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `getVisibleKeys throws IllegalStateException when no accountId available`() = runTest {
+    fun `getVisibleKeys throws IllegalStateException when no accountId available`() = runTest(mainDispatcherRule.scheduler) {
         assertFailsWith<IllegalStateException> {
             service.getVisibleKeys(null).test {
                 awaitItem()
@@ -365,7 +365,7 @@ class DashboardServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `getVisibleMetricKeys returns flow from repository`() = runTest {
+    fun `getVisibleMetricKeys returns flow from repository`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
 
         service.getVisibleMetricKeys(accountId).test {
@@ -375,7 +375,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `getVisibleMetricKeys throws when no accountId available`() = runTest {
+    fun `getVisibleMetricKeys throws when no accountId available`() = runTest(mainDispatcherRule.scheduler) {
         assertFailsWith<IllegalStateException> {
             service.getVisibleMetricKeys(null).test {
                 awaitItem()
@@ -389,7 +389,7 @@ class DashboardServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `getVisibleMilestoneKeys returns flow from repository`() = runTest {
+    fun `getVisibleMilestoneKeys returns flow from repository`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
 
         service.getVisibleMilestoneKeys(accountId).test {
@@ -399,7 +399,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `getVisibleMilestoneKeys throws when no accountId available`() = runTest {
+    fun `getVisibleMilestoneKeys throws when no accountId available`() = runTest(mainDispatcherRule.scheduler) {
         assertFailsWith<IllegalStateException> {
             service.getVisibleMilestoneKeys(null).test {
                 awaitItem()
@@ -413,7 +413,7 @@ class DashboardServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateVisibleMetricKeys calls repository with correct accountId and keys`() = runTest {
+    fun `updateVisibleMetricKeys calls repository with correct accountId and keys`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         val keys = listOf(MetricKey.BMI, MetricKey.MUSCLE_MASS)
 
@@ -423,7 +423,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `updateVisibleMetricKeys uses stored accountId when null passed`() = runTest {
+    fun `updateVisibleMetricKeys uses stored accountId when null passed`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
 
         service.updateVisibleMetricKeys(null, emptyList(), DashboardType.DASHBOARD_4_METRICS)
@@ -436,7 +436,7 @@ class DashboardServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateVisibleMilestoneKeys calls repository with correct accountId and keys`() = runTest {
+    fun `updateVisibleMilestoneKeys calls repository with correct accountId and keys`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         val keys = listOf(MilestoneKey.TO_GOAL)
 
@@ -446,7 +446,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `updateVisibleMilestoneKeys uses stored accountId when null passed`() = runTest {
+    fun `updateVisibleMilestoneKeys uses stored accountId when null passed`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
 
         service.updateVisibleMilestoneKeys(null, emptyList())
@@ -459,7 +459,7 @@ class DashboardServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateVisibleKeys calls updateDashboardSettings with isSynced=true when online`() = runTest {
+    fun `updateVisibleKeys calls updateDashboardSettings with isSynced=true when online`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         val keys = listOf(DashboardKey.Metric(MetricKey.BMI))
 
@@ -477,7 +477,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `updateVisibleKeys calls API methods when online`() = runTest {
+    fun `updateVisibleKeys calls API methods when online`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         val keys = listOf(
             DashboardKey.Metric(MetricKey.BMI),
@@ -491,7 +491,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `updateVisibleKeys converts MetricKey to camelCase for API`() = runTest {
+    fun `updateVisibleKeys converts MetricKey to camelCase for API`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         val keys = listOf(DashboardKey.Metric(MetricKey.BMI), DashboardKey.Metric(MetricKey.BODY_FAT))
 
@@ -505,7 +505,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `updateVisibleKeys converts MilestoneKey to camelCase for API`() = runTest {
+    fun `updateVisibleKeys converts MilestoneKey to camelCase for API`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         val keys = listOf(DashboardKey.Milestone(MilestoneKey.TO_GOAL), DashboardKey.Milestone(MilestoneKey.PER_WEEK))
 
@@ -519,7 +519,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `updateVisibleKeys calls updateDashboardSettings with isSynced=false when offline`() = runTest {
+    fun `updateVisibleKeys calls updateDashboardSettings with isSynced=false when offline`() = runTest(mainDispatcherRule.scheduler) {
         every { connectivityObserver.getCurrentNetworkState() } returns NetworkState(available = false, unAvailable = true)
         service.setAccountId(accountId)
 
@@ -537,7 +537,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `updateVisibleKeys does not call API methods when offline`() = runTest {
+    fun `updateVisibleKeys does not call API methods when offline`() = runTest(mainDispatcherRule.scheduler) {
         every { connectivityObserver.getCurrentNetworkState() } returns NetworkState(available = false, unAvailable = true)
         service.setAccountId(accountId)
 
@@ -548,7 +548,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `updateVisibleKeys handles exception gracefully`() = runTest {
+    fun `updateVisibleKeys handles exception gracefully`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         coEvery { accountRepository.updateDashboardSettings(any(), any(), any(), any(), any()) } throws RuntimeException("DB error")
 
@@ -562,7 +562,7 @@ class DashboardServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `hasVisibleKeys returns true when repository returns true`() = runTest {
+    fun `hasVisibleKeys returns true when repository returns true`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         coEvery { dashboardRepository.hasVisibleKeys(accountId) } returns true
 
@@ -572,7 +572,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `hasVisibleKeys returns false when repository returns false`() = runTest {
+    fun `hasVisibleKeys returns false when repository returns false`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         coEvery { dashboardRepository.hasVisibleKeys(accountId) } returns false
 
@@ -586,7 +586,7 @@ class DashboardServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `resetVisibleKeys uses DEFAULT_4_METRICS for DASHBOARD_4_METRICS type when online`() = runTest {
+    fun `resetVisibleKeys uses DEFAULT_4_METRICS for DASHBOARD_4_METRICS type when online`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
 
         service.resetVisibleKeys(accountId, DashboardType.DASHBOARD_4_METRICS)
@@ -603,7 +603,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `resetVisibleKeys uses ALL_METRIC_KEYS for DASHBOARD_12_METRICS type when online`() = runTest {
+    fun `resetVisibleKeys uses ALL_METRIC_KEYS for DASHBOARD_12_METRICS type when online`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
 
         service.resetVisibleKeys(accountId, DashboardType.DASHBOARD_12_METRICS)
@@ -620,7 +620,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `resetVisibleKeys calls API methods when online`() = runTest {
+    fun `resetVisibleKeys calls API methods when online`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
 
         service.resetVisibleKeys(accountId, DashboardType.DASHBOARD_4_METRICS)
@@ -630,7 +630,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `resetVisibleKeys saves with isSynced=false when offline`() = runTest {
+    fun `resetVisibleKeys saves with isSynced=false when offline`() = runTest(mainDispatcherRule.scheduler) {
         every { connectivityObserver.getCurrentNetworkState() } returns NetworkState(available = false, unAvailable = true)
         service.setAccountId(accountId)
 
@@ -648,7 +648,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `resetVisibleKeys does not call API methods when offline`() = runTest {
+    fun `resetVisibleKeys does not call API methods when offline`() = runTest(mainDispatcherRule.scheduler) {
         every { connectivityObserver.getCurrentNetworkState() } returns NetworkState(available = false, unAvailable = true)
         service.setAccountId(accountId)
 
@@ -659,7 +659,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `resetVisibleKeys handles exception gracefully`() = runTest {
+    fun `resetVisibleKeys handles exception gracefully`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         coEvery { accountRepository.updateDashboardSettings(any(), any(), any(), any(), any()) } throws RuntimeException("DB error")
 
@@ -673,7 +673,7 @@ class DashboardServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `resetVisibleMetricKeys delegates to repository`() = runTest {
+    fun `resetVisibleMetricKeys delegates to repository`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
 
         service.resetVisibleMetricKeys(accountId, DashboardType.DASHBOARD_4_METRICS)
@@ -682,7 +682,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `resetVisibleMilestoneKeys delegates to repository`() = runTest {
+    fun `resetVisibleMilestoneKeys delegates to repository`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
 
         service.resetVisibleMilestoneKeys(accountId)
@@ -695,7 +695,7 @@ class DashboardServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `clearAllData resets visibleKeys to empty list on account switch`() = runTest {
+    fun `clearAllData resets visibleKeys to empty list on account switch`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         advanceUntilIdle()
 
@@ -711,7 +711,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `clearAllData cancels previous visibleKeys job`() = runTest {
+    fun `clearAllData cancels previous visibleKeys job`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         advanceUntilIdle()
 
@@ -725,7 +725,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `clearAllData clears stored accountId`() = runTest {
+    fun `clearAllData clears stored accountId`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         advanceUntilIdle()
 
@@ -746,7 +746,7 @@ class DashboardServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `refreshVisibleKeysFromDatabase updates visibleKeys StateFlow after updateVisibleMetricKeys`() = runTest {
+    fun `refreshVisibleKeysFromDatabase updates visibleKeys StateFlow after updateVisibleMetricKeys`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         advanceUntilIdle()
 
@@ -763,7 +763,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `refreshVisibleKeysFromDatabase updates visibleKeys after updateVisibleKeys`() = runTest {
+    fun `refreshVisibleKeysFromDatabase updates visibleKeys after updateVisibleKeys`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         advanceUntilIdle()
 
@@ -779,7 +779,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `refreshVisibleKeysFromDatabase updates visibleKeys after resetVisibleKeys`() = runTest {
+    fun `refreshVisibleKeysFromDatabase updates visibleKeys after resetVisibleKeys`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         advanceUntilIdle()
 
@@ -790,7 +790,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun `refreshVisibleKeysFromDatabase handles exception gracefully`() = runTest {
+    fun `refreshVisibleKeysFromDatabase handles exception gracefully`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         advanceUntilIdle()
 

@@ -316,7 +316,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `OnRequestBack confirm callback navigates back`() = runTest {
+    fun `OnRequestBack confirm callback navigates back`() = runTest(mainDispatcherRule.scheduler) {
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
 
@@ -369,7 +369,7 @@ class SignupViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit on last step with goal calls accountService signup and goalService`() = runTest {
+    fun `Submit on last step with goal calls accountService signup and goalService`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
         coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
 
@@ -384,7 +384,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `Submit success advances to a Ready terminal step without navigating`() = runTest {
+    fun `Submit success advances to a Ready terminal step without navigating`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
         coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
 
@@ -400,7 +400,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `FinishSignup navigates to Loading screen`() = runTest {
+    fun `FinishSignup navigates to Loading screen`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(SignupIntent.FinishSignup)
         advanceUntilIdle()
 
@@ -408,7 +408,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `Submit success shows and dismisses loader`() = runTest {
+    fun `Submit success shows and dismisses loader`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
         coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
 
@@ -425,7 +425,7 @@ class SignupViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit with goalSkipped does not call goalService`() = runTest {
+    fun `Submit with goalSkipped does not call goalService`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
 
         navigateToLastStepWithValidForm(skipGoal = true)
@@ -441,7 +441,7 @@ class SignupViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit when signup returns null does not navigate to Loading`() = runTest {
+    fun `Submit when signup returns null does not navigate to Loading`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns null
 
         navigateToLastStepWithValidForm()
@@ -453,7 +453,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `Submit does not show generic toast when signup returns null`() = runTest {
+    fun `Submit does not show generic toast when signup returns null`() = runTest(mainDispatcherRule.scheduler) {
         // AccountService.signup already surfaces the specific failure toast (e.g.
         // "Email address is already in use"). The VM must not mask it with the
         // generic "We couldn't create your account" toast. (MOB-592)
@@ -472,7 +472,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `Submit when signup throws does not navigate to Loading`() = runTest {
+    fun `Submit when signup throws does not navigate to Loading`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } throws RuntimeException("Network error")
 
         navigateToLastStepWithValidForm()
@@ -484,7 +484,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `Submit when signup throws dismisses loader`() = runTest {
+    fun `Submit when signup throws dismisses loader`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } throws RuntimeException("fail")
 
         navigateToLastStepWithValidForm()
@@ -512,7 +512,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `onNext on last step triggers submit`() = runTest {
+    fun `onNext on last step triggers submit`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
         coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
 
@@ -532,7 +532,7 @@ class SignupViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit with invalid form sets error without calling signup`() = runTest {
+    fun `Submit with invalid form sets error without calling signup`() = runTest(mainDispatcherRule.scheduler) {
         // Reach the final data step (PASSWORD, next is DEVICE_READY) with a
         // device selected so submit runs first-pass validation.
         navigateToLastStepWithValidForm()
@@ -556,7 +556,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `Submit success sets Success intent state`() = runTest {
+    fun `Submit success sets Success intent state`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
         coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
 
@@ -663,7 +663,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `Submit baby scale persists baby with lbs-oz weight and inch length converted`() = runTest {
+    fun `Submit baby scale persists baby with lbs-oz weight and inch length converted`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
 
         navigateToBabyPasswordStep { form ->
@@ -694,7 +694,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `Submit baby scale persists baby with kg weight and cm length converted`() = runTest {
+    fun `Submit baby scale persists baby with kg weight and cm length converted`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
 
         navigateToBabyPasswordStep { form ->
@@ -722,7 +722,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `Submit baby scale persists baby with decimal-lbs weight converted`() = runTest {
+    fun `Submit baby scale persists baby with decimal-lbs weight converted`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
 
         navigateToBabyPasswordStep { form ->
@@ -753,7 +753,7 @@ class SignupViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit baby scale omits gender dob and height so the server does not 400`() = runTest {
+    fun `Submit baby scale omits gender dob and height so the server does not 400`() = runTest(mainDispatcherRule.scheduler) {
         // The baby path skips the GENDER/HEIGHT steps, leaving sex = "". Sending an
         // empty gender made the server reject the request as a missing required value.
         // For a baby-only account these fields must be omitted (null), not "".
@@ -777,7 +777,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `Submit weight scale sends gender dob and height`() = runTest {
+    fun `Submit weight scale sends gender dob and height`() = runTest(mainDispatcherRule.scheduler) {
         val requestSlot = slot<SignupRequest>()
         coEvery { accountService.signup(capture(requestSlot)) } returns TestFixtures.activeAccount
         coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
@@ -794,7 +794,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `Submit baby scale swallows a save failure and still reaches the Ready terminal`() = runTest {
+    fun `Submit baby scale swallows a save failure and still reaches the Ready terminal`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
         coEvery { babyProfileService.save(any()) } throws RuntimeException("network down")
 
@@ -817,7 +817,7 @@ class SignupViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit success saves the selected product and logs the completed event`() = runTest {
+    fun `Submit success saves the selected product and logs the completed event`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
         coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
 
@@ -830,7 +830,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `Submit when signup throws shows the account-failed toast`() = runTest {
+    fun `Submit when signup throws shows the account-failed toast`() = runTest(mainDispatcherRule.scheduler) {
         // An unexpected throw (not an HTTP error AccountService already handled) must
         // surface the generic account-failed toast.
         coEvery { accountService.signup(any()) } throws RuntimeException("max accounts")
@@ -847,7 +847,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `Submit routes to the ERROR screen when a device side effect fails`() = runTest {
+    fun `Submit routes to the ERROR screen when a device side effect fails`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
         coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } throws RuntimeException("goal failed")
 
@@ -861,7 +861,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `Submit routes to the ERROR screen when the selected device is unresolvable`() = runTest {
+    fun `Submit routes to the ERROR screen when the selected device is unresolvable`() = runTest(mainDispatcherRule.scheduler) {
         navigateToLastStepWithValidForm()
         // Corrupt the device selection so ProductType.fromId returns null at submit.
         viewModel.state.value.form.controls.device.onValueChange("")
@@ -874,7 +874,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `Submit blood pressure sends gender and dob but omits height`() = runTest {
+    fun `Submit blood pressure sends gender and dob but omits height`() = runTest(mainDispatcherRule.scheduler) {
         val requestSlot = slot<SignupRequest>()
         coEvery { accountService.signup(capture(requestSlot)) } returns TestFixtures.activeAccount
 
@@ -895,7 +895,7 @@ class SignupViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Loop pass for a second device syncs product and measurement units without re-creating the account`() = runTest {
+    fun `Loop pass for a second device syncs product and measurement units without re-creating the account`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
         coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
         coEvery { accountService.getCurrentAccount() } returns TestFixtures.activeAccount
@@ -915,7 +915,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `FinishSignup with multiple devices clears the saved product selection`() = runTest {
+    fun `FinishSignup with multiple devices clears the saved product selection`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
         coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
         coEvery { accountService.getCurrentAccount() } returns TestFixtures.activeAccount
@@ -932,7 +932,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `Skip on a loop pass syncs the product and measurement units to the server`() = runTest {
+    fun `Skip on a loop pass syncs the product and measurement units to the server`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
         coEvery { accountService.getCurrentAccount() } returns TestFixtures.activeAccount
 
@@ -968,7 +968,7 @@ class SignupViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `RetryDevice re-runs the failed device side effect and registers the device`() = runTest {
+    fun `RetryDevice re-runs the failed device side effect and registers the device`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
         coEvery { accountService.getCurrentAccount() } returns TestFixtures.activeAccount
         // First goal attempt fails → ERROR screen.
@@ -990,7 +990,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `RetryDevice shows the account-failed toast when there is no current account`() = runTest {
+    fun `RetryDevice shows the account-failed toast when there is no current account`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
         coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } throws RuntimeException("transient")
 

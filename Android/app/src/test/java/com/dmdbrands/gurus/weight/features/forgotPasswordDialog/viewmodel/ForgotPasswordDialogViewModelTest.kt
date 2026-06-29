@@ -63,7 +63,7 @@ class ForgotPasswordDialogViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit with valid email calls resetPassword and sets success`() = runTest {
+    fun `Submit with valid email calls resetPassword and sets success`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.state.value.form.controls.email.onValueChange(TEST_EMAIL)
         coEvery { accountService.resetPassword(any()) } returns Unit
 
@@ -77,7 +77,7 @@ class ForgotPasswordDialogViewModelTest {
     }
 
     @Test
-    fun `Submit with exception sets error`() = runTest {
+    fun `Submit with exception sets error`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.state.value.form.controls.email.onValueChange(TEST_EMAIL)
         coEvery { accountService.resetPassword(any()) } throws RuntimeException("Network error")
 
@@ -89,7 +89,7 @@ class ForgotPasswordDialogViewModelTest {
     }
 
     @Test
-    fun `Submit dismisses current dialog`() = runTest {
+    fun `Submit dismisses current dialog`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.state.value.form.controls.email.onValueChange(TEST_EMAIL)
         coEvery { accountService.resetPassword(any()) } returns Unit
 
@@ -175,7 +175,7 @@ class ForgotPasswordDialogViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit with invalid email does not call resetPassword`() = runTest {
+    fun `Submit with invalid email does not call resetPassword`() = runTest(mainDispatcherRule.scheduler) {
         // Type an invalid email to make the control dirty so validators actually run
         // (untouched/undirty controls skip validation by design)
         viewModel.state.value.form.controls.email.onValueChange("not-an-email")
@@ -187,7 +187,7 @@ class ForgotPasswordDialogViewModelTest {
     }
 
     @Test
-    fun `Submit calls resetPassword with correct email`() = runTest {
+    fun `Submit calls resetPassword with correct email`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.state.value.form.controls.email.onValueChange(TEST_EMAIL)
         coEvery { accountService.resetPassword(TEST_EMAIL) } returns Unit
 
@@ -198,7 +198,7 @@ class ForgotPasswordDialogViewModelTest {
     }
 
     @Test
-    fun `Submit resets form after completion`() = runTest {
+    fun `Submit resets form after completion`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.state.value.form.controls.email.onValueChange(TEST_EMAIL)
         coEvery { accountService.resetPassword(any()) } returns Unit
 
@@ -224,7 +224,7 @@ class ForgotPasswordDialogViewModelTest {
     }
 
     @Test
-    fun `resetForm called after submit error also clears email`() = runTest {
+    fun `resetForm called after submit error also clears email`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.state.value.form.controls.email.onValueChange(TEST_EMAIL)
         coEvery { accountService.resetPassword(any()) } throws RuntimeException("fail")
 

@@ -126,7 +126,7 @@ class ScaleSetupViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `subscribePermissions with skip returns permissions from flow`() = runTest {
+    fun `subscribePermissions with skip returns permissions from flow`() = runTest(mainDispatcherRule.scheduler) {
         val perms: GGPermissionStatusMap = mutableMapOf(
             GGPermissionType.BLUETOOTH_SWITCH to GGPermissionState.ENABLED,
             GGPermissionType.WIFI_SWITCH to GGPermissionState.DISABLED,
@@ -140,7 +140,7 @@ class ScaleSetupViewModelTest {
     }
 
     @Test
-    fun `subscribePermissions with skip defaults WIFI_SWITCH to DISABLED when absent`() = runTest {
+    fun `subscribePermissions with skip defaults WIFI_SWITCH to DISABLED when absent`() = runTest(mainDispatcherRule.scheduler) {
         val perms: GGPermissionStatusMap = mutableMapOf(
             GGPermissionType.BLUETOOTH_SWITCH to GGPermissionState.ENABLED,
         )
@@ -156,7 +156,7 @@ class ScaleSetupViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `subscribePermissions without skip enables WIFI_SWITCH when network available`() = runTest {
+    fun `subscribePermissions without skip enables WIFI_SWITCH when network available`() = runTest(mainDispatcherRule.scheduler) {
         val perms: GGPermissionStatusMap = mutableMapOf(
             GGPermissionType.WIFI_SWITCH to GGPermissionState.DISABLED,
         )
@@ -188,7 +188,7 @@ class ScaleSetupViewModelTest {
     }
 
     @Test
-    fun `subscribePermissions without skip enables WIFI_SWITCH when permission enabled but no network`() = runTest {
+    fun `subscribePermissions without skip enables WIFI_SWITCH when permission enabled but no network`() = runTest(mainDispatcherRule.scheduler) {
         val perms: GGPermissionStatusMap = mutableMapOf(
             GGPermissionType.WIFI_SWITCH to GGPermissionState.ENABLED,
         )

@@ -98,15 +98,17 @@ fun <T> AppSwipeableList(
         }
     }
 
-    val heightModifier by derivedStateOf {
-        // Only apply height constraint when there are more items than maxVisibleItems
-        // This allows the list to size naturally and be centered when there are fewer items
-        if (maxVisibleItems != null && hasMeasured && measuredItemHeight > 0.dp && items.size > maxVisibleItems) {
-            // Calculate height based on maxVisibleItems
-            val calculatedHeight = measuredItemHeight * maxVisibleItems
-            Modifier.height(calculatedHeight)
-        } else {
-            Modifier
+    val heightModifier by remember {
+        derivedStateOf {
+            // Only apply height constraint when there are more items than maxVisibleItems
+            // This allows the list to size naturally and be centered when there are fewer items
+            if (maxVisibleItems != null && hasMeasured && measuredItemHeight > 0.dp && items.size > maxVisibleItems) {
+                // Calculate height based on maxVisibleItems
+                val calculatedHeight = measuredItemHeight * maxVisibleItems
+                Modifier.height(calculatedHeight)
+            } else {
+                Modifier
+            }
         }
     }
 

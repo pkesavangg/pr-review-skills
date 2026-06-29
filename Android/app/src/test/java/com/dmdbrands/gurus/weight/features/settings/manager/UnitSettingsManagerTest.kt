@@ -72,7 +72,7 @@ class UnitSettingsManagerTest {
   )
 
   @Test
-  fun `baby-only change persists baby unit without loader or body comp update`() = runTest {
+  fun `baby-only change persists baby unit without loader or body comp update`() = runTest(mainDispatcherRule.scheduler) {
     val onConfirm = openDialog(stateWithBaby())
 
     // Adult unchanged (lb -> lb), baby changes (lb_oz -> kg).
@@ -90,7 +90,7 @@ class UnitSettingsManagerTest {
   }
 
   @Test
-  fun `adult-only change updates body comp and shows then dismisses loader`() = runTest {
+  fun `adult-only change updates body comp and shows then dismisses loader`() = runTest(mainDispatcherRule.scheduler) {
     val onConfirm = openDialog(stateWithBaby())
 
     // Adult changes (lb -> kg), baby unchanged (lb_oz -> lb_oz).
@@ -111,7 +111,7 @@ class UnitSettingsManagerTest {
   }
 
   @Test
-  fun `changing both persists adult and baby units`() = runTest {
+  fun `changing both persists adult and baby units`() = runTest(mainDispatcherRule.scheduler) {
     val onConfirm = openDialog(stateWithBaby())
 
     onConfirm(
@@ -129,7 +129,7 @@ class UnitSettingsManagerTest {
   }
 
   @Test
-  fun `identical selections persist nothing`() = runTest {
+  fun `identical selections persist nothing`() = runTest(mainDispatcherRule.scheduler) {
     val onConfirm = openDialog(stateWithBaby())
 
     onConfirm(
@@ -146,7 +146,7 @@ class UnitSettingsManagerTest {
   }
 
   @Test
-  fun `legacy lb_oz adult unit falls back to LB selection in My Weight section`() = runTest {
+  fun `legacy lb_oz adult unit falls back to LB selection in My Weight section`() = runTest(mainDispatcherRule.scheduler) {
     val dialogSlot = slot<DialogModel>()
     manager.onUnitTypeClick(
       scope = this,
@@ -164,7 +164,7 @@ class UnitSettingsManagerTest {
   }
 
   @Test
-  fun `non-baby product shows only the My Weight section`() = runTest {
+  fun `non-baby product shows only the My Weight section`() = runTest(mainDispatcherRule.scheduler) {
     val dialogSlot = slot<DialogModel>()
     manager.onUnitTypeClick(
       scope = this,

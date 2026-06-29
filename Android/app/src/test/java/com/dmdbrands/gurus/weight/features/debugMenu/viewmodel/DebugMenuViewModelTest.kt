@@ -120,7 +120,7 @@ class DebugMenuViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnBack navigates back`() = runTest {
+    fun `OnBack navigates back`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(DebugMenuIntent.OnBack)
         advanceUntilIdle()
         coVerify { navigationService.navigateBack() }
@@ -137,7 +137,7 @@ class DebugMenuViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SendLogs shows loader then sends logs and shows toast on success`() = runTest {
+    fun `SendLogs shows loader then sends logs and shows toast on success`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(DebugMenuIntent.SendLogs)
         advanceUntilIdle()
 
@@ -150,7 +150,7 @@ class DebugMenuViewModelTest {
     }
 
     @Test
-    fun `SendLogs shows error alert when no active account`() = runTest {
+    fun `SendLogs shows error alert when no active account`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.activeAccountFlow } returns flowOf(null)
         viewModel = DebugMenuViewModel(
             accountService = accountService,
@@ -176,7 +176,7 @@ class DebugMenuViewModelTest {
     }
 
     @Test
-    fun `SendLogs shows error alert when logManager throws`() = runTest {
+    fun `SendLogs shows error alert when logManager throws`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { logManager.sendLogs() } throws RuntimeException("log failure")
 
         viewModel.handleIntent(DebugMenuIntent.SendLogs)
@@ -190,7 +190,7 @@ class DebugMenuViewModelTest {
     }
 
     @Test
-    fun `SendLogs resets isLoading to false after completion`() = runTest {
+    fun `SendLogs resets isLoading to false after completion`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(DebugMenuIntent.SendLogs)
         advanceUntilIdle()
         assertThat(viewModel.state.value.isLoading).isFalse()
@@ -201,7 +201,7 @@ class DebugMenuViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `ResyncEntries shows loader then syncs and shows toast on success`() = runTest {
+    fun `ResyncEntries shows loader then syncs and shows toast on success`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(DebugMenuIntent.ResyncEntries)
         advanceUntilIdle()
 
@@ -215,7 +215,7 @@ class DebugMenuViewModelTest {
     }
 
     @Test
-    fun `ResyncEntries shows error alert on exception`() = runTest {
+    fun `ResyncEntries shows error alert on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.clearSyncTimestampForResync() } throws RuntimeException("sync fail")
 
         viewModel.handleIntent(DebugMenuIntent.ResyncEntries)
@@ -229,7 +229,7 @@ class DebugMenuViewModelTest {
     }
 
     @Test
-    fun `ResyncEntries resets isLoading to false after completion`() = runTest {
+    fun `ResyncEntries resets isLoading to false after completion`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(DebugMenuIntent.ResyncEntries)
         advanceUntilIdle()
         assertThat(viewModel.state.value.isLoading).isFalse()
@@ -240,7 +240,7 @@ class DebugMenuViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `ClearAllData shows loader then resets account and shows restart alert`() = runTest {
+    fun `ClearAllData shows loader then resets account and shows restart alert`() = runTest(mainDispatcherRule.scheduler) {
         val onDismiss = mockk<() -> Unit>(relaxed = true)
 
         viewModel.handleIntent(DebugMenuIntent.ClearAllData(onDismiss))
@@ -258,7 +258,7 @@ class DebugMenuViewModelTest {
     }
 
     @Test
-    fun `ClearAllData restart alert onDismiss emits LoggedOut and invokes callback`() = runTest {
+    fun `ClearAllData restart alert onDismiss emits LoggedOut and invokes callback`() = runTest(mainDispatcherRule.scheduler) {
         val onDismiss = mockk<() -> Unit>(relaxed = true)
 
         viewModel.handleIntent(DebugMenuIntent.ClearAllData(onDismiss))
@@ -276,7 +276,7 @@ class DebugMenuViewModelTest {
     }
 
     @Test
-    fun `ClearAllData skips reset when no active account`() = runTest {
+    fun `ClearAllData skips reset when no active account`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.activeAccountFlow } returns flowOf(null)
         viewModel = DebugMenuViewModel(
             accountService = accountService,
@@ -302,7 +302,7 @@ class DebugMenuViewModelTest {
     }
 
     @Test
-    fun `ClearAllData shows error alert on exception`() = runTest {
+    fun `ClearAllData shows error alert on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.reset() } throws RuntimeException("reset fail")
         val onDismiss = mockk<() -> Unit>(relaxed = true)
 
@@ -322,7 +322,7 @@ class DebugMenuViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SendScaleLogs with singular connected scale sends log and shows toast`() = runTest {
+    fun `SendScaleLogs with singular connected scale sends log and shows toast`() = runTest(mainDispatcherRule.scheduler) {
         val device = Device(
             id = TEST_SCALE_ID,
             connectionStatus = BLEStatus.CONNECTED,
@@ -343,7 +343,7 @@ class DebugMenuViewModelTest {
     }
 
     @Test
-    fun `SendScaleLogs with singular scale shows restart alert on non-network error`() = runTest {
+    fun `SendScaleLogs with singular scale shows restart alert on non-network error`() = runTest(mainDispatcherRule.scheduler) {
         val device = Device(
             id = TEST_SCALE_ID,
             connectionStatus = BLEStatus.CONNECTED,
@@ -365,7 +365,7 @@ class DebugMenuViewModelTest {
     }
 
     @Test
-    fun `SendScaleLogs with singular scale does not show restart alert on network error`() = runTest {
+    fun `SendScaleLogs with singular scale does not show restart alert on network error`() = runTest(mainDispatcherRule.scheduler) {
         val device = Device(
             id = TEST_SCALE_ID,
             connectionStatus = BLEStatus.CONNECTED,
@@ -388,7 +388,7 @@ class DebugMenuViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SendScaleLogs with multiple scales navigates to ScaleLogsPicker`() = runTest {
+    fun `SendScaleLogs with multiple scales navigates to ScaleLogsPicker`() = runTest(mainDispatcherRule.scheduler) {
         val device1 = Device(
             id = "scale-1",
             sku = BT_WIFI_R4_SKU,
@@ -411,7 +411,7 @@ class DebugMenuViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SendScaleLogs with no scales shows error alert`() = runTest {
+    fun `SendScaleLogs with no scales shows error alert`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(DebugMenuIntent.SendScaleLogs)
         advanceUntilIdle()
 
@@ -427,7 +427,7 @@ class DebugMenuViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SendScaleLogForScale with connected device sends log and navigates back`() = runTest {
+    fun `SendScaleLogForScale with connected device sends log and navigates back`() = runTest(mainDispatcherRule.scheduler) {
         val device = mockk<Device>(relaxed = true)
         every { device.connectionStatus } returns BLEStatus.CONNECTED
         every { device.getBroadcastIdString() } returns TEST_BROADCAST_ID
@@ -445,7 +445,7 @@ class DebugMenuViewModelTest {
     }
 
     @Test
-    fun `SendScaleLogForScale with disconnected device skips send and clears state`() = runTest {
+    fun `SendScaleLogForScale with disconnected device skips send and clears state`() = runTest(mainDispatcherRule.scheduler) {
         val device = mockk<Device>(relaxed = true)
         every { device.connectionStatus } returns BLEStatus.DISCONNECTED
 
@@ -458,7 +458,7 @@ class DebugMenuViewModelTest {
     }
 
     @Test
-    fun `SendScaleLogForScale shows restart alert on non-network error`() = runTest {
+    fun `SendScaleLogForScale shows restart alert on non-network error`() = runTest(mainDispatcherRule.scheduler) {
         val device = mockk<Device>(relaxed = true)
         every { device.connectionStatus } returns BLEStatus.CONNECTED
         every { device.getBroadcastIdString() } returns TEST_BROADCAST_ID
@@ -476,7 +476,7 @@ class DebugMenuViewModelTest {
     }
 
     @Test
-    fun `SendScaleLogForScale does not show restart alert on network error`() = runTest {
+    fun `SendScaleLogForScale does not show restart alert on network error`() = runTest(mainDispatcherRule.scheduler) {
         val device = mockk<Device>(relaxed = true)
         every { device.connectionStatus } returns BLEStatus.CONNECTED
         every { device.getBroadcastIdString() } returns TEST_BROADCAST_ID
@@ -494,7 +494,7 @@ class DebugMenuViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `ShowAppReviewWithActivity launches in-app review`() = runTest {
+    fun `ShowAppReviewWithActivity launches in-app review`() = runTest(mainDispatcherRule.scheduler) {
         val activity = mockk<Activity>(relaxed = true)
 
         viewModel.handleIntent(DebugMenuIntent.ShowAppReviewWithActivity(activity))
@@ -504,7 +504,7 @@ class DebugMenuViewModelTest {
     }
 
     @Test
-    fun `ShowAppReviewWithActivity shows error alert on exception`() = runTest {
+    fun `ShowAppReviewWithActivity shows error alert on exception`() = runTest(mainDispatcherRule.scheduler) {
         val activity = mockk<Activity>(relaxed = true)
         coEvery { appReviewManager.launchInAppReview(any()) } throws RuntimeException("review fail")
 
@@ -522,7 +522,7 @@ class DebugMenuViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `ShowAppReview without activity shows error alert`() = runTest {
+    fun `ShowAppReview without activity shows error alert`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(DebugMenuIntent.ShowAppReview)
         advanceUntilIdle()
 
@@ -534,7 +534,7 @@ class DebugMenuViewModelTest {
     }
 
     @Test
-    fun `ShowAppReview does not call launchInAppReview when activity is null`() = runTest {
+    fun `ShowAppReview does not call launchInAppReview when activity is null`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(DebugMenuIntent.ShowAppReview)
         advanceUntilIdle()
 
@@ -564,7 +564,7 @@ class DebugMenuViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `init with device having unknown SKU filters it out`() = runTest {
+    fun `init with device having unknown SKU filters it out`() = runTest(mainDispatcherRule.scheduler) {
         val unknownDevice = Device(sku = "9999")
         pairedScalesFlow.value = listOf(unknownDevice)
         advanceUntilIdle()

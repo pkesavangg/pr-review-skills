@@ -95,7 +95,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `initial state has null scale and default values`() = runTest {
+    fun `initial state has null scale and default values`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -113,7 +113,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetConnectedSSID updates connectedSSID`() = runTest {
+    fun `SetConnectedSSID updates connectedSSID`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -123,7 +123,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `SetWifiMacAddress updates wifiMacAddress`() = runTest {
+    fun `SetWifiMacAddress updates wifiMacAddress`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -133,7 +133,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `SetScaleName updates scale name in form`() = runTest {
+    fun `SetScaleName updates scale name in form`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -143,7 +143,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `ToggleSessionImpedance updates isSessionImpedanceEnabled`() = runTest {
+    fun `ToggleSessionImpedance updates isSessionImpedanceEnabled`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -153,7 +153,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `ChangeTimeFormat to 24H updates currentTimeFormat`() = runTest {
+    fun `ChangeTimeFormat to 24H updates currentTimeFormat`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -163,7 +163,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `ChangeTimeFormat to 12H updates currentTimeFormat`() = runTest {
+    fun `ChangeTimeFormat to 12H updates currentTimeFormat`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -173,7 +173,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `ToggleScaleAnimation start updates isStartAnimationEnabled`() = runTest {
+    fun `ToggleScaleAnimation start updates isStartAnimationEnabled`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -184,7 +184,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `ToggleScaleAnimation end updates isEndAnimationEnabled`() = runTest {
+    fun `ToggleScaleAnimation end updates isEndAnimationEnabled`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -195,7 +195,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `ClearScaleData updates currentClearDataSelection`() = runTest {
+    fun `ClearScaleData updates currentClearDataSelection`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -209,7 +209,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Back navigates back`() = runTest {
+    fun `Back navigates back`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -219,7 +219,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `OpenScaleMode navigates to ScaleMode route`() = runTest {
+    fun `OpenScaleMode navigates to ScaleMode route`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -234,7 +234,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `OpenScaleDisplayMetrics navigates to ScaleDisplayMetrics route`() = runTest {
+    fun `OpenScaleDisplayMetrics navigates to ScaleDisplayMetrics route`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -248,7 +248,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `OpenScaleUsers navigates to ScaleUsers route`() = runTest {
+    fun `OpenScaleUsers navigates to ScaleUsers route`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -266,7 +266,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `DeleteScale shows confirm dialog`() = runTest {
+    fun `DeleteScale shows confirm dialog`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -276,7 +276,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `ShowScaleNameModal enqueues custom dialog`() = runTest {
+    fun `ShowScaleNameModal enqueues custom dialog`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -290,7 +290,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `ShowEnableBodyMetricsAlert shows confirm dialog`() = runTest {
+    fun `ShowEnableBodyMetricsAlert shows confirm dialog`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -300,7 +300,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `ShowTimeFormatDialog shows radio group modal`() = runTest {
+    fun `ShowTimeFormatDialog shows radio group modal`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -310,7 +310,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `ShowClearDataDialog shows radio group modal`() = runTest {
+    fun `ShowClearDataDialog shows radio group modal`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -324,7 +324,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnCopyMacAddress with true shows success toast`() = runTest {
+    fun `OnCopyMacAddress with true shows success toast`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -334,7 +334,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `OnCopyMacAddress with false shows error toast`() = runTest {
+    fun `OnCopyMacAddress with false shows error toast`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -348,7 +348,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OpenProductGuide opens in-app browser when scale has SKU`() = runTest {
+    fun `OpenProductGuide opens in-app browser when scale has SKU`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -366,7 +366,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `init subscribes to pairedScales and updates scale info`() = runTest {
+    fun `init subscribes to pairedScales and updates scale info`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.bleDevice.copy(id = TEST_SCALE_ID)
         every { deviceService.pairedScales } returns MutableStateFlow(listOf(device))
 
@@ -377,7 +377,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `init subscribes to pairedScales but ignores non-matching scaleId`() = runTest {
+    fun `init subscribes to pairedScales but ignores non-matching scaleId`() = runTest(mainDispatcherRule.scheduler) {
         val otherDevice = TestFixtures.bleDevice.copy(id = "other-id")
         every { deviceService.pairedScales } returns MutableStateFlow(listOf(otherDevice))
 
@@ -392,7 +392,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `RequestPermission calls dialogUtility permissionAlert`() = runTest {
+    fun `RequestPermission calls dialogUtility permissionAlert`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -419,7 +419,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `UpdateScaleName with valid name calls deviceService updateScaleNickname`() = runTest {
+    fun `UpdateScaleName with valid name calls deviceService updateScaleNickname`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModelWithConnectedScale()
         advanceUntilIdle()
 
@@ -432,7 +432,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `UpdateScaleName with whitespace-only name does not call service`() = runTest {
+    fun `UpdateScaleName with whitespace-only name does not call service`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModelWithConnectedScale()
         advanceUntilIdle()
 
@@ -449,7 +449,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OpenWiFiSetup navigates to BtWifiScaleSetup`() = runTest {
+    fun `OpenWiFiSetup navigates to BtWifiScaleSetup`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModelWithConnectedScale()
         advanceUntilIdle()
 
@@ -464,7 +464,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `StartFirmwareUpdate with connected scale calls ggDeviceService`() = runTest {
+    fun `StartFirmwareUpdate with connected scale calls ggDeviceService`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModelWithConnectedScale()
         advanceUntilIdle()
 
@@ -480,7 +480,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `DownloadLogs with connected scale calls ggDeviceService`() = runTest {
+    fun `DownloadLogs with connected scale calls ggDeviceService`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModelWithConnectedScale()
         advanceUntilIdle()
 
@@ -495,7 +495,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `ResetFirmware with connected scale calls ggDeviceService`() = runTest {
+    fun `ResetFirmware with connected scale calls ggDeviceService`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModelWithConnectedScale()
         advanceUntilIdle()
 
@@ -510,7 +510,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `RestoreFactorySettings with connected scale calls ggDeviceService`() = runTest {
+    fun `RestoreFactorySettings with connected scale calls ggDeviceService`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModelWithConnectedScale()
         advanceUntilIdle()
 
@@ -525,7 +525,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `EnableBodyMetrics with connected scale shows loader and calls ggDeviceService`() = runTest {
+    fun `EnableBodyMetrics with connected scale shows loader and calls ggDeviceService`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModelWithConnectedScale()
         advanceUntilIdle()
 
@@ -541,7 +541,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `ToggleSessionImpedance with connected scale calls ggDeviceService updateSettings`() = runTest {
+    fun `ToggleSessionImpedance with connected scale calls ggDeviceService updateSettings`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModelWithConnectedScale()
         advanceUntilIdle()
 
@@ -556,7 +556,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `ChangeTimeFormat with connected scale calls ggDeviceService updateSettings`() = runTest {
+    fun `ChangeTimeFormat with connected scale calls ggDeviceService updateSettings`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModelWithConnectedScale()
         advanceUntilIdle()
 
@@ -571,7 +571,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `ToggleScaleAnimation with connected scale calls ggDeviceService`() = runTest {
+    fun `ToggleScaleAnimation with connected scale calls ggDeviceService`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModelWithConnectedScale()
         advanceUntilIdle()
 
@@ -586,7 +586,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `observeAccountChanges subscribes to activeAccountFlow`() = runTest {
+    fun `observeAccountChanges subscribes to activeAccountFlow`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -594,7 +594,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `observeAccountChanges handles account changes`() = runTest {
+    fun `observeAccountChanges handles account changes`() = runTest(mainDispatcherRule.scheduler) {
         val accountFlow = MutableStateFlow(TestFixtures.activeAccount)
         every { accountService.activeAccountFlow } returns accountFlow
 
@@ -613,7 +613,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `configureR4ScaleDetails is called when scale is updated via pairedScales`() = runTest {
+    fun `configureR4ScaleDetails is called when scale is updated via pairedScales`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.bleDevice.copy(
             id = TEST_SCALE_ID,
             connectionStatus = BLEStatus.CONNECTED,
@@ -628,7 +628,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `configureR4ScaleDetails handles exception without crash`() = runTest {
+    fun `configureR4ScaleDetails handles exception without crash`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.bleDevice.copy(
             id = TEST_SCALE_ID,
             connectionStatus = BLEStatus.CONNECTED,
@@ -648,7 +648,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `fetchWifiMacAddress is called for connected R4 scale`() = runTest {
+    fun `fetchWifiMacAddress is called for connected R4 scale`() = runTest(mainDispatcherRule.scheduler) {
         val r4Device = TestFixtures.bleDevice.copy(
             id = TEST_SCALE_ID,
             connectionStatus = BLEStatus.CONNECTED,
@@ -664,7 +664,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `fetchWifiMacAddress does not call service for disconnected scale`() = runTest {
+    fun `fetchWifiMacAddress does not call service for disconnected scale`() = runTest(mainDispatcherRule.scheduler) {
         val disconnectedDevice = TestFixtures.bleDevice.copy(
             id = TEST_SCALE_ID,
             connectionStatus = BLEStatus.DISCONNECTED,
@@ -682,7 +682,7 @@ class ScaleDetailsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `observePermissions subscribes to permissionCallBackFlow`() = runTest {
+    fun `observePermissions subscribes to permissionCallBackFlow`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -690,7 +690,7 @@ class ScaleDetailsViewModelTest {
     }
 
     @Test
-    fun `observePermissions updates state when permissions change`() = runTest {
+    fun `observePermissions updates state when permissions change`() = runTest(mainDispatcherRule.scheduler) {
         val permissionFlow = MutableStateFlow(mutableMapOf<String, String>())
         every { permissionService.permissionCallBackFlow } returns permissionFlow
 
