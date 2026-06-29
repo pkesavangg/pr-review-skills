@@ -19,17 +19,15 @@ commands:
 
   setup_github_packages_auth:
     description: >
-      Map the GitHub Packages token into GITHUB_TOKEN so Gradle can resolve the
-      private com.dmdbrands.lib:* artifacts hosted on maven.pkg.github.com.
-      settings.gradle.kts reads GITHUB_USERNAME / GITHUB_TOKEN. GITHUB_USERNAME
-      is a CircleCI env var (read natively by Gradle); the token comes from
-      GITHUB_PACKAGES_TOKEN (the read:packages token, shared with iOS SPM auth).
+      Map GITHUB_PACKAGES_TOKEN into GITHUB_TOKEN so Gradle can resolve the private
+      com.dmdbrands.lib:* artifacts on maven.pkg.github.com (settings.gradle.kts
+      reads GITHUB_USERNAME / GITHUB_TOKEN).
     steps:
       - run:
           name: Configure GitHub Packages credentials
           command: |
             if [ -z "$GITHUB_USERNAME" ] || [ -z "$GITHUB_PACKAGES_TOKEN" ]; then
-              echo "Error: GITHUB_USERNAME and/or GITHUB_PACKAGES_TOKEN is not set. Add them as CircleCI project/context env vars — the GitHub username and a token with read:packages access to the private dmdbrands / gg-engineering Maven packages."
+              echo "Error: GITHUB_USERNAME and/or GITHUB_PACKAGES_TOKEN is not set. Add them as CircleCI project/context env vars."
               exit 1
             fi
             echo "export GITHUB_TOKEN=\"$GITHUB_PACKAGES_TOKEN\"" >> "$BASH_ENV"
@@ -37,22 +35,20 @@ commands:
       - run:
           name: Probe GitHub Packages access (diagnostic)
           command: |
-            # Non-fatal probe so opaque 401s self-explain. Gradle remains the gate.
+            # Non-fatal probe so an opaque 401/403 self-explains; Gradle remains the gate.
             URL="https://maven.pkg.github.com/gg-engineering/ggBluetoothNativeLibrary/com/dmdbrands/lib/gg-bluetooth-android/1.6.9/gg-bluetooth-android-1.6.9.pom"
             CODE=$(curl -s -o /dev/null -w "%{http_code}" -u "$GITHUB_USERNAME:$GITHUB_PACKAGES_TOKEN" "$URL" || echo "000")
             echo "GitHub Packages probe -> HTTP $CODE"
             case "$CODE" in
               200|302) echo "OK: token can read GitHub Packages." ;;
-              401) echo "401: token is MISSING the 'read:packages' scope. A classic PAT needs read:packages + repo; 'repo' alone is not enough (git clone works, package download does not)." ;;
-              403) echo "403: scope is present but blocked — authorize the token for SAML SSO on BOTH the dmdbrands and gg-engineering orgs." ;;
-              404) echo "404: authenticated OK (token works) but artifact/path not found — check coordinates." ;;
+              401) echo "401: token is missing the 'read:packages' scope ('repo' alone is not enough)." ;;
+              403) echo "403: token is not SSO-authorized for the gg-engineering org." ;;
+              404) echo "404: authenticated OK but artifact/path not found." ;;
               *)   echo "Unexpected status $CODE (network/proxy?)." ;;
             esac
 
 jobs:
-  # ===========================================================
-  # Job 1: Gitleaks Secrets Scan
-  # ===========================================================
+  # gitleaks — secrets scan, runs on every branch
   gitleaks:
     docker:
       - image: cimg/base:current
@@ -69,17 +65,10 @@ jobs:
             gitleaks version
       - run:
           name: Secrets scan (Gitleaks)
-          # Scan the working tree, not full git history. `gitleaks detect` walks
-          # every commit (~5k commits / ~185MB) which runs >10m silently on this
-          # small box and trips the no-output timer. `gitleaks dir` gates the
-          # current code (what actually ships) in seconds; the pre-commit
-          # `gitleaks protect --staged` hook blocks new secrets locally, and the
-          # weekly scheduled-security workflow does the deep full-history scan.
+          # Scan the working tree (what ships), not full history — fast, and gates current code.
           command: gitleaks dir . --no-banner
 
-  # ===========================================================
-  # Job 2: SwiftLint Static Analysis
-  # ===========================================================
+  # ios-swiftlint — Swift static analysis, run independently of the build (see docs/circleci.md)
   ios-swiftlint:
     macos:
       xcode: "16.4.0"
@@ -102,9 +91,7 @@ jobs:
           working_directory: iOS
           command: swiftlint --strict --reporter emoji
 
-  # ===========================================================
-  # Job 3: iOS Build
-  # ===========================================================
+  # ios-build — compile the app for a generic iOS device
   ios-build:
     macos:
       xcode: "16.4.0"
@@ -127,11 +114,11 @@ jobs:
               exit 1
             fi
             if ! echo "$GOOGLESERVICE_INFO_BASE64" | base64 -D > iOS/meApp/Resources/GoogleService-Info.plist; then
-              echo "Error: Failed to decode GOOGLESERVICE_INFO_BASE64. Ensure it is valid base64-encoded GoogleService-Info.plist."
+              echo "Error: Failed to decode GOOGLESERVICE_INFO_BASE64."
               exit 1
             fi
             if ! plutil -lint iOS/meApp/Resources/GoogleService-Info.plist >/dev/null 2>&1; then
-              echo "Error: Decoded GoogleService-Info.plist is not valid XML/plist. Check the GOOGLESERVICE_INFO_BASE64 secret."
+              echo "Error: Decoded GoogleService-Info.plist is not valid XML/plist."
               exit 1
             fi
             echo "GoogleService-Info.plist restored and validated."
@@ -141,20 +128,14 @@ jobs:
       - run:
           name: Authenticate to private gg-engineering Swift packages
           command: |
-            # The app depends on private SPM packages (ggAppSyncPackage,
-            # ggBluetoothNativeLibrary, ggHealthKitPackage,
-            # ggInAppMessagingPackage, ggWifiScalePackage). CI has no GitHub
-            # credentials by default, so SPM clones return "Repository not
-            # found". Inject a read-only token for all github.com HTTPS clones.
+            # CI has no GitHub credentials by default; inject a read-only token for HTTPS clones.
             if [ -z "$GITHUB_PACKAGES_TOKEN" ]; then
-              echo "Error: GITHUB_PACKAGES_TOKEN is not set. Add it as a CircleCI project/context secret — a GitHub token with read access to the private gg-engineering Swift packages."
+              echo "Error: GITHUB_PACKAGES_TOKEN is not set. Add it as a CircleCI project/context secret."
               exit 1
             fi
             git config --global url."https://x-access-token:${GITHUB_PACKAGES_TOKEN}@github.com/".insteadOf "https://github.com/"
             echo "Configured git to authenticate github.com HTTPS clones."
-      # Restore previously cloned/resolved SPM packages. Keyed on the committed
-      # Package.resolved so it's reused exactly until dependencies change; the
-      # partial-key fallback reuses most clones even across dep bumps.
+      # Reuse cloned/resolved packages; keyed on the committed Package.resolved with a partial fallback.
       - restore_cache:
           name: Restore SPM cache
           keys:
@@ -163,26 +144,13 @@ jobs:
       - run:
           name: Resolve Swift Package Dependencies
           working_directory: iOS
-          # 45m (not 20m) to break the cold-cache chicken-and-egg: the SPM cache
-          # is only saved AFTER a resolve succeeds, but a COLD resolve of this
-          # graph (Firebase + swift-syntax prerelease + branch-tracked gg-*
-          # packages) runs >20m silently in the post-checkout phase and was
-          # being killed before save_cache ever ran — so every run stayed cold.
-          # -onlyUsePackageVersionsFromResolvedFile keeps the version SOLVER out,
-          # so the remaining work is bounded and WILL finish given room. One
-          # successful cold resolve populates the cache; warm runs are fast and
-          # this ceiling becomes irrelevant. If a run still hits 45m it's a true
-          # hang (likely a gg-* branch-tip refetch) → pin those to tags instead.
-          no_output_timeout: 45m
+          no_output_timeout: 20m
+          # Package.resolved is committed; resolve only its pinned versions (skip the solver).
           command: |
-            # Package.resolved is committed, so use ONLY its pinned versions and
-            # skip SwiftPM's version solver.
             xcodebuild -resolvePackageDependencies \
               -project meApp.xcodeproj \
               -onlyUsePackageVersionsFromResolvedFile \
               -clonedSourcePackagesDirPath SourcePackages
-      # Save right after resolve so the expensive clone is preserved even if the
-      # build step later fails (no-op once the exact key already exists).
       - save_cache:
           name: Save SPM cache
           key: spm-v2-{{ checksum "iOS/meApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved" }}
@@ -198,12 +166,13 @@ jobs:
           name: Build project
           working_directory: iOS
           no_output_timeout: 30m
+          # "Dev" is the debug configuration — the project has no "Debug" config.
           command: |
             xcodebuild build \
               -project meApp.xcodeproj \
               -scheme meApp \
               -destination 'generic/platform=iOS' \
-              -configuration Debug \
+              -configuration Dev \
               -onlyUsePackageVersionsFromResolvedFile \
               -disableAutomaticPackageResolution \
               -clonedSourcePackagesDirPath SourcePackages \
@@ -218,12 +187,8 @@ jobs:
           paths:
             - iOS/DerivedData
 
-  # ===========================================================
-  # Job 4: Unit Tests with Code Coverage
-  # NOTE: Commented out — simulator not supported due to library
-  # compatibility issue (requires physical device). Uncomment
-  # when simulator support is restored.
-  # ===========================================================
+  # ios-unit-tests — DISABLED: requires a physical device (a dependency is unsupported on
+  # the simulator). Re-enable here and in the workflow when simulator support is restored.
   # ios-unit-tests:
   #   macos:
   #     xcode: "16.4.0"
@@ -244,10 +209,6 @@ jobs:
   #         command: |
   #           xcodebuild -resolvePackageDependencies \
   #             -project meApp.xcodeproj
-  #     - run:
-  #         name: Boot Simulator
-  #         command: |
-  #           xcrun simctl boot "iPhone 16" || true
   #     - run:
   #         name: Run Unit Tests with Coverage
   #         working_directory: iOS
@@ -280,9 +241,7 @@ jobs:
   #         path: iOS/TestResults.xcresult
   #         destination: test-results
 
-  # ===========================================================
-  # Job 5: Dependency Audit
-  # ===========================================================
+  # ios-dependency-audit — verify every SPM pin is reproducible (a version or an exact commit)
   ios-dependency-audit:
     macos:
       xcode: "16.4.0"
@@ -343,9 +302,7 @@ jobs:
             print('\nAll dependencies are pinned to a version or an exact commit.')
             "
 
-  # ===========================================================
-  # Job 6: Android Build
-  # ===========================================================
+  # android-build — assemble the debug APK
   android-build:
     docker:
       - image: cimg/android:2024.11.1
@@ -378,9 +335,7 @@ jobs:
             - ~/.gradle/wrapper
             - ~/.gradle/build-cache
 
-  # ===========================================================
-  # Job 7: Android Lint
-  # ===========================================================
+  # android-lint — Android lint + Detekt static analysis
   android-lint:
     docker:
       - image: cimg/android:2024.11.1
@@ -417,9 +372,7 @@ jobs:
           path: Android/app/build/reports/detekt
           destination: detekt-reports
 
-  # ===========================================================
-  # Job 8: Android Unit Tests
-  # ===========================================================
+  # android-test — unit tests + JaCoCo 80% line-coverage gate
   android-test:
     docker:
       - image: cimg/android:2024.11.1
@@ -451,10 +404,7 @@ jobs:
           path: Android/app/build/reports/jacoco/jacocoTestReport/html
           destination: coverage-report
 
-  # ===========================================================
-  # Job 9: OWASP Dependency Vulnerability Scan (Android)
-  # Runs weekly via scheduled-security workflow.
-  # ===========================================================
+  # android-owasp-scan — weekly OWASP dependency vulnerability scan
   android-owasp-scan:
     docker:
       - image: cimg/android:2024.11.1
@@ -476,9 +426,8 @@ workflows:
   version: 2
   build-and-test:
     jobs:
-      # --- Platform-agnostic ---
       - gitleaks
-      # --- iOS jobs ---
+      # iOS — filtered to develop, main, MA-*, MOB-*
       - ios-swiftlint:
           filters:
             branches:
@@ -495,7 +444,7 @@ workflows:
                 - main
                 - /^MA-.*$/
                 - /^MOB-.*$/
-      # Uncomment when simulator support is restored:
+      # Re-enable when simulator support is restored:
       # - ios-unit-tests:
       #     requires:
       #       - ios-build
@@ -507,7 +456,7 @@ workflows:
                 - main
                 - /^MA-.*$/
                 - /^MOB-.*$/
-      # --- Android jobs ---
+      # Android — same branch filters
       - android-build:
           filters:
             branches:
