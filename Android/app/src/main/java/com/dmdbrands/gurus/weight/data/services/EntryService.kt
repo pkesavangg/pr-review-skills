@@ -196,6 +196,31 @@ class EntryService(
     }
 
     /**
+     * Edits a baby reading in place. The row keeps its local id and is re-stamped
+     * operationType=edit (baby-only, §2.16), upserted locally, then pushed to POST /v3/entries/
+     * on the same endpoint as create. The server resolves the edit by the deterministic baby
+     * entryId (babyId_entryType_timestamp); editing weight/length while keeping the timestamp
+     * updates the same server reading in place.
+     */
+    override suspend fun editBabyEntry(entry: BabyEntry) {
+        val currentAccountId = accountId ?: return
+        try {
+            val editEntry = entry.updateEntry(
+                entry.entry.copy(
+                    accountId = currentAccountId,
+                    operationType = OperationType.EDIT.name,
+                    isSynced = false,
+                ),
+            )
+            // Upsert the local row in place (insert is a REPLACE keyed by id), then push the edit.
+            entryRepository.insert(editEntry)
+            syncOperationsInternal(currentAccountId)
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Error editing baby entry", e)
+        }
+    }
+
+    /**
      * Removes a previously-assigned baby entry: marks it operationType=delete and pushes the
      * deletion to POST /v3/entries/ (category=baby — §2.16) via [syncOperationsInternal], which
      * also drops the local row on success. Used by the reading-arrival "Reassign" flow.

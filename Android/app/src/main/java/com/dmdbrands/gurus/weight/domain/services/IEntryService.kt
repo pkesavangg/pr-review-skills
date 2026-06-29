@@ -31,6 +31,15 @@ interface IEntryService {
   suspend fun addBabyEntry(entry: BabyEntry): Long
 
   /**
+   * Edits an existing baby reading in place. The row keeps its local id and is re-stamped
+   * operationType=edit, then pushed to POST /v3/entries/ (category=baby — §2.16, the only
+   * category that supports `edit`) on the same endpoint as create. Used when editing a reading
+   * from the History detail screen. Does NOT delete + re-create (which collided on the shared id
+   * and resolved to a delete).
+   */
+  suspend fun editBabyEntry(entry: BabyEntry)
+
+  /**
    * Removes a previously-assigned baby entry by its id. The row is marked operationType=delete
    * and pushed to POST /v3/entries/ (category=baby — §2.16) so the deletion propagates to the
    * server, then dropped locally. Used by the reading-arrival "Reassign" flow to move a reading

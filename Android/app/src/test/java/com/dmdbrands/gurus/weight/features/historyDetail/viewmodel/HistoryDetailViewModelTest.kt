@@ -7,6 +7,11 @@ import com.dmdbrands.gurus.weight.domain.model.common.HistoryDetail
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
+import com.dmdbrands.gurus.weight.domain.enums.BabyEntryType
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
@@ -564,6 +569,62 @@ class HistoryDetailViewModelTest {
         val dialog = dialogSlot.captured as DialogModel.Confirm
         assertThat(dialog.primaryActionType).isEqualTo(com.dmdbrands.gurus.weight.features.common.components.ButtonType.ErrorText)
     }
+
+    // -------------------------------------------------------------------------
+    // Baby edit (operationType = edit, §2.16)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `SaveBabyEdit edits in place via editBabyEntry, not delete plus re-create`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val original = aBabyEntry(id = 7L, weightDecigrams = 30000)
+        viewModel.handleIntent(
+            HistoryDetailIntent.SaveBabyEdit(
+                entry = original,
+                weightDecigrams = 31000,
+                lengthMillimeters = null,
+                note = "after feed",
+                timestamp = original.entry.entryTimestamp,
+            ),
+        )
+        advanceUntilIdle()
+
+        val slot = slot<BabyEntry>()
+        coVerify { entryService.editBabyEntry(capture(slot)) }
+        // The buggy old path (delete + re-create) must NOT run.
+        coVerify(exactly = 0) { entryService.deleteEntry(any()) }
+        coVerify(exactly = 0) { entryService.addEntry(any<Entry>()) }
+
+        val saved = slot.captured
+        assertThat(saved.entry.id).isEqualTo(original.entry.id) // same row id
+        assertThat(saved.babyWeightDecigrams).isEqualTo(31000) // new value applied
+        assertThat(saved.entryType).isEqualTo(BabyEntryType.WEIGHT.value)
+        assertThat(saved.entryNote).isEqualTo("after feed")
+    }
+
+    private fun aBabyEntry(
+        id: Long = 7L,
+        babyId: String = "baby-1",
+        weightDecigrams: Int? = 30000,
+        timestamp: String = "2024-01-01T08:00:00.000Z",
+    ): BabyEntry = BabyEntry(
+        entry = EntryEntity(
+            id = id,
+            accountId = "test-account-id",
+            entryTimestamp = timestamp,
+            operationType = "create",
+            deviceType = "baby",
+            deviceId = "baby-1",
+        ),
+        babyEntry = BabyEntryEntity(
+            id = id,
+            babyId = babyId,
+            babyWeightDecigrams = weightDecigrams,
+            entryType = BabyEntryType.WEIGHT.value,
+        ),
+    )
 
     @Test
     fun `showDeleteEntryDialog onConfirm shows success toast after deletion`() = runTest {

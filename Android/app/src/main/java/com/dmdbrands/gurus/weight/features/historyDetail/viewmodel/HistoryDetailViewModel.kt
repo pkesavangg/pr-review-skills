@@ -129,8 +129,8 @@ class HistoryDetailViewModel @AssistedInject constructor(
             try {
                 val original = intent.entry
                 val updated = BabyEntry(
-                    // addEntry re-stamps isSynced/operationType/accountId; we keep the row id (so it
-                    // updates in place via the unique entryTimestamp index) and apply the new values.
+                    // editBabyEntry re-stamps operationType=edit/isSynced/accountId; we keep the row
+                    // id so it updates in place and apply the new values.
                     entry = original.entry.copy(entryTimestamp = intent.timestamp),
                     babyEntry = original.babyEntry.copy(
                         babyWeightDecigrams = intent.weightDecigrams,
@@ -143,12 +143,10 @@ class HistoryDetailViewModel @AssistedInject constructor(
                         },
                     ),
                 )
-                // If the date changed the row moves to a new entryTimestamp — delete the old one so
-                // it isn't orphaned, then save the updated reading.
-                if (original.entry.entryTimestamp != intent.timestamp) {
-                    entryService.deleteEntry(original)
-                }
-                entryService.addEntry(updated)
+                // Edit in place via operationType=edit (baby-only, §2.16) — same row id, same
+                // POST /v3/entries endpoint. Replaces the old delete + re-create, which collided
+                // on the shared id and resolved to a delete (the entry vanished).
+                entryService.editBabyEntry(updated)
                 handleIntent(HistoryDetailIntent.DismissBabyEditor)
                 loadDetail()
             } catch (e: Exception) {
