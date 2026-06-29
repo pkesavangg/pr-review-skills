@@ -7,10 +7,14 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.ActiveEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
+import com.dmdbrands.gurus.weight.domain.model.api.entry.EntriesCursorResponse
+import com.dmdbrands.gurus.weight.domain.model.api.entry.EntriesSyncResponse
 import com.dmdbrands.gurus.weight.domain.model.api.entry.ScaleApiEntry
 import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryRequest
 import com.dmdbrands.gurus.weight.domain.model.api.entry.UnifiedEntryResponse
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PopulatedActiveEntry
@@ -24,8 +28,9 @@ import io.mockk.coVerify
 import io.mockk.impl.annotations.MockK
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import kotlin.test.assertFailsWith
 
 class EntryRepositoryTest {
 
@@ -37,7 +42,7 @@ class EntryRepositoryTest {
 
     private lateinit var repository: EntryRepository
 
-    @Before
+    @BeforeEach
     fun setUp() {
         MockKAnnotations.init(this)
         repository = EntryRepository(entryDao, entryApi)
@@ -149,9 +154,9 @@ class EntryRepositoryTest {
 
     // ── sendOperationToAPI ─────────────────────────────────────────────────────
 
-    @Test(expected = IllegalArgumentException::class)
+    @Test
     fun `sendOperationToAPI throws IllegalArgumentException when operation is null`() = runTest {
-        repository.sendOperationToAPI(null)
+        assertFailsWith<IllegalArgumentException> { repository.sendOperationToAPI(null) }
     }
 
     @Test
@@ -164,12 +169,12 @@ class EntryRepositoryTest {
         coVerify { entryApi.sendOperation(operation) }
     }
 
-    @Test(expected = RuntimeException::class)
+    @Test
     fun `sendOperationToAPI rethrows exception from api`() = runTest {
         val operation = buildScaleApiEntry()
         coEvery { entryApi.sendOperation(any()) } throws RuntimeException("network error")
 
-        repository.sendOperationToAPI(operation)
+        assertFailsWith<RuntimeException> { repository.sendOperationToAPI(operation) }
     }
 
     // ── sendBatchToAPI ─────────────────────────────────────────────────────────
@@ -188,13 +193,15 @@ class EntryRepositoryTest {
         coVerify { entryApi.postEntries(requests) }
     }
 
-    @Test(expected = RuntimeException::class)
+    @Test
     fun `sendBatchToAPI rethrows exception from api (atomic failure)`() = runTest {
         coEvery { entryApi.postEntries(any()) } throws RuntimeException("batch failed")
 
-        repository.sendBatchToAPI(
-            listOf(UnifiedEntryRequest(category = "bp", operationType = "create", entryTimestamp = "t", systolic = 120, diastolic = 80, pulse = 72)),
-        )
+        assertFailsWith<RuntimeException> {
+            repository.sendBatchToAPI(
+                listOf(UnifiedEntryRequest(category = "bp", operationType = "create", entryTimestamp = "t", systolic = 120, diastolic = 80, pulse = 72)),
+            )
+        }
     }
 
     // ── getOperationsFromAPI ───────────────────────────────────────────────────
@@ -368,6 +375,153 @@ class EntryRepositoryTest {
         assertThat(result).hasSize(1)
     }
 
+    // ── updateNote ─────────────────────────────────────────────────────────────
+
+    @Test
+    fun `updateNote on ScaleEntry calls updateScaleNote`() = runTest {
+        val entry = buildScaleEntry(VALID_TIMESTAMP)
+
+        repository.updateNote(entry, "weighed in")
+
+        coVerify { entryDao.updateScaleNote(entry.entry.id, "weighed in") }
+        coVerify(exactly = 0) { entryDao.updateBpmNote(any(), any()) }
+    }
+
+    @Test
+    fun `updateNote on BpmEntry calls updateBpmNote`() = runTest {
+        val entry = buildBpmEntry(VALID_TIMESTAMP)
+
+        repository.updateNote(entry, "after walk")
+
+        coVerify { entryDao.updateBpmNote(entry.entry.id, "after walk") }
+        coVerify(exactly = 0) { entryDao.updateScaleNote(any(), any()) }
+    }
+
+    @Test
+    fun `updateNote on BabyEntry calls updateBabyNote`() = runTest {
+        val entry = buildBabyEntry(VALID_TIMESTAMP)
+
+        repository.updateNote(entry, "fussy")
+
+        coVerify { entryDao.updateBabyNote(entry.entry.id, "fussy") }
+    }
+
+    @Test
+    fun `updateNote with null note clears the note column`() = runTest {
+        val entry = buildScaleEntry(VALID_TIMESTAMP)
+
+        repository.updateNote(entry, null)
+
+        coVerify { entryDao.updateScaleNote(entry.entry.id, null) }
+    }
+
+    // ── insert(List) note preservation merge ───────────────────────────────────
+
+    @Test
+    fun `insert list preserves stored note for scale entry with blank note`() = runTest {
+        val entry = buildScaleEntry(VALID_TIMESTAMP) // note is null
+        coEvery { entryDao.getStoredScaleNotes(ACCOUNT_ID) } returns
+            listOf(com.dmdbrands.gurus.weight.data.storage.db.dao.ScaleNoteRow(VALID_TIMESTAMP, "stored note"))
+
+        repository.insert(listOf(entry))
+
+        coVerify { entryDao.getStoredScaleNotes(ACCOUNT_ID) }
+        coVerify { entryDao.insert(match<List<Entry>> { it.size == 1 }) }
+    }
+
+    @Test
+    fun `insert list ignores blank stored note rows`() = runTest {
+        val entry = buildScaleEntry(VALID_TIMESTAMP)
+        coEvery { entryDao.getStoredScaleNotes(ACCOUNT_ID) } returns
+            listOf(com.dmdbrands.gurus.weight.data.storage.db.dao.ScaleNoteRow(VALID_TIMESTAMP, "  "))
+
+        repository.insert(listOf(entry))
+
+        coVerify { entryDao.insert(match<List<Entry>> { it.size == 1 }) }
+    }
+
+    // ── insert(single) note preservation ───────────────────────────────────────
+
+    @Test
+    fun `insert single scale entry restores stored note when incoming note is blank`() = runTest {
+        val entry = buildScaleEntry(VALID_TIMESTAMP)
+        coEvery { entryDao.getStoredScaleNote(ACCOUNT_ID, VALID_TIMESTAMP) } returns "kept note"
+        coEvery { entryDao.insert(any<Entry>()) } returns 1L
+
+        repository.insert(entry)
+
+        coVerify { entryDao.getStoredScaleNote(ACCOUNT_ID, VALID_TIMESTAMP) }
+        coVerify { entryDao.insert(any<Entry>()) }
+    }
+
+    // ── getEntriesSync ─────────────────────────────────────────────────────────
+
+    @Test
+    fun `getEntriesSync returns response from api`() = runTest {
+        val response = EntriesSyncResponse(entries = emptyList(), timestamp = "2024-01-15T00:00:00.000Z")
+        coEvery { entryApi.getEntriesSync("2024-01-15", "weight") } returns response
+
+        val result = repository.getEntriesSync("2024-01-15", "weight")
+
+        assertThat(result).isEqualTo(response)
+    }
+
+    @Test
+    fun `getEntriesSync rethrows on api failure`() = runTest {
+        coEvery { entryApi.getEntriesSync(any(), any()) } throws RuntimeException("sync failed")
+
+        assertFailsWith<RuntimeException> { repository.getEntriesSync("start", null) }
+    }
+
+    // ── getEntriesPage ─────────────────────────────────────────────────────────
+
+    @Test
+    fun `getEntriesPage returns response from api`() = runTest {
+        val response = EntriesCursorResponse(entries = emptyList(), nextCursor = null, hasMore = false)
+        coEvery { entryApi.getEntriesPage("cursor1", 20, "weight") } returns response
+
+        val result = repository.getEntriesPage("cursor1", 20, "weight")
+
+        assertThat(result).isEqualTo(response)
+    }
+
+    @Test
+    fun `getEntriesPage rethrows on api failure`() = runTest {
+        coEvery { entryApi.getEntriesPage(any(), any(), any()) } throws RuntimeException("page failed")
+
+        assertFailsWith<RuntimeException> { repository.getEntriesPage(null, 20, null) }
+    }
+
+    // ── exportEntriesCsv ───────────────────────────────────────────────────────
+
+    @Test
+    fun `exportEntriesCsv returns body when response successful`() = runTest {
+        val body = okhttp3.ResponseBody.create(null, "csv data")
+        coEvery { entryApi.exportEntriesCsv(any(), any(), any()) } returns retrofit2.Response.success(body)
+
+        val result = repository.exportEntriesCsv("weight", download = true, utcOffset = 0)
+
+        assertThat(result).isNotNull()
+    }
+
+    @Test
+    fun `exportEntriesCsv returns null when response unsuccessful`() = runTest {
+        val errorBody = okhttp3.ResponseBody.create(null, "err")
+        coEvery { entryApi.exportEntriesCsv(any(), any(), any()) } returns
+            retrofit2.Response.error(500, errorBody)
+
+        val result = repository.exportEntriesCsv("weight", download = false, utcOffset = 5)
+
+        assertThat(result).isNull()
+    }
+
+    @Test
+    fun `exportEntriesCsv rethrows on api failure`() = runTest {
+        coEvery { entryApi.exportEntriesCsv(any(), any(), any()) } throws RuntimeException("csv failed")
+
+        assertFailsWith<RuntimeException> { repository.exportEntriesCsv(null, download = true, utcOffset = 0) }
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     companion object {
@@ -455,6 +609,26 @@ class EntryRepositoryTest {
             note = null,
         )
         return BpmEntry(entryEntity, bpmEntryEntity)
+    }
+
+    private fun buildBabyEntry(timestamp: String): BabyEntry {
+        val entryEntity = EntryEntity(
+            id = 3L,
+            accountId = ACCOUNT_ID,
+            entryTimestamp = timestamp,
+            operationType = "create",
+            deviceType = "baby",
+            deviceId = "device3",
+        )
+        val babyEntryEntity = BabyEntryEntity(
+            id = 3L,
+            babyId = "baby1",
+            babyWeightDecigrams = 3500,
+            babyLengthMillimeters = 500,
+            entryNote = null,
+            entryType = "weight",
+        )
+        return BabyEntry(entryEntity, babyEntryEntity)
     }
 
     private fun buildScaleApiEntry(): ScaleApiEntry = ScaleApiEntry(

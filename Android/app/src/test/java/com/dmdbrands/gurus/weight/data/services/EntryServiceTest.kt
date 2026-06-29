@@ -392,4 +392,82 @@ class EntryServiceTest {
 
         verify { AppLog.e("EntryService", match { it.contains("Error checking entries for goal card") }, any<String>()) }
     }
+
+    // -------------------------------------------------------------------------
+    // Unified sync GET failure — persists placeholders for retry (MOB-380)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `unified sync GET failure persists placeholders and does not crash`() = runTest {
+        coEvery { entryRepository.getUnSynced(testAccountId) } returns emptyList()
+        coEvery { entryRepository.getOperationCount(testAccountId) } returns 2
+        coEvery { accountRepository.getSyncTimeStamp() } returns flowOf("2024-01-01T00:00:00.000Z")
+        coEvery { entryRepository.sendBatchToAPI(any()) } returns
+            UnifiedEntryResponse(entries = emptyList(), timestamp = "2024-01-02T00:00:00.000Z")
+        // The unified GET delta pull throws — the catch block must persist placeholders.
+        coEvery { entryRepository.getEntriesSync(any(), any()) } throws RuntimeException("GET failed")
+
+        service.updateAllData(testAccountId)
+        service.addEntry(realScaleEntry())
+
+        verify { AppLog.e("EntryService", match { it.contains("Unified sync GET failed") }, any<Throwable>()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // tryLocalIntegration — Health Connect sync for CREATE scale entries
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `create scale entry syncs to Health Connect when integration enabled`() = runTest {
+        coEvery { entryRepository.getUnSynced(testAccountId) } returns emptyList()
+        coEvery { entryRepository.getOperationCount(testAccountId) } returns 0
+        coEvery { accountRepository.getSyncTimeStamp() } returns flowOf("")
+        coEvery { entryRepository.sendBatchToAPI(any()) } returns
+            UnifiedEntryResponse(entries = emptyList(), timestamp = "2024-01-02T00:00:00.000Z")
+        coEvery { entryRepository.getEntriesSync(any(), any()) } returns
+            EntriesSyncResponse(entries = emptyList(), timestamp = null)
+        coEvery { healthConnectService.checkIntegrated() } returns true
+
+        service.updateAllData(testAccountId)
+        service.addEntry(realScaleEntry())
+
+        coVerify { healthConnectService.syncData(any()) }
+        coVerify { healthConnectRepository.syncEntry(any()) }
+    }
+
+    @Test
+    fun `create scale entry skips Health Connect when integration disabled`() = runTest {
+        coEvery { entryRepository.getUnSynced(testAccountId) } returns emptyList()
+        coEvery { entryRepository.getOperationCount(testAccountId) } returns 0
+        coEvery { accountRepository.getSyncTimeStamp() } returns flowOf("")
+        coEvery { entryRepository.sendBatchToAPI(any()) } returns
+            UnifiedEntryResponse(entries = emptyList(), timestamp = "2024-01-02T00:00:00.000Z")
+        coEvery { entryRepository.getEntriesSync(any(), any()) } returns
+            EntriesSyncResponse(entries = emptyList(), timestamp = null)
+        coEvery { healthConnectService.checkIntegrated() } returns false
+
+        service.updateAllData(testAccountId)
+        service.addEntry(realScaleEntry())
+
+        coVerify(exactly = 0) { healthConnectService.syncData(any()) }
+    }
+
+    @Test
+    fun `Health Connect sync failure is swallowed and does not crash sync`() = runTest {
+        coEvery { entryRepository.getUnSynced(testAccountId) } returns emptyList()
+        coEvery { entryRepository.getOperationCount(testAccountId) } returns 0
+        coEvery { accountRepository.getSyncTimeStamp() } returns flowOf("")
+        coEvery { entryRepository.sendBatchToAPI(any()) } returns
+            UnifiedEntryResponse(entries = emptyList(), timestamp = "2024-01-02T00:00:00.000Z")
+        coEvery { entryRepository.getEntriesSync(any(), any()) } returns
+            EntriesSyncResponse(entries = emptyList(), timestamp = null)
+        coEvery { healthConnectService.checkIntegrated() } returns true
+        coEvery { healthConnectService.syncData(any()) } throws RuntimeException("HC error")
+
+        // Non-critical — must not throw.
+        service.updateAllData(testAccountId)
+        service.addEntry(realScaleEntry())
+
+        verify { AppLog.e("EntryService", match { it.contains("Error syncing to Health Connect") }, any<Throwable>()) }
+    }
 }
