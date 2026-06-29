@@ -167,14 +167,10 @@ fun BabyDayHistoryItem(
                 modifier = Modifier.padding(
                     start = MeTheme.spacing.sm,
                     end = MeTheme.spacing.sm,
+                    top = MeTheme.spacing.sm,
                     bottom = MeTheme.spacing.sm,
                 ),
             ) {
-                HorizontalDivider(
-                    thickness = MeTheme.spacing.x6s,
-                    color = MeTheme.colorScheme.utility,
-                    modifier = Modifier.padding(bottom = MeTheme.spacing.sm),
-                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,

@@ -121,15 +121,10 @@ fun BpHistoryDetailItem(
           .fillMaxWidth()
           .padding(horizontal = MeTheme.spacing.sm),
       ) {
-        HorizontalDivider(
-          thickness = MeTheme.spacing.x6s,
-          color = MeTheme.colorScheme.utility,
-          modifier = Modifier.padding(bottom = MeTheme.spacing.sm),
-        )
         Row(
           modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = MeTheme.spacing.sm),
+            .padding(top = MeTheme.spacing.sm, bottom = MeTheme.spacing.sm),
           verticalAlignment = Alignment.CenterVertically,
         ) {
           Text(
