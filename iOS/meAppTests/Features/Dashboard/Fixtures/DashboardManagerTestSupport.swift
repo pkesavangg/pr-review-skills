@@ -20,8 +20,6 @@ enum DashboardManagerTestSupport {
         return (sut.store, sut.accountService, sut.entryService)
     }
 
-    // Test SUT alias; labeled tuple is clearer than a one-off struct.
-    // swiftlint:disable:next large_tuple
     typealias StoreSUTWithRepo = (
         store: DashboardStore,
         accountService: AccountService,

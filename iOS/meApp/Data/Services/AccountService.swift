@@ -52,7 +52,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         self.networkMonitor = networkMonitor ?? NetworkMonitor.shared
         self.migrationService = migrationService ?? AccountMigrationService()
         self.scaleRepo = scaleRepo ?? DeviceRepository()
-        
+
         $activeAccount
             .dropFirst()
             .sink { [weak self] snapshot in
@@ -157,7 +157,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
             if isSameAccount {
                 activeAccount = nil
             }
-            
+
             let account = try await prepareAuthenticatedAccount(from: response, existingAccount: existingAccount)
             try await makeOtherAccountsInactive(except: account)
             if existingAccount == nil {
@@ -194,7 +194,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
             if isSameAccount {
                 activeAccount = nil
             }
-            
+
             let account = try await prepareAuthenticatedAccount(from: response, existingAccount: existingAccount)
             try await makeOtherAccountsInactive(except: account)
             if existingAccount == nil {
@@ -394,7 +394,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
     func getAllLoggedInAccounts() async throws -> [AccountSnapshot] {
         let all = try await localRepo.fetchAllAccounts()
         return all.filter { $0.isLoggedIn == true }.map { account in
-            let tokens = keychainService.getTokens(for: account.accountId)
+            let tokens = resolveTokens(for: account)
             return account.toSnapshot(
                 accessToken: tokens?.accessToken,
                 refreshToken: tokens?.refreshToken,
@@ -406,7 +406,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
     /// Fetches an account snapshot by its unique ID.
     func fetchAccount(byId id: String) async throws -> AccountSnapshot? {
         guard let account = try await localRepo.fetchAccount(byId: id) else { return nil }
-        let tokens = keychainService.getTokens(for: account.accountId)
+        let tokens = resolveTokens(for: account)
         return account.toSnapshot(
             accessToken: tokens?.accessToken,
             refreshToken: tokens?.refreshToken,
@@ -418,7 +418,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
     func fetchAllAccounts() async throws -> [AccountSnapshot] {
         let accounts = try await localRepo.fetchAllAccounts()
         return accounts.map { account in
-            let tokens = keychainService.getTokens(for: account.accountId)
+            let tokens = resolveTokens(for: account)
             return account.toSnapshot(
                 accessToken: tokens?.accessToken,
                 refreshToken: tokens?.refreshToken,
@@ -1272,7 +1272,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         guard let resolvedAccountId = accountId ?? activeAccount?.accountId else {
             throw AccountError.noActiveAccount
         }
-        let refreshToken = keychainService.getTokens(for: resolvedAccountId)?.refreshToken
+        // Keychain-first with a 5.0.3 SwiftData fallback so a refresh triggered during the
+        // migration window (Keychain not yet populated) uses the upgraded refresh token
+        // instead of throwing and tripping the auto-logout path in TokenManager.
+        let account = try await localRepo.fetchAccount(byId: resolvedAccountId)
+        let refreshToken = account.flatMap { resolveTokens(for: $0) }?.refreshToken
         guard let refreshToken = refreshToken else {
             throw AccountError.noActiveAccount
         }
@@ -1306,12 +1310,31 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         )
     }
 
+    /// Resolves tokens for an account, preferring Keychain (the source of truth).
+    ///
+    /// During the one-time 5.0.3 → Keychain migration window the Keychain is still empty
+    /// while the SwiftData columns continue to hold the upgraded tokens. Fall back to those
+    /// columns so no snapshot/request ever fires with an empty bearer — an empty bearer would
+    /// force a refresh against the empty Keychain and trigger a spurious auto-logout before
+    /// `migrateTokensToKeychainIfNeeded()` has populated the Keychain. The fallback stops
+    /// mattering once migration completes (Keychain wins and the columns are cleared).
+    private func resolveTokens(for account: Account) -> Tokens? {
+        if let tokens = keychainService.getTokens(for: account.accountId) {
+            return tokens
+        }
+        guard let access = account.accessToken, let refresh = account.refreshToken,
+              let expires = account.expiresAt, !access.isEmpty, !refresh.isEmpty else {
+            return nil
+        }
+        return Tokens(accessToken: access, refreshToken: refresh, expiresAt: expires)
+    }
+
     /// Updates the published state of active and all accounts.
     func updatePublishedState() async throws {
         let rawAccounts = try await localRepo.fetchAllAccounts()
 
         let snapshots: [AccountSnapshot] = rawAccounts.map { account in
-            let tokens = keychainService.getTokens(for: account.accountId)
+            let tokens = resolveTokens(for: account)
             return account.toSnapshot(
                 accessToken: tokens?.accessToken,
                 refreshToken: tokens?.refreshToken,
@@ -1428,10 +1451,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
     /// Moves tokens from the 5.0.3 SwiftData columns to the Keychain.
     /// Returns `true` if this was the first run of the migration (i.e. we actually moved tokens),
     /// `false` if the migration had already been completed on a previous launch.
-    /// `internal` (not `private`) so tests can assert the migration contract that gates the
-    /// first-launch sync/refresh skip in `init`. Not part of the public service surface.
     @discardableResult
-    func migrateTokensToKeychainIfNeeded() async throws -> Bool {
+    private func migrateTokensToKeychainIfNeeded() async throws -> Bool {
         let key = KvStorageKeys.tokensMigratedToKeychain.rawValue
         if kvStorage.getValue(forKey: key) as? Bool == true {
             return false

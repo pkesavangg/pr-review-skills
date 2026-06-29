@@ -1509,9 +1509,7 @@ struct AccountServiceTests {
         api.patchProductTypesResult = .success(
             AccountResponse(
                 account: AccountTestFixtures.makeAccountDTO(id: "101", productTypes: ["weight"]),
-                accessToken: nil,
-                refreshToken: nil,
-                expiresAt: nil
+                accessToken: nil, refreshToken: nil, expiresAt: nil
             )
         )
 
@@ -1541,9 +1539,7 @@ struct AccountServiceTests {
         api.patchProductTypesResult = .success(
             AccountResponse(
                 account: AccountTestFixtures.makeAccountDTO(id: "101", productTypes: ["weight", "baby"]),
-                accessToken: nil,
-                refreshToken: nil,
-                expiresAt: nil
+                accessToken: nil, refreshToken: nil, expiresAt: nil
             )
         )
 
