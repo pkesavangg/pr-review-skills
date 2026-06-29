@@ -150,8 +150,12 @@ final class ContentViewModel: ObservableObject {
 
         logger.log(level: .info, tag: tag, message: "App initialization started")
         // Show loading only on first launch/landing; skip for metadata-triggered re-inits to avoid UI flicker.
-        if contentViewState != .dashboard {
+        // MOB-196: while the loading screen is up, hold back any alert (permissions, sync errors,
+        // goal prompts) so it doesn't appear over it; it's presented once loading completes below.
+        let isShowingLoadingScreen = contentViewState != .dashboard
+        if isShowingLoadingScreen {
             contentViewState = .initializing
+            notificationService.setAppLoading(true)
         }
         var loggedIn = await checkLoginStatus()
         guard !Task.isCancelled else { return }
@@ -183,6 +187,11 @@ final class ContentViewModel: ObservableObject {
         let afterUpdate = await checkLoginStatus()
         guard !Task.isCancelled else { return }
         await updateViewState(isLoggedIn: afterUpdate)
+        // MOB-196: loading screen is dismissed now — allow alerts again and flush any that
+        // were raised while it was up.
+        if isShowingLoadingScreen {
+            notificationService.setAppLoading(false)
+        }
         logger.log(level: .info, tag: tag, message: "App initialization completed. isLoggedIn=\(afterUpdate), state=\(contentViewState)")
         
         // Ensure loader is dismissed after initialization completes (safety mechanism)
