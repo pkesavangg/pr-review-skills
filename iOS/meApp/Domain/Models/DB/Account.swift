@@ -60,11 +60,12 @@ final class Account {
     /// OAuth or app-specific access token. Keychain is the source of truth; this column is
     /// persisted (not `@Transient`) only so the one-time `migrateTokensToKeychainIfNeeded()`
     /// pass can read the value an upgrading 5.0.3 store still holds. It is cleared to `nil`
-    /// before every save (see `clearTokenFieldsBeforeSave`), so it never re-persists a token.
+    /// on every persist by the model's `willSave()` hook, so it never re-persists a token
+    /// regardless of which code path triggers the save.
     var accessToken: String?
-    /// OAuth refresh token. Persisted only for the one-time 5.0.3 → Keychain migration; cleared on save.
+    /// OAuth refresh token. Persisted only for the one-time 5.0.3 → Keychain migration; cleared on save by `willSave()`.
     var refreshToken: String?
-    /// Access token expiration time. Persisted only for the one-time 5.0.3 → Keychain migration; cleared on save.
+    /// Access token expiration time. Persisted only for the one-time 5.0.3 → Keychain migration; cleared on save by `willSave()`.
     var expiresAt: String?
     /// Firebase Cloud Messaging token
     var fcmToken: String?

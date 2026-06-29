@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Combine
 import Foundation
 import GGBluetoothSwiftPackage
@@ -6,6 +7,7 @@ import Testing
 
 @Suite(.serialized)
 @MainActor
+// swiftlint:disable:next type_body_length
 struct BluetoothServiceCoreOperationsTests {
 
     @Test("scan with no active account returns early")
@@ -508,7 +510,10 @@ struct BluetoothServiceCoreOperationsTests {
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(id: "setting-1", broadcastIdString: "SETTING11", isConnected: true)
 
-        let result = await sut.updateSetting(broadcastId: device.broadcastIdString ?? "", settings: [DeviceSetting(key: "SESSION_IMPEDANCE", value: .bool(true))])
+        let result = await sut.updateSetting(
+            broadcastId: device.broadcastIdString ?? "",
+            settings: [DeviceSetting(key: "SESSION_IMPEDANCE", value: .bool(true))]
+        )
 
         guard case .success = result else {
             Issue.record("Expected updateSetting to succeed")

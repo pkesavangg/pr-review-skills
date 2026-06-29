@@ -20,6 +20,7 @@ enum DashboardManagerTestSupport {
         return (sut.store, sut.accountService, sut.entryService)
     }
 
+    // swiftlint:disable:next large_tuple
     typealias StoreSUTWithRepo = (
         store: DashboardStore,
         accountService: AccountService,
