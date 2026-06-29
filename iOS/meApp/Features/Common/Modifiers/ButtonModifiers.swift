@@ -166,15 +166,16 @@ struct AppPressableButtonStyle: ButtonStyle {
             )
 
         case .outlinedSecondary:
-            let baseBg = theme.actionPrimary
-            let bg = isPressed ? theme.actionPrimaryPressed : baseBg
+            // Transparent fill so the button reads as a true outline; the page shows through and
+            // the border + text (actionInverse) carry the contrast. Filling with actionPrimary here
+            // collided with the landing page background (also actionPrimary), washing the button out.
             let baseBorder = theme.actionInverse
             let border = isPressed ? theme.actionInversePressed : baseBorder
-            let fg = theme.actionInverse
+            let fg = isPressed ? theme.actionInversePressed : theme.actionInverse
             return AnyView(
                 configuration.label
                     .modifier(BorderedButtonStyle(
-                        backgroundColor: bg,
+                        backgroundColor: .clear,
                         borderColor: border,
                         buttonSize: size,
                         foregroundColor: fg
