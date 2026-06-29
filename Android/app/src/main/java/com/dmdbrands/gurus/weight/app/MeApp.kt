@@ -28,6 +28,7 @@ import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.core.navigation.LocalDialogQueueService
 import com.dmdbrands.gurus.weight.core.navigation.LocalProductSelectionManager
+import com.dmdbrands.gurus.weight.core.power.LocalPowerSaveMode
 import com.dmdbrands.gurus.weight.features.common.components.DialogHost
 import com.dmdbrands.gurus.weight.features.common.components.ProductSelectionBottomSheet
 import com.dmdbrands.gurus.weight.features.common.components.ScaleDiscoveredModal
@@ -46,6 +47,7 @@ import kotlinx.coroutines.launch
 fun MeApp() {
   val appViewModel: AppViewModel = hiltViewModel()
   val uiState by appViewModel.state.collectAsStateWithLifecycle()
+  val powerSaveMode by appViewModel.powerSaveMode.collectAsStateWithLifecycle()
 
   // Keep navigation stack stable - don't let it be affected by theme changes
   val topLevelBackStack =
@@ -68,6 +70,7 @@ fun MeApp() {
         LocalNavBackStack provides topLevelBackStack,
         LocalProductSelectionManager provides appViewModel.productSelectionManager,
         LocalDialogQueueService provides appViewModel.dialogQueueService,
+        LocalPowerSaveMode provides powerSaveMode,
       ) {
         DialogHost()
         NavHost(topLevelBackStack, appViewModel)

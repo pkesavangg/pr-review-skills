@@ -149,6 +149,10 @@ class AppViewModelTest {
             accountFlagService = accountFlagService,
             tokenMigrationHelper = mockk(relaxed = true),
             analyticsService = mockk(relaxed = true),
+            powerSaveModeObserver = mockk(relaxed = true) {
+                every { observe() } returns flowOf(false)
+                every { isPowerSaveMode() } returns false
+            },
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
