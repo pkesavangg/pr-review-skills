@@ -877,8 +877,11 @@ ranked AS (
     d.entryTimestamp,
     d.weightDecigrams,
     d.lengthMillimeters,
-    MAX(CASE WHEN d.weightDecigrams   > 0 THEN d.entryTimestamp END) OVER (PARTITION BY d.day) AS lt_weight,
-    MAX(CASE WHEN d.lengthMillimeters > 0 THEN d.entryTimestamp END) OVER (PARTITION BY d.day) AS lt_length,
+    -- Correlated subqueries instead of MAX(...) OVER (PARTITION BY day): window
+    -- functions need SQLite 3.25+ (API 30+) and crash on API 26-29 (MOB-598).
+    -- Per-day latest timestamp with a positive weight / length — identical result.
+    (SELECT MAX(x.entryTimestamp) FROM daily_baby x WHERE x.day = d.day AND x.weightDecigrams   > 0) AS lt_weight,
+    (SELECT MAX(x.entryTimestamp) FROM daily_baby x WHERE x.day = d.day AND x.lengthMillimeters > 0) AS lt_length,
     (SELECT latest_day FROM latest_day_cte) AS latest_day
   FROM daily_baby d
 )
@@ -903,30 +906,35 @@ ORDER BY period DESC
 
   /**
    * Last 10 daily averages per baby for dashboard snapshot — all babies in one query.
-   * Uses ROW_NUMBER() OVER (PARTITION BY babyId) for per-baby LIMIT 10.
+   * Keeps the 10 most-recent local days per baby via a correlated-subquery rank
+   * (COUNT of same-baby days on/after this day) instead of `ROW_NUMBER() OVER`, because
+   * window functions require SQLite 3.25+ (API 30+) and throw a syntax error on
+   * API 26-29 (SQLite 3.18), crashing the baby dashboard on launch (MOB-598).
    * Caller groups by [PeriodBabySummary.babyId] in-memory.
    */
   @Query(
     """
-    SELECT babyId, period, entryTimestamp, avgWeightDecigrams, avgLengthMillimeters FROM (
+    WITH baby_daily AS (
       SELECT
         be.babyId AS babyId,
         strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
         datetime(MIN(e.entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of day') AS entryTimestamp,
         CAST(AVG(be.babyWeightDecigrams) AS INTEGER) AS avgWeightDecigrams,
-        CAST(AVG(be.babyLengthMillimeters) AS INTEGER) AS avgLengthMillimeters,
-        -- Lexicographic ordering on 'YYYY-MM-DD' format is correct for date comparison.
-        -- Equivalent to ORDER BY entryTimestamp DESC but groups by local day.
-        ROW_NUMBER() OVER (
-          PARTITION BY be.babyId
-          ORDER BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) DESC
-        ) AS rn
+        CAST(AVG(be.babyLengthMillimeters) AS INTEGER) AS avgLengthMillimeters
       FROM entry_view e
       INNER JOIN baby_entry be ON e.id = be.id
       WHERE e.accountId = :accountId
         AND (e.operationType IS NULL OR e.operationType != 'delete')
       GROUP BY be.babyId, strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
-    ) WHERE rn <= 10
+    )
+    SELECT babyId, period, entryTimestamp, avgWeightDecigrams, avgLengthMillimeters
+    FROM baby_daily d
+    WHERE (
+      -- Rank within this baby (newest day = 1). Lexicographic compare on 'YYYY-MM-DD'
+      -- is correct for dates; equivalent to ROW_NUMBER() ORDER BY period DESC.
+      SELECT COUNT(*) FROM baby_daily d2
+      WHERE d2.babyId = d.babyId AND d2.period >= d.period
+    ) <= 10
     ORDER BY babyId, entryTimestamp ASC
     """,
   )

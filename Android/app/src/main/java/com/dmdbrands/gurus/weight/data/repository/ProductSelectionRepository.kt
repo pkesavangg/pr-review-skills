@@ -74,6 +74,13 @@ class ProductSelectionRepository @Inject constructor(
                 id = entity.babyId,
                 name = entity.name,
                 birthdate = entity.birthdate,
+                // sex (and birth weight/length) drive the CDC growth percentile + chart
+                // bands; omitting sex left the active profile sex=null, so every percentile
+                // resolved to null — history "--", no bands, no tooltip (MOB-598).
+                sex = entity.sex,
+                birthWeightDecigrams = entity.birthWeightDecigrams,
+                birthLengthMillimeters = entity.birthLengthMillimeters,
+                isBorn = entity.isBorn,
                 accountId = entity.accountId,
             )
         }

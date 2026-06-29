@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.data.services
 
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.services.EntryServiceHelper.processWeight
 import com.dmdbrands.gurus.weight.domain.model.common.GraphData
@@ -256,8 +257,12 @@ class EntryReadService(
             is ProductSelection.BloodPressure -> entryReadRepository.getBpmMonthlyHistory(acctId)
                 .map { GroupedHistory.BloodPressure(it) }
 
-            is ProductSelection.Baby -> entryReadRepository.getBabyWeeklyHistory(acctId, product.profile.id)
-                .map { GroupedHistory.Baby(it) }
+            is ProductSelection.Baby -> entryReadRepository.getBabyWeeklyHistory(
+                acctId,
+                product.profile.id,
+                product.profile.sex,
+                DateTimeConverter.isoToTimestamp(product.profile.birthdate),
+            ).map { GroupedHistory.Baby(it) }
 
             // Baby scale owned but no profile yet: no entries to show. (MOB-416)
             is ProductSelection.BabyScale -> flowOf(GroupedHistory.Baby(emptyList()))
@@ -278,8 +283,13 @@ class EntryReadService(
             is ProductSelection.BloodPressure -> entryReadRepository.getBpmMonthDetail(acctId, key)
                 .map { HistoryDetail.BloodPressure(it) }
 
-            is ProductSelection.Baby -> entryReadRepository.getBabyDayDetail(acctId, product.profile.id, key)
-                .map { HistoryDetail.Baby(it) }
+            is ProductSelection.Baby -> entryReadRepository.getBabyDayDetail(
+                acctId,
+                product.profile.id,
+                key,
+                product.profile.sex,
+                DateTimeConverter.isoToTimestamp(product.profile.birthdate),
+            ).map { HistoryDetail.Baby(it) }
 
             is ProductSelection.BabyScale -> flowOf(HistoryDetail.Baby(emptyList()))
         }

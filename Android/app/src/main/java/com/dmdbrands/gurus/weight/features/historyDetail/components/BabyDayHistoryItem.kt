@@ -95,10 +95,15 @@ fun BabyDayHistoryItem(
         }
     }
 
-    // Build percentile text: "6 th"
+    // Build percentile text: "6 th". Computed at read time from the baby's CDC growth
+    // tables (null for "private" sex or age outside the tables → shows "--").
     val percentText = buildAnnotatedString {
-        // Percentile not stored in BabyEntryEntity yet
-        withStyle(boldStyle) { append("--") }
+        if (item.percentile != null) {
+            withStyle(boldStyle) { append("${item.percentile}") }
+            withStyle(unitStyle) { append(" th") }
+        } else {
+            withStyle(boldStyle) { append("--") }
+        }
     }
 
     // TalkBack: read the baby entry as one announcement with an expand/collapse state, e.g.
