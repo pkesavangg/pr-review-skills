@@ -308,17 +308,17 @@ class HealthConnectRepository @Inject constructor(
   override suspend fun getStoredIntegrationData(accountId: String): IntegratedDeviceInfo? {
     return try {
       val healthConnectData = getAccountByID(accountId)
-        IntegratedDeviceInfo(
-          operationType = healthConnectData?.integrationInfo?.toDomain()?.operationType ?: "",
-          scopes = IntegrationData(
-            deviceId = healthConnectData?.integrationInfo?.scopes?.deviceId ?: "",
-            type = IntegrationType.HEALTH_CONNECT.value,
-            preferences = IntegrationPreferences(
-              scopes = healthConnectData?.grantedPermissionList ?: emptyList(),
-            ),
+      IntegratedDeviceInfo(
+        operationType = healthConnectData?.integrationInfo?.toDomain()?.operationType ?: "",
+        scopes = IntegrationData(
+          deviceId = healthConnectData?.integrationInfo?.scopes?.deviceId ?: "",
+          type = IntegrationType.HEALTH_CONNECT.value,
+          preferences = IntegrationPreferences(
+            scopes = healthConnectData?.grantedPermissionList ?: emptyList(),
           ),
-          isCurrentDeviceDeleted = healthConnectData?.integrationInfo?.toDomain()?.isCurrentDeviceDeleted ?: false,
-        )
+        ),
+        isCurrentDeviceDeleted = healthConnectData?.integrationInfo?.toDomain()?.isCurrentDeviceDeleted ?: false,
+      )
     } catch (e: Exception) {
       AppLog.e(tag, "Failed to get stored integration data", e)
       null

@@ -212,7 +212,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `login returns account when credentials are valid and not at max accounts`() = runTest {
+    fun `login returns account when credentials are valid and not at max accounts`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.login(any(), any()) } returns fakeAccount
 
         val result = service.login(TEST_EMAIL, TEST_PASSWORD)
@@ -221,7 +221,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `login succeeds for existing account even when max accounts reached`() = runTest {
+    fun `login succeeds for existing account even when max accounts reached`() = runTest(mainDispatcherRule.scheduler) {
         every { accountRepository.getLoggedInAccounts() } returns flowOf(
             (1..10).map { fakeAccount.copy(id = "acc-$it", isActiveAccount = it == 1) },
         )
@@ -235,7 +235,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `login throws MaxAccountsReachedException when max accounts reached and email is new`() = runTest {
+    fun `login throws MaxAccountsReachedException when max accounts reached and email is new`() = runTest(mainDispatcherRule.scheduler) {
         every { accountRepository.getLoggedInAccounts() } returns flowOf(
             (1..10).map { fakeAccount.copy(id = "acc-$it", isActiveAccount = it == 1) },
         )
@@ -245,7 +245,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `login returns null and emits error on HttpException 401`() = runTest {
+    fun `login returns null and emits error on HttpException 401`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.login(any(), any()) } throws httpException(401)
 
         val result = service.login(TEST_EMAIL, "wrong")
@@ -255,7 +255,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `login returns null and emits error on HttpException 500`() = runTest {
+    fun `login returns null and emits error on HttpException 500`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.login(any(), any()) } throws httpException(500)
 
         val result = service.login(TEST_EMAIL, TEST_PASSWORD)
@@ -265,7 +265,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `login returns null and emits error on HttpException 0 (no internet)`() = runTest {
+    fun `login returns null and emits error on HttpException 0 (no internet)`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.login(any(), any()) } throws httpException(0)
 
         val result = service.login(TEST_EMAIL, TEST_PASSWORD)
@@ -275,7 +275,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `login propagates non-HttpException`() = runTest {
+    fun `login propagates non-HttpException`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.login(any(), any()) } throws java.io.IOException("connection reset")
 
         assertFailsWith<java.io.IOException> { service.login(TEST_EMAIL, TEST_PASSWORD) }
@@ -287,7 +287,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `signup throws MaxAccountsReachedException when at max accounts`() = runTest {
+    fun `signup throws MaxAccountsReachedException when at max accounts`() = runTest(mainDispatcherRule.scheduler) {
         every { accountRepository.getLoggedInAccounts() } returns flowOf(
             (1..10).map { fakeAccount.copy(id = "acc-$it", isActiveAccount = it == 1) },
         )
@@ -298,7 +298,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `signup returns account and emits AccountAdded on success`() = runTest {
+    fun `signup returns account and emits AccountAdded on success`() = runTest(mainDispatcherRule.scheduler) {
         val newAccount = fakeAccount.copy(id = "acc-new", email = fakeSignupRequest.email)
         coEvery { accountRepository.signup(any()) } returns newAccount
 
@@ -309,7 +309,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `signup returns null and emits error on HttpException 401`() = runTest {
+    fun `signup returns null and emits error on HttpException 401`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.signup(any()) } throws httpException(401)
 
         val result = service.signup(fakeSignupRequest)
@@ -319,7 +319,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `signup returns null and shows email-already-in-use toast on HttpException 400`() = runTest {
+    fun `signup returns null and shows email-already-in-use toast on HttpException 400`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.signup(any()) } throws httpException(400)
 
         val result = service.signup(fakeSignupRequest)
@@ -339,7 +339,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `signup returns null and shows generic toast on non-HTTP exception`() = runTest {
+    fun `signup returns null and shows generic toast on non-HTTP exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.signup(any()) } throws RuntimeException("Network error")
 
         val result = service.signup(fakeSignupRequest)
@@ -359,7 +359,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `resetPassword shows success toast when response is successful`() = runTest {
+    fun `resetPassword shows success toast when response is successful`() = runTest(mainDispatcherRule.scheduler) {
         val mockResponse = mockk<Response<Unit>> {
             every { isSuccessful } returns true
             every { code() } returns 200
@@ -372,7 +372,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `resetPassword shows error toast when response is not successful`() = runTest {
+    fun `resetPassword shows error toast when response is not successful`() = runTest(mainDispatcherRule.scheduler) {
         val mockResponse = mockk<Response<Unit>> {
             every { isSuccessful } returns false
             every { code() } returns 422
@@ -386,7 +386,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `resetPassword shows network error when offline`() = runTest {
+    fun `resetPassword shows network error when offline`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
 
         service.resetPassword(TEST_EMAIL)
@@ -396,7 +396,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `resetPassword handles HttpException 500 gracefully`() = runTest {
+    fun `resetPassword handles HttpException 500 gracefully`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.resetPassword(any()) } throws httpException(500)
 
         // Should not crash
@@ -406,7 +406,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `resetPassword trims whitespace from email before calling repository`() = runTest {
+    fun `resetPassword trims whitespace from email before calling repository`() = runTest(mainDispatcherRule.scheduler) {
         val mockResponse = mockk<Response<Unit>> {
             every { isSuccessful } returns true
             every { code() } returns 200
@@ -423,7 +423,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `changePassword returns true and shows success toast`() = runTest {
+    fun `changePassword returns true and shows success toast`() = runTest(mainDispatcherRule.scheduler) {
         val fakeResponse = ChangePasswordResponse("access", "refresh", "expiresAt")
         coEvery { accountRepository.updatePassword(any(), any(), any()) } returns fakeResponse
 
@@ -434,7 +434,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `changePassword returns false when no active account`() = runTest {
+    fun `changePassword returns false when no active account`() = runTest(mainDispatcherRule.scheduler) {
         withNoActiveAccount()
 
         val result = service.changePassword(TEST_OLD_PASSWORD, TEST_NEW_PASSWORD)
@@ -444,7 +444,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `changePassword returns false and shows error on HttpException 401`() = runTest {
+    fun `changePassword returns false and shows error on HttpException 401`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.updatePassword(any(), any(), any()) } throws httpException(401)
 
         val result = service.changePassword(TEST_OLD_PASSWORD, "wrong")
@@ -454,7 +454,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `changePassword returns false and shows error on HttpException 500`() = runTest {
+    fun `changePassword returns false and shows error on HttpException 500`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.updatePassword(any(), any(), any()) } throws httpException(500)
 
         val result = service.changePassword(TEST_OLD_PASSWORD, TEST_NEW_PASSWORD)
@@ -467,7 +467,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateProfile shows success toast when online and isFromProfile is true`() = runTest {
+    fun `updateProfile shows success toast when online and isFromProfile is true`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.updateProfile(any()) } just Runs
 
         service.updateProfile(fakeProfileUpdateRequest, isFromProfile = true, showToast = true)
@@ -476,7 +476,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `updateProfile skips network check when isFromProfile is false`() = runTest {
+    fun `updateProfile skips network check when isFromProfile is false`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
         coEvery { accountRepository.updateProfile(any()) } just Runs
 
@@ -486,7 +486,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `updateProfile shows success toast for NO_INTERNET_CONNECTION HttpException`() = runTest {
+    fun `updateProfile shows success toast for NO_INTERNET_CONNECTION HttpException`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.updateProfile(any()) } throws httpException(0)
 
         service.updateProfile(fakeProfileUpdateRequest, isFromProfile = false, showToast = true)
@@ -495,7 +495,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `updateProfile shows error toast and rethrows on HttpException 401`() = runTest {
+    fun `updateProfile shows error toast and rethrows on HttpException 401`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.updateProfile(any()) } throws httpException(401)
 
         assertFailsWith<HttpException> { service.updateProfile(fakeProfileUpdateRequest, isFromProfile = false, showToast = true) }
@@ -503,7 +503,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `updateProfile propagates non-HttpException`() = runTest {
+    fun `updateProfile propagates non-HttpException`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.updateProfile(any()) } throws RuntimeException("DB error")
 
         assertFailsWith<RuntimeException> {
@@ -516,7 +516,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateDashboardType calls repository when active account exists`() = runTest {
+    fun `updateDashboardType calls repository when active account exists`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.updateDashboardType(any()) } just Runs
         coEvery { accountRepository.updateLocalDashboardType(any(), any()) } just Runs
 
@@ -527,7 +527,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `updateDashboardType returns early when no active account`() = runTest {
+    fun `updateDashboardType returns early when no active account`() = runTest(mainDispatcherRule.scheduler) {
         withNoActiveAccount()
 
         service.updateDashboardType(DashboardType.DASHBOARD_4_METRICS)
@@ -536,7 +536,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `updateDashboardType handles exception gracefully`() = runTest {
+    fun `updateDashboardType handles exception gracefully`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.updateDashboardType(any()) } throws RuntimeException("DB error")
 
         service.updateDashboardType(DashboardType.DASHBOARD_4_METRICS)
@@ -549,7 +549,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkLoginStatusForActiveAccount returns true when online and API call succeeds`() = runTest {
+    fun `checkLoginStatusForActiveAccount returns true when online and API call succeeds`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(fakeAccount.id) } returns fakeAccountInfo
         coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } just Runs
 
@@ -559,7 +559,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForActiveAccount returns false when no active account online`() = runTest {
+    fun `checkLoginStatusForActiveAccount returns false when no active account online`() = runTest(mainDispatcherRule.scheduler) {
         withNoActiveAccount()
 
         val result = service.checkLoginStatusForActiveAccount()
@@ -568,7 +568,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForActiveAccount falls back to local DB on offline`() = runTest {
+    fun `checkLoginStatusForActiveAccount falls back to local DB on offline`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
         coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } just Runs
 
@@ -579,7 +579,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForActiveAccount falls back to local DB on UnknownHostException`() = runTest {
+    fun `checkLoginStatusForActiveAccount falls back to local DB on UnknownHostException`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(any()) } throws java.net.UnknownHostException("host not found")
         coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } just Runs
 
@@ -589,7 +589,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForActiveAccount falls back to local DB on InterruptedIOException`() = runTest {
+    fun `checkLoginStatusForActiveAccount falls back to local DB on InterruptedIOException`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(any()) } throws java.io.InterruptedIOException("timeout")
         coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } just Runs
 
@@ -599,7 +599,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForActiveAccount falls back to local DB on SocketTimeoutException`() = runTest {
+    fun `checkLoginStatusForActiveAccount falls back to local DB on SocketTimeoutException`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(any()) } throws java.net.SocketTimeoutException("timeout")
         coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } just Runs
 
@@ -609,7 +609,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForActiveAccount falls back to local DB on IOException`() = runTest {
+    fun `checkLoginStatusForActiveAccount falls back to local DB on IOException`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(any()) } throws java.io.IOException("network")
         coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } just Runs
 
@@ -619,7 +619,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForActiveAccount marks account expired and returns false on HttpException 401`() = runTest {
+    fun `checkLoginStatusForActiveAccount marks account expired and returns false on HttpException 401`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(any()) } throws httpException(401)
         coEvery { accountRepository.markAccountExpired(any()) } just Runs
         coEvery { accountRepository.clearAccountTokens(any()) } just Runs
@@ -632,7 +632,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForActiveAccount falls back to local DB on HttpException 500`() = runTest {
+    fun `checkLoginStatusForActiveAccount falls back to local DB on HttpException 500`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(any()) } throws httpException(500)
         coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } just Runs
 
@@ -642,7 +642,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForActiveAccount falls back to local DB on general exception`() = runTest {
+    fun `checkLoginStatusForActiveAccount falls back to local DB on general exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(any()) } throws RuntimeException("unexpected")
         coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } just Runs
 
@@ -652,7 +652,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForActiveAccount falls back to local DB when handleOfflineSync throws`() = runTest {
+    fun `checkLoginStatusForActiveAccount falls back to local DB when handleOfflineSync throws`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { offlineHandlerService.handleOfflineSync() } throws RuntimeException("DB error during sync")
         coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } just Runs
 
@@ -667,7 +667,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkLoginStatusForLoggedInAccounts returns true offline when no non-active accounts`() = runTest {
+    fun `checkLoginStatusForLoggedInAccounts returns true offline when no non-active accounts`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
 
         val result = service.checkLoginStatusForLoggedInAccounts()
@@ -676,14 +676,14 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForLoggedInAccounts returns true online when no non-active accounts`() = runTest {
+    fun `checkLoginStatusForLoggedInAccounts returns true online when no non-active accounts`() = runTest(mainDispatcherRule.scheduler) {
         val result = service.checkLoginStatusForLoggedInAccounts()
 
         assertThat(result).isTrue()
     }
 
     @Test
-    fun `checkLoginStatusForLoggedInAccounts marks account expired and removes on HttpException 401`() = runTest {
+    fun `checkLoginStatusForLoggedInAccounts marks account expired and removes on HttpException 401`() = runTest(mainDispatcherRule.scheduler) {
         withAccounts(loggedIn = listOf(fakeAccount, fakeAccount2))
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } throws httpException(401)
         coEvery { accountRepository.markAccountExpired(fakeAccount2.id) } just Runs
@@ -698,7 +698,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForLoggedInAccounts does not mark expired on IOException per account`() = runTest {
+    fun `checkLoginStatusForLoggedInAccounts does not mark expired on IOException per account`() = runTest(mainDispatcherRule.scheduler) {
         withAccounts(loggedIn = listOf(fakeAccount, fakeAccount2))
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } throws java.io.IOException("network")
 
@@ -710,7 +710,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForLoggedInAccounts returns true on outer IOException`() = runTest {
+    fun `checkLoginStatusForLoggedInAccounts returns true on outer IOException`() = runTest(mainDispatcherRule.scheduler) {
         withAccounts(loggedIn = listOf(fakeAccount, fakeAccount2))
         // Make the entire online branch fail with an outer-level exception via offlineHandlerService approach
         // Simulate outer IOException via an exception during requireNetworkAvailable's block execution
@@ -723,7 +723,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForLoggedInAccounts handles mixed results - one success one 401`() = runTest {
+    fun `checkLoginStatusForLoggedInAccounts handles mixed results - one success one 401`() = runTest(mainDispatcherRule.scheduler) {
         val account3 = fakeAccount2.copy(id = "acc-3")
         every { accountRepository.getLoggedInAccounts() } returns flowOf(listOf(fakeAccount, fakeAccount2, account3))
         service = createService()
@@ -742,7 +742,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForLoggedInAccounts returns true offline when non-active accounts are present`() = runTest {
+    fun `checkLoginStatusForLoggedInAccounts returns true offline when non-active accounts are present`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
         withAccounts(loggedIn = listOf(fakeAccount, fakeAccount2))
 
@@ -759,7 +759,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `handleUnauthorizedLogout returns null when accountId is null`() = runTest {
+    fun `handleUnauthorizedLogout returns null when accountId is null`() = runTest(mainDispatcherRule.scheduler) {
         val result = service.handleUnauthorizedLogout(null)
 
         assertThat(result).isNull()
@@ -767,14 +767,14 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `handleUnauthorizedLogout returns null when accountId is empty`() = runTest {
+    fun `handleUnauthorizedLogout returns null when accountId is empty`() = runTest(mainDispatcherRule.scheduler) {
         val result = service.handleUnauthorizedLogout("")
 
         assertThat(result).isNull()
     }
 
     @Test
-    fun `handleUnauthorizedLogout marks expired and returns account when active account matches`() = runTest {
+    fun `handleUnauthorizedLogout marks expired and returns account when active account matches`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.markAccountExpired(fakeAccount.id) } just Runs
         coEvery { accountRepository.clearAccountTokens(fakeAccount.id) } just Runs
 
@@ -786,7 +786,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `handleUnauthorizedLogout returns null when account id does not match active account`() = runTest {
+    fun `handleUnauthorizedLogout returns null when account id does not match active account`() = runTest(mainDispatcherRule.scheduler) {
         val result = service.handleUnauthorizedLogout("different-id")
 
         assertThat(result).isNull()
@@ -794,7 +794,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `handleUnauthorizedLogout returns null on exception`() = runTest {
+    fun `handleUnauthorizedLogout returns null on exception`() = runTest(mainDispatcherRule.scheduler) {
         every { accountRepository.getActiveAccount() } returns flowOf(fakeAccount)
         coEvery { accountRepository.markAccountExpired(any()) } throws RuntimeException("DB error")
 
@@ -808,7 +808,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `logout emits LoggedOut with isActiveAccount and isLastAccount flags`() = runTest {
+    fun `logout emits LoggedOut with isActiveAccount and isLastAccount flags`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.logoutAccount(any(), any(), any()) } returns true
         coEvery { accountRepository.setNotificationAlertShownForAccount(any(), any()) } just Runs
 
@@ -820,7 +820,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `logout shows no-network toast when offline but proceeds`() = runTest {
+    fun `logout shows no-network toast when offline but proceeds`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
         coEvery { accountRepository.logoutAccount(any(), any(), any()) } returns true
         coEvery { accountRepository.setNotificationAlertShownForAccount(any(), any()) } just Runs
@@ -832,7 +832,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `logout returns false and emits error on exception`() = runTest {
+    fun `logout returns false and emits error on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.logoutAccount(any(), any(), any()) } throws RuntimeException("Logout failed")
 
         val result = service.logout(fakeAccount.id, fcmToken = null)
@@ -847,7 +847,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `logoutAll emits LoggedOut and resets notification alert for every account`() = runTest {
+    fun `logoutAll emits LoggedOut and resets notification alert for every account`() = runTest(mainDispatcherRule.scheduler) {
         withAccounts(loggedIn = listOf(fakeAccount, fakeAccount2))
         coEvery { accountRepository.logoutAllAccounts() } returns true
         coEvery { accountRepository.setNotificationAlertShownForAccount(any(), any()) } just Runs
@@ -861,7 +861,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `logoutAll shows no-network toast when offline but proceeds`() = runTest {
+    fun `logoutAll shows no-network toast when offline but proceeds`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
         coEvery { accountRepository.logoutAllAccounts() } returns true
         coEvery { accountRepository.setNotificationAlertShownForAccount(any(), any()) } just Runs
@@ -872,7 +872,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `logoutAll returns false and emits error on exception`() = runTest {
+    fun `logoutAll returns false and emits error on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.logoutAllAccounts() } throws RuntimeException("Server error")
 
         val result = service.logoutAll()
@@ -886,7 +886,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `removeAccountFromDevice delegates to repository with active flag and returns true`() = runTest {
+    fun `removeAccountFromDevice delegates to repository with active flag and returns true`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.removeAccountFromDevice(any(), any(), any()) } just Runs
 
         val result = service.removeAccountFromDevice(fakeAccount.id, fcmToken = "token")
@@ -899,7 +899,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `removeAccountFromDevice passes isActiveAccount false for a non-active account`() = runTest {
+    fun `removeAccountFromDevice passes isActiveAccount false for a non-active account`() = runTest(mainDispatcherRule.scheduler) {
         withAccounts(active = fakeAccount)
         coEvery { accountRepository.removeAccountFromDevice(any(), any(), any()) } just Runs
 
@@ -910,7 +910,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `removeAccountFromDevice returns false on exception`() = runTest {
+    fun `removeAccountFromDevice returns false on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.removeAccountFromDevice(any(), any(), any()) } throws RuntimeException("DB error")
 
         val result = service.removeAccountFromDevice(fakeAccount.id, fcmToken = null)
@@ -919,7 +919,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `removeAccountFromDevice shows no-network toast when offline but proceeds`() = runTest {
+    fun `removeAccountFromDevice shows no-network toast when offline but proceeds`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
         coEvery { accountRepository.removeAccountFromDevice(any(), any(), any()) } just Runs
 
@@ -934,7 +934,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `deleteAccount calls repository when network is available`() = runTest {
+    fun `deleteAccount calls repository when network is available`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.deleteAccount(any(), any()) } just Runs
 
         service.deleteAccount(fakeAccount.id, isActiveAccount = true)
@@ -943,7 +943,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `deleteAccount throws when offline`() = runTest {
+    fun `deleteAccount throws when offline`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
 
         assertFailsWith<Exception> { service.deleteAccount(fakeAccount.id, isActiveAccount = true) }
@@ -951,7 +951,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `deleteAccount rethrows exception on failure`() = runTest {
+    fun `deleteAccount rethrows exception on failure`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.deleteAccount(any(), any()) } throws RuntimeException("delete failed")
 
         assertFailsWith<RuntimeException> { service.deleteAccount(fakeAccount.id, isActiveAccount = true) }
@@ -962,7 +962,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `switchAccount returns true and emits AccountSwitched on success`() = runTest {
+    fun `switchAccount returns true and emits AccountSwitched on success`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } returns fakeAccountInfo.copy(id = fakeAccount2.id)
         coEvery { accountRepository.switchToAccount(fakeAccount2.id) } just Runs
 
@@ -974,14 +974,14 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `switchAccount throws when offline (via requireNetworkAvailable)`() = runTest {
+    fun `switchAccount throws when offline (via requireNetworkAvailable)`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
 
         assertFailsWith<Exception> { service.switchAccount(fakeAccount2) }
     }
 
     @Test
-    fun `switchAccount falls back to local switch on IOException when account is valid locally`() = runTest {
+    fun `switchAccount falls back to local switch on IOException when account is valid locally`() = runTest(mainDispatcherRule.scheduler) {
         withAccounts(loggedIn = listOf(fakeAccount, fakeAccount2))
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } throws java.io.IOException("network")
         coEvery { accountRepository.switchToAccount(fakeAccount2.id) } just Runs
@@ -994,7 +994,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `switchAccount returns false on IOException when local account is expired`() = runTest {
+    fun `switchAccount returns false on IOException when local account is expired`() = runTest(mainDispatcherRule.scheduler) {
         val expiredAccount2 = fakeAccount2.copy(isExpired = true)
         every { accountRepository.getLoggedInAccounts() } returns flowOf(listOf(fakeAccount, expiredAccount2))
         service = createService()
@@ -1008,7 +1008,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `switchAccount marks account expired and returns false on HttpException 401`() = runTest {
+    fun `switchAccount marks account expired and returns false on HttpException 401`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } throws httpException(401)
         coEvery { accountRepository.markAccountExpired(fakeAccount2.id) } just Runs
         coEvery { accountRepository.removeAccount(fakeAccount2.id) } just Runs
@@ -1026,7 +1026,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `setCurrentThemeMode calls repository with the given theme mode`() = runTest {
+    fun `setCurrentThemeMode calls repository with the given theme mode`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.setCurrentThemeMode(any()) } just Runs
 
         service.setCurrentThemeMode(ThemeMode.DARK)
@@ -1035,7 +1035,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `setCurrentThemeMode emits error on exception`() = runTest {
+    fun `setCurrentThemeMode emits error on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.setCurrentThemeMode(any()) } throws RuntimeException("write error")
 
         service.setCurrentThemeMode(ThemeMode.DARK)
@@ -1048,14 +1048,14 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `reset calls storageClearService clearAllStorage`() = runTest {
+    fun `reset calls storageClearService clearAllStorage`() = runTest(mainDispatcherRule.scheduler) {
         service.reset()
 
         coVerify { storageClearService.clearAllStorage() }
     }
 
     @Test
-    fun `reset shows error toast when clearAllStorage throws`() = runTest {
+    fun `reset shows error toast when clearAllStorage throws`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { storageClearService.clearAllStorage() } throws RuntimeException("clear failed")
 
         service.reset()
@@ -1068,7 +1068,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `refreshAccount does nothing when no active account`() = runTest {
+    fun `refreshAccount does nothing when no active account`() = runTest(mainDispatcherRule.scheduler) {
         withNoActiveAccount()
 
         service.refreshAccount()
@@ -1077,7 +1077,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `refreshAccount calls API and syncs when online`() = runTest {
+    fun `refreshAccount calls API and syncs when online`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(fakeAccount.id) } returns fakeAccountInfo
         coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } just Runs
 
@@ -1088,7 +1088,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `refreshAccount skips API call when offline`() = runTest {
+    fun `refreshAccount skips API call when offline`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
 
         service.refreshAccount()
@@ -1097,7 +1097,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `refreshAccount ignores API exception and uses cached data`() = runTest {
+    fun `refreshAccount ignores API exception and uses cached data`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(any()) } throws RuntimeException("API error")
 
         // Should not crash
@@ -1109,7 +1109,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `hasShownNotificationAlertForAccount returns value from repository`() = runTest {
+    fun `hasShownNotificationAlertForAccount returns value from repository`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.hasShownNotificationAlertForAccount(TEST_ACCOUNT_ID) } returns true
 
         val result = service.hasShownNotificationAlertForAccount(TEST_ACCOUNT_ID)
@@ -1118,7 +1118,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `hasShownNotificationAlertForAccount returns false on exception`() = runTest {
+    fun `hasShownNotificationAlertForAccount returns false on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.hasShownNotificationAlertForAccount(any()) } throws RuntimeException("read error")
 
         val result = service.hasShownNotificationAlertForAccount(TEST_ACCOUNT_ID)
@@ -1131,7 +1131,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `setNotificationAlertShownForAccount calls repository with correct args`() = runTest {
+    fun `setNotificationAlertShownForAccount calls repository with correct args`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.setNotificationAlertShownForAccount(any(), any()) } just Runs
 
         service.setNotificationAlertShownForAccount(TEST_ACCOUNT_ID, true)
@@ -1140,7 +1140,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `setNotificationAlertShownForAccount handles exception gracefully`() = runTest {
+    fun `setNotificationAlertShownForAccount handles exception gracefully`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.setNotificationAlertShownForAccount(any(), any()) } throws RuntimeException("write error")
 
         // Should not crash
@@ -1152,7 +1152,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `subscribeAccount subscribes to getActiveAccount and updates activeAccount`() = runTest {
+    fun `subscribeAccount subscribes to getActiveAccount and updates activeAccount`() = runTest(mainDispatcherRule.scheduler) {
         every { accountRepository.getActiveAccount() } returns flowOf(fakeAccount)
 
         service.subscribeAccount()
@@ -1162,7 +1162,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `subscribeAccount updates activeAccount to null when flow emits null`() = runTest {
+    fun `subscribeAccount updates activeAccount to null when flow emits null`() = runTest(mainDispatcherRule.scheduler) {
         every { accountRepository.getActiveAccount() } returns flowOf(null)
 
         service.subscribeAccount()
@@ -1176,7 +1176,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `clearSyncTimestampForResync calls updateSyncTimeStamp with empty string`() = runTest {
+    fun `clearSyncTimestampForResync calls updateSyncTimeStamp with empty string`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.updateSyncTimeStamp("") } just Runs
 
         service.clearSyncTimestampForResync()
@@ -1189,14 +1189,14 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `emitNavigateToMyAccounts emits NavigateToMyAccounts auth event`() = runTest {
+    fun `emitNavigateToMyAccounts emits NavigateToMyAccounts auth event`() = runTest(mainDispatcherRule.scheduler) {
         service.emitNavigateToMyAccounts()
 
         coVerify { appNavigationService.emitAuthEvent(AuthState.NavigateToMyAccounts) }
     }
 
     @Test
-    fun `emitNavigateBackFromMyAccounts emits NavigateBackFromMyAccounts auth event`() = runTest {
+    fun `emitNavigateBackFromMyAccounts emits NavigateBackFromMyAccounts auth event`() = runTest(mainDispatcherRule.scheduler) {
         service.emitNavigateBackFromMyAccounts()
 
         coVerify { appNavigationService.emitAuthEvent(AuthState.NavigateBackFromMyAccounts) }
@@ -1207,7 +1207,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `login returns null on HttpException 403 with generic error`() = runTest {
+    fun `login returns null on HttpException 403 with generic error`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.login(any(), any()) } throws httpException(403)
 
         val result = service.login(TEST_EMAIL, TEST_PASSWORD)
@@ -1221,7 +1221,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `signup returns null on HttpException 0 with no internet error`() = runTest {
+    fun `signup returns null on HttpException 0 with no internet error`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.signup(any()) } throws httpException(0)
 
         val result = service.signup(fakeSignupRequest)
@@ -1231,7 +1231,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `signup returns null on HttpException 500 with generic error`() = runTest {
+    fun `signup returns null on HttpException 500 with generic error`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.signup(any()) } throws httpException(500)
 
         val result = service.signup(fakeSignupRequest)
@@ -1245,7 +1245,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `resetPassword handles HttpException 0 with network error message`() = runTest {
+    fun `resetPassword handles HttpException 0 with network error message`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.resetPassword(any()) } throws httpException(0)
 
         service.resetPassword(TEST_EMAIL)
@@ -1254,7 +1254,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `resetPassword handles HttpException 403 with generic error message`() = runTest {
+    fun `resetPassword handles HttpException 403 with generic error message`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.resetPassword(any()) } throws httpException(403)
 
         service.resetPassword(TEST_EMAIL)
@@ -1267,7 +1267,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `changePassword returns false on HttpException 0 (no internet)`() = runTest {
+    fun `changePassword returns false on HttpException 0 (no internet)`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.updatePassword(any(), any(), any()) } throws httpException(0)
 
         val result = service.changePassword(TEST_OLD_PASSWORD, TEST_NEW_PASSWORD)
@@ -1277,7 +1277,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `changePassword returns false on HttpException 403 (generic error)`() = runTest {
+    fun `changePassword returns false on HttpException 403 (generic error)`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.updatePassword(any(), any(), any()) } throws httpException(403)
 
         val result = service.changePassword(TEST_OLD_PASSWORD, TEST_NEW_PASSWORD)
@@ -1291,7 +1291,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateProfile shows error and rethrows on HttpException 500`() = runTest {
+    fun `updateProfile shows error and rethrows on HttpException 500`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.updateProfile(any()) } throws httpException(500)
 
         assertFailsWith<HttpException> { service.updateProfile(fakeProfileUpdateRequest, isFromProfile = false, showToast = true) }
@@ -1299,7 +1299,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `updateProfile shows error and rethrows on HttpException 400 (bad request)`() = runTest {
+    fun `updateProfile shows error and rethrows on HttpException 400 (bad request)`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.updateProfile(any()) } throws httpException(400)
 
         assertFailsWith<HttpException> { service.updateProfile(fakeProfileUpdateRequest, isFromProfile = false, showToast = true) }
@@ -1307,7 +1307,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `updateProfile shows error and rethrows on HttpException 403 (generic error)`() = runTest {
+    fun `updateProfile shows error and rethrows on HttpException 403 (generic error)`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.updateProfile(any()) } throws httpException(403)
 
         assertFailsWith<HttpException> { service.updateProfile(fakeProfileUpdateRequest, isFromProfile = false, showToast = true) }
@@ -1319,7 +1319,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkLoginStatusForActiveAccount returns false when local DB has no active account in offline mode`() = runTest {
+    fun `checkLoginStatusForActiveAccount returns false when local DB has no active account in offline mode`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
         withNoActiveAccount()
 
@@ -1329,7 +1329,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForActiveAccount returns false when local account is expired in offline mode`() = runTest {
+    fun `checkLoginStatusForActiveAccount returns false when local account is expired in offline mode`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
         every { accountRepository.getActiveAccount() } returns flowOf(fakeAccount.copy(isExpired = true))
         service = createService()
@@ -1340,7 +1340,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForActiveAccount returns true when syncAccountSettingsWithServer throws in offline mode`() = runTest {
+    fun `checkLoginStatusForActiveAccount returns true when syncAccountSettingsWithServer throws in offline mode`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
         coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } throws RuntimeException("sync error")
 
@@ -1354,7 +1354,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkLoginStatusForLoggedInAccounts ignores UnknownHostException per account`() = runTest {
+    fun `checkLoginStatusForLoggedInAccounts ignores UnknownHostException per account`() = runTest(mainDispatcherRule.scheduler) {
         withAccounts(loggedIn = listOf(fakeAccount, fakeAccount2))
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } throws java.net.UnknownHostException("host not found")
 
@@ -1366,7 +1366,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForLoggedInAccounts ignores InterruptedIOException per account`() = runTest {
+    fun `checkLoginStatusForLoggedInAccounts ignores InterruptedIOException per account`() = runTest(mainDispatcherRule.scheduler) {
         withAccounts(loggedIn = listOf(fakeAccount, fakeAccount2))
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } throws java.io.InterruptedIOException("interrupted")
 
@@ -1378,7 +1378,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForLoggedInAccounts ignores SocketTimeoutException per account`() = runTest {
+    fun `checkLoginStatusForLoggedInAccounts ignores SocketTimeoutException per account`() = runTest(mainDispatcherRule.scheduler) {
         withAccounts(loggedIn = listOf(fakeAccount, fakeAccount2))
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } throws java.net.SocketTimeoutException("timeout")
 
@@ -1390,7 +1390,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForLoggedInAccounts ignores generic Exception per account`() = runTest {
+    fun `checkLoginStatusForLoggedInAccounts ignores generic Exception per account`() = runTest(mainDispatcherRule.scheduler) {
         withAccounts(loggedIn = listOf(fakeAccount, fakeAccount2))
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } throws RuntimeException("unexpected error")
 
@@ -1402,7 +1402,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForLoggedInAccounts returns true on outer IOException from flow`() = runTest {
+    fun `checkLoginStatusForLoggedInAccounts returns true on outer IOException from flow`() = runTest(mainDispatcherRule.scheduler) {
         every { accountRepository.getLoggedInAccounts() } returns flow { throw java.io.IOException("network error") }
         service = createService()
 
@@ -1413,7 +1413,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForLoggedInAccounts returns true on outer Exception from flow`() = runTest {
+    fun `checkLoginStatusForLoggedInAccounts returns true on outer Exception from flow`() = runTest(mainDispatcherRule.scheduler) {
         every { accountRepository.getLoggedInAccounts() } returns flow { throw RuntimeException("db error") }
         service = createService()
 
@@ -1428,7 +1428,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `logoutAll handles exception in setNotificationAlertShownForAccount gracefully`() = runTest {
+    fun `logoutAll handles exception in setNotificationAlertShownForAccount gracefully`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.logoutAllAccounts() } returns true
         coEvery { accountRepository.setNotificationAlertShownForAccount(any(), any()) } throws RuntimeException("write error")
 
@@ -1443,7 +1443,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `switchAccount throws on UnknownHostException`() = runTest {
+    fun `switchAccount throws on UnknownHostException`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } throws java.net.UnknownHostException("host")
 
         assertFailsWith<Exception> { service.switchAccount(fakeAccount2) }
@@ -1451,7 +1451,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `switchAccount throws on InterruptedIOException`() = runTest {
+    fun `switchAccount throws on InterruptedIOException`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } throws java.io.InterruptedIOException("interrupted")
 
         assertFailsWith<Exception> { service.switchAccount(fakeAccount2) }
@@ -1459,7 +1459,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `switchAccount throws on SocketTimeoutException`() = runTest {
+    fun `switchAccount throws on SocketTimeoutException`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } throws java.net.SocketTimeoutException("timeout")
 
         assertFailsWith<Exception> { service.switchAccount(fakeAccount2) }
@@ -1467,7 +1467,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `switchAccount returns false on unexpected Exception`() = runTest {
+    fun `switchAccount returns false on unexpected Exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } throws RuntimeException("unexpected")
 
         val result = service.switchAccount(fakeAccount2)
@@ -1477,7 +1477,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `switchAccount returns false and shows generic error on HttpException 500`() = runTest {
+    fun `switchAccount returns false and shows generic error on HttpException 500`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } throws httpException(500)
 
         val result = service.switchAccount(fakeAccount2)
@@ -1493,14 +1493,14 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `getCurrentAccount returns active account from flow`() = runTest {
+    fun `getCurrentAccount returns active account from flow`() = runTest(mainDispatcherRule.scheduler) {
         val result = service.getCurrentAccount()
 
         assertThat(result).isEqualTo(fakeAccount)
     }
 
     @Test
-    fun `getCurrentAccount returns null when no active account`() = runTest {
+    fun `getCurrentAccount returns null when no active account`() = runTest(mainDispatcherRule.scheduler) {
         withNoActiveAccount()
 
         val result = service.getCurrentAccount()
@@ -1513,7 +1513,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `getLoggedInAccounts returns accounts sorted with active first`() = runTest {
+    fun `getLoggedInAccounts returns accounts sorted with active first`() = runTest(mainDispatcherRule.scheduler) {
         val nonActiveFirst = listOf(fakeAccount2, fakeAccount)
         every { accountRepository.getLoggedInAccounts() } returns flowOf(nonActiveFirst)
         service = createService()
@@ -1526,7 +1526,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `getLoggedInAccounts returns empty list when no accounts`() = runTest {
+    fun `getLoggedInAccounts returns empty list when no accounts`() = runTest(mainDispatcherRule.scheduler) {
         every { accountRepository.getLoggedInAccounts() } returns flowOf(emptyList())
         service = createService()
 
@@ -1540,7 +1540,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `activeAccountFlow emits account from repository`() = runTest {
+    fun `activeAccountFlow emits account from repository`() = runTest(mainDispatcherRule.scheduler) {
         service.activeAccountFlow.test {
             assertThat(awaitItem()).isEqualTo(fakeAccount)
             awaitComplete()
@@ -1548,7 +1548,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `loggedInAccountsFlow emits sorted accounts`() = runTest {
+    fun `loggedInAccountsFlow emits sorted accounts`() = runTest(mainDispatcherRule.scheduler) {
         every { accountRepository.getLoggedInAccounts() } returns flowOf(listOf(fakeAccount2, fakeAccount))
         service = createService()
 
@@ -1560,7 +1560,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `hasReachedMaxAccounts emits false when below limit`() = runTest {
+    fun `hasReachedMaxAccounts emits false when below limit`() = runTest(mainDispatcherRule.scheduler) {
         service.hasReachedMaxAccounts.test {
             assertThat(awaitItem()).isFalse()
             awaitComplete()
@@ -1568,7 +1568,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `hasReachedMaxAccounts emits true when at limit`() = runTest {
+    fun `hasReachedMaxAccounts emits true when at limit`() = runTest(mainDispatcherRule.scheduler) {
         every { accountRepository.getLoggedInAccounts() } returns flowOf(
             (1..10).map { fakeAccount.copy(id = "acc-$it", isActiveAccount = it == 1) }
         )
@@ -1581,7 +1581,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `currentThemeModeFlow delegates to repository`() = runTest {
+    fun `currentThemeModeFlow delegates to repository`() = runTest(mainDispatcherRule.scheduler) {
         service.currentThemeModeFlow.test {
             assertThat(awaitItem()).isEqualTo(ThemeMode.SYSTEM)
             awaitComplete()
@@ -1589,7 +1589,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkIntegrations initial value is false`() = runTest {
+    fun `checkIntegrations initial value is false`() = runTest(mainDispatcherRule.scheduler) {
         assertThat(service.checkIntegrations.value).isFalse()
     }
 
@@ -1598,7 +1598,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `resetPassword handles non-HttpException gracefully without toast`() = runTest {
+    fun `resetPassword handles non-HttpException gracefully without toast`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.resetPassword(any()) } throws RuntimeException("unexpected error")
 
         service.resetPassword(TEST_EMAIL)
@@ -1612,7 +1612,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateProfile throws when isFromProfile true and offline`() = runTest {
+    fun `updateProfile throws when isFromProfile true and offline`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
 
         assertFailsWith<Exception> { service.updateProfile(fakeProfileUpdateRequest, isFromProfile = true, showToast = true) }
@@ -1620,7 +1620,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `updateProfile does not show toast when showToast is false`() = runTest {
+    fun `updateProfile does not show toast when showToast is false`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.updateProfile(any()) } just Runs
 
         service.updateProfile(fakeProfileUpdateRequest, isFromProfile = false, showToast = false)
@@ -1634,7 +1634,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkLoginStatusForLoggedInAccounts skips expired non-active accounts`() = runTest {
+    fun `checkLoginStatusForLoggedInAccounts skips expired non-active accounts`() = runTest(mainDispatcherRule.scheduler) {
         val expiredAccount = fakeAccount2.copy(isExpired = true)
         every { accountRepository.getLoggedInAccounts() } returns flowOf(listOf(fakeAccount, expiredAccount))
         service = createService()
@@ -1648,7 +1648,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForLoggedInAccounts does not mark expired on HttpException non-401 per account`() = runTest {
+    fun `checkLoginStatusForLoggedInAccounts does not mark expired on HttpException non-401 per account`() = runTest(mainDispatcherRule.scheduler) {
         withAccounts(loggedIn = listOf(fakeAccount, fakeAccount2))
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } throws httpException(500)
 
@@ -1661,7 +1661,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForLoggedInAccounts updates account info on success per account`() = runTest {
+    fun `checkLoginStatusForLoggedInAccounts updates account info on success per account`() = runTest(mainDispatcherRule.scheduler) {
         withAccounts(loggedIn = listOf(fakeAccount, fakeAccount2))
         val account2Info = fakeAccountInfo.copy(id = fakeAccount2.id, email = fakeAccount2.email)
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } returns account2Info
@@ -1676,7 +1676,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForLoggedInAccounts sets checkIntegrations true on success online`() = runTest {
+    fun `checkLoginStatusForLoggedInAccounts sets checkIntegrations true on success online`() = runTest(mainDispatcherRule.scheduler) {
         // Only active account — returns true immediately and sets checkIntegrations to false
         val result = service.checkLoginStatusForLoggedInAccounts()
 
@@ -1685,7 +1685,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForLoggedInAccounts sets checkIntegrations true after processing accounts`() = runTest {
+    fun `checkLoginStatusForLoggedInAccounts sets checkIntegrations true after processing accounts`() = runTest(mainDispatcherRule.scheduler) {
         withAccounts(loggedIn = listOf(fakeAccount, fakeAccount2))
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } returns fakeAccountInfo.copy(id = fakeAccount2.id)
         coEvery { accountRepository.updateAccountInfo(fakeAccount2.id, any()) } just Runs
@@ -1701,7 +1701,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `handleUnauthorizedLogout returns null when account exists but is not active`() = runTest {
+    fun `handleUnauthorizedLogout returns null when account exists but is not active`() = runTest(mainDispatcherRule.scheduler) {
         val nonActiveAccount = fakeAccount.copy(isActiveAccount = false)
         every { accountRepository.getActiveAccount() } returns flowOf(nonActiveAccount)
         service = createService()
@@ -1717,7 +1717,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `logout emits LoggedOut with isActiveAccount false when logging out non-active account`() = runTest {
+    fun `logout emits LoggedOut with isActiveAccount false when logging out non-active account`() = runTest(mainDispatcherRule.scheduler) {
         withAccounts(loggedIn = listOf(fakeAccount, fakeAccount2))
         coEvery { accountRepository.logoutAccount(fakeAccount2.id, null, false) } returns true
         coEvery { accountRepository.setNotificationAlertShownForAccount(fakeAccount2.id, false) } just Runs
@@ -1734,7 +1734,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `logout sets isLastAccount true when only one account remains`() = runTest {
+    fun `logout sets isLastAccount true when only one account remains`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.logoutAccount(fakeAccount.id, null, true) } returns true
         coEvery { accountRepository.setNotificationAlertShownForAccount(fakeAccount.id, false) } just Runs
 
@@ -1753,7 +1753,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `switchAccount returns false on IOException when account not found locally`() = runTest {
+    fun `switchAccount returns false on IOException when account not found locally`() = runTest(mainDispatcherRule.scheduler) {
         // fakeAccount2 is NOT in the logged-in accounts list (only fakeAccount is)
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } throws java.io.IOException("network")
 
@@ -1770,7 +1770,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkLoginStatusForActiveAccount calls offlineHandlerService handleOfflineSync before API`() = runTest {
+    fun `checkLoginStatusForActiveAccount calls offlineHandlerService handleOfflineSync before API`() = runTest(mainDispatcherRule.scheduler) {
 
         coEvery { accountRepository.getAccountFromAPI(fakeAccount.id) } returns fakeAccountInfo
         coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } just Runs
@@ -1787,7 +1787,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `logoutAll resets notification alert for each of three accounts`() = runTest {
+    fun `logoutAll resets notification alert for each of three accounts`() = runTest(mainDispatcherRule.scheduler) {
         val account3 = fakeAccount2.copy(id = "acc-3", email = "third@example.com")
         every { accountRepository.getLoggedInAccounts() } returns flowOf(listOf(fakeAccount, fakeAccount2, account3))
         service = createService()
@@ -1807,7 +1807,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `signup returns null on HttpException 403 with generic error`() = runTest {
+    fun `signup returns null on HttpException 403 with generic error`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.signup(any()) } throws httpException(403)
 
         val result = service.signup(fakeSignupRequest)
@@ -1822,7 +1822,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `switchAccount emits AccountSwitched with showToast true`() = runTest {
+    fun `switchAccount emits AccountSwitched with showToast true`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } returns fakeAccountInfo.copy(id = fakeAccount2.id)
         coEvery { accountRepository.switchToAccount(fakeAccount2.id) } just Runs
 
@@ -1841,7 +1841,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateProfile shows success toast for NO_INTERNET_CONNECTION even when showToast false`() = runTest {
+    fun `updateProfile shows success toast for NO_INTERNET_CONNECTION even when showToast false`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.updateProfile(any()) } throws httpException(0)
 
         // NO_INTERNET_CONNECTION catch shows success toast regardless of showToast parameter
@@ -1855,7 +1855,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `authEvent delegates to appNavigationService authEvent`() = runTest {
+    fun `authEvent delegates to appNavigationService authEvent`() = runTest(mainDispatcherRule.scheduler) {
         val authEvent = service.authEvent
         assertThat(authEvent).isEqualTo(appNavigationService.authEvent)
     }
@@ -1865,7 +1865,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `refreshAccount rethrows exception from outer try block`() = runTest {
+    fun `refreshAccount rethrows exception from outer try block`() = runTest(mainDispatcherRule.scheduler) {
         // Force getCurrentAccount() to throw by making the flow emit an error
         every { accountRepository.getActiveAccount() } returns flow { throw RuntimeException("fatal") }
         service = createService()
@@ -1878,7 +1878,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `changePassword returns false on generic Exception without showing error toast`() = runTest {
+    fun `changePassword returns false on generic Exception without showing error toast`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.updatePassword(any(), any(), any()) } throws IllegalStateException("unexpected")
 
         val result = service.changePassword(TEST_OLD_PASSWORD, TEST_NEW_PASSWORD)
@@ -1897,7 +1897,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `logout sets wasLastAccount false when multiple accounts exist`() = runTest {
+    fun `logout sets wasLastAccount false when multiple accounts exist`() = runTest(mainDispatcherRule.scheduler) {
         withAccounts(loggedIn = listOf(fakeAccount, fakeAccount2))
         coEvery { accountRepository.logoutAccount(fakeAccount.id, null, true) } returns true
         coEvery { accountRepository.setNotificationAlertShownForAccount(fakeAccount.id, false) } just Runs
@@ -1917,7 +1917,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkLoginStatusForActiveAccount returns false online when requireNetworkAvailable passes but no active account`() = runTest {
+    fun `checkLoginStatusForActiveAccount returns false online when requireNetworkAvailable passes but no active account`() = runTest(mainDispatcherRule.scheduler) {
         // Network is available (from setUp) but active account flow returns null after service construction
         withNoActiveAccount()
 
@@ -1932,7 +1932,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `handleUnauthorizedLogout returns null when no active account exists`() = runTest {
+    fun `handleUnauthorizedLogout returns null when no active account exists`() = runTest(mainDispatcherRule.scheduler) {
         withNoActiveAccount()
 
         val result = service.handleUnauthorizedLogout("some-id")
@@ -1946,7 +1946,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `deleteAccount succeeds for non-active account when online`() = runTest {
+    fun `deleteAccount succeeds for non-active account when online`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.deleteAccount(fakeAccount2.id, false) } just Runs
 
         service.deleteAccount(fakeAccount2.id, isActiveAccount = false)
@@ -1959,7 +1959,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `setCurrentThemeMode calls repository with LIGHT theme`() = runTest {
+    fun `setCurrentThemeMode calls repository with LIGHT theme`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.setCurrentThemeMode(ThemeMode.LIGHT) } just Runs
 
         service.setCurrentThemeMode(ThemeMode.LIGHT)
@@ -1973,7 +1973,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `getLoggedInAccounts sorts non-active accounts by lastActiveTime descending`() = runTest {
+    fun `getLoggedInAccounts sorts non-active accounts by lastActiveTime descending`() = runTest(mainDispatcherRule.scheduler) {
         val older = fakeAccount2.copy(id = "acc-old", lastActiveTime = "1000")
         val newer = fakeAccount2.copy(id = "acc-new", lastActiveTime = "2000")
         every { accountRepository.getLoggedInAccounts() } returns flowOf(listOf(older, fakeAccount, newer))
@@ -1987,7 +1987,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `getLoggedInAccounts handles null lastActiveTime in sorting`() = runTest {
+    fun `getLoggedInAccounts handles null lastActiveTime in sorting`() = runTest(mainDispatcherRule.scheduler) {
         val noTime = fakeAccount2.copy(id = "acc-notime", lastActiveTime = null)
         val withTime = fakeAccount2.copy(id = "acc-time", lastActiveTime = "1000")
         every { accountRepository.getLoggedInAccounts() } returns flowOf(listOf(noTime, fakeAccount, withTime))
@@ -2005,7 +2005,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `logoutAll offline shows no-network toast and still emits LoggedOut with isLastAccount false`() = runTest {
+    fun `logoutAll offline shows no-network toast and still emits LoggedOut with isLastAccount false`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
         withAccounts(loggedIn = listOf(fakeAccount, fakeAccount2))
         coEvery { accountRepository.logoutAllAccounts() } returns true
@@ -2023,7 +2023,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `setCurrentThemeMode emits error with fallback message when exception message is null`() = runTest {
+    fun `setCurrentThemeMode emits error with fallback message when exception message is null`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.setCurrentThemeMode(any()) } throws RuntimeException()
 
         service.setCurrentThemeMode(ThemeMode.SYSTEM)
@@ -2040,7 +2040,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `logout handles null getCurrentAccount for isActiveAccount check`() = runTest {
+    fun `logout handles null getCurrentAccount for isActiveAccount check`() = runTest(mainDispatcherRule.scheduler) {
         withNoActiveAccount()
         coEvery { accountRepository.logoutAccount("unknown-id", null, false) } returns true
         coEvery { accountRepository.setNotificationAlertShownForAccount("unknown-id", false) } just Runs
@@ -2060,7 +2060,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkLoginStatusForActiveAccount returns false on 401 when getCurrentAccount is null in handler`() = runTest {
+    fun `checkLoginStatusForActiveAccount returns false on 401 when getCurrentAccount is null in handler`() = runTest(mainDispatcherRule.scheduler) {
         // First call to getCurrentAccount (line 354) returns account, but second call
         // inside the 401 handler (line 383) could return null if state changes
 
@@ -2077,7 +2077,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `checkLoginStatusForLoggedInAccounts processes valid accounts and skips expired ones`() = runTest {
+    fun `checkLoginStatusForLoggedInAccounts processes valid accounts and skips expired ones`() = runTest(mainDispatcherRule.scheduler) {
         val expired = fakeAccount2.copy(id = "acc-expired", isExpired = true)
         val valid = fakeAccount2.copy(id = "acc-valid", isExpired = false)
         every { accountRepository.getLoggedInAccounts() } returns flowOf(listOf(fakeAccount, expired, valid))
@@ -2100,7 +2100,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkActiveAccountLocalValidity syncs to DB with isOnline false when offline`() = runTest {
+    fun `checkActiveAccountLocalValidity syncs to DB with isOnline false when offline`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
         coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } just Runs
 
@@ -2115,7 +2115,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `switchAccount on HttpException 403 shows generic error toast without marking expired`() = runTest {
+    fun `switchAccount on HttpException 403 shows generic error toast without marking expired`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } throws httpException(403)
 
         val result = service.switchAccount(fakeAccount2)
@@ -2131,7 +2131,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `logout offline shows no-network toast with correct message structure`() = runTest {
+    fun `logout offline shows no-network toast with correct message structure`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
         coEvery { accountRepository.logoutAccount(any(), any(), any()) } returns true
         coEvery { accountRepository.setNotificationAlertShownForAccount(any(), any()) } just Runs
@@ -2146,7 +2146,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `logoutAll offline shows no-network toast`() = runTest {
+    fun `logoutAll offline shows no-network toast`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
         coEvery { accountRepository.logoutAllAccounts() } returns true
         coEvery { accountRepository.setNotificationAlertShownForAccount(any(), any()) } just Runs
@@ -2161,7 +2161,7 @@ class AccountServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `addProduct submits union of current productTypes and the new product`() = runTest {
+    fun `addProduct submits union of current productTypes and the new product`() = runTest(mainDispatcherRule.scheduler) {
         // fakeAccount defaults to productTypes = ["weight"].
         coEvery { accountRepository.updateProducts(any()) } just Runs
 
@@ -2173,7 +2173,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `addProduct is a no-op when the product is already present`() = runTest {
+    fun `addProduct is a no-op when the product is already present`() = runTest(mainDispatcherRule.scheduler) {
         // fakeAccount already owns "weight".
         coEvery { accountRepository.updateProducts(any()) } just Runs
 
@@ -2183,7 +2183,7 @@ class AccountServiceTest {
     }
 
     @Test
-    fun `addProduct throws and does not submit when offline`() = runTest {
+    fun `addProduct throws and does not submit when offline`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
         coEvery { accountRepository.updateProducts(any()) } just Runs
 

@@ -112,7 +112,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `init loads history detail and sets items`() = runTest {
+    fun `init loads history detail and sets items`() = runTest(mainDispatcherRule.scheduler) {
         val entries = listOf(TestFixtures.weightEntry, TestFixtures.bodyFatEntry)
         viewModel = createViewModel(entries = entries)
         advanceUntilIdle()
@@ -122,7 +122,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `init filters only ScaleEntry instances`() = runTest {
+    fun `init filters only ScaleEntry instances`() = runTest(mainDispatcherRule.scheduler) {
         val scaleEntries = listOf(TestFixtures.weightEntry, TestFixtures.bodyFatEntry)
         viewModel = createViewModel(entries = scaleEntries)
         advanceUntilIdle()
@@ -136,7 +136,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Refresh calls entryService syncOperations`() = runTest {
+    fun `Refresh calls entryService syncOperations`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -147,7 +147,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `Refresh sets loading true then false`() = runTest {
+    fun `Refresh sets loading true then false`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -163,7 +163,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Refresh sets error message when syncOperations throws`() = runTest {
+    fun `Refresh sets error message when syncOperations throws`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -175,7 +175,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `Refresh sets loading to false when syncOperations throws`() = runTest {
+    fun `Refresh sets loading to false when syncOperations throws`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -191,7 +191,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `DeleteEntry shows confirmation dialog`() = runTest {
+    fun `DeleteEntry shows confirmation dialog`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -206,7 +206,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `DeleteEntry dialog has correct title and message`() = runTest {
+    fun `DeleteEntry dialog has correct title and message`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -226,7 +226,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `DeleteEntry onConfirm calls entryService deleteEntry`() = runTest {
+    fun `DeleteEntry onConfirm calls entryService deleteEntry`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -244,7 +244,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `DeleteEntry onConfirm shows loader`() = runTest {
+    fun `DeleteEntry onConfirm shows loader`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -262,7 +262,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `DeleteEntry onConfirm calls healthConnectService deleteEntry`() = runTest {
+    fun `DeleteEntry onConfirm calls healthConnectService deleteEntry`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -280,7 +280,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `DeleteEntry onConfirm dismisses dialog and loader`() = runTest {
+    fun `DeleteEntry onConfirm dismisses dialog and loader`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -299,7 +299,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `DeleteEntry onConfirm still dismisses when healthConnect deleteEntry throws`() = runTest {
+    fun `DeleteEntry onConfirm still dismisses when healthConnect deleteEntry throws`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectService.deleteEntry(any()) } throws RuntimeException("HC error")
         viewModel = createViewModel()
         advanceUntilIdle()
@@ -323,7 +323,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `DeleteEntry onCancel dismisses dialog`() = runTest {
+    fun `DeleteEntry onCancel dismisses dialog`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -344,7 +344,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `DeleteEntry onDismiss dismisses dialog`() = runTest {
+    fun `DeleteEntry onDismiss dismisses dialog`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -365,7 +365,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetHistoryItems updates month and items`() = runTest {
+    fun `SetHistoryItems updates month and items`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -382,7 +382,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetItemsOpened updates opened item ids`() = runTest {
+    fun `SetItemsOpened updates opened item ids`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -397,7 +397,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetError updates error message`() = runTest {
+    fun `SetError updates error message`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -408,7 +408,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `ClearError removes error message`() = runTest {
+    fun `ClearError removes error message`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -423,7 +423,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetRefreshing true sets isLoading to true`() = runTest {
+    fun `SetRefreshing true sets isLoading to true`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -433,7 +433,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `SetRefreshing false sets isLoading to false`() = runTest {
+    fun `SetRefreshing false sets isLoading to false`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -448,7 +448,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `month parameter is accessible on viewModel`() = runTest {
+    fun `month parameter is accessible on viewModel`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel(month = "2024-06")
         advanceUntilIdle()
 
@@ -460,7 +460,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `loadHistoryDetail calls historyService getDetail with correct month`() = runTest {
+    fun `loadHistoryDetail calls historyService getDetail with correct month`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel(month = "2024-03")
         advanceUntilIdle()
 
@@ -468,7 +468,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `loadHistoryDetail sets error when entries are empty`() = runTest {
+    fun `loadHistoryDetail sets error when entries are empty`() = runTest(mainDispatcherRule.scheduler) {
         every { entryReadService.getDetail(any(), eq(TEST_MONTH)) } returns flowOf(HistoryDetail.Weight(emptyList()))
 
         viewModel = HistoryDetailViewModel(
@@ -489,7 +489,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `loadHistoryDetail filters only ScaleEntry instances from results`() = runTest {
+    fun `loadHistoryDetail filters only ScaleEntry instances from results`() = runTest(mainDispatcherRule.scheduler) {
         val scaleEntries = listOf(TestFixtures.weightEntry, TestFixtures.bodyFatEntry)
         viewModel = createViewModel(entries = scaleEntries)
         advanceUntilIdle()
@@ -502,7 +502,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `loadHistoryDetail sets error on exception`() = runTest {
+    fun `loadHistoryDetail sets error on exception`() = runTest(mainDispatcherRule.scheduler) {
         every { entryReadService.getDetail(any(), any()) } throws RuntimeException("test error")
 
         viewModel = HistoryDetailViewModel(
@@ -523,7 +523,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `loadHistoryDetail sets month in state`() = runTest {
+    fun `loadHistoryDetail sets month in state`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel(month = "2024-07")
         advanceUntilIdle()
 
@@ -535,7 +535,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `showDeleteEntryDialog has delete and cancel buttons`() = runTest {
+    fun `showDeleteEntryDialog has delete and cancel buttons`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -551,7 +551,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `showDeleteEntryDialog uses ErrorText button type`() = runTest {
+    fun `showDeleteEntryDialog uses ErrorText button type`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -566,7 +566,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `showDeleteEntryDialog onConfirm shows success toast after deletion`() = runTest {
+    fun `showDeleteEntryDialog onConfirm shows success toast after deletion`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -586,7 +586,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `showDeleteEntryDialog onDismiss callback is set`() = runTest {
+    fun `showDeleteEntryDialog onDismiss callback is set`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -605,7 +605,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `isMetric is true when account uses KG`() = runTest {
+    fun `isMetric is true when account uses KG`() = runTest(mainDispatcherRule.scheduler) {
         activeAccountFlow.value = TestFixtures.anAccount(weightUnit = WeightUnit.KG)
         viewModel = createViewModel()
         advanceUntilIdle()
@@ -614,7 +614,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `isMetric is false when account uses LB`() = runTest {
+    fun `isMetric is false when account uses LB`() = runTest(mainDispatcherRule.scheduler) {
         activeAccountFlow.value = TestFixtures.anAccount(weightUnit = WeightUnit.LB)
         viewModel = createViewModel()
         advanceUntilIdle()
@@ -623,7 +623,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `isMetric updates reactively when account changes`() = runTest {
+    fun `isMetric updates reactively when account changes`() = runTest(mainDispatcherRule.scheduler) {
         activeAccountFlow.value = TestFixtures.anAccount(weightUnit = WeightUnit.LB)
         viewModel = createViewModel()
         advanceUntilIdle()

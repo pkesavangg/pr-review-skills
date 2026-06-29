@@ -100,6 +100,7 @@ constructor(
       val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
       wifiManager.isWifiEnabled
     } catch (e: Exception) {
+      Log.e(TAG, "isWifiEnabled failed", e)
       false
     }
   }
@@ -117,6 +118,7 @@ constructor(
       val connectionInfo = wifiManager.connectionInfo
       connectionInfo?.ssid?.removeSurrounding("\"") ?: ""
     } catch (e: Exception) {
+      Log.e(TAG, "getConnectedSsid failed", e)
       ""
     }
   }
@@ -134,7 +136,12 @@ constructor(
       val connectionInfo = wifiManager.connectionInfo
       connectionInfo?.bssid ?: ""
     } catch (e: Exception) {
+      Log.e(TAG, "getConnectedBssid failed", e)
       ""
     }
+  }
+
+  private companion object {
+    private const val TAG = "WifiSmartConnectManager"
   }
 }

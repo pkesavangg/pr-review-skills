@@ -75,7 +75,7 @@ class ScaleUserListViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `initial state has null scale and empty user list`() = runTest {
+    fun `initial state has null scale and empty user list`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -91,7 +91,7 @@ class ScaleUserListViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `init subscribes to pairedScales and updates scale when matching id`() = runTest {
+    fun `init subscribes to pairedScales and updates scale when matching id`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             preferences = Preferences(displayName = TEST_DISPLAY_NAME),
         )
@@ -105,7 +105,7 @@ class ScaleUserListViewModelTest {
     }
 
     @Test
-    fun `init ignores devices with non-matching scaleId`() = runTest {
+    fun `init ignores devices with non-matching scaleId`() = runTest(mainDispatcherRule.scheduler) {
         val otherDevice = TestFixtures.aDevice(id = "other-id")
         every { deviceService.pairedScales } returns MutableStateFlow(listOf(otherDevice))
 
@@ -116,7 +116,7 @@ class ScaleUserListViewModelTest {
     }
 
     @Test
-    fun `init resets username form with scale display name`() = runTest {
+    fun `init resets username form with scale display name`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             preferences = Preferences(displayName = TEST_DISPLAY_NAME),
         )
@@ -133,7 +133,7 @@ class ScaleUserListViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetScale updates scale in state`() = runTest {
+    fun `SetScale updates scale in state`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -145,7 +145,7 @@ class ScaleUserListViewModelTest {
     }
 
     @Test
-    fun `SetScale with hasSetUsername updates flag`() = runTest {
+    fun `SetScale with hasSetUsername updates flag`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -157,7 +157,7 @@ class ScaleUserListViewModelTest {
     }
 
     @Test
-    fun `SetUserList updates user list and clears loading`() = runTest {
+    fun `SetUserList updates user list and clears loading`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -170,7 +170,7 @@ class ScaleUserListViewModelTest {
     }
 
     @Test
-    fun `Save sets isLoading to true`() = runTest {
+    fun `Save sets isLoading to true`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -185,7 +185,7 @@ class ScaleUserListViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Back with no changes navigates back directly`() = runTest {
+    fun `Back with no changes navigates back directly`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -196,7 +196,7 @@ class ScaleUserListViewModelTest {
     }
 
     @Test
-    fun `Back with unsaved username changes shows confirm dialog`() = runTest {
+    fun `Back with unsaved username changes shows confirm dialog`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             preferences = Preferences(displayName = "OriginalName"),
         )
@@ -219,7 +219,7 @@ class ScaleUserListViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `DeleteUser shows confirmation dialog`() = runTest {
+    fun `DeleteUser shows confirmation dialog`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -237,7 +237,7 @@ class ScaleUserListViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Save with null scale shows error toast`() = runTest {
+    fun `Save with null scale shows error toast`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -248,7 +248,7 @@ class ScaleUserListViewModelTest {
     }
 
     @Test
-    fun `Save with valid scale and username shows loader`() = runTest {
+    fun `Save with valid scale and username shows loader`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             preferences = Preferences(displayName = TEST_DISPLAY_NAME),
         )
@@ -268,7 +268,7 @@ class ScaleUserListViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `RefreshUserList with no scale shows error toast`() = runTest {
+    fun `RefreshUserList with no scale shows error toast`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -279,7 +279,7 @@ class ScaleUserListViewModelTest {
     }
 
     @Test
-    fun `RefreshUserList with scale calls ggDeviceService getUsers`() = runTest {
+    fun `RefreshUserList with scale calls ggDeviceService getUsers`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             preferences = Preferences(displayName = TEST_DISPLAY_NAME),
         )

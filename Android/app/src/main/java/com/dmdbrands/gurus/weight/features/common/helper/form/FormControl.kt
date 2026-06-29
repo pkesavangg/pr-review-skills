@@ -119,7 +119,7 @@ class FormControl<T> private constructor(
         return
       }
       _touched.value = isTouched
-        validate()
+      validate()
     }
 
     /**
@@ -275,7 +275,7 @@ class FormControl<T> private constructor(
         _touched.value = false
         _dirty.value = false
         _pending.value = false
-      suppressNextBlurTouch = true
+        suppressNextBlurTouch = true
         validationJob?.cancel()
     }
 

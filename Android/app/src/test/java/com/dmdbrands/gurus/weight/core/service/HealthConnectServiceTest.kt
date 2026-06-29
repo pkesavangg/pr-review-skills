@@ -238,7 +238,7 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `outOfSyncState emits initial false`() = runTest {
+    fun `outOfSyncState emits initial false`() = runTest(mainDispatcherRule.scheduler) {
         service.outOfSyncState.test {
             assertThat(awaitItem()).isFalse()
             cancelAndIgnoreRemainingEvents()
@@ -250,14 +250,14 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `load sets isLoaded true on success`() = runTest {
+    fun `load sets isLoaded true on success`() = runTest(mainDispatcherRule.scheduler) {
         // load was called in setUp; verify indirectly via getApprovedPermissionList
         val result = service.getApprovedPermissionList()
         assertThat(result).isNotEmpty()
     }
 
     @Test
-    fun `load sets isLoaded false on exception`() = runTest {
+    fun `load sets isLoaded false on exception`() = runTest(mainDispatcherRule.scheduler) {
         // Simulate failed load: force isLoaded false
         setLoaded(false)
         val result = service.getApprovedPermissionList()
@@ -276,7 +276,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `initializeHealthConnect calls load when not loaded`() = runTest {
+    fun `initializeHealthConnect calls load when not loaded`() = runTest(mainDispatcherRule.scheduler) {
         setLoaded(false)
         service.initializeHealthConnect(mockActivity)
         // After this, isLoaded should be true — verify via getApprovedPermissionList
@@ -289,14 +289,14 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkAvailability returns true when available`() = runTest {
+    fun `checkAvailability returns true when available`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().isAvailable() } returns true
         val result = service.checkAvailability()
         assertThat(result).isTrue()
     }
 
     @Test
-    fun `checkAvailability returns false on exception`() = runTest {
+    fun `checkAvailability returns false on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().isAvailable() } throws RuntimeException("error")
         val result = service.checkAvailability()
         assertThat(result).isFalse()
@@ -307,14 +307,14 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `healthConnectStatus returns status from library`() = runTest {
+    fun `healthConnectStatus returns status from library`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.UPDATE_REQUIRED
         val result = service.healthConnectStatus()
         assertThat(result).isEqualTo(HealthConnectStatus.UPDATE_REQUIRED)
     }
 
     @Test
-    fun `healthConnectStatus returns UNAVAILABLE on exception`() = runTest {
+    fun `healthConnectStatus returns UNAVAILABLE on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } throws RuntimeException("error")
         val result = service.healthConnectStatus()
         assertThat(result).isEqualTo(HealthConnectStatus.UNAVAILABLE)
@@ -325,14 +325,14 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkPermissionStatus returns status from library`() = runTest {
+    fun `checkPermissionStatus returns status from library`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getPermissionStatus(any()) } returns HealthConnectPermissionStatus.PARTIAL
         val result = service.checkPermissionStatus()
         assertThat(result).isEqualTo(HealthConnectPermissionStatus.PARTIAL)
     }
 
     @Test
-    fun `checkPermissionStatus returns NONE on exception`() = runTest {
+    fun `checkPermissionStatus returns NONE on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getPermissionStatus(any()) } throws RuntimeException("error")
         val result = service.checkPermissionStatus()
         assertThat(result).isEqualTo(HealthConnectPermissionStatus.NONE)
@@ -343,7 +343,7 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `requestAuthorization forwards result to callback`() = runTest {
+    fun `requestAuthorization forwards result to callback`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().requestAuthorization(any(), any()) } answers {
             val callback = secondArg<(HealthConnectRequestStatus) -> Unit>()
             callback(HealthConnectRequestStatus.CONNECTED)
@@ -354,7 +354,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `requestAuthorization calls callback with CANCELLED on exception`() = runTest {
+    fun `requestAuthorization calls callback with CANCELLED on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().requestAuthorization(any(), any()) } throws RuntimeException("error")
         var capturedResult: HealthConnectRequestStatus? = null
         service.requestAuthorization { capturedResult = it }
@@ -366,28 +366,28 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `openHealthConnect returns true on success`() = runTest {
+    fun `openHealthConnect returns true on success`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().launchHealthConnect(any(), any()) } returns true
         val result = service.openHealthConnect()
         assertThat(result).isTrue()
     }
 
     @Test
-    fun `openHealthConnect sets open when isFromSetup`() = runTest {
+    fun `openHealthConnect sets open when isFromSetup`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().launchHealthConnect(any(), any()) } returns true
         service.openHealthConnect(isFromSetup = true)
         coVerify { healthConnectRepository.setOpen(fakeAccountId, true) }
     }
 
     @Test
-    fun `openHealthConnect does not set open when not from setup`() = runTest {
+    fun `openHealthConnect does not set open when not from setup`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().launchHealthConnect(any(), any()) } returns true
         service.openHealthConnect(isFromSetup = false)
         coVerify(exactly = 0) { healthConnectRepository.setOpen(any(), any()) }
     }
 
     @Test
-    fun `openHealthConnect returns false on exception`() = runTest {
+    fun `openHealthConnect returns false on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().launchHealthConnect(any(), any()) } throws RuntimeException("error")
         val result = service.openHealthConnect()
         assertThat(result).isFalse()
@@ -398,21 +398,21 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `revokePermission returns true on success`() = runTest {
+    fun `revokePermission returns true on success`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().revokeAllPermissions() } returns HealthConnectResult.Success(Unit)
         val result = service.revokePermission()
         assertThat(result).isTrue()
     }
 
     @Test
-    fun `revokePermission returns false on error result`() = runTest {
+    fun `revokePermission returns false on error result`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().revokeAllPermissions() } returns HealthConnectResult.Error(RuntimeException("fail"))
         val result = service.revokePermission()
         assertThat(result).isFalse()
     }
 
     @Test
-    fun `revokePermission returns false on exception`() = runTest {
+    fun `revokePermission returns false on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().revokeAllPermissions() } throws RuntimeException("error")
         val result = service.revokePermission()
         assertThat(result).isFalse()
@@ -423,14 +423,14 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkIfAlreadyUsed returns true when no assignment`() = runTest {
+    fun `checkIfAlreadyUsed returns true when no assignment`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         val result = service.checkIfAlreadyUsed()
         assertThat(result).isTrue()
     }
 
     @Test
-    fun `checkIfAlreadyUsed returns true when assigned to current account`() = runTest {
+    fun `checkIfAlreadyUsed returns true when assigned to current account`() = runTest(mainDispatcherRule.scheduler) {
         val mockData = mockk<HcAccountData> {
             every { hasAssignedTo() } returns true
             every { assignedTo } returns fakeAccountId
@@ -442,21 +442,21 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkIfAlreadyUsed returns false when assigned to different account`() = runTest {
+    fun `checkIfAlreadyUsed returns false when assigned to different account`() = runTest(mainDispatcherRule.scheduler) {
         stubNotIntegrated()
         val result = service.checkIfAlreadyUsed()
         assertThat(result).isFalse()
     }
 
     @Test
-    fun `checkIfAlreadyUsed returns false when no active account`() = runTest {
+    fun `checkIfAlreadyUsed returns false when no active account`() = runTest(mainDispatcherRule.scheduler) {
         service = createServiceWithNoAccount()
         val result = service.checkIfAlreadyUsed()
         assertThat(result).isFalse()
     }
 
     @Test
-    fun `checkIfAlreadyUsed returns false on exception`() = runTest {
+    fun `checkIfAlreadyUsed returns false on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectRepository.getAccountDataMap() } throws RuntimeException("error")
         val result = service.checkIfAlreadyUsed()
         assertThat(result).isFalse()
@@ -467,7 +467,7 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkIntegrated returns true when assigned to current account`() = runTest {
+    fun `checkIntegrated returns true when assigned to current account`() = runTest(mainDispatcherRule.scheduler) {
         val mockData = mockk<HcAccountData> {
             every { hasAssignedTo() } returns true
             every { assignedTo } returns fakeAccountId
@@ -479,21 +479,21 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkIntegrated returns false when assigned to different account`() = runTest {
+    fun `checkIntegrated returns false when assigned to different account`() = runTest(mainDispatcherRule.scheduler) {
         stubNotIntegrated()
         val result = service.checkIntegrated()
         assertThat(result).isFalse()
     }
 
     @Test
-    fun `checkIntegrated returns false when no account`() = runTest {
+    fun `checkIntegrated returns false when no account`() = runTest(mainDispatcherRule.scheduler) {
         service = createServiceWithNoAccount()
         val result = service.checkIntegrated()
         assertThat(result).isFalse()
     }
 
     @Test
-    fun `checkIntegrated returns false on exception`() = runTest {
+    fun `checkIntegrated returns false on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectRepository.getAccountDataMap() } throws RuntimeException("error")
         val result = service.checkIntegrated()
         assertThat(result).isFalse()
@@ -529,7 +529,7 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `getApprovedPermissionList returns list when loaded`() = runTest {
+    fun `getApprovedPermissionList returns list when loaded`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getApprovedPermissionList() } returns setOf("perm1", "perm2")
         val result = service.getApprovedPermissionList()
         assertThat(result).hasSize(2)
@@ -537,14 +537,14 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `getApprovedPermissionList returns empty when not loaded`() = runTest {
+    fun `getApprovedPermissionList returns empty when not loaded`() = runTest(mainDispatcherRule.scheduler) {
         setLoaded(false)
         val result = service.getApprovedPermissionList()
         assertThat(result).isEmpty()
     }
 
     @Test
-    fun `getApprovedPermissionList returns empty on exception`() = runTest {
+    fun `getApprovedPermissionList returns empty on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getApprovedPermissionList() } throws RuntimeException("error")
         val result = service.getApprovedPermissionList()
         assertThat(result).isEmpty()
@@ -555,28 +555,28 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `syncData processes entries with all fields`() = runTest {
+    fun `syncData processes entries with all fields`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         service.syncData(listOf(fakeSummary))
         coVerify { anyConstructed<HealthConnect>().saveData(any()) }
     }
 
     @Test
-    fun `syncData handles entries with minimal fields`() = runTest {
+    fun `syncData handles entries with minimal fields`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         service.syncData(listOf(fakeMinimalSummary))
         coVerify { anyConstructed<HealthConnect>().saveData(any()) }
     }
 
     @Test
-    fun `syncData returns early when not integrated`() = runTest {
+    fun `syncData returns early when not integrated`() = runTest(mainDispatcherRule.scheduler) {
         stubNotIntegrated()
         service.syncData(listOf(fakeSummary))
         coVerify(exactly = 0) { anyConstructed<HealthConnect>().saveData(any()) }
     }
 
     @Test
-    fun `syncData rethrows when saveData fails`() = runTest {
+    fun `syncData rethrows when saveData fails`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         coEvery { anyConstructed<HealthConnect>().saveData(any()) } throws RuntimeException("sync failed")
 
@@ -589,7 +589,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `syncData skips zero weight`() = runTest {
+    fun `syncData skips zero weight`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         val zeroWeight = fakeSummary.copy(weight = 0.0)
         service.syncData(listOf(zeroWeight))
@@ -601,7 +601,7 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `syncAllData returns true on success`() = runTest {
+    fun `syncAllData returns true on success`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         val fakeEntry = TestFixtures.aWeightEntry()
         coEvery { entryRepository.getEntriesByAccount(fakeAccountId) } returns listOf(fakeEntry)
@@ -614,7 +614,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `syncAllData shows syncToast when not fromOutOfSync`() = runTest {
+    fun `syncAllData shows syncToast when not fromOutOfSync`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         val fakeEntry = TestFixtures.aWeightEntry()
         coEvery { entryRepository.getEntriesByAccount(fakeAccountId) } returns listOf(fakeEntry)
@@ -625,7 +625,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `syncAllData returns false when no active account`() = runTest {
+    fun `syncAllData returns false when no active account`() = runTest(mainDispatcherRule.scheduler) {
         service = createServiceWithNoAccount()
         val result = service.syncAllData()
         assertThat(result).isFalse()
@@ -633,7 +633,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `syncAllData returns false when not integrated`() = runTest {
+    fun `syncAllData returns false when not integrated`() = runTest(mainDispatcherRule.scheduler) {
         stubNotIntegrated()
         val result = service.syncAllData()
         assertThat(result).isFalse()
@@ -641,7 +641,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `syncAllData shows error dialog on exception`() = runTest {
+    fun `syncAllData shows error dialog on exception`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         coEvery { entryRepository.getEntriesByAccount(any()) } throws RuntimeException("sync error")
 
@@ -656,7 +656,7 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `deleteEntry returns true on success`() = runTest {
+    fun `deleteEntry returns true on success`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         val fakeEntry = TestFixtures.aWeightEntry()
         coEvery { anyConstructed<HealthConnect>().deleteEntry(any()) } returns HealthConnectResult.Success(Unit)
@@ -667,7 +667,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `deleteEntry returns false when not loaded`() = runTest {
+    fun `deleteEntry returns false when not loaded`() = runTest(mainDispatcherRule.scheduler) {
         setLoaded(false)
         val fakeEntry = TestFixtures.aWeightEntry()
         val result = service.deleteEntry(fakeEntry)
@@ -675,7 +675,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `deleteEntry returns false when not integrated`() = runTest {
+    fun `deleteEntry returns false when not integrated`() = runTest(mainDispatcherRule.scheduler) {
         stubNotIntegrated()
         val fakeEntry = TestFixtures.aWeightEntry()
 
@@ -685,7 +685,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `deleteEntry returns false on error result`() = runTest {
+    fun `deleteEntry returns false on error result`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         val fakeEntry = TestFixtures.aWeightEntry()
         coEvery { anyConstructed<HealthConnect>().deleteEntry(any()) } returns HealthConnectResult.Error(RuntimeException("fail"))
@@ -696,7 +696,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `deleteEntry returns false on exception`() = runTest {
+    fun `deleteEntry returns false on exception`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         val fakeEntry = TestFixtures.aWeightEntry()
         coEvery { anyConstructed<HealthConnect>().deleteEntry(any()) } throws RuntimeException("error")
@@ -711,28 +711,28 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `deleteAllData returns true on success`() = runTest {
+    fun `deleteAllData returns true on success`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().deleteAllData(any()) } returns HealthConnectResult.Success(Unit)
         val result = service.deleteAllData()
         assertThat(result).isTrue()
     }
 
     @Test
-    fun `deleteAllData returns false when not loaded`() = runTest {
+    fun `deleteAllData returns false when not loaded`() = runTest(mainDispatcherRule.scheduler) {
         setLoaded(false)
         val result = service.deleteAllData()
         assertThat(result).isFalse()
     }
 
     @Test
-    fun `deleteAllData returns false on error result`() = runTest {
+    fun `deleteAllData returns false on error result`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().deleteAllData(any()) } returns HealthConnectResult.Error(RuntimeException("fail"))
         val result = service.deleteAllData()
         assertThat(result).isFalse()
     }
 
     @Test
-    fun `deleteAllData returns false on exception`() = runTest {
+    fun `deleteAllData returns false on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().deleteAllData(any()) } throws RuntimeException("error")
         val result = service.deleteAllData()
         assertThat(result).isFalse()
@@ -743,7 +743,7 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `turnOnIntegration saves integration data`() = runTest {
+    fun `turnOnIntegration saves integration data`() = runTest(mainDispatcherRule.scheduler) {
         service.turnOnIntegration(fromMultiDevice = true, isRequestNeed = false)
 
         coVerify { healthConnectRepository.saveIntegration(any()) }
@@ -753,21 +753,21 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `turnOnIntegration returns early when fromMultiDevice`() = runTest {
+    fun `turnOnIntegration returns early when fromMultiDevice`() = runTest(mainDispatcherRule.scheduler) {
         service.turnOnIntegration(fromMultiDevice = true, isRequestNeed = false)
         // Should not call syncWeightHistory or syncAllData — no Confirm dialog shown
         verify(exactly = 0) { dialogQueueService.showDialog(any<DialogModel.Confirm>()) }
     }
 
     @Test
-    fun `turnOnIntegration calls syncWeightHistory when not isRequestNeed`() = runTest {
+    fun `turnOnIntegration calls syncWeightHistory when not isRequestNeed`() = runTest(mainDispatcherRule.scheduler) {
         service.turnOnIntegration(fromMultiDevice = false, isRequestNeed = false)
         // syncWeightHistory shows a Confirm dialog
         verify { dialogQueueService.showDialog(any<DialogModel.Confirm>()) }
     }
 
     @Test
-    fun `turnOnIntegration calls syncAllData when isRequestNeed`() = runTest {
+    fun `turnOnIntegration calls syncAllData when isRequestNeed`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         val fakeEntry = TestFixtures.aWeightEntry()
         coEvery { entryRepository.getEntriesByAccount(fakeAccountId) } returns listOf(fakeEntry)
@@ -782,7 +782,7 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `removeHealthConnectIntegration returns true on success`() = runTest {
+    fun `removeHealthConnectIntegration returns true on success`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { anyConstructed<HealthConnect>().deleteAllData(any()) } returns HealthConnectResult.Success(Unit)
 
@@ -795,28 +795,28 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `removeHealthConnectIntegration revokes when installed`() = runTest {
+    fun `removeHealthConnectIntegration revokes when installed`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         service.removeHealthConnectIntegration()
         coVerify { anyConstructed<HealthConnect>().revokeAllPermissions() }
     }
 
     @Test
-    fun `removeHealthConnectIntegration revokes when update required`() = runTest {
+    fun `removeHealthConnectIntegration revokes when update required`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.UPDATE_REQUIRED
         service.removeHealthConnectIntegration()
         coVerify { anyConstructed<HealthConnect>().revokeAllPermissions() }
     }
 
     @Test
-    fun `removeHealthConnectIntegration skips revoke when unavailable`() = runTest {
+    fun `removeHealthConnectIntegration skips revoke when unavailable`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.UNAVAILABLE
         service.removeHealthConnectIntegration()
         coVerify(exactly = 0) { anyConstructed<HealthConnect>().revokeAllPermissions() }
     }
 
     @Test
-    fun `removeHealthConnectIntegration sets outOfSyncState false`() = runTest {
+    fun `removeHealthConnectIntegration sets outOfSyncState false`() = runTest(mainDispatcherRule.scheduler) {
         service.removeHealthConnectIntegration()
         service.outOfSyncState.test {
             assertThat(awaitItem()).isFalse()
@@ -825,7 +825,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `removeHealthConnectIntegration returns false on exception`() = runTest {
+    fun `removeHealthConnectIntegration returns false on exception`() = runTest(mainDispatcherRule.scheduler) {
         // Throw from a call that is NOT caught internally
         coEvery { healthConnectRepository.removeServerHcIntegration(any()) } throws RuntimeException("error")
         val result = service.removeHealthConnectIntegration()
@@ -837,7 +837,7 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `clearHealthConnect returns true on success`() = runTest {
+    fun `clearHealthConnect returns true on success`() = runTest(mainDispatcherRule.scheduler) {
         val result = service.clearHealthConnect()
         assertThat(result).isTrue()
         coVerify { healthConnectRepository.setStoredIntegrationData(fakeAccountId, any()) }
@@ -849,14 +849,14 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `clearHealthConnect returns false when no account`() = runTest {
+    fun `clearHealthConnect returns false when no account`() = runTest(mainDispatcherRule.scheduler) {
         service = createServiceWithNoAccount()
         val result = service.clearHealthConnect()
         assertThat(result).isFalse()
     }
 
     @Test
-    fun `clearHealthConnect returns false on exception`() = runTest {
+    fun `clearHealthConnect returns false on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectRepository.setStoredIntegrationData(any(), any()) } throws RuntimeException("error")
         val result = service.clearHealthConnect()
         assertThat(result).isFalse()
@@ -867,14 +867,14 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkPermissionChange returns when no account`() = runTest {
+    fun `checkPermissionChange returns when no account`() = runTest(mainDispatcherRule.scheduler) {
         service = createServiceWithNoAccount()
         service.checkPermissionChange()
         coVerify(exactly = 0) { healthConnectRepository.getAccountByID(any()) }
     }
 
     @Test
-    fun `checkPermissionChange skips when no stored permissions`() = runTest {
+    fun `checkPermissionChange skips when no stored permissions`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             grantedPermissions = emptyList(),
         )
@@ -883,7 +883,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkPermissionChange updates when permissions differ`() = runTest {
+    fun `checkPermissionChange updates when permissions differ`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             grantedPermissions = listOf("old-perm"),
         )
@@ -895,7 +895,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkPermissionChange does not update inline when permissions same`() = runTest {
+    fun `checkPermissionChange does not update inline when permissions same`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             grantedPermissions = listOf("perm1", "perm2"),
         )
@@ -910,7 +910,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkPermissionChange catches exception`() = runTest {
+    fun `checkPermissionChange catches exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectRepository.getAccountByID(any()) } throws RuntimeException("error")
         service.checkPermissionChange() // Should not throw
     }
@@ -920,7 +920,7 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkMultipleDeviceIds returns true when no local integration and server on`() = runTest {
+    fun `checkMultipleDeviceIds returns true when no local integration and server on`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectRepository.getStoredIntegrationData(fakeAccountId) } returns null
         every { integrationRepository.integrationsFromServer } returns flowOf(Integrations(isHealthConnectOn = true))
 
@@ -930,7 +930,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkMultipleDeviceIds returns true when empty deviceId and server on`() = runTest {
+    fun `checkMultipleDeviceIds returns true when empty deviceId and server on`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectRepository.getStoredIntegrationData(fakeAccountId) } returns IntegratedDeviceInfo(
             operationType = "save",
             scopes = IntegrationData(deviceId = "", type = "healthconnect"),
@@ -943,7 +943,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkMultipleDeviceIds returns false when local integration exists`() = runTest {
+    fun `checkMultipleDeviceIds returns false when local integration exists`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectRepository.getStoredIntegrationData(fakeAccountId) } returns IntegratedDeviceInfo(
             operationType = "save",
             scopes = IntegrationData(deviceId = fakeDeviceId, type = "healthconnect"),
@@ -956,7 +956,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkMultipleDeviceIds returns false when server integration off`() = runTest {
+    fun `checkMultipleDeviceIds returns false when server integration off`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectRepository.getStoredIntegrationData(fakeAccountId) } returns null
         every { integrationRepository.integrationsFromServer } returns flowOf(Integrations(isHealthConnectOn = false))
 
@@ -966,14 +966,14 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkMultipleDeviceIds returns false when no account`() = runTest {
+    fun `checkMultipleDeviceIds returns false when no account`() = runTest(mainDispatcherRule.scheduler) {
         service = createServiceWithNoAccount()
         val result = service.checkMultipleDeviceIds(IntegrationType.HEALTH_CONNECT)
         assertThat(result).isFalse()
     }
 
     @Test
-    fun `checkMultipleDeviceIds returns false on exception`() = runTest {
+    fun `checkMultipleDeviceIds returns false on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectRepository.getStoredIntegrationData(any()) } throws RuntimeException("error")
         val result = service.checkMultipleDeviceIds(IntegrationType.HEALTH_CONNECT)
         assertThat(result).isFalse()
@@ -984,7 +984,7 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkMultiDeviceConnection returns true when multiple devices detected`() = runTest {
+    fun `checkMultiDeviceConnection returns true when multiple devices detected`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectRepository.getStoredIntegrationData(fakeAccountId) } returns null
         every { integrationRepository.integrationsFromServer } returns flowOf(Integrations(isHealthConnectOn = true))
 
@@ -995,7 +995,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkMultiDeviceConnection sets outOfSync when permissions disabled`() = runTest {
+    fun `checkMultiDeviceConnection sets outOfSync when permissions disabled`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectRepository.getStoredIntegrationData(fakeAccountId) } returns null
         every { integrationRepository.integrationsFromServer } returns flowOf(Integrations(isHealthConnectOn = true))
 
@@ -1005,7 +1005,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkMultiDeviceConnection does not set outOfSync when permissions enabled`() = runTest {
+    fun `checkMultiDeviceConnection does not set outOfSync when permissions enabled`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectRepository.getStoredIntegrationData(fakeAccountId) } returns null
         every { integrationRepository.integrationsFromServer } returns flowOf(Integrations(isHealthConnectOn = true))
 
@@ -1015,7 +1015,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkMultiDeviceConnection returns false when no multiple devices`() = runTest {
+    fun `checkMultiDeviceConnection returns false when no multiple devices`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectRepository.getStoredIntegrationData(fakeAccountId) } returns IntegratedDeviceInfo(
             operationType = "save",
             scopes = IntegrationData(deviceId = fakeDeviceId, type = "healthconnect"),
@@ -1027,14 +1027,14 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkMultiDeviceConnection returns false when no account`() = runTest {
+    fun `checkMultiDeviceConnection returns false when no account`() = runTest(mainDispatcherRule.scheduler) {
         service = createServiceWithNoAccount()
         val result = service.checkMultiDeviceConnection()
         assertThat(result).isFalse()
     }
 
     @Test
-    fun `checkMultiDeviceConnection returns false on exception`() = runTest {
+    fun `checkMultiDeviceConnection returns false on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectRepository.getStoredIntegrationData(any()) } throws RuntimeException("error")
         val result = service.checkMultiDeviceConnection()
         assertThat(result).isFalse()
@@ -1045,7 +1045,7 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `healthConnectOutOfSync returns true when NONE permissions and out of sync`() = runTest {
+    fun `healthConnectOutOfSync returns true when NONE permissions and out of sync`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             outOfSync = true,
@@ -1061,7 +1061,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `healthConnectOutOfSync returns false when permissions restored and modal not dismissed`() = runTest {
+    fun `healthConnectOutOfSync returns false when permissions restored and modal not dismissed`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             outOfSync = true,
@@ -1079,7 +1079,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `healthConnectOutOfSync returns false when permissions restored and modal dismissed`() = runTest {
+    fun `healthConnectOutOfSync returns false when permissions restored and modal dismissed`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             outOfSync = true,
@@ -1096,7 +1096,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `healthConnectOutOfSync returns false when not out of sync`() = runTest {
+    fun `healthConnectOutOfSync returns false when not out of sync`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             outOfSync = false,
@@ -1109,7 +1109,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `healthConnectOutOfSync returns false when unavailable`() = runTest {
+    fun `healthConnectOutOfSync returns false when unavailable`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.UNAVAILABLE
 
         val result = service.healthConnectOutOfSync()
@@ -1118,14 +1118,14 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `healthConnectOutOfSync returns false when no account`() = runTest {
+    fun `healthConnectOutOfSync returns false when no account`() = runTest(mainDispatcherRule.scheduler) {
         service = createServiceWithNoAccount()
         val result = service.healthConnectOutOfSync()
         assertThat(result).isFalse()
     }
 
     @Test
-    fun `healthConnectOutOfSync returns false on exception`() = runTest {
+    fun `healthConnectOutOfSync returns false on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } throws RuntimeException("error")
         val result = service.healthConnectOutOfSync()
         assertThat(result).isFalse()
@@ -1168,14 +1168,14 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkHealthConnectPermissionDisabled returns when no accountId`() = runTest {
+    fun `checkHealthConnectPermissionDisabled returns when no accountId`() = runTest(mainDispatcherRule.scheduler) {
         service = createServiceWithNoAccount()
         service.checkHealthConnectPermissionDisabled()
         coVerify(exactly = 0) { healthConnectRepository.getAccountByID(any()) }
     }
 
     @Test
-    fun `checkHealthConnectPermissionDisabled does nothing for UNAVAILABLE status`() = runTest {
+    fun `checkHealthConnectPermissionDisabled does nothing for UNAVAILABLE status`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.UNAVAILABLE
         service.checkHealthConnectPermissionDisabled()
         // getAccountByID IS called (before the status branch), but no dialog is shown
@@ -1184,7 +1184,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkHealthConnectPermissionDisabled returns when not already connected`() = runTest {
+    fun `checkHealthConnectPermissionDisabled returns when not already connected`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             outOfSync = true,
@@ -1197,7 +1197,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkHealthConnectPermissionDisabled shows out-of-sync modal for NONE permissions`() = runTest {
+    fun `checkHealthConnectPermissionDisabled shows out-of-sync modal for NONE permissions`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             integrated = true,
@@ -1215,7 +1215,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkHealthConnectPermissionDisabled clears out of sync when permissions restored`() = runTest {
+    fun `checkHealthConnectPermissionDisabled clears out of sync when permissions restored`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             integrated = true,
@@ -1232,7 +1232,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkHealthConnectPermissionDisabled resets modal on NONE with opened`() = runTest {
+    fun `checkHealthConnectPermissionDisabled resets modal on NONE with opened`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             integrated = true,
@@ -1248,7 +1248,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkHealthConnectPermissionDisabled calls turnOnIntegration when locally integrated`() = runTest {
+    fun `checkHealthConnectPermissionDisabled calls turnOnIntegration when locally integrated`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             integrated = true,
@@ -1263,7 +1263,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkHealthConnectPermissionDisabled calls healthConnectOutOfSync when outOfSyncSession`() = runTest {
+    fun `checkHealthConnectPermissionDisabled calls healthConnectOutOfSync when outOfSyncSession`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             integrated = true,
@@ -1279,7 +1279,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkHealthConnectPermissionDisabled handles multi-device condition`() = runTest {
+    fun `checkHealthConnectPermissionDisabled handles multi-device condition`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             integrated = false,
@@ -1296,7 +1296,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkHealthConnectPermissionDisabled shows INSTALL_REQUIRED alert when hcOn`() = runTest {
+    fun `checkHealthConnectPermissionDisabled shows INSTALL_REQUIRED alert when hcOn`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALL_REQUIRED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData()
         // Set currentIntegrations via reflection to trigger INSTALL_REQUIRED branch
@@ -1310,7 +1310,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkHealthConnectPermissionDisabled INSTALL_REQUIRED alert onDismiss`() = runTest {
+    fun `checkHealthConnectPermissionDisabled INSTALL_REQUIRED alert onDismiss`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALL_REQUIRED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData()
         val field = HealthConnectService::class.java.getDeclaredField("currentIntegrations")
@@ -1331,7 +1331,7 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkMultiDeviceConnection onConfirm navigates and updates state`() = runTest {
+    fun `checkMultiDeviceConnection onConfirm navigates and updates state`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectRepository.getStoredIntegrationData(fakeAccountId) } returns null
         every { integrationRepository.integrationsFromServer } returns flowOf(Integrations(isHealthConnectOn = true))
 
@@ -1348,7 +1348,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkMultiDeviceConnection onDismiss sets outOfSync true`() = runTest {
+    fun `checkMultiDeviceConnection onDismiss sets outOfSync true`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectRepository.getStoredIntegrationData(fakeAccountId) } returns null
         every { integrationRepository.integrationsFromServer } returns flowOf(Integrations(isHealthConnectOn = true))
 
@@ -1370,7 +1370,7 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `syncAllData error dialog onDismiss dismisses`() = runTest {
+    fun `syncAllData error dialog onDismiss dismisses`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         coEvery { entryRepository.getEntriesByAccount(any()) } throws RuntimeException("sync error")
 
@@ -1388,7 +1388,7 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `healthConnectOutOfSync FinishConnect onConfirm navigates`() = runTest {
+    fun `healthConnectOutOfSync FinishConnect onConfirm navigates`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             outOfSync = true,
@@ -1409,7 +1409,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `healthConnectOutOfSync FinishConnect onDismiss dismisses`() = runTest {
+    fun `healthConnectOutOfSync FinishConnect onDismiss dismisses`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             outOfSync = true,
@@ -1433,7 +1433,7 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `healthConnectOutOfSync handles UPDATE_REQUIRED status`() = runTest {
+    fun `healthConnectOutOfSync handles UPDATE_REQUIRED status`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.UPDATE_REQUIRED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             outOfSync = true,
@@ -1447,7 +1447,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `healthConnectOutOfSync handles PARTIAL permission with out of sync`() = runTest {
+    fun `healthConnectOutOfSync handles PARTIAL permission with out of sync`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             outOfSync = true,
@@ -1464,7 +1464,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `healthConnectOutOfSync returns false when not integrated`() = runTest {
+    fun `healthConnectOutOfSync returns false when not integrated`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             outOfSync = true,
@@ -1481,7 +1481,7 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkHealthConnectPermissionDisabled out-of-sync modal onConfirm opens health connect`() = runTest {
+    fun `checkHealthConnectPermissionDisabled out-of-sync modal onConfirm opens health connect`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             integrated = true,
@@ -1502,7 +1502,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkHealthConnectPermissionDisabled out-of-sync modal onDismiss updates state`() = runTest {
+    fun `checkHealthConnectPermissionDisabled out-of-sync modal onDismiss updates state`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             integrated = true,
@@ -1522,7 +1522,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkHealthConnectPermissionDisabled handles PARTIAL permission with finishConnect off`() = runTest {
+    fun `checkHealthConnectPermissionDisabled handles PARTIAL permission with finishConnect off`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             integrated = true,
@@ -1541,7 +1541,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkHealthConnectPermissionDisabled finishConnect when hcOff and not cancelled`() = runTest {
+    fun `checkHealthConnectPermissionDisabled finishConnect when hcOff and not cancelled`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             integrated = true,
@@ -1562,7 +1562,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkHealthConnectPermissionDisabled finishConnect onConfirm navigates`() = runTest {
+    fun `checkHealthConnectPermissionDisabled finishConnect onConfirm navigates`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             integrated = true,
@@ -1587,7 +1587,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkHealthConnectPermissionDisabled finishConnect onDismiss sets alertSeen`() = runTest {
+    fun `checkHealthConnectPermissionDisabled finishConnect onDismiss sets alertSeen`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             integrated = true,
@@ -1612,7 +1612,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkHealthConnectPermissionDisabled finishConnect from opened path`() = runTest {
+    fun `checkHealthConnectPermissionDisabled finishConnect from opened path`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             integrated = true,
@@ -1630,7 +1630,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkHealthConnectPermissionDisabled finishConnect from opened onConfirm`() = runTest {
+    fun `checkHealthConnectPermissionDisabled finishConnect from opened onConfirm`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             integrated = true,
@@ -1653,7 +1653,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkHealthConnectPermissionDisabled finishConnect from opened onDismiss`() = runTest {
+    fun `checkHealthConnectPermissionDisabled finishConnect from opened onDismiss`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             integrated = true,
@@ -1675,7 +1675,7 @@ class HealthConnectServiceTest {
     }
 
     @Test
-    fun `checkHealthConnectPermissionDisabled multi-device with NONE permission`() = runTest {
+    fun `checkHealthConnectPermissionDisabled multi-device with NONE permission`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             integrated = false,
@@ -1726,7 +1726,7 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `openHealthConnect throws when no account`() = runTest {
+    fun `openHealthConnect throws when no account`() = runTest(mainDispatcherRule.scheduler) {
         service = createServiceWithNoAccount()
         val result = service.openHealthConnect()
         assertThat(result).isFalse()
@@ -1737,7 +1737,7 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `turnOnIntegration catches exception gracefully`() = runTest {
+    fun `turnOnIntegration catches exception gracefully`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectRepository.saveIntegration(any()) } throws RuntimeException("error")
         // Should not crash; continues to sync logic
         service.turnOnIntegration(fromMultiDevice = true, isRequestNeed = false)
@@ -1748,7 +1748,7 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `openHealthConnect handles requireCurrentAccountId throwing`() = runTest {
+    fun `openHealthConnect handles requireCurrentAccountId throwing`() = runTest(mainDispatcherRule.scheduler) {
         service = createServiceWithNoAccount()
         val result = service.openHealthConnect(isFromSetup = true)
         assertThat(result).isFalse()
@@ -1759,7 +1759,7 @@ class HealthConnectServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkHealthConnectPermissionDisabled out-of-sync modal secondaryAction removes integration`() = runTest {
+    fun `checkHealthConnectPermissionDisabled out-of-sync modal secondaryAction removes integration`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { anyConstructed<HealthConnect>().getStatus() } returns HealthConnectStatus.INSTALLED
         coEvery { healthConnectRepository.getAccountByID(fakeAccountId) } returns fakeHcAccountData(
             integrated = true,

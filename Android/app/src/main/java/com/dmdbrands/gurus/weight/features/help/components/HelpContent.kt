@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -23,7 +24,6 @@ import com.dmdbrands.gurus.weight.features.help.model.HelpIntent
 import com.dmdbrands.gurus.weight.features.help.strings.HelpScreenStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
-import java.util.Locale.getDefault
 
 @Composable
 fun ContactUsContent(handleIntent: (HelpIntent) -> Unit) {
@@ -64,7 +64,7 @@ fun ContactUsContent(handleIntent: (HelpIntent) -> Unit) {
     )
     Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.sm))
     AppText(
-      text = HelpScreenStrings.Email.uppercase(getDefault()),
+      text = HelpScreenStrings.Email.uppercase(LocalConfiguration.current.locales[0]),
       textType = TextType.Link,
       textAlign = TextAlign.Start,
       modifier = Modifier.clickable(true) {

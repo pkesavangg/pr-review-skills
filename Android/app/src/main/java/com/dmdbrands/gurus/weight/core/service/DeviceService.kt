@@ -396,22 +396,22 @@ constructor(
         val updatedPreferences = savedDevice.preferences.copy(id = savedDevice.id)
         savedDevice.copy(preferences = updatedPreferences)
       } else savedDevice
-        try {
-          syncDevices(adjusted)
-          AppLog.d(tag, "saveScale (via syncDevices): ${adjusted.id}")
-        } catch (e: Exception) {
-          AppLog.e(tag, "saveScale syncDevices failed", e)
-        }
+      try {
+        syncDevices(adjusted)
+        AppLog.d(tag, "saveScale (via syncDevices): ${adjusted.id}")
+      } catch (e: Exception) {
+        AppLog.e(tag, "saveScale syncDevices failed", e)
+      }
       adjusted
     } catch (e: Exception) {
       // Offline (or API error) -> push as temp; syncDevices() will store locally and retry later.
       AppLog.d(tag, "saveScale (via syncDevices) offline/fallback: $e")
       val unsyncedDevice = updatedDevice.copy(isSynced = false)
-        try {
-          syncDevices(unsyncedDevice)
-        } catch (syncEx: Exception) {
-          AppLog.e(tag, "saveScale offline syncDevices failed", syncEx)
-        }
+      try {
+        syncDevices(unsyncedDevice)
+      } catch (syncEx: Exception) {
+        AppLog.e(tag, "saveScale offline syncDevices failed", syncEx)
+      }
       null
     }
   }

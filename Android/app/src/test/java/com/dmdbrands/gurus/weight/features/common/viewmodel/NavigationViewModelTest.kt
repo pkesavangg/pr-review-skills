@@ -64,7 +64,7 @@ class NavigationViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `navigateTo calls appEventService navigateTo with route`() = runTest {
+    fun `navigateTo calls appEventService navigateTo with route`() = runTest(mainDispatcherRule.scheduler) {
       val route = AppRoute.AccountSettings.MyDevices
         viewModel.navigateTo(route)
         advanceUntilIdle()
@@ -73,7 +73,7 @@ class NavigationViewModelTest {
     }
 
     @Test
-    fun `navigateTo passes topLevel parameter`() = runTest {
+    fun `navigateTo passes topLevel parameter`() = runTest(mainDispatcherRule.scheduler) {
       val route = AppRoute.AccountSettings.MyDevices
         val topLevel = AppRoute.Main.Dashboard
 
@@ -84,7 +84,7 @@ class NavigationViewModelTest {
     }
 
     @Test
-    fun `navigateTo passes popUpTo parameter`() = runTest {
+    fun `navigateTo passes popUpTo parameter`() = runTest(mainDispatcherRule.scheduler) {
       val route = AppRoute.AccountSettings.MyDevices
         val popUpTo = AppRoute.Main.Dashboard
 
@@ -95,7 +95,7 @@ class NavigationViewModelTest {
     }
 
     @Test
-    fun `navigateTo passes all parameters`() = runTest {
+    fun `navigateTo passes all parameters`() = runTest(mainDispatcherRule.scheduler) {
       val route = AppRoute.AccountSettings.MyDevices
         val topLevel = AppRoute.Main.Dashboard
         val popUpTo = AppRoute.Integration.IntegrationList
@@ -111,7 +111,7 @@ class NavigationViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `navigateBack calls appEventService navigateBack with topLevel`() = runTest {
+    fun `navigateBack calls appEventService navigateBack with topLevel`() = runTest(mainDispatcherRule.scheduler) {
         val topLevel = AppRoute.Main.Dashboard
         viewModel.navigateBack(topLevel)
         advanceUntilIdle()
@@ -120,7 +120,7 @@ class NavigationViewModelTest {
     }
 
     @Test
-    fun `navigateBack with null calls appEventService navigateBack with null`() = runTest {
+    fun `navigateBack with null calls appEventService navigateBack with null`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.navigateBack(null)
         advanceUntilIdle()
 
