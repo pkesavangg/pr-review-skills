@@ -141,7 +141,7 @@ final class ContentViewModel: ObservableObject {
         await initializationTask?.value
     }
 
-    // swiftlint:disable:next cyclomatic_complexity
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     private func runAppInitialization() async {
         // Clear any lingering loader state from previous session (e.g., if app was force-closed during account switch)
         notificationService.dismissLoader()
@@ -156,6 +156,17 @@ final class ContentViewModel: ObservableObject {
         if isShowingLoadingScreen {
             contentViewState = .initializing
             notificationService.setAppLoading(true)
+        }
+        // MOB-196: guarantee the loading flag is cleared on EVERY exit path that set it,
+        // including the `guard !Task.isCancelled else { return }` early returns below. Without this,
+        // a cancelled init leaves isAppLoading == true and silently suppresses every future alert
+        // (the next re-run skips this branch once state is already .dashboard, so it never clears).
+        // The explicit clear after updateViewState still drives the happy-path flush timing
+        // (before Bluetooth startup); this defer is the idempotent safety net for cancelled paths.
+        defer {
+            if isShowingLoadingScreen {
+                notificationService.setAppLoading(false)
+            }
         }
         var loggedIn = await checkLoginStatus()
         guard !Task.isCancelled else { return }
