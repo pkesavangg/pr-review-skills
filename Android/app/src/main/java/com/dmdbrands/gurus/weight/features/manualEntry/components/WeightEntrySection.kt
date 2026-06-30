@@ -34,7 +34,8 @@ fun WeightEntrySection(
 
     AppInput(
         formControl = entryForm.weightDateTime.controls.weight,
-        label = EntryScreenStrings.WEIGHT_LABEL.plus(" (${state.weightMode.label})"),
+        label = EntryScreenStrings.WEIGHT_LABEL,
+        trailingText = state.weightMode.label,
         type = AppInputType.BODY_COMP,
         imeAction = ImeAction.Next,
         onImeAction = {
