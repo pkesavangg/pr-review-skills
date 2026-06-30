@@ -180,6 +180,104 @@ class DeviceServiceTest {
     }
 
     // -------------------------------------------------------------------------
+    // onAppForegrounded — passive foreground refresh (MOB-1201)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `onAppForegrounded skips the initial foreground but refreshes on later foregrounds`() =
+        runTest(mainDispatcherRule.scheduler) {
+            service.setAccountId(accountId) // cold-start sync (#1)
+            advanceUntilIdle()
+
+            service.onAppForegrounded() // initial foreground -> skipped (cold start already synced)
+            advanceUntilIdle()
+            coVerify(exactly = 1) { deviceRepository.getDevicesFromApi(accountId) }
+
+            service.onAppForegrounded() // real background -> foreground -> refresh (#2)
+            advanceUntilIdle()
+            coVerify(exactly = 2) { deviceRepository.getDevicesFromApi(accountId) }
+        }
+
+    @Test
+    fun `onAppForegrounded does not refresh when no account is set`() =
+        runTest(mainDispatcherRule.scheduler) {
+            service.onAppForegrounded() // consumes the initial-foreground skip
+            service.onAppForegrounded() // would refresh, but no active account
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { deviceRepository.getDevicesFromApi(any()) }
+        }
+
+    @Test
+    fun `onAppForegrounded does not refresh when offline`() =
+        runTest(mainDispatcherRule.scheduler) {
+            service.setAccountId(accountId) // cold-start sync (#1)
+            advanceUntilIdle()
+            every { connectivityObserver.getCurrentNetworkState() } returns
+                NetworkState(available = false, unAvailable = true)
+
+            service.onAppForegrounded() // initial-foreground skip
+            service.onAppForegrounded() // offline -> skip
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { deviceRepository.getDevicesFromApi(accountId) }
+        }
+
+    @Test
+    fun `onAppForegrounded throttles rapid consecutive foregrounds`() =
+        runTest(mainDispatcherRule.scheduler) {
+            service.setAccountId(accountId) // cold-start sync (#1)
+            advanceUntilIdle()
+
+            service.onAppForegrounded() // initial-foreground skip
+            advanceUntilIdle()
+            service.onAppForegrounded() // refresh (#2)
+            service.onAppForegrounded() // within throttle window -> skip
+            advanceUntilIdle()
+
+            coVerify(exactly = 2) { deviceRepository.getDevicesFromApi(accountId) }
+        }
+
+    // -------------------------------------------------------------------------
+    // refreshPairedDevices — on-demand refresh when My Devices opens (MOB-1201)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `refreshPairedDevices fetches from API when account set and online`() =
+        runTest(mainDispatcherRule.scheduler) {
+            service.setAccountId(accountId) // cold-start sync (#1)
+            advanceUntilIdle()
+
+            service.refreshPairedDevices() // on My Devices open -> refresh (#2)
+            advanceUntilIdle()
+
+            coVerify(exactly = 2) { deviceRepository.getDevicesFromApi(accountId) }
+        }
+
+    @Test
+    fun `refreshPairedDevices does not fetch when no account is set`() =
+        runTest(mainDispatcherRule.scheduler) {
+            service.refreshPairedDevices()
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { deviceRepository.getDevicesFromApi(any()) }
+        }
+
+    @Test
+    fun `refreshPairedDevices does not fetch when offline`() =
+        runTest(mainDispatcherRule.scheduler) {
+            service.setAccountId(accountId) // cold-start sync (#1)
+            advanceUntilIdle()
+            every { connectivityObserver.getCurrentNetworkState() } returns
+                NetworkState(available = false, unAvailable = true)
+
+            service.refreshPairedDevices() // offline -> skip
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { deviceRepository.getDevicesFromApi(accountId) }
+        }
+
+    // -------------------------------------------------------------------------
     // updateConnectionStatus — map update
     // -------------------------------------------------------------------------
 

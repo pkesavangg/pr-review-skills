@@ -28,6 +28,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.TimeZone
 import java.util.UUID
 import javax.inject.Inject
@@ -49,6 +51,11 @@ constructor(
   @ApplicationContext private val context: Context,
   @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IDeviceService {
+  companion object {
+    /** Minimum gap between two foreground-triggered device refreshes, to dedupe lifecycle jitter. (MOB-1201) */
+    private const val FOREGROUND_REFRESH_THROTTLE_MS = 5_000L
+  }
+
   private val tag = "DeviceService"
 
   private var fetchJob: Job? = null
@@ -126,6 +133,20 @@ constructor(
   private var currentAccountId: String? = null
   private var deviceCollectionJob: Job? = null
 
+  /**
+   * Guards the passive foreground refresh (MOB-1201). The initial cold-start foreground is
+   * already covered by the loading flow's setAccountId() -> syncDevices(), so the first
+   * foreground event is skipped; subsequent ones are throttled to avoid redundant fetches.
+   */
+  private var hasHandledInitialForeground = false
+  private var lastForegroundRefreshAtMs = 0L
+
+  /** Serializes [syncDevices] so concurrent triggers never run its destructive wipe-and-rewrite at once. */
+  private val syncMutex = Mutex()
+
+  /** Tracks an in-flight on-demand refresh so overlapping triggers don't stack redundant syncs. (MOB-1201) */
+  private var deviceRefreshJob: Job? = null
+
   init {
     AppLog.d(tag, "DeviceService initialized")
     // Note: We don't call syncScales here as we need an account ID first
@@ -193,6 +214,66 @@ constructor(
   }
 
   /**
+   * Re-pull paired devices when the app returns to the foreground so a device paired on
+   * another platform (e.g. iOS) shows up without a cold restart. (MOB-1201)
+   *
+   * No-ops on the initial foreground (the loading flow already synced), when logged out,
+   * when offline, and when called again inside the throttle window.
+   */
+  override fun onAppForegrounded() {
+    // The initial cold-start foreground is already covered by setAccountId() -> syncDevices();
+    // skip it to avoid a duplicate fetch right after launch.
+    if (!hasHandledInitialForeground) {
+      hasHandledInitialForeground = true
+      AppLog.d(tag, "Initial foreground — refresh handled by cold-start sync, skipping")
+      return
+    }
+
+    val now = System.currentTimeMillis()
+    if (now - lastForegroundRefreshAtMs < FOREGROUND_REFRESH_THROTTLE_MS) {
+      AppLog.d(tag, "Skipping foreground device refresh — within throttle window")
+      return
+    }
+    lastForegroundRefreshAtMs = now
+
+    launchDeviceRefresh("App foregrounded")
+  }
+
+  override fun refreshPairedDevices() {
+    // On-demand refresh (e.g. opening My Devices). Not throttled — the user explicitly
+    // navigated here and expects the freshest list.
+    launchDeviceRefresh("My Devices opened")
+  }
+
+  /**
+   * Shared guarded launch for an on-demand device re-pull. No-ops when logged out or offline.
+   */
+  private fun launchDeviceRefresh(reason: String) {
+    val accountId = currentAccountId
+    if (accountId == null) {
+      AppLog.d(tag, "Skipping device refresh ($reason) — no active account")
+      return
+    }
+    if (!isNetworkAvailable()) {
+      AppLog.d(tag, "Skipping device refresh ($reason) — network unavailable")
+      return
+    }
+    // An in-flight refresh will already return the latest server state — don't stack another.
+    if (deviceRefreshJob?.isActive == true) {
+      AppLog.d(tag, "Skipping device refresh ($reason) — a refresh is already in progress")
+      return
+    }
+    AppLog.d(tag, "$reason — refreshing paired devices for account $accountId")
+    deviceRefreshJob = appScope.launch {
+      try {
+        syncDevices()
+      } catch (e: Exception) {
+        AppLog.e(tag, "Device refresh ($reason) failed", e)
+      }
+    }
+  }
+
+  /**
    * Merges synced and unsynced device lists by id: for same id, copies unsynced property onto the existing item;
    * for ids only in unsynced list, appends them. Never produces two items with the same id.
    */
@@ -222,6 +303,14 @@ constructor(
    * @param deletedDevices Devices to delete (optional)
    */
   override suspend fun syncDevices(
+    tempDevice: Device?
+  ) {
+    // Serialize syncs so concurrent triggers (foreground refresh, My Devices open, scale setup)
+    // never run the destructive delete-all + re-insert at the same time. (MOB-1201)
+    syncMutex.withLock { syncDevicesInternal(tempDevice) }
+  }
+
+  private suspend fun syncDevicesInternal(
     tempDevice: Device?
   ) {
     val tag = "DeviceService-syncDevices"

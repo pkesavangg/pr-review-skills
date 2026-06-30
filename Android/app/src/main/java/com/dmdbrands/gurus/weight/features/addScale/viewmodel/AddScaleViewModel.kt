@@ -77,6 +77,15 @@ constructor(
     }
   }
 
+  /**
+   * Re-pull paired devices from the server when the My Devices screen is shown, so a scale
+   * paired on another phone appears without an app restart. (MOB-1201)
+   */
+  fun refreshSavedScales() {
+    AppLog.d(TAG, "Refreshing saved scales on My Devices open")
+    deviceService.refreshPairedDevices()
+  }
+
   private fun onSubmitModelNumber() {
     AppLog.d(TAG, "Submitting model number form")
     val modelNumberForm = state.value.form
