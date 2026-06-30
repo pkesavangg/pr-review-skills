@@ -106,6 +106,8 @@ class BabyScaleBLESetupSkipFlowTest {
         viewModel = BabyScaleBLESetupViewModel(
             setupInit = setupInit,
             dependencies = dependencies,
+            babyProfileService = mockk(relaxed = true),
+            accountRepository = mockk(relaxed = true),
         ).initTestDependencies(dialogQueueService = dialogQueueService)
         advanceScheduler()
         return viewModel

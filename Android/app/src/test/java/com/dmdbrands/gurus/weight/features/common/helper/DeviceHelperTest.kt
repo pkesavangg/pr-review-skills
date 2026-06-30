@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.helper
 
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0022
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0220
@@ -119,5 +120,30 @@ class DeviceHelperTest {
         // catalog setupType is BpmBluetooth.
         assertThat(info?.sku).isEqualTo(SKU_0664)
         assertThat(info?.setupType).isEqualTo(ScaleSetupType.BpmBluetooth)
+    }
+
+    // ── productTypeForSku — device SKU → account ProductType (MOB-596) ──
+
+    @Test
+    fun `productTypeForSku maps baby scale SKUs to BABY`() {
+        assertThat(DeviceHelper.productTypeForSku(SKU_0220)).isEqualTo(ProductType.BABY)
+        assertThat(DeviceHelper.productTypeForSku(SKU_0222)).isEqualTo(ProductType.BABY)
+    }
+
+    @Test
+    fun `productTypeForSku maps BPM SKUs to BLOOD_PRESSURE`() {
+        assertThat(DeviceHelper.productTypeForSku(SKU_0603)).isEqualTo(ProductType.BLOOD_PRESSURE)
+        assertThat(DeviceHelper.productTypeForSku(SKU_0604)).isEqualTo(ProductType.BLOOD_PRESSURE)
+        assertThat(DeviceHelper.productTypeForSku(SKU_0634)).isEqualTo(ProductType.BLOOD_PRESSURE)
+        assertThat(DeviceHelper.productTypeForSku(SKU_0636)).isEqualTo(ProductType.BLOOD_PRESSURE)
+        assertThat(DeviceHelper.productTypeForSku(SKU_0661)).isEqualTo(ProductType.BLOOD_PRESSURE)
+        assertThat(DeviceHelper.productTypeForSku(SKU_0663)).isEqualTo(ProductType.BLOOD_PRESSURE)
+    }
+
+    @Test
+    fun `productTypeForSku defaults non-baby non-BPM SKUs to MY_WEIGHT`() {
+        assertThat(DeviceHelper.productTypeForSku(SKU_0383)).isEqualTo(ProductType.MY_WEIGHT)
+        assertThat(DeviceHelper.productTypeForSku("0375")).isEqualTo(ProductType.MY_WEIGHT)
+        assertThat(DeviceHelper.productTypeForSku("0412")).isEqualTo(ProductType.MY_WEIGHT)
     }
 }

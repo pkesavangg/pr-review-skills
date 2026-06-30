@@ -133,7 +133,7 @@ interface IDeviceService {
    * reading, then returns it. Devices loaded from GET /v3/paired-device carry no broadcastId, so a
    * monitor reading can't match by id — this attributes it to the lone BPM device so it syncs and
    * future readings resolve. Returns null unless there's exactly one un-identified BPM device.
-   * (MOB-598)
+   * (MOB-596)
    */
   suspend fun healBpmDeviceBroadcastId(broadcastId: String, accountId: String): Device?
 

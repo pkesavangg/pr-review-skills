@@ -2,11 +2,17 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.enums.BabySex
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
+import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile as DomainBabyProfile
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
+import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
+import com.dmdbrands.gurus.weight.domain.services.IBabyProfileService
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BabyScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.ScaleSetupStep
+import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.BabyProfile as SetupBabyProfile
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.SetupInitData
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BabyScaleSetupReducer
@@ -24,6 +30,7 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.Instant
 
@@ -35,6 +42,8 @@ class BabyScaleBLESetupViewModel
 constructor(
   @Assisted val setupInit: SetupInitData<BabyScaleSetupStep>,
   dependencies: BLESetupDependencies,
+  private val babyProfileService: IBabyProfileService,
+  private val accountRepository: IAccountRepository,
 ) : BLESetupViewmodel<BabyScaleSetupStep, BabyScaleSetupState>(
   GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value,
   setupInit,
@@ -49,6 +58,10 @@ constructor(
   }
 
   private val sku = setupInit.sku
+
+  // FINISH on the baby list uploads the added profiles; SKIP finishes without any upload, so
+  // skipping never creates a baby on the server even if one was added then backed out of. (MOB-596)
+  private var shouldUploadBabyProfiles = true
 
   override fun provideInitialState(): BabyScaleSetupState {
     return BabyScaleSetupState()
@@ -116,7 +129,59 @@ constructor(
     if (!saved) {
       AppLog.w(TAG, "Scale save failed during setup finish")
     }
+    // After the scale is saved, upload the baby profiles added on BABY_LIST to the server
+    // (POST /v3/baby/, which also auto-adds "baby" to productTypes). Skipped when the user
+    // chose to skip the baby-profile step — see [showSkipBabyProfileDialog]. (MOB-596)
+    if (shouldUploadBabyProfiles) {
+      persistBabyProfiles()
+    }
   }
+
+  /**
+   * Uploads the baby profiles collected on the BABY_LIST step to the server. Best-effort per baby
+   * (mirrors signup's persistBabies): the server assigns its own id on each POST, so a blanket
+   * retry would create duplicates; a single failing baby is logged and skipped. createBaby also
+   * auto-adds the "baby" product server-side. (MOB-596)
+   */
+  private suspend fun persistBabyProfiles() {
+    val profiles = state.value.babyProfiles
+    if (profiles.isEmpty()) {
+      AppLog.d(TAG, "No baby profiles to persist")
+      return
+    }
+    val accountId = accountRepository.getActiveAccount().first()?.id
+    if (accountId == null) {
+      AppLog.w(TAG, "No active account — skipping baby profile upload")
+      return
+    }
+    var savedCount = 0
+    profiles.forEach { profile ->
+      try {
+        babyProfileService.save(profile.toDomain(accountId))
+        savedCount++
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to persist baby profile during baby-scale setup: ${profile.id}", e)
+      }
+    }
+    AppLog.d(TAG, "Persisted $savedCount/${profiles.size} baby profiles to server")
+  }
+
+  /**
+   * Maps the in-memory setup [SetupBabyProfile] to the domain [DomainBabyProfile] for upload.
+   * The setup form has no unit toggle and its inputs are metric (cm / kg) per the design, so birth
+   * length/weight convert cm→mm and kg→decigrams. An unset or "Other" sex resolves to "private"
+   * via [BabySex.fromValue]. (MOB-596)
+   */
+  private fun SetupBabyProfile.toDomain(accountId: String): DomainBabyProfile =
+    DomainBabyProfile(
+      id = id,
+      accountId = accountId,
+      name = name,
+      birthdate = birthday,
+      sex = BabySex.fromValue(biologicalSex?.lowercase()).value,
+      birthWeightDecigrams = birthWeight?.toDoubleOrNull()?.let(ConversionTools::convertKgToDecigrams),
+      birthLengthMillimeters = birthLength?.toDoubleOrNull()?.let(ConversionTools::convertCmToMm),
+    )
 
   override fun onBack() {
     val currentState = state.value
@@ -158,7 +223,11 @@ constructor(
         message = BabyScaleSetupStrings.SkipDialog.Message,
         confirmText = BabyScaleSetupStrings.SkipDialog.FinishSetup,
         cancelText = BabyScaleSetupStrings.SkipDialog.Cancel,
-        onConfirm = { handleIntent(ScaleSetupIntent.ExitSetup(true)) },
+        onConfirm = {
+          // Skipping means no baby profile is created — finish without uploading. (MOB-596)
+          shouldUploadBabyProfiles = false
+          handleIntent(ScaleSetupIntent.ExitSetup(true))
+        },
         onCancel = {},
       ),
     )

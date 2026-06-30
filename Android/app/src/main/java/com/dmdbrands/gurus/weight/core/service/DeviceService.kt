@@ -10,6 +10,8 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
+import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
+import javax.inject.Provider
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
@@ -49,6 +51,8 @@ constructor(
   appNavigationService: IAppNavigationService,
   @ApplicationContext private val context: Context,
   @ApplicationScope private val appScope: CoroutineScope,
+  // Provider to avoid a construction-time DI cycle (product manager → account → device).
+  private val productSelectionManager: Provider<IProductSelectionManager>,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IDeviceService {
   private val tag = "DeviceService"
 
@@ -417,6 +421,12 @@ constructor(
         AppLog.d(tag, "saveScale (via syncDevices): ${adjusted.id}")
       } catch (e: Exception) {
         AppLog.e(tag, "saveScale syncDevices failed", e)
+      }
+      // Register the paired device's product on the account from its SKU so productTypes reflects
+      // this device globally (dashboard, My Kids). Canonical SKU→product via DeviceHelper;
+      // addProduct de-dupes and persistProductForSetup is best-effort. (MOB-596)
+      device.sku?.let { sku ->
+        productSelectionManager.get().persistProductForSetup(DeviceHelper.productTypeForSku(sku))
       }
       adjusted
     } catch (e: Exception) {

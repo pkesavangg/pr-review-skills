@@ -60,16 +60,16 @@ object ScaleSetupStrings {
   object ScalePermissions {
     const val Title = "Permission Settings"
     fun Subtitle(setupType: ScaleSetupType) = when (setupType) {
-      ScaleSetupType.AppSync -> "Weight Gurus needs Camera permission to Scan your scale."
+      ScaleSetupType.AppSync -> "me.App needs Camera permission to Scan your scale."
       ScaleSetupType.Wifi,
-      ScaleSetupType.EspTouchWifi -> "Weight Gurus needs Location permissions to connect to your scale."
+      ScaleSetupType.EspTouchWifi -> "me.App needs Location permissions to connect to your scale."
 
       ScaleSetupType.BtWifiR4,
-      ScaleSetupType.Bluetooth -> "Weight Gurus needs Bluetooth and Location permissions to connect to your scale."
+      ScaleSetupType.Bluetooth -> "me.App needs Bluetooth and Location permissions to connect to your scale."
 
-      ScaleSetupType.Lcbt -> "Weight Gurus requires location access to view your Wi-Fi network information and connect to your scale."
+      ScaleSetupType.Lcbt -> "me.App requires location access to view your Wi-Fi network information and connect to your scale."
       ScaleSetupType.BpmBluetooth,
-      ScaleSetupType.BpmA6Bluetooth -> "Weight Gurus needs Bluetooth and Location permissions to connect to your monitor."
+      ScaleSetupType.BpmA6Bluetooth -> "me.App needs access to the following permissions to connect to your monitor."
 
       ScaleSetupType.BabyScale -> "meApp needs access to the following permissions to connect with your scale."
     }

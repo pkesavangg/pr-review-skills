@@ -7,7 +7,6 @@ import kotlinx.collections.immutable.persistentListOf
 
 /**
  * Unified state for BPM monitor setup (A3 and A6 protocols).
- * For A3 SKUs, [scaleNickname] and [hasSkippedScalePairing] remain at defaults.
  */
 @Stable
 data class MonitorSetupState(
@@ -17,9 +16,7 @@ data class MonitorSetupState(
   ),
   val selectedUser: String? = null,
   val monitorNickname: String = "",
-  val scaleNickname: String = "",
   val hasNumericUsers: Boolean = false,
-  val hasSkippedScalePairing: Boolean = false,
 ) : BaseState<MonitorSetupStep, MonitorSetupState> {
   override fun copyBaseState(scaleSetupState: ScaleSetupState<MonitorSetupStep>): MonitorSetupState {
     return this.copy(scaleSetupState = scaleSetupState)
@@ -32,9 +29,7 @@ data class MonitorSetupState(
 sealed interface MonitorSetupIntent : ScaleSetupIntent {
   data class SetSelectedUser(val user: String) : MonitorSetupIntent
   data class SetMonitorNickname(val nickname: String) : MonitorSetupIntent
-  data class SetScaleNickname(val nickname: String) : MonitorSetupIntent
   data class SetHasNumericUsers(val hasNumericUsers: Boolean) : MonitorSetupIntent
-  data class SetHasSkippedScalePairing(val skipped: Boolean) : MonitorSetupIntent
   data class SetSteps(val steps: ImmutableList<MonitorSetupStep>) : MonitorSetupIntent
   data object TutorialLinkClicked : MonitorSetupIntent
 }
@@ -50,9 +45,7 @@ class MonitorSetupReducer : ScaleSetupReducer<MonitorSetupStep, MonitorSetupStat
     return when (intent) {
       is MonitorSetupIntent.SetSelectedUser -> state.copy(selectedUser = intent.user)
       is MonitorSetupIntent.SetMonitorNickname -> state.copy(monitorNickname = intent.nickname)
-      is MonitorSetupIntent.SetScaleNickname -> state.copy(scaleNickname = intent.nickname)
       is MonitorSetupIntent.SetHasNumericUsers -> state.copy(hasNumericUsers = intent.hasNumericUsers)
-      is MonitorSetupIntent.SetHasSkippedScalePairing -> state.copy(hasSkippedScalePairing = intent.skipped)
       is MonitorSetupIntent.SetSteps -> state.copy(
         scaleSetupState = state.scaleSetupState.copy(
           steps = intent.steps,

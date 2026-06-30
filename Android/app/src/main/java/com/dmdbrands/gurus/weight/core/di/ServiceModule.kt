@@ -93,6 +93,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineScope
+import javax.inject.Provider
 import javax.inject.Singleton
 import android.content.Context
 
@@ -482,8 +483,9 @@ object ServiceModule {
       dialogQueueService: IDialogQueueService,
       appNavigationService: IAppNavigationService,
       @ApplicationScope appScope: CoroutineScope,
+      productSelectionManager: Provider<IProductSelectionManager>,
     ): IDeviceService =
-      DeviceService(deviceRepository, connectivityObserver, dialogQueueService, appNavigationService, context, appScope)
+      DeviceService(deviceRepository, connectivityObserver, dialogQueueService, appNavigationService, context, appScope, productSelectionManager)
 
     @Provides
     @Singleton

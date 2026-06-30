@@ -17,9 +17,7 @@ object MonitorSetupStrings {
     else -> DefaultMonitorNickname
   }
 
-  fun DefaultScaleNickname(sku: String) = "Smart Scale $sku"
-
-  fun ModelNumber(sku: String) = "Model #$sku"
+  fun ModelNumber(sku: String) = "Model $sku"
 
   object MonitorDetail {
     const val Description =
@@ -85,7 +83,7 @@ object MonitorSetupStrings {
 
   object MonitorNickname {
     const val Title = "What should this monitor be called?"
-    const val Label = "NICKNAME:"
+    const val Label = "nickname"
   }
 
   // ── A6 companion scale steps ─────────────────────────────────────────────
@@ -100,41 +98,15 @@ object MonitorSetupStrings {
     }
   }
 
-  /**
-   * Strings for the [MonitorSetupStep.SCALE_PAIRING_INSTRUCTION] step.
-   *
-   * This step is instructional only — companion scale BLE pairing is performed via
-   * the standard Add-Scale flow, never inside the BPM wizard. See enum doc.
-   */
-  object ScalePairingInstruction {
-    const val Title = "Pair your companion scale separately."
-    const val Subtitle =
-      "Your companion scale is set up like any other scale. " +
-        "Open Add Device from the home screen and follow the scale setup flow. " +
-        "Tap NEXT to continue."
-  }
-
   // ── Success screen ─────────────────────────────────────────────────────
 
+  // Companion scale is paired separately via Add Device (not in this wizard), so every monitor
+  // shows the same monitor-only success copy + "learn how to measure" tutorial link. (MOB-596)
   object SuccessScreen {
-    fun Title(isA6: Boolean, hasSkippedScalePairing: Boolean): String = when {
-      !isA6 -> "Your monitor is paired!"
-      hasSkippedScalePairing -> "Your monitor is paired!"
-      else -> "Setup complete!"
-    }
-
-    fun Subtitle(
-      isA6: Boolean,
-      monitorNickname: String,
-      scaleNickname: String,
-      hasSkippedScalePairing: Boolean,
-    ): String = when {
-      hasSkippedScalePairing -> "$monitorNickname is now paired. You can pair your companion scale later from the Add Device screen. You can also check out a tutorial for using your monitor."
-      isA6 -> "$monitorNickname and $scaleNickname are now paired and ready to use. You can also check out a tutorial for using your monitor."
-      else -> "You can wrap things up by tapping FINISH, or check out a tutorial for using your monitor."
-    }
-
-    const val TutorialLinkText = "check out a tutorial"
+    const val Title = "Your monitor is paired!"
+    const val Subtitle =
+      "You can wrap things up by tapping FINISH, or learn how to measure with a quick tutorial."
+    const val TutorialLinkText = "learn how to measure"
   }
 
   // ── Instruction screens ────────────────────────────────────────────────
@@ -161,7 +133,7 @@ object MonitorSetupStrings {
   object SetupCompleted {
     const val Title = "Your measurement has been recorded!"
     const val Subtitle =
-      "That's it! When you want to record your next measurement simply open the app, put the cuff on, and press start on the monitor."
+      "That's it! When you want to record your next measurement simply open the me.App, put the cuff on, and press start on the monitor."
   }
 
   // ── Dialogs ────────────────────────────────────────────────────────────
@@ -175,29 +147,19 @@ object MonitorSetupStrings {
   }
 
   object ConfirmDifferentUserPairDialog {
-    const val Title = "Caution: Different User Detected"
-
-    fun Message(userLabel: String) =
-      "This device is already assigned to User $userLabel. Would you like to replace them?"
-
-    const val ReplaceButton = "Replace User"
+    const val Title = "Caution: User Already Paired"
+    const val Message =
+      "This monitor is already paired under a different user. By continuing the connection will be reset."
+    const val ReplaceButton = "Continue"
     const val CancelButton = "Cancel"
   }
 
   object DifferentUserDialog {
-    const val Title = "Wrong User Detected"
+    const val Title = "Unable to Connect"
     const val Message =
-      "The monitor reported a different user than what was selected. Please make sure the correct user is set on the monitor and try again."
-    const val ChangeUserButton = "Change User"
-    const val DismissButton = "Dismiss"
-  }
-
-  object SkipScaleDialog {
-    const val Title = "Skip Companion Scale?"
-    const val Message =
-      "Your monitor works best with its companion scale. You can pair the scale later from the Add Device screen."
-    const val SkipButton = "SKIP"
-    const val CancelButton = "Go Back"
+      "The user settings chosen on the monitor and in the app do not match. Please review and try again."
+    const val ChangeUserButton = "REVIEW"
+    const val DismissButton = "CANCEL SETUP"
   }
 
   object RetryAlert {

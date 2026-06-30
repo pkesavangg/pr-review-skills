@@ -11,7 +11,7 @@ object BtScaleSetupStrings {
   object PairingMode {
     const val Title = "Press and hold the UNIT on the back of your scale"
     const val Subtitle =
-      "Release the button when the animation on your scales's screen begins. It will then show brackets, and the scale will fall asleep."
+      "Release the button when the animation on your scale's screen begins. It will then show brackets, and the scale will fall asleep."
 
     fun PairModeText(state: ConnectionState) = when (state) {
       ConnectionState.Loading -> "Pairing"
@@ -47,7 +47,7 @@ object BtScaleSetupStrings {
 
   object SetupFinished {
     const val Title = "Your scale is paired and ready to go!"
-    const val Subtitle = "Next time you weigh in, just open Weight Gurus and step on the scale."
+    const val Subtitle = "Next time you weigh in, the results will automatically be sent to me.App."
   }
 
   object ConfirmPairDialog {

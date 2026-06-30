@@ -80,7 +80,6 @@ fun BpmSetupScreenContent(
   val pagerState = rememberPagerState { state.scaleSetupState.steps.size }
   val currentStep = state.step
   val primarySku = DeviceHelper.primaryBpmSku(sku)
-  val isA6 = MonitorSetupStepHelper.isA6Sku(sku)
   val setupType = MonitorSetupStepHelper.setupTypeForSku(sku)
 
   LaunchedEffect(currentStep) {
@@ -111,18 +110,6 @@ fun BpmSetupScreenContent(
           enabled = state.backEnabled,
           onClick = { onIntent(ScaleSetupIntent.Back) },
         )
-      },
-      middleContent = {
-        val showSkip = currentStep == MonitorSetupStep.SCALE_INTRO ||
-          currentStep == MonitorSetupStep.SCALE_PAIRING_INSTRUCTION
-        if (showSkip) {
-          AppButton(
-            type = ButtonType.TextPrimary,
-            label = ScaleSetupStrings.skipButton,
-            size = ButtonSize.Small,
-            onClick = { onIntent(ScaleSetupIntent.Skip) },
-          )
-        }
       },
       trailingContent = {
         AppButton(
@@ -257,34 +244,14 @@ fun BpmSetupScreenContent(
               }
             }
 
-            // ── A6 companion scale steps ──────────────────────────────────────
-
-            MonitorSetupStep.SCALE_INTRO -> {
-              SetupContent(
-                title = MonitorSetupStrings.ScaleIntro.Title,
-                subtitle = MonitorSetupStrings.ScaleIntro.Subtitle(primarySku),
-              )
-            }
-
-            // Instruction-only step — no BLE scan, no loader. See MonitorSetupStep doc.
-            MonitorSetupStep.SCALE_PAIRING_INSTRUCTION -> {
-              SetupContent(
-                title = MonitorSetupStrings.ScalePairingInstruction.Title,
-                subtitle = MonitorSetupStrings.ScalePairingInstruction.Subtitle,
-              )
-            }
-
             // ── Success & instruction screens ─────────────────────────────────
 
             MonitorSetupStep.SUCCESS_SCREEN -> {
+              // Companion scale is paired separately (not in this wizard), so every monitor shows
+              // the same monitor-only success copy + "learn how to measure" tutorial link. (MOB-596)
               SetupContent(
-                title = MonitorSetupStrings.SuccessScreen.Title(isA6, state.hasSkippedScalePairing),
-                subtitle = MonitorSetupStrings.SuccessScreen.Subtitle(
-                  isA6 = isA6,
-                  monitorNickname = state.monitorNickname.ifBlank { MonitorSetupStrings.DefaultMonitorNickname },
-                  scaleNickname = state.scaleNickname.ifBlank { MonitorSetupStrings.DefaultScaleNickname(sku) },
-                  hasSkippedScalePairing = state.hasSkippedScalePairing,
-                ),
+                title = MonitorSetupStrings.SuccessScreen.Title,
+                subtitle = MonitorSetupStrings.SuccessScreen.Subtitle,
                 annotatedSubtitle = MonitorSetupStrings.SuccessScreen.TutorialLinkText,
                 onAnnotationClick = { onIntent(MonitorSetupIntent.TutorialLinkClicked) },
                 setupFinished = true,

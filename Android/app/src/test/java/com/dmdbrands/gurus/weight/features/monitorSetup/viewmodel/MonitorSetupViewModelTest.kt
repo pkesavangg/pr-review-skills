@@ -385,23 +385,23 @@ class MonitorSetupViewModelTest {
   }
 
   // -------------------------------------------------------------------------
-  // A6 companion-scale step is instruction-only by design
+  // A6 companion scale is paired separately (not in the wizard)
   // -------------------------------------------------------------------------
   //
   // Companion scale BLE pairing is intentionally NOT performed inside the BPM
-  // wizard. Users pair the companion scale via the standard Add-Scale flow.
-  // This contract test ensures SCALE_PAIRING_INSTRUCTION never triggers any
-  // BLE scan / observe / pair calls for the A6 SKUs (0661, 0663). Do not
-  // remove without a product-design change.
+  // wizard — users pair the companion scale via the standard Add-Device flow,
+  // so the A6 flow carries no in-wizard scale step. This contract test ensures
+  // the post-pairing SUCCESS_SCREEN never triggers any BLE scan / pair calls
+  // for the A6 SKUs (0661, 0663). (MOB-596)
 
   @Test
-  fun `SCALE_PAIRING_INSTRUCTION on A6 0661 never triggers BLE`() {
-    verifyInstructionStepDoesNotTriggerBle("0661")
+  fun `SUCCESS_SCREEN on A6 0661 never triggers BLE`() {
+    verifySuccessStepDoesNotTriggerBle("0661")
   }
 
   @Test
-  fun `SCALE_PAIRING_INSTRUCTION on A6 0663 never triggers BLE`() {
-    verifyInstructionStepDoesNotTriggerBle("0663")
+  fun `SUCCESS_SCREEN on A6 0663 never triggers BLE`() {
+    verifySuccessStepDoesNotTriggerBle("0663")
   }
 
   private fun createA6ViewModel(sku: String): MonitorSetupViewModel {
@@ -422,7 +422,7 @@ class MonitorSetupViewModelTest {
     ).initTestDependencies()
   }
 
-  private fun verifyInstructionStepDoesNotTriggerBle(sku: String) {
+  private fun verifySuccessStepDoesNotTriggerBle(sku: String) {
     val a6ViewModel = createA6ViewModel(sku)
 
     // Positive contrast: MONITOR_PAIRING MUST trigger a BLE scan. If this
@@ -434,11 +434,11 @@ class MonitorSetupViewModelTest {
     advanceScheduler()
     verify(atLeast = 1) { ggDeviceService.scanForPairing() }
 
-    // Reset call counts and assert SCALE_PAIRING_INSTRUCTION + TryAgain
+    // Reset call counts and assert the post-pairing SUCCESS_SCREEN + TryAgain
     // produce zero BLE scan / pair calls.
     clearMocks(ggDeviceService, answers = false)
     a6ViewModel.handleIntent(
-      ScaleSetupIntent.SetNewStep(MonitorSetupStep.SCALE_PAIRING_INSTRUCTION),
+      ScaleSetupIntent.SetNewStep(MonitorSetupStep.SUCCESS_SCREEN),
     )
     advanceScheduler()
     a6ViewModel.handleIntent(ScaleSetupIntent.TryAgain)
@@ -453,20 +453,23 @@ class MonitorSetupViewModelTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `A6 0661 step list contains SCALE_INTRO and SCALE_PAIRING_INSTRUCTION`() {
+  fun `A6 0661 step list has no MONITOR_OFF and goes SUCCESS_SCREEN to INSTRUCTION_CUFF`() {
     val a6ViewModel = createA6ViewModel("0661")
     val steps = a6ViewModel.state.value.steps.toList()
-    assertThat(steps).contains(MonitorSetupStep.SCALE_INTRO)
-    assertThat(steps).contains(MonitorSetupStep.SCALE_PAIRING_INSTRUCTION)
+    assertThat(steps).doesNotContain(MonitorSetupStep.MONITOR_OFF)
+    val successIndex = steps.indexOf(MonitorSetupStep.SUCCESS_SCREEN)
+    assertThat(successIndex).isAtLeast(0)
+    assertThat(steps[successIndex + 1]).isEqualTo(MonitorSetupStep.INSTRUCTION_CUFF)
   }
 
   @Test
-  fun `A6 0663 step list contains SCALE_INTRO, SCALE_PAIRING_INSTRUCTION, and MONITOR_OFF`() {
+  fun `A6 0663 step list contains MONITOR_OFF and goes SUCCESS_SCREEN to INSTRUCTION_CUFF`() {
     val a6ViewModel = createA6ViewModel("0663")
     val steps = a6ViewModel.state.value.steps.toList()
-    assertThat(steps).contains(MonitorSetupStep.SCALE_INTRO)
-    assertThat(steps).contains(MonitorSetupStep.SCALE_PAIRING_INSTRUCTION)
     assertThat(steps).contains(MonitorSetupStep.MONITOR_OFF)
+    val successIndex = steps.indexOf(MonitorSetupStep.SUCCESS_SCREEN)
+    assertThat(successIndex).isAtLeast(0)
+    assertThat(steps[successIndex + 1]).isEqualTo(MonitorSetupStep.INSTRUCTION_CUFF)
   }
 
   @Test
@@ -474,15 +477,5 @@ class MonitorSetupViewModelTest {
     val a6ViewModel = createA6ViewModel("0661")
     assertThat(a6ViewModel.state.value.selectedUser).isEqualTo("A")
     assertThat(a6ViewModel.state.value.hasNumericUsers).isFalse()
-  }
-
-  @Test
-  fun `A6 step list orders SCALE_INTRO immediately before SCALE_PAIRING_INSTRUCTION`() {
-    val a6ViewModel = createA6ViewModel("0661")
-    val steps = a6ViewModel.state.value.steps.toList()
-    val introIndex = steps.indexOf(MonitorSetupStep.SCALE_INTRO)
-    val instructionIndex = steps.indexOf(MonitorSetupStep.SCALE_PAIRING_INSTRUCTION)
-    assertThat(introIndex).isAtLeast(0)
-    assertThat(instructionIndex).isEqualTo(introIndex + 1)
   }
 }

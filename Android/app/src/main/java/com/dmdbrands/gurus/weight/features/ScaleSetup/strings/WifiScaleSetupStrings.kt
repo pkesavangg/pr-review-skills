@@ -111,7 +111,7 @@ object WifiScaleSetupStrings {
 
   object SetupFinished {
     const val Title = "Your scale is paired and ready to go!"
-    const val Message = "Next time you weigh in, the results will automatically be sent to Weight Gurus."
+    const val Message = "Next time you weigh in, the results will automatically be sent to me.App."
     const val MacTitle = "The MAC address of your scale is:"
   }
 

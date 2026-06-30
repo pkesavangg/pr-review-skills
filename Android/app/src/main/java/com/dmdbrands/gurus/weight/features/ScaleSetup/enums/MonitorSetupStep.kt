@@ -19,17 +19,6 @@ enum class MonitorSetupStep : ScaleSetupStep {
   MEMORY_SELECTION,
   MONITOR_PAIRING,
   MONITOR_NICKNAME,
-  SCALE_INTRO,        // A6 only — introduces companion scale pairing (skippable)
-
-  /**
-   * Static instruction screen shown during A6 BPM setup (SKUs 0661/0663) directing
-   * the user to pair the companion scale via the standard Add-Scale flow.
-   *
-   * By product design, the companion scale is NOT paired inside the BPM wizard —
-   * it is paired separately as a regular scale. This step renders instructions only;
-   * no BLE scan, pair, or observe is initiated here, and none should be added.
-   */
-  SCALE_PAIRING_INSTRUCTION,
   SUCCESS_SCREEN,
   INSTRUCTION_CUFF,
   INSTRUCTION_START,
@@ -98,7 +87,8 @@ object MonitorSetupStepHelper {
       MonitorSetupStep.SETUP_COMPLETED,
     )
 
-    // A6: 0661 — no MONITOR_OFF; companion scale steps are after SUCCESS_SCREEN (tutorial-gated)
+    // A6: 0661 — no MONITOR_OFF. Companion scale is paired separately via Add Device (not in the
+    // wizard), so the flow is the same as every other monitor: pair → success → tutorial. (MOB-596)
     "0661" -> listOf(
       MonitorSetupStep.MONITOR_DETAIL,
       MonitorSetupStep.PERMISSIONS,
@@ -108,14 +98,13 @@ object MonitorSetupStepHelper {
       MonitorSetupStep.MONITOR_PAIRING,
       MonitorSetupStep.MONITOR_NICKNAME,
       MonitorSetupStep.SUCCESS_SCREEN,
-      MonitorSetupStep.SCALE_INTRO,
-      MonitorSetupStep.SCALE_PAIRING_INSTRUCTION,
       MonitorSetupStep.INSTRUCTION_CUFF,
       MonitorSetupStep.INSTRUCTION_START,
       MonitorSetupStep.SETUP_COMPLETED,
     )
 
-    // A6: 0663 — with MONITOR_OFF; companion scale steps are after SUCCESS_SCREEN (tutorial-gated)
+    // A6: 0663 — with MONITOR_OFF. Companion scale is paired separately via Add Device (not in the
+    // wizard), so the flow matches every other monitor: pair → success → tutorial. (MOB-596)
     "0663" -> listOf(
       MonitorSetupStep.MONITOR_DETAIL,
       MonitorSetupStep.PERMISSIONS,
@@ -126,8 +115,6 @@ object MonitorSetupStepHelper {
       MonitorSetupStep.MONITOR_PAIRING,
       MonitorSetupStep.MONITOR_NICKNAME,
       MonitorSetupStep.SUCCESS_SCREEN,
-      MonitorSetupStep.SCALE_INTRO,
-      MonitorSetupStep.SCALE_PAIRING_INSTRUCTION,
       MonitorSetupStep.INSTRUCTION_CUFF,
       MonitorSetupStep.INSTRUCTION_START,
       MonitorSetupStep.SETUP_COMPLETED,

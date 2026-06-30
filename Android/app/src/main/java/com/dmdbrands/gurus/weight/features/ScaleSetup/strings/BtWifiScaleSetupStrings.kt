@@ -83,7 +83,7 @@ object BtWifiScaleSetupStrings {
     object RestoreConfirmation {
       const val Title = "Confirm Account Restore"
       const val Message =
-        "Restoring this account will reconnect Weight Gurus and the scale. Scale settings may be reset."
+        "Restoring this account will reconnect me.App and the scale. Scale settings may be reset."
       const val Restore = "Restore"
       const val Back = "Back"
     }
@@ -108,6 +108,6 @@ object BtWifiScaleSetupStrings {
   object KnownScaleDiscoveredAlert {
     const val Title = "Known Scale Discovered"
     const val Subtitle =
-      "Weight Gurus sees a scale that is already set up. If you are trying to set up a second scale, make sure only one is turned on at a time."
+      "me.App sees a scale that is already set up. If you are trying to set up a second scale, make sure only one is turned on at a time."
   }
 }

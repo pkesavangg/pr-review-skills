@@ -95,7 +95,9 @@ constructor(
   }
 
   private fun navigateToTutorial() {
-    val nextStep = if (isA6) MonitorSetupStep.SCALE_INTRO else MonitorSetupStep.INSTRUCTION_CUFF
+    // Companion-scale steps were removed (paired separately via Add Device), so the tutorial is the
+    // same for every monitor — go straight to the cuff instruction. (MOB-596)
+    val nextStep = MonitorSetupStep.INSTRUCTION_CUFF
     AppLog.d(TAG, "Tutorial link clicked — navigating to $nextStep")
     handleIntent(ScaleSetupIntent.SetNewStep(nextStep))
   }
@@ -178,10 +180,6 @@ constructor(
         handleIntent(ScaleSetupIntent.SetNewStep(MonitorSetupStep.SUCCESS_SCREEN))
       }
 
-      MonitorSetupStep.SCALE_INTRO -> {
-        handleIntent(ScaleSetupIntent.SetNewStep(MonitorSetupStep.SCALE_PAIRING_INSTRUCTION))
-      }
-
       else -> currentState.nextStep?.let { handleIntent(ScaleSetupIntent.SetNewStep(it)) }
     }
   }
@@ -201,31 +199,19 @@ constructor(
         currentState.previousStep?.let { handleIntent(ScaleSetupIntent.SetNewStep(it)) }
       }
 
-      currentState.step == MonitorSetupStep.SCALE_PAIRING_INSTRUCTION -> {
-        handleIntent(ScaleSetupIntent.SetNewStep(MonitorSetupStep.SCALE_INTRO))
-      }
-
       else -> currentState.previousStep?.let { handleIntent(ScaleSetupIntent.SetNewStep(it)) }
     }
   }
 
   override fun onSkip() {
-    val currentStep = state.value.step
-    AppLog.d(TAG, "Skipping current step: $currentStep")
-
-    when (currentStep) {
-      MonitorSetupStep.SCALE_INTRO,
-      MonitorSetupStep.SCALE_PAIRING_INSTRUCTION -> showSkipScalePairingDialog()
-
-      else -> onNext()
-    }
+    AppLog.d(TAG, "Skipping current step: ${state.value.step}")
+    onNext()
   }
 
   override fun onStepChange(step: ScaleSetupStep) {
     AppLog.d(TAG, "Step changed to: $step")
     when (step) {
       MonitorSetupStep.MONITOR_PAIRING -> connectToBluetooth()
-      MonitorSetupStep.SCALE_PAIRING_INSTRUCTION -> Unit // Instruction-only by design — see enum doc.
       else -> AppLog.d(TAG, "No specific action for step: $step")
     }
   }
@@ -253,9 +239,6 @@ constructor(
           setupType = setupType,
         )
 
-      // Instruction-only step — Next is always enabled so the user can advance past it.
-      MonitorSetupStep.SCALE_PAIRING_INSTRUCTION -> true
-
       else -> true
     }
     handleIntent(ScaleSetupIntent.BackEnabled(backEnabled))
@@ -265,7 +248,6 @@ constructor(
   override fun onTryAgain() {
     when (state.value.step) {
       MonitorSetupStep.MONITOR_PAIRING -> connectToBluetooth()
-      MonitorSetupStep.SCALE_PAIRING_INSTRUCTION -> Unit // Instruction-only by design — no retry action.
       else -> AppLog.w(TAG, "Try again not applicable for step: ${state.value.step}")
     }
   }
@@ -376,7 +358,7 @@ constructor(
               // A3: one entry per device — replacing across users is valid
               monitorToDelete = searchInfo.deviceInfo
               AppLog.d(TAG, "A3 monitor exists for different user, confirming user switch")
-              confirmDifferentUserPair(searchInfo.deviceInfo!!)
+              confirmDifferentUserPair()
             }
             else -> {
               // A6 with different user: additive — do NOT delete existing user's pairing
@@ -455,18 +437,11 @@ constructor(
     )
   }
 
-  private fun confirmDifferentUserPair(existingDevice: Device) {
-    val hasNumericUsers = _state.value.hasNumericUsers
-    val existingUserNumber = existingDevice.userNumber
-    val userLabel = if (hasNumericUsers) {
-      existingUserNumber?.toString() ?: "?"
-    } else {
-      if (existingUserNumber == 1) "A" else "B"
-    }
+  private fun confirmDifferentUserPair() {
     dialogQueueService.enqueue(
       DialogModel.Confirm(
         title = MonitorSetupStrings.ConfirmDifferentUserPairDialog.Title,
-        message = MonitorSetupStrings.ConfirmDifferentUserPairDialog.Message(userLabel),
+        message = MonitorSetupStrings.ConfirmDifferentUserPairDialog.Message,
         confirmText = MonitorSetupStrings.ConfirmDifferentUserPairDialog.ReplaceButton,
         cancelText = MonitorSetupStrings.ConfirmDifferentUserPairDialog.CancelButton,
         onConfirm = {
@@ -504,25 +479,6 @@ constructor(
         AppLog.e(TAG, "Failed during monitor pairing", e)
       }
     }
-  }
-
-  private fun showSkipScalePairingDialog() {
-    dialogQueueService.enqueue(
-      DialogModel.Confirm(
-        title = MonitorSetupStrings.SkipScaleDialog.Title,
-        message = MonitorSetupStrings.SkipScaleDialog.Message,
-        confirmText = MonitorSetupStrings.SkipScaleDialog.SkipButton,
-        cancelText = MonitorSetupStrings.SkipScaleDialog.CancelButton,
-        onConfirm = {
-          AppLog.d(TAG, "User skipped companion scale steps")
-          handleIntent(MonitorSetupIntent.SetHasSkippedScalePairing(true))
-          handleIntent(ScaleSetupIntent.SetNewStep(MonitorSetupStep.SUCCESS_SCREEN))
-        },
-        onCancel = {
-          AppLog.d(TAG, "User cancelled skip scale dialog")
-        },
-      ),
-    )
   }
 
   // ── Persist devices ───────────────────────────────────────────────────────

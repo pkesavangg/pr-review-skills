@@ -202,7 +202,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
                 dialogQueueService.showDialog(
                   DialogModel.Alert(
                     title = "Known Scale Discovered",
-                    message = "Weight Gurus sees a scale that is already set up. If you are trying to set up a second scale, make sure only one is turned on at a time.",
+                    message = "me.App sees a scale that is already set up. If you are trying to set up a second scale, make sure only one is turned on at a time.",
                     dismissText = "Exit",
                     onDismiss = {
                       AppLog.d(TAG, "User dismissed known scale dialog")

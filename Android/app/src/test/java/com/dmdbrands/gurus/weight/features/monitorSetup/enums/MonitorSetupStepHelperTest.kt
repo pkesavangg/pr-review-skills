@@ -121,22 +121,16 @@ class MonitorSetupStepHelperTest {
     assertThat(steps).doesNotContain(MonitorSetupStep.POWER_SWITCH)
   }
 
-  @Test
-  fun `A3 SKUs exclude SCALE_INTRO and SCALE_PAIRING_INSTRUCTION`() {
-    for (sku in listOf("0603", "0604", "0634", "0636")) {
-      val steps = MonitorSetupStepHelper.stepsForSku(sku)
-      assertThat(steps).doesNotContain(MonitorSetupStep.SCALE_INTRO)
-      assertThat(steps).doesNotContain(MonitorSetupStep.SCALE_PAIRING_INSTRUCTION)
-    }
-  }
-
   // ── stepsForSku — A6 SKUs ──
+  // A6 monitors pair their companion scale separately via Add Device (not in the wizard), so every
+  // monitor flow goes pair → success → tutorial with no in-wizard scale steps. (MOB-596)
 
   @Test
-  fun `stepsForSku 0661 includes SCALE_INTRO and SCALE_PAIRING_INSTRUCTION`() {
+  fun `stepsForSku 0661 goes straight from SUCCESS_SCREEN to INSTRUCTION_CUFF`() {
     val steps = MonitorSetupStepHelper.stepsForSku("0661")
-    assertThat(steps).contains(MonitorSetupStep.SCALE_INTRO)
-    assertThat(steps).contains(MonitorSetupStep.SCALE_PAIRING_INSTRUCTION)
+    val successIndex = steps.indexOf(MonitorSetupStep.SUCCESS_SCREEN)
+    assertThat(successIndex).isAtLeast(0)
+    assertThat(steps[successIndex + 1]).isEqualTo(MonitorSetupStep.INSTRUCTION_CUFF)
   }
 
   @Test
@@ -147,11 +141,12 @@ class MonitorSetupStepHelperTest {
   }
 
   @Test
-  fun `stepsForSku 0663 includes SCALE_INTRO, SCALE_PAIRING_INSTRUCTION, and MONITOR_OFF`() {
+  fun `stepsForSku 0663 includes MONITOR_OFF and goes from SUCCESS_SCREEN to INSTRUCTION_CUFF`() {
     val steps = MonitorSetupStepHelper.stepsForSku("0663")
-    assertThat(steps).contains(MonitorSetupStep.SCALE_INTRO)
-    assertThat(steps).contains(MonitorSetupStep.SCALE_PAIRING_INSTRUCTION)
     assertThat(steps).contains(MonitorSetupStep.MONITOR_OFF)
+    val successIndex = steps.indexOf(MonitorSetupStep.SUCCESS_SCREEN)
+    assertThat(successIndex).isAtLeast(0)
+    assertThat(steps[successIndex + 1]).isEqualTo(MonitorSetupStep.INSTRUCTION_CUFF)
   }
 
   @Test
@@ -210,12 +205,14 @@ class MonitorSetupStepHelperTest {
   }
 
   @Test
-  fun `stepsForSku 0661 has 13 steps`() {
-    assertThat(MonitorSetupStepHelper.stepsForSku("0661")).hasSize(13)
+  fun `stepsForSku 0661 has 11 steps`() {
+    // 0661 dropped SCALE_INTRO + SCALE_PAIRING_INSTRUCTION; companion scale is paired separately. (MOB-596)
+    assertThat(MonitorSetupStepHelper.stepsForSku("0661")).hasSize(11)
   }
 
   @Test
-  fun `stepsForSku 0663 has 14 steps`() {
-    assertThat(MonitorSetupStepHelper.stepsForSku("0663")).hasSize(14)
+  fun `stepsForSku 0663 has 12 steps`() {
+    // 0663 = 0661 flow + MONITOR_OFF; also dropped the two companion-scale steps. (MOB-596)
+    assertThat(MonitorSetupStepHelper.stepsForSku("0663")).hasSize(12)
   }
 }

@@ -708,7 +708,7 @@ constructor(
       // A device synced from GET /v3/paired-device carries no broadcastId (the server omits it),
       // so a live monitor reading can't match it and the entry was silently dropped. Heal: attribute
       // the reading to the single paired BPM device and backfill its broadcastId so it syncs now and
-      // future readings resolve directly. (MOB-598)
+      // future readings resolve directly. (MOB-596)
       val device = deviceService.getScaleByBroadcastId(broadcastId, accountId)
         ?: deviceService.healBpmDeviceBroadcastId(broadcastId, accountId)
 
