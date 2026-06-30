@@ -6,11 +6,15 @@ import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
+import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
 import com.google.common.truth.Truth.assertThat
 import io.mockk.MockKAnnotations
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
@@ -41,12 +45,14 @@ class DashboardSnapshotViewModelTest {
     lateinit var accountService: IAccountService
 
     private lateinit var productSelectionManager: IProductSelectionManager
+    private lateinit var accountRepository: IAccountRepository
     private lateinit var viewModel: DashboardSnapshotViewModel
 
     @BeforeEach
     fun setUp() {
         MockKAnnotations.init(this)
         productSelectionManager = mockk(relaxed = true)
+        accountRepository = mockk(relaxed = true)
         stubRawResources()
         stubDefaultFlows()
         viewModel = createViewModel()
@@ -78,9 +84,47 @@ class DashboardSnapshotViewModelTest {
             context = context,
             entryReadService = entryReadService,
             accountService = accountService,
+            accountRepository = accountRepository,
         ).initTestDependencies(
             productSelectionManager = productSelectionManager,
         )
+
+    @Test
+    fun `snapshot collapses multiple babies to a single active-baby card`() = runTest(mainDispatcherRule.scheduler) {
+        val baby1 = ProductSelection.Baby(BabyProfile(id = "b1", name = "Ann", accountId = "acc"))
+        val baby2 = ProductSelection.Baby(BabyProfile(id = "b2", name = "Bob", accountId = "acc"))
+        val baby3 = ProductSelection.Baby(BabyProfile(id = "b3", name = "Cy", accountId = "acc"))
+        every { productSelectionManager.availableProducts } returns
+            MutableStateFlow(listOf(ProductSelection.MyWeight, baby1, baby2, baby3))
+        coEvery { accountRepository.getActiveBabyId() } returns "b2"
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val products = viewModel.snapshotProducts.value
+        val babies = products.filterIsInstance<ProductSelection.Baby>()
+        // Three baby profiles collapse to one snapshot card — the active baby.
+        assertThat(babies).hasSize(1)
+        assertThat(babies.first().profile.id).isEqualTo("b2")
+        // Non-baby products are untouched.
+        assertThat(products.any { it is ProductSelection.MyWeight }).isTrue()
+    }
+
+    @Test
+    fun `snapshot falls back to first baby when no active id is set`() = runTest(mainDispatcherRule.scheduler) {
+        val baby1 = ProductSelection.Baby(BabyProfile(id = "b1", name = "Ann", accountId = "acc"))
+        val baby2 = ProductSelection.Baby(BabyProfile(id = "b2", name = "Bob", accountId = "acc"))
+        every { productSelectionManager.availableProducts } returns
+            MutableStateFlow(listOf(baby1, baby2))
+        coEvery { accountRepository.getActiveBabyId() } returns null
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val babies = viewModel.snapshotProducts.value.filterIsInstance<ProductSelection.Baby>()
+        assertThat(babies).hasSize(1)
+        assertThat(babies.first().profile.id).isEqualTo("b1")
+    }
 
     // -------------------------------------------------------------------------
     // Initial State

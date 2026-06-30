@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.historyDetail.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.enums.BabyEntryType
@@ -137,12 +138,18 @@ class HistoryDetailViewModel @AssistedInject constructor(
                         BabyEntryType.MEASURE_LENGTH.value
                     },
                 )
-                if (original.entry.entryTimestamp != intent.timestamp) {
-                    // Date changed → the server entryId (babyId_entryType_timestamp) changes, so an
-                    // in-place edit would leave the OLD reading on the server (orphan/duplicate).
-                    // Delete the original (old entryId) and create a fresh reading at the new
-                    // timestamp with a NEW local id (id=0 → autogen) so the local delete-old and
-                    // create-new don't collide on a shared id. (MOB-598 PR #2130)
+                // The date picker re-emits the timestamp from date + hour + minute, dropping the
+                // original seconds/millis — so a plain weight/note edit yields a timestamp that
+                // differs only in sub-minute precision. Treat the date as CHANGED only when it
+                // differs at minute granularity; otherwise a normal edit would wrongly take the
+                // delete+recreate path and send operationType=delete instead of edit. (MOB-598)
+                val dateChanged = DateTimeConverter.isoToTimestamp(original.entry.entryTimestamp) / MILLIS_PER_MINUTE !=
+                    DateTimeConverter.isoToTimestamp(intent.timestamp) / MILLIS_PER_MINUTE
+                if (dateChanged) {
+                    // Genuine move → the server entryId (babyId_entryType_timestamp) changes, so an
+                    // in-place edit would orphan the OLD reading. Delete the original (old entryId)
+                    // and create a fresh reading at the new timestamp with a NEW local id (id=0 →
+                    // autogen) so the local delete-old and create-new don't collide on a shared id.
                     entryService.deleteEntry(original)
                     entryService.addBabyEntry(
                         BabyEntry(
@@ -151,11 +158,12 @@ class HistoryDetailViewModel @AssistedInject constructor(
                         ),
                     )
                 } else {
-                    // Timestamp unchanged → edit in place via operationType=edit (baby-only, §2.16):
-                    // same row id, same entryId, same POST /v3/entries endpoint.
+                    // Date unchanged → edit in place via operationType=edit (baby-only, §2.16),
+                    // keeping the ORIGINAL timestamp so the server entryId is identical and the edit
+                    // resolves in place. No delete.
                     entryService.editBabyEntry(
                         BabyEntry(
-                            entry = original.entry.copy(entryTimestamp = intent.timestamp),
+                            entry = original.entry,
                             babyEntry = updatedBabyEntry,
                         ),
                     )
@@ -249,5 +257,6 @@ class HistoryDetailViewModel @AssistedInject constructor(
 
     companion object {
         private const val TAG = "HistoryDetailViewModel"
+        private const val MILLIS_PER_MINUTE = 60_000L
     }
 }

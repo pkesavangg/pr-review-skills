@@ -507,6 +507,34 @@ class HistoryDetailViewModelTest {
         assertThat(added.captured.entry.entryTimestamp).isEqualTo("2024-02-01T08:00:00.000Z")
     }
 
+    @Test
+    fun `SaveBabyEdit edits in place when only sub-minute precision differs`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // Original carries seconds/millis; the date picker re-emits the same minute as :00.000.
+        val original = aBabyEntry(id = 7L, weightDecigrams = 30000, timestamp = "2024-01-01T08:00:30.123Z")
+        viewModel.handleIntent(
+            HistoryDetailIntent.SaveBabyEdit(
+                entry = original,
+                weightDecigrams = 31000,
+                lengthMillimeters = null,
+                note = "fixed weight",
+                timestamp = "2024-01-01T08:00:00.000Z", // same minute, dropped sub-minute precision
+            ),
+        )
+        advanceUntilIdle()
+
+        // Same minute → in-place edit (operationType=edit), NOT delete+recreate.
+        val slot = slot<BabyEntry>()
+        coVerify { entryService.editBabyEntry(capture(slot)) }
+        coVerify(exactly = 0) { entryService.deleteEntry(any()) }
+        coVerify(exactly = 0) { entryService.addBabyEntry(any()) }
+        // Keeps the ORIGINAL timestamp so the server entryId is unchanged.
+        assertThat(slot.captured.entry.entryTimestamp).isEqualTo("2024-01-01T08:00:30.123Z")
+        assertThat(slot.captured.babyWeightDecigrams).isEqualTo(31000)
+    }
+
     private fun aBabyEntry(
         id: Long = 7L,
         babyId: String = "baby-1",

@@ -318,6 +318,28 @@ constructor(
    * reading and a single VIEW action that opens this entry's History detail — replaces the plain
    * "Entry added" toast.
    */
+  /**
+   * Baby manual-entry confirmation: show the rich "saved to your log" card (with VIEW) like the
+   * weight/BP flow when a weight was entered; fall back to the plain toast for a length-only entry.
+   */
+  private fun showBabySavedToast(babyEntry: BabyEntry?) {
+    val weightDecigrams = babyEntry?.babyWeightDecigrams
+    if (babyEntry != null && weightDecigrams != null) {
+      showSavedToLogToast(
+        reading = ConversionTools.convertBabyWeightToDisplay(weightDecigrams, source = null, isMetric = false),
+        type = ProductType.BABY,
+        entryTimestamp = babyEntry.entry.entryTimestamp,
+      )
+    } else {
+      dialogQueueService.showToast(
+        Toast.Simple(
+          title = EntryScreenStrings.EntryAddedTitle,
+          message = EntryScreenStrings.EntryAdded,
+        ),
+      )
+    }
+  }
+
   private fun showSavedToLogToast(reading: String, type: ProductType, entryTimestamp: String) {
     // VIEW opens this entry's History detail, whose query matches the bucketed key the History list
     // passes (a "Mon YYYY" month label for weight/BP, a "yyyy-MM-dd" day key for baby) — not the raw
@@ -495,15 +517,10 @@ constructor(
         // measures: the local UNIQUE(accountId, entryTimestamp) index allows only one row per
         // timestamp, and the POST split into distinct §2.16 weight/length requests happens later
         // in the mapper. Null when no measure was entered.
-        buildBabyEntry(babyForm.forms.baby.controls, accountId, babyId)
-          ?.let { entryService.addEntry(it) }
+        val babyEntry = buildBabyEntry(babyForm.forms.baby.controls, accountId, babyId)
+        babyEntry?.let { entryService.addEntry(it) }
         analyticsService.logEvent(IAnalyticsService.Events.MANUAL_ENTRY_CREATED)
-        dialogQueueService.showToast(
-          Toast.Simple(
-            title = EntryScreenStrings.EntryAddedTitle,
-            message = EntryScreenStrings.EntryAdded,
-          ),
-        )
+        showBabySavedToast(babyEntry)
         handleIntent(
           EntryIntent.UpdateActiveForm(
             ActiveEntryForm.Baby(form = MultiFormGroup.create(forms = BabyEntryForm.create())),
