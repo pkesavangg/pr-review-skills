@@ -160,7 +160,7 @@ struct WeightSnapshotCard: View {
                 Text(cachedWeekAverage == "--" ? "000.0" : cachedWeekAverage)
                     .fontOpenSans(.heading1)
                     .fontWeight(.heavy)
-                    .foregroundColor(theme.textHeading)
+                    .foregroundColor(theme.brandWgPrimary)
 
                 Text(unitText)
                     .fontOpenSans(.subHeading2)

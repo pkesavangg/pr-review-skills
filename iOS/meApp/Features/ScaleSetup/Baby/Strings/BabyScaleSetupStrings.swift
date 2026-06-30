@@ -71,7 +71,7 @@ struct BabyScaleSetupStrings {
         static let biologicalSexLabel = "Biological Sex"
         static let birthLengthLabel = "birth length"
         static let birthWeightLabel = "birth weight"
-        static let lbsUnit = "lb"
+        static let lbsUnit = "lbs"
         static let ozUnit = "oz"
         static let male = "Male"
         static let female = "Female"

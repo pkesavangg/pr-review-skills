@@ -282,13 +282,48 @@ struct BabyProfileFormView: View {
                 focusedField = nil
             }
         case .lbsOz:
-            BirthWeightInputField(
-                lbsValue: $form.birthWeightLbs.value,
-                ozValue: $form.birthWeightOz.value,
-                focusedField: focusBinding,
-                label: lang.birthWeightLabel,
-                errorMessage: form.getBirthWeightError()
-            )
+            // Two side-by-side fields, each placeholder-left / unit-right, matching the
+            // standard metric field styling used by the .lb/.kg cases (per design mock).
+            // The shared birth-weight error is rendered under the lbs field so it reads as
+            // one message beneath the row.
+            HStack(alignment: .top, spacing: .spacingSM) {
+                MetricInputField(
+                    config: TextInputConfig(
+                        label: labels.babyBirthWeight,
+                        inputType: .metric,
+                        errorMessage: form.getBirthWeightError(),
+                        focusField: .babyBirthWeight,
+                        maxLength: 3,
+                        allowWholeNumbers: true,
+                        trailingLabel: "(\(lang.lbsUnit))"
+                    ),
+                    value: $form.birthWeightLbs.value,
+                    focusedField: focusBinding
+                ) {
+                    form.birthWeightLbs.markAsTouched()
+                    form.birthWeightLbs.validate()
+                    focusedField = .babyBirthWeightOz
+                }
+                .frame(maxWidth: .infinity)
+
+                MetricInputField(
+                    config: TextInputConfig(
+                        label: labels.babyBirthWeight,
+                        inputType: .metric,
+                        focusField: .babyBirthWeightOz,
+                        maxLength: 3,
+                        clearZeroValue: true,
+                        trailingLabel: "(\(lang.ozUnit))"
+                    ),
+                    value: $form.birthWeightOz.value,
+                    focusedField: focusBinding
+                ) {
+                    form.birthWeightOz.markAsTouched()
+                    form.birthWeightOz.validate()
+                    focusedField = nil
+                }
+                .frame(maxWidth: .infinity)
+            }
         }
     }
 
