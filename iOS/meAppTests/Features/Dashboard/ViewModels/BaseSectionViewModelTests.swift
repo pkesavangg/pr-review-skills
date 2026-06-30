@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Foundation
 @testable import meApp
 import Testing
@@ -93,6 +94,7 @@ func baseSectionVMTestsMakeDate(year: Int = 2026, month: Int = 3, day: Int = 1, 
 
 @Suite(.serialized)
 @MainActor
+// swiftlint:disable:next type_body_length
 struct BaseSectionViewModelTests {
 
     // MARK: - Initial State

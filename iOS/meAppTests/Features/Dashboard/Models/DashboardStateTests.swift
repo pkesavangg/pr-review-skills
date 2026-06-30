@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Foundation
 @testable import meApp
 import SwiftUI
@@ -7,6 +8,7 @@ import Testing
 
 @Suite(.serialized)
 @MainActor
+// swiftlint:disable:next type_body_length
 struct DashboardStateTests {
 
     // MARK: - Default Initialization
@@ -623,7 +625,6 @@ struct DashboardStateTests {
         #expect(dataState.hasAnyEntries == true) // Array is not empty even with nils
     }
 
-
     @Test("DataState: dailyCache stores and retrieves by period key")
     func dataDailyCacheStoreRetrieve() {
         var dataState = DataState()
@@ -651,7 +652,6 @@ struct DashboardStateTests {
 
         #expect(dataState.latestWeightStored == 1805)
     }
-
 
     // MARK: - Cross-State Mutation Tests
 
@@ -704,7 +704,7 @@ struct DashboardStateTests {
     func uiSelectedMetricLabelEmptyString() {
         var ui = UIState()
         ui.selectedMetricLabel = ""
-        #expect(ui.selectedMetricLabel == "")
+        #expect(ui.selectedMetricLabel?.isEmpty == true)
     }
 
     @Test("UIState: goalCardPosition negative value")

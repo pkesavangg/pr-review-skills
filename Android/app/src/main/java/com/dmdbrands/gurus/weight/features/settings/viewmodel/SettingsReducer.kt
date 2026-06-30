@@ -53,6 +53,28 @@ data class SettingsState(
   val isMyKidsEnabled: Boolean
     get() = hasBabyScaleDevice ||
       account?.productTypes?.contains(ProductType.BABY.apiValue) == true
+
+  /**
+   * Whether the "Unit Type" row shows in the App section. Hidden for Balance Health
+   * (blood-pressure) only accounts — a BP monitor has no weight/length unit to choose
+   * (readings are always mmHg). Shown when the account owns a weight or baby product
+   * (both have a configurable unit). Mirrors the WG/SB-show, BH-hide design.
+   */
+  val showUnitType: Boolean
+    get() = account?.productTypes?.let {
+      it.contains(ProductType.MY_WEIGHT.apiValue) || it.contains(ProductType.BABY.apiValue)
+    } ?: true
+
+  /**
+   * Whether the "Integrations" row shows in the Account section. Hidden for baby-scale
+   * only accounts (no third-party health integrations apply to baby data). Shown when
+   * the account owns a weight or blood-pressure product. Mirrors the WG/BH-show, SB-hide
+   * design.
+   */
+  val showIntegrations: Boolean
+    get() = account?.productTypes?.let {
+      it.contains(ProductType.MY_WEIGHT.apiValue) || it.contains(ProductType.BLOOD_PRESSURE.apiValue)
+    } ?: true
 }
 
 /**

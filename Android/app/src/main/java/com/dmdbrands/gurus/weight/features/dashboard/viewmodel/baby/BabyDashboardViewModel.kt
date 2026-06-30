@@ -179,7 +179,7 @@ class BabyDashboardViewModel @AssistedInject constructor(
 
       val yValues: List<Double> = when (_state.value.selectedMetric) {
         BabyMetric.WEIGHT -> seedSource.mapNotNull { e ->
-          e.avgWeightDecigrams?.let { it / 283.495 / 16.0 }
+          e.avgWeightDecigrams?.let { ConversionTools.convertDecigramsToLbExact(it) }
         }
         BabyMetric.HEIGHT -> seedSource.mapNotNull { e ->
           e.avgLengthMillimeters?.let { it / 25.4 }
