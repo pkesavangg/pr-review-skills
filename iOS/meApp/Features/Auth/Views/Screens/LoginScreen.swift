@@ -240,7 +240,7 @@ struct LoginScreen: View {
                 hideKeyboard()
             }
         }
-        .accessibilityIdentifier(AccessibilityID.loginScreenRoot)
+        .screenAccessibilityRoot(AccessibilityID.loginScreenRoot)
     }
 }
 
